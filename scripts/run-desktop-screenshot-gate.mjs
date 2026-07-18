@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { measureScreenshotPixels } from "./screenshot-pixels.mjs";
 import {
   DEFAULT_LOCALE,
@@ -1079,11 +1079,24 @@ export function buildDesktopVisualQaLaunchEnv(
   };
 }
 
-function spawnTauriDev(spawnFn, options, database) {
-  return spawnFn("npm", ["run", "tauri", "--", "dev"], {
+export function resolveDesktopScreenshotTauriLaunch({
+  args = ["dev"],
+  executable = process.execPath,
+} = {}) {
+  return {
+    args: [fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)), ...args],
+    command: executable,
+    shell: false,
+  };
+}
+
+export function spawnDesktopTauriDev(spawnFn, options, database) {
+  const launch = resolveDesktopScreenshotTauriLaunch();
+  return spawnFn(launch.command, launch.args, {
     cwd: options.cwd ?? process.cwd(),
     detached: true,
     env: buildDesktopVisualQaLaunchEnv(options, database),
+    shell: launch.shell,
     stdio: ["ignore", "pipe", "pipe"],
   });
 }
@@ -1112,7 +1125,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   }
   let outputTail = "";
   let childExit = null;
-  const child = spawnTauriDev(spawnFn, options, database);
+  const child = spawnDesktopTauriDev(spawnFn, options, database);
   const expectedWindowTitles = desktopVisualQaExpectedWindowTitles(
     options.scenario,
     options.locale,

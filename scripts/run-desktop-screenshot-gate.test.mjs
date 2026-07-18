@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   assertDesktopScreenshotPlatform,
   buildDesktopVisualQaLaunchEnv,
@@ -33,9 +35,11 @@ import {
   resolveDesktopVisualQaTheme,
   resolveDesktopVisualQaWindowSize,
   resizeDesktopWindow,
+  resolveDesktopScreenshotTauriLaunch,
   runDesktopScreenshotGate,
   runLaunchedDesktopScreenshotGate,
   shouldRetryDesktopLaunch,
+  spawnDesktopTauriDev,
   validateDesktopScreenshotMetrics,
   validateDesktopScreenshotTheme,
   validateDesktopWindowSize,
@@ -126,6 +130,99 @@ test("desktop screenshot runners reject unsupported platforms before side effect
     /currently supports macOS only/,
   );
   assert.equal(preparedDatabase, false);
+});
+
+test("desktop screenshot launch uses the local Tauri wrapper without a shell", () => {
+  const executable = "node-runtime";
+  const launch = resolveDesktopScreenshotTauriLaunch({ executable });
+
+  assert.deepEqual(launch, {
+    args: [
+      fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)),
+      "dev",
+    ],
+    command: executable,
+    shell: false,
+  });
+});
+
+test("desktop screenshot spawn keeps launch options and visual QA context", () => {
+  const calls = [];
+  const child = { pid: 42 };
+  const database = { targetPath: testVisualDatabasePath };
+  const result = spawnDesktopTauriDev(
+    (command, args, options) => {
+      calls.push({ args, command, options });
+      return child;
+    },
+    {
+      cwd: "project root with spaces",
+      locale: "de",
+      scenario: "printer-board",
+      themeMode: "dark",
+    },
+    database,
+  );
+
+  assert.equal(result, child);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, process.execPath);
+  assert.deepEqual(calls[0].args, [
+    fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)),
+    "dev",
+  ]);
+  assert.equal(calls[0].options.cwd, "project root with spaces");
+  assert.equal(calls[0].options.detached, true);
+  assert.equal(calls[0].options.shell, false);
+  assert.deepEqual(calls[0].options.stdio, ["ignore", "pipe", "pipe"]);
+  assert.equal(
+    calls[0].options.env.FILAMENT_MANAGER_DB_PATH,
+    testVisualDatabasePath,
+  );
+  assert.equal(calls[0].options.env.FILAMENT_MANAGER_VISUAL_QA, "1");
+  assert.equal(calls[0].options.env.FILAMENT_MANAGER_VISUAL_QA_LOCALE, "de");
+  assert.equal(
+    calls[0].options.env.FILAMENT_MANAGER_VISUAL_QA_SCENARIO,
+    "printer-board",
+  );
+  assert.equal(
+    calls[0].options.env.FILAMENT_MANAGER_VISUAL_QA_THEME,
+    "dark",
+  );
+});
+
+test("desktop screenshot Tauri launch stays clean when Node deprecations throw", () => {
+  const moduleUrl = new URL(
+    "./run-desktop-screenshot-gate.mjs",
+    import.meta.url,
+  ).href;
+  const probe = `
+    import { spawnSync } from "node:child_process";
+    import { resolveDesktopScreenshotTauriLaunch } from ${JSON.stringify(moduleUrl)};
+
+    const launch = resolveDesktopScreenshotTauriLaunch({ args: ["--version"] });
+    const result = spawnSync(launch.command, launch.args, {
+      encoding: "utf8",
+      shell: launch.shell,
+    });
+
+    process.stdout.write(result.stdout ?? "");
+    process.stderr.write(result.stderr ?? "");
+    process.exit(result.status ?? 1);
+  `;
+  const result = spawnSync(
+    process.execPath,
+    ["--throw-deprecation", "--input-type=module", "--eval", probe],
+    {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      encoding: "utf8",
+    },
+  );
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /tauri-cli \d+\./);
+  assert.doesNotMatch(result.stderr, /DEP0190/);
 });
 
 test("desktop screenshot gate parses macOS window lookup output", () => {

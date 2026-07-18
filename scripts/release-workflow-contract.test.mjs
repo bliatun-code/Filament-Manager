@@ -55,10 +55,22 @@ test("release workflow gates tag and manual installer builds", () => {
     /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'windows'/,
   );
   assert.match(windowsJob, /runs-on: windows-latest/);
+  assert.match(
+    windowsJob,
+    /run: node \.\/scripts\/normalize-msi-version\.mjs/,
+  );
+  assert.doesNotMatch(windowsJob, /shell:\s*bash/);
+  assert.doesNotMatch(windowsJob, /BASH_REMATCH|<<'NODE'/);
   assert.match(windowsJob, /Build MSI bundle/);
   assert.match(windowsJob, /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/);
   assert.match(windowsJob, /path: target\/release\/bundle\/msi\/\*\.msi/);
   assert.match(windowsJob, /retention-days: 14/);
+
+  assertStepOrder(windowsJob, [
+    "Normalize prerelease version for MSI",
+    "Build MSI bundle",
+    "Upload MSI artifact",
+  ]);
 });
 
 test("release workflow keeps the protected macOS signing sequence fail-closed", () => {

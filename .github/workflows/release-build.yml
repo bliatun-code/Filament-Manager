@@ -288,34 +288,7 @@ jobs:
           npm --prefix ./ui ci
 
       - name: Normalize prerelease version for MSI
-        shell: bash
-        run: |
-          set -euo pipefail
-          raw_version="${GITHUB_REF_NAME#v}"
-          if [[ ! "$raw_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.].*)?$ ]]; then
-            raw_version="$(node -p "require('./package.json').version")"
-          fi
-          msi_version="$raw_version"
-          if [[ "$raw_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-[A-Za-z0-9.-]*\.([0-9]+)$ ]]; then
-            msi_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}-${BASH_REMATCH[4]}"
-          elif [[ "$raw_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-[A-Za-z0-9.-]+$ ]]; then
-            msi_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}-1"
-          fi
-          echo "Using MSI bundle version: $msi_version"
-          node - "$msi_version" <<'NODE'
-          const fs = require("node:fs");
-          const version = process.argv[2];
-          const tauriConfigPath = "src-tauri/tauri.conf.json";
-          const cargoTomlPath = "src-tauri/Cargo.toml";
-          const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
-          tauriConfig.version = version;
-          fs.writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
-          const cargoToml = fs.readFileSync(cargoTomlPath, "utf8").replace(
-            /^version = ".*"$/m,
-            `version = "${version}"`,
-          );
-          fs.writeFileSync(cargoTomlPath, cargoToml);
-          NODE
+        run: node ./scripts/normalize-msi-version.mjs
 
       - name: Build MSI bundle
         run: npm run tauri -- build --bundles msi
