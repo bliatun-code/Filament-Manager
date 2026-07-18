@@ -144,6 +144,12 @@ function releaseChild(child) {
   child.stderr?.destroy();
 }
 
+export function shouldSpawnCompanionScreenshotNpmThroughShell(
+  platform = process.platform,
+) {
+  return platform === "win32";
+}
+
 function spawnTauriDev(spawnFn, options, database) {
   return spawnFn("npm", ["run", "tauri", "--", "dev"], {
     cwd: options.cwd ?? process.cwd(),
@@ -153,6 +159,7 @@ function spawnTauriDev(spawnFn, options, database) {
       [APP_DB_PATH_ENV_VAR]: database.targetPath,
       FILAMENT_MANAGER_VISUAL_QA: "1",
     },
+    shell: shouldSpawnCompanionScreenshotNpmThroughShell(options.platform),
     stdio: ["ignore", "pipe", "pipe"],
   });
 }

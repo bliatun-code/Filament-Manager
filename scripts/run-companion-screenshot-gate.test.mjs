@@ -14,6 +14,7 @@ import {
   formatLaunchedCompanionScreenshotGateReport,
   normalizeCompanionScreenshotLocale,
   runLaunchedCompanionScreenshotGate,
+  shouldSpawnCompanionScreenshotNpmThroughShell,
   summarizeCompanionScreenshotPixels,
   validateCompanionScreenshotMetrics,
   waitForCompanionPrinterLiveData,
@@ -536,6 +537,12 @@ test("companion screenshot launch need detection covers unreachable server failu
   assert.equal(companionScreenshotGateNeedsLaunch(new Error("layout overflow")), false);
 });
 
+test("companion screenshot launch starts npm through the Windows command shell", () => {
+  assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("win32"), true);
+  assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("darwin"), false);
+  assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("linux"), false);
+});
+
 test("launched companion screenshot gate starts Tauri dev and cleans up temp DB", async () => {
   const child = createFakeChild();
   const calls = {
@@ -549,6 +556,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   const result = await runLaunchedCompanionScreenshotGate({
     cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
     outputDir: testOutputDir,
+    platform: "win32",
     postTerminateDelayMs: 0,
     prepareVisualQaDatabase: async (options) => {
       calls.prepare.push(options);
@@ -585,6 +593,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.deepEqual(calls.prepare, [{ live: false, profile: undefined, sourcePath: undefined }]);
   assert.equal(calls.spawn[0]?.command, "npm");
   assert.deepEqual(calls.spawn[0]?.args, ["run", "tauri", "--", "dev"]);
+  assert.equal(calls.spawn[0]?.options.shell, true);
   assert.equal(
     calls.spawn[0]?.options.env.FILAMENT_MANAGER_DB_PATH,
     testVisualDatabasePath,
