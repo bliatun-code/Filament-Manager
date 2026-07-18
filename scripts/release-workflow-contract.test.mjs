@@ -72,8 +72,18 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(windowsJob, /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/);
   assert.match(windowsJob, /path: target\/release\/bundle\/msi\/\*\.msi/);
   assert.match(windowsJob, /retention-days: 14/);
+  assert.match(
+    windowsJob,
+    /- name: Install root dependencies\s+run: npm ci/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Install UI dependencies\s+run: npm --prefix \.\/ui ci/,
+  );
 
   assertStepOrder(windowsJob, [
+    "Install root dependencies",
+    "Install UI dependencies",
     "Normalize prerelease version for MSI",
     "Build MSI bundle",
     "Upload MSI artifact",

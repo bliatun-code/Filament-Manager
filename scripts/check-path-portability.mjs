@@ -55,11 +55,22 @@ const filesystemPathIdentifier =
   String.raw`(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*(?:[A-Za-z_$][A-Za-z0-9_$]*(?:Root|Dir|Directory|Folder|Cwd|_?(?:root|dir|directory|folder))|root|dir|directory|folder|cwd)`;
 const filesystemPathExpression = String.raw`(?:${filesystemPathIdentifier}|process\.cwd\(\)|tmpdir\(\)|__dirname|__filename|(?:resolve|dirname|join)\([^)]*\))`;
 const manualFilesystemSeparatorPatterns = [
-  new RegExp(String.raw`\$\{\s*${filesystemPathExpression}\s*\}\/`),
+  new RegExp(String.raw`\$\{\s*${filesystemPathExpression}\s*\}\s*\/`, "g"),
   new RegExp(
     String.raw`${filesystemPathExpression}\s*\+\s*["'\x60]\/`,
+    "g",
   ),
 ];
+
+function lineNumberAtOffset(source, offset) {
+  let line = 1;
+  for (let index = 0; index < offset; index += 1) {
+    if (source[index] === "\n") {
+      line += 1;
+    }
+  }
+  return line;
+}
 
 function collectFiles(directory, files) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -110,16 +121,30 @@ export function findHostSpecificPaths(source, file = "<source>") {
         errors.push({ file, label, line: index + 1 });
       }
     }
-    if (manualFilesystemSeparatorPatterns.some((pattern) => pattern.test(line))) {
+  }
+
+  for (const pattern of manualFilesystemSeparatorPatterns) {
+    for (const match of source.matchAll(new RegExp(pattern.source, pattern.flags))) {
+      const separatorOffset = match[0].lastIndexOf("/");
+      const line = lineNumberAtOffset(
+        source,
+        (match.index ?? 0) + Math.max(separatorOffset, 0),
+      );
+      if (lines[line - 1]?.includes(allowMarker)) {
+        continue;
+      }
       errors.push({
         file,
         label: "manual POSIX separator appended to a filesystem path",
-        line: index + 1,
+        line,
       });
     }
   }
 
-  return errors;
+  return errors.sort(
+    (left, right) =>
+      left.line - right.line || left.label.localeCompare(right.label),
+  );
 }
 
 export function analyzePathPortability(options = {}) {

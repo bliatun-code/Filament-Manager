@@ -144,6 +144,34 @@ test("path portability rejects manual separators appended to filesystem paths", 
   );
 });
 
+test("path portability rejects manual separators split across lines", () => {
+  const source = [
+    "const first = outputDirectory",
+    '  + "/artifact.png";',
+    "const second = `${repoRoot}",
+    "/report.json`;",
+    "const fixture = targetDir",
+    '  + "/fixture.json"; // path-portability-allow: intentional external fixture path',
+  ].join("\r\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "scripts/fixture.mjs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [
+      {
+        label: "manual POSIX separator appended to a filesystem path",
+        line: 2,
+      },
+      {
+        label: "manual POSIX separator appended to a filesystem path",
+        line: 4,
+      },
+    ],
+  );
+});
+
 test("path portability accepts URL and display separators", () => {
   const source = [
     `url.pathname = ${interpolatedManualPath("trimmedPath", "companion")};`,

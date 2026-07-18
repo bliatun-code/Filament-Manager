@@ -9,6 +9,7 @@ const ignoredTestDirectories = new Set(["__specs__", "__tests__", "spec", "specs
 const testFilePattern = /\.(?:spec|test)\.[^\\/]+$/i;
 const allowMarker = "command-portability-allow:";
 const childProcessModules = new Set(["child_process", "node:child_process"]);
+const utilModules = new Set(["node:util", "util"]);
 const childProcessMethods = new Set([
   "exec",
   "execFile",
@@ -17,6 +18,7 @@ const childProcessMethods = new Set([
   "spawn",
   "spawnSync",
 ]);
+const promisifyMembers = new Set(["promisify"]);
 const platformShellExecutables = new Set([
   "bash",
   "bash.exe",
@@ -376,6 +378,23 @@ function parseNamedBindings(tokens, start, end, separator) {
   return bindings;
 }
 
+function parsePromisifyBindings(tokens, start, end, separator) {
+  const bindings = new Set();
+  for (let index = start; index < end; index += 1) {
+    if (tokens[index]?.type !== "identifier" || tokens[index].value !== "promisify") {
+      continue;
+    }
+    const hasAlias =
+      tokens[index + 1]?.value === separator &&
+      tokens[index + 2]?.type === "identifier";
+    bindings.add(hasAlias ? tokens[index + 2].value : "promisify");
+    if (hasAlias) {
+      index += 2;
+    }
+  }
+  return bindings;
+}
+
 function findOpeningToken(tokens, closeIndex, opening, closing) {
   let depth = 0;
   for (let index = closeIndex; index >= 0; index -= 1) {
@@ -482,6 +501,7 @@ function resolveChildProcessBindings(tokens) {
     }
   }
 
+  propagatePromisifiedChildProcessBindings(tokens, { direct, namespaces });
   return { direct, namespaces, referencesChildProcess };
 }
 
@@ -500,12 +520,12 @@ function findClosingToken(tokens, openIndex, opening, closing) {
   return -1;
 }
 
-function childProcessModuleCloseIndex(tokens, index) {
+function moduleCloseIndex(tokens, index, modules) {
   if (
     !["import", "require"].includes(tokens[index]?.value) ||
     tokens[index + 1]?.value !== "(" ||
     tokens[index + 2]?.type !== "string" ||
-    !childProcessModules.has(tokens[index + 2].value)
+    !modules.has(tokens[index + 2].value)
   ) {
     return -1;
   }
@@ -513,12 +533,20 @@ function childProcessModuleCloseIndex(tokens, index) {
   return tokens[closeIndex]?.value === ")" ? closeIndex : -1;
 }
 
-function staticChildProcessMemberAt(tokens, baseEndIndex) {
+function childProcessModuleCloseIndex(tokens, index) {
+  return moduleCloseIndex(tokens, index, childProcessModules);
+}
+
+function utilModuleCloseIndex(tokens, index) {
+  return moduleCloseIndex(tokens, index, utilModules);
+}
+
+function staticMemberAt(tokens, baseEndIndex, allowedMembers) {
   const separator = tokens[baseEndIndex + 1]?.value;
   if (
     (separator === "." || separator === "?.") &&
     tokens[baseEndIndex + 2]?.type === "identifier" &&
-    childProcessMethods.has(tokens[baseEndIndex + 2].value)
+    allowedMembers.has(tokens[baseEndIndex + 2].value)
   ) {
     return {
       method: tokens[baseEndIndex + 2].value,
@@ -530,7 +558,7 @@ function staticChildProcessMemberAt(tokens, baseEndIndex) {
   if (
     tokens[bracketIndex]?.value === "[" &&
     tokens[bracketIndex + 1]?.type === "string" &&
-    childProcessMethods.has(tokens[bracketIndex + 1].value) &&
+    allowedMembers.has(tokens[bracketIndex + 1].value) &&
     tokens[bracketIndex + 2]?.value === "]"
   ) {
     return {
@@ -541,6 +569,10 @@ function staticChildProcessMemberAt(tokens, baseEndIndex) {
   return null;
 }
 
+function staticChildProcessMemberAt(tokens, baseEndIndex) {
+  return staticMemberAt(tokens, baseEndIndex, childProcessMethods);
+}
+
 function callOpenIndexAt(tokens, index) {
   if (tokens[index]?.value === "(") {
     return index;
@@ -548,6 +580,139 @@ function callOpenIndexAt(tokens, index) {
   return tokens[index]?.value === "?." && tokens[index + 1]?.value === "("
     ? index + 1
     : -1;
+}
+
+function resolvePromisifyBindings(tokens) {
+  const direct = new Set();
+  const namespaces = new Set();
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token?.type !== "identifier") {
+      continue;
+    }
+
+    if (token.value === "import" && tokens[index + 1]?.value !== "(") {
+      let fromIndex = -1;
+      for (
+        let cursor = index + 1;
+        cursor < tokens.length && tokens[cursor].value !== ";";
+        cursor += 1
+      ) {
+        if (tokens[cursor].value === "from") {
+          fromIndex = cursor;
+          break;
+        }
+      }
+      if (!utilModules.has(tokens[fromIndex + 1]?.value)) {
+        continue;
+      }
+      if (
+        tokens[index + 1]?.value === "*" &&
+        tokens[index + 2]?.value === "as" &&
+        tokens[index + 3]?.type === "identifier"
+      ) {
+        namespaces.add(tokens[index + 3].value);
+      }
+      const openBrace = tokens.findIndex(
+        (candidate, candidateIndex) =>
+          candidateIndex > index && candidateIndex < fromIndex && candidate.value === "{",
+      );
+      if (openBrace !== -1) {
+        const closeBrace = tokens.findIndex(
+          (candidate, candidateIndex) =>
+            candidateIndex > openBrace &&
+            candidateIndex < fromIndex &&
+            candidate.value === "}",
+        );
+        for (const local of parsePromisifyBindings(
+          tokens,
+          openBrace + 1,
+          closeBrace,
+          "as",
+        )) {
+          direct.add(local);
+        }
+      }
+      continue;
+    }
+
+    const moduleCloseIndex = utilModuleCloseIndex(tokens, index);
+    if (moduleCloseIndex === -1 || tokens[index - 1]?.value !== "=") {
+      continue;
+    }
+    if (tokens[index - 2]?.type === "identifier") {
+      const member = staticMemberAt(tokens, moduleCloseIndex, promisifyMembers);
+      if (member) {
+        direct.add(tokens[index - 2].value);
+      } else {
+        namespaces.add(tokens[index - 2].value);
+      }
+    } else if (tokens[index - 2]?.value === "}") {
+      const openBrace = findOpeningToken(tokens, index - 2, "{", "}");
+      for (const local of parsePromisifyBindings(
+        tokens,
+        openBrace + 1,
+        index - 2,
+        ":",
+      )) {
+        direct.add(local);
+      }
+    }
+  }
+
+  return { direct, namespaces };
+}
+
+function childProcessMethodReferenceAt(tokens, index, bindings) {
+  const token = tokens[index];
+  if (token?.type !== "identifier") {
+    return null;
+  }
+  const directMethod = bindings.direct.get(token.value);
+  if (directMethod) {
+    return directMethod;
+  }
+  if (bindings.namespaces.has(token.value)) {
+    return staticChildProcessMemberAt(tokens, index)?.method ?? null;
+  }
+  const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
+  return moduleCloseIndex === -1
+    ? null
+    : staticChildProcessMemberAt(tokens, moduleCloseIndex)?.method ?? null;
+}
+
+function propagatePromisifiedChildProcessBindings(tokens, bindings) {
+  const promisifyBindings = resolvePromisifyBindings(tokens);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (token?.type !== "identifier" || tokens[index - 1]?.value !== "=") {
+      continue;
+    }
+
+    let openIndex = -1;
+    if (promisifyBindings.direct.has(token.value)) {
+      openIndex = callOpenIndexAt(tokens, index + 1);
+    } else if (promisifyBindings.namespaces.has(token.value)) {
+      const member = staticMemberAt(tokens, index, promisifyMembers);
+      openIndex = member ? callOpenIndexAt(tokens, member.nextIndex) : -1;
+    } else {
+      const moduleCloseIndex = utilModuleCloseIndex(tokens, index);
+      const member =
+        moduleCloseIndex === -1
+          ? null
+          : staticMemberAt(tokens, moduleCloseIndex, promisifyMembers);
+      openIndex = member ? callOpenIndexAt(tokens, member.nextIndex) : -1;
+    }
+    if (openIndex === -1 || tokens[index - 2]?.type !== "identifier") {
+      continue;
+    }
+
+    const method = childProcessMethodReferenceAt(tokens, openIndex + 1, bindings);
+    if (method) {
+      bindings.direct.set(tokens[index - 2].value, method);
+    }
+  }
 }
 
 function resolveCallAt(tokens, index, bindings) {

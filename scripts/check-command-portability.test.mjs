@@ -219,6 +219,40 @@ exec("echo intentional"); // command-portability-allow: compatibility probe requ
   );
 });
 
+test("command portability follows child-process methods through promisify", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec, exec as execute, execFile } from "node:child_process";
+import { promisify, promisify as makeAsync } from "node:util";
+import * as util from "node:util";
+const run = promisify(exec);
+run("npm run smoke");
+const runAlias = makeAsync(execute);
+runAlias("npm run doctor");
+const runNamespace = util.promisify(exec);
+runNamespace("npm run verify");
+const requiredUtil = require("node:util");
+const runRequiredNamespace = requiredUtil.promisify(exec);
+runRequiredNamespace("npm run test:portability");
+const { promisify: requiredPromisify } = require("util");
+const runRequired = requiredPromisify(exec);
+runRequired("npm run check:contracts");
+const runInline = require("node:util")["promisify"](exec);
+runInline("npm run test:scripts");
+const safe = promisify(execFile);
+safe(process.execPath, ["runner.mjs"], { shell: false });
+`),
+    [
+      implicitShellIssue("exec", 6),
+      implicitShellIssue("exec", 8),
+      implicitShellIssue("exec", 10),
+      implicitShellIssue("exec", 13),
+      implicitShellIssue("exec", 16),
+      implicitShellIssue("exec", 18),
+    ],
+  );
+});
+
 test("command portability ignores fixtures inside strings, templates, regex literals, and comments", () => {
   assert.deepEqual(
     fixtureIssues(`
