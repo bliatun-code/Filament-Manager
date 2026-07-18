@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import {
+  assertDesktopScreenshotPlatform,
   buildDesktopVisualQaLaunchEnv,
   buildDesktopWindowActivateScript,
   buildDesktopWindowListScript,
@@ -32,6 +33,8 @@ import {
   resolveDesktopVisualQaTheme,
   resolveDesktopVisualQaWindowSize,
   resizeDesktopWindow,
+  runDesktopScreenshotGate,
+  runLaunchedDesktopScreenshotGate,
   shouldRetryDesktopLaunch,
   validateDesktopScreenshotMetrics,
   validateDesktopScreenshotTheme,
@@ -84,6 +87,46 @@ function createMetric(overrides = {}) {
     ...overrides,
   };
 }
+
+test("desktop screenshot gate keeps its macOS-only platform contract injectable", () => {
+  assert.doesNotThrow(() =>
+    assertDesktopScreenshotPlatform({ platform: "darwin" }),
+  );
+  assert.throws(
+    () => assertDesktopScreenshotPlatform({ platform: "win32" }),
+    /currently supports macOS only/,
+  );
+  assert.throws(
+    () => assertDesktopScreenshotPlatform({ platform: "linux" }),
+    /currently supports macOS only/,
+  );
+  assert.doesNotThrow(() =>
+    assertDesktopScreenshotPlatform({
+      allowNonDarwin: true,
+      platform: "win32",
+    }),
+  );
+});
+
+test("desktop screenshot runners reject unsupported platforms before side effects", async () => {
+  await assert.rejects(
+    runDesktopScreenshotGate({ platform: "win32" }),
+    /currently supports macOS only/,
+  );
+
+  let preparedDatabase = false;
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      platform: "win32",
+      prepareVisualQaDatabase: async () => {
+        preparedDatabase = true;
+        throw new Error("database preparation should not run");
+      },
+    }),
+    /currently supports macOS only/,
+  );
+  assert.equal(preparedDatabase, false);
+});
 
 test("desktop screenshot gate parses macOS window lookup output", () => {
   assert.equal(DEFAULT_WINDOW_COMMAND_TIMEOUT_MS, 15_000);

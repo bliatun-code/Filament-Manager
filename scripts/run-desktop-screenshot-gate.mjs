@@ -925,10 +925,15 @@ export function validateDesktopWindowSize(metric, windowSize, tolerance = 2) {
   ];
 }
 
-export async function runDesktopScreenshotGate(options = {}) {
-  if (process.platform !== "darwin" && !options.allowNonDarwin) {
+export function assertDesktopScreenshotPlatform(options = {}) {
+  const platform = options.platform ?? process.platform;
+  if (platform !== "darwin" && !options.allowNonDarwin) {
     throw new Error("Desktop screenshot gate currently supports macOS only.");
   }
+}
+
+export async function runDesktopScreenshotGate(options = {}) {
+  assertDesktopScreenshotPlatform(options);
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
   const window = options.window ?? (await findDesktopWindow(options));
   if (!window) {
@@ -1084,9 +1089,7 @@ function spawnTauriDev(spawnFn, options, database) {
 }
 
 export async function runLaunchedDesktopScreenshotGate(options = {}) {
-  if (process.platform !== "darwin" && !options.allowNonDarwin) {
-    throw new Error("Desktop screenshot gate currently supports macOS only.");
-  }
+  assertDesktopScreenshotPlatform(options);
 
   const prepareDatabase =
     options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
