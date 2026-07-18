@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   APP_DB_PATH_ENV_VAR,
   cleanupVisualQaDatabase,
@@ -14,10 +14,15 @@ function parseArgValue(argv, name) {
   return index >= 0 ? argv[index + 1] : null;
 }
 
-export function shouldSpawnVisualQaNpmThroughShell(
-  platform = process.platform,
-) {
-  return platform === "win32";
+export function resolveVisualQaTauriLaunch({
+  args = ["dev"],
+  executable = process.execPath,
+} = {}) {
+  return {
+    args: [fileURLToPath(new URL("./run-tauri.mjs", import.meta.url)), ...args],
+    command: executable,
+    shell: false,
+  };
 }
 
 async function runCli() {
@@ -47,13 +52,14 @@ async function runCli() {
     return;
   }
 
-  const child = spawn("npm", ["run", "tauri", "--", "dev"], {
+  const launch = resolveVisualQaTauriLaunch();
+  const child = spawn(launch.command, launch.args, {
     env: {
       ...process.env,
       [APP_DB_PATH_ENV_VAR]: result.targetPath,
       [VISUAL_QA_MODE_ENV_VAR]: "1",
     },
-    shell: shouldSpawnVisualQaNpmThroughShell(),
+    shell: launch.shell,
     stdio: "inherit",
   });
 
