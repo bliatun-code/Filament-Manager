@@ -33,6 +33,7 @@ export const COMPANION_SCREENSHOT_VIEWPORTS = {
 
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 export const COMPANION_PRINTER_LIVE_WAIT_MS = 30_000;
+export const WINDOWS_PROCESS_TREE_TERMINATION_TIMEOUT_MS = 10_000;
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
 const execFileAsync = promisify(execFile);
@@ -130,6 +131,7 @@ async function waitForChildExit(child, timeoutMs) {
 export async function terminateWindowsProcessTree(
   pid,
   execFileFn = execFileAsync,
+  timeoutMs = WINDOWS_PROCESS_TREE_TERMINATION_TIMEOUT_MS,
 ) {
   if (!Number.isSafeInteger(pid) || pid <= 0) {
     return false;
@@ -137,9 +139,14 @@ export async function terminateWindowsProcessTree(
   await execFileFn(
     "taskkill.exe",
     ["/PID", String(pid), "/T", "/F"],
-    { windowsHide: true },
+    { timeout: timeoutMs, windowsHide: true },
   );
   return true;
+}
+
+function processTerminationErrorDetail(error) {
+  const message = String(error?.message ?? error ?? "unknown taskkill failure");
+  return error?.code ? `${error.code}: ${message}` : message;
 }
 
 async function terminateChild(child, options = {}) {
@@ -148,19 +155,37 @@ async function terminateChild(child, options = {}) {
   }
   const platform = options.platform ?? process.platform;
   if (platform === "win32") {
+    let taskkillError = null;
     try {
       const terminated = await terminateWindowsProcessTree(
         child.pid,
         options.taskkillExecFileFn,
+        options.taskkillTimeoutMs,
       );
       if (terminated) {
         child.stdout?.destroy();
         child.stderr?.destroy();
         return;
       }
-    } catch {
-      // Fall back to the existing child-process cleanup when taskkill is unavailable.
+      taskkillError = new Error("taskkill did not receive a valid child process id");
+    } catch (error) {
+      taskkillError = error;
     }
+
+    // Stopping the wrapper is still useful, but it cannot prove that all Windows
+    // descendants exited after taskkill failed. Keep the QA database in that case.
+    signalChildProcessGroup(child, "SIGTERM", options.killProcessFn);
+    const exited = await waitForChildExit(child, 3_000);
+    if (!exited) {
+      signalChildProcessGroup(child, "SIGKILL", options.killProcessFn);
+      await waitForChildExit(child, 1_000);
+    }
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+    throw new Error(
+      `Windows process-tree termination could not be confirmed after taskkill failed: ${processTerminationErrorDetail(taskkillError)}`,
+      { cause: taskkillError },
+    );
   }
   signalChildProcessGroup(child, "SIGTERM", options.killProcessFn);
   const exited = await waitForChildExit(child, 3_000);
@@ -1061,7 +1086,17 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
     if (keepApp) {
       releaseChild(child);
     } else {
-      await terminateChild(child, options);
+      try {
+        await terminateChild(child, options);
+      } catch (error) {
+        const databaseDisposition = !options.keep && !database.live
+          ? `Temporary visual QA database cleanup was skipped; retained at ${database.targetPath}.`
+          : `Database was left at ${database.targetPath}.`;
+        throw new Error(
+          `Companion screenshot cleanup failed. Tauri may still be using ${baseUrl}. ${databaseDisposition} ${error.message}`,
+          { cause: error },
+        );
+      }
       const postTerminateDelayMs = options.postTerminateDelayMs ?? 1_200;
       if (postTerminateDelayMs > 0) {
         await wait(postTerminateDelayMs);

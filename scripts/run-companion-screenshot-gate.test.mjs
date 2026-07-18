@@ -21,6 +21,7 @@ import {
   terminateWindowsProcessTree,
   validateCompanionScreenshotMetrics,
   waitForCompanionPrinterLiveData,
+  WINDOWS_PROCESS_TREE_TERMINATION_TIMEOUT_MS,
 } from "./run-companion-screenshot-gate.mjs";
 
 const testOutputDir = path.join(tmpdir(), "visual-qa");
@@ -666,7 +667,10 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
     {
       args: ["/PID", "12345", "/T", "/F"],
       command: "taskkill.exe",
-      options: { windowsHide: true },
+      options: {
+        timeout: WINDOWS_PROCESS_TREE_TERMINATION_TIMEOUT_MS,
+        windowsHide: true,
+      },
     },
   ]);
   assert.equal(
@@ -712,33 +716,91 @@ test("launched companion screenshot gate reports startup failures with launch ou
   assert.equal(child.killedSignal, "SIGTERM");
 });
 
-test("companion screenshot cleanup falls back when Windows taskkill fails", async () => {
+test("companion screenshot cleanup retains the temp DB when Windows taskkill fails", async () => {
   const child = createFakeChild();
   const calls = { cleanup: [], taskkill: 0 };
-  const result = await runLaunchedCompanionScreenshotGate({
-    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
-    killProcessFn: () => {
-      throw new Error("fake process group");
-    },
-    outputDir: testOutputDir,
-    platform: "win32",
-    postTerminateDelayMs: 0,
-    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
-    spawnFn: () => child,
-    taskkillExecFileFn: async () => {
-      calls.taskkill += 1;
-      throw new Error("taskkill unavailable");
-    },
-    waitForCompanionServer: async () => ({
-      lastError: new Error("fetch failed"),
-      ready: false,
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate({
+      cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+      killProcessFn: () => {
+        throw new Error("fake process group");
+      },
+      outputDir: testOutputDir,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      runCompanionScreenshotGate: async (options) => ({
+        baseUrl: options.baseUrl,
+        errors: [],
+        metrics: [createMetric()],
+        outputDir: options.outputDir,
+      }),
+      runCompanionVisualGate: async (options) => ({
+        baseUrl: options.baseUrl,
+        errors: [],
+        metrics: { spools: 12 },
+      }),
+      spawnFn: () => child,
+      taskkillExecFileFn: async () => {
+        calls.taskkill += 1;
+        throw new Error("taskkill unavailable");
+      },
+      waitForCompanionServer: async () => ({ ready: true }),
     }),
-  });
+    (error) => {
+      assert.match(error.message, /Tauri may still be using http:\/\/127\.0\.0\.1:4278/);
+      assert.match(error.message, /database cleanup was skipped/i);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /process-tree termination could not be confirmed/);
+      assert.match(error.message, /taskkill unavailable/);
+      return true;
+    },
+  );
 
-  assert.equal(result.errors.length, 1);
   assert.equal(calls.taskkill, 1);
   assert.equal(child.killedSignal, "SIGTERM");
-  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+  assert.deepEqual(calls.cleanup, []);
+});
+
+test("companion screenshot cleanup retains the temp DB when Windows taskkill times out", async () => {
+  const child = createFakeChild();
+  const calls = { cleanup: [], taskkill: [] };
+  const timeoutError = new Error("taskkill timed out");
+  timeoutError.code = "ETIMEDOUT";
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate({
+      cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+      killProcessFn: () => {
+        throw new Error("fake process group");
+      },
+      outputDir: testOutputDir,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      spawnFn: () => child,
+      taskkillExecFileFn: async (command, args, options) => {
+        calls.taskkill.push({ args, command, options });
+        throw timeoutError;
+      },
+      taskkillTimeoutMs: 25,
+      waitForCompanionServer: async () => ({
+        lastError: new Error("fetch failed"),
+        ready: false,
+      }),
+    }),
+    /ETIMEDOUT: taskkill timed out/,
+  );
+
+  assert.deepEqual(calls.taskkill, [
+    {
+      args: ["/PID", "12345", "/T", "/F"],
+      command: "taskkill.exe",
+      options: { timeout: 25, windowsHide: true },
+    },
+  ]);
+  assert.equal(child.killedSignal, "SIGTERM");
+  assert.deepEqual(calls.cleanup, []);
 });
 
 test("companion screenshot keep-on-failure leaves the Windows app and DB running", async () => {
