@@ -1,20 +1,23 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+const rootSourceFiles = ["Cargo.toml", "package.json"];
 const sourceRoots = [
   "scripts",
   "src",
   "src-tauri",
-  "ui/src",
+  "ui",
   ".github/workflows",
 ];
 const sourceExtensions = new Set([
   ".cjs",
+  ".html",
   ".js",
   ".json",
   ".jsx",
   ".mjs",
+  ".plist",
   ".rs",
   ".toml",
   ".ts",
@@ -31,6 +34,7 @@ const ignoredDirectories = new Set([
   "node_modules",
   "target",
 ]);
+const ignoredFiles = new Set(["package-lock.json"]);
 const allowMarker = "path-portability-allow";
 const slash = String.raw`\/`;
 const hostSpecificPathPatterns = [
@@ -66,7 +70,11 @@ function collectFiles(directory, files) {
       }
       continue;
     }
-    if (entry.isFile() && sourceExtensions.has(extname(entry.name))) {
+    if (
+      entry.isFile() &&
+      !ignoredFiles.has(entry.name) &&
+      sourceExtensions.has(extname(entry.name))
+    ) {
       files.push(entryPath);
     }
   }
@@ -74,13 +82,19 @@ function collectFiles(directory, files) {
 
 export function collectPathPortabilitySourceFiles(repoRoot = resolve(".")) {
   const files = [];
+  for (const rootSourceFile of rootSourceFiles) {
+    const sourceFile = resolve(repoRoot, rootSourceFile);
+    if (existsSync(sourceFile) && statSync(sourceFile).isFile()) {
+      files.push(sourceFile);
+    }
+  }
   for (const sourceRoot of sourceRoots) {
     const directory = resolve(repoRoot, sourceRoot);
     if (existsSync(directory)) {
       collectFiles(directory, files);
     }
   }
-  return files.sort();
+  return Array.from(new Set(files)).sort();
 }
 
 export function findHostSpecificPaths(source, file = "<source>") {
