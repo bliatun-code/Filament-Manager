@@ -1096,7 +1096,7 @@ export function spawnDesktopTauriDev(spawnFn, options, database) {
     cwd: options.cwd ?? process.cwd(),
     detached: true,
     env: buildDesktopVisualQaLaunchEnv(options, database),
-    shell: launch.shell,
+    shell: false,
     stdio: ["ignore", "pipe", "pipe"],
   });
 }

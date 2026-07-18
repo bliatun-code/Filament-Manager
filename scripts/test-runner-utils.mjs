@@ -38,6 +38,7 @@ export function runNodeTestCommand(args, options = {}) {
   const result = spawnSync(process.execPath, args, {
     stdio: "inherit",
     ...options,
+    shell: false,
   });
 
   if (result.error) {

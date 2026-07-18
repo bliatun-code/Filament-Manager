@@ -40,6 +40,7 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
   assert.match(validationJob, /npm run check:version/);
+  assert.match(validationJob, /npm run check:command-portability/);
   assert.match(validationJob, /"\$SELECTED_PLATFORM" != "windows"/);
   assert.match(validationJob, /"\$CONFIRM_MACOS_NOTARIZATION" != "true"/);
   assert.match(validationJob, /Manual macOS release builds require notarization confirmation/);

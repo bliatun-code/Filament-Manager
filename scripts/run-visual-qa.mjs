@@ -59,7 +59,7 @@ async function runCli() {
       [APP_DB_PATH_ENV_VAR]: result.targetPath,
       [VISUAL_QA_MODE_ENV_VAR]: "1",
     },
-    shell: launch.shell,
+    shell: false,
     stdio: "inherit",
   });
 

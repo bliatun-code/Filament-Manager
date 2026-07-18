@@ -52,6 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run check:version
+          npm run check:command-portability
 
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
             && "$SELECTED_PLATFORM" != "windows" \

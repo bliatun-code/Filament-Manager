@@ -227,7 +227,7 @@ function spawnTauriDev(spawnFn, options, database) {
       [APP_DB_PATH_ENV_VAR]: database.targetPath,
       FILAMENT_MANAGER_VISUAL_QA: "1",
     },
-    shell: launch.shell,
+    shell: false,
     stdio: ["ignore", "pipe", "pipe"],
   });
 }
