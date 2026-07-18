@@ -16,6 +16,7 @@ import {
   runLaunchedCompanionScreenshotGate,
   shouldSpawnCompanionScreenshotNpmThroughShell,
   summarizeCompanionScreenshotPixels,
+  terminateWindowsProcessTree,
   validateCompanionScreenshotMetrics,
   waitForCompanionPrinterLiveData,
 } from "./run-companion-screenshot-gate.mjs";
@@ -543,18 +544,35 @@ test("companion screenshot launch starts npm through the Windows command shell",
   assert.equal(shouldSpawnCompanionScreenshotNpmThroughShell("linux"), false);
 });
 
+test("companion screenshot cleanup validates Windows process tree ids", async () => {
+  const calls = [];
+  const execFileFn = async (...args) => calls.push(args);
+
+  assert.equal(await terminateWindowsProcessTree(null, execFileFn), false);
+  assert.equal(await terminateWindowsProcessTree(0, execFileFn), false);
+  assert.equal(await terminateWindowsProcessTree(-12, execFileFn), false);
+  assert.equal(await terminateWindowsProcessTree("12345", execFileFn), false);
+  assert.equal(await terminateWindowsProcessTree("invalid", execFileFn), false);
+  assert.deepEqual(calls, []);
+});
+
 test("launched companion screenshot gate starts Tauri dev and cleans up temp DB", async () => {
   const child = createFakeChild();
   const calls = {
     cleanup: [],
+    order: [],
     prepare: [],
     screenshot: [],
     spawn: [],
+    taskkill: [],
     visual: [],
     wait: [],
   };
   const result = await runLaunchedCompanionScreenshotGate({
-    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+    cleanupVisualQaDatabase: (path) => {
+      calls.cleanup.push(path);
+      calls.order.push("cleanup");
+    },
     outputDir: testOutputDir,
     platform: "win32",
     postTerminateDelayMs: 0,
@@ -580,6 +598,10 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
       child.stderr.write("ready soon\n");
       return child;
     },
+    taskkillExecFileFn: async (command, args, options) => {
+      calls.taskkill.push({ args, command, options });
+      calls.order.push("taskkill");
+    },
     themeMode: "dark",
     timeoutMs: 1234,
     waitForCompanionServer: async (baseUrl, options) => {
@@ -594,6 +616,13 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.equal(calls.spawn[0]?.command, "npm");
   assert.deepEqual(calls.spawn[0]?.args, ["run", "tauri", "--", "dev"]);
   assert.equal(calls.spawn[0]?.options.shell, true);
+  assert.deepEqual(calls.taskkill, [
+    {
+      args: ["/PID", "12345", "/T", "/F"],
+      command: "taskkill.exe",
+      options: { windowsHide: true },
+    },
+  ]);
   assert.equal(
     calls.spawn[0]?.options.env.FILAMENT_MANAGER_DB_PATH,
     testVisualDatabasePath,
@@ -603,14 +632,19 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.equal(calls.visual[0]?.timeoutMs, 1234);
   assert.equal(calls.screenshot[0]?.themeMode, "dark");
   assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
-  assert.equal(child.killedSignal, "SIGTERM");
+  assert.deepEqual(calls.order, ["taskkill", "cleanup"]);
+  assert.equal(child.killedSignal, undefined);
 });
 
 test("launched companion screenshot gate reports startup failures with launch output", async () => {
   const child = createFakeChild();
   const result = await runLaunchedCompanionScreenshotGate({
     cleanupVisualQaDatabase: () => {},
+    killProcessFn: () => {
+      throw new Error("fake process group");
+    },
     outputDir: testOutputDir,
+    platform: "darwin",
     postTerminateDelayMs: 0,
     prepareVisualQaDatabase: async () => createVisualQaDatabase(),
     spawnFn: () => {
@@ -629,6 +663,63 @@ test("launched companion screenshot gate reports startup failures with launch ou
   assert.match(result.launchOutputTail, /boot line/);
   assert.equal(result.screenshotGate, null);
   assert.equal(result.visualGate, null);
+  assert.equal(child.killedSignal, "SIGTERM");
+});
+
+test("companion screenshot cleanup falls back when Windows taskkill fails", async () => {
+  const child = createFakeChild();
+  const calls = { cleanup: [], taskkill: 0 };
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+    killProcessFn: () => {
+      throw new Error("fake process group");
+    },
+    outputDir: testOutputDir,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    spawnFn: () => child,
+    taskkillExecFileFn: async () => {
+      calls.taskkill += 1;
+      throw new Error("taskkill unavailable");
+    },
+    waitForCompanionServer: async () => ({
+      lastError: new Error("fetch failed"),
+      ready: false,
+    }),
+  });
+
+  assert.equal(result.errors.length, 1);
+  assert.equal(calls.taskkill, 1);
+  assert.equal(child.killedSignal, "SIGTERM");
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("companion screenshot keep-on-failure leaves the Windows app and DB running", async () => {
+  const child = createFakeChild();
+  const calls = { cleanup: 0, taskkill: 0 };
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: () => {
+      calls.cleanup += 1;
+    },
+    keepAppOnFail: true,
+    outputDir: testOutputDir,
+    platform: "win32",
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    spawnFn: () => child,
+    taskkillExecFileFn: async () => {
+      calls.taskkill += 1;
+    },
+    waitForCompanionServer: async () => ({
+      lastError: new Error("fetch failed"),
+      ready: false,
+    }),
+  });
+
+  assert.equal(result.errors.length, 1);
+  assert.equal(calls.taskkill, 0);
+  assert.equal(calls.cleanup, 0);
+  assert.equal(child.killedSignal, undefined);
 });
 
 test("launched companion screenshot report includes launch diagnostics", () => {

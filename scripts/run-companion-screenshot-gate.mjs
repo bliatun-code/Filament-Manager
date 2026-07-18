@@ -1,7 +1,8 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { chromium } from "playwright";
 import {
   formatCompanionVisualGateReport,
@@ -34,6 +35,7 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 export const COMPANION_PRINTER_LIVE_WAIT_MS = 30_000;
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
+const execFileAsync = promisify(execFile);
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
@@ -89,12 +91,16 @@ function appendOutputTail(tail, chunk, maxLength = 8_000) {
   return next.length > maxLength ? next.slice(next.length - maxLength) : next;
 }
 
-function signalChildProcessGroup(child, signal) {
+function signalChildProcessGroup(
+  child,
+  signal,
+  killProcessFn = process.kill,
+) {
   if (!child?.pid) {
     return;
   }
   try {
-    process.kill(-child.pid, signal);
+    killProcessFn(-child.pid, signal);
   } catch {
     try {
       child.kill(signal);
@@ -121,14 +127,45 @@ async function waitForChildExit(child, timeoutMs) {
   });
 }
 
-async function terminateChild(child) {
+export async function terminateWindowsProcessTree(
+  pid,
+  execFileFn = execFileAsync,
+) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) {
+    return false;
+  }
+  await execFileFn(
+    "taskkill.exe",
+    ["/PID", String(pid), "/T", "/F"],
+    { windowsHide: true },
+  );
+  return true;
+}
+
+async function terminateChild(child, options = {}) {
   if (!child || child.exitCode != null || child.signalCode != null) {
     return;
   }
-  signalChildProcessGroup(child, "SIGTERM");
+  const platform = options.platform ?? process.platform;
+  if (platform === "win32") {
+    try {
+      const terminated = await terminateWindowsProcessTree(
+        child.pid,
+        options.taskkillExecFileFn,
+      );
+      if (terminated) {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        return;
+      }
+    } catch {
+      // Fall back to the existing child-process cleanup when taskkill is unavailable.
+    }
+  }
+  signalChildProcessGroup(child, "SIGTERM", options.killProcessFn);
   const exited = await waitForChildExit(child, 3_000);
   if (!exited) {
-    signalChildProcessGroup(child, "SIGKILL");
+    signalChildProcessGroup(child, "SIGKILL", options.killProcessFn);
     await waitForChildExit(child, 1_000);
   }
   child.stdout?.destroy();
@@ -1018,7 +1055,7 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
     if (keepApp) {
       releaseChild(child);
     } else {
-      await terminateChild(child);
+      await terminateChild(child, options);
       const postTerminateDelayMs = options.postTerminateDelayMs ?? 1_200;
       if (postTerminateDelayMs > 0) {
         await wait(postTerminateDelayMs);
