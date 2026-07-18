@@ -36,7 +36,7 @@
     "fmt:rust": "cargo fmt --all -- --check",
     "test:companion": "node ./scripts/run-companion-tests.mjs",
     "test:scripts": "node --test ./scripts/*.test.mjs",
-    "test:portability": "npm run check:path-portability && node --test ./scripts/check-path-portability.test.mjs ./scripts/export-seed-catalog.test.mjs ./scripts/run-tauri.test.mjs ./scripts/run-visual-qa.test.mjs ./scripts/run-desktop-screenshot-gate.test.mjs ./scripts/run-companion-screenshot-gate.test.mjs ./scripts/visual-qa-db.test.mjs ./scripts/check-companion-css-vars.test.mjs ./scripts/shell-environment-command.test.mjs",
+    "test:portability": "npm run check:path-portability && node --test ./scripts/check-path-portability.test.mjs ./scripts/export-seed-catalog.test.mjs ./scripts/run-tauri.test.mjs ./scripts/run-visual-qa.test.mjs ./scripts/run-desktop-screenshot-gate.test.mjs ./scripts/run-companion-screenshot-gate.test.mjs ./scripts/visual-qa-db.test.mjs ./scripts/check-companion-css-vars.test.mjs ./scripts/shell-environment-command.test.mjs ./scripts/ui-source-utils.test.mjs",
     "test:rust": "npm run fmt:rust && cargo test && cargo clippy --all-targets -- -D warnings",
     "test:ui": "node ./scripts/run-ui-tests.mjs",
     "test:settings-ui": "npm run test:ui",

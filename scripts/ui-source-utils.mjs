@@ -60,17 +60,21 @@ export function collectDynamicImportTemplateSpecifiers(source) {
   );
 }
 
+export function pathGlobToRegExp(absolutePattern) {
+  return new RegExp(
+    `^${absolutePattern
+      .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+      .replaceAll("**", "::DOUBLE_STAR::")
+      .replaceAll("*", "[^/\\\\]*")
+      .replaceAll("::DOUBLE_STAR::", ".*")}$`,
+  );
+}
+
 export function resolveRelativeImportGlob(files, fromFile, specifier) {
   if (!specifier.startsWith(".")) {
     return [];
   }
   const absolutePattern = resolve(join(fromFile, ".."), specifier);
-  const expression = new RegExp(
-    `^${absolutePattern
-      .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-      .replaceAll("**", "::DOUBLE_STAR::")
-      .replaceAll("*", "[^/]*")
-      .replaceAll("::DOUBLE_STAR::", ".*")}$`,
-  );
+  const expression = pathGlobToRegExp(absolutePattern);
   return files.filter((file) => expression.test(file));
 }
