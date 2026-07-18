@@ -659,10 +659,12 @@ async function wait(ms) {
 export async function waitForDesktopWindow(options = {}) {
   const timeoutMs = options.timeoutMs ?? 45_000;
   const intervalMs = options.intervalMs ?? 500;
-  const startedAt = Date.now();
+  const nowFn = options.nowFn ?? Date.now;
+  const waitFn = options.waitFn ?? wait;
+  const startedAt = nowFn();
   const findWindowFn = options.findWindowFn ?? findDesktopWindow;
 
-  while (Date.now() - startedAt <= timeoutMs) {
+  while (nowFn() - startedAt <= timeoutMs) {
     if (options.shouldAbort?.()) {
       return null;
     }
@@ -670,7 +672,7 @@ export async function waitForDesktopWindow(options = {}) {
     if (window && (options.isWindowReady?.(window) ?? true)) {
       return window;
     }
-    await wait(intervalMs);
+    await waitFn(intervalMs);
   }
 
   return null;

@@ -42,6 +42,16 @@ import {
 const testOutputDir = path.join(tmpdir(), "visual-qa");
 const testVisualDatabasePath = path.join(tmpdir(), "visual-qa.db");
 
+function createFakeClock() {
+  let now = 0;
+  return {
+    now: () => now,
+    wait: async (intervalMs) => {
+      now += intervalMs;
+    },
+  };
+}
+
 function createMetric(overrides = {}) {
   return {
     screenshot: path.join(tmpdir(), "desktop-window.png"),
@@ -811,6 +821,7 @@ test("desktop screenshot metric validation accepts retina desktop captures", () 
 });
 
 test("desktop screenshot gate waits for an appearing window", async () => {
+  const clock = createFakeClock();
   let attempts = 0;
   const window = await waitForDesktopWindow({
     findWindowFn: async () => {
@@ -818,7 +829,9 @@ test("desktop screenshot gate waits for an appearing window", async () => {
       return attempts >= 3 ? createMetric().window : null;
     },
     intervalMs: 1,
+    nowFn: clock.now,
     timeoutMs: 50,
+    waitFn: clock.wait,
   });
 
   assert.equal(window?.title, "Filament Manager");
@@ -826,6 +839,7 @@ test("desktop screenshot gate waits for an appearing window", async () => {
 });
 
 test("desktop screenshot gate waits for a scenario-ready desktop window", async () => {
+  const clock = createFakeClock();
   let attempts = 0;
   const window = await waitForDesktopWindow({
     findWindowFn: async () => {
@@ -836,7 +850,9 @@ test("desktop screenshot gate waits for a scenario-ready desktop window", async 
     },
     intervalMs: 1,
     isWindowReady: (windowInfo) => windowInfo.title === "Inventory",
+    nowFn: clock.now,
     timeoutMs: 50,
+    waitFn: clock.wait,
   });
 
   assert.equal(window?.title, "Inventory");
@@ -844,6 +860,7 @@ test("desktop screenshot gate waits for a scenario-ready desktop window", async 
 });
 
 test("desktop screenshot gate resizes and rereads the captured desktop window", async () => {
+  const clock = createFakeClock();
   const commands = [];
   let attempts = 0;
   const originalWindow = createMetric().window;
@@ -864,8 +881,10 @@ test("desktop screenshot gate resizes and rereads the captured desktop window", 
               : { height: 700, width: 900 },
         }).window;
       },
+      nowFn: clock.now,
       resizeWindowPollMs: 1,
       resizeWindowTimeoutMs: 50,
+      waitFn: clock.wait,
     },
   );
 
@@ -879,6 +898,7 @@ test("desktop screenshot gate resizes and rereads the captured desktop window", 
 });
 
 test("desktop screenshot gate wait can abort when launch exits", async () => {
+  const clock = createFakeClock();
   let attempts = 0;
   const window = await waitForDesktopWindow({
     findWindowFn: async () => {
@@ -886,12 +906,33 @@ test("desktop screenshot gate wait can abort when launch exits", async () => {
       return null;
     },
     intervalMs: 1,
+    nowFn: clock.now,
     shouldAbort: () => attempts >= 2,
     timeoutMs: 50,
+    waitFn: clock.wait,
   });
 
   assert.equal(window, null);
   assert.equal(attempts, 2);
+});
+
+test("desktop screenshot gate stops polling at its timeout without real timers", async () => {
+  const clock = createFakeClock();
+  let attempts = 0;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      attempts += 1;
+      return null;
+    },
+    intervalMs: 10,
+    nowFn: clock.now,
+    timeoutMs: 25,
+    waitFn: clock.wait,
+  });
+
+  assert.equal(window, null);
+  assert.equal(attempts, 3);
+  assert.equal(clock.now(), 30);
 });
 
 test("desktop screenshot gate times out stuck macOS helper commands", async () => {
