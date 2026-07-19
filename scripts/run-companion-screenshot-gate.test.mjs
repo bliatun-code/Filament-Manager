@@ -196,6 +196,7 @@ function createFakeChild() {
   child.pid = 12345;
   child.stdout = new PassThrough();
   child.stderr = new PassThrough();
+  child.unrefCalls = 0;
   child.kill = (signal) => {
     child.killedSignal = signal;
     child.exitCode = 0;
@@ -203,8 +204,39 @@ function createFakeChild() {
     queueMicrotask(() => child.emit("exit", 0, signal));
     return true;
   };
-  child.unref = () => {};
+  child.unref = () => {
+    child.unrefCalls += 1;
+  };
   return child;
+}
+
+function throwMissingProcessGroup() {
+  throw Object.assign(new Error("process group missing"), { code: "ESRCH" });
+}
+
+function createLaunchedCompanionOptions(overrides = {}) {
+  const { child = createFakeChild(), ...options } = overrides;
+  return {
+    cleanupVisualQaDatabase: () => {},
+    platform: "darwin",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    processKillFn: throwMissingProcessGroup,
+    runCompanionScreenshotGate: async (screenshotOptions) => ({
+      baseUrl: screenshotOptions.baseUrl,
+      errors: [],
+      metrics: [createMetric()],
+      outputDir: screenshotOptions.outputDir,
+    }),
+    runCompanionVisualGate: async (visualOptions) => ({
+      baseUrl: visualOptions.baseUrl,
+      errors: [],
+      metrics: { spools: 12 },
+    }),
+    spawnFn: () => child,
+    waitForCompanionServer: async () => ({ ready: true }),
+    ...options,
+  };
 }
 
 test("companion screenshot metric validation accepts rich rendered surfaces", () => {
@@ -652,7 +684,11 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   });
 
   assert.deepEqual(result.errors, []);
+  assert.equal(result.appKept, false);
   assert.equal(result.baseUrl, "http://127.0.0.1:4278");
+  assert.equal(result.launchOwnershipUnresolved, false);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.equal(result.terminationConfirmed, true);
   assert.deepEqual(calls.prepare, [{ live: false, profile: undefined, sourcePath: undefined }]);
   assert.equal(calls.spawn[0]?.command, process.execPath);
   assert.deepEqual(calls.spawn[0]?.args, [
@@ -662,6 +698,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.equal(calls.spawn[0]?.options.cwd, testProjectDir);
   assert.equal(calls.spawn[0]?.options.detached, true);
   assert.equal(calls.spawn[0]?.options.shell, false);
+  assert.equal(calls.spawn[0]?.options.windowsHide, true);
   assert.deepEqual(calls.spawn[0]?.options.stdio, ["ignore", "pipe", "pipe"]);
   assert.deepEqual(calls.taskkill, [
     {
@@ -716,6 +753,108 @@ test("launched companion gate cleans its generated database when spawn throws sy
   assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
 });
 
+test("launched companion gate preserves synchronous spawn and cleanup failures", async () => {
+  const spawnError = new Error("spawn EACCES");
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: () => {
+          throw cleanupError;
+        },
+        spawnFn: () => {
+          throw spawnError;
+        },
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [spawnError, cleanupError]);
+      assert.equal(error.cause, spawnError);
+      assert.equal(error.cleanupFailed, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /cleanup failed or may be incomplete/i);
+      return true;
+    },
+  );
+});
+
+test("launched companion gate preserves missing URL and cleanup failures", async () => {
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: () => {
+          throw cleanupError;
+        },
+        prepareVisualQaDatabase: async () =>
+          createVisualQaDatabase({
+            inspection: {
+              ...createVisualQaDatabase().inspection,
+              details: {
+                ...createVisualQaDatabase().inspection.details,
+                trustedLanCompanionUrl: null,
+              },
+            },
+          }),
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.errors[0].message, /needs a companion base URL/i);
+      assert.equal(error.errors[1], cleanupError);
+      assert.equal(error.cause, error.errors[0]);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      return true;
+    },
+  );
+});
+
+test("launched companion gate cleans its generated database after a malformed URL", async () => {
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        baseUrl: "not a valid companion URL",
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      }),
+    ),
+    (error) => error?.code === "ERR_INVALID_URL",
+  );
+
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate preserves malformed URL and cleanup failures", async () => {
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        baseUrl: "not a valid companion URL",
+        cleanupVisualQaDatabase: () => {
+          throw cleanupError;
+        },
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.errors[0]?.code, "ERR_INVALID_URL");
+      assert.equal(error.errors[1], cleanupError);
+      assert.equal(error.cause, error.errors[0]);
+      assert.equal(error.cleanupFailed, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      return true;
+    },
+  );
+});
+
 test("launched companion gate preserves kept copies and live databases when spawn throws", async () => {
   for (const scenario of [
     { database: createVisualQaDatabase(), keep: true },
@@ -739,7 +878,17 @@ test("launched companion gate preserves kept copies and live databases when spaw
           throw spawnError;
         },
       }),
-      (error) => error === spawnError,
+      (error) => {
+        if (scenario.keep && !scenario.database.live) {
+          assert.ok(error instanceof AggregateError);
+          assert.deepEqual(error.errors, [spawnError]);
+          assert.equal(error.cause, spawnError);
+          assert.equal(error.temporaryDatabaseRetained, true);
+          assert.ok(error.message.includes(testVisualDatabasePath));
+          return true;
+        }
+        return error === spawnError;
+      },
     );
 
     assert.deepEqual(cleanup, []);
@@ -871,7 +1020,7 @@ test("launched companion gate rechecks child ownership across visual and screens
   }
 });
 
-test("launched companion gate observes close without exit and does not keep a dead app", async () => {
+test("launched companion gate rechecks the Windows process tree after wrapper close", async () => {
   const child = createFakeChild();
   const calls = { cleanup: [], taskkill: 0 };
 
@@ -894,8 +1043,136 @@ test("launched companion gate observes close without exit and does not keep a de
   });
 
   assert.match(result.errors[0], /exited early \(17\)/);
-  assert.equal(calls.taskkill, 0);
+  assert.equal(calls.taskkill, 1);
   assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate retains the DB when a stopped wrapper leaves a live process group", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const signals = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        child,
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        groupKillGraceMs: 0,
+        groupTermGraceMs: 0,
+        processKillFn: (pid, signal) => {
+          signals.push({ pid, signal });
+        },
+        waitForCompanionServer: async (_baseUrl, options) => {
+          child.exitCode = 17;
+          child.emit("close", 17, null);
+          assert.equal(options.shouldAbort(), true);
+          return { ready: false };
+        },
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.match(error.message, /termination could not be confirmed/i);
+      return true;
+    },
+  );
+
+  assert.ok(
+    signals.some(({ pid, signal }) => pid === -12345 && signal === "SIGTERM"),
+  );
+  assert.ok(
+    signals.some(({ pid, signal }) => pid === -12345 && signal === "SIGKILL"),
+  );
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched companion gate cleans the DB after a stopped wrapper process group disappears", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const signals = [];
+  let groupRunning = true;
+
+  const result = await runLaunchedCompanionScreenshotGate(
+    createLaunchedCompanionOptions({
+      child,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      groupKillGraceMs: 0,
+      groupTermGraceMs: 0,
+      processKillFn: (pid, signal) => {
+        signals.push({ pid, signal });
+        if (signal === "SIGTERM") {
+          groupRunning = false;
+          return;
+        }
+        if (signal === 0 && !groupRunning) {
+          throw Object.assign(new Error("process group missing"), {
+            code: "ESRCH",
+          });
+        }
+      },
+      waitForCompanionServer: async (_baseUrl, options) => {
+        child.exitCode = 17;
+        child.emit("close", 17, null);
+        assert.equal(options.shouldAbort(), true);
+        return { ready: false };
+      },
+    }),
+  );
+
+  assert.match(result.errors[0], /exited early \(17\)/);
+  assert.equal(result.terminationConfirmed, true);
+  assert.equal(result.launchOwnershipUnresolved, false);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.ok(
+    signals.some(({ pid, signal }) => pid === -12345 && signal === "SIGTERM"),
+  );
+  assert.equal(
+    signals.some(({ pid, signal }) => pid === -12345 && signal === "SIGKILL"),
+    false,
+  );
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate retains the DB when a closed Windows wrapper tree is unresolved", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const taskkillError = new Error("process tree no longer addressable");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate({
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      killProcessFn: () => {
+        throw new Error("wrapper already closed");
+      },
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      spawnFn: () => child,
+      taskkillExecFileFn: async () => {
+        throw taskkillError;
+      },
+      waitForCompanionServer: async (_baseUrl, options) => {
+        child.exitCode = 17;
+        child.emit("close", 17, null);
+        assert.equal(options.shouldAbort(), true);
+        return { ready: false };
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.errors[0].message, /exited early \(17\)/);
+      assert.equal(error.errors[1].cause, taskkillError);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /process tree no longer addressable/);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
 });
 
 test("launched companion gate preserves keep and live ownership after asynchronous spawn errors", async () => {
@@ -941,9 +1218,7 @@ test("launched companion screenshot gate reports startup failures with launch ou
   const child = createFakeChild();
   const result = await runLaunchedCompanionScreenshotGate({
     cleanupVisualQaDatabase: () => {},
-    killProcessFn: () => {
-      throw new Error("fake process group");
-    },
+    processKillFn: throwMissingProcessGroup,
     outputDir: testOutputDir,
     platform: "darwin",
     postTerminateDelayMs: 0,
@@ -965,6 +1240,202 @@ test("launched companion screenshot gate reports startup failures with launch ou
   assert.equal(result.screenshotGate, null);
   assert.equal(result.visualGate, null);
   assert.equal(child.killedSignal, "SIGTERM");
+});
+
+test("launched companion gate preserves a primary exception when teardown is clean", async () => {
+  const primaryError = new Error("readiness crashed");
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        terminateChildFn: async () => true,
+        waitForCompanionServer: async () => {
+          throw primaryError;
+        },
+      }),
+    ),
+    (error) => error === primaryError,
+  );
+
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate composes primary and termination failures", async () => {
+  const primaryError = new Error("readiness crashed");
+  const terminationError = new Error("termination exploded");
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        terminateChildFn: async () => {
+          throw terminationError;
+        },
+        waitForCompanionServer: async () => {
+          throw primaryError;
+        },
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [primaryError, terminationError]);
+      assert.equal(error.cause, primaryError);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /no retry is safe/i);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched companion gate treats an unconfirmed termination as unresolved ownership", async () => {
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        terminateChildFn: async () => false,
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.message, /termination could not be confirmed/i);
+      assert.match(error.message, /no retry is safe/i);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched companion gate composes gate and cleanup failures", async () => {
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: () => {
+          throw cleanupError;
+        },
+        runCompanionVisualGate: async (options) => ({
+          baseUrl: options.baseUrl,
+          errors: ["layout broken"],
+          metrics: {},
+        }),
+        terminateChildFn: async () => true,
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.errors[0].message, /layout broken/);
+      assert.equal(error.errors[1], cleanupError);
+      assert.equal(error.cause, error.errors[0]);
+      assert.equal(error.cleanupFailed, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      return true;
+    },
+  );
+});
+
+test("launched companion gate reports cleanup failure after an otherwise green run", async () => {
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        cleanupVisualQaDatabase: () => {
+          throw cleanupError;
+        },
+        terminateChildFn: async () => true,
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [cleanupError]);
+      assert.equal(error.cause, cleanupError);
+      assert.equal(error.cleanupFailed, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      return true;
+    },
+  );
+});
+
+test("launched companion gate reports a failed keep-app ownership transfer", async () => {
+  const child = createFakeChild();
+  const releaseError = new Error("unref failed");
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        child,
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        keepAppOnFail: true,
+        releaseChildFn: async () => {
+          throw releaseError;
+        },
+        waitForCompanionServer: async () => ({
+          lastError: new Error("fetch failed"),
+          ready: false,
+        }),
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.errors.at(-1), releaseError);
+      assert.match(error.message, /ownership transfer failed/i);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched companion gate reclaims a child that stops during async transfer", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  let terminationCalls = 0;
+  const result = await runLaunchedCompanionScreenshotGate(
+    createLaunchedCompanionOptions({
+      child,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      keepAppOnFail: true,
+      releaseChildFn: async () => {
+        child.exitCode = 17;
+        child.emit("close", 17, null);
+      },
+      terminateChildFn: async () => {
+        terminationCalls += 1;
+        return true;
+      },
+      waitForCompanionServer: async () => ({
+        lastError: new Error("fetch failed"),
+        ready: false,
+      }),
+    }),
+  );
+
+  assert.equal(result.appKept, false);
+  assert.equal(result.launchOwnershipUnresolved, false);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.equal(result.terminationConfirmed, true);
+  assert.equal(terminationCalls, 1);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
 });
 
 test("companion screenshot cleanup retains the temp DB when Windows taskkill fails", async () => {
@@ -1076,8 +1547,13 @@ test("companion screenshot keep-on-failure leaves the Windows app and DB running
   });
 
   assert.equal(result.errors.length, 1);
+  assert.equal(result.appKept, true);
+  assert.equal(result.launchOwnershipUnresolved, false);
+  assert.equal(result.temporaryDatabaseRetained, true);
+  assert.equal(result.terminationConfirmed, null);
   assert.equal(calls.taskkill, 0);
   assert.equal(calls.cleanup, 0);
+  assert.equal(child.unrefCalls, 1);
   assert.equal(child.killedSignal, undefined);
 });
 

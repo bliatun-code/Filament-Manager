@@ -96,18 +96,54 @@ function signalChildProcessGroup(
   child,
   signal,
   killProcessFn = process.kill,
+  useProcessGroup = true,
 ) {
   if (!child?.pid) {
-    return;
+    return false;
+  }
+  if (useProcessGroup) {
+    try {
+      killProcessFn(-child.pid, signal);
+      return true;
+    } catch {
+      // Fall back to the wrapper child, then verify the group separately.
+    }
   }
   try {
-    killProcessFn(-child.pid, signal);
+    child.kill(signal);
+    return true;
   } catch {
-    try {
-      child.kill(signal);
-    } catch {
-      // Best-effort cleanup for a helper process that may already be gone.
+    return false;
+  }
+}
+
+function processGroupRunning(pid, killProcessFn) {
+  if (!pid) {
+    return null;
+  }
+  try {
+    killProcessFn(-pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "ESRCH" ? false : null;
+  }
+}
+
+async function waitForProcessGroupExit(pid, timeoutMs, options = {}) {
+  const nowFn = options.nowFn ?? Date.now;
+  const killProcessFn = options.killProcessFn ?? process.kill;
+  const waitFn = options.waitFn ?? wait;
+  const intervalMs = options.intervalMs ?? 50;
+  const startedAt = nowFn();
+  while (true) {
+    const running = processGroupRunning(pid, killProcessFn);
+    if (running === false) {
+      return true;
     }
+    if (running == null || nowFn() - startedAt >= timeoutMs) {
+      return false;
+    }
+    await waitFn(intervalMs);
   }
 }
 
@@ -116,15 +152,19 @@ async function waitForChildExit(child, timeoutMs) {
     return true;
   }
   return await new Promise((resolveWait) => {
-    const onExit = () => {
+    const onStop = () => {
       clearTimeout(timer);
+      child.off("close", onStop);
+      child.off("exit", onStop);
       resolveWait(true);
     };
     const timer = setTimeout(() => {
-      child.off("exit", onExit);
+      child.off("close", onStop);
+      child.off("exit", onStop);
       resolveWait(false);
     }, timeoutMs);
-    child.once("exit", onExit);
+    child.once("close", onStop);
+    child.once("exit", onStop);
   });
 }
 
@@ -150,11 +190,19 @@ function processTerminationErrorDetail(error) {
 }
 
 async function terminateChild(child, options = {}) {
-  if (!child || child.exitCode != null || child.signalCode != null) {
-    return;
+  if (!child) {
+    return true;
   }
   const platform = options.platform ?? process.platform;
+  const killProcessFn =
+    options.processKillFn ?? options.killProcessFn ?? process.kill;
   if (platform === "win32") {
+    const wrapperStopped = child.exitCode != null || child.signalCode != null;
+    if ((!Number.isSafeInteger(child.pid) || child.pid <= 0) && wrapperStopped) {
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      return true;
+    }
     let taskkillError = null;
     try {
       const terminated = await terminateWindowsProcessTree(
@@ -165,7 +213,7 @@ async function terminateChild(child, options = {}) {
       if (terminated) {
         child.stdout?.destroy();
         child.stderr?.destroy();
-        return;
+        return true;
       }
       taskkillError = new Error("taskkill did not receive a valid child process id");
     } catch (error) {
@@ -174,10 +222,10 @@ async function terminateChild(child, options = {}) {
 
     // Stopping the wrapper is still useful, but it cannot prove that all Windows
     // descendants exited after taskkill failed. Keep the QA database in that case.
-    signalChildProcessGroup(child, "SIGTERM", options.killProcessFn);
+    signalChildProcessGroup(child, "SIGTERM", killProcessFn, false);
     const exited = await waitForChildExit(child, 3_000);
     if (!exited) {
-      signalChildProcessGroup(child, "SIGKILL", options.killProcessFn);
+      signalChildProcessGroup(child, "SIGKILL", killProcessFn, false);
       await waitForChildExit(child, 1_000);
     }
     child.stdout?.destroy();
@@ -187,14 +235,56 @@ async function terminateChild(child, options = {}) {
       { cause: taskkillError },
     );
   }
-  signalChildProcessGroup(child, "SIGTERM", options.killProcessFn);
-  const exited = await waitForChildExit(child, 3_000);
-  if (!exited) {
-    signalChildProcessGroup(child, "SIGKILL", options.killProcessFn);
-    await waitForChildExit(child, 1_000);
+
+  if (child.pid) {
+    const groupWaitOptions = {
+      intervalMs: options.groupPollMs ?? 50,
+      killProcessFn,
+      nowFn: options.nowFn,
+      waitFn: options.waitFn,
+    };
+    let groupStopped = await waitForProcessGroupExit(
+      child.pid,
+      0,
+      groupWaitOptions,
+    );
+    let wrapperStopped =
+      child.exitCode != null || child.signalCode != null;
+    const confirmStop = async (timeoutMs) => {
+      const [nextGroupStopped, nextWrapperStopped] = await Promise.all([
+        waitForProcessGroupExit(child.pid, timeoutMs, groupWaitOptions),
+        waitForChildExit(child, timeoutMs),
+      ]);
+      groupStopped = nextGroupStopped;
+      wrapperStopped = nextWrapperStopped;
+    };
+    if (!groupStopped || !wrapperStopped) {
+      signalChildProcessGroup(child, "SIGTERM", killProcessFn);
+      await confirmStop(options.groupTermGraceMs ?? 3_000);
+    }
+    if (!groupStopped || !wrapperStopped) {
+      signalChildProcessGroup(child, "SIGKILL", killProcessFn);
+      await confirmStop(options.groupKillGraceMs ?? 1_000);
+    }
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+    return groupStopped && wrapperStopped;
+  }
+
+  let stopped = child.exitCode != null || child.signalCode != null;
+  if (!stopped) {
+    signalChildProcessGroup(child, "SIGTERM", killProcessFn, false);
+    stopped = await waitForChildExit(child, 3_000);
+  }
+  if (!stopped) {
+    signalChildProcessGroup(child, "SIGKILL", killProcessFn, false);
+    stopped = await waitForChildExit(child, 1_000);
   }
   child.stdout?.destroy();
   child.stderr?.destroy();
+  return Boolean(
+    stopped || child.exitCode != null || child.signalCode != null,
+  );
 }
 
 function releaseChild(child) {
@@ -229,6 +319,7 @@ function spawnTauriDev(spawnFn, options, database) {
     },
     shell: false,
     stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
   });
 }
 
@@ -984,10 +1075,97 @@ export function companionScreenshotGateNeedsLaunch(error) {
   );
 }
 
+function companionLaunchLifecycleError({
+  baseUrl,
+  cleanupFailed = false,
+  database,
+  finalizationFailures = [],
+  launchOwnershipUnresolved = false,
+  primaryError = null,
+  result = null,
+  temporaryDatabaseRetained = false,
+  terminationConfirmed = null,
+}) {
+  const resultError =
+    primaryError == null && result?.errors?.length > 0
+      ? new Error(result.errors.join("\n"))
+      : null;
+  const rootError =
+    primaryError ?? resultError ?? finalizationFailures[0]?.error;
+  if (!rootError) {
+    return null;
+  }
+
+  const errors = [];
+  if (primaryError != null) {
+    errors.push(primaryError);
+  } else if (resultError != null) {
+    errors.push(resultError);
+  }
+  errors.push(...finalizationFailures.map(({ error }) => error));
+
+  const hasRetentionContext = Boolean(
+    temporaryDatabaseRetained ||
+      cleanupFailed ||
+      launchOwnershipUnresolved,
+  );
+  if (
+    primaryError != null &&
+    finalizationFailures.length === 0 &&
+    !hasRetentionContext
+  ) {
+    return primaryError;
+  }
+
+  const lines = [];
+  if (primaryError != null || resultError != null) {
+    lines.push(processTerminationErrorDetail(rootError));
+  }
+  for (const failure of finalizationFailures) {
+    lines.push(`${failure.label}: ${processTerminationErrorDetail(failure.error)}`);
+  }
+  if (cleanupFailed && !database.live) {
+    lines.push(
+      `Companion visual QA database cleanup failed or may be incomplete at ${database.targetPath}.`,
+    );
+  } else if (
+    temporaryDatabaseRetained &&
+    launchOwnershipUnresolved &&
+    !database.live
+  ) {
+    lines.push(
+      `Temporary visual QA database cleanup was skipped; retained at ${database.targetPath}.`,
+    );
+  } else if (temporaryDatabaseRetained && !database.live) {
+    lines.push(`Temporary database retained at ${database.targetPath}.`);
+  } else if (database.live && launchOwnershipUnresolved) {
+    lines.push(
+      `Companion visual QA used the live database at ${database.targetPath}; it was not eligible for cleanup.`,
+    );
+  }
+  if (launchOwnershipUnresolved) {
+    lines.push(
+      `Companion screenshot cleanup failed. Tauri may still be using ${baseUrl}. Companion launch process ownership remains unresolved; no retry is safe.`,
+    );
+  }
+
+  const error = new AggregateError(errors, lines.join("\n"), {
+    cause: rootError,
+  });
+  error.cleanupFailed = cleanupFailed;
+  error.database = database;
+  error.launchOwnershipUnresolved = launchOwnershipUnresolved;
+  error.temporaryDatabaseRetained = temporaryDatabaseRetained;
+  error.terminationConfirmed = terminationConfirmed;
+  return error;
+}
+
 export async function runLaunchedCompanionScreenshotGate(options = {}) {
   const prepareDatabase = options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
   const cleanupDatabase = options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
+  const releaseChildFn = options.releaseChildFn ?? releaseChild;
   const spawnFn = options.spawnFn ?? spawn;
+  const terminateChildFn = options.terminateChildFn ?? terminateChild;
   const waitForServerFn = options.waitForCompanionServer ?? waitForCompanionServer;
   const visualGateFn = options.runCompanionVisualGate ?? runCompanionVisualGate;
   const screenshotGateFn = options.runCompanionScreenshotGate ?? runCompanionScreenshotGate;
@@ -996,14 +1174,63 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
     profile: options.profile,
     sourcePath: options.sourcePath,
   });
-  const baseUrl = normalizeCompanionBaseUrl(
-    options.baseUrl || database.inspection.details?.trustedLanCompanionUrl,
-  );
-  if (!baseUrl) {
+  let baseUrl;
+  try {
+    baseUrl = normalizeCompanionBaseUrl(
+      options.baseUrl || database.inspection.details?.trustedLanCompanionUrl,
+    );
+  } catch (error) {
+    let cleanupFailed = false;
+    const finalizationFailures = [];
+    let temporaryDatabaseRetained = !database.live;
     if (!options.keep && !database.live) {
-      cleanupDatabase(database.targetPath);
+      try {
+        cleanupDatabase(database.targetPath);
+        temporaryDatabaseRetained = false;
+      } catch (cleanupError) {
+        cleanupFailed = true;
+        finalizationFailures.push({
+          error: cleanupError,
+          label: "Companion visual QA database cleanup also failed",
+        });
+      }
     }
-    throw new Error("Companion screenshot launch needs a companion base URL from --url or trusted-LAN settings.");
+    throw companionLaunchLifecycleError({
+      baseUrl: "<invalid>",
+      cleanupFailed,
+      database,
+      finalizationFailures,
+      primaryError: error,
+      temporaryDatabaseRetained,
+    });
+  }
+  if (!baseUrl) {
+    const primaryError = new Error(
+      "Companion screenshot launch needs a companion base URL from --url or trusted-LAN settings.",
+    );
+    let cleanupFailed = false;
+    const finalizationFailures = [];
+    let temporaryDatabaseRetained = !database.live;
+    if (!options.keep && !database.live) {
+      try {
+        cleanupDatabase(database.targetPath);
+        temporaryDatabaseRetained = false;
+      } catch (error) {
+        cleanupFailed = true;
+        finalizationFailures.push({
+          error,
+          label: "Companion visual QA database cleanup also failed",
+        });
+      }
+    }
+    throw companionLaunchLifecycleError({
+      baseUrl: "<unavailable>",
+      cleanupFailed,
+      database,
+      finalizationFailures,
+      primaryError,
+      temporaryDatabaseRetained,
+    });
   }
 
   let outputTail = "";
@@ -1013,10 +1240,29 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   try {
     child = spawnTauriDev(spawnFn, options, database);
   } catch (error) {
+    let cleanupFailed = false;
+    const finalizationFailures = [];
+    let temporaryDatabaseRetained = !database.live;
     if (!options.keep && !database.live) {
-      cleanupDatabase(database.targetPath);
+      try {
+        cleanupDatabase(database.targetPath);
+        temporaryDatabaseRetained = false;
+      } catch (cleanupError) {
+        cleanupFailed = true;
+        finalizationFailures.push({
+          error: cleanupError,
+          label: "Companion visual QA database cleanup also failed",
+        });
+      }
     }
-    throw error;
+    throw companionLaunchLifecycleError({
+      baseUrl,
+      cleanupFailed,
+      database,
+      finalizationFailures,
+      primaryError: error,
+      temporaryDatabaseRetained,
+    });
   }
   child.stdout?.on("data", (chunk) => {
     outputTail = appendOutputTail(outputTail, chunk);
@@ -1037,7 +1283,11 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   const launchStopped = () => childError != null || childExit != null;
   const launchFailureResult = (
     readiness,
-    { screenshotGate = null, visualGate = null } = {},
+    {
+      existingErrors = [],
+      screenshotGate = null,
+      visualGate = null,
+    } = {},
   ) => {
     const stopped = launchStopped();
     keepApp = Boolean(options.keepAppOnFail && !stopped);
@@ -1056,98 +1306,200 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
     return {
       baseUrl,
       database,
-      errors: [`${launchSummary}${suffix}${reason}`],
+      errors: [...existingErrors, `${launchSummary}${suffix}${reason}`],
+      launchFailed: true,
       launchOutputTail: outputTail.trim(),
       outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
       screenshotGate,
       visualGate,
     };
   };
+
+  let readiness = null;
+  let result = null;
+  let primaryError = null;
+  let screenshotGate = null;
+  let visualGate = null;
   try {
-    const readiness = await waitForServerFn(baseUrl, {
+    readiness = await waitForServerFn(baseUrl, {
       intervalMs: options.serverPollMs ?? 500,
       timeoutMs: options.startupTimeoutMs ?? 45_000,
       shouldAbort: launchStopped,
     });
     if (!readiness.ready || launchStopped()) {
-      return launchFailureResult(readiness);
-    }
-
-    let visualGate = null;
-    let screenshotGate = null;
-    try {
-      visualGate = await visualGateFn({
-        baseUrl,
-        timeoutMs: options.timeoutMs,
-      });
-      if (launchStopped()) {
-        return launchFailureResult(readiness, { visualGate });
-      }
-      if (visualGate.errors.length === 0) {
-        screenshotGate = await screenshotGateFn({
-          baseUrl,
-          locale: options.locale,
-          outputDir: options.outputDir,
-          timeoutMs: options.timeoutMs,
-          themeMode: options.themeMode,
-        });
-        if (launchStopped()) {
-          return launchFailureResult(readiness, {
-            screenshotGate,
-            visualGate,
-          });
-        }
-      }
-    } catch (error) {
-      if (launchStopped()) {
-        return launchFailureResult(readiness, {
-          screenshotGate,
-          visualGate,
-        });
-      }
-      return {
-        baseUrl,
-        database,
-        errors: [`Companion launched screenshot gate failed after server readiness: ${error.message}`],
-        launchOutputTail: outputTail.trim(),
-        outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
-        screenshotGate,
-        visualGate,
-      };
-    }
-    return {
-      baseUrl,
-      database,
-      errors: [...visualGate.errors, ...(screenshotGate?.errors ?? [])],
-      launchOutputTail: outputTail.trim(),
-      outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
-      screenshotGate,
-      visualGate,
-    };
-  } finally {
-    if (keepApp) {
-      releaseChild(child);
+      result = launchFailureResult(readiness);
     } else {
       try {
-        await terminateChild(child, options);
+        visualGate = await visualGateFn({
+          baseUrl,
+          timeoutMs: options.timeoutMs,
+        });
+        if (launchStopped()) {
+          result = launchFailureResult(readiness, { visualGate });
+        } else if (visualGate.errors.length === 0) {
+          screenshotGate = await screenshotGateFn({
+            baseUrl,
+            locale: options.locale,
+            outputDir: options.outputDir,
+            timeoutMs: options.timeoutMs,
+            themeMode: options.themeMode,
+          });
+          if (launchStopped()) {
+            result = launchFailureResult(readiness, {
+              screenshotGate,
+              visualGate,
+            });
+          }
+        }
       } catch (error) {
-        const databaseDisposition = !options.keep && !database.live
-          ? `Temporary visual QA database cleanup was skipped; retained at ${database.targetPath}.`
-          : `Database was left at ${database.targetPath}.`;
-        throw new Error(
-          `Companion screenshot cleanup failed. Tauri may still be using ${baseUrl}. ${databaseDisposition} ${error.message}`,
-          { cause: error },
-        );
+        const operationError = `Companion launched screenshot gate failed after server readiness: ${processTerminationErrorDetail(error)}`;
+        result = launchStopped()
+          ? launchFailureResult(readiness, {
+              existingErrors: [operationError],
+              screenshotGate,
+              visualGate,
+            })
+          : {
+              baseUrl,
+              database,
+              errors: [operationError],
+              launchFailed: false,
+              launchOutputTail: outputTail.trim(),
+              outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+              screenshotGate,
+              visualGate,
+            };
       }
+
+      if (result == null) {
+        result = {
+          baseUrl,
+          database,
+          errors: [...visualGate.errors, ...(screenshotGate?.errors ?? [])],
+          launchFailed: false,
+          launchOutputTail: outputTail.trim(),
+          outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+          screenshotGate,
+          visualGate,
+        };
+      }
+    }
+  } catch (error) {
+    primaryError = error;
+  }
+
+  if (result && launchStopped() && !result.launchFailed) {
+    result = launchFailureResult(readiness ?? { ready: false }, {
+      existingErrors: result.errors,
+      screenshotGate,
+      visualGate,
+    });
+  }
+
+  const operationLaunchFailure =
+    primaryError != null && launchStopped() && childError !== primaryError
+      ? {
+          error:
+            childError ??
+            new Error(
+              `Filament Manager Companion process exited while the QA operation was failing (${childExit?.signal ?? childExit?.code ?? "unknown"}).`,
+            ),
+          label: "Companion launch also failed during the QA operation",
+        }
+      : null;
+  keepApp = Boolean(keepApp && !launchStopped());
+  let appKept = false;
+  let cleanupFailed = false;
+  const finalizationFailures = operationLaunchFailure
+    ? [operationLaunchFailure]
+    : [];
+  let launchOwnershipUnresolved = false;
+  let temporaryDatabaseRetained = !database.live;
+  let terminationConfirmed = null;
+
+  if (keepApp) {
+    try {
+      await releaseChildFn(child);
+      appKept = !launchStopped();
+    } catch (error) {
+      launchOwnershipUnresolved = true;
+      finalizationFailures.push({
+        error,
+        label: "Companion launch ownership transfer failed",
+      });
+    }
+  }
+
+  if (!appKept && !launchOwnershipUnresolved) {
+    try {
+      terminationConfirmed = (await terminateChildFn(child, options)) === true;
+    } catch (error) {
+      terminationConfirmed = false;
+      finalizationFailures.push({
+        error,
+        label: "Companion launch termination failed",
+      });
+    }
+    launchOwnershipUnresolved = terminationConfirmed !== true;
+    if (
+      launchOwnershipUnresolved &&
+      !finalizationFailures.some(
+        ({ label }) => label === "Companion launch termination failed",
+      )
+    ) {
+      finalizationFailures.push({
+        error: new Error("Companion launch termination could not be confirmed."),
+        label: "Companion launch ownership is unresolved",
+      });
+    }
+    if (terminationConfirmed === true) {
       const postTerminateDelayMs = options.postTerminateDelayMs ?? 1_200;
       if (postTerminateDelayMs > 0) {
         await wait(postTerminateDelayMs);
       }
     }
-    if (!options.keep && !database.live && !keepApp) {
+  }
+
+  if (
+    !options.keep &&
+    !database.live &&
+    !appKept &&
+    terminationConfirmed === true
+  ) {
+    try {
       cleanupDatabase(database.targetPath);
+      temporaryDatabaseRetained = false;
+    } catch (error) {
+      cleanupFailed = true;
+      finalizationFailures.push({
+        error,
+        label: "Companion visual QA database cleanup failed",
+      });
     }
   }
+
+  if (result) {
+    result.appKept = appKept;
+    result.launchOwnershipUnresolved = launchOwnershipUnresolved;
+    result.temporaryDatabaseRetained = temporaryDatabaseRetained;
+    result.terminationConfirmed = terminationConfirmed;
+  }
+
+  if (primaryError != null || finalizationFailures.length > 0) {
+    throw companionLaunchLifecycleError({
+      baseUrl,
+      cleanupFailed,
+      database,
+      finalizationFailures,
+      launchOwnershipUnresolved,
+      primaryError,
+      result,
+      temporaryDatabaseRetained,
+      terminationConfirmed,
+    });
+  }
+
+  return result;
 }
 
 export function formatLaunchedCompanionScreenshotGateReport(result) {
