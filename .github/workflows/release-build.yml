@@ -248,7 +248,7 @@ jobs:
       - name: Upload verified DMG artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: filament-manager-macos-dmg-${{ github.ref_name }}
+          name: filament-manager-macos-dmg-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/*.dmg
             ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/SHA256SUMS.txt
@@ -300,7 +300,7 @@ jobs:
       - name: Upload MSI artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: filament-manager-windows-msi-${{ github.ref_name }}
+          name: filament-manager-windows-msi-${{ github.run_id }}-${{ github.run_attempt }}
           path: target/release/bundle/msi/*.msi
           if-no-files-found: error
           retention-days: 14

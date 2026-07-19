@@ -36,14 +36,31 @@ function createReleaseFixture(t, packageVersion = "0.21.1") {
   return repoRoot;
 }
 
-test("MSI release source prefers a valid tag and falls back for branch builds", () => {
-  assert.equal(releaseVersionFromRef("v0.21.1", "9.9.9"), "0.21.1");
+test("MSI release source accepts versions only from actual tags", () => {
   assert.equal(
-    releaseVersionFromRef("v0.21.1-beta.7", "9.9.9"),
+    releaseVersionFromRef("v0.21.1", "9.9.9", "tag"),
+    "0.21.1",
+  );
+  assert.equal(
+    releaseVersionFromRef("v0.21.1-beta.7", "9.9.9", "tag"),
     "0.21.1-beta.7",
   );
-  assert.equal(releaseVersionFromRef("main", "0.21.1"), "0.21.1");
-  assert.equal(releaseVersionFromRef(undefined, "0.21.1"), "0.21.1");
+  assert.equal(
+    releaseVersionFromRef("v9.8.7", "0.21.1", "branch"),
+    "0.21.1",
+  );
+  assert.equal(
+    releaseVersionFromRef("v9.8.7", "0.21.1", undefined),
+    "0.21.1",
+  );
+  assert.equal(
+    releaseVersionFromRef("main", "0.21.1", "branch"),
+    "0.21.1",
+  );
+  assert.equal(
+    releaseVersionFromRef(undefined, "0.21.1", "tag"),
+    "0.21.1",
+  );
 });
 
 test("MSI prerelease versions preserve the numeric build identifier", () => {
@@ -55,7 +72,11 @@ test("MSI prerelease versions preserve the numeric build identifier", () => {
 
 test("MSI normalization updates both Tauri manifests from a directory with spaces", (t) => {
   const repoRoot = createReleaseFixture(t, "0.21.1-beta.4");
-  const result = updateMsiBundleVersion({ refName: "main", repoRoot });
+  const result = updateMsiBundleVersion({
+    refName: "v9.8.7",
+    refType: "branch",
+    repoRoot,
+  });
   const tauriConfig = JSON.parse(
     readFileSync(join(repoRoot, "src-tauri", "tauri.conf.json"), "utf8"),
   );
@@ -82,7 +103,12 @@ test("MSI normalization validates both manifests before writing", (t) => {
   writeFileSync(cargoTomlPath, "[package]\nname = \"missing-version\"\n");
 
   assert.throws(
-    () => updateMsiBundleVersion({ refName: "v0.21.1", repoRoot }),
+    () =>
+      updateMsiBundleVersion({
+        refName: "v0.21.1",
+        refType: "tag",
+        repoRoot,
+      }),
     /Could not find the package version/,
   );
   assert.equal(readFileSync(tauriConfigPath, "utf8"), originalTauriConfig);

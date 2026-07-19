@@ -69,7 +69,14 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.doesNotMatch(windowsJob, /shell:\s*bash/);
   assert.doesNotMatch(windowsJob, /BASH_REMATCH|<<'NODE'/);
   assert.match(windowsJob, /Build MSI bundle/);
-  assert.match(windowsJob, /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/);
+  assert.match(
+    windowsJob,
+    /name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+  );
+  assert.doesNotMatch(
+    windowsJob,
+    /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/,
+  );
   assert.match(windowsJob, /path: target\/release\/bundle\/msi\/\*\.msi/);
   assert.match(windowsJob, /retention-days: 14/);
   assert.match(
@@ -138,6 +145,10 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(macosJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
   assert.match(macosJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
   assert.match(
+    macosJob,
+    /name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+  );
+  assert.doesNotMatch(
     macosJob,
     /name: filament-manager-macos-dmg-\$\{\{ github\.ref_name \}\}/,
   );

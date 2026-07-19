@@ -10,7 +10,10 @@ const numberedPrereleasePattern =
 const prereleasePattern =
   /^(\d+)\.(\d+)\.(\d+)-[A-Za-z0-9.-]+$/;
 
-export function releaseVersionFromRef(refName, packageVersion) {
+export function releaseVersionFromRef(refName, packageVersion, refType) {
+  if (refType !== "tag") {
+    return packageVersion;
+  }
   const candidate = String(refName ?? "").replace(/^v/, "");
   return releaseVersionPattern.test(candidate) ? candidate : packageVersion;
 }
@@ -32,13 +35,18 @@ export function normalizeMsiBundleVersion(rawVersion) {
 
 export function updateMsiBundleVersion({
   refName = process.env.GITHUB_REF_NAME,
+  refType = process.env.GITHUB_REF_TYPE,
   repoRoot = resolve("."),
 } = {}) {
   const packagePath = resolve(repoRoot, "package.json");
   const tauriConfigPath = resolve(repoRoot, "src-tauri", "tauri.conf.json");
   const cargoTomlPath = resolve(repoRoot, "src-tauri", "Cargo.toml");
   const packageJson = JSON.parse(readFileSync(packagePath, "utf8"));
-  const rawVersion = releaseVersionFromRef(refName, packageJson.version);
+  const rawVersion = releaseVersionFromRef(
+    refName,
+    packageJson.version,
+    refType,
+  );
   const msiVersion = normalizeMsiBundleVersion(rawVersion);
   const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, "utf8"));
   const cargoToml = readFileSync(cargoTomlPath, "utf8");
