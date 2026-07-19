@@ -449,11 +449,11 @@ export function desktopScreenshotNameForScenario({
 
 export function shouldRetryDesktopLaunch(result) {
   return Boolean(
-    result?.errors?.some((error) =>
-      String(error).includes(
-        "No Filament Manager desktop window was found after launching",
-      ),
-    ),
+    result?.retryableLaunchFailure === true &&
+    result?.terminationConfirmed === true &&
+    result?.appKept !== true &&
+    result?.launchOwnershipUnresolved !== true &&
+    result?.temporaryDatabaseRetained !== true,
   );
 }
 
@@ -1005,18 +1005,58 @@ function formatVisibleWindowSummary(windows) {
     .join("; ");
 }
 
-function signalChildProcessGroup(child, signal) {
+function signalChildProcessGroup(
+  child,
+  signal,
+  processKillFn = process.kill,
+  useProcessGroup = true,
+) {
   if (!child?.pid) {
-    return;
+    return false;
+  }
+  if (useProcessGroup) {
+    try {
+      processKillFn(-child.pid, signal);
+      return true;
+    } catch {
+      // Fall back to the wrapper child, then verify the group separately.
+    }
   }
   try {
-    process.kill(-child.pid, signal);
+    child.kill(signal);
+    return true;
   } catch {
-    try {
-      child.kill(signal);
-    } catch {
-      // Best effort cleanup for a QA helper that is already exiting.
+    return false;
+  }
+}
+
+function processGroupRunning(pid, processKillFn) {
+  if (!pid) {
+    return null;
+  }
+  try {
+    processKillFn(-pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "ESRCH" ? false : null;
+  }
+}
+
+async function waitForProcessGroupExit(pid, timeoutMs, options = {}) {
+  const nowFn = options.nowFn ?? Date.now;
+  const processKillFn = options.processKillFn ?? process.kill;
+  const waitFn = options.waitFn ?? wait;
+  const intervalMs = options.intervalMs ?? 50;
+  const startedAt = nowFn();
+  while (true) {
+    const running = processGroupRunning(pid, processKillFn);
+    if (running === false) {
+      return true;
     }
+    if (running == null || nowFn() - startedAt >= timeoutMs) {
+      return false;
+    }
+    await waitFn(intervalMs);
   }
 }
 
@@ -1025,27 +1065,71 @@ async function waitForChildExit(child, timeoutMs) {
     return true;
   }
   return await new Promise((resolveWait) => {
-    const onExit = () => {
+    const onStop = () => {
       clearTimeout(timer);
+      child.off("close", onStop);
+      child.off("exit", onStop);
       resolveWait(true);
     };
     const timer = setTimeout(() => {
-      child.off("exit", onExit);
+      child.off("close", onStop);
+      child.off("exit", onStop);
       resolveWait(false);
     }, timeoutMs);
-    child.once("exit", onExit);
+    child.once("close", onStop);
+    child.once("exit", onStop);
   });
 }
 
-async function terminateChild(child) {
-  if (!child || child.exitCode != null || child.signalCode != null) {
-    return;
+export async function terminateChild(child, options = {}) {
+  if (!child) {
+    return true;
   }
-  signalChildProcessGroup(child, "SIGTERM");
-  const exited = await waitForChildExit(child, 3_000);
-  if (!exited) {
-    signalChildProcessGroup(child, "SIGKILL");
-    await waitForChildExit(child, 1_000);
+  const platform = options.platform ?? process.platform;
+  const processKillFn = options.processKillFn ?? process.kill;
+  if (platform === "darwin" && child.pid) {
+    const groupWaitOptions = {
+      intervalMs: options.groupPollMs ?? 50,
+      nowFn: options.nowFn,
+      processKillFn,
+      waitFn: options.waitFn,
+    };
+    let groupStopped = await waitForProcessGroupExit(
+      child.pid,
+      0,
+      groupWaitOptions,
+    );
+    let wrapperStopped =
+      child.exitCode != null || child.signalCode != null;
+    const confirmStop = async (timeoutMs) => {
+      const [nextGroupStopped, nextWrapperStopped] = await Promise.all([
+        waitForProcessGroupExit(child.pid, timeoutMs, groupWaitOptions),
+        waitForChildExit(child, timeoutMs),
+      ]);
+      groupStopped = nextGroupStopped;
+      wrapperStopped = nextWrapperStopped;
+    };
+    if (!groupStopped || !wrapperStopped) {
+      signalChildProcessGroup(child, "SIGTERM", processKillFn);
+      await confirmStop(options.groupTermGraceMs ?? 3_000);
+    }
+    if (!groupStopped || !wrapperStopped) {
+      signalChildProcessGroup(child, "SIGKILL", processKillFn);
+      await confirmStop(options.groupKillGraceMs ?? 1_000);
+    }
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+    return groupStopped && wrapperStopped;
+  }
+
+  let stopped = child.exitCode != null || child.signalCode != null;
+  if (!stopped) {
+    signalChildProcessGroup(child, "SIGTERM", processKillFn, false);
+    stopped = await waitForChildExit(child, 3_000);
+  }
+  if (!stopped) {
+    signalChildProcessGroup(child, "SIGKILL", processKillFn, false);
+    stopped = await waitForChildExit(child, 1_000);
   }
   if (child.stdout) {
     child.stdout.destroy();
@@ -1053,6 +1137,9 @@ async function terminateChild(child) {
   if (child.stderr) {
     child.stderr.destroy();
   }
+  return Boolean(
+    stopped || child.exitCode != null || child.signalCode != null,
+  );
 }
 
 function releaseChild(child) {
@@ -1116,7 +1203,16 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
     options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
   const cleanupDatabase =
     options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
+  const desktopScreenshotGateFn =
+    options.runDesktopScreenshotGateFn ?? runDesktopScreenshotGate;
   const spawnFn = options.spawnFn ?? spawn;
+  const releaseChildFn = options.releaseChildFn ?? releaseChild;
+  const terminateChildFn =
+    options.terminateChildFn ??
+    ((child) =>
+      terminateChild(child, {
+        platform: options.platform ?? process.platform,
+      }));
   const forceCopyForFixture = Boolean(
     options.live &&
     desktopVisualQaScenarioRequiresDatabaseFixture(options.scenario),
@@ -1164,6 +1260,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   child.once("close", recordChildExit);
 
   let keepApp = false;
+  let result = null;
   try {
     let window = await waitForDesktopWindow({
       ...options,
@@ -1193,7 +1290,8 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
         : childExit
           ? ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`
           : "";
-      return {
+      result = {
+        appKept: false,
         database,
         errors: [
           `No Filament Manager desktop window${expectedWindowTitles.length > 0 ? ` titled ${expectedWindowTitles.join(" or ")}` : ""} was found after launching Tauri dev.${suffix} Visible windows: ${formatVisibleWindowSummary(visibleWindows)}.`,
@@ -1201,10 +1299,14 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
         launchOutputTail: outputTail.trim(),
         metric: { visibleWindows, window: null },
         outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+        retryableLaunchFailure: true,
         scenario: options.scenario ?? null,
         themeMode: options.themeMode ?? null,
+        temporaryDatabaseRetained: !database.live,
+        terminationConfirmed: null,
         windowSize: options.windowSize ?? null,
       };
+      return result;
     }
 
     if (options.windowSize) {
@@ -1215,39 +1317,80 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       await wait(options.captureDelayMs);
     }
 
-    return {
-      ...(await runDesktopScreenshotGate({
+    result = {
+      ...(await desktopScreenshotGateFn({
         ...options,
         window,
       })),
+      appKept: false,
       database,
       launchOutputTail: outputTail.trim(),
+      retryableLaunchFailure: false,
       scenario: options.scenario ?? null,
+      temporaryDatabaseRetained: !database.live,
+      terminationConfirmed: null,
     };
+    return result;
   } finally {
     keepApp = Boolean(
       keepApp && childError == null && childExit == null,
     );
+    let terminationConfirmed = null;
     if (keepApp) {
-      releaseChild(child);
+      releaseChildFn(child);
     } else {
-      await terminateChild(child);
+      terminationConfirmed = (await terminateChildFn(child)) === true;
       const postTerminateDelayMs = options.postTerminateDelayMs ?? 1_200;
       if (postTerminateDelayMs > 0) {
         await wait(postTerminateDelayMs);
       }
     }
-    if (!options.keep && !database.live && !keepApp) {
+    let temporaryDatabaseRetained = !database.live;
+    if (
+      !options.keep &&
+      !database.live &&
+      !keepApp &&
+      terminationConfirmed === true
+    ) {
       cleanupDatabase(database.targetPath);
+      temporaryDatabaseRetained = false;
+    }
+    if (result) {
+      const launchOwnershipUnresolved = Boolean(
+        !keepApp && terminationConfirmed !== true,
+      );
+      result.appKept = keepApp;
+      result.launchOwnershipUnresolved = launchOwnershipUnresolved;
+      result.temporaryDatabaseRetained = temporaryDatabaseRetained;
+      result.terminationConfirmed = terminationConfirmed;
+      result.retryableLaunchFailure = Boolean(
+        result.retryableLaunchFailure &&
+        !keepApp &&
+        !launchOwnershipUnresolved &&
+        !temporaryDatabaseRetained,
+      );
+      if (launchOwnershipUnresolved) {
+        result.errors.push(
+          `Desktop launch termination could not be confirmed. The database was retained at ${database.targetPath}; no retry is safe.`,
+        );
+      }
     }
   }
 }
 
-async function runDesktopScreenshotGateWithLaunchRetry(options, attempts) {
+export async function runDesktopScreenshotGateWithLaunchRetry(
+  options,
+  attempts,
+  runAttemptFn = runLaunchedDesktopScreenshotGate,
+) {
   let result = null;
-  const launchAttempts = Math.max(1, attempts);
+  const numericAttempts = Number(attempts);
+  const launchAttempts =
+    Number.isFinite(numericAttempts) && numericAttempts >= 1
+      ? Math.max(1, Math.trunc(numericAttempts))
+      : 1;
   for (let attempt = 1; attempt <= launchAttempts; attempt += 1) {
-    result = await runLaunchedDesktopScreenshotGate(options);
+    result = await runAttemptFn(options);
     if (!shouldRetryDesktopLaunch(result) || attempt >= launchAttempts) {
       return {
         ...result,
@@ -1257,6 +1400,36 @@ async function runDesktopScreenshotGateWithLaunchRetry(options, attempts) {
     await wait(options.relaunchDelayMs ?? 2_000);
   }
   return result;
+}
+
+export async function runDesktopScreenshotScenariosWithLaunch(
+  {
+    baseName,
+    baseOptions,
+    explicitName = false,
+    launchAttempts,
+    scenarios,
+  },
+  runWithRetryFn = runDesktopScreenshotGateWithLaunchRetry,
+) {
+  const results = [];
+  for (const scenario of scenarios) {
+    const name = desktopScreenshotNameForScenario({
+      baseName,
+      explicitName,
+      scenario,
+      scenarioCount: scenarios.length,
+    });
+    const result = await runWithRetryFn(
+      { ...baseOptions, name, scenario },
+      launchAttempts,
+    );
+    results.push(result);
+    if (result.appKept || result.launchOwnershipUnresolved) {
+      break;
+    }
+  }
+  return results;
 }
 
 export function formatDesktopScreenshotGateReport(result) {
@@ -1270,6 +1443,26 @@ export function formatDesktopScreenshotGateReport(result) {
       result.database.live
         ? "Desktop visual QA live DB mode: app changes affected the selected database."
         : "Desktop visual QA used a temporary DB copy. Live library was not modified.",
+    );
+  }
+  if (result.appKept) {
+    lines.push(
+      "Desktop visual QA app ownership was transferred to the caller. Close the retained app manually.",
+    );
+  }
+  if (result.temporaryDatabaseRetained && !result.database?.live) {
+    const cleanupInstruction = result.appKept
+      ? "Delete it manually after the retained app is closed."
+      : result.launchOwnershipUnresolved
+        ? "Delete it manually after the launch process is confirmed stopped."
+        : "Delete it manually when it is no longer needed.";
+    lines.push(
+      `Desktop visual QA retained temporary DB: ${result.database?.targetPath ?? "unknown"}. ${cleanupInstruction}`,
+    );
+  }
+  if (result.launchOwnershipUnresolved) {
+    lines.push(
+      "Desktop visual QA stopped because launch-process termination could not be confirmed.",
     );
   }
   if (result.scenario) {
@@ -1422,19 +1615,27 @@ async function runCli() {
     "--launch-attempts",
     launch ? 2 : 1,
   );
-  const results = [];
-  for (const scenario of scenarios) {
-    const name = desktopScreenshotNameForScenario({
-      baseName,
-      explicitName: Boolean(explicitName),
-      scenario,
-      scenarioCount: scenarios.length,
-    });
-    const options = { ...baseOptions, name, scenario };
-    const result = launch
-      ? await runDesktopScreenshotGateWithLaunchRetry(options, launchAttempts)
-      : await runDesktopScreenshotGate(options);
-    results.push(result);
+  const results = launch
+    ? await runDesktopScreenshotScenariosWithLaunch({
+        baseName,
+        baseOptions,
+        explicitName: Boolean(explicitName),
+        launchAttempts,
+        scenarios,
+      })
+    : [];
+  if (!launch) {
+    for (const scenario of scenarios) {
+      const name = desktopScreenshotNameForScenario({
+        baseName,
+        explicitName: Boolean(explicitName),
+        scenario,
+        scenarioCount: scenarios.length,
+      });
+      results.push(
+        await runDesktopScreenshotGate({ ...baseOptions, name, scenario }),
+      );
+    }
   }
 
   console.log(results.map(formatDesktopScreenshotGateReport).join("\n\n"));

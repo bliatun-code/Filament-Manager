@@ -39,9 +39,12 @@ import {
   resizeDesktopWindow,
   resolveDesktopScreenshotTauriLaunch,
   runDesktopScreenshotGate,
+  runDesktopScreenshotGateWithLaunchRetry,
+  runDesktopScreenshotScenariosWithLaunch,
   runLaunchedDesktopScreenshotGate,
   shouldRetryDesktopLaunch,
   spawnDesktopTauriDev,
+  terminateChild,
   validateDesktopScreenshotMetrics,
   validateDesktopScreenshotTheme,
   validateDesktopWindowSize,
@@ -402,6 +405,268 @@ test("launched desktop gate rechecks keep-app ownership after window diagnostics
   assert.match(result.errors[0], /exited early \(1\)/);
   assert.deepEqual(cleanup, [testVisualDatabasePath]);
   assert.equal(child.unrefCalls, 0);
+});
+
+test("launched desktop gate reports an intentional keep-app ownership transfer", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => ({ stdout: "" }),
+    findWindowFn: async () => null,
+    keepAppOnFail: true,
+    platform: "win32",
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    spawnFn: () => child,
+    startupTimeoutMs: 0,
+    windowPollMs: 0,
+  });
+
+  assert.equal(result.appKept, true);
+  assert.equal(result.retryableLaunchFailure, false);
+  assert.equal(result.temporaryDatabaseRetained, true);
+  assert.equal(result.terminationConfirmed, null);
+  assert.deepEqual(cleanup, []);
+  assert.equal(child.unrefCalls, 1);
+});
+
+test("launched desktop gate retries only after safe no-window teardown", async () => {
+  const cases = [
+    {
+      database: { live: false, targetPath: testVisualDatabasePath },
+      expectedCleanup: [testVisualDatabasePath],
+      expectedRetained: false,
+      expectedRetryable: true,
+      keep: false,
+      terminationConfirmed: true,
+    },
+    {
+      database: { live: false, targetPath: testVisualDatabasePath },
+      expectedCleanup: [],
+      expectedRetained: true,
+      expectedRetryable: false,
+      keep: true,
+      terminationConfirmed: true,
+    },
+    {
+      database: { live: true, targetPath: testSourceDatabasePath },
+      expectedCleanup: [],
+      expectedRetained: false,
+      expectedRetryable: true,
+      keep: false,
+      terminationConfirmed: true,
+    },
+    {
+      database: { live: false, targetPath: testVisualDatabasePath },
+      expectedCleanup: [],
+      expectedRetained: true,
+      expectedRetryable: false,
+      keep: false,
+      terminationConfirmed: false,
+    },
+  ];
+
+  for (const scenario of cases) {
+    const child = createFakeChild();
+    const cleanup = [];
+    const result = await runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => null,
+      keep: scenario.keep,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => scenario.database,
+      spawnFn: () => child,
+      startupTimeoutMs: 0,
+      terminateChildFn: async () => scenario.terminationConfirmed,
+      windowPollMs: 0,
+    });
+
+    assert.equal(
+      result.retryableLaunchFailure,
+      scenario.expectedRetryable,
+    );
+    assert.equal(
+      result.temporaryDatabaseRetained,
+      scenario.expectedRetained,
+    );
+    assert.equal(
+      result.terminationConfirmed,
+      scenario.terminationConfirmed,
+    );
+    assert.deepEqual(cleanup, scenario.expectedCleanup);
+    if (!scenario.terminationConfirmed) {
+      assert.equal(result.launchOwnershipUnresolved, true);
+      assert.match(result.errors.at(-1), /no retry is safe/);
+    }
+  }
+});
+
+test("launched desktop force-copy failure cleans before retrying", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const prepare = [];
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => ({ stdout: "" }),
+    findWindowFn: async () => null,
+    live: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async (options) => {
+      prepare.push(options);
+      return { live: false, targetPath: testVisualDatabasePath };
+    },
+    scenario: "order-queue",
+    spawnFn: () => child,
+    startupTimeoutMs: 0,
+    terminateChildFn: async () => true,
+    windowPollMs: 0,
+  });
+
+  assert.equal(prepare[0]?.live, false);
+  assert.equal(result.retryableLaunchFailure, true);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched desktop gate treats non-true termination results as unresolved", async () => {
+  for (const database of [
+    { live: false, targetPath: testVisualDatabasePath },
+    { live: true, targetPath: testSourceDatabasePath },
+  ]) {
+    const cleanup = [];
+    const result = await runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => null,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => database,
+      spawnFn: () => createFakeChild(),
+      startupTimeoutMs: 0,
+      terminateChildFn: async () => undefined,
+      windowPollMs: 0,
+    });
+
+    assert.equal(result.terminationConfirmed, false);
+    assert.equal(result.launchOwnershipUnresolved, true);
+    assert.equal(result.retryableLaunchFailure, false);
+    assert.deepEqual(cleanup, []);
+  }
+});
+
+test("successful launched desktop capture reports teardown and cleanup ownership", async () => {
+  for (const terminationConfirmed of [true, false]) {
+    const cleanup = [];
+    const window = createMetric().window;
+    const result = await runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      findWindowFn: async () => window,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      runDesktopScreenshotGateFn: async (options) => ({
+        errors: [],
+        metric: { window: options.window },
+        outputDir: testOutputDir,
+      }),
+      spawnFn: () => createFakeChild(),
+      startupTimeoutMs: 0,
+      terminateChildFn: async () => terminationConfirmed,
+      windowPollMs: 0,
+    });
+
+    assert.equal(result.terminationConfirmed, terminationConfirmed);
+    assert.equal(
+      result.launchOwnershipUnresolved,
+      !terminationConfirmed,
+    );
+    assert.equal(
+      result.temporaryDatabaseRetained,
+      !terminationConfirmed,
+    );
+    assert.deepEqual(
+      cleanup,
+      terminationConfirmed ? [testVisualDatabasePath] : [],
+    );
+    assert.equal(result.retryableLaunchFailure, false);
+    assert.equal(result.errors.length, terminationConfirmed ? 0 : 1);
+  }
+});
+
+test("desktop termination confirms the detached macOS process group is gone", async () => {
+  const child = createFakeChild({ exitCode: 0, pid: 4242 });
+  const signals = [];
+  let groupRunning = true;
+  const processKillFn = (pid, signal) => {
+    signals.push({ pid, signal });
+    if (signal === "SIGKILL") {
+      groupRunning = false;
+      return;
+    }
+    if (signal === 0 && !groupRunning) {
+      throw Object.assign(new Error("process group missing"), { code: "ESRCH" });
+    }
+  };
+
+  const stopped = await terminateChild(child, {
+    groupKillGraceMs: 0,
+    groupTermGraceMs: 0,
+    platform: "darwin",
+    processKillFn,
+  });
+
+  assert.equal(stopped, true);
+  assert.ok(
+    signals.some(({ pid, signal }) => pid === -4242 && signal === "SIGTERM"),
+  );
+  assert.ok(
+    signals.some(({ pid, signal }) => pid === -4242 && signal === "SIGKILL"),
+  );
+  assert.ok(signals.some(({ pid, signal }) => pid === -4242 && signal === 0));
+});
+
+test("desktop termination also confirms a live wrapper when its process group is missing", async () => {
+  for (const wrapperStops of [false, true]) {
+    const child = createFakeChild({ exitCode: null, pid: 4343 });
+    const childSignals = [];
+    child.kill = (signal) => {
+      childSignals.push(signal);
+      if (wrapperStops && signal === "SIGTERM") {
+        child.exitCode = 0;
+        child.emit("exit", 0, null);
+      }
+      return true;
+    };
+    const processKillFn = () => {
+      throw Object.assign(new Error("process group missing"), { code: "ESRCH" });
+    };
+
+    const stopped = await terminateChild(child, {
+      groupKillGraceMs: 0,
+      groupTermGraceMs: 0,
+      platform: "darwin",
+      processKillFn,
+    });
+
+    assert.equal(stopped, wrapperStops);
+    assert.ok(childSignals.includes("SIGTERM"));
+    assert.equal(childSignals.includes("SIGKILL"), !wrapperStops);
+  }
 });
 
 test("desktop screenshot Tauri launch stays clean when Node deprecations throw", () => {
@@ -1096,19 +1361,186 @@ test("desktop screenshot gate names single scenario captures by scenario", () =>
 test("desktop screenshot gate retries only launched no-window failures", () => {
   assert.equal(
     shouldRetryDesktopLaunch({
+      appKept: false,
+      launchOwnershipUnresolved: false,
+      retryableLaunchFailure: true,
+      temporaryDatabaseRetained: false,
+      terminationConfirmed: true,
       errors: [
-        "No Filament Manager desktop window was found after launching Tauri dev. Visible windows: none.",
+        "No Filament Manager desktop window titled Dashboard was found after launching Tauri dev. Visible windows: none.",
       ],
     }),
     true,
   );
   assert.equal(
     shouldRetryDesktopLaunch({
+      retryableLaunchFailure: false,
       errors: ["Desktop screenshot has too little color diversity."],
     }),
     false,
   );
+  assert.equal(
+    shouldRetryDesktopLaunch({
+      errors: [
+        "No Filament Manager desktop window was found after launching Tauri dev.",
+      ],
+    }),
+    false,
+  );
   assert.equal(shouldRetryDesktopLaunch({ errors: [] }), false);
+  for (const unsafeResult of [
+    { appKept: true },
+    { launchOwnershipUnresolved: true },
+    { temporaryDatabaseRetained: true },
+    { terminationConfirmed: false },
+  ]) {
+    assert.equal(
+      shouldRetryDesktopLaunch({
+        appKept: false,
+        launchOwnershipUnresolved: false,
+        retryableLaunchFailure: true,
+        temporaryDatabaseRetained: false,
+        terminationConfirmed: true,
+        ...unsafeResult,
+      }),
+      false,
+    );
+  }
+});
+
+test("desktop launch retry stops when an attempt retains resources", async () => {
+  for (const retainedResult of [
+    {
+      appKept: true,
+      temporaryDatabaseRetained: true,
+    },
+    {
+      appKept: false,
+      temporaryDatabaseRetained: true,
+    },
+  ]) {
+    const calls = [];
+    const options = { keepAppOnFail: true, relaunchDelayMs: 0 };
+    const result = await runDesktopScreenshotGateWithLaunchRetry(
+      options,
+      3,
+      async (attemptOptions) => {
+        calls.push(attemptOptions);
+        return {
+          ...retainedResult,
+          errors: [
+            "No Filament Manager desktop window was found after launching Tauri dev.",
+          ],
+          retryableLaunchFailure: false,
+        };
+      },
+    );
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0], options);
+    assert.equal(result.launchAttempts, 1);
+  }
+});
+
+test("desktop launch retry repeats only cleanly released launch failures", async () => {
+  const calls = [];
+  const options = { keepAppOnFail: false, relaunchDelayMs: 0 };
+  const result = await runDesktopScreenshotGateWithLaunchRetry(
+    options,
+    3,
+    async (attemptOptions) => {
+      calls.push(attemptOptions);
+      return {
+        appKept: false,
+        errors: [
+          "No Filament Manager desktop window titled Dashboard was found after launching Tauri dev.",
+        ],
+        retryableLaunchFailure: true,
+        temporaryDatabaseRetained: false,
+        terminationConfirmed: true,
+      };
+    },
+  );
+
+  assert.equal(calls.length, 3);
+  assert.ok(calls.every((attemptOptions) => attemptOptions === options));
+  assert.equal(result.launchAttempts, 3);
+});
+
+test("desktop launch retry defaults invalid attempt counts to one", async () => {
+  for (const attempts of [undefined, Number.NaN, 0, -2]) {
+    let calls = 0;
+    const result = await runDesktopScreenshotGateWithLaunchRetry(
+      { relaunchDelayMs: 0 },
+      attempts,
+      async () => {
+        calls += 1;
+        return { errors: [], retryableLaunchFailure: false };
+      },
+    );
+
+    assert.equal(calls, 1);
+    assert.equal(result.launchAttempts, 1);
+  }
+});
+
+test("desktop scenario launches stop after app ownership is retained or unresolved", async () => {
+  for (const terminalResult of [
+    { appKept: true, launchOwnershipUnresolved: false },
+    { appKept: false, launchOwnershipUnresolved: true },
+  ]) {
+    const scenarios = ["dashboard", "inventory", "loans"];
+    const calls = [];
+    const results = await runDesktopScreenshotScenariosWithLaunch(
+      {
+        baseName: "desktop-scenario",
+        baseOptions: { keepAppOnFail: true },
+        launchAttempts: 2,
+        scenarios,
+      },
+      async (options, attempts) => {
+        calls.push({ attempts, options });
+        return {
+          ...terminalResult,
+          errors: ["launch ownership stopped"],
+        };
+      },
+    );
+
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].attempts, 2);
+    assert.equal(calls[0].options.scenario, "dashboard");
+    assert.equal(calls[0].options.name, "desktop-scenario-dashboard");
+    assert.equal(results.length, 1);
+  }
+});
+
+test("desktop scenario launches preserve successful order and generated names", async () => {
+  const scenarios = ["dashboard", "inventory", "loans"];
+  const calls = [];
+  const results = await runDesktopScreenshotScenariosWithLaunch(
+    {
+      baseName: "desktop-scenario",
+      baseOptions: { locale: "en" },
+      launchAttempts: 2,
+      scenarios,
+    },
+    async (options, attempts) => {
+      calls.push({ attempts, options });
+      return { appKept: false, errors: [], launchOwnershipUnresolved: false };
+    },
+  );
+
+  assert.deepEqual(
+    calls.map(({ options }) => options.scenario),
+    scenarios,
+  );
+  assert.deepEqual(
+    calls.map(({ options }) => options.name),
+    scenarios.map((scenario) => `desktop-scenario-${scenario}`),
+  );
+  assert.ok(calls.every(({ attempts }) => attempts === 2));
+  assert.equal(results.length, 3);
 });
 
 test("desktop screenshot metric validation accepts rich desktop captures", () => {
@@ -1454,4 +1886,47 @@ test("desktop screenshot report lists visible windows when launch misses the app
 
   assert.match(report, /Visible desktop windows/);
   assert.match(report, /Codex: Codex/);
+});
+
+test("desktop screenshot report identifies retained app and database ownership", () => {
+  const report = formatDesktopScreenshotGateReport({
+    appKept: true,
+    database: {
+      assessment: { errors: [], profile: "rich", warnings: [] },
+      fixtures: [],
+      inspection: { counts: {}, details: {}, tables: [] },
+      live: false,
+      sourcePath: testSourceDatabasePath,
+      targetPath: testVisualDatabasePath,
+    },
+    errors: ["No Filament Manager desktop window was found."],
+    metric: { visibleWindows: [], window: null },
+    outputDir: testOutputDir,
+    temporaryDatabaseRetained: true,
+  });
+
+  assert.match(report, /app ownership was transferred to the caller/);
+  assert.match(report, /retained temporary DB/);
+  assert.ok(report.includes(testVisualDatabasePath));
+});
+
+test("desktop screenshot report does not invent a retained app for kept DB copies", () => {
+  const report = formatDesktopScreenshotGateReport({
+    appKept: false,
+    database: {
+      assessment: { errors: [], profile: "rich", warnings: [] },
+      fixtures: [],
+      inspection: { counts: {}, details: {}, tables: [] },
+      live: false,
+      sourcePath: testSourceDatabasePath,
+      targetPath: testVisualDatabasePath,
+    },
+    errors: ["No Filament Manager desktop window was found."],
+    metric: { visibleWindows: [], window: null },
+    outputDir: testOutputDir,
+    temporaryDatabaseRetained: true,
+  });
+
+  assert.match(report, /retained temporary DB/);
+  assert.doesNotMatch(report, /after the retained app is closed/);
 });
