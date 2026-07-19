@@ -117,8 +117,21 @@ export function resolveVisualQaDbSource(options = {}) {
   return null;
 }
 
-function quoteSqlitePath(path) {
-  return `'${path.replaceAll("'", "''")}'`;
+function quoteSqliteDotCommandArgument(value) {
+  const escaped = String(value)
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replaceAll("\b", "\\b")
+    .replaceAll("\f", "\\f")
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t")
+    .replaceAll("\v", "\\v");
+  return `"${escaped}"`;
+}
+
+export function formatSqliteCliBackupCommand(targetPath) {
+  return `.backup ${quoteSqliteDotCommandArgument(targetPath)}`;
 }
 
 async function copyWithBetterSqlite(sourcePath, targetPath) {
@@ -161,7 +174,7 @@ function runSqliteRows(dbPath, sql) {
 }
 
 function copyWithSqliteCli(sourcePath, targetPath) {
-  runSqlite(sourcePath, `.backup ${quoteSqlitePath(targetPath)}`);
+  runSqlite(sourcePath, formatSqliteCliBackupCommand(targetPath));
 }
 
 async function copySqliteDatabase(sourcePath, targetPath) {

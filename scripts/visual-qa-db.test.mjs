@@ -22,6 +22,7 @@ import {
   chooseBalancedCatalogSwatchFixtureRows,
   formatVisualQaDatasetReport,
   formatVisualQaLaunchCommand,
+  formatSqliteCliBackupCommand,
   listPrivateVisualQaNetworkInterfaces,
   normalizeVisualQaDatabaseFixtureScenario,
   normalizeVisualQaPath,
@@ -45,6 +46,25 @@ test("visual QA launch command is copyable in PowerShell", () => {
   assert.equal(
     formatVisualQaLaunchCommand(dbPath, "win32"),
     String.raw`$env:FILAMENT_MANAGER_DB_PATH='D:\Visual QA\O''Brien.db'; $env:FILAMENT_MANAGER_VISUAL_QA='1'; npm.cmd run tauri -- dev`,
+  );
+});
+
+test("SQLite CLI backup command preserves portable path characters", () => {
+  assert.equal(
+    formatSqliteCliBackupCommand(
+      String.raw`C:\Users\O'Brien\Visual QA\backup.db`,
+    ),
+    String.raw`.backup "C:\\Users\\O'Brien\\Visual QA\\backup.db"`,
+  );
+  assert.equal(
+    formatSqliteCliBackupCommand(
+      posix.join(
+        "workspace",
+        'Visual "QA"',
+        "line\nbreak\rreturn\ttab\bbackspace\fformfeed\vvertical.db",
+      ),
+    ),
+    String.raw`.backup "workspace/Visual \"QA\"/line\nbreak\rreturn\ttab\bbackspace\fformfeed\vvertical.db"`,
   );
 });
 
