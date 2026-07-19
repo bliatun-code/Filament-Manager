@@ -310,10 +310,25 @@ jobs:
           MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
         run: npm run tauri -- build --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
 
-      - name: Upload MSI artifact
+      - name: Verify MSI bundle and write checksum
+        shell: pwsh
+        env:
+          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
+        run: |
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $msiVersionConfig = Get-Content -LiteralPath $env:MSI_VERSION_CONFIG_PATH -Raw | ConvertFrom-Json
+          ./scripts/verify-windows-msi.ps1 `
+            -MsiDirectory "target/release/bundle/msi" `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
+            -ExpectedArchitecture "x64"
+
+      - name: Upload verified MSI artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: filament-manager-windows-msi-${{ github.run_id }}-${{ github.run_attempt }}
-          path: target/release/bundle/msi/*.msi
+          path: |
+            target/release/bundle/msi/*.msi
+            target/release/bundle/msi/SHA256SUMS-windows.txt
           if-no-files-found: error
           retention-days: 14

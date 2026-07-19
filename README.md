@@ -120,7 +120,7 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `docs/`: user-facing guides.
 - `.github/workflows/release-build.yml`: protected tag/manual workflow for the
   signed Apple Silicon DMG and Windows MSI artifacts, including Developer ID
-  signing, notarization, stapling, and verification.
+  signing, notarization, stapling, installer verification, and checksums.
 
 ## Requirements
 
@@ -249,6 +249,10 @@ npm run tauri -- build --bundles msi
 ```
 
 Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
+Official Windows artifacts are checked for the expected product name, version,
+and x64 architecture before publication. See
+[Windows Installation And Verification](docs/WINDOWS_DISTRIBUTION.md) for the
+download and checksum flow.
 
 ## Release Status
 
@@ -278,14 +282,18 @@ maintainer-approved manual runs:
 - Tag trigger: a version tag matching `v*`
 - Manual trigger: `workflow_dispatch` for a selected platform
 - Outputs:
-  - `filament-manager-macos-dmg-<ref>` with the normalized DMG and
+  - `filament-manager-macos-dmg-<run-id>-<attempt>` with the normalized DMG and
     `SHA256SUMS.txt`
-  - `filament-manager-windows-msi-<ref>`
+  - `filament-manager-windows-msi-<run-id>-<attempt>` with the verified MSI and
+    `SHA256SUMS-windows.txt`
 
 The macOS job fails instead of publishing an ad-hoc fallback when signing,
 notarization, stapling, verification, or checksum generation fails. Release
-assets are treated as immutable; a mismatch is investigated rather than
-silently replaced.
+The Windows job likewise fails before upload unless exactly one non-empty MSI
+has the expected product name, normalized release version, and x64 package
+architecture, and its checksum is written successfully. Release assets are
+treated as immutable; a mismatch is investigated rather than silently
+replaced.
 
 ## Installers and App Data
 

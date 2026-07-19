@@ -1,0 +1,44 @@
+# Windows Installation And Verification
+
+Official Windows releases are distributed as a per-user x64 MSI for Windows
+11. The installer does not require Administrator privileges for the normal
+installation path.
+
+## Download
+
+1. Open the [latest release](https://github.com/bliatun-code/Filament-Manager/releases/latest).
+2. Download the Windows `.msi` file and `SHA256SUMS-windows.txt` from the same
+   release.
+3. Keep both files in the same folder while verifying the download.
+
+## Verify the download
+
+Open PowerShell in the download folder and run:
+
+```powershell
+$manifest = (Get-Content -LiteralPath .\SHA256SUMS-windows.txt -Raw).Trim()
+$expectedHash, $msiName = $manifest -split '\s+', 2
+$msiName = $msiName.Trim()
+$actualHash = (Get-FileHash -LiteralPath $msiName -Algorithm SHA256).Hash.ToLowerInvariant()
+
+if ($actualHash -ne $expectedHash) {
+    throw "The MSI checksum does not match the release manifest."
+}
+
+Write-Host "Checksum verified for $msiName"
+```
+
+Do not install the file if the command reports a mismatch. Download both files
+again from the official release page instead.
+
+The checksum confirms that the downloaded MSI is byte-for-byte identical to
+the artifact produced by the release workflow. During that workflow, the MSI
+is also opened through Windows Installer and checked for the expected product
+name, release version, and x64 package architecture before it can be uploaded.
+
+## Install
+
+After the checksum passes, open the MSI and follow the installer. Filament
+Manager is installed for the current user. App data remains in the current
+user's application-data directory and is not removed by simply downloading a
+new installer.

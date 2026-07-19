@@ -87,13 +87,28 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(windowsJob, /Build MSI bundle/);
   assert.match(
     windowsJob,
+    /- name: Verify MSI bundle and write checksum\s+shell: pwsh\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: \|/,
+  );
+  assert.match(windowsJob, /\.\/scripts\/verify-windows-msi\.ps1/);
+  assert.match(windowsJob, /-MsiDirectory "target\/release\/bundle\/msi"/);
+  assert.match(windowsJob, /-ExpectedProductName \$tauriConfig\.productName/);
+  assert.match(
+    windowsJob,
+    /-ExpectedProductVersion \$msiVersionConfig\.bundle\.windows\.wix\.version/,
+  );
+  assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
+  assert.match(
+    windowsJob,
     /name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
   );
   assert.doesNotMatch(
     windowsJob,
     /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/,
   );
-  assert.match(windowsJob, /path: target\/release\/bundle\/msi\/\*\.msi/);
+  assert.match(
+    windowsJob,
+    /path: \|\s+target\/release\/bundle\/msi\/\*\.msi\s+target\/release\/bundle\/msi\/SHA256SUMS-windows\.txt/,
+  );
   assert.match(windowsJob, /retention-days: 14/);
   assert.match(
     windowsJob,
@@ -110,8 +125,32 @@ test("release workflow gates tag and manual installer builds", () => {
     "Prepare MSI version override",
     "Verify MSI preparation leaves manifests unchanged",
     "Build MSI bundle",
-    "Upload MSI artifact",
+    "Verify MSI bundle and write checksum",
+    "Upload verified MSI artifact",
   ]);
+});
+
+test("Windows MSI verifier fails closed and writes a portable checksum", () => {
+  const verifierPath = "scripts/verify-windows-msi.ps1";
+  assert.equal(existsSync(verifierPath), true);
+  const verifier = readFileSync(verifierPath, "utf8");
+
+  assert.match(verifier, /Get-ChildItem[\s\S]*-Filter "\*\.msi"/);
+  assert.match(verifier, /\.Count -ne 1/);
+  assert.match(verifier, /\.Length -le 0/);
+  assert.match(verifier, /WindowsInstaller\.Installer/);
+  assert.match(verifier, /OpenDatabase/);
+  assert.match(verifier, /ProductName/);
+  assert.match(verifier, /ProductVersion/);
+  assert.match(verifier, /SummaryInformation/);
+  assert.match(verifier, /@\(\[int\]7\)/);
+  assert.match(verifier, /ExpectedArchitecture/);
+  assert.match(verifier, /Get-FileHash[\s\S]*-Algorithm SHA256/);
+  assert.match(verifier, /ToLowerInvariant\(\)/);
+  assert.match(verifier, /SHA256SUMS-windows\.txt/);
+  assert.match(verifier, /\$msiFile\.Name/);
+  assert.match(verifier, /UTF8Encoding\]::new\(\$false\)/);
+  assert.match(verifier, /WriteAllText[\s\S]*`n/);
 });
 
 test("Windows CI runs separate builtin portability contracts before toolchain setup", () => {

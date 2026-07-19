@@ -35,7 +35,7 @@ function writeFixtureFile(repoRoot, file, source = "") {
 }
 
 test(
-  "path portability source collection covers manifests, UI config, HTML, and plist",
+  "path portability source collection covers manifests, scripts, UI config, HTML, and plist",
   (t) => {
     const repoRoot = mkdtempSync(
       join(tmpdir(), "filament-manager-path-portability-"),
@@ -47,6 +47,7 @@ test(
       "Cargo.toml",
       "package.json",
       "scripts/check.mjs",
+      "scripts/verify.ps1",
       "src/index.ts",
       "src-tauri/Entitlements.plist",
       "src-tauri/Info.plist",

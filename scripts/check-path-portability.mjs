@@ -18,6 +18,7 @@ const sourceExtensions = new Set([
   ".jsx",
   ".mjs",
   ".plist",
+  ".ps1",
   ".rs",
   ".toml",
   ".ts",
