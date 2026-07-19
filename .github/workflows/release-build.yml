@@ -56,6 +56,12 @@ jobs:
           npm run check:command-portability
           node --test ./scripts/release-workflow-contract.test.mjs
 
+          if [[ "$GITHUB_EVENT_NAME" == "push" \
+            || "$SELECTED_PLATFORM" == "windows" \
+            || "$SELECTED_PLATFORM" == "both" ]]; then
+            npm run check:msi-version
+          fi
+
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
             && "$SELECTED_PLATFORM" != "windows" \
             && "$CONFIRM_MACOS_NOTARIZATION" != "true" ]]; then
