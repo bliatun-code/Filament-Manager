@@ -81,6 +81,51 @@ fn write_migration_probe_db(path: &Path, spool_count: usize) -> Result<(), Strin
     Ok(())
 }
 
+fn open_wal_migration_probe_db(path: &Path) -> Result<rusqlite::Connection, String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    if path.exists() {
+        std::fs::remove_file(path).map_err(|error| error.to_string())?;
+    }
+
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    connection
+        .execute_batch("PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0;")
+        .map_err(|error| error.to_string())?;
+    for table in [
+        "filament_spools",
+        "printers",
+        "spool_loans",
+        "wishlist_items",
+        "spool_history_events",
+    ] {
+        connection
+            .execute(&format!("CREATE TABLE {table} (id TEXT PRIMARY KEY)"), [])
+            .map_err(|error| error.to_string())?;
+    }
+    connection
+        .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+        .map_err(|error| error.to_string())?;
+    connection
+        .execute(
+            "INSERT INTO filament_spools (id) VALUES ('spool-in-wal')",
+            [],
+        )
+        .map_err(|error| error.to_string())?;
+
+    let mut wal_path = path.as_os_str().to_os_string();
+    wal_path.push("-wal");
+    let wal_size = std::fs::metadata(PathBuf::from(wal_path))
+        .map_err(|error| error.to_string())?
+        .len();
+    if wal_size == 0 {
+        return Err("expected committed migration data in the WAL sidecar".to_string());
+    }
+
+    Ok(connection)
+}
+
 fn migration_probe_spool_count(path: &Path) -> Result<i64, String> {
     let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
     connection
@@ -383,7 +428,7 @@ fn app_storage_migration_copies_legacy_bundle_data_once() {
 
     let base = temp_dir_path("legacy-app-storage");
     let legacy_dir = base.join(LEGACY_APP_DATA_DIR_NAME);
-    let app_dir = base.join("no.bliatun.filamentmanager");
+    let app_dir = base.join("Data med mellomrom æøå");
     let result = (|| -> Result<(), String> {
         std::fs::create_dir_all(legacy_dir.join("labels")).map_err(|error| error.to_string())?;
         write_migration_probe_db(&legacy_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
@@ -438,6 +483,33 @@ fn app_storage_migration_renames_same_dir_legacy_database() {
             migration_probe_spool_count(&app_dir.join(APP_DB_FILE_NAME))?,
             1
         );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn app_storage_migration_preserves_committed_wal_data() {
+    use super::{prepare_app_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
+
+    let base = temp_dir_path("legacy-db-wal-data");
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let result = (|| -> Result<(), String> {
+        let legacy_connection =
+            open_wal_migration_probe_db(&app_dir.join(LEGACY_APP_DB_FILE_NAME))?;
+
+        prepare_app_storage_dir(&app_dir)?;
+
+        assert_eq!(
+            migration_probe_spool_count(&app_dir.join(APP_DB_FILE_NAME))?,
+            1
+        );
+        drop(legacy_connection);
 
         Ok(())
     })();

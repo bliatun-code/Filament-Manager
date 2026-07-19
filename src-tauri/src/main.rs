@@ -81,7 +81,7 @@ use state::AppState;
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 
 pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
@@ -591,11 +591,74 @@ fn migrate_legacy_app_storage_if_needed(app_dir: &Path) -> Result<(), String> {
     } else {
         std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())?;
     }
-    if current_db_exists {
-        let backup_path = legacy_migration_backup_path(app_dir);
-        std::fs::copy(&current_db_path, &backup_path).map_err(|error| error.to_string())?;
+    let snapshot_path = legacy_migration_snapshot_path(app_dir);
+    let migration_result = (|| {
+        sqlite_online_backup(&legacy_db_path, &snapshot_path)?;
+        if current_db_exists {
+            let backup_path = legacy_migration_backup_path(app_dir);
+            sqlite_online_backup(&current_db_path, &backup_path)?;
+        }
+        sqlite_online_backup(&snapshot_path, &current_db_path)
+    })();
+    let _ = std::fs::remove_file(snapshot_path);
+    migration_result
+}
+
+fn sqlite_online_backup(source_path: &Path, destination_path: &Path) -> Result<(), String> {
+    use rusqlite::backup::{Backup, StepResult};
+
+    let source = rusqlite::Connection::open_with_flags(
+        source_path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )
+    .map_err(|error| {
+        format!(
+            "failed to open SQLite backup source {}: {error}",
+            source_path.display()
+        )
+    })?;
+    let mut destination = rusqlite::Connection::open(destination_path).map_err(|error| {
+        format!(
+            "failed to open SQLite backup destination {}: {error}",
+            destination_path.display()
+        )
+    })?;
+
+    {
+        let backup = Backup::new(&source, &mut destination)
+            .map_err(|error| format!("failed to initialize SQLite backup: {error}"))?;
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let step_result = backup
+                .step(128)
+                .map_err(|error| format!("SQLite backup failed: {error}"))?;
+            match step_result {
+                StepResult::Done => break,
+                StepResult::More => {}
+                StepResult::Busy | StepResult::Locked => {
+                    if Instant::now() >= deadline {
+                        return Err(format!(
+                            "SQLite backup remained locked for {}",
+                            source_path.display()
+                        ));
+                    }
+                    std::thread::sleep(Duration::from_millis(25));
+                }
+                _ => return Err("SQLite backup returned an unsupported state".to_string()),
+            }
+        }
     }
-    std::fs::copy(&legacy_db_path, &current_db_path).map_err(|error| error.to_string())?;
+
+    let quick_check = destination
+        .query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
+        .map_err(|error| format!("failed to validate SQLite backup: {error}"))?;
+    if quick_check != "ok" {
+        return Err(format!(
+            "SQLite backup validation failed for {}: {quick_check}",
+            destination_path.display()
+        ));
+    }
+
     Ok(())
 }
 
@@ -682,6 +745,17 @@ fn legacy_migration_backup_path(app_dir: &Path) -> PathBuf {
         .as_millis();
     app_dir.join(format!(
         "{APP_DB_FILE_NAME}.backup-empty-before-legacy-migration-{timestamp}"
+    ))
+}
+
+fn legacy_migration_snapshot_path(app_dir: &Path) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    app_dir.join(format!(
+        ".{APP_DB_FILE_NAME}.legacy-migration-{}-{timestamp}.sqlite.tmp",
+        std::process::id()
     ))
 }
 
