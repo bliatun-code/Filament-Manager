@@ -61,6 +61,8 @@ const manualFilesystemSeparatorPatterns = [
     "g",
   ),
 ];
+const macosApplicationSupportPathPattern =
+  /["'`]Library["'`]\s*,\s*["'`]Application Support["'`]/g;
 
 function lineNumberAtOffset(source, offset) {
   let line = 1;
@@ -121,6 +123,22 @@ export function findHostSpecificPaths(source, file = "<source>") {
         errors.push({ file, label, line: index + 1 });
       }
     }
+  }
+
+  for (const match of source.matchAll(macosApplicationSupportPathPattern)) {
+    const segmentOffset = match[0].lastIndexOf("Application Support");
+    const line = lineNumberAtOffset(
+      source,
+      (match.index ?? 0) + Math.max(segmentOffset, 0),
+    );
+    if (lines[line - 1]?.includes(allowMarker)) {
+      continue;
+    }
+    errors.push({
+      file,
+      label: "hardcoded macOS Application Support path construction",
+      line,
+    });
   }
 
   for (const pattern of manualFilesystemSeparatorPatterns) {

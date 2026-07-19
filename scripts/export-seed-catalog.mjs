@@ -48,7 +48,11 @@ export function resolveDefaultSeedCatalogDatabasePath(options = {}) {
 
   if (platform === "darwin") {
     return databasePathIn(
-      pathApi.join(homeDirectory, "Library", "Application Support"),
+      pathApi.join(
+        homeDirectory,
+        "Library",
+        "Application Support", // path-portability-allow: guarded by platform === "darwin"
+      ),
       pathApi,
     );
   }

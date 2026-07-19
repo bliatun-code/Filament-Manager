@@ -29,7 +29,7 @@ test("seed catalog export resolves the macOS application database", () => {
     posix.join(
       homeDirectory,
       "Library",
-      "Application Support",
+      "Application Support", // path-portability-allow: expected macOS path fixture
       ...appDirectoryParts,
     ),
   );

@@ -21,6 +21,8 @@ const macosPerUserTemporaryPath = [
   "temporary",
   "artifact.png",
 ].join("/");
+const macosLibrarySegment = ["Lib", "rary"].join("");
+const macosApplicationSupportSegment = ["Application", " Support"].join("");
 const interpolatedManualPath = (expression, suffix) =>
   ["`", "${", expression, "}", "/", suffix, "`"].join("");
 const concatenatedManualPath = (expression, suffix) =>
@@ -224,6 +226,41 @@ test("path portability rejects hardcoded host-specific paths", () => {
       },
     ],
   );
+});
+
+test("path portability rejects segmented macOS Application Support paths", () => {
+  const source = [
+    'import path from "node:path";',
+    "const databasePath = path.join(",
+    '  process.env.HOME ?? "",',
+    `  ${JSON.stringify(macosLibrarySegment)},`,
+    `  ${JSON.stringify(macosApplicationSupportSegment)},`,
+    '  "app",',
+    '  "database.sqlite",',
+    ");",
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "scripts/fixture.mjs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [
+      {
+        label: "hardcoded macOS Application Support path construction",
+        line: 5,
+      },
+    ],
+  );
+});
+
+test("path portability permits a documented macOS Application Support branch", () => {
+  const source =
+    `const databasePath = path.join(homeDirectory, ${JSON.stringify(macosLibrarySegment)}, ` +
+    `${JSON.stringify(macosApplicationSupportSegment)}); ` +
+    "// path-portability-allow: guarded by platform === darwin";
+
+  assert.deepEqual(findHostSpecificPaths(source, "scripts/fixture.mjs"), []);
 });
 
 test("path portability permits explicitly documented fixtures", () => {
