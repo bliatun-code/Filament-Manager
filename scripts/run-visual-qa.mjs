@@ -25,6 +25,42 @@ export function resolveVisualQaTauriLaunch({
   };
 }
 
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function aggregateVisualQaCleanupError(primaryError, cleanupError, targetPath) {
+  return new AggregateError(
+    [primaryError, cleanupError],
+    `${errorMessage(primaryError)}\nVisual QA database cleanup also failed for ${targetPath}: ${errorMessage(cleanupError)}`,
+    { cause: primaryError },
+  );
+}
+
+async function waitForChildClose(child) {
+  return await new Promise((resolveClose) => {
+    let childError = null;
+    const onError = (error) => {
+      childError ??= error;
+    };
+    child.on("error", onError);
+    child.once("close", (code, signal) => {
+      child.off("error", onError);
+      resolveClose({ code, error: childError, signal });
+    });
+  });
+}
+
+function childTerminationError(code, signal) {
+  if (signal) {
+    return new Error(`Visual QA process closed with signal ${signal}.`);
+  }
+  const exitCode = code ?? 1;
+  return exitCode === 0
+    ? null
+    : new Error(`Visual QA process closed with exit code ${exitCode}.`);
+}
+
 export async function runVisualQaCli(options = {}) {
   const argv = options.argv ?? process.argv.slice(2);
   const cleanupDatabase =
@@ -41,6 +77,25 @@ export async function runVisualQaCli(options = {}) {
   const live = argv.includes("--live");
   const prepareOnly = argv.includes("--prepare-only");
   const result = await prepareDatabase({ live, profile, sourcePath });
+  let cleanupAttempted = false;
+  const cleanupOnce = (primaryError = null) => {
+    if (cleanupAttempted || keep || result.live) {
+      return;
+    }
+    cleanupAttempted = true;
+    try {
+      cleanupDatabase(result.targetPath);
+    } catch (cleanupError) {
+      if (primaryError == null) {
+        throw cleanupError;
+      }
+      throw aggregateVisualQaCleanupError(
+        primaryError,
+        cleanupError,
+        result.targetPath,
+      );
+    }
+  };
 
   log(formatVisualQaDatasetReport(result));
   log(`Visual QA DB copy method: ${result.copyMethod}`);
@@ -73,23 +128,23 @@ export async function runVisualQaCli(options = {}) {
       stdio: "inherit",
     });
   } catch (error) {
-    if (!keep && !result.live) {
-      cleanupDatabase(result.targetPath);
-    }
+    cleanupOnce(error);
     throw error;
   }
 
-  child.on("exit", (code, signal) => {
-    if (!keep && !result.live) {
-      cleanupDatabase(result.targetPath);
-    }
-    if (signal) {
-      processKill(process.pid, signal);
-      return;
-    }
-    processExit(code ?? 1);
-  });
-  return { child, database: result };
+  const closed = await waitForChildClose(child);
+  if (closed.error) {
+    cleanupOnce(closed.error);
+    throw closed.error;
+  }
+
+  cleanupOnce(childTerminationError(closed.code, closed.signal));
+  if (closed.signal) {
+    processKill(process.pid, closed.signal);
+  } else {
+    processExit(closed.code ?? 1);
+  }
+  return { child, close: closed, database: result };
 }
 
 async function runCli() {
@@ -98,7 +153,7 @@ async function runCli() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runCli().catch((error) => {
-    console.error(error.message);
-    process.exit(1);
+    console.error(errorMessage(error));
+    process.exitCode = 1;
   });
 }

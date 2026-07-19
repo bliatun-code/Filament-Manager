@@ -1007,6 +1007,7 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   }
 
   let outputTail = "";
+  let childError = null;
   let childExit = null;
   let child;
   try {
@@ -1023,34 +1024,53 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   child.stderr?.on("data", (chunk) => {
     outputTail = appendOutputTail(outputTail, chunk);
   });
-  child.once("exit", (code, signal) => {
-    childExit = { code, signal };
+  const recordChildExit = (code, signal) => {
+    childExit ??= { code, signal };
+  };
+  child.on("error", (error) => {
+    childError ??= error;
   });
+  child.once("exit", recordChildExit);
+  child.once("close", recordChildExit);
 
   let keepApp = false;
+  const launchStopped = () => childError != null || childExit != null;
+  const launchFailureResult = (
+    readiness,
+    { screenshotGate = null, visualGate = null } = {},
+  ) => {
+    const stopped = launchStopped();
+    keepApp = Boolean(options.keepAppOnFail && !stopped);
+    let suffix = "";
+    if (childError) {
+      suffix = ` Tauri dev failed to start (${processTerminationErrorDetail(childError)}).`;
+    } else if (childExit) {
+      suffix = ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`;
+    }
+    const launchSummary = readiness.ready
+      ? `Companion server at ${baseUrl}/companion responded, but the launched Tauri dev process did not stay running.`
+      : `Companion server did not become reachable at ${baseUrl}/companion after launching Tauri dev.`;
+    const reason = !readiness.ready && readiness.lastError?.message
+      ? ` Last probe: ${readiness.lastError.message}.`
+      : "";
+    return {
+      baseUrl,
+      database,
+      errors: [`${launchSummary}${suffix}${reason}`],
+      launchOutputTail: outputTail.trim(),
+      outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
+      screenshotGate,
+      visualGate,
+    };
+  };
   try {
     const readiness = await waitForServerFn(baseUrl, {
       intervalMs: options.serverPollMs ?? 500,
       timeoutMs: options.startupTimeoutMs ?? 45_000,
-      shouldAbort: () => childExit != null,
+      shouldAbort: launchStopped,
     });
-    if (!readiness.ready) {
-      keepApp = Boolean(options.keepAppOnFail);
-      const suffix = childExit
-        ? ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`
-        : "";
-      const reason = readiness.lastError?.message ? ` Last probe: ${readiness.lastError.message}.` : "";
-      return {
-        baseUrl,
-        database,
-        errors: [
-          `Companion server did not become reachable at ${baseUrl}/companion after launching Tauri dev.${suffix}${reason}`,
-        ],
-        launchOutputTail: outputTail.trim(),
-        outputDir: resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR),
-        screenshotGate: null,
-        visualGate: null,
-      };
+    if (!readiness.ready || launchStopped()) {
+      return launchFailureResult(readiness);
     }
 
     let visualGate = null;
@@ -1060,17 +1080,31 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
         baseUrl,
         timeoutMs: options.timeoutMs,
       });
-      screenshotGate =
-        visualGate.errors.length > 0
-          ? null
-          : await screenshotGateFn({
-              baseUrl,
-              locale: options.locale,
-              outputDir: options.outputDir,
-              timeoutMs: options.timeoutMs,
-              themeMode: options.themeMode,
-            });
+      if (launchStopped()) {
+        return launchFailureResult(readiness, { visualGate });
+      }
+      if (visualGate.errors.length === 0) {
+        screenshotGate = await screenshotGateFn({
+          baseUrl,
+          locale: options.locale,
+          outputDir: options.outputDir,
+          timeoutMs: options.timeoutMs,
+          themeMode: options.themeMode,
+        });
+        if (launchStopped()) {
+          return launchFailureResult(readiness, {
+            screenshotGate,
+            visualGate,
+          });
+        }
+      }
     } catch (error) {
+      if (launchStopped()) {
+        return launchFailureResult(readiness, {
+          screenshotGate,
+          visualGate,
+        });
+      }
       return {
         baseUrl,
         database,

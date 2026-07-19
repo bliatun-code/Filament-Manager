@@ -746,6 +746,197 @@ test("launched companion gate preserves kept copies and live databases when spaw
   }
 });
 
+test("launched companion gate reports asynchronous spawn errors without taskkill and cleans once", async () => {
+  const child = createFakeChild();
+  const calls = { cleanup: [], taskkill: 0 };
+  const spawnError = Object.assign(new Error("spawn missing command"), {
+    code: "ENOENT",
+  });
+
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+    keepAppOnFail: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    spawnFn: () => child,
+    taskkillExecFileFn: async () => {
+      calls.taskkill += 1;
+    },
+    waitForCompanionServer: async (_baseUrl, options) => {
+      child.pid = undefined;
+      child.exitCode = -2;
+      child.emit("error", spawnError);
+      child.emit("close", -2, null);
+      assert.equal(options.shouldAbort(), true);
+      return { ready: false };
+    },
+  });
+
+  assert.match(result.errors[0], /ENOENT: spawn missing command/);
+  assert.equal(calls.taskkill, 0);
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate rejects a stale ready server after its child fails", async () => {
+  const child = createFakeChild();
+  const calls = { cleanup: [], screenshot: 0, taskkill: 0, visual: 0 };
+  const spawnError = Object.assign(new Error("spawn missing command"), {
+    code: "ENOENT",
+  });
+
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    runCompanionScreenshotGate: async () => {
+      calls.screenshot += 1;
+      return { errors: [] };
+    },
+    runCompanionVisualGate: async () => {
+      calls.visual += 1;
+      return { errors: [] };
+    },
+    spawnFn: () => child,
+    taskkillExecFileFn: async () => {
+      calls.taskkill += 1;
+    },
+    waitForCompanionServer: async () => {
+      child.pid = undefined;
+      child.exitCode = -2;
+      child.emit("error", spawnError);
+      child.emit("close", -2, null);
+      return { ready: true };
+    },
+  });
+
+  assert.match(result.errors[0], /ENOENT: spawn missing command/);
+  assert.equal(calls.visual, 0);
+  assert.equal(calls.screenshot, 0);
+  assert.equal(calls.taskkill, 0);
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate rechecks child ownership across visual and screenshot phases", async () => {
+  for (const failurePhase of ["visual", "screenshot"]) {
+    const child = createFakeChild();
+    const calls = { cleanup: [], screenshot: 0, taskkill: 0, visual: 0 };
+    const spawnError = Object.assign(new Error("spawn missing command"), {
+      code: "ENOENT",
+    });
+    const failChild = () => {
+      child.pid = undefined;
+      child.exitCode = -2;
+      child.emit("error", spawnError);
+      child.emit("close", -2, null);
+    };
+
+    const result = await runLaunchedCompanionScreenshotGate({
+      cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      runCompanionScreenshotGate: async (options) => {
+        calls.screenshot += 1;
+        if (failurePhase === "screenshot") {
+          failChild();
+        }
+        return {
+          baseUrl: options.baseUrl,
+          errors: [],
+          metrics: [createMetric()],
+          outputDir: options.outputDir,
+        };
+      },
+      runCompanionVisualGate: async (options) => {
+        calls.visual += 1;
+        if (failurePhase === "visual") {
+          failChild();
+        }
+        return { baseUrl: options.baseUrl, errors: [], metrics: {} };
+      },
+      spawnFn: () => child,
+      taskkillExecFileFn: async () => {
+        calls.taskkill += 1;
+      },
+      waitForCompanionServer: async () => ({ ready: true }),
+    });
+
+    assert.match(result.errors[0], /ENOENT: spawn missing command/);
+    assert.equal(calls.visual, 1);
+    assert.equal(calls.screenshot, failurePhase === "visual" ? 0 : 1);
+    assert.equal(calls.taskkill, 0);
+    assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+  }
+});
+
+test("launched companion gate observes close without exit and does not keep a dead app", async () => {
+  const child = createFakeChild();
+  const calls = { cleanup: [], taskkill: 0 };
+
+  const result = await runLaunchedCompanionScreenshotGate({
+    cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+    keepAppOnFail: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    spawnFn: () => child,
+    taskkillExecFileFn: async () => {
+      calls.taskkill += 1;
+    },
+    waitForCompanionServer: async (_baseUrl, options) => {
+      child.exitCode = 17;
+      child.emit("close", 17, null);
+      assert.equal(options.shouldAbort(), true);
+      return { ready: false };
+    },
+  });
+
+  assert.match(result.errors[0], /exited early \(17\)/);
+  assert.equal(calls.taskkill, 0);
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate preserves keep and live ownership after asynchronous spawn errors", async () => {
+  for (const scenario of [
+    { database: createVisualQaDatabase(), keep: true },
+    {
+      database: createVisualQaDatabase({
+        live: true,
+        targetPath: testSourceDatabasePath,
+      }),
+      keep: false,
+    },
+  ]) {
+    const child = createFakeChild();
+    const cleanup = [];
+    const spawnError = Object.assign(new Error("spawn missing command"), {
+      code: "ENOENT",
+    });
+    const result = await runLaunchedCompanionScreenshotGate({
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      keep: scenario.keep,
+      keepAppOnFail: true,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => scenario.database,
+      spawnFn: () => child,
+      waitForCompanionServer: async (_baseUrl, options) => {
+        child.pid = undefined;
+        child.exitCode = -2;
+        child.emit("error", spawnError);
+        child.emit("close", -2, null);
+        assert.equal(options.shouldAbort(), true);
+        return { ready: false };
+      },
+    });
+
+    assert.match(result.errors[0], /ENOENT: spawn missing command/);
+    assert.deepEqual(cleanup, []);
+  }
+});
+
 test("launched companion screenshot gate reports startup failures with launch output", async () => {
   const child = createFakeChild();
   const result = await runLaunchedCompanionScreenshotGate({

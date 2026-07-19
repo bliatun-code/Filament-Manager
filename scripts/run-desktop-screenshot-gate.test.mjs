@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
@@ -47,7 +49,20 @@ import {
 } from "./run-desktop-screenshot-gate.mjs";
 
 const testOutputDir = path.join(tmpdir(), "visual-qa");
+const testSourceDatabasePath = path.join(tmpdir(), "visual-qa-source.db");
 const testVisualDatabasePath = path.join(tmpdir(), "visual-qa.db");
+
+function createFakeChild(overrides = {}) {
+  const child = new EventEmitter();
+  child.pid = 12345;
+  child.stdout = new PassThrough();
+  child.stderr = new PassThrough();
+  child.unrefCalls = 0;
+  child.unref = () => {
+    child.unrefCalls += 1;
+  };
+  return Object.assign(child, overrides);
+}
 
 function createFakeClock() {
   let now = 0;
@@ -245,6 +260,148 @@ test("launched desktop gate preserves kept copies and live databases when spawn 
 
     assert.deepEqual(cleanup, []);
   }
+});
+
+test("launched desktop gate reports asynchronous spawn errors and cleans a dead force-copy app", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const prepare = [];
+  const spawnError = Object.assign(new Error("spawn missing command"), {
+    code: "ENOENT",
+  });
+
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => ({ stdout: "" }),
+    findWindowFn: async () => {
+      child.pid = undefined;
+      child.exitCode = -2;
+      child.emit("error", spawnError);
+      child.emit("close", -2, null);
+      return null;
+    },
+    keepAppOnFail: true,
+    live: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async (options) => {
+      prepare.push(options);
+      return { live: false, targetPath: testVisualDatabasePath };
+    },
+    scenario: "order-queue",
+    spawnFn: () => child,
+    startupTimeoutMs: 0,
+    windowPollMs: 0,
+  });
+
+  assert.equal(prepare[0]?.live, false);
+  assert.match(result.errors[0], /ENOENT: spawn missing command/);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+  assert.equal(child.unrefCalls, 0);
+});
+
+test("launched desktop gate observes close without exit and does not keep a dead app", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => ({ stdout: "" }),
+    findWindowFn: async () => {
+      child.exitCode = 17;
+      child.emit("close", 17, null);
+      return null;
+    },
+    keepAppOnFail: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    spawnFn: () => child,
+    startupTimeoutMs: 0,
+    windowPollMs: 0,
+  });
+
+  assert.match(result.errors[0], /exited early \(17\)/);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+  assert.equal(child.unrefCalls, 0);
+});
+
+test("launched desktop gate preserves keep and live ownership after asynchronous spawn errors", async () => {
+  for (const scenario of [
+    {
+      database: { live: false, targetPath: testVisualDatabasePath },
+      keep: true,
+    },
+    {
+      database: { live: true, targetPath: testSourceDatabasePath },
+      keep: false,
+    },
+  ]) {
+    const child = createFakeChild();
+    const cleanup = [];
+    const spawnError = Object.assign(new Error("spawn missing command"), {
+      code: "ENOENT",
+    });
+    const result = await runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => {
+        child.pid = undefined;
+        child.exitCode = -2;
+        child.emit("error", spawnError);
+        child.emit("close", -2, null);
+        return null;
+      },
+      keep: scenario.keep,
+      keepAppOnFail: true,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => scenario.database,
+      spawnFn: () => child,
+      startupTimeoutMs: 0,
+      windowPollMs: 0,
+    });
+
+    assert.match(result.errors[0], /ENOENT: spawn missing command/);
+    assert.deepEqual(cleanup, []);
+    assert.equal(child.unrefCalls, 0);
+  }
+});
+
+test("launched desktop gate rechecks keep-app ownership after window diagnostics", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => {
+      child.exitCode = 1;
+      child.emit("close", 1, null);
+      return { stdout: "" };
+    },
+    findWindowFn: async () => null,
+    keepAppOnFail: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    spawnFn: () => child,
+    startupTimeoutMs: 0,
+    windowPollMs: 0,
+  });
+
+  assert.match(result.errors[0], /exited early \(1\)/);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+  assert.equal(child.unrefCalls, 0);
 });
 
 test("desktop screenshot Tauri launch stays clean when Node deprecations throw", () => {
@@ -1110,6 +1267,20 @@ test("desktop screenshot gate wait can abort when launch exits", async () => {
 
   assert.equal(window, null);
   assert.equal(attempts, 2);
+});
+
+test("desktop screenshot gate rejects a stale matching window when launch exits during lookup", async () => {
+  let launchExited = false;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      launchExited = true;
+      return createMetric().window;
+    },
+    shouldAbort: () => launchExited,
+    timeoutMs: 50,
+  });
+
+  assert.equal(window, null);
 });
 
 test("desktop screenshot gate stops polling at its timeout without real timers", async () => {

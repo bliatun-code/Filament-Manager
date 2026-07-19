@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -26,6 +27,10 @@ function createVisualQaDatabase(overrides = {}) {
     targetPath: testVisualDatabasePath,
     ...overrides,
   };
+}
+
+function createFakeChild() {
+  return new EventEmitter();
 }
 
 test("visual QA launches the local Tauri wrapper through Node without a shell", () => {
@@ -119,4 +124,222 @@ test("visual QA CLI preserves kept copies and live databases when spawn throws",
 
     assert.deepEqual(cleanup, []);
   }
+});
+
+test("visual QA CLI waits for close before cleanup and exit propagation", async () => {
+  const child = createFakeChild();
+  const order = [];
+  const run = runVisualQaCli({
+    argv: [],
+    cleanupVisualQaDatabase: (path) => order.push(`cleanup:${path}`),
+    log: () => {},
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    processExit: (code) => order.push(`exit:${code}`),
+    processKill: () => order.push("kill"),
+    spawnFn: () => child,
+  });
+
+  await Promise.resolve();
+  child.emit("exit", 7, null);
+  assert.deepEqual(order, []);
+
+  child.emit("close", 7, null);
+  const result = await run;
+
+  assert.equal(result.child, child);
+  assert.deepEqual(order, [
+    `cleanup:${testVisualDatabasePath}`,
+    "exit:7",
+  ]);
+});
+
+test("visual QA CLI forwards signals only after close and cleanup", async () => {
+  const child = createFakeChild();
+  const order = [];
+  const run = runVisualQaCli({
+    argv: [],
+    cleanupVisualQaDatabase: () => order.push("cleanup"),
+    log: () => {},
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    processExit: () => order.push("exit"),
+    processKill: (pid, signal) => order.push(`kill:${pid}:${signal}`),
+    spawnFn: () => child,
+  });
+
+  await Promise.resolve();
+  child.emit("exit", null, "SIGTERM");
+  assert.deepEqual(order, []);
+  child.emit("close", null, "SIGTERM");
+  await run;
+
+  assert.deepEqual(order, ["cleanup", `kill:${process.pid}:SIGTERM`]);
+});
+
+test("visual QA CLI rejects asynchronous spawn errors after close and cleans once", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const processCalls = [];
+  const spawnError = Object.assign(new Error("spawn missing command"), {
+    code: "ENOENT",
+  });
+  const run = runVisualQaCli({
+    argv: [],
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    log: () => {},
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    processExit: (code) => processCalls.push(["exit", code]),
+    processKill: (pid, signal) => processCalls.push(["kill", pid, signal]),
+    spawnFn: () => child,
+  });
+
+  await Promise.resolve();
+  assert.equal(child.listenerCount("error"), 1);
+  child.emit("error", spawnError);
+  child.emit("close", -2, null);
+
+  await assert.rejects(run, (error) => error === spawnError);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+  assert.deepEqual(processCalls, []);
+  assert.equal(child.listenerCount("error"), 0);
+  assert.equal(child.listenerCount("close"), 0);
+});
+
+test("visual QA CLI preserves kept copies and live databases after asynchronous spawn errors", async () => {
+  for (const scenario of [
+    { argv: ["--keep"], database: createVisualQaDatabase() },
+    {
+      argv: ["--live"],
+      database: createVisualQaDatabase({
+        live: true,
+        targetPath: testSourceDatabasePath,
+      }),
+    },
+  ]) {
+    const child = createFakeChild();
+    const cleanup = [];
+    const spawnError = Object.assign(new Error("spawn missing command"), {
+      code: "ENOENT",
+    });
+    const run = runVisualQaCli({
+      argv: scenario.argv,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      log: () => {},
+      prepareVisualQaDatabase: async () => scenario.database,
+      spawnFn: () => child,
+    });
+
+    await Promise.resolve();
+    assert.equal(child.listenerCount("error"), 1);
+    child.emit("error", spawnError);
+    child.emit("close", -2, null);
+
+    await assert.rejects(run, (error) => error === spawnError);
+    assert.deepEqual(cleanup, []);
+  }
+});
+
+test("visual QA CLI aggregates synchronous spawn and cleanup failures", async () => {
+  const cleanupError = new Error("cleanup failed");
+  const spawnError = new Error("spawn EACCES");
+
+  await assert.rejects(
+    runVisualQaCli({
+      argv: [],
+      cleanupVisualQaDatabase: () => {
+        throw cleanupError;
+      },
+      log: () => {},
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      spawnFn: () => {
+        throw spawnError;
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [spawnError, cleanupError]);
+      assert.equal(error.cause, spawnError);
+      return true;
+    },
+  );
+});
+
+test("visual QA CLI aggregates asynchronous spawn and cleanup failures", async () => {
+  const child = createFakeChild();
+  const cleanupError = new Error("cleanup failed");
+  const spawnError = Object.assign(new Error("spawn missing command"), {
+    code: "ENOENT",
+  });
+  const run = runVisualQaCli({
+    argv: [],
+    cleanupVisualQaDatabase: () => {
+      throw cleanupError;
+    },
+    log: () => {},
+    prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+    spawnFn: () => child,
+  });
+
+  await Promise.resolve();
+  assert.equal(child.listenerCount("error"), 1);
+  child.emit("error", spawnError);
+  child.emit("close", -2, null);
+
+  await assert.rejects(run, (error) => {
+    assert.ok(error instanceof AggregateError);
+    assert.deepEqual(error.errors, [spawnError, cleanupError]);
+    assert.equal(error.cause, spawnError);
+    return true;
+  });
+});
+
+test("visual QA CLI aggregates termination and cleanup failures before process propagation", async () => {
+  for (const scenario of [
+    { code: 9, message: /exit code 9/, signal: null },
+    { code: null, message: /signal SIGTERM/, signal: "SIGTERM" },
+  ]) {
+    const child = createFakeChild();
+    const cleanupError = new Error("cleanup failed");
+    const processCalls = [];
+    const run = runVisualQaCli({
+      argv: [],
+      cleanupVisualQaDatabase: () => {
+        throw cleanupError;
+      },
+      log: () => {},
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      processExit: (code) => processCalls.push(["exit", code]),
+      processKill: (pid, signal) => processCalls.push(["kill", pid, signal]),
+      spawnFn: () => child,
+    });
+
+    await Promise.resolve();
+    child.emit("close", scenario.code, scenario.signal);
+
+    await assert.rejects(run, (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.errors[0].message, scenario.message);
+      assert.equal(error.errors[1], cleanupError);
+      assert.equal(error.cause, error.errors[0]);
+      return true;
+    });
+    assert.deepEqual(processCalls, []);
+  }
+});
+
+test("visual QA CLI handles a real asynchronous ENOENT spawn failure", async () => {
+  const cleanup = [];
+  const command = "filament-manager-command-that-does-not-exist-async-qa";
+
+  await assert.rejects(
+    runVisualQaCli({
+      argv: [],
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      log: () => {},
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      spawnFn: () => spawn(command, [], { stdio: "ignore" }),
+    }),
+    (error) => error?.code === "ENOENT",
+  );
+
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
 });

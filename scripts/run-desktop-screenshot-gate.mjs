@@ -669,6 +669,9 @@ export async function waitForDesktopWindow(options = {}) {
       return null;
     }
     const window = await findWindowFn(options).catch(() => null);
+    if (options.shouldAbort?.()) {
+      return null;
+    }
     if (window && (options.isWindowReady?.(window) ?? true)) {
       return window;
     }
@@ -984,6 +987,11 @@ function appendOutputTail(tail, chunk, maxLength = 8_000) {
   return next.length > maxLength ? next.slice(next.length - maxLength) : next;
 }
 
+function childProcessErrorDetail(error) {
+  const message = String(error?.message ?? error ?? "unknown child process failure");
+  return error?.code ? `${error.code}: ${message}` : message;
+}
+
 function formatVisibleWindowSummary(windows) {
   if (!Array.isArray(windows) || windows.length === 0) {
     return "none";
@@ -1124,6 +1132,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       "Scenario requires a temporary DB fixture, so --live was ignored for this capture.";
   }
   let outputTail = "";
+  let childError = null;
   let childExit = null;
   let child;
   try {
@@ -1145,9 +1154,14 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   child.stderr?.on("data", (chunk) => {
     outputTail = appendOutputTail(outputTail, chunk);
   });
-  child.once("exit", (code, signal) => {
-    childExit = { code, signal };
+  const recordChildExit = (code, signal) => {
+    childExit ??= { code, signal };
+  };
+  child.on("error", (error) => {
+    childError ??= error;
   });
+  child.once("exit", recordChildExit);
+  child.once("close", recordChildExit);
 
   let keepApp = false;
   try {
@@ -1164,14 +1178,21 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
               )
           : options.isWindowReady,
       timeoutMs: options.startupTimeoutMs ?? 45_000,
-      shouldAbort: () => childExit != null,
+      shouldAbort: () => childError != null || childExit != null,
     });
+    if (childError != null || childExit != null) {
+      window = null;
+    }
     if (!window) {
-      keepApp = Boolean(options.keepAppOnFail);
       const visibleWindows = await listDesktopWindows(options).catch(() => []);
-      const suffix = childExit
-        ? ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`
-        : "";
+      keepApp = Boolean(
+        options.keepAppOnFail && childError == null && childExit == null,
+      );
+      const suffix = childError
+        ? ` Tauri dev failed to start (${childProcessErrorDetail(childError)}).`
+        : childExit
+          ? ` Tauri dev exited early (${childExit.signal ?? childExit.code ?? "unknown"}).`
+          : "";
       return {
         database,
         errors: [
@@ -1204,6 +1225,9 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       scenario: options.scenario ?? null,
     };
   } finally {
+    keepApp = Boolean(
+      keepApp && childError == null && childExit == null,
+    );
     if (keepApp) {
       releaseChild(child);
     } else {
