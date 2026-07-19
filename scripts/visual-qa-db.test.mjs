@@ -421,10 +421,17 @@ test("applyTrustedLanInterfaceFixture leaves live databases untouched", async ()
   }
 });
 
-test("visualQaTempDbPath creates a stable temp db name", () => {
-  const path = visualQaTempDbPath("/repo/data/visual-test-bambu.db", new Date("2026-07-01T00:00:00Z"));
-  assert.match(path, /filament-manager-visual-qa/);
-  assert.match(path, /visual-test-bambu-2026-07-01T00-00-00-000Z\.db$/);
+test("visualQaTempDbPath stays unique when calls share a source and timestamp", () => {
+  const now = new Date("2026-07-01T00:00:00Z");
+  const first = visualQaTempDbPath("/repo/data/visual-test-bambu.db", now);
+  const second = visualQaTempDbPath("/repo/data/visual-test-bambu.db", now);
+  const expectedName =
+    /visual-test-bambu-2026-07-01T00-00-00-000Z-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.db$/i;
+
+  assert.notEqual(first, second);
+  assert.match(first, /filament-manager-visual-qa/);
+  assert.match(first, expectedName);
+  assert.match(second, expectedName);
 });
 
 test("applyVisualQaDatabaseFixture creates a printer slot onboarding state on copies", async () => {

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { copyFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { networkInterfaces, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -1637,7 +1638,11 @@ export function formatVisualQaDatasetReport({
 export function visualQaTempDbPath(sourcePath, now = new Date()) {
   const stamp = now.toISOString().replaceAll(/[:.]/g, "-");
   const name = basename(sourcePath).replace(/\.db$/i, "");
-  return resolve(tmpdir(), "filament-manager-visual-qa", `${name}-${stamp}.db`);
+  return resolve(
+    tmpdir(),
+    "filament-manager-visual-qa",
+    `${name}-${stamp}-${randomUUID()}.db`,
+  );
 }
 
 export async function prepareVisualQaDatabase(options = {}) {
