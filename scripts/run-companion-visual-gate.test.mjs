@@ -7,6 +7,8 @@ import {
   runCompanionVisualGate,
 } from "./run-companion-visual-gate.mjs";
 
+const FIXTURE_REQUEST_TIMEOUT_MS = 5_000;
+
 function jsonResponse(response, value, headers = {}) {
   response.writeHead(200, { "content-type": "application/json", ...headers });
   response.end(JSON.stringify(value));
@@ -20,9 +22,10 @@ async function withFixtureServer(handler, callback) {
     const baseUrl = `http://127.0.0.1:${address.port}`;
     return await callback(baseUrl);
   } finally {
-    await new Promise((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
+    await new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+      server.closeAllConnections?.();
+    });
   }
 }
 
@@ -166,7 +169,10 @@ test("normalizeCompanionBaseUrl accepts companion URLs and strips paths", () => 
 
 test("companion visual gate passes data-rich fixture responses", async () => {
   await withFixtureServer(companionFixtureHandler, async (baseUrl) => {
-    const result = await runCompanionVisualGate({ baseUrl, timeoutMs: 1_000 });
+    const result = await runCompanionVisualGate({
+      baseUrl,
+      timeoutMs: FIXTURE_REQUEST_TIMEOUT_MS,
+    });
     assert.deepEqual(result.errors, []);
     assert.equal(result.counts.snapshotSpools, 2);
     assert.equal(result.counts.livePrinterSlots, 1);
@@ -188,7 +194,10 @@ test("companion visual gate reports sparse live-printer data", async () => {
     }
     companionFixtureHandler(request, response);
   }, async (baseUrl) => {
-    const result = await runCompanionVisualGate({ baseUrl, timeoutMs: 1_000 });
+    const result = await runCompanionVisualGate({
+      baseUrl,
+      timeoutMs: FIXTURE_REQUEST_TIMEOUT_MS,
+    });
     assert.ok(result.errors.some((error) => error.includes("live printer slots")));
   });
 });
@@ -203,7 +212,10 @@ test("companion visual gate reports missing QA session bootstrap", async () => {
     }
     companionFixtureHandler(request, response);
   }, async (baseUrl) => {
-    const result = await runCompanionVisualGate({ baseUrl, timeoutMs: 1_000 });
+    const result = await runCompanionVisualGate({
+      baseUrl,
+      timeoutMs: FIXTURE_REQUEST_TIMEOUT_MS,
+    });
     assert.ok(
       result.errors.some((error) =>
         error.includes("QA authenticated companion session failed"),
