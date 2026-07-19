@@ -9,6 +9,7 @@ import {
   resolveDoctorTauriLaunch,
   runDoctorCommand,
 } from "./doctor-command.mjs";
+import { probeBetterSqlite } from "./doctor-database.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const rootDir = path.resolve(path.dirname(__filename), "..");
@@ -87,25 +88,18 @@ if (!sqlite.ok) {
   );
 }
 
-let betterSqliteReady = false;
-let betterSqliteReason = "";
-try {
-  await import("better-sqlite3");
-  betterSqliteReady = true;
-} catch (error) {
-  betterSqliteReady = false;
-  betterSqliteReason = error instanceof Error ? error.message : String(error);
-}
+const {
+  mismatch: nodeModuleMismatch,
+  ready: betterSqliteReady,
+  reason: betterSqliteReason,
+} = await probeBetterSqlite();
 printLine(`- better-sqlite3: ${betterSqliteReady ? "ready" : "fallback mode"}`);
 if (!betterSqliteReady && betterSqliteReason) {
   const compactReason = betterSqliteReason.replace(/\s+/g, " ").trim();
   printLine(`- better-sqlite3 reason: ${compactReason}`);
-  const nodeModuleMismatch = compactReason.match(
-    /NODE_MODULE_VERSION\\s+(\\d+).+requires\\s+NODE_MODULE_VERSION\\s+(\\d+)/i,
-  );
   if (nodeModuleMismatch) {
     warnings.push(
-      `better-sqlite3 was built for ABI ${nodeModuleMismatch[1]}, but current Node ${nodeVersion} requires ABI ${nodeModuleMismatch[2]}. Run \`npm rebuild better-sqlite3\`.`,
+      `better-sqlite3 was built for ABI ${nodeModuleMismatch.builtAbi}, but current Node ${nodeVersion} requires ABI ${nodeModuleMismatch.requiredAbi}. Run \`npm rebuild better-sqlite3\`.`,
     );
   }
 }
