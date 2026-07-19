@@ -686,6 +686,66 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.equal(child.killedSignal, undefined);
 });
 
+test("launched companion gate cleans its generated database when spawn throws synchronously", async () => {
+  const calls = { cleanup: [], spawn: 0, taskkill: 0, wait: 0 };
+  const spawnError = new Error("spawn EACCES");
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate({
+      cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+      platform: "win32",
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      spawnFn: () => {
+        calls.spawn += 1;
+        throw spawnError;
+      },
+      taskkillExecFileFn: async () => {
+        calls.taskkill += 1;
+      },
+      waitForCompanionServer: async () => {
+        calls.wait += 1;
+        return { ready: true };
+      },
+    }),
+    (error) => error === spawnError,
+  );
+
+  assert.equal(calls.spawn, 1);
+  assert.equal(calls.taskkill, 0);
+  assert.equal(calls.wait, 0);
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate preserves kept copies and live databases when spawn throws", async () => {
+  for (const scenario of [
+    { database: createVisualQaDatabase(), keep: true },
+    {
+      database: createVisualQaDatabase({
+        live: true,
+        targetPath: testSourceDatabasePath,
+      }),
+      keep: false,
+    },
+  ]) {
+    const cleanup = [];
+    const spawnError = new Error("spawn EACCES");
+
+    await assert.rejects(
+      runLaunchedCompanionScreenshotGate({
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        keep: scenario.keep,
+        prepareVisualQaDatabase: async () => scenario.database,
+        spawnFn: () => {
+          throw spawnError;
+        },
+      }),
+      (error) => error === spawnError,
+    );
+
+    assert.deepEqual(cleanup, []);
+  }
+});
+
 test("launched companion screenshot gate reports startup failures with launch output", async () => {
   const child = createFakeChild();
   const result = await runLaunchedCompanionScreenshotGate({

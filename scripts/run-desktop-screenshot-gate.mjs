@@ -1125,7 +1125,15 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   }
   let outputTail = "";
   let childExit = null;
-  const child = spawnDesktopTauriDev(spawnFn, options, database);
+  let child;
+  try {
+    child = spawnDesktopTauriDev(spawnFn, options, database);
+  } catch (error) {
+    if (!options.keep && !database.live) {
+      cleanupDatabase(database.targetPath);
+    }
+    throw error;
+  }
   const expectedWindowTitles = desktopVisualQaExpectedWindowTitles(
     options.scenario,
     options.locale,

@@ -1008,7 +1008,15 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
 
   let outputTail = "";
   let childExit = null;
-  const child = spawnTauriDev(spawnFn, options, database);
+  let child;
+  try {
+    child = spawnTauriDev(spawnFn, options, database);
+  } catch (error) {
+    if (!options.keep && !database.live) {
+      cleanupDatabase(database.targetPath);
+    }
+    throw error;
+  }
   child.stdout?.on("data", (chunk) => {
     outputTail = appendOutputTail(outputTail, chunk);
   });

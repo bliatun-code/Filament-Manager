@@ -3,7 +3,30 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { resolveVisualQaTauriLaunch } from "./run-visual-qa.mjs";
+import {
+  resolveVisualQaTauriLaunch,
+  runVisualQaCli,
+} from "./run-visual-qa.mjs";
+
+const testSourceDatabasePath = "C:\\Visual QA\\source.db";
+const testVisualDatabasePath = "C:\\Visual QA\\generated.db";
+
+function createVisualQaDatabase(overrides = {}) {
+  return {
+    assessment: { errors: [], profile: "base", warnings: [] },
+    copyMethod: "test-copy",
+    inspection: {
+      counts: { filament_spools: 1, printers: 1 },
+      details: {},
+      tables: ["filament_spools", "printers"],
+    },
+    live: false,
+    sourcePath: testSourceDatabasePath,
+    sourceType: "argument",
+    targetPath: testVisualDatabasePath,
+    ...overrides,
+  };
+}
 
 test("visual QA launches the local Tauri wrapper through Node without a shell", () => {
   const executable = "node-runtime";
@@ -45,4 +68,55 @@ test("visual QA Tauri launch stays clean when Node deprecations throw", () => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /tauri-cli \d+\./);
   assert.doesNotMatch(result.stderr, /DEP0190/);
+});
+
+test("visual QA CLI cleans its generated database when spawn throws synchronously", async () => {
+  const cleanup = [];
+  const spawnError = new Error("spawn EACCES");
+
+  await assert.rejects(
+    runVisualQaCli({
+      argv: [],
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      log: () => {},
+      prepareVisualQaDatabase: async () => createVisualQaDatabase(),
+      spawnFn: () => {
+        throw spawnError;
+      },
+    }),
+    (error) => error === spawnError,
+  );
+
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("visual QA CLI preserves kept copies and live databases when spawn throws", async () => {
+  for (const scenario of [
+    { argv: ["--keep"], database: createVisualQaDatabase() },
+    {
+      argv: ["--live"],
+      database: createVisualQaDatabase({
+        live: true,
+        targetPath: testSourceDatabasePath,
+      }),
+    },
+  ]) {
+    const cleanup = [];
+    const spawnError = new Error("spawn EACCES");
+
+    await assert.rejects(
+      runVisualQaCli({
+        argv: scenario.argv,
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        log: () => {},
+        prepareVisualQaDatabase: async () => scenario.database,
+        spawnFn: () => {
+          throw spawnError;
+        },
+      }),
+      (error) => error === spawnError,
+    );
+
+    assert.deepEqual(cleanup, []);
+  }
 });

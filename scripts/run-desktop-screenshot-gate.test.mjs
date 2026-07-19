@@ -191,6 +191,62 @@ test("desktop screenshot spawn keeps launch options and visual QA context", () =
   );
 });
 
+test("launched desktop gate cleans its generated database when spawn throws synchronously", async () => {
+  const calls = { cleanup: [], prepare: [], spawn: 0 };
+  const spawnError = new Error("spawn EACCES");
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
+      keepAppOnFail: true,
+      live: true,
+      platform: "win32",
+      prepareVisualQaDatabase: async (options) => {
+        calls.prepare.push(options);
+        return { live: false, targetPath: testVisualDatabasePath };
+      },
+      scenario: "order-queue",
+      spawnFn: () => {
+        calls.spawn += 1;
+        throw spawnError;
+      },
+    }),
+    (error) => error === spawnError,
+  );
+
+  assert.equal(calls.prepare.length, 1);
+  assert.equal(calls.prepare[0].live, false);
+  assert.equal(calls.spawn, 1);
+  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+});
+
+test("launched desktop gate preserves kept copies and live databases when spawn throws", async () => {
+  for (const scenario of [
+    { database: { live: false, targetPath: testVisualDatabasePath }, keep: true },
+    { database: { live: true, targetPath: testVisualDatabasePath }, keep: false },
+  ]) {
+    const cleanup = [];
+    const spawnError = new Error("spawn EACCES");
+
+    await assert.rejects(
+      runLaunchedDesktopScreenshotGate({
+        allowNonDarwin: true,
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        keep: scenario.keep,
+        platform: "win32",
+        prepareVisualQaDatabase: async () => scenario.database,
+        spawnFn: () => {
+          throw spawnError;
+        },
+      }),
+      (error) => error === spawnError,
+    );
+
+    assert.deepEqual(cleanup, []);
+  }
+});
+
 test("desktop screenshot Tauri launch stays clean when Node deprecations throw", () => {
   const moduleUrl = new URL(
     "./run-desktop-screenshot-gate.mjs",
