@@ -68,7 +68,19 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(windowsJob, /runs-on: windows-latest/);
   assert.match(
     windowsJob,
-    /run: node \.\/scripts\/normalize-msi-version\.mjs/,
+    /- name: Prepare MSI version override\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: node \.\/scripts\/normalize-msi-version\.mjs --output "\$env:MSI_VERSION_CONFIG_PATH"/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Verify MSI preparation leaves manifests unchanged\s+run: git diff --exit-code -- src-tauri\/tauri\.conf\.json src-tauri\/Cargo\.toml/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Build MSI bundle\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: npm run tauri -- build --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+  );
+  assert.doesNotMatch(
+    windowsJob,
+    /run: node \.\/scripts\/normalize-msi-version\.mjs\s*$/m,
   );
   assert.doesNotMatch(windowsJob, /shell:\s*bash/);
   assert.doesNotMatch(windowsJob, /BASH_REMATCH|<<'NODE'/);
@@ -95,7 +107,8 @@ test("release workflow gates tag and manual installer builds", () => {
   assertStepOrder(windowsJob, [
     "Install root dependencies",
     "Install UI dependencies",
-    "Normalize prerelease version for MSI",
+    "Prepare MSI version override",
+    "Verify MSI preparation leaves manifests unchanged",
     "Build MSI bundle",
     "Upload MSI artifact",
   ]);

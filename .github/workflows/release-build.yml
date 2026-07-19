@@ -297,11 +297,18 @@ jobs:
       - name: Install UI dependencies
         run: npm --prefix ./ui ci
 
-      - name: Normalize prerelease version for MSI
-        run: node ./scripts/normalize-msi-version.mjs
+      - name: Prepare MSI version override
+        env:
+          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
+        run: node ./scripts/normalize-msi-version.mjs --output "$env:MSI_VERSION_CONFIG_PATH"
+
+      - name: Verify MSI preparation leaves manifests unchanged
+        run: git diff --exit-code -- src-tauri/tauri.conf.json src-tauri/Cargo.toml
 
       - name: Build MSI bundle
-        run: npm run tauri -- build --bundles msi
+        env:
+          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-version.json
+        run: npm run tauri -- build --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

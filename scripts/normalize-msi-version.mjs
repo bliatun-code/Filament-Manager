@@ -3,12 +3,13 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseArgs } from "node:util";
 
 const releaseVersionPattern =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-// This is written to Cargo/Tauri SemVer; Tauri maps `-N` to MSI's build field.
+// This value goes directly to WiX, so the optional build uses a fourth field.
 const msiBundleVersionPattern =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(0|[1-9]\d*))?$/;
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\.(0|[1-9]\d*))?$/;
 const msiVersionFields = [
   ["major", 255n],
   ["minor", 255n],
@@ -69,7 +70,7 @@ export function normalizeMsiBundleVersion(rawVersion) {
   }
 
   return validateMsiBundleVersion(
-    `${major}.${minor}.${patch}${build === undefined ? "" : `-${build}`}`,
+    `${major}.${minor}.${patch}${build === undefined ? "" : `.${build}`}`,
   );
 }
 
@@ -89,51 +90,65 @@ export function resolveMsiBundleVersion({
   return { msiVersion, rawVersion };
 }
 
-export function updateMsiBundleVersion({
+export function writeMsiVersionOverride({
+  outputPath,
   refName = process.env.GITHUB_REF_NAME,
   refType = process.env.GITHUB_REF_TYPE,
   repoRoot = resolve("."),
 } = {}) {
-  const tauriConfigPath = resolve(repoRoot, "src-tauri", "tauri.conf.json");
-  const cargoTomlPath = resolve(repoRoot, "src-tauri", "Cargo.toml");
+  if (typeof outputPath !== "string" || outputPath.length === 0) {
+    throw new Error("An output path is required for the MSI version override.");
+  }
+
   const { msiVersion, rawVersion } = resolveMsiBundleVersion({
     refName,
     refType,
     repoRoot,
   });
-  const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, "utf8"));
-  const cargoToml = readFileSync(cargoTomlPath, "utf8");
-
-  if (!/^version = ".*"$/m.test(cargoToml)) {
-    throw new Error("Could not find the package version in src-tauri/Cargo.toml.");
-  }
-
-  tauriConfig.version = msiVersion;
-  const updatedCargoToml = cargoToml.replace(
-    /^version = ".*"$/m,
-    `version = "${msiVersion}"`,
-  );
-
+  const resolvedOutputPath = resolve(outputPath);
+  const override = {
+    bundle: {
+      windows: {
+        wix: {
+          version: msiVersion,
+        },
+      },
+    },
+  };
   writeFileSync(
-    tauriConfigPath,
-    `${JSON.stringify(tauriConfig, null, 2)}\n`,
-    "utf8",
+    resolvedOutputPath,
+    `${JSON.stringify(override, null, 2)}\n`,
+    { encoding: "utf8", flush: true },
   );
-  writeFileSync(cargoTomlPath, updatedCargoToml, "utf8");
-
-  return { msiVersion, rawVersion };
+  return { msiVersion, outputPath: resolvedOutputPath, rawVersion };
 }
 
 function runCli() {
-  const checkOnly = process.argv.slice(2).includes("--check");
-  const { msiVersion } = checkOnly
-    ? resolveMsiBundleVersion()
-    : updateMsiBundleVersion();
-  console.log(
-    checkOnly
-      ? `MSI bundle version is valid: ${msiVersion}`
-      : `Using MSI bundle version: ${msiVersion}`,
-  );
+  const { values } = parseArgs({
+    allowPositionals: false,
+    options: {
+      check: { type: "boolean" },
+      output: { type: "string" },
+    },
+    strict: true,
+  });
+
+  if (values.check && values.output) {
+    throw new Error("Use either --check or --output, not both.");
+  }
+  if (values.check) {
+    const { msiVersion } = resolveMsiBundleVersion();
+    console.log(`MSI bundle version is valid: ${msiVersion}`);
+    return;
+  }
+  if (!values.output) {
+    throw new Error("Use --check or provide --output <path>.");
+  }
+
+  const { msiVersion, outputPath } = writeMsiVersionOverride({
+    outputPath: values.output,
+  });
+  console.log(`Wrote MSI version override ${msiVersion} to ${outputPath}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
