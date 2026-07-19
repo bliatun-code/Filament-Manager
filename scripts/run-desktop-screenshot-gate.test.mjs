@@ -536,6 +536,7 @@ test("launched desktop gate can retry when only visible-window diagnostics fail"
 });
 
 test("launched desktop gate preserves a resize lookup failure after safe cleanup", async () => {
+  const clock = createFakeClock();
   const cleanup = [];
   const lookupError = new Error("resize lookup denied");
   let lookupCalls = 0;
@@ -558,10 +559,12 @@ test("launched desktop gate preserves a resize lookup failure after safe cleanup
         live: false,
         targetPath: testVisualDatabasePath,
       }),
-      resizeWindowPollMs: 0,
+      nowFn: clock.now,
+      resizeWindowPollMs: 1,
       resizeWindowTimeoutMs: 0,
       spawnFn: () => createFakeChild(),
       terminateChildFn: async () => true,
+      waitFn: clock.wait,
       windowSize: { height: 700, width: 900 },
     }),
     (error) => error === lookupError,
