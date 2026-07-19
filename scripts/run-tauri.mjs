@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+const DEFAULT_REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
+
 export const FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY_ENV =
   "FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY";
 export const FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV =
@@ -161,7 +163,7 @@ export function withMacosSigningBuildEnvironment({
 
 export function runTauriCli({
   argv = process.argv.slice(2),
-  cwd = process.cwd(),
+  cwd = DEFAULT_REPO_ROOT,
   env = process.env,
   platform = process.platform,
 } = {}) {
@@ -178,6 +180,12 @@ export function runTauriCli({
     cwd: tauriProjectDir,
     stdio: "inherit",
     env: childEnv,
+    shell: false,
+  });
+
+  child.once("error", (error) => {
+    console.error(`Unable to launch Tauri CLI: ${error.message}`);
+    process.exitCode = 1;
   });
 
   child.on("exit", (code, signal) => {
@@ -187,6 +195,8 @@ export function runTauriCli({
     }
     process.exit(code ?? 1);
   });
+
+  return child;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY_ENV,
@@ -20,6 +23,50 @@ function injectedConfig(args) {
   assert.notEqual(configIndex, -1);
   return JSON.parse(args[configIndex + 1]);
 }
+
+const runTauriScriptPath = fileURLToPath(new URL("./run-tauri.mjs", import.meta.url));
+
+test("run-tauri resolves its project from the script when launched elsewhere", (context) => {
+  const foreignCwd = mkdtempSync(path.join(tmpdir(), "Filament Manager æøå 漢字-"));
+  context.after(() => rmSync(foreignCwd, { recursive: true, force: true }));
+
+  const result = spawnSync(process.execPath, [runTauriScriptPath, "--version"], {
+    cwd: foreignCwd,
+    encoding: "utf8",
+    shell: false,
+    timeout: 20_000,
+    windowsHide: true,
+  });
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.signal, null);
+  assert.match(`${result.stdout}\n${result.stderr}`, /tauri-cli\s+\d/i);
+});
+
+test("run-tauri reports a controlled error when its project is incomplete", (context) => {
+  const fixtureRoot = mkdtempSync(path.join(tmpdir(), "Filament Manager fixture æøå-"));
+  context.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
+  const missingProjectRoot = path.join(fixtureRoot, "missing project root");
+  const importUrl = pathToFileURL(runTauriScriptPath).href;
+  const source =
+    `import { runTauriCli } from ${JSON.stringify(importUrl)};` +
+    `runTauriCli({ argv: ["--version"], cwd: ${JSON.stringify(missingProjectRoot)} });`;
+
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", source], {
+    cwd: fixtureRoot,
+    encoding: "utf8",
+    shell: false,
+    timeout: 20_000,
+    windowsHide: true,
+  });
+
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 1);
+  assert.equal(result.signal, null);
+  assert.match(result.stderr, /Unable to launch Tauri CLI/);
+  assert.doesNotMatch(result.stderr, /Unhandled 'error' event/);
+});
 
 test("withMacosSigningConfig injects ad-hoc signing for local macOS builds", () => {
   const args = withMacosSigningConfig(["build", "--bundles", "dmg"], {
