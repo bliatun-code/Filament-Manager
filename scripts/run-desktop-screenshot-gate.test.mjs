@@ -239,6 +239,68 @@ test("launched desktop gate cleans its generated database when spawn throws sync
   assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
 });
 
+test("launched desktop gate preserves synchronous spawn and cleanup failures", async () => {
+  const spawnError = new Error("spawn EACCES");
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: () => {
+        throw cleanupError;
+      },
+      platform: "win32",
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      spawnFn: () => {
+        throw spawnError;
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [spawnError, cleanupError]);
+      assert.equal(error.cause, spawnError);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /cleanup failed or may be incomplete/i);
+      return true;
+    },
+  );
+});
+
+test("launched desktop gate reports a kept temporary database when spawn throws", async () => {
+  const cleanup = [];
+  const spawnError = new Error("spawn EACCES");
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      keep: true,
+      platform: "win32",
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      spawnFn: () => {
+        throw spawnError;
+      },
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [spawnError]);
+      assert.equal(error.cause, spawnError);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /temporary database retained/i);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
 test("launched desktop gate preserves kept copies and live databases when spawn throws", async () => {
   for (const scenario of [
     { database: { live: false, targetPath: testVisualDatabasePath }, keep: true },
@@ -258,7 +320,15 @@ test("launched desktop gate preserves kept copies and live databases when spawn 
           throw spawnError;
         },
       }),
-      (error) => error === spawnError,
+      (error) => {
+        if (scenario.database.live) {
+          return error === spawnError;
+        }
+        assert.ok(error instanceof AggregateError);
+        assert.equal(error.cause, spawnError);
+        assert.ok(error.message.includes(scenario.database.targetPath));
+        return true;
+      },
     );
 
     assert.deepEqual(cleanup, []);
@@ -407,6 +477,100 @@ test("launched desktop gate rechecks keep-app ownership after window diagnostics
   assert.equal(child.unrefCalls, 0);
 });
 
+test("launched desktop gate reports permanent window lookup failures without retry", async () => {
+  const cleanup = [];
+  const lookupError = Object.assign(new Error("Accessibility denied"), {
+    code: "EACCES",
+  });
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => ({ stdout: "" }),
+    findWindowFn: async () => {
+      throw lookupError;
+    },
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    spawnFn: () => createFakeChild(),
+    startupTimeoutMs: 0,
+    terminateChildFn: async () => true,
+    windowPollMs: 0,
+  });
+
+  assert.match(result.errors[0], /EACCES: Accessibility denied/);
+  assert.equal(result.retryableLaunchFailure, false);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched desktop gate can retry when only visible-window diagnostics fail", async () => {
+  const cleanup = [];
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => {
+      throw new Error("visible window diagnostics unavailable");
+    },
+    findWindowFn: async () => null,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    spawnFn: () => createFakeChild(),
+    startupTimeoutMs: 0,
+    terminateChildFn: async () => true,
+    windowPollMs: 0,
+  });
+
+  assert.match(result.errors[0], /visible window diagnostics unavailable/);
+  assert.equal(result.launchFailed, true);
+  assert.equal(result.retryableLaunchFailure, true);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched desktop gate preserves a resize lookup failure after safe cleanup", async () => {
+  const cleanup = [];
+  const lookupError = new Error("resize lookup denied");
+  let lookupCalls = 0;
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => {
+        lookupCalls += 1;
+        if (lookupCalls === 1) {
+          return createMetric().window;
+        }
+        throw lookupError;
+      },
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      resizeWindowPollMs: 0,
+      resizeWindowTimeoutMs: 0,
+      spawnFn: () => createFakeChild(),
+      terminateChildFn: async () => true,
+      windowSize: { height: 700, width: 900 },
+    }),
+    (error) => error === lookupError,
+  );
+
+  assert.equal(lookupCalls, 2);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
 test("launched desktop gate reports an intentional keep-app ownership transfer", async () => {
   const child = createFakeChild();
   const cleanup = [];
@@ -433,6 +597,81 @@ test("launched desktop gate reports an intentional keep-app ownership transfer",
   assert.equal(result.terminationConfirmed, null);
   assert.deepEqual(cleanup, []);
   assert.equal(child.unrefCalls, 1);
+});
+
+test("launched desktop gate reports a failed keep-app ownership transfer", async () => {
+  const releaseError = new Error("unref failed");
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => null,
+      keepAppOnFail: true,
+      platform: "win32",
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      releaseChildFn: async () => {
+        throw releaseError;
+      },
+      spawnFn: () => createFakeChild(),
+      startupTimeoutMs: 0,
+      windowPollMs: 0,
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.errors.at(-1), releaseError);
+      assert.match(error.message, /ownership transfer failed/i);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched desktop gate reclaims ownership when the app stops during async transfer", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  let terminationCalls = 0;
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    execFileFn: async () => ({ stdout: "" }),
+    findWindowFn: async () => null,
+    keepAppOnFail: true,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    releaseChildFn: async () => {
+      child.exitCode = 17;
+      child.emit("close", 17, null);
+    },
+    spawnFn: () => child,
+    startupTimeoutMs: 0,
+    terminateChildFn: async () => {
+      terminationCalls += 1;
+      return true;
+    },
+    windowPollMs: 0,
+  });
+
+  assert.equal(result.appKept, false);
+  assert.equal(result.launchOwnershipUnresolved, false);
+  assert.equal(result.retryableLaunchFailure, true);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.equal(result.terminationConfirmed, true);
+  assert.equal(terminationCalls, 1);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
 });
 
 test("launched desktop gate retries only after safe no-window teardown", async () => {
@@ -605,6 +844,283 @@ test("successful launched desktop capture reports teardown and cleanup ownership
     );
     assert.equal(result.retryableLaunchFailure, false);
     assert.equal(result.errors.length, terminationConfirmed ? 0 : 1);
+  }
+});
+
+test("launched desktop gate preserves capture failures across finalization", async () => {
+  const cases = [
+    {
+      cleanupThrows: false,
+      expectedErrors: 1,
+      expectedRetained: false,
+      terminate: async () => true,
+    },
+    {
+      cleanupThrows: false,
+      expectedErrors: 2,
+      expectedRetained: true,
+      terminate: async () => false,
+    },
+    {
+      cleanupThrows: false,
+      expectedErrors: 2,
+      expectedRetained: true,
+      terminate: async () => {
+        throw new Error("termination exploded");
+      },
+    },
+    {
+      cleanupThrows: true,
+      expectedErrors: 2,
+      expectedRetained: true,
+      terminate: async () => true,
+    },
+  ];
+
+  for (const scenario of cases) {
+    const captureError = new Error("capture failed");
+    const cleanupError = new Error("cleanup failed");
+    const cleanup = [];
+
+    await assert.rejects(
+      runLaunchedDesktopScreenshotGate({
+        allowNonDarwin: true,
+        cleanupVisualQaDatabase: (path) => {
+          cleanup.push(path);
+          if (scenario.cleanupThrows) {
+            throw cleanupError;
+          }
+        },
+        findWindowFn: async () => createMetric().window,
+        platform: "win32",
+        postTerminateDelayMs: 0,
+        prepareVisualQaDatabase: async () => ({
+          live: false,
+          targetPath: testVisualDatabasePath,
+        }),
+        runDesktopScreenshotGateFn: async () => {
+          throw captureError;
+        },
+        spawnFn: () => createFakeChild(),
+        terminateChildFn: scenario.terminate,
+      }),
+      (error) => {
+        if (scenario.expectedRetained) {
+          assert.ok(error instanceof AggregateError);
+          assert.equal(error.errors[0], captureError);
+          assert.equal(error.errors.length, scenario.expectedErrors);
+          assert.equal(error.cause, captureError);
+          assert.equal(error.temporaryDatabaseRetained, true);
+          assert.ok(error.message.includes(testVisualDatabasePath));
+        } else {
+          assert.equal(error, captureError);
+        }
+        if (scenario.cleanupThrows) {
+          assert.equal(error.errors[1], cleanupError);
+          assert.match(error.message, /cleanup failed or may be incomplete/i);
+        }
+        return true;
+      },
+    );
+
+    assert.deepEqual(
+      cleanup,
+      scenario.cleanupThrows || scenario.expectedRetained === false
+        ? [testVisualDatabasePath]
+        : [],
+    );
+  }
+});
+
+test("launched desktop gate never treats a live database as temporary on capture failure", async () => {
+  const captureError = new Error("capture failed");
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      findWindowFn: async () => createMetric().window,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => ({
+        live: true,
+        targetPath: testSourceDatabasePath,
+      }),
+      runDesktopScreenshotGateFn: async () => {
+        throw captureError;
+      },
+      spawnFn: () => createFakeChild(),
+      terminateChildFn: async () => false,
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.errors[0], captureError);
+      assert.equal(error.cause, captureError);
+      assert.equal(error.temporaryDatabaseRetained, false);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.ok(error.message.includes(testSourceDatabasePath));
+      assert.match(error.message, /live database/i);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched desktop gate reports retained database when termination throws without a primary exception", async () => {
+  const terminationError = new Error("termination exploded");
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => null,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      spawnFn: () => createFakeChild(),
+      startupTimeoutMs: 0,
+      terminateChildFn: async () => {
+        throw terminationError;
+      },
+      windowPollMs: 0,
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.match(error.message, /No Filament Manager desktop window/);
+      assert.match(error.message, /termination exploded/);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.equal(error.errors.at(-1), terminationError);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
+test("launched desktop gate reports incomplete cleanup after an otherwise successful capture", async () => {
+  const cleanupError = new Error("cleanup denied");
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      cleanupVisualQaDatabase: () => {
+        throw cleanupError;
+      },
+      findWindowFn: async () => createMetric().window,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      runDesktopScreenshotGateFn: async (options) => ({
+        errors: [],
+        metric: { window: options.window },
+        outputDir: testOutputDir,
+      }),
+      spawnFn: () => createFakeChild(),
+      terminateChildFn: async () => true,
+    }),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [cleanupError]);
+      assert.equal(error.cause, cleanupError);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.ok(error.message.includes(testVisualDatabasePath));
+      assert.match(error.message, /cleanup failed or may be incomplete/i);
+      return true;
+    },
+  );
+});
+
+test("launched desktop gate cannot return green after the app dies during capture", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    findWindowFn: async () => createMetric().window,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    runDesktopScreenshotGateFn: async (options) => {
+      child.exitCode = 17;
+      child.emit("close", 17, null);
+      return {
+        errors: [],
+        metric: { window: options.window },
+        outputDir: testOutputDir,
+      };
+    },
+    spawnFn: () => child,
+    terminateChildFn: async () => true,
+  });
+
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /exited during desktop screenshot capture \(17\)/i);
+  assert.equal(result.retryableLaunchFailure, true);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched desktop gate composes capture and concurrent child failures", async () => {
+  for (const childFailure of ["error", "exit"]) {
+    const child = createFakeChild();
+    const captureError = new Error("capture failed");
+    const childError = Object.assign(new Error("child pipe failed"), {
+      code: "EPIPE",
+    });
+    const cleanup = [];
+
+    await assert.rejects(
+      runLaunchedDesktopScreenshotGate({
+        allowNonDarwin: true,
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        findWindowFn: async () => createMetric().window,
+        platform: "win32",
+        postTerminateDelayMs: 0,
+        prepareVisualQaDatabase: async () => ({
+          live: false,
+          targetPath: testVisualDatabasePath,
+        }),
+        runDesktopScreenshotGateFn: async () => {
+          child.exitCode = 17;
+          if (childFailure === "error") {
+            child.emit("error", childError);
+          }
+          child.emit("close", 17, null);
+          throw captureError;
+        },
+        spawnFn: () => child,
+        terminateChildFn: async () => true,
+      }),
+      (error) => {
+        assert.ok(error instanceof AggregateError);
+        assert.equal(error.errors[0], captureError);
+        assert.equal(error.cause, captureError);
+        if (childFailure === "error") {
+          assert.equal(error.errors[1], childError);
+          assert.match(error.message, /EPIPE: child pipe failed/);
+        } else {
+          assert.match(error.errors[1].message, /exited.*\(17\)/i);
+          assert.match(error.message, /exited.*\(17\)/i);
+        }
+        return true;
+      },
+    );
+
+    assert.deepEqual(cleanup, [testVisualDatabasePath]);
   }
 });
 
@@ -1455,6 +1971,7 @@ test("desktop launch retry repeats only cleanly released launch failures", async
         errors: [
           "No Filament Manager desktop window titled Dashboard was found after launching Tauri dev.",
         ],
+        launchFailed: true,
         retryableLaunchFailure: true,
         temporaryDatabaseRetained: false,
         terminationConfirmed: true,
@@ -1465,6 +1982,8 @@ test("desktop launch retry repeats only cleanly released launch failures", async
   assert.equal(calls.length, 3);
   assert.ok(calls.every((attemptOptions) => attemptOptions === options));
   assert.equal(result.launchAttempts, 3);
+  assert.equal(result.launchAttemptsExhausted, true);
+  assert.equal(result.terminalLaunchFailure, true);
 });
 
 test("desktop launch retry defaults invalid attempt counts to one", async () => {
@@ -1484,10 +2003,34 @@ test("desktop launch retry defaults invalid attempt counts to one", async () => 
   }
 });
 
+test("desktop launch retry never retries an exception", async () => {
+  const attemptError = new Error("launch attempt failed");
+  let calls = 0;
+
+  await assert.rejects(
+    runDesktopScreenshotGateWithLaunchRetry(
+      { relaunchDelayMs: 0 },
+      3,
+      async () => {
+        calls += 1;
+        throw attemptError;
+      },
+    ),
+    (error) => error === attemptError,
+  );
+
+  assert.equal(calls, 1);
+});
+
 test("desktop scenario launches stop after app ownership is retained or unresolved", async () => {
   for (const terminalResult of [
     { appKept: true, launchOwnershipUnresolved: false },
     { appKept: false, launchOwnershipUnresolved: true },
+    {
+      appKept: false,
+      launchFailed: true,
+      launchOwnershipUnresolved: false,
+    },
   ]) {
     const scenarios = ["dashboard", "inventory", "loans"];
     const calls = [];
@@ -1621,6 +2164,53 @@ test("desktop screenshot gate waits for an appearing window", async () => {
 
   assert.equal(window?.title, "Filament Manager");
   assert.equal(attempts, 3);
+});
+
+test("desktop screenshot window polling exposes permanent lookup failures", async () => {
+  const clock = createFakeClock();
+  const attempts = [];
+  const lookupError = new Error("Accessibility denied");
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      throw lookupError;
+    },
+    intervalMs: 10,
+    nowFn: clock.now,
+    onLookupAttempt: (attempt) => attempts.push(attempt),
+    timeoutMs: 25,
+    waitFn: clock.wait,
+  });
+
+  assert.equal(window, null);
+  assert.equal(attempts.length, 3);
+  assert.ok(attempts.every((attempt) => attempt.error === lookupError));
+});
+
+test("desktop screenshot window polling clears a transient lookup failure", async () => {
+  const clock = createFakeClock();
+  const attempts = [];
+  const expectedWindow = createMetric().window;
+  let call = 0;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      call += 1;
+      if (call === 1) {
+        throw new Error("temporary lookup failure");
+      }
+      return expectedWindow;
+    },
+    intervalMs: 1,
+    nowFn: clock.now,
+    onLookupAttempt: (attempt) => attempts.push(attempt),
+    timeoutMs: 10,
+    waitFn: clock.wait,
+  });
+
+  assert.equal(window, expectedWindow);
+  assert.equal(attempts.length, 2);
+  assert.match(attempts[0].error.message, /temporary lookup failure/);
+  assert.equal(attempts[1].error, null);
+  assert.equal(attempts[1].window, expectedWindow);
 });
 
 test("desktop screenshot gate waits for a scenario-ready desktop window", async () => {
@@ -1886,6 +2476,19 @@ test("desktop screenshot report lists visible windows when launch misses the app
 
   assert.match(report, /Visible desktop windows/);
   assert.match(report, /Codex: Codex/);
+});
+
+test("desktop screenshot report explains exhausted launch attempts", () => {
+  const report = formatDesktopScreenshotGateReport({
+    errors: ["launch failed"],
+    launchAttempts: 2,
+    launchAttemptsExhausted: true,
+    metric: { visibleWindows: [], window: null },
+    outputDir: testOutputDir,
+  });
+
+  assert.match(report, /stopped after 2 launch attempts/);
+  assert.match(report, /later scenarios were not started/);
 });
 
 test("desktop screenshot report identifies retained app and database ownership", () => {
