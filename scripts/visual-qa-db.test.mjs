@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join, posix, resolve, win32 } from "node:path";
+import { basename, join, posix, resolve, win32 } from "node:path";
 import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
@@ -20,6 +27,7 @@ import {
   applyVisualQaDatabaseFixture,
   assessVisualQaDataset,
   chooseBalancedCatalogSwatchFixtureRows,
+  cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
   formatVisualQaLaunchCommand,
   formatSqliteCliBackupCommand,
@@ -27,9 +35,37 @@ import {
   normalizeVisualQaDatabaseFixtureScenario,
   normalizeVisualQaPath,
   normalizeVisualQaProfile,
+  prepareVisualQaDatabase,
   resolveVisualQaDbSource,
   visualQaTempDbPath,
 } from "./visual-qa-db.mjs";
+
+function createMinimalVisualQaSource(dbPath) {
+  const db = new Database(dbPath);
+  try {
+    db.exec(`
+      CREATE TABLE filament_spools (id TEXT PRIMARY KEY);
+      CREATE TABLE printers (id TEXT PRIMARY KEY);
+      INSERT INTO filament_spools (id) VALUES ('spool-1');
+      INSERT INTO printers (id) VALUES ('printer-1');
+    `);
+  } finally {
+    db.close();
+  }
+}
+
+function listGeneratedVisualQaCopies(sourcePath, now) {
+  const generatedDir = join(tmpdir(), "filament-manager-visual-qa");
+  if (!existsSync(generatedDir)) {
+    return [];
+  }
+  const stamp = now.toISOString().replaceAll(/[:.]/g, "-");
+  const sourceName = basename(sourcePath).replace(/\.db$/i, "");
+  const prefix = `${sourceName}-${stamp}-`;
+  return readdirSync(generatedDir)
+    .filter((name) => name.startsWith(prefix))
+    .map((name) => join(generatedDir, name));
+}
 
 test("visual QA launch command is copyable in POSIX shells", () => {
   const dbPath = posix.join("workspace", "Visual QA", "O'Brien.db");
@@ -432,6 +468,144 @@ test("visualQaTempDbPath stays unique when calls share a source and timestamp", 
   assert.match(first, /filament-manager-visual-qa/);
   assert.match(first, expectedName);
   assert.match(second, expectedName);
+});
+
+test("prepareVisualQaDatabase removes its generated copy when a fixture fails", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-failure-cleanup-"));
+  const sourcePath = join(dir, `${basename(dir)}.db`);
+  const now = new Date("2026-07-01T00:00:00Z");
+  const generatedCopies = () => listGeneratedVisualQaCopies(sourcePath, now);
+
+  try {
+    createMinimalVisualQaSource(sourcePath);
+
+    assert.deepEqual(generatedCopies(), []);
+    await assert.rejects(
+      prepareVisualQaDatabase({
+        interfaces: [],
+        now,
+        profile: "base",
+        scenario: "printer-slot-onboarding",
+        sourcePath,
+      }),
+      /no such table: settings/,
+    );
+    assert.deepEqual(generatedCopies(), []);
+  } finally {
+    for (const generatedPath of generatedCopies()) {
+      cleanupVisualQaDatabase(generatedPath);
+    }
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("prepareVisualQaDatabase preserves an explicit target when a fixture fails", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-explicit-failure-"));
+  const sourcePath = join(dir, "source.db");
+  const targetPath = join(dir, "explicit-target.db");
+
+  try {
+    createMinimalVisualQaSource(sourcePath);
+
+    await assert.rejects(
+      prepareVisualQaDatabase({
+        interfaces: [],
+        profile: "base",
+        scenario: "printer-slot-onboarding",
+        sourcePath,
+        targetPath,
+      }),
+      /no such table: settings/,
+    );
+    assert.equal(existsSync(targetPath), true);
+  } finally {
+    cleanupVisualQaDatabase(targetPath);
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("prepareVisualQaDatabase leaves a successful generated copy for its caller", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-successful-copy-"));
+  const sourcePath = join(dir, "source.db");
+  let targetPath = null;
+
+  try {
+    createMinimalVisualQaSource(sourcePath);
+
+    const result = await prepareVisualQaDatabase({
+      interfaces: [],
+      profile: "base",
+      sourcePath,
+    });
+    targetPath = result.targetPath;
+
+    assert.equal(result.live, false);
+    assert.equal(existsSync(targetPath), true);
+  } finally {
+    cleanupVisualQaDatabase(targetPath);
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("prepareVisualQaDatabase reports both preparation and generated-copy cleanup failures", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-cleanup-error-"));
+  const sourcePath = join(dir, `${basename(dir)}.db`);
+  const now = new Date("2026-07-01T00:00:00Z");
+  const generatedCopies = () => listGeneratedVisualQaCopies(sourcePath, now);
+  let retainedPath = null;
+  const scenario = {
+    toString() {
+      [retainedPath] = generatedCopies();
+      cleanupVisualQaDatabase(retainedPath);
+      mkdirSync(retainedPath);
+      return "printer-slot-onboarding";
+    },
+  };
+
+  try {
+    createMinimalVisualQaSource(sourcePath);
+
+    await assert.rejects(
+      prepareVisualQaDatabase({
+        interfaces: [],
+        now,
+        profile: "base",
+        scenario,
+        sourcePath,
+      }),
+      (error) => {
+        assert.equal(error instanceof AggregateError, true);
+        assert.equal(error.errors.length, 2);
+        assert.match(error.message, /cleanup also failed/i);
+        assert.ok(error.message.includes(retainedPath));
+        return true;
+      },
+    );
+    assert.equal(existsSync(retainedPath), true);
+  } finally {
+    for (const generatedPath of generatedCopies()) {
+      rmSync(generatedPath, { force: true, recursive: true });
+    }
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("cleanupVisualQaDatabase removes SQLite database sidecars", () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-sidecars-"));
+  const dbPath = join(dir, "copy.db");
+  const paths = [dbPath, `${dbPath}-wal`, `${dbPath}-shm`, `${dbPath}-journal`];
+
+  try {
+    for (const path of paths) {
+      writeFileSync(path, "visual QA cleanup fixture");
+    }
+
+    cleanupVisualQaDatabase(dbPath);
+
+    assert.deepEqual(paths.map((path) => existsSync(path)), [false, false, false, false]);
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
 });
 
 test("applyVisualQaDatabaseFixture creates a printer slot onboarding state on copies", async () => {

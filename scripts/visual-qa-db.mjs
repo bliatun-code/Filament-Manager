@@ -1683,48 +1683,81 @@ export async function prepareVisualQaDatabase(options = {}) {
     };
   }
 
-  const targetPath =
-    options.targetPath ??
-    visualQaTempDbPath(source.path, options.now ?? new Date());
-  const copyMethod = await copySqliteDatabase(source.path, targetPath);
-  const trustedLanFixture = await applyTrustedLanInterfaceFixture(targetPath, {
-    interfaces: options.interfaces,
-    trustedLanPort: options.trustedLanPort,
-  });
-  const fixture = await applyVisualQaDatabaseFixture(targetPath, options.scenario, {
-    now: options.now,
-  });
-  const targetInspection = await inspectVisualQaDatabase(targetPath);
-  const targetAssessment = assessVisualQaDataset(targetInspection, { ...options, profile });
-  if (targetAssessment.errors.length > 0) {
-    throw new Error(
-      formatVisualQaDatasetReport({
-        assessment: targetAssessment,
-        inspection: targetInspection,
-        sourcePath: source.path,
-        targetPath,
-      }),
-    );
-  }
+  const generatedTarget = options.targetPath == null;
+  const targetPath = generatedTarget
+    ? visualQaTempDbPath(source.path, options.now ?? new Date())
+    : options.targetPath;
+  try {
+    const copyMethod = await copySqliteDatabase(source.path, targetPath);
+    const trustedLanFixture = await applyTrustedLanInterfaceFixture(targetPath, {
+      interfaces: options.interfaces,
+      trustedLanPort: options.trustedLanPort,
+    });
+    const fixture = await applyVisualQaDatabaseFixture(targetPath, options.scenario, {
+      now: options.now,
+    });
+    const targetInspection = await inspectVisualQaDatabase(targetPath);
+    const targetAssessment = assessVisualQaDataset(targetInspection, { ...options, profile });
+    if (targetAssessment.errors.length > 0) {
+      throw new Error(
+        formatVisualQaDatasetReport({
+          assessment: targetAssessment,
+          inspection: targetInspection,
+          sourcePath: source.path,
+          targetPath,
+        }),
+      );
+    }
 
-  return {
-    assessment: targetAssessment,
-    copyMethod,
-    fixtures: [trustedLanFixture, fixture].filter(Boolean),
-    inspection: targetInspection,
-    live: false,
-    sourcePath: source.path,
-    sourceType: source.source,
-    targetPath,
-  };
+    return {
+      assessment: targetAssessment,
+      copyMethod,
+      fixtures: [trustedLanFixture, fixture].filter(Boolean),
+      inspection: targetInspection,
+      live: false,
+      sourcePath: source.path,
+      sourceType: source.source,
+      targetPath,
+    };
+  } catch (error) {
+    if (generatedTarget) {
+      try {
+        cleanupVisualQaDatabase(targetPath);
+      } catch (cleanupError) {
+        const preparationReason = error instanceof Error ? error.message : String(error);
+        const cleanupReason =
+          cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+        throw new AggregateError(
+          [error, cleanupError],
+          `${preparationReason}\nAutomatic Visual QA database cleanup also failed for ${targetPath}: ${cleanupReason}`,
+          { cause: error },
+        );
+      }
+    }
+    throw error;
+  }
 }
 
 export function cleanupVisualQaDatabase(dbPath) {
   if (!dbPath) {
     return;
   }
-  for (const suffix of ["", "-wal", "-shm"]) {
-    rmSync(`${dbPath}${suffix}`, { force: true });
+  const errors = [];
+  for (const suffix of ["", "-wal", "-shm", "-journal"]) {
+    try {
+      rmSync(`${dbPath}${suffix}`, { force: true });
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length === 1) {
+    throw errors[0];
+  }
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      `Could not remove every Visual QA database file for ${dbPath}.`,
+    );
   }
 }
 
