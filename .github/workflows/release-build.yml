@@ -254,11 +254,12 @@ jobs:
       - name: Upload verified DMG artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: filament-manager-macos-dmg-${{ github.run_id }}-${{ github.run_attempt }}
+          name: filament-manager-macos-dmg-${{ github.run_id }}
           path: |
             ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/*.dmg
             ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/SHA256SUMS.txt
           if-no-files-found: error
+          overwrite: true
           retention-days: 14
 
       - name: Remove Apple credentials
@@ -326,9 +327,134 @@ jobs:
       - name: Upload verified MSI artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: filament-manager-windows-msi-${{ github.run_id }}-${{ github.run_attempt }}
+          name: filament-manager-windows-msi-${{ github.run_id }}
           path: |
             target/release/bundle/msi/*.msi
             target/release/bundle/msi/SHA256SUMS-windows.txt
           if-no-files-found: error
+          overwrite: true
           retention-days: 14
+
+  publish-github-release:
+    name: Publish verified GitHub release
+    needs:
+      - validate-release
+      - build-macos-dmg
+      - build-windows-msi
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      checks: read
+      contents: write
+    steps:
+      - name: Require successful CI checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          required_checks=("macOS Smoke" "Windows Smoke")
+
+          for check_name in "${required_checks[@]}"; do
+            check_runs="$(
+              gh api \
+                --method GET \
+                -H "Accept: application/vnd.github+json" \
+                "/repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+                -f check_name="$check_name" \
+                -f filter=latest \
+                -F per_page=100
+            )"
+            check_state="$(
+              jq -r --arg check_name "$check_name" '
+                [
+                  .check_runs[]
+                  | select(
+                      .name == $check_name
+                      and .app.slug == "github-actions"
+                    )
+                ]
+                | sort_by([(.started_at // .created_at // ""), .id])
+                | if length == 0 then
+                    "missing"
+                  else
+                    (last | "\(.status):\(.conclusion // "pending")")
+                  end
+              ' <<< "$check_runs"
+            )"
+
+            if [[ "$check_state" != "completed:success" ]]; then
+              echo "::error::Required CI check '$check_name' for $GITHUB_SHA is $check_state, not completed:success."
+              exit 1
+            fi
+          done
+
+      - name: Checkout release notes
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Download verified macOS artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-macos-dmg-${{ github.run_id }}
+          path: release-assets/macos
+
+      - name: Download verified Windows artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-windows-msi-${{ github.run_id }}
+          path: release-assets/windows
+
+      - name: Assemble and verify release assets
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          notes_path="RELEASE_NOTES_v${package_version}.md"
+          if [[ "$RELEASE_TAG" != "v$package_version" || ! -f "$notes_path" ]]; then
+            echo "::error::Release tag, package version and release notes must match."
+            exit 1
+          fi
+
+          mapfile -t dmgs < <(find release-assets/macos -maxdepth 1 -type f -name '*.dmg' -print)
+          mapfile -t msis < <(find release-assets/windows -maxdepth 1 -type f -name '*.msi' -print)
+          if [[ ${#dmgs[@]} -ne 1 || ${#msis[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one verified DMG and one verified MSI."
+            exit 1
+          fi
+
+          macos_manifest="release-assets/macos/SHA256SUMS.txt"
+          windows_manifest="release-assets/windows/SHA256SUMS-windows.txt"
+          if [[ ! -f "$macos_manifest" || ! -f "$windows_manifest" ]]; then
+            echo "::error::Both platform checksum manifests are required."
+            exit 1
+          fi
+          if [[ $(grep -cve '^[[:space:]]*$' "$macos_manifest") -ne 1 \
+            || $(grep -cve '^[[:space:]]*$' "$windows_manifest") -ne 1 ]]; then
+            echo "::error::Each checksum manifest must describe exactly one artifact."
+            exit 1
+          fi
+
+          (cd release-assets/macos && sha256sum --check SHA256SUMS.txt)
+          (cd release-assets/windows && sha256sum --check SHA256SUMS-windows.txt)
+
+          publish_dir="$RUNNER_TEMP/filament-manager-release-assets"
+          mkdir -p "$publish_dir"
+          cp -- "${dmgs[0]}" "${msis[0]}" "$macos_manifest" "$windows_manifest" "$publish_dir/"
+          echo "FILAMENT_MANAGER_RELEASE_ASSET_DIR=$publish_dir" >> "$GITHUB_ENV"
+          echo "FILAMENT_MANAGER_RELEASE_NOTES_PATH=$notes_path" >> "$GITHUB_ENV"
+
+      - name: Publish immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" \
+            "$FILAMENT_MANAGER_RELEASE_ASSET_DIR"/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --target "$GITHUB_SHA" \
+            --title "Filament Manager $GITHUB_REF_NAME" \
+            --notes-file "$FILAMENT_MANAGER_RELEASE_NOTES_PATH"

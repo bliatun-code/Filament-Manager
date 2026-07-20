@@ -35,8 +35,16 @@ The checksum confirms that the downloaded MSI is byte-for-byte identical to
 the artifact produced by the release workflow. During that workflow, the MSI
 is also opened through Windows Installer and checked for the expected product
 name, release version, and x64 package architecture before it can be uploaded.
+Version-tag releases are published only after the exact commit has passed the
+macOS and Windows CI checks and the MSI, signed macOS DMG, and both platform
+checksum manifests have passed their respective verification steps.
 
 ## Install
+
+Upgrades keep the active database under the current user's Local application
+data. If an older inventory is found under the previous Roaming location, the
+app performs a one-time, transactional recovery into Local storage, preserves
+the Roaming source, and creates a target backup before merging user data.
 
 After the checksum passes, open the MSI and follow the installer. Filament
 Manager is installed for the current user. App data remains in the current

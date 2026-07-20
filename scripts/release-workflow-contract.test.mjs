@@ -26,6 +26,10 @@ function assertStepOrder(source, stepNames) {
   assert.deepEqual(positions, [...positions].sort((left, right) => left - right));
 }
 
+function countOccurrences(source, value) {
+  return source.split(value).length - 1;
+}
+
 test("release workflow gates tag and manual installer builds", () => {
   const validationJob = readSection(
     releaseWorkflow,
@@ -37,7 +41,12 @@ test("release workflow gates tag and manual installer builds", () => {
     "  build-macos-dmg:",
     "  build-windows-msi:",
   );
-  const windowsJob = readSection(releaseWorkflow, "  build-windows-msi:");
+  const windowsJob = readSection(
+    releaseWorkflow,
+    "  build-windows-msi:",
+    "  publish-github-release:",
+  );
+  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
 
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
@@ -100,7 +109,11 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
   assert.match(
     windowsJob,
-    /name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+    /name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Upload verified MSI artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
   );
   assert.doesNotMatch(
     windowsJob,
@@ -129,6 +142,89 @@ test("release workflow gates tag and manual installer builds", () => {
     "Verify MSI bundle and write checksum",
     "Upload verified MSI artifact",
   ]);
+
+  assert.match(
+    publishJob,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- build-windows-msi/,
+  );
+  assert.match(
+    publishJob,
+    /if: github\.event_name == 'push' && github\.ref_type == 'tag'/,
+  );
+  assert.match(
+    publishJob,
+    /permissions:\s*\n\s+checks: read\s*\n\s+contents: write/,
+  );
+  assert.match(
+    publishJob,
+    /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+  );
+  assert.match(
+    publishJob,
+    /\/repos\/\$GITHUB_REPOSITORY\/commits\/\$GITHUB_SHA\/check-runs/,
+  );
+  assert.match(publishJob, /-f check_name="\$check_name"/);
+  assert.match(publishJob, /-f filter=latest/);
+  assert.match(publishJob, /\.app\.slug == "github-actions"/);
+  assert.match(publishJob, /sort_by\(\[\(\.started_at/);
+  assert.match(publishJob, /"completed:success"/);
+  assert.match(publishJob, /Required CI check '\$check_name'/);
+  assert.match(
+    publishJob,
+    /actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1/,
+  );
+  assert.match(
+    publishJob,
+    /- name: Download verified macOS artifact[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}\s+path: release-assets\/macos/,
+  );
+  assert.match(
+    publishJob,
+    /- name: Download verified Windows artifact[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}\s+path: release-assets\/windows/,
+  );
+  assert.match(publishJob, /SHA256SUMS\.txt/);
+  assert.match(publishJob, /SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /sha256sum --check SHA256SUMS\.txt/);
+  assert.match(publishJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /gh release create "\$GITHUB_REF_NAME"/);
+  assert.match(publishJob, /--verify-tag/);
+  assert.match(publishJob, /--target "\$GITHUB_SHA"/);
+  assert.match(publishJob, /--notes-file "\$FILAMENT_MANAGER_RELEASE_NOTES_PATH"/);
+
+  assertStepOrder(publishJob, [
+    "Require successful CI checks",
+    "Checkout release notes",
+    "Download verified macOS artifact",
+    "Download verified Windows artifact",
+    "Assemble and verify release assets",
+    "Publish immutable release",
+  ]);
+});
+
+test("release artifacts remain stable across partial workflow reruns", () => {
+  const macosJob = readSection(
+    releaseWorkflow,
+    "  build-macos-dmg:",
+    "  build-windows-msi:",
+  );
+  const windowsJob = readSection(
+    releaseWorkflow,
+    "  build-windows-msi:",
+    "  publish-github-release:",
+  );
+  const macosArtifactName = "filament-manager-macos-dmg-${{ github.run_id }}";
+  const windowsArtifactName = "filament-manager-windows-msi-${{ github.run_id }}";
+
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 2);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 2);
+  assert.doesNotMatch(releaseWorkflow, /github\.run_attempt/);
+  assert.match(
+    macosJob,
+    /- name: Upload verified DMG artifact[\s\S]*?overwrite: true/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Upload verified MSI artifact[\s\S]*?overwrite: true/,
+  );
 });
 
 test("Windows MSI verifier fails closed and writes a portable checksum", () => {
@@ -230,7 +326,17 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
     "Install root dependencies",
     "Run portability checks",
     "Run full verification",
+    "Prepare MSI smoke version override",
+    "Build MSI smoke bundle",
+    "Verify MSI smoke bundle",
   ]);
+  assert.match(windowsJob, /timeout-minutes: 45/);
+  assert.match(
+    windowsJob,
+    /npm run tauri -- build --debug --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+  );
+  assert.match(windowsJob, /-MsiDirectory "target\/debug\/bundle\/msi"/);
+  assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
 });
 
 test("release workflow keeps the protected macOS signing sequence fail-closed", () => {
@@ -260,7 +366,11 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(macosJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
   assert.match(
     macosJob,
-    /name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,
+    /name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Upload verified DMG artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
   );
   assert.doesNotMatch(
     macosJob,

@@ -42,6 +42,17 @@ function workflowFixtureIssues(source) {
   ).map(({ label, line }) => ({ label, line }));
 }
 
+function powerShellFixtureIssues(source) {
+  const findPowerShellScriptCommandPortabilityIssues =
+    requiredCommandPortabilityApi(
+      "findPowerShellScriptCommandPortabilityIssues",
+    );
+  return findPowerShellScriptCommandPortabilityIssues(
+    source,
+    "scripts/fixture.ps1",
+  ).map(({ label, line }) => ({ label, line }));
+}
+
 function packageManagerIssue(name, line) {
   return {
     label: `launch ${name} through Node and its JavaScript CLI instead of a platform shell shim`,
@@ -63,7 +74,7 @@ function implicitShellIssue(method, line) {
   };
 }
 
-test("command portability source collection covers JavaScript and TypeScript tests", (t) => {
+test("command portability source collection covers JavaScript, TypeScript, and PowerShell", (t) => {
   const tempRoot = mkdtempSync(join(tmpdir(), "filament-manager-command-portability-"));
   const repoRoot = join(tempRoot, "tests", "repository");
   t.after(() => rmSync(tempRoot, { recursive: true, force: true }));
@@ -73,6 +84,7 @@ test("command portability source collection covers JavaScript and TypeScript tes
     "scripts/runner.mjs",
     "scripts/runner.test.mjs",
     "scripts/tests/fixture.ts",
+    "scripts/verify.ps1",
     "src/scraper.spec.ts",
     "src/scraper.ts",
     "src/spec/fixture.js",
@@ -94,6 +106,203 @@ test("command portability source collection covers JavaScript and TypeScript tes
     relative(repoRoot, file).split(sep).join("/"),
   );
   assert.deepEqual(files, expectedFiles.sort());
+});
+
+test("PowerShell command portability rejects concrete POSIX shell constructs", () => {
+  const issues = powerShellFixtureIssues(
+    [
+      "set -euo pipefail",
+      '[[ "$MODE" == "test" ]]',
+      "export MODE=test",
+      "MODE=test node ./scripts/tool.mjs",
+      "env MODE=test node ./scripts/tool.mjs",
+      "chmod +x ./scripts/tool.mjs",
+      "rm -rf build",
+      'bash -lc "npm test"',
+      '& "./scripts/build.sh"',
+      "$value = $BASH_REMATCH[1]",
+      "$workspace = $GITHUB_WORKSPACE",
+      "cat <<EOF",
+      "node ./scripts/tool.mjs \\",
+      "export REVIEWED=test # command-portability-allow: intentional external compatibility probe",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues, [
+    {
+      label: "Bash error mode must not be used in a PowerShell script",
+      line: 1,
+    },
+    {
+      label: "Bash conditional syntax must not be used in a PowerShell script",
+      line: 2,
+    },
+    {
+      label: "POSIX export assignments must not be used in a PowerShell script",
+      line: 3,
+    },
+    {
+      label: "POSIX variable assignments must not be used in a PowerShell script",
+      line: 4,
+    },
+    {
+      label: "POSIX env commands must not be used in a PowerShell script",
+      line: 5,
+    },
+    {
+      label: "POSIX chmod modes must not be used in a PowerShell script",
+      line: 6,
+    },
+    {
+      label: "combined POSIX rm -rf flags must not be used in a PowerShell script",
+      line: 7,
+    },
+    {
+      label: "POSIX shells must not be launched from a PowerShell script",
+      line: 8,
+    },
+    {
+      label: "POSIX shell scripts must not be invoked directly in a PowerShell script",
+      line: 9,
+    },
+    {
+      label: "Bash match variables must not be used in a PowerShell script",
+      line: 10,
+    },
+    {
+      label:
+        "GitHub environment variables in PowerShell scripts require the PowerShell env: prefix",
+      line: 11,
+    },
+    {
+      label: "POSIX heredocs must not be used in a PowerShell script",
+      line: 12,
+    },
+    {
+      label: "POSIX line continuations must not be used in a PowerShell script",
+      line: 13,
+    },
+  ]);
+});
+
+test("PowerShell command portability accepts native syntax and ignores data strings", () => {
+  assert.deepEqual(
+    powerShellFixtureIssues(
+      [
+        "[CmdletBinding()]",
+        "param([string]$InputPath)",
+        '$ErrorActionPreference = "Stop"',
+        "Set-StrictMode -Version Latest",
+        "$settings = @{",
+        '    MODE="test"',
+        '    Description="bash -lc npm test"',
+        "}",
+        '$message = "set -euo pipefail"',
+        "$literal = @'",
+        "export MODE=test",
+        "'@",
+        '$interpolated = @"',
+        "rm -rf build",
+        '"@',
+        "<#",
+        "chmod +x tool",
+        "#>",
+        "$workspace = $env:GITHUB_WORKSPACE",
+        'Get-Content -LiteralPath $InputPath -Raw',
+        '& $tool "--version"',
+      ].join("\n"),
+    ),
+    [],
+  );
+});
+
+test("PowerShell command portability inspects executable interpolated subexpressions", () => {
+  const issues = powerShellFixtureIssues(
+    [
+      '$message = "prefix $(bash -lc \'npm test\') suffix"',
+      '$apostrophe = "it\'s still executable: $(bash -lc \'npm test\')"',
+      '$plainText = "bash -lc npm test"',
+      '$escaped = "`$(bash -lc \'npm test\')"',
+      "$singleQuoted = '$(bash -lc npm test)'",
+      '$interpolated = @"',
+      "prefix $(bash -lc 'npm test') suffix",
+      '"@',
+      "$literal = @'",
+      "$(bash -lc 'npm test')",
+      "'@",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues, [
+    {
+      label: "POSIX shells must not be launched from a PowerShell script",
+      line: 1,
+    },
+    {
+      label: "POSIX shells must not be launched from a PowerShell script",
+      line: 2,
+    },
+    {
+      label: "POSIX shells must not be launched from a PowerShell script",
+      line: 7,
+    },
+  ]);
+});
+
+test("PowerShell command portability covers paths, pipelines, and inline blocks", () => {
+  const issues = powerShellFixtureIssues(
+    [
+      'C:\\Git\\bin\\bash.exe -lc "npm test"',
+      '/usr/bin/bash -lc "npm test"',
+      'Write-Output ready | bash -lc "npm test"',
+      'if ($true) { bash -lc "npm test" }',
+      '$pathExample = "C:\\Git\\bin\\bash.exe -lc npm test"',
+      'Write-Output "bash -lc npm test"',
+      '${bash} = "data"',
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues,
+    [1, 2, 3, 4].map((line) => ({
+      label: "POSIX shells must not be launched from a PowerShell script",
+      line,
+    })),
+  );
+});
+
+test("command portability analyzes owned PowerShell scripts as PowerShell", (t) => {
+  const repoRoot = mkdtempSync(join(tmpdir(), "filament-manager-powershell-portability-"));
+  t.after(() => rmSync(repoRoot, { recursive: true, force: true }));
+
+  writeFixtureFile(
+    repoRoot,
+    "scripts/verify.ps1",
+    '[CmdletBinding()]\nparam()\nbash -lc "npm test"\n',
+  );
+
+  const result = analyzeCommandPortability({ repoRoot });
+  assert.deepEqual(
+    result.powerShellFiles.map((file) =>
+      relative(repoRoot, file).split(sep).join("/"),
+    ),
+    ["scripts/verify.ps1"],
+  );
+  assert.equal(result.childProcessFiles.length, 0);
+  assert.deepEqual(
+    result.issues.map(({ file, label, line }) => ({
+      file: relative(repoRoot, file).split(sep).join("/"),
+      label,
+      line,
+    })),
+    [
+      {
+        file: "scripts/verify.ps1",
+        label: "POSIX shells must not be launched from a PowerShell script",
+        line: 3,
+      },
+    ],
+  );
 });
 
 test("workflow command portability source collection covers yml and yaml workflows", (t) => {

@@ -49,7 +49,7 @@ jobs:
   windows-smoke:
     name: Windows Smoke
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -84,3 +84,26 @@ jobs:
 
       - name: Run full verification
         run: npm run verify
+
+      - name: Prepare MSI smoke version override
+        env:
+          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
+        run: node ./scripts/normalize-msi-version.mjs --output "$env:MSI_VERSION_CONFIG_PATH"
+
+      - name: Build MSI smoke bundle
+        env:
+          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
+        run: npm run tauri -- build --debug --bundles msi --config "$env:MSI_VERSION_CONFIG_PATH"
+
+      - name: Verify MSI smoke bundle
+        shell: pwsh
+        env:
+          MSI_VERSION_CONFIG_PATH: ${{ runner.temp }}/filament-manager-msi-smoke-version.json
+        run: |
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $msiVersionConfig = Get-Content -LiteralPath $env:MSI_VERSION_CONFIG_PATH -Raw | ConvertFrom-Json
+          ./scripts/verify-windows-msi.ps1 `
+            -MsiDirectory "target/debug/bundle/msi" `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
+            -ExpectedArchitecture "x64"

@@ -4,7 +4,16 @@ import { pathToFileURL } from "node:url";
 
 import { collectPathPortabilitySourceFiles } from "./check-path-portability.mjs";
 
-const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
+const sourceExtensions = new Set([
+  ".cjs",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".ps1",
+  ".ts",
+  ".tsx",
+]);
+const powerShellSourceExtensions = new Set([".ps1"]);
 const workflowSourceExtensions = new Set([".yaml", ".yml"]);
 const packageManifestFileName = "package.json";
 const allowMarker = "command-portability-allow:";
@@ -142,7 +151,8 @@ const windowsWorkflowRunPatterns = [
   },
   {
     label: "POSIX shells must not be launched from a Windows PowerShell workflow step",
-    pattern: /^\s*(?:&\s+)?(?:bash|sh|zsh)(?:\.exe)?(?:\s|$)/i,
+    pattern:
+      /^\s*(?:&\s+)?(?:(?:[A-Za-z]:)?[^\s"'`]*[\\/])?(?:bash|sh|zsh)(?:\.exe)?(?:\s|$)/i,
   },
   {
     label: "POSIX shell scripts must not be invoked directly in a Windows workflow job",
@@ -3015,6 +3025,7 @@ function containsUnquotedHeredoc(source) {
 
 function powerShellStatementSegments(source) {
   const segments = [];
+  let bracedVariableDepth = 0;
   let hashtableDepth = 0;
   let quote = null;
   let start = 0;
@@ -3040,6 +3051,19 @@ function powerShellStatementSegments(source) {
       quote = character;
       continue;
     }
+    if (bracedVariableDepth > 0) {
+      if (character === "{") {
+        bracedVariableDepth += 1;
+      } else if (character === "}") {
+        bracedVariableDepth -= 1;
+      }
+      continue;
+    }
+    if (source.startsWith("${", index)) {
+      bracedVariableDepth = 1;
+      index += 1;
+      continue;
+    }
     if (hashtableDepth === 0 && source.startsWith("@{", index)) {
       hashtableDepth = 1;
       index += 1;
@@ -3058,6 +3082,8 @@ function powerShellStatementSegments(source) {
         ? 1
         : source.startsWith("&&", index) || source.startsWith("||", index)
           ? 2
+          : character === "|" || character === "{" || character === "}"
+            ? 1
           : 0;
     if (operatorLength > 0) {
       segments.push(source.slice(start, index));
@@ -3067,6 +3093,83 @@ function powerShellStatementSegments(source) {
   }
   segments.push(source.slice(start));
   return segments;
+}
+
+function powerShellSubexpressionEnd(source, start) {
+  let depth = 1;
+  let quote = null;
+  for (let index = start + 2; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote) {
+      if (character === "`" && quote === '"') {
+        index += 1;
+      } else if (character === quote) {
+        if (quote === "'" && source[index + 1] === "'") {
+          index += 1;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (character === "`") {
+      index += 1;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === "(") {
+      depth += 1;
+    } else if (character === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
+}
+
+function powerShellExecutableSubexpressions(
+  source,
+  { interpolatedText = false } = {},
+) {
+  const subexpressions = [];
+  let quote = interpolatedText ? '"' : null;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (!interpolatedText && quote === "'") {
+      if (character === "'") {
+        if (source[index + 1] === "'") {
+          index += 1;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (character === "`") {
+      index += 1;
+      continue;
+    }
+    if (character !== "$" || source[index + 1] !== "(") {
+      if (!interpolatedText && quote === '"') {
+        if (character === '"') {
+          quote = null;
+        }
+      } else if (!interpolatedText && character === "'") {
+        quote = "'";
+      } else if (!interpolatedText && character === '"') {
+        quote = '"';
+      }
+      continue;
+    }
+    const end = powerShellSubexpressionEnd(source, index);
+    if (end === -1) {
+      continue;
+    }
+    subexpressions.push(source.slice(index + 2, end));
+    index = end;
+  }
+  return subexpressions;
 }
 
 function cmdStatementSegments(source) {
@@ -3187,6 +3290,254 @@ function normalizedPowerShellCallOperatorStatement(segment) {
   }
   const rest = source.slice(index).trimStart();
   return rest ? `${command} ${rest}` : command;
+}
+
+function findWindowsShellLinePortabilityIssues(
+  runCode,
+  {
+    file,
+    insidePowerShellHashtable = false,
+    labelForContext = (label) => label,
+    line,
+    usesCmdShell = false,
+  },
+) {
+  const issues = [];
+  const hasUnprefixedGithubEnvironment =
+    containsUnprefixedGithubEnvironment(runCode);
+  const statementSegments = usesCmdShell
+    ? cmdStatementSegments(runCode)
+    : powerShellStatementSegments(runCode);
+  const callOperatorSegments = usesCmdShell
+    ? []
+    : statementSegments
+        .map((segment) => normalizedPowerShellCallOperatorStatement(segment))
+        .filter(Boolean);
+
+  for (const {
+    label,
+    pattern,
+    quotedCmdPattern,
+    skipInPowerShellHashtable,
+    suppressWhenUnprefixedEnvironment,
+  } of windowsWorkflowRunPatterns) {
+    if (
+      (insidePowerShellHashtable && skipInPowerShellHashtable) ||
+      (hasUnprefixedGithubEnvironment && suppressWhenUnprefixedEnvironment)
+    ) {
+      continue;
+    }
+    if (
+      statementSegments.some(
+        (segment) =>
+          pattern.test(segment) ||
+          (usesCmdShell && quotedCmdPattern?.test(segment)),
+      ) ||
+      callOperatorSegments.some((segment) => pattern.test(segment))
+    ) {
+      issues.push({ file, label: labelForContext(label), line });
+    }
+  }
+  if (containsBashRematchExpansion(runCode)) {
+    issues.push({
+      file,
+      label: labelForContext(
+        "Bash match variables must not be used in a Windows workflow job",
+      ),
+      line,
+    });
+  }
+  if (hasUnprefixedGithubEnvironment) {
+    issues.push({
+      file,
+      label: labelForContext(
+        "GitHub environment variables in Windows workflow jobs require the PowerShell env: prefix",
+      ),
+      line,
+    });
+  }
+  if (containsUnquotedHeredoc(runCode)) {
+    issues.push({
+      file,
+      label: labelForContext(
+        "POSIX heredocs must not be used in a Windows workflow job",
+      ),
+      line,
+    });
+  }
+  if (/(?:^|\s)\\\s*$/.test(runCode)) {
+    issues.push({
+      file,
+      label: labelForContext(
+        "POSIX line continuations must not be used in a Windows workflow job",
+      ),
+      line,
+    });
+  }
+
+  return issues;
+}
+
+function powerShellScriptLabel(label) {
+  return label
+    .replace("Windows PowerShell workflow step", "PowerShell script")
+    .replace("Windows workflow jobs", "PowerShell scripts")
+    .replace("Windows workflow job", "PowerShell script");
+}
+
+function powerShellScriptSources(source) {
+  const sources = [];
+  const lines = source.split(/\r?\n/);
+  let hereString = null;
+  let inPowerShellBlockComment = false;
+  let multilinePowerShellQuote = null;
+  let powerShellHashtableDepth = 0;
+
+  const appendExecutableSubexpressions = (
+    commandSource,
+    line,
+    rawSource,
+    options,
+  ) => {
+    for (const subexpression of powerShellExecutableSubexpressions(
+      commandSource,
+      options,
+    )) {
+      sources.push({
+        insidePowerShellHashtable: false,
+        line,
+        rawSource,
+        source: subexpression,
+      });
+    }
+  };
+
+  for (const [index, rawSource] of lines.entries()) {
+    if (hereString) {
+      if (rawSource.trim() === hereString.terminator) {
+        hereString = null;
+      } else if (hereString.interpolates) {
+        appendExecutableSubexpressions(rawSource, index + 1, rawSource, {
+          interpolatedText: true,
+        });
+      }
+      continue;
+    }
+
+    let commandCandidate = rawSource;
+    if (multilinePowerShellQuote) {
+      const closeIndex = powerShellQuoteCloseIndex(
+        commandCandidate,
+        multilinePowerShellQuote,
+      );
+      if (multilinePowerShellQuote === '"') {
+        appendExecutableSubexpressions(
+          closeIndex === -1
+            ? commandCandidate
+            : commandCandidate.slice(0, closeIndex),
+          index + 1,
+          rawSource,
+          { interpolatedText: true },
+        );
+      }
+      if (closeIndex === -1) {
+        continue;
+      }
+      commandCandidate = commandCandidate.slice(closeIndex + 1);
+      multilinePowerShellQuote = null;
+      if (!commandCandidate.trim()) {
+        continue;
+      }
+    }
+
+    const blockCommentResult = stripPowerShellBlockComments(
+      commandCandidate,
+      inPowerShellBlockComment,
+    );
+    inPowerShellBlockComment = blockCommentResult.insideBlockComment;
+    const commandSource = blockCommentResult.source;
+    if (!commandSource.trim()) {
+      continue;
+    }
+
+    appendExecutableSubexpressions(commandSource, index + 1, rawSource);
+
+    const hereStringStart = powerShellHereStringTerminator(
+      sourceBeforeComment(commandSource.trim(), "`", false),
+    );
+    if (hereStringStart) {
+      hereString = hereStringStart;
+      continue;
+    }
+
+    const unclosedQuote = unclosedPowerShellQuote(
+      sourceBeforeComment(commandSource, "`", false),
+    );
+    if (unclosedQuote) {
+      const executablePrefix = commandSource.slice(0, unclosedQuote.index);
+      if (executablePrefix.trim()) {
+        sources.push({
+          insidePowerShellHashtable: powerShellHashtableDepth > 0,
+          line: index + 1,
+          rawSource,
+          source: executablePrefix,
+        });
+      }
+      multilinePowerShellQuote = unclosedQuote.quote;
+      continue;
+    }
+
+    const insidePowerShellHashtable = powerShellHashtableDepth > 0;
+    powerShellHashtableDepth = powerShellHashtableDepthAfter(
+      commandSource,
+      powerShellHashtableDepth,
+    );
+    sources.push({
+      insidePowerShellHashtable,
+      line: index + 1,
+      rawSource,
+      source: commandSource,
+    });
+  }
+
+  return sources;
+}
+
+export function findPowerShellScriptCommandPortabilityIssues(
+  source,
+  file = "<powershell-script>",
+) {
+  const issues = [];
+  for (const {
+    insidePowerShellHashtable,
+    line,
+    rawSource,
+    source: commandSource,
+  } of powerShellScriptSources(source)) {
+    if (/^\s*#/.test(commandSource)) {
+      continue;
+    }
+    const runCode = sourceBeforeComment(commandSource, "`", false);
+    if (
+      !runCode.trim() ||
+      hasDocumentedAllowMarker(rawSource, "`", false)
+    ) {
+      continue;
+    }
+    issues.push(
+      ...findWindowsShellLinePortabilityIssues(runCode, {
+        file,
+        insidePowerShellHashtable,
+        labelForContext: powerShellScriptLabel,
+        line,
+      }),
+    );
+  }
+
+  return issues.sort(
+    (left, right) =>
+      left.line - right.line || left.label.localeCompare(right.label),
+  );
 }
 
 function workflowShellExecutable(rawSource) {
@@ -3459,71 +3810,15 @@ export function findWindowsWorkflowCommandPortabilityIssues(
           line,
         });
       }
-      const hasUnprefixedGithubEnvironment =
-        containsUnprefixedGithubEnvironment(runCode);
       const usesCmdShell = cmdWorkflowShell(effectiveShell);
-      const statementSegments = usesCmdShell
-        ? cmdStatementSegments(runCode)
-        : powerShellStatementSegments(runCode);
-      const callOperatorSegments = usesCmdShell
-        ? []
-        : statementSegments
-            .map((segment) => normalizedPowerShellCallOperatorStatement(segment))
-            .filter(Boolean);
-      for (const {
-        label,
-        pattern,
-        quotedCmdPattern,
-        skipInPowerShellHashtable,
-        suppressWhenUnprefixedEnvironment,
-      } of windowsWorkflowRunPatterns) {
-        if (
-          (insidePowerShellHashtable && skipInPowerShellHashtable) ||
-          (hasUnprefixedGithubEnvironment &&
-            suppressWhenUnprefixedEnvironment)
-        ) {
-          continue;
-        }
-        if (
-          statementSegments.some(
-            (segment) =>
-              pattern.test(segment) ||
-              (usesCmdShell && quotedCmdPattern?.test(segment)),
-          ) ||
-          callOperatorSegments.some((segment) => pattern.test(segment))
-        ) {
-          issues.push({ file, label, line });
-        }
-      }
-      if (containsBashRematchExpansion(runCode)) {
-        issues.push({
+      issues.push(
+        ...findWindowsShellLinePortabilityIssues(runCode, {
           file,
-          label: "Bash match variables must not be used in a Windows workflow job",
+          insidePowerShellHashtable,
           line,
-        });
-      }
-      if (hasUnprefixedGithubEnvironment) {
-        issues.push({
-          file,
-          label:
-            "GitHub environment variables in Windows workflow jobs require the PowerShell env: prefix",
-          line,
-        });
-      }
-      if (containsUnquotedHeredoc(runCode)) {
-        issues.push({
-          file,
-          label: "POSIX heredocs must not be used in a Windows workflow job",
-          line,
-        });
-      }
-      if (/(?:^|\s)\\\s*$/.test(runCode)) {
-        issues.push({
-          file,
-          label: "POSIX line continuations must not be used in a Windows workflow job",
-          line,
-        });
-      }
+          usesCmdShell,
+        }),
+      );
     }
   }
 
@@ -4071,6 +4366,7 @@ export function analyzeCommandPortability(options = {}) {
     ].sort();
   const childProcessFiles = [];
   const packageFiles = [];
+  const powerShellFiles = [];
   const workflowFiles = [];
   const issues = [];
   for (const sourceFile of sourceFiles) {
@@ -4079,6 +4375,13 @@ export function analyzeCommandPortability(options = {}) {
       workflowFiles.push(sourceFile);
       issues.push(
         ...findWindowsWorkflowCommandPortabilityIssues(source, sourceFile),
+      );
+      continue;
+    }
+    if (powerShellSourceExtensions.has(extname(sourceFile))) {
+      powerShellFiles.push(sourceFile);
+      issues.push(
+        ...findPowerShellScriptCommandPortabilityIssues(source, sourceFile),
       );
       continue;
     }
@@ -4100,6 +4403,7 @@ export function analyzeCommandPortability(options = {}) {
     childProcessFiles,
     issues,
     packageFiles,
+    powerShellFiles,
     sourceFiles,
     workflowFiles,
   };
@@ -4115,6 +4419,7 @@ function runCli() {
     childProcessFiles,
     issues,
     packageFiles,
+    powerShellFiles,
     sourceFiles,
     workflowFiles,
   } =
@@ -4125,13 +4430,13 @@ function runCli() {
       console.error(`  - ${displayPath(issue.file)}:${issue.line}: ${issue.label}`);
     }
     console.error(
-      "Use portable package scripts, execFile or spawn with literal shell: false, launch npm/npx through process.execPath and its JavaScript CLI, keep Windows workflow run blocks in PowerShell syntax, or add a documented command-portability-allow comment for an intentional exception.",
+      "Use portable package and PowerShell scripts, execFile or spawn with literal shell: false, launch npm/npx through process.execPath and its JavaScript CLI, keep Windows workflow run blocks in PowerShell syntax, or add a documented command-portability-allow comment for an intentional exception.",
     );
     process.exitCode = 1;
     return;
   }
   console.log(
-    `Command portability contract ok (${sourceFiles.length} source files checked, ${childProcessFiles.length} child-process files, ${packageFiles.length} package manifests and ${workflowFiles.length} workflow files analyzed).`,
+    `Command portability contract ok (${sourceFiles.length} source files checked, ${childProcessFiles.length} child-process files, ${powerShellFiles.length} PowerShell files, ${packageFiles.length} package manifests and ${workflowFiles.length} workflow files analyzed).`,
   );
 }
 

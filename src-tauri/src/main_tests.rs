@@ -135,6 +135,131 @@ fn migration_probe_spool_count(path: &Path) -> Result<i64, String> {
         .map_err(|error| error.to_string())
 }
 
+fn write_ancillary_settings_db(path: &Path) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
+    db.apply_schema().map_err(|error| error.to_string())?;
+    db.conn
+        .execute(
+            "INSERT INTO settings (key, value) VALUES
+                ('library_sync_mode', 'STANDALONE'),
+                ('library_sync_device_name', 'Windows workstation')",
+            [],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn write_split_brain_domain_db(
+    path: &Path,
+    identity: &str,
+    color_name: &str,
+    safe_setting: &str,
+    library_mode: &str,
+    trusted_lan_enabled: &str,
+) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
+    db.apply_schema().map_err(|error| error.to_string())?;
+    db.conn
+        .execute(
+            "INSERT INTO filament_master_list (
+                id, material, filament_name, color_name, vendor,
+                catalog_source, catalog_user_edited
+             ) VALUES (?1, 'PLA', ?2, ?3, 'Merge test', 'manual', 1)",
+            rusqlite::params![
+                format!("merge-master-{identity}"),
+                format!("Merge filament {identity}"),
+                color_name,
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    db.conn
+        .execute(
+            "INSERT INTO filament_spools (id, master_id, status, current_weight_g)
+             VALUES (?1, ?2, 'IN_STOCK', 750)",
+            rusqlite::params![
+                format!("merge-spool-{identity}"),
+                format!("merge-master-{identity}"),
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    db.conn
+        .execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES
+                ('split_merge_safe_setting', ?1),
+                ('library_sync_mode', ?2),
+                ('trusted_lan_enabled', ?3)",
+            rusqlite::params![safe_setting, library_mode, trusted_lan_enabled],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn write_split_brain_ancillary_db(
+    path: &Path,
+    safe_setting: &str,
+    library_mode: &str,
+    trusted_lan_enabled: &str,
+) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
+    db.apply_schema().map_err(|error| error.to_string())?;
+    db.conn
+        .execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES
+                ('split_merge_safe_setting', ?1),
+                ('library_sync_mode', ?2),
+                ('trusted_lan_enabled', ?3)",
+            rusqlite::params![safe_setting, library_mode, trusted_lan_enabled],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn split_brain_setting(path: &Path, key: &str) -> Result<Option<String>, String> {
+    use rusqlite::OptionalExtension;
+
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    connection
+        .query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| {
+            row.get::<_, String>(0)
+        })
+        .optional()
+        .map_err(|error| error.to_string())
+}
+
+fn split_brain_spool_exists(path: &Path, spool_id: &str) -> Result<bool, String> {
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM filament_spools WHERE id = ?1)",
+            [spool_id],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|value| value != 0)
+        .map_err(|error| error.to_string())
+}
+
+fn split_brain_backup_count(app_dir: &Path) -> Result<usize, String> {
+    Ok(std::fs::read_dir(app_dir)
+        .map_err(|error| error.to_string())?
+        .filter_map(Result::ok)
+        .filter(|entry| {
+            entry
+                .file_name()
+                .to_string_lossy()
+                .starts_with("filament-manager.db.backup-before-windows-split-merge-")
+        })
+        .count())
+}
+
 #[test]
 #[cfg(debug_assertions)]
 fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
@@ -447,7 +572,7 @@ fn app_storage_migration_copies_legacy_bundle_data_once() {
                 entry
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("filament-manager.db.backup-empty-before-legacy-migration-")
+                    .starts_with("filament-manager.db.backup-before-legacy-migration-")
             });
         assert_eq!(migrated_spool_count, 1);
         assert_eq!(migrated_label, b"legacy-label");
@@ -510,6 +635,52 @@ fn app_storage_migration_preserves_committed_wal_data() {
             1
         );
         drop(legacy_connection);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn app_storage_migration_replaces_ancillary_current_data_with_legacy_domain_data() {
+    use super::{
+        database_user_data_state, prepare_app_storage_dir, DatabaseUserDataState, APP_DB_FILE_NAME,
+        LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("ancillary-current-domain-legacy");
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let current_db_path = app_dir.join(APP_DB_FILE_NAME);
+    let legacy_db_path = app_dir.join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_ancillary_settings_db(&current_db_path)?;
+        write_migration_probe_db(&legacy_db_path, 1)?;
+        assert_eq!(
+            database_user_data_state(&current_db_path),
+            DatabaseUserDataState::AncillaryData
+        );
+        assert_eq!(
+            database_user_data_state(&legacy_db_path),
+            DatabaseUserDataState::DomainData
+        );
+
+        prepare_app_storage_dir(&app_dir)?;
+
+        assert_eq!(migration_probe_spool_count(&current_db_path)?, 1);
+        let has_ancillary_backup = std::fs::read_dir(&app_dir)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .any(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("filament-manager.db.backup-before-legacy-migration-")
+            });
+        assert!(has_ancillary_backup);
 
         Ok(())
     })();
@@ -590,9 +761,9 @@ fn windows_storage_prefers_existing_db_location() {
 }
 
 #[test]
-fn windows_storage_preserves_legacy_roaming_app_data() {
+fn windows_storage_migrates_first_legacy_roaming_domain_database_into_local() {
     use super::{
-        prepare_app_storage_dir, resolve_windows_storage_dir, APP_DB_FILE_NAME,
+        prepare_resolved_app_database, resolve_windows_storage_resolution,
         LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
     };
 
@@ -601,18 +772,35 @@ fn windows_storage_preserves_legacy_roaming_app_data() {
     let local_root = base.join("local");
     let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
     let local_dir = local_root.join("no.bliatun.filamentmanager");
-    let legacy_roaming_dir = roaming_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let legacy_roaming_db_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
     let result = (|| -> Result<(), String> {
-        write_migration_probe_db(&legacy_roaming_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
-        write_migration_probe_db(&local_dir.join(APP_DB_FILE_NAME), 0)?;
+        write_split_brain_domain_db(
+            &legacy_roaming_db_path,
+            "legacy-first-start",
+            "Legacy Blue",
+            "legacy-safe",
+            "HOST",
+            "0",
+        )?;
 
-        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
-        assert_eq!(selected, roaming_dir);
-
-        prepare_app_storage_dir(&selected)?;
+        let resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
+        assert_eq!(resolution.app_dir, local_dir);
         assert_eq!(
-            migration_probe_spool_count(&selected.join(APP_DB_FILE_NAME))?,
-            1
+            resolution.windows_split_brain_source.as_deref(),
+            Some(legacy_roaming_db_path.as_path())
+        );
+        let target_db_path = prepare_resolved_app_database(resolution)?;
+        assert!(split_brain_spool_exists(
+            &target_db_path,
+            "merge-spool-legacy-first-start"
+        )?);
+        assert!(legacy_roaming_db_path.exists());
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+        assert_eq!(
+            split_brain_setting(&target_db_path, "windows_split_brain_merge_v1")?.as_deref(),
+            Some("complete")
         );
 
         Ok(())
@@ -627,8 +815,9 @@ fn windows_storage_preserves_legacy_roaming_app_data() {
 #[test]
 fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_inventory() {
     use super::{
-        database_user_data_state, prepare_app_storage_dir, resolve_windows_storage_dir,
-        DatabaseUserDataState, APP_DB_FILE_NAME, LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+        database_user_data_state, prepare_resolved_app_database,
+        resolve_windows_storage_resolution, DatabaseUserDataState, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
     };
 
     let base = temp_dir_path("windows-generated-library-id-storage");
@@ -637,12 +826,21 @@ fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_in
     let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
     let local_dir = local_root.join("no.bliatun.filamentmanager");
     let local_db_path = local_dir.join(APP_DB_FILE_NAME);
-    let legacy_roaming_dir = roaming_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let legacy_roaming_db_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
     let result = (|| -> Result<(), String> {
-        write_migration_probe_db(&legacy_roaming_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+        write_split_brain_domain_db(
+            &legacy_roaming_db_path,
+            "legacy-library-id",
+            "Legacy Blue",
+            "legacy-safe",
+            "HOST",
+            "0",
+        )?;
         std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
 
-        {
+        let generated_library_id = {
             let local_db =
                 FilamentDatabase::open(&local_db_path).map_err(|error| error.to_string())?;
             local_db.apply_schema().map_err(|error| error.to_string())?;
@@ -652,17 +850,21 @@ fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_in
             assert!(!settings.library_id.is_empty());
             assert_eq!(
                 database_user_data_state(&local_db_path),
-                DatabaseUserDataState::NoUserData
+                DatabaseUserDataState::NoData
             );
-        }
+            settings.library_id
+        };
 
-        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
-        assert_eq!(selected, roaming_dir);
-
-        prepare_app_storage_dir(&selected)?;
+        let resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
+        assert_eq!(resolution.app_dir, local_dir);
+        let target_db_path = prepare_resolved_app_database(resolution)?;
+        assert!(split_brain_spool_exists(
+            &target_db_path,
+            "merge-spool-legacy-library-id"
+        )?);
         assert_eq!(
-            migration_probe_spool_count(&selected.join(APP_DB_FILE_NAME))?,
-            1
+            split_brain_setting(&target_db_path, "library_sync_library_id")?.as_deref(),
+            Some(generated_library_id.as_str())
         );
 
         Ok(())
@@ -675,7 +877,428 @@ fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_in
 }
 
 #[test]
-fn database_user_data_state_counts_settings_beyond_generated_library_id() {
+fn windows_storage_merges_legacy_roaming_domain_data_into_current_local_ancillary_data() {
+    use super::{
+        database_user_data_state, prepare_resolved_app_database,
+        resolve_windows_storage_resolution, DatabaseUserDataState, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-ancillary-local-domain-roaming");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let local_db_path = local_dir.join(APP_DB_FILE_NAME);
+    let legacy_roaming_dir = roaming_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let legacy_roaming_db_path = legacy_roaming_dir.join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_ancillary_settings_db(&local_db_path)?;
+        write_split_brain_domain_db(
+            &legacy_roaming_db_path,
+            "legacy-ancillary",
+            "Legacy Blue",
+            "legacy-safe",
+            "HOST",
+            "0",
+        )?;
+        assert_eq!(
+            database_user_data_state(&local_db_path),
+            DatabaseUserDataState::AncillaryData
+        );
+        assert_eq!(
+            database_user_data_state(&legacy_roaming_db_path),
+            DatabaseUserDataState::DomainData
+        );
+
+        let resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
+        assert_eq!(resolution.app_dir, local_dir);
+        let target_db_path = prepare_resolved_app_database(resolution)?;
+        assert!(split_brain_spool_exists(
+            &target_db_path,
+            "merge-spool-legacy-ancillary"
+        )?);
+        assert_eq!(
+            split_brain_setting(&target_db_path, "library_sync_mode")?.as_deref(),
+            Some("STANDALONE")
+        );
+        assert!(legacy_roaming_db_path.exists());
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_split_brain_merge_preserves_current_local_and_legacy_roaming_domain_data() {
+    use super::{
+        prepare_resolved_app_database, resolve_windows_storage_resolution, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-domain-split-brain-merge");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let local_db_path = local_dir.join(APP_DB_FILE_NAME);
+    let legacy_roaming_db_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_roaming_db_path,
+            "legacy",
+            "Legacy Blue",
+            "legacy-safe",
+            "HOST",
+            "0",
+        )?;
+        write_split_brain_domain_db(
+            &local_db_path,
+            "local",
+            "Local Red",
+            "local-safe",
+            "CLIENT",
+            "1",
+        )?;
+
+        let resolution = resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        assert_eq!(resolution.app_dir, local_dir);
+        assert_eq!(
+            resolution.windows_split_brain_source.as_deref(),
+            Some(legacy_roaming_db_path.as_path())
+        );
+        let target_db_path = prepare_resolved_app_database(resolution)?;
+
+        assert!(split_brain_spool_exists(
+            &target_db_path,
+            "merge-spool-legacy"
+        )?);
+        assert!(split_brain_spool_exists(
+            &target_db_path,
+            "merge-spool-local"
+        )?);
+        assert_eq!(
+            split_brain_setting(&target_db_path, "split_merge_safe_setting")?.as_deref(),
+            Some("local-safe")
+        );
+        assert_eq!(
+            split_brain_setting(&target_db_path, "library_sync_mode")?.as_deref(),
+            Some("CLIENT")
+        );
+        assert_eq!(
+            split_brain_setting(&target_db_path, "trusted_lan_enabled")?.as_deref(),
+            Some("1")
+        );
+        assert!(legacy_roaming_db_path.exists());
+        assert!(local_db_path.exists());
+        assert!(split_brain_spool_exists(
+            &legacy_roaming_db_path,
+            "merge-spool-legacy"
+        )?);
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+
+        {
+            let target =
+                rusqlite::Connection::open(&target_db_path).map_err(|error| error.to_string())?;
+            target
+                .execute(
+                    "DELETE FROM settings WHERE key = 'windows_split_brain_merge_v1'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        let second_resolution =
+            resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        let second_target = prepare_resolved_app_database(second_resolution)?;
+        assert_eq!(second_target, target_db_path);
+        assert_eq!(
+            split_brain_setting(&target_db_path, "windows_split_brain_merge_v1")?.as_deref(),
+            Some("complete")
+        );
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+
+        {
+            let target =
+                rusqlite::Connection::open(&target_db_path).map_err(|error| error.to_string())?;
+            target
+                .execute(
+                    "UPDATE settings SET value = 'local-user-change'
+                     WHERE key = 'split_merge_safe_setting'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        let third_resolution =
+            resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        prepare_resolved_app_database(third_resolution)?;
+        assert_eq!(
+            split_brain_setting(&target_db_path, "split_merge_safe_setting")?.as_deref(),
+            Some("local-user-change")
+        );
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_split_brain_merge_preserves_local_and_imports_only_missing_safe_legacy_settings() {
+    use super::{
+        prepare_resolved_app_database, resolve_windows_storage_resolution, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-ancillary-split-brain-merge");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let local_db_path = local_dir.join(APP_DB_FILE_NAME);
+    let legacy_roaming_db_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_roaming_db_path,
+            "legacy",
+            "Legacy Blue",
+            "legacy-safe",
+            "HOST",
+            "0",
+        )?;
+        {
+            let legacy = rusqlite::Connection::open(&legacy_roaming_db_path)
+                .map_err(|error| error.to_string())?;
+            legacy
+                .execute(
+                    "INSERT INTO settings (key, value)
+                     VALUES ('legacy_only_safe_setting', 'legacy-only')",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        write_split_brain_ancillary_db(&local_db_path, "local-safe", "CLIENT", "1")?;
+
+        let resolution = resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        assert_eq!(resolution.app_dir, local_dir);
+        assert_eq!(
+            resolution.windows_split_brain_source.as_deref(),
+            Some(legacy_roaming_db_path.as_path())
+        );
+        let target_db_path = prepare_resolved_app_database(resolution)?;
+
+        assert!(split_brain_spool_exists(
+            &target_db_path,
+            "merge-spool-legacy"
+        )?);
+        assert_eq!(
+            split_brain_setting(&target_db_path, "split_merge_safe_setting")?.as_deref(),
+            Some("local-safe")
+        );
+        assert_eq!(
+            split_brain_setting(&target_db_path, "library_sync_mode")?.as_deref(),
+            Some("CLIENT")
+        );
+        assert_eq!(
+            split_brain_setting(&target_db_path, "trusted_lan_enabled")?.as_deref(),
+            Some("1")
+        );
+        assert_eq!(
+            split_brain_setting(&target_db_path, "legacy_only_safe_setting")?.as_deref(),
+            Some("legacy-only")
+        );
+        assert!(local_db_path.exists());
+        assert_eq!(
+            split_brain_setting(&local_db_path, "split_merge_safe_setting")?.as_deref(),
+            Some("local-safe")
+        );
+        assert!(legacy_roaming_db_path.exists());
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_split_brain_merge_rolls_back_conflicting_primary_keys() {
+    use super::{
+        prepare_resolved_app_database, resolve_windows_storage_resolution, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-split-brain-conflict");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let local_db_path = local_dir.join(APP_DB_FILE_NAME);
+    let legacy_roaming_db_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_roaming_db_path,
+            "shared",
+            "Legacy Blue",
+            "legacy-safe",
+            "HOST",
+            "0",
+        )?;
+        write_split_brain_domain_db(
+            &local_db_path,
+            "shared",
+            "Local Red",
+            "local-safe",
+            "CLIENT",
+            "1",
+        )?;
+
+        let resolution = resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        let error = prepare_resolved_app_database(resolution).unwrap_err();
+        assert!(error.contains("conflicting primary key"));
+
+        let target_db_path = local_dir.join(APP_DB_FILE_NAME);
+        let target =
+            rusqlite::Connection::open(&target_db_path).map_err(|error| error.to_string())?;
+        let target_color: String = target
+            .query_row(
+                "SELECT color_name FROM filament_master_list WHERE id = 'merge-master-shared'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let source =
+            rusqlite::Connection::open(&local_db_path).map_err(|error| error.to_string())?;
+        let source_color: String = source
+            .query_row(
+                "SELECT color_name FROM filament_master_list WHERE id = 'merge-master-shared'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(target_color, "Local Red");
+        assert_eq!(source_color, "Local Red");
+        assert_eq!(
+            split_brain_setting(&target_db_path, "split_merge_safe_setting")?.as_deref(),
+            Some("local-safe")
+        );
+        let legacy = rusqlite::Connection::open(&legacy_roaming_db_path)
+            .map_err(|error| error.to_string())?;
+        let legacy_color: String = legacy
+            .query_row(
+                "SELECT color_name FROM filament_master_list WHERE id = 'merge-master-shared'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(legacy_color, "Legacy Blue");
+        assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+        assert!(local_db_path.exists());
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_storage_keeps_current_local_priority_without_legacy_roaming_domain_data() {
+    use super::{resolve_windows_storage_dir, APP_DB_FILE_NAME};
+
+    let base = temp_dir_path("windows-current-local-normal-priority");
+    let roaming_dir = base.join("roaming").join("no.bliatun.filamentmanager");
+    let local_dir = base.join("local").join("no.bliatun.filamentmanager");
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &roaming_dir.join(APP_DB_FILE_NAME),
+            "roaming",
+            "Roaming Blue",
+            "roaming-safe",
+            "HOST",
+            "0",
+        )?;
+        write_split_brain_domain_db(
+            &local_dir.join(APP_DB_FILE_NAME),
+            "local",
+            "Local Red",
+            "local-safe",
+            "STANDALONE",
+            "0",
+        )?;
+
+        let selected = resolve_windows_storage_dir(roaming_dir, local_dir.clone());
+        assert_eq!(selected, local_dir);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_storage_keeps_authoritative_current_roaming_database_over_legacy_roaming() {
+    use super::{
+        resolve_windows_storage_resolution, APP_DB_FILE_NAME, LEGACY_APP_DATA_DIR_NAME,
+        LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-current-roaming-authoritative");
+    let roaming_root = base.join("roaming");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = base.join("local").join("no.bliatun.filamentmanager");
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &roaming_dir.join(APP_DB_FILE_NAME),
+            "current-roaming",
+            "Current Blue",
+            "current-safe",
+            "HOST",
+            "0",
+        )?;
+        write_split_brain_domain_db(
+            &roaming_root
+                .join(LEGACY_APP_DATA_DIR_NAME)
+                .join(LEGACY_APP_DB_FILE_NAME),
+            "legacy-roaming",
+            "Legacy Red",
+            "legacy-safe",
+            "STANDALONE",
+            "0",
+        )?;
+
+        let resolution = resolve_windows_storage_resolution(roaming_dir.clone(), local_dir);
+        assert_eq!(resolution.app_dir, roaming_dir);
+        assert!(resolution.windows_split_brain_source.is_none());
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn database_user_data_state_classifies_settings_beyond_generated_library_id_as_ancillary() {
     use super::{database_user_data_state, DatabaseUserDataState};
 
     let db_path = temp_db_path("generated-library-id-user-data-state");
@@ -686,7 +1309,7 @@ fn database_user_data_state_counts_settings_beyond_generated_library_id() {
             .map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),
-            DatabaseUserDataState::NoUserData
+            DatabaseUserDataState::NoData
         );
 
         db.conn
@@ -697,7 +1320,7 @@ fn database_user_data_state_counts_settings_beyond_generated_library_id() {
             .map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),
-            DatabaseUserDataState::HasUserData
+            DatabaseUserDataState::AncillaryData
         );
 
         Ok(())
@@ -712,7 +1335,7 @@ fn database_user_data_state_counts_settings_beyond_generated_library_id() {
 #[test]
 fn windows_storage_preserves_legacy_roaming_inventory_locations() {
     use super::{
-        prepare_app_storage_dir, resolve_windows_storage_dir, APP_DB_FILE_NAME,
+        prepare_resolved_app_database, resolve_windows_storage_resolution,
         LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
     };
 
@@ -742,18 +1365,11 @@ fn windows_storage_preserves_legacy_roaming_inventory_locations() {
                 )
                 .map_err(|error| error.to_string())?;
         }
-        {
-            let local_db = FilamentDatabase::open(local_dir.join(APP_DB_FILE_NAME))
-                .map_err(|error| error.to_string())?;
-            local_db.apply_schema().map_err(|error| error.to_string())?;
-        }
-
-        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
-        assert_eq!(selected, roaming_dir);
-
-        prepare_app_storage_dir(&selected)?;
-        let migrated_db = rusqlite::Connection::open(selected.join(APP_DB_FILE_NAME))
-            .map_err(|error| error.to_string())?;
+        let resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
+        assert_eq!(resolution.app_dir, local_dir);
+        let target_db_path = prepare_resolved_app_database(resolution)?;
+        let migrated_db =
+            rusqlite::Connection::open(target_db_path).map_err(|error| error.to_string())?;
         let location_count = migrated_db
             .query_row("SELECT COUNT(*) FROM inventory_locations", [], |row| {
                 row.get::<_, i64>(0)
@@ -780,7 +1396,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
         db.apply_schema().map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),
-            DatabaseUserDataState::NoUserData
+            DatabaseUserDataState::NoData
         );
 
         db.conn
@@ -791,7 +1407,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             .map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),
-            DatabaseUserDataState::NoUserData
+            DatabaseUserDataState::NoData
         );
 
         db.conn
@@ -804,7 +1420,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             .map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),
-            DatabaseUserDataState::HasUserData
+            DatabaseUserDataState::DomainData
         );
 
         db.conn
@@ -825,7 +1441,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             .map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),
-            DatabaseUserDataState::HasUserData
+            DatabaseUserDataState::DomainData
         );
 
         Ok(())
