@@ -282,6 +282,239 @@ safe(process.execPath, ["runner.mjs"], { shell: false });
   );
 });
 
+test("command portability follows immutable local child-process aliases", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec, execFile, spawn } from "node:child_process";
+import * as childProcess from "node:child_process";
+import { promisify } from "node:util";
+const importedAlias = spawn;
+importedAlias("npm", ["run", "verify"]);
+const importedChain = importedAlias;
+const importedChainAgain = importedChain;
+importedChainAgain?.("npx.cmd", ["--version"]);
+const requiredMethod = require("node:child_process").spawn;
+const requiredAlias = requiredMethod;
+requiredAlias?.("npm.cmd", ["--version"]);
+const namespaceMethod = childProcess.execFile;
+const namespaceAlias = namespaceMethod;
+namespaceAlias("bash", ["-lc", "node --test"]);
+const execute = exec;
+const asyncExec = promisify(execute);
+const promisedAlias = asyncExec;
+promisedAlias("npm run verify");
+const unsafeFile = execFile;
+unsafeFile(process.execPath, ["runner.mjs"], { shell: true });
+const safeFile = execFile;
+safeFile(process.execPath, ["runner.mjs"], { shell: false });
+`),
+    [
+      packageManagerIssue("npm", 6),
+      packageManagerIssue("npx.cmd", 9),
+      packageManagerIssue("npm.cmd", 12),
+      platformShellIssue("bash", 15),
+      implicitShellIssue("exec", 19),
+      { label: "child-process shell option must be the literal false", line: 21 },
+    ],
+  );
+});
+
+test("command portability follows alternating alias and promisify chains", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+const first = promisify(exec);
+const firstAlias = first;
+const second = promisify(firstAlias);
+const secondAlias = second;
+secondAlias("npm run verify");
+`),
+    [implicitShellIssue("exec", 8)],
+  );
+});
+
+test("command portability follows semicolonless aliases at ASI boundaries", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { spawn } from "node:child_process";
+const launch = spawn
+launch("npm.cmd", ["--version"])
+`),
+    [packageManagerIssue("npm.cmd", 4)],
+  );
+});
+
+test("command portability leaves mutable and computed local aliases untracked", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { spawn } from "node:child_process";
+let mutableAlias = spawn;
+mutableAlias("npm", ["--version"]);
+const boundAlias = spawn.bind(null);
+boundAlias("npm.cmd", ["--version"]);
+const conditionalAlias = useNative ? spawn : fallback;
+conditionalAlias("npx", ["--version"]);
+const wrapper = (...args) => spawn(...args);
+wrapper("npx.cmd", ["--version"]);
+const holder = { launch: spawn };
+holder.launch("npm", ["--version"]);
+const propertyAlias = helper.spawn;
+propertyAlias("npm.cmd", ["--version"]);
+const shadowedAlias = spawn;
+function nested(shadowedAlias) {
+  shadowedAlias("npx.cmd", ["--version"]);
+}
+function aliasesParameter(spawn) {
+  const parameterAlias = spawn;
+  parameterAlias("npm", ["--version"]);
+}
+function aliasesLocal() {
+  const spawn = fallback;
+  const localAlias = spawn;
+  localAlias("npx", ["--version"]);
+}
+`),
+    [],
+  );
+});
+
+test("command portability preserves source order and leaves alias cycles unresolved", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { spawn } from "node:child_process";
+const early = later;
+const later = spawn;
+early("npm", ["--version"]);
+later("npx.cmd", ["--version"]);
+const cycleA = cycleB;
+const cycleB = cycleA;
+cycleA("npm.cmd", ["--version"]);
+`),
+    [packageManagerIssue("npx.cmd", 6)],
+  );
+});
+
+test("command portability preserves alias source order across promisify", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+const early = later;
+const later = promisify(exec);
+early("npm run smoke");
+later("npm run verify");
+`),
+    [implicitShellIssue("exec", 7)],
+  );
+});
+
+test("command portability preserves alias source order across local bindings", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import * as childProcess from "node:child_process";
+const earlyRequired = laterRequired;
+const laterRequired = require("node:child_process").spawn;
+earlyRequired("npm", ["--version"]);
+laterRequired("npx.cmd", ["--version"]);
+const earlyNamespace = laterNamespace;
+const laterNamespace = childProcess.spawn;
+earlyNamespace("npm.cmd", ["--version"]);
+laterNamespace("npx", ["--version"]);
+`),
+    [
+      packageManagerIssue("npx.cmd", 6),
+      packageManagerIssue("npx", 10),
+    ],
+  );
+});
+
+test("command portability does not leak nested bindings into top-level aliases", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import * as childProcess from "node:child_process";
+import { promisify } from "node:util";
+const spawn = fallback;
+function nested() {
+  const spawn = childProcess.spawn;
+  return spawn;
+}
+const launch = spawn;
+launch("npm", ["--version"]);
+const execute = fallback;
+function nestedExecute() {
+  const execute = childProcess.exec;
+  return execute;
+}
+const asyncRun = promisify(execute);
+const asyncAlias = asyncRun;
+asyncAlias("npm run verify");
+`),
+    [],
+  );
+});
+
+test("command portability preserves existing file-wide binding behavior", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec, spawn as launch } from "node:child_process";
+import { promisify } from "node:util";
+launch("npm", ["--version"]);
+function nestedLaunch() {
+  const launch = require("node:child_process").spawn;
+  launch("npx.cmd", ["--version"]);
+}
+function invokeRequired() {
+  requiredLaunch("npm.cmd", ["--version"]);
+}
+const requiredLaunch = require("node:child_process").spawn;
+function invokeAsync() {
+  asyncExec("npm run verify");
+}
+const asyncExec = promisify(exec);
+`),
+    [
+      packageManagerIssue("npm", 4),
+      packageManagerIssue("npx.cmd", 7),
+      packageManagerIssue("npm.cmd", 10),
+      implicitShellIssue("exec", 14),
+    ],
+  );
+});
+
+test("command portability preserves existing promisify binding behavior", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { exec, spawn as importedRun } from "node:child_process";
+import { promisify } from "node:util";
+let mutableExecute = require("node:child_process").exec;
+const mutableRun = promisify(mutableExecute);
+mutableRun("npm run mutable");
+function nestedSource() {
+  const nestedExecute = require("node:child_process").exec;
+  const nestedRun = promisify(nestedExecute);
+  nestedRun("npm run nested");
+}
+function importedShadow() {
+  const importedRun = promisify(exec);
+  importedRun("npm run imported-shadow");
+}
+const overwrittenRun = promisify(exec);
+function laterShadow() {
+  const overwrittenRun = require("node:child_process").spawn;
+  return overwrittenRun;
+}
+overwrittenRun("npm run overwritten");
+`),
+    [
+      implicitShellIssue("exec", 6),
+      implicitShellIssue("exec", 10),
+      implicitShellIssue("exec", 14),
+      implicitShellIssue("exec", 21),
+    ],
+  );
+});
+
 test("command portability ignores fixtures inside strings, templates, regex literals, and comments", () => {
   assert.deepEqual(
     fixtureIssues(`

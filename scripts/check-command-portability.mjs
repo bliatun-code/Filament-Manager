@@ -46,6 +46,16 @@ const injectedMethodNames = new Map([
   ["spawnFn", "spawn"],
   ["spawnSyncFn", "spawnSync"],
 ]);
+const aliasDeclarationKeywords = new Set([
+  "as",
+  "class",
+  "const",
+  "function",
+  "import",
+  "let",
+  "var",
+]);
+const aliasContinuationKeywords = new Set(["as", "in", "instanceof", "satisfies"]);
 const regexPrefixKeywords = new Set([
   "await",
   "case",
@@ -411,7 +421,15 @@ function findOpeningToken(tokens, closeIndex, opening, closing) {
 function resolveChildProcessBindings(tokens) {
   const direct = new Map();
   const namespaces = new Set();
+  const propagationDirect = new Map();
+  const topLevelTokenIndexes = findTopLevelTokenIndexes(tokens);
   let referencesChildProcess = false;
+
+  const recordPropagationDirect = (name, method, availableFrom = 0) => {
+    if (!propagationDirect.has(name)) {
+      propagationDirect.set(name, { availableFrom, method });
+    }
+  };
 
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
@@ -449,6 +467,7 @@ function resolveChildProcessBindings(tokens) {
         );
         for (const [local, source] of parseNamedBindings(tokens, openBrace + 1, closeBrace, "as")) {
           direct.set(local, source);
+          recordPropagationDirect(local, source);
         }
       }
       continue;
@@ -462,6 +481,16 @@ function resolveChildProcessBindings(tokens) {
         const member = staticChildProcessMemberAt(tokens, index);
         if (member) {
           direct.set(tokens[index - 2].value, member.method);
+          if (
+            tokens[index - 3]?.value === "const" &&
+            topLevelTokenIndexes.has(index - 3)
+          ) {
+            recordPropagationDirect(
+              tokens[index - 2].value,
+              member.method,
+              member.nextIndex,
+            );
+          }
         }
       } else if (tokens[index - 2]?.value === "}") {
         const openBrace = findOpeningToken(tokens, index - 2, "{", "}");
@@ -472,6 +501,12 @@ function resolveChildProcessBindings(tokens) {
           ":",
         )) {
           direct.set(local, source);
+          if (
+            tokens[openBrace - 1]?.value === "const" &&
+            topLevelTokenIndexes.has(openBrace - 1)
+          ) {
+            recordPropagationDirect(local, source, index + 1);
+          }
         }
       }
     }
@@ -485,9 +520,19 @@ function resolveChildProcessBindings(tokens) {
       continue;
     }
     if (tokens[index - 2]?.type === "identifier") {
-      const assignedMethod = staticChildProcessMemberAt(tokens, moduleCloseIndex)?.method ?? null;
-      if (assignedMethod) {
-        direct.set(tokens[index - 2].value, assignedMethod);
+      const assignedMember = staticChildProcessMemberAt(tokens, moduleCloseIndex);
+      if (assignedMember) {
+        direct.set(tokens[index - 2].value, assignedMember.method);
+        if (
+          tokens[index - 3]?.value === "const" &&
+          topLevelTokenIndexes.has(index - 3)
+        ) {
+          recordPropagationDirect(
+            tokens[index - 2].value,
+            assignedMember.method,
+            assignedMember.nextIndex,
+          );
+        }
       } else {
         namespaces.add(tokens[index - 2].value);
       }
@@ -495,12 +540,46 @@ function resolveChildProcessBindings(tokens) {
       const openBrace = findOpeningToken(tokens, index - 2, "{", "}");
       for (const [local, source] of parseNamedBindings(tokens, openBrace + 1, index - 2, ":")) {
         direct.set(local, source);
+        if (
+          tokens[openBrace - 1]?.value === "const" &&
+          topLevelTokenIndexes.has(openBrace - 1)
+        ) {
+          recordPropagationDirect(local, source, moduleCloseIndex + 1);
+        }
       }
     }
   }
 
-  propagatePromisifiedChildProcessBindings(tokens, { direct, namespaces });
-  return { direct, namespaces, referencesChildProcess };
+  const bindings = {
+    aliases: new Map(),
+    direct,
+    namespaces,
+    propagationDirect,
+    promisifiedAvailableFrom: new Map(),
+  };
+  const promisifyBindings = resolvePromisifyBindings(tokens);
+  const promisifiedArgumentIndexes = findPromisifiedArgumentIndexes(
+    tokens,
+    promisifyBindings,
+  );
+  for (let pass = 0; pass <= tokens.length; pass += 1) {
+    const aliasesChanged = propagateImmutableChildProcessAliases(
+      tokens,
+      bindings,
+      promisifiedArgumentIndexes,
+      topLevelTokenIndexes,
+    );
+    const promisifiedChanged = propagatePromisifiedChildProcessBindings(
+      tokens,
+      bindings,
+      promisifyBindings,
+      topLevelTokenIndexes,
+    );
+    if (!aliasesChanged && !promisifiedChanged) {
+      break;
+    }
+  }
+  return { ...bindings, referencesChildProcess };
 }
 
 function findClosingToken(tokens, openIndex, opening, closing) {
@@ -662,9 +741,69 @@ function resolvePromisifyBindings(tokens) {
   return { direct, namespaces };
 }
 
-function childProcessMethodReferenceAt(tokens, index, bindings) {
+function promisifyCallOpenIndexAt(tokens, index, bindings) {
   const token = tokens[index];
   if (token?.type !== "identifier") {
+    return -1;
+  }
+  if (bindings.direct.has(token.value)) {
+    return callOpenIndexAt(tokens, index + 1);
+  }
+  if (bindings.namespaces.has(token.value)) {
+    const member = staticMemberAt(tokens, index, promisifyMembers);
+    return member ? callOpenIndexAt(tokens, member.nextIndex) : -1;
+  }
+  const moduleCloseIndex = utilModuleCloseIndex(tokens, index);
+  const member =
+    moduleCloseIndex === -1
+      ? null
+      : staticMemberAt(tokens, moduleCloseIndex, promisifyMembers);
+  return member ? callOpenIndexAt(tokens, member.nextIndex) : -1;
+}
+
+function findPromisifiedArgumentIndexes(tokens, bindings) {
+  const indexes = new Set();
+  for (let index = 0; index < tokens.length; index += 1) {
+    const openIndex = promisifyCallOpenIndexAt(tokens, index, bindings);
+    if (openIndex !== -1) {
+      indexes.add(openIndex + 1);
+    }
+  }
+  return indexes;
+}
+
+function immutableAliasMethodReferenceAt(tokens, index, bindings) {
+  const token = tokens[index];
+  if (token?.type !== "identifier") {
+    return null;
+  }
+  const alias = bindings.aliases.get(token.value);
+  if (alias && alias.availableFrom <= index) {
+    return alias.method;
+  }
+  const direct = bindings.propagationDirect.get(token.value);
+  if (direct && direct.availableFrom <= index) {
+    return direct.method;
+  }
+  if (bindings.namespaces.has(token.value)) {
+    return staticChildProcessMemberAt(tokens, index)?.method ?? null;
+  }
+  const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
+  return moduleCloseIndex === -1
+    ? null
+    : staticChildProcessMemberAt(tokens, moduleCloseIndex)?.method ?? null;
+}
+
+function promisifiedMethodReferenceAt(tokens, index, bindings) {
+  const token = tokens[index];
+  if (token?.type !== "identifier") {
+    return null;
+  }
+  const alias = bindings.aliases.get(token.value);
+  if (alias) {
+    return alias.availableFrom <= index ? alias.method : null;
+  }
+  if ((bindings.promisifiedAvailableFrom.get(token.value) ?? 0) > index) {
     return null;
   }
   const directMethod = bindings.direct.get(token.value);
@@ -680,37 +819,179 @@ function childProcessMethodReferenceAt(tokens, index, bindings) {
     : staticChildProcessMemberAt(tokens, moduleCloseIndex)?.method ?? null;
 }
 
-function propagatePromisifiedChildProcessBindings(tokens, bindings) {
-  const promisifyBindings = resolvePromisifyBindings(tokens);
+function immutableChildProcessAliasAt(tokens, sourceIndex) {
+  if (
+    tokens[sourceIndex]?.type !== "identifier" ||
+    tokens[sourceIndex - 1]?.value !== "=" ||
+    tokens[sourceIndex - 2]?.type !== "identifier" ||
+    tokens[sourceIndex - 3]?.value !== "const"
+  ) {
+    return null;
+  }
+  const nextToken = tokens[sourceIndex + 1];
+  const hasAsiBoundary =
+    nextToken?.line > tokens[sourceIndex].line &&
+    nextToken.type === "identifier" &&
+    !aliasContinuationKeywords.has(nextToken.value);
+  if (nextToken && nextToken.value !== ";" && !hasAsiBoundary) {
+    return null;
+  }
+  return {
+    availableFrom: nextToken?.value === ";" ? sourceIndex + 2 : sourceIndex + 1,
+    local: tokens[sourceIndex - 2].value,
+  };
+}
+
+function findTopLevelTokenIndexes(tokens) {
+  const indexes = new Set();
+  let braceDepth = 0;
+  let bracketDepth = 0;
+  let parenthesisDepth = 0;
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (braceDepth === 0 && bracketDepth === 0 && parenthesisDepth === 0) {
+      indexes.add(index);
+    }
+    const value = tokens[index].value;
+    if (value === "{") {
+      braceDepth += 1;
+    } else if (value === "}") {
+      braceDepth -= 1;
+    } else if (value === "[") {
+      bracketDepth += 1;
+    } else if (value === "]") {
+      bracketDepth -= 1;
+    } else if (value === "(") {
+      parenthesisDepth += 1;
+    } else if (value === ")") {
+      parenthesisDepth -= 1;
+    }
+  }
+  return indexes;
+}
+
+// The checker has no scope graph. Reject aliases with any use that could be a
+// shadow, reassignment, or escape instead of risking a false portability error.
+function isUnambiguousImmutableAlias(
+  tokens,
+  sourceIndex,
+  alias,
+  promisifiedArgumentIndexes,
+) {
+  const declarationIndex = sourceIndex - 2;
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (tokens[index]?.type !== "identifier" || tokens[index].value !== alias.local) {
+      continue;
+    }
+    if (index === declarationIndex) {
+      continue;
+    }
+    if (immutableChildProcessAliasAt(tokens, index)) {
+      continue;
+    }
+    if (promisifiedArgumentIndexes.has(index)) {
+      continue;
+    }
+    if (
+      callOpenIndexAt(tokens, index + 1) !== -1 &&
+      tokens[index - 1]?.value !== "." &&
+      tokens[index - 1]?.value !== "?." &&
+      !aliasDeclarationKeywords.has(tokens[index - 1]?.value)
+    ) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
+function propagateImmutableChildProcessAliases(
+  tokens,
+  bindings,
+  promisifiedArgumentIndexes,
+  topLevelTokenIndexes,
+) {
+  let changed = false;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const alias = immutableChildProcessAliasAt(tokens, index);
+    if (
+      !alias ||
+      !topLevelTokenIndexes.has(index - 3) ||
+      bindings.aliases.has(alias.local) ||
+      bindings.direct.has(alias.local) ||
+      bindings.namespaces.has(alias.local) ||
+      !isUnambiguousImmutableAlias(
+        tokens,
+        index,
+        alias,
+        promisifiedArgumentIndexes,
+      )
+    ) {
+      continue;
+    }
+    const method = immutableAliasMethodReferenceAt(tokens, index, bindings);
+    if (!method) {
+      continue;
+    }
+    bindings.aliases.set(alias.local, { ...alias, method });
+    changed = true;
+  }
+  return changed;
+}
+
+function propagatePromisifiedChildProcessBindings(
+  tokens,
+  bindings,
+  promisifyBindings,
+  topLevelTokenIndexes,
+) {
+  const resolved = new Map();
   for (let index = 0; index < tokens.length; index += 1) {
     const token = tokens[index];
     if (token?.type !== "identifier" || tokens[index - 1]?.value !== "=") {
       continue;
     }
 
-    let openIndex = -1;
-    if (promisifyBindings.direct.has(token.value)) {
-      openIndex = callOpenIndexAt(tokens, index + 1);
-    } else if (promisifyBindings.namespaces.has(token.value)) {
-      const member = staticMemberAt(tokens, index, promisifyMembers);
-      openIndex = member ? callOpenIndexAt(tokens, member.nextIndex) : -1;
-    } else {
-      const moduleCloseIndex = utilModuleCloseIndex(tokens, index);
-      const member =
-        moduleCloseIndex === -1
-          ? null
-          : staticMemberAt(tokens, moduleCloseIndex, promisifyMembers);
-      openIndex = member ? callOpenIndexAt(tokens, member.nextIndex) : -1;
-    }
+    const openIndex = promisifyCallOpenIndexAt(tokens, index, promisifyBindings);
     if (openIndex === -1 || tokens[index - 2]?.type !== "identifier") {
       continue;
     }
 
-    const method = childProcessMethodReferenceAt(tokens, openIndex + 1, bindings);
+    const method = promisifiedMethodReferenceAt(tokens, openIndex + 1, bindings);
+    const local = tokens[index - 2].value;
     if (method) {
-      bindings.direct.set(tokens[index - 2].value, method);
+      const closeIndex = findClosingToken(tokens, openIndex, "(", ")");
+      const topLevelConst =
+        tokens[index - 3]?.value === "const" &&
+        topLevelTokenIndexes.has(index - 3);
+      resolved.set(local, {
+        availableFrom: closeIndex === -1 ? openIndex + 1 : closeIndex + 1,
+        method,
+        propagationMethod: topLevelConst
+          ? immutableAliasMethodReferenceAt(tokens, openIndex + 1, bindings)
+          : null,
+      });
     }
   }
+
+  let changed = false;
+  for (const [local, binding] of resolved) {
+    if (
+      bindings.direct.get(local) !== binding.method ||
+      bindings.promisifiedAvailableFrom.get(local) !== binding.availableFrom
+    ) {
+      bindings.direct.set(local, binding.method);
+      bindings.promisifiedAvailableFrom.set(local, binding.availableFrom);
+      changed = true;
+    }
+    if (binding.propagationMethod && !bindings.propagationDirect.has(local)) {
+      bindings.propagationDirect.set(local, {
+        availableFrom: binding.availableFrom,
+        method: binding.propagationMethod,
+      });
+      changed = true;
+    }
+  }
+  return changed;
 }
 
 function resolveCallAt(tokens, index, bindings) {
@@ -730,7 +1011,11 @@ function resolveCallAt(tokens, index, bindings) {
       openIndex: moduleOpenIndex,
     };
   }
-  const directMethod = bindings.direct.get(token.value) ?? injectedMethodNames.get(token.value);
+  const alias = bindings.aliases.get(token.value);
+  const directMethod =
+    (alias && alias.availableFrom <= index ? alias.method : null) ??
+    bindings.direct.get(token.value) ??
+    injectedMethodNames.get(token.value);
   const directOpenIndex =
     tokens[index + 1]?.value === "("
       ? index + 1
