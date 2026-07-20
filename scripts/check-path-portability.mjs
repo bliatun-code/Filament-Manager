@@ -52,8 +52,18 @@ const hostSpecificPathPatterns = [
     pattern: new RegExp(`${slash}var${slash}folders${slash}`),
   },
 ];
+const sourceIdentifier = String.raw`[A-Za-z_$][A-Za-z0-9_$]*`;
+const filesystemPathQualifierLower =
+  String.raw`(?:artifact|config(?:uration)?|database|db|file|filesystem|fs|manifest|output|project|repo(?:sitory)?|resource|source|target|temp(?:orary)?|tmp)`;
+const filesystemPathQualifierPascal =
+  String.raw`(?:Artifact|Config(?:uration)?|Database|DB|Db|File|Filesystem|FS|Fs|Manifest|Output|Project|Repo(?:sitory)?|Resource|Source|Target|Temp(?:orary)?|Tmp)`;
+const filesystemPathQualifierUpper =
+  String.raw`(?:ARTIFACT|CONFIG(?:URATION)?|DATABASE|DB|FILE|FILESYSTEM|FS|MANIFEST|OUTPUT|PROJECT|REPO(?:SITORY)?|RESOURCE|SOURCE|TARGET|TEMP(?:ORARY)?|TMP)`;
+const filesystemQualifiedPathMember = String.raw`(?:(?:${filesystemPathQualifierLower}|(?:${sourceIdentifier})?${filesystemPathQualifierPascal})Path|(?:${sourceIdentifier}_)?(?:${filesystemPathQualifierLower}|${filesystemPathQualifierUpper})_(?:path|PATH))`;
+const filesystemDirectoryPathMember =
+  String.raw`(?:${sourceIdentifier}(?:Root|Dir|Directory|Folder|Cwd|_?(?:root|dir|directory|folder))|root|dir|directory|folder|cwd)`;
 const filesystemPathIdentifier =
-  String.raw`(?:[A-Za-z_$][A-Za-z0-9_$]*\.)*(?:[A-Za-z_$][A-Za-z0-9_$]*(?:Root|Dir|Directory|Folder|Cwd|_?(?:root|dir|directory|folder))|root|dir|directory|folder|cwd)`;
+  String.raw`(?<![A-Za-z0-9_$])(?:${sourceIdentifier}(?:\?\.|\.))*(?:${filesystemDirectoryPathMember}|${filesystemQualifiedPathMember})`;
 const filesystemPathExpression = String.raw`(?:${filesystemPathIdentifier}|process\.cwd\(\)|tmpdir\(\)|__dirname|__filename|(?:resolve|dirname|join)\([^)]*\))`;
 const manualFilesystemSeparatorPatterns = [
   new RegExp(String.raw`\$\{\s*${filesystemPathExpression}\s*\}\s*\/`, "g"),
