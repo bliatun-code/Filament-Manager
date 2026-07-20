@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import test from "node:test";
 
-import {
+import * as commandPortability from "./check-command-portability.mjs";
+
+const {
   analyzeCommandPortability,
   collectCommandPortabilitySourceFiles,
   findCommandPortabilityIssues,
-} from "./check-command-portability.mjs";
+} = commandPortability;
 
 function writeFixtureFile(repoRoot, file, source = "") {
   const filePath = resolve(repoRoot, file);
@@ -21,6 +24,22 @@ function fixtureIssues(source) {
     label,
     line,
   }));
+}
+
+function requiredCommandPortabilityApi(name) {
+  const api = commandPortability[name];
+  assert.equal(typeof api, "function", `Missing command portability API: ${name}`);
+  return api;
+}
+
+function workflowFixtureIssues(source) {
+  const findWindowsWorkflowCommandPortabilityIssues = requiredCommandPortabilityApi(
+    "findWindowsWorkflowCommandPortabilityIssues",
+  );
+  return findWindowsWorkflowCommandPortabilityIssues(
+    source,
+    ".github/workflows/fixture.yml",
+  ).map(({ label, line }) => ({ label, line }));
 }
 
 function packageManagerIssue(name, line) {
@@ -75,6 +94,588 @@ test("command portability source collection covers JavaScript and TypeScript tes
     relative(repoRoot, file).split(sep).join("/"),
   );
   assert.deepEqual(files, expectedFiles.sort());
+});
+
+test("workflow command portability source collection covers yml and yaml workflows", (t) => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "filament-manager-workflow-portability-"));
+  const repoRoot = join(tempRoot, "tests", "repository");
+  t.after(() => rmSync(tempRoot, { recursive: true, force: true }));
+
+  const expectedFiles = [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yaml",
+  ];
+  const ignoredFiles = [
+    ".github/actions/local/action.yml",
+    ".github/workflows/notes.md",
+    ".github/workflows/settings.json",
+    "scripts/fixture.yml",
+  ];
+  for (const file of [...expectedFiles, ...ignoredFiles]) {
+    writeFixtureFile(repoRoot, file);
+  }
+
+  const collectWorkflowCommandPortabilitySourceFiles = requiredCommandPortabilityApi(
+    "collectWorkflowCommandPortabilitySourceFiles",
+  );
+  const files = collectWorkflowCommandPortabilitySourceFiles(repoRoot).map((file) =>
+    relative(repoRoot, file).split(sep).join("/"),
+  );
+  assert.deepEqual(files, expectedFiles);
+});
+
+test("command portability CLI fails closed on an unsafe Windows workflow", (t) => {
+  const repoRoot = mkdtempSync(
+    join(tmpdir(), "filament-manager-workflow-cli-portability-"),
+  );
+  t.after(() => rmSync(repoRoot, { recursive: true, force: true }));
+
+  writeFixtureFile(
+    repoRoot,
+    ".github/workflows/windows-smoke.yml",
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  const checkerPath = resolve("scripts/check-command-portability.mjs");
+  const result = spawnSync(process.execPath, [checkerPath], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  const stderr = result.stderr.replaceAll("\\", "/");
+
+  assert.equal(result.status, 1);
+  assert.match(stderr, /Command portability contract failed:/);
+  assert.match(
+    stderr,
+    /\.github\/workflows\/windows-smoke\.yml:5: POSIX workflow shell bash must not run in a Windows job/,
+  );
+});
+
+test("Windows workflow portability rejects explicit POSIX shells", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+      "      - shell: sh {0}",
+      "        run: npm test",
+      '      - shell: "zsh {0}"',
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [5, 7, 9],
+  );
+  assert.match(issues[0].label, /bash/i);
+  assert.match(issues[1].label, /\bsh\b/i);
+  assert.match(issues[2].label, /zsh/i);
+});
+
+test("Windows workflow portability covers runner and shell scalar variants", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "defaults:",
+      "  run:",
+      "    shell: bash",
+      "jobs:",
+      "# jobs may be separated by a column-zero comment",
+      '    "windows-custom": &custom_job',
+      "        runs-on: [self-hosted, Windows, X64]",
+      "        defaults:",
+      "            run:",
+      "                shell: /usr/bin/zsh {0}",
+      "        steps:",
+      "            - shell: 'C:\\Program Files\\Git\\bin\\bash.exe {0}'",
+      "              run: npm test",
+      "# another separator",
+      "    windows-block-list:",
+      "        runs-on:",
+      "            - self-hosted",
+      "            - windows-2025",
+      "        steps:",
+      "            - shell: sh.exe {0}",
+      "              run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [12, 20],
+  );
+  assert.match(issues[0].label, /bash\.exe/i);
+  assert.match(issues[1].label, /sh\.exe/i);
+});
+
+test("Windows workflow portability recognizes self-hosted Windows runner objects", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-self-hosted:",
+      "    runs-on:",
+      "      group: Default",
+      "      labels: [self-hosted, windows]",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [7],
+  );
+});
+
+test("Windows workflow portability handles anchored and unusually spaced mappings", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "defaults : &global_defaults",
+      "  run : &global_run",
+      "    shell : pwsh",
+      '"jobs" : &all_jobs',
+      "  windows-anchored: &windows_job",
+      '    "runs-on" : &windows_runner windows-latest',
+      "    defaults : &job_defaults",
+      "      run : &job_run_defaults",
+      "        shell : &default_shell pwsh",
+      "    steps : &windows_steps",
+      '      - &unsafe_step shell : &unsafe_shell "bash {0}"',
+      '        run : &unsafe_run "export MODE=test"',
+      "      -   name: Extra-spaced mapping",
+      '          "shell" : pwsh',
+      '          "run" : &extra_run "export NEXT_MODE=test"',
+      "      - shell : pwsh",
+      "        run : &block_script |",
+      "          set -euo pipefail",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [11, 15, 18],
+  );
+});
+
+test("Windows workflow portability rejects unambiguous Bash run syntax", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-2025",
+      "    steps:",
+      "      - run: |",
+      "          set -euo pipefail",
+      '          version="$GITHUB_REF_NAME"',
+      '          root="${RUNNER_TEMP}"',
+      '          if [[ "$version" =~ ^v ]]; then',
+      '            echo "${BASH_REMATCH[0]}"',
+      "          fi",
+      "          node - <<'NODE'",
+      '          console.log("verify")',
+      "          NODE",
+      "      - run: export MODE=test",
+      "      - run: MODE=test node script.mjs",
+      "      - run: |",
+      "          node script.mjs \\",
+      "            --verify",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [6, 7, 8, 9, 10, 12, 15, 16, 18],
+  );
+});
+
+test("Windows workflow portability checks commands after PowerShell statement boundaries", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - run: npm test; export MODE=test",
+      "      - run: npm test && MODE=test node script.mjs",
+      '      - run: Write-Output "literal; export SAFE=test"',
+      "      - run: Write-Output ok;# note; export COMMENTED_MODE=test",
+      "      - run: Write-Output (Get-Date)# note; export COMMENTED_MODE=test",
+      "      - run: Write-Output foo`; export ESCAPED_MODE=test",
+      '      - run: Write-Output `"; export REAL_MODE=test',
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [5, 6, 11],
+  );
+});
+
+test("Windows workflow portability normalizes quoted and indented run scalars", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      '      - run: "export MODE=test"',
+      "      - run: 'set -euo pipefail'",
+      "      - run: export MODE=test; echo command-portability-allow: ordinary output",
+      "      - run: >2-",
+      "          export FOLDED_MODE=test",
+      "          node script.mjs",
+      "      - run: 'Write-Output \"$GITHUB_REF_NAME\"'",
+      "      - run: |",
+      "          MODE=test",
+      "          node script.mjs",
+      '      - run: Write-Output "\\$RUNNER_TEMP"',
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [5, 6, 7, 9, 11, 13, 15],
+  );
+});
+
+test("Windows workflow portability scopes execution fields outside scalar data", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    env:",
+      "      CONFIG: |",
+      "        steps:",
+      "          - run: export FAKE_MODE=test",
+      "    steps:",
+      "      - shell: pwsh",
+      "        run: |",
+      '          Write-Output "@"',
+      "          export REAL_MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [12],
+  );
+});
+
+test("Windows workflow portability fails closed on reused step aliases", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "defaults: *global_defaults",
+      "jobs:",
+      "  runner-alias:",
+      "    runs-on: *windows_runner",
+      "    steps:",
+      "      - run: npm test",
+      "  windows-sequence-alias:",
+      "    runs-on: windows-latest",
+      "    steps: *shared_steps",
+      "  windows-field-aliases:",
+      "    runs-on: windows-latest",
+      "    defaults: *bash_defaults",
+      "    steps: &windows_steps",
+      "      - run: *shared_run",
+      "      - shell: *shared_shell",
+      "        run: npm test",
+      "      - *shared_step",
+      "      - *reviewed_step # command-portability-allow: reviewed portable action step",
+      "  windows-global-default:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [1, 4, 9, 12, 14, 15, 17],
+  );
+  assert.equal(issues.some(({ label }) => /runner aliases/i.test(label)), true);
+  assert.equal(issues.some(({ label }) => /defaults aliases/i.test(label)), true);
+  assert.equal(issues.some(({ label }) => /step aliases/i.test(label)), true);
+});
+
+test("Windows workflow portability fails closed on aliases nested in runner and step collections", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  runner-flow-alias:",
+      "    runs-on: [self-hosted, *windows_label]",
+      "    steps:",
+      "      - run: npm test",
+      "  runner-block-alias:",
+      "    runs-on:",
+      "      - self-hosted",
+      "      - *windows_label",
+      "    steps:",
+      "      - run: npm test",
+      "  runner-object-alias:",
+      "    runs-on:",
+      "      group: Default",
+      "      labels: *windows_labels",
+      "    steps:",
+      "      - run: npm test",
+      "  windows-step-flow-alias:",
+      "    runs-on: windows-latest",
+      "    steps: [*shared_step]",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [3, 9, 15, 20],
+  );
+});
+
+test("Windows workflow portability inspects interpolating PowerShell here-strings", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: pwsh",
+      "        run: |",
+      '          $content = @"',
+      "          ref=$GITHUB_REF_NAME",
+      '          "@',
+      '          # documentation mentions @"',
+      "          export MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [8, 11],
+  );
+});
+
+test("Windows workflow portability applies shells to here-string-only run blocks", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: bash",
+      "        run: |",
+      "          $literal = @'",
+      "          value",
+      "          '@",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [5],
+  );
+});
+
+test("Windows workflow portability distinguishes PowerShell comments, scopes, and here-string data", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: pwsh",
+      "        run: |",
+      '          $content = @"',
+      "          <# this is here-string data, not a block comment",
+      "          '$github_ref_name'",
+      '          "@',
+      "          <# documentation mentions @\"",
+      "          #>",
+      "          # a line comment may mention <# without opening a block",
+      "          export AFTER_COMMENT=test",
+      "          <# note #> export INLINE_AFTER=test",
+      "          export INLINE_BEFORE=test <# note #>",
+      "          Write-Output $GITHUB_REF_NAME <# note #>",
+      "          Write-Output $github_ref_name",
+      "          Write-Output $global:GITHUB_REF_NAME",
+      "          Write-Output ${script:RUNNER_TEMP}",
+      "          Write-Output $env:GITHUB_REF_NAME",
+      "          Write-Output ${env:RUNNER_TEMP}",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [9, 14, 15, 16, 17, 18, 19, 20],
+  );
+});
+
+test("Windows workflow portability requires review for ordinary multiline PowerShell strings", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: pwsh",
+      "        run: |",
+      "          $single = '",
+      "          export LITERAL_MODE=test",
+      "          $GITHUB_REF_NAME",
+      "          '",
+      '          $double = "',
+      "          export INTERPOLATED_MODE=test",
+      "          $GITHUB_REF_NAME",
+      '          "',
+      "      - shell: pwsh",
+      "        run: | # command-portability-allow: reviewed multiline fixture",
+      "          $reviewed = ' # command-portability-allow: reviewed multiline fixture",
+      "          export REVIEWED_LITERAL=test",
+      "          '",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [7, 11],
+  );
+  assert.equal(issues.every(({ label }) => /multiline PowerShell strings/i.test(label)), true);
+});
+
+test("Windows workflow portability accepts PowerShell commands and ignores metadata", () => {
+  assert.deepEqual(
+    workflowFixtureIssues(
+      [
+        "jobs:",
+        "  windows-smoke:",
+        "    runs-on: windows-latest",
+        "    steps:",
+        '      - name: "BASH_REMATCH export MODE=test <<NODE"',
+        "        shell: pwsh",
+        "        env:",
+        '          BASH_EXAMPLE: "set -euo pipefail; $GITHUB_REF_NAME"',
+        "          OUTPUT_PATH: ${{ runner.temp }}/out.json",
+        "        run: |",
+        "          $version = $env:GITHUB_REF_NAME",
+        "          $root = ${env:RUNNER_TEMP}",
+        "          $config = Get-Content -LiteralPath $env:OUTPUT_PATH -Raw",
+        '          node ./scripts/build.mjs --output "$env:OUTPUT_PATH"',
+        "      - shell: powershell",
+        "        run: Write-Output $env:GITHUB_REF_NAME",
+        "      - run: npm run verify && npm run doctor",
+        "      - name: Metadata keys that resemble workflow fields",
+        "        env:",
+        "          run: export MODE=test",
+        "        with:",
+        "          shell: bash",
+        "        shell: pwsh",
+        "        run: |",
+        "          Set-Location C:\\",
+        "          Write-Output 'literal $GITHUB_REF_NAME and <<NODE'",
+        "          Write-Output ok # migration note mentions $RUNNER_TEMP",
+        "          Write-Output 'literal ${BASH_REMATCH[0]}'",
+        '          $prefix = "C:\\"; $content = @"',
+        "          shell: bash",
+        "          run: export MODE=test",
+        "          export NEXT_MODE=test",
+        '          "@',
+        "          $literal = @'",
+        "          ref=$GITHUB_REF_NAME",
+        "          '@",
+        '          $path = "C:\\"; Write-Output "<<NODE"',
+        '          Write-Output "`$GITHUB_REF_NAME"',
+        "      - shell: python",
+        "        run: |",
+        '          mode="test"',
+        "          print(mode)",
+        "      - shell: cmd",
+        "        run: set MODE=test",
+      "      - shell: pwsh",
+      "        run: |",
+      "          $params = @{",
+      '            Path="artifact.zip"',
+      "          }",
+      "      - shell: pwsh",
+      '        run: $config = @{Mode="test";Path="artifact.zip"}',
+      ].join("\n"),
+    ),
+    [],
+  );
+});
+
+test("Windows workflow portability respects operating-system job boundaries", () => {
+  assert.deepEqual(
+    workflowFixtureIssues(
+      [
+        "jobs:",
+        "  linux:",
+        "    runs-on: ubuntu-latest",
+        "    steps:",
+        "      - shell: bash",
+        "        run: |",
+        "          set -euo pipefail",
+        '          echo "$GITHUB_REF_NAME"',
+        "  windows:",
+        "    runs-on: windows-latest",
+        "    steps:",
+        "      - shell: pwsh",
+        "        run: Write-Output $env:GITHUB_REF_NAME",
+        "  macos:",
+        "    runs-on: macos-15",
+        "    steps:",
+        "      - shell: zsh {0}",
+        "        run: |",
+        "          export MODE=test",
+        "          node script.mjs \\",
+        "            --verify",
+        "  matrix:",
+        "    strategy:",
+        "      matrix:",
+        "        os: [ubuntu-latest, windows-latest]",
+        "    runs-on: ${{ matrix.os }}",
+        "    steps:",
+        "      - if: runner.os != 'Windows'",
+        "        shell: bash",
+        "        run: set -euo pipefail",
+      ].join("\n"),
+    ),
+    [],
+  );
+});
+
+test("Windows workflow portability permits documented line-level exceptions only", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: bash # command-portability-allow: vendor action requires Git Bash",
+      "        run: npm test",
+      "      - run: set -euo pipefail # command-portability-allow: upstream probe mirrors Bash",
+      '      - name: "command-portability-allow: metadata is not an exception for later lines"',
+      "        run: export MODE=test",
+      "      - run: MODE=test node script.mjs # command-portability-allow:",
+      "      - run: |",
+      "          node script.mjs \\ # command-portability-allow: literal fixture continuation",
+      "          export NEXT_MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [9, 10, 13],
+  );
 });
 
 test("command portability analyzes executable calls in test files", (t) => {
