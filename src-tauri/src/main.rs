@@ -916,7 +916,7 @@ fn legacy_migration_snapshot_path(app_dir: &Path) -> PathBuf {
     ))
 }
 
-#[cfg(any(target_os = "windows", test))]
+#[cfg(test)]
 fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
     resolve_windows_storage_resolution(roaming_dir, local_dir).app_dir
 }
