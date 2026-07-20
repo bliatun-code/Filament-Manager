@@ -551,7 +551,6 @@ fn app_storage_migration_does_not_overwrite_unreadable_current_database() {
     }
 }
 
-#[cfg(target_os = "windows")]
 #[test]
 fn windows_storage_prefers_existing_db_location() {
     use super::{resolve_windows_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
@@ -580,6 +579,204 @@ fn windows_storage_prefers_existing_db_location() {
         let selected_with_local =
             resolve_windows_storage_dir(roaming_dir.clone(), local_dir.clone());
         assert_eq!(selected_with_local, local_dir);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_storage_preserves_legacy_roaming_app_data() {
+    use super::{
+        prepare_app_storage_dir, resolve_windows_storage_dir, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-legacy-roaming-storage");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let legacy_roaming_dir = roaming_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let result = (|| -> Result<(), String> {
+        write_migration_probe_db(&legacy_roaming_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+        write_migration_probe_db(&local_dir.join(APP_DB_FILE_NAME), 0)?;
+
+        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
+        assert_eq!(selected, roaming_dir);
+
+        prepare_app_storage_dir(&selected)?;
+        assert_eq!(
+            migration_probe_spool_count(&selected.join(APP_DB_FILE_NAME))?,
+            1
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_storage_preserves_legacy_roaming_inventory_locations() {
+    use super::{
+        prepare_app_storage_dir, resolve_windows_storage_dir, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-legacy-roaming-inventory-locations");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let legacy_roaming_dir = roaming_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&legacy_roaming_dir).map_err(|error| error.to_string())?;
+        std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
+
+        {
+            let legacy_db =
+                FilamentDatabase::open(legacy_roaming_dir.join(LEGACY_APP_DB_FILE_NAME))
+                    .map_err(|error| error.to_string())?;
+            legacy_db
+                .apply_schema()
+                .map_err(|error| error.to_string())?;
+            legacy_db
+                .conn
+                .execute(
+                    "INSERT INTO inventory_locations (id, name, type)
+                     VALUES ('legacy-location', 'Legacy shelf', 'SHELF')",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        {
+            let local_db = FilamentDatabase::open(local_dir.join(APP_DB_FILE_NAME))
+                .map_err(|error| error.to_string())?;
+            local_db.apply_schema().map_err(|error| error.to_string())?;
+        }
+
+        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
+        assert_eq!(selected, roaming_dir);
+
+        prepare_app_storage_dir(&selected)?;
+        let migrated_db = rusqlite::Connection::open(selected.join(APP_DB_FILE_NAME))
+            .map_err(|error| error.to_string())?;
+        let location_count = migrated_db
+            .query_row("SELECT COUNT(*) FROM inventory_locations", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(location_count, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
+    use super::{database_user_data_state, DatabaseUserDataState};
+
+    let db_path = temp_db_path("catalog-user-data-state");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        assert_eq!(
+            database_user_data_state(&db_path),
+            DatabaseUserDataState::NoUserData
+        );
+
+        db.conn
+            .execute(
+                "UPDATE filament_master_list SET catalog_source = 'scraped'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            database_user_data_state(&db_path),
+            DatabaseUserDataState::NoUserData
+        );
+
+        db.conn
+            .execute(
+                "UPDATE filament_master_list
+                 SET catalog_user_edited = 1
+                 WHERE id = (SELECT id FROM filament_master_list LIMIT 1)",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            database_user_data_state(&db_path),
+            DatabaseUserDataState::HasUserData
+        );
+
+        db.conn
+            .execute(
+                "UPDATE filament_master_list SET catalog_user_edited = 0",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, vendor, catalog_source
+                 ) VALUES (
+                    'manual-catalog-entry', 'PLA', 'Manual entry', 'Purple', 'Manual', 'manual'
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            database_user_data_state(&db_path),
+            DatabaseUserDataState::HasUserData
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn windows_storage_prefers_current_roaming_data_over_legacy_local_data() {
+    use super::{
+        prepare_app_storage_dir, resolve_windows_storage_dir, APP_DB_FILE_NAME,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-current-roaming-over-legacy-local");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let legacy_local_dir = local_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let result = (|| -> Result<(), String> {
+        write_migration_probe_db(&legacy_local_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+        write_migration_probe_db(&roaming_dir.join(APP_DB_FILE_NAME), 2)?;
+
+        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
+        assert_eq!(selected, roaming_dir);
+
+        prepare_app_storage_dir(&selected)?;
+        assert_eq!(
+            migration_probe_spool_count(&selected.join(APP_DB_FILE_NAME))?,
+            2
+        );
 
         Ok(())
     })();

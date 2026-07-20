@@ -6,6 +6,7 @@ import { collectPathPortabilitySourceFiles } from "./check-path-portability.mjs"
 
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
 const workflowSourceExtensions = new Set([".yaml", ".yml"]);
+const packageManifestFileName = "package.json";
 const allowMarker = "command-portability-allow:";
 const childProcessModules = new Set(["child_process", "node:child_process"]);
 const utilModules = new Set(["node:util", "util"]);
@@ -120,12 +121,61 @@ const windowsWorkflowRunPatterns = [
     pattern: /^\s*export\s+[A-Za-z_][A-Za-z0-9_]*=/,
   },
   {
+    label: "POSIX env commands must not be used in a Windows workflow job",
+    pattern: /^\s*env(?:\s|$)/i,
+  },
+  {
     label: "POSIX variable assignments must not be used in a Windows workflow job",
     pattern: /^\s*[A-Za-z_][A-Za-z0-9_]*=/,
     skipInPowerShellHashtable: true,
     suppressWhenUnprefixedEnvironment: true,
   },
+  {
+    label: "POSIX chmod modes must not be used in a Windows workflow job",
+    pattern:
+      /^\s*(?:&\s+)?chmod\s+(?:-[A-Za-z]+\s+)*(?:[ugoa]*[+=-][rwxXstugo]+|[0-7]{3,4})(?:\s|$)/i,
+  },
+  {
+    label: "combined POSIX rm -rf flags must not be used in a Windows workflow job",
+    pattern: /^\s*rm\s+-(?=[A-Za-z]*r)(?=[A-Za-z]*f)[A-Za-z]+(?:\s|$)/i,
+  },
+  {
+    label: "POSIX shells must not be launched from a Windows PowerShell workflow step",
+    pattern: /^\s*(?:&\s+)?(?:bash|sh|zsh)(?:\.exe)?(?:\s|$)/i,
+  },
 ];
+const packageScriptPlatformShells = new Set([
+  "bash",
+  "bash.exe",
+  "cmd",
+  "cmd.exe",
+  "powershell",
+  "powershell.exe",
+  "pwsh",
+  "pwsh.exe",
+  "sh",
+  "sh.exe",
+  "zsh",
+  "zsh.exe",
+]);
+const packageScriptPlatformCommands = new Set([
+  "awk",
+  "chmod",
+  "chown",
+  "copy",
+  "cp",
+  "del",
+  "env",
+  "grep",
+  "ln",
+  "move",
+  "mv",
+  "rm",
+  "sed",
+  "touch",
+  "where",
+  "which",
+]);
 
 function tokenizeSource(source) {
   const tokens = [];
@@ -1313,10 +1363,10 @@ function jobDirectIndent(job) {
   return indents.length > 0 ? Math.min(...indents) : null;
 }
 
-function jobUsesLiteralWindowsRunner(job) {
+function workflowJobRunnerField(job) {
   const directIndent = jobDirectIndent(job);
   if (directIndent === null) {
-    return false;
+    return null;
   }
   for (let index = 0; index < job.lines.length; index += 1) {
     const entry = job.lines[index];
@@ -1326,26 +1376,665 @@ function jobUsesLiteralWindowsRunner(job) {
     const match = entry.source
       .trim()
       .match(/^(?:runs-on|"runs-on"|'runs-on')\s*:\s*(.*)$/);
-    if (!match) {
-      continue;
-    }
-    const value = yamlScalarValue(match[1]);
-    if (
-      workflowRunnerValueIncludesWindows(
-        job.lines,
-        index,
+    if (match) {
+      return {
         directIndent,
-        match[1],
-      )
-    ) {
-      return true;
+        index,
+        line: entry.line,
+        rawSource: match[1],
+      };
     }
-    // Matrix jobs commonly guard OS-specific steps individually. Without a
-    // full expression evaluator, treating a mixed matrix as Windows-only would
-    // create false errors, so this contract deliberately checks literal labels.
+  }
+  return null;
+}
+
+function jobUsesLiteralWindowsRunner(job) {
+  const runner = workflowJobRunnerField(job);
+  if (!runner) {
     return false;
   }
-  return false;
+  return (
+    workflowRunnerValueIncludesWindows(
+      job.lines,
+      runner.index,
+      runner.directIndent,
+      runner.rawSource,
+    ) ||
+    workflowRunnerAnalysisValues(job, runner).values.some((value) =>
+      windowsRunnerLabel(value),
+    )
+  );
+}
+
+function yamlFlowSequenceValues(source) {
+  const value = yamlScalarValue(source);
+  if (!value.startsWith("[") || !value.endsWith("]")) {
+    return null;
+  }
+  const values = [];
+  let quote = null;
+  let start = 1;
+  let nestedDepth = 0;
+  for (let index = 1; index < value.length - 1; index += 1) {
+    const character = value[index];
+    if (quote) {
+      if (character === "\\" && quote === '"') {
+        index += 1;
+      } else if (character === quote) {
+        if (quote === "'" && value[index + 1] === "'") {
+          index += 1;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+    } else if ("([{\"".includes(character)) {
+      nestedDepth += 1;
+    } else if (")]}".includes(character)) {
+      nestedDepth = Math.max(0, nestedDepth - 1);
+    } else if (character === "," && nestedDepth === 0) {
+      values.push(value.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  values.push(value.slice(start, -1).trim());
+  return values.filter(Boolean);
+}
+
+function workflowMatrixReference(value) {
+  const match = yamlScalarValue(value).match(
+    /^\$\{\{\s*matrix(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[['"]([^'"\]]+)['"]\])\s*\}\}$/,
+  );
+  return match?.[1] ?? match?.[2] ?? null;
+}
+
+function workflowRunnerAnalysisValues(job, runner) {
+  const runnerValue = yamlScalarValue(runner.rawSource);
+  const flowValues = yamlFlowSequenceValues(runner.rawSource);
+  if (flowValues) {
+    return { unresolvedStructure: false, values: flowValues };
+  }
+  if (runnerValue && !isWorkflowBlockScalar(runnerValue)) {
+    return {
+      unresolvedStructure: runnerValue.startsWith("{"),
+      values: runnerValue.startsWith("{") ? [] : [runner.rawSource],
+    };
+  }
+
+  const values = [];
+  let unresolvedStructure = false;
+  for (
+    let cursor = runner.index + 1;
+    cursor < job.lines.length;
+    cursor += 1
+  ) {
+    const entry = job.lines[cursor];
+    if (!entry.source.trim() || /^\s*#/.test(entry.source)) {
+      continue;
+    }
+    if (workflowIndent(entry.source) <= runner.directIndent) {
+      break;
+    }
+    const source = entry.source.trim();
+    const listItem = source.match(/^-\s+(.+)$/);
+    if (listItem) {
+      values.push(...(yamlFlowSequenceValues(listItem[1]) ?? [listItem[1]]));
+      continue;
+    }
+    const labels = source.match(
+      /^(?:labels|"labels"|'labels')\s*:\s*(.*)$/,
+    );
+    if (labels) {
+      if (yamlScalarValue(labels[1])) {
+        values.push(...(yamlFlowSequenceValues(labels[1]) ?? [labels[1]]));
+      }
+      continue;
+    }
+    if (/^(?:group|"group"|'group')\s*:/.test(source)) {
+      // A runner group may select Windows hosts even when no literal labels
+      // are present, so its platform cannot be inferred safely here.
+      unresolvedStructure = true;
+      continue;
+    }
+    if (isWorkflowBlockScalar(runnerValue)) {
+      values.push(source);
+    } else if (source.includes("${{") || /^\*/.test(source)) {
+      unresolvedStructure = true;
+    }
+  }
+  return { unresolvedStructure, values };
+}
+
+function workflowRunnerMatrixReference(job, runner) {
+  const { unresolvedStructure, values } = workflowRunnerAnalysisValues(
+    job,
+    runner,
+  );
+  const axes = values
+    .map((value) => workflowMatrixReference(value))
+    .filter(Boolean);
+  const unresolvedExpression = values.some(
+    (value) =>
+      yamlScalarValue(value).includes("${{") &&
+      !workflowMatrixReference(value),
+  );
+  return {
+    axis: axes.length === 1 ? axes[0] : null,
+    unresolved:
+      unresolvedStructure || unresolvedExpression || axes.length > 1,
+  };
+}
+
+function workflowMappingRange(lines, index, indent) {
+  let end = lines.length;
+  for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+    const source = lines[cursor].source;
+    if (!source.trim() || /^\s*#/.test(source)) {
+      continue;
+    }
+    if (workflowIndent(source) <= indent) {
+      end = cursor;
+      break;
+    }
+  }
+  return { end, start: index + 1 };
+}
+
+function workflowDirectChildIndent(lines, start, end, parentIndent) {
+  const indents = lines
+    .slice(start, end)
+    .filter(({ source }) => source.trim() && !/^\s*#/.test(source))
+    .map(({ source }) => workflowIndent(source))
+    .filter((indent) => indent > parentIndent);
+  return indents.length > 0 ? Math.min(...indents) : null;
+}
+
+function workflowJobMatrixBlock(job) {
+  const directIndent = jobDirectIndent(job);
+  if (directIndent === null) {
+    return null;
+  }
+  for (let index = 0; index < job.lines.length; index += 1) {
+    const entry = job.lines[index];
+    if (
+      workflowIndent(entry.source) !== directIndent ||
+      !/^(?:strategy|"strategy"|'strategy')\s*:\s*(?:&[A-Za-z0-9_.-]+\s*)?(?:#.*)?$/.test(
+        entry.source.trim(),
+      )
+    ) {
+      continue;
+    }
+    const strategyRange = workflowMappingRange(
+      job.lines,
+      index,
+      directIndent,
+    );
+    const strategyChildIndent = workflowDirectChildIndent(
+      job.lines,
+      strategyRange.start,
+      strategyRange.end,
+      directIndent,
+    );
+    if (strategyChildIndent === null) {
+      return null;
+    }
+    for (
+      let cursor = strategyRange.start;
+      cursor < strategyRange.end;
+      cursor += 1
+    ) {
+      const candidate = job.lines[cursor];
+      if (
+        workflowIndent(candidate.source) !== strategyChildIndent ||
+        !/^(?:matrix|"matrix"|'matrix')\s*:\s*(?:&[A-Za-z0-9_.-]+\s*)?(?:#.*)?$/.test(
+          candidate.source.trim(),
+        )
+      ) {
+        continue;
+      }
+      return {
+        end: workflowMappingRange(
+          job.lines,
+          cursor,
+          strategyChildIndent,
+        ).end,
+        indent: strategyChildIndent,
+        start: cursor + 1,
+      };
+    }
+  }
+  return null;
+}
+
+function workflowLiteralMatrixValue(rawSource) {
+  const value = yamlScalarValue(rawSource);
+  if (
+    !value ||
+    value.includes("${{") ||
+    /^\*/.test(value) ||
+    /^[{[]/.test(value)
+  ) {
+    return null;
+  }
+  return value;
+}
+
+function workflowBlockListValues(lines, index, indent, end) {
+  const range = workflowMappingRange(lines, index, indent);
+  const listEnd = Math.min(range.end, end);
+  const itemIndent = workflowDirectChildIndent(
+    lines,
+    index + 1,
+    listEnd,
+    indent,
+  );
+  if (itemIndent === null) {
+    return { complete: false, values: [] };
+  }
+  const values = [];
+  let complete = true;
+  for (let cursor = index + 1; cursor < listEnd; cursor += 1) {
+    const entry = lines[cursor];
+    if (!entry.source.trim() || /^\s*#/.test(entry.source)) {
+      continue;
+    }
+    if (workflowIndent(entry.source) !== itemIndent) {
+      continue;
+    }
+    const item = entry.source.trim().match(/^-\s+(.+)$/);
+    const value = item ? workflowLiteralMatrixValue(item[1]) : null;
+    if (value) {
+      values.push(value);
+    } else {
+      complete = false;
+    }
+  }
+  return { complete: complete && values.length > 0, values };
+}
+
+function workflowMatrixIncludeValues(job, matrix, axisFieldPattern) {
+  const matrixChildIndent = workflowDirectChildIndent(
+    job.lines,
+    matrix.start,
+    matrix.end,
+    matrix.indent,
+  );
+  if (matrixChildIndent === null) {
+    return { complete: false, present: false, values: [] };
+  }
+  for (let index = matrix.start; index < matrix.end; index += 1) {
+    const entry = job.lines[index];
+    if (workflowIndent(entry.source) !== matrixChildIndent) {
+      continue;
+    }
+    const include = entry.source
+      .trim()
+      .match(/^(?:include|"include"|'include')\s*:\s*(.*)$/);
+    if (!include) {
+      continue;
+    }
+    const inlineInclude = yamlScalarValue(include[1]);
+    if (inlineInclude) {
+      return {
+        complete: inlineInclude === "[]",
+        coversAllItems: inlineInclude === "[]",
+        present: true,
+        values: [],
+      };
+    }
+    const includeRange = workflowMappingRange(
+      job.lines,
+      index,
+      matrixChildIndent,
+    );
+    const itemIndent = workflowDirectChildIndent(
+      job.lines,
+      includeRange.start,
+      includeRange.end,
+      matrixChildIndent,
+    );
+    if (itemIndent === null) {
+      return { complete: false, present: true, values: [] };
+    }
+    const values = [];
+    let items = 0;
+    let matchedItems = 0;
+    let invalidAxisItems = 0;
+    for (
+      let itemIndex = includeRange.start;
+      itemIndex < includeRange.end;
+      itemIndex += 1
+    ) {
+      const item = job.lines[itemIndex];
+      if (workflowIndent(item.source) !== itemIndent) {
+        continue;
+      }
+      const itemMatch = item.source.trim().match(/^-\s*(.*)$/);
+      if (!itemMatch) {
+        continue;
+      }
+      items += 1;
+      const itemSource = itemMatch[1].trim();
+      let opaqueAxisValue =
+        /^(?:\$\{\{|\*|\{|\[|<<\s*:)/.test(itemSource) ||
+        yamlSourceContainsAlias(itemSource);
+      let rawValue = itemSource.match(axisFieldPattern)?.[1] ?? null;
+      const itemRange = workflowMappingRange(
+        job.lines,
+        itemIndex,
+        itemIndent,
+      );
+      if (!rawValue) {
+        const childIndent = workflowDirectChildIndent(
+          job.lines,
+          itemIndex + 1,
+          Math.min(itemRange.end, includeRange.end),
+          itemIndent,
+        );
+        for (
+          let cursor = itemIndex + 1;
+          childIndent !== null &&
+          cursor < Math.min(itemRange.end, includeRange.end);
+          cursor += 1
+        ) {
+          const candidate = job.lines[cursor];
+          if (workflowIndent(candidate.source) !== childIndent) {
+            continue;
+          }
+          rawValue = candidate.source.trim().match(axisFieldPattern)?.[1] ?? null;
+          if (rawValue) {
+            break;
+          }
+          if (
+            /^(?:\$\{\{|\*|\{|\[|<<\s*:)/.test(candidate.source.trim()) ||
+            yamlSourceContainsAlias(candidate.source.trim())
+          ) {
+            opaqueAxisValue = true;
+          }
+        }
+      }
+      const value = rawValue ? workflowLiteralMatrixValue(rawValue) : null;
+      if (value) {
+        values.push(value);
+        matchedItems += 1;
+      } else if (rawValue) {
+        invalidAxisItems += 1;
+      } else if (opaqueAxisValue) {
+        invalidAxisItems += 1;
+      }
+    }
+    return {
+      complete: invalidAxisItems === 0,
+      coversAllItems: items > 0 && matchedItems === items,
+      present: true,
+      values,
+    };
+  }
+  return {
+    complete: true,
+    coversAllItems: false,
+    present: false,
+    values: [],
+  };
+}
+
+function workflowLiteralMatrixCandidates(job, axis) {
+  const matrix = workflowJobMatrixBlock(job);
+  if (!matrix) {
+    return { complete: false, values: new Set(), windowsValues: new Set() };
+  }
+  const escapedAxis = axis.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const axisFieldPattern = new RegExp(
+    `^(?:${escapedAxis}|"${escapedAxis}"|'${escapedAxis}')\\s*:\\s*(.*)$`,
+  );
+  const matrixChildIndent = workflowDirectChildIndent(
+    job.lines,
+    matrix.start,
+    matrix.end,
+    matrix.indent,
+  );
+  let primaryPresent = false;
+  let primaryComplete = false;
+  const values = [];
+  if (matrixChildIndent !== null) {
+    for (let index = matrix.start; index < matrix.end; index += 1) {
+      const entry = job.lines[index];
+      if (workflowIndent(entry.source) !== matrixChildIndent) {
+        continue;
+      }
+      const field = entry.source.trim().match(axisFieldPattern);
+      if (!field) {
+        continue;
+      }
+      primaryPresent = true;
+      const flowValues = yamlFlowSequenceValues(field[1]);
+      if (flowValues) {
+        const literalValues = flowValues
+          .map((value) => workflowLiteralMatrixValue(value))
+          .filter(Boolean);
+        values.push(...literalValues);
+        primaryComplete =
+          flowValues.length > 0 && literalValues.length === flowValues.length;
+      } else if (!yamlScalarValue(field[1])) {
+        const blockValues = workflowBlockListValues(
+          job.lines,
+          index,
+          matrixChildIndent,
+          matrix.end,
+        );
+        values.push(...blockValues.values);
+        primaryComplete = blockValues.complete;
+      }
+      break;
+    }
+  }
+  const include = workflowMatrixIncludeValues(
+    job,
+    matrix,
+    axisFieldPattern,
+  );
+  values.push(...include.values);
+  const complete = primaryPresent
+    ? primaryComplete && include.complete
+    : include.present && include.complete && include.coversAllItems;
+  const uniqueValues = new Set(values);
+  return {
+    complete,
+    values: uniqueValues,
+    windowsValues: new Set(
+      [...uniqueValues].filter((value) => windowsRunnerLabel(value)),
+    ),
+  };
+}
+
+function workflowJobWindowsContext(job) {
+  const runner = workflowJobRunnerField(job);
+  if (!runner) {
+    return { context: null, review: null };
+  }
+  if (jobUsesLiteralWindowsRunner(job)) {
+    return { context: { kind: "literal" }, review: null };
+  }
+  const matrixReference = workflowRunnerMatrixReference(job, runner);
+  if (!matrixReference.axis) {
+    return {
+      context: null,
+      review: matrixReference.unresolved ? runner : null,
+    };
+  }
+  const candidates = workflowLiteralMatrixCandidates(
+    job,
+    matrixReference.axis,
+  );
+  const context =
+    candidates.windowsValues.size > 0
+      ? {
+          axis: matrixReference.axis,
+          kind: "matrix",
+          values: candidates.values,
+          windowsValues: candidates.windowsValues,
+        }
+      : null;
+  return {
+    context,
+    review:
+      candidates.complete && !matrixReference.unresolved ? null : runner,
+  };
+}
+
+function workflowIfExpression(rawSource) {
+  let expression = yamlScalarValue(rawSource).trim();
+  const wrapped = expression.match(/^\$\{\{([\s\S]*)\}\}$/);
+  if (wrapped) {
+    expression = wrapped[1].trim();
+  }
+  return expression;
+}
+
+function workflowComparisonOperand(source) {
+  const literal = source.match(/^(['"])([\s\S]*)\1$/);
+  if (literal) {
+    return { kind: "literal", value: literal[2] };
+  }
+  if (/^runner\.os$/i.test(source)) {
+    return { kind: "runner" };
+  }
+  const matrix = source.match(
+    /^matrix(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[['"]([^'"\]]+)['"]\])$/,
+  );
+  if (matrix) {
+    return { axis: matrix[1] ?? matrix[2], kind: "matrix" };
+  }
+  return null;
+}
+
+function workflowIfComparison(rawSource) {
+  const expression = workflowIfExpression(rawSource);
+  const comparison = expression.match(/^(.+?)\s*(==|!=)\s*(.+)$/);
+  if (!comparison) {
+    return null;
+  }
+  const left = workflowComparisonOperand(comparison[1].trim());
+  const right = workflowComparisonOperand(comparison[3].trim());
+  if (!left || !right) {
+    return null;
+  }
+  const reference = left.kind === "literal" ? right : left;
+  const literal = left.kind === "literal" ? left : right;
+  if (reference.kind === "literal" || literal.kind !== "literal") {
+    return null;
+  }
+  return { literal, operator: comparison[2], reference };
+}
+
+function workflowMatrixContextHasValue(context, value) {
+  const normalizedValue = value.toLowerCase();
+  return [...context.values].some(
+    (candidate) => candidate.toLowerCase() === normalizedValue,
+  );
+}
+
+function workflowIfProvablyExcludesWindows(rawSource, context) {
+  const expression = workflowIfExpression(rawSource);
+  if (/^false$/i.test(expression)) {
+    return true;
+  }
+  const comparison = workflowIfComparison(rawSource);
+  if (!comparison) {
+    return false;
+  }
+  const value = comparison.literal.value.toLowerCase();
+  if (comparison.reference.kind === "runner") {
+    return (
+      (comparison.operator === "!=" && value === "windows") ||
+      (comparison.operator === "==" &&
+        (value === "linux" || value === "macos"))
+    );
+  }
+  if (
+    context.kind !== "matrix" ||
+    comparison.reference.kind !== "matrix" ||
+    comparison.reference.axis !== context.axis
+  ) {
+    return false;
+  }
+  if (comparison.operator === "==") {
+    return (
+      workflowMatrixContextHasValue(context, comparison.literal.value) &&
+      !windowsRunnerLabel(comparison.literal.value)
+    );
+  }
+  return (
+    context.windowsValues.size === 1 &&
+    [...context.windowsValues][0].toLowerCase() === value
+  );
+}
+
+function workflowIfRequiresPortabilityReview(rawSource, context) {
+  const expression = workflowIfExpression(rawSource);
+  const escapedAxis =
+    context.kind === "matrix"
+      ? context.axis.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      : null;
+  const referencesPlatform =
+    /\brunner\.os\b/i.test(expression) ||
+    (escapedAxis !== null &&
+      new RegExp(
+        `\\bmatrix\\.${escapedAxis}\\b|matrix\\[['"]${escapedAxis}['"]\\]`,
+      ).test(expression));
+  if (!referencesPlatform || /^false$/i.test(expression)) {
+    return false;
+  }
+  const comparison = workflowIfComparison(rawSource);
+  if (!comparison) {
+    return true;
+  }
+  if (comparison.reference.kind === "runner") {
+    return !/^(?:windows|linux|macos)$/i.test(comparison.literal.value);
+  }
+  return !(
+    context.kind === "matrix" &&
+    comparison.reference.kind === "matrix" &&
+    comparison.reference.axis === context.axis &&
+    workflowMatrixContextHasValue(context, comparison.literal.value)
+  );
+}
+
+function workflowStepIfFields(job) {
+  const fields = new Map();
+  for (const field of workflowStepFields(job, "if")) {
+    const stepFields = fields.get(field.stepIndex) ?? [];
+    stepFields.push(field);
+    fields.set(field.stepIndex, stepFields);
+  }
+  return fields;
+}
+
+function windowsWorkflowRunStepContext(job, context) {
+  const ifFields = workflowStepIfFields(job);
+  const relevantStepIndexes = new Set();
+  const reviews = [];
+  for (const { stepIndex } of workflowStepFields(job, "run")) {
+    const fields = ifFields.get(stepIndex) ?? [];
+    if (
+      fields.length === 1 &&
+      workflowIfProvablyExcludesWindows(fields[0].rawSource, context)
+    ) {
+      continue;
+    }
+    if (
+      fields.length === 1 &&
+      workflowIfRequiresPortabilityReview(fields[0].rawSource, context)
+    ) {
+      reviews.push(fields[0]);
+      continue;
+    }
+    relevantStepIndexes.add(stepIndex);
+  }
+  return { relevantStepIndexes, reviews };
 }
 
 function workflowJobs(lines) {
@@ -1400,10 +2089,6 @@ function workflowJobs(lines) {
   }
   finishCurrentJob();
   return jobs;
-}
-
-function literalWindowsWorkflowJobs(lines) {
-  return workflowJobs(lines).filter((job) => jobUsesLiteralWindowsRunner(job));
 }
 
 function workflowStepFields(job, fieldName) {
@@ -1750,8 +2435,110 @@ function workflowGlobalDefaultAliasFields(lines) {
   return fields;
 }
 
+function workflowEnvironmentName(source) {
+  const match = source.trim().match(
+    /^(?:([A-Za-z_][A-Za-z0-9_]*)|"([A-Za-z_][A-Za-z0-9_]*)"|'([A-Za-z_][A-Za-z0-9_]*)')\s*:/,
+  );
+  return (match?.[1] ?? match?.[2] ?? match?.[3])?.toUpperCase() ?? null;
+}
+
+function workflowEnvironmentNamesFromBlock(entries, headerIndex, headerIndent) {
+  const names = new Set();
+  let keyIndent = null;
+  for (let index = headerIndex + 1; index < entries.length; index += 1) {
+    const source = entries[index].source;
+    if (!source.trim() || /^\s*#/.test(source)) {
+      continue;
+    }
+    const indent = workflowIndent(source);
+    if (indent <= headerIndent) {
+      break;
+    }
+    if (keyIndent === null) {
+      keyIndent = indent;
+    }
+    if (indent !== keyIndent) {
+      continue;
+    }
+    const name = workflowEnvironmentName(source);
+    if (name) {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
+function workflowEnvironmentBlockHeader(source) {
+  return /^(?:env|"env"|'env')\s*:\s*(?:&[A-Za-z0-9_.-]+\s*)?(?:#.*)?$/.test(
+    source.trim(),
+  );
+}
+
+function workflowGlobalEnvironmentNames(lines) {
+  const entries = lines.map((source) => ({ source }));
+  for (let index = 0; index < entries.length; index += 1) {
+    if (
+      workflowIndent(entries[index].source) === 0 &&
+      workflowEnvironmentBlockHeader(entries[index].source)
+    ) {
+      return workflowEnvironmentNamesFromBlock(entries, index, 0);
+    }
+  }
+  return new Set();
+}
+
+function workflowJobEnvironmentNames(job) {
+  const directIndent = jobDirectIndent(job);
+  if (directIndent === null) {
+    return new Set();
+  }
+  for (let index = 0; index < job.lines.length; index += 1) {
+    if (
+      workflowIndent(job.lines[index].source) === directIndent &&
+      workflowEnvironmentBlockHeader(job.lines[index].source)
+    ) {
+      return workflowEnvironmentNamesFromBlock(
+        job.lines,
+        index,
+        directIndent,
+      );
+    }
+  }
+  return new Set();
+}
+
+function workflowStepEnvironmentNames(job) {
+  const namesByStep = new Map();
+  for (const field of workflowStepFields(job, "env")) {
+    if (yamlScalarValue(field.rawSource)) {
+      continue;
+    }
+    const names = workflowEnvironmentNamesFromBlock(
+      job.lines,
+      field.index,
+      field.keyIndent,
+    );
+    const existing = namesByStep.get(field.stepIndex) ?? new Set();
+    for (const name of names) {
+      existing.add(name);
+    }
+    namesByStep.set(field.stepIndex, existing);
+  }
+  return namesByStep;
+}
+
+function mergedWorkflowEnvironmentNames(...groups) {
+  const names = new Set();
+  for (const group of groups) {
+    for (const name of group ?? []) {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
 function isWorkflowBlockScalar(value) {
-  return /^[|>](?:[+-]?[1-9]|[1-9][+-]?)?(?:\s+#.*)?$/.test(value.trim());
+  return /^[|>](?:[+-][1-9]?|[1-9][+-]?)?(?:\s+#.*)?$/.test(value.trim());
 }
 
 function powerShellHereStringTerminator(source) {
@@ -2084,6 +2871,57 @@ function containsUnprefixedGithubEnvironment(
   return false;
 }
 
+function unprefixedDeclaredEnvironmentReferences(
+  source,
+  declaredNames,
+  localVariables,
+  { honorSingleQuotes = true, trackAssignments = true } = {},
+) {
+  const references = new Set();
+  let inSingleQuote = false;
+  for (let index = 0; index < source.length; index += 1) {
+    if (honorSingleQuotes && source[index] === "'") {
+      if (inSingleQuote && source[index + 1] === "'") {
+        index += 1;
+      } else {
+        inSingleQuote = !inSingleQuote;
+      }
+      continue;
+    }
+    if (!inSingleQuote && source[index] === "`") {
+      index += 1;
+      continue;
+    }
+    if (inSingleQuote || source[index] !== "$") {
+      continue;
+    }
+    const match = source.slice(index).match(
+      /^\$(?:\{(?:(?<bracedScope>[A-Za-z_][A-Za-z0-9_]*):)?(?<bracedName>[A-Za-z_][A-Za-z0-9_]*)\}|(?:(?<scope>[A-Za-z_][A-Za-z0-9_]*):)?(?<name>[A-Za-z_][A-Za-z0-9_]*))/,
+    );
+    if (!match) {
+      continue;
+    }
+    const scope = match.groups?.bracedScope ?? match.groups?.scope;
+    const name = (
+      match.groups?.bracedName ?? match.groups?.name
+    )?.toUpperCase();
+    index += match[0].length - 1;
+    if (!name || !declaredNames.has(name) || scope?.toLowerCase() === "env") {
+      continue;
+    }
+    const remainder = source.slice(index + 1);
+    const assignment = /^\s*(?:\+=|-=|\*=|\/=|%=|=(?!=))/.test(remainder);
+    if (trackAssignments && assignment) {
+      localVariables.add(name);
+      continue;
+    }
+    if (!localVariables.has(name)) {
+      references.add(name);
+    }
+  }
+  return references;
+}
+
 function containsUnquotedHeredoc(source) {
   let quote = null;
   for (let index = 0; index < source.length; index += 1) {
@@ -2172,6 +3010,93 @@ function powerShellStatementSegments(source) {
   return segments;
 }
 
+const windowsWorkflowCallOperatorCommands = new Set([
+  "bash",
+  "chmod",
+  "env",
+  "rm",
+  "sh",
+  "zsh",
+]);
+
+function normalizedExecutableBasename(value) {
+  return executableBasename(value)?.replace(/\.exe$/i, "") ?? null;
+}
+
+function powerShellStaticCommandLiteral(source, start) {
+  const quote = source[start];
+  if (quote === '"' || quote === "'") {
+    let value = "";
+    for (let index = start + 1; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote === '"' && (character === "`" || character === "$")) {
+        return null;
+      }
+      if (character === quote) {
+        if (quote === "'" && source[index + 1] === "'") {
+          value += "'";
+          index += 1;
+          continue;
+        }
+        return { end: index + 1, value };
+      }
+      value += character;
+    }
+    return null;
+  }
+
+  const token = source.slice(start).match(/^[^\s()]+/)?.[0] ?? "";
+  if (!token || /[\x22\x27`$]/.test(token)) {
+    return null;
+  }
+  return { end: start + token.length, value: token };
+}
+
+function normalizedPowerShellCallOperatorStatement(segment) {
+  const source = segment.trimStart();
+  if (!source.startsWith("&")) {
+    return null;
+  }
+
+  let index = 1;
+  while (/\s/.test(source[index] ?? "")) {
+    index += 1;
+  }
+  let parenthesisDepth = 0;
+  while (source[index] === "(") {
+    parenthesisDepth += 1;
+    index += 1;
+    while (/\s/.test(source[index] ?? "")) {
+      index += 1;
+    }
+  }
+
+  const literal = powerShellStaticCommandLiteral(source, index);
+  if (!literal) {
+    return null;
+  }
+  index = literal.end;
+  for (let depth = 0; depth < parenthesisDepth; depth += 1) {
+    while (/\s/.test(source[index] ?? "")) {
+      index += 1;
+    }
+    if (source[index] !== ")") {
+      return null;
+    }
+    index += 1;
+  }
+  if (source[index] && !/\s/.test(source[index])) {
+    return null;
+  }
+
+  const command = normalizedExecutableBasename(literal.value);
+  if (!command || !windowsWorkflowCallOperatorCommands.has(command)) {
+    return null;
+  }
+  const rest = source.slice(index).trimStart();
+  return rest ? `${command} ${rest}` : command;
+}
+
 function workflowShellExecutable(rawSource) {
   const shellValue = yamlScalarValue(rawSource);
   const withoutPlaceholder = shellValue.replace(/\s+\{0\}\s*$/, "").trim();
@@ -2210,7 +3135,26 @@ export function findWindowsWorkflowCommandPortabilityIssues(
 ) {
   const lines = source.split(/\r?\n/);
   const issues = [];
-  const windowsJobs = literalWindowsWorkflowJobs(lines);
+  const jobs = workflowJobs(lines);
+  const windowsJobs = [];
+
+  for (const job of jobs) {
+    const { context, review } = workflowJobWindowsContext(job);
+    if (
+      review &&
+      !hasDocumentedAllowMarker(review.rawSource)
+    ) {
+      issues.push({
+        file,
+        label:
+          "workflow matrix runner expressions or runner mappings require a documented portability review",
+        line: review.line,
+      });
+    }
+    if (context) {
+      windowsJobs.push({ context, job });
+    }
+  }
 
   const inspectAliasFields = (fields, label) => {
     for (const { line, rawSource } of fields) {
@@ -2221,7 +3165,7 @@ export function findWindowsWorkflowCommandPortabilityIssues(
   };
 
   inspectAliasFields(
-    workflowJobs(lines).flatMap((job) => workflowRunnerAliasFields(job)),
+    jobs.flatMap((job) => workflowRunnerAliasFields(job)),
     "workflow runner aliases require a documented portability review",
   );
 
@@ -2235,6 +3179,15 @@ export function findWindowsWorkflowCommandPortabilityIssues(
           file,
           label:
             "workflow shell aliases in Windows jobs require a documented portability review",
+          line,
+        });
+        continue;
+      }
+      if (yamlScalarValue(rawSource).includes("${{")) {
+        issues.push({
+          file,
+          label:
+            "dynamic workflow shells in Windows jobs require a documented portability review",
           line,
         });
         continue;
@@ -2253,13 +3206,28 @@ export function findWindowsWorkflowCommandPortabilityIssues(
   const globalDefaultShellFields = workflowGlobalDefaultShellFields(lines);
   const globalDefaultShell = globalDefaultShellFields[0]?.rawSource;
   const globalDefaultAliasFields = workflowGlobalDefaultAliasFields(lines);
+  const globalEnvironmentNames = workflowGlobalEnvironmentNames(lines);
   let globalDefaultIsEffective = false;
 
-  for (const job of windowsJobs) {
-    const runSources = workflowRunSources(job);
-    const runStepIndexes = new Set(
-      workflowStepFields(job, "run").map(({ stepIndex }) => stepIndex),
+  for (const { context, job } of windowsJobs) {
+    const { relevantStepIndexes: runStepIndexes, reviews } =
+      windowsWorkflowRunStepContext(job, context);
+    for (const review of reviews) {
+      if (!hasDocumentedAllowMarker(review.rawSource)) {
+        issues.push({
+          file,
+          label:
+            "workflow matrix step conditions require a documented portability review",
+          line: review.line,
+        });
+      }
+    }
+    const runSources = workflowRunSources(job).filter(({ stepIndex }) =>
+      runStepIndexes.has(stepIndex),
     );
+    const jobEnvironmentNames = workflowJobEnvironmentNames(job);
+    const stepEnvironmentNames = workflowStepEnvironmentNames(job);
+    const localVariablesByStep = new Map();
     const jobDefaultShellFields = workflowJobDefaultShellFields(job);
     const jobDefaultShell = jobDefaultShellFields[0]?.rawSource;
     const jobDefaultAliasFields = workflowJobAliasFields(job, "defaults");
@@ -2309,6 +3277,13 @@ export function findWindowsWorkflowCommandPortabilityIssues(
     } of runSources) {
       const effectiveShell =
         stepShells.get(stepIndex) ?? jobDefaultShell ?? globalDefaultShell;
+      const declaredEnvironmentNames = mergedWorkflowEnvironmentNames(
+        globalEnvironmentNames,
+        jobEnvironmentNames,
+        stepEnvironmentNames.get(stepIndex),
+      );
+      const localVariables = localVariablesByStep.get(stepIndex) ?? new Set();
+      localVariablesByStep.set(stepIndex, localVariables);
       if (requiresReview) {
         if (
           shouldInspectWindowsWorkflowRun(effectiveShell) &&
@@ -2320,8 +3295,10 @@ export function findWindowsWorkflowCommandPortabilityIssues(
         continue;
       }
       if (onlyEnvironmentInterpolation) {
+        if (!shouldInspectWindowsWorkflowRun(effectiveShell)) {
+          continue;
+        }
         if (
-          shouldInspectWindowsWorkflowRun(effectiveShell) &&
           containsUnprefixedGithubEnvironment(runSource, {
             honorSingleQuotes: false,
           })
@@ -2333,12 +3310,21 @@ export function findWindowsWorkflowCommandPortabilityIssues(
             line,
           });
         }
+        for (const name of unprefixedDeclaredEnvironmentReferences(
+          runSource,
+          declaredEnvironmentNames,
+          localVariables,
+          { honorSingleQuotes: false, trackAssignments: false },
+        )) {
+          issues.push({
+            file,
+            label: `workflow environment variable ${name} requires the PowerShell env: prefix`,
+            line,
+          });
+        }
         continue;
       }
-      if (
-        hasDocumentedAllowMarker(rawSource, "`", false) ||
-        /^\s*#/.test(runSource)
-      ) {
+      if (/^\s*#/.test(runSource)) {
         continue;
       }
       if (/^\*[A-Za-z0-9_.-]+$/.test(yamlScalarValue(rawSource))) {
@@ -2354,9 +3340,28 @@ export function findWindowsWorkflowCommandPortabilityIssues(
         continue;
       }
       const runCode = sourceBeforeComment(runSource, "`", false);
+      const declaredEnvironmentReferences =
+        unprefixedDeclaredEnvironmentReferences(
+          runCode,
+          declaredEnvironmentNames,
+          localVariables,
+        );
+      if (hasDocumentedAllowMarker(rawSource, "`", false)) {
+        continue;
+      }
+      for (const name of declaredEnvironmentReferences) {
+        issues.push({
+          file,
+          label: `workflow environment variable ${name} requires the PowerShell env: prefix`,
+          line,
+        });
+      }
       const hasUnprefixedGithubEnvironment =
         containsUnprefixedGithubEnvironment(runCode);
       const statementSegments = powerShellStatementSegments(runCode);
+      const callOperatorSegments = statementSegments
+        .map((segment) => normalizedPowerShellCallOperatorStatement(segment))
+        .filter(Boolean);
       for (const {
         label,
         pattern,
@@ -2370,7 +3375,10 @@ export function findWindowsWorkflowCommandPortabilityIssues(
         ) {
           continue;
         }
-        if (statementSegments.some((segment) => pattern.test(segment))) {
+        if (
+          statementSegments.some((segment) => pattern.test(segment)) ||
+          callOperatorSegments.some((segment) => pattern.test(segment))
+        ) {
           issues.push({ file, label, line });
         }
       }
@@ -2414,6 +3422,184 @@ export function findWindowsWorkflowCommandPortabilityIssues(
     );
   }
 
+  return issues.sort(
+    (left, right) =>
+      left.line - right.line || left.label.localeCompare(right.label),
+  );
+}
+
+function sourceLineAtOffset(source, offset) {
+  let line = 1;
+  for (let index = 0; index < offset; index += 1) {
+    if (source[index] === "\n") {
+      line += 1;
+    }
+  }
+  return line;
+}
+
+function packageScriptSegments(command) {
+  const segments = [];
+  let quote = null;
+  let start = 0;
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index];
+    if (quote) {
+      if (character === "\\" && quote === '"') {
+        index += 1;
+      } else if (character === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (character === "\\") {
+      index += 1;
+      continue;
+    }
+    if (character === '"' || character === "'" || character === "`") {
+      quote = character;
+      continue;
+    }
+    const operatorLength =
+      command.startsWith("&&", index) || command.startsWith("||", index)
+        ? 2
+        : command.startsWith("\r\n", index)
+          ? 2
+          : character === "|" || character === ";" || character === "&"
+            ? 1
+            : character === "\n" || character === "\r"
+              ? 1
+              : 0;
+    if (operatorLength > 0) {
+      segments.push(command.slice(start, index));
+      start = index + operatorLength;
+      index += operatorLength - 1;
+    }
+  }
+  segments.push(command.slice(start));
+  return segments;
+}
+
+function packageScriptCommandToken(segment) {
+  const source = segment.trim().replace(/^\(+\s*/, "");
+  const match = source.match(/^(?:"([^"]+)"|'([^']+)'|([^\s]+))/);
+  return {
+    command: match?.[1] ?? match?.[2] ?? match?.[3] ?? "",
+    rest: match ? source.slice(match[0].length).trimStart() : "",
+    source,
+  };
+}
+
+function packageScriptPortabilityLabels(command) {
+  const labels = new Set();
+  let quote = null;
+  for (let index = 0; index < command.length; index += 1) {
+    const character = command[index];
+    if (quote) {
+      if (character === "\\" && quote === '"') {
+        index += 1;
+      } else if (character === quote) {
+        quote = null;
+      } else if (quote === '"' && (character === "$" || character === "`")) {
+        labels.add("uses POSIX shell expansion");
+      }
+      continue;
+    }
+    if (character === "\\") {
+      if (command[index + 1] === "\n" || command.startsWith("\r\n", index + 1)) {
+        labels.add("uses a POSIX line continuation");
+      }
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      quote = character;
+    } else if (character === "'") {
+      labels.add("uses single-quoted shell arguments");
+      quote = character;
+    } else if (character === "`") {
+      labels.add("uses POSIX shell expansion");
+      quote = character;
+    } else if (character === "$") {
+      labels.add("uses POSIX shell expansion");
+    } else if (character === "^") {
+      labels.add("uses a Windows cmd escape");
+    } else if (character === ";") {
+      labels.add("uses a POSIX statement separator");
+    } else if (
+      character === "&" &&
+      command[index - 1] !== "&" &&
+      command[index + 1] !== "&"
+    ) {
+      labels.add("uses a platform-specific background separator");
+    }
+  }
+  if (/%[A-Za-z_][A-Za-z0-9_]*%/.test(command)) {
+    labels.add("uses Windows cmd environment expansion");
+  }
+
+  for (const segment of packageScriptSegments(command)) {
+    const { command: executable, rest, source } = packageScriptCommandToken(segment);
+    if (!executable) {
+      continue;
+    }
+    if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(source)) {
+      labels.add("uses a POSIX environment assignment");
+    }
+    const basename = executableBasename(executable);
+    if (!basename) {
+      continue;
+    }
+    if (basename === "export") {
+      labels.add("uses POSIX export syntax");
+    }
+    if (packageScriptPlatformShells.has(basename)) {
+      labels.add(`launches the platform shell ${basename}`);
+    }
+    if (/\.(?:bat|cmd)$/i.test(basename)) {
+      labels.add(`launches the Windows shell shim ${basename}`);
+    }
+    const normalizedBasename = basename.replace(/\.exe$/i, "");
+    if (packageScriptPlatformCommands.has(normalizedBasename)) {
+      labels.add(`uses the platform-specific command ${basename}`);
+    }
+    if (basename === "mkdir" && /^-p(?:\s|$)/i.test(rest)) {
+      labels.add("uses POSIX mkdir -p syntax");
+    }
+  }
+  return [...labels];
+}
+
+function packageScriptLine(source, scriptName, searchFrom) {
+  const key = JSON.stringify(scriptName);
+  const index = source.indexOf(key, searchFrom);
+  return index === -1 ? 1 : sourceLineAtOffset(source, index);
+}
+
+export function findPackageScriptCommandPortabilityIssues(
+  source,
+  file = packageManifestFileName,
+) {
+  const manifest = JSON.parse(source);
+  const scripts = manifest?.scripts;
+  if (!scripts || typeof scripts !== "object" || Array.isArray(scripts)) {
+    return [];
+  }
+  const scriptsOffset = source.indexOf('"scripts"');
+  const issues = [];
+  for (const [scriptName, command] of Object.entries(scripts)) {
+    if (typeof command !== "string") {
+      continue;
+    }
+    const line = packageScriptLine(source, scriptName, Math.max(scriptsOffset, 0));
+    for (const reason of packageScriptPortabilityLabels(command)) {
+      issues.push({
+        file,
+        label: `package script ${JSON.stringify(scriptName)} ${reason}`,
+        line,
+      });
+    }
+  }
   return issues.sort(
     (left, right) =>
       left.line - right.line || left.label.localeCompare(right.label),
@@ -2526,6 +3712,68 @@ function inspectInlineOptions(tokens, argument, allowedLines, file) {
   return issues;
 }
 
+function argumentIsSingleIdentifier(tokens, argument, values) {
+  return (
+    argument.end === argument.start + 1 &&
+    tokens[argument.start]?.type === "identifier" &&
+    values.has(tokens[argument.start].value)
+  );
+}
+
+function argumentIsInlineDelimited(tokens, argument, open, close) {
+  if (tokens[argument.start]?.value !== open) {
+    return false;
+  }
+  return findClosingToken(tokens, argument.start, open, close) === argument.end - 1;
+}
+
+function argumentIsInlineCallback(tokens, argument) {
+  const first = tokens[argument.start];
+  if (
+    first?.value === "function" ||
+    (first?.value === "async" && tokens[argument.start + 1]?.value === "function")
+  ) {
+    return true;
+  }
+  return tokens
+    .slice(argument.start, argument.end)
+    .some((token) => token.value === "=>");
+}
+
+function argumentIsSafeOptionsValue(tokens, argument) {
+  return (
+    argumentIsInlineDelimited(tokens, argument, "{", "}") ||
+    argumentIsSingleIdentifier(tokens, argument, new Set(["null", "undefined"]))
+  );
+}
+
+function dynamicChildProcessOptionsArgument(tokens, method, argumentsList) {
+  if (method === "exec" || method === "execSync" || argumentsList.length <= 1) {
+    return null;
+  }
+  const second = argumentsList[1];
+  const third = argumentsList[2];
+  const secondIsArguments = argumentIsInlineDelimited(tokens, second, "[", "]");
+  const secondIsOptions = argumentIsSafeOptionsValue(tokens, second);
+
+  if (method !== "execFile") {
+    if (argumentsList.length === 2) {
+      return secondIsArguments || secondIsOptions ? null : second;
+    }
+    return argumentIsSafeOptionsValue(tokens, third) ? null : third;
+  }
+
+  if (argumentsList.length === 2) {
+    return secondIsArguments || secondIsOptions || argumentIsInlineCallback(tokens, second)
+      ? null
+      : second;
+  }
+  if (argumentsList.length === 3 && argumentIsInlineCallback(tokens, third)) {
+    return secondIsArguments || secondIsOptions ? null : second;
+  }
+  return argumentIsSafeOptionsValue(tokens, third) ? null : third;
+}
+
 export function findCommandPortabilityIssues(source, file = "<source>") {
   const { comments, tokens } = tokenizeSource(source);
   const bindings = resolveChildProcessBindings(tokens);
@@ -2546,6 +3794,24 @@ export function findCommandPortabilityIssues(source, file = "<source>") {
         file,
         label: `${call.method} always launches a platform shell; use execFile or spawn with shell: false`,
         line: callLine,
+      });
+    }
+    const dynamicOptionsArgument = dynamicChildProcessOptionsArgument(
+      tokens,
+      call.method,
+      argumentsList,
+    );
+    const dynamicOptionsLine = tokens[dynamicOptionsArgument?.start]?.line;
+    if (
+      dynamicOptionsArgument &&
+      !allowedLines.has(callLine) &&
+      !allowedLines.has(dynamicOptionsLine)
+    ) {
+      issues.push({
+        file,
+        label:
+          "child-process options must be omitted, nullish, or an inline object literal",
+        line: dynamicOptionsLine ?? callLine,
       });
     }
     const command = tokens[argumentsList[0]?.start];
@@ -2595,14 +3861,24 @@ export function collectWorkflowCommandPortabilitySourceFiles(
   );
 }
 
+export function collectPackageCommandPortabilitySourceFiles(
+  repoRoot = resolve("."),
+) {
+  return collectPathPortabilitySourceFiles(resolve(repoRoot)).filter(
+    (file) => file.split(sep).at(-1) === packageManifestFileName,
+  );
+}
+
 export function analyzeCommandPortability(options = {}) {
   const sourceFiles =
     options.sourceFiles ??
     [
       ...collectCommandPortabilitySourceFiles(options.repoRoot),
       ...collectWorkflowCommandPortabilitySourceFiles(options.repoRoot),
+      ...collectPackageCommandPortabilitySourceFiles(options.repoRoot),
     ].sort();
   const childProcessFiles = [];
+  const packageFiles = [];
   const workflowFiles = [];
   const issues = [];
   for (const sourceFile of sourceFiles) {
@@ -2614,6 +3890,13 @@ export function analyzeCommandPortability(options = {}) {
       );
       continue;
     }
+    if (sourceFile.split(sep).at(-1) === packageManifestFileName) {
+      packageFiles.push(sourceFile);
+      issues.push(
+        ...findPackageScriptCommandPortabilityIssues(source, sourceFile),
+      );
+      continue;
+    }
     const bindings = resolveChildProcessBindings(tokenizeSource(source).tokens);
     if (!bindings.referencesChildProcess) {
       continue;
@@ -2621,7 +3904,13 @@ export function analyzeCommandPortability(options = {}) {
     childProcessFiles.push(sourceFile);
     issues.push(...findCommandPortabilityIssues(source, sourceFile));
   }
-  return { childProcessFiles, issues, sourceFiles, workflowFiles };
+  return {
+    childProcessFiles,
+    issues,
+    packageFiles,
+    sourceFiles,
+    workflowFiles,
+  };
 }
 
 function displayPath(file) {
@@ -2630,7 +3919,13 @@ function displayPath(file) {
 }
 
 function runCli() {
-  const { childProcessFiles, issues, sourceFiles, workflowFiles } =
+  const {
+    childProcessFiles,
+    issues,
+    packageFiles,
+    sourceFiles,
+    workflowFiles,
+  } =
     analyzeCommandPortability();
   if (issues.length > 0) {
     console.error("Command portability contract failed:");
@@ -2638,13 +3933,13 @@ function runCli() {
       console.error(`  - ${displayPath(issue.file)}:${issue.line}: ${issue.label}`);
     }
     console.error(
-      "Use execFile or spawn with literal shell: false, launch npm/npx through process.execPath and its JavaScript CLI, keep Windows workflow run blocks in PowerShell syntax, or add a documented command-portability-allow comment for an intentional exception.",
+      "Use portable package scripts, execFile or spawn with literal shell: false, launch npm/npx through process.execPath and its JavaScript CLI, keep Windows workflow run blocks in PowerShell syntax, or add a documented command-portability-allow comment for an intentional exception.",
     );
     process.exitCode = 1;
     return;
   }
   console.log(
-    `Command portability contract ok (${sourceFiles.length} source files checked, ${childProcessFiles.length} child-process files and ${workflowFiles.length} workflow files analyzed).`,
+    `Command portability contract ok (${sourceFiles.length} source files checked, ${childProcessFiles.length} child-process files, ${packageFiles.length} package manifests and ${workflowFiles.length} workflow files analyzed).`,
   );
 }
 

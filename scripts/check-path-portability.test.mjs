@@ -21,6 +21,8 @@ const macosPerUserTemporaryPath = [
   "temporary",
   "artifact.png",
 ].join("/");
+const linuxHomePath = ["", "home", "runner", "work", "artifact.png"].join("/");
+const homebrewPath = ["", "opt", "homebrew", "bin", "tool"].join("/");
 const macosLibrarySegment = ["Lib", "rary"].join("");
 const macosApplicationSupportSegment = ["Application", " Support"].join("");
 const interpolatedManualPath = (expression, suffix) =>
@@ -47,6 +49,9 @@ test(
       "Cargo.toml",
       "package.json",
       "scripts/check.mjs",
+      "scripts/check.bash",
+      "scripts/check.sh",
+      "scripts/check.zsh",
       "scripts/verify.ps1",
       "src/index.ts",
       "src-tauri/Entitlements.plist",
@@ -243,6 +248,8 @@ test("path portability rejects hardcoded host-specific paths", () => {
       `const second = "${macosPrivateTemporaryPath}";`,
       `const third = "${macosUserPath}";`,
       `const fourth = "${macosPerUserTemporaryPath}";`,
+      `const fifth = "${linuxHomePath}";`,
+      `const sixth = "${homebrewPath}";`,
     ].join("\n"),
     "fixture.mjs",
   );
@@ -270,8 +277,128 @@ test("path portability rejects hardcoded host-specific paths", () => {
         label: "hardcoded macOS per-user temporary directory",
         line: 4,
       },
+      {
+        file: "fixture.mjs",
+        label: "hardcoded Linux home directory",
+        line: 5,
+      },
+      {
+        file: "fixture.mjs",
+        label: "hardcoded Apple Silicon Homebrew directory",
+        line: 6,
+      },
     ],
   );
+});
+
+test("path portability distinguishes host paths from URL routes and prefixes", () => {
+  const homeRoute = ["", "api", "home", "account"].join("/");
+  const homeUrl = ["https:", "", "example.test", "home", "account"].join("/");
+  const homebrewDocsUrl = [
+    "https:",
+    "",
+    "example.test",
+    "docs",
+    "opt",
+    "homebrew",
+    "setup",
+  ].join("/");
+  const homebrewLikePath = ["", "opt", "homebrewish", "bin"].join("/");
+  const relativeHomePath = ["home", "alex", "project"].join("/");
+
+  assert.deepEqual(
+    findHostSpecificPaths(
+      [
+        `const route = "${homeRoute}";`,
+        `const url = "${homeUrl}";`,
+        `const docs = "${homebrewDocsUrl}";`,
+        `const similar = "${homebrewLikePath}";`,
+        `const relative = "${relativeHomePath}";`,
+        String.raw`const windows = "C:\home\alex\project";`,
+      ].join("\n"),
+      "scripts/fixture.mjs",
+    ),
+    [],
+  );
+});
+
+test("path portability requires a non-empty documented exception reason", () => {
+  const source = [
+    `const allowed = "${linuxHomePath}"; // path-portability-allow: external Linux fixture`,
+    `const missingReason = "${linuxHomePath}"; // path-portability-allow:`,
+    `const legacyMarker = "${homebrewPath}"; // path-portability-allow`,
+    `const stringMarker = "${linuxHomePath} path-portability-allow: not a comment";`,
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "scripts/fixture.mjs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [
+      { label: "hardcoded Linux home directory", line: 2 },
+      {
+        label: "hardcoded Apple Silicon Homebrew directory",
+        line: 3,
+      },
+      { label: "hardcoded Linux home directory", line: 4 },
+    ],
+  );
+});
+
+test("path portability recognizes documented exceptions after Rust lifetimes", () => {
+  const source = [
+    `const ALLOWED: &'static str = "${linuxHomePath}"; // path-portability-allow: intentional Linux fixture`,
+    `const STRING_MARKER: &'static str = "${linuxHomePath} path-portability-allow: not a comment";`,
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "src/fixture.rs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [{ label: "hardcoded Linux home directory", line: 2 }],
+  );
+});
+
+test("path portability does not treat Rust attributes or JS private fields as comments", () => {
+  const rustAttribute =
+    `#[doc = "${linuxHomePath} path-portability-allow: not a comment"]`;
+  const javascriptPrivateField = [
+    "class Fixture {",
+    `  #path = "${linuxHomePath} path-portability-allow: not a comment";`,
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(rustAttribute, "src/fixture.rs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [{ label: "hardcoded Linux home directory", line: 1 }],
+  );
+  assert.deepEqual(
+    findHostSpecificPaths(javascriptPrivateField, "src/fixture.js").map(
+      ({ label, line }) => ({ label, line }),
+    ),
+    [{ label: "hardcoded Linux home directory", line: 2 }],
+  );
+});
+
+test("path portability preserves hash comments in supported source syntaxes", () => {
+  const fixtures = [
+    ["scripts/fixture.bash", `value="${linuxHomePath}" # path-portability-allow: fixture`],
+    ["scripts/fixture.ps1", `$value = "${linuxHomePath}" # path-portability-allow: fixture`],
+    ["scripts/fixture.sh", `value="${linuxHomePath}" # path-portability-allow: fixture`],
+    ["Cargo.toml", `value = "${linuxHomePath}" # path-portability-allow: fixture`],
+    [".github/workflows/fixture.yaml", `value: "${linuxHomePath}" # path-portability-allow: fixture`],
+    [".github/workflows/fixture.yml", `value: "${linuxHomePath}" # path-portability-allow: fixture`],
+    ["scripts/fixture.zsh", `value="${linuxHomePath}" # path-portability-allow: fixture`],
+  ];
+
+  for (const [file, source] of fixtures) {
+    assert.deepEqual(findHostSpecificPaths(source, file), [], file);
+  }
 });
 
 test("path portability rejects segmented macOS Application Support paths", () => {

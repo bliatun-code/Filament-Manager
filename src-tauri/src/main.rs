@@ -68,6 +68,7 @@ mod trusted_lan_pairing_commands;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
 
+use backend::database_tables::FULL_BACKUP_TABLES;
 use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;
 use backend::statistics::StatisticsEngine;
@@ -95,13 +96,6 @@ const VISUAL_QA_THEME_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_THEME";
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
-const USER_DATA_TABLES: &[&str] = &[
-    "filament_spools",
-    "printers",
-    "spool_loans",
-    "wishlist_items",
-    "spool_history_events",
-];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DatabaseUserDataState {
@@ -723,19 +717,80 @@ fn database_user_data_state(db_path: &Path) -> DatabaseUserDataState {
         Err(_) => return DatabaseUserDataState::Unreadable,
     };
 
-    for table in USER_DATA_TABLES {
-        let sql = format!("SELECT COUNT(*) FROM {table}");
-        let count = match connection.query_row(&sql, [], |row| row.get::<_, i64>(0)) {
-            Ok(count) => count,
-            Err(error) if error.to_string().contains("no such table") => 0,
+    for table in FULL_BACKUP_TABLES {
+        if table == "filament_master_list" {
+            continue;
+        }
+        let has_rows = match database_table_has_rows(&connection, table) {
+            Ok(has_rows) => has_rows,
+            Err(error) if error.to_string().contains("no such table") => false,
             Err(_) => return DatabaseUserDataState::Unreadable,
         };
-        if count > 0 {
+        if has_rows {
             return DatabaseUserDataState::HasUserData;
         }
     }
 
-    DatabaseUserDataState::NoUserData
+    match database_catalog_has_user_data(&connection) {
+        Ok(true) => DatabaseUserDataState::HasUserData,
+        Ok(false) => DatabaseUserDataState::NoUserData,
+        Err(_) => DatabaseUserDataState::Unreadable,
+    }
+}
+
+fn database_table_has_rows(
+    connection: &rusqlite::Connection,
+    table: &str,
+) -> rusqlite::Result<bool> {
+    let sql = format!("SELECT EXISTS(SELECT 1 FROM {table})");
+    connection
+        .query_row(&sql, [], |row| row.get::<_, i64>(0))
+        .map(|value| value != 0)
+}
+
+fn database_catalog_has_user_data(connection: &rusqlite::Connection) -> rusqlite::Result<bool> {
+    let (catalog_table_exists, has_catalog_source, has_catalog_user_edited) = {
+        let mut statement = connection.prepare("PRAGMA table_info(filament_master_list)")?;
+        let mut rows = statement.query([])?;
+        let mut catalog_table_exists = false;
+        let mut has_catalog_source = false;
+        let mut has_catalog_user_edited = false;
+        while let Some(row) = rows.next()? {
+            catalog_table_exists = true;
+            let column_name = row.get::<_, String>(1)?;
+            has_catalog_source |= column_name == "catalog_source";
+            has_catalog_user_edited |= column_name == "catalog_user_edited";
+        }
+        (
+            catalog_table_exists,
+            has_catalog_source,
+            has_catalog_user_edited,
+        )
+    };
+
+    if !catalog_table_exists {
+        return Ok(false);
+    }
+
+    let sql = match (has_catalog_source, has_catalog_user_edited) {
+        (true, true) => {
+            "SELECT EXISTS(
+                SELECT 1 FROM filament_master_list
+                WHERE COALESCE(catalog_source, 'unknown') NOT IN ('seeded', 'scraped')
+                   OR catalog_user_edited != 0
+            )"
+        }
+        (true, false) => {
+            "SELECT EXISTS(
+                SELECT 1 FROM filament_master_list
+                WHERE COALESCE(catalog_source, 'unknown') NOT IN ('seeded', 'scraped')
+            )"
+        }
+        (false, _) => "SELECT EXISTS(SELECT 1 FROM filament_master_list)",
+    };
+    connection
+        .query_row(sql, [], |row| row.get::<_, i64>(0))
+        .map(|value| value != 0)
 }
 
 fn legacy_migration_backup_path(app_dir: &Path) -> PathBuf {
@@ -759,22 +814,65 @@ fn legacy_migration_snapshot_path(app_dir: &Path) -> PathBuf {
     ))
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", test))]
 fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
-    if storage_dir_has_database(&local_dir) {
+    if database_candidates_have_user_data(&storage_dir_current_database_candidates(&local_dir)) {
         return local_dir;
     }
-    if storage_dir_has_database(&roaming_dir) {
+    if database_candidates_have_user_data(&storage_dir_current_database_candidates(&roaming_dir)) {
+        return roaming_dir;
+    }
+    if database_candidates_have_user_data(&storage_dir_legacy_database_candidates(&local_dir)) {
+        return local_dir;
+    }
+    if database_candidates_have_user_data(&storage_dir_legacy_database_candidates(&roaming_dir)) {
+        return roaming_dir;
+    }
+    if database_candidates_exist(&storage_dir_current_database_candidates(&local_dir)) {
+        return local_dir;
+    }
+    if database_candidates_exist(&storage_dir_current_database_candidates(&roaming_dir)) {
+        return roaming_dir;
+    }
+    if database_candidates_exist(&storage_dir_legacy_database_candidates(&local_dir)) {
+        return local_dir;
+    }
+    if database_candidates_exist(&storage_dir_legacy_database_candidates(&roaming_dir)) {
         return roaming_dir;
     }
     local_dir
 }
 
-#[cfg(target_os = "windows")]
-fn storage_dir_has_database(dir: &Path) -> bool {
-    [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME]
+#[cfg(any(target_os = "windows", test))]
+fn database_candidates_have_user_data(candidates: &[PathBuf]) -> bool {
+    candidates
         .iter()
-        .any(|file_name| dir.join(file_name).exists())
+        .any(|path| database_user_data_state(path) == DatabaseUserDataState::HasUserData)
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn database_candidates_exist(candidates: &[PathBuf]) -> bool {
+    candidates.iter().any(|path| path.exists())
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn storage_dir_current_database_candidates(dir: &Path) -> [PathBuf; 2] {
+    [
+        dir.join(APP_DB_FILE_NAME),
+        dir.join(LEGACY_APP_DB_FILE_NAME),
+    ]
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn storage_dir_legacy_database_candidates(dir: &Path) -> Vec<PathBuf> {
+    if let Some(parent_dir) = dir.parent() {
+        let legacy_dir = parent_dir.join(LEGACY_APP_DATA_DIR_NAME);
+        return vec![
+            legacy_dir.join(APP_DB_FILE_NAME),
+            legacy_dir.join(LEGACY_APP_DB_FILE_NAME),
+        ];
+    }
+    Vec::new()
 }
 
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>

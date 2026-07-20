@@ -124,6 +124,98 @@ test("workflow command portability source collection covers yml and yaml workflo
   assert.deepEqual(files, expectedFiles);
 });
 
+test("package command portability source collection covers owned manifests", (t) => {
+  const tempRoot = mkdtempSync(join(tmpdir(), "filament-manager-package-portability-"));
+  const repoRoot = join(tempRoot, "tests", "repository");
+  t.after(() => rmSync(tempRoot, { recursive: true, force: true }));
+
+  for (const file of [
+    "package.json",
+    "ui/package.json",
+    "ui/node_modules/example/package.json",
+    "scripts/package.json",
+  ]) {
+    writeFixtureFile(repoRoot, file, '{"scripts":{}}');
+  }
+
+  const collectPackageCommandPortabilitySourceFiles = requiredCommandPortabilityApi(
+    "collectPackageCommandPortabilitySourceFiles",
+  );
+  const files = collectPackageCommandPortabilitySourceFiles(repoRoot).map((file) =>
+    relative(repoRoot, file).split(sep).join("/"),
+  );
+  assert.deepEqual(files, ["package.json", "scripts/package.json", "ui/package.json"]);
+});
+
+test("package scripts reject high-confidence platform shell syntax", () => {
+  const findPackageScriptCommandPortabilityIssues = requiredCommandPortabilityApi(
+    "findPackageScriptCommandPortabilityIssues",
+  );
+  const source = JSON.stringify(
+    {
+      scripts: {
+        assignment: "MODE=test node ./scripts/verify.mjs",
+        export: "export MODE=test && node ./scripts/verify.mjs",
+        envCommand: "env MODE=test node ./scripts/verify.mjs",
+        envExe: "env.exe MODE=test node ./scripts/verify.mjs",
+        files: "rm -rf dist; mkdir -p dist && chmod +x tool",
+        multilineCommands: "node ./scripts/verify.mjs\nrm -rf dist",
+        bash: 'bash -lc "npm test"',
+        cmd: "cmd.exe /c npm test",
+        posixEnv: 'node ./scripts/x.mjs --out "$RUNNER_TEMP/out"',
+        windowsEnv: String.raw`node ./scripts/x.mjs --out "%TEMP%\out"`,
+        substitution: "node ./scripts/x.mjs $(pwd)",
+        singleQuotes: "node -e 'console.log(1)'",
+      },
+    },
+    null,
+    2,
+  );
+  const issues = findPackageScriptCommandPortabilityIssues(source);
+  const labels = issues.map(({ label }) => label);
+
+  for (const scriptName of Object.keys(JSON.parse(source).scripts)) {
+    assert.equal(
+      labels.some((label) => label.includes(JSON.stringify(scriptName))),
+      true,
+      `Expected an issue for ${scriptName}`,
+    );
+  }
+  assert.equal(labels.some((label) => /POSIX environment assignment/.test(label)), true);
+  assert.equal(labels.some((label) => /platform-specific command env/.test(label)), true);
+  assert.equal(labels.some((label) => /platform-specific command env\.exe/.test(label)), true);
+  assert.equal(labels.some((label) => /platform-specific command rm/.test(label)), true);
+  assert.equal(
+    labels.some(
+      (label) =>
+        label.includes('"multilineCommands"') &&
+        /platform-specific command rm/.test(label),
+    ),
+    true,
+  );
+  assert.equal(labels.some((label) => /platform shell bash/.test(label)), true);
+  assert.equal(labels.some((label) => /platform shell cmd\.exe/.test(label)), true);
+});
+
+test("package scripts accept shared Node, npm, Cargo and portable helper CLIs", () => {
+  const findPackageScriptCommandPortabilityIssues = requiredCommandPortabilityApi(
+    "findPackageScriptCommandPortabilityIssues",
+  );
+  const source = JSON.stringify({
+    scripts: {
+      node: "node ./scripts/verify.mjs",
+      npm: "npm --prefix ./ui run lint && npm run doctor",
+      cargo: "cargo fmt --all -- --check",
+      tests: "node --test ./scripts/*.test.mjs",
+      inline: 'node -e "console.log(\'ok; rm -rf is data\')"',
+      crossEnv: "cross-env MODE=test node ./scripts/verify.mjs",
+      rimraf: "rimraf dist",
+    },
+  });
+
+  assert.deepEqual(findPackageScriptCommandPortabilityIssues(source), []);
+});
+
 test("command portability CLI fails closed on an unsafe Windows workflow", (t) => {
   const repoRoot = mkdtempSync(
     join(tmpdir(), "filament-manager-workflow-cli-portability-"),
@@ -238,6 +330,22 @@ test("Windows workflow portability recognizes self-hosted Windows runner objects
   );
 });
 
+test("Windows workflow portability requires review for group-only runner mappings", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  group-runner:",
+      "    runs-on:",
+      "      group: Windows-Runners",
+      "    steps:",
+      "      - run: export MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [3]);
+  assert.match(issues[0].label, /runner mappings.*documented portability review/i);
+});
+
 test("Windows workflow portability handles anchored and unusually spaced mappings", () => {
   const issues = workflowFixtureIssues(
     [
@@ -296,6 +404,88 @@ test("Windows workflow portability rejects unambiguous Bash run syntax", () => {
   assert.deepEqual(
     issues.map(({ line }) => line),
     [6, 7, 8, 9, 10, 12, 15, 16, 18],
+  );
+});
+
+test("Windows workflow portability rejects POSIX-only command invocations", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - run: chmod +x ./tool",
+      "      - run: npm test; chmod u+x ./tool",
+      "      - run: chmod 0755 ./tool",
+      "      - run: rm -rf dist",
+      "      - run: npm test && rm -Rvf dist",
+      "      - run: bash ./scripts/verify.sh",
+      "      - run: sh -c 'node ./scripts/verify.mjs'",
+      "      - run: Write-Output 'chmod +x ./tool; rm -rf dist'",
+      "      - run: rm -r -f dist",
+      "      - run: Remove-Item -Recurse -Force dist",
+      "      - run: chmod-helper +x ./tool",
+      "      - shell: python",
+      "        run: chmod +x ./tool",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [5, 6, 7, 8, 9, 10, 11],
+  );
+});
+
+test("Windows workflow portability rejects POSIX env commands", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - run: env MODE=test node ./scripts/verify.mjs",
+      "      - run: npm test; env NEXT_MODE=test node ./scripts/verify.mjs",
+      "      - shell: pwsh",
+      "        run: |",
+      '          & "env" QUOTED_MODE=test node ./scripts/verify.mjs',
+      "          & 'env' ALT_MODE=test node ./scripts/verify.mjs",
+      "          Write-Output '& \"env\" STRING_MODE=test node ./scripts/verify.mjs'",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [5, 6, 9, 10]);
+  assert.equal(issues.every(({ label }) => /POSIX env commands/i.test(label)), true);
+});
+
+test("Windows workflow portability normalizes static call-operator commands", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: pwsh",
+      "        run: |",
+      '          & ("env") MODE=test node ./scripts/verify.mjs',
+      '          & "/usr/bin/chmod" +x ./tool',
+      "          & ('rm.exe') -rf dist",
+      '          & "C:\\Program Files\\Git\\bin\\bash.exe" -lc "npm test"',
+      "          & ('sh') -c 'node ./scripts/verify.mjs'",
+      '          & "/bin/zsh" -lc "npm test"',
+      "          Write-Output '& (\"env\") MODE=test node ./scripts/verify.mjs'",
+      "          Write-Output '& \"/usr/bin/chmod\" +x ./tool'",
+      "          Write-Output '& (\"rm.exe\") -rf dist'",
+      "          Write-Output '& \"bash.exe\" -lc npm test'",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [7, 8, 9, 10, 11, 12]);
+  assert.match(issues[0].label, /POSIX env commands/i);
+  assert.match(issues[1].label, /POSIX chmod modes/i);
+  assert.match(issues[2].label, /POSIX rm -rf/i);
+  assert.equal(
+    issues.slice(3).every(({ label }) => /POSIX shells/i.test(label)),
+    true,
   );
 });
 
@@ -438,7 +628,7 @@ test("Windows workflow portability fails closed on aliases nested in runner and 
 
   assert.deepEqual(
     issues.map(({ line }) => line),
-    [3, 9, 15, 20],
+    [3, 9, 13, 15, 20],
   );
 });
 
@@ -462,6 +652,78 @@ test("Windows workflow portability inspects interpolating PowerShell here-string
   assert.deepEqual(
     issues.map(({ line }) => line),
     [8, 11],
+  );
+});
+
+test("Windows workflow portability requires env scope for declared environment variables", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "env:",
+      "  GLOBAL_OUTPUT: global",
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    env:",
+      "      JOB_OUTPUT: job",
+      "    steps:",
+      "      - env:",
+      "          STEP_OUTPUT: step",
+      "          custom_path: artifact.zip",
+      "        run: |",
+      '          Write-Output "$GLOBAL_OUTPUT"',
+      "          Write-Output ${JOB_OUTPUT}",
+      "          Write-Output $global:STEP_OUTPUT",
+      '          Write-Output "$CUSTOM_PATH"',
+      "      - env:",
+      "          HERE_OUTPUT: here",
+      "        run: |",
+      '          $content = @"',
+      "          path=$HERE_OUTPUT",
+      '          "@',
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [13, 14, 15, 16, 21],
+  );
+  assert.equal(
+    issues.every(({ label }) => /PowerShell env: prefix/i.test(label)),
+    true,
+  );
+});
+
+test("Windows workflow portability preserves intentional local PowerShell variables", () => {
+  assert.deepEqual(
+    workflowFixtureIssues(
+      [
+        "env:",
+        "  GLOBAL_OUTPUT: global",
+        "jobs:",
+        "  windows-smoke:",
+        "    runs-on: windows-latest",
+        "    env:",
+        "      JOB_OUTPUT: job",
+        "    steps:",
+        "      - env:",
+        "          STEP_OUTPUT: step",
+        "        run: |",
+        "          Write-Output $env:GLOBAL_OUTPUT",
+        "          Write-Output ${env:JOB_OUTPUT}",
+        "          Write-Output '$STEP_OUTPUT'",
+        '          Write-Output "`$STEP_OUTPUT"',
+        '          Write-Output "${{ env.STEP_OUTPUT }}"',
+        "          Write-Output $STEP_OUTPUT_SUFFIX",
+        '          $STEP_OUTPUT = Join-Path "." "artifact.zip"',
+        "          Write-Output $STEP_OUTPUT",
+        '          $global:GLOBAL_OUTPUT = "shadow"',
+        "          Write-Output $global:GLOBAL_OUTPUT",
+        "          # Write-Output $JOB_OUTPUT",
+        "      - shell: python",
+        '        run: print("$GLOBAL_OUTPUT")',
+      ].join("\n"),
+    ),
+    [],
   );
 });
 
@@ -653,6 +915,478 @@ test("Windows workflow portability respects operating-system job boundaries", ()
   );
 });
 
+test("Windows workflow portability detects unguarded inline and block runner matrices", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  inline-matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest]",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - run: export MODE=test",
+      "  block-matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        runner:",
+      "          - macos-15",
+      '          - "windows-2025"',
+      '    runs-on: "${{ matrix.runner }}"',
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues, [
+    {
+      label: "POSIX export assignments must not be used in a Windows workflow job",
+      line: 8,
+    },
+    {
+      label: "POSIX workflow shell bash must not run in a Windows job",
+      line: 17,
+    },
+  ]);
+});
+
+test("Windows workflow portability accepts exact non-Windows matrix step guards", () => {
+  assert.deepEqual(
+    workflowFixtureIssues(
+      [
+        "jobs:",
+        "  guarded-matrix:",
+        "    strategy:",
+        "      matrix:",
+        "        os: [ubuntu-latest, windows-latest]",
+        "    runs-on: ${{ matrix.os }}",
+        "    steps:",
+        "      - if: runner.os != 'Windows'",
+        "        shell: bash",
+        "        run: set -euo pipefail",
+        "      - if: ${{ matrix.os != 'windows-latest' }}",
+        "        run: export MODE=test",
+        "      - if: matrix.os == 'UBUNTU-LATEST'",
+        "        shell: bash",
+        "        run: set -euo pipefail",
+        "      - if: runner.os == 'Windows'",
+        "        shell: pwsh",
+        "        run: Write-Output $env:RUNNER_OS",
+      ].join("\n"),
+    ),
+    [],
+  );
+});
+
+test("Windows workflow portability requires review for complex matrix step guards", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  guarded-matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest]",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - if: always() && runner.os != 'Windows'",
+      "        shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [8]);
+  assert.match(issues[0].label, /matrix step condition.*documented portability review/i);
+});
+
+test("Windows workflow portability requires review for dynamic runner matrices", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  dynamic-matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        os: ${{ fromJSON(inputs.runners) }}",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [6]);
+  assert.match(issues[0].label, /matrix runner.*documented portability review/i);
+});
+
+test("Windows workflow portability resolves matrix expressions in block runner lists", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  block-runner:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest]",
+      "    runs-on:",
+      "      - self-hosted",
+      "      - ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues, [
+    {
+      label: "POSIX workflow shell bash must not run in a Windows job",
+      line: 10,
+    },
+  ]);
+});
+
+test("Windows workflow portability requires review for mapping-form runners", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  mapping-runner:",
+      "    runs-on:",
+      "      group: Default",
+      "      labels: ${{ fromJSON(inputs.labels) }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+      "  flow-mapping-runner:",
+      "    runs-on: { group: Default, labels: windows }",
+      "    steps:",
+      "      - run: export MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [3, 10],
+  );
+  assert.equal(
+    issues.every(({ label }) =>
+      /runner.*documented portability review/i.test(label),
+    ),
+    true,
+  );
+});
+
+test("Windows workflow portability reviews mixed matrix and dynamic runner labels", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  mixed-runner:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "    runs-on: [self-hosted, ${{ matrix.os }}, ${{ inputs.os }}]",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [6]);
+  assert.match(issues[0].label, /runner.*documented portability review/i);
+});
+
+test("Windows workflow portability reviews opaque and dynamic matrix includes", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  flow-item-include:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "        include:",
+      "          - { os: windows-latest }",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+      "  flow-sequence-include:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "        include: [{ os: windows-latest }]",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+      "  dynamic-include:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "        include: ${{ fromJSON(inputs.include) }}",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+      "  dynamic-include-item:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "        include:",
+      "          - ${{ fromJSON(inputs.item) }}",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(
+    issues.map(({ line }) => line),
+    [8, 17, 26, 36],
+  );
+  assert.equal(
+    issues.every(({ label }) =>
+      /matrix runner.*documented portability review/i.test(label),
+    ),
+    true,
+  );
+});
+
+test("Windows workflow portability resolves folded matrix runner scalars", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  folded-runner:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest]",
+      "    runs-on: >-",
+      "      ${{ matrix.os }}",
+      "    steps:",
+      "      - run: export MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues, [
+    {
+      label: "POSIX export assignments must not be used in a Windows workflow job",
+      line: 9,
+    },
+  ]);
+});
+
+test("Windows workflow portability resolves literal folded Windows runners", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  folded-windows:",
+      "    runs-on: >-",
+      "      windows-latest",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues, [
+    {
+      label: "POSIX workflow shell bash must not run in a Windows job",
+      line: 6,
+    },
+  ]);
+});
+
+test("Windows workflow portability reviews matrix include merge aliases", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  merge-include:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "        include:",
+      "          - <<: *windows_entry",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+      "  nested-merge-include:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest]",
+      "        include:",
+      "          - experimental: true",
+      "            <<: *windows_entry",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [8, 19]);
+  assert.equal(
+    issues.every(({ label }) =>
+      /matrix runner.*documented portability review/i.test(label),
+    ),
+    true,
+  );
+});
+
+test("Windows workflow portability requires review for dynamic effective shells", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "defaults:",
+      "  run:",
+      "    shell: ${{ inputs.shell }}",
+      "jobs:",
+      "  step-shell:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: ${{ matrix.shell }}",
+      "        run: export MODE=test",
+      "  job-shell:",
+      "    runs-on: windows-latest",
+      "    defaults:",
+      "      run:",
+      "        shell: ${{ matrix.shell }}",
+      "    steps:",
+      "      - run: export NEXT_MODE=test",
+      "  global-shell:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - run: export LAST_MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [3, 8, 14]);
+  assert.equal(
+    issues.every(({ label }) =>
+      /dynamic workflow shells.*documented portability review/i.test(label),
+    ),
+    true,
+  );
+});
+
+test("Windows workflow portability covers include-only matrices and bracket axes", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  include-matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        include:",
+      "          - runner-os: ubuntu-latest",
+      "          - runner-os: windows-2025",
+      "    runs-on: ${{ matrix['runner-os'] }}",
+      "    steps:",
+      "      - run: export MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [10]);
+  assert.match(issues[0].label, /POSIX export/i);
+});
+
+test("Windows workflow portability allows matrix include metadata to inherit the runner axis", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  include-metadata:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest]",
+      "        include:",
+      "          - experimental: true",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - run: export MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [10]);
+  assert.match(issues[0].label, /POSIX export/i);
+});
+
+test("Windows workflow portability keeps scanning when one of several Windows runners is excluded", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  multi-windows-matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest, windows-2025]",
+      "    runs-on: ${{ matrix.os }}",
+      "    steps:",
+      "      - if: matrix.os != 'windows-latest'",
+      "        shell: bash",
+      "        run: npm test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [9]);
+  assert.match(issues[0].label, /shell bash/i);
+});
+
+test("Windows workflow portability applies default shells only to Windows-relevant matrix steps", () => {
+  assert.deepEqual(
+    workflowFixtureIssues(
+      [
+        "defaults:",
+        "  run:",
+        "    shell: bash",
+        "jobs:",
+        "  matrix:",
+        "    strategy:",
+        "      matrix:",
+        "        os: [ubuntu-latest, windows-latest]",
+        "    runs-on: ${{ matrix.os }}",
+        "    steps:",
+        "      - if: runner.os != 'Windows'",
+        "        run: npm test",
+        "      - if: runner.os == 'Windows'",
+        "        shell: pwsh",
+        "        run: npm test",
+      ].join("\n"),
+    ),
+    [],
+  );
+
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  matrix:",
+      "    strategy:",
+      "      matrix:",
+      "        os: [ubuntu-latest, windows-latest]",
+      "    runs-on: ${{ matrix.os }}",
+      "    defaults:",
+      "      run:",
+      "        shell: zsh",
+      "    steps:",
+      "      - run: npm test",
+    ].join("\n"),
+  );
+  assert.deepEqual(issues.map(({ line }) => line), [9]);
+  assert.match(issues[0].label, /shell zsh/i);
+});
+
+test("Windows workflow portability permits documented matrix condition reviews", () => {
+  assert.deepEqual(
+    workflowFixtureIssues(
+      [
+        "jobs:",
+        "  guarded-matrix:",
+        "    strategy:",
+        "      matrix:",
+        "        os: [ubuntu-latest, windows-latest]",
+        "    runs-on: ${{ matrix.os }}",
+        "    steps:",
+        "      - if: always() && runner.os != 'Windows' # command-portability-allow: evaluated as a non-Windows-only project condition",
+        "        shell: bash",
+        "        run: npm test",
+      ].join("\n"),
+    ),
+    [],
+  );
+});
+
 test("Windows workflow portability permits documented line-level exceptions only", () => {
   const issues = workflowFixtureIssues(
     [
@@ -754,6 +1488,41 @@ spawn(process.execPath, ["runner.mjs"], ({ shell: true }));
       { label: "child-process shell option must be the literal false", line: 15 },
       { label: "child-process shell option must be the literal false", line: 16 },
     ],
+  );
+});
+
+test("command portability rejects dynamic child-process options", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { execFile, spawn, spawnSync } from "node:child_process";
+spawn(process.execPath, [], options);
+spawnSync(process.execPath, args, getOptions());
+execFile(process.execPath, ["tool.mjs"], options);
+spawn(process.execPath, maybeArgsOrOptions);
+execFile(process.execPath, ["tool.mjs"], callbackOrOptions);
+`),
+    [3, 4, 5, 6, 7].map((line) => ({
+      label:
+        "child-process options must be omitted, nullish, or an inline object literal",
+      line,
+    })),
+  );
+});
+
+test("command portability accepts explicit or omitted child-process options", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { execFile, spawn, spawnSync } from "node:child_process";
+spawn(process.execPath);
+spawn(process.execPath, []);
+spawn(process.execPath, args, { shell: false });
+spawn(process.execPath, { stdio: "inherit" });
+spawn(process.execPath, [], { ...options, shell: false });
+spawnSync(process.execPath, [], undefined);
+execFile(process.execPath, ["tool.mjs"], { shell: false }, callback);
+execFile(process.execPath, ["tool.mjs"], () => {});
+`),
+    [],
   );
 });
 

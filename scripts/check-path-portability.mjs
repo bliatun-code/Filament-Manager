@@ -20,11 +20,14 @@ const sourceExtensions = new Set([
   ".plist",
   ".ps1",
   ".rs",
+  ".bash",
+  ".sh",
   ".toml",
   ".ts",
   ".tsx",
   ".yaml",
   ".yml",
+  ".zsh",
 ]);
 const ignoredDirectories = new Set([
   ".git",
@@ -36,7 +39,16 @@ const ignoredDirectories = new Set([
   "target",
 ]);
 const ignoredFiles = new Set(["package-lock.json"]);
-const allowMarker = "path-portability-allow";
+const allowMarker = "path-portability-allow:";
+const hashCommentExtensions = new Set([
+  ".bash",
+  ".ps1",
+  ".sh",
+  ".toml",
+  ".yaml",
+  ".yml",
+  ".zsh",
+]);
 const slash = String.raw`\/`;
 const hostSpecificPathPatterns = [
   {
@@ -50,6 +62,18 @@ const hostSpecificPathPatterns = [
   {
     label: "hardcoded macOS per-user temporary directory",
     pattern: new RegExp(`${slash}var${slash}folders${slash}`),
+  },
+  {
+    label: "hardcoded Linux home directory",
+    pattern: new RegExp(
+      String.raw`(?<![A-Za-z0-9._~%+-])${slash}home${slash}`,
+    ),
+  },
+  {
+    label: "hardcoded Apple Silicon Homebrew directory",
+    pattern: new RegExp(
+      String.raw`(?<![A-Za-z0-9._~%+-])${slash}opt${slash}homebrew(?=$|[\/\s\x22\x27\x60=),;}\]])`,
+    ),
   },
 ];
 const sourceIdentifier = String.raw`[A-Za-z_$][A-Za-z0-9_$]*`;
@@ -83,6 +107,62 @@ function lineNumberAtOffset(source, offset) {
     }
   }
   return line;
+}
+
+function rustLifetimeStartsAt(line, index) {
+  const lifetime = line.slice(index).match(/^'[A-Za-z_][A-Za-z0-9_]*/)?.[0];
+  return Boolean(lifetime && line[index + lifetime.length] !== "'");
+}
+
+function unquotedCommentIndex(
+  line,
+  { hashComments = false, isRustSource = false } = {},
+) {
+  let quote = null;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    if (quote) {
+      if (character === "\\") {
+        index += 1;
+      } else if (character === quote) {
+        if (quote === "'" && line[index + 1] === "'") {
+          index += 1;
+        } else {
+          quote = null;
+        }
+      }
+      continue;
+    }
+    if (isRustSource && character === "'" && rustLifetimeStartsAt(line, index)) {
+      continue;
+    }
+    if (character === '"' || character === "'" || character === "`") {
+      quote = character;
+    } else if (line.startsWith("//", index) || line.startsWith("/*", index)) {
+      return index;
+    } else if (line.startsWith("<!--", index)) {
+      return index;
+    } else if (
+      hashComments &&
+      character === "#" &&
+      (index === 0 || /\s/.test(line[index - 1]))
+    ) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+function hasDocumentedAllowMarker(line, commentSyntax = {}) {
+  const commentIndex = unquotedCommentIndex(line, commentSyntax);
+  if (commentIndex === -1) {
+    return false;
+  }
+  const markerIndex = line.indexOf(allowMarker);
+  return (
+    markerIndex > commentIndex &&
+    line.slice(markerIndex + allowMarker.length).trim().length > 0
+  );
 }
 
 function collectFiles(directory, files) {
@@ -124,9 +204,14 @@ export function collectPathPortabilitySourceFiles(repoRoot = resolve(".")) {
 export function findHostSpecificPaths(source, file = "<source>") {
   const errors = [];
   const lines = source.split(/\r?\n/);
+  const extension = extname(file).toLowerCase();
+  const commentSyntax = {
+    hashComments: hashCommentExtensions.has(extension),
+    isRustSource: extension === ".rs",
+  };
 
   for (const [index, line] of lines.entries()) {
-    if (line.includes(allowMarker)) {
+    if (hasDocumentedAllowMarker(line, commentSyntax)) {
       continue;
     }
     for (const { label, pattern } of hostSpecificPathPatterns) {
@@ -142,7 +227,7 @@ export function findHostSpecificPaths(source, file = "<source>") {
       source,
       (match.index ?? 0) + Math.max(segmentOffset, 0),
     );
-    if (lines[line - 1]?.includes(allowMarker)) {
+    if (hasDocumentedAllowMarker(lines[line - 1] ?? "", commentSyntax)) {
       continue;
     }
     errors.push({
@@ -159,7 +244,7 @@ export function findHostSpecificPaths(source, file = "<source>") {
         source,
         (match.index ?? 0) + Math.max(separatorOffset, 0),
       );
-      if (lines[line - 1]?.includes(allowMarker)) {
+      if (hasDocumentedAllowMarker(lines[line - 1] ?? "", commentSyntax)) {
         continue;
       }
       errors.push({
@@ -194,7 +279,7 @@ function runCli() {
       console.error(`  - ${error.file}:${error.line}: ${error.label}`);
     }
     console.error(
-      "Build paths from node:os and node:path, or add a documented path-portability-allow marker for an intentional fixture.",
+      "Build paths from node:os and node:path, or add a documented path-portability-allow: reason marker for an intentional fixture.",
     );
     process.exitCode = 1;
     return;
