@@ -106,4 +106,5 @@ jobs:
             -MsiDirectory "target/debug/bundle/msi" `
             -ExpectedProductName $tauriConfig.productName `
             -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
-            -ExpectedArchitecture "x64"
+            -ExpectedArchitecture "x64" `
+            -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"

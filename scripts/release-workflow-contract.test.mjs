@@ -109,6 +109,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
   assert.match(
     windowsJob,
+    /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
+  );
+  assert.match(
+    windowsJob,
     /name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}/,
   );
   assert.match(
@@ -242,6 +246,13 @@ test("Windows MSI verifier fails closed and writes a portable checksum", () => {
   assert.match(verifier, /SummaryInformation/);
   assert.match(verifier, /@\(\[int\]7\)/);
   assert.match(verifier, /ExpectedArchitecture/);
+  assert.match(verifier, /\[string\]\$NormalizedFileName/);
+  assert.match(
+    verifier,
+    /\^\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*\[\.\]msi\$/,
+  );
+  assert.match(verifier, /Move-Item -LiteralPath \$msiFile\.FullName/);
+  assert.match(verifier, /Get-Item -LiteralPath \$normalizedMsiPath/);
   assert.match(verifier, /Get-FileHash[\s\S]*-Algorithm SHA256/);
   assert.match(verifier, /ToLowerInvariant\(\)/);
   assert.match(verifier, /SHA256SUMS-windows\.txt/);
@@ -337,6 +348,10 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   );
   assert.match(windowsJob, /-MsiDirectory "target\/debug\/bundle\/msi"/);
   assert.match(windowsJob, /-ExpectedArchitecture "x64"/);
+  assert.match(
+    windowsJob,
+    /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
+  );
 });
 
 test("release workflow keeps the protected macOS signing sequence fail-closed", () => {

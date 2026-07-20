@@ -26,6 +26,9 @@ Release date: 2026-07-20
   SHA-256 manifests have been downloaded and verified.
 - Stable per-run artifact names let a failed release job be retried without
   invalidating an already verified artifact from the other platform.
+- The Windows installer is normalized to a release-safe filename before its
+  checksum manifest is written, so the downloaded MSI verifies without a
+  GitHub filename rewrite.
 - The Windows storage migration and command/path portability contracts include
   regression coverage for the failure modes addressed in this release.
 

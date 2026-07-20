@@ -322,7 +322,8 @@ jobs:
             -MsiDirectory "target/release/bundle/msi" `
             -ExpectedProductName $tauriConfig.productName `
             -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
-            -ExpectedArchitecture "x64"
+            -ExpectedArchitecture "x64" `
+            -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
 
       - name: Upload verified MSI artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
