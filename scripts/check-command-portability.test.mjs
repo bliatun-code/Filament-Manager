@@ -44,24 +44,24 @@ function implicitShellIssue(method, line) {
   };
 }
 
-test("command portability source collection covers production JavaScript and TypeScript", (t) => {
+test("command portability source collection covers JavaScript and TypeScript tests", (t) => {
   const tempRoot = mkdtempSync(join(tmpdir(), "filament-manager-command-portability-"));
   const repoRoot = join(tempRoot, "tests", "repository");
   t.after(() => rmSync(tempRoot, { recursive: true, force: true }));
 
   const expectedFiles = [
+    "scripts/__tests__/fixture.js",
     "scripts/runner.mjs",
+    "scripts/runner.test.mjs",
+    "scripts/tests/fixture.ts",
+    "src/scraper.spec.ts",
     "src/scraper.ts",
+    "src/spec/fixture.js",
+    "src/test/fixture.tsx",
     "src-tauri/browser/tool.js",
     "ui/vite.config.ts",
   ];
   const ignoredFiles = [
-    "scripts/runner.test.mjs",
-    "scripts/__tests__/fixture.js",
-    "scripts/tests/fixture.ts",
-    "src/scraper.spec.ts",
-    "src/spec/fixture.js",
-    "src/test/fixture.tsx",
     "src/notes.md",
     "src/worker.rs",
     "ui/dist/app.js",
@@ -75,6 +75,35 @@ test("command portability source collection covers production JavaScript and Typ
     relative(repoRoot, file).split(sep).join("/"),
   );
   assert.deepEqual(files, expectedFiles.sort());
+});
+
+test("command portability analyzes executable calls in test files", (t) => {
+  const repoRoot = mkdtempSync(join(tmpdir(), "filament-manager-command-test-analysis-"));
+  t.after(() => rmSync(repoRoot, { recursive: true, force: true }));
+
+  writeFixtureFile(
+    repoRoot,
+    "scripts/windows-smoke.test.mjs",
+    'import { spawnSync } from "node:child_process";\nspawnSync("bash", ["-lc", "node --test"]);\n',
+  );
+
+  const result = analyzeCommandPortability({ repoRoot });
+  assert.equal(result.sourceFiles.length, 1);
+  assert.equal(result.childProcessFiles.length, 1);
+  assert.deepEqual(
+    result.issues.map(({ file, label, line }) => ({
+      file: relative(repoRoot, file).split(sep).join("/"),
+      label,
+      line,
+    })),
+    [
+      {
+        file: "scripts/windows-smoke.test.mjs",
+        label: "platform shell bash must not be launched directly",
+        line: 2,
+      },
+    ],
+  );
 });
 
 test("command portability accepts shell-free native and Node launches", () => {

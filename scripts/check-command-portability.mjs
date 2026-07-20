@@ -5,8 +5,6 @@ import { pathToFileURL } from "node:url";
 import { collectPathPortabilitySourceFiles } from "./check-path-portability.mjs";
 
 const sourceExtensions = new Set([".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"]);
-const ignoredTestDirectories = new Set(["__specs__", "__tests__", "spec", "specs", "test", "tests"]);
-const testFilePattern = /\.(?:spec|test)\.[^\\/]+$/i;
 const allowMarker = "command-portability-allow:";
 const childProcessModules = new Set(["child_process", "node:child_process"]);
 const utilModules = new Set(["node:util", "util"]);
@@ -1001,18 +999,9 @@ export function findCommandPortabilityIssues(source, file = "<source>") {
   return issues.sort((left, right) => left.line - right.line || left.label.localeCompare(right.label));
 }
 
-function isTestSourceFile(file) {
-  const parts = file.split(/[\\/]+/);
-  const basename = parts.at(-1) ?? "";
-  return testFilePattern.test(basename) || parts.slice(0, -1).some((part) =>
-    ignoredTestDirectories.has(part.toLowerCase()),
-  );
-}
-
 export function collectCommandPortabilitySourceFiles(repoRoot = resolve(".")) {
-  const resolvedRoot = resolve(repoRoot);
-  return collectPathPortabilitySourceFiles(resolvedRoot).filter((file) =>
-    sourceExtensions.has(extname(file)) && !isTestSourceFile(relative(resolvedRoot, file)),
+  return collectPathPortabilitySourceFiles(resolve(repoRoot)).filter((file) =>
+    sourceExtensions.has(extname(file)),
   );
 }
 
@@ -1051,7 +1040,7 @@ function runCli() {
     return;
   }
   console.log(
-    `Command portability contract ok (${sourceFiles.length} production source files checked, ${childProcessFiles.length} child-process files analyzed).`,
+    `Command portability contract ok (${sourceFiles.length} source files checked, ${childProcessFiles.length} child-process files analyzed).`,
   );
 }
 
