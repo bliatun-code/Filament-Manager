@@ -625,6 +625,91 @@ fn windows_storage_preserves_legacy_roaming_app_data() {
 }
 
 #[test]
+fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_inventory() {
+    use super::{
+        database_user_data_state, prepare_app_storage_dir, resolve_windows_storage_dir,
+        DatabaseUserDataState, APP_DB_FILE_NAME, LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-generated-library-id-storage");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let local_db_path = local_dir.join(APP_DB_FILE_NAME);
+    let legacy_roaming_dir = roaming_root.join(LEGACY_APP_DATA_DIR_NAME);
+    let result = (|| -> Result<(), String> {
+        write_migration_probe_db(&legacy_roaming_dir.join(LEGACY_APP_DB_FILE_NAME), 1)?;
+        std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
+
+        {
+            let local_db =
+                FilamentDatabase::open(&local_db_path).map_err(|error| error.to_string())?;
+            local_db.apply_schema().map_err(|error| error.to_string())?;
+            let settings = local_db
+                .get_library_sync_settings()
+                .map_err(|error| error.to_string())?;
+            assert!(!settings.library_id.is_empty());
+            assert_eq!(
+                database_user_data_state(&local_db_path),
+                DatabaseUserDataState::NoUserData
+            );
+        }
+
+        let selected = resolve_windows_storage_dir(roaming_dir.clone(), local_dir);
+        assert_eq!(selected, roaming_dir);
+
+        prepare_app_storage_dir(&selected)?;
+        assert_eq!(
+            migration_probe_spool_count(&selected.join(APP_DB_FILE_NAME))?,
+            1
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn database_user_data_state_counts_settings_beyond_generated_library_id() {
+    use super::{database_user_data_state, DatabaseUserDataState};
+
+    let db_path = temp_db_path("generated-library-id-user-data-state");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            database_user_data_state(&db_path),
+            DatabaseUserDataState::NoUserData
+        );
+
+        db.conn
+            .execute(
+                "INSERT INTO settings (key, value) VALUES ('active_printer_id', 'printer-1')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            database_user_data_state(&db_path),
+            DatabaseUserDataState::HasUserData
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
 fn windows_storage_preserves_legacy_roaming_inventory_locations() {
     use super::{
         prepare_app_storage_dir, resolve_windows_storage_dir, APP_DB_FILE_NAME,

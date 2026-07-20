@@ -158,6 +158,8 @@ test("package scripts reject high-confidence platform shell syntax", () => {
         export: "export MODE=test && node ./scripts/verify.mjs",
         envCommand: "env MODE=test node ./scripts/verify.mjs",
         envExe: "env.exe MODE=test node ./scripts/verify.mjs",
+        windowsSet: "set MODE=test && node ./scripts/verify.mjs",
+        windowsQuotedSet: 'set "MODE=test" && node ./scripts/verify.mjs',
         files: "rm -rf dist; mkdir -p dist && chmod +x tool",
         multilineCommands: "node ./scripts/verify.mjs\nrm -rf dist",
         bash: 'bash -lc "npm test"',
@@ -184,6 +186,7 @@ test("package scripts reject high-confidence platform shell syntax", () => {
   assert.equal(labels.some((label) => /POSIX environment assignment/.test(label)), true);
   assert.equal(labels.some((label) => /platform-specific command env/.test(label)), true);
   assert.equal(labels.some((label) => /platform-specific command env\.exe/.test(label)), true);
+  assert.equal(labels.some((label) => /platform-specific command set/.test(label)), true);
   assert.equal(labels.some((label) => /platform-specific command rm/.test(label)), true);
   assert.equal(
     labels.some(
@@ -436,6 +439,31 @@ test("Windows workflow portability rejects POSIX-only command invocations", () =
   );
 });
 
+test("Windows workflow portability rejects direct POSIX shell script paths", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - run: ./scripts/build.sh",
+      "      - shell: pwsh",
+      "        run: '& \"./scripts/verify.sh\" --check'",
+      '      - run: Write-Output "./scripts/example.sh"',
+      "      - run: '\"./scripts/example.sh\"'",
+      "      - run: ./scripts/allowed.sh # command-portability-allow: legacy script has an explicit interpreter association",
+      "      - shell: cmd",
+      "        run: '\"./scripts/cmd-build.sh\" --check'",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [5, 7, 12]);
+  assert.equal(
+    issues.every(({ label }) => /POSIX shell scripts/i.test(label)),
+    true,
+  );
+});
+
 test("Windows workflow portability rejects POSIX env commands", () => {
   const issues = workflowFixtureIssues(
     [
@@ -455,6 +483,56 @@ test("Windows workflow portability rejects POSIX env commands", () => {
 
   assert.deepEqual(issues.map(({ line }) => line), [5, 6, 9, 10]);
   assert.equal(issues.every(({ label }) => /POSIX env commands/i.test(label)), true);
+});
+
+test("Windows workflow portability inspects explicit cmd run blocks", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: cmd",
+      "        run: export MODE=test",
+      "      - shell: cmd.exe",
+      "        run: env NEXT_MODE=test node ./scripts/verify.mjs",
+      "      - shell: cmd",
+      "        run: rm -rf dist",
+      "      - shell: cmd",
+      '        run: bash -lc "node ./scripts/verify.mjs"',
+      "      - shell: cmd",
+      "        run: set MODE=test && node ./scripts/verify.mjs",
+      '      - shell: cmd.exe /d /s /c "CALL {0}"',
+      "        run: export CUSTOM_MODE=test",
+      "      - shell: cmd",
+      "        run: echo ok & export AFTER_SEPARATOR=test",
+      "      - shell: cmd",
+      '        run: echo "literal & export STRING_DATA=test"',
+      "      - shell: cmd",
+      "        run: echo ok && set MODE=test",
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [6, 8, 10, 12, 16, 18]);
+});
+
+test("Windows workflow portability segments unescaped cmd pipelines", () => {
+  const issues = workflowFixtureIssues(
+    [
+      "jobs:",
+      "  windows-smoke:",
+      "    runs-on: windows-latest",
+      "    steps:",
+      "      - shell: cmd",
+      '        run: echo ok | bash -lc "node --version"',
+      "      - shell: cmd",
+      '        run: echo ok ^| bash -lc "node --version"',
+      "      - shell: cmd",
+      '        run: echo "literal | bash -lc node --version"',
+    ].join("\n"),
+  );
+
+  assert.deepEqual(issues.map(({ line }) => line), [6]);
 });
 
 test("Windows workflow portability normalizes static call-operator commands", () => {
@@ -1593,6 +1671,81 @@ namespaceComputedLaunch("npm.cmd", ["--version"]);
       platformShellIssue("sh.exe", 33),
       packageManagerIssue("npm", 35),
       packageManagerIssue("npm.cmd", 37),
+    ],
+  );
+});
+
+test("command portability resolves immutable top-level executable constants", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { execFile, spawn, spawnSync } from "node:child_process";
+const npmCommand = "npm";
+const npxCommand = \`npx.cmd\`;
+const shellCommand = "cmd.exe";
+spawn(npmCommand, ["--version"], { shell: false });
+execFile(npxCommand, ["--version"], { shell: false });
+spawnSync(shellCommand, ["/d", "/s", "/c", "echo ready"], { shell: false });
+`),
+    [
+      packageManagerIssue("npm", 6),
+      packageManagerIssue("npx.cmd", 7),
+      platformShellIssue("cmd.exe", 8),
+    ],
+  );
+});
+
+test("command portability resolves immutable executable constants at ASI boundaries", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { spawn } from "node:child_process"
+const npmCommand = "npm.cmd"
+spawn(npmCommand, ["--version"], { shell: false })
+`),
+    [packageManagerIssue("npm.cmd", 4)],
+  );
+});
+
+test("command portability leaves ambiguous executable values unresolved", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import { spawn } from "node:child_process";
+let mutableCommand = "npm";
+spawn(mutableCommand, ["--version"], { shell: false });
+function launchBeforeDeclaration() {
+  spawn(laterCommand, ["--version"], { shell: false });
+}
+const laterCommand = "npm";
+const suffix = "cmd";
+const interpolatedCommand = \`npm.\${suffix}\`;
+spawn(interpolatedCommand, ["--version"], { shell: false });
+const computedCommand = "np" + "m";
+spawn(computedCommand, ["--version"], { shell: false });
+const shadowedCommand = "npm";
+function nested(shadowedCommand) {
+  spawn(shadowedCommand, ["--version"], { shell: false });
+}
+spawn(shadowedCommand, ["--version"], { shell: false });
+`),
+    [],
+  );
+});
+
+test("command portability tracks default and awaited child-process imports", () => {
+  assert.deepEqual(
+    fixtureIssues(`
+import childProcess from "node:child_process";
+childProcess.exec("npm run verify");
+const dynamicChildProcess = await import("node:child_process");
+dynamicChildProcess.spawn("npm.cmd", ["test"]);
+const parenthesizedChildProcess = (await import("node:child_process"));
+parenthesizedChildProcess.exec("npm run verify");
+(await import("node:child_process")).spawn("npx.cmd", ["--version"]);
+`),
+    [
+      implicitShellIssue("exec", 3),
+      packageManagerIssue("npm.cmd", 5),
+      implicitShellIssue("exec", 7),
+      packageManagerIssue("npx.cmd", 8),
     ],
   );
 });

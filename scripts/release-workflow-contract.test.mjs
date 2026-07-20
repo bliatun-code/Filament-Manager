@@ -4,6 +4,7 @@ import test from "node:test";
 
 const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf8");
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
+const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -151,6 +152,63 @@ test("Windows MSI verifier fails closed and writes a portable checksum", () => {
   assert.match(verifier, /\$msiFile\.Name/);
   assert.match(verifier, /UTF8Encoding\]::new\(\$false\)/);
   assert.match(verifier, /WriteAllText[\s\S]*`n/);
+});
+
+test("Windows MSI uninstall preserves the system Desktop directory", () => {
+  assert.doesNotMatch(
+    windowsWixTemplate,
+    /<RemoveFolder\s+Id="DesktopFolder"\b/,
+  );
+});
+
+test("Windows MSI keeps the main binary in the mandatory application feature", () => {
+  const mainProgramStart = windowsWixTemplate.indexOf('Id="MainProgram"');
+  const shortcutsFeatureStart = windowsWixTemplate.indexOf(
+    'Id="ShortcutsFeature"',
+    mainProgramStart,
+  );
+  const pathReferences = [
+    ...windowsWixTemplate.matchAll(/<ComponentRef\s+Id="Path"\s*\/>/g),
+  ];
+
+  assert.notEqual(mainProgramStart, -1);
+  assert.notEqual(shortcutsFeatureStart, -1);
+  assert.equal(pathReferences.length, 1);
+  assert.equal(
+    pathReferences[0].index > mainProgramStart &&
+      pathReferences[0].index < shortcutsFeatureStart,
+    true,
+  );
+});
+
+test("Windows MSI PATH feature is user-scoped and independently selectable", () => {
+  const pathEnvironmentComponent = readSection(
+    windowsWixTemplate,
+    '<Component Id="PathEnvironment"',
+    "            </Component>",
+  );
+  const environmentFeature = readSection(
+    windowsWixTemplate,
+    '                Id="Environment"',
+    "            </Feature>",
+  );
+
+  assert.match(pathEnvironmentComponent, /<Environment\s/);
+  assert.match(pathEnvironmentComponent, /\bName="PATH"/);
+  assert.match(pathEnvironmentComponent, /\bValue="\[INSTALLDIR\]"/);
+  assert.match(pathEnvironmentComponent, /\bPart="last"/);
+  assert.match(pathEnvironmentComponent, /\bAction="set"/);
+  assert.match(pathEnvironmentComponent, /\bSystem="no"/);
+  assert.match(pathEnvironmentComponent, /\bPermanent="no"/);
+  assert.match(pathEnvironmentComponent, /<RegistryValue\s+Root="HKCU"/);
+  assert.match(pathEnvironmentComponent, /\bKeyPath="yes"\s*\/>/);
+  assert.match(environmentFeature, /<ComponentRef\s+Id="PathEnvironment"\s*\/>/);
+  assert.doesNotMatch(environmentFeature, /<ComponentRef\s+Id="Path"\s*\/>/);
+  assert.equal(
+    [...windowsWixTemplate.matchAll(/<ComponentRef\s+Id="PathEnvironment"\s*\/>/g)]
+      .length,
+    1,
+  );
 });
 
 test("Windows CI runs separate builtin portability contracts before toolchain setup", () => {

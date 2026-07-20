@@ -107,6 +107,7 @@ const windowsWorkflowPowerShells = new Set([
   "pwsh",
   "pwsh.exe",
 ]);
+const windowsWorkflowCmdShells = new Set(["cmd", "cmd.exe"]);
 const windowsWorkflowRunPatterns = [
   {
     label: "Bash error mode must not be used in a Windows workflow job",
@@ -143,6 +144,13 @@ const windowsWorkflowRunPatterns = [
     label: "POSIX shells must not be launched from a Windows PowerShell workflow step",
     pattern: /^\s*(?:&\s+)?(?:bash|sh|zsh)(?:\.exe)?(?:\s|$)/i,
   },
+  {
+    label: "POSIX shell scripts must not be invoked directly in a Windows workflow job",
+    pattern:
+      /^\s*(?:&\s+(?:"[^"\r\n]+\.sh"|'[^'\r\n]+\.sh'|[^\s"'`]+\.sh)|[^\s&"'`]+\.sh)(?:\s|$)/i,
+    quotedCmdPattern:
+      /^\s*(?:"[^"\r\n]+\.sh"|'[^'\r\n]+\.sh')(?:\s|$)/i,
+  },
 ];
 const packageScriptPlatformShells = new Set([
   "bash",
@@ -172,6 +180,7 @@ const packageScriptPlatformCommands = new Set([
   "mv",
   "rm",
   "sed",
+  "set",
   "touch",
   "where",
   "which",
@@ -534,6 +543,9 @@ function resolveChildProcessBindings(tokens) {
         continue;
       }
       referencesChildProcess = true;
+      if (tokens[index + 1]?.type === "identifier") {
+        namespaces.add(tokens[index + 1].value);
+      }
       if (
         tokens[index + 1]?.value === "*" &&
         tokens[index + 2]?.value === "as" &&
@@ -596,40 +608,49 @@ function resolveChildProcessBindings(tokens) {
       }
     }
 
-    const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
-    if (moduleCloseIndex === -1) {
+    const moduleExpression = childProcessModuleExpressionAt(tokens, index);
+    if (!moduleExpression) {
       continue;
     }
     referencesChildProcess = true;
-    if (tokens[index - 1]?.value !== "=") {
+    const assignmentIndex = moduleExpression.beforeIndex;
+    if (tokens[assignmentIndex]?.value !== "=") {
       continue;
     }
-    if (tokens[index - 2]?.type === "identifier") {
-      const assignedMember = staticChildProcessMemberAt(tokens, moduleCloseIndex);
+    const targetIndex = assignmentIndex - 1;
+    if (tokens[targetIndex]?.type === "identifier") {
+      const assignedMember = staticChildProcessMemberAt(
+        tokens,
+        moduleExpression.expressionEndIndex,
+      );
       if (assignedMember) {
-        direct.set(tokens[index - 2].value, assignedMember.method);
+        direct.set(tokens[targetIndex].value, assignedMember.method);
         if (
-          tokens[index - 3]?.value === "const" &&
-          topLevelTokenIndexes.has(index - 3)
+          tokens[targetIndex - 1]?.value === "const" &&
+          topLevelTokenIndexes.has(targetIndex - 1)
         ) {
           recordPropagationDirect(
-            tokens[index - 2].value,
+            tokens[targetIndex].value,
             assignedMember.method,
             assignedMember.nextIndex,
           );
         }
       } else {
-        namespaces.add(tokens[index - 2].value);
+        namespaces.add(tokens[targetIndex].value);
       }
-    } else if (tokens[index - 2]?.value === "}") {
-      const openBrace = findOpeningToken(tokens, index - 2, "{", "}");
-      for (const [local, source] of parseNamedBindings(tokens, openBrace + 1, index - 2, ":")) {
+    } else if (tokens[targetIndex]?.value === "}") {
+      const openBrace = findOpeningToken(tokens, targetIndex, "{", "}");
+      for (const [local, source] of parseNamedBindings(tokens, openBrace + 1, targetIndex, ":")) {
         direct.set(local, source);
         if (
           tokens[openBrace - 1]?.value === "const" &&
           topLevelTokenIndexes.has(openBrace - 1)
         ) {
-          recordPropagationDirect(local, source, moduleCloseIndex + 1);
+          recordPropagationDirect(
+            local,
+            source,
+            moduleExpression.expressionEndIndex + 1,
+          );
         }
       }
     }
@@ -697,6 +718,35 @@ function moduleCloseIndex(tokens, index, modules) {
 
 function childProcessModuleCloseIndex(tokens, index) {
   return moduleCloseIndex(tokens, index, childProcessModules);
+}
+
+function isExpressionGroupingParenthesis(tokens, openIndex) {
+  const previous = tokens[openIndex - 1];
+  return !(
+    previous?.type === "identifier" ||
+    previous?.type === "string" ||
+    previous?.type === "number" ||
+    [")", "]", "}", "?."].includes(previous?.value)
+  );
+}
+
+function childProcessModuleExpressionAt(tokens, index) {
+  const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
+  if (moduleCloseIndex === -1) {
+    return null;
+  }
+  const awaited = tokens[index - 1]?.value === "await";
+  const parenthesizedAwait =
+    awaited &&
+    tokens[index - 2]?.value === "(" &&
+    isExpressionGroupingParenthesis(tokens, index - 2) &&
+    tokens[moduleCloseIndex + 1]?.value === ")";
+  return {
+    beforeIndex: parenthesizedAwait ? index - 3 : awaited ? index - 2 : index - 1,
+    expressionEndIndex: parenthesizedAwait
+      ? moduleCloseIndex + 1
+      : moduleCloseIndex,
+  };
 }
 
 function utilModuleCloseIndex(tokens, index) {
@@ -904,6 +954,18 @@ function promisifiedMethodReferenceAt(tokens, index, bindings) {
     : staticChildProcessMemberAt(tokens, moduleCloseIndex)?.method ?? null;
 }
 
+function immutableDeclarationAvailableFrom(tokens, valueIndex) {
+  const nextToken = tokens[valueIndex + 1];
+  const hasAsiBoundary =
+    nextToken?.line > tokens[valueIndex].line &&
+    nextToken.type === "identifier" &&
+    !aliasContinuationKeywords.has(nextToken.value);
+  if (nextToken && nextToken.value !== ";" && !hasAsiBoundary) {
+    return null;
+  }
+  return nextToken?.value === ";" ? valueIndex + 2 : valueIndex + 1;
+}
+
 function immutableChildProcessAliasAt(tokens, sourceIndex) {
   if (
     tokens[sourceIndex]?.type !== "identifier" ||
@@ -913,16 +975,12 @@ function immutableChildProcessAliasAt(tokens, sourceIndex) {
   ) {
     return null;
   }
-  const nextToken = tokens[sourceIndex + 1];
-  const hasAsiBoundary =
-    nextToken?.line > tokens[sourceIndex].line &&
-    nextToken.type === "identifier" &&
-    !aliasContinuationKeywords.has(nextToken.value);
-  if (nextToken && nextToken.value !== ";" && !hasAsiBoundary) {
+  const availableFrom = immutableDeclarationAvailableFrom(tokens, sourceIndex);
+  if (availableFrom === null) {
     return null;
   }
   return {
-    availableFrom: nextToken?.value === ";" ? sourceIndex + 2 : sourceIndex + 1,
+    availableFrom,
     local: tokens[sourceIndex - 2].value,
   };
 }
@@ -1084,9 +1142,10 @@ function resolveCallAt(tokens, index, bindings) {
   if (token?.type !== "identifier") {
     return null;
   }
-  const moduleCloseIndex = childProcessModuleCloseIndex(tokens, index);
-  const moduleMember =
-    moduleCloseIndex === -1 ? null : staticChildProcessMemberAt(tokens, moduleCloseIndex);
+  const moduleExpression = childProcessModuleExpressionAt(tokens, index);
+  const moduleMember = !moduleExpression
+    ? null
+    : staticChildProcessMemberAt(tokens, moduleExpression.expressionEndIndex);
   const moduleOpenIndex = moduleMember
     ? callOpenIndexAt(tokens, moduleMember.nextIndex)
     : -1;
@@ -3010,6 +3069,39 @@ function powerShellStatementSegments(source) {
   return segments;
 }
 
+function cmdStatementSegments(source) {
+  const segments = [];
+  let insideDoubleQuote = false;
+  let start = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === "^") {
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      insideDoubleQuote = !insideDoubleQuote;
+      continue;
+    }
+    if (insideDoubleQuote) {
+      continue;
+    }
+    const operatorLength =
+      source.startsWith("&&", index) || source.startsWith("||", index)
+        ? 2
+        : character === "&" || character === "|"
+          ? 1
+          : 0;
+    if (operatorLength > 0) {
+      segments.push(source.slice(start, index));
+      start = index + operatorLength;
+      index += operatorLength - 1;
+    }
+  }
+  segments.push(source.slice(start));
+  return segments;
+}
+
 const windowsWorkflowCallOperatorCommands = new Set([
   "bash",
   "chmod",
@@ -3112,7 +3204,8 @@ function workflowShellExecutable(rawSource) {
     candidates.find(
       (candidate) =>
         windowsWorkflowPosixShells.has(candidate) ||
-        windowsWorkflowPowerShells.has(candidate),
+        windowsWorkflowPowerShells.has(candidate) ||
+        windowsWorkflowCmdShells.has(candidate),
     ) ?? candidates[0]
   );
 }
@@ -3126,7 +3219,17 @@ function shouldInspectWindowsWorkflowRun(rawShell) {
   if (!rawShell) {
     return true;
   }
-  return windowsWorkflowPowerShells.has(workflowShellExecutable(rawShell));
+  const shell = workflowShellExecutable(rawShell);
+  return (
+    windowsWorkflowPowerShells.has(shell) || windowsWorkflowCmdShells.has(shell)
+  );
+}
+
+function cmdWorkflowShell(rawShell) {
+  if (!rawShell) {
+    return false;
+  }
+  return windowsWorkflowCmdShells.has(workflowShellExecutable(rawShell));
 }
 
 export function findWindowsWorkflowCommandPortabilityIssues(
@@ -3358,13 +3461,19 @@ export function findWindowsWorkflowCommandPortabilityIssues(
       }
       const hasUnprefixedGithubEnvironment =
         containsUnprefixedGithubEnvironment(runCode);
-      const statementSegments = powerShellStatementSegments(runCode);
-      const callOperatorSegments = statementSegments
-        .map((segment) => normalizedPowerShellCallOperatorStatement(segment))
-        .filter(Boolean);
+      const usesCmdShell = cmdWorkflowShell(effectiveShell);
+      const statementSegments = usesCmdShell
+        ? cmdStatementSegments(runCode)
+        : powerShellStatementSegments(runCode);
+      const callOperatorSegments = usesCmdShell
+        ? []
+        : statementSegments
+            .map((segment) => normalizedPowerShellCallOperatorStatement(segment))
+            .filter(Boolean);
       for (const {
         label,
         pattern,
+        quotedCmdPattern,
         skipInPowerShellHashtable,
         suppressWhenUnprefixedEnvironment,
       } of windowsWorkflowRunPatterns) {
@@ -3376,7 +3485,11 @@ export function findWindowsWorkflowCommandPortabilityIssues(
           continue;
         }
         if (
-          statementSegments.some((segment) => pattern.test(segment)) ||
+          statementSegments.some(
+            (segment) =>
+              pattern.test(segment) ||
+              (usesCmdShell && quotedCmdPattern?.test(segment)),
+          ) ||
           callOperatorSegments.some((segment) => pattern.test(segment))
         ) {
           issues.push({ file, label, line });
@@ -3774,6 +3887,63 @@ function dynamicChildProcessOptionsArgument(tokens, method, argumentsList) {
   return argumentIsSafeOptionsValue(tokens, third) ? null : third;
 }
 
+function immutableTopLevelExecutableConstants(
+  tokens,
+  executableArgumentIndexes,
+) {
+  const topLevelTokenIndexes = findTopLevelTokenIndexes(tokens);
+  const candidates = new Map();
+  const ambiguous = new Set();
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const name = tokens[index + 1];
+    const value = tokens[index + 3];
+    if (
+      tokens[index]?.value !== "const" ||
+      !topLevelTokenIndexes.has(index) ||
+      name?.type !== "identifier" ||
+      tokens[index + 2]?.value !== "=" ||
+      value?.type !== "string"
+    ) {
+      continue;
+    }
+    const availableFrom = immutableDeclarationAvailableFrom(tokens, index + 3);
+    if (availableFrom === null) {
+      continue;
+    }
+    if (candidates.has(name.value) || ambiguous.has(name.value)) {
+      candidates.delete(name.value);
+      ambiguous.add(name.value);
+      continue;
+    }
+    candidates.set(name.value, {
+      availableFrom,
+      declarationIndex: index + 1,
+      value: value.value,
+    });
+  }
+
+  for (const [name, candidate] of candidates) {
+    for (let index = 0; index < tokens.length; index += 1) {
+      if (
+        tokens[index]?.type !== "identifier" ||
+        tokens[index].value !== name ||
+        index === candidate.declarationIndex
+      ) {
+        continue;
+      }
+      if (
+        index < candidate.availableFrom ||
+        !executableArgumentIndexes.has(index)
+      ) {
+        candidates.delete(name);
+        break;
+      }
+    }
+  }
+  return candidates;
+}
+
 export function findCommandPortabilityIssues(source, file = "<source>") {
   const { comments, tokens } = tokenizeSource(source);
   const bindings = resolveChildProcessBindings(tokens);
@@ -3782,11 +3952,30 @@ export function findCommandPortabilityIssues(source, file = "<source>") {
   }
   const allowedLines = allowedLinesFromComments(comments);
   const issues = [];
+  const calls = findChildProcessCalls(tokens, bindings).map((call) => ({
+    ...call,
+    argumentsList: findTopLevelArguments(
+      tokens,
+      call.openIndex,
+      call.closeIndex,
+    ).map((argument) => unwrapParenthesizedArgument(tokens, argument)),
+  }));
+  const executableArgumentIndexes = new Set(
+    calls
+      .map(({ argumentsList }) => argumentsList[0])
+      .filter(
+        (argument) =>
+          argument?.end === argument.start + 1 &&
+          tokens[argument.start]?.type === "identifier",
+      )
+      .map((argument) => argument.start),
+  );
+  const executableConstants = immutableTopLevelExecutableConstants(
+    tokens,
+    executableArgumentIndexes,
+  );
 
-  for (const call of findChildProcessCalls(tokens, bindings)) {
-    const argumentsList = findTopLevelArguments(tokens, call.openIndex, call.closeIndex).map(
-      (argument) => unwrapParenthesizedArgument(tokens, argument),
-    );
+  for (const { argumentsList, ...call } of calls) {
     const callLine = tokens[call.openIndex]?.line ?? 1;
     const launchesImplicitShell = call.method === "exec" || call.method === "execSync";
     if (launchesImplicitShell && !allowedLines.has(callLine)) {
@@ -3815,11 +4004,14 @@ export function findCommandPortabilityIssues(source, file = "<source>") {
       });
     }
     const command = tokens[argumentsList[0]?.start];
-    if (
-      !launchesImplicitShell &&
-      (command?.type === "string" || command?.type === "template")
-    ) {
-      const packageManager = executablePackageManager(command.value);
+    const resolvedCommand =
+      command?.type === "string" || command?.type === "template"
+        ? command.value
+        : command?.type === "identifier"
+          ? executableConstants.get(command.value)?.value ?? null
+          : null;
+    if (!launchesImplicitShell && resolvedCommand !== null) {
+      const packageManager = executablePackageManager(resolvedCommand);
       if (packageManager && !allowedLines.has(command.line)) {
         issues.push({
           file,
@@ -3827,7 +4019,7 @@ export function findCommandPortabilityIssues(source, file = "<source>") {
           line: command.line,
         });
       }
-      const platformShell = executablePlatformShell(command.value);
+      const platformShell = executablePlatformShell(resolvedCommand);
       if (platformShell && !allowedLines.has(command.line)) {
         issues.push({
           file,

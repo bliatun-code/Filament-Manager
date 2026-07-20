@@ -96,6 +96,7 @@ const VISUAL_QA_THEME_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_THEME";
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
+const AUTO_GENERATED_LIBRARY_ID_SETTING_KEY: &str = "library_sync_library_id";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DatabaseUserDataState {
@@ -721,7 +722,12 @@ fn database_user_data_state(db_path: &Path) -> DatabaseUserDataState {
         if table == "filament_master_list" {
             continue;
         }
-        let has_rows = match database_table_has_rows(&connection, table) {
+        let has_rows_result = if table == "settings" {
+            database_settings_have_user_data(&connection)
+        } else {
+            database_table_has_rows(&connection, table)
+        };
+        let has_rows = match has_rows_result {
             Ok(has_rows) => has_rows,
             Err(error) if error.to_string().contains("no such table") => false,
             Err(_) => return DatabaseUserDataState::Unreadable,
@@ -736,6 +742,18 @@ fn database_user_data_state(db_path: &Path) -> DatabaseUserDataState {
         Ok(false) => DatabaseUserDataState::NoUserData,
         Err(_) => DatabaseUserDataState::Unreadable,
     }
+}
+
+fn database_settings_have_user_data(connection: &rusqlite::Connection) -> rusqlite::Result<bool> {
+    connection
+        .query_row(
+            "SELECT EXISTS(
+                SELECT 1 FROM settings WHERE key != ?1
+             )",
+            [AUTO_GENERATED_LIBRARY_ID_SETTING_KEY],
+            |row| row.get::<_, i64>(0),
+        )
+        .map(|value| value != 0)
 }
 
 fn database_table_has_rows(
