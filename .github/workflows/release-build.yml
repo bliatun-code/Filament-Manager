@@ -56,6 +56,12 @@ jobs:
           npm run check:command-portability
           node --test ./scripts/release-workflow-contract.test.mjs
 
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
+            && "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Manual release builds must run from the main branch."
+            exit 1
+          fi
+
           if [[ "$GITHUB_EVENT_NAME" == "push" \
             || "$SELECTED_PLATFORM" == "windows" \
             || "$SELECTED_PLATFORM" == "both" ]]; then

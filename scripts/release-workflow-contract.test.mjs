@@ -5,6 +5,15 @@ import test from "node:test";
 const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf8");
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
+const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
+const windowsAuthenticodeVerifier = readFileSync(
+  "scripts/verify-windows-authenticode.ps1",
+  "utf8",
+);
+const windowsDatabaseVerifier = readFileSync(
+  "scripts/verify-windows-app-database.mjs",
+  "utf8",
+);
 
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -64,6 +73,14 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(validationJob, /"\$SELECTED_PLATFORM" == "both"/);
   assert.match(validationJob, /"\$CONFIRM_MACOS_NOTARIZATION" != "true"/);
   assert.match(validationJob, /Manual macOS release builds require notarization confirmation/);
+  assert.match(
+    validationJob,
+    /"\$GITHUB_EVENT_NAME" == "workflow_dispatch"[\s\S]*?"\$GITHUB_REF" != "refs\/heads\/main"/,
+  );
+  assert.match(
+    validationJob,
+    /Manual release builds must run from the main branch/,
+  );
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
   assert.match(macosJob, /needs: validate-release/);
   assert.match(
@@ -261,6 +278,76 @@ test("Windows MSI verifier fails closed and writes a portable checksum", () => {
   assert.match(verifier, /WriteAllText[\s\S]*`n/);
 });
 
+test("Windows Authenticode verifier requires publisher, code-signing EKU and timestamp", () => {
+  assert.equal(existsSync("scripts/verify-windows-authenticode.ps1"), true);
+
+  assert.match(windowsAuthenticodeVerifier, /\[string\[\]\]\$FilePath/);
+  assert.match(windowsAuthenticodeVerifier, /\[string\]\$ExpectedPublisherSubject/);
+  assert.match(windowsAuthenticodeVerifier, /\("\.exe", "\.msi"\)/);
+  assert.match(windowsAuthenticodeVerifier, /Get-AuthenticodeSignature -LiteralPath/);
+  assert.match(windowsAuthenticodeVerifier, /\[string\]\$signature\.Status, "Valid"/);
+  assert.match(windowsAuthenticodeVerifier, /\$signature\.SignerCertificate\.Subject\.Trim\(\)/);
+  assert.match(windowsAuthenticodeVerifier, /\[StringComparison\]::Ordinal/);
+  assert.match(windowsAuthenticodeVerifier, /1\.3\.6\.1\.5\.5\.7\.3\.3/);
+  assert.match(windowsAuthenticodeVerifier, /\$signature\.TimeStamperCertificate/);
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /verify \/pa \/all \/v \/tw \$resolvedFilePath/,
+  );
+  assert.match(windowsAuthenticodeVerifier, /\$signToolExitCode -ne 0/);
+  assert.match(windowsAuthenticodeVerifier, /SignTool Warning/);
+  assert.match(windowsAuthenticodeVerifier, /\$signToolWarnings\.Count -ne 0/);
+  assert.doesNotMatch(releaseWorkflow, /verify-windows-authenticode\.ps1/);
+});
+
+test("Windows MSI smoke exercises install, UI readiness, data retention and uninstall", () => {
+  assert.equal(existsSync("scripts/smoke-windows-msi.ps1"), true);
+  assert.equal(existsSync("scripts/verify-windows-app-database.mjs"), true);
+
+  assert.match(windowsMsiSmoke, /\[ValidateSet\("Off", "Required"\)\]/);
+  assert.match(windowsMsiSmoke, /Get-MsiProperty[\s\S]*"ProductCode"/);
+  assert.match(windowsMsiSmoke, /msiexec\.exe/);
+  assert.match(windowsMsiSmoke, /"\/qn"/);
+  assert.match(windowsMsiSmoke, /"\/norestart"/);
+  assert.match(windowsMsiSmoke, /"\/L\*V"/);
+  assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/i"/);
+  assert.match(windowsMsiSmoke, /Get-HkcuUninstallRegistrationPaths/);
+  assert.match(windowsMsiSmoke, /\[EnvironmentVariableTarget\]::User/);
+  assert.match(windowsMsiSmoke, /Desktop shortcut already exists/);
+  assert.match(windowsMsiSmoke, /Start Menu product directory already exists/);
+  assert.match(windowsMsiSmoke, /user PATH already contains the install directory/);
+  assert.match(windowsMsiSmoke, /Install did not create an HKCU uninstall registration/);
+  assert.match(windowsMsiSmoke, /Install did not create the expected Desktop shortcut/);
+  assert.match(windowsMsiSmoke, /Install did not create the expected Start Menu shortcut/);
+  assert.match(windowsMsiSmoke, /Install did not add the install directory to the user PATH/);
+  assert.match(windowsMsiSmoke, /Start-Process[\s\S]*-FilePath \$installedExecutablePath/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.MainWindowHandle -ne 0/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.Responding/);
+  assert.match(windowsMsiSmoke, /verify-windows-app-database\.mjs/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.CloseMainWindow\(\)/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.WaitForExit\(15000\)/);
+  assert.match(windowsMsiSmoke, /Get-FileHash[\s\S]*-Algorithm SHA256/);
+  assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/x"/);
+  assert.match(windowsMsiSmoke, /Uninstall left the HKCU product registration behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the Desktop shortcut behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the Start Menu shortcut behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the Start Menu product directory behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the install directory in the user PATH/);
+  assert.match(windowsMsiSmoke, /Uninstall removed the user database instead of retaining it/);
+  assert.match(windowsMsiSmoke, /The retained database changed during uninstall/);
+  assert.match(
+    windowsMsiSmoke,
+    /\$applicationStoppedForCleanup -and[\s\S]*?\$canRemoveSmokeAppData -and[\s\S]*?Test-Path -LiteralPath \$resolvedAppDataDirectory/,
+  );
+
+  assert.match(windowsDatabaseVerifier, /pragma\("quick_check", \{ simple: true \}\)/);
+  assert.match(windowsDatabaseVerifier, /filament_master_list/);
+  assert.match(windowsDatabaseVerifier, /filament_spools/);
+  assert.match(windowsDatabaseVerifier, /settings/);
+  assert.match(windowsDatabaseVerifier, /readonly: true/);
+  assert.match(windowsDatabaseVerifier, /fileMustExist: true/);
+});
+
 test("Windows MSI uninstall preserves the system Desktop directory", () => {
   assert.doesNotMatch(
     windowsWixTemplate,
@@ -340,8 +427,10 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
     "Prepare MSI smoke version override",
     "Build MSI smoke bundle",
     "Verify MSI smoke bundle",
+    "Exercise clean MSI installation",
+    "Upload MSI smoke logs",
   ]);
-  assert.match(windowsJob, /timeout-minutes: 45/);
+  assert.match(windowsJob, /timeout-minutes: 60/);
   assert.match(
     windowsJob,
     /npm run tauri -- build --debug --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
@@ -351,6 +440,18 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   assert.match(
     windowsJob,
     /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
+  );
+  assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
+  assert.match(windowsJob, /-ExpectedExecutableName "bambu-filament-manager\.exe"/);
+  assert.match(
+    windowsJob,
+    /-ExpectedWindowTitles @\(\$tauriConfig\.productName, "Dashboard"\)/,
+  );
+  assert.match(windowsJob, /-ExpectedDatabaseName "filament-manager\.db"/);
+  assert.match(windowsJob, /-SignaturePolicy "Off"/);
+  assert.match(
+    windowsJob,
+    /- name: Upload MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
   );
 });
 

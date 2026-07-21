@@ -39,6 +39,19 @@ Version-tag releases are published only after the exact commit has passed the
 macOS and Windows CI checks and the MSI, signed macOS DMG, and both platform
 checksum manifests have passed their respective verification steps.
 
+## Automated installer smoke test
+
+The Windows CI job also exercises the installer on a clean hosted Windows
+runner profile. It installs the generated MSI without Administrator privileges,
+launches the installed executable, waits for a responsive application window,
+and verifies that the newly initialized SQLite database passes `quick_check`
+and contains the core catalog, inventory, and settings tables. CI then closes
+the app normally, uninstalls it, and confirms that the executable, installer
+registration, shortcuts, and user `PATH` entry are removed while the user
+database remains healthy and unchanged. Verbose install, uninstall,
+application, and smoke-test logs are retained as a CI artifact for
+troubleshooting.
+
 ## Install
 
 Upgrades keep the active database under the current user's Local application
