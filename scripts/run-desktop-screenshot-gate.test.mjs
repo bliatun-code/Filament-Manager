@@ -2169,6 +2169,32 @@ test("desktop screenshot gate waits for an appearing window", async () => {
   assert.equal(attempts, 3);
 });
 
+test("desktop screenshot window polling always makes one zero-timeout lookup", async () => {
+  const expectedWindow = createMetric().window;
+  let clockReads = 0;
+  let lookupCalls = 0;
+  let waitCalls = 0;
+  const window = await waitForDesktopWindow({
+    findWindowFn: async () => {
+      lookupCalls += 1;
+      return expectedWindow;
+    },
+    intervalMs: 0,
+    nowFn: () => {
+      clockReads += 1;
+      return clockReads === 1 ? 0 : 1;
+    },
+    timeoutMs: 0,
+    waitFn: async () => {
+      waitCalls += 1;
+    },
+  });
+
+  assert.equal(window, expectedWindow);
+  assert.equal(lookupCalls, 1);
+  assert.equal(waitCalls, 0);
+});
+
 test("desktop screenshot window polling exposes permanent lookup failures", async () => {
   const clock = createFakeClock();
   const attempts = [];

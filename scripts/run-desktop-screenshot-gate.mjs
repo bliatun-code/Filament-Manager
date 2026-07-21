@@ -663,8 +663,10 @@ export async function waitForDesktopWindow(options = {}) {
   const waitFn = options.waitFn ?? wait;
   const startedAt = nowFn();
   const findWindowFn = options.findWindowFn ?? findDesktopWindow;
+  let isFirstAttempt = true;
 
-  while (nowFn() - startedAt <= timeoutMs) {
+  while (isFirstAttempt || nowFn() - startedAt <= timeoutMs) {
+    isFirstAttempt = false;
     if (options.shouldAbort?.()) {
       return null;
     }
@@ -681,6 +683,9 @@ export async function waitForDesktopWindow(options = {}) {
     }
     if (window && (options.isWindowReady?.(window) ?? true)) {
       return window;
+    }
+    if (nowFn() - startedAt >= timeoutMs) {
+      break;
     }
     await waitFn(intervalMs);
   }
