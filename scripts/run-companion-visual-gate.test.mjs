@@ -58,6 +58,11 @@ function companionFixtureHandler(request, response) {
     });
     return;
   }
+  if (!authenticated && url.pathname.startsWith("/api/v1/library/")) {
+    response.writeHead(401, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "Missing or invalid companion session" }));
+    return;
+  }
   if (url.pathname === "/api/v1/library/snapshot") {
     jsonResponse(response, {
       ok: true,

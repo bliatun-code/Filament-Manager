@@ -54,7 +54,7 @@ Velg Vert når én maskin skal være felles lager for flere enheter.
 
 Klient betyr at desktop-appen kobler seg til en Vert.
 
-- Klienten leser bibliotek, lager, utlån, printere og ønskeliste fra verten.
+- Klienten leser bibliotek, lager, utlån, printere og ønskeliste fra verten gjennom en autentisert desktop-paring.
 - Når verten er tilgjengelig og klienten er paret, kan klienten utføre støttede endringer mot verten.
 - Når verten ikke er tilgjengelig, kan klienten vise en lokal cache som lesbar fallback.
 - Klientens lokale database er ikke hovedbiblioteket.
@@ -68,6 +68,7 @@ Webappen er en lokal companion-flate som serveres fra desktop-appen.
 - Den kjøres fra maskinen som har webapp aktivert.
 - Nettlesere pares med kortvarig lenke eller QR.
 - Paret nettleser får en tryggere lokal økt med CSRF-beskyttelse.
+- Å åpne LAN-adressen gir ikke tilgang til lageret: lesing og skriving av bibliotekdata krever en autentisert, paret økt.
 - Webappen er laget for rask bruk på mobil, iPad eller annen verkstedmaskin.
 - Vertsmaskinen kan trekke tilbake nettleserøkter fra innstillingene.
 
@@ -643,6 +644,26 @@ Sletting av rull er normalt en myk sletting fra aktiv visning, slik at historikk
 ## Backup og flytting
 
 Bruk Programvedlikehold for sikkerhetskopi, import og reset.
+
+Fullstendige JSON-sikkerhetskopier er laget for å kunne flyttes. De tar med
+bibliotekdata som lager, historikk, katalogdata og printerprofiler, men utelater
+maskinlokale tilgangsopplysninger og paringstilstand. Bambu Live-tilkobling,
+lokale nettverksinnstillinger, desktop-klientøkter og Companion-/nettleserparinger
+må konfigureres eller pares på nytt på målmaskinen. Importen ignorerer også
+maskinlokale tilgangsopplysninger eller paringer i eldre sikkerhetskopier.
+Filen inneholder fortsatt lagerdata, QR-/RFID-referanser og utlånsdetaljer, så
+behandle den som private data selv om den ikke inneholder brukbare
+enhetslegitimasjoner.
+
+Når du velger en gyldig full sikkerhetskopi, ber appen om bekreftelse fordi
+gjenopprettingen erstatter det aktive biblioteket. Før noe erstattes, oppretter
+og validerer appen automatisk en lokal SQLite-gjenopprettingskopi ved siden av
+den aktive databasen. Gjenopprettingen starter ikke hvis kopien ikke kan
+opprettes og valideres.
+
+I motsetning til den flyttbare eksporten er gjenopprettingskopien en lokal kopi
+av hele databasen før gjenoppretting og kan inneholde maskinens
+tilgangsopplysninger og paringer. Hold appdatamappen privat.
 
 Ved bytte mellom Vert, Klient og Kun lokal bør du tenke gjennom hvem som skal eie biblioteket. En full backup fra gammel vert er den tryggeste måten å flytte bibliotekets historikk til en ny vert.
 

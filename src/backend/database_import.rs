@@ -49,14 +49,18 @@ where
         return Err(InventoryError::Db("Import file is empty".to_string()));
     }
 
-    if let Ok(validation) = validate_full_backup(normalized) {
-        import_full_backup(normalized)?;
-        return Ok(ImportDataStats {
-            detected_format: "FULL_BACKUP".to_string(),
-            imported_count: validation.total_rows,
-            created_count: 0,
-            updated_count: 0,
-        });
+    match validate_full_backup(normalized) {
+        Ok(validation) => {
+            import_full_backup(normalized)?;
+            return Ok(ImportDataStats {
+                detected_format: "FULL_BACKUP".to_string(),
+                imported_count: validation.total_rows,
+                created_count: 0,
+                updated_count: 0,
+            });
+        }
+        Err(error) if declares_full_backup_format(normalized) => return Err(error),
+        Err(_) => {}
     }
 
     if let Ok(rows) = parse_inventory_spools_json(normalized) {
@@ -72,6 +76,19 @@ where
     Err(InventoryError::Db(
         "Unsupported import format. Expected full backup JSON, inventory JSON array/object, or inventory CSV.".to_string(),
     ))
+}
+
+fn declares_full_backup_format(content: &str) -> bool {
+    serde_json::from_str::<Value>(content)
+        .ok()
+        .and_then(|value| {
+            value
+                .as_object()?
+                .get("format")?
+                .as_str()
+                .map(|format| format.starts_with("filament-manager-backup-"))
+        })
+        .unwrap_or(false)
 }
 
 fn import_stats(detected_format: &str, stats: InventoryImportStats) -> ImportDataStats {

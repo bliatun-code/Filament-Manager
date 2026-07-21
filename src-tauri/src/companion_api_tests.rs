@@ -923,17 +923,119 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
 }
 
 #[tokio::test]
+async fn companion_api_library_reads_require_an_active_session() {
+    let db_path = temp_db_path("trusted-lan-library-read-auth");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let library_paths = [
+            "/api/v1/library/snapshot",
+            "/api/v1/library/spools?limit=10&offset=0",
+            "/api/v1/library/printers",
+            "/api/v1/library/printer-settings",
+            "/api/v1/library/loans?limit=10",
+            "/api/v1/library/statistics/filament-consumption?limit=10",
+            "/api/v1/library/catalog/masters?limit=10",
+            "/api/v1/library/wishlist?limit=10",
+        ];
+
+        let health = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/health")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(health.status(), StatusCode::OK);
+
+        for path in library_paths {
+            let missing_session = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(path)
+                        .header("host", "127.0.0.1:4278")
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(
+                missing_session.status(),
+                StatusCode::UNAUTHORIZED,
+                "{path} must reject requests without a session"
+            );
+
+            let invalid_session = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(path)
+                        .header("host", "127.0.0.1:4278")
+                        .header("cookie", "bfm_companion_session=invalid-session")
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(
+                invalid_session.status(),
+                StatusCode::UNAUTHORIZED,
+                "{path} must reject invalid sessions"
+            );
+        }
+
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
+        for path in library_paths {
+            let valid_session = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(path)
+                        .header("host", "127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .body(Body::empty())
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(
+                valid_session.status(),
+                StatusCode::OK,
+                "{path} must accept an active session"
+            );
+        }
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_library_reads_require_an_active_session failed: {message}");
+    }
+}
+
+#[tokio::test]
 async fn companion_api_library_snapshot_exposes_host_summary() {
     let db_path = temp_db_path("trusted-lan-library-snapshot");
     let result = async {
         seed_db(&db_path)?;
         let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
 
         let snapshot_response = router
             .oneshot(
                 Request::builder()
                     .uri("/api/v1/library/snapshot")
                     .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
             )
@@ -1225,6 +1327,28 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
         db.revoke_trusted_lan_paired_browser(&paired_browser_id)
             .map_err(|error| error.to_string())?;
 
+        let revoked_active_session_read = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/snapshot")
+                    .header("host", "192.168.1.50:4278")
+                    .header(
+                        "cookie",
+                        format!(
+                            "{COMPANION_SESSION_COOKIE}={renewed_session_cookie}; {COMPANION_TRUSTED_LAN_DEVICE_COOKIE}={device_cookie}"
+                        ),
+                    )
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            revoked_active_session_read.status(),
+            StatusCode::UNAUTHORIZED
+        );
+
         state
             .sessions
             .write()
@@ -1293,7 +1417,7 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
         let revoked_session_read = router
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/inventory/spools")
+                    .uri("/api/v1/library/snapshot")
                     .header("host", "192.168.1.50:4278")
                     .header(
                         "cookie",
@@ -1389,11 +1513,11 @@ async fn companion_api_qa_route_can_expire_sessions() {
         let AuthenticatedTestSession { session_cookie, .. } =
             pair_test_session(&router, &db_path).await?;
 
-        let inventory_before = router
+        let library_snapshot_before = router
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/inventory/spools?limit=10&offset=0")
+                    .uri("/api/v1/library/snapshot")
                     .header("host", "127.0.0.1:4278")
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .body(Body::empty())
@@ -1401,7 +1525,7 @@ async fn companion_api_qa_route_can_expire_sessions() {
             )
             .await
             .map_err(|error| error.to_string())?;
-        assert_eq!(inventory_before.status(), StatusCode::OK);
+        assert_eq!(library_snapshot_before.status(), StatusCode::OK);
 
         let expire = router
             .clone()
@@ -1418,10 +1542,10 @@ async fn companion_api_qa_route_can_expire_sessions() {
             .map_err(|error| error.to_string())?;
         assert_eq!(expire.status(), StatusCode::OK);
 
-        let inventory_after = router
+        let library_snapshot_after = router
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/inventory/spools?limit=10&offset=0")
+                    .uri("/api/v1/library/snapshot")
                     .header("host", "127.0.0.1:4278")
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .body(Body::empty())
@@ -1429,7 +1553,7 @@ async fn companion_api_qa_route_can_expire_sessions() {
             )
             .await
             .map_err(|error| error.to_string())?;
-        assert_eq!(inventory_after.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(library_snapshot_after.status(), StatusCode::UNAUTHORIZED);
 
         Ok::<(), String>(())
     }

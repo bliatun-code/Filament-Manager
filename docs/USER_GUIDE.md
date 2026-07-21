@@ -54,7 +54,7 @@ Use Host when one stable machine should serve the shared inventory for several d
 
 Client means the desktop app connects to another Host.
 
-- The client reads inventory, loans, printers, wishlist items, and settings from the host.
+- The client reads inventory, loans, printers, wishlist items, and settings from the host through its authenticated desktop pairing.
 - When the host is reachable and the client is paired, supported writes are performed against the host.
 - When the host is unavailable, the client can show a local read-only cache.
 - The client's local database is not the primary library.
@@ -68,6 +68,7 @@ The webapp is a local companion interface served by the desktop app.
 - It runs from the machine where webapp hosting is enabled.
 - Browsers are paired with a short-lived link or QR code.
 - Paired browsers receive a protected local session with CSRF protection.
+- Opening the LAN address does not expose inventory: library reads and writes require an authenticated paired session.
 - The webapp is designed for quick use on a phone, tablet, or workshop browser.
 - The host can revoke browser sessions from settings.
 
@@ -643,6 +644,24 @@ Deleting a spool is normally a soft delete from active views so history remains 
 ## Backup and Moving Libraries
 
 Use Program maintenance for backup, import, and reset.
+
+Full JSON backups are portable. They include library data such as inventory,
+history, catalog data, and printer profiles, but omit device-local connection
+credentials and pairing state. Bambu Live connection details, local network
+settings, desktop-client sessions, and Companion/browser pairings must be
+configured or paired again on the destination machine. Import also ignores
+machine-local credentials or pairings found in older backup files.
+The file still contains your inventory, QR/RFID references, and loan details,
+so treat it as private data even though it contains no usable device credentials.
+
+When you select a valid full backup, the app asks for confirmation because the
+restore replaces the current library. Before replacing anything, it creates
+and validates a local SQLite recovery snapshot next to the active database. If
+that snapshot cannot be created and validated, the restore does not start.
+
+Unlike the portable export, the recovery snapshot is a local copy of the
+pre-restore database and can contain this machine's credentials and pairings.
+Keep the application-data directory private.
 
 When switching between Host, Client, and Standalone, decide which machine should own the library. A full backup from the old host is the safest way to move library history to a new host.
 

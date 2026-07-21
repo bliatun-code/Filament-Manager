@@ -74,11 +74,14 @@ Release notes:
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
   A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.
-- Local companion/webapp for paired phones, tablets, and workshop browsers.
+- Local companion/webapp for paired phones, tablets, and workshop browsers;
+  library reads and writes require an authenticated paired session.
 - Host/client library mode for sharing one desktop-owned library with other
-  desktop installations.
+  authenticated desktop installations.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
-- Backup, import/export, reset, and maintenance tools.
+- Portable full JSON backups that omit device-local credentials and pairing
+  state. Full restore requires confirmation and creates a validated local
+  SQLite recovery snapshot before replacing library data.
 
 ## Languages
 

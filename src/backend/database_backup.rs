@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::database_result::{InventoryError, InventoryResult};
-use super::database_tables::FULL_BACKUP_TABLES;
+use super::database_tables::{
+    is_required_full_backup_table, portable_backup_row, FULL_BACKUP_TABLES,
+};
 use super::database_values::sqlite_value_to_json;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -74,6 +76,7 @@ pub(crate) fn validate_full_backup_content(
     content: &str,
 ) -> InventoryResult<BackupValidationStats> {
     let parsed = parse_full_backup_content(content)?;
+    ensure_full_backup_is_safe_to_import(&parsed)?;
     let table_entries: Vec<(&str, &Vec<Map<String, Value>>)> = parsed
         .tables
         .iter()
@@ -115,16 +118,39 @@ pub(crate) fn validate_full_backup_content(
     })
 }
 
+pub(crate) fn ensure_full_backup_is_safe_to_import(
+    parsed: &ParsedFullBackup,
+) -> InventoryResult<()> {
+    let missing_required_tables: Vec<&str> = FULL_BACKUP_TABLES
+        .iter()
+        .copied()
+        .filter(|table| is_required_full_backup_table(table))
+        .filter(|table| !parsed.tables.contains_key(*table))
+        .collect();
+
+    if missing_required_tables.is_empty() {
+        return Ok(());
+    }
+
+    Err(InventoryError::Db(format!(
+        "Backup is incomplete and cannot be imported safely. Missing required tables: {}",
+        missing_required_tables.join(", ")
+    )))
+}
+
 pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> InventoryResult<String> {
-    let exported_at: String = conn.query_row("SELECT datetime('now')", [], |row| row.get(0))?;
+    let transaction = conn.unchecked_transaction()?;
+    let exported_at: String =
+        transaction.query_row("SELECT datetime('now')", [], |row| row.get(0))?;
 
     let mut tables = Map::new();
     for table in FULL_BACKUP_TABLES {
         tables.insert(
             table.to_string(),
-            Value::Array(export_table_rows(conn, table)?),
+            Value::Array(export_table_rows(&transaction, table)?),
         );
     }
+    transaction.commit()?;
 
     let mut root = Map::new();
     root.insert(
@@ -155,7 +181,9 @@ fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResul
             let value = row.get_ref(index)?;
             object.insert(column_name.clone(), sqlite_value_to_json(value));
         }
-        output.push(Value::Object(object));
+        if let Some(object) = portable_backup_row(table, object) {
+            output.push(Value::Object(object));
+        }
     }
     Ok(output)
 }

@@ -224,6 +224,7 @@ export function useSettingsMaintenanceSection({
     settingsClientReadOnly,
     settingsImportMessageLabels,
     tauri,
+    t,
   });
 
   const settingsMaintenanceRouteProps = buildSettingsMaintenanceRouteProps({

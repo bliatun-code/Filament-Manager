@@ -6,6 +6,23 @@ use axum::Router;
 
 pub(super) fn build_router(state: CompanionApiState) -> Router {
     let protected = Router::new()
+        .route("/library/snapshot", get(handle_library_snapshot))
+        .route("/library/spools", get(handle_library_spools))
+        .route("/library/printers", get(handle_library_printers))
+        .route(
+            "/library/printer-settings",
+            get(handle_library_printer_settings),
+        )
+        .route("/library/loans", get(handle_library_loans))
+        .route(
+            "/library/statistics/filament-consumption",
+            get(handle_library_filament_consumption),
+        )
+        .route(
+            "/library/catalog/masters",
+            get(handle_library_catalog_masters),
+        )
+        .route("/library/wishlist", get(handle_library_wishlist_items))
         .route("/inventory/spools", get(handle_list_spools))
         .route("/backup/full", get(handle_export_full_backup))
         .route("/catalog/masters", get(handle_list_catalog_masters))
@@ -98,26 +115,6 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
         .route("/companion/", get(handle_companion_shell))
         .route("/companion/{asset}", get(handle_companion_asset))
         .route("/api/v1/health", get(handle_health))
-        .route("/api/v1/library/snapshot", get(handle_library_snapshot))
-        .route("/api/v1/library/spools", get(handle_library_spools))
-        .route("/api/v1/library/printers", get(handle_library_printers))
-        .route(
-            "/api/v1/library/printer-settings",
-            get(handle_library_printer_settings),
-        )
-        .route("/api/v1/library/loans", get(handle_library_loans))
-        .route(
-            "/api/v1/library/statistics/filament-consumption",
-            get(handle_library_filament_consumption),
-        )
-        .route(
-            "/api/v1/library/catalog/masters",
-            get(handle_library_catalog_masters),
-        )
-        .route(
-            "/api/v1/library/wishlist",
-            get(handle_library_wishlist_items),
-        )
         .route("/api/v1/auth/session", get(handle_session_status))
         .route("/api/v1/auth/pair", post(handle_pair_session))
         .route("/api/v1/auth/renew", post(handle_renew_session))

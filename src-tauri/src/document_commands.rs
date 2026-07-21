@@ -6,7 +6,8 @@ use base64::Engine;
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 use tauri::Manager;
 
 #[derive(Serialize)]
@@ -43,6 +44,14 @@ pub(crate) fn import_full_backup_json(
     state: tauri::State<'_, AppState>,
     content: String,
 ) -> Result<(), String> {
+    with_db(&state, |db| db.validate_full_backup_json(&content))?;
+    create_full_restore_recovery_snapshot(Path::new(&state.db_path)).map_err(|error| {
+        diagnostic_command_error(
+            "common.internal",
+            "Create recovery snapshot before full backup restore",
+            error,
+        )
+    })?;
     with_db(&state, |db| db.import_full_backup_json(&content))
 }
 
@@ -51,7 +60,108 @@ pub(crate) fn import_data_file(
     state: tauri::State<'_, AppState>,
     content: String,
 ) -> Result<ImportDataStats, String> {
+    if is_full_backup_candidate(&content) {
+        with_db(&state, |db| db.validate_full_backup_json(&content))?;
+        create_full_restore_recovery_snapshot(Path::new(&state.db_path)).map_err(|error| {
+            diagnostic_command_error(
+                "common.internal",
+                "Create recovery snapshot before data-file restore",
+                error,
+            )
+        })?;
+    }
     with_db(&state, |db| db.import_data_content(&content))
+}
+
+fn is_full_backup_candidate(content: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(content.trim_start_matches('\u{feff}').trim())
+        .ok()
+        .is_some_and(|value| {
+            value.get("format").and_then(|format| format.as_str())
+                == Some("filament-manager-backup-v1")
+        })
+}
+
+fn create_full_restore_recovery_snapshot(source_path: &Path) -> Result<PathBuf, String> {
+    use rusqlite::backup::{Backup, StepResult};
+
+    let parent = source_path.parent().ok_or_else(|| {
+        format!(
+            "database path has no parent directory: {}",
+            source_path.display()
+        )
+    })?;
+    let file_name = source_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("filament-manager.db");
+    let destination_path = parent.join(format!(
+        "{file_name}.recovery-before-full-restore-{}.sqlite",
+        chrono_id()
+    ));
+
+    let result = (|| -> Result<(), String> {
+        let source = rusqlite::Connection::open_with_flags(
+            source_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .map_err(|error| format!("failed to open recovery source: {error}"))?;
+        let mut destination = rusqlite::Connection::open(&destination_path)
+            .map_err(|error| format!("failed to open recovery destination: {error}"))?;
+
+        {
+            let backup = Backup::new(&source, &mut destination)
+                .map_err(|error| format!("failed to initialize recovery snapshot: {error}"))?;
+            let deadline = Instant::now() + Duration::from_secs(5);
+            loop {
+                match backup
+                    .step(128)
+                    .map_err(|error| format!("recovery snapshot failed: {error}"))?
+                {
+                    StepResult::Done => break,
+                    StepResult::More => {}
+                    StepResult::Busy | StepResult::Locked if Instant::now() < deadline => {
+                        std::thread::sleep(Duration::from_millis(25));
+                    }
+                    StepResult::Busy | StepResult::Locked => {
+                        return Err("recovery snapshot remained locked".to_string());
+                    }
+                    _ => return Err("recovery snapshot returned an unsupported state".to_string()),
+                }
+            }
+        }
+
+        let quick_check = destination
+            .query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
+            .map_err(|error| format!("failed to validate recovery snapshot: {error}"))?;
+        if quick_check != "ok" {
+            return Err(format!(
+                "recovery snapshot validation failed: {quick_check}"
+            ));
+        }
+        Ok(())
+    })();
+
+    if let Err(error) = result {
+        let _ = std::fs::remove_file(&destination_path);
+        return Err(error);
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Err(error) =
+            std::fs::set_permissions(&destination_path, std::fs::Permissions::from_mode(0o600))
+        {
+            let _ = std::fs::remove_file(&destination_path);
+            return Err(format!(
+                "failed to secure recovery snapshot permissions: {error}"
+            ));
+        }
+    }
+
+    Ok(destination_path)
 }
 
 #[tauri::command]
@@ -257,7 +367,8 @@ pub(crate) fn chrono_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        chrono_id, decode_pdf_payload, png_with_dpi, sanitize_generated_filename_stem,
+        chrono_id, create_full_restore_recovery_snapshot, decode_pdf_payload,
+        is_full_backup_candidate, png_with_dpi, sanitize_generated_filename_stem,
         write_generated_file,
     };
     use base64::Engine;
@@ -292,6 +403,61 @@ mod tests {
             sanitize_generated_filename_stem("...", "filament-inventory-label-sheet"),
             "filament-inventory-label-sheet"
         );
+    }
+
+    #[test]
+    fn full_backup_candidate_detection_is_format_specific() {
+        assert!(is_full_backup_candidate(
+            r#"{"format":"filament-manager-backup-v1","tables":{}}"#
+        ));
+        assert!(is_full_backup_candidate(
+            "\u{feff}  {\"format\":\"filament-manager-backup-v1\",\"tables\":{}}"
+        ));
+        assert!(!is_full_backup_candidate(r#"{"spools":[]}"#));
+        assert!(!is_full_backup_candidate("spool_id,material\nspool-1,PLA"));
+        assert!(!is_full_backup_candidate(
+            r#"{"format":"filament-manager-backup-v2","tables":{}}"#
+        ));
+    }
+
+    #[test]
+    fn full_restore_recovery_snapshot_is_complete_and_valid() {
+        let source_path = std::env::temp_dir().join(format!(
+            "filament-manager-recovery-source-{}.db",
+            chrono_id()
+        ));
+        let result = (|| -> Result<(), String> {
+            let source =
+                rusqlite::Connection::open(&source_path).map_err(|error| error.to_string())?;
+            source
+                .execute_batch(
+                    "CREATE TABLE recovery_probe (value TEXT NOT NULL);\n\
+                     INSERT INTO recovery_probe (value) VALUES ('before restore');",
+                )
+                .map_err(|error| error.to_string())?;
+            drop(source);
+
+            let snapshot_path = create_full_restore_recovery_snapshot(&source_path)?;
+            assert!(snapshot_path.exists());
+            let snapshot =
+                rusqlite::Connection::open(&snapshot_path).map_err(|error| error.to_string())?;
+            let value: String = snapshot
+                .query_row("SELECT value FROM recovery_probe", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(value, "before restore");
+            let quick_check: String = snapshot
+                .query_row("PRAGMA quick_check", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(quick_check, "ok");
+            drop(snapshot);
+            std::fs::remove_file(snapshot_path).map_err(|error| error.to_string())?;
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&source_path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
     }
 
     #[test]

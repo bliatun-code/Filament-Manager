@@ -8,9 +8,7 @@ use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_checked, prepare_library_sync_host_read,
     save_library_sync_success,
 };
-use crate::library_sync_host_client::{
-    fetch_library_sync_host_json, get_library_sync_host_json_authenticated,
-};
+use crate::library_sync_host_client::get_library_sync_host_json_authenticated;
 use crate::library_sync_models::{
     LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput,
     LibrarySyncFullBackupResponse, LibrarySyncSpoolDetailInput, LibrarySyncSpoolListInput,
@@ -58,7 +56,8 @@ pub(crate) fn fetch_library_sync_spools(
     let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let limit = input.limit.unwrap_or(1200).clamp(1, 2_500);
     let offset = input.offset.unwrap_or(0).max(0);
-    let rows: Vec<SpoolWithMasterRow> = fetch_library_sync_host_json(
+    let rows: Vec<SpoolWithMasterRow> = get_library_sync_host_json_authenticated(
+        &state,
         &normalized_base_url,
         format!("/api/v1/library/spools?limit={limit}&offset={offset}").as_str(),
     )?;
@@ -81,8 +80,11 @@ pub(crate) fn fetch_library_sync_printer_overview(
     input: ValidateLibrarySyncHostInput,
 ) -> Result<Vec<PrinterOverviewRow>, String> {
     let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
-    let rows: Vec<PrinterOverviewRow> =
-        fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printers")?;
+    let rows: Vec<PrinterOverviewRow> = get_library_sync_host_json_authenticated(
+        &state,
+        &normalized_base_url,
+        "/api/v1/library/printers",
+    )?;
 
     with_inventory(&state, |engine| {
         engine.save_library_sync_cached_printers(&rows)
@@ -102,8 +104,11 @@ pub(crate) fn fetch_library_sync_printer_settings(
     input: ValidateLibrarySyncHostInput,
 ) -> Result<PrinterSettingsSnapshot, String> {
     let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
-    let snapshot: PrinterSettingsSnapshot =
-        fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/printer-settings")?;
+    let snapshot: PrinterSettingsSnapshot = get_library_sync_host_json_authenticated(
+        &state,
+        &normalized_base_url,
+        "/api/v1/library/printer-settings",
+    )?;
 
     save_library_sync_success(
         &state,
@@ -122,7 +127,8 @@ pub(crate) fn fetch_library_sync_loans(
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let limit = input.limit.unwrap_or(2000).clamp(1, 2_500);
-    let rows: Vec<SpoolLoanDetailsRow> = fetch_library_sync_host_json(
+    let rows: Vec<SpoolLoanDetailsRow> = get_library_sync_host_json_authenticated(
+        &state,
         &normalized_base_url,
         format!("/api/v1/library/loans?include_returned=true&direction=ALL&limit={limit}").as_str(),
     )?;
@@ -155,7 +161,8 @@ pub(crate) fn fetch_library_sync_filament_consumption(
     let printer_query = printer_id
         .map(|value| format!("&printer_id={value}"))
         .unwrap_or_default();
-    let rows: Vec<FilamentConsumptionRow> = fetch_library_sync_host_json(
+    let rows: Vec<FilamentConsumptionRow> = get_library_sync_host_json_authenticated(
+        &state,
         &normalized_base_url,
         format!("/api/v1/library/statistics/filament-consumption?limit={limit}{printer_query}")
             .as_str(),
@@ -180,7 +187,8 @@ pub(crate) fn fetch_library_sync_catalog_masters(
 
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
     let _search = input.search;
-    match fetch_library_sync_host_json(
+    match get_library_sync_host_json_authenticated(
+        &state,
         &normalized_base_url,
         &format!("/api/v1/library/catalog/masters?limit={limit}"),
     ) {
@@ -203,10 +211,12 @@ pub(crate) fn fetch_library_sync_wishlist_items(
     let (normalized_base_url, _) = prepare_library_sync_host_checked(&host_input)?;
 
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
-    let primary_rows: Result<Vec<WishlistItemRow>, String> = fetch_library_sync_host_json(
-        &normalized_base_url,
-        &format!("/api/v1/library/wishlist?limit={limit}"),
-    );
+    let primary_rows: Result<Vec<WishlistItemRow>, String> =
+        get_library_sync_host_json_authenticated(
+            &state,
+            &normalized_base_url,
+            &format!("/api/v1/library/wishlist?limit={limit}"),
+        );
     match primary_rows {
         Ok(rows) => {
             with_inventory(&state, |engine| {

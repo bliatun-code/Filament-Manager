@@ -2,7 +2,7 @@ use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
 use crate::library_sync_command_support::{
     prepare_library_sync_host_checked, save_library_sync_success,
 };
-use crate::library_sync_host_client::fetch_library_sync_host_json;
+use crate::library_sync_host_client::get_library_sync_host_json_authenticated;
 use crate::library_sync_models::{
     LibrarySyncRemoteSnapshot, LibrarySyncSnapshotResponse, ValidateLibrarySyncHostInput,
 };
@@ -15,8 +15,11 @@ pub(crate) fn fetch_library_sync_snapshot(
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncRemoteSnapshot, String> {
     let (normalized_base_url, expected_library_id) = prepare_library_sync_host_checked(&input)?;
-    let parsed: LibrarySyncSnapshotResponse =
-        fetch_library_sync_host_json(&normalized_base_url, "/api/v1/library/snapshot")?;
+    let parsed: LibrarySyncSnapshotResponse = get_library_sync_host_json_authenticated(
+        &state,
+        &normalized_base_url,
+        "/api/v1/library/snapshot",
+    )?;
 
     if !parsed.ok {
         return Err("Host snapshot reported not ready.".to_string());

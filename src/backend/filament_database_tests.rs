@@ -25,6 +25,19 @@ fn temp_db_path(test_name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("filament-manager-{test_name}-{nanos}.db"))
 }
 
+fn empty_current_full_backup() -> serde_json::Value {
+    let tables = FULL_BACKUP_TABLES
+        .iter()
+        .map(|table| ((*table).to_string(), json!([])))
+        .collect::<serde_json::Map<String, serde_json::Value>>();
+
+    json!({
+        "exported_at": "2026-07-21 00:00:00",
+        "format": "filament-manager-backup-v1",
+        "tables": tables
+    })
+}
+
 #[test]
 fn historical_sql_migrations_upgrade_to_current_schema() {
     let db_path = temp_db_path("historical-migration-upgrade");
@@ -1964,6 +1977,18 @@ fn import_full_backup_ignores_unknown_legacy_columns() {
             }
         });
 
+        let validation = db
+            .validate_full_backup_json(&backup.to_string())
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            validation.missing_tables,
+            [
+                "printer_live_events",
+                "printer_live_usage_sessions",
+                "printer_live_usage_session_spools",
+            ]
+        );
+
         db.import_full_backup_json(&backup.to_string())
             .map_err(|error| error.to_string())?;
 
@@ -1987,6 +2012,125 @@ fn import_full_backup_ignores_unknown_legacy_columns() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("import_full_backup_ignores_unknown_legacy_columns failed: {message}");
+    }
+}
+
+#[test]
+fn full_backup_validation_and_import_reject_missing_required_tables_without_mutation() {
+    let db_path = temp_db_path("backup-import-rejects-missing-required-table");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('master_existing', 'PLA', 'Basic', 'Red', 1000, 'Bambu')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let mut backup = empty_current_full_backup();
+        backup
+            .get_mut("tables")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("test backup should have a tables object")
+            .remove("filament_spools");
+        let content = backup.to_string();
+
+        for error in [
+            db.validate_full_backup_json(&content)
+                .expect_err("validation should reject a missing required table"),
+            db.import_full_backup_json(&content)
+                .expect_err("import should reject a missing required table"),
+            db.import_data_content(&content)
+                .expect_err("generic file import should reject a declared incomplete backup"),
+        ] {
+            let message = error.to_string();
+            assert!(
+                message.contains("Backup is incomplete and cannot be imported safely"),
+                "unexpected error: {message}"
+            );
+            assert!(
+                message.contains("filament_spools"),
+                "missing table should be named: {message}"
+            );
+        }
+
+        let existing_master_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_existing'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let foreign_keys_enabled: i64 = db
+            .conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(existing_master_count, 1);
+        assert_eq!(foreign_keys_enabled, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "full_backup_validation_and_import_reject_missing_required_tables_without_mutation failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn full_backup_import_rejects_truncated_json_without_mutation() {
+    let db_path = temp_db_path("backup-import-rejects-truncated-json");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('master_existing', 'PLA', 'Basic', 'Red', 1000, 'Bambu')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let complete = empty_current_full_backup().to_string();
+        let truncated = &complete[..complete.len() - 1];
+
+        db.validate_full_backup_json(truncated)
+            .expect_err("validation should reject truncated JSON");
+        db.import_full_backup_json(truncated)
+            .expect_err("import should reject truncated JSON");
+
+        let existing_master_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_existing'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let foreign_keys_enabled: i64 = db
+            .conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(existing_master_count, 1);
+        assert_eq!(foreign_keys_enabled, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("full_backup_import_rejects_truncated_json_without_mutation failed: {message}");
     }
 }
 
@@ -2115,6 +2259,172 @@ fn import_full_backup_skips_machine_local_sync_and_trusted_lan_state() {
 }
 
 #[test]
+fn portable_full_backup_excludes_and_rejects_device_credentials() {
+    let source_path = temp_db_path("portable-backup-source");
+    let restored_path = temp_db_path("portable-backup-restored");
+
+    let result = (|| -> Result<(), String> {
+        let source = FilamentDatabase::open(&source_path).map_err(|error| error.to_string())?;
+        source.apply_schema().map_err(|error| error.to_string())?;
+        source
+            .conn
+            .execute_batch(
+                r#"
+                INSERT INTO printers (id, model, name, ip_address, access_token)
+                VALUES ('printer_portable', 'P1S', 'Workshop', '192.168.1.42', 'legacy-token');
+                INSERT INTO settings (key, value) VALUES
+                    ('theme_mode', 'dark'),
+                    ('library_sync_library_id', 'library_portable'),
+                    ('library_sync_client_session_id', 'session-secret'),
+                    ('library_sync_client_device_token', 'device-secret'),
+                    ('library_sync_client_csrf_token', 'csrf-secret'),
+                    ('trusted_lan_interface_address', '192.168.1.42'),
+                    ('bambu_live_integration:printer_portable',
+                     '{"enabled":true,"host":"192.168.1.50","access_code":"bambu-secret","printer_serial":"SERIAL-SECRET","last_error":null,"observed_state":null}');
+                INSERT INTO trusted_lan_pairings
+                    (id, display_name, pairing_token_hash, expires_at)
+                VALUES ('pairing_secret', 'Tablet', 'pairing-secret-hash', '2099-01-01 00:00:00');
+                INSERT INTO trusted_lan_paired_browsers
+                    (id, display_name, device_token_hash)
+                VALUES ('browser_secret', 'Phone', 'browser-secret-hash');
+                INSERT INTO sync_queue (id, action_type, payload_json)
+                VALUES ('sync_secret', 'WRITE', '{"token":"queued-secret"}');
+                "#,
+            )
+            .map_err(|error| error.to_string())?;
+
+        let exported = source
+            .export_full_backup_json()
+            .map_err(|error| error.to_string())?;
+        for secret in [
+            "legacy-token",
+            "session-secret",
+            "device-secret",
+            "csrf-secret",
+            "bambu-secret",
+            "SERIAL-SECRET",
+            "pairing-secret-hash",
+            "browser-secret-hash",
+            "queued-secret",
+            "192.168.1.42",
+            "192.168.1.50",
+        ] {
+            assert!(
+                !exported.contains(secret),
+                "portable backup leaked device-local value: {secret}"
+            );
+        }
+
+        let mut parsed: serde_json::Value =
+            serde_json::from_str(&exported).map_err(|error| error.to_string())?;
+        let tables = parsed
+            .get_mut("tables")
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or_else(|| "portable backup tables were missing".to_string())?;
+        assert_eq!(
+            tables
+                .get("trusted_lan_pairings")
+                .and_then(serde_json::Value::as_array)
+                .map(Vec::len),
+            Some(0)
+        );
+        assert_eq!(
+            tables
+                .get("trusted_lan_paired_browsers")
+                .and_then(serde_json::Value::as_array)
+                .map(Vec::len),
+            Some(0)
+        );
+        assert_eq!(
+            tables
+                .get("sync_queue")
+                .and_then(serde_json::Value::as_array)
+                .map(Vec::len),
+            Some(0)
+        );
+        let exported_printer = tables
+            .get("printers")
+            .and_then(serde_json::Value::as_array)
+            .and_then(|rows| rows.first())
+            .and_then(serde_json::Value::as_object)
+            .ok_or_else(|| "portable printer row was missing".to_string())?;
+        assert!(!exported_printer.contains_key("ip_address"));
+        assert!(!exported_printer.contains_key("access_token"));
+        let exported_setting_keys = tables
+            .get("settings")
+            .and_then(serde_json::Value::as_array)
+            .ok_or_else(|| "portable settings rows were missing".to_string())?
+            .iter()
+            .filter_map(|row| row.get("key").and_then(serde_json::Value::as_str))
+            .collect::<HashSet<_>>();
+        assert_eq!(
+            exported_setting_keys,
+            HashSet::from(["theme_mode", "library_sync_library_id"])
+        );
+
+        // Simulate a backup created by an older build that still carried
+        // machine-local credentials. The restore path must sanitize it too.
+        let printer = tables
+            .get_mut("printers")
+            .and_then(serde_json::Value::as_array_mut)
+            .and_then(|rows| rows.first_mut())
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or_else(|| "portable printer row was missing".to_string())?;
+        printer.insert(
+            "ip_address".to_string(),
+            serde_json::Value::String("192.168.1.77".to_string()),
+        );
+        printer.insert(
+            "access_token".to_string(),
+            serde_json::Value::String("legacy-import-token".to_string()),
+        );
+        tables
+            .get_mut("settings")
+            .and_then(serde_json::Value::as_array_mut)
+            .ok_or_else(|| "portable settings rows were missing".to_string())?
+            .push(json!({
+                "key": "bambu_live_integration:printer_portable",
+                "value": "{\"enabled\":true,\"host\":\"192.168.1.77\",\"access_code\":\"import-secret\",\"printer_serial\":\"IMPORT-SERIAL\",\"last_error\":null,\"observed_state\":null}"
+            }));
+
+        let restored = FilamentDatabase::open(&restored_path).map_err(|error| error.to_string())?;
+        restored.apply_schema().map_err(|error| error.to_string())?;
+        restored
+            .import_full_backup_json(&parsed.to_string())
+            .map_err(|error| error.to_string())?;
+
+        let restored_credentials: (Option<String>, Option<String>) = restored
+            .conn
+            .query_row(
+                "SELECT ip_address, access_token FROM printers WHERE id = 'printer_portable'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(restored_credentials, (None, None));
+        assert!(restored
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?
+            .is_empty());
+        assert_eq!(
+            restored
+                .get_setting("theme_mode")
+                .map_err(|error| error.to_string())?
+                .as_deref(),
+            Some("dark")
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&source_path);
+    let _ = std::fs::remove_file(&restored_path);
+    if let Err(message) = result {
+        panic!("portable_full_backup_excludes_and_rejects_device_credentials failed: {message}");
+    }
+}
+
+#[test]
 fn import_full_backup_rejects_foreign_key_violations_and_rolls_back() {
     let db_path = temp_db_path("backup-import-rejects-fk-violations");
 
@@ -2130,17 +2440,19 @@ fn import_full_backup_rejects_foreign_key_violations_and_rolls_back() {
             )
             .map_err(|error| error.to_string())?;
 
-        let backup = serde_json::json!({
-            "exported_at": "2026-04-09T00:00:00Z",
-            "format": "filament-manager-backup-v1",
-            "tables": {
-                "filament_spools": [{
+        let mut backup = empty_current_full_backup();
+        backup
+            .get_mut("tables")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("test backup should have a tables object")
+            .insert(
+                "filament_spools".to_string(),
+                json!([{
                     "id": "spool_orphan",
                     "master_id": "missing_master",
                     "status": "IN_STOCK"
-                }]
-            }
-        });
+                }]),
+            );
 
         let error = db
             .import_full_backup_json(&backup.to_string())

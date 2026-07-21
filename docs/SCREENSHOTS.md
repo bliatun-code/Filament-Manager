@@ -265,7 +265,9 @@ and refresh/maintenance actions.
 ### Program Maintenance
 
 Backup validation, import/export, reset actions, and other local maintenance
-tools live in the maintenance tab.
+tools live in the maintenance tab. Portable full backups omit device-local
+credentials and pairing state. A full restore requires confirmation and creates
+a validated local SQLite recovery snapshot before replacing library data.
 
 ![Settings maintenance](screenshots/settings-maintenance.jpg)
 
@@ -273,8 +275,9 @@ tools live in the maintenance tab.
 
 Companion is a local webapp served by the desktop app on the same LAN. Enable
 the Companion/webapp server in **Settings -> Library & web app**, pair the
-browser if required, and keep the desktop app running while using Companion from
-a phone, tablet, or workshop browser.
+browser, and keep the desktop app running while using Companion from a phone,
+tablet, or workshop browser. Inventory and other library data remain unavailable
+until the browser has an authenticated paired session.
 
 ### Wide Companion
 

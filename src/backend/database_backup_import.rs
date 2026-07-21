@@ -1,7 +1,7 @@
 use rusqlite::Connection;
 use serde_json::{Map, Value};
 
-use super::database_backup::parse_full_backup_content;
+use super::database_backup::{ensure_full_backup_is_safe_to_import, parse_full_backup_content};
 use super::database_borrowed_schema::ensure_borrowed_in_schema;
 use super::database_printer_schema::{
     ensure_printer_external_slot_schema, ensure_printer_slot_live_cache_schema,
@@ -10,7 +10,7 @@ use super::database_printer_schema::{
 use super::database_result::InventoryResult;
 use super::database_schema::{ensure_no_foreign_key_violations, table_columns};
 use super::database_table_ops::delete_all_rows;
-use super::database_tables::{should_import_backup_row, FULL_BACKUP_TABLES};
+use super::database_tables::{portable_backup_row, FULL_BACKUP_TABLES};
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
 use super::database_values::json_value_to_sql;
 
@@ -20,6 +20,7 @@ pub(crate) fn import_full_backup_content(
     schema_sql: &str,
 ) -> InventoryResult<()> {
     let parsed = parse_full_backup_content(content)?;
+    ensure_full_backup_is_safe_to_import(&parsed)?;
 
     conn.execute_batch(schema_sql)?;
     conn.execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
@@ -32,10 +33,10 @@ pub(crate) fn import_full_backup_content(
             };
 
             for row in rows {
-                if !should_import_backup_row(table, row) {
+                let Some(row) = portable_backup_row(table, row.clone()) else {
                     continue;
-                }
-                insert_backup_row(conn, table, row)?;
+                };
+                insert_backup_row(conn, table, &row)?;
             }
         }
 

@@ -197,7 +197,26 @@ async function readAuthenticatedCompanionData(baseUrl, timeoutMs) {
   const cookieJar = new Map();
   const qaSession = await fetchJson(baseUrl, "/api/v1/qa/session", timeoutMs, { cookieJar });
   const session = await fetchJson(baseUrl, "/api/v1/auth/session", timeoutMs, { cookieJar });
-  const [inventorySpools, printerOverview, protectedLoans, protectedWishlist] = await Promise.all([
+  const [
+    snapshot,
+    spools,
+    printers,
+    loans,
+    consumption,
+    wishlist,
+    inventorySpools,
+    printerOverview,
+    protectedLoans,
+    protectedWishlist,
+  ] = await Promise.all([
+    fetchJson(baseUrl, "/api/v1/library/snapshot", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/library/spools?limit=24", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/library/printers", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/library/loans?limit=24", timeoutMs, { cookieJar }),
+    fetchJson(baseUrl, "/api/v1/library/statistics/filament-consumption?limit=24", timeoutMs, {
+      cookieJar,
+    }),
+    fetchJson(baseUrl, "/api/v1/library/wishlist?limit=24", timeoutMs, { cookieJar }),
     fetchJson(baseUrl, "/api/v1/inventory/spools?limit=24&offset=0", timeoutMs, { cookieJar }),
     fetchJson(baseUrl, "/api/v1/printers/overview", timeoutMs, { cookieJar }),
     fetchJson(baseUrl, "/api/v1/loans?limit=24&include_returned=true", timeoutMs, { cookieJar }),
@@ -216,14 +235,20 @@ async function readAuthenticatedCompanionData(baseUrl, timeoutMs) {
 
   return {
     cookieCount: cookieJar.size,
+    consumption,
     detail,
     detailSpoolId,
     inventorySpools,
+    loans,
+    printers,
     printerOverview,
     protectedLoans,
     protectedWishlist,
     qaSession,
     session,
+    snapshot,
+    spools,
+    wishlist,
   };
 }
 
@@ -253,22 +278,20 @@ export async function runCompanionVisualGate(options = {}) {
     ...(options.minimums ?? {}),
   };
 
-  const [shellHtml, css, js, health, snapshot, spools, printers, loans, consumption, wishlist] =
-    await Promise.all([
-      fetchText(baseUrl, "/companion", timeoutMs),
-      fetchText(baseUrl, "/companion/app.css", timeoutMs),
-      fetchText(baseUrl, "/companion/app.js", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/health", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/library/snapshot", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/library/spools?limit=24", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/library/printers", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/library/loans?limit=24", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/library/statistics/filament-consumption?limit=24", timeoutMs),
-      fetchJson(baseUrl, "/api/v1/library/wishlist?limit=24", timeoutMs),
-    ]);
+  const [shellHtml, css, js, health] = await Promise.all([
+    fetchText(baseUrl, "/companion", timeoutMs),
+    fetchText(baseUrl, "/companion/app.css", timeoutMs),
+    fetchText(baseUrl, "/companion/app.js", timeoutMs),
+    fetchJson(baseUrl, "/api/v1/health", timeoutMs),
+  ]);
 
   const errors = [];
   let authenticatedData = null;
+  if (!authenticate) {
+    errors.push(
+      "Companion library data requires an authenticated QA session; rerun without --skip-auth.",
+    );
+  }
   assertIncludes(errors, "companion shell", shellHtml, [
     'id="app"',
     "/companion/app.css",
@@ -284,6 +307,21 @@ export async function runCompanionVisualGate(options = {}) {
     "refreshOverview",
   ]);
 
+  if (authenticate) {
+    try {
+      authenticatedData = await readAuthenticatedCompanionData(baseUrl, timeoutMs);
+    } catch (error) {
+      errors.push(`QA authenticated companion session failed: ${error.message}`);
+    }
+  }
+
+  const snapshot = authenticatedData?.snapshot ?? null;
+  const spools = authenticatedData?.spools ?? [];
+  const printers = authenticatedData?.printers ?? [];
+  const loans = authenticatedData?.loans ?? [];
+  const consumption = authenticatedData?.consumption ?? [];
+  const wishlist = authenticatedData?.wishlist ?? [];
+
   const spoolCount = Array.isArray(spools) ? spools.length : 0;
   const printerCount = Array.isArray(printers) ? printers.length : 0;
   const loanCount = Array.isArray(loans) ? loans.length : 0;
@@ -298,16 +336,8 @@ export async function runCompanionVisualGate(options = {}) {
   if (health?.ok !== true) {
     errors.push("health endpoint did not report ok=true");
   }
-  if (snapshot?.ok !== true) {
+  if (authenticate && snapshot?.ok !== true) {
     errors.push("library snapshot did not report ok=true");
-  }
-
-  if (authenticate) {
-    try {
-      authenticatedData = await readAuthenticatedCompanionData(baseUrl, timeoutMs);
-    } catch (error) {
-      errors.push(`QA authenticated companion session failed: ${error.message}`);
-    }
   }
 
   const protectedSpoolCount = Array.isArray(authenticatedData?.inventorySpools)
@@ -341,17 +371,17 @@ export async function runCompanionVisualGate(options = {}) {
     errors.push("QA authenticated companion session did not become authenticated");
   }
 
-  assertAtLeast(errors, "snapshot inventory spools", snapshotSpools, minimums.spools);
-  assertAtLeast(errors, "snapshot printers", snapshotPrinters, minimums.printers);
-  assertAtLeast(errors, "active loans", activeLoans, minimums.activeLoans);
-  assertAtLeast(errors, "spool rows", spoolCount, minimums.spools);
-  assertAtLeast(errors, "printer rows", printerCount, minimums.printers);
-  assertAtLeast(errors, "loan rows", loanCount, minimums.loans);
-  assertAtLeast(errors, "consumption rows", consumptionCount, minimums.consumptionRows);
-  assertAtLeast(errors, "wishlist rows", wishlistCount, minimums.wishlistRows);
-  assertAtLeast(errors, "swatch-colored rows", swatchRows, minimums.swatchRows);
-  assertAtLeast(errors, "live printer slots", livePrinterSlots, minimums.livePrinterSlots);
   if (authenticate) {
+    assertAtLeast(errors, "snapshot inventory spools", snapshotSpools, minimums.spools);
+    assertAtLeast(errors, "snapshot printers", snapshotPrinters, minimums.printers);
+    assertAtLeast(errors, "active loans", activeLoans, minimums.activeLoans);
+    assertAtLeast(errors, "spool rows", spoolCount, minimums.spools);
+    assertAtLeast(errors, "printer rows", printerCount, minimums.printers);
+    assertAtLeast(errors, "loan rows", loanCount, minimums.loans);
+    assertAtLeast(errors, "consumption rows", consumptionCount, minimums.consumptionRows);
+    assertAtLeast(errors, "wishlist rows", wishlistCount, minimums.wishlistRows);
+    assertAtLeast(errors, "swatch-colored rows", swatchRows, minimums.swatchRows);
+    assertAtLeast(errors, "live printer slots", livePrinterSlots, minimums.livePrinterSlots);
     assertAtLeast(errors, "protected spool rows", protectedSpoolCount, minimums.protectedSpools);
     assertAtLeast(
       errors,
