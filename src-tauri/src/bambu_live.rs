@@ -48,6 +48,7 @@ fn poll_enabled_integrations(db_path: &str) -> Result<(), String> {
     let integrations = db
         .list_bambu_live_integrations()
         .map_err(|error| error.to_string())?;
+    drop(db);
     for entry in integrations {
         if !entry.config.enabled {
             continue;

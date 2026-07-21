@@ -3,7 +3,9 @@ use super::{
     LibrarySyncSettingsRow, ManualMasterInput, SpoolRow, TrustedLanSettingsRow, FULL_BACKUP_TABLES,
     RESET_APP_STATE_TABLES,
 };
-use crate::backend::database_schema::{ensure_no_foreign_key_violations, table_has_column};
+use crate::backend::database_schema::{
+    ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
+};
 use crate::backend::statistics::InventoryOverview;
 use serde_json::json;
 use std::collections::HashSet;
@@ -36,6 +38,97 @@ fn empty_current_full_backup() -> serde_json::Value {
         "format": "filament-manager-backup-v1",
         "tables": tables
     })
+}
+
+fn assert_invalid_full_backup_master_row_leaves_database_unchanged(
+    test_name: &str,
+    invalid_row: serde_json::Value,
+) -> Result<(), String> {
+    let db_path = temp_db_path(test_name);
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor,
+                    catalog_source, catalog_user_edited
+                 ) VALUES (
+                    'master_semantic_preflight_existing', 'PLA', 'Semantic preflight existing',
+                    'Review blue', 1000, 'Manual', 'manual', 1
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let master_count_before: i64 = db
+            .conn
+            .query_row("SELECT COUNT(*) FROM filament_master_list", [], |row| {
+                row.get(0)
+            })
+            .map_err(|error| error.to_string())?;
+        let existing_before: (String, String, i64) = db
+            .conn
+            .query_row(
+                "SELECT filament_name, catalog_source, catalog_user_edited
+                 FROM filament_master_list
+                 WHERE id = 'master_semantic_preflight_existing'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+
+        let mut backup = empty_current_full_backup();
+        backup
+            .get_mut("tables")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("test backup should have a tables object")
+            .insert("filament_master_list".to_string(), json!([invalid_row]));
+        let content = backup.to_string();
+
+        for error in [
+            db.validate_full_backup_json(&content)
+                .expect_err("semantic validation should reject the malformed row"),
+            db.import_full_backup_json(&content)
+                .expect_err("import preflight should reject the malformed row"),
+        ] {
+            let message = error.to_string();
+            assert!(
+                message.contains("Backup row 1 for `filament_master_list`")
+                    && message.contains("no recognized importable columns"),
+                "unexpected semantic preflight error: {message}"
+            );
+        }
+
+        let master_count_after: i64 = db
+            .conn
+            .query_row("SELECT COUNT(*) FROM filament_master_list", [], |row| {
+                row.get(0)
+            })
+            .map_err(|error| error.to_string())?;
+        let existing_after: (String, String, i64) = db
+            .conn
+            .query_row(
+                "SELECT filament_name, catalog_source, catalog_user_edited
+                 FROM filament_master_list
+                 WHERE id = 'master_semantic_preflight_existing'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        let foreign_keys_enabled: i64 = db
+            .conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(master_count_after, master_count_before);
+        assert_eq!(existing_after, existing_before);
+        assert_eq!(foreign_keys_enabled, 1);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    result
 }
 
 #[test]
@@ -1927,6 +2020,155 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
 }
 
 #[test]
+fn full_backup_export_includes_schema_and_app_version_metadata() {
+    let db_path = temp_db_path("backup-export-version-metadata");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        let content = db
+            .export_full_backup_json()
+            .map_err(|error| error.to_string())?;
+        let backup: serde_json::Value =
+            serde_json::from_str(&content).map_err(|error| error.to_string())?;
+
+        assert_eq!(
+            backup
+                .get("schema_version")
+                .and_then(serde_json::Value::as_i64),
+            Some(CURRENT_SCHEMA_VERSION)
+        );
+        assert_eq!(
+            backup
+                .get("app_version")
+                .and_then(serde_json::Value::as_str),
+            Some(env!("CARGO_PKG_VERSION"))
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("full_backup_export_includes_schema_and_app_version_metadata failed: {message}");
+    }
+}
+
+#[test]
+fn legacy_full_backup_without_version_metadata_still_imports() {
+    let db_path = temp_db_path("backup-import-without-version-metadata");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        let mut backup = empty_current_full_backup();
+        assert!(backup.get("schema_version").is_none());
+        assert!(backup.get("app_version").is_none());
+        backup
+            .get_mut("tables")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("test backup should have a tables object")
+            .insert(
+                "filament_master_list".to_string(),
+                json!([{
+                    "id": "master_legacy_metadata",
+                    "material": "PLA",
+                    "filament_name": "Legacy Basic",
+                    "color_name": "Blue",
+                    "default_weight": 1000,
+                    "vendor": "Generic"
+                }]),
+            );
+
+        db.validate_full_backup_json(&backup.to_string())
+            .map_err(|error| error.to_string())?;
+        db.import_full_backup_json(&backup.to_string())
+            .map_err(|error| error.to_string())?;
+
+        let imported_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_legacy_metadata'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(imported_count, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("legacy_full_backup_without_version_metadata_still_imports failed: {message}");
+    }
+}
+
+#[test]
+fn full_backup_rejects_newer_schema_version_without_mutation() {
+    let db_path = temp_db_path("backup-rejects-newer-schema-version");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('master_existing', 'PLA', 'Basic', 'Red', 1000, 'Bambu')",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let newer_schema_version = CURRENT_SCHEMA_VERSION + 1;
+        let mut backup = empty_current_full_backup();
+        backup["schema_version"] = json!(newer_schema_version);
+        backup["app_version"] = json!("999.0.0");
+        let content = backup.to_string();
+
+        for error in [
+            db.validate_full_backup_json(&content)
+                .expect_err("validation should reject a newer schema version"),
+            db.import_full_backup_json(&content)
+                .expect_err("import should reject a newer schema version before mutation"),
+        ] {
+            let message = error.to_string();
+            assert!(
+                message.contains(&format!(
+                    "Backup schema version {newer_schema_version} is newer than the supported schema version {CURRENT_SCHEMA_VERSION}"
+                )),
+                "unexpected error: {message}"
+            );
+        }
+
+        let existing_master_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_existing'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let foreign_keys_enabled: i64 = db
+            .conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(existing_master_count, 1);
+        assert_eq!(foreign_keys_enabled, 1);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("full_backup_rejects_newer_schema_version_without_mutation failed: {message}");
+    }
+}
+
+#[test]
 fn import_full_backup_ignores_unknown_legacy_columns() {
     let db_path = temp_db_path("backup-import-legacy-columns");
 
@@ -2081,6 +2323,30 @@ fn full_backup_validation_and_import_reject_missing_required_tables_without_muta
     if let Err(message) = result {
         panic!(
             "full_backup_validation_and_import_reject_missing_required_tables_without_mutation failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn full_backup_semantic_preflight_rejects_empty_rows_without_mutation() {
+    if let Err(message) = assert_invalid_full_backup_master_row_leaves_database_unchanged(
+        "backup-import-rejects-empty-row",
+        json!({}),
+    ) {
+        panic!(
+            "full_backup_semantic_preflight_rejects_empty_rows_without_mutation failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn full_backup_semantic_preflight_rejects_unknown_only_rows_without_mutation() {
+    if let Err(message) = assert_invalid_full_backup_master_row_leaves_database_unchanged(
+        "backup-import-rejects-unknown-only-row",
+        json!({ "future_only_column": "must not be ignored" }),
+    ) {
+        panic!(
+            "full_backup_semantic_preflight_rejects_unknown_only_rows_without_mutation failed: {message}"
         );
     }
 }
@@ -2459,7 +2725,7 @@ fn import_full_backup_rejects_foreign_key_violations_and_rolls_back() {
             .expect_err("orphaned backup rows should fail before commit");
         let message = error.to_string();
         assert!(
-            message.contains("Full backup import would leave a foreign key violation"),
+            message.contains("Full backup preflight would leave a foreign key violation"),
             "unexpected error: {message}"
         );
 
@@ -2496,5 +2762,96 @@ fn import_full_backup_rejects_foreign_key_violations_and_rolls_back() {
         panic!(
             "import_full_backup_rejects_foreign_key_violations_and_rolls_back failed: {message}"
         );
+    }
+}
+
+#[test]
+fn import_full_backup_rolls_back_when_post_import_schema_fails() {
+    let db_path = temp_db_path("backup-import-post-schema-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('master_existing', 'PLA', 'Basic', 'Red', 1000, 'Bambu');
+
+                 CREATE TRIGGER fail_external_ams_after_import
+                 BEFORE INSERT ON ams_units
+                 WHEN NEW.id LIKE '%_ext'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced post-import schema failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let mut backup = empty_current_full_backup();
+        backup
+            .get_mut("tables")
+            .and_then(serde_json::Value::as_object_mut)
+            .expect("test backup should have a tables object")
+            .insert(
+                "printers".to_string(),
+                json!([{
+                    "id": "printer_imported",
+                    "model": "P1S",
+                    "name": "Imported printer"
+                }]),
+            );
+
+        let error = db
+            .import_full_backup_json(&backup.to_string())
+            .expect_err("post-import schema failure should abort the restore");
+        assert!(error
+            .to_string()
+            .contains("forced post-import schema failure"));
+
+        let existing_master_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list WHERE id = 'master_existing'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let imported_printer_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM printers WHERE id = 'printer_imported'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let imported_external_ams_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM ams_units WHERE id = 'printer_imported_ext'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let foreign_keys_enabled: i64 = db
+            .conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        let deferred_foreign_keys: i64 = db
+            .conn
+            .query_row("PRAGMA defer_foreign_keys", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(existing_master_count, 1);
+        assert_eq!(imported_printer_count, 0);
+        assert_eq!(imported_external_ams_count, 0);
+        assert_eq!(foreign_keys_enabled, 1);
+        assert_eq!(deferred_foreign_keys, 0);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("import_full_backup_rolls_back_when_post_import_schema_fails failed: {message}");
     }
 }

@@ -1,13 +1,14 @@
-use crate::app_error::{coded_command_error, diagnostic_command_error};
-use crate::backend::filament_database::{BackupValidationStats, ImportDataStats};
+use crate::app_error::{
+    coded_command_error, document_command_error, document_inventory_error_to_command_string,
+};
+use crate::backend::filament_database::{BackupValidationStats, FilamentDatabase, ImportDataStats};
+use crate::sqlite_recovery::{RecoveryReason, RecoverySnapshot};
 use crate::state::AppState;
-use crate::with_db;
 use base64::Engine;
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+use std::path::Path;
 use tauri::Manager;
 
 #[derive(Serialize)]
@@ -19,7 +20,7 @@ pub(crate) struct ExportPayload {
 pub(crate) fn export_inventory_csv(
     state: tauri::State<'_, AppState>,
 ) -> Result<ExportPayload, String> {
-    let content = with_db(&state, |db| db.export_spools_csv())?;
+    let content = with_document_db(&state, |db| db.export_spools_csv())?;
     Ok(ExportPayload { content })
 }
 
@@ -27,7 +28,7 @@ pub(crate) fn export_inventory_csv(
 pub(crate) fn export_inventory_json(
     state: tauri::State<'_, AppState>,
 ) -> Result<ExportPayload, String> {
-    let content = with_db(&state, |db| db.export_spools_json())?;
+    let content = with_document_db(&state, |db| db.export_spools_json())?;
     Ok(ExportPayload { content })
 }
 
@@ -35,7 +36,7 @@ pub(crate) fn export_inventory_json(
 pub(crate) fn export_full_backup_json(
     state: tauri::State<'_, AppState>,
 ) -> Result<ExportPayload, String> {
-    let content = with_db(&state, |db| db.export_full_backup_json())?;
+    let content = with_document_db(&state, |db| db.export_full_backup_json())?;
     Ok(ExportPayload { content })
 }
 
@@ -44,15 +45,22 @@ pub(crate) fn import_full_backup_json(
     state: tauri::State<'_, AppState>,
     content: String,
 ) -> Result<(), String> {
-    with_db(&state, |db| db.validate_full_backup_json(&content))?;
-    create_full_restore_recovery_snapshot(Path::new(&state.db_path)).map_err(|error| {
-        diagnostic_command_error(
-            "common.internal",
-            "Create recovery snapshot before full backup restore",
-            error,
-        )
-    })?;
-    with_db(&state, |db| db.import_full_backup_json(&content))
+    let db = open_exclusive_document_database(&state.db_path)?;
+    db.validate_full_backup_json(&content)
+        .map_err(document_inventory_error_to_command_string)?;
+    let recovery_snapshot = create_full_restore_recovery_snapshot(Path::new(&state.db_path))
+        .map_err(|error| {
+            document_command_error(
+                "common.internal",
+                "Create recovery snapshot before full backup restore",
+                error,
+            )
+        })?;
+    finish_full_restore(
+        recovery_snapshot,
+        db.import_full_backup_json(&content)
+            .map_err(document_inventory_error_to_command_string),
+    )
 }
 
 #[tauri::command]
@@ -61,16 +69,39 @@ pub(crate) fn import_data_file(
     content: String,
 ) -> Result<ImportDataStats, String> {
     if is_full_backup_candidate(&content) {
-        with_db(&state, |db| db.validate_full_backup_json(&content))?;
-        create_full_restore_recovery_snapshot(Path::new(&state.db_path)).map_err(|error| {
-            diagnostic_command_error(
-                "common.internal",
-                "Create recovery snapshot before data-file restore",
-                error,
-            )
-        })?;
+        let db = open_exclusive_document_database(&state.db_path)?;
+        db.validate_full_backup_json(&content)
+            .map_err(document_inventory_error_to_command_string)?;
+        let recovery_snapshot = create_full_restore_recovery_snapshot(Path::new(&state.db_path))
+            .map_err(|error| {
+                document_command_error(
+                    "common.internal",
+                    "Create recovery snapshot before data-file restore",
+                    error,
+                )
+            })?;
+        finish_full_restore(
+            recovery_snapshot,
+            db.import_data_content(&content)
+                .map_err(document_inventory_error_to_command_string),
+        )
+    } else {
+        with_document_db(&state, |db| db.import_data_content(&content))
     }
-    with_db(&state, |db| db.import_data_content(&content))
+}
+
+fn with_document_db<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
+where
+    Func: FnOnce(&FilamentDatabase) -> crate::backend::database_result::InventoryResult<Output>,
+{
+    let db = FilamentDatabase::open(&state.db_path)
+        .map_err(document_inventory_error_to_command_string)?;
+    func(&db).map_err(document_inventory_error_to_command_string)
+}
+
+fn open_exclusive_document_database(path: &str) -> Result<FilamentDatabase, String> {
+    FilamentDatabase::open_exclusive_maintenance(path)
+        .map_err(document_inventory_error_to_command_string)
 }
 
 fn is_full_backup_candidate(content: &str) -> bool {
@@ -82,86 +113,24 @@ fn is_full_backup_candidate(content: &str) -> bool {
         })
 }
 
-fn create_full_restore_recovery_snapshot(source_path: &Path) -> Result<PathBuf, String> {
-    use rusqlite::backup::{Backup, StepResult};
+fn create_full_restore_recovery_snapshot(source_path: &Path) -> Result<RecoverySnapshot, String> {
+    RecoverySnapshot::create(source_path, RecoveryReason::FullRestore)
+}
 
-    let parent = source_path.parent().ok_or_else(|| {
-        format!(
-            "database path has no parent directory: {}",
-            source_path.display()
-        )
-    })?;
-    let file_name = source_path
-        .file_name()
-        .and_then(|value| value.to_str())
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or("filament-manager.db");
-    let destination_path = parent.join(format!(
-        "{file_name}.recovery-before-full-restore-{}.sqlite",
-        chrono_id()
-    ));
-
-    let result = (|| -> Result<(), String> {
-        let source = rusqlite::Connection::open_with_flags(
-            source_path,
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )
-        .map_err(|error| format!("failed to open recovery source: {error}"))?;
-        let mut destination = rusqlite::Connection::open(&destination_path)
-            .map_err(|error| format!("failed to open recovery destination: {error}"))?;
-
-        {
-            let backup = Backup::new(&source, &mut destination)
-                .map_err(|error| format!("failed to initialize recovery snapshot: {error}"))?;
-            let deadline = Instant::now() + Duration::from_secs(5);
-            loop {
-                match backup
-                    .step(128)
-                    .map_err(|error| format!("recovery snapshot failed: {error}"))?
-                {
-                    StepResult::Done => break,
-                    StepResult::More => {}
-                    StepResult::Busy | StepResult::Locked if Instant::now() < deadline => {
-                        std::thread::sleep(Duration::from_millis(25));
-                    }
-                    StepResult::Busy | StepResult::Locked => {
-                        return Err("recovery snapshot remained locked".to_string());
-                    }
-                    _ => return Err("recovery snapshot returned an unsupported state".to_string()),
-                }
-            }
+fn finish_full_restore<T>(
+    recovery_snapshot: RecoverySnapshot,
+    result: Result<T, String>,
+) -> Result<T, String> {
+    match result {
+        Ok(value) => {
+            recovery_snapshot.mark_operation_succeeded();
+            Ok(value)
         }
-
-        let quick_check = destination
-            .query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
-            .map_err(|error| format!("failed to validate recovery snapshot: {error}"))?;
-        if quick_check != "ok" {
-            return Err(format!(
-                "recovery snapshot validation failed: {quick_check}"
-            ));
-        }
-        Ok(())
-    })();
-
-    if let Err(error) = result {
-        let _ = std::fs::remove_file(&destination_path);
-        return Err(error);
-    }
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        if let Err(error) =
-            std::fs::set_permissions(&destination_path, std::fs::Permissions::from_mode(0o600))
-        {
-            let _ = std::fs::remove_file(&destination_path);
-            return Err(format!(
-                "failed to secure recovery snapshot permissions: {error}"
-            ));
+        Err(error) => {
+            recovery_snapshot.mark_operation_failed();
+            Err(error)
         }
     }
-
-    Ok(destination_path)
 }
 
 #[tauri::command]
@@ -169,7 +138,7 @@ pub(crate) fn validate_full_backup_json(
     state: tauri::State<'_, AppState>,
     content: String,
 ) -> Result<BackupValidationStats, String> {
-    with_db(&state, |db| db.validate_full_backup_json(&content))
+    with_document_db(&state, |db| db.validate_full_backup_json(&content))
 }
 
 #[tauri::command]
@@ -190,14 +159,14 @@ pub(crate) fn export_label_png(
     }
 
     let downloads_dir = app.path().download_dir().map_err(|error| {
-        diagnostic_command_error(
+        document_command_error(
             "export.downloads_unavailable",
             "Locate Downloads folder for label export",
             error,
         )
     })?;
     std::fs::create_dir_all(&downloads_dir).map_err(|error| {
-        diagnostic_command_error("export.write_failed", "Create Downloads folder", error)
+        document_command_error("export.write_failed", "Create Downloads folder", error)
     })?;
     let safe_stem = sanitize_generated_filename_stem(&filename_stem, "filament-label");
     let path = downloads_dir.join(format!("{safe_stem}-{}.png", chrono_id()));
@@ -214,14 +183,14 @@ pub(crate) fn export_inventory_label_sheet_pdf(
 ) -> Result<String, String> {
     let bytes = decode_pdf_payload(&pdf_base64)?;
     let downloads_dir = app.path().download_dir().map_err(|error| {
-        diagnostic_command_error(
+        document_command_error(
             "export.downloads_unavailable",
             "Locate Downloads folder for PDF export",
             error,
         )
     })?;
     std::fs::create_dir_all(&downloads_dir).map_err(|error| {
-        diagnostic_command_error("export.write_failed", "Create Downloads folder", error)
+        document_command_error("export.write_failed", "Create Downloads folder", error)
     })?;
     let safe_stem =
         sanitize_generated_filename_stem(&filename_stem, "filament-inventory-label-sheet");
@@ -247,17 +216,17 @@ fn decode_pdf_payload(pdf_base64: &str) -> Result<Vec<u8>, String> {
 fn write_generated_file(path: &Path, contents: &[u8]) -> Result<(), String> {
     let temp_path = path.with_extension(format!("{}.tmp", chrono_id()));
     let mut file = File::create(&temp_path).map_err(|error| {
-        diagnostic_command_error("export.write_failed", "Create temporary export file", error)
+        document_command_error("export.write_failed", "Create temporary export file", error)
     })?;
     file.write_all(contents).map_err(|error| {
-        diagnostic_command_error("export.write_failed", "Write temporary export file", error)
+        document_command_error("export.write_failed", "Write temporary export file", error)
     })?;
     file.sync_all().map_err(|error| {
-        diagnostic_command_error("export.write_failed", "Sync temporary export file", error)
+        document_command_error("export.write_failed", "Sync temporary export file", error)
     })?;
     drop(file);
     std::fs::rename(&temp_path, path).map_err(|error| {
-        diagnostic_command_error("export.write_failed", "Finalize exported file", error)
+        document_command_error("export.write_failed", "Finalize exported file", error)
     })?;
     Ok(())
 }
@@ -367,11 +336,14 @@ pub(crate) fn chrono_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        chrono_id, create_full_restore_recovery_snapshot, decode_pdf_payload,
+        chrono_id, create_full_restore_recovery_snapshot, decode_pdf_payload, finish_full_restore,
         is_full_backup_candidate, png_with_dpi, sanitize_generated_filename_stem,
         write_generated_file,
     };
+    use crate::backend::filament_database::FilamentDatabase;
     use base64::Engine;
+    use std::sync::{mpsc, Arc, Barrier};
+    use std::time::Duration;
 
     #[test]
     fn generated_file_write_persists_contents() {
@@ -437,8 +409,13 @@ mod tests {
                 .map_err(|error| error.to_string())?;
             drop(source);
 
-            let snapshot_path = create_full_restore_recovery_snapshot(&source_path)?;
+            let snapshot_path =
+                create_full_restore_recovery_snapshot(&source_path)?.mark_operation_succeeded();
             assert!(snapshot_path.exists());
+            assert!(snapshot_path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .is_some_and(|value| value.contains("recovery-full-restore-successful-")));
             let snapshot =
                 rusqlite::Connection::open(&snapshot_path).map_err(|error| error.to_string())?;
             let value: String = snapshot
@@ -451,6 +428,140 @@ mod tests {
             assert_eq!(quick_check, "ok");
             drop(snapshot);
             std::fs::remove_file(snapshot_path).map_err(|error| error.to_string())?;
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&source_path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn full_restore_maintenance_keeps_concurrent_writer_out_of_the_restore_gap() {
+        let source_path = std::env::temp_dir().join(format!(
+            "filament-manager-serialized-restore-source-{}.db",
+            chrono_id()
+        ));
+        let result = (|| -> Result<(), String> {
+            let source =
+                rusqlite::Connection::open(&source_path).map_err(|error| error.to_string())?;
+            source
+                .execute_batch(
+                    "CREATE TABLE recovery_probe (value TEXT NOT NULL);\n\
+                     INSERT INTO recovery_probe (value) VALUES ('before restore');",
+                )
+                .map_err(|error| error.to_string())?;
+            drop(source);
+
+            let maintenance = FilamentDatabase::open_exclusive_maintenance(&source_path)
+                .map_err(|error| error.to_string())?;
+            let snapshot = create_full_restore_recovery_snapshot(&source_path)?;
+
+            let barrier = Arc::new(Barrier::new(2));
+            let writer_barrier = Arc::clone(&barrier);
+            let writer_path = source_path.clone();
+            let (committed_tx, committed_rx) = mpsc::channel();
+            let writer = std::thread::spawn(move || -> Result<(), String> {
+                writer_barrier.wait();
+                let db = FilamentDatabase::open(&writer_path).map_err(|error| error.to_string())?;
+                db.connection()
+                    .execute(
+                        "INSERT INTO recovery_probe (value) VALUES ('concurrent writer')",
+                        [],
+                    )
+                    .map_err(|error| error.to_string())?;
+                committed_tx.send(()).map_err(|error| error.to_string())?;
+                Ok(())
+            });
+
+            barrier.wait();
+            assert!(
+                committed_rx
+                    .recv_timeout(Duration::from_millis(200))
+                    .is_err(),
+                "writer committed while the verified recovery point was being restored"
+            );
+            maintenance
+                .connection()
+                .execute("DELETE FROM recovery_probe", [])
+                .map_err(|error| error.to_string())?;
+            let snapshot_path = snapshot.mark_operation_succeeded();
+            drop(maintenance);
+
+            committed_rx
+                .recv_timeout(Duration::from_secs(2))
+                .map_err(|error| error.to_string())?;
+            writer
+                .join()
+                .map_err(|_| "concurrent writer panicked".to_string())??;
+
+            let restored =
+                rusqlite::Connection::open(&source_path).map_err(|error| error.to_string())?;
+            let values = restored
+                .prepare("SELECT value FROM recovery_probe ORDER BY rowid")
+                .map_err(|error| error.to_string())?
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(|error| error.to_string())?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(values, vec!["concurrent writer"]);
+            drop(restored);
+
+            let recovery =
+                rusqlite::Connection::open(&snapshot_path).map_err(|error| error.to_string())?;
+            let recovery_value: String = recovery
+                .query_row("SELECT value FROM recovery_probe", [], |row| row.get(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(recovery_value, "before restore");
+            drop(recovery);
+            std::fs::remove_file(snapshot_path).map_err(|error| error.to_string())?;
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&source_path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn failed_full_restore_keeps_failed_recovery_snapshot() {
+        let source_path = std::env::temp_dir().join(format!(
+            "filament-manager-failed-restore-source-{}.db",
+            chrono_id()
+        ));
+        let result = (|| -> Result<(), String> {
+            let source =
+                rusqlite::Connection::open(&source_path).map_err(|error| error.to_string())?;
+            source
+                .execute_batch("CREATE TABLE recovery_probe (value TEXT NOT NULL);")
+                .map_err(|error| error.to_string())?;
+            drop(source);
+
+            let snapshot = create_full_restore_recovery_snapshot(&source_path)?;
+            let error =
+                finish_full_restore::<()>(snapshot, Err("restore failed".to_string())).unwrap_err();
+            assert_eq!(error, "restore failed");
+            let parent = source_path
+                .parent()
+                .ok_or_else(|| "temporary database has no parent".to_string())?;
+            let base_name = source_path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .ok_or_else(|| "temporary database has no file name".to_string())?;
+            let failed_snapshot = std::fs::read_dir(parent)
+                .map_err(|error| error.to_string())?
+                .filter_map(Result::ok)
+                .find(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{base_name}.recovery-full-restore-failed-"))
+                })
+                .map(|entry| entry.path())
+                .ok_or_else(|| "missing failed full-restore snapshot".to_string())?;
+            std::fs::remove_file(failed_snapshot).map_err(|error| error.to_string())?;
             Ok(())
         })();
 

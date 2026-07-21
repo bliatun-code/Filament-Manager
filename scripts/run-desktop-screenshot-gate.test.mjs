@@ -1414,6 +1414,14 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     "settings-maintenance",
   );
   assert.equal(
+    normalizeDesktopVisualQaScenario("settings-diagnostics"),
+    "settings-application-diagnostics",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("application-diagnostics"),
+    "settings-application-diagnostics",
+  );
+  assert.equal(
     normalizeDesktopVisualQaScenario("usage-statistics"),
     "statistics-overview",
   );
@@ -1632,6 +1640,15 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     true,
   );
   assert.equal(
+    desktopVisualQaScenarioDefinition("settings-diagnostics")
+      .requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("application-diagnostics").settingsTab,
+    "MAINTENANCE",
+  );
+  assert.equal(
     desktopVisualQaScenarioDefinition("statistics-consumption")
       .requiresDatabaseFixture,
     undefined,
@@ -1673,6 +1690,10 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
   );
   assert.equal(
     desktopVisualQaScenarioRequiresDatabaseFixture("missing-swatches"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("application-diagnostics"),
     true,
   );
   assert.equal(
@@ -1845,7 +1866,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 43);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 44);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

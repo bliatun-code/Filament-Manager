@@ -330,6 +330,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   useSettingsSilentReload({ reloadSettings, tauri });
 
   const {
+    applicationDiagnosticsStatus,
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
@@ -337,6 +338,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     inventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   } = useSettingsMaintenanceSection({
+    applicationDiagnosticsEnabled: activeTab === "MAINTENANCE",
     backupValidationHasExtraTables,
     backupValidationHasMissingTables,
     backupValidationHasWarnings,
@@ -381,6 +383,48 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     t,
     trustedLanStatus,
   });
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenarioRef.current !== "settings-application-diagnostics" ||
+      applicationDiagnosticsStatus !== "success"
+    ) {
+      return;
+    }
+    const target = document.getElementById("settings-application-diagnostics-panel");
+    if (!target) {
+      return;
+    }
+
+    let scheduledFrameId: number | null = null;
+    const revealDiagnostics = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        target.scrollIntoView({ behavior: "auto", block: "center" });
+      });
+    };
+
+    revealDiagnostics();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealDiagnostics, delay),
+    );
+    window.addEventListener("resize", revealDiagnostics);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealDiagnostics);
+    resizeObserver?.observe(target);
+
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealDiagnostics);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [applicationDiagnosticsStatus]);
 
   const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,

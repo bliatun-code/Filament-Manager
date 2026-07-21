@@ -56,6 +56,7 @@ mod printer_settings_commands;
 mod printer_slot_write_commands;
 mod printer_usage_commands;
 mod security;
+mod sqlite_recovery;
 mod state;
 mod trusted_lan_browser_read_commands;
 mod trusted_lan_browser_revoke_all_commands;
@@ -80,11 +81,11 @@ use objc2_app_kit::{NSApp, NSImage};
 use objc2_foundation::NSData;
 #[cfg(any(target_os = "windows", test))]
 use rusqlite::OptionalExtension;
+use sqlite_recovery::{online_backup, RecoveryReason, RecoverySnapshot, SqliteWorkingCopy};
 use state::AppState;
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 
 pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
@@ -190,7 +191,19 @@ fn apply_macos_dock_icon(app: &tauri::AppHandle, icon_bytes: &'static [u8]) -> R
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            let db_path = ensure_db(app)?;
+            if let Ok(log_dir) = app.path().app_log_dir() {
+                if let Err(error) = app_error::operational_log::initialize_operational_log(&log_dir)
+                {
+                    eprintln!("Operational log unavailable: {error}");
+                }
+            }
+            let db_path = ensure_db(app).inspect_err(|_| {
+                let _ = app_error::operational_log::record_operational_event(
+                    app_error::operational_log::OperationalLogLevel::Error,
+                    app_error::operational_log::OperationalLogContext::DatabaseStartupFailure,
+                    None,
+                );
+            })?;
             let trusted_lan_runtime = trusted_lan_runtime_commands::load_trusted_lan_runtime(
                 db_path.to_string_lossy().as_ref(),
             )?;
@@ -245,6 +258,8 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
+            app_error::application_diagnostics::get_application_diagnostics,
+            app_error::application_diagnostics::get_sanitized_support_bundle_json,
             library_sync_settings_commands::get_library_sync_settings,
             library_sync_settings_commands::save_library_sync_settings,
             library_sync_validation_commands::validate_library_sync_host,
@@ -434,6 +449,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         "settings-maintenance" | "maintenance-settings" | "program-maintenance" => {
             Some("settings-maintenance")
         }
+        "settings-application-diagnostics" | "settings-diagnostics" | "application-diagnostics" => {
+            Some("settings-application-diagnostics")
+        }
         "statistics-overview" | "statistics" | "usage-statistics" | "print-statistics" => {
             Some("statistics-overview")
         }
@@ -534,9 +552,7 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
         }
-        let db = FilamentDatabase::open(&path).map_err(|error| format!("DB open: {error:?}"))?;
-        db.apply_schema()
-            .map_err(|error| format!("DB schema: {error:?}"))?;
+        let _db = open_database_and_apply_schema(&path)?;
         return Ok(path);
     }
 
@@ -546,17 +562,57 @@ fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
 fn prepare_resolved_app_database(resolution: AppStorageResolution) -> Result<PathBuf, String> {
     prepare_app_storage_dir(&resolution.app_dir)?;
     let db_path = resolution.app_dir.join(APP_DB_FILE_NAME);
-    let db = FilamentDatabase::open(&db_path).map_err(|error| format!("DB open: {error:?}"))?;
-    db.apply_schema()
-        .map_err(|error| format!("DB schema: {error:?}"))?;
+    let _db = open_database_and_apply_schema(&db_path)?;
 
     #[cfg(any(target_os = "windows", test))]
     if let Some(source_path) = resolution.windows_split_brain_source {
-        drop(db);
+        drop(_db);
         merge_windows_split_brain_databases(&source_path, &db_path)?;
     }
 
     Ok(db_path)
+}
+
+fn open_database_and_apply_schema(path: &Path) -> Result<FilamentDatabase, String> {
+    let schema_version = backend::database_connection::inspect_existing_database_schema(path)
+        .map_err(|error| format!("DB inspect: {error:?}"))?;
+    let recovery_snapshot = if schema_version == Some(0) {
+        Some(
+            RecoverySnapshot::create(path, RecoveryReason::SchemaUpgrade)
+                .map_err(|error| format!("DB recovery snapshot: {error}"))?,
+        )
+    } else {
+        None
+    };
+
+    let result = (|| {
+        let db = FilamentDatabase::open(path).map_err(|error| format!("DB open: {error:?}"))?;
+        db.apply_schema()
+            .map_err(|error| format!("DB schema: {error:?}"))?;
+        Ok(db)
+    })();
+
+    finish_recovery_operation(recovery_snapshot, result)
+}
+
+fn finish_recovery_operation<T>(
+    recovery_snapshot: Option<RecoverySnapshot>,
+    result: Result<T, String>,
+) -> Result<T, String> {
+    match result {
+        Ok(value) => {
+            if let Some(snapshot) = recovery_snapshot {
+                snapshot.mark_operation_succeeded();
+            }
+            Ok(value)
+        }
+        Err(error) => {
+            if let Some(snapshot) = recovery_snapshot {
+                snapshot.mark_operation_failed();
+            }
+            Err(error)
+        }
+    }
 }
 
 fn app_db_path_override_from_env() -> Option<PathBuf> {
@@ -625,17 +681,21 @@ fn migrate_legacy_app_storage_if_needed(app_dir: &Path) -> Result<(), String> {
     } else {
         std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())?;
     }
-    let snapshot_path = legacy_migration_snapshot_path(app_dir);
-    let migration_result = (|| {
-        sqlite_online_backup(&legacy_db_path, &snapshot_path)?;
-        if current_db_exists {
-            let backup_path = legacy_migration_backup_path(app_dir);
-            sqlite_online_backup(&current_db_path, &backup_path)?;
-        }
-        sqlite_online_backup(&snapshot_path, &current_db_path)
-    })();
-    let _ = std::fs::remove_file(snapshot_path);
-    migration_result
+    let working_copy = SqliteWorkingCopy::create(
+        &legacy_db_path,
+        app_dir,
+        RecoveryReason::LegacyBundleMigration,
+    )?;
+    let recovery_snapshot = if current_db_exists {
+        Some(RecoverySnapshot::create(
+            &current_db_path,
+            RecoveryReason::LegacyBundleMigration,
+        )?)
+    } else {
+        None
+    };
+    let migration_result = online_backup(working_copy.path(), &current_db_path);
+    finish_recovery_operation(recovery_snapshot, migration_result)
 }
 
 fn should_replace_current_database_with_legacy(
@@ -652,64 +712,6 @@ fn should_replace_current_database_with_legacy(
             DatabaseUserDataState::DomainData
         )
     )
-}
-
-fn sqlite_online_backup(source_path: &Path, destination_path: &Path) -> Result<(), String> {
-    use rusqlite::backup::{Backup, StepResult};
-
-    let source = rusqlite::Connection::open_with_flags(
-        source_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .map_err(|error| {
-        format!(
-            "failed to open SQLite backup source {}: {error}",
-            source_path.display()
-        )
-    })?;
-    let mut destination = rusqlite::Connection::open(destination_path).map_err(|error| {
-        format!(
-            "failed to open SQLite backup destination {}: {error}",
-            destination_path.display()
-        )
-    })?;
-
-    {
-        let backup = Backup::new(&source, &mut destination)
-            .map_err(|error| format!("failed to initialize SQLite backup: {error}"))?;
-        let deadline = Instant::now() + Duration::from_secs(5);
-        loop {
-            let step_result = backup
-                .step(128)
-                .map_err(|error| format!("SQLite backup failed: {error}"))?;
-            match step_result {
-                StepResult::Done => break,
-                StepResult::More => {}
-                StepResult::Busy | StepResult::Locked => {
-                    if Instant::now() >= deadline {
-                        return Err(format!(
-                            "SQLite backup remained locked for {}",
-                            source_path.display()
-                        ));
-                    }
-                    std::thread::sleep(Duration::from_millis(25));
-                }
-                _ => return Err("SQLite backup returned an unsupported state".to_string()),
-            }
-        }
-    }
-
-    let quick_check = destination
-        .query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
-        .map_err(|error| format!("failed to validate SQLite backup: {error}"))?;
-    if quick_check != "ok" {
-        return Err(format!(
-            "SQLite backup validation failed for {}: {quick_check}",
-            destination_path.display()
-        ));
-    }
-
-    Ok(())
 }
 
 fn legacy_database_source(app_dir: &Path) -> Option<(PathBuf, Option<PathBuf>)> {
@@ -897,27 +899,6 @@ fn database_catalog_has_user_data(connection: &rusqlite::Connection) -> rusqlite
         .map(|value| value != 0)
 }
 
-fn legacy_migration_backup_path(app_dir: &Path) -> PathBuf {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-    app_dir.join(format!(
-        "{APP_DB_FILE_NAME}.backup-before-legacy-migration-{timestamp}"
-    ))
-}
-
-fn legacy_migration_snapshot_path(app_dir: &Path) -> PathBuf {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    app_dir.join(format!(
-        ".{APP_DB_FILE_NAME}.legacy-migration-{}-{timestamp}.sqlite.tmp",
-        std::process::id()
-    ))
-}
-
 #[cfg(test)]
 fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
     resolve_windows_storage_resolution(roaming_dir, local_dir).app_dir
@@ -1067,23 +1048,27 @@ fn merge_windows_split_brain_databases(
         return Ok(None);
     }
 
-    let backup_path = windows_split_brain_merge_backup_path(target_path)?;
-    sqlite_online_backup(target_path, &backup_path)?;
+    let recovery_snapshot =
+        RecoverySnapshot::create(target_path, RecoveryReason::WindowsStorageMerge)?;
 
     if let Some(conflict) = preflight.conflict {
+        let backup_path = recovery_snapshot.mark_operation_failed();
         return Err(format!(
             "{conflict}. The target backup is {} and the source database was left unchanged",
             backup_path.display()
         ));
     }
 
-    apply_windows_split_brain_merge(source_path, target_path).map_err(|error| {
-        format!(
-            "{error}. The merge was rolled back, the target backup is {}, and the source database was left unchanged",
-            backup_path.display()
-        )
-    })?;
-    Ok(Some(backup_path))
+    match apply_windows_split_brain_merge(source_path, target_path) {
+        Ok(()) => Ok(Some(recovery_snapshot.mark_operation_succeeded())),
+        Err(error) => {
+            let backup_path = recovery_snapshot.mark_operation_failed();
+            Err(format!(
+                "{error}. The merge was rolled back, the target backup is {}, and the source database was left unchanged",
+                backup_path.display()
+            ))
+        }
+    }
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -1539,23 +1524,6 @@ fn write_windows_split_brain_merge_marker(target_path: &Path) -> Result<(), Stri
 #[cfg(any(target_os = "windows", test))]
 fn quote_sql_identifier(identifier: &str) -> String {
     format!("\"{}\"", identifier.replace('"', "\"\""))
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn windows_split_brain_merge_backup_path(target_path: &Path) -> Result<PathBuf, String> {
-    let parent = target_path.parent().ok_or_else(|| {
-        format!(
-            "Windows split-brain target {} has no parent directory",
-            target_path.display()
-        )
-    })?;
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    Ok(parent.join(format!(
-        "{APP_DB_FILE_NAME}.backup-before-windows-split-merge-{timestamp}"
-    )))
 }
 
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>

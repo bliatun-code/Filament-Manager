@@ -81,8 +81,15 @@ Release notes:
   authenticated desktop installations.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
 - Portable full JSON backups that omit device-local credentials and pairing
-  state. Full restore requires confirmation and creates a validated local
-  SQLite recovery snapshot before replacing library data.
+  state. Backup v1 includes schema/app metadata while remaining compatible with
+  older v1 files that lack it; backups from a newer schema are rejected before
+  data is changed. Program maintenance also shows when this device last
+  completed a validated full-backup download.
+- Schema v1 startup checks and verified local SQLite recovery snapshots before
+  unversioned upgrades, full restores, and storage migrations that replace or
+  merge an existing database.
+- Application/database health diagnostics and a privacy-sanitized support JSON
+  download under **Settings → Program maintenance**.
 
 ## Languages
 
@@ -329,6 +336,32 @@ Windows:
   default install path.
 - Uninstall removes installed app files but keeps local app data unless that data
   is removed manually.
+
+## Database Safety and Support Diagnostics
+
+Before writing to an existing database at startup, the app performs a read-only
+schema compatibility preflight and SQLite `quick_check`. A database created by
+a newer schema or one that fails the integrity check is stopped rather than
+silently rewritten. An existing unversioned database receives a verified local
+recovery snapshot before its automatic schema v1 upgrade. The same safeguard is
+used before a full restore and storage migrations that replace or merge an
+existing database; the operation does not continue if its snapshot cannot be
+created and verified.
+
+Portable `filament-manager-backup-v1` exports include `schema_version` and
+`app_version` metadata. Older v1 exports without these fields remain supported,
+while a declared schema version newer than the app supports is rejected before
+the active library is modified. The Backup panel records the time of the latest
+validated full-backup download on the current device. This local activity hint
+does not inspect or upload the saved file and is separate from backup contents.
+
+**Settings → Program maintenance → Application diagnostics** shows app/schema
+version, SQLite quick/FK checks, journal mode, database size, and the local
+database path after an explicit reveal. The downloadable support JSON
+deliberately excludes database contents and the local path, as well as names,
+IP addresses, printer serials, tokens, QR/RFID values, and raw printer
+telemetry. It contains only high-level health metadata and privacy-filtered
+operational events.
 
 ## Catalog Scraping
 

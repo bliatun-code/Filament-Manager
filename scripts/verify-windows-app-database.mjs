@@ -9,6 +9,7 @@ export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "filament_spools",
   "settings",
 ];
+export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 1;
 
 function parseArguments(argv) {
   if (argv.length !== 2 || argv[0] !== "--database" || !argv[1]?.trim()) {
@@ -44,6 +45,20 @@ export async function verifyWindowsAppDatabase(
       );
     }
 
+    const schemaVersion = database.pragma("user_version", { simple: true });
+    if (schemaVersion !== REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION) {
+      throw new Error(
+        `Database schema version mismatch for ${resolvedDatabasePath}: expected ${REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION}, got ${String(schemaVersion)}`,
+      );
+    }
+
+    const foreignKeyViolations = database.pragma("foreign_key_check");
+    if (foreignKeyViolations.length > 0) {
+      throw new Error(
+        `SQLite foreign_key_check failed for ${resolvedDatabasePath}: ${foreignKeyViolations.length} violation(s)`,
+      );
+    }
+
     const tableRows = database
       .prepare(
         `SELECT name
@@ -64,6 +79,7 @@ export async function verifyWindowsAppDatabase(
 
     return {
       databasePath: resolvedDatabasePath,
+      schemaVersion,
       size: databaseStat.size,
       tables: [...presentTables].sort(),
     };
@@ -76,7 +92,7 @@ async function main(argv) {
   const databasePath = parseArguments(argv);
   const result = await verifyWindowsAppDatabase(databasePath);
   process.stdout.write(
-    `Verified Windows app database (${result.size} bytes): ${result.tables.join(", ")}\n`,
+    `Verified Windows app database schema v${result.schemaVersion} (${result.size} bytes): ${result.tables.join(", ")}\n`,
   );
 }
 

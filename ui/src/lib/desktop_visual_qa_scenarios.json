@@ -258,6 +258,14 @@
       "category": "settings"
     },
     {
+      "id": "settings-application-diagnostics",
+      "aliases": ["settings-diagnostics", "application-diagnostics"],
+      "page": "settings",
+      "settingsTab": "MAINTENANCE",
+      "category": "settings",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "statistics-overview",
       "aliases": ["statistics", "usage-statistics", "print-statistics"],
       "page": "statistics",

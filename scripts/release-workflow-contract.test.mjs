@@ -341,6 +341,9 @@ test("Windows MSI smoke exercises install, UI readiness, data retention and unin
   );
 
   assert.match(windowsDatabaseVerifier, /pragma\("quick_check", \{ simple: true \}\)/);
+  assert.match(windowsDatabaseVerifier, /pragma\("user_version", \{ simple: true \}\)/);
+  assert.match(windowsDatabaseVerifier, /REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION/);
+  assert.match(windowsDatabaseVerifier, /pragma\("foreign_key_check"\)/);
   assert.match(windowsDatabaseVerifier, /filament_master_list/);
   assert.match(windowsDatabaseVerifier, /filament_spools/);
   assert.match(windowsDatabaseVerifier, /settings/);

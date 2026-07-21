@@ -98,6 +98,10 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
     "settings",
   );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-maintenance"), "settings");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-application-diagnostics"),
+    "settings",
+  );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-consumption"), "statistics");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-borrower"), "statistics");

@@ -248,15 +248,14 @@ fn split_brain_spool_exists(path: &Path, spool_id: &str) -> Result<bool, String>
 }
 
 fn split_brain_backup_count(app_dir: &Path) -> Result<usize, String> {
+    recovery_snapshot_count(app_dir, "recovery-windows-storage-merge-")
+}
+
+fn recovery_snapshot_count(app_dir: &Path, name_fragment: &str) -> Result<usize, String> {
     Ok(std::fs::read_dir(app_dir)
         .map_err(|error| error.to_string())?
         .filter_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .file_name()
-                .to_string_lossy()
-                .starts_with("filament-manager.db.backup-before-windows-split-merge-")
-        })
+        .filter(|entry| entry.file_name().to_string_lossy().contains(name_fragment))
         .count())
 }
 
@@ -376,6 +375,18 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
     assert_eq!(
         normalize_visual_qa_scenario("settings-printer-editor-discard"),
         Some("settings-printer-editor-discard")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-application-diagnostics"),
+        Some("settings-application-diagnostics")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-diagnostics"),
+        Some("settings-application-diagnostics")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("application-diagnostics"),
+        Some("settings-application-diagnostics")
     );
 }
 
@@ -511,6 +522,120 @@ fn app_db_path_override_ignores_empty_current_env_var() {
 }
 
 #[test]
+fn existing_unversioned_database_gets_recovery_snapshot_before_schema_upgrade() {
+    use super::open_database_and_apply_schema;
+
+    let base = temp_dir_path("schema-upgrade-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let connection = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(
+                "CREATE TABLE recovery_probe (value TEXT NOT NULL);\n\
+                 INSERT INTO recovery_probe (value) VALUES ('before schema upgrade');",
+            )
+            .map_err(|error| error.to_string())?;
+        drop(connection);
+
+        let db = open_database_and_apply_schema(&db_path)?;
+        let schema_version: i64 = db
+            .conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        assert!(schema_version > 0);
+        drop(db);
+
+        let snapshot_path = std::fs::read_dir(&base)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains("recovery-schema-upgrade-successful-")
+            })
+            .map(|entry| entry.path())
+            .ok_or_else(|| "missing successful schema-upgrade snapshot".to_string())?;
+        let snapshot =
+            rusqlite::Connection::open(snapshot_path).map_err(|error| error.to_string())?;
+        let snapshot_version: i64 = snapshot
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        let preserved_value: String = snapshot
+            .query_row("SELECT value FROM recovery_probe", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(snapshot_version, 0);
+        assert_eq!(preserved_value, "before schema upgrade");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn new_database_does_not_create_schema_upgrade_recovery_snapshot() {
+    use super::open_database_and_apply_schema;
+
+    let base = temp_dir_path("new-schema-no-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let db = open_database_and_apply_schema(&db_path)?;
+        drop(db);
+        assert_eq!(
+            recovery_snapshot_count(&base, "recovery-schema-upgrade-")?,
+            0
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn failed_schema_upgrade_keeps_failed_recovery_snapshot() {
+    use super::open_database_and_apply_schema;
+
+    let base = temp_dir_path("failed-schema-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let connection = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch("CREATE VIEW filament_spools AS SELECT 'spool-id' AS id;")
+            .map_err(|error| error.to_string())?;
+        drop(connection);
+
+        let error = match open_database_and_apply_schema(&db_path) {
+            Ok(_) => return Err("incompatible v0 schema unexpectedly migrated".to_string()),
+            Err(error) => error,
+        };
+        assert!(error.contains("DB schema"));
+        assert_eq!(
+            recovery_snapshot_count(&base, "recovery-schema-upgrade-failed-")?,
+            1
+        );
+        assert_eq!(
+            recovery_snapshot_count(&base, "recovery-schema-upgrade-successful-")?,
+            0
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
 fn trusted_lan_runtime_keeps_enabled_state_from_settings() {
     let db_path = temp_db_path("trusted-lan-dark-startup");
     let result = (|| -> Result<(), String> {
@@ -572,7 +697,7 @@ fn app_storage_migration_copies_legacy_bundle_data_once() {
                 entry
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("filament-manager.db.backup-before-legacy-migration-")
+                    .starts_with("filament-manager.db.recovery-legacy-bundle-migration-")
             });
         assert_eq!(migrated_spool_count, 1);
         assert_eq!(migrated_label, b"legacy-label");
@@ -678,7 +803,7 @@ fn app_storage_migration_replaces_ancillary_current_data_with_legacy_domain_data
                 entry
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("filament-manager.db.backup-before-legacy-migration-")
+                    .starts_with("filament-manager.db.recovery-legacy-bundle-migration-")
             });
         assert!(has_ancillary_backup);
 
@@ -1208,6 +1333,10 @@ fn windows_split_brain_merge_rolls_back_conflicting_primary_keys() {
             .map_err(|error| error.to_string())?;
         assert_eq!(legacy_color, "Legacy Blue");
         assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+        assert_eq!(
+            recovery_snapshot_count(&local_dir, "recovery-windows-storage-merge-failed-")?,
+            1
+        );
         assert!(local_db_path.exists());
         Ok(())
     })();

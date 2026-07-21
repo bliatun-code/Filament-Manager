@@ -52,14 +52,37 @@ database remains healthy and unchanged. Verbose install, uninstall,
 application, and smoke-test logs are retained as a CI artifact for
 troubleshooting.
 
+## Runtime database safeguards
+
+On startup, an existing database is inspected read-only before schema writes.
+The app runs SQLite `quick_check` and verifies that the recorded schema is not
+newer than schema v1 supported by this build. A failed integrity or compatibility
+check stops startup instead of silently modifying the database.
+
+An existing unversioned database receives an automatically created and verified
+local recovery snapshot before its schema v1 upgrade. Verified snapshots are
+also used before a full restore and storage migrations that replace or merge an
+existing database. If snapshot creation or verification fails, the destructive
+operation does not continue.
+
 ## Install
 
 Upgrades keep the active database under the current user's Local application
 data. If an older inventory is found under the previous Roaming location, the
 app performs a one-time, transactional recovery into Local storage, preserves
-the Roaming source, and creates a target backup before merging user data.
+the Roaming source, and creates a verified recovery snapshot before replacing
+or merging an existing Local database.
 
 After the checksum passes, open the MSI and follow the installer. Filament
 Manager is installed for the current user. App data remains in the current
 user's application-data directory and is not removed by simply downloading a
 new installer.
+
+## Diagnostics and support file
+
+Open **Settings → Program maintenance → Application diagnostics** to review the
+app/schema version, SQLite quick and foreign-key checks, journal mode, database
+size, and local database path. **Download sanitized support file** creates JSON
+for troubleshooting without database contents or the local path. It also omits
+names, IP addresses, printer serials, tokens, QR/RFID values, and raw printer
+telemetry.

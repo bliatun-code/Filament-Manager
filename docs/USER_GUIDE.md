@@ -302,6 +302,20 @@ Program maintenance:
 - import/export
 - reset and maintenance functions
 - validation before larger role or host migrations
+- application and database diagnostics
+- privacy-sanitized support JSON
+
+Open **Settings → Program maintenance → Application diagnostics** to review the
+app and database schema versions, SQLite quick and foreign-key checks, journal
+mode, database size, and the local database path after you explicitly reveal
+it. Use **Download sanitized
+support file** when you need a compact JSON file for troubleshooting.
+
+The support file does not include database contents or the local database path.
+It also excludes names, IP addresses, printer serials, tokens, QR/RFID values,
+and raw printer telemetry. It contains only high-level health metadata and
+privacy-filtered operational events. This is different from a full backup,
+which contains private library data and should not be shared as diagnostics.
 
 ## Add Filament
 
@@ -650,6 +664,21 @@ Deleting a spool is normally a soft delete from active views so history remains 
 
 Use Program maintenance for backup, import, and reset.
 
+The Backup panel shows when this device last completed a validated full-backup
+download. The timestamp is a device-local activity hint; it does not inspect
+the downloaded file later and is not included in the portable backup.
+
+The local database uses schema version 1. Before writing to an existing database
+at startup, the app performs a read-only schema compatibility preflight and
+SQLite `quick_check`. A database from a newer schema, or one that fails the
+integrity check, is stopped instead of being silently rewritten.
+
+Before automatically upgrading an existing unversioned database to schema v1,
+the app creates and verifies a local recovery snapshot. A verified snapshot is
+also created before a full restore and before storage migrations that replace
+or merge an existing database. If the snapshot cannot be created and verified,
+the upgrade, restore, or migration does not continue.
+
 Full JSON backups are portable. They include library data such as inventory,
 history, catalog data, and printer profiles, but omit device-local connection
 credentials and pairing state. Bambu Live connection details, local network
@@ -659,10 +688,16 @@ machine-local credentials or pairings found in older backup files.
 The file still contains your inventory, QR/RFID references, and loan details,
 so treat it as private data even though it contains no usable device credentials.
 
+The current portable format remains `filament-manager-backup-v1` and records
+the exporting app and database schema versions. Older v1 backups without this
+metadata remain importable. If a backup explicitly declares a schema version
+newer than the installed app supports, validation and import stop before the
+active library is changed. The recorded app version is informational and does
+not by itself block a compatible restore.
+
 When you select a valid full backup, the app asks for confirmation because the
-restore replaces the current library. Before replacing anything, it creates
-and validates a local SQLite recovery snapshot next to the active database. If
-that snapshot cannot be created and validated, the restore does not start.
+restore replaces the current library. The verified recovery snapshot described
+above is stored next to the active database.
 
 Unlike the portable export, the recovery snapshot is a local copy of the
 pre-restore database and can contain this machine's credentials and pairings.

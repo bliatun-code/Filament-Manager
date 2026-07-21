@@ -51,12 +51,14 @@ export function SettingsNotice({
 export function SettingsSectionPanel({
   children,
   className,
+  id,
 }: {
   children: ReactNode;
   className?: string;
+  id?: string;
 }) {
   return (
-    <div className={joinClassNames("surface-subtle overflow-hidden p-0", className)}>
+    <div id={id} className={joinClassNames("surface-subtle overflow-hidden p-0", className)}>
       {children}
     </div>
   );

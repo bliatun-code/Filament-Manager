@@ -303,6 +303,21 @@ Programvedlikehold:
 - import/eksport
 - reset/vedlikeholdsfunksjoner
 - validering av data før større flytting mellom roller
+- applikasjons- og databasediagnostikk
+- personvernfiltrert support-JSON
+
+Åpne **Innstillinger → Programvedlikehold → Applikasjonsdiagnostikk** for å se
+app- og databaseskjemaversjon, SQLite `quick_check`, fremmednøkkelkontroll,
+journalmodus, databasestørrelse og den lokale databasebanen etter at du
+uttrykkelig viser den. Bruk **Last ned
+sanitert supportfil** når du trenger en kompakt JSON-fil til feilsøking.
+
+Supportfilen inneholder ikke databaseinnhold eller lokal databasebane. Den
+utelater også navn, IP-adresser, printerserienumre, tokens, QR-/RFID-verdier og
+rå printertelemetri. Den inneholder bare overordnet helsestatus og
+personvernfiltrerte driftshendelser. Dette er noe annet enn en full
+sikkerhetskopi, som inneholder private bibliotekdata og ikke bør deles som
+diagnostikk.
 
 ## Legg til filament
 
@@ -650,6 +665,24 @@ Sletting av rull er normalt en myk sletting fra aktiv visning, slik at historikk
 
 Bruk Programvedlikehold for sikkerhetskopi, import og reset.
 
+Sikkerhetskopipanelet viser når denne enheten sist fullførte en validert
+nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
+aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
+blir ikke med i den flyttbare sikkerhetskopien.
+
+Den lokale databasen bruker skjemaversjon 1. Før appen skriver til en eksisterende
+database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
+av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
+ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
+varsel.
+
+Før en eksisterende database uten registrert skjemaversjon oppgraderes automatisk
+til skjema v1, oppretter og verifiserer appen en lokal gjenopprettingskopi. En
+verifisert kopi opprettes også før full gjenoppretting og før lagringsmigreringer
+som erstatter eller slår sammen en eksisterende database. Hvis kopien ikke kan
+opprettes og verifiseres, fortsetter ikke oppgraderingen, gjenopprettingen eller
+migreringen.
+
 Fullstendige JSON-sikkerhetskopier er laget for å kunne flyttes. De tar med
 bibliotekdata som lager, historikk, katalogdata og printerprofiler, men utelater
 maskinlokale tilgangsopplysninger og paringstilstand. Bambu Live-tilkobling,
@@ -660,11 +693,18 @@ Filen inneholder fortsatt lagerdata, QR-/RFID-referanser og utlånsdetaljer, så
 behandle den som private data selv om den ikke inneholder brukbare
 enhetslegitimasjoner.
 
+Det flyttbare formatet heter fortsatt `filament-manager-backup-v1` og registrerer
+versjonen til appen og databaseskjemaet som eksporterte filen. Eldre v1-backuper
+uten denne metadataen kan fortsatt importeres. Hvis en backup uttrykkelig oppgir
+en skjemaversjon som er nyere enn den installerte appen støtter, stopper
+validering og import før det aktive biblioteket endres. Den registrerte
+appversjonen er til informasjon og blokkerer ikke i seg selv en kompatibel
+gjenoppretting.
+
 Når du velger en gyldig full sikkerhetskopi, ber appen om bekreftelse fordi
-gjenopprettingen erstatter det aktive biblioteket. Før noe erstattes, oppretter
-og validerer appen automatisk en lokal SQLite-gjenopprettingskopi ved siden av
-den aktive databasen. Gjenopprettingen starter ikke hvis kopien ikke kan
-opprettes og valideres.
+gjenopprettingen erstatter det aktive biblioteket. Den verifiserte
+gjenopprettingskopien som er beskrevet ovenfor, lagres ved siden av den aktive
+databasen.
 
 I motsetning til den flyttbare eksporten er gjenopprettingskopien en lokal kopi
 av hele databasen før gjenoppretting og kan inneholde maskinens

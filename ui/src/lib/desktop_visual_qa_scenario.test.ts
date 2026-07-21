@@ -75,6 +75,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "settings-catalog",
     "settings-catalog-swatch-review",
     "settings-maintenance",
+    "settings-application-diagnostics",
     "statistics-overview",
     "statistics-consumption",
     "statistics-borrower",
@@ -163,6 +164,14 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "settings-catalog-swatch-review",
   );
   assert.equal(normalizeDesktopVisualQaScenario("program-maintenance"), "settings-maintenance");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("settings-diagnostics"),
+    "settings-application-diagnostics",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("application-diagnostics"),
+    "settings-application-diagnostics",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario("total-consumption"), "statistics-consumption");
   assert.equal(
@@ -188,6 +197,14 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
     true,
   );
   assert.equal(desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture, true);
+  assert.equal(
+    desktopVisualQaScenarioDefinition("settings-diagnostics")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("application-diagnostics")?.settingsTab,
+    "MAINTENANCE",
+  );
   assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details")?.settingsTab, "LIBRARY");
   assert.equal(
     desktopVisualQaScenarioDefinition("inventory-label-sheet")?.settingsTab,
@@ -309,6 +326,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
     "settings",
   );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-maintenance"), "settings");
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-application-diagnostics"),
+    "settings",
+  );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-consumption"), "statistics");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-borrower"), "statistics");
@@ -379,6 +400,10 @@ test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   );
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-maintenance"),
+    "MAINTENANCE",
+  );
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-application-diagnostics"),
     "MAINTENANCE",
   );
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=add-filament"), null);

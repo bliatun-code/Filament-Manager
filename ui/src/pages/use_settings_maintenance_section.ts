@@ -32,10 +32,13 @@ import { useSettingsBackupFileControls } from "./use_settings_backup_file_contro
 import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
+import { useSettingsApplicationDiagnostics } from "./use_settings_application_diagnostics";
+import { useSettingsFullBackupActivity } from "./use_settings_full_backup_activity";
 
 type TranslateFn = (key: string, fallback?: string) => string;
 
 type UseSettingsMaintenanceSectionInput = {
+  applicationDiagnosticsEnabled: boolean;
   backupValidationHasExtraTables: boolean;
   backupValidationHasMissingTables: boolean;
   backupValidationHasWarnings: boolean;
@@ -84,6 +87,7 @@ type UseSettingsMaintenanceSectionInput = {
 };
 
 export function useSettingsMaintenanceSection({
+  applicationDiagnosticsEnabled,
   backupValidationHasExtraTables,
   backupValidationHasMissingTables,
   backupValidationHasWarnings,
@@ -128,6 +132,25 @@ export function useSettingsMaintenanceSection({
   trustedLanStatus,
 }: UseSettingsMaintenanceSectionInput) {
   const {
+    diagnostics: applicationDiagnostics,
+    downloadSanitizedSupportBundle,
+    refreshApplicationDiagnostics,
+    refreshError: applicationDiagnosticsError,
+    refreshStatus: applicationDiagnosticsStatus,
+    supportError: supportBundleError,
+    supportStatus: supportBundleStatus,
+  } = useSettingsApplicationDiagnostics({
+    enabled: applicationDiagnosticsEnabled,
+    tauri,
+    t,
+  });
+
+  const {
+    latestFullBackupExportedAt,
+    recordFullBackupExport,
+  } = useSettingsFullBackupActivity();
+
+  const {
     backupImportInputRef,
     backupValidateInputRef,
     clearConfirmResetAction,
@@ -171,6 +194,7 @@ export function useSettingsMaintenanceSection({
     busy,
     loadSettingsInventoryRows,
     recordExportedBackupValidation,
+    recordFullBackupExport,
     setBusy,
     setError,
     setInfo,
@@ -233,30 +257,40 @@ export function useSettingsMaintenanceSection({
     backupValidationHasExtraTables,
     backupValidationHasMissingTables,
     backupValidationHasWarnings,
+    applicationDiagnostics,
+    applicationDiagnosticsError,
+    applicationDiagnosticsStatus,
     busy,
     catalogCount,
     confirmResetAction,
     lastBackupValidation,
     lastCatalogReset,
+    latestFullBackupExportedAt,
+    locale,
     missingSwatchCount,
     printerCount,
     settingsClientHostWritePaired,
     settingsClientReadOnly,
+    supportBundleError,
+    supportBundleStatus,
     tauri,
     t,
     onExportFullBackup: handleExportFullBackup,
     onExportInventoryCsv: handleExportInventoryCsv,
     onExportInventoryJson: handleExportInventoryJson,
+    onDownloadSanitizedSupportBundle: downloadSanitizedSupportBundle,
     onImportDataFile: handleImportDataFile,
     onCancelReset: clearConfirmResetAction,
     onOpenBackupValidate: handleOpenBackupValidate,
     onOpenDataImport: handleOpenDataImport,
     onResetAppData: handleResetAppData,
     onResetCatalogs: handleResetCatalogs,
+    onRefreshApplicationDiagnostics: refreshApplicationDiagnostics,
     onValidateBackupFile: handleValidateBackupFile,
   });
 
   return {
+    applicationDiagnosticsStatus,
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,

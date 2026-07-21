@@ -46,6 +46,7 @@ export type DesktopVisualQaScenario =
   | "settings-catalog"
   | "settings-catalog-swatch-review"
   | "settings-maintenance"
+  | "settings-application-diagnostics"
   | "statistics-overview"
   | "statistics-consumption"
   | "statistics-borrower"
