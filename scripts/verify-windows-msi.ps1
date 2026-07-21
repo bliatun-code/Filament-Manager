@@ -14,7 +14,11 @@ param(
 
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string]$ExpectedArchitecture
+    [string]$ExpectedArchitecture,
+
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$NormalizedFileName
 )
 
 $ErrorActionPreference = "Stop"
@@ -124,6 +128,17 @@ if ($msiFiles.Count -ne 1) {
 $msiFile = $msiFiles[0]
 if ($msiFile.Length -le 0) {
     throw "MSI '$($msiFile.FullName)' is empty."
+}
+if ($NormalizedFileName -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*[.]msi$') {
+    throw "Normalized MSI filename '$NormalizedFileName' is not release-safe."
+}
+if (-not [string]::Equals($msiFile.Name, $NormalizedFileName, [StringComparison]::Ordinal)) {
+    $normalizedMsiPath = Join-Path $resolvedMsiDirectory $NormalizedFileName
+    if (Test-Path -LiteralPath $normalizedMsiPath) {
+        throw "Normalized MSI destination '$normalizedMsiPath' already exists."
+    }
+    Move-Item -LiteralPath $msiFile.FullName -Destination $normalizedMsiPath
+    $msiFile = Get-Item -LiteralPath $normalizedMsiPath
 }
 
 $installer = $null

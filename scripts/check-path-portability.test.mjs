@@ -21,6 +21,8 @@ const macosPerUserTemporaryPath = [
   "temporary",
   "artifact.png",
 ].join("/");
+const linuxHomePath = ["", "home", "runner", "work", "artifact.png"].join("/");
+const homebrewPath = ["", "opt", "homebrew", "bin", "tool"].join("/");
 const macosLibrarySegment = ["Lib", "rary"].join("");
 const macosApplicationSupportSegment = ["Application", " Support"].join("");
 const interpolatedManualPath = (expression, suffix) =>
@@ -47,6 +49,9 @@ test(
       "Cargo.toml",
       "package.json",
       "scripts/check.mjs",
+      "scripts/check.bash",
+      "scripts/check.sh",
+      "scripts/check.zsh",
       "scripts/verify.ps1",
       "src/index.ts",
       "src-tauri/Entitlements.plist",
@@ -175,10 +180,52 @@ test("path portability rejects manual separators split across lines", () => {
   );
 });
 
+test("path portability rejects manual separators on qualified path identifiers", () => {
+  const source = [
+    `const p01 = ${interpolatedManualPath("filePath", "child.json")};`,
+    `const p02 = ${concatenatedManualPath("visualQaDatabasePath", "database.sqlite")};`,
+    `const p03 = ${interpolatedManualPath("options.outputPath", "wide.png")};`,
+    `const p04 = ${concatenatedManualPath("state.buildArtifactPath", "manifest.json")};`,
+    `const p05 = ${interpolatedManualPath("repoPath", "package.json")};`,
+    `const p06 = ${concatenatedManualPath("projectPath", "src")};`,
+    `const p07 = ${interpolatedManualPath("configPath", "defaults.json")};`,
+    `const p08 = ${concatenatedManualPath("manifestPath", "fragment.json")};`,
+    `const p09 = ${interpolatedManualPath("resourcePath", "theme.css")};`,
+    `const p10 = ${concatenatedManualPath("sourcePath", "assets")};`,
+    `const p11 = ${interpolatedManualPath("target_path", "result")};`,
+    `const p12 = ${concatenatedManualPath("FILAMENT_MANAGER_DB_PATH", "wal")};`,
+    `const p13 = ${interpolatedManualPath("options?.temporaryPath", "snapshot.db")};`,
+    "const p14 = targetPath",
+    '  + "/logs/app.log";',
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "scripts/fixture.mjs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [...Array.from({ length: 13 }, (_, index) => index + 1), 15].map((line) => ({
+      label: "manual POSIX separator appended to a filesystem path",
+      line,
+    })),
+  );
+});
+
 test("path portability accepts URL and display separators", () => {
   const source = [
     `url.pathname = ${interpolatedManualPath("trimmedPath", "companion")};`,
     `const endpoint = ${interpolatedManualPath("baseUrl", "api/v1/health")};`,
+    `const request = ${interpolatedManualPath("requestPath", "health")};`,
+    `const route = ${concatenatedManualPath("routePath", "settings")};`,
+    `const display = ${interpolatedManualPath("displayPath", "…")};`,
+    `const field = ${concatenatedManualPath("selectedFieldPath", "label")};`,
+    `const sort = ${concatenatedManualPath("bambuLiveSortPath", "ascending")};`,
+    `const browser = ${interpolatedManualPath("browserPath", "settings")};`,
+    `const template = ${concatenatedManualPath("templatePath", "partial")};`,
+    `const resourceUrl = ${interpolatedManualPath("resourceUrlPath", "api")};`,
+    `const projector = ${concatenatedManualPath("projectorPath", "image")};`,
+    `const attempt = ${interpolatedManualPath("attemptPath", "next")};`,
+    `const profile = ${concatenatedManualPath("profilePath", "avatar")};`,
     ["const ratio = `", "${", "success", "}/", "${", "total", "}`;"].join(""),
   ].join("\n");
 
@@ -186,7 +233,10 @@ test("path portability accepts URL and display separators", () => {
 });
 
 test("path portability permits a documented manual separator", () => {
-  const source = `const artifact = ${interpolatedManualPath("repoRoot", "artifact.png")}; // path-portability-allow: external format requires POSIX separators`;
+  const source = [
+    `const artifact = ${interpolatedManualPath("repoRoot", "artifact.png")}; // path-portability-allow: external format requires POSIX separators`,
+    `const output = ${interpolatedManualPath("outputPath", "external-id")}; // path-portability-allow: external format requires POSIX separators`,
+  ].join("\n");
 
   assert.deepEqual(findHostSpecificPaths(source, "scripts/fixture.mjs"), []);
 });
@@ -198,6 +248,8 @@ test("path portability rejects hardcoded host-specific paths", () => {
       `const second = "${macosPrivateTemporaryPath}";`,
       `const third = "${macosUserPath}";`,
       `const fourth = "${macosPerUserTemporaryPath}";`,
+      `const fifth = "${linuxHomePath}";`,
+      `const sixth = "${homebrewPath}";`,
     ].join("\n"),
     "fixture.mjs",
   );
@@ -225,8 +277,128 @@ test("path portability rejects hardcoded host-specific paths", () => {
         label: "hardcoded macOS per-user temporary directory",
         line: 4,
       },
+      {
+        file: "fixture.mjs",
+        label: "hardcoded Linux home directory",
+        line: 5,
+      },
+      {
+        file: "fixture.mjs",
+        label: "hardcoded Apple Silicon Homebrew directory",
+        line: 6,
+      },
     ],
   );
+});
+
+test("path portability distinguishes host paths from URL routes and prefixes", () => {
+  const homeRoute = ["", "api", "home", "account"].join("/");
+  const homeUrl = ["https:", "", "example.test", "home", "account"].join("/");
+  const homebrewDocsUrl = [
+    "https:",
+    "",
+    "example.test",
+    "docs",
+    "opt",
+    "homebrew",
+    "setup",
+  ].join("/");
+  const homebrewLikePath = ["", "opt", "homebrewish", "bin"].join("/");
+  const relativeHomePath = ["home", "alex", "project"].join("/");
+
+  assert.deepEqual(
+    findHostSpecificPaths(
+      [
+        `const route = "${homeRoute}";`,
+        `const url = "${homeUrl}";`,
+        `const docs = "${homebrewDocsUrl}";`,
+        `const similar = "${homebrewLikePath}";`,
+        `const relative = "${relativeHomePath}";`,
+        String.raw`const windows = "C:\home\alex\project";`,
+      ].join("\n"),
+      "scripts/fixture.mjs",
+    ),
+    [],
+  );
+});
+
+test("path portability requires a non-empty documented exception reason", () => {
+  const source = [
+    `const allowed = "${linuxHomePath}"; // path-portability-allow: external Linux fixture`,
+    `const missingReason = "${linuxHomePath}"; // path-portability-allow:`,
+    `const legacyMarker = "${homebrewPath}"; // path-portability-allow`,
+    `const stringMarker = "${linuxHomePath} path-portability-allow: not a comment";`,
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "scripts/fixture.mjs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [
+      { label: "hardcoded Linux home directory", line: 2 },
+      {
+        label: "hardcoded Apple Silicon Homebrew directory",
+        line: 3,
+      },
+      { label: "hardcoded Linux home directory", line: 4 },
+    ],
+  );
+});
+
+test("path portability recognizes documented exceptions after Rust lifetimes", () => {
+  const source = [
+    `const ALLOWED: &'static str = "${linuxHomePath}"; // path-portability-allow: intentional Linux fixture`,
+    `const STRING_MARKER: &'static str = "${linuxHomePath} path-portability-allow: not a comment";`,
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(source, "src/fixture.rs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [{ label: "hardcoded Linux home directory", line: 2 }],
+  );
+});
+
+test("path portability does not treat Rust attributes or JS private fields as comments", () => {
+  const rustAttribute =
+    `#[doc = "${linuxHomePath} path-portability-allow: not a comment"]`;
+  const javascriptPrivateField = [
+    "class Fixture {",
+    `  #path = "${linuxHomePath} path-portability-allow: not a comment";`,
+    "}",
+  ].join("\n");
+
+  assert.deepEqual(
+    findHostSpecificPaths(rustAttribute, "src/fixture.rs").map(({ label, line }) => ({
+      label,
+      line,
+    })),
+    [{ label: "hardcoded Linux home directory", line: 1 }],
+  );
+  assert.deepEqual(
+    findHostSpecificPaths(javascriptPrivateField, "src/fixture.js").map(
+      ({ label, line }) => ({ label, line }),
+    ),
+    [{ label: "hardcoded Linux home directory", line: 2 }],
+  );
+});
+
+test("path portability preserves hash comments in supported source syntaxes", () => {
+  const fixtures = [
+    ["scripts/fixture.bash", `value="${linuxHomePath}" # path-portability-allow: fixture`],
+    ["scripts/fixture.ps1", `$value = "${linuxHomePath}" # path-portability-allow: fixture`],
+    ["scripts/fixture.sh", `value="${linuxHomePath}" # path-portability-allow: fixture`],
+    ["Cargo.toml", `value = "${linuxHomePath}" # path-portability-allow: fixture`],
+    [".github/workflows/fixture.yaml", `value: "${linuxHomePath}" # path-portability-allow: fixture`],
+    [".github/workflows/fixture.yml", `value: "${linuxHomePath}" # path-portability-allow: fixture`],
+    ["scripts/fixture.zsh", `value="${linuxHomePath}" # path-portability-allow: fixture`],
+  ];
+
+  for (const [file, source] of fixtures) {
+    assert.deepEqual(findHostSpecificPaths(source, file), [], file);
+  }
 });
 
 test("path portability rejects segmented macOS Application Support paths", () => {

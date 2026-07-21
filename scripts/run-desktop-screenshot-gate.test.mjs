@@ -2343,6 +2343,25 @@ test("desktop screenshot gate times out stuck macOS helper commands", async () =
   );
 });
 
+test("desktop screenshot helper commands always disable platform shells", async () => {
+  const calls = [];
+  const execFileFn = async (command, args, options) => {
+    calls.push({ args, command, options });
+    return { stdout: "ok" };
+  };
+
+  await execFileWithTimeout(execFileFn, "tool", ["first"], { timeoutMs: 0 });
+  await execFileWithTimeout(execFileFn, "tool", ["second"], { timeoutMs: 50 });
+
+  assert.deepEqual(
+    calls.map(({ options }) => options),
+    [
+      { shell: false },
+      { shell: false, timeout: 50 },
+    ],
+  );
+});
+
 test("desktop screenshot metric validation rejects missing and flat captures", () => {
   assert.ok(
     validateDesktopScreenshotMetrics({ window: null }).some((error) =>

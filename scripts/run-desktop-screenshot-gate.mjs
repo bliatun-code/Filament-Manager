@@ -474,7 +474,7 @@ export async function execFileWithTimeout(
   const timeoutMs = options.timeoutMs ?? 4_000;
   const label = options.label ?? command;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return await execFileFn(command, args);
+    return await execFileFn(command, args, { shell: false });
   }
 
   let timer = null;
@@ -483,7 +483,7 @@ export async function execFileWithTimeout(
     Math.min(250, Math.max(20, Math.round(timeoutMs * 0.1)));
   try {
     return await Promise.race([
-      execFileFn(command, args, { timeout: timeoutMs }),
+      execFileFn(command, args, { shell: false, timeout: timeoutMs }),
       new Promise((_, reject) => {
         timer = setTimeout(() => {
           reject(new Error(`${label} timed out after ${timeoutMs}ms.`));

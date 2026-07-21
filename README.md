@@ -48,6 +48,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.21.2](RELEASE_NOTES_v0.21.2.md)
 - [v0.21.1](RELEASE_NOTES_v0.21.1.md)
 - [v0.21.0](RELEASE_NOTES_v0.21.0.md)
 - [v0.20.2](RELEASE_NOTES_v0.20.2.md)
@@ -257,7 +258,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.21.1`
+- Current version: `0.21.2`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
@@ -276,20 +277,23 @@ npm run verify
 ## GitHub Actions Release Artifacts
 
 The release workflow builds installer artifacts from version tags and
-maintainer-approved manual runs:
+maintainer-approved manual runs. A version tag publishes the GitHub release
+only after the exact commit has passed macOS and Windows CI and both installers
+and both checksum manifests pass verification:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: a version tag matching `v*`
 - Manual trigger: `workflow_dispatch` for a selected platform
 - Outputs:
-  - `filament-manager-macos-dmg-<run-id>-<attempt>` with the normalized DMG and
+  - `filament-manager-macos-dmg-<run-id>` with the normalized DMG and
     `SHA256SUMS.txt`
-  - `filament-manager-windows-msi-<run-id>-<attempt>` with the verified MSI and
+  - `filament-manager-windows-msi-<run-id>` with the verified MSI and
     `SHA256SUMS-windows.txt`
 
 The macOS job fails instead of publishing an ad-hoc fallback when signing,
 notarization, stapling, verification, or checksum generation fails. Release
-The Windows job likewise fails before upload unless exactly one non-empty MSI
+assets are assembled only from those verified job outputs. The Windows job
+likewise fails before upload unless exactly one non-empty MSI
 has the expected product name, normalized release version, and x64 package
 architecture, and its checksum is written successfully. Release assets are
 treated as immutable; a mismatch is investigated rather than silently

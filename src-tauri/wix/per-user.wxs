@@ -65,7 +65,6 @@
             <Directory Id="DesktopFolder" Name="Desktop">
                 <Component Id="ApplicationShortcutDesktop" Guid="*">
                     <Shortcut Id="ApplicationDesktopShortcut" Name="{{product_name}}" Description="Runs {{product_name}}" Target="[!Path]" WorkingDirectory="INSTALLDIR" />
-                    <RemoveFolder Id="DesktopFolder" On="uninstall" />
                     <RegistryValue Root="HKCU" Key="Software\\{{manufacturer}}\\{{product_name}}" Name="Desktop Shortcut" Type="integer" Value="1" KeyPath="yes" />
                 </Component>
             </Directory>
@@ -88,6 +87,21 @@
                 <RegistryValue Root="HKCU"
                                Key="Software\\{{manufacturer}}\\{{product_name}}"
                                Name="Binary Installed"
+                               Type="integer"
+                               Value="1"
+                               KeyPath="yes" />
+            </Component>
+            <Component Id="PathEnvironment" Guid="*">
+                <Environment Id="PathEnvironmentVariable"
+                             Name="PATH"
+                             Value="[INSTALLDIR]"
+                             Part="last"
+                             Action="set"
+                             System="no"
+                             Permanent="no" />
+                <RegistryValue Root="HKCU"
+                               Key="Software\\{{manufacturer}}\\{{product_name}}"
+                               Name="PATH Environment Variable"
                                Type="integer"
                                Value="1"
                                KeyPath="yes" />
@@ -137,11 +151,11 @@
                 Absent="disallow">
 
             <ComponentRef Id="RegistryEntries"/>
+            <ComponentRef Id="Path"/>
 
             <Feature Id="ShortcutsFeature"
                 Title="Shortcuts"
                 Level="1">
-                <ComponentRef Id="Path"/>
                 <ComponentRef Id="CMP_UninstallShortcut" />
                 <ComponentRef Id="ApplicationShortcut" />
                 <ComponentRef Id="ApplicationShortcutDesktop" />
@@ -153,7 +167,7 @@
                 Description="!(loc.PathEnvVarFeature)"
                 Level="1"
                 Absent="allow">
-                <ComponentRef Id="Path"/>
+                <ComponentRef Id="PathEnvironment"/>
             </Feature>
         </Feature>
 
