@@ -52,6 +52,10 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
             post(handle_update_wishlist_item_status),
         )
         .route(
+            "/wishlist/{item_id}/receive",
+            post(handle_receive_wishlist_item),
+        )
+        .route(
             "/wishlist/{item_id}/delete",
             post(handle_delete_wishlist_item),
         )

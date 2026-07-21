@@ -92,6 +92,9 @@ It shows, among other things:
 - progress and status panels when relevant
 
 Dashboard is meant as a quick status check, not as the main place for detailed editing.
+When the library has no spools yet, inventory health is shown as **Not enough
+data** instead of a misleading percentage. Use **Add spool** in that panel
+to open the normal inventory entry flow.
 
 ### Inventory
 
@@ -371,10 +374,12 @@ The statuses are:
 
 You can add the current catalog selection to the wishlist from Add filament. When the item later becomes a physical spool, register it as inventory with the correct weight and location. The wishlist is for planning and purchasing follow-up; inventory is the stock you can actually use.
 
-Use the status tabs to focus the queue, the search field to find a planned
-purchase by name, color, or vendor, and **Stock roll now** when an ordered item
-arrives. **Remove** deletes only the wishlist/order entry; it does not delete an
-inventory spool.
+Use the status tabs to focus the queue and the search field to find a planned
+purchase by name, color, or vendor. When an order arrives, choose how many rolls
+were received and select **Stock roll now**. The app creates that number of
+physical spools, reduces the outstanding quantity, and marks the wishlist row as
+Received only when nothing remains. **Remove** deletes only the wishlist/order
+entry; it does not delete an inventory spool.
 
 ### Missing Filament?
 

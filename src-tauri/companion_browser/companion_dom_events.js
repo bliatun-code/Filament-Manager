@@ -138,6 +138,7 @@ export function handleCompanionSubmitEvent(event, options) {
     submitSpoolLoanReturn: (...args) => void options.submitSpoolLoanReturn(...args),
     submitManualSpoolRegistration: (...args) => void options.submitManualSpoolRegistration(...args),
     submitWishlistCreate: (...args) => void options.submitWishlistCreate(...args),
+    submitWishlistStock: (...args) => void options.submitWishlistStock(...args),
     submitBorrowedInUpdate: (...args) => void options.submitBorrowedInUpdate(...args),
     submitBorrowedInHandBack: (...args) => void options.submitBorrowedInHandBack(...args),
   });

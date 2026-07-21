@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
@@ -9,6 +10,7 @@ import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
 import {
   canStockWishlistItem,
+  normalizeWishlistReceiptQuantity,
   normalizeWishlistStatus,
   type WishlistQueueSummary,
   type WishlistStatus,
@@ -27,7 +29,7 @@ type WishlistQueuePanelProps = {
   onQueryChange: (query: string) => void;
   onRequestDeleteItem: (itemId: string) => void;
   onStatusChange: (itemId: string, status: WishlistStatus) => void;
-  onStockItem: (item: WishlistItemRow) => void;
+  onStockItem: (item: WishlistItemRow, quantity: number) => void;
   resolvedTheme: ResolvedTheme;
   query: string;
   summary: WishlistQueueSummary;
@@ -80,6 +82,7 @@ export function WishlistQueuePanel({
   visibleItems,
 }: WishlistQueuePanelProps) {
   const { t } = useI18n();
+  const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
   const resultCount = t(
     "wishlist.resultCount",
     "{count, plural, one {# item} other {# items}}",
@@ -181,6 +184,11 @@ export function WishlistQueuePanel({
             item.color_name,
           );
           const confirmingRemove = confirmWishlistRemoveId === item.id;
+          const receiptQuantityRaw = receiptQuantities[item.id] ?? "1";
+          const receiptQuantity = normalizeWishlistReceiptQuantity(
+            receiptQuantityRaw,
+            item.quantity,
+          );
           return (
             <div
               key={item.id}
@@ -223,7 +231,10 @@ export function WishlistQueuePanel({
                   onChange={(nextStatus) => onStatusChange(item.id, nextStatus)}
                   optionSizeClassName="px-3 py-1.5 text-[11px]"
                   isOptionDisabled={(option) =>
-                    !tauriAvailable || busy || itemStatus === option.value
+                    !tauriAvailable ||
+                    busy ||
+                    itemStatus === option.value ||
+                    (option.value === "RECEIVED" && item.quantity > 0)
                   }
                   options={[
                     {
@@ -280,14 +291,40 @@ export function WishlistQueuePanel({
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {canStockItem ? (
-                      <button
-                        type="button"
-                        className={wishlistQueueActionButtonClassName("stock")}
-                        onClick={() => onStockItem(item)}
-                        disabled={!tauriAvailable || busy}
-                      >
-                        {t("inventory.stockRollNow", "Stock roll now")}
-                      </button>
+                      <div className="flex items-end gap-2">
+                        <label className="block">
+                          <span className="sr-only">{t("wishlist.qty", "Qty")}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={Math.max(1, item.quantity)}
+                            value={receiptQuantityRaw}
+                            onChange={(event) =>
+                              setReceiptQuantities((current) => ({
+                                ...current,
+                                [item.id]: event.target.value,
+                              }))
+                            }
+                            className={`w-20 ${formInputChromeClassName}`}
+                            aria-label={t("wishlist.qty", "Qty")}
+                            disabled={!tauriAvailable || busy}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className={wishlistQueueActionButtonClassName("stock")}
+                          onClick={() => {
+                            setReceiptQuantities((current) => ({
+                              ...current,
+                              [item.id]: "1",
+                            }));
+                            onStockItem(item, receiptQuantity);
+                          }}
+                          disabled={!tauriAvailable || busy}
+                        >
+                          {t("inventory.stockRollNow", "Stock roll now")}
+                        </button>
+                      </div>
                     ) : null}
                     <button
                       type="button"

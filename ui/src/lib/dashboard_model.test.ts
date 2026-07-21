@@ -198,6 +198,22 @@ test("buildDashboardDerivedState keeps borrowed rows out of inventory health sco
   assert.equal(result.health.score, 0);
 });
 
+test("buildDashboardDerivedState reports insufficient data for an empty library", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(result.ownershipOnHand.total, 0);
+  assert.equal(result.health.score, null);
+  assert.equal(result.health.headline, "Not enough data");
+  assert.equal(result.health.detail, "Add rolls to start health tracking.");
+});
+
 test("buildDashboardDerivedState localizes daily grams for Norwegian", () => {
   const result = buildDashboardDerivedState({
     overview: overview({ total_consumption_30d: 2352 }),

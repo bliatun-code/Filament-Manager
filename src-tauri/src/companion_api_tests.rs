@@ -2140,6 +2140,147 @@ async fn companion_api_creates_and_updates_wishlist_item() {
         assert!(wishlist_text.contains(format!("\"id\":\"{item_id}\"").as_str()));
         assert!(wishlist_text.contains("\"status\":\"ON_ORDER\""));
 
+        let receive_partial = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"quantity":2}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(receive_partial.status(), StatusCode::OK);
+        let receive_partial_body = to_bytes(receive_partial.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let receive_partial_json: serde_json::Value = serde_json::from_slice(&receive_partial_body)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            receive_partial_json
+                .get("spool_ids")
+                .and_then(|value| value.as_array())
+                .map(Vec::len),
+            Some(2)
+        );
+        assert_eq!(
+            receive_partial_json
+                .get("remaining_quantity")
+                .and_then(|value| value.as_i64()),
+            Some(1)
+        );
+        assert_eq!(
+            receive_partial_json.get("status").and_then(|value| value.as_str()),
+            Some("ON_ORDER")
+        );
+
+        let receive_too_many = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"quantity":2}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(receive_too_many.status(), StatusCode::BAD_REQUEST);
+
+        let receive_final = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"quantity":1}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(receive_final.status(), StatusCode::OK);
+        let receive_final_body = to_bytes(receive_final.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let receive_final_json: serde_json::Value = serde_json::from_slice(&receive_final_body)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            receive_final_json
+                .get("remaining_quantity")
+                .and_then(|value| value.as_i64()),
+            Some(0)
+        );
+        assert_eq!(
+            receive_final_json.get("status").and_then(|value| value.as_str()),
+            Some("RECEIVED")
+        );
+
+        let spools = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools?limit=20")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        let spools_body = to_bytes(spools.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let spools_json: serde_json::Value =
+            serde_json::from_slice(&spools_body).map_err(|error| error.to_string())?;
+        assert_eq!(spools_json.as_array().map(Vec::len), Some(5));
+
+        let wishlist = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/wishlist?limit=10")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let wishlist_json: serde_json::Value =
+            serde_json::from_slice(&wishlist_body).map_err(|error| error.to_string())?;
+        let received_row = wishlist_json
+            .as_array()
+            .and_then(|rows| {
+                rows.iter().find(|row| {
+                    row.get("id").and_then(|value| value.as_str()) == Some(item_id.as_str())
+                })
+            })
+            .ok_or_else(|| "received wishlist row missing".to_string())?;
+        assert_eq!(received_row.get("quantity").and_then(|value| value.as_i64()), Some(0));
+        assert_eq!(
+            received_row.get("status").and_then(|value| value.as_str()),
+            Some("RECEIVED")
+        );
+
         let delete_item = router
             .clone()
             .oneshot(

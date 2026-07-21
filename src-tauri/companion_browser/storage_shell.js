@@ -217,16 +217,34 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               escapeHtml,
               label: t(locale, "storage.onOrder", "On order"),
             })}
-            ${renderCompanionActionButton({
-              disabled: busy,
-              swatch: true,
-              attributes: {
-                "data-action": "wishlist-stock-now",
-                "data-wishlist-id": item.id,
-              },
-              escapeHtml,
-              label: t(locale, "storage.stockNow", "Stock now"),
-            })}
+            ${
+              item.status !== "RECEIVED"
+                ? `<form class="wishlist-receipt-form" data-action="wishlist-stock-form">
+                    <input name="wishlist-id" type="hidden" value="${escapeHtml(item.id)}" />
+                    <label class="wishlist-receipt-quantity">
+                      <span class="sr-only">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>
+                      <input
+                        class="weight-input"
+                        name="received-quantity"
+                        type="number"
+                        min="1"
+                        max="${escapeHtml(String(Math.max(1, Number(item.quantity) || 1)))}"
+                        step="1"
+                        value="1"
+                        aria-label="${escapeHtml(t(locale, "storage.quantity", "Qty"))}"
+                        ${busy ? "disabled" : ""}
+                      />
+                    </label>
+                    ${renderCompanionActionButton({
+                      disabled: busy,
+                      swatch: true,
+                      escapeHtml,
+                      label: t(locale, "storage.stockNow", "Stock now"),
+                      type: "submit",
+                    })}
+                  </form>`
+                : ""
+            }
             ${renderCompanionActionButton({
               variant: "ghost",
               disabled: busy,

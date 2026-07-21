@@ -184,7 +184,7 @@ export const huHUDictionary: DictionaryNode = {
     "activityHint": "Itt jelennek meg először a nyitott kölcsönök és a legutóbbi nyomtatóhasználat.",
     "healthMonitor": "Kövesse az állománypótlást",
     "healthStable": "Stabil ellátás",
-    "noInventoryData": "Nincsenek leltári adatok",
+    "noInventoryData": "Nincs elég adat",
     "syncedFromDb": "Szinkronizálva a helyi DB-ből",
     "healthRestock": "Feltöltés javasolt",
     "synced": "Szinkronizálva",

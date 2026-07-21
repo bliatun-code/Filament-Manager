@@ -115,7 +115,7 @@ export const plPLDictionary: DictionaryNode = {
     "noActivePrinter": "Nie wybrano aktywnej drukarki",
     "noAlerts": "Brak alertów",
     "noBorrowedInStock": "Brak pożyczonych akcji",
-    "noInventoryData": "Brak danych o stanie magazynowym",
+    "noInventoryData": "Za mało danych",
     "noPrintersConfigured": "Nie skonfigurowano żadnych drukarek",
     "noRecentActivity": "Nie ma jeszcze żadnej ostatniej aktywności.",
     "noUsageTrendYet": "Nie ma jeszcze trendu użytkowania",

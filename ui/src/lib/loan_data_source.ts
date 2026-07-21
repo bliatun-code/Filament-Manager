@@ -119,6 +119,14 @@ export async function loadActiveLoanRows(
           .map(mapLoanDetailsToActiveRow);
       } catch (loadError) {
         console.error(loadError);
+        const cached = await fetchCachedLoans().catch(() => null);
+        if (!cached) {
+          throw loadError;
+        }
+        return cached.rows
+          .map(normalizeLoanDetailsRow)
+          .filter(isActiveOutboundLoan)
+          .map(mapLoanDetailsToActiveRow);
       }
     }
     const cached = await fetchCachedLoans().catch(() => null);

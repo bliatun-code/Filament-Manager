@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type ActivityItem } from "../components/dashboard_widgets";
 import { parseDateTime } from "../lib/date_time";
 import {
@@ -8,6 +8,7 @@ import {
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
 import { formatDashboardSyncTime } from "../lib/dashboard_sync_time";
+import { usePageRefreshState } from "../lib/page_refresh_state";
 import { isTauri, type TrustedLanCompanionStatus } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -80,8 +81,8 @@ function createEmptyActivity(t: TranslateFn): ActivityItem[] {
 
 function createDefaultHealth(t: TranslateFn): DashboardHealth {
   return {
-    score: 100,
-    headline: t("dashboard.noInventoryData", "No inventory data"),
+    score: null,
+    headline: t("dashboard.noInventoryData", "Not enough data"),
     detail: t("dashboard.addRollsForHealth", "Add rolls to start health tracking."),
     metrics: [
       {
@@ -114,6 +115,15 @@ function createDefaultHealth(t: TranslateFn): DashboardHealth {
 
 export function useDashboardPageData(t: TranslateFn, locale: string) {
   const tauri = isTauri();
+  const refreshInFlightRef = useRef(false);
+  const {
+    beginRefresh,
+    completeRefresh,
+    error,
+    failRefresh,
+    loading,
+    refreshing,
+  } = usePageRefreshState(tauri);
   const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
     () => cachedGoalMetrics ?? createDefaultGoalMetrics(),
   );
@@ -144,58 +154,80 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
 
   const refreshDashboard = useCallback(
     async (cancelledRef?: { current: boolean }) => {
-      if (!tauri) {
-        return;
+      if (!tauri || refreshInFlightRef.current) {
+        return true;
       }
-      const loaded = await loadDashboardData({
-        previousClientHostNeedsRepair: clientHostNeedsRepair,
-        t,
-      });
-      if (cancelledRef?.current) {
-        return;
-      }
+      refreshInFlightRef.current = true;
+      beginRefresh();
+      try {
+        const loaded = await loadDashboardData({
+          previousClientHostNeedsRepair: clientHostNeedsRepair,
+          t,
+        });
+        if (cancelledRef?.current) {
+          return true;
+        }
 
-      setDashboardSyncMode(loaded.syncMode);
-      setCompanionStatus(loaded.trustedLan);
-      setClientHostCompanionTone(loaded.clientHostCompanionTone);
-      setClientHostDisplayName(loaded.clientHostDisplayName);
-      setClientHostNeedsRepair(loaded.clientHostNeedsRepair);
-      setStats(loaded.derived.stats);
-      setActivity(loaded.derived.activity);
-      setUsagePoints(loaded.derived.usagePoints);
-      setOwnershipOnHand(loaded.derived.ownershipOnHand);
-      setOwnershipLowStock(loaded.derived.ownershipLowStock);
-      cachedGoalMetrics = loaded.derived.goalMetrics;
-      setGoalMetrics(cachedGoalMetrics);
-      setHealth(loaded.derived.health);
+        setDashboardSyncMode(loaded.syncMode);
+        setCompanionStatus(loaded.trustedLan);
+        setClientHostCompanionTone(loaded.clientHostCompanionTone);
+        setClientHostDisplayName(loaded.clientHostDisplayName);
+        setClientHostNeedsRepair(loaded.clientHostNeedsRepair);
+        setStats(loaded.derived.stats);
+        setActivity(loaded.derived.activity);
+        setUsagePoints(loaded.derived.usagePoints);
+        setOwnershipOnHand(loaded.derived.ownershipOnHand);
+        setOwnershipLowStock(loaded.derived.ownershipLowStock);
+        cachedGoalMetrics = loaded.derived.goalMetrics;
+        setGoalMetrics(cachedGoalMetrics);
+        setHealth(loaded.derived.health);
 
-      if (loaded.syncSource !== "local") {
-        const capturedAt = parseDateTime(loaded.capturedAt);
-        const sourceLabel = t(
-          loaded.syncSource === "client-live"
-            ? "dashboard.clientSnapshotSyncedLive"
-            : loaded.syncSource === "client-cached"
-              ? "dashboard.clientSnapshotSyncedCached"
-              : "dashboard.clientSnapshotOffline",
-          loaded.syncSource === "client-live"
-            ? "Live host snapshot"
-            : loaded.syncSource === "client-cached"
-              ? "Cached host snapshot"
-              : "Host snapshot unavailable",
-        );
-        const timeLabel = capturedAt
-          ? formatDashboardSyncTime(capturedAt, locale)
-          : loaded.capturedAt;
-        setLastSyncLabel(
-          timeLabel ? `${sourceLabel} ${timeLabel}` : sourceLabel,
-        );
-        return;
+        if (loaded.syncSource !== "local") {
+          const capturedAt = parseDateTime(loaded.capturedAt);
+          const sourceLabel = t(
+            loaded.syncSource === "client-live"
+              ? "dashboard.clientSnapshotSyncedLive"
+              : loaded.syncSource === "client-cached"
+                ? "dashboard.clientSnapshotSyncedCached"
+                : "dashboard.clientSnapshotOffline",
+            loaded.syncSource === "client-live"
+              ? "Live host snapshot"
+              : loaded.syncSource === "client-cached"
+                ? "Cached host snapshot"
+                : "Host snapshot unavailable",
+          );
+          const timeLabel = capturedAt
+            ? formatDashboardSyncTime(capturedAt, locale)
+            : loaded.capturedAt;
+          setLastSyncLabel(timeLabel ? `${sourceLabel} ${timeLabel}` : sourceLabel);
+        } else {
+          setLastSyncLabel(
+            `${t("dashboard.synced", "Synced")} ${formatDashboardSyncTime(new Date(), locale)}`,
+          );
+        }
+        completeRefresh();
+        return true;
+      } catch (loadError) {
+        console.error(loadError);
+        if (!cancelledRef?.current) {
+          failRefresh(
+            t("errors.requestFailed", "The request could not be completed."),
+          );
+        }
+        return false;
+      } finally {
+        refreshInFlightRef.current = false;
       }
-      setLastSyncLabel(
-        `${t("dashboard.synced", "Synced")} ${formatDashboardSyncTime(new Date(), locale)}`,
-      );
     },
-    [clientHostNeedsRepair, locale, tauri, t],
+    [
+      beginRefresh,
+      clientHostNeedsRepair,
+      completeRefresh,
+      failRefresh,
+      locale,
+      tauri,
+      t,
+    ],
   );
 
   useEffect(() => {
@@ -217,19 +249,14 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         retryTimeout = null;
       }
       loading = true;
-      try {
-        await refreshDashboard(cancelledRef);
-      } catch (error) {
-        console.error(error);
-        if (!cancelledRef.current) {
-          retryTimeout = window.setTimeout(() => {
-            retryTimeout = null;
-            void runRefresh();
-          }, DASHBOARD_RETRY_DELAY_MS);
-        }
-      } finally {
-        loading = false;
+      const succeeded = await refreshDashboard(cancelledRef);
+      if (!succeeded && !cancelledRef.current) {
+        retryTimeout = window.setTimeout(() => {
+          retryTimeout = null;
+          void runRefresh();
+        }, DASHBOARD_RETRY_DELAY_MS);
       }
+      loading = false;
     };
 
     const handleFocus = () => {
@@ -291,11 +318,16 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     clientHostNeedsRepair,
     companionStatus,
     dashboardSyncMode,
+    error,
     goalMetrics,
     health,
     lastSyncLabel,
+    loading,
     ownershipLowStock,
     ownershipOnHand,
+    refreshAvailable: tauri,
+    refreshDashboard,
+    refreshing,
     stats,
     usagePoints,
   };

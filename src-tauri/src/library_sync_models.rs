@@ -217,6 +217,14 @@ pub(crate) struct LibrarySyncUpdateWishlistStatusInput {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct LibrarySyncReceiveWishlistItemInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) item_id: String,
+    pub(crate) quantity: i64,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct LibrarySyncDeleteWishlistItemInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,

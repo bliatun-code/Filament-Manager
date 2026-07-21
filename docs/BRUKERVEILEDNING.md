@@ -92,6 +92,9 @@ Den viser blant annet:
 - fremdriftsmål og statusblokker når relevant
 
 Oversikt er ment som en rask temperaturmåling, ikke som stedet for detaljstyring.
+Når biblioteket ennå ikke har ruller, viser lagerhelsen **Ikke nok data** i
+stedet for en misvisende prosent. Bruk **Legg til filament** i panelet for å
+åpne den vanlige registreringsflyten i Lager.
 
 ### Lager
 
@@ -372,10 +375,12 @@ Statusene brukes slik:
 
 Du kan legge gjeldende katalogvalg i ønskelisten fra Legg til filament. Når varen senere faktisk skal inn i lageret, registrerer du den som en fysisk rull med riktig vekt og plassering. Ønskelisten er planlegging og innkjøpsoppfølging; lageret er beholdningen du faktisk kan bruke.
 
-Bruk statusfanene for å avgrense køen, søkefeltet for å finne et planlagt kjøp
-etter navn, farge eller leverandør, og **Lagerfør rull nå** når en bestilt vare
-kommer. **Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en
-lagerrull.
+Bruk statusfanene for å avgrense køen og søkefeltet for å finne et planlagt kjøp
+etter navn, farge eller leverandør. Når en bestilling kommer, velger du hvor mange
+ruller som ble mottatt og trykker **Lagerfør rull nå**. Programmet oppretter
+akkurat dette antallet fysiske ruller, reduserer gjenstående antall og markerer
+ønskelisteraden som Mottatt først når ingenting gjenstår. **Fjern** sletter bare
+ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
 
 ### Mangler filamentet?
 

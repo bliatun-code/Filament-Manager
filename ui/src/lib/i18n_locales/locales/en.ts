@@ -133,7 +133,7 @@ export const enDictionary: DictionaryNode = {
       healthMonitor: "Monitor restock",
       healthRestock: "Restock recommended",
       healthBalanceHint: "Watch low stock, loans, orders, and loaded slots together.",
-      noInventoryData: "No inventory data",
+      noInventoryData: "Not enough data",
       addRollsForHealth: "Add rolls to start health tracking.",
       syncedFromDb: "Synced from local DB",
       synced: "Synced",

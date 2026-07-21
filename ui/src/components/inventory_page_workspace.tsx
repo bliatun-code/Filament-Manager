@@ -21,6 +21,7 @@ type InventoryPageWorkspaceProps = {
   error: string | null;
   headerActionsProps: ComponentProps<typeof InventoryHeaderActions>;
   infoMessage: string | null;
+  loadError: string | null;
   showRollModal: boolean;
 };
 
@@ -36,6 +37,7 @@ export function InventoryPageWorkspace({
   error,
   headerActionsProps,
   infoMessage,
+  loadError,
   showRollModal,
 }: InventoryPageWorkspaceProps) {
   const { locale, t } = useI18n();
@@ -60,6 +62,12 @@ export function InventoryPageWorkspace({
       {error && !addModalActive ? (
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
+        </FeedbackBanner>
+      ) : null}
+
+      {loadError ? (
+        <FeedbackBanner tone="danger" className="mt-4">
+          {loadError}
         </FeedbackBanner>
       ) : null}
 

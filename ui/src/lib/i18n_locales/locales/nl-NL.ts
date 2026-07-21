@@ -115,7 +115,7 @@ export const nlNLDictionary: DictionaryNode = {
     "noActivePrinter": "Geen actieve printer geselecteerd",
     "noAlerts": "Geen waarschuwingen",
     "noBorrowedInStock": "Geen geleende voorraad",
-    "noInventoryData": "Geen inventarisgegevens",
+    "noInventoryData": "Onvoldoende gegevens",
     "noPrintersConfigured": "Geen printers geconfigureerd",
     "noRecentActivity": "Nog geen recente activiteit.",
     "noUsageTrendYet": "Nog geen gebruikstrend",

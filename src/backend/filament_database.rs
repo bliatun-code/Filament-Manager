@@ -21,7 +21,7 @@ pub use super::database_spool_models::{
 #[cfg(test)]
 pub use super::database_tables::{FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES};
 pub use super::database_trusted_lan_models::{TrustedLanPairedBrowserRow, TrustedLanSettingsRow};
-pub use super::database_wishlist_models::WishlistItemRow;
+pub use super::database_wishlist_models::{WishlistItemRow, WishlistReceiptResult};
 pub use super::filament_master_models::FilamentMasterCatalogRow;
 #[cfg(test)]
 pub use super::filament_master_models::FilamentMasterSummary;

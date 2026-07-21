@@ -115,7 +115,7 @@ export const ukUADictionary: DictionaryNode = {
     "noActivePrinter": "Не вибрано жодного активного принтера",
     "noAlerts": "Немає сповіщень",
     "noBorrowedInStock": "Немає запозичених запасів",
-    "noInventoryData": "Немає даних інвентаризації",
+    "noInventoryData": "Недостатньо даних",
     "noPrintersConfigured": "Принтери не налаштовані",
     "noRecentActivity": "Останніх дій ще немає.",
     "noUsageTrendYet": "Тенденції використання ще немає",

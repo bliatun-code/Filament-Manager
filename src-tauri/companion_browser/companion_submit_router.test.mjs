@@ -93,6 +93,25 @@ test("submit router dispatches wishlist creation payloads", () => {
   ]);
 });
 
+test("submit router dispatches wishlist receipt quantity", () => {
+  const calls = [];
+  const handled = routeCompanionSubmitAction(
+    "wishlist-stock-form",
+    createData({
+      "wishlist-id": "wish-7",
+      "received-quantity": "3",
+    }),
+    {
+      submitWishlistStock(...args) {
+        calls.push(args);
+      },
+    },
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(calls, [["wish-7", "3"]]);
+});
+
 test("submit router shares the same return handler for history and detail return forms", () => {
   const calls = [];
   const handlers = {

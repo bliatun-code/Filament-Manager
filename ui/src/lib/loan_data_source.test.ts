@@ -184,6 +184,32 @@ test("loadActiveLoanRows falls back to cached client loans when live host loans 
   }
 });
 
+test("loadActiveLoanRows reports a host failure when no cached snapshot exists", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    await assert.rejects(
+      () =>
+        loadActiveLoanRows(
+          {
+            clientReadOnly: true,
+            clientHostBaseUrl: "http://host",
+            clientLibraryId: "library-1",
+          },
+          {
+            fetchHostLoans: async () => {
+              throw new Error("host unavailable");
+            },
+            fetchCachedLoans: async () => null,
+          },
+        ),
+      /host unavailable/,
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
 test("loadActiveLoanRows loads local active loans outside client mode", async () => {
   const rows = await loadActiveLoanRows(
     { clientReadOnly: false },

@@ -351,7 +351,7 @@ export const ruRUDictionary: DictionaryNode = {
     "healthMonitor": "Монитор пополнения запасов",
     "healthStable": "Стабильные поставки",
     "amsLoaded": "слоты загружены",
-    "noInventoryData": "Нет данных о запасах",
+    "noInventoryData": "Недостаточно данных",
     "healthRestock": "Рекомендуется пополнить запасы",
     "addRollsForHealth": "Добавьте броски, чтобы начать отслеживать здоровье.",
     "healthBalanceHint": "Наблюдайте за низкими запасами, кредитами, заказами и загруженными слотами вместе.",

@@ -61,7 +61,8 @@ Release notes:
 
 - Inventory for owned and borrowed-in filament spools.
 - Add filament flow for Bambu, eSUN, generic/manual entries, Bambu Filament
-  Code lookup, manual Bambu code batch entry, and wishlist/order planning.
+  Code lookup, manual Bambu code batch entry, and quantity-aware wishlist/order
+  receipt with partial deliveries.
 - Loan tracking for outgoing loans and borrowed-in spools, including returns and
   CSV export.
 - Printer profiles for Bambu AMS, Prusa MMU3, Prusa XL toolheads, and

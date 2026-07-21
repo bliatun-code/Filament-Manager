@@ -115,7 +115,7 @@ export const zhTWDictionary: DictionaryNode = {
     "noActivePrinter": "未選擇活動印表機",
     "noAlerts": "無警報",
     "noBorrowedInStock": "沒有借入的庫存",
-    "noInventoryData": "無庫存數據",
+    "noInventoryData": "資料不足",
     "noPrintersConfigured": "沒有配置印表機",
     "noRecentActivity": "最近還沒有活動。",
     "noUsageTrendYet": "尚無使用趨勢",

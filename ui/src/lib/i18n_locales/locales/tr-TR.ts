@@ -115,7 +115,7 @@ export const trTRDictionary: DictionaryNode = {
     "noActivePrinter": "Aktif yazıcı seçilmedi",
     "noAlerts": "Uyarı yok",
     "noBorrowedInStock": "Ödünç alınan stok yok",
-    "noInventoryData": "Envanter verisi yok",
+    "noInventoryData": "Yeterli veri yok",
     "noPrintersConfigured": "Yapılandırılmış yazıcı yok",
     "noRecentActivity": "Henüz yeni bir etkinlik yok.",
     "noUsageTrendYet": "Henüz bir kullanım eğilimi yok",

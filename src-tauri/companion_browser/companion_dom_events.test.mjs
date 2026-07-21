@@ -61,6 +61,7 @@ function createBaseOptions(overrides = {}) {
     submitSpoolLoan() {},
     submitSpoolLoanReturn() {},
     submitManualSpoolRegistration() {},
+    submitWishlistCreate() {},
     submitWishlistStatus() {},
     submitWishlistStock() {},
     submitWishlistDelete() {},

@@ -95,6 +95,18 @@ test("wishlist queue renders local search, result count, and named status groups
   assert.match(html, />1 item</);
   assert.match(html, /aria-label="Wishlist status filter"/);
   assert.match(html, /aria-label="Status for [^"]*Ocean[^"]*Teal"/);
+  assert.match(html, /<input[^>]*type="number"[^>]*min="1"[^>]*max="3"/);
+  assert.match(html, /aria-label="Qty"/);
+  assert.match(html, />Stock roll now<\/button>/);
+  assert.match(html, /aria-pressed="false" disabled=""[^>]*><span>Received<\/span>/);
+});
+
+test("wishlist queue hides receipt controls for fully received rows", () => {
+  const item = wishlistItem({ status: "RECEIVED", quantity: 0 });
+  const html = renderPanel({ items: [item] });
+
+  assert.doesNotMatch(html, /type="number"/);
+  assert.doesNotMatch(html, />Stock roll now<\/button>/);
 });
 
 test("wishlist removal confirmation stays inline with danger confirm and cancel", () => {

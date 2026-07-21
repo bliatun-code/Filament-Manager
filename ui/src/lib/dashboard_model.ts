@@ -52,7 +52,7 @@ export type DashboardHealthMetric = {
 };
 
 export type DashboardHealth = {
-  score: number;
+  score: number | null;
   headline: string;
   detail: string;
   metrics: DashboardHealthMetric[];
@@ -372,16 +372,27 @@ export function buildDashboardDerivedState(params: {
     const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? row.spool.initial_weight_g ?? 0;
     return remaining >= LOW_STOCK_GRAMS;
   }).length;
-  const healthScore = onHandTotal === 0 ? 100 : Math.min(100, Math.round((healthySpools / onHandTotal) * 100));
+  const healthScore =
+    onHandTotal === 0
+      ? null
+      : Math.min(100, Math.round((healthySpools / onHandTotal) * 100));
   const health: DashboardHealth = {
     score: healthScore,
     headline:
-      healthScore >= 90
-        ? t("dashboard.healthStable", "Stable supply")
-        : healthScore >= 70
-          ? t("dashboard.healthMonitor", "Monitor restock")
-          : t("dashboard.healthRestock", "Restock recommended"),
-    detail: t("dashboard.healthBalanceHint", "Watch low stock, loans, orders, and loaded slots together."),
+      healthScore === null
+        ? t("dashboard.noInventoryData", "Not enough data")
+        : healthScore >= 90
+          ? t("dashboard.healthStable", "Stable supply")
+          : healthScore >= 70
+            ? t("dashboard.healthMonitor", "Monitor restock")
+            : t("dashboard.healthRestock", "Restock recommended"),
+    detail:
+      healthScore === null
+        ? t("dashboard.addRollsForHealth", "Add rolls to start health tracking.")
+        : t(
+            "dashboard.healthBalanceHint",
+            "Watch low stock, loans, orders, and loaded slots together.",
+          ),
     metrics: [
       {
         id: "lowStock",

@@ -127,7 +127,7 @@ export const ptBRDictionary: DictionaryNode = {
     noActivePrinter: "Nenhuma impressora ativa selecionada",
     noAlerts: "Sem alertas",
     noBorrowedInStock: "Sem estoque emprestado",
-    noInventoryData: "Não há dados de inventário",
+    noInventoryData: "Dados insuficientes",
     noPrintersConfigured: "Nenhuma impressora configurada",
     noRecentActivity: "Nenhuma atividade recente ainda.",
     noUsageTrendYet: "Nenhuma tendência de uso ainda",

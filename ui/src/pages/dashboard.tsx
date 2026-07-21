@@ -5,7 +5,9 @@ import {
   StatCard,
   UsageChart,
 } from "../components/dashboard_widgets";
+import { FeedbackBanner } from "../components/feedback_banner";
 import { PageHeaderButton } from "../components/page_header_button";
+import { PageRefreshButton } from "../components/page_refresh_button";
 import {
   buildDashboardBadges,
   buildDashboardCompanionPresentation,
@@ -20,12 +22,14 @@ import type { PageKey } from "../lib/app_navigation_model";
 
 type DashboardPageProps = {
   onNavigate?: (page: PageKey) => void;
+  onAddFirstSpool?: () => void;
   onOpenLowStock?: () => void;
   onOpenCompanionSettings?: () => void;
 };
 
 export default function DashboardPage({
   onNavigate,
+  onAddFirstSpool,
   onOpenLowStock,
   onOpenCompanionSettings,
 }: DashboardPageProps) {
@@ -37,11 +41,16 @@ export default function DashboardPage({
     clientHostNeedsRepair,
     companionStatus,
     dashboardSyncMode,
+    error,
     goalMetrics,
     health,
     lastSyncLabel,
+    loading,
     ownershipLowStock,
     ownershipOnHand,
+    refreshAvailable,
+    refreshDashboard,
+    refreshing,
     stats,
     usagePoints,
   } = useDashboardPageData(t, locale);
@@ -89,6 +98,12 @@ export default function DashboardPage({
           </div>
         </div>
         <div className="flex items-center gap-3 xl:pt-1">
+          <PageRefreshButton
+            disabled={!refreshAvailable || loading}
+            label={t("common.refresh", "Refresh")}
+            onRefresh={() => void refreshDashboard()}
+            refreshing={refreshing}
+          />
           <PageHeaderButton
             onClick={() => onOpenCompanionSettings?.()}
             className="gap-2"
@@ -104,6 +119,12 @@ export default function DashboardPage({
           </div>
         </div>
       </div>
+
+      {error ? (
+        <FeedbackBanner tone="danger" className="mt-4">
+          {error}
+        </FeedbackBanner>
+      ) : null}
 
       <div className="mt-8 grid grid-cols-1 gap-4 min-[720px]:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
@@ -147,7 +168,11 @@ export default function DashboardPage({
 
       <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1fr]">
         <ActivityTimeline items={activity} />
-        <InventoryHealthPanel health={health} t={t} />
+        <InventoryHealthPanel
+          health={health}
+          onAddFirstSpool={onAddFirstSpool}
+          t={t}
+        />
       </div>
 
       <div className="mt-8">

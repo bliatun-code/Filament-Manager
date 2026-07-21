@@ -127,7 +127,7 @@ export const itITDictionary: DictionaryNode = {
     noActivePrinter: "Nessuna stampante attiva selezionata",
     noAlerts: "Nessun avviso",
     noBorrowedInStock: "Nessun titolo preso in prestito",
-    noInventoryData: "Nessun dato di inventario",
+    noInventoryData: "Dati insufficienti",
     noPrintersConfigured: "Nessuna stampante configurata",
     noRecentActivity: "Nessuna attività recente ancora.",
     noUsageTrendYet: "Nessuna tendenza di utilizzo ancora",

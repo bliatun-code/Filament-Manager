@@ -349,7 +349,7 @@ export const daDKDictionary: DictionaryNode = {
     "lowStockShort": "lavt lager",
     "amsLoaded": "sæder fyldt",
     "onOrder": "at bestille",
-    "noInventoryData": "Ingen lagerdata",
+    "noInventoryData": "Ikke nok data",
     "healthRestock": "Refill anbefales",
     "healthStable": "Stabil forsyning",
     "healthMonitor": "Overvåg genopfyldning",

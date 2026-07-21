@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
+import { PageRefreshButton } from "../components/page_refresh_button";
 import { formatDateTime } from "../lib/date_time";
 import {
   DESKTOP_VISUAL_QA_BORROWER_NAME,
@@ -84,6 +85,8 @@ export default function StatisticsPage() {
     overview,
     overviewConsumptionRows,
     printers,
+    refreshing,
+    reloadData,
     spoolRows,
   } = useStatisticsPageData({ tauri, t });
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
@@ -386,6 +389,16 @@ export default function StatisticsPage() {
               "Track printer activity, filament usage and loan consumption in one place.",
             )}
           </p>
+        </div>
+        <div className="page-header-actions">
+          <div className="page-header-tools">
+            <PageRefreshButton
+              disabled={!tauri || loading}
+              label={t("common.refresh", "Refresh")}
+              onRefresh={() => void reloadData()}
+              refreshing={refreshing}
+            />
+          </div>
         </div>
       </div>
 

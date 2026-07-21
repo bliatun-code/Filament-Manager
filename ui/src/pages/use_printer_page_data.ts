@@ -6,6 +6,7 @@ import {
 } from "../lib/printer_data_source";
 import { loadCatalogMasters } from "../lib/catalog_data_source";
 import { sortPrinterSlotsExtLast } from "../lib/printer_profiles";
+import { usePageRefreshState } from "../lib/page_refresh_state";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import type {
   BambuLiveIntegrationEntry,
@@ -20,12 +21,13 @@ type UsePrinterPageDataInput = {
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   supportedPrinterModels: string[];
-  onLoadError: (error: unknown) => void;
+  loadErrorMessage: string;
   onInteractiveReload: () => void;
 };
 
 export type UsePrinterPageDataResult = {
   loading: boolean;
+  loadError: string | null;
   printers: PrinterOverviewRow[];
   spools: NormalizedSpoolWithMasterRow[];
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
@@ -33,6 +35,7 @@ export type UsePrinterPageDataResult = {
   clientPrinterSource: PrinterSnapshotSource;
   clientPrinterUpdatedAt: string | null;
   printerModels: string[];
+  refreshing: boolean;
   reloadData: (options?: { silent?: boolean }) => Promise<void>;
 };
 
@@ -43,10 +46,17 @@ export function usePrinterPageData({
   clientHostBaseUrl,
   clientLibraryId,
   supportedPrinterModels,
-  onLoadError,
+  loadErrorMessage,
   onInteractiveReload,
 }: UsePrinterPageDataInput): UsePrinterPageDataResult {
-  const [loading, setLoading] = useState(tauri);
+  const {
+    beginRefresh,
+    completeRefresh,
+    error: loadError,
+    failRefresh,
+    loading,
+    refreshing,
+  } = usePageRefreshState(tauri);
   const [printers, setPrinters] = useState<PrinterOverviewRow[]>([]);
   const [spools, setSpools] = useState<NormalizedSpoolWithMasterRow[]>([]);
   const [bambuLiveIntegrations, setBambuLiveIntegrations] = useState<
@@ -65,9 +75,7 @@ export function usePrinterPageData({
       return;
     }
     reloadInFlightRef.current = true;
-    if (!options?.silent) {
-      setLoading(true);
-    }
+    beginRefresh();
     try {
       const loaded = await loadPrinterPageData({
         clientReadOnly,
@@ -87,8 +95,6 @@ export function usePrinterPageData({
           setCatalogMasters(loadedCatalogMasters);
         } catch (catalogLoadError) {
           console.warn("Failed to load master catalog for printer assistance.", catalogLoadError);
-          catalogLoadedRef.current = true;
-          setCatalogMasters([]);
         }
       }
       setClientPrinterSource(loaded.source);
@@ -105,20 +111,22 @@ export function usePrinterPageData({
       if (!options?.silent) {
         onInteractiveReload();
       }
+      completeRefresh();
     } catch (loadError) {
-      onLoadError(loadError);
+      console.error(loadError);
+      failRefresh(loadErrorMessage);
     } finally {
       reloadInFlightRef.current = false;
-      if (!options?.silent) {
-        setLoading(false);
-      }
     }
   }, [
+    beginRefresh,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    completeRefresh,
+    failRefresh,
+    loadErrorMessage,
     onInteractiveReload,
-    onLoadError,
     supportedPrinterModels,
     tauri,
   ]);
@@ -142,6 +150,7 @@ export function usePrinterPageData({
 
   return {
     loading,
+    loadError,
     printers,
     spools,
     bambuLiveIntegrations,
@@ -149,6 +158,7 @@ export function usePrinterPageData({
     clientPrinterSource,
     clientPrinterUpdatedAt,
     printerModels,
+    refreshing,
     reloadData,
   };
 }

@@ -69,11 +69,15 @@ export default function InventoryPage({
     clientInventoryUpdatedAt,
     clientLibraryId,
     clientReadOnly,
+    completeDataLoad,
     historyLoading,
     historyRows,
     librarySyncReady,
+    loadError,
     loading,
     printerOverview,
+    refreshInventoryData,
+    refreshing,
     reloadActiveLoans,
     reloadPrinterOverview,
     reloadSpoolDetail,
@@ -82,7 +86,6 @@ export default function InventoryPage({
     setBambuLiveIntegrations,
     setHistoryLoading,
     setHistoryRows,
-    setLoading,
     setPrinterOverview,
     setSpools,
     setUsageLoading,
@@ -93,7 +96,6 @@ export default function InventoryPage({
     wishlistItems,
     wishlistLoading,
   } = useInventoryPageData({
-    setError,
     setRfidCaptureFieldsBySlotId,
     tauriAvailable: tauri,
     t,
@@ -178,8 +180,6 @@ export default function InventoryPage({
     error,
     infoMessage,
     librarySyncReady,
-    reloadActiveLoans,
-    reloadPrinterOverview,
     reloadSpools,
     reloadWishlist,
     resolvedTheme,
@@ -200,14 +200,33 @@ export default function InventoryPage({
   };
 
   useEffect(() => {
-    if (navigationIntent?.kind !== "LOW_STOCK") {
+    if (!tauri || !librarySyncReady) {
       return;
     }
-    showLowStockList();
+    void refreshInventoryData({ reloadCatalog });
+  }, [librarySyncReady, refreshInventoryData, reloadCatalog, tauri]);
+
+  const refreshInventoryPage = useCallback(() => {
+    void refreshInventoryData({
+      reloadCatalog,
+      selectedSpoolId: showRollModal ? selectedSpoolId : null,
+    });
+  }, [refreshInventoryData, reloadCatalog, selectedSpoolId, showRollModal]);
+
+  useEffect(() => {
+    if (!navigationIntent) {
+      return;
+    }
+    if (navigationIntent.kind === "LOW_STOCK") {
+      showLowStockList();
+    } else if (navigationIntent.kind === "ADD_SPOOL") {
+      openAddModal();
+    }
     onConsumeNavigationIntent?.();
-  }, [navigationIntent, onConsumeNavigationIntent, showLowStockList]);
+  }, [navigationIntent, onConsumeNavigationIntent, openAddModal, showLowStockList]);
 
   useInventoryDetailVisualFixture({
+    completeDataLoad,
     detailVisualFixture,
     resetFilters,
     setBambuLiveIntegrations,
@@ -215,7 +234,6 @@ export default function InventoryPage({
     setHistoryLoading,
     setHistoryRows,
     setInfoMessage,
-    setLoading,
     setMasters,
     setPrinterOverview,
     setRfidCaptureFieldsBySlotId,
@@ -1005,14 +1023,18 @@ export default function InventoryPage({
           visibleInventoryCount,
         }}
         error={error}
+        loadError={loadError}
         headerActionsProps={{
           lowStockOnly,
           onAddSpool: () => openAddModal(),
           onLoanOutRoll: openLoanTrackingModal,
+          onRefresh: refreshInventoryPage,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,
           primaryActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
+          refreshDisabled: !tauri || loading || manageBusy,
+          refreshing,
           search,
           statusFilter,
         }}

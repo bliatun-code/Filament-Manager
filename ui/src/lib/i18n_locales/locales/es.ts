@@ -159,7 +159,7 @@ export const esDictionary: DictionaryNode = {
     lowStockShort: "stock bajo",
     lowest: "mínimo",
     noActivePrinter: "No se seleccionó ninguna impresora activa",
-    noInventoryData: "Sin datos de inventario",
+    noInventoryData: "Datos insuficientes",
     noPrintersConfigured: "No hay impresoras configuradas",
     noUsageTrendYet: "Aún no hay tendencia de uso",
     onOrder: "en orden",

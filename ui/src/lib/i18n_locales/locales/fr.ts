@@ -137,7 +137,7 @@ export const frDictionary: DictionaryNode = {
     healthRestock: "Réapprovisionnement conseillé",
     healthBalanceHint:
       "Surveillez ensemble les stocks faibles, les prêts, les commandes et les emplacements chargés.",
-    noInventoryData: "Aucune donnée de stock",
+    noInventoryData: "Données insuffisantes",
     addRollsForHealth: "Ajoutez des bobines pour démarrer le suivi du stock.",
     syncedFromDb: "Synchronisé depuis la base locale",
     synced: "Synchronisé",

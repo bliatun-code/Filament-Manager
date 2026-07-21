@@ -133,7 +133,7 @@ export const nbDictionary: DictionaryNode = {
       healthMonitor: "Følg med på påfyll",
       healthRestock: "Påfyll anbefales",
       healthBalanceHint: "Følg lav beholdning, utlån, bestillinger og lastede spor samlet.",
-      noInventoryData: "Ingen lagerdata",
+      noInventoryData: "Ikke nok data",
       addRollsForHealth: "Legg til filamenter for å starte lagerhelse-sporing.",
       syncedFromDb: "Synkronisert fra lokal database",
       synced: "Synkronisert",

@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import type { InventorySpool } from "./inventory_list_model";
 import type { OwnershipType } from "./inventory_list_model";
 import type { RfidCaptureField } from "./inventory_rfid_capture";
@@ -54,9 +54,11 @@ export function useInventorySelectedSpoolDetailState({
   const [selectedSpoolOwnershipNoteDraft, setSelectedSpoolOwnershipNoteDraft] = useState("");
   const [showRfidCapturedFields, setShowRfidCapturedFields] = useState(false);
   const [showRollHistory, setShowRollHistory] = useState(false);
+  const detailSpoolIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!selectedSpool) {
+      detailSpoolIdRef.current = null;
       setMasterEditUnlocked(false);
       setEditMasterVendor("");
       setEditMasterMaterial("");
@@ -79,6 +81,12 @@ export function useInventorySelectedSpoolDetailState({
       setRfidCaptureLoading(false);
       closeRollModal();
       return;
+    }
+
+    if (detailSpoolIdRef.current !== selectedSpool.id) {
+      setHistoryRows([]);
+      setUsagePoints([]);
+      detailSpoolIdRef.current = selectedSpool.id;
     }
 
     setMasterEditUnlocked(false);

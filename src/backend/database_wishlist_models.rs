@@ -14,3 +14,11 @@ pub struct WishlistItemRow {
     pub created_at: String,
     pub updated_at: String,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct WishlistReceiptResult {
+    pub spool_ids: Vec<String>,
+    pub received_quantity: i64,
+    pub remaining_quantity: i64,
+    pub status: String,
+}

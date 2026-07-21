@@ -134,7 +134,7 @@ export const deDictionary: DictionaryNode = {
     healthMonitor: "Nachbestellung beobachten",
     healthRestock: "Nachbestellung empfohlen",
     healthBalanceHint: "Niedrige Bestände, Ausleihen, Bestellungen und belegte Plätze gemeinsam prüfen.",
-    noInventoryData: "Keine Bestandsdaten",
+    noInventoryData: "Nicht genügend Daten",
     addRollsForHealth: "Füge Rollen hinzu, um die Bestandsüberwachung zu starten.",
     syncedFromDb: "Mit lokaler Datenbank synchronisiert",
     synced: "Synchronisiert",

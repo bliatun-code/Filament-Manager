@@ -349,7 +349,7 @@ export const svSEDictionary: DictionaryNode = {
     "lowStockShort": "lågt lager",
     "amsLoaded": "platser laddade",
     "onOrder": "på beställning",
-    "noInventoryData": "Inga lagerdata",
+    "noInventoryData": "Inte tillräckligt med data",
     "healthRestock": "Rekommenderas påfyllning",
     "healthStable": "Stabil försörjning",
     "healthMonitor": "Övervaka påfyllning",

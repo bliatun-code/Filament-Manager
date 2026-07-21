@@ -349,7 +349,7 @@ export const fiFIDictionary: DictionaryNode = {
     "lowStockShort": "alhainen varasto",
     "amsLoaded": "istuimet täynnä",
     "onOrder": "tilata",
-    "noInventoryData": "Ei varastotietoja",
+    "noInventoryData": "Ei tarpeeksi tietoja",
     "healthRestock": "Täyttö suositellaan",
     "healthStable": "Vakaa tarjonta",
     "healthMonitor": "Monitorin täydennys",

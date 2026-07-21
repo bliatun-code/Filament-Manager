@@ -2,14 +2,15 @@ use crate::app_services::CompanionSpoolDetail;
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationRow, FilamentDatabase, FilamentMasterCatalogRow,
     LibrarySyncSettingsRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
-    WishlistItemRow,
+    WishlistItemRow, WishlistReceiptResult,
 };
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput,
-    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
-    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, ReceiveWishlistItemInput,
+    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
+    UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine};
 use crate::catalog_commands::CatalogRefreshResult;
@@ -1032,6 +1033,28 @@ pub(super) async fn handle_update_wishlist_item_status(
         ok: true,
         message: "Wishlist status updated".to_string(),
     }))
+}
+
+pub(super) async fn handle_receive_wishlist_item(
+    State(state): State<CompanionApiState>,
+    Path(item_id): Path<String>,
+    Json(payload): Json<ReceiveWishlistItemRequest>,
+) -> Result<Json<WishlistReceiptResult>, CompanionApiError> {
+    let item_id = item_id.trim();
+    if item_id.is_empty() {
+        return Err(CompanionApiError::BadRequest(
+            "item_id is required".to_string(),
+        ));
+    }
+
+    let result = state
+        .service
+        .receive_wishlist_item(ReceiveWishlistItemInput {
+            item_id: item_id.to_string(),
+            quantity: payload.quantity,
+        })
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(result))
 }
 
 pub(super) async fn handle_delete_wishlist_item(

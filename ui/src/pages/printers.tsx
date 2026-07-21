@@ -4,6 +4,7 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
 import { PageHeaderButton } from "../components/page_header_button";
+import { PageRefreshButton } from "../components/page_refresh_button";
 import { PrinterOverviewCard } from "../components/printer_overview_card";
 import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
@@ -66,16 +67,9 @@ export default function PrintersPage() {
   } = useLibrarySyncState(tauri);
   const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
 
-  const handlePrinterLoadError = useCallback(
-    (loadError: unknown) => {
-      console.error(loadError);
-      setError(t("printers.error.load", "Failed to load printer overview."));
-    },
-    [t],
-  );
-
   const {
     loading,
+    loadError,
     printers,
     spools,
     bambuLiveIntegrations,
@@ -83,6 +77,7 @@ export default function PrintersPage() {
     clientPrinterSource,
     clientPrinterUpdatedAt,
     printerModels,
+    refreshing,
     reloadData,
   } = usePrinterPageData({
     tauri,
@@ -91,7 +86,7 @@ export default function PrintersPage() {
     clientHostBaseUrl,
     clientLibraryId,
     supportedPrinterModels,
-    onLoadError: handlePrinterLoadError,
+    loadErrorMessage: t("printers.error.load", "Failed to load printer overview."),
     onInteractiveReload: handleInteractiveReload,
   });
 
@@ -446,6 +441,12 @@ export default function PrintersPage() {
         </div>
         <div className="page-header-actions min-[900px]:w-auto min-[900px]:max-w-none min-[900px]:items-end">
           <div className="page-header-tools min-[900px]:w-auto min-[900px]:flex-nowrap">
+            <PageRefreshButton
+              disabled={!tauri || busy || loading}
+              label={t("common.refresh", "Refresh")}
+              onRefresh={() => void reloadData()}
+              refreshing={refreshing}
+            />
             <PageHeaderButton
               variant="primary"
               responsive={false}
@@ -466,6 +467,11 @@ export default function PrintersPage() {
       {error ? (
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
+        </FeedbackBanner>
+      ) : null}
+      {loadError ? (
+        <FeedbackBanner tone="danger" className="mt-4">
+          {loadError}
         </FeedbackBanner>
       ) : null}
       {info ? (

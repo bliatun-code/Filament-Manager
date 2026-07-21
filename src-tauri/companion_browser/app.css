@@ -1125,6 +1125,21 @@
   gap: 0.45rem;
 }
 
+.wishlist-receipt-form {
+  display: flex;
+  align-items: end;
+  gap: 0.45rem;
+}
+
+.wishlist-receipt-quantity {
+  width: 4.75rem;
+}
+
+.wishlist-receipt-quantity .weight-input {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.65rem;
+}
+
 .companion-selection-card {
   display: grid;
   gap: 0.72rem;

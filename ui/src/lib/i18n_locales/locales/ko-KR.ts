@@ -115,7 +115,7 @@ export const koKRDictionary: DictionaryNode = {
     "noActivePrinter": "활성 프린터가 선택되지 않았습니다.",
     "noAlerts": "알림 없음",
     "noBorrowedInStock": "빌린 재고 없음",
-    "noInventoryData": "인벤토리 데이터 없음",
+    "noInventoryData": "데이터가 부족합니다",
     "noPrintersConfigured": "구성된 프린터가 없습니다.",
     "noRecentActivity": "아직 최근 활동이 없습니다.",
     "noUsageTrendYet": "아직 사용 동향이 없습니다.",

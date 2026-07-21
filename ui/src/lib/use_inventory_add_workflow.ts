@@ -31,8 +31,6 @@ type InventoryAddWorkflowInput = {
   error: string | null;
   infoMessage: string | null;
   librarySyncReady: boolean;
-  reloadActiveLoans: () => Promise<void>;
-  reloadPrinterOverview: () => Promise<void>;
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
   resolvedTheme: ResolvedTheme;
@@ -55,8 +53,6 @@ export function useInventoryAddWorkflow({
   error,
   infoMessage,
   librarySyncReady,
-  reloadActiveLoans,
-  reloadPrinterOverview,
   reloadSpools,
   reloadWishlist,
   resolvedTheme,
@@ -165,16 +161,11 @@ export function useInventoryAddWorkflow({
     clientLibraryId,
     clientReadOnly,
     librarySyncReady,
-    reloadActiveLoans,
-    reloadPrinterOverview,
-    reloadSpools,
     reloadWishlist,
-    setError,
     setMasters,
     showAddModal,
     sidePanelMode,
     tauriAvailable,
-    t,
   });
 
   const catalogMasterById = useMemo(
@@ -208,7 +199,6 @@ export function useInventoryAddWorkflow({
     manualHexColor,
     manualMaterial,
     manualVendor,
-    masters,
     newInitialWeight,
     newLocation,
     newOwnershipType,

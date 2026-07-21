@@ -115,7 +115,7 @@ export const zhCNDictionary: DictionaryNode = {
     "noActivePrinter": "未选择活动打印机",
     "noAlerts": "无警报",
     "noBorrowedInStock": "无借入库存",
-    "noInventoryData": "无库存数据",
+    "noInventoryData": "数据不足",
     "noPrintersConfigured": "没有配置打印机",
     "noRecentActivity": "最近还没有活动。",
     "noUsageTrendYet": "尚无使用趋势",

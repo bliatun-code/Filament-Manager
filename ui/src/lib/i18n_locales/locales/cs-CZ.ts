@@ -115,7 +115,7 @@ export const csCZDictionary: DictionaryNode = {
     "noActivePrinter": "Není vybrána žádná aktivní tiskárna",
     "noAlerts": "Žádná upozornění",
     "noBorrowedInStock": "Žádné půjčené na skladě",
-    "noInventoryData": "Žádná inventární data",
+    "noInventoryData": "Nedostatek dat",
     "noPrintersConfigured": "Nejsou nakonfigurovány žádné tiskárny",
     "noRecentActivity": "Zatím žádná nedávná aktivita.",
     "noUsageTrendYet": "Zatím žádný trend používání",

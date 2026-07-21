@@ -155,6 +155,12 @@ export default function App() {
         return (
           <DashboardPage
             onNavigate={(page) => navigateToPage(page)}
+            onAddFirstSpool={() => {
+              navigateToPage("inventory", {
+                kind: "ADD_SPOOL",
+                seq: Date.now(),
+              });
+            }}
             onOpenCompanionSettings={() => {
               startTransition(() => {
                 setInventoryNavigationIntent(null);

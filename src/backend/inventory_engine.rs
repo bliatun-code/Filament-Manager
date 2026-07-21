@@ -4,7 +4,7 @@ use crate::backend::filament_database::{
     FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow,
     ManualMasterInput, MasterCatalogUpdateInput, PrinterOverviewRow, PrinterRow,
     SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
-    SpoolWithMasterRow, WishlistItemRow,
+    SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
 };
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
@@ -140,6 +140,12 @@ pub struct CreateWishlistItemInput {
 pub struct UpdateWishlistStatusInput {
     pub item_id: String,
     pub status: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ReceiveWishlistItemInput {
+    pub item_id: String,
+    pub quantity: i64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -989,8 +995,29 @@ impl InventoryEngine {
         &self,
         input: UpdateWishlistStatusInput,
     ) -> InventoryResult<()> {
+        let status = input.status.trim().to_uppercase();
+        if status != "WISHLIST" && status != "ON_ORDER" && status != "RECEIVED" {
+            return Err(InventoryError::InvalidOperation {
+                code: "wishlist.status.invalid",
+                message: "Wishlist status must be WISHLIST, ON_ORDER, or RECEIVED".to_string(),
+            });
+        }
+        if status == "RECEIVED" {
+            return Err(InventoryError::InvalidOperation {
+                code: "wishlist.status.received_requires_receipt",
+                message: "Receive the remaining rolls to mark a wishlist item as received"
+                    .to_string(),
+            });
+        }
+        self.db.update_wishlist_item_status(&input.item_id, &status)
+    }
+
+    pub fn receive_wishlist_item(
+        &self,
+        input: ReceiveWishlistItemInput,
+    ) -> InventoryResult<WishlistReceiptResult> {
         self.db
-            .update_wishlist_item_status(&input.item_id, &input.status)
+            .receive_wishlist_item(input.item_id.trim(), input.quantity)
     }
 
     pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {

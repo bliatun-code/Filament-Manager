@@ -1,6 +1,5 @@
 import { useCallback, useEffect, type Dispatch, type SetStateAction } from "react";
 import { loadCatalogMasters } from "./catalog_data_source";
-import type { useI18n } from "./i18n";
 import type { MasterCatalogRow } from "./tauri_client";
 
 type InventoryCatalogReloadInput = {
@@ -9,16 +8,11 @@ type InventoryCatalogReloadInput = {
   clientLibraryId: string | null;
   clientReadOnly: boolean;
   librarySyncReady: boolean;
-  reloadActiveLoans: () => Promise<void>;
-  reloadPrinterOverview: () => Promise<void>;
-  reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
-  setError: Dispatch<SetStateAction<string | null>>;
   setMasters: Dispatch<SetStateAction<MasterCatalogRow[]>>;
   showAddModal: boolean;
   sidePanelMode: "MANAGE" | "ADD";
   tauriAvailable: boolean;
-  t: ReturnType<typeof useI18n>["t"];
 };
 
 export function useInventoryCatalogReload({
@@ -27,19 +21,19 @@ export function useInventoryCatalogReload({
   clientLibraryId,
   clientReadOnly,
   librarySyncReady,
-  reloadActiveLoans,
-  reloadPrinterOverview,
-  reloadSpools,
   reloadWishlist,
-  setError,
   setMasters,
   showAddModal,
   sidePanelMode,
   tauriAvailable,
-  t,
 }: InventoryCatalogReloadInput) {
-  const reloadCatalog = useCallback(async () => {
+  const reloadCatalog = useCallback(async (reportResult?: (successful: boolean) => void) => {
     if (!tauriAvailable) {
+      reportResult?.(false);
+      return;
+    }
+    if (clientReadOnly && (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim())) {
+      reportResult?.(false);
       return;
     }
     try {
@@ -50,41 +44,17 @@ export function useInventoryCatalogReload({
       });
       setMasters(rows);
       applyCatalogDefaults(rows);
+      reportResult?.(true);
     } catch (catalogError) {
       console.error(catalogError);
-      if (clientReadOnly) {
-        setMasters([]);
-        return;
-      }
-      setError(t("wishlist.error.loadCatalog", "Could not load master catalog."));
+      reportResult?.(false);
     }
   }, [
     applyCatalogDefaults,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
-    setError,
     setMasters,
-    t,
-    tauriAvailable,
-  ]);
-
-  useEffect(() => {
-    if (!tauriAvailable || !librarySyncReady) {
-      return;
-    }
-    reloadSpools();
-    reloadCatalog();
-    reloadWishlist();
-    reloadActiveLoans();
-    reloadPrinterOverview();
-  }, [
-    librarySyncReady,
-    reloadActiveLoans,
-    reloadCatalog,
-    reloadPrinterOverview,
-    reloadSpools,
-    reloadWishlist,
     tauriAvailable,
   ]);
 

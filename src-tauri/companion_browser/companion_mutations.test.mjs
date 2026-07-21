@@ -711,7 +711,7 @@ test("submitManualSpoolRegistration rejects stale catalog master selections from
   assert.deepEqual(harness.renderCalls, ["render"]);
 });
 
-test("submitWishlistStock creates owned stock and marks the wishlist item received", async () => {
+test("submitWishlistStock receives the selected quantity through one atomic endpoint", async () => {
   const fetchCalls = [];
   const harness = createMutationHarness({
     state: {
@@ -734,28 +734,54 @@ test("submitWishlistStock creates owned stock and marks the wishlist item receiv
           color_name: "Blue",
           vendor: "Bambu",
           status: "WISHLIST",
-          quantity: 1,
+          quantity: 3,
         },
       ],
     },
     fetchJson: async (path, init) => {
       fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
-      if (path === "/api/v1/spools/owned") {
-        return { spool_id: "spool-88" };
-      }
-      return { ok: true };
+      return {
+        spool_ids: ["spool-88", "spool-89"],
+        received_quantity: 2,
+        remaining_quantity: 1,
+        status: "WISHLIST",
+      };
     },
   });
 
-  await harness.mutations.submitWishlistStock("wish-1");
+  await harness.mutations.submitWishlistStock("wish-1", "2");
 
   assert.deepEqual(fetchCalls, [
-    ["/api/v1/spools/owned", { master_id: "master-1", initial_weight_g: 1000 }],
-    ["/api/v1/wishlist/wish-1/status", { status: "RECEIVED" }],
+    ["/api/v1/wishlist/wish-1/receive", { quantity: 2 }],
   ]);
   assert.equal(harness.state.selectedSpoolId, "spool-88");
   assert.equal(harness.state.detailOpen, true);
   assert.equal(harness.state.statusMessage, "Wishlist spool added to inventory.");
+});
+
+test("submitWishlistStock rejects quantities above the remaining wishlist count", async () => {
+  let fetchCount = 0;
+  const harness = createMutationHarness({
+    state: {
+      wishlistItems: [
+        {
+          id: "wish-1",
+          status: "ON_ORDER",
+          quantity: 2,
+        },
+      ],
+    },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return {};
+    },
+  });
+
+  await harness.mutations.submitWishlistStock("wish-1", "3");
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.deepEqual(harness.renderCalls, ["render"]);
 });
 
 test("submitWishlistDelete removes an item through the host wishlist route", async () => {

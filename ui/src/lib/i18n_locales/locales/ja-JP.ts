@@ -115,7 +115,7 @@ export const jaJPDictionary: DictionaryNode = {
     "noActivePrinter": "アクティブなプリンターが選択されていません",
     "noAlerts": "アラートはありません",
     "noBorrowedInStock": "借入在庫なし",
-    "noInventoryData": "在庫データがありません",
+    "noInventoryData": "データが不足しています",
     "noPrintersConfigured": "プリンターが構成されていません",
     "noRecentActivity": "最近の活動はまだありません。",
     "noUsageTrendYet": "使用傾向はまだありません",
