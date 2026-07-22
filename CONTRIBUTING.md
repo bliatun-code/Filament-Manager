@@ -63,6 +63,8 @@ Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Areas That Need Extra Care
 
+- Read [the architecture guide](docs/ARCHITECTURE.md) before moving Rust
+  modules or changing startup, database, or Bambu Live boundaries.
 - Bambu Live/AMS matching and RFID onboarding must be conservative. A weak hint
   should not overwrite a deliberate slot assignment or RFID identity.
 - Companion and Trusted-LAN changes must preserve browser session and CSRF

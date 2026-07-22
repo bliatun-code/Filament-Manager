@@ -141,7 +141,7 @@ fn write_ancillary_settings_db(path: &Path) -> Result<(), String> {
     }
     let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
     db.apply_schema().map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT INTO settings (key, value) VALUES
                 ('library_sync_mode', 'STANDALONE'),
@@ -165,7 +165,7 @@ fn write_split_brain_domain_db(
     }
     let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
     db.apply_schema().map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT INTO filament_master_list (
                 id, material, filament_name, color_name, vendor,
@@ -178,7 +178,7 @@ fn write_split_brain_domain_db(
             ],
         )
         .map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT INTO filament_spools (id, master_id, status, current_weight_g)
              VALUES (?1, ?2, 'IN_STOCK', 750)",
@@ -188,7 +188,7 @@ fn write_split_brain_domain_db(
             ],
         )
         .map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES
                 ('split_merge_safe_setting', ?1),
@@ -211,7 +211,7 @@ fn write_split_brain_ancillary_db(
     }
     let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
     db.apply_schema().map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES
                 ('split_merge_safe_setting', ?1),
@@ -593,7 +593,7 @@ fn existing_unversioned_database_gets_recovery_snapshot_before_schema_upgrade() 
 
         let db = open_database_and_apply_schema(&db_path)?;
         let schema_version: i64 = db
-            .conn
+            .connection()
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .map_err(|error| error.to_string())?;
         assert!(schema_version > 0);
@@ -656,7 +656,7 @@ fn existing_version_one_database_gets_recovery_snapshot_before_schema_upgrade() 
 
         let db = open_database_and_apply_schema(&db_path)?;
         let upgraded_version: i64 = db
-            .conn
+            .connection()
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .map_err(|error| error.to_string())?;
         assert_eq!(upgraded_version, CURRENT_SCHEMA_VERSION);
@@ -1562,7 +1562,7 @@ fn database_user_data_state_classifies_settings_beyond_generated_library_id_as_a
             DatabaseUserDataState::NoData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "INSERT INTO settings (key, value) VALUES ('active_printer_id', 'printer-1')",
                 [],
@@ -1607,7 +1607,7 @@ fn windows_storage_preserves_legacy_roaming_inventory_locations() {
                 .apply_schema()
                 .map_err(|error| error.to_string())?;
             legacy_db
-                .conn
+                .connection()
                 .execute(
                     "INSERT INTO inventory_locations (id, name, type)
                      VALUES ('legacy-location', 'Legacy shelf', 'SHELF')",
@@ -1649,7 +1649,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             DatabaseUserDataState::NoData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "UPDATE filament_master_list SET catalog_source = 'scraped'",
                 [],
@@ -1660,7 +1660,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             DatabaseUserDataState::NoData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "UPDATE filament_master_list
                  SET catalog_user_edited = 1
@@ -1673,13 +1673,13 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             DatabaseUserDataState::DomainData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "UPDATE filament_master_list SET catalog_user_edited = 0",
                 [],
             )
             .map_err(|error| error.to_string())?;
-        db.conn
+        db.connection()
             .execute(
                 "INSERT INTO filament_master_list (
                     id, material, filament_name, color_name, vendor, catalog_source

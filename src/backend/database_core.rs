@@ -35,7 +35,14 @@ impl FilamentDatabase {
         apply_schema_migrations(&self.conn, SCHEMA_SQL)
     }
 
+    #[cfg(not(feature = "test-support"))]
     pub(crate) fn connection(&self) -> &Connection {
+        &self.conn
+    }
+
+    #[cfg(feature = "test-support")]
+    #[doc(hidden)]
+    pub fn connection(&self) -> &Connection {
         &self.conn
     }
 }

@@ -134,9 +134,10 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 
 ## Repository Layout
 
-- `src-tauri/`: Tauri shell, Rust commands, companion server, Bambu live sync,
-  trusted-LAN, and desktop integration.
-- `src/backend/`: shared Rust backend modules used by the Tauri app.
+- `Cargo.toml` + `src/backend/`: the private `filament-manager-core` workspace
+  crate with platform-neutral domain and SQLite behavior.
+- `src-tauri/`: Tauri shell, Rust commands, Companion server, Bambu Live
+  transport/sync, trusted-LAN, storage startup, and desktop integration.
 - `src/scraper/`: TypeScript catalog scraper utilities.
 - `ui/`: React desktop UI, UI models, tests, and styling.
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
@@ -144,6 +145,9 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `.github/workflows/release-build.yml`: protected tag/manual workflow for the
   signed Apple Silicon DMG and Windows MSI artifacts, including Developer ID
   signing, notarization, stapling, installer verification, and checksums.
+
+See [Architecture](docs/ARCHITECTURE.md) for the Rust workspace, startup and
+Bambu Live boundaries.
 
 ## Requirements
 

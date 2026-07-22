@@ -18,7 +18,7 @@ pub(crate) fn open_connection(path: impl AsRef<Path>) -> InventoryResult<Connect
     Ok(conn)
 }
 
-pub(crate) fn inspect_existing_database_schema(path: &Path) -> InventoryResult<Option<i64>> {
+pub fn inspect_existing_database_schema(path: &Path) -> InventoryResult<Option<i64>> {
     if !path.exists() {
         return Ok(None);
     }

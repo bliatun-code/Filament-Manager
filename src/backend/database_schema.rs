@@ -6,7 +6,7 @@ use super::database_result::{InventoryError, InventoryResult};
 
 pub const CURRENT_SCHEMA_VERSION: i64 = 2;
 
-pub(crate) fn database_schema_version(conn: &Connection) -> InventoryResult<i64> {
+pub fn database_schema_version(conn: &Connection) -> InventoryResult<i64> {
     let version = conn.query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))?;
     if version < 0 {
         return Err(InventoryError::Db(format!(
