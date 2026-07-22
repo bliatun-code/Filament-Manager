@@ -196,6 +196,11 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
     desktopVisualQaScenarioDefinition("ams-onboarding")?.requiresDatabaseFixture,
     true,
   );
+  assert.deepEqual(desktopVisualQaScenarioDefinition("printers")?.readiness, {
+    timeoutMs: 35_000,
+    token: "printer-live-telemetry",
+  });
+  assert.equal(desktopVisualQaScenarioDefinition("add-printer")?.readiness, undefined);
   assert.equal(desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture, true);
   assert.equal(
     desktopVisualQaScenarioDefinition("settings-diagnostics")?.requiresDatabaseFixture,

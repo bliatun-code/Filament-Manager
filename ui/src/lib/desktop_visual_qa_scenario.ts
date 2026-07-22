@@ -65,11 +65,17 @@ export type DesktopVisualQaInitialSettingsTab =
   | "CATALOG"
   | "MAINTENANCE";
 export type DesktopVisualQaScenarioCategory = "overview" | "modal" | "workflow" | "settings";
+export type DesktopVisualQaReadinessToken = "printer-live-telemetry";
+export type DesktopVisualQaReadiness = {
+  timeoutMs: number;
+  token: DesktopVisualQaReadinessToken;
+};
 export type DesktopVisualQaScenarioDefinition = {
   aliases?: string[];
   category: DesktopVisualQaScenarioCategory;
   id: DesktopVisualQaScenario;
   page: DesktopVisualQaInitialPage;
+  readiness?: DesktopVisualQaReadiness;
   requiresDatabaseFixture?: boolean;
   settingsTab?: DesktopVisualQaInitialSettingsTab;
 };

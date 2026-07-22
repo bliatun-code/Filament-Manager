@@ -90,7 +90,11 @@
       "id": "printer-board",
       "aliases": ["printers"],
       "page": "printers",
-      "category": "overview"
+      "category": "overview",
+      "readiness": {
+        "token": "printer-live-telemetry",
+        "timeoutMs": 35000
+      }
     },
     {
       "id": "add-printer",

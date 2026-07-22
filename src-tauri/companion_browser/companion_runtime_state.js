@@ -1,5 +1,6 @@
 export function createCompanionRuntimeState(options) {
   const { render, state } = options;
+  const announceStatus = options?.announceStatus ?? (() => false);
   const setTimeoutRef = options?.setTimeoutRef ?? setTimeout;
   const clearTimeoutRef = options?.clearTimeoutRef ?? clearTimeout;
   const statusDurationMs = Number.isFinite(options?.statusDurationMs) ? options.statusDurationMs : 8000;
@@ -17,6 +18,7 @@ export function createCompanionRuntimeState(options) {
     clearStatusTimeout();
     state.statusMessage = message;
     state.statusTone = tone;
+    announceStatus(message, tone);
     render();
     if (tone === "success" && String(message || "").trim()) {
       statusTimeoutId = setTimeoutRef(() => {

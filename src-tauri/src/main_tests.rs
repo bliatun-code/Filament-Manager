@@ -476,6 +476,39 @@ fn visual_qa_theme_normalizer_accepts_only_supported_modes() {
 }
 
 #[test]
+fn visual_qa_window_size_normalizer_accepts_bounded_outer_frames() {
+    use super::normalize_visual_qa_window_size;
+
+    assert_eq!(
+        normalize_visual_qa_window_size(" 900×700 "),
+        Some((900.0, 700.0))
+    );
+    assert_eq!(
+        normalize_visual_qa_window_size("1500x900"),
+        Some((1500.0, 900.0))
+    );
+    assert_eq!(normalize_visual_qa_window_size("319x900"), None);
+    assert_eq!(normalize_visual_qa_window_size("900x8193"), None);
+    assert_eq!(normalize_visual_qa_window_size("wide"), None);
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn visual_qa_readiness_normalizer_accepts_only_live_printer_telemetry() {
+    use super::normalize_desktop_visual_qa_readiness_token;
+
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token(" printer-live-telemetry "),
+        Some("printer-live-telemetry")
+    );
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token("printer-board"),
+        None
+    );
+    assert_eq!(normalize_desktop_visual_qa_readiness_token(""), None);
+}
+
+#[test]
 fn app_db_path_override_prefers_current_env_var() {
     use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
 

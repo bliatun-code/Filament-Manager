@@ -13,6 +13,7 @@ import {
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
+import { prepareDesktopVisualQaWindow } from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
@@ -85,6 +86,23 @@ export default function App() {
         window.clearInterval(intervalId);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !import.meta.env.DEV ||
+      !isTauri() ||
+      !desktopVisualQaInitialPage(window.location.search)
+    ) {
+      return;
+    }
+    const frameId = window.requestAnimationFrame(() => {
+      void prepareDesktopVisualQaWindow().catch((error) => {
+        console.error("Failed to prepare desktop visual QA window.", error);
+      });
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, []);
 
   useEffect(() => {

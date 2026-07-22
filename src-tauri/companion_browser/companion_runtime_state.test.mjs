@@ -11,8 +11,12 @@ test("runtime state helpers update status, busy state, and detail feedback", () 
     detailFeedback: null,
   };
   let renderCount = 0;
+  const announcements = [];
   const runtimeState = createCompanionRuntimeState({
     state,
+    announceStatus(message, tone) {
+      announcements.push([message, tone]);
+    },
     render() {
       renderCount += 1;
     },
@@ -30,6 +34,7 @@ test("runtime state helpers update status, busy state, and detail feedback", () 
     message: "Updated",
   });
   assert.equal(renderCount, 2);
+  assert.deepEqual(announcements, [["Saving...", "success"]]);
 
   runtimeState.clearDetailFeedback("spool-1");
   assert.equal(state.detailFeedback, null);
@@ -85,4 +90,25 @@ test("runtime state auto-clears success messages after the configured timeout", 
   assert.equal(state.statusMessage, "");
   assert.equal(state.statusTone, "default");
   assert.equal(renderCount, 3);
+});
+
+test("runtime state sends errors to the injected status announcer", () => {
+  const state = {
+    statusMessage: "",
+    statusTone: "default",
+  };
+  const announcements = [];
+  const runtimeState = createCompanionRuntimeState({
+    state,
+    render() {},
+    announceStatus(message, tone) {
+      announcements.push({ message, tone });
+    },
+  });
+
+  runtimeState.setStatus("Could not save the spool.", "error");
+
+  assert.deepEqual(announcements, [
+    { message: "Could not save the spool.", tone: "error" },
+  ]);
 });

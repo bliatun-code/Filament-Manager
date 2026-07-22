@@ -14,6 +14,10 @@ const entryFiles = [
   resolve(sourceRoot, "main.tsx"),
   resolve(sourceRoot, "App.tsx"),
 ];
+const intentionalHarnessFiles = new Set([
+  resolve(sourceRoot, "accessibility", "app_modal_accessibility_entry.tsx"),
+  resolve(sourceRoot, "accessibility", "app_modal_accessibility_harness.tsx"),
+]);
 
 const files = collectUiSourceFiles(sourceRoot);
 const resolveImport = buildRelativeImportResolver(files);
@@ -43,7 +47,7 @@ while (pending.length > 0) {
 }
 
 const orphanFiles = files
-  .filter((file) => !reachable.has(file))
+  .filter((file) => !reachable.has(file) && !intentionalHarnessFiles.has(file))
   .map((file) => relative(repoRoot, file))
   .sort();
 

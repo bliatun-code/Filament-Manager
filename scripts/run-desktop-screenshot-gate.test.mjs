@@ -7,37 +7,50 @@ import { PassThrough } from "node:stream";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  activateDesktopWindow,
   assertDesktopScreenshotPlatform,
   buildDesktopVisualQaLaunchEnv,
   buildDesktopWindowActivateScript,
   buildDesktopWindowListScript,
   buildDesktopWindowLookupScript,
   buildDesktopWindowResizeScript,
+  captureDesktopWindowScreenshot,
   DESKTOP_DARK_THEME_MAX_LUMA_MEAN,
   DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN,
-  DESKTOP_PRINTER_LIVE_WAIT_MS,
+  DESKTOP_VISUAL_QA_READINESS_PREFIX,
+  DESKTOP_VISUAL_QA_STATIC_SETTLE_MS,
   DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+  DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS,
   desktopScreenshotScale,
   desktopScreenshotNameForScenario,
+  desktopWindowsForProcess,
   desktopWindowMatchesRequestedSize,
   desktopVisualQaExpectedWindowTitles,
+  desktopVisualQaOutputHasReadinessToken,
+  desktopVisualQaReadinessMarker,
   desktopVisualQaScenarioDefinition,
+  desktopVisualQaScenarioReadiness,
   desktopVisualQaScenarioRequiresDatabaseFixture,
   desktopVisualQaWindowMatchesScenario,
   defaultDesktopVisualQaCaptureDelayMs,
   execFileWithTimeout,
+  findDesktopWindow,
+  findDesktopWindowWithNativeHelper,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
   normalizeDesktopVisualQaTheme,
   normalizeDesktopVisualQaWindowSize,
+  normalizeNativeDesktopWindowFrame,
   normalizeVisualQaLocale,
   parseDesktopVisualQaScenarios,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
+  resolveMacosWindowInfoHelperLaunch,
   resolveDesktopVisualQaTheme,
   resolveDesktopVisualQaWindowSize,
   resizeDesktopWindow,
   resolveDesktopScreenshotTauriLaunch,
+  selectDesktopWindowForProcess,
   runDesktopScreenshotGate,
   runDesktopScreenshotGateWithLaunchRetry,
   runDesktopScreenshotScenariosWithLaunch,
@@ -49,6 +62,7 @@ import {
   validateDesktopScreenshotTheme,
   validateDesktopWindowSize,
   waitForDesktopWindow,
+  waitForDesktopVisualQaReadiness,
 } from "./run-desktop-screenshot-gate.mjs";
 
 const testOutputDir = path.join(tmpdir(), "visual-qa");
@@ -209,34 +223,55 @@ test("desktop screenshot spawn keeps launch options and visual QA context", () =
   );
 });
 
-test("launched desktop gate cleans its generated database when spawn throws synchronously", async () => {
-  const calls = { cleanup: [], prepare: [], spawn: 0 };
-  const spawnError = new Error("spawn EACCES");
+test("launched desktop gate refuses live databases before preparation", async () => {
+  const calls = { prepare: 0, spawn: 0 };
 
   await assert.rejects(
     runLaunchedDesktopScreenshotGate({
       allowNonDarwin: true,
-      cleanupVisualQaDatabase: (path) => calls.cleanup.push(path),
-      keepAppOnFail: true,
       live: true,
       platform: "win32",
-      prepareVisualQaDatabase: async (options) => {
-        calls.prepare.push(options);
+      prepareVisualQaDatabase: async () => {
+        calls.prepare += 1;
         return { live: false, targetPath: testVisualDatabasePath };
       },
-      scenario: "order-queue",
       spawnFn: () => {
         calls.spawn += 1;
-        throw spawnError;
+        return createFakeChild();
       },
     }),
-    (error) => error === spawnError,
+    /refuses --live/,
   );
 
-  assert.equal(calls.prepare.length, 1);
-  assert.equal(calls.prepare[0].live, false);
-  assert.equal(calls.spawn, 1);
-  assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
+  assert.equal(calls.prepare, 0);
+  assert.equal(calls.spawn, 0);
+});
+
+test("launched desktop gate refuses a preexisting Filament Manager window", async () => {
+  const calls = { prepare: 0, spawn: 0 };
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      listPreexistingWindowsFn: async () => [
+        ...parseDesktopWindowList(
+          "bambu-filament-manager\t\t0\t0\t1200\t900\n",
+        ),
+      ],
+      platform: "darwin",
+      prepareVisualQaDatabase: async () => {
+        calls.prepare += 1;
+        return { live: false, targetPath: testVisualDatabasePath };
+      },
+      spawnFn: () => {
+        calls.spawn += 1;
+        return createFakeChild();
+      },
+    }),
+    /requires every existing Filament Manager window to be closed/,
+  );
+
+  assert.equal(calls.prepare, 0);
+  assert.equal(calls.spawn, 0);
 });
 
 test("launched desktop gate preserves synchronous spawn and cleanup failures", async () => {
@@ -335,7 +370,7 @@ test("launched desktop gate preserves kept copies and live databases when spawn 
   }
 });
 
-test("launched desktop gate reports asynchronous spawn errors and cleans a dead force-copy app", async () => {
+test("launched desktop gate reports asynchronous spawn errors and cleans a dead temporary-copy app", async () => {
   const child = createFakeChild();
   const cleanup = [];
   const prepare = [];
@@ -355,7 +390,6 @@ test("launched desktop gate reports asynchronous spawn errors and cleans a dead 
       return null;
     },
     keepAppOnFail: true,
-    live: true,
     platform: "win32",
     postTerminateDelayMs: 0,
     prepareVisualQaDatabase: async (options) => {
@@ -751,7 +785,7 @@ test("launched desktop gate retries only after safe no-window teardown", async (
   }
 });
 
-test("launched desktop force-copy failure cleans before retrying", async () => {
+test("launched desktop temporary-copy failure cleans before retrying", async () => {
   const child = createFakeChild();
   const cleanup = [];
   const prepare = [];
@@ -760,7 +794,6 @@ test("launched desktop force-copy failure cleans before retrying", async () => {
     cleanupVisualQaDatabase: (path) => cleanup.push(path),
     execFileFn: async () => ({ stdout: "" }),
     findWindowFn: async () => null,
-    live: true,
     platform: "win32",
     postTerminateDelayMs: 0,
     prepareVisualQaDatabase: async (options) => {
@@ -848,6 +881,90 @@ test("successful launched desktop capture reports teardown and cleanup ownership
     assert.equal(result.retryableLaunchFailure, false);
     assert.equal(result.errors.length, terminationConfirmed ? 0 : 1);
   }
+});
+
+test("launched printer-board capture waits for the live telemetry token", async () => {
+  const child = createFakeChild();
+  const clock = createFakeClock();
+  const cleanup = [];
+  let captureCalls = 0;
+  let readinessWaits = 0;
+  const window = createMetric({ window: { title: "Printers" } }).window;
+
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    captureDelayMs: 0,
+    cleanupVisualQaDatabase: (path) => cleanup.push(path),
+    findWindowFn: async () => window,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    readinessNowFn: clock.now,
+    readinessPollMs: 10,
+    readinessWaitFn: async (intervalMs) => {
+      readinessWaits += 1;
+      await clock.wait(intervalMs);
+      child.stderr.write(
+        "FILAMENT_MANAGER_VISUAL_QA_READY:printer-live-telemetry\n",
+      );
+    },
+    runDesktopScreenshotGateFn: async (options) => {
+      captureCalls += 1;
+      return {
+        errors: [],
+        metric: { window: options.window },
+        outputDir: testOutputDir,
+      };
+    },
+    scenario: "printer-board",
+    spawnFn: () => child,
+    terminateChildFn: async () => true,
+  });
+
+  assert.equal(result.errors.length, 0);
+  assert.equal(readinessWaits, 1);
+  assert.equal(captureCalls, 1);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched printer-board capture fails closed when live telemetry never arrives", async () => {
+  const clock = createFakeClock();
+  const cleanup = [];
+  let captureCalls = 0;
+
+  await assert.rejects(
+    runLaunchedDesktopScreenshotGate({
+      allowNonDarwin: true,
+      captureDelayMs: 0,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      findWindowFn: async () =>
+        createMetric({ window: { title: "Printers" } }).window,
+      platform: "win32",
+      postTerminateDelayMs: 0,
+      prepareVisualQaDatabase: async () => ({
+        live: false,
+        targetPath: testVisualDatabasePath,
+      }),
+      readinessNowFn: clock.now,
+      readinessPollMs: 10,
+      readinessTimeoutMs: 25,
+      readinessWaitFn: clock.wait,
+      runDesktopScreenshotGateFn: async () => {
+        captureCalls += 1;
+        return { errors: [], metric: createMetric(), outputDir: testOutputDir };
+      },
+      scenario: "printer-board",
+      spawnFn: () => createFakeChild(),
+      terminateChildFn: async () => true,
+    }),
+    /did not signal required readiness token printer-live-telemetry within 25ms/,
+  );
+
+  assert.equal(captureCalls, 0);
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
 });
 
 test("launched desktop gate preserves capture failures across finalization", async () => {
@@ -1224,6 +1341,7 @@ test("desktop screenshot Tauri launch stays clean when Node deprecations throw",
 
 test("desktop screenshot gate parses macOS window lookup output", () => {
   assert.equal(DEFAULT_WINDOW_COMMAND_TIMEOUT_MS, 15_000);
+  assert.equal(DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS, 60_000);
   assert.deepEqual(
     parseDesktopWindowInfo(
       "Filament Manager\tFilament Manager\t20\t40\t1300\t900\n",
@@ -1238,13 +1356,26 @@ test("desktop screenshot gate parses macOS window lookup output", () => {
     },
   );
   assert.equal(parseDesktopWindowInfo(""), null);
+  assert.deepEqual(
+    parseDesktopWindowInfo(
+      "bambu-filament-manager\t\t0\t0\t900\t700\n",
+    ),
+    {
+      height: 700,
+      processName: "bambu-filament-manager",
+      title: "",
+      width: 900,
+      x: 0,
+      y: 0,
+    },
+  );
   assert.equal(
     parseDesktopWindowInfo("Filament Manager\tTitle\t0\t0\t0\t900"),
     null,
   );
 });
 
-test("desktop screenshot gate parses visible window diagnostics", () => {
+test("desktop screenshot gate parses visible window diagnostics", async () => {
   assert.deepEqual(
     parseDesktopWindowList(
       "Finder\tDesktop\t0\t0\t1440\t900\nFilament Manager\tFilament Manager\t20\t40\t1300\t900\n",
@@ -1252,13 +1383,170 @@ test("desktop screenshot gate parses visible window diagnostics", () => {
     ["Desktop", "Filament Manager"],
   );
   assert.match(buildDesktopWindowListScript(), /windowRows/);
+
+  const calls = [];
+  const nativeWindow = await findDesktopWindowWithNativeHelper({
+    nativeWindowExecFileFn: async (command, args, options) => {
+      calls.push({ args, command, options });
+      return {
+        stdout:
+          "Unrelated Settings App\tFilament Manager\t1\t2\t1400\t900\n" +
+          "bambu-filament-manager\t库存\t12\t42\t882\t882\n",
+      };
+    },
+    processName: "bambu-filament-manager",
+    windowSize: { height: 900, width: 900 },
+    windowTitle: "Filament Manager",
+  });
+  assert.equal(nativeWindow?.title, "库存");
+  assert.deepEqual(
+    { height: nativeWindow?.height, width: nativeWindow?.width, x: nativeWindow?.x },
+    { height: 900, width: 900, x: 3 },
+  );
+  assert.equal(calls[0]?.command, "swift");
+  assert.deepEqual(calls[0]?.args.slice(-1), ["list"]);
+  assert.equal(calls[0]?.options.shell, false);
+  assert.equal(calls[0]?.options.timeout, 60_000);
+  assert.equal(resolveMacosWindowInfoHelperLaunch("list").shell, false);
+  assert.deepEqual(
+    normalizeNativeDesktopWindowFrame(
+      {
+        height: 882,
+        processName: "bambu-filament-manager",
+        title: "库存",
+        width: 882,
+        x: 12,
+        y: 42,
+      },
+      { height: 900, width: 900 },
+    ),
+    {
+      height: 900,
+      processName: "bambu-filament-manager",
+      title: "库存",
+      width: 900,
+      x: 3,
+      y: 33,
+    },
+  );
+  assert.deepEqual(
+    normalizeNativeDesktopWindowFrame(
+      {
+        height: 882,
+        processName: "bambu-filament-manager",
+        title: "库存",
+        width: 882,
+        x: -1440,
+        y: -900,
+      },
+      { height: 900, width: 900 },
+    ),
+    {
+      height: 900,
+      processName: "bambu-filament-manager",
+      title: "库存",
+      width: 900,
+      x: -1449,
+      y: -909,
+    },
+  );
+  assert.equal(
+    selectDesktopWindowForProcess(
+      [
+        {
+          height: 900,
+          processName: "Unrelated Settings App",
+          title: "Settings",
+          width: 1400,
+          x: 0,
+          y: 0,
+        },
+        {
+          height: 882,
+          processName: "bambu-filament-manager",
+          title: "库存",
+          width: 882,
+          x: 12,
+          y: 42,
+        },
+      ],
+      {
+        processName: "bambu-filament-manager",
+        windowTitle: "Settings",
+      },
+    )?.title,
+    "库存",
+  );
+  assert.deepEqual(
+    desktopWindowsForProcess(
+      [
+        { processName: "Other App", title: "Inventory" },
+        { processName: "BAMBU-FILAMENT-MANAGER", title: "库存" },
+      ],
+      "bambu-filament-manager",
+    ).map((window) => window.title),
+    ["库存"],
+  );
+});
+
+test("desktop screenshot gate ignores a foreign AppleScript title match", async () => {
+  const calls = [];
+  const window = await findDesktopWindow({
+    execFileFn: async (command, args, options) => {
+      calls.push({ args, command, options });
+      return {
+        stdout:
+          "Unrelated Settings App\tSettings\t1\t2\t1400\t900\n" +
+          "bambu-filament-manager\t库存\t12\t42\t882\t882\n",
+      };
+    },
+    processName: "bambu-filament-manager",
+    windowTitle: "Settings",
+  });
+
+  assert.equal(window?.processName, "bambu-filament-manager");
+  assert.equal(window?.title, "库存");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0]?.command, "osascript");
+  assert.match(calls[0]?.args[1], /set windowRows to/);
+  assert.equal(window?.lookupSource, "applescript");
+});
+
+test("native lookup still requires Accessibility for safe activation", async () => {
+  const accessibilityError = new Error("Not authorized to send Apple events");
+  const window = await findDesktopWindow({
+    execFileFn: async () => {
+      throw accessibilityError;
+    },
+    nativeWindowExecFileFn: async () => ({
+      stdout: "bambu-filament-manager\t库存\t12\t42\t882\t882\n",
+    }),
+    processName: "bambu-filament-manager",
+    windowTitle: "Inventory",
+  });
+
+  assert.equal(window?.lookupSource, "native");
+  await assert.rejects(
+    activateDesktopWindow(window, {
+      execFileFn: async () => {
+        throw accessibilityError;
+      },
+      waitAfterActivateMs: 0,
+    }),
+    (error) => {
+      assert.match(error.message, /requires macOS Accessibility permission/);
+      assert.equal(error.cause, accessibilityError);
+      return true;
+    },
+  );
 });
 
 test("desktop screenshot gate lookup script escapes quoted titles", () => {
   const script = buildDesktopWindowLookupScript('Filament "Manager"');
   assert.match(script, /Filament \\"Manager\\"/);
   assert.match(script, /bambu-filament-manager/);
-  assert.match(script, /processName contains/);
+  assert.match(script, /processName is/);
+  assert.doesNotMatch(script, / or processName/);
   assert.match(script, /application processes whose visible is true/);
 
   const activateScript = buildDesktopWindowActivateScript('Filament "Manager"');
@@ -1274,7 +1562,12 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
   );
   assert.match(resizeScript, /Filament \\"Manager\\"/);
   assert.match(resizeScript, /Inventory \\"Detail\\"/);
+  assert.match(resizeScript, /set position of appWindow to \{0, 0\}/);
   assert.match(resizeScript, /to \{900, 700\}/);
+  assert.ok(
+    resizeScript.indexOf("set position of appWindow") <
+      resizeScript.indexOf("set size of appWindow"),
+  );
 });
 
 test("desktop screenshot gate normalizes visual QA scenarios", () => {
@@ -1557,9 +1850,14 @@ test("desktop screenshot gate scopes explicit window sizes to launched scenarios
   );
 });
 
-test("desktop screenshot gate passes scenario theme through the Tauri launch environment", () => {
+test("desktop screenshot gate passes scenario presentation through the Tauri launch environment", () => {
   const env = buildDesktopVisualQaLaunchEnv(
-    { locale: "nb", scenario: "add-filament", themeMode: "light" },
+    {
+      locale: "nb",
+      scenario: "add-filament",
+      themeMode: "light",
+      windowSize: { height: 700, width: 900 },
+    },
     { targetPath: testVisualDatabasePath },
     { EXISTING: "kept" },
   );
@@ -1571,6 +1869,7 @@ test("desktop screenshot gate passes scenario theme through the Tauri launch env
     FILAMENT_MANAGER_VISUAL_QA_LOCALE: "nb",
     FILAMENT_MANAGER_VISUAL_QA_SCENARIO: "add-filament",
     FILAMENT_MANAGER_VISUAL_QA_THEME: "light",
+    FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE: "900x700",
   });
 
   const defaultEnv = buildDesktopVisualQaLaunchEnv(
@@ -1668,6 +1967,11 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
       .requiresDatabaseFixture,
     true,
   );
+  assert.deepEqual(desktopVisualQaScenarioReadiness("printers"), {
+    timeoutMs: 35_000,
+    token: "printer-live-telemetry",
+  });
+  assert.equal(desktopVisualQaScenarioReadiness("add-printer"), null);
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
 });
 
@@ -1741,16 +2045,75 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
   assert.equal(desktopVisualQaScenarioRequiresDatabaseFixture(null), false);
 });
 
-test("desktop printer captures wait for live data before taking screenshots", () => {
+test("desktop scenarios use a short settle delay instead of a blind live-data wait", () => {
   assert.equal(
     defaultDesktopVisualQaCaptureDelayMs(["printer-board"]),
-    DESKTOP_PRINTER_LIVE_WAIT_MS,
+    DESKTOP_VISUAL_QA_STATIC_SETTLE_MS,
   );
   assert.equal(
     defaultDesktopVisualQaCaptureDelayMs(["selected-roll-label"]),
-    3_500,
+    DESKTOP_VISUAL_QA_STATIC_SETTLE_MS,
   );
   assert.equal(defaultDesktopVisualQaCaptureDelayMs([null]), 0);
+});
+
+test("desktop readiness tokens require an exact child-output line", () => {
+  assert.equal(
+    DESKTOP_VISUAL_QA_READINESS_PREFIX,
+    "FILAMENT_MANAGER_VISUAL_QA_READY:",
+  );
+  assert.equal(
+    desktopVisualQaReadinessMarker("printer-live-telemetry"),
+    "FILAMENT_MANAGER_VISUAL_QA_READY:printer-live-telemetry",
+  );
+  assert.equal(
+    desktopVisualQaOutputHasReadinessToken(
+      "building\nFILAMENT_MANAGER_VISUAL_QA_READY:printer-live-telemetry\nrunning\n",
+      "printer-live-telemetry",
+    ),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaOutputHasReadinessToken(
+      "prefix FILAMENT_MANAGER_VISUAL_QA_READY:printer-live-telemetry suffix",
+      "printer-live-telemetry",
+    ),
+    false,
+  );
+});
+
+test("desktop readiness polling succeeds on a bounded token and otherwise times out", async () => {
+  const readyClock = createFakeClock();
+  let output = "building\n";
+  const ready = await waitForDesktopVisualQaReadiness({
+    intervalMs: 10,
+    nowFn: readyClock.now,
+    readOutput: () => output,
+    timeoutMs: 30,
+    token: "printer-live-telemetry",
+    waitFn: async (intervalMs) => {
+      await readyClock.wait(intervalMs);
+      if (readyClock.now() >= 20) {
+        output += "FILAMENT_MANAGER_VISUAL_QA_READY:printer-live-telemetry\n";
+      }
+    },
+  });
+  assert.equal(ready, true);
+  assert.equal(readyClock.now(), 20);
+
+  const timeoutClock = createFakeClock();
+  assert.equal(
+    await waitForDesktopVisualQaReadiness({
+      intervalMs: 10,
+      nowFn: timeoutClock.now,
+      readOutput: () => "building\n",
+      timeoutMs: 25,
+      token: "printer-live-telemetry",
+      waitFn: timeoutClock.wait,
+    }),
+    false,
+  );
+  assert.equal(timeoutClock.now(), 30);
 });
 
 test("desktop screenshot gate maps scenario aliases to localized window titles", () => {
@@ -2302,8 +2665,8 @@ test("desktop screenshot gate resizes and rereads the captured desktop window", 
         return createMetric({
           window:
             attempts === 1
-              ? { height: 800, width: 1200 }
-              : { height: 700, width: 900 },
+              ? { height: 700, width: 900, x: -20, y: 0 }
+              : { height: 700, width: 900, x: 0, y: 0 },
         }).window;
       },
       nowFn: clock.now,
@@ -2390,6 +2753,16 @@ test("desktop screenshot gate times out stuck macOS helper commands", async () =
   );
 });
 
+test("native desktop helper has a bounded cold-start timeout", async () => {
+  await assert.rejects(
+    findDesktopWindowWithNativeHelper({
+      nativeWindowCommandTimeoutMs: 1,
+      nativeWindowExecFileFn: () => new Promise(() => {}),
+    }),
+    /Native macOS window list timed out after 1ms/,
+  );
+});
+
 test("desktop screenshot helper commands always disable platform shells", async () => {
   const calls = [];
   const execFileFn = async (command, args, options) => {
@@ -2438,14 +2811,29 @@ test("desktop screenshot metric validation rejects missing and flat captures", (
 test("desktop screenshot gate validates the requested size against the captured window", () => {
   assert.equal(
     desktopWindowMatchesRequestedSize(
-      createMetric({ window: { height: 701, width: 899 } }).window,
+      createMetric({ window: { height: 701, width: 899, x: 20, y: 40 } })
+        .window,
       { height: 700, width: 900 },
     ),
     true,
   );
+  assert.equal(
+    desktopWindowMatchesRequestedSize(
+      createMetric({ window: { height: 700, width: 900, x: -1 } }).window,
+      { height: 700, width: 900 },
+    ),
+    false,
+  );
+  assert.equal(
+    desktopWindowMatchesRequestedSize(
+      createMetric({ window: { height: 700, width: 900, y: -1 } }).window,
+      { height: 700, width: 900 },
+    ),
+    false,
+  );
   assert.deepEqual(
     validateDesktopWindowSize(
-      createMetric({ window: { height: 700, width: 900 } }),
+      createMetric({ window: { height: 700, width: 900, x: 20, y: 40 } }),
       {
         height: 700,
         width: 900,
@@ -2455,7 +2843,7 @@ test("desktop screenshot gate validates the requested size against the captured 
   );
   assert.match(
     validateDesktopWindowSize(
-      createMetric({ window: { height: 800, width: 1200 } }),
+      createMetric({ window: { height: 800, width: 1200, x: 20 } }),
       {
         height: 700,
         width: 900,
@@ -2463,6 +2851,38 @@ test("desktop screenshot gate validates the requested size against the captured 
     )[0],
     /1200x800 does not match requested 900x700/,
   );
+  assert.match(
+    validateDesktopWindowSize(
+      createMetric({ window: { height: 700, width: 900, x: -1 } }),
+      { height: 700, width: 900 },
+    )[0],
+    /outside the primary capture area at x=-1/,
+  );
+  assert.match(
+    validateDesktopWindowSize(
+      createMetric({ window: { height: 700, width: 900, x: 20, y: -1 } }),
+      { height: 700, width: 900 },
+    )[0],
+    /outside the primary capture area at x=20, y=-1/,
+  );
+});
+
+test("desktop screenshot capture refuses off-primary coordinates", async () => {
+  let execCalls = 0;
+  await assert.rejects(
+    captureDesktopWindowScreenshot(
+      createMetric({ window: { x: -1440, y: -900 } }).window,
+      {
+        execFileFn: async () => {
+          execCalls += 1;
+          return { stdout: "" };
+        },
+        outputDir: testOutputDir,
+      },
+    ),
+    /must be inside the primary capture area.*x=-1440, y=-900/,
+  );
+  assert.equal(execCalls, 0);
 });
 
 test("desktop screenshot report lists window and artifact details", () => {

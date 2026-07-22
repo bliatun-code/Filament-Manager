@@ -22,6 +22,7 @@ const sourceExtensions = new Set([
   ".rs",
   ".bash",
   ".sh",
+  ".swift",
   ".toml",
   ".ts",
   ".tsx",

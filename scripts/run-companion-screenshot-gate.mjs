@@ -1,12 +1,11 @@
 import { execFile, spawn } from "node:child_process";
-import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { chromium } from "playwright";
 import {
   formatCompanionVisualGateReport,
-  normalizeCompanionBaseUrl,
+  normalizeCompanionQaLoopbackBaseUrl,
   runCompanionVisualGate,
 } from "./run-companion-visual-gate.mjs";
 import {
@@ -20,10 +19,15 @@ import {
 } from "../src-tauri/companion_browser/supported_locales.js";
 import {
   APP_DB_PATH_ENV_VAR,
+  assertVisualQaLaunchUsesCopy,
   cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
   prepareVisualQaDatabase,
 } from "./visual-qa-db.mjs";
+import {
+  preparePrivateQaArtifactDirectory,
+  securePrivateQaArtifact,
+} from "./qa-artifact-permissions.mjs";
 
 export const COMPANION_SCREENSHOT_VIEWPORTS = {
   phone: { width: 390, height: 844 },
@@ -37,6 +41,17 @@ export const WINDOWS_PROCESS_TREE_TERMINATION_TIMEOUT_MS = 10_000;
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
 const execFileAsync = promisify(execFile);
+
+export function resolveCompanionQaLoopbackBaseUrl(explicitBaseUrl, database) {
+  if (String(explicitBaseUrl ?? "").trim()) {
+    return normalizeCompanionQaLoopbackBaseUrl(explicitBaseUrl);
+  }
+  const configuredPort = Number(database?.inspection?.details?.trustedLanPort);
+  const port = Number.isSafeInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65_535
+    ? configuredPort
+    : 4278;
+  return normalizeCompanionQaLoopbackBaseUrl(`http://127.0.0.1:${port}`);
+}
 
 function parseArgValue(argv, name) {
   const index = argv.indexOf(name);
@@ -922,6 +937,7 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
     const metrics = await readPageMetrics(page, scenario);
     const path = screenshotPath(outputDir, scenario.name);
     const screenshotBuffer = await page.screenshot({ path, fullPage: false });
+    await securePrivateQaArtifact(path, options);
     const keyboard = await auditCompanionKeyboardNavigation(page);
     return {
       ...metrics,
@@ -1031,7 +1047,7 @@ export function buildCompanionScreenshotScenarios() {
 }
 
 export async function runCompanionScreenshotGate(options = {}) {
-  const baseUrl = normalizeCompanionBaseUrl(options.baseUrl);
+  const baseUrl = normalizeCompanionQaLoopbackBaseUrl(options.baseUrl);
   if (!baseUrl) {
     throw new Error("Companion screenshot gate needs a companion base URL.");
   }
@@ -1040,7 +1056,7 @@ export async function runCompanionScreenshotGate(options = {}) {
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
   const themeMode = options.themeMode ?? "dark";
   const locale = normalizeCompanionScreenshotLocale(options.locale);
-  await mkdir(outputDir, { recursive: true });
+  await preparePrivateQaArtifactDirectory(outputDir, options);
 
   const browser = await chromium.launch({ headless: options.headless !== false });
   try {
@@ -1048,7 +1064,12 @@ export async function runCompanionScreenshotGate(options = {}) {
     const metrics = [];
     for (const scenario of scenarios) {
       metrics.push(
-        await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, { locale, themeMode }),
+        await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, {
+          locale,
+          themeMode,
+          platform: options.platform,
+          chmodFn: options.chmodFn,
+        }),
       );
     }
     const errors = validateCompanionScreenshotMetrics(metrics, options.minimums ?? {});
@@ -1161,6 +1182,7 @@ function companionLaunchLifecycleError({
 }
 
 export async function runLaunchedCompanionScreenshotGate(options = {}) {
+  assertVisualQaLaunchUsesCopy(options.live, "Companion screenshot launch");
   const prepareDatabase = options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
   const cleanupDatabase = options.cleanupVisualQaDatabase ?? cleanupVisualQaDatabase;
   const releaseChildFn = options.releaseChildFn ?? releaseChild;
@@ -1170,15 +1192,13 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
   const visualGateFn = options.runCompanionVisualGate ?? runCompanionVisualGate;
   const screenshotGateFn = options.runCompanionScreenshotGate ?? runCompanionScreenshotGate;
   const database = await prepareDatabase({
-    live: Boolean(options.live),
+    live: false,
     profile: options.profile,
     sourcePath: options.sourcePath,
   });
   let baseUrl;
   try {
-    baseUrl = normalizeCompanionBaseUrl(
-      options.baseUrl || database.inspection.details?.trustedLanCompanionUrl,
-    );
+    baseUrl = resolveCompanionQaLoopbackBaseUrl(options.baseUrl, database);
   } catch (error) {
     let cleanupFailed = false;
     const finalizationFailures = [];
@@ -1339,8 +1359,10 @@ export async function runLaunchedCompanionScreenshotGate(options = {}) {
         } else if (visualGate.errors.length === 0) {
           screenshotGate = await screenshotGateFn({
             baseUrl,
+            chmodFn: options.chmodFn,
             locale: options.locale,
             outputDir: options.outputDir,
+            platform: options.platform,
             timeoutMs: options.timeoutMs,
             themeMode: options.themeMode,
           });
@@ -1575,9 +1597,7 @@ async function runCli() {
     profile,
     sourcePath,
   });
-  const baseUrl = normalizeCompanionBaseUrl(
-    urlArg || dbResult.inspection.details?.trustedLanCompanionUrl,
-  );
+  const baseUrl = resolveCompanionQaLoopbackBaseUrl(urlArg, dbResult);
 
   console.log(formatVisualQaDatasetReport(dbResult));
   let visualGate = null;

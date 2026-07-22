@@ -9,7 +9,12 @@ import {
   t,
 } from "./companion_i18n.js";
 import { createCompanionLogic } from "./companion_logic.js";
+import { createCompanionLiveRegionAnnouncer } from "./companion_live_regions.js";
 import { createCompanionMutations } from "./companion_mutations.js";
+import {
+  companionOverlayKey,
+  createCompanionOverlayFocusLifecycle,
+} from "./companion_overlay_focus.js";
 import { createCompanionRuntimeState } from "./companion_runtime_state.js";
 import { renderMarkupPreservingFocus } from "./companion_render_focus.js";
 import { createCompanionShellState, detectCompanionLayoutMode } from "./companion_shell_state.js";
@@ -48,6 +53,9 @@ function syncRecoverySectionLabels(locale) {
 }
 
 const state = createInitialCompanionState();
+const companionLiveRegionAnnouncer = createCompanionLiveRegionAnnouncer({
+  documentRef: document,
+});
 const companionLogic = createCompanionLogic({
   state,
   sections: RECOVERY_SECTIONS,
@@ -58,6 +66,7 @@ const { selectionClearedAfterBorrowedInHandBack } = companionLogic;
 const companionRuntimeState = createCompanionRuntimeState({
   state,
   render,
+  announceStatus: companionLiveRegionAnnouncer.announceRuntimeStatus,
 });
 const { setStatus, setBusy, setDetailFeedback, clearDetailFeedback } = companionRuntimeState;
 
@@ -100,6 +109,19 @@ const {
   toggleBorrowedInForm,
   toggleLoanReturn,
 } = companionShellState;
+
+const companionOverlayFocusLifecycle = createCompanionOverlayFocusLifecycle({
+  documentRef: document,
+  closeOverlay() {
+    if (state.detailOpen) {
+      closeDetailModal();
+      return;
+    }
+    if (state.activeTaskSheet) {
+      closeActiveTaskSheet();
+    }
+  },
+});
 
 const companionDataController = createCompanionDataController({
   state,
@@ -441,18 +463,22 @@ function syncOverlayScrollLock() {
 }
 
 function render() {
+  const overlayKey = companionOverlayKey(state);
+  companionOverlayFocusLifecycle.prepareForRender(overlayKey);
   syncOverlayScrollLock();
   renderMarkupPreservingFocus({
     root,
     documentRef: document,
     markup: companionAppShellRenderer.renderRoot(),
   });
+  companionOverlayFocusLifecycle.restoreAfterRender(overlayKey);
 }
 
 installCompanionDomEvents({
   documentRef: document,
   root,
   state,
+  overlayFocusLifecycle: companionOverlayFocusLifecycle,
   closeActiveTaskSheet,
   closeDetailModal,
   setStatus,

@@ -176,6 +176,7 @@ test("loan return task sheet renders the compact return form", () => {
   assert.doesNotMatch(returnButton, /swatch-action-button|disabled/);
   assert.match(html, /class="metric-card loan-date-metric"/);
   assert.match(html, /Returned total weight incl\. spool \(g\)/);
+  assert.match(html, /data-form-key="loan-return:loan-1"/);
   assert.match(html, /aria-describedby="loan-return-calculation"/);
   assert.match(html, /Suggested return calculation/);
   assert.doesNotMatch(html, /role="status"|aria-live=/);

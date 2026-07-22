@@ -2,6 +2,22 @@ import { routeCompanionClickAction } from "./companion_click_router.js";
 import { routeCompanionInputChange } from "./companion_input_router.js";
 import { routeCompanionSubmitAction } from "./companion_submit_router.js";
 
+const OVERLAY_OPENING_ACTIONS = new Set([
+  "start-printer-slot-assignment",
+  "start-printer-weight-update",
+  "toggle-borrowed-in-form",
+  "toggle-add-spool-form",
+  "toggle-loan-return",
+  "start-loan-create",
+  "start-loan-picker",
+  "select-loan-spool",
+  "open-current-detail",
+  "select-spool",
+  "inspect-slot-spool",
+  "open-loan-spool",
+  "assign-selected-spool",
+]);
+
 function isNamedFormControl(target) {
   if (!target || typeof target.name !== "string") {
     return false;
@@ -21,6 +37,9 @@ function isFormElementLike(target) {
 }
 
 export function handleCompanionKeydownEvent(event, options) {
+  if (options.overlayFocusLifecycle?.handleKeydown?.(event)) {
+    return true;
+  }
   if (event?.key === "Escape" && options.state.detailOpen) {
     options.closeDetailModal();
     return true;
@@ -39,6 +58,9 @@ export function handleCompanionClickEvent(event, options) {
   }
 
   const action = target.getAttribute("data-action");
+  if (OVERLAY_OPENING_ACTIONS.has(action)) {
+    options.overlayFocusLifecycle?.rememberOpener?.(target);
+  }
   return routeCompanionClickAction(action, target, {
     refresh: () => void options.refreshOverview(),
     setRootFlow: options.setRootFlow,

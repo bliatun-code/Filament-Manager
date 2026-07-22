@@ -183,6 +183,7 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-action="set-filament-ownership"/);
   assert.match(html, /data-action="wishlist-update-status"/);
   assert.match(html, /data-action="wishlist-stock-form"/);
+  assert.match(html, /data-form-key="wishlist-stock:wish-1"/);
   assert.match(html, /name="received-quantity"/);
   assert.match(html, /max="2"/);
   assert.match(html, /data-action="wishlist-delete"/);

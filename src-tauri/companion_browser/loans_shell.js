@@ -333,7 +333,7 @@ export function renderLoanReturnTaskSheetBody(options) {
               <div class="metric-value">${escapeHtml(formatDate(loanRow.loan.lent_at, locale))}</div>
             </div>
           </div>
-          <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}">
+          <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}" data-form-key="loan-return:${escapeHtml(loanRow.loan.id)}">
             <input type="hidden" name="loan-id" value="${escapeHtml(loanRow.loan.id)}" />
             <input type="hidden" name="spool-id" value="${escapeHtml(loanRow.loan.spool_id)}" />
             ${renderDetailField({

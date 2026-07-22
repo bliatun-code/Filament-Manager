@@ -45,6 +45,20 @@ export function normalizeCompanionBaseUrl(raw) {
   return url.origin;
 }
 
+export function normalizeCompanionQaLoopbackBaseUrl(raw) {
+  const baseUrl = normalizeCompanionBaseUrl(raw);
+  if (!baseUrl) {
+    return null;
+  }
+  const url = new URL(baseUrl);
+  if (url.protocol !== "http:" || url.hostname !== "127.0.0.1") {
+    throw new Error(
+      "Companion QA authentication is restricted to http://127.0.0.1 loopback URLs.",
+    );
+  }
+  return baseUrl;
+}
+
 function routeUrl(baseUrl, route) {
   return new URL(route, `${baseUrl}/`).toString();
 }
@@ -267,7 +281,7 @@ function assertIncludes(errors, label, content, requiredParts) {
 }
 
 export async function runCompanionVisualGate(options = {}) {
-  const baseUrl = normalizeCompanionBaseUrl(options.baseUrl);
+  const baseUrl = normalizeCompanionQaLoopbackBaseUrl(options.baseUrl);
   if (!baseUrl) {
     throw new Error("Companion visual gate needs a companion base URL.");
   }

@@ -85,6 +85,22 @@ test("keydown handler closes the detail modal on Escape only while detail is ope
   assert.equal(handleCompanionKeydownEvent({ key: "Escape" }, options), false);
 });
 
+test("keydown handler delegates overlay focus trapping and Escape handling to the lifecycle", () => {
+  const calls = [];
+  const event = { key: "Tab" };
+  const options = createBaseOptions({
+    overlayFocusLifecycle: {
+      handleKeydown(receivedEvent) {
+        calls.push(receivedEvent);
+        return true;
+      },
+    },
+  });
+
+  assert.equal(handleCompanionKeydownEvent(event, options), true);
+  assert.deepEqual(calls, [event]);
+});
+
 test("click handler refreshes current trusted-LAN companion data", async () => {
   let refreshCount = 0;
   const options = createBaseOptions({
@@ -114,6 +130,26 @@ test("click handler refreshes current trusted-LAN companion data", async () => {
   assert.equal(handled, true);
   await Promise.resolve();
   assert.equal(refreshCount, 1);
+});
+
+test("click handler remembers pointer openers before an overlay-opening action rerenders", () => {
+  const remembered = [];
+  const target = createActionTarget({
+    "data-action": "start-printer-slot-assignment",
+    "data-printer-id": "printer-7",
+    "data-slot-id": "slot-2",
+  });
+  const options = createBaseOptions({
+    overlayFocusLifecycle: {
+      rememberOpener(element) {
+        remembered.push(element);
+      },
+    },
+    startPrinterSlotAssignment() {},
+  });
+
+  assert.equal(handleCompanionClickEvent({ target }, options), true);
+  assert.deepEqual(remembered, [target]);
 });
 
 test("click handler dispatches wishlist deletion from the rendered queue", () => {

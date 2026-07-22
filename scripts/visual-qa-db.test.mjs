@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
+  statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, posix, resolve, win32 } from "node:path";
+import { basename, dirname, join, posix, resolve, win32 } from "node:path";
 import { test } from "node:test";
 import Database from "better-sqlite3";
 import {
@@ -19,12 +22,14 @@ import {
   VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
   VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
   VISUAL_QA_FIXTURE_WISHLIST_QUEUE,
+  VISUAL_QA_LOOPBACK_INTERFACE,
   VISUAL_QA_PROFILE_BASE,
   VISUAL_QA_PROFILE_RICH,
   VISUAL_QA_DB_PATH_ENV_VAR,
   VISUAL_QA_TRUSTED_LAN_PORT,
   applyTrustedLanInterfaceFixture,
   applyVisualQaDatabaseFixture,
+  assertVisualQaDatabaseTarget,
   assessVisualQaDataset,
   chooseBalancedCatalogSwatchFixtureRows,
   cleanupVisualQaDatabase,
@@ -365,7 +370,7 @@ test("formatVisualQaDatasetReport includes counts and errors", () => {
   assert.match(report, /expected at least 1/);
 });
 
-test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database copies", async () => {
+test("applyTrustedLanInterfaceFixture retargets database copies to loopback", async () => {
   const dir = mkdtempSync(join(tmpdir(), "visual-qa-trusted-lan-"));
   try {
     const dbPath = join(dir, "fixture.db");
@@ -383,14 +388,12 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
     db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run("trusted_lan_port", "4278");
     db.close();
 
-    const fixture = await applyTrustedLanInterfaceFixture(dbPath, {
-      interfaces: [{ address: "172.20.10.7", name: "en0" }],
-    });
+    const fixture = await applyTrustedLanInterfaceFixture(dbPath);
 
     assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE);
     assert.equal(fixture?.previousInterfaceAddress, "192.168.1.25");
-    assert.equal(fixture?.interfaceAddress, "172.20.10.7");
-    assert.equal(fixture?.interfaceName, "en0");
+    assert.equal(fixture?.interfaceAddress, VISUAL_QA_LOOPBACK_INTERFACE.address);
+    assert.equal(fixture?.interfaceName, VISUAL_QA_LOOPBACK_INTERFACE.name);
     assert.equal(fixture?.previousPort, "4278");
     assert.equal(fixture?.port, String(VISUAL_QA_TRUSTED_LAN_PORT));
 
@@ -400,13 +403,13 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
         updatedDb
           .prepare("SELECT value FROM settings WHERE key = ?")
           .get("trusted_lan_interface_name").value,
-        "en0",
+        VISUAL_QA_LOOPBACK_INTERFACE.name,
       );
       assert.equal(
         updatedDb
           .prepare("SELECT value FROM settings WHERE key = ?")
           .get("trusted_lan_interface_address").value,
-        "172.20.10.7",
+        VISUAL_QA_LOOPBACK_INTERFACE.address,
       );
       assert.equal(
         updatedDb
@@ -417,6 +420,29 @@ test("applyTrustedLanInterfaceFixture retargets trusted LAN settings on database
     } finally {
       updatedDb.close();
     }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyTrustedLanInterfaceFixture rejects non-loopback overrides", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-trusted-lan-reject-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    const db = new Database(dbPath);
+    db.exec("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);");
+    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
+      "trusted_lan_enabled",
+      "1",
+    );
+    db.close();
+
+    await assert.rejects(
+      applyTrustedLanInterfaceFixture(dbPath, {
+        interfaces: [{ address: "192.168.1.25", name: "Wi-Fi" }],
+      }),
+      /only accepts the 127\.0\.0\.1 loopback interface/,
+    );
   } finally {
     rmSync(dir, { force: true, recursive: true });
   }
@@ -469,6 +495,144 @@ test("visualQaTempDbPath stays unique when calls share a source and timestamp", 
   assert.match(first, expectedName);
   assert.match(second, expectedName);
 });
+
+test("visual QA copy targets must differ from their source database", () => {
+  const cwd = resolve("visual-qa-root");
+  assert.throws(
+    () =>
+      assertVisualQaDatabaseTarget({
+        cwd,
+        sourcePath: "data/source.db",
+        targetPath: "data/../data/source.db",
+      }),
+    /target must differ from its source database/,
+  );
+  assert.deepEqual(
+    assertVisualQaDatabaseTarget({
+      cwd,
+      sourcePath: "data/source.db",
+      targetPath: "tmp/copy.db",
+    }),
+    {
+      sourcePath: resolve(cwd, "data/source.db"),
+      targetPath: resolve(cwd, "tmp/copy.db"),
+    },
+  );
+});
+
+test("visual QA copy target guard rejects aliases, hardlinks and SQLite sidecars", () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-target-guard-"));
+  const sourcePath = join(dir, "Source.db");
+  const hardlinkPath = join(dir, "hardlink.db");
+  try {
+    createMinimalVisualQaSource(sourcePath);
+    linkSync(sourcePath, hardlinkPath);
+    for (const targetPath of [
+      join(dir, "nested", "..", "Source.db"),
+      hardlinkPath,
+      `${sourcePath}-wal`,
+      `${sourcePath}-shm`,
+      `${sourcePath}-journal`,
+    ]) {
+      assert.throws(
+        () => assertVisualQaDatabaseTarget({ sourcePath, targetPath }),
+        /target must differ from its source database and SQLite sidecars/,
+      );
+    }
+    assert.throws(
+      () =>
+        assertVisualQaDatabaseTarget({
+          platform: "win32",
+          sourcePath,
+          targetPath: sourcePath.toLocaleLowerCase("en-US"),
+        }),
+      /target must differ/,
+    );
+    assert.throws(
+      () =>
+        assertVisualQaDatabaseTarget({
+          platform: "darwin",
+          sourcePath,
+          targetPath: `${sourcePath.toLocaleLowerCase("en-US")}-wal`,
+        }),
+      /target must differ/,
+    );
+    for (const suffix of ["-WaL. ", "-SHM.", "-Journal "]) {
+      assert.throws(
+        () =>
+          assertVisualQaDatabaseTarget({
+            platform: "win32",
+            sourcePath,
+            targetPath: `${sourcePath.toLocaleLowerCase("en-US")}${suffix}`,
+          }),
+        /target must differ/,
+      );
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("prepareVisualQaDatabase rejects an explicit target that aliases its source", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-source-target-alias-"));
+  const sourcePath = join(dir, "source.db");
+  try {
+    createMinimalVisualQaSource(sourcePath);
+    await assert.rejects(
+      prepareVisualQaDatabase({
+        interfaces: [],
+        profile: "base",
+        sourcePath,
+        targetPath: join(dir, ".", "source.db"),
+      }),
+      /target must differ from its source database/,
+    );
+    const db = new Database(sourcePath, { readonly: true, fileMustExist: true });
+    try {
+      assert.equal(db.prepare("SELECT COUNT(*) AS count FROM filament_spools").get().count, 1);
+    } finally {
+      db.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test(
+  "prepareVisualQaDatabase rejects dangling symlink targets before touching SQLite sidecars",
+  { skip: process.platform === "win32" },
+  async () => {
+    const dir = mkdtempSync(join(tmpdir(), "visual-qa-dangling-target-"));
+    const sourcePath = join(dir, "source.db");
+    const sidecarSuffixes = ["-wal", "-shm", "-journal"];
+    try {
+      createMinimalVisualQaSource(sourcePath);
+      for (const [index, suffix] of sidecarSuffixes.entries()) {
+        const protectedPath = `${sourcePath}${suffix}`;
+        const targetPath = join(dir, `target-alias-${index}.db`);
+        assert.equal(existsSync(protectedPath), false);
+        symlinkSync(protectedPath, targetPath);
+
+        assert.throws(
+          () => assertVisualQaDatabaseTarget({ sourcePath, targetPath }),
+          /target must not be a symbolic link/,
+        );
+        await assert.rejects(
+          prepareVisualQaDatabase({
+            interfaces: [],
+            profile: "base",
+            sourcePath,
+            targetPath,
+          }),
+          /target must not be a symbolic link/,
+        );
+        assert.equal(existsSync(protectedPath), false);
+      }
+    } finally {
+      rmSync(dir, { force: true, recursive: true });
+    }
+  },
+);
 
 test("prepareVisualQaDatabase removes its generated copy when a fixture fails", async () => {
   const dir = mkdtempSync(join(tmpdir(), "visual-qa-failure-cleanup-"));
@@ -541,6 +705,10 @@ test("prepareVisualQaDatabase leaves a successful generated copy for its caller"
 
     assert.equal(result.live, false);
     assert.equal(existsSync(targetPath), true);
+    if (process.platform !== "win32") {
+      assert.equal(statSync(dirname(targetPath)).mode & 0o777, 0o700);
+      assert.equal(statSync(targetPath).mode & 0o777, 0o600);
+    }
   } finally {
     cleanupVisualQaDatabase(targetPath);
     rmSync(dir, { force: true, recursive: true });

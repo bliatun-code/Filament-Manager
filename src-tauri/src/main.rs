@@ -75,6 +75,8 @@ use backend::inventory_engine::InventoryEngine;
 use backend::statistics::StatisticsEngine;
 #[cfg(target_os = "macos")]
 use objc2::{AnyThread, MainThreadMarker};
+#[cfg(all(target_os = "macos", debug_assertions))]
+use objc2_app_kit::NSWindow;
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{NSApp, NSImage};
 #[cfg(target_os = "macos")]
@@ -96,6 +98,8 @@ const VISUAL_QA_SCENARIO_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const VISUAL_QA_LOCALE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 #[cfg(debug_assertions)]
 const VISUAL_QA_THEME_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_THEME";
+#[cfg(all(debug_assertions, target_os = "macos"))]
+const VISUAL_QA_WINDOW_SIZE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE";
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
@@ -162,6 +166,45 @@ fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
     Ok(app.package_info().version.to_string())
 }
 
+#[cfg(debug_assertions)]
+fn normalize_desktop_visual_qa_readiness_token(value: &str) -> Option<&'static str> {
+    match value.trim() {
+        "printer-live-telemetry" => Some("printer-live-telemetry"),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+fn signal_desktop_visual_qa_readiness(token: String) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        let token = normalize_desktop_visual_qa_readiness_token(&token)
+            .ok_or_else(|| "Unknown desktop visual QA readiness token".to_string())?;
+        eprintln!("FILAMENT_MANAGER_VISUAL_QA_READY:{token}");
+        Ok(())
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = token;
+        Err("Desktop visual QA readiness is unavailable in release builds".to_string())
+    }
+}
+
+#[tauri::command]
+fn prepare_desktop_visual_qa_window(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        apply_visual_qa_window_size(&app)
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = app;
+        Err("Desktop visual QA window preparation is unavailable in release builds".to_string())
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn apply_macos_dock_icon(app: &tauri::AppHandle, icon_bytes: &'static [u8]) -> Result<(), String> {
     let (sender, receiver) = std::sync::mpsc::channel::<Result<(), String>>();
@@ -215,6 +258,9 @@ fn main() {
             app.manage(state.clone());
 
             #[cfg(debug_assertions)]
+            apply_visual_qa_window_size(app.handle())?;
+
+            #[cfg(debug_assertions)]
             apply_visual_qa_scenario_url(app)?;
 
             let lan_state = app.state::<AppState>().inner().clone();
@@ -258,6 +304,8 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
+            signal_desktop_visual_qa_readiness,
+            prepare_desktop_visual_qa_window,
             app_error::application_diagnostics::get_application_diagnostics,
             app_error::application_diagnostics::get_sanitized_support_bundle_json,
             library_sync_settings_commands::get_library_sync_settings,
@@ -526,6 +574,44 @@ fn normalize_visual_qa_theme(value: &str) -> Option<&'static str> {
 fn visual_qa_theme_from_env() -> Option<&'static str> {
     let value = std::env::var(VISUAL_QA_THEME_ENV_VAR).ok()?;
     normalize_visual_qa_theme(&value)
+}
+
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+fn normalize_visual_qa_window_size(value: &str) -> Option<(f64, f64)> {
+    let normalized = value.trim().to_ascii_lowercase().replace('×', "x");
+    let (width, height) = normalized.split_once('x')?;
+    let width = width.trim().parse::<u32>().ok()?;
+    let height = height.trim().parse::<u32>().ok()?;
+    if !(320..=8192).contains(&width) || !(320..=8192).contains(&height) {
+        return None;
+    }
+    Some((f64::from(width), f64::from(height)))
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn apply_visual_qa_window_size(app: &tauri::AppHandle) -> Result<(), String> {
+    let Some(raw_size) = std::env::var(VISUAL_QA_WINDOW_SIZE_ENV_VAR).ok() else {
+        return Ok(());
+    };
+    let (width, height) = normalize_visual_qa_window_size(&raw_size)
+        .ok_or_else(|| "Invalid desktop visual QA window size".to_string())?;
+    let Some(window) = app.get_webview_window("main") else {
+        return Err("Desktop visual QA main window is unavailable".to_string());
+    };
+    let raw_window = window.ns_window().map_err(|error| error.to_string())?;
+    let native_window: &NSWindow = unsafe { &*raw_window.cast() };
+    let mut frame = native_window.frame();
+    frame.origin.x = 0.0;
+    frame.origin.y = 0.0;
+    frame.size.width = width;
+    frame.size.height = height;
+    native_window.setFrame_display(frame, true);
+    Ok(())
+}
+
+#[cfg(all(debug_assertions, not(target_os = "macos")))]
+fn apply_visual_qa_window_size(_app: &tauri::AppHandle) -> Result<(), String> {
+    Ok(())
 }
 
 #[cfg(debug_assertions)]

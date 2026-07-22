@@ -95,16 +95,25 @@ test("visual QA CLI cleans its generated database when spawn throws synchronousl
   assert.deepEqual(cleanup, [testVisualDatabasePath]);
 });
 
-test("visual QA CLI preserves kept copies and live databases when spawn throws", async () => {
+test("visual QA CLI refuses live databases before preparation", async () => {
+  let prepareCalls = 0;
+  await assert.rejects(
+    runVisualQaCli({
+      argv: ["--live"],
+      log: () => {},
+      prepareVisualQaDatabase: async () => {
+        prepareCalls += 1;
+        return createVisualQaDatabase();
+      },
+    }),
+    /refuses --live/,
+  );
+  assert.equal(prepareCalls, 0);
+});
+
+test("visual QA CLI preserves kept copies when spawn throws", async () => {
   for (const scenario of [
     { argv: ["--keep"], database: createVisualQaDatabase() },
-    {
-      argv: ["--live"],
-      database: createVisualQaDatabase({
-        live: true,
-        targetPath: testSourceDatabasePath,
-      }),
-    },
   ]) {
     const cleanup = [];
     const spawnError = new Error("spawn EACCES");
@@ -204,16 +213,9 @@ test("visual QA CLI rejects asynchronous spawn errors after close and cleans onc
   assert.equal(child.listenerCount("close"), 0);
 });
 
-test("visual QA CLI preserves kept copies and live databases after asynchronous spawn errors", async () => {
+test("visual QA CLI preserves kept copies after asynchronous spawn errors", async () => {
   for (const scenario of [
     { argv: ["--keep"], database: createVisualQaDatabase() },
-    {
-      argv: ["--live"],
-      database: createVisualQaDatabase({
-        live: true,
-        targetPath: testSourceDatabasePath,
-      }),
-    },
   ]) {
     const child = createFakeChild();
     const cleanup = [];

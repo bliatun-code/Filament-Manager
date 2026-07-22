@@ -14,6 +14,7 @@ const windowsDatabaseVerifier = readFileSync(
   "scripts/verify-windows-app-database.mjs",
   "utf8",
 );
+const packageManifest = JSON.parse(readFileSync("package.json", "utf8"));
 
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -455,6 +456,32 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   assert.match(
     windowsJob,
     /- name: Upload MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
+});
+
+test("CI executes real browser accessibility and sanitized Companion workflows", () => {
+  const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const windowsJobStart = ciWorkflow.indexOf("  windows-smoke:");
+  assert.notEqual(windowsJobStart, -1, "Missing workflow section: windows-smoke:");
+  const windowsJob = ciWorkflow.slice(windowsJobStart);
+
+  assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
+  assertStepOrder(macosJob, [
+    "Install root dependencies",
+    "Install Playwright Chromium",
+    "Run full verification",
+    "Run data-backed Companion E2E",
+  ]);
+  assertStepOrder(windowsJob, [
+    "Install root dependencies",
+    "Install Playwright Chromium",
+    "Run full verification",
+  ]);
+  assert.match(macosJob, /- name: Install Playwright Chromium\s+run: npx playwright install chromium/);
+  assert.match(windowsJob, /- name: Install Playwright Chromium\s+run: npx playwright install chromium/);
+  assert.match(
+    macosJob,
+    /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e/,
   );
 });
 

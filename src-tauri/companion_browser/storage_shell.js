@@ -219,7 +219,7 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             })}
             ${
               item.status !== "RECEIVED"
-                ? `<form class="wishlist-receipt-form" data-action="wishlist-stock-form">
+                ? `<form class="wishlist-receipt-form" data-action="wishlist-stock-form" data-form-key="wishlist-stock:${escapeHtml(item.id)}">
                     <input name="wishlist-id" type="hidden" value="${escapeHtml(item.id)}" />
                     <label class="wishlist-receipt-quantity">
                       <span class="sr-only">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>

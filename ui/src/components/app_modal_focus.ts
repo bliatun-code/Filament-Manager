@@ -1,7 +1,8 @@
-const APP_MODAL_FOCUSABLE_SELECTOR = [
+export const APP_MODAL_FOCUSABLE_SELECTOR = [
   "a[href]",
   "area[href]",
   "button:not([disabled])",
+  "summary",
   "input:not([disabled]):not([type='hidden'])",
   "select:not([disabled])",
   "textarea:not([disabled])",

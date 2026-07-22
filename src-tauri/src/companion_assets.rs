@@ -28,6 +28,8 @@ const COMPANION_BROWSER_INPUT_ROUTER_JS: &str =
     include_str!("../companion_browser/companion_input_router.js");
 const COMPANION_BROWSER_LIVE_RFID_CANDIDATES_JS: &str =
     include_str!("../companion_browser/companion_live_rfid_candidates.js");
+const COMPANION_BROWSER_LIVE_REGIONS_JS: &str =
+    include_str!("../companion_browser/companion_live_regions.js");
 const COMPANION_BROWSER_LOAN_STATE_JS: &str =
     include_str!("../companion_browser/companion_loan_state.js");
 const COMPANION_BROWSER_LOAN_MUTATIONS_JS: &str =
@@ -36,6 +38,8 @@ const COMPANION_BROWSER_MUTATION_HELPERS_JS: &str =
     include_str!("../companion_browser/companion_mutation_helpers.js");
 const COMPANION_BROWSER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_mutations.js");
+const COMPANION_BROWSER_OVERLAY_FOCUS_JS: &str =
+    include_str!("../companion_browser/companion_overlay_focus.js");
 const COMPANION_BROWSER_PRINTER_MUTATIONS_JS: &str =
     include_str!("../companion_browser/companion_printer_mutations.js");
 const COMPANION_BROWSER_QR_PAYLOAD_JS: &str = include_str!("../companion_browser/qr_payload.js");
@@ -208,6 +212,13 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             },
         ),
         (
+            "companion_live_regions.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_LIVE_REGIONS_JS,
+            },
+        ),
+        (
             "companion_loan_state.js",
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
@@ -233,6 +244,13 @@ pub(crate) fn companion_browser_assets() -> &'static [(&'static str, CompanionBr
             CompanionBrowserAsset {
                 content_type: "application/javascript; charset=utf-8",
                 content: COMPANION_BROWSER_MUTATIONS_JS,
+            },
+        ),
+        (
+            "companion_overlay_focus.js",
+            CompanionBrowserAsset {
+                content_type: "application/javascript; charset=utf-8",
+                content: COMPANION_BROWSER_OVERLAY_FOCUS_JS,
             },
         ),
         (
