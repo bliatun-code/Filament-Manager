@@ -35,6 +35,20 @@ export type ApplicationDiagnostics = {
   database: DatabaseDiagnostics;
 };
 
+export type AppUpdateStatus =
+  | "UPDATE_AVAILABLE"
+  | "UP_TO_DATE"
+  | "DEVELOPMENT_BUILD"
+  | "RELEASE_INFO_UNAVAILABLE";
+
+export type AppUpdateCheckResult = {
+  current_version: string;
+  latest_version: string | null;
+  latest_tag: string | null;
+  release_url: string;
+  status: AppUpdateStatus;
+};
+
 export async function getAppVersion() {
   return invoke<string>("get_app_version");
 }
@@ -45,6 +59,10 @@ export async function getApplicationDiagnostics() {
 
 export async function getSanitizedSupportBundleJson() {
   return invoke<string>("get_sanitized_support_bundle_json");
+}
+
+export async function checkForAppUpdate() {
+  return invoke<AppUpdateCheckResult>("check_for_app_update");
 }
 
 export async function resetAppData() {

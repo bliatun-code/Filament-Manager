@@ -37,6 +37,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID, "visual_qa_spool_inbound_lagoon");
   assert.deepEqual(DESKTOP_VISUAL_QA_SCENARIOS, [
     "dashboard-overview",
+    "dashboard-onboarding",
     "inventory-overview",
     "add-filament",
     "wishlist-queue",
@@ -58,6 +59,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "printer-slot-replacement",
     "printer-slot-clear",
     "settings-general",
+    "settings-updates",
     "settings-inventory-label-sheet",
     "settings-library",
     "settings-library-role-change",
@@ -82,6 +84,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "statistics-loans",
   ]);
   assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
+  assert.equal(normalizeDesktopVisualQaScenario("getting-started"), "dashboard-onboarding");
   assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
   assert.equal(normalizeDesktopVisualQaScenario("wishlist-orders"), "wishlist-queue");
@@ -108,6 +111,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("slot-unload"), "printer-slot-clear");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
+  assert.equal(normalizeDesktopVisualQaScenario("update-check"), "settings-updates");
   assert.equal(
     normalizeDesktopVisualQaScenario("inventory-label-sheet"),
     "settings-inventory-label-sheet",
@@ -193,6 +197,14 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
     page: "inventory",
   });
   assert.equal(
+    desktopVisualQaScenarioDefinition("onboarding")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("update-check")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
     desktopVisualQaScenarioDefinition("ams-onboarding")?.requiresDatabaseFixture,
     true,
   );
@@ -261,6 +273,7 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
 
 test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=dashboard-overview"), "dashboard");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=dashboard-onboarding"), "dashboard");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=inventory-overview"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=add-filament"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=wishlist-queue"), "inventory");
@@ -281,6 +294,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-replacement"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-clear"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-general"), "settings");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-updates"), "settings");
   assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-inventory-label-sheet"),
     "settings",
@@ -345,6 +359,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
 
 test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-general"), "GENERAL");
+  assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-updates"), "GENERAL");
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-inventory-label-sheet"),
     "GENERAL",

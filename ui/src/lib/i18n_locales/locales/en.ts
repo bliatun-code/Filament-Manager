@@ -69,6 +69,24 @@ export const enDictionary: DictionaryNode = {
       settings: "Settings",
     },
     dashboard: {
+      onboardingInventoryBody: "Start with one spool, or import an existing inventory or backup.",
+      onboardingInventoryTitle: "Add or import inventory",
+      onboardingPrinterBody:
+        "Add any supported printer. Bambu Live can be enabled when available.",
+      onboardingPrinterTitle: "Set up a printer",
+      onboardingCompanionBody:
+        "Enable browser access on a trusted network, or pair this desktop with a host.",
+      onboardingCompanionTitle: "Set up browser access",
+      onboardingBackupBody: "Create a full backup after your library is ready.",
+      onboardingEyebrow: "Getting started",
+      onboardingTitle: "Finish setup",
+      onboardingDescription:
+        "Use the steps that fit your setup. Printer and browser access are optional.",
+      onboardingProgress: "{completed} of {total} complete",
+      onboardingDismiss: "Dismiss checklist",
+      onboardingComplete: "Complete",
+      onboardingOptional: "Optional",
+      onboardingPending: "To do",
       subtitle: "Follow inventory health, current usage and printer activity from one overview.",
       totalSpools: "Total Spools",
       totalSpoolsSubtitle: "Across all locations",
@@ -1132,6 +1150,18 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+      updates: "Updates",
+      updateCheckHint:
+        "Checks GitHub only when you ask. Download and installation remain manual.",
+      checkForUpdates: "Check for updates",
+      checkingForUpdates: "Checking…",
+      updateAvailable: "Version {version} is available.",
+      updateUpToDate: "Version {version} is the latest published release.",
+      updateDevelopmentBuild:
+        "This build is newer than the latest published release ({version}).",
+      updateCheckFailed: "Could not check for updates. Try again later.",
+      updateInfoUnavailable: "Release information is not available right now. Try again later.",
+      viewRelease: "View release",
       tabGeneral: "General",
       tabLibrary: "Library & web app",
       tabCompanion: "Browser access",

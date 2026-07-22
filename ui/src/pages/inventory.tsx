@@ -125,7 +125,9 @@ export default function InventoryPage({
     vendorFilter,
     vendorOptions,
     visibleInventoryCount,
-  } = useInventoryFilters(spools);
+  } = useInventoryFilters(spools, {
+    deterministicPagePreferences: Boolean(desktopVisualQaScenario || detailVisualFixture),
+  });
   const {
     closeRfidCaptureModal,
     closeRollModal,

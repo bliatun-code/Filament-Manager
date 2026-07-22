@@ -20,6 +20,8 @@ import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 type TranslateFn = (key: string, fallback: string) => string;
 
 export type DashboardGoalMetrics = {
+  totalSpools: number;
+  configuredPrinters: number;
   activeSpools: number;
   placedActiveSpools: number;
   totalJobs: number;
@@ -361,6 +363,8 @@ export function buildDashboardDerivedState(params: {
     return !isSpoolStatusEmptyOrLost(row.spool.normalized_status);
   });
   const goalMetrics: DashboardGoalMetrics = {
+    totalSpools: Math.max(spoolRows.length, overview.total_spools),
+    configuredPrinters: printers.length,
     activeSpools: activeSpoolRows.length,
     placedActiveSpools: activeSpoolRows.filter((row) => Boolean((row.spool.location_id ?? "").trim())).length,
     totalJobs: printers.reduce((sum, printer) => sum + Math.max(0, printer.usage.total_jobs), 0),

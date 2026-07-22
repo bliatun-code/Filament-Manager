@@ -70,6 +70,26 @@ export const frDictionary: DictionaryNode = {
     generic: "Générique",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Commencez par une bobine, ou importez un stock ou une sauvegarde existants.",
+    onboardingInventoryTitle: "Ajouter ou importer le stock",
+    onboardingPrinterBody:
+      "Ajoutez une imprimante compatible. Bambu Live peut être activé lorsqu’il est disponible.",
+    onboardingPrinterTitle: "Configurer une imprimante",
+    onboardingCompanionBody:
+      "Activez l’accès par navigateur sur un réseau de confiance, ou associez cet ordinateur à un hôte.",
+    onboardingCompanionTitle: "Configurer l’accès par navigateur",
+    onboardingBackupBody:
+      "Créez une sauvegarde complète lorsque votre bibliothèque est prête.",
+    onboardingEyebrow: "Bien démarrer",
+    onboardingTitle: "Terminer la configuration",
+    onboardingDescription:
+      "Suivez les étapes adaptées à votre installation. L’imprimante et l’accès par navigateur sont facultatifs.",
+    onboardingProgress: "{completed} sur {total} terminé(s)",
+    onboardingDismiss: "Fermer la liste",
+    onboardingComplete: "Terminé",
+    onboardingOptional: "Facultatif",
+    onboardingPending: "À faire",
     subtitle: "Stock, consommation et activité des imprimantes en un coup d’œil.",
     totalSpools: "Bobines au total",
     totalSpoolsSubtitle: "Tous emplacements confondus",
@@ -1139,6 +1159,20 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    updates: "Mises à jour",
+    updateCheckHint:
+      "GitHub n’est consulté qu’à votre demande. Le téléchargement et l’installation restent manuels.",
+    checkForUpdates: "Rechercher des mises à jour",
+    checkingForUpdates: "Recherche en cours…",
+    updateAvailable: "La version {version} est disponible.",
+    updateUpToDate: "La version {version} est la dernière version publiée.",
+    updateDevelopmentBuild:
+      "Cette version est plus récente que la dernière version publiée ({version}).",
+    updateCheckFailed:
+      "Impossible de rechercher les mises à jour. Réessayez plus tard.",
+    updateInfoUnavailable:
+      "Les informations sur la version ne sont pas disponibles pour le moment. Réessayez plus tard.",
+    viewRelease: "Voir la version",
     tabGeneral: "Général",
     tabLibrary: "Bibliothèque et web app",
     tabCompanion: "Accès navigateur",

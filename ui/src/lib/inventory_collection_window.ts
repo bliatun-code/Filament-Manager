@@ -1,5 +1,5 @@
 import type { InventorySpool, SpoolGroup } from "./inventory_list_model";
-import type { InventoryViewMode } from "./use_inventory_filters";
+import type { InventoryViewMode } from "./inventory_page_preferences";
 
 export const INVENTORY_CARD_GROUP_PAGE_SIZE = 96;
 export const INVENTORY_LIST_PAGE_SIZE = 200;

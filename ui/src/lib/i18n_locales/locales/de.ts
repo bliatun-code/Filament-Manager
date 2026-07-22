@@ -69,6 +69,26 @@ export const deDictionary: DictionaryNode = {
     generic: "Generisch",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Starte mit einer Rolle oder importiere einen vorhandenen Bestand oder eine Sicherung.",
+    onboardingInventoryTitle: "Bestand hinzufügen oder importieren",
+    onboardingPrinterBody:
+      "Füge einen unterstützten Drucker hinzu. Bambu Live kann aktiviert werden, wenn es verfügbar ist.",
+    onboardingPrinterTitle: "Drucker einrichten",
+    onboardingCompanionBody:
+      "Aktiviere den Browserzugriff in einem vertrauenswürdigen Netzwerk oder verbinde diesen Desktop mit einem Host.",
+    onboardingCompanionTitle: "Browserzugriff einrichten",
+    onboardingBackupBody:
+      "Erstelle eine vollständige Sicherung, sobald deine Bibliothek bereit ist.",
+    onboardingEyebrow: "Erste Schritte",
+    onboardingTitle: "Einrichtung abschließen",
+    onboardingDescription:
+      "Nutze die Schritte, die zu deiner Einrichtung passen. Drucker und Browserzugriff sind optional.",
+    onboardingProgress: "{completed} von {total} abgeschlossen",
+    onboardingDismiss: "Checkliste schließen",
+    onboardingComplete: "Abgeschlossen",
+    onboardingOptional: "Optional",
+    onboardingPending: "Offen",
     subtitle: "Bestand, Verbrauch und Druckeraktivität auf einen Blick.",
     totalSpools: "Rollen insgesamt",
     totalSpoolsSubtitle: "Über alle Lagerorte",
@@ -1103,6 +1123,19 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    updates: "Updates",
+    updateCheckHint:
+      "GitHub wird nur auf deine Anforderung geprüft. Download und Installation bleiben manuell.",
+    checkForUpdates: "Nach Updates suchen",
+    checkingForUpdates: "Suche läuft…",
+    updateAvailable: "Version {version} ist verfügbar.",
+    updateUpToDate: "Version {version} ist die neueste veröffentlichte Version.",
+    updateDevelopmentBuild:
+      "Dieser Build ist neuer als die neueste veröffentlichte Version ({version}).",
+    updateCheckFailed: "Updates konnten nicht geprüft werden. Versuche es später erneut.",
+    updateInfoUnavailable:
+      "Veröffentlichungsinformationen sind derzeit nicht verfügbar. Versuche es später erneut.",
+    viewRelease: "Veröffentlichung ansehen",
     tabGeneral: "Allgemein",
     tabLibrary: "Bibliothek & Web-App",
     tabCompanion: "Browserzugriff",

@@ -72,6 +72,8 @@ test("SettingsGeneralTab exposes license and source links", () => {
   assert.match(html, /Notices/);
   assert.match(html, /Product tour/);
   assert.match(html, /User manual/);
+  assert.match(html, /Check for updates/);
+  assert.match(html, /Download and installation remain manual/);
   assert.match(html, /Need just one label\?/);
   assert.match(
     html,
@@ -81,6 +83,7 @@ test("SettingsGeneralTab exposes license and source links", () => {
     html,
     /class="[^"]*border-indigo-200[^"]*bg-indigo-50[^"]*"[^>]*>Product tour/,
   );
+  assert.doesNotMatch(html, /View release/);
 });
 
 test("SettingsGeneralTab exposes selected theme and language choices", () => {

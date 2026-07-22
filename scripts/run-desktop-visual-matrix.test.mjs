@@ -18,6 +18,7 @@ const sourceDatabasePath = join(tmpdir(), "desktop-visual-matrix-library.db");
 test("desktop visual matrix keeps the sparse width and locale coverage", () => {
   assert.deepEqual(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX, [
     { locale: "zh-CN", scenario: "add-filament", width: 900 },
+    { locale: "de", scenario: "dashboard-onboarding", width: 900 },
     { locale: "fr", scenario: "settings-general", width: 1050 },
     { locale: "nb", scenario: "selected-roll", width: 1200 },
     { locale: "en", scenario: "statistics-overview", width: 1500 },
@@ -32,7 +33,7 @@ test("desktop visual matrix keeps genuine live telemetry explicitly opt-in", () 
   });
   assert.equal(
     desktopVisualQaMatrixEntries({ sourcePath: sourceDatabasePath }).length,
-    4,
+    5,
   );
   assert.deepEqual(
     desktopVisualQaMatrixEntries({
@@ -100,7 +101,7 @@ test("desktop visual matrix runs each entry in order with isolated launches", as
     },
   );
 
-  assert.equal(results.length, 5);
+  assert.equal(results.length, 6);
   assert.deepEqual(
     calls.map(({ options }) => [
       options.windowSize.width,

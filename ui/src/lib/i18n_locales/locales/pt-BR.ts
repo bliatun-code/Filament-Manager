@@ -48,6 +48,26 @@ export const ptBRDictionary: DictionaryNode = {
     unknown: "Desconhecido",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Comece com um carretel ou importe um inventário ou backup existente.",
+    onboardingInventoryTitle: "Adicionar ou importar inventário",
+    onboardingPrinterBody:
+      "Adicione qualquer impressora compatível. O Bambu Live pode ser ativado quando estiver disponível.",
+    onboardingPrinterTitle: "Configurar uma impressora",
+    onboardingCompanionBody:
+      "Ative o acesso pelo navegador em uma rede confiável ou pare este computador com um host.",
+    onboardingCompanionTitle: "Configurar acesso pelo navegador",
+    onboardingBackupBody:
+      "Crie um backup completo quando a biblioteca estiver pronta.",
+    onboardingEyebrow: "Primeiros passos",
+    onboardingTitle: "Concluir configuração",
+    onboardingDescription:
+      "Use as etapas adequadas à sua configuração. A impressora e o acesso pelo navegador são opcionais.",
+    onboardingProgress: "{completed} de {total} concluídos",
+    onboardingDismiss: "Fechar lista",
+    onboardingComplete: "Concluído",
+    onboardingOptional: "Opcional",
+    onboardingPending: "A fazer",
     achievements: "Metas de progresso",
     achievementsHint:
       "Metas em tempo real com base no seu inventário atual e na atividade da impressora.",
@@ -1040,6 +1060,20 @@ export const ptBRDictionary: DictionaryNode = {
     withToolheads: "Multi-ferramenta",
   },
   settings: {
+    updates: "Atualizações",
+    updateCheckHint:
+      "Consulta o GitHub somente quando você solicita. O download e a instalação continuam manuais.",
+    checkForUpdates: "Verificar atualizações",
+    checkingForUpdates: "Verificando…",
+    updateAvailable: "A versão {version} está disponível.",
+    updateUpToDate: "A versão {version} é a versão publicada mais recente.",
+    updateDevelopmentBuild:
+      "Esta compilação é mais recente que a última versão publicada ({version}).",
+    updateCheckFailed:
+      "Não foi possível verificar atualizações. Tente novamente mais tarde.",
+    updateInfoUnavailable:
+      "As informações da versão não estão disponíveis no momento. Tente novamente mais tarde.",
+    viewRelease: "Ver versão",
     activeCleared: "Impressora ativa apagada.",
     activePrinter: "Impressora ativa",
     activeUpdated: "Impressora ativa atualizada.",

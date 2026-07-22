@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityTimeline,
   BadgePanel,
@@ -6,18 +6,26 @@ import {
   UsageChart,
 } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
+import { DashboardOnboardingChecklist } from "../components/dashboard_onboarding_checklist";
 import { PageHeaderButton } from "../components/page_header_button";
 import { PageRefreshButton } from "../components/page_refresh_button";
 import {
   buildDashboardBadges,
   buildDashboardCompanionPresentation,
 } from "../lib/dashboard_model";
+import {
+  buildDashboardOnboardingState,
+  dismissDashboardOnboarding,
+  readDashboardOnboardingDismissed,
+} from "../lib/dashboard_onboarding";
+import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
 import {
   InventoryHealthPanel,
   OwnershipSnapshotPanel,
 } from "./dashboard_panels";
 import { useDashboardPageData } from "./use_dashboard_page_data";
+import { readLatestFullBackupExport } from "./settings_full_backup_activity";
 import type { PageKey } from "../lib/app_navigation_model";
 
 type DashboardPageProps = {
@@ -25,6 +33,8 @@ type DashboardPageProps = {
   onAddFirstSpool?: () => void;
   onOpenLowStock?: () => void;
   onOpenCompanionSettings?: () => void;
+  onOpenMaintenanceSettings?: () => void;
+  onOpenPrinters?: () => void;
 };
 
 export default function DashboardPage({
@@ -32,6 +42,8 @@ export default function DashboardPage({
   onAddFirstSpool,
   onOpenLowStock,
   onOpenCompanionSettings,
+  onOpenMaintenanceSettings,
+  onOpenPrinters,
 }: DashboardPageProps) {
   const { t, locale } = useI18n();
   const {
@@ -39,6 +51,7 @@ export default function DashboardPage({
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,
+    clientHostPaired,
     companionStatus,
     dashboardSyncMode,
     error,
@@ -53,7 +66,18 @@ export default function DashboardPage({
     refreshing,
     stats,
     usagePoints,
+    setupDataAvailable,
   } = useDashboardPageData(t, locale);
+  const forceOnboardingVisible = useMemo(
+    () => resolveDesktopVisualQaScenario() === "dashboard-onboarding",
+    [],
+  );
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() =>
+    forceOnboardingVisible ? false : readDashboardOnboardingDismissed(),
+  );
+  const [backupComplete] = useState(() =>
+    forceOnboardingVisible ? false : Boolean(readLatestFullBackupExport()),
+  );
   const badges = useMemo(
     () => buildDashboardBadges({ goalMetrics, t }),
     [goalMetrics, t],
@@ -84,6 +108,28 @@ export default function DashboardPage({
         ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
         : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
   const monthlyUsageValue = stats.find((stat) => stat.id === "monthlyUsage")?.value ?? "0 g";
+  const onboardingState = useMemo(
+    () =>
+      buildDashboardOnboardingState({
+        backupComplete,
+        companionComplete:
+          dashboardSyncMode === "CLIENT"
+            ? clientHostPaired
+            : companionStatus?.enabled === true,
+        inventoryComplete: goalMetrics.totalSpools > 0,
+        printerComplete: goalMetrics.configuredPrinters > 0,
+      }),
+    [
+      backupComplete,
+      clientHostPaired,
+      companionStatus?.enabled,
+      dashboardSyncMode,
+      goalMetrics.configuredPrinters,
+      goalMetrics.totalSpools,
+    ],
+  );
+  const showOnboarding =
+    setupDataAvailable && (forceOnboardingVisible || !onboardingDismissed);
 
   return (
     <div className="page-shell">
@@ -124,6 +170,23 @@ export default function DashboardPage({
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
         </FeedbackBanner>
+      ) : null}
+
+      {showOnboarding ? (
+        <DashboardOnboardingChecklist
+          state={onboardingState}
+          onAddSpool={() => onAddFirstSpool?.()}
+          onDismiss={() => {
+            if (!forceOnboardingVisible) {
+              dismissDashboardOnboarding();
+            }
+            setOnboardingDismissed(true);
+          }}
+          onOpenBackup={() => onOpenMaintenanceSettings?.()}
+          onOpenCompanion={() => onOpenCompanionSettings?.()}
+          onOpenImport={() => onOpenMaintenanceSettings?.()}
+          onOpenPrinters={() => onOpenPrinters?.()}
+        />
       ) : null}
 
       <div className="mt-8 grid grid-cols-1 gap-4 min-[720px]:grid-cols-2 xl:grid-cols-4">

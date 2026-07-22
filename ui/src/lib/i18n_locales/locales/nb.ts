@@ -69,6 +69,25 @@ export const nbDictionary: DictionaryNode = {
       settings: "Innstillinger",
     },
     dashboard: {
+      onboardingInventoryBody:
+        "Start med én rull, eller importer et eksisterende lager eller en sikkerhetskopi.",
+      onboardingInventoryTitle: "Legg til eller importer lager",
+      onboardingPrinterBody:
+        "Legg til en støttet printer. Bambu Live kan aktiveres når det er tilgjengelig.",
+      onboardingPrinterTitle: "Sett opp en printer",
+      onboardingCompanionBody:
+        "Aktiver nettlesertilgang på et klarert nettverk, eller par denne skrivebordsappen med en vert.",
+      onboardingCompanionTitle: "Sett opp nettlesertilgang",
+      onboardingBackupBody: "Lag en full sikkerhetskopi når biblioteket er klart.",
+      onboardingEyebrow: "Kom i gang",
+      onboardingTitle: "Fullfør oppsettet",
+      onboardingDescription:
+        "Bruk trinnene som passer til oppsettet ditt. Printer og nettlesertilgang er valgfritt.",
+      onboardingProgress: "{completed} av {total} fullført",
+      onboardingDismiss: "Lukk sjekklisten",
+      onboardingComplete: "Fullført",
+      onboardingOptional: "Valgfritt",
+      onboardingPending: "Gjenstår",
       subtitle: "Følg lagerhelse, forbruk og printeraktivitet fra én samlet oversikt.",
       totalSpools: "Totale filamenter",
       totalSpoolsSubtitle: "På tvers av alle lokasjoner",
@@ -1137,6 +1156,19 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     settings: {
+      updates: "Oppdateringer",
+      updateCheckHint:
+        "Sjekker GitHub bare når du ber om det. Nedlasting og installasjon gjøres fortsatt manuelt.",
+      checkForUpdates: "Se etter oppdateringer",
+      checkingForUpdates: "Ser etter oppdateringer…",
+      updateAvailable: "Versjon {version} er tilgjengelig.",
+      updateUpToDate: "Versjon {version} er den nyeste publiserte utgivelsen.",
+      updateDevelopmentBuild:
+        "Denne versjonen er nyere enn den nyeste publiserte utgivelsen ({version}).",
+      updateCheckFailed: "Kunne ikke se etter oppdateringer. Prøv igjen senere.",
+      updateInfoUnavailable:
+        "Utgivelsesinformasjon er ikke tilgjengelig akkurat nå. Prøv igjen senere.",
+      viewRelease: "Vis utgivelsen",
       tabGeneral: "Generelt",
       tabLibrary: "Bibliotek og webapp",
       tabCompanion: "Nettlesertilgang",

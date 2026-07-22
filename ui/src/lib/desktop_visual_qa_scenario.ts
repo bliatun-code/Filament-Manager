@@ -8,6 +8,7 @@ export const DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID = "visual_qa_spool_inbound_lagoo
 
 export type DesktopVisualQaScenario =
   | "dashboard-overview"
+  | "dashboard-onboarding"
   | "inventory-overview"
   | "add-filament"
   | "wishlist-queue"
@@ -29,6 +30,7 @@ export type DesktopVisualQaScenario =
   | "printer-slot-replacement"
   | "printer-slot-clear"
   | "settings-general"
+  | "settings-updates"
   | "settings-inventory-label-sheet"
   | "settings-library"
   | "settings-library-role-change"

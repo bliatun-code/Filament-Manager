@@ -42,6 +42,8 @@ export type DashboardDataLoadResult = {
   clientHostCompanionTone: DashboardCompanionTone;
   clientHostDisplayName: string | null;
   clientHostNeedsRepair: boolean;
+  clientHostPaired: boolean;
+  setupDataAvailable: boolean;
   syncSource: DashboardSyncSource;
   capturedAt: string | null;
   revisionSource: LibraryRevisionSource | null;
@@ -296,6 +298,9 @@ export async function loadDashboardData(
       clientHostCompanionTone,
       clientHostDisplayName,
       clientHostNeedsRepair,
+      clientHostPaired:
+        !!syncSettings?.client_auth_paired && !clientHostNeedsRepair,
+      setupDataAvailable: hasClientData,
       syncSource,
       capturedAt: syncSource === "client-live" ? liveCapturedAt : fallbackCapturedAt ?? liveCapturedAt,
       revisionSource,
@@ -332,6 +337,8 @@ export async function loadDashboardData(
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,
+    clientHostPaired: false,
+    setupDataAvailable: true,
     syncSource: "local",
     capturedAt: null,
     revisionSource,

@@ -30,6 +30,10 @@ const inventorySelectedDetailStateSource = readFileSync(
   new URL("../lib/use_inventory_selected_spool_detail_state.ts", import.meta.url),
   "utf8",
 );
+const inventoryFiltersSource = readFileSync(
+  new URL("../lib/use_inventory_filters.ts", import.meta.url),
+  "utf8",
+);
 
 test("inventory header actions stay inside the page header", () => {
   const headerIndex = inventoryPageWorkspaceSource.indexOf('<div className="page-header">');
@@ -89,6 +93,24 @@ test("inventory result summary counts all active filters and offers reset", () =
   assert.match(inventoryControlsSource, /activeFilterCount > 0/);
   assert.match(inventoryControlsSource, /onClick=\{onResetFilters\}/);
   assert.match(inventoryControlsSource, /inventory\.resetFilters/);
+});
+
+test("inventory layout preferences stay deterministic in visual QA and separate from filters", () => {
+  assert.match(
+    inventoryPageSource,
+    /deterministicPagePreferences: Boolean\(desktopVisualQaScenario \|\| detailVisualFixture\)/,
+  );
+  const resetFiltersSource = inventoryFiltersSource.slice(
+    inventoryFiltersSource.indexOf("const resetFilters"),
+    inventoryFiltersSource.indexOf("const showLowStockList"),
+  );
+  const lowStockSource = inventoryFiltersSource.slice(
+    inventoryFiltersSource.indexOf("const showLowStockList"),
+    inventoryFiltersSource.indexOf("return {"),
+  );
+  assert.doesNotMatch(resetFiltersSource, /setInventoryView/);
+  assert.match(lowStockSource, /setInventoryViewState\("LIST"\)/);
+  assert.doesNotMatch(lowStockSource, /writeInventoryPagePreferences/);
 });
 
 test("inventory exposes one shared refresh action for every page dataset", () => {

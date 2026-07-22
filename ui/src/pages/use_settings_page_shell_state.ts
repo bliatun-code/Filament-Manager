@@ -9,20 +9,24 @@ import { useSettingsTransientInfo } from "./use_settings_transient_info";
 type TranslateFn = (key: string, fallback?: string) => string;
 
 type UseSettingsPageShellStateInput = {
-  initialTab: SettingsTabKey;
+  activeTabPersistenceEnabled?: boolean;
+  initialTab: SettingsTabKey | null;
   setInfo: Dispatch<SetStateAction<string | null>>;
   tauri: boolean;
   t: TranslateFn;
 };
 
 export function useSettingsPageShellState({
+  activeTabPersistenceEnabled = true,
   initialTab,
   setInfo,
   tauri,
   t,
 }: UseSettingsPageShellStateInput) {
   const appVersion = useSettingsAppVersion(tauri);
-  const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab);
+  const { activeTab, setActiveTab } = useSettingsActiveTab(initialTab, {
+    persistenceEnabled: activeTabPersistenceEnabled,
+  });
   const { pageChromeLabels, settingsPageMessageLabels } = useSettingsPageChrome(t);
   const { settingsTabButtons } = useSettingsPageTabs(activeTab, t);
   const { showTransientInfo } = useSettingsTransientInfo(setInfo);

@@ -92,6 +92,11 @@ Release notes:
   merge an existing database.
 - Application/database health diagnostics and a privacy-sanitized support JSON
   download under **Settings → Program maintenance**.
+- A dismissible, data-backed setup checklist plus device-local preferences for
+  Inventory layout/filter expansion and the last-used Settings tab.
+- An explicit **Check for updates** action that compares with the latest GitHub
+  release when release metadata is available, reports when it is unavailable,
+  and leaves download and installation manual.
 
 ## Languages
 
@@ -103,9 +108,9 @@ Filament Manager can be used in 21 languages:
 - Ukrainian, Russian, and Hungarian.
 
 Language is selected from one compact list under **Settings → General**. English
-remains the canonical fallback. German and French have completed named review;
-the other new translations have complete catalogs and automated visual QA, and
-community corrections are welcome through
+remains the canonical fallback. All non-English translations have complete
+catalogs and automated visual QA, and are published for community use and
+review. Corrections and current-catalog native review are welcome through
 [GitHub issues](https://github.com/bliatun-code/Filament-Manager/issues) or pull
 requests.
 

@@ -48,6 +48,26 @@ export const itITDictionary: DictionaryNode = {
     unknown: "Sconosciuto",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Inizia con una bobina oppure importa un inventario o un backup esistente.",
+    onboardingInventoryTitle: "Aggiungi o importa l’inventario",
+    onboardingPrinterBody:
+      "Aggiungi una stampante supportata. Bambu Live può essere attivato quando disponibile.",
+    onboardingPrinterTitle: "Configura una stampante",
+    onboardingCompanionBody:
+      "Abilita l’accesso dal browser su una rete attendibile oppure associa questo computer a un host.",
+    onboardingCompanionTitle: "Configura l’accesso dal browser",
+    onboardingBackupBody:
+      "Crea un backup completo quando la libreria è pronta.",
+    onboardingEyebrow: "Per iniziare",
+    onboardingTitle: "Completa la configurazione",
+    onboardingDescription:
+      "Segui i passaggi adatti alla tua configurazione. La stampante e l’accesso dal browser sono facoltativi.",
+    onboardingProgress: "{completed} di {total} completati",
+    onboardingDismiss: "Chiudi l’elenco",
+    onboardingComplete: "Completato",
+    onboardingOptional: "Facoltativo",
+    onboardingPending: "Da fare",
     achievements: "Obiettivi di progresso",
     achievementsHint:
       "Obiettivi in ​​tempo reale basati sull'inventario corrente e sull'attività della stampante.",
@@ -1048,6 +1068,20 @@ export const itITDictionary: DictionaryNode = {
     withToolheads: "Testa multiutensile",
   },
   settings: {
+    updates: "Aggiornamenti",
+    updateCheckHint:
+      "Controlla GitHub solo quando lo richiedi. Il download e l’installazione restano manuali.",
+    checkForUpdates: "Controlla aggiornamenti",
+    checkingForUpdates: "Controllo in corso…",
+    updateAvailable: "È disponibile la versione {version}.",
+    updateUpToDate: "La versione {version} è l’ultima pubblicata.",
+    updateDevelopmentBuild:
+      "Questa build è più recente dell’ultima versione pubblicata ({version}).",
+    updateCheckFailed:
+      "Impossibile controllare gli aggiornamenti. Riprova più tardi.",
+    updateInfoUnavailable:
+      "Le informazioni sulla versione non sono disponibili al momento. Riprova più tardi.",
+    viewRelease: "Vedi versione",
     activeCleared: "Stampante attiva cancellata.",
     activePrinter: "Stampante attiva",
     activeUpdated: "Stampante attiva aggiornata.",

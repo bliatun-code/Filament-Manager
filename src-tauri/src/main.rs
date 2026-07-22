@@ -56,6 +56,7 @@ mod printer_read_commands;
 mod printer_settings_commands;
 mod printer_slot_write_commands;
 mod printer_usage_commands;
+mod release_update_commands;
 mod security;
 mod sqlite_recovery;
 mod state;
@@ -392,6 +393,7 @@ fn main() {
             document_commands::export_inventory_label_sheet_pdf,
             document_commands::export_label_png,
             external_url_commands::open_external_url,
+            release_update_commands::check_for_app_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -401,6 +403,7 @@ fn main() {
 fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
     match value.trim().to_ascii_lowercase().as_str() {
         "dashboard-overview" | "dashboard" => Some("dashboard-overview"),
+        "dashboard-onboarding" | "onboarding" | "getting-started" => Some("dashboard-onboarding"),
         "inventory-overview" | "inventory" => Some("inventory-overview"),
         "add-filament" | "inventory-add" => Some("add-filament"),
         "wishlist-queue" | "inventory-wishlist" | "wishlist-orders" | "order-queue" => {
@@ -445,6 +448,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
+        "settings-updates" | "update-check" | "settings-update-check" => Some("settings-updates"),
         "settings-inventory-label-sheet" | "inventory-label-sheet" | "settings-label-sheet" => {
             Some("settings-inventory-label-sheet")
         }

@@ -100,6 +100,13 @@ Når biblioteket ennå ikke har ruller, viser lagerhelsen **Ikke nok data** i
 stedet for en misvisende prosent. Bruk **Legg til filament** i panelet for å
 åpne den vanlige registreringsflyten i Lager.
 
+Den avvisbare sjekklisten **Fullfør oppsettet** vises etter at programmet har
+lastet et brukbart bibliotek. Den peker til første rull eller import, valgfritt
+printer- og nettleseroppsett, og første komplette sikkerhetskopi. Fremdriften
+hentes fra biblioteket og denne enhetens historikk for validerte
+sikkerhetskopier. En midlertidig nettverks- eller vertsfeil vises derfor ikke
+som om hele oppsettet mangler.
+
 ### Lager
 
 Lager er hovedbildet for filamentruller.
@@ -123,6 +130,11 @@ Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuell
 Store filtrerte lager vises trinnvis for å holde visningen responsiv.
 Resultattelleren viser hvor mange ruller som vises av alle treffene; velg **Vis
 mer** for å fortsette. Søk og filtre gjelder fortsatt hele lageret.
+
+Programmet husker kort-/listevisning og om avanserte filtre er åpne på denne
+enheten. Nullstilling av filtre endrer ikke valgt visning. Når du åpner lav
+beholdning fra Oversikt kan listevisning brukes midlertidig uten å erstatte den
+lagrede innstillingen.
 
 Slik lager du en etikett for én rull:
 
@@ -256,6 +268,7 @@ Innstillinger er delt i flere områder.
 Generelt:
 
 - programversjon
+- manuell sjekk etter oppdateringer
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
@@ -266,6 +279,15 @@ forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
 for hver flate, og engelsk brukes som fallback ved behov. Korrigeringer til
 community-oversettelsene kan foreslås via issues eller pull requests på GitHub.
+
+Velg **Se etter oppdateringer** når du vil sammenligne installert versjon med
+siste publiserte GitHub-release. Sjekken skjer ikke automatisk. Hvis
+utgivelsesinformasjonen ikke kan nås, melder Innstillinger fra om dette uten å
+endre programmet. Når en nyere release finnes, åpner **Vis utgivelsen** den
+faste releasesiden for Filament Manager; nedlasting og installasjon er fortsatt
+uttrykkelige, manuelle valg.
+Innstillinger husker også sist brukte fane på denne enheten, mens direkte
+snarveier fra Oversikt fremdeles åpner riktig fane.
 
 Slik lager du etikettark for rullene som er på lager:
 

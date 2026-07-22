@@ -32,11 +32,11 @@ function initialPageFromUrl(): PageKey {
   return resolveInitialPageFromSearch(window.location.search);
 }
 
-function initialSettingsTabFromUrl(): SettingsTabKey {
+function initialSettingsTabFromUrl(): SettingsTabKey | null {
   if (typeof window === "undefined") {
-    return "GENERAL";
+    return null;
   }
-  return desktopVisualQaInitialSettingsTab(window.location.search) ?? "GENERAL";
+  return desktopVisualQaInitialSettingsTab(window.location.search);
 }
 
 export default function App() {
@@ -50,7 +50,7 @@ export default function App() {
   const [inventoryNavigationIntent, setInventoryNavigationIntent] =
     useState<InventoryNavigationIntent>(null);
   const [settingsInitialTab, setSettingsInitialTab] =
-    useState<SettingsTabKey>(() => initialSettingsTabFromUrl());
+    useState<SettingsTabKey | null>(() => initialSettingsTabFromUrl());
   const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export default function App() {
       const page = desktopVisualQaInitialPage(window.location.search);
       if (page) {
         setInventoryNavigationIntent(null);
-        setSettingsInitialTab(desktopVisualQaInitialSettingsTab(window.location.search) ?? "GENERAL");
+        setSettingsInitialTab(desktopVisualQaInitialSettingsTab(window.location.search));
         setActivePage(page);
         if (intervalId !== null) {
           window.clearInterval(intervalId);
@@ -161,9 +161,17 @@ export default function App() {
     startTransition(() => {
       setInventoryNavigationIntent(nextInventoryIntent);
       if (page !== "settings") {
-        setSettingsInitialTab("GENERAL");
+        setSettingsInitialTab(null);
       }
       setActivePage(page);
+    });
+  };
+
+  const openSettingsTab = (tab: SettingsTabKey) => {
+    startTransition(() => {
+      setInventoryNavigationIntent(null);
+      setSettingsInitialTab(tab);
+      setActivePage("settings");
     });
   };
 
@@ -180,12 +188,10 @@ export default function App() {
               });
             }}
             onOpenCompanionSettings={() => {
-              startTransition(() => {
-                setInventoryNavigationIntent(null);
-                setSettingsInitialTab("LIBRARY");
-                setActivePage("settings");
-              });
+              openSettingsTab("LIBRARY");
             }}
+            onOpenMaintenanceSettings={() => openSettingsTab("MAINTENANCE")}
+            onOpenPrinters={() => navigateToPage("printers")}
             onOpenLowStock={() => {
               navigateToPage("inventory", {
                 kind: "LOW_STOCK",

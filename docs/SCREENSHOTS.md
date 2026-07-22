@@ -35,7 +35,9 @@ accepted; the source library is not modified.
 ### Dashboard
 
 Inventory health, printer activity, low-stock signals, recent activity, and
-library/webapp status in one overview.
+library/webapp status in one overview. A dismissible, data-backed setup
+checklist guides a new or upgraded installation through inventory, optional
+printer/browser access, and the first full backup without blocking normal use.
 
 ![Dashboard overview](screenshots/dashboard.jpg)
 
@@ -196,9 +198,9 @@ material consumed outside printer sessions.
 ### General
 
 Version, license/source links, appearance, documentation links, and a compact
-selector for the 21 published interface languages. The screenshot records the
-v0.21.0 UI baseline; v0.21.1 changed signed macOS distribution rather than this
-screen.
+selector for the 21 published interface languages. The current General screen
+also provides an on-demand GitHub release check, including a clear unavailable
+state; it never downloads or installs an update automatically.
 
 ![Settings general](screenshots/settings-general.jpg)
 

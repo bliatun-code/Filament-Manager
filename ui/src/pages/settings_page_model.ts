@@ -89,8 +89,12 @@ export function buildSettingsPageTabButtons(
   }));
 }
 
-export function normalizeSettingsInitialTab(initialTab: SettingsTabKey): SettingsTabKey {
-  return initialTab;
+export function isSettingsTabKey(value: unknown): value is SettingsTabKey {
+  return SETTINGS_PAGE_TAB_ORDER.some((tab) => tab === value);
+}
+
+export function normalizeSettingsInitialTab(initialTab: unknown): SettingsTabKey {
+  return isSettingsTabKey(initialTab) ? initialTab : "GENERAL";
 }
 
 export function resolveSettingsPagePrinters<Printer>({

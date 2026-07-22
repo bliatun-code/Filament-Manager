@@ -19,6 +19,19 @@ const maintenanceSectionSource = readFileSync(
   new URL("./use_settings_maintenance_section.ts", import.meta.url),
   "utf8",
 );
+const generalTabSource = readFileSync(
+  new URL("../components/settings_general_tab.tsx", import.meta.url),
+  "utf8",
+);
+
+test("update-check visual QA reveals the real manual update controls", () => {
+  assert.match(source, /desktopVisualQaScenarioRef\.current !== "settings-updates"/);
+  assert.match(source, /getElementById\("settings-update-check"\)/);
+  assert.match(source, /target\.scrollIntoView\(\{ behavior: "auto", block: "center" \}\)/);
+  assert.match(source, /window\.addEventListener\("resize", revealUpdateCheck\)/);
+  assert.match(generalTabSource, /id="settings-update-check"/);
+  assert.match(generalTabSource, /updateCheck\.check\(\)/);
+});
 
 test("inventory label sheet visual QA opens the real data-backed modal", () => {
   assert.match(source, /desktopVisualQaScenario === "settings-inventory-label-sheet"/);

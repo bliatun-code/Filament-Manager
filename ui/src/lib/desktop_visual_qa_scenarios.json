@@ -7,6 +7,13 @@
       "category": "overview"
     },
     {
+      "id": "dashboard-onboarding",
+      "aliases": ["onboarding", "getting-started"],
+      "page": "dashboard",
+      "category": "workflow",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "inventory-overview",
       "aliases": ["inventory"],
       "page": "inventory",
@@ -140,6 +147,14 @@
       "page": "settings",
       "settingsTab": "GENERAL",
       "category": "settings"
+    },
+    {
+      "id": "settings-updates",
+      "aliases": ["update-check", "settings-update-check"],
+      "page": "settings",
+      "settingsTab": "GENERAL",
+      "category": "workflow",
+      "requiresDatabaseFixture": true
     },
     {
       "id": "settings-inventory-label-sheet",

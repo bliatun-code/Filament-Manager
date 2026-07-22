@@ -1576,6 +1576,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     "dashboard-overview",
   );
   assert.equal(
+    normalizeDesktopVisualQaScenario("getting-started"),
+    "dashboard-onboarding",
+  );
+  assert.equal(
     normalizeDesktopVisualQaScenario("inventory"),
     "inventory-overview",
   );
@@ -1641,6 +1645,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(
     normalizeDesktopVisualQaScenario("general-settings"),
     "settings-general",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("update-check"),
+    "settings-updates",
   );
   assert.equal(
     normalizeDesktopVisualQaScenario("companion-settings"),
@@ -2229,7 +2237,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 44);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 46);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

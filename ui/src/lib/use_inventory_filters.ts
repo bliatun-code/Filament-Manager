@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import {
   buildMaterialOptions,
   buildVendorOptions,
@@ -9,10 +9,26 @@ import {
   type SpoolGroup,
   type StatusFilter,
 } from "./inventory_list_model";
+import {
+  readInventoryPagePreferences,
+  writeInventoryPagePreferences,
+  type InventoryViewMode,
+} from "./inventory_page_preferences";
 
-export type InventoryViewMode = "CARDS" | "LIST";
+export type { InventoryViewMode } from "./inventory_page_preferences";
 
-export function useInventoryFilters(spools: InventorySpool[]) {
+type UseInventoryFiltersOptions = {
+  deterministicPagePreferences?: boolean;
+};
+
+export function useInventoryFilters(
+  spools: InventorySpool[],
+  { deterministicPagePreferences = false }: UseInventoryFiltersOptions = {},
+) {
+  const [initialPagePreferences] = useState(() =>
+    readInventoryPagePreferences({ deterministic: deterministicPagePreferences }),
+  );
+  const persistedPagePreferencesRef = useRef(initialPagePreferences);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -20,8 +36,42 @@ export function useInventoryFilters(spools: InventorySpool[]) {
   const [vendorFilter, setVendorFilter] = useState("ALL");
   const [materialFilter, setMaterialFilter] = useState("ALL");
   const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [inventoryView, setInventoryView] = useState<InventoryViewMode>("CARDS");
-  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [inventoryView, setInventoryViewState] = useState<InventoryViewMode>(
+    initialPagePreferences.inventoryView,
+  );
+  const [advancedFiltersOpen, setAdvancedFiltersOpenState] = useState(
+    initialPagePreferences.advancedFiltersOpen,
+  );
+
+  const setInventoryView = useCallback(
+    (nextView: InventoryViewMode) => {
+      setInventoryViewState(nextView);
+      const nextPreferences = {
+        ...persistedPagePreferencesRef.current,
+        inventoryView: nextView,
+      };
+      persistedPagePreferencesRef.current = nextPreferences;
+      writeInventoryPagePreferences(nextPreferences, {
+        deterministic: deterministicPagePreferences,
+      });
+    },
+    [deterministicPagePreferences],
+  );
+
+  const setAdvancedFiltersOpen = useCallback(
+    (nextOpen: boolean) => {
+      setAdvancedFiltersOpenState(nextOpen);
+      const nextPreferences = {
+        ...persistedPagePreferencesRef.current,
+        advancedFiltersOpen: nextOpen,
+      };
+      persistedPagePreferencesRef.current = nextPreferences;
+      writeInventoryPagePreferences(nextPreferences, {
+        deterministic: deterministicPagePreferences,
+      });
+    },
+    [deterministicPagePreferences],
+  );
 
   const vendorOptions = useMemo(() => buildVendorOptions(spools), [spools]);
   const materialOptions = useMemo(() => buildMaterialOptions(spools), [spools]);
@@ -59,7 +109,6 @@ export function useInventoryFilters(spools: InventorySpool[]) {
   ].filter(Boolean).length;
 
   const resetFilters = useCallback(() => {
-    setInventoryView("CARDS");
     setStatusFilter("ALL");
     setOwnershipFilter("ALL");
     setVendorFilter("ALL");
@@ -69,7 +118,7 @@ export function useInventoryFilters(spools: InventorySpool[]) {
   }, []);
 
   const showLowStockList = useCallback(() => {
-    setInventoryView("LIST");
+    setInventoryViewState("LIST");
     setStatusFilter("ALL");
     setOwnershipFilter("ALL");
     setVendorFilter("ALL");

@@ -49,6 +49,8 @@ let cachedGoalMetrics: DashboardGoalMetrics | null = null;
 
 function createDefaultGoalMetrics(): DashboardGoalMetrics {
   return {
+    totalSpools: 0,
+    configuredPrinters: 0,
     activeSpools: 0,
     placedActiveSpools: 0,
     totalJobs: 0,
@@ -182,6 +184,8 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   );
   const [clientHostDisplayName, setClientHostDisplayName] = useState<string | null>(null);
   const [clientHostNeedsRepair, setClientHostNeedsRepair] = useState(false);
+  const [clientHostPaired, setClientHostPaired] = useState(false);
+  const [setupDataAvailable, setSetupDataAvailable] = useState(false);
 
   const performDashboardRefresh = useCallback(
     async (cancelledRef?: { current: boolean }) => {
@@ -214,6 +218,8 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         setClientHostCompanionTone(loaded.clientHostCompanionTone);
         setClientHostDisplayName(loaded.clientHostDisplayName);
         setClientHostNeedsRepair(loaded.clientHostNeedsRepair);
+        setClientHostPaired(loaded.clientHostPaired);
+        setSetupDataAvailable(loaded.setupDataAvailable);
         setStats(loaded.derived.stats);
         setActivity(loaded.derived.activity);
         setUsagePoints(loaded.derived.usagePoints);
@@ -478,6 +484,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,
+    clientHostPaired,
     companionStatus,
     dashboardSyncMode,
     error,
@@ -492,5 +499,6 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     refreshing,
     stats,
     usagePoints,
+    setupDataAvailable,
   };
 }

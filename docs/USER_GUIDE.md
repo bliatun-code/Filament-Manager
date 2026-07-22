@@ -100,6 +100,13 @@ When the library has no spools yet, inventory health is shown as **Not enough
 data** instead of a misleading percentage. Use **Add spool** in that panel
 to open the normal inventory entry flow.
 
+The dismissible **Finish setup** checklist appears after the app has loaded a
+usable library. It links to adding or importing the first spool, optional
+printer and browser-access setup, and the first full backup. Completion is
+derived from the current library and this device's validated backup history;
+temporary host or network failures do not turn an unavailable library into a
+list of missing setup steps.
+
 ### Inventory
 
 Inventory is the main view for filament spools.
@@ -124,6 +131,11 @@ Large filtered inventories are rendered progressively to keep the view
 responsive. The result counter shows how many spools are currently displayed
 out of the complete matching set; choose **Show more** to continue. Search and
 filters still apply to the full inventory.
+
+The app remembers the card/list choice and whether advanced filters are open on
+this device. Resetting the filters does not reset the chosen layout. Opening a
+low-stock result from Dashboard may temporarily use the list without replacing
+the saved preference.
 
 To create a label for one spool:
 
@@ -255,6 +267,7 @@ Settings is split into several areas.
 General:
 
 - app version
+- a manual update check
 - theme: Auto, Light, Dark
 - language, selected from one compact list
 - inventory QR label sheets
@@ -266,6 +279,14 @@ Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
 stored locally for each surface. English remains the fallback when needed.
 Corrections to community translations can be proposed through the project’s
 GitHub issues or pull requests.
+
+Choose **Check for updates** when you want to compare the installed version
+with the latest published GitHub release. The check is not automatic. If release
+metadata cannot be reached, Settings reports that without changing the app.
+When a newer release exists, **View release** opens the fixed Filament Manager
+releases page; downloading and installing remain explicit manual actions.
+Settings also remembers the last tab used on this device, while direct links
+from Dashboard still open the relevant tab.
 
 To create label sheets for the on-hand inventory:
 

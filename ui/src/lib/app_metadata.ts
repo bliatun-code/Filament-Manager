@@ -24,6 +24,10 @@ export function screenshotTourUrl(): string {
   return `${APP_REPOSITORY_URL}/blob/main/docs/SCREENSHOTS.md`;
 }
 
+export function latestReleaseUrl(): string {
+  return `${APP_REPOSITORY_URL}/releases/latest`;
+}
+
 export function userGuideUrlForLocale(locale: Locale): string {
   return `${APP_REPOSITORY_URL}/blob/main/${guidePathForLocale(locale)}`;
 }

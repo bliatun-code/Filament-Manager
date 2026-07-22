@@ -71,6 +71,26 @@ export const esDictionary: DictionaryNode = {
     settings: "Ajustes",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Empieza con una bobina o importa un inventario o una copia de seguridad existentes.",
+    onboardingInventoryTitle: "Añadir o importar inventario",
+    onboardingPrinterBody:
+      "Añade cualquier impresora compatible. Bambu Live se puede activar cuando esté disponible.",
+    onboardingPrinterTitle: "Configurar una impresora",
+    onboardingCompanionBody:
+      "Activa el acceso desde el navegador en una red de confianza o vincula este equipo con un host.",
+    onboardingCompanionTitle: "Configurar el acceso desde el navegador",
+    onboardingBackupBody:
+      "Crea una copia de seguridad completa cuando la biblioteca esté lista.",
+    onboardingEyebrow: "Primeros pasos",
+    onboardingTitle: "Finalizar la configuración",
+    onboardingDescription:
+      "Sigue los pasos que se adapten a tu instalación. La impresora y el acceso desde el navegador son opcionales.",
+    onboardingProgress: "{completed} de {total} completados",
+    onboardingDismiss: "Cerrar la lista",
+    onboardingComplete: "Completado",
+    onboardingOptional: "Opcional",
+    onboardingPending: "Pendiente",
     subtitle:
       "Consulta el estado del inventario, el consumo actual y la actividad de las impresoras en un solo lugar.",
     totalSpools: "Bobinas totales",
@@ -1188,6 +1208,20 @@ export const esDictionary: DictionaryNode = {
     },
   },
   settings: {
+    updates: "Actualizaciones",
+    updateCheckHint:
+      "Solo consulta GitHub cuando lo solicitas. La descarga y la instalación siguen siendo manuales.",
+    checkForUpdates: "Buscar actualizaciones",
+    checkingForUpdates: "Buscando…",
+    updateAvailable: "La versión {version} está disponible.",
+    updateUpToDate: "La versión {version} es la última publicada.",
+    updateDevelopmentBuild:
+      "Esta compilación es más reciente que la última versión publicada ({version}).",
+    updateCheckFailed:
+      "No se pudieron buscar actualizaciones. Inténtalo de nuevo más tarde.",
+    updateInfoUnavailable:
+      "La información de la versión no está disponible en este momento. Inténtalo de nuevo más tarde.",
+    viewRelease: "Ver versión",
     tabGeneral: "General",
     tabLibrary: "Biblioteca y web app",
     tabCompanion: "Acceso desde navegador",

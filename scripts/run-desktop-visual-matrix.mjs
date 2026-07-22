@@ -13,6 +13,7 @@ import { cleanupVisualQaDatabase } from "./visual-qa-db.mjs";
 
 export const DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX = Object.freeze([
   Object.freeze({ locale: "zh-CN", scenario: "add-filament", width: 900 }),
+  Object.freeze({ locale: "de", scenario: "dashboard-onboarding", width: 900 }),
   Object.freeze({ locale: "fr", scenario: "settings-general", width: 1050 }),
   Object.freeze({ locale: "nb", scenario: "selected-roll", width: 1200 }),
   Object.freeze({ locale: "en", scenario: "statistics-overview", width: 1500 }),
