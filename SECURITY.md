@@ -19,8 +19,9 @@ Preferred reporting path:
    issue asking for a security contact without publishing technical exploit
    details.
 
-I will acknowledge valid reports as soon as practical, triage the impact, and
-coordinate a fix or mitigation before public disclosure where appropriate.
+Maintainers will acknowledge valid reports as soon as practical, triage the
+impact, and coordinate a fix or mitigation before public disclosure where
+appropriate.
 
 ## Scope
 

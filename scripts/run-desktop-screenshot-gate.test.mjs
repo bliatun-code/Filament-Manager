@@ -15,6 +15,8 @@ import {
   buildDesktopWindowLookupScript,
   buildDesktopWindowResizeScript,
   captureDesktopWindowScreenshot,
+  DESKTOP_CAPTURE_EDGE_INSET,
+  DESKTOP_CAPTURE_POSITION_TOLERANCE,
   DESKTOP_DARK_THEME_MAX_LUMA_MEAN,
   DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN,
   DESKTOP_VISUAL_QA_READINESS_PREFIX,
@@ -25,6 +27,7 @@ import {
   desktopScreenshotNameForScenario,
   desktopWindowsForProcess,
   desktopWindowMatchesRequestedSize,
+  desktopWindowMatchesRequestedPosition,
   desktopVisualQaExpectedWindowTitles,
   desktopVisualQaOutputHasReadinessToken,
   desktopVisualQaReadinessMarker,
@@ -36,6 +39,7 @@ import {
   execFileWithTimeout,
   findDesktopWindow,
   findDesktopWindowWithNativeHelper,
+  findPrimaryDesktopScreen,
   formatDesktopScreenshotGateReport,
   normalizeDesktopVisualQaScenario,
   normalizeDesktopVisualQaTheme,
@@ -43,6 +47,7 @@ import {
   normalizeNativeDesktopWindowFrame,
   normalizeVisualQaLocale,
   parseDesktopVisualQaScenarios,
+  parseDesktopScreenInfo,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
   resolveMacosWindowInfoHelperLaunch,
@@ -1489,6 +1494,29 @@ test("desktop screenshot gate parses visible window diagnostics", async () => {
   );
 });
 
+test("native screen helper returns primary display bounds", async () => {
+  assert.deepEqual(parseDesktopScreenInfo("0\t0\t1710\t1107\n"), {
+    height: 1107,
+    width: 1710,
+    x: 0,
+    y: 0,
+  });
+  assert.equal(parseDesktopScreenInfo("0\t0\t0\t1107"), null);
+
+  const calls = [];
+  const screen = await findPrimaryDesktopScreen({
+    nativeWindowExecFileFn: async (command, args, options) => {
+      calls.push({ args, command, options });
+      return { stdout: "0\t0\t1710\t1107\n" };
+    },
+  });
+
+  assert.deepEqual(screen, { height: 1107, width: 1710, x: 0, y: 0 });
+  assert.equal(calls[0]?.command, "swift");
+  assert.deepEqual(calls[0]?.args.slice(-1), ["main-screen"]);
+  assert.equal(calls[0]?.options.shell, false);
+});
+
 test("desktop screenshot gate ignores a foreign AppleScript title match", async () => {
   const calls = [];
   const window = await findDesktopWindow({
@@ -1562,11 +1590,16 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
   );
   assert.match(resizeScript, /Filament \\"Manager\\"/);
   assert.match(resizeScript, /Inventory \\"Detail\\"/);
-  assert.match(resizeScript, /set position of appWindow to \{0, 0\}/);
+  assert.match(
+    resizeScript,
+    new RegExp(
+      `set position of appWindow to \\{${DESKTOP_CAPTURE_EDGE_INSET}, ${DESKTOP_CAPTURE_EDGE_INSET}\\}`,
+    ),
+  );
   assert.match(resizeScript, /to \{900, 700\}/);
   assert.ok(
-    resizeScript.indexOf("set position of appWindow") <
-      resizeScript.indexOf("set size of appWindow"),
+    resizeScript.indexOf("set size of appWindow") <
+      resizeScript.indexOf("set position of appWindow"),
   );
 });
 
@@ -1614,6 +1647,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     "return-inbound-loan",
   );
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("printers-static"),
+    "printer-overview",
+  );
   assert.equal(
     normalizeDesktopVisualQaScenario("add-printer-modal"),
     "add-printer",
@@ -2237,7 +2274,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 46);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 47);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",
@@ -2671,10 +2708,15 @@ test("desktop screenshot gate resizes and rereads the captured desktop window", 
       findWindowFn: async () => {
         attempts += 1;
         return createMetric({
-          window:
-            attempts === 1
-              ? { height: 700, width: 900, x: -20, y: 0 }
-              : { height: 700, width: 900, x: 0, y: 0 },
+            window:
+              attempts === 1
+                ? { height: 700, width: 900, x: -20, y: 0 }
+              : {
+                  height: 700,
+                  width: 900,
+                  x: DESKTOP_CAPTURE_EDGE_INSET,
+                  y: DESKTOP_CAPTURE_EDGE_INSET,
+                },
         }).window;
       },
       nowFn: clock.now,
@@ -2691,6 +2733,89 @@ test("desktop screenshot gate resizes and rereads the captured desktop window", 
     { height: window?.height, width: window?.width },
     { height: 700, width: 900 },
   );
+});
+
+test("desktop screenshot gate waits for a correctly sized edge window to reach its inset", async () => {
+  const clock = createFakeClock();
+  const commands = [];
+  let attempts = 0;
+  const window = await resizeDesktopWindow(
+    {
+      ...createMetric().window,
+      height: 800,
+      width: 1200,
+      x: 0,
+      y: 307,
+    },
+    { height: 800, width: 1200 },
+    {
+      execFileFn: async (command, args) => {
+        commands.push({ args, command });
+        return { stdout: "" };
+      },
+      findWindowFn: async () => {
+        attempts += 1;
+        return {
+          ...createMetric().window,
+          height: 800,
+          width: 1200,
+          x: attempts === 1 ? 0 : DESKTOP_CAPTURE_EDGE_INSET,
+          y: DESKTOP_CAPTURE_EDGE_INSET,
+        };
+      },
+      nowFn: clock.now,
+      resizeWindowPollMs: 1,
+      resizeWindowTimeoutMs: 50,
+      waitFn: clock.wait,
+    },
+  );
+
+  assert.equal(commands.length, 1);
+  assert.equal(attempts, 2);
+  assert.equal(commands[0]?.command, "osascript");
+  assert.match(commands[0]?.args[1], /set position of appWindow to \{24, 24\}/);
+  assert.deepEqual(
+    { height: window?.height, width: window?.width, x: window?.x, y: window?.y },
+    { height: 800, width: 1200, x: 24, y: 24 },
+  );
+});
+
+test("desktop screenshot gate fails when a correctly sized window never reaches its inset", async () => {
+  const clock = createFakeClock();
+  let attempts = 0;
+
+  await assert.rejects(
+    resizeDesktopWindow(
+      {
+        ...createMetric().window,
+        height: 800,
+        width: 1200,
+        x: 0,
+        y: 307,
+      },
+      { height: 800, width: 1200 },
+      {
+        execFileFn: async () => ({ stdout: "" }),
+        findWindowFn: async () => {
+          attempts += 1;
+          return {
+            ...createMetric().window,
+            height: 800,
+            width: 1200,
+            x: 0,
+            y: 24,
+          };
+        },
+        nowFn: clock.now,
+        resizeWindowPollMs: 1,
+        resizeWindowTimeoutMs: 2,
+        waitFn: clock.wait,
+      },
+    ),
+    /did not reach requested frame 1200x800 at 24,24 \(±12px\) within 2ms; latest frame was 0,24,1200,800/,
+  );
+
+  assert.equal(attempts, 3);
 });
 
 test("desktop screenshot gate wait can abort when launch exits", async () => {
@@ -2833,6 +2958,34 @@ test("desktop screenshot gate validates the requested size against the captured 
     false,
   );
   assert.equal(
+    desktopWindowMatchesRequestedPosition(
+      createMetric({
+        window: {
+          x: DESKTOP_CAPTURE_EDGE_INSET + DESKTOP_CAPTURE_POSITION_TOLERANCE,
+          y: DESKTOP_CAPTURE_EDGE_INSET - DESKTOP_CAPTURE_POSITION_TOLERANCE,
+        },
+      }).window,
+    ),
+    true,
+  );
+  assert.equal(
+    desktopWindowMatchesRequestedPosition(
+      createMetric({ window: { x: 24, y: 34 } }).window,
+    ),
+    true,
+  );
+  assert.equal(
+    desktopWindowMatchesRequestedPosition(
+      createMetric({
+        window: {
+          x: DESKTOP_CAPTURE_EDGE_INSET - DESKTOP_CAPTURE_POSITION_TOLERANCE - 1,
+          y: DESKTOP_CAPTURE_EDGE_INSET,
+        },
+      }).window,
+    ),
+    false,
+  );
+  assert.equal(
     desktopWindowMatchesRequestedSize(
       createMetric({ window: { height: 700, width: 900, y: -1 } }).window,
       { height: 700, width: 900 },
@@ -2889,6 +3042,31 @@ test("desktop screenshot capture refuses off-primary coordinates", async () => {
       },
     ),
     /must be inside the primary capture area.*x=-1440, y=-900/,
+  );
+  assert.equal(execCalls, 0);
+});
+
+test("desktop screenshot capture refuses a rectangle touching the display edge", async () => {
+  let execCalls = 0;
+  await assert.rejects(
+    captureDesktopWindowScreenshot(
+      {
+        ...createMetric().window,
+        height: 800,
+        width: 1200,
+        x: 0,
+        y: 307,
+      },
+      {
+        execFileFn: async () => {
+          execCalls += 1;
+          return { stdout: "" };
+        },
+        outputDir: testOutputDir,
+        screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
+      },
+    ),
+    /must stay inside the primary display.*window 0,307,1200,800/,
   );
   assert.equal(execCalls, 0);
 });

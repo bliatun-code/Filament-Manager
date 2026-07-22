@@ -16,6 +16,27 @@ struct WindowRow {
     }
 }
 
+struct ScreenRow {
+    let x: Int
+    let y: Int
+    let width: Int
+    let height: Int
+
+    var serialized: String {
+        [String(x), String(y), String(width), String(height)].joined(separator: "\t")
+    }
+}
+
+func mainScreenRow() -> ScreenRow {
+    let bounds = CGDisplayBounds(CGMainDisplayID())
+    return ScreenRow(
+        x: Int(bounds.origin.x.rounded()),
+        y: Int(bounds.origin.y.rounded()),
+        width: Int(bounds.width.rounded()),
+        height: Int(bounds.height.rounded())
+    )
+}
+
 func windowRows() -> [WindowRow] {
     let rawRows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
         as? [[String: Any]] ?? []
@@ -46,16 +67,16 @@ func windowRows() -> [WindowRow] {
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 guard let command = arguments.first else {
-    FileHandle.standardError.write(Data("Expected list.\n".utf8))
+    FileHandle.standardError.write(Data("Expected list or main-screen.\n".utf8))
     exit(2)
 }
-let rows = windowRows()
-
 switch command {
 case "list":
-    for row in rows {
+    for row in windowRows() {
         print(row.serialized)
     }
+case "main-screen":
+    print(mainScreenRow().serialized)
 default:
     FileHandle.standardError.write(Data("Unknown command \(command).\n".utf8))
     exit(2)

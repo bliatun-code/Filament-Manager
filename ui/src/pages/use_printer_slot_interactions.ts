@@ -772,13 +772,13 @@ export function usePrinterSlotInteractions({
       master: MasterCatalogRow,
     ) => {
       if (!tauri || busy) {
-        return;
+        return false;
       }
       if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-        return;
+        return false;
       }
       if (clientReadOnly && !canUseClientHostWrite()) {
-        return;
+        return false;
       }
       const currentSlot = findPrinterSlotById(printers, printer.printer.id, slot.slot_id);
       const { tray: currentLiveTray } = findLiveTrayForSlot(
@@ -796,7 +796,7 @@ export function usePrinterSlotInteractions({
             "No non-empty RFID identity is available to save for this slot.",
           ),
         );
-        return;
+        return false;
       }
       if (openState.reason === "occupied_slot") {
         setError(
@@ -805,7 +805,7 @@ export function usePrinterSlotInteractions({
             "Clear or swap the current roll through the normal slot flow before creating a new catalog roll here.",
           ),
         );
-        return;
+        return false;
       }
       if (openState.reason === "live_slot_unloaded") {
         setError(
@@ -814,7 +814,7 @@ export function usePrinterSlotInteractions({
             "AMS no longer reports a loaded roll in this slot. Refresh and confirm the current roll before saving RFID.",
           ),
         );
-        return;
+        return false;
       }
       if (openState.reason === "live_identity_changed") {
         setError(
@@ -823,13 +823,14 @@ export function usePrinterSlotInteractions({
             "The live AMS identity changed before saving. Reopen the slot action and confirm the current roll.",
           ),
         );
-        return;
+        return false;
       }
 
       const liveConfig = bambuLiveIntegrations[printer.printer.id] ?? null;
       setSlotCatalogOnboardingPrompt(
         buildSlotCatalogOnboardingPrompt(printer, openState.slot, master, liveTray, liveConfig),
       );
+      return true;
     },
     [
       bambuLiveIntegrations,

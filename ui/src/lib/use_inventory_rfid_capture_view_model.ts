@@ -31,6 +31,7 @@ type InventoryRfidCaptureViewModelInput = {
   selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
   tauriAvailable: boolean;
   t: ReturnType<typeof useI18n>["t"];
+  useObservedSlotFixture?: boolean;
 };
 
 export function useInventoryRfidCaptureViewModel({
@@ -43,15 +44,22 @@ export function useInventoryRfidCaptureViewModel({
   selectedSpoolAssignedSlot,
   tauriAvailable,
   t,
+  useObservedSlotFixture = false,
 }: InventoryRfidCaptureViewModelInput) {
+  const useObservedSlotSource = clientReadOnly || useObservedSlotFixture;
   const selectedSpoolRfidCaptureSlots = useMemo(
     () =>
       filterRfidCaptureSlots(printerSlotOptions, {
         assignedSlot: selectedSpoolAssignedSlot,
-        clientReadOnly,
+        clientReadOnly: useObservedSlotSource,
         liveIntegrations: bambuLiveIntegrations,
       }),
-    [bambuLiveIntegrations, clientReadOnly, printerSlotOptions, selectedSpoolAssignedSlot],
+    [
+      bambuLiveIntegrations,
+      printerSlotOptions,
+      selectedSpoolAssignedSlot,
+      useObservedSlotSource,
+    ],
   );
 
   const selectedRfidCaptureSlot = useMemo(
@@ -67,10 +75,10 @@ export function useInventoryRfidCaptureViewModel({
     () =>
       resolveRfidCaptureLiveIntegration(
         selectedRfidCaptureSlot,
-        clientReadOnly,
+        useObservedSlotSource,
         bambuLiveIntegrations,
       ),
-    [bambuLiveIntegrations, clientReadOnly, selectedRfidCaptureSlot],
+    [bambuLiveIntegrations, selectedRfidCaptureSlot, useObservedSlotSource],
   );
 
   const selectedSpoolRfidBindingState = useMemo(
@@ -93,16 +101,16 @@ export function useInventoryRfidCaptureViewModel({
       supportsRfidCapture({
         tauriAvailable,
         captureSlotCount: selectedSpoolRfidCaptureSlots.length,
-        clientReadOnly,
+        clientReadOnly: useObservedSlotSource,
         selectedSlot: selectedRfidCaptureSlot,
         liveIntegration: selectedRfidCaptureLiveIntegration,
       }),
     [
-      clientReadOnly,
       selectedRfidCaptureLiveIntegration,
       selectedRfidCaptureSlot,
       selectedSpoolRfidCaptureSlots.length,
       tauriAvailable,
+      useObservedSlotSource,
     ],
   );
 
@@ -128,10 +136,10 @@ export function useInventoryRfidCaptureViewModel({
   const observedTrayCaptureSnapshot = useMemo(
     () =>
       buildSelectedRfidCaptureSnapshot(selectedRfidCaptureSlot, {
-        clientReadOnly,
+        clientReadOnly: useObservedSlotSource,
         liveIntegration: selectedRfidCaptureLiveIntegration,
       }),
-    [clientReadOnly, selectedRfidCaptureLiveIntegration, selectedRfidCaptureSlot],
+    [selectedRfidCaptureLiveIntegration, selectedRfidCaptureSlot, useObservedSlotSource],
   );
 
   const effectiveRfidCaptureFields = useMemo(
@@ -158,11 +166,16 @@ export function useInventoryRfidCaptureViewModel({
   const rfidCaptureSlotSummaries = useMemo(
     () =>
       buildRfidCaptureSlotSummaries(selectedSpoolRfidCaptureSlots, {
-        clientReadOnly,
+        clientReadOnly: useObservedSlotSource,
         fieldsBySlotId: rfidCaptureFieldsBySlotId,
         liveIntegrations: bambuLiveIntegrations,
       }),
-    [bambuLiveIntegrations, clientReadOnly, rfidCaptureFieldsBySlotId, selectedSpoolRfidCaptureSlots],
+    [
+      bambuLiveIntegrations,
+      rfidCaptureFieldsBySlotId,
+      selectedSpoolRfidCaptureSlots,
+      useObservedSlotSource,
+    ],
   );
 
   const rfidCaptureMatchConfidence = useMemo(

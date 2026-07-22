@@ -14,6 +14,7 @@ import {
   createVisualQaFixture,
   visualQaSeedSha256,
 } from "./create-visual-qa-fixture.mjs";
+import { applyVisualQaDatabaseFixture } from "./visual-qa-db.mjs";
 
 test("committed visual QA seed matches its reviewed content hash", () => {
   const rawSeed = readFileSync(VISUAL_QA_SEED_PATH, "utf8");
@@ -46,16 +47,184 @@ test("sanitized visual QA seed generates a healthy deterministic database", () =
         db.prepare("SELECT COUNT(*) AS count FROM printers").get().count,
         result.expectedCounts.printers,
       );
+      assert.deepEqual(
+        db
+          .prepare("SELECT id, name FROM inventory_locations ORDER BY id")
+          .all(),
+        [
+          { id: "QA Dry box", name: "QA Dry box" },
+          { id: "QA Shelf A", name: "QA Shelf A" },
+        ],
+      );
       assert.equal(
         db.prepare("SELECT COUNT(*) AS count FROM filament_master_list WHERE id LIKE 'qa_%'").get()
           .count,
         result.expectedCounts.filament_master_list,
       );
+      const activeLoan = db
+        .prepare(
+          `SELECT l.id, l.spool_id, s.status AS spool_status
+           FROM spool_loans l
+           JOIN filament_spools s ON s.id = l.spool_id
+           WHERE l.loan_direction = 'OUTBOUND'
+             AND l.loan_status = 'ACTIVE'
+             AND l.returned_at IS NULL`,
+        )
+        .get();
+      assert.deepEqual(activeLoan, {
+        id: "qa_loan_active",
+        spool_id: "spool_demo_100008",
+        spool_status: "LOANED_OUT",
+      });
+      const lendableSpool = db
+        .prepare(
+          `SELECT s.id
+           FROM filament_spools s
+           WHERE s.id = 'spool_demo_100003'
+             AND s.ownership_type = 'OWNED'
+             AND s.status = 'IN_STOCK'
+             AND NOT EXISTS (
+               SELECT 1 FROM ams_slots slot WHERE slot.spool_id = s.id
+             )
+             AND NOT EXISTS (
+               SELECT 1
+               FROM spool_loans loan
+               WHERE loan.spool_id = s.id
+                 AND loan.loan_status = 'ACTIVE'
+                 AND loan.returned_at IS NULL
+             )`,
+        )
+        .get();
+      assert.deepEqual(lendableSpool, { id: "spool_demo_100003" });
+      assert.deepEqual(
+        db
+          .prepare(
+            `SELECT event_type
+             FROM spool_history_events
+             WHERE spool_id = 'spool_demo_100003'
+             ORDER BY created_at`,
+          )
+          .all(),
+        [
+          { event_type: "CREATED" },
+          { event_type: "LOCATION_UPDATED" },
+          { event_type: "WEIGHT_UPDATED" },
+        ],
+      );
+
+      assert.deepEqual(
+        db
+          .prepare(
+            `SELECT m.id, m.material, m.filament_name, m.color_name
+             FROM filament_master_list m
+             WHERE lower(m.vendor) LIKE '%bambu%'
+               AND NOT EXISTS (
+                 SELECT 1
+                 FROM filament_spools s
+                 WHERE s.master_id = m.id
+                   AND s.deleted_at IS NULL
+               )
+             ORDER BY m.id`,
+          )
+          .all(),
+        [
+          {
+            id: "qa_master_bambu_asa_marine_blue",
+            material: "ASA",
+            filament_name: "ASA",
+            color_name: "Marine Blue",
+          },
+        ],
+      );
+
+      const liveSetting = db
+        .prepare(
+          "SELECT value FROM settings WHERE key = 'bambu_live_integration:qa_printer_bambu'",
+        )
+        .get();
+      const liveConfig = JSON.parse(liveSetting.value);
+      assert.equal(liveConfig.enabled, false);
+      assert.equal(Object.hasOwn(liveConfig, "host"), false);
+      assert.equal(Object.hasOwn(liveConfig, "access_code"), false);
+      assert.equal(Object.hasOwn(liveConfig, "printer_serial"), false);
+      assert.equal(liveConfig.observed_state.mqtt_connected, true);
+      assert.equal(liveConfig.observed_state.active_ams_index, 0);
+      assert.equal(liveConfig.observed_state.active_tray_index, 0);
+      assert.deepEqual(liveConfig.observed_state.trays, [
+        {
+          ams_index: 0,
+          tray_index: 0,
+          loaded: true,
+          filament_type: "PLA",
+          filament_name: "PLA Basic",
+          color_hex: "#111827",
+          tray_weight_g: 1000,
+          remaining_percent: 82,
+          remaining_grams: 820,
+          last_identity_seen_at: "2026-05-02T12:05:00Z",
+        },
+      ]);
     } finally {
       db.close();
     }
     if (process.platform !== "win32") {
       assert.equal(statSync(outputPath).mode & 0o777, 0o600);
+    }
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("normalized visual QA database supports deterministic printer slot onboarding", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "filament-manager-onboarding-fixture-test-"));
+  const outputPath = join(directory, "fixture.db");
+  try {
+    createVisualQaFixture({ outputPath });
+    const fixture = await applyVisualQaDatabaseFixture(outputPath, "printer-slot-onboarding", {
+      now: new Date("2026-07-01T12:00:00Z"),
+    });
+
+    assert.deepEqual(fixture, {
+      fixture: "printer-slot-onboarding",
+      printerId: "qa_printer_bambu",
+      slotId: "qa_bambu_slot_1",
+      masterId: "qa_master_bambu_asa_marine_blue",
+      material: "ASA",
+      filamentName: "ASA",
+      colorName: "Marine Blue",
+      hexColor: "#256D85",
+      rfid: "VISUALQA-AMS1-SLOT1",
+    });
+
+    const db = new Database(outputPath, { readonly: true, fileMustExist: true });
+    try {
+      assert.equal(
+        db.prepare("SELECT spool_id FROM ams_slots WHERE id = 'qa_bambu_slot_1'").get().spool_id,
+        null,
+      );
+      const liveConfig = JSON.parse(
+        db
+          .prepare(
+            "SELECT value FROM settings WHERE key = 'bambu_live_integration:qa_printer_bambu'",
+          )
+          .get().value,
+      );
+      assert.deepEqual(
+        {
+          enabled: liveConfig.enabled,
+          filamentName: liveConfig.observed_state.trays[0].filament_name,
+          filamentType: liveConfig.observed_state.trays[0].filament_type,
+          matchStatus: liveConfig.observed_state.trays[0].match_status,
+        },
+        {
+          enabled: true,
+          filamentName: "ASA",
+          filamentType: "ASA",
+          matchStatus: "unknown_rfid",
+        },
+      );
+    } finally {
+      db.close();
     }
   } finally {
     rmSync(directory, { force: true, recursive: true });
@@ -73,6 +242,30 @@ test("visual QA fixture generator removes incomplete output on invalid rows", ()
     assert.throws(
       () => createVisualQaFixture({ outputPath, seedPath }),
       /unreviewed column\(s\): unknown_column/,
+    );
+    assert.throws(
+      () => new Database(outputPath, { readonly: true, fileMustExist: true }),
+      /(?:does not exist|unable to open database file)/,
+    );
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("visual QA fixture generator rejects unreviewed live-setting changes", () => {
+  const directory = mkdtempSync(join(tmpdir(), "filament-manager-fixture-live-setting-"));
+  const outputPath = join(directory, "fixture.db");
+  const seedPath = join(directory, "invalid-live-setting-seed.json");
+  try {
+    const seed = JSON.parse(readFileSync(VISUAL_QA_SEED_PATH, "utf8"));
+    const liveSetting = seed.tables.settings.find(
+      ({ key }) => key === "bambu_live_integration:qa_printer_bambu",
+    );
+    liveSetting.value = JSON.stringify({ enabled: false, observed_state: null });
+    writeFileSync(seedPath, JSON.stringify(seed));
+    assert.throws(
+      () => createVisualQaFixture({ outputPath, seedPath }),
+      /unreviewed setting value/,
     );
     assert.throws(
       () => new Database(outputPath, { readonly: true, fileMustExist: true }),

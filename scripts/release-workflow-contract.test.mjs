@@ -54,9 +54,24 @@ test("release workflow gates tag and manual installer builds", () => {
   const windowsJob = readSection(
     releaseWorkflow,
     "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+  const sbomJob = readSection(
+    releaseWorkflow,
+    "  generate-release-sbom:",
+    "  attest-public-release:",
+  );
+  const attestationJob = readSection(
+    releaseWorkflow,
+    "  attest-public-release:",
     "  publish-github-release:",
   );
   const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
+  const requiredChecksStep = readSection(
+    publishJob,
+    "      - name: Require successful CI checks",
+    "      - name: Checkout release notes",
+  );
 
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
@@ -167,11 +182,21 @@ test("release workflow gates tag and manual installer builds", () => {
 
   assert.match(
     publishJob,
-    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- build-windows-msi/,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- build-windows-msi\s*\n\s+- generate-release-sbom\s*\n\s+- attest-public-release/,
+  );
+  assert.match(publishJob, /if: >-\s+!cancelled\(\) &&/);
+  assert.doesNotMatch(publishJob, /always\(\)/);
+  assert.match(publishJob, /needs\['validate-release'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['build-macos-dmg'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['build-windows-msi'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['generate-release-sbom'\]\.result == 'success'/);
+  assert.match(
+    publishJob,
+    /github\.event\.repository\.private == false && needs\['attest-public-release'\]\.result == 'success'/,
   );
   assert.match(
     publishJob,
-    /if: github\.event_name == 'push' && github\.ref_type == 'tag'/,
+    /github\.event\.repository\.private == true && needs\['attest-public-release'\]\.result == 'skipped'/,
   );
   assert.match(
     publishJob,
@@ -180,6 +205,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(
     publishJob,
     /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+  );
+  assert.equal(
+    countOccurrences(requiredChecksStep, "GH_TOKEN: ${{ github.token }}"),
+    1,
   );
   assert.match(
     publishJob,
@@ -203,10 +232,25 @@ test("release workflow gates tag and manual installer builds", () => {
     publishJob,
     /- name: Download verified Windows artifact[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}\s+path: release-assets\/windows/,
   );
+  assert.match(
+    publishJob,
+    /- name: Download verified source dependency SBOM[\s\S]*?name: filament-manager-release-sbom-\$\{\{ github\.run_id \}\}\s+path: release-assets\/sbom/,
+  );
+  assert.match(
+    publishJob,
+    /- name: Download signed public provenance\s+if: github\.event\.repository\.private == false[\s\S]*?name: filament-manager-release-provenance-\$\{\{ github\.run_id \}\}\s+path: release-assets\/provenance/,
+  );
   assert.match(publishJob, /SHA256SUMS\.txt/);
   assert.match(publishJob, /SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /SHA256SUMS-sbom\.txt/);
   assert.match(publishJob, /sha256sum --check SHA256SUMS\.txt/);
   assert.match(publishJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /sha256sum --check SHA256SUMS-sbom\.txt/);
+  assert.match(publishJob, /node \.\/scripts\/verify-release-sbom\.mjs/);
+  assert.match(
+    publishJob,
+    /A public release requires exactly one non-empty signed provenance bundle/,
+  );
   assert.match(publishJob, /gh release create "\$GITHUB_REF_NAME"/);
   assert.match(publishJob, /--verify-tag/);
   assert.match(publishJob, /--target "\$GITHUB_SHA"/);
@@ -217,8 +261,108 @@ test("release workflow gates tag and manual installer builds", () => {
     "Checkout release notes",
     "Download verified macOS artifact",
     "Download verified Windows artifact",
+    "Download verified source dependency SBOM",
+    "Download signed public provenance",
     "Assemble and verify release assets",
     "Publish immutable release",
+  ]);
+
+  assert.match(sbomJob, /needs: validate-release/);
+  assert.match(attestationJob, /needs:[\s\S]*?- generate-release-sbom/);
+});
+
+test("release SBOM generation is pinned, read-only and fail-closed", () => {
+  const sbomJob = readSection(
+    releaseWorkflow,
+    "  generate-release-sbom:",
+    "  attest-public-release:",
+  );
+
+  assert.match(
+    sbomJob,
+    /permissions:\s*\n\s+contents: read\s*\n\s+steps:/,
+  );
+  assert.doesNotMatch(sbomJob, /permissions:[\s\S]*?\n\s+\w[\w-]*: write/);
+  assert.match(
+    sbomJob,
+    /anchore\/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0\.24\.0/,
+  );
+  assert.match(sbomJob, /format: spdx-json/);
+  assert.match(sbomJob, /syft-version: v1\.42\.3/);
+  assert.match(sbomJob, /dependency-snapshot: false/);
+  assert.match(sbomJob, /upload-artifact: false/);
+  assert.match(sbomJob, /upload-release-assets: false/);
+  assert.match(sbomJob, /node \.\/scripts\/verify-release-sbom\.mjs/);
+  assert.match(sbomJob, /--expected-package=bambu-filament-manager/);
+  assert.match(sbomJob, /sha256sum "\$sbom_name" > SHA256SUMS-sbom\.txt/);
+  assert.match(
+    sbomJob,
+    /name: filament-manager-release-sbom-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    sbomJob,
+    /- name: Upload verified source dependency SBOM[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
+  );
+  assert.doesNotMatch(sbomJob, /github\.run_attempt/);
+
+  assertStepOrder(sbomJob, [
+    "Checkout release source",
+    "Setup Node",
+    "Prepare SBOM output",
+    "Generate pinned source dependency SBOM",
+    "Validate source dependency SBOM",
+    "Write SBOM checksum",
+    "Upload verified source dependency SBOM",
+  ]);
+});
+
+test("public provenance uses an isolated least-privilege fail-closed job", () => {
+  const attestationJob = readSection(
+    releaseWorkflow,
+    "  attest-public-release:",
+    "  publish-github-release:",
+  );
+
+  assert.match(
+    attestationJob,
+    /if: github\.event_name == 'push' && github\.ref_type == 'tag' && github\.event\.repository\.private == false/,
+  );
+  assert.match(
+    attestationJob,
+    /permissions:\s*\n\s+actions: read\s*\n\s+artifact-metadata: write\s*\n\s+attestations: write\s*\n\s+contents: read\s*\n\s+id-token: write/,
+  );
+  assert.doesNotMatch(attestationJob, /contents: write/);
+  assert.doesNotMatch(attestationJob, /APPLE_[A-Z_]+|macos-release/);
+  assert.match(
+    attestationJob,
+    /actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4\.2\.0/,
+  );
+  assert.match(
+    attestationJob,
+    /subject-path:\s*\|\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['dmg-path'\] \}\}\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['msi-path'\] \}\}/,
+  );
+  assert.match(attestationJob, /sha256sum --check SHA256SUMS\.txt/);
+  assert.match(attestationJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(
+    attestationJob,
+    /steps\['installer-provenance'\]\.outputs\['bundle-path'\]/,
+  );
+  assert.match(
+    attestationJob,
+    /name: filament-manager-release-provenance-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    attestationJob,
+    /- name: Upload signed provenance bundle[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
+  );
+
+  assertStepOrder(attestationJob, [
+    "Download verified macOS artifact for attestation",
+    "Download verified Windows artifact for attestation",
+    "Reverify installer subjects",
+    "Generate signed build provenance",
+    "Normalize signed provenance bundle",
+    "Upload signed provenance bundle",
   ]);
 });
 
@@ -231,13 +375,28 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   const windowsJob = readSection(
     releaseWorkflow,
     "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+  const sbomJob = readSection(
+    releaseWorkflow,
+    "  generate-release-sbom:",
+    "  attest-public-release:",
+  );
+  const attestationJob = readSection(
+    releaseWorkflow,
+    "  attest-public-release:",
     "  publish-github-release:",
   );
   const macosArtifactName = "filament-manager-macos-dmg-${{ github.run_id }}";
   const windowsArtifactName = "filament-manager-windows-msi-${{ github.run_id }}";
+  const sbomArtifactName = "filament-manager-release-sbom-${{ github.run_id }}";
+  const provenanceArtifactName =
+    "filament-manager-release-provenance-${{ github.run_id }}";
 
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 2);
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 2);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 3);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 3);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`), 2);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${provenanceArtifactName}`), 2);
   assert.doesNotMatch(releaseWorkflow, /github\.run_attempt/);
   assert.match(
     macosJob,
@@ -246,6 +405,14 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   assert.match(
     windowsJob,
     /- name: Upload verified MSI artifact[\s\S]*?overwrite: true/,
+  );
+  assert.match(
+    sbomJob,
+    /- name: Upload verified source dependency SBOM[\s\S]*?overwrite: true/,
+  );
+  assert.match(
+    attestationJob,
+    /- name: Upload signed provenance bundle[\s\S]*?overwrite: true/,
   );
 });
 

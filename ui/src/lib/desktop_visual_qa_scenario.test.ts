@@ -33,7 +33,7 @@ function spool(overrides: Partial<InventorySpool>): InventorySpool {
 }
 
 test("desktop visual QA scenario parser accepts stable aliases in dev only", () => {
-  assert.equal(DESKTOP_VISUAL_QA_BORROWER_NAME, "Nora Berg");
+  assert.equal(DESKTOP_VISUAL_QA_BORROWER_NAME, "Sample maker space");
   assert.equal(DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID, "visual_qa_spool_inbound_lagoon");
   assert.deepEqual(DESKTOP_VISUAL_QA_SCENARIOS, [
     "dashboard-overview",
@@ -52,6 +52,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "return-loan",
     "return-inbound-loan",
     "printer-board",
+    "printer-overview",
     "add-printer",
     "printer-slot-assignment",
     "printer-slot-onboarding",
@@ -103,6 +104,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "return-inbound-loan",
   );
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("printers-static"),
+    "printer-overview",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("printer-add"), "add-printer");
   assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
   assert.equal(normalizeDesktopVisualQaScenario("ams-onboarding"), "printer-slot-onboarding");
@@ -212,6 +217,11 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
     timeoutMs: 35_000,
     token: "printer-live-telemetry",
   });
+  assert.equal(
+    desktopVisualQaScenarioDefinition("printer-summary")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(desktopVisualQaScenarioDefinition("printer-summary")?.readiness, undefined);
   assert.equal(desktopVisualQaScenarioDefinition("add-printer")?.readiness, undefined);
   assert.equal(desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture, true);
   assert.equal(
@@ -287,6 +297,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-inbound-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-board"), "printers");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-overview"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=add-printer"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-assignment"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-onboarding"), "printers");
@@ -444,6 +455,18 @@ test("desktop visual QA spool chooser prefers assigned RFID rolls for RFID captu
   assert.equal(chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll"), "stock");
 });
 
+test("desktop visual QA RFID capture falls back to an assigned Bambu roll", () => {
+  const spools = [
+    spool({ id: "generic", vendor: "Generic", status: "ASSIGNED" }),
+    spool({ id: "bambu", vendor: "Bambu Lab", status: "ASSIGNED" }),
+  ];
+
+  assert.equal(
+    chooseDesktopVisualQaSpoolId(spools, new Set(["generic", "bambu"]), "rfid-capture"),
+    "bambu",
+  );
+});
+
 test("desktop visual QA spool chooser prefers non-Bambu detail examples", () => {
   const spools = [
     spool({ id: "bambu", vendor: "Bambu" }),
@@ -481,6 +504,43 @@ test("desktop visual QA selected-roll prefers a real bright neutral edge case", 
   assert.equal(
     chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll-danger-zone"),
     "colorful",
+  );
+});
+
+test("desktop visual QA history prefers an unassigned used owned roll", () => {
+  const spools = [
+    spool({
+      id: "loaned",
+      vendor: "eSUN",
+      colorName: "Deep Blue",
+      status: "BORROWED",
+    }),
+    spool({
+      id: "assigned",
+      vendor: "eSUN",
+      colorName: "Signal Orange",
+    }),
+    spool({
+      id: "borrowed-in",
+      vendor: "eSUN",
+      colorName: "Forest Green",
+      ownershipType: "BORROWED_IN",
+    }),
+    spool({
+      id: "history",
+      vendor: "eSUN",
+      colorName: "Ocean Blue",
+      remainingGrams: 780,
+    }),
+  ];
+
+  assert.equal(
+    chooseDesktopVisualQaSpoolId(
+      spools,
+      new Set(["assigned"]),
+      "selected-roll-history",
+    ),
+    "history",
   );
 });
 

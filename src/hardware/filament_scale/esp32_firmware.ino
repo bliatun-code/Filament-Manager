@@ -6,8 +6,9 @@
 const char* WIFI_SSID = "YOUR_WIFI";
 const char* WIFI_PASS = "YOUR_PASS";
 
-// Desktop endpoint for posting weights (optional)
-const char* REPORT_URL = "http://192.168.1.10:4278/api/weight";
+// Desktop endpoint for posting weights (optional). Replace the TEST-NET address
+// with the address shown by your own Filament Manager host.
+const char* REPORT_URL = "http://192.0.2.10:4278/api/weight";
 
 // HX711 wiring
 const int LOADCELL_DOUT_PIN = 4;

@@ -20,7 +20,7 @@ export const VISUAL_QA_SCHEMA_MIGRATION_PATH = fileURLToPath(
   new URL("../src/database/migrations/003_library_domain_revisions.sql", import.meta.url),
 );
 export const VISUAL_QA_SEED_SHA256 =
-  "a6aedda00af454a565e31071b940ba06c242ec4884be86d56ebfe36339438831";
+  "81832c22714d81c227ac53875b928b66d564e006d7f9e414fc2e6c4a95629970";
 
 const ALLOWED_VISUAL_QA_SEED_COLUMNS = new Map(
   Object.entries({
@@ -107,17 +107,53 @@ const ALLOWED_VISUAL_QA_SEED_COLUMNS = new Map(
   }).map(([table, columns]) => [table, new Set(columns)]),
 );
 
+const SYNTHETIC_BAMBU_LIVE_SETTING_KEY =
+  "bambu_live_integration:qa_printer_bambu";
+const SYNTHETIC_BAMBU_LIVE_SETTING_VALUE = JSON.stringify({
+  enabled: false,
+  observed_state: {
+    online: true,
+    last_seen_at: "2026-05-02T12:05:00Z",
+    mqtt_connected: true,
+    progress_percent: 64,
+    remaining_minutes: 18,
+    gcode_state: "RUNNING",
+    active_ams_index: 0,
+    active_tray_index: 0,
+    nozzle_temp_c: 218,
+    bed_temp_c: 55,
+    ams_humidity_index: 2,
+    ams_temperature_c: 27,
+    trays: [
+      {
+        ams_index: 0,
+        tray_index: 0,
+        loaded: true,
+        filament_type: "PLA",
+        filament_name: "PLA Basic",
+        color_hex: "#111827",
+        tray_weight_g: 1000,
+        remaining_percent: 82,
+        remaining_grams: 820,
+        last_identity_seen_at: "2026-05-02T12:05:00Z",
+      },
+    ],
+  },
+});
+
 const ALLOWED_VISUAL_QA_SETTING_KEYS = new Set([
   "app_language",
   "library_sync_library_id",
   "theme_mode",
   "trusted_lan_enabled",
+  SYNTHETIC_BAMBU_LIVE_SETTING_KEY,
 ]);
 const APPROVED_VISUAL_QA_SETTINGS = new Map([
   ["app_language", "en"],
   ["library_sync_library_id", "qa-library"],
   ["theme_mode", "dark"],
   ["trusted_lan_enabled", "1"],
+  [SYNTHETIC_BAMBU_LIVE_SETTING_KEY, SYNTHETIC_BAMBU_LIVE_SETTING_VALUE],
 ]);
 
 const APPROVED_SYNTHETIC_IDENTITIES = [
@@ -159,6 +195,10 @@ const APPROVED_SYNTHETIC_IDENTITIES = [
 ];
 const SYNTHETIC_IDENTITY_FIELDS = new Set(
   APPROVED_SYNTHETIC_IDENTITIES.map(({ field }) => field),
+);
+const APPROVED_SYNTHETIC_LOCATION_IDS = new Set(["QA Dry box", "QA Shelf A"]);
+const APPROVED_SYNTHETIC_SPOOL_IDS = new Set(
+  Array.from({ length: 8 }, (_, index) => `spool_demo_${100001 + index}`),
 );
 
 const FORBIDDEN_SEED_FIELD_KEY_FRAGMENTS = [
@@ -465,8 +505,20 @@ function assertVisualQaSeedShape(seed) {
       ) {
         throw new Error(`Visual QA seed contains an unreviewed setting value for ${row.key}.`);
       }
-      if (table !== "settings" && !String(row.id ?? "").startsWith("qa_")) {
-        throw new Error(`Visual QA seed ${table} row ${index + 1} must use a qa_ id.`);
+      const rowId = String(row.id ?? "");
+      const approvedLocationId =
+        table === "inventory_locations" && APPROVED_SYNTHETIC_LOCATION_IDS.has(rowId);
+      const approvedSpoolId =
+        table === "filament_spools" && APPROVED_SYNTHETIC_SPOOL_IDS.has(rowId);
+      if (
+        table !== "settings" &&
+        !rowId.startsWith("qa_") &&
+        !approvedLocationId &&
+        !approvedSpoolId
+      ) {
+        throw new Error(
+          `Visual QA seed ${table} row ${index + 1} must use a reviewed synthetic id.`,
+        );
       }
       if (
         table === "filament_spools" &&

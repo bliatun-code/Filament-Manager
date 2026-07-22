@@ -876,6 +876,7 @@ test("applyVisualQaDatabaseFixture creates a printer slot onboarding state on co
     assert.equal(fixture?.fixture, "printer-slot-onboarding");
     assert.equal(fixture?.slotId, "printer_1_ams_1_slot_1");
     assert.equal(fixture?.masterId, "master_asa");
+    assert.equal(fixture?.rfid, "VISUALQA-AMS1-SLOT1");
 
     const updatedDb = new Database(dbPath, { readonly: true });
     try {
@@ -897,6 +898,7 @@ test("applyVisualQaDatabaseFixture creates a printer slot onboarding state on co
           .get("bambu_live_integration:printer_1").value,
       );
       const tray = config.observed_state.trays[0];
+      assert.equal(config.enabled, true);
       assert.equal(tray.match_status, "unknown_rfid");
       assert.equal(tray.matched_inventory_spool_id, null);
       assert.equal(tray.material, undefined);
@@ -1256,8 +1258,8 @@ test("applyVisualQaDatabaseFixture creates data-connected loan dialog states on 
       now: new Date("2026-07-10T10:00:00.000Z"),
     });
     assert.equal(fixture?.fixture, VISUAL_QA_FIXTURE_LOAN_DIALOGS);
-    assert.equal(fixture?.inboundPartyName, "Maja Solberg");
-    assert.equal(fixture?.outboundPartyName, "Nora Berg");
+    assert.equal(fixture?.inboundPartyName, "Sample workshop");
+    assert.equal(fixture?.outboundPartyName, "Sample maker space");
 
     const updatedDb = new Database(dbPath, { readonly: true });
     try {
@@ -1278,7 +1280,7 @@ test("applyVisualQaDatabaseFixture creates data-connected loan dialog states on 
           id: "visual_qa_loan_inbound_lagoon",
           loan_direction: "INBOUND",
           loan_status: "ACTIVE",
-          borrower_name: "Maja Solberg",
+          borrower_name: "Sample workshop",
           grams_out: 1000,
           returned_grams: null,
           consumed_grams: null,
@@ -1292,7 +1294,7 @@ test("applyVisualQaDatabaseFixture creates data-connected loan dialog states on 
           id: "visual_qa_loan_outbound_coral",
           loan_direction: "OUTBOUND",
           loan_status: "RETURNED",
-          borrower_name: "Nora Berg",
+          borrower_name: "Sample maker space",
           grams_out: 1000,
           returned_grams: 620,
           consumed_grams: 380,

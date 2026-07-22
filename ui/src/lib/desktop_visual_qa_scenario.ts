@@ -3,7 +3,7 @@ import visualQaScenarioManifest from "./desktop_visual_qa_scenarios.json";
 import type { InventorySpool } from "./inventory_list_model";
 
 export const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
-export const DESKTOP_VISUAL_QA_BORROWER_NAME = "Nora Berg";
+export const DESKTOP_VISUAL_QA_BORROWER_NAME = "Sample maker space";
 export const DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID = "visual_qa_spool_inbound_lagoon";
 
 export type DesktopVisualQaScenario =
@@ -23,6 +23,7 @@ export type DesktopVisualQaScenario =
   | "return-loan"
   | "return-inbound-loan"
   | "printer-board"
+  | "printer-overview"
   | "add-printer"
   | "printer-slot-assignment"
   | "printer-slot-onboarding"
@@ -164,6 +165,7 @@ export function chooseDesktopVisualQaSpoolId(
   if (scenario === "rfid-capture") {
     return (
       usableSpools.find((spool) => assignedSpoolIds.has(spool.id) && spool.rfidTag)?.id ??
+      usableSpools.find((spool) => assignedSpoolIds.has(spool.id) && isBambuSpool(spool))?.id ??
       usableSpools.find((spool) => assignedSpoolIds.has(spool.id))?.id ??
       usableSpools[0]?.id ??
       null
@@ -188,7 +190,25 @@ export function chooseDesktopVisualQaSpoolId(
       null
     );
   }
-  if (scenario === "selected-roll-history" || scenario === "selected-roll-danger-zone") {
+  if (scenario === "selected-roll-history") {
+    return (
+      usableSpools.find(
+        (spool) =>
+          !assignedSpoolIds.has(spool.id) &&
+          spool.status === "IN_STOCK" &&
+          spool.ownershipType === "OWNED" &&
+          spool.remainingGrams != null &&
+          spool.remainingGrams < spool.initialWeightGrams &&
+          isColorfulNonBambuSpool(spool),
+      )?.id ??
+      usableSpools.find(isColorfulNonBambuSpool)?.id ??
+      usableSpools.find(isNonBambuSpool)?.id ??
+      usableSpools[0]?.id ??
+      spools[0]?.id ??
+      null
+    );
+  }
+  if (scenario === "selected-roll-danger-zone") {
     return (
       usableSpools.find(isColorfulNonBambuSpool)?.id ??
       usableSpools.find(isNonBambuSpool)?.id ??
@@ -266,8 +286,12 @@ function swatchChannelAverage(value: string | null | undefined): number {
   return channels.reduce((total, channel) => total + channel, 0) / channels.length;
 }
 
+function isBambuSpool(spool: InventorySpool): boolean {
+  return spool.vendor.toLowerCase().includes("bambu");
+}
+
 function isNonBambuSpool(spool: InventorySpool): boolean {
-  return !spool.vendor.toLowerCase().includes("bambu");
+  return !isBambuSpool(spool);
 }
 
 function isColorfulNonBambuSpool(spool: InventorySpool): boolean {

@@ -369,6 +369,7 @@ export default function InventoryPage({
     selectedSpoolAssignedSlot,
     tauriAvailable: tauri,
     t,
+    useObservedSlotFixture: desktopVisualQaScenario === "rfid-capture",
   });
 
   const loanTrackingCandidates = useMemo(

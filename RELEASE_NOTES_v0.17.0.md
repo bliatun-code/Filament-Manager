@@ -4,7 +4,7 @@ Release date: 2026-06-23
 
 ## Highlights
 
-- Public-readiness release after the internal `v0.16.0` testing round.
+- Release consolidating stability, repository hygiene, and host/client improvements since `v0.16.0`.
 - Improved host/client behavior so desktop clients route sensible inventory, catalog, printer, wishlist, loan, and settings writes through the host library instead of drifting into local-only data.
 - Polished the Companion inventory flow with host-backed add/spool actions, consistent Inventory naming, and less noisy Bambu code helper UI.
 - Added AGPL-3.0-or-later licensing, notice text, in-app legal links, repository hygiene files, issue templates, CodeQL, Dependabot guardrails, and a screenshot product tour for the public repository.
@@ -26,7 +26,6 @@ Release date: 2026-06-23
 
 ## Notes For Testers
 
-- This release is still intended for the final private stability pass before making the repository public.
 - macOS builds are not notarized yet. Downloaded apps may still need quarantine removal until Apple signing/notarization is added.
 - If running host/client mode, keep the host app as the source of truth for the library and use the client pairing/settings flow rather than editing local client data directly.
 

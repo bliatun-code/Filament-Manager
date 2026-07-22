@@ -104,6 +104,13 @@
       }
     },
     {
+      "id": "printer-overview",
+      "aliases": ["printers-static", "printer-summary"],
+      "page": "printers",
+      "category": "overview",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "add-printer",
       "aliases": ["printer-add", "add-printer-modal"],
       "page": "printers",

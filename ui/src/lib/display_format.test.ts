@@ -4,10 +4,15 @@ import {
   formatPlacementLabel,
   formatPrinterSlotLocation,
   formatPrinterSlotTokenLabel,
+  formatSpoolReference,
   parsePlacementLocation,
 } from "./display_format";
 
 const t = (_key: string, fallback = "") => fallback;
+
+test("formatSpoolReference keeps demo fixture references human-readable", () => {
+  assert.equal(formatSpoolReference("spool_demo_100003"), "#100003");
+});
 
 test("formatPlacementLabel keeps normal shelf locations unchanged", () => {
   assert.equal(formatPlacementLabel(t, " Shelf A "), "Shelf A");

@@ -30,6 +30,8 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with physical size choices" width="220"></a>
   <a href="docs/screenshots/inventory-label-sheet.jpg"><img src="docs/screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet preview with A4 and US Letter choices" width="220"></a>
   <a href="docs/screenshots/filament-history.jpg"><img src="docs/screenshots/filament-history-thumb.jpg" alt="Filament roll history timeline" width="220"></a>
+  <a href="docs/screenshots/settings-general.jpg"><img src="docs/screenshots/settings-general-thumb.jpg" alt="Settings with the compact language selector" width="220"></a>
+  <a href="docs/screenshots/settings-updates.jpg"><img src="docs/screenshots/settings-updates-thumb.jpg" alt="Program version and manual application update check" width="220"></a>
   <a href="docs/screenshots/companion-tablet-inventory.jpg"><img src="docs/screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet inventory view" width="220"></a>
   <a href="docs/screenshots/companion-phone-inventory.jpg"><img src="docs/screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone inventory view" width="220"></a>
 </p>
@@ -44,7 +46,9 @@ Start with the user guide for product behavior and workflows:
 - macOS installation and verification:
   [docs/MACOS_DISTRIBUTION.md](docs/MACOS_DISTRIBUTION.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Security policy: [SECURITY.md](SECURITY.md)
+- Release integrity and source SBOM: [docs/SUPPLY_CHAIN.md](docs/SUPPLY_CHAIN.md)
 
 Release notes:
 
@@ -206,6 +210,7 @@ What `verify` covers:
 - seed catalog, Bambu catalog data, and printer model data contracts
 - Tauri invoke and companion route contract checks
 - UI reachability and architecture checks
+- tracked-file privacy, secret-shape, internal-document, and broken-link checks
 - version consistency checks
 - doctor/runtime checks
 - Rust formatting
@@ -296,8 +301,10 @@ npm run verify
 
 The release workflow builds installer artifacts from version tags and
 maintainer-approved manual runs. A version tag publishes the GitHub release
-only after the exact commit has passed macOS and Windows CI and both installers
-and both checksum manifests pass verification:
+only after the exact commit has passed macOS and Windows CI, both installers
+and their checksum manifests pass verification, the source dependency SBOM and
+its checksum pass validation, and public releases receive signed installer
+provenance:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: a version tag matching `v*`
@@ -307,6 +314,10 @@ and both checksum manifests pass verification:
     `SHA256SUMS.txt`
   - `filament-manager-windows-msi-<run-id>` with the verified MSI and
     `SHA256SUMS-windows.txt`
+  - `filament-manager-release-sbom-<run-id>` with a validated SPDX 2.3 source
+    dependency SBOM and `SHA256SUMS-sbom.txt`
+  - for public tag releases, `filament-manager-release-provenance-<run-id>`
+    with signed GitHub/Sigstore provenance for both installers
 
 The macOS job fails instead of publishing an ad-hoc fallback when signing,
 notarization, stapling, verification, or checksum generation fails. Release
@@ -315,7 +326,10 @@ likewise fails before upload unless exactly one non-empty MSI
 has the expected product name, normalized release version, and x64 package
 architecture, and its checksum is written successfully. Release assets are
 treated as immutable; a mismatch is investigated rather than silently
-replaced.
+replaced. The SBOM describes source and lockfile dependencies rather than the
+exact binary contents of either installer. See
+[Release Integrity And Supply Chain](docs/SUPPLY_CHAIN.md) for verification and
+scope details.
 
 ## Installers and App Data
 

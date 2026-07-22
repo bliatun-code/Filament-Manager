@@ -102,6 +102,8 @@ const VISUAL_QA_LOCALE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 const VISUAL_QA_THEME_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_THEME";
 #[cfg(all(debug_assertions, target_os = "macos"))]
 const VISUAL_QA_WINDOW_SIZE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE";
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+const VISUAL_QA_WINDOW_EDGE_INSET: f64 = 24.0;
 pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
@@ -428,6 +430,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "borrowed-in-hand-back"
         | "hand-back-borrowed-in" => Some("return-inbound-loan"),
         "printer-board" | "printers" => Some("printer-board"),
+        "printer-overview" | "printers-static" | "printer-summary" => Some("printer-overview"),
         "add-printer" | "printer-add" | "add-printer-modal" => Some("add-printer"),
         "printer-slot-assignment" | "printer-slot-dropdown" | "slot-assignment" => {
             Some("printer-slot-assignment")
@@ -596,6 +599,44 @@ fn normalize_visual_qa_window_size(value: &str) -> Option<(f64, f64)> {
     Some((f64::from(width), f64::from(height)))
 }
 
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+fn visual_qa_window_origin(
+    visible_x: f64,
+    visible_y: f64,
+    visible_width: f64,
+    visible_height: f64,
+    window_width: f64,
+    window_height: f64,
+) -> Option<(f64, f64)> {
+    let values = [
+        visible_x,
+        visible_y,
+        visible_width,
+        visible_height,
+        window_width,
+        window_height,
+    ];
+    if values.iter().any(|value| !value.is_finite())
+        || visible_width <= 0.0
+        || visible_height <= 0.0
+        || window_width <= 0.0
+        || window_height <= 0.0
+        || window_width > visible_width
+        || window_height > visible_height
+    {
+        return None;
+    }
+
+    let horizontal_inset =
+        ((visible_width - window_width) / 2.0).clamp(0.0, VISUAL_QA_WINDOW_EDGE_INSET);
+    let vertical_inset =
+        ((visible_height - window_height) / 2.0).clamp(0.0, VISUAL_QA_WINDOW_EDGE_INSET);
+    Some((
+        visible_x + horizontal_inset,
+        visible_y + visible_height - window_height - vertical_inset,
+    ))
+}
+
 #[cfg(all(debug_assertions, target_os = "macos"))]
 fn apply_visual_qa_window_size(app: &tauri::AppHandle) -> Result<(), String> {
     let Some(raw_size) = std::env::var(VISUAL_QA_WINDOW_SIZE_ENV_VAR).ok() else {
@@ -608,9 +649,22 @@ fn apply_visual_qa_window_size(app: &tauri::AppHandle) -> Result<(), String> {
     };
     let raw_window = window.ns_window().map_err(|error| error.to_string())?;
     let native_window: &NSWindow = unsafe { &*raw_window.cast() };
+    let screen = native_window
+        .screen()
+        .ok_or_else(|| "Desktop visual QA window is not attached to a screen".to_string())?;
+    let visible_frame = screen.visibleFrame();
+    let (origin_x, origin_y) = visual_qa_window_origin(
+        visible_frame.origin.x,
+        visible_frame.origin.y,
+        visible_frame.size.width,
+        visible_frame.size.height,
+        width,
+        height,
+    )
+    .ok_or_else(|| "Desktop visual QA window does not fit on the visible screen".to_string())?;
     let mut frame = native_window.frame();
-    frame.origin.x = 0.0;
-    frame.origin.y = 0.0;
+    frame.origin.x = origin_x;
+    frame.origin.y = origin_y;
     frame.size.width = width;
     frame.size.height = height;
     native_window.setFrame_display(frame, true);

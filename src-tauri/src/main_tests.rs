@@ -313,6 +313,10 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
         Some("add-printer")
     );
     assert_eq!(
+        normalize_visual_qa_scenario("printers-static"),
+        Some("printer-overview")
+    );
+    assert_eq!(
         normalize_visual_qa_scenario("roll-history"),
         Some("selected-roll-history")
     );
@@ -387,6 +391,22 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
     assert_eq!(
         normalize_visual_qa_scenario("application-diagnostics"),
         Some("settings-application-diagnostics")
+    );
+}
+
+#[test]
+fn visual_qa_window_origin_stays_inside_the_visible_screen() {
+    assert_eq!(
+        super::visual_qa_window_origin(0.0, 80.0, 1710.0, 993.0, 1200.0, 800.0),
+        Some((24.0, 249.0))
+    );
+    assert_eq!(
+        super::visual_qa_window_origin(0.0, 80.0, 1710.0, 993.0, 1710.0, 993.0),
+        Some((0.0, 80.0))
+    );
+    assert_eq!(
+        super::visual_qa_window_origin(0.0, 80.0, 1710.0, 993.0, 1711.0, 800.0),
+        None
     );
 }
 

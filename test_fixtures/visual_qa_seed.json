@@ -2,20 +2,20 @@
   "fixtureVersion": 1,
   "schemaVersion": 2,
   "expectedCounts": {
-    "filament_master_list": 4,
-    "filament_spools": 6,
+    "filament_master_list": 5,
+    "filament_spools": 8,
     "inventory_locations": 2,
     "printers": 2,
     "ams_units": 4,
     "ams_slots": 11,
-    "spool_history_events": 6,
-    "spool_loans": 1,
+    "spool_history_events": 9,
+    "spool_loans": 2,
     "wishlist_items": 2,
     "print_jobs": 1,
     "printer_live_events": 1,
     "printer_live_usage_sessions": 1,
     "printer_live_usage_session_spools": 1,
-    "settings": 4
+    "settings": 5
   },
   "tables": {
     "filament_master_list": [
@@ -25,6 +25,17 @@
         "filament_name": "PLA Basic",
         "color_name": "Black",
         "hex_color": "#111827",
+        "default_weight": 1000,
+        "vendor": "Bambu Lab",
+        "catalog_source": "fixture",
+        "catalog_user_edited": 0
+      },
+      {
+        "id": "qa_master_bambu_asa_marine_blue",
+        "material": "ASA",
+        "filament_name": "ASA",
+        "color_name": "Marine Blue",
+        "hex_color": "#256D85",
         "default_weight": 1000,
         "vendor": "Bambu Lab",
         "catalog_source": "fixture",
@@ -66,73 +77,86 @@
     ],
     "inventory_locations": [
       {
-        "id": "qa_location_shelf_a",
+        "id": "QA Shelf A",
         "name": "QA Shelf A",
         "type": "SHELF"
       },
       {
-        "id": "qa_location_dry_box",
+        "id": "QA Dry box",
         "name": "QA Dry box",
         "type": "CONTAINER"
       }
     ],
     "filament_spools": [
       {
-        "id": "qa_spool_black",
+        "id": "spool_demo_100001",
         "master_id": "qa_master_bambu_pla_black",
-        "qr_code": "qa:spool:black",
+        "qr_code": "demo:spool:100001",
         "status": "IN_STOCK",
         "ownership_type": "OWNED",
         "initial_weight_g": 1000,
         "current_weight_g": 820,
         "remaining_g": 820,
-        "location_id": "qa_location_shelf_a",
-        "home_location_id": "qa_location_shelf_a",
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A",
         "purchase_date": "2026-01-10"
       },
       {
-        "id": "qa_spool_blue",
+        "id": "spool_demo_100002",
         "master_id": "qa_master_esun_petg_blue",
-        "qr_code": "qa:spool:blue",
+        "qr_code": "demo:spool:100002",
         "status": "IN_STOCK",
         "ownership_type": "OWNED",
         "initial_weight_g": 1000,
         "current_weight_g": 610,
         "remaining_g": 610,
-        "location_id": "qa_location_dry_box",
-        "home_location_id": "qa_location_dry_box",
+        "location_id": "QA Dry box",
+        "home_location_id": "QA Dry box",
         "purchase_date": "2026-02-12"
       },
       {
-        "id": "qa_spool_orange",
+        "id": "spool_demo_100003",
+        "master_id": "qa_master_esun_petg_blue",
+        "qr_code": "demo:spool:100003",
+        "status": "IN_STOCK",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 780,
+        "remaining_g": 780,
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Dry box",
+        "purchase_date": "2026-03-01"
+      },
+      {
+        "id": "spool_demo_100004",
         "master_id": "qa_master_generic_abs_orange",
-        "qr_code": "qa:spool:orange",
+        "qr_code": "demo:spool:100004",
         "status": "IN_STOCK",
         "ownership_type": "OWNED",
         "initial_weight_g": 1000,
         "current_weight_g": 450,
         "remaining_g": 450,
-        "location_id": "qa_location_shelf_a",
-        "home_location_id": "qa_location_shelf_a",
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A",
         "purchase_date": "2026-03-03"
       },
       {
-        "id": "qa_spool_green",
+        "id": "spool_demo_100005",
         "master_id": "qa_master_generic_tpu_green",
-        "qr_code": "qa:spool:green",
+        "qr_code": "demo:spool:100005",
         "status": "IN_STOCK",
         "ownership_type": "OWNED",
         "initial_weight_g": 1000,
         "current_weight_g": 900,
         "remaining_g": 900,
-        "location_id": "qa_location_dry_box",
-        "home_location_id": "qa_location_dry_box",
+        "location_id": "QA Dry box",
+        "home_location_id": "QA Dry box",
         "purchase_date": "2026-04-08"
       },
       {
-        "id": "qa_spool_borrowed",
+        "id": "spool_demo_100006",
         "master_id": "qa_master_esun_petg_blue",
-        "qr_code": "qa:spool:borrowed",
+        "qr_code": "demo:spool:100006",
         "status": "IN_STOCK",
         "ownership_type": "BORROWED_IN",
         "owner_name": "Sample workshop",
@@ -140,20 +164,32 @@
         "initial_weight_g": 1000,
         "current_weight_g": 730,
         "remaining_g": 730,
-        "location_id": "qa_location_shelf_a",
-        "home_location_id": "qa_location_shelf_a"
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A"
       },
       {
-        "id": "qa_spool_empty",
+        "id": "spool_demo_100007",
         "master_id": "qa_master_bambu_pla_black",
-        "qr_code": "qa:spool:empty",
+        "qr_code": "demo:spool:100007",
         "status": "EMPTY",
         "ownership_type": "OWNED",
         "initial_weight_g": 1000,
         "current_weight_g": 0,
         "remaining_g": 0,
-        "location_id": "qa_location_shelf_a",
-        "home_location_id": "qa_location_shelf_a"
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A"
+      },
+      {
+        "id": "spool_demo_100008",
+        "master_id": "qa_master_esun_petg_blue",
+        "qr_code": "demo:spool:100008",
+        "status": "LOANED_OUT",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 640,
+        "remaining_g": 640,
+        "home_location_id": "QA Dry box",
+        "purchase_date": "2026-03-20"
       }
     ],
     "printers": [
@@ -195,19 +231,19 @@
         "id": "qa_bambu_slot_1",
         "ams_id": "qa_printer_bambu_ams_1",
         "slot_index": 1,
-        "spool_id": "qa_spool_black"
+        "spool_id": "spool_demo_100001"
       },
       {
         "id": "qa_bambu_slot_2",
         "ams_id": "qa_printer_bambu_ams_1",
         "slot_index": 2,
-        "spool_id": "qa_spool_blue"
+        "spool_id": "spool_demo_100002"
       },
       {
         "id": "qa_bambu_slot_3",
         "ams_id": "qa_printer_bambu_ams_1",
         "slot_index": 3,
-        "spool_id": "qa_spool_orange"
+        "spool_id": "spool_demo_100004"
       },
       {
         "id": "qa_bambu_slot_4",
@@ -223,7 +259,7 @@
         "id": "qa_prusa_slot_1",
         "ams_id": "qa_printer_prusa_mmu_1",
         "slot_index": 1,
-        "spool_id": "qa_spool_green"
+        "spool_id": "spool_demo_100005"
       },
       {
         "id": "qa_prusa_slot_2",
@@ -254,42 +290,63 @@
     "spool_history_events": [
       {
         "id": "qa_history_black_created",
-        "spool_id": "qa_spool_black",
+        "spool_id": "spool_demo_100001",
         "event_type": "CREATED",
         "payload_json": "{}",
         "created_at": "2026-01-10 10:00:00"
       },
       {
         "id": "qa_history_black_weight",
-        "spool_id": "qa_spool_black",
+        "spool_id": "spool_demo_100001",
         "event_type": "WEIGHT_UPDATED",
         "payload_json": "{\"from_g\":900,\"to_g\":820}",
         "created_at": "2026-05-02 12:00:00"
       },
       {
         "id": "qa_history_blue_created",
-        "spool_id": "qa_spool_blue",
+        "spool_id": "spool_demo_100002",
         "event_type": "CREATED",
         "payload_json": "{}",
         "created_at": "2026-02-12 10:00:00"
       },
       {
+        "id": "qa_history_blue_spare_created",
+        "spool_id": "spool_demo_100003",
+        "event_type": "CREATED",
+        "payload_json": "{\"status\":\"IN_STOCK\",\"ownership_type\":\"OWNED\",\"vendor\":\"eSUN\"}",
+        "created_at": "2026-03-01 10:00:00"
+      },
+      {
+        "id": "qa_history_blue_spare_location",
+        "spool_id": "spool_demo_100003",
+        "event_type": "LOCATION_UPDATED",
+        "payload_json": "{\"location\":\"QA Shelf A\"}",
+        "created_at": "2026-03-10 14:30:00"
+      },
+      {
+        "id": "qa_history_blue_spare_weight",
+        "spool_id": "spool_demo_100003",
+        "event_type": "WEIGHT_UPDATED",
+        "payload_json": "{\"previous_grams\":840,\"grams\":780,\"remaining_percent\":78,\"source\":\"manual_measurement\"}",
+        "created_at": "2026-04-02 16:15:00"
+      },
+      {
         "id": "qa_history_orange_created",
-        "spool_id": "qa_spool_orange",
+        "spool_id": "spool_demo_100004",
         "event_type": "CREATED",
         "payload_json": "{}",
         "created_at": "2026-03-03 10:00:00"
       },
       {
         "id": "qa_history_green_created",
-        "spool_id": "qa_spool_green",
+        "spool_id": "spool_demo_100005",
         "event_type": "CREATED",
         "payload_json": "{}",
         "created_at": "2026-04-08 10:00:00"
       },
       {
         "id": "qa_history_empty",
-        "spool_id": "qa_spool_empty",
+        "spool_id": "spool_demo_100007",
         "event_type": "MARKED_EMPTY",
         "payload_json": "{}",
         "created_at": "2026-05-10 12:00:00"
@@ -298,7 +355,7 @@
     "spool_loans": [
       {
         "id": "qa_loan_returned",
-        "spool_id": "qa_spool_orange",
+        "spool_id": "spool_demo_100004",
         "borrower_name": "Sample maker space",
         "loan_direction": "OUTBOUND",
         "loan_status": "RETURNED",
@@ -307,6 +364,15 @@
         "returned_at": "2026-04-18 15:00:00",
         "returned_grams": 470,
         "consumed_grams": 50
+      },
+      {
+        "id": "qa_loan_active",
+        "spool_id": "spool_demo_100008",
+        "borrower_name": "Sample maker space",
+        "loan_direction": "OUTBOUND",
+        "loan_status": "ACTIVE",
+        "grams_out": 640,
+        "lent_at": "2026-05-01 09:00:00"
       }
     ],
     "wishlist_items": [
@@ -335,7 +401,7 @@
       {
         "id": "qa_print_job_finished",
         "printer_id": "qa_printer_bambu",
-        "spool_id": "qa_spool_black",
+        "spool_id": "spool_demo_100001",
         "job_name": "QA calibration sample",
         "started_at": "2026-05-02 11:00:00",
         "ended_at": "2026-05-02 12:00:00",
@@ -372,7 +438,7 @@
       {
         "id": "qa_usage_spool_black",
         "session_id": "qa_usage_session_finished",
-        "spool_id": "qa_spool_black",
+        "spool_id": "spool_demo_100001",
         "used_g": 80
       }
     ],
@@ -392,6 +458,10 @@
       {
         "key": "trusted_lan_enabled",
         "value": "1"
+      },
+      {
+        "key": "bambu_live_integration:qa_printer_bambu",
+        "value": "{\"enabled\":false,\"observed_state\":{\"online\":true,\"last_seen_at\":\"2026-05-02T12:05:00Z\",\"mqtt_connected\":true,\"progress_percent\":64,\"remaining_minutes\":18,\"gcode_state\":\"RUNNING\",\"active_ams_index\":0,\"active_tray_index\":0,\"nozzle_temp_c\":218,\"bed_temp_c\":55,\"ams_humidity_index\":2,\"ams_temperature_c\":27,\"trays\":[{\"ams_index\":0,\"tray_index\":0,\"loaded\":true,\"filament_type\":\"PLA\",\"filament_name\":\"PLA Basic\",\"color_hex\":\"#111827\",\"tray_weight_g\":1000,\"remaining_percent\":82,\"remaining_grams\":820,\"last_identity_seen_at\":\"2026-05-02T12:05:00Z\"}]}}"
       }
     ]
   }

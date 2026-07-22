@@ -323,13 +323,15 @@ export default function PrintersPage() {
           continue;
         }
         const [master] = displayState.liveCatalogMatch.candidates;
-        if (master) {
+        if (
+          master &&
           createLiveBambuCatalogSpool(
             printer,
             slot,
             displayState.effectiveLiveTray,
             master,
-          );
+          )
+        ) {
           setDesktopVisualQaApplied(true);
           return;
         }

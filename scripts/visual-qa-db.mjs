@@ -854,7 +854,10 @@ async function applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options
     }
 
     const now = (options.now ?? new Date()).toISOString();
-    const fixtureIdentity = `VISUALQA-${target.slot.slot_id}`;
+    const fixtureAmsNumber = Number.isFinite(Number(target.tray.ams_index))
+      ? Math.max(1, Number(target.tray.ams_index) + 1)
+      : 1;
+    const fixtureIdentity = `VISUALQA-AMS${fixtureAmsNumber}-SLOT${target.slot.slot_index}`;
     const nextTray = {
       ...target.tray,
       loaded: true,
@@ -874,6 +877,10 @@ async function applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options
       match_note: "Visual QA fixture: unknown Bambu RFID for catalog onboarding.",
     };
     const nextConfig = structuredClone(target.config);
+    // The reviewed public seed keeps live polling disabled. This isolated scenario copy
+    // enables the signal so production matching logic recognizes the synthetic tray as
+    // a live unknown RFID and opens the normal onboarding flow.
+    nextConfig.enabled = true;
     nextConfig.observed_state = nextConfig.observed_state ?? {};
     nextConfig.observed_state.online = true;
     nextConfig.observed_state.mqtt_connected = true;
@@ -1413,13 +1420,13 @@ async function applyLoanDialogsFixtureWithBetterSqlite(dbPath, options = {}) {
         colorName: "Lagoon Blue",
         hexColor: "#0081A7",
         ownershipType: "BORROWED_IN",
-        ownerName: "Maja Solberg",
-        ownerContact: "maja@example.test",
+        ownerName: "Sample workshop",
+        ownerContact: null,
         ownershipNote: "Visual QA fixture: borrowed-in roll for hand-back review.",
         currentWeight: 742,
         direction: "INBOUND",
         status: "ACTIVE",
-        partyName: "Maja Solberg",
+        partyName: "Sample workshop",
         lentAt: inboundLentAt,
         returnedAt: null,
         returnedGrams: null,
@@ -1441,7 +1448,7 @@ async function applyLoanDialogsFixtureWithBetterSqlite(dbPath, options = {}) {
         currentWeight: 620,
         direction: "OUTBOUND",
         status: "RETURNED",
-        partyName: "Nora Berg",
+        partyName: "Sample maker space",
         lentAt: outboundLentAt,
         returnedAt: outboundReturnedAt,
         returnedGrams: 620,

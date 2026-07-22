@@ -37,6 +37,21 @@ ui/src/assets/logo_variants/README.md
 # Local env files
 .env
 .env.*
+*.env
+.npmrc*
+.netrc*
+.authinfo*
+.cargo/credentials
+.cargo/credentials.toml
+credentials.json
+client_secret*.json
+service-account*.json
+service_account*.json
+*-service-account.json
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
 
 # Apple signing and notarization material
 .apple-signing/

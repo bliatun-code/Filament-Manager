@@ -39,6 +39,12 @@ Version-tag releases are published only after the exact commit has passed the
 macOS and Windows CI checks and the MSI, signed macOS DMG, and both platform
 checksum manifests have passed their respective verification steps.
 
+Tagged releases also include a validated source dependency SBOM. Public tag
+releases include GitHub/Sigstore build provenance for the DMG and MSI. See
+[Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification
+commands and scope. This provenance does not Authenticode-sign the MSI; Windows
+installer signing remains intentionally deferred.
+
 ## Automated installer smoke test
 
 The Windows CI job also exercises the installer on a clean hosted Windows

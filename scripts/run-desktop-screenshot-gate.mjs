@@ -28,6 +28,10 @@ const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 export const DEFAULT_WINDOW_COMMAND_TIMEOUT_MS = 15_000;
 export const DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS = 60_000;
+export const DESKTOP_CAPTURE_EDGE_INSET = 24;
+// macOS can clamp the requested top edge around menu-bar/notch safe areas.
+// Keep a bounded inset range that still rejects the stale 0,0 launch frame.
+export const DESKTOP_CAPTURE_POSITION_TOLERANCE = 12;
 export const DESKTOP_VISUAL_QA_STATIC_SETTLE_MS = 3_500;
 export const DESKTOP_VISUAL_QA_READINESS_PREFIX =
   "FILAMENT_MANAGER_VISUAL_QA_READY:";
@@ -620,11 +624,33 @@ export function buildDesktopWindowResizeScript(windowInfo, windowSize) {
 tell application "System Events"
   tell first application process whose name is "${processName}"
     set appWindow to first window whose name is "${windowTitle}"
-    set position of appWindow to {0, 0}
     set size of appWindow to {${width}, ${height}}
+    set position of appWindow to {${DESKTOP_CAPTURE_EDGE_INSET}, ${DESKTOP_CAPTURE_EDGE_INSET}}
   end tell
 end tell
 `.trim();
+}
+
+export function parseDesktopScreenInfo(raw) {
+  const parts = String(raw ?? "")
+    .trim()
+    .split("\t");
+  if (parts.length !== 4) {
+    return null;
+  }
+  const [xRaw, yRaw, widthRaw, heightRaw] = parts;
+  const x = Number.parseInt(xRaw, 10);
+  const y = Number.parseInt(yRaw, 10);
+  const width = Number.parseInt(widthRaw, 10);
+  const height = Number.parseInt(heightRaw, 10);
+  if (
+    ![x, y, width, height].every(Number.isFinite) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null;
+  }
+  return { height, width, x, y };
 }
 
 export function parseDesktopWindowInfo(raw) {
@@ -822,6 +848,15 @@ export async function findDesktopWindowWithNativeHelper(options = {}) {
   return window ? { ...window, lookupSource: "native" } : null;
 }
 
+export async function findPrimaryDesktopScreen(options = {}) {
+  const { stdout } = await runMacosWindowInfoHelper("main-screen", [], options);
+  const screen = parseDesktopScreenInfo(stdout);
+  if (!screen) {
+    throw new Error("Native macOS screen lookup returned no primary display bounds.");
+  }
+  return screen;
+}
+
 export function normalizeNativeDesktopWindowFrame(windowInfo, windowSize) {
   if (!windowInfo || !windowSize) {
     return windowInfo;
@@ -936,6 +971,27 @@ export function desktopWindowMatchesRequestedSize(
   );
 }
 
+export function desktopWindowMatchesRequestedPosition(
+  windowInfo,
+  tolerance = DESKTOP_CAPTURE_POSITION_TOLERANCE,
+) {
+  if (!windowInfo) {
+    return false;
+  }
+  const allowedDelta = Number.isFinite(tolerance)
+    ? Math.max(0, tolerance)
+    : DESKTOP_CAPTURE_POSITION_TOLERANCE;
+  const x = Number(windowInfo.x);
+  const y = Number(windowInfo.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return false;
+  }
+  return (
+    Math.abs(x - DESKTOP_CAPTURE_EDGE_INSET) <= allowedDelta &&
+    Math.abs(y - DESKTOP_CAPTURE_EDGE_INSET) <= allowedDelta
+  );
+}
+
 export async function resizeDesktopWindow(
   windowInfo,
   windowSize,
@@ -944,17 +1000,9 @@ export async function resizeDesktopWindow(
   if (!windowInfo || !windowSize) {
     return windowInfo;
   }
-  if (
-    desktopWindowMatchesRequestedSize(
-      windowInfo,
-      windowSize,
-      options.windowSizeTolerance,
-    )
-  ) {
-    return windowInfo;
-  }
   const execFileFn = options.execFileFn ?? execFile;
   let resizeError = null;
+  let lastLookupError = null;
   try {
     await execFileWithTimeout(
       execFileFn,
@@ -974,6 +1022,7 @@ export async function resizeDesktopWindow(
 
   const findWindowFn = options.findWindowFn ?? findDesktopWindow;
   let latestWindow = windowInfo;
+  const resizeWindowTimeoutMs = options.resizeWindowTimeoutMs ?? 3_000;
   const resizedWindow = await waitForDesktopWindow({
     ...options,
     findWindowFn: async (lookupOptions) => {
@@ -989,13 +1038,32 @@ export async function resizeDesktopWindow(
         candidate,
         windowSize,
         options.windowSizeTolerance,
+      ) &&
+      desktopWindowMatchesRequestedPosition(
+        candidate,
+        options.windowPositionTolerance,
       ),
-    timeoutMs: options.resizeWindowTimeoutMs ?? 3_000,
+    onLookupAttempt: (attempt) => {
+      lastLookupError = attempt.error ?? null;
+      options.onLookupAttempt?.(attempt);
+    },
+    timeoutMs: resizeWindowTimeoutMs,
   });
-  if (!resizedWindow && resizeError) {
-    throw resizeError;
+  if (!resizedWindow) {
+    if (options.shouldAbort?.()) {
+      return latestWindow;
+    }
+    if (resizeError) {
+      throw resizeError;
+    }
+    if (lastLookupError) {
+      throw lastLookupError;
+    }
+    throw new Error(
+      `Desktop window did not reach requested frame ${windowSize.width}x${windowSize.height} at ${DESKTOP_CAPTURE_EDGE_INSET},${DESKTOP_CAPTURE_EDGE_INSET} (±${options.windowPositionTolerance ?? DESKTOP_CAPTURE_POSITION_TOLERANCE}px) within ${resizeWindowTimeoutMs}ms; latest frame was ${latestWindow?.x},${latestWindow?.y},${latestWindow?.width},${latestWindow?.height}.`,
+    );
   }
-  return resizedWindow ?? latestWindow;
+  return resizedWindow;
 }
 
 function screenshotPath(outputDir, name = "desktop-window") {
@@ -1006,6 +1074,23 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
   if (Number(windowInfo?.x) < 0 || Number(windowInfo?.y) < 0) {
     throw new Error(
       `Desktop window must be inside the primary capture area before capture (x=${windowInfo?.x}, y=${windowInfo?.y}).`,
+    );
+  }
+  const findPrimaryScreenFn =
+    options.findPrimaryScreenFn ?? findPrimaryDesktopScreen;
+  const screen = options.screenInfo ?? (await findPrimaryScreenFn(options));
+  const windowRight = Number(windowInfo.x) + Number(windowInfo.width);
+  const windowBottom = Number(windowInfo.y) + Number(windowInfo.height);
+  const screenRight = Number(screen.x) + Number(screen.width);
+  const screenBottom = Number(screen.y) + Number(screen.height);
+  if (
+    Number(windowInfo.x) < Number(screen.x) ||
+    Number(windowInfo.y) < Number(screen.y) ||
+    windowRight >= screenRight ||
+    windowBottom >= screenBottom
+  ) {
+    throw new Error(
+      `Desktop window capture rectangle must stay inside the primary display (window ${windowInfo.x},${windowInfo.y},${windowInfo.width},${windowInfo.height}; display ${screen.x},${screen.y},${screen.width},${screen.height}).`,
     );
   }
   const execFileFn = options.execFileFn ?? execFile;
