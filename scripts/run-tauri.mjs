@@ -146,7 +146,9 @@ export function withMacosSigningBuildEnvironment({
   if (
     platform !== "darwin" ||
     args?.[0] !== "build" ||
-    !envFlag(env, FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV) ||
+    args.includes("--no-sign") ||
+    args.includes("--no-bundle") ||
+    envFlag(env, "CI") ||
     envValue(env, "CARGO_TARGET_DIR") !== null
   ) {
     return env;

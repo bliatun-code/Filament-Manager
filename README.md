@@ -259,10 +259,14 @@ npm run tauri -- build --bundles dmg
 ```
 
 On macOS, `npm run tauri` ad-hoc signs ordinary local builds so bundle
-entitlements are applied. Official tagged macOS artifacts are Developer ID
-signed, notarized, stapled, and verified before publication. The public macOS
-contract is Apple Silicon (`arm64`) on macOS 11 Big Sur or newer; Intel and
-universal artifacts are not currently published. See
+entitlements are applied. To avoid Apple File Provider metadata invalidating a
+reused app bundle, a signed local build without an explicit
+`CARGO_TARGET_DIR` writes to the temporary target path printed by the wrapper.
+Set `CARGO_TARGET_DIR` to another non-File-Provider location when a stable
+output path is needed. Official tagged macOS artifacts are Developer ID signed,
+notarized, stapled, and verified before publication. The public macOS contract
+is Apple Silicon (`arm64`) on macOS 11 Big Sur or newer; Intel and universal
+artifacts are not currently published. See
 [macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
 installation and checksum flow.
 
