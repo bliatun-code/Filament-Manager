@@ -163,6 +163,7 @@ version = "0.21.2"
 dependencies = [
  "axum",
  "base64 0.22.1",
+ "flate2",
  "if-addrs",
  "native-tls",
  "objc2",

@@ -13,7 +13,9 @@ use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 use super::database_spool_queries::{
     get_spool_by_id as get_spool_by_id_row, get_spool_by_qr as get_spool_by_qr_row,
     get_spool_with_master_by_id as get_spool_with_master_by_id_row,
+    list_all_spools_with_master as list_all_spools_with_master_rows,
     list_spools_with_master as list_spools_with_master_rows,
+    list_spools_with_master_by_rfid as list_spools_with_master_by_rfid_rows,
 };
 
 impl FilamentDatabase {
@@ -54,6 +56,17 @@ impl FilamentDatabase {
         offset: i64,
     ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
         list_spools_with_master_rows(self.connection(), limit, offset)
+    }
+
+    pub fn list_all_spools_with_master(&self) -> InventoryResult<Vec<SpoolWithMasterRow>> {
+        list_all_spools_with_master_rows(self.connection())
+    }
+
+    pub fn list_spools_with_master_by_rfid(
+        &self,
+        rfid_tag: &str,
+    ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
+        list_spools_with_master_by_rfid_rows(self.connection(), rfid_tag)
     }
 
     pub fn spool_assigned_to_printer(&self, spool_id: &str) -> InventoryResult<bool> {

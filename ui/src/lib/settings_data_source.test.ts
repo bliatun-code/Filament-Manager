@@ -180,7 +180,7 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
     loadSyncSettings: async () => syncSettings(),
     loadSpoolRows: async (options, limit) => {
       assert.equal(options.clientReadOnly, false);
-      assert.equal(limit, 5000);
+      assert.equal(limit, 1000);
       return localSpoolRows;
     },
     listLocalPrinterOverview: async () => [printerOverviewRow("printer-local")],
@@ -192,6 +192,7 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+  assert.equal(result.revisionPollComplete, true);
 });
 
 test("loadSettingsPageData prefers host overview, settings, and spools for clients", async () => {
@@ -231,6 +232,7 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "OWNED");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+  assert.equal(result.revisionPollComplete, true);
 });
 
 test("loadSettingsPageData falls back to cached client printers and spools", async () => {
@@ -272,6 +274,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+  assert.equal(result.revisionPollComplete, false);
 });
 
 test("loadSettingsPageData avoids local spools when client host details are incomplete", async () => {
@@ -311,6 +314,7 @@ test("loadSettingsPageData avoids local spools when client host details are inco
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+  assert.equal(result.revisionPollComplete, false);
 });
 
 test("loadSettingsPageData keeps fulfilled host client data when one host endpoint fails", async () => {
@@ -349,6 +353,7 @@ test("loadSettingsPageData keeps fulfilled host client data when one host endpoi
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
   assert.equal(errors.length, 1);
+  assert.equal(result.revisionPollComplete, false);
 });
 
 test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", async () => {

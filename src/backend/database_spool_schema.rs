@@ -32,6 +32,11 @@ pub(crate) fn ensure_spool_lifecycle_schema(conn: &Connection) -> InventoryResul
          ON filament_spools(deleted_at)",
         [],
     )?;
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_spools_active_updated_id
+         ON filament_spools(deleted_at, updated_at DESC, id DESC)",
+        [],
+    )?;
 
     Ok(())
 }
@@ -62,6 +67,12 @@ pub(crate) fn ensure_spool_identity_schema(conn: &Connection) -> InventoryResult
             [],
         )?;
     }
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_filament_spools_rfid_tag_normalized
+         ON filament_spools(trim(rfid_tag) COLLATE NOCASE)
+         WHERE deleted_at IS NULL AND rfid_tag IS NOT NULL",
+        [],
+    )?;
     Ok(())
 }
 

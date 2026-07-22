@@ -104,6 +104,10 @@ pub mod database_reset_facade;
 pub mod database_reset_models;
 #[path = "../../../src/backend/database_result.rs"]
 pub mod database_result;
+#[path = "../../../src/backend/database_revision.rs"]
+pub mod database_revision;
+#[path = "../../../src/backend/database_revision_facade.rs"]
+pub mod database_revision_facade;
 #[path = "../../../src/backend/database_rows.rs"]
 pub mod database_rows;
 #[path = "../../../src/backend/database_schema.rs"]

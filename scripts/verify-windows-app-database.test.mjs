@@ -68,13 +68,13 @@ test("Windows app database verifier reports the schema version in CLI output", a
     );
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /database schema v1/);
+    assert.match(result.stdout, /database schema v2/);
   });
 });
 
 test("Windows app database verifier requires the exact current schema version", async () => {
   await withTemporaryDirectory(async (directory) => {
-    for (const schemaVersion of [0, 2]) {
+    for (const schemaVersion of [0, 1, 3]) {
       const databasePath = join(
         directory,
         `filament-manager-schema-${schemaVersion}.db`,

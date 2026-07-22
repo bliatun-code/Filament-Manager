@@ -29,6 +29,29 @@ test("click router dispatches root-flow changes", () => {
   assert.deepEqual(calls, ["settings"]);
 });
 
+test("click router dispatches progressive collection rendering", () => {
+  const calls = [];
+  for (const [action, handlerName] of [
+    ["show-more-inventory", "showMoreInventory"],
+    ["show-more-loans", "showMoreLoans"],
+    ["show-more-loan-picker", "showMoreLoanPicker"],
+  ]) {
+    assert.equal(
+      routeCompanionClickAction(action, createTarget({}), {
+        [handlerName]() {
+          calls.push(action);
+        },
+      }),
+      true,
+    );
+  }
+  assert.deepEqual(calls, [
+    "show-more-inventory",
+    "show-more-loans",
+    "show-more-loan-picker",
+  ]);
+});
+
 test("click router dispatches theme, locale, and ownership actions", () => {
   const calls = [];
   const handledTheme = routeCompanionClickAction(

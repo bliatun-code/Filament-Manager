@@ -16,9 +16,7 @@ use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine};
 use crate::catalog_commands::CatalogRefreshResult;
 #[cfg(test)]
 use crate::companion_assets::companion_browser_assets;
-use crate::companion_assets::{
-    companion_browser_asset, companion_browser_binary_asset, COMPANION_BROWSER_HTML,
-};
+use crate::companion_assets::{cached_companion_browser_asset, COMPANION_BROWSER_HTML};
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::{
     has_valid_csrf, header_string, maybe_apply_qa_delay, require_allowed_host,
@@ -26,9 +24,9 @@ use crate::companion_http::{
 };
 use crate::companion_models::*;
 use crate::companion_payload::{
-    build_companion_spool_qr_payload, build_qr_svg, bytes_response, html_response,
-    normalize_optional_swatch_color, normalize_optional_text, normalize_owned_manual_fields,
-    string_response, text_response, validate_initial_weight,
+    build_companion_spool_qr_payload, build_qr_svg, html_response, normalize_optional_swatch_color,
+    normalize_optional_text, normalize_owned_manual_fields, static_asset_response, string_response,
+    validate_initial_weight,
 };
 use crate::companion_session::{
     build_authenticated_session_response, build_qa_authenticated_session_response,
@@ -36,7 +34,9 @@ use crate::companion_session::{
     random_hex_token, unix_epoch_millis,
 };
 use crate::companion_state::CompanionApiState;
-use crate::library_sync_models::LibrarySyncFullBackupResponse;
+use crate::library_sync_models::{
+    LibrarySyncDomainRevisionsResponse, LibrarySyncFullBackupResponse,
+};
 use crate::security::hash_secret;
 use crate::state::AppState;
 use axum::body::Body;
@@ -126,17 +126,11 @@ pub(super) async fn handle_companion_shell() -> Response {
 
 pub(super) async fn handle_companion_asset(
     Path(asset): Path<String>,
+    headers: HeaderMap,
 ) -> Result<Response, CompanionApiError> {
-    match companion_browser_asset(asset.as_str()) {
-        Some(asset) => Ok(text_response(asset.content_type, asset.content)),
-        None => match companion_browser_binary_asset(asset.as_str()) {
-            Some(asset) => Ok(bytes_response(asset.content_type, asset.content)),
-            None => Err(CompanionApiError::NotFound(format!(
-                "Unknown companion asset: {}",
-                asset
-            ))),
-        },
-    }
+    cached_companion_browser_asset(asset.as_str())
+        .map(|asset| static_asset_response(&headers, asset))
+        .ok_or_else(|| CompanionApiError::NotFound(format!("Unknown companion asset: {asset}")))
 }
 
 pub(super) async fn handle_health(
@@ -191,6 +185,24 @@ pub(super) async fn handle_library_snapshot(
         inventory,
         active_loans,
         printers,
+    }))
+}
+
+pub(super) async fn handle_library_domain_revisions(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<LibrarySyncDomainRevisionsResponse>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
+    let library_id = db
+        .get_library_sync_library_id()
+        .map_err(CompanionApiError::from)?;
+    let revisions = db
+        .library_domain_revisions()
+        .map_err(CompanionApiError::from)?;
+    Ok(Json(LibrarySyncDomainRevisionsResponse {
+        library_id,
+        revisions,
     }))
 }
 

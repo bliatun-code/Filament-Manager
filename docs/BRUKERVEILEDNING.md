@@ -74,6 +74,10 @@ Webappen er en lokal companion-flate som serveres fra desktop-appen.
 
 Webappen er nyttig for raske operasjoner ved printeren: sjekke lager, se printerspor, låne ut, returnere, legge til ruller og oppdatere vekt.
 
+Lange lager- og utlånslister vises i håndterlige bolker. Når flere treff
+gjenstår, viser Companion størrelsen på neste bolk og vist/totalt; bruk **Vis
+mer** på nytt for å fortsette gjennom resultatene.
+
 ## Hovedsidene
 
 ### Oversikt
@@ -115,6 +119,10 @@ Her kan du:
 - håndtere ønskeliste og bestillinger
 
 Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuelle ruller og plasseringer. Dette gjør at lageret er lett å skanne uten å miste sporbarhet.
+
+Store filtrerte lager vises trinnvis for å holde visningen responsiv.
+Resultattelleren viser hvor mange ruller som vises av alle treffene; velg **Vis
+mer** for å fortsette. Søk og filtre gjelder fortsatt hele lageret.
 
 Slik lager du en etikett for én rull:
 
@@ -670,18 +678,18 @@ nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
 aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
 blir ikke med i den flyttbare sikkerhetskopien.
 
-Den lokale databasen bruker skjemaversjon 1. Før appen skriver til en eksisterende
+Den lokale databasen bruker skjemaversjon 2. Før appen skriver til en eksisterende
 database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
 av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
 ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
 varsel.
 
-Før en eksisterende database uten registrert skjemaversjon oppgraderes automatisk
-til skjema v1, oppretter og verifiserer appen en lokal gjenopprettingskopi. En
-verifisert kopi opprettes også før full gjenoppretting og før lagringsmigreringer
-som erstatter eller slår sammen en eksisterende database. Hvis kopien ikke kan
-opprettes og verifiseres, fortsetter ikke oppgraderingen, gjenopprettingen eller
-migreringen.
+Før en eksisterende database uten registrert skjemaversjon eller med skjema v1
+oppgraderes automatisk til skjema v2, oppretter og verifiserer appen en lokal
+gjenopprettingskopi. En verifisert kopi opprettes også før full gjenoppretting
+og før lagringsmigreringer som erstatter eller slår sammen en eksisterende
+database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter ikke
+oppgraderingen, gjenopprettingen eller migreringen.
 
 Fullstendige JSON-sikkerhetskopier er laget for å kunne flyttes. De tar med
 bibliotekdata som lager, historikk, katalogdata og printerprofiler, men utelater

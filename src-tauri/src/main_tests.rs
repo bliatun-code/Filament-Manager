@@ -610,6 +610,74 @@ fn existing_unversioned_database_gets_recovery_snapshot_before_schema_upgrade() 
 }
 
 #[test]
+fn existing_version_one_database_gets_recovery_snapshot_before_schema_upgrade() {
+    use super::open_database_and_apply_schema;
+    use crate::backend::database_schema::CURRENT_SCHEMA_VERSION;
+
+    let base = temp_dir_path("version-one-schema-upgrade-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let connection = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(include_str!("../../src/database/schema.sql"))
+            .map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES (
+                    'version-one-master', 'PLA', 'Snapshot probe', 'Blue', 1000, 'Generic'
+                 );
+                 PRAGMA user_version = 1;",
+            )
+            .map_err(|error| error.to_string())?;
+        drop(connection);
+
+        let db = open_database_and_apply_schema(&db_path)?;
+        let upgraded_version: i64 = db
+            .conn
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(upgraded_version, CURRENT_SCHEMA_VERSION);
+        drop(db);
+
+        let snapshot_path = std::fs::read_dir(&base)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains("recovery-schema-upgrade-successful-")
+            })
+            .map(|entry| entry.path())
+            .ok_or_else(|| "missing version-one schema-upgrade snapshot".to_string())?;
+        let snapshot =
+            rusqlite::Connection::open(snapshot_path).map_err(|error| error.to_string())?;
+        let snapshot_version: i64 = snapshot
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        let preserved_name: String = snapshot
+            .query_row(
+                "SELECT filament_name FROM filament_master_list
+                 WHERE id = 'version-one-master'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(snapshot_version, 1);
+        assert_eq!(preserved_name, "Snapshot probe");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
 fn new_database_does_not_create_schema_upgrade_recovery_snapshot() {
     use super::open_database_and_apply_schema;
 

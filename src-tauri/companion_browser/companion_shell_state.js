@@ -249,6 +249,7 @@ export function createCompanionShellState(options) {
 
   function startLoanPicker() {
     state.activeRootFlow = ROOT_FLOW_LOANS;
+    state.loanPickerRenderLimit = 150;
     state.detailOpen = false;
     state.activeTaskSheet = { type: "loan-picker" };
     syncTaskSheetState();
@@ -406,12 +407,30 @@ export function createCompanionShellState(options) {
 
   function clearInventorySearch() {
     state.search = "";
+    state.inventoryRenderLimit = 150;
+    render();
+  }
+
+  function showMoreInventory() {
+    state.inventoryRenderLimit = Math.max(150, Number(state.inventoryRenderLimit) || 150) + 150;
+    render();
+  }
+
+  function showMoreLoans() {
+    state.loanRenderLimit = Math.max(150, Number(state.loanRenderLimit) || 150) + 150;
+    render();
+  }
+
+  function showMoreLoanPicker() {
+    state.loanPickerRenderLimit =
+      Math.max(150, Number(state.loanPickerRenderLimit) || 150) + 150;
     render();
   }
 
   function showAllLoans() {
     state.loanSearch = "";
     state.loanStatusFilter = "ALL";
+    state.loanRenderLimit = 150;
     state.activeTaskSheet = null;
     syncTaskSheetState();
     render();
@@ -419,6 +438,7 @@ export function createCompanionShellState(options) {
 
   function setLoanStatusFilter(nextFilter) {
     state.loanStatusFilter = normalizeLoanStatusFilter(String(nextFilter || "").trim());
+    state.loanRenderLimit = 150;
     state.activeTaskSheet = null;
     syncTaskSheetState();
     render();
@@ -502,6 +522,9 @@ export function createCompanionShellState(options) {
     startPrinterSlotAssignment,
     setRootFlow,
     showAllLoans,
+    showMoreInventory,
+    showMoreLoans,
+    showMoreLoanPicker,
     syncLegacySectionState,
     toggleBorrowedInForm,
     toggleLoanReturn,

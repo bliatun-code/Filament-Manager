@@ -56,14 +56,14 @@ troubleshooting.
 
 On startup, an existing database is inspected read-only before schema writes.
 The app runs SQLite `quick_check` and verifies that the recorded schema is not
-newer than schema v1 supported by this build. A failed integrity or compatibility
+newer than schema v2 supported by this build. A failed integrity or compatibility
 check stops startup instead of silently modifying the database.
 
-An existing unversioned database receives an automatically created and verified
-local recovery snapshot before its schema v1 upgrade. Verified snapshots are
-also used before a full restore and storage migrations that replace or merge an
-existing database. If snapshot creation or verification fails, the destructive
-operation does not continue.
+An existing unversioned or schema-v1 database receives an automatically created
+and verified local recovery snapshot before its schema v2 upgrade. Verified
+snapshots are also used before a full restore and storage migrations that
+replace or merge an existing database. If snapshot creation or verification
+fails, the destructive operation does not continue.
 
 ## Install
 

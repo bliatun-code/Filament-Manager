@@ -1,9 +1,13 @@
 import { createCompanionApiClient } from "./companion_api_client.js";
 import { createCompanionAppShellRenderer } from "./companion_app_shell.js";
-import { createCompanionDataController } from "./companion_data_controller.js";
+import {
+  createCompanionDataController,
+  createLatestAsyncCommitter,
+} from "./companion_data_controller.js";
 import { installCompanionDomEvents } from "./companion_dom_events.js";
 import {
   COMPANION_LOCALE_STORAGE_KEY,
+  loadCompanionLocale,
   normalizeCompanionLocale,
   resolveInitialCompanionLocale,
   t,
@@ -105,6 +109,9 @@ const {
   startPrinterSlotAssignment,
   setRootFlow,
   showAllLoans,
+  showMoreInventory,
+  showMoreLoans,
+  showMoreLoanPicker,
   syncLegacySectionState,
   toggleBorrowedInForm,
   toggleLoanReturn,
@@ -206,22 +213,41 @@ function setThemeMode(nextMode) {
   render();
 }
 
-function setLocale(nextLocale) {
+const commitLatestLocaleSelection = createLatestAsyncCommitter();
+
+async function setLocale(nextLocale) {
   const normalizedLocale = normalizeCompanionLocale(nextLocale);
-  state.locale = normalizedLocale;
-  syncDocumentLocale(normalizedLocale);
-  syncRecoverySectionLabels(normalizedLocale);
-  persistCompanionPreference(LOCALE_STORAGE_KEY, normalizedLocale);
-  const definition = localeDefinition(normalizedLocale);
-  setStatus(
-    definition
-      ? t(
-          normalizedLocale,
-          definition.companionSelectionMessageKey,
-          definition.selectionMessageFallback,
-        )
-      : normalizedLocale,
-    "success",
+  await commitLatestLocaleSelection(
+    () => loadCompanionLocale(normalizedLocale),
+    {
+      commit() {
+        state.locale = normalizedLocale;
+        syncDocumentLocale(normalizedLocale);
+        syncRecoverySectionLabels(normalizedLocale);
+        persistCompanionPreference(LOCALE_STORAGE_KEY, normalizedLocale);
+        const definition = localeDefinition(normalizedLocale);
+        setStatus(
+          definition
+            ? t(
+                normalizedLocale,
+                definition.companionSelectionMessageKey,
+                definition.selectionMessageFallback,
+              )
+            : normalizedLocale,
+          "success",
+        );
+      },
+      reject() {
+        setStatus(
+          t(
+            state.locale || "en",
+            "status.refreshFailed",
+            "Companion data could not be loaded.",
+          ),
+          "error",
+        );
+      },
+    },
   );
 }
 
@@ -348,14 +374,20 @@ async function initializeCompanionEntry() {
 
 }
 
-function main() {
+async function main() {
   installLayoutWatcher();
   installThemeWatcher();
 
-  state.locale = resolveInitialCompanionLocale(
+  const initialLocale = resolveInitialCompanionLocale(
     readBrowserStorage(),
     readBrowserGlobal("navigator"),
   );
+  try {
+    state.locale = await loadCompanionLocale(initialLocale);
+  } catch {
+    await loadCompanionLocale("en");
+    state.locale = "en";
+  }
   syncDocumentLocale(state.locale);
   state.statusMessage = t(
     state.locale,
@@ -498,6 +530,9 @@ installCompanionDomEvents({
   openSpoolDetail,
   clearInventorySearch,
   showAllLoans,
+  showMoreInventory,
+  showMoreLoans,
+  showMoreLoanPicker,
   setLoanStatusFilter,
   setWishlistQueueFilter,
   setPrinterSpoolSearch,
@@ -524,4 +559,4 @@ installCompanionDomEvents({
   setLocale,
 });
 
-main();
+void main();

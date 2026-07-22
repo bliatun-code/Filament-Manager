@@ -1,4 +1,5 @@
 use crate::backend::database_result::{InventoryError, InventoryResult};
+use crate::backend::database_revision::PRINTERS_REVISION_DOMAIN;
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
     FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow,
@@ -1039,8 +1040,13 @@ impl InventoryEngine {
     }
 
     pub fn set_active_printer(&self, printer_id: Option<&str>) -> InventoryResult<()> {
-        match printer_id {
-            Some(id) if !id.trim().is_empty() => {
+        let normalized_printer_id = Self::normalize_optional_text(printer_id);
+        if self.db.get_setting("active_printer_id")? == normalized_printer_id {
+            return Ok(());
+        }
+
+        match normalized_printer_id.as_deref() {
+            Some(id) => {
                 let exists = self
                     .db
                     .list_printers()?
@@ -1049,10 +1055,12 @@ impl InventoryEngine {
                 if !exists {
                     return Err(InventoryError::NotFound);
                 }
-                self.db.set_setting("active_printer_id", id)
+                self.db.set_setting("active_printer_id", id)?;
             }
-            _ => self.db.delete_setting("active_printer_id"),
+            None => self.db.delete_setting("active_printer_id")?,
         }
+        self.db
+            .bump_library_domain_revision(PRINTERS_REVISION_DOMAIN)
     }
 
     pub fn get_active_printer(&self) -> InventoryResult<Option<String>> {

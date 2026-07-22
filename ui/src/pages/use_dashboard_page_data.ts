@@ -8,13 +8,42 @@ import {
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
 import { formatDashboardSyncTime } from "../lib/dashboard_sync_time";
+import {
+  createLibraryRevisionTracker,
+  fetchLibraryDomainRevisionsForSource,
+  LIBRARY_REVISION_DOMAINS,
+  libraryRevisionSourceKey,
+  markLibraryRevisionUnavailable,
+  observeLibraryDomainRevisions,
+  type LibraryRevisionSource,
+} from "../lib/library_domain_revisions";
 import { usePageRefreshState } from "../lib/page_refresh_state";
-import { isTauri, type TrustedLanCompanionStatus } from "../lib/tauri_client";
+import { boundedPollingBackoffDelay } from "../lib/polling_schedule";
+import {
+  getTrustedLanCompanionStatus,
+  isTauri,
+  type TrustedLanCompanionStatus,
+} from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
 const DASHBOARD_REFRESH_INTERVAL_MS = 4_000;
-const DASHBOARD_RETRY_DELAY_MS = 1_000;
+const DASHBOARD_RETRY_INITIAL_DELAY_MS = 1_000;
+const DASHBOARD_RETRY_MAX_DELAY_MS = 30_000;
+const DASHBOARD_REVISION_DOMAINS = [
+  LIBRARY_REVISION_DOMAINS.inventory,
+  LIBRARY_REVISION_DOMAINS.catalog,
+  LIBRARY_REVISION_DOMAINS.loans,
+  LIBRARY_REVISION_DOMAINS.printers,
+  LIBRARY_REVISION_DOMAINS.jobs,
+  LIBRARY_REVISION_DOMAINS.wishlist,
+] as const;
+
+type DashboardRefreshOutcome = {
+  revisionPollComplete: boolean;
+  revisionSource: LibraryRevisionSource | null;
+  succeeded: boolean;
+};
 
 let cachedGoalMetrics: DashboardGoalMetrics | null = null;
 
@@ -116,6 +145,8 @@ function createDefaultHealth(t: TranslateFn): DashboardHealth {
 export function useDashboardPageData(t: TranslateFn, locale: string) {
   const tauri = isTauri();
   const refreshInFlightRef = useRef(false);
+  const revisionSourceRef = useRef<LibraryRevisionSource | null>(null);
+  const revisionTrackerRef = useRef(createLibraryRevisionTracker());
   const {
     beginRefresh,
     completeRefresh,
@@ -152,10 +183,14 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const [clientHostDisplayName, setClientHostDisplayName] = useState<string | null>(null);
   const [clientHostNeedsRepair, setClientHostNeedsRepair] = useState(false);
 
-  const refreshDashboard = useCallback(
+  const performDashboardRefresh = useCallback(
     async (cancelledRef?: { current: boolean }) => {
       if (!tauri || refreshInFlightRef.current) {
-        return true;
+        return {
+          revisionPollComplete: false,
+          revisionSource: revisionSourceRef.current,
+          succeeded: false,
+        } satisfies DashboardRefreshOutcome;
       }
       refreshInFlightRef.current = true;
       beginRefresh();
@@ -165,8 +200,14 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
           t,
         });
         if (cancelledRef?.current) {
-          return true;
+          return {
+            revisionPollComplete: false,
+            revisionSource: loaded.revisionSource,
+            succeeded: false,
+          } satisfies DashboardRefreshOutcome;
         }
+
+        revisionSourceRef.current = loaded.revisionSource;
 
         setDashboardSyncMode(loaded.syncMode);
         setCompanionStatus(loaded.trustedLan);
@@ -206,7 +247,17 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
           );
         }
         completeRefresh();
-        return true;
+        if (!loaded.revisionPollComplete) {
+          revisionTrackerRef.current = markLibraryRevisionUnavailable(
+            revisionTrackerRef.current,
+            loaded.revisionSource,
+          );
+        }
+        return {
+          revisionPollComplete: loaded.revisionPollComplete,
+          revisionSource: loaded.revisionSource,
+          succeeded: true,
+        } satisfies DashboardRefreshOutcome;
       } catch (loadError) {
         console.error(loadError);
         if (!cancelledRef?.current) {
@@ -214,7 +265,11 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             t("errors.requestFailed", "The request could not be completed."),
           );
         }
-        return false;
+        return {
+          revisionPollComplete: false,
+          revisionSource: revisionSourceRef.current,
+          succeeded: false,
+        } satisfies DashboardRefreshOutcome;
       } finally {
         refreshInFlightRef.current = false;
       }
@@ -230,42 +285,153 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     ],
   );
 
+  const refreshDashboard = useCallback(
+    async (cancelledRef?: { current: boolean }) =>
+      (await performDashboardRefresh(cancelledRef)).succeeded,
+    [performDashboardRefresh],
+  );
+
+  const pollDashboard = useCallback(
+    async (cancelledRef?: { current: boolean }) => {
+      const source = revisionSourceRef.current;
+      const [trustedLanResult, revisionsResult] = await Promise.allSettled([
+        getTrustedLanCompanionStatus(),
+        fetchLibraryDomainRevisionsForSource(source),
+      ]);
+      if (cancelledRef?.current) {
+        return true;
+      }
+      if (trustedLanResult.status === "fulfilled") {
+        setCompanionStatus(trustedLanResult.value);
+      }
+
+      const revisions =
+        revisionsResult.status === "fulfilled" ? revisionsResult.value : null;
+      if (!source || !revisions) {
+        revisionTrackerRef.current = markLibraryRevisionUnavailable(
+          revisionTrackerRef.current,
+          source,
+        );
+        // The scheduler backs repeated failures off to 30 seconds. Keep doing a
+        // full fallback read at that bounded cadence so older hosts without the
+        // revision endpoint never leave an otherwise healthy client frozen.
+        await performDashboardRefresh(cancelledRef);
+        return false;
+      }
+
+      const previousTracker = revisionTrackerRef.current;
+      const observation = observeLibraryDomainRevisions(
+        previousTracker,
+        source,
+        revisions,
+        DASHBOARD_REVISION_DOMAINS,
+      );
+      if (!observation.shouldReload) {
+        revisionTrackerRef.current = observation.tracker;
+        return true;
+      }
+
+      const outcome = await performDashboardRefresh(cancelledRef);
+      if (
+        outcome.succeeded &&
+        outcome.revisionPollComplete &&
+        libraryRevisionSourceKey(outcome.revisionSource) ===
+          libraryRevisionSourceKey(source)
+      ) {
+        revisionTrackerRef.current = observation.tracker;
+        return true;
+      }
+
+      revisionTrackerRef.current = markLibraryRevisionUnavailable(
+        previousTracker,
+        outcome.revisionSource,
+      );
+      return false;
+    },
+    [performDashboardRefresh],
+  );
+
   useEffect(() => {
     if (!tauri) {
       return;
     }
 
     const cancelledRef = { current: false };
+    let consecutiveFailures = 0;
     let loading = false;
-    let retryTimeout: number | null = null;
+    let refreshRequested = false;
+    let refreshTimeout: number | null = null;
+    let initialRefreshPending = true;
     const nativeUnlisteners: Array<() => void> = [];
 
-    const runRefresh = async () => {
-      if (loading || cancelledRef.current) {
+    const documentAllowsPolling = () => document.visibilityState !== "hidden";
+    const clearRefreshTimeout = () => {
+      if (refreshTimeout !== null) {
+        window.clearTimeout(refreshTimeout);
+        refreshTimeout = null;
+      }
+    };
+    const scheduleRefresh = (delayMs: number) => {
+      clearRefreshTimeout();
+      if (cancelledRef.current || !documentAllowsPolling()) {
         return;
       }
-      if (retryTimeout != null) {
-        window.clearTimeout(retryTimeout);
-        retryTimeout = null;
+      refreshTimeout = window.setTimeout(() => {
+        refreshTimeout = null;
+        void runRefresh();
+      }, Math.max(0, delayMs));
+    };
+
+    const runRefresh = async () => {
+      if (cancelledRef.current || !documentAllowsPolling()) {
+        return;
       }
+      if (loading) {
+        refreshRequested = true;
+        return;
+      }
+      clearRefreshTimeout();
       loading = true;
-      const succeeded = await refreshDashboard(cancelledRef);
-      if (!succeeded && !cancelledRef.current) {
-        retryTimeout = window.setTimeout(() => {
-          retryTimeout = null;
-          void runRefresh();
-        }, DASHBOARD_RETRY_DELAY_MS);
+      const succeeded = initialRefreshPending
+        ? await refreshDashboard(cancelledRef)
+        : await pollDashboard(cancelledRef);
+      if (initialRefreshPending && succeeded) {
+        initialRefreshPending = false;
       }
       loading = false;
+      if (cancelledRef.current || !documentAllowsPolling()) {
+        return;
+      }
+      if (refreshRequested) {
+        refreshRequested = false;
+        scheduleRefresh(0);
+        return;
+      }
+      if (succeeded) {
+        consecutiveFailures = 0;
+        scheduleRefresh(DASHBOARD_REFRESH_INTERVAL_MS);
+        return;
+      }
+      consecutiveFailures += 1;
+      scheduleRefresh(
+        boundedPollingBackoffDelay({
+          failureCount: consecutiveFailures,
+          initialDelayMs: DASHBOARD_RETRY_INITIAL_DELAY_MS,
+          maxDelayMs: DASHBOARD_RETRY_MAX_DELAY_MS,
+        }),
+      );
     };
 
     const handleFocus = () => {
       void runRefresh();
     };
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void runRefresh();
+      if (!documentAllowsPolling()) {
+        clearRefreshTimeout();
+        return;
       }
+      consecutiveFailures = 0;
+      void runRefresh();
     };
 
     void (async () => {
@@ -290,26 +456,22 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       }
     })();
 
-    void runRefresh();
-    const interval = window.setInterval(() => {
+    if (documentAllowsPolling()) {
       void runRefresh();
-    }, DASHBOARD_REFRESH_INTERVAL_MS);
+    }
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       cancelledRef.current = true;
-      if (retryTimeout != null) {
-        window.clearTimeout(retryTimeout);
-      }
-      window.clearInterval(interval);
+      clearRefreshTimeout();
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       nativeUnlisteners.forEach((unlisten) => {
         unlisten();
       });
     };
-  }, [refreshDashboard, tauri]);
+  }, [pollDashboard, refreshDashboard, tauri]);
 
   return {
     activity,

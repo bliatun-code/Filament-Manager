@@ -63,6 +63,9 @@ export function handleCompanionClickEvent(event, options) {
   }
   return routeCompanionClickAction(action, target, {
     refresh: () => void options.refreshOverview(),
+    showMoreInventory: options.showMoreInventory,
+    showMoreLoans: options.showMoreLoans,
+    showMoreLoanPicker: options.showMoreLoanPicker,
     setRootFlow: options.setRootFlow,
     startPrinterSlotAssignment: options.startPrinterSlotAssignment,
     startPrinterWeightUpdate: options.startPrinterWeightUpdate,
@@ -116,10 +119,12 @@ export function handleCompanionInputEvent(event, options) {
   return routeCompanionInputChange(target.name, target.value, {
     setInventorySearch: (value) => {
       options.state.search = value;
+      options.state.inventoryRenderLimit = 150;
       options.render();
     },
     setLoanSearch: (value) => {
       options.state.loanSearch = value;
+      options.state.loanRenderLimit = 150;
       if (options.state.activeTaskSheet?.type === "loan-return") {
         options.state.activeTaskSheet = null;
       }

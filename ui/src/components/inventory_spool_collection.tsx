@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatPlacementLabel } from "../lib/display_format";
@@ -23,6 +23,11 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams } from "../lib/weight_display";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
 import type { InventoryViewMode } from "./inventory_controls_panel";
+import {
+  buildInventoryCollectionWindow,
+  initialInventoryCollectionLimit,
+  nextInventoryCollectionLimit,
+} from "../lib/inventory_collection_window";
 
 type InventorySpoolCollectionProps = {
   filteredSpools: InventorySpool[];
@@ -121,19 +126,36 @@ export function InventorySpoolCollection({
 }: InventorySpoolCollectionProps) {
   const { t } = useI18n();
   const collectionId = useId();
-  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(
-    () => new Set(),
+  const [visibleRollLimitsByGroup, setVisibleRollLimitsByGroup] = useState<Map<string, number>>(
+    () => new Map(),
+  );
+  const [renderLimit, setRenderLimit] = useState(() =>
+    initialInventoryCollectionLimit(inventoryView),
+  );
+  useEffect(() => {
+    setRenderLimit(initialInventoryCollectionLimit(inventoryView));
+  }, [filteredSpools, groupedSpools, inventoryView]);
+  const collectionWindow = useMemo(
+    () =>
+      buildInventoryCollectionWindow({
+        filteredSpools,
+        groupedSpools,
+        inventoryView,
+        limit: renderLimit,
+      }),
+    [filteredSpools, groupedSpools, inventoryView, renderLimit],
   );
   const isEmpty =
     inventoryView === "CARDS" ? groupedSpools.length === 0 : filteredSpools.length === 0;
 
-  const toggleGroupExpanded = (groupKey: string) => {
-    setExpandedGroupKeys((current) => {
-      const next = new Set(current);
-      if (next.has(groupKey)) {
+  const updateGroupRollLimit = (groupKey: string, rollCount: number) => {
+    setVisibleRollLimitsByGroup((current) => {
+      const next = new Map(current);
+      const currentLimit = next.get(groupKey) ?? 3;
+      if (currentLimit >= rollCount) {
         next.delete(groupKey);
       } else {
-        next.add(groupKey);
+        next.set(groupKey, Math.min(rollCount, currentLimit + 100));
       }
       return next;
     });
@@ -148,7 +170,7 @@ export function InventorySpoolCollection({
       }
     >
       {inventoryView === "CARDS"
-        ? groupedSpools.map((group, groupIndex) => {
+        ? collectionWindow.groupedSpools.map((group, groupIndex) => {
             const hasRecentRoll = group.rolls.some(
               (roll) => roll.id === recentlyAddedSpoolId,
             );
@@ -161,9 +183,11 @@ export function InventorySpoolCollection({
               }
               return 0;
             });
-            const groupExpanded = expandedGroupKeys.has(group.key);
-            const visibleRolls = groupExpanded ? sortedRolls : sortedRolls.slice(0, 3);
-            const hiddenRollCount = Math.max(0, group.rolls.length - 3);
+            const groupRollLimit = visibleRollLimitsByGroup.get(group.key) ?? 3;
+            const visibleRolls = sortedRolls.slice(0, groupRollLimit);
+            const groupExpanded = groupRollLimit > 3;
+            const allGroupRollsVisible = visibleRolls.length >= group.rolls.length;
+            const hiddenRollCount = Math.max(0, group.rolls.length - visibleRolls.length);
             const rollListId = `${collectionId}-group-${groupIndex}-rolls`;
             const singleVisibleRoll = group.rolls.length === 1 ? visibleRolls[0] : null;
 
@@ -319,15 +343,17 @@ export function InventorySpoolCollection({
                         type="button"
                         aria-expanded={groupExpanded}
                         aria-controls={rollListId}
-                        onClick={() => toggleGroupExpanded(group.key)}
+                        onClick={() => updateGroupRollLimit(group.key, group.rolls.length)}
                         className="surface-subtle flex w-full items-center justify-between gap-3 border-dashed px-3.5 py-2 text-left text-[11px] font-semibold text-slate-700 outline-none transition hover:border-slate-400/70 hover:bg-white/80 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20"
                       >
                         <span>
-                          {groupExpanded
+                          {allGroupRollsVisible
                             ? t("inventory.showFewerRolls", "Show fewer")
-                            : t("inventory.showAllRolls", "Show all")}
+                            : hiddenRollCount <= 100
+                              ? t("inventory.showAllRolls", "Show all")
+                              : t("inventory.showMoreHistory", "Show more")}
                         </span>
-                        {groupExpanded ? (
+                        {allGroupRollsVisible ? (
                           <span aria-hidden="true">&#9652;</span>
                         ) : (
                           <span className="font-medium text-slate-600 dark:text-slate-300">
@@ -341,7 +367,7 @@ export function InventorySpoolCollection({
               </div>
             );
           })
-        : filteredSpools.map((roll) => {
+        : collectionWindow.filteredSpools.map((roll) => {
             const listButtonState =
               selectedSpoolId === roll.id
                 ? "selected"
@@ -396,6 +422,32 @@ export function InventorySpoolCollection({
               </button>
             );
           })}
+
+      {collectionWindow.hasMore ? (
+        <div className={inventoryView === "CARDS" ? "col-span-full" : undefined}>
+          <div className="surface-subtle flex flex-col items-center justify-center gap-2 border-dashed px-4 py-3 sm:flex-row sm:gap-3">
+            <div className="text-xs font-medium text-slate-600 dark:text-slate-300" aria-live="polite">
+              <span className="tabular-nums">{collectionWindow.representedSpoolCount}</span>
+              {" / "}
+              <span className="tabular-nums">{collectionWindow.totalSpoolCount}</span>{" "}
+              {collectionWindow.totalSpoolCount === 1
+                ? t("inventory.spoolResult", "spool")
+                : t("inventory.spoolResults", "spools")}
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setRenderLimit((current) =>
+                  nextInventoryCollectionLimit(inventoryView, current),
+                )
+              }
+              className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-800 shadow-sm outline-none transition hover:border-slate-400 hover:bg-slate-50 focus-visible:border-sky-400 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20"
+            >
+              {t("inventory.showMoreHistory", "Show more")}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {isEmpty ? (
         <div className="surface-subtle col-span-full border-dashed px-5 py-7">

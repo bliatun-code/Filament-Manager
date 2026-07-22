@@ -103,7 +103,7 @@ test("loadLoanableSpoolCandidates uses shared spool and printer data sources", a
     {
       loadSpoolRows: async (options, limit, offset) => {
         assert.equal(options.clientReadOnly, true);
-        assert.equal(limit, 1200);
+        assert.equal(limit, 1000);
         assert.equal(offset, 0);
         return [spoolRow("spool-a"), spoolRow("spool-b")];
       },

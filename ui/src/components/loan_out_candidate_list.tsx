@@ -29,6 +29,8 @@ import {
   panelTitleClassName,
 } from "./loan_out_modal_styles";
 
+const LOAN_CANDIDATE_PAGE_SIZE = 150;
+
 type LoanOutCandidateListProps = {
   disabled: boolean;
   searchQuery: string;
@@ -55,10 +57,23 @@ export function LoanOutCandidateList({
   const listRef = useRef<HTMLDivElement | null>(null);
   const rowRefs = useRef(new Map<string, HTMLButtonElement>());
   const [hoveredSpoolId, setHoveredSpoolId] = useState<string | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(LOAN_CANDIDATE_PAGE_SIZE);
   const visibleSpools = useMemo(
     () => filterLoanableSpoolsBySearch(spools, searchQuery),
     [searchQuery, spools],
   );
+  useEffect(() => {
+    setVisibleLimit(LOAN_CANDIDATE_PAGE_SIZE);
+  }, [searchQuery, spools]);
+  const renderedSpools = useMemo(() => {
+    const rows = visibleSpools.slice(0, visibleLimit);
+    const selected = selectedSpoolId
+      ? visibleSpools.find((spool) => spool.id === selectedSpoolId)
+      : null;
+    return selected && !rows.some((spool) => spool.id === selected.id)
+      ? [...rows, selected]
+      : rows;
+  }, [selectedSpoolId, visibleLimit, visibleSpools]);
   const resultCount = searchQuery.trim()
     ? t(
         "inventory.loanSearchFilteredCountIcu",
@@ -142,7 +157,7 @@ export function LoanOutCandidateList({
             )}
           </div>
         ) : (
-          visibleSpools.map((spool) => {
+          renderedSpools.map((spool) => {
             const isActive = selectedSpoolId === spool.id;
             const placementLabel = formatPlacementLabel(t, spool.location);
             const referenceLabel = formatSpoolReference(spool.id);
@@ -212,6 +227,16 @@ export function LoanOutCandidateList({
             );
           })
         )}
+        {renderedSpools.length < visibleSpools.length ? (
+          <button
+            type="button"
+            onClick={() => setVisibleLimit((current) => current + LOAN_CANDIDATE_PAGE_SIZE)}
+            className="rounded-xl border border-dashed border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-700 outline-none transition hover:border-slate-400 hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-600 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-800 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20"
+          >
+            {renderedSpools.length} / {visibleSpools.length}{" "}
+            {t("inventory.showMoreHistory", "Show more")}
+          </button>
+        ) : null}
       </div>
     </div>
   );

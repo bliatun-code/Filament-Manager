@@ -54,7 +54,7 @@ pub(crate) fn fetch_library_sync_spools(
 ) -> Result<Vec<SpoolWithMasterRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
-    let limit = input.limit.unwrap_or(1200).clamp(1, 2_500);
+    let limit = input.limit.unwrap_or(1000).clamp(1, 2_500);
     let offset = input.offset.unwrap_or(0).max(0);
     let rows: Vec<SpoolWithMasterRow> = get_library_sync_host_json_authenticated(
         &state,
@@ -62,9 +62,6 @@ pub(crate) fn fetch_library_sync_spools(
         format!("/api/v1/library/spools?limit={limit}&offset={offset}").as_str(),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_cached_spools(&rows)
-    })?;
     save_library_sync_success(
         &state,
         "Host spool list refreshed.",

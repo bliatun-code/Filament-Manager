@@ -11,6 +11,7 @@ const requiredVendorAssets = [
   asset("vendor-pdf-lib-abc.js", "", 420_000),
   asset("vendor-qrcode-abc.js", "", 24_000),
   asset("vendor-zxing-abc.js", "", 470_000),
+  asset("bambu_filament_code_camera_worker-abc.js", "", 13_000),
 ];
 
 test("UI bundle chunk contract accepts isolated lazy heavy vendors", () => {
@@ -48,5 +49,10 @@ test("UI bundle chunk contract rejects missing vendors and large anonymous esm c
   ]);
 
   assert.ok(errors.some((error) => error.includes("Expected vendor-zxing-*.js")));
+  assert.ok(
+    errors.some((error) =>
+      error.includes("Expected bambu_filament_code_camera_worker-*.js"),
+    ),
+  );
   assert.ok(errors.some((error) => error.includes("large anonymous esm chunk")));
 });

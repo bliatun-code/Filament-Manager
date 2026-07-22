@@ -25,6 +25,10 @@ import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
+import {
+  resolveLibraryRevisionSource,
+  type LibraryRevisionSource,
+} from "./library_domain_revisions";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -40,6 +44,8 @@ export type DashboardDataLoadResult = {
   clientHostNeedsRepair: boolean;
   syncSource: DashboardSyncSource;
   capturedAt: string | null;
+  revisionSource: LibraryRevisionSource | null;
+  revisionPollComplete: boolean;
 };
 
 type DashboardDataDependencies = {
@@ -122,6 +128,11 @@ export async function loadDashboardData(
   const syncMode = parseSyncMode(syncSettings);
   const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
   const clientMode = syncMode === "CLIENT";
+  const revisionSource = resolveLibraryRevisionSource({
+    clientReadOnly: clientMode,
+    clientHostBaseUrl: syncSettings?.host_base_url,
+    clientLibraryId: syncSettings?.library_id,
+  });
   const persistedPairingNeedsRepair =
     clientMode &&
     !!syncSettings?.client_auth_paired &&
@@ -287,6 +298,8 @@ export async function loadDashboardData(
       clientHostNeedsRepair,
       syncSource,
       capturedAt: syncSource === "client-live" ? liveCapturedAt : fallbackCapturedAt ?? liveCapturedAt,
+      revisionSource,
+      revisionPollComplete: allClientReadsLive,
     };
   }
 
@@ -321,5 +334,7 @@ export async function loadDashboardData(
     clientHostNeedsRepair,
     syncSource: "local",
     capturedAt: null,
+    revisionSource,
+    revisionPollComplete: true,
   };
 }

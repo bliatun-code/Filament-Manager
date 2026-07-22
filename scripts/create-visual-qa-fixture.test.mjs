@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 
 import {
   VISUAL_QA_SCHEMA_PATH,
+  VISUAL_QA_SCHEMA_MIGRATION_PATH,
   VISUAL_QA_SEED_PATH,
   VISUAL_QA_SEED_SHA256,
   assertSanitizedVisualQaSeed,
@@ -26,13 +27,17 @@ test("sanitized visual QA seed generates a healthy deterministic database", () =
   try {
     const result = createVisualQaFixture({ outputPath });
     assert.equal(result.outputPath, outputPath);
-    assert.equal(result.schemaVersion, 1);
+    assert.equal(result.schemaVersion, 2);
 
     const db = new Database(outputPath, { readonly: true, fileMustExist: true });
     try {
       assert.equal(db.pragma("quick_check", { simple: true }), "ok");
       assert.deepEqual(db.pragma("foreign_key_check"), []);
-      assert.equal(db.pragma("user_version", { simple: true }), 1);
+      assert.equal(db.pragma("user_version", { simple: true }), 2);
+      assert.equal(
+        db.prepare("SELECT COUNT(*) AS count FROM library_domain_revisions").get().count,
+        6,
+      );
       assert.equal(
         db.prepare("SELECT COUNT(*) AS count FROM filament_spools").get().count,
         result.expectedCounts.filament_spools,
@@ -99,7 +104,11 @@ test("visual QA fixture generator refuses existing and protected output paths", 
       db.close();
     }
 
-    for (const protectedPath of [VISUAL_QA_SEED_PATH, VISUAL_QA_SCHEMA_PATH]) {
+    for (const protectedPath of [
+      VISUAL_QA_SEED_PATH,
+      VISUAL_QA_SCHEMA_PATH,
+      VISUAL_QA_SCHEMA_MIGRATION_PATH,
+    ]) {
       const before = readFileSync(protectedPath, "utf8");
       assert.throws(
         () => createVisualQaFixture({ outputPath: protectedPath, overwrite: true }),

@@ -4,9 +4,23 @@ import { resolve } from "node:path";
 
 import {
   collectDynamicImportTemplateSpecifiers,
+  collectImportMetaUrlSpecifiers,
   pathGlobToRegExp,
   resolveRelativeImportGlob,
 } from "./ui-source-utils.mjs";
+
+test("UI source utilities discover workers referenced through import.meta URLs", () => {
+  assert.deepEqual(
+    collectImportMetaUrlSpecifiers(
+      'const worker = new Worker(new URL("./camera_worker.ts", import.meta.url));',
+    ),
+    ["./camera_worker.ts"],
+  );
+  assert.deepEqual(
+    collectImportMetaUrlSpecifiers('const unrelated = new URL("/help", location.href);'),
+    [],
+  );
+});
 
 test("UI source utilities discover locale modules loaded through dynamic imports", () => {
   const fromFile = resolve("ui/src/lib/i18n_locales/load_dictionary.ts");

@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useDocumentVisiblePolling } from "../lib/use_document_visible_polling";
 import type { SettingsTabKey } from "./settings_page_model";
 
 type RefreshTrustedLanPairedBrowsers = (
   options?: { announceNewPairing?: boolean; suppressErrors?: boolean },
-) => Promise<void>;
+) => Promise<boolean>;
 
 type UseTrustedLanBrowserPollingInput = {
   activeTab: SettingsTabKey;
@@ -22,44 +22,22 @@ export function useTrustedLanBrowserPolling({
   trustedLanPairingLink,
   trustedLanStatusEnabled,
 }: UseTrustedLanBrowserPollingInput) {
-  useEffect(() => {
-    if (
-      !tauri ||
-      activeTab !== "LIBRARY" ||
-      !trustedLanStatusEnabled ||
-      trustedLanActionBusy
-    ) {
-      return;
-    }
+  const pollMs = trustedLanPairingLink ? 1_500 : 5_000;
 
-    const pollMs = trustedLanPairingLink ? 1500 : 5000;
-    let cancelled = false;
-
-    const poll = async () => {
-      if (cancelled) {
-        return;
-      }
-      await refreshTrustedLanPairedBrowsers({
+  useDocumentVisiblePolling({
+    enabled:
+      tauri &&
+      activeTab === "LIBRARY" &&
+      trustedLanStatusEnabled &&
+      !trustedLanActionBusy,
+    failureInitialDelayMs: pollMs,
+    failureMaxDelayMs: 30_000,
+    intervalMs: pollMs,
+    poll: () =>
+      refreshTrustedLanPairedBrowsers({
         announceNewPairing: Boolean(trustedLanPairingLink),
         suppressErrors: true,
-      });
-    };
-
-    void poll();
-    const timer = window.setInterval(() => {
-      void poll();
-    }, pollMs);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [
-    activeTab,
-    refreshTrustedLanPairedBrowsers,
-    tauri,
-    trustedLanActionBusy,
-    trustedLanPairingLink,
-    trustedLanStatusEnabled,
-  ]);
+      }),
+    runImmediately: true,
+  });
 }

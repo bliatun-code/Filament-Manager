@@ -27,6 +27,7 @@
     "check:i18n-fallbacks": "node ./scripts/check-i18n-fallbacks.mjs",
     "check:i18n-locales": "node ./scripts/check-i18n-locales.mjs",
     "check:companion-i18n": "node ./scripts/check-companion-i18n.mjs",
+    "generate:companion-locales": "node ./scripts/generate-companion-locales.mjs",
     "check:i18n-ui-copy": "node ./scripts/check-i18n-ui-copy.mjs",
     "check:i18n-readiness": "node ./scripts/check-i18n-readiness.mjs",
     "report:i18n": "node ./scripts/check-i18n-readiness.mjs",

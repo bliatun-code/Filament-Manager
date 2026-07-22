@@ -42,7 +42,8 @@ library/webapp status in one overview.
 ### Inventory
 
 Searchable spool cards with remaining weight, location, material/vendor badges,
-ownership, and low-stock state.
+ownership, and low-stock state. Large result sets render progressively with a
+shown/total counter and **Show more** control.
 
 ![Inventory grid](screenshots/inventory.jpg)
 
@@ -283,6 +284,7 @@ until the browser has an authenticated paired session.
 
 The wide Companion view is useful for a workshop browser or secondary screen
 when you want quick stock, printer, and loan access away from the desktop app.
+Long inventory and loan lists use incremental shown/total controls.
 
 ![Companion wide inventory](screenshots/companion-wide-inventory.jpg)
 

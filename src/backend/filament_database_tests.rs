@@ -1,7 +1,7 @@
 use super::{
-    BambuLiveIntegrationRow, FilamentDatabase, LibrarySyncCachedSnapshotRow,
-    LibrarySyncSettingsRow, ManualMasterInput, SpoolRow, TrustedLanSettingsRow, FULL_BACKUP_TABLES,
-    RESET_APP_STATE_TABLES,
+    BambuLiveIntegrationRow, BambuLiveObservedStateRow, FilamentDatabase,
+    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput, SpoolRow,
+    TrustedLanSettingsRow, FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
 };
 use crate::backend::database_schema::{
     ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
@@ -880,6 +880,155 @@ fn delete_printer_removes_bambu_live_integration_setting() {
 }
 
 #[test]
+fn bambu_live_setting_changes_increment_printer_revision_once() {
+    let db_path = temp_db_path("bambu-live-printer-revision");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "P1S", "BambuLab P1S", 1, 4)
+            .map_err(|error| error.to_string())?;
+        let config = BambuLiveIntegrationRow {
+            enabled: true,
+            host: Some("192.0.2.10".to_string()),
+            access_code: Some("test-access-code".to_string()),
+            printer_serial: Some("TEST-SERIAL".to_string()),
+            last_error: None,
+            observed_state: None,
+        };
+        let before = db
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .printers;
+
+        db.save_bambu_live_integration("printer_1", &config)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 1
+        );
+
+        db.save_bambu_live_integration("printer_1", &config)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 1,
+            "saving identical live state must not wake clients"
+        );
+
+        db.delete_bambu_live_integration("printer_1")
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 2
+        );
+        db.delete_bambu_live_integration("printer_1")
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 2
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("bambu_live_setting_changes_increment_printer_revision_once failed: {message}");
+    }
+}
+
+#[test]
+fn bambu_live_heartbeat_updates_refresh_at_most_once_per_minute() {
+    let db_path = temp_db_path("bambu-live-heartbeat-revision");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "P1S", "BambuLab P1S", 1, 4)
+            .map_err(|error| error.to_string())?;
+        let observed = |last_seen_at: &str, progress_percent: i64, capture: i64| {
+            serde_json::from_value::<BambuLiveObservedStateRow>(json!({
+                "online": true,
+                "last_seen_at": last_seen_at,
+                "mqtt_connected": true,
+                "progress_percent": progress_percent,
+                "raw_payload_json": { "_bfm_capture": { "poll_elapsed_ms": capture } },
+                "trays": [{
+                    "tray_index": 0,
+                    "loaded": true,
+                    "last_identity_seen_at": last_seen_at,
+                    "empty_observation_count": capture
+                }]
+            }))
+            .map_err(|error| error.to_string())
+        };
+        let config = |observed_state| BambuLiveIntegrationRow {
+            enabled: true,
+            host: Some("192.0.2.10".to_string()),
+            access_code: Some("test-access-code".to_string()),
+            printer_serial: Some("TEST-SERIAL".to_string()),
+            last_error: None,
+            observed_state: Some(observed_state),
+        };
+
+        let initial = config(observed("2026-07-22T12:00:05Z", 10, 1)?);
+        db.save_bambu_live_integration("printer_1", &initial)
+            .map_err(|error| error.to_string())?;
+        let initial_revision = db
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .printers;
+
+        let same_minute_heartbeat = config(observed("2026-07-22T12:00:45Z", 10, 2)?);
+        db.save_bambu_live_integration("printer_1", &same_minute_heartbeat)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            initial_revision,
+            "heartbeat-only diagnostics must not wake full page reads each cycle"
+        );
+
+        let next_minute_heartbeat = config(observed("2026-07-22T12:01:05Z", 10, 3)?);
+        db.save_bambu_live_integration("printer_1", &next_minute_heartbeat)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            initial_revision + 1,
+            "freshness must still reach polling clients once per minute"
+        );
+
+        let semantic_change = config(observed("2026-07-22T12:01:25Z", 11, 4)?);
+        db.save_bambu_live_integration("printer_1", &semantic_change)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            initial_revision + 2,
+            "visible live-state changes must wake clients immediately"
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("bambu_live_heartbeat_updates_refresh_at_most_once_per_minute failed: {message}");
+    }
+}
+
+#[test]
 fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
     let db_path = temp_db_path("clear-slot-legacy-assigned-status");
 
@@ -1583,6 +1732,64 @@ fn export_loans_csv_defaults_to_outbound_without_recursing() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("export_loans_csv_defaults_to_outbound_without_recursing failed: {message}");
+    }
+}
+
+#[test]
+fn inventory_exports_do_not_truncate_after_ten_thousand_spools() {
+    let db_path = temp_db_path("inventory-export-over-ten-thousand");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor,
+                    catalog_source, catalog_user_edited
+                 ) VALUES (
+                    'master_export_scale', 'PLA', 'Scale', 'Blue', 1000, 'Generic',
+                    'manual', 1
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "WITH digits(d) AS (
+                    VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9)
+                 ), numbered(n) AS (
+                    SELECT a.d + b.d * 10 + c.d * 100 + d.d * 1000 + e.d * 10000
+                    FROM digits a
+                    CROSS JOIN digits b
+                    CROSS JOIN digits c
+                    CROSS JOIN digits d
+                    CROSS JOIN digits e
+                 )
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g
+                 )
+                 SELECT printf('export_%05d', n), 'master_export_scale', 'IN_STOCK',
+                        'OWNED', 1000, 1000, 1000
+                 FROM numbered
+                 WHERE n < 10001;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let csv = db.export_spools_csv().map_err(|error| error.to_string())?;
+        assert_eq!(csv.lines().count(), 10_002);
+        let json = db.export_spools_json().map_err(|error| error.to_string())?;
+        let rows: Vec<serde_json::Value> =
+            serde_json::from_str(&json).map_err(|error| error.to_string())?;
+        assert_eq!(rows.len(), 10_001);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("inventory_exports_do_not_truncate_after_ten_thousand_spools failed: {message}");
     }
 }
 

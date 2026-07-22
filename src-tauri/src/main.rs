@@ -29,6 +29,7 @@ mod inventory_read_commands;
 mod inventory_stats_commands;
 mod inventory_update_commands;
 mod inventory_wishlist_commands;
+mod library_revision_commands;
 mod library_sync_cache_commands;
 mod library_sync_cache_refresh;
 mod library_sync_command_support;
@@ -309,6 +310,8 @@ fn main() {
             app_error::application_diagnostics::get_application_diagnostics,
             app_error::application_diagnostics::get_sanitized_support_bundle_json,
             library_sync_settings_commands::get_library_sync_settings,
+            library_revision_commands::get_library_domain_revisions,
+            library_revision_commands::fetch_library_sync_domain_revisions,
             library_sync_settings_commands::save_library_sync_settings,
             library_sync_validation_commands::validate_library_sync_host,
             library_sync_snapshot_commands::fetch_library_sync_snapshot,
@@ -318,6 +321,7 @@ fn main() {
             library_sync_read_commands::fetch_library_sync_wishlist_items,
             library_sync_read_commands::fetch_library_sync_full_backup_json,
             library_sync_cache_commands::fetch_cached_library_sync_spools,
+            library_sync_cache_commands::save_library_sync_spool_cache,
             library_sync_read_commands::fetch_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_printer_settings,
             library_sync_cache_commands::fetch_cached_library_sync_printer_overview,
@@ -662,7 +666,9 @@ fn prepare_resolved_app_database(resolution: AppStorageResolution) -> Result<Pat
 fn open_database_and_apply_schema(path: &Path) -> Result<FilamentDatabase, String> {
     let schema_version = backend::database_connection::inspect_existing_database_schema(path)
         .map_err(|error| format!("DB inspect: {error:?}"))?;
-    let recovery_snapshot = if schema_version == Some(0) {
+    let recovery_snapshot = if schema_version
+        .is_some_and(|version| version < backend::database_schema::CURRENT_SCHEMA_VERSION)
+    {
         Some(
             RecoverySnapshot::create(path, RecoveryReason::SchemaUpgrade)
                 .map_err(|error| format!("DB recovery snapshot: {error}"))?,

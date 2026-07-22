@@ -26,38 +26,77 @@ const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MQTT_TIMEOUT_SECS: u64 = 8;
 const MQTT_BURST_SETTLE_MS: u64 = 1_200;
+const MAX_CONCURRENT_PRINTER_POLLS: usize = 3;
 
 pub async fn run_live_observer(state: AppState) {
     loop {
-        let db_path = state.db_path.clone();
-        if let Err(error) =
-            tauri::async_runtime::spawn_blocking(move || poll_enabled_integrations(&db_path))
-                .await
-                .unwrap_or_else(|join_error| {
-                    Err(format!("live observer join failed: {join_error}"))
-                })
-        {
+        if let Err(error) = poll_enabled_integrations(&state.db_path).await {
             eprintln!("Bambu live observer error: {error}");
         }
         tokio::time::sleep(Duration::from_secs(OBSERVER_INTERVAL_SECS)).await;
     }
 }
 
-fn poll_enabled_integrations(db_path: &str) -> Result<(), String> {
-    let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-    let integrations = db
-        .list_bambu_live_integrations()
-        .map_err(|error| error.to_string())?;
-    drop(db);
-    for entry in integrations {
-        if !entry.config.enabled {
-            continue;
-        }
-        if let Err(error) = poll_single_integration(db_path, entry) {
-            eprintln!("Bambu live integration poll failed: {error}");
-        }
+async fn poll_enabled_integrations(db_path: &str) -> Result<(), String> {
+    let load_path = db_path.to_string();
+    let integrations = tauri::async_runtime::spawn_blocking(move || {
+        FilamentDatabase::open(&load_path)
+            .and_then(|db| db.list_bambu_live_integrations())
+            .map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|join_error| format!("live integration list join failed: {join_error}"))??;
+    let enabled_integrations = integrations
+        .into_iter()
+        .filter(|entry| entry.config.enabled)
+        .collect::<Vec<_>>();
+    let poll_path = db_path.to_string();
+    let errors = run_bounded_blocking_polls(
+        enabled_integrations,
+        MAX_CONCURRENT_PRINTER_POLLS,
+        move |entry| poll_single_integration(&poll_path, entry),
+    )
+    .await;
+    for error in errors {
+        eprintln!("Bambu live integration poll failed: {error}");
     }
     Ok(())
+}
+
+async fn run_bounded_blocking_polls<T, F>(
+    entries: Vec<T>,
+    concurrency_limit: usize,
+    poll: F,
+) -> Vec<String>
+where
+    T: Send + 'static,
+    F: Fn(T) -> Result<(), String> + Clone + Send + 'static,
+{
+    let mut pending = entries.into_iter();
+    let mut polls = tokio::task::JoinSet::new();
+    let concurrency_limit = concurrency_limit.max(1);
+
+    for _ in 0..concurrency_limit {
+        let Some(entry) = pending.next() else {
+            break;
+        };
+        let poll_task = poll.clone();
+        polls.spawn_blocking(move || poll_task(entry));
+    }
+
+    let mut errors = Vec::new();
+    while let Some(result) = polls.join_next().await {
+        match result {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => errors.push(error),
+            Err(join_error) => errors.push(format!("poll task failed: {join_error}")),
+        }
+        if let Some(entry) = pending.next() {
+            let poll_task = poll.clone();
+            polls.spawn_blocking(move || poll_task(entry));
+        }
+    }
+    errors
 }
 
 fn poll_single_integration(

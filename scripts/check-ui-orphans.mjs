@@ -3,6 +3,7 @@ import { relative, resolve } from "node:path";
 import {
   buildRelativeImportResolver,
   collectDynamicImportTemplateSpecifiers,
+  collectImportMetaUrlSpecifiers,
   collectImportSpecifiers,
   collectUiSourceFiles,
   resolveRelativeImportGlob,
@@ -32,6 +33,12 @@ while (pending.length > 0) {
   reachable.add(file);
   const source = readFileSync(file, "utf8");
   for (const specifier of collectImportSpecifiers(source)) {
+    const dependency = resolveImport(file, specifier);
+    if (dependency && !reachable.has(dependency)) {
+      pending.push(dependency);
+    }
+  }
+  for (const specifier of collectImportMetaUrlSpecifiers(source)) {
     const dependency = resolveImport(file, specifier);
     if (dependency && !reachable.has(dependency)) {
       pending.push(dependency);

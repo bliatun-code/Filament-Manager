@@ -1,13 +1,37 @@
 use crate::companion_error::CompanionApiError;
 use crate::state::TrustedLanCompanionRuntime;
+use axum::body::Body;
 use axum::http::{
-    header::{COOKIE, HOST, ORIGIN},
-    HeaderMap, Method,
+    header::{CACHE_CONTROL, COOKIE, EXPIRES, HOST, ORIGIN, PRAGMA},
+    HeaderMap, HeaderValue, Method, Request, StatusCode,
 };
+use axum::middleware::Next;
+use axum::response::Response;
 use std::time::Duration;
 
 pub(crate) const COMPANION_CSRF_HEADER: &str = "x-csrf-token";
 pub(crate) const COMPANION_QA_DELAY_HEADER: &str = "x-companion-qa-delay-ms";
+
+pub(crate) async fn apply_companion_cache_policy(request: Request<Body>, next: Next) -> Response {
+    let path = request.uri().path();
+    let is_dynamic_response =
+        path.starts_with("/api/v1") || matches!(path, "/companion" | "/companion/");
+    let mut response = next.run(request).await;
+    let is_error = !response.status().is_success() && response.status() != StatusCode::NOT_MODIFIED;
+    if is_dynamic_response || is_error {
+        apply_no_store_headers(response.headers_mut());
+    }
+    response
+}
+
+fn apply_no_store_headers(headers: &mut HeaderMap) {
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static("no-store, max-age=0"),
+    );
+    headers.insert(PRAGMA, HeaderValue::from_static("no-cache"));
+    headers.insert(EXPIRES, HeaderValue::from_static("0"));
+}
 
 pub(crate) fn require_allowed_host(
     headers: &HeaderMap,

@@ -1,4 +1,5 @@
 use crate::companion_api::*;
+use crate::companion_http::apply_companion_cache_policy;
 use crate::companion_state::CompanionApiState;
 use axum::middleware;
 use axum::routing::{get, post};
@@ -6,6 +7,7 @@ use axum::Router;
 
 pub(super) fn build_router(state: CompanionApiState) -> Router {
     let protected = Router::new()
+        .route("/library/revisions", get(handle_library_domain_revisions))
         .route("/library/snapshot", get(handle_library_snapshot))
         .route("/library/spools", get(handle_library_spools))
         .route("/library/printers", get(handle_library_printers))
@@ -126,4 +128,5 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
         .route("/api/v1/qa/expire-session", post(handle_qa_expire_session))
         .with_state(state)
         .nest("/api/v1", protected)
+        .layer(middleware::from_fn(apply_companion_cache_policy))
 }

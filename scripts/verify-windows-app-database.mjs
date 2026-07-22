@@ -9,7 +9,7 @@ export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "filament_spools",
   "settings",
 ];
-export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 1;
+export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 2;
 
 function parseArguments(argv) {
   if (argv.length !== 2 || argv[0] !== "--database" || !argv[1]?.trim()) {

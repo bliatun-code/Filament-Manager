@@ -12,6 +12,7 @@ import {
   readLocaleDictionaryFromSource,
 } from "./check-i18n-locales.mjs";
 import { catalogFingerprint } from "./check-i18n-readiness.mjs";
+import { readCompanionLocaleCatalog } from "./generate-companion-locales.mjs";
 
 const repoRoot = resolve(".");
 const desktopLocaleRoot = resolve(
@@ -21,12 +22,6 @@ const desktopLocaleRoot = resolve(
   "lib",
   "i18n_locales",
   "locales",
-);
-const companionDictionaryFile = resolve(
-  repoRoot,
-  "src-tauri",
-  "companion_browser",
-  "companion_i18n.js",
 );
 
 function dictionaryMap(dictionary) {
@@ -132,10 +127,7 @@ function loadDesktopDictionary(locale) {
 }
 
 function loadCompanionDictionaries() {
-  return readLocaleDictionaryFromSource(
-    readFileSync(companionDictionaryFile, "utf8"),
-    "dictionaries",
-  );
+  return readCompanionLocaleCatalog();
 }
 
 export function exportLocalizationReview({ locale, outputPath }) {

@@ -206,6 +206,7 @@ test("settings page data model prepares reload state in one place", () => {
     bambuLiveIntegrations: { host: { enabled: true } },
     catalogRows,
     overviewRows,
+    revisionPollComplete: true,
     snapshot,
     spoolRows,
     syncSettings,
@@ -216,4 +217,5 @@ test("settings page data model prepares reload state in one place", () => {
   assert.equal(model.librarySyncDeviceNameDraft, "Desk");
   assert.equal(model.librarySyncHostBaseUrlDraft, "http://host.local");
   assert.equal(model.swatchDraftById["master-1"], "#111");
+  assert.equal(model.revisionPollComplete, true);
 });

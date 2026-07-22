@@ -15,6 +15,7 @@ use super::database_library_sync_models::{
     LibrarySyncCachedSnapshotRow, LibrarySyncClientAuthState, LibrarySyncSettingsRow,
 };
 use super::database_library_sync_settings::{
+    get_library_sync_library_id as get_library_sync_library_id_row,
     get_library_sync_settings as get_library_sync_setting_rows,
     save_library_sync_settings as save_library_sync_setting_rows,
 };
@@ -26,6 +27,10 @@ use super::database_spool_models::SpoolWithMasterRow;
 use super::database_wishlist_models::WishlistItemRow;
 
 impl FilamentDatabase {
+    pub fn get_library_sync_library_id(&self) -> InventoryResult<String> {
+        get_library_sync_library_id_row(self.connection())
+    }
+
     pub fn get_library_sync_settings(&self) -> InventoryResult<LibrarySyncSettingsRow> {
         get_library_sync_setting_rows(self.connection())
     }

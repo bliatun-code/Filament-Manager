@@ -20,6 +20,9 @@ use super::database_spool_schema::{
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
 
+const LIBRARY_DOMAIN_REVISIONS_V2_SQL: &str =
+    include_str!("../database/migrations/003_library_domain_revisions.sql");
+
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
     let schema_version = ensure_supported_schema_version(conn)?;
     ensure_database_quick_check(conn)?;
@@ -40,14 +43,17 @@ fn migrate_structural_schema(
     if schema_version == CURRENT_SCHEMA_VERSION {
         return Ok(());
     }
-    if schema_version != 0 {
+    if !matches!(schema_version, 0 | 1) {
         return Err(InventoryError::Db(format!(
             "No database migration path from schema version {schema_version} to {CURRENT_SCHEMA_VERSION}"
         )));
     }
 
     let transaction = conn.unchecked_transaction()?;
-    apply_structural_baseline(&transaction, schema_sql)?;
+    if schema_version == 0 {
+        apply_structural_baseline(&transaction, schema_sql)?;
+    }
+    transaction.execute_batch(LIBRARY_DOMAIN_REVISIONS_V2_SQL)?;
     transaction.execute_batch(&format!("PRAGMA user_version = {CURRENT_SCHEMA_VERSION};"))?;
     transaction.commit()?;
     Ok(())
@@ -157,6 +163,64 @@ mod tests {
             table_has_column(&conn, "ams_slots", "live_cache_cleared_at")
                 .expect("inspect upgraded schema")
         );
+    }
+
+    #[test]
+    fn version_one_database_upgrades_revisions_and_active_spool_indexes() {
+        let conn = Connection::open_in_memory().expect("open version-one database");
+        conn.execute_batch(CURRENT_SCHEMA_SQL)
+            .expect("apply version-one baseline tables");
+        conn.execute_batch(
+            "DROP INDEX IF EXISTS idx_spools_active_updated_id;
+             DROP INDEX IF EXISTS idx_filament_spools_rfid_tag_normalized;
+             INSERT INTO filament_master_list (
+                id, material, filament_name, color_name, default_weight, vendor
+             ) VALUES ('v1_master', 'PLA', 'Legacy', 'Orange', 1000, 'Manual');
+             PRAGMA user_version = 1;",
+        )
+        .expect("prepare version-one database");
+
+        apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade version-one database");
+
+        assert_eq!(
+            database_schema_version(&conn).expect("read upgraded version"),
+            CURRENT_SCHEMA_VERSION
+        );
+        for index_name in [
+            "idx_spools_active_updated_id",
+            "idx_filament_spools_rfid_tag_normalized",
+        ] {
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?1",
+                    [index_name],
+                    |row| row.get(0),
+                )
+                .expect("read migrated index");
+            assert_eq!(count, 1, "missing migrated index {index_name}");
+        }
+
+        let inventory_before: i64 = conn
+            .query_row(
+                "SELECT revision FROM library_domain_revisions WHERE domain = 'inventory'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read initial inventory revision");
+        conn.execute(
+            "INSERT INTO filament_spools (id, master_id, status)
+             VALUES ('v2_spool', 'v1_master', 'IN_STOCK')",
+            [],
+        )
+        .expect("insert spool after migration");
+        let inventory_after: i64 = conn
+            .query_row(
+                "SELECT revision FROM library_domain_revisions WHERE domain = 'inventory'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read bumped inventory revision");
+        assert_eq!(inventory_after, inventory_before + 1);
     }
 
     #[test]

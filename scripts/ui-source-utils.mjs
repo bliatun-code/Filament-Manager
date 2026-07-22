@@ -60,6 +60,15 @@ export function collectDynamicImportTemplateSpecifiers(source) {
   );
 }
 
+export function collectImportMetaUrlSpecifiers(source) {
+  return Array.from(
+    source.matchAll(
+      /new\s+URL\(\s*["']([^"']+)["']\s*,\s*import\.meta\.url\s*\)/g,
+    ),
+    (match) => match[1],
+  );
+}
+
 export function pathGlobToRegExp(absolutePattern) {
   return new RegExp(
     `^${absolutePattern

@@ -13,4 +13,10 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-runNodeTestCommand(["--test", ...normalizeNodeTestArgs(process.argv.slice(2)), ...testFiles]);
+runNodeTestCommand([
+  "--import",
+  resolve("scripts", "preload-companion-locales.mjs"),
+  "--test",
+  ...normalizeNodeTestArgs(process.argv.slice(2)),
+  ...testFiles,
+]);

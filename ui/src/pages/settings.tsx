@@ -321,6 +321,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setSpoolRows,
     setSwatchDraftById,
     settingsPageMessageLabels,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
     tauri,
   });
   useEffect(() => {

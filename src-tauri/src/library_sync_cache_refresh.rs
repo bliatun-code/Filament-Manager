@@ -6,12 +6,31 @@ use crate::state::AppState;
 use crate::with_inventory;
 
 pub(crate) fn refresh_library_sync_spool_cache(state: &tauri::State<'_, AppState>, base_url: &str) {
-    let rows: Result<Vec<SpoolWithMasterRow>, String> = get_library_sync_host_json_authenticated(
-        state,
-        base_url,
-        "/api/v1/library/spools?limit=2500",
-    );
-    if let Ok(rows) = rows {
+    const PAGE_SIZE: usize = 2_500;
+    const MAX_PAGES: usize = 200;
+
+    let mut rows = Vec::new();
+    let mut complete = false;
+    for page_index in 0..MAX_PAGES {
+        let offset = page_index * PAGE_SIZE;
+        let page: Result<Vec<SpoolWithMasterRow>, String> =
+            get_library_sync_host_json_authenticated(
+                state,
+                base_url,
+                &format!("/api/v1/library/spools?limit={PAGE_SIZE}&offset={offset}"),
+            );
+        let Ok(page) = page else {
+            return;
+        };
+        let page_len = page.len();
+        rows.extend(page);
+        if page_len < PAGE_SIZE {
+            complete = true;
+            break;
+        }
+    }
+
+    if complete {
         let _ = with_inventory(state, |engine| {
             engine.save_library_sync_cached_spools(&rows)
         });

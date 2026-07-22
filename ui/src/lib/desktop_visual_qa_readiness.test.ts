@@ -8,7 +8,8 @@ import {
 import type { BambuLiveIntegrationSettings } from "./tauri_client";
 
 const t = (_key: string, fallback = "") => fallback;
-const observedAfterMs = Date.UTC(2026, 6, 22, 10, 0, 0);
+const observedAfterMs = Date.now() - 10_000;
+const observedAt = (offsetMs: number) => new Date(observedAfterMs + offsetMs).toISOString();
 
 function liveConfig(
   overrides: Partial<BambuLiveIntegrationSettings> = {},
@@ -18,7 +19,7 @@ function liveConfig(
     observed_state: {
       online: true,
       mqtt_connected: true,
-      last_seen_at: "2026-07-22T10:00:05Z",
+      last_seen_at: observedAt(5_000),
       nozzle_temp_c: 26,
       bed_temp_c: 24,
       trays: [],
@@ -40,7 +41,7 @@ test("desktop printer readiness requires a fresh connected telemetry payload", (
           observed_state: {
             online: true,
             mqtt_connected: true,
-            last_seen_at: "2026-07-22T10:00:00Z",
+            last_seen_at: observedAt(0),
             nozzle_temp_c: 26,
             trays: [],
           },
@@ -58,7 +59,7 @@ test("desktop printer readiness requires a fresh connected telemetry payload", (
           observed_state: {
             online: true,
             mqtt_connected: true,
-            last_seen_at: "2026-07-22T09:59:59Z",
+            last_seen_at: observedAt(-1_000),
             nozzle_temp_c: 26,
             trays: [],
           },
@@ -79,7 +80,7 @@ test("desktop printer readiness rejects offline and visually empty observations"
           observed_state: {
             online: false,
             mqtt_connected: false,
-            last_seen_at: "2026-07-22T10:00:05Z",
+            last_seen_at: observedAt(5_000),
             nozzle_temp_c: 26,
             trays: [],
           },
@@ -97,7 +98,7 @@ test("desktop printer readiness rejects offline and visually empty observations"
           observed_state: {
             online: true,
             mqtt_connected: true,
-            last_seen_at: "2026-07-22T10:00:05Z",
+            last_seen_at: observedAt(5_000),
             trays: [],
           },
         }),

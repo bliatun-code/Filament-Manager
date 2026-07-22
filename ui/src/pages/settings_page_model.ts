@@ -40,6 +40,7 @@ export type SettingsPageDataModel = {
   librarySyncSettings: SettingsPageData["syncSettings"];
   printerOverview: SettingsPageData["overviewRows"];
   printers: SettingsPageData["snapshot"]["printers"];
+  revisionPollComplete: SettingsPageData["revisionPollComplete"];
   spoolRows: SettingsPageData["spoolRows"];
   swatchDraftById: Record<string, string>;
 };
@@ -118,6 +119,7 @@ export function buildSettingsPageDataModel(data: SettingsPageData): SettingsPage
       snapshot: data.snapshot,
       syncMode: data.syncSettings.mode,
     }),
+    revisionPollComplete: data.revisionPollComplete,
     spoolRows: data.spoolRows,
     swatchDraftById: buildSettingsSwatchDrafts(data.catalogRows),
   };

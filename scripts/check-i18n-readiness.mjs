@@ -14,6 +14,7 @@ import {
   validateLocaleDictionaries,
   validateLocaleOverlay,
 } from "./check-i18n-locales.mjs";
+import { readCompanionLocaleCatalog } from "./generate-companion-locales.mjs";
 
 const repoRoot = resolve(".");
 const statusFile = resolve(repoRoot, "localization", "locale-status.json");
@@ -25,12 +26,6 @@ const desktopLocaleRoot = resolve(
   "lib",
   "i18n_locales",
   "locales",
-);
-const companionDictionaryFile = resolve(
-  repoRoot,
-  "src-tauri",
-  "companion_browser",
-  "companion_i18n.js",
 );
 
 function readJson(file) {
@@ -267,10 +262,7 @@ function loadProjectReport() {
       ),
     ]),
   );
-  const companionDictionaries = readLocaleDictionaryFromSource(
-    readFileSync(companionDictionaryFile, "utf8"),
-    "dictionaries",
-  );
+  const companionDictionaries = readCompanionLocaleCatalog();
   return buildLocalizationReport({
     localeDefinitions: CATALOG_LOCALES,
     statusDocument: readJson(statusFile),

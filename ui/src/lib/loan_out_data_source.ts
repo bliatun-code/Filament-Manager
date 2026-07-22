@@ -5,7 +5,12 @@ import {
   type SpoolStatus,
 } from "./inventory_domain";
 import { loadPrinterOverviewData } from "./printer_data_source";
-import { loadSpoolRowsPage } from "./spool_data_source";
+import {
+  DEFAULT_SPOOL_PAGE_SIZE,
+  loadAllSpoolRows,
+  loadAllSpoolRowsWithPageLoader,
+  loadSpoolRowsPage,
+} from "./spool_data_source";
 import { sortSpoolsAlphabetically } from "./spool_sort";
 import {
   normalizeSpoolWithMasterRows,
@@ -83,10 +88,16 @@ export async function loadLoanableSpoolCandidates(
   dependencies: LoanOutDataSourceDependencies = {},
 ): Promise<LoanableSpool[]> {
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
-  const loadSpoolRows = dependencies.loadSpoolRows ?? loadSpoolRowsPage;
   const loadPrinterOverview = dependencies.loadPrinterOverview ?? loadPrinterOverviewData;
   const [spoolRows, printerOverview] = await Promise.all([
-    loadSpoolRows(options, 1200, 0).catch(async (loadError) => {
+    (dependencies.loadSpoolRows
+      ? loadAllSpoolRowsWithPageLoader(
+          options,
+          DEFAULT_SPOOL_PAGE_SIZE,
+          dependencies.loadSpoolRows,
+        )
+      : loadAllSpoolRows(options)
+    ).catch(async (loadError) => {
       if (options.clientReadOnly) {
         const cached = await fetchCachedSpools().catch(() => null);
         if (cached) {

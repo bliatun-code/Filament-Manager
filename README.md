@@ -59,7 +59,8 @@ Release notes:
 
 ## Feature Overview
 
-- Inventory for owned and borrowed-in filament spools.
+- Inventory for owned and borrowed-in filament spools, with progressive
+  rendering and shown/total controls for large result sets.
 - Add filament flow for Bambu, eSUN, generic/manual entries, Bambu Filament
   Code lookup, manual Bambu code batch entry, and quantity-aware wishlist/order
   receipt with partial deliveries.
@@ -76,7 +77,8 @@ Release notes:
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
   A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.
 - Local companion/webapp for paired phones, tablets, and workshop browsers;
-  library reads and writes require an authenticated paired session.
+  long inventory and loan lists use incremental result controls, and library
+  reads and writes require an authenticated paired session.
 - Host/client library mode for sharing one desktop-owned library with other
   authenticated desktop installations.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
@@ -85,8 +87,8 @@ Release notes:
   older v1 files that lack it; backups from a newer schema are rejected before
   data is changed. Program maintenance also shows when this device last
   completed a validated full-backup download.
-- Schema v1 startup checks and verified local SQLite recovery snapshots before
-  unversioned upgrades, full restores, and storage migrations that replace or
+- Schema v2 startup checks and verified local SQLite recovery snapshots before
+  older-schema upgrades, full restores, and storage migrations that replace or
   merge an existing database.
 - Application/database health diagnostics and a privacy-sanitized support JSON
   download under **Settings → Program maintenance**.
@@ -342,11 +344,11 @@ Windows:
 Before writing to an existing database at startup, the app performs a read-only
 schema compatibility preflight and SQLite `quick_check`. A database created by
 a newer schema or one that fails the integrity check is stopped rather than
-silently rewritten. An existing unversioned database receives a verified local
-recovery snapshot before its automatic schema v1 upgrade. The same safeguard is
-used before a full restore and storage migrations that replace or merge an
-existing database; the operation does not continue if its snapshot cannot be
-created and verified.
+silently rewritten. An existing unversioned or schema-v1 database receives a
+verified local recovery snapshot before its automatic schema v2 upgrade. The
+same safeguard is used before a full restore and storage migrations that
+replace or merge an existing database; the operation does not continue if its
+snapshot cannot be created and verified.
 
 Portable `filament-manager-backup-v1` exports include `schema_version` and
 `app_version` metadata. Older v1 exports without these fields remain supported,

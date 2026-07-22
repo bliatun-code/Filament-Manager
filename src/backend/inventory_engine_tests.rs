@@ -20,6 +20,71 @@ fn temp_db_path(test_name: &str) -> PathBuf {
 }
 
 #[test]
+fn active_printer_changes_increment_printer_revision_once() {
+    let db_path = temp_db_path("active-printer-revision");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "printer_1".to_string(),
+                model: "P1S".to_string(),
+                name: "Workshop".to_string(),
+                ams_units: Some(0),
+                slots_per_ams: Some(4),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .printers;
+
+        engine
+            .set_active_printer(Some(" printer_1 "))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 1
+        );
+        engine
+            .set_active_printer(Some("printer_1"))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 1
+        );
+        engine
+            .set_active_printer(None)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 2
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("active_printer_changes_increment_printer_revision_once failed: {message}");
+    }
+}
+
+#[test]
 fn create_manual_borrowed_in_spool_registers_inbound_loan() {
     let db_path = temp_db_path("create-manual-borrowed-in");
 

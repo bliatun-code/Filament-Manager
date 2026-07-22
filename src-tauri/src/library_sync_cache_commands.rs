@@ -1,6 +1,6 @@
 use crate::library_sync_models::{
     LibrarySyncCachedLoanList, LibrarySyncCachedPrinterOverview, LibrarySyncCachedSpoolList,
-    LibrarySyncCachedWishlistList,
+    LibrarySyncCachedWishlistList, SaveLibrarySyncSpoolCacheInput,
 };
 use crate::state::AppState;
 use crate::with_inventory;
@@ -16,6 +16,16 @@ pub(crate) fn fetch_cached_library_sync_spools(
             captured_at: cached.captured_at,
             rows: cached.rows,
         }))
+}
+
+#[tauri::command]
+pub(crate) fn save_library_sync_spool_cache(
+    state: tauri::State<'_, AppState>,
+    input: SaveLibrarySyncSpoolCacheInput,
+) -> Result<(), String> {
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_cached_spools(&input.rows)
+    })
 }
 
 #[tauri::command]

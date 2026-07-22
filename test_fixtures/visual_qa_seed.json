@@ -1,6 +1,6 @@
 {
   "fixtureVersion": 1,
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "expectedCounts": {
     "filament_master_list": 4,
     "filament_spools": 6,

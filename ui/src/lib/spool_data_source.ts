@@ -1,6 +1,7 @@
 import {
   fetchLibrarySyncSpools,
   listSpools,
+  saveLibrarySyncSpoolCache,
   type SpoolWithMasterRow,
 } from "./tauri_client";
 import { resolveClientHostTarget } from "./host_write_target";
@@ -25,10 +26,17 @@ type SpoolDataSourceDependencies = {
 };
 
 const MAX_LOAD_ALL_SPOOL_PAGES = 500;
+export const DEFAULT_SPOOL_PAGE_SIZE = 1000;
+
+type LoadAllSpoolRowsDependencies = {
+  loadPage?: SpoolRowsPageLoader;
+  saveClientCache?: typeof saveLibrarySyncSpoolCache;
+  onCacheError?: (error: unknown) => void;
+};
 
 export async function loadSpoolRowsPage(
   options: SpoolDataSourceOptions,
-  limit = 1200,
+  limit = DEFAULT_SPOOL_PAGE_SIZE,
   offset = 0,
   dependencies: SpoolDataSourceDependencies = {},
 ): Promise<SpoolWithMasterRow[]> {
@@ -46,9 +54,16 @@ export async function loadSpoolRowsPage(
 
 export async function loadAllSpoolRows(
   options: SpoolDataSourceOptions,
-  limit = 200,
+  limit = DEFAULT_SPOOL_PAGE_SIZE,
+  dependencies: LoadAllSpoolRowsDependencies = {},
 ): Promise<NormalizedSpoolWithMasterRow[]> {
-  return loadAllSpoolRowsWithPageLoader(options, limit, loadSpoolRowsPage);
+  const loadPage = dependencies.loadPage ?? loadSpoolRowsPage;
+  const rows = await loadAllSpoolRowsWithPageLoader(options, limit, loadPage);
+  if (options.clientReadOnly) {
+    const saveClientCache = dependencies.saveClientCache ?? saveLibrarySyncSpoolCache;
+    await saveClientCache(rows).catch(dependencies.onCacheError ?? console.warn);
+  }
+  return rows;
 }
 
 export async function loadAllSpoolRowsWithPageLoader(
@@ -58,10 +73,17 @@ export async function loadAllSpoolRowsWithPageLoader(
   maxPages = MAX_LOAD_ALL_SPOOL_PAGES,
 ): Promise<NormalizedSpoolWithMasterRow[]> {
   const allRows: SpoolWithMasterRow[] = [];
+  const seenSpoolIds = new Set<string>();
   const pageLimit = Math.max(1, Math.floor(limit));
   let offset = 0;
   for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
     const page = await loadPage(options, pageLimit, offset);
+    for (const row of page) {
+      if (seenSpoolIds.has(row.spool.id)) {
+        throw new Error(`Stopped loading spools because pagination repeated id ${row.spool.id}.`);
+      }
+      seenSpoolIds.add(row.spool.id);
+    }
     allRows.push(...page);
     if (page.length < pageLimit) {
       break;

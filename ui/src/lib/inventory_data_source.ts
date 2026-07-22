@@ -9,7 +9,12 @@ import {
   type SpoolWithMasterRow,
 } from "./tauri_client";
 import { type InventorySpool } from "./inventory_list_model";
-import { loadSpoolRowsPage } from "./spool_data_source";
+import {
+  DEFAULT_SPOOL_PAGE_SIZE,
+  loadAllSpoolRows,
+  loadAllSpoolRowsWithPageLoader,
+  loadSpoolRowsPage,
+} from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
 import {
   normalizeSpoolWithMasterRow,
@@ -110,7 +115,13 @@ export async function loadInventorySpools(
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
 
   try {
-    const rows = await loadRowsPage(options, 1200, 0);
+    const rows = dependencies.loadRowsPage
+      ? await loadAllSpoolRowsWithPageLoader(
+          options,
+          DEFAULT_SPOOL_PAGE_SIZE,
+          loadRowsPage,
+        )
+      : await loadAllSpoolRows(options);
     const cached = options.clientReadOnly
       ? await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null)
       : null;

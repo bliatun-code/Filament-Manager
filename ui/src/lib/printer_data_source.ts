@@ -9,7 +9,12 @@ import {
   type PrinterOverviewRow,
   type SpoolWithMasterRow,
 } from "./tauri_client";
-import { loadSpoolRowsPage } from "./spool_data_source";
+import {
+  DEFAULT_SPOOL_PAGE_SIZE,
+  loadAllSpoolRows,
+  loadAllSpoolRowsWithPageLoader,
+  loadSpoolRowsPage,
+} from "./spool_data_source";
 import {
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
@@ -44,6 +49,7 @@ export type PrinterDataLoadResult = {
   printerModels: string[];
   source: PrinterSnapshotSource;
   updatedAt: string | null;
+  revisionPollComplete: boolean;
 };
 
 export type PrinterOverviewDataLoadResult = {
@@ -113,6 +119,15 @@ export const derivePrinterLibrarySyncState = deriveLibrarySyncPageState;
 
 function normalizePrinterSpoolRows(rows: SpoolWithMasterRow[]): NormalizedSpoolWithMasterRow[] {
   return normalizeSpoolWithMasterRows(rows);
+}
+
+async function loadPrinterSpoolRows(
+  options: PrinterOverviewDataSourceOptions,
+  loadPage?: typeof loadSpoolRowsPage,
+): Promise<NormalizedSpoolWithMasterRow[]> {
+  return loadPage
+    ? loadAllSpoolRowsWithPageLoader(options, DEFAULT_SPOOL_PAGE_SIZE, loadPage)
+    : loadAllSpoolRows(options);
 }
 
 export async function loadPrinterOverviewData(
@@ -192,10 +207,8 @@ export async function loadPrinterPageData(
   const fetchCachedOverview =
     dependencies.fetchCachedOverview ?? fetchCachedLibrarySyncPrinterOverview;
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
-  const loadHostSpools = dependencies.loadHostSpools ?? loadSpoolRowsPage;
   const listLocalOverview = dependencies.listLocalOverview ?? listPrinterOverview;
   const loadLocalSettings = dependencies.loadLocalSettings ?? getPrinterSettings;
-  const loadLocalSpools = dependencies.loadLocalSpools ?? loadSpoolRowsPage;
   const onLoadError = dependencies.onLoadError ?? console.error;
   const { clientReadOnly, clientHostBaseUrl, clientLibraryId, supportedPrinterModels } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
@@ -216,6 +229,7 @@ export async function loadPrinterPageData(
           printerModels: supportedPrinterModels,
           source: "CACHED",
           updatedAt: cachedPrinters?.captured_at ?? cachedSpools?.captured_at ?? null,
+          revisionPollComplete: false,
         };
       }
 
@@ -226,6 +240,7 @@ export async function loadPrinterPageData(
         printerModels: supportedPrinterModels,
         source: "OFFLINE",
         updatedAt: null,
+        revisionPollComplete: false,
       };
     }
     const [overviewResult, spoolRowsResult, settingsResult, cachedPrinters, cachedSpools] =
@@ -234,14 +249,13 @@ export async function loadPrinterPageData(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        loadHostSpools(
+        loadPrinterSpoolRows(
           {
             clientReadOnly,
             clientHostBaseUrl: hostTarget.baseUrl,
             clientLibraryId: hostTarget.libraryId,
           },
-          1200,
-          0,
+          dependencies.loadHostSpools,
         ).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
@@ -287,6 +301,7 @@ export async function loadPrinterPageData(
           cachedOverviewCapturedAt: cachedPrinters?.captured_at,
           cachedSpoolsCapturedAt: cachedSpools?.captured_at,
         }),
+        revisionPollComplete: overviewResult.ok && spoolRowsResult.ok && settingsResult.ok,
       };
     }
 
@@ -297,19 +312,19 @@ export async function loadPrinterPageData(
       printerModels: supportedPrinterModels,
       source: "OFFLINE",
       updatedAt: null,
+      revisionPollComplete: false,
     };
   }
 
   const [overview, spoolRows, settings] = await Promise.all([
     listLocalOverview(),
-    loadLocalSpools(
+    loadPrinterSpoolRows(
       {
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
       },
-      1200,
-      0,
+      dependencies.loadLocalSpools,
     ),
     loadLocalSettings(),
   ]);
@@ -321,5 +336,6 @@ export async function loadPrinterPageData(
     printerModels: resolvePrinterModels(settings.printer_models, supportedPrinterModels),
     source: "LIVE",
     updatedAt: null,
+    revisionPollComplete: true,
   };
 }

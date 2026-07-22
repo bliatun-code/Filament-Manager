@@ -18,14 +18,7 @@ pub(crate) fn get_library_sync_settings(
     let device_name = trimmed_setting(conn, "library_sync_device_name")?
         .unwrap_or_else(default_library_sync_device_name);
 
-    let library_id = match trimmed_setting(conn, "library_sync_library_id")? {
-        Some(value) => value,
-        None => {
-            let next = new_id();
-            let _ = set_setting(conn, "library_sync_library_id", &next);
-            next
-        }
-    };
+    let library_id = get_library_sync_library_id(conn)?;
 
     let host_base_url = get_setting(conn, "library_sync_host_base_url")?
         .map(|value| value.trim().trim_end_matches('/').to_string())
@@ -71,6 +64,17 @@ pub(crate) fn get_library_sync_settings(
         cached_loans,
         cached_wishlist,
     })
+}
+
+pub(crate) fn get_library_sync_library_id(conn: &Connection) -> InventoryResult<String> {
+    match trimmed_setting(conn, "library_sync_library_id")? {
+        Some(value) => Ok(value),
+        None => {
+            let next = new_id();
+            set_setting(conn, "library_sync_library_id", &next)?;
+            Ok(next)
+        }
+    }
 }
 
 pub(crate) fn save_library_sync_settings(

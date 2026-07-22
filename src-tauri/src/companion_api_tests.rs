@@ -10,7 +10,9 @@ use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_D
 use crate::state::TrustedLanCompanionRuntime;
 use axum::body::{to_bytes, Body};
 use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
+use flate2::read::GzDecoder;
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
@@ -160,6 +162,23 @@ fn extract_named_cookie(headers: &HeaderMap, cookie_name: &str) -> Result<String
     Err(format!("missing {cookie_name} cookie"))
 }
 
+fn assert_no_store(headers: &HeaderMap) {
+    let cache_control = headers
+        .get(axum::http::header::CACHE_CONTROL)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert!(
+        cache_control.contains("no-store"),
+        "expected no-store, got {cache_control:?}"
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::PRAGMA)
+            .and_then(|value| value.to_str().ok()),
+        Some("no-cache")
+    );
+}
+
 struct AuthenticatedTestSession {
     session_cookie: String,
     csrf_token: String,
@@ -191,6 +210,7 @@ async fn pair_test_session(
         .await
         .map_err(|error| error.to_string())?;
     assert_eq!(pair.status(), StatusCode::OK);
+    assert_no_store(pair.headers());
 
     let session_cookie = extract_named_cookie(pair.headers(), COMPANION_SESSION_COOKIE)?;
     let _device_cookie = extract_named_cookie(pair.headers(), COMPANION_TRUSTED_LAN_DEVICE_COOKIE)?;
@@ -929,6 +949,7 @@ async fn companion_api_library_reads_require_an_active_session() {
         seed_db(&db_path)?;
         let router = build_router(test_state(&db_path));
         let library_paths = [
+            "/api/v1/library/revisions",
             "/api/v1/library/snapshot",
             "/api/v1/library/spools?limit=10&offset=0",
             "/api/v1/library/printers",
@@ -1018,6 +1039,103 @@ async fn companion_api_library_reads_require_an_active_session() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_library_reads_require_an_active_session failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_library_revisions_require_auth_and_advance_after_writes() {
+    let db_path = temp_db_path("library-revisions");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+
+        let unauthorized = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/revisions")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+        assert_no_store(unauthorized.headers());
+
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+        let initial = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/revisions")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(initial.status(), StatusCode::OK);
+        assert_no_store(initial.headers());
+        let initial_body = to_bytes(initial.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let initial_revisions: serde_json::Value =
+            serde_json::from_slice(&initial_body).map_err(|error| error.to_string())?;
+        assert!(initial_revisions["library_id"].as_str().is_some());
+        let initial_inventory = initial_revisions["inventory"]
+            .as_i64()
+            .ok_or_else(|| "inventory revision missing".to_string())?;
+
+        let write = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/weight")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, csrf_token)
+                    .body(Body::from(r#"{"grams":825}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(write.status(), StatusCode::OK);
+
+        let current = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/revisions")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(current.status(), StatusCode::OK);
+        assert_no_store(current.headers());
+        let current_body = to_bytes(current.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let current_revisions: serde_json::Value =
+            serde_json::from_slice(&current_body).map_err(|error| error.to_string())?;
+        assert!(current_revisions["inventory"].as_i64().unwrap_or_default() > initial_inventory);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_library_revisions_require_auth_and_advance_after_writes failed: {message}");
     }
 }
 
@@ -3433,7 +3551,21 @@ async fn companion_shell_route_serves_module_assets() {
             .get(axum::http::header::CACHE_CONTROL)
             .and_then(|value| value.to_str().ok())
             .unwrap_or_default();
-        assert!(module_cache_control.contains("no-store"));
+        assert_eq!(module_cache_control, "private, no-cache");
+        let module_etag = module_response
+            .headers()
+            .get(axum::http::header::ETAG)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or_default()
+            .to_string();
+        assert!(module_etag.starts_with("W/\""));
+        assert_eq!(
+            module_response
+                .headers()
+                .get(axum::http::header::VARY)
+                .and_then(|value| value.to_str().ok()),
+            Some("accept-encoding")
+        );
 
         let module_body = to_bytes(module_response.into_body(), usize::MAX)
             .await
@@ -3442,8 +3574,68 @@ async fn companion_shell_route_serves_module_assets() {
             String::from_utf8(module_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(module_text.contains("createCompanionApiClient"));
 
-        let served_assets: HashMap<&str, _> =
-            companion_browser_assets().iter().copied().collect();
+        let not_modified = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion/companion_api_client.js")
+                    .header(axum::http::header::IF_NONE_MATCH, &module_etag)
+                    .header(axum::http::header::ACCEPT_ENCODING, "gzip")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(not_modified.status(), StatusCode::NOT_MODIFIED);
+        assert_eq!(
+            not_modified
+                .headers()
+                .get(axum::http::header::CACHE_CONTROL)
+                .and_then(|value| value.to_str().ok()),
+            Some("private, no-cache")
+        );
+        assert_eq!(
+            not_modified
+                .headers()
+                .get(axum::http::header::ETAG)
+                .and_then(|value| value.to_str().ok()),
+            Some(module_etag.as_str())
+        );
+        let not_modified_body = to_bytes(not_modified.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        assert!(not_modified_body.is_empty());
+
+        let gzip_response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion/companion_api_client.js")
+                    .header(axum::http::header::ACCEPT_ENCODING, "br, gzip;q=0.7")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(gzip_response.status(), StatusCode::OK);
+        assert_eq!(
+            gzip_response
+                .headers()
+                .get(axum::http::header::CONTENT_ENCODING)
+                .and_then(|value| value.to_str().ok()),
+            Some("gzip")
+        );
+        let gzip_body = to_bytes(gzip_response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let mut decoder = GzDecoder::new(gzip_body.as_ref());
+        let mut decoded = String::new();
+        decoder
+            .read_to_string(&mut decoded)
+            .map_err(|error| error.to_string())?;
+        assert!(decoded.contains("createCompanionApiClient"));
+
+        let served_assets: HashMap<&str, _> = companion_browser_assets().collect();
         for (asset_path, asset) in companion_browser_assets() {
             let response = router
                 .clone()
@@ -3462,6 +3654,18 @@ async fn companion_shell_route_serves_module_assets() {
                 .and_then(|value| value.to_str().ok())
                 .unwrap_or_default();
             assert_eq!(content_type, asset.content_type);
+            assert_eq!(
+                response
+                    .headers()
+                    .get(axum::http::header::CACHE_CONTROL)
+                    .and_then(|value| value.to_str().ok()),
+                Some("private, no-cache")
+            );
+            assert!(response
+                .headers()
+                .get(axum::http::header::ETAG)
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|etag| etag.starts_with("W/\"")));
 
             if asset_path.ends_with(".js") {
                 for import_path in companion_browser_relative_imports(asset.content) {
@@ -3501,6 +3705,7 @@ async fn companion_shell_route_serves_module_assets() {
             .await
             .map_err(|error| error.to_string())?;
         assert_eq!(missing_asset.status(), StatusCode::NOT_FOUND);
+        assert_no_store(missing_asset.headers());
 
         Ok::<(), String>(())
     }
@@ -3509,6 +3714,78 @@ async fn companion_shell_route_serves_module_assets() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_shell_route_serves_module_assets failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_success_auth_and_error_responses_are_no_store() {
+    let db_path = temp_db_path("cache-policy");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+
+        let health = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/health")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(health.status(), StatusCode::OK);
+        assert_no_store(health.headers());
+
+        let auth_status = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/auth/session")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(auth_status.status(), StatusCode::OK);
+        assert_no_store(auth_status.headers());
+
+        let unauthorized = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+        assert_no_store(unauthorized.headers());
+
+        let unknown_api_route = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/not-a-route")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unknown_api_route.status(), StatusCode::NOT_FOUND);
+        assert_no_store(unknown_api_route.headers());
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_success_auth_and_error_responses_are_no_store failed: {message}");
     }
 }
 

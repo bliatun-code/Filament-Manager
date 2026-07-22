@@ -16,8 +16,11 @@ export const VISUAL_QA_SEED_PATH = fileURLToPath(
 export const VISUAL_QA_SCHEMA_PATH = fileURLToPath(
   new URL("../src/database/schema.sql", import.meta.url),
 );
+export const VISUAL_QA_SCHEMA_MIGRATION_PATH = fileURLToPath(
+  new URL("../src/database/migrations/003_library_domain_revisions.sql", import.meta.url),
+);
 export const VISUAL_QA_SEED_SHA256 =
-  "6a3943e6f3d53ed1fc63bab594a0a462dae2e32100a6beded993c4fc61d0b979";
+  "a6aedda00af454a565e31071b940ba06c242ec4884be86d56ebfe36339438831";
 
 const ALLOWED_VISUAL_QA_SEED_COLUMNS = new Map(
   Object.entries({
@@ -578,11 +581,11 @@ export function createVisualQaFixture(options = {}) {
   }
   const seed = assertSanitizedVisualQaSeed(rawSeed);
   assertVisualQaSeedShape(seed);
-  if (seed.fixtureVersion !== 1 || seed.schemaVersion !== 1) {
+  if (seed.fixtureVersion !== 1 || seed.schemaVersion !== 2) {
     throw new Error("Visual QA seed uses an unsupported fixture or schema version.");
   }
 
-  for (const protectedSourcePath of [seedPath, schemaPath]) {
+  for (const protectedSourcePath of [seedPath, schemaPath, VISUAL_QA_SCHEMA_MIGRATION_PATH]) {
     assertVisualQaDatabaseTarget({
       live: false,
       sourcePath: protectedSourcePath,
@@ -606,6 +609,7 @@ export function createVisualQaFixture(options = {}) {
     db = openDatabase(outputPath);
     db.pragma("foreign_keys = ON");
     db.exec(readFileSync(schemaPath, "utf8"));
+    db.exec(readFileSync(VISUAL_QA_SCHEMA_MIGRATION_PATH, "utf8"));
     const insertAll = db.transaction(() => {
       for (const [table, rows] of Object.entries(seed.tables ?? {})) {
         insertFixtureRows(db, table, rows);

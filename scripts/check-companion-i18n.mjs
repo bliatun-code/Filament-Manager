@@ -3,11 +3,14 @@ import { createRequire } from "node:module";
 import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  readLocaleDictionaryFromSource,
   validateLocaleDictionaries,
   validateLocaleOverlay,
   validateRuntimeTranslationKeys,
 } from "./check-i18n-locales.mjs";
+import {
+  checkGeneratedCompanionLocales,
+  readCompanionLocaleCatalog,
+} from "./generate-companion-locales.mjs";
 import {
   DEFAULT_LOCALE,
   CATALOG_LOCALES,
@@ -16,7 +19,6 @@ import {
 
 const repoRoot = resolve(".");
 const companionRoot = resolve(repoRoot, "src-tauri", "companion_browser");
-const dictionaryFile = resolve(companionRoot, "companion_i18n.js");
 const require = createRequire(import.meta.url);
 const ts = require(resolve(repoRoot, "ui", "node_modules", "typescript"));
 
@@ -50,13 +52,10 @@ export function collectLiteralCompanionTranslationKeys(source, fileName = "sourc
 }
 
 function runCompanionI18nCheck() {
-  const dictionaries = readLocaleDictionaryFromSource(
-    readFileSync(dictionaryFile, "utf8"),
-    "dictionaries",
-  );
+  const dictionaries = readCompanionLocaleCatalog();
   const dictionaryLocales = Object.keys(dictionaries).sort();
   const manifestLocales = CATALOG_LOCALES.map(({ id }) => id).sort();
-  const errors = [];
+  const errors = [...checkGeneratedCompanionLocales().errors];
   if (JSON.stringify(dictionaryLocales) !== JSON.stringify(manifestLocales)) {
     errors.push(
       `Companion dictionary locales ${dictionaryLocales.join(", ")} do not match manifest locales ${manifestLocales.join(", ")}.`,

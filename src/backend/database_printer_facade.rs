@@ -5,6 +5,7 @@ use super::database_printer_mutations::{
     delete_printer as delete_printer_row, upsert_printer_with_ams as upsert_printer_with_ams_row,
 };
 use super::database_printer_queries::{
+    get_printer_overview as get_printer_overview_row,
     list_printer_overview as list_printer_overview_rows, list_printers as list_printer_rows,
     printer_exists as printer_exists_row,
 };
@@ -58,6 +59,13 @@ impl FilamentDatabase {
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
         list_printer_overview_rows(self.connection())
+    }
+
+    pub fn get_printer_overview(
+        &self,
+        printer_id: &str,
+    ) -> InventoryResult<Option<PrinterOverviewRow>> {
+        get_printer_overview_row(self.connection(), printer_id)
     }
 
     pub fn assign_spool_to_ams_slot(

@@ -15,6 +15,7 @@ pub use super::database_printer_models::{
     BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow,
 };
 pub use super::database_reset_models::CatalogResetStats;
+pub use super::database_revision::LibraryDomainRevisions;
 pub use super::database_spool_models::{
     SpoolHistoryEventRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
 };

@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { loadAllSpoolRowsWithPageLoader, loadSpoolRowsPage } from "./spool_data_source";
+import {
+  DEFAULT_SPOOL_PAGE_SIZE,
+  loadAllSpoolRows,
+  loadAllSpoolRowsWithPageLoader,
+  loadSpoolRowsPage,
+} from "./spool_data_source";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
 function row(id: string, status = "IN_STOCK", ownershipType = "OWNED"): SpoolWithMasterRow {
@@ -109,10 +114,29 @@ test("loadAllSpoolRowsWithPageLoader rejects pagination that never finishes", as
       loadAllSpoolRowsWithPageLoader(
         { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
         2,
-        async () => [row("spool-1"), row("spool-2")],
+        async (_options, _limit, offset) => [
+          row(`spool-${offset + 1}`),
+          row(`spool-${offset + 2}`),
+        ],
         2,
       ),
     /pagination did not finish/,
+  );
+});
+
+test("loadAllSpoolRowsWithPageLoader rejects duplicate ids across unstable pages", async () => {
+  await assert.rejects(
+    () =>
+      loadAllSpoolRowsWithPageLoader(
+        { clientReadOnly: false },
+        2,
+        async (_options, _limit, offset) =>
+          offset === 0
+            ? [row("spool-1"), row("spool-2")]
+            : [row("spool-2"), row("spool-3")],
+        4,
+      ),
+    /pagination repeated id spool-2/,
   );
 });
 
@@ -133,4 +157,99 @@ test("loadAllSpoolRowsWithPageLoader coerces invalid page limits", async () => {
     { limit: 1, offset: 1 },
   ]);
   assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1"]);
+});
+
+for (const rowCount of [1_201, 5_000, 10_000]) {
+  test(`loadAllSpoolRows loads all ${rowCount.toLocaleString("en-US")} rows without truncation`, async () => {
+    const sourceRows = Array.from({ length: rowCount }, (_, index) => row(`spool-${index}`));
+    const calls: Array<{ limit: number; offset: number }> = [];
+    const rows = await loadAllSpoolRows(
+      { clientReadOnly: false },
+      DEFAULT_SPOOL_PAGE_SIZE,
+      {
+        loadPage: async (_options, limit, offset) => {
+          calls.push({ limit, offset });
+          return sourceRows.slice(offset, offset + limit);
+        },
+      },
+    );
+
+    assert.equal(rows.length, rowCount);
+    assert.equal(rows[0]?.spool.id, "spool-0");
+    assert.equal(rows.at(-1)?.spool.id, `spool-${rowCount - 1}`);
+    assert.equal(calls[0]?.offset, 0);
+    assert.equal(calls.at(-1)?.offset, Math.floor(rowCount / 1000) * 1000);
+  });
+}
+
+test("loadAllSpoolRows saves one complete client cache after all pages load", async () => {
+  const cachedRowIds: string[][] = [];
+  const rows = await loadAllSpoolRows(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
+    2,
+    {
+      loadPage: async (_options, limit, offset) =>
+        [row("spool-1"), row("spool-2"), row("spool-3")].slice(offset, offset + limit),
+      saveClientCache: async (loadedRows) => {
+        cachedRowIds.push(loadedRows.map((entry) => entry.spool.id));
+      },
+    },
+  );
+
+  assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1", "spool-2", "spool-3"]);
+  assert.deepEqual(cachedRowIds, [["spool-1", "spool-2", "spool-3"]]);
+});
+
+test("loadAllSpoolRows keeps live client rows when refreshing the cache fails", async () => {
+  const cacheErrors: unknown[] = [];
+  const rows = await loadAllSpoolRows(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
+    2,
+    {
+      loadPage: async () => [row("spool-1")],
+      saveClientCache: async () => {
+        throw new Error("cache unavailable");
+      },
+      onCacheError: (error) => cacheErrors.push(error),
+    },
+  );
+
+  assert.deepEqual(rows.map((entry) => entry.spool.id), ["spool-1"]);
+  assert.equal(cacheErrors.length, 1);
+});
+
+test("loadAllSpoolRows never replaces the client cache after an incomplete page sequence", async () => {
+  let saveCount = 0;
+  await assert.rejects(
+    () =>
+      loadAllSpoolRows(
+        {
+          clientReadOnly: true,
+          clientHostBaseUrl: "http://host",
+          clientLibraryId: "library-1",
+        },
+        2,
+        {
+          loadPage: async (_options, _limit, offset) => {
+            if (offset === 0) {
+              return [row("spool-1"), row("spool-2")];
+            }
+            throw new Error("second page unavailable");
+          },
+          saveClientCache: async () => {
+            saveCount += 1;
+          },
+        },
+      ),
+    /second page unavailable/,
+  );
+  assert.equal(saveCount, 0);
 });

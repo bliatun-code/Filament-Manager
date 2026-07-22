@@ -86,19 +86,28 @@ pub(crate) fn enrich_with_match_status(
     printer_id: &str,
     mut observed: BambuLiveObservedStateRow,
 ) -> Result<BambuLiveObservedStateRow, InventoryError> {
-    let printer_overview = db
-        .list_printer_overview()?
-        .into_iter()
-        .find(|row| row.printer.id == printer_id);
-    let all_spools = db.list_spools_with_master(5000, 0)?;
-
-    let overview = match printer_overview {
+    let overview = match db.get_printer_overview(printer_id)? {
         Some(value) => value,
         None => return Ok(observed),
     };
 
+    let mut all_spools = None;
     for tray in &mut observed.trays {
-        apply_tray_match_status(tray, &overview, &all_spools);
+        reset_tray_inventory_match(tray);
+        if let Some(observed_rfid) = live_tray_identity_text(tray) {
+            let exact_matches = db.list_spools_with_master_by_rfid(observed_rfid)?;
+            if apply_exact_rfid_match_status(tray, &exact_matches) {
+                continue;
+            }
+        }
+        if all_spools.is_none() {
+            all_spools = Some(db.list_all_spools_with_master()?);
+        }
+        apply_tray_match_status_after_exact(
+            tray,
+            &overview,
+            all_spools.as_deref().unwrap_or_default(),
+        );
     }
     let usage_context = live_print_usage_context(&observed);
     let recent_completed_context = match usage_context.as_ref() {
@@ -146,17 +155,30 @@ pub(crate) fn enrich_with_match_status(
     Ok(observed)
 }
 
+#[cfg(test)]
 pub(crate) fn apply_tray_match_status(
     tray: &mut BambuLiveObservedTrayRow,
     overview: &PrinterOverviewRow,
     all_spools: &[SpoolWithMasterRow],
 ) {
+    reset_tray_inventory_match(tray);
+    if apply_exact_rfid_match_status(tray, all_spools) {
+        return;
+    }
+    apply_tray_match_status_after_exact(tray, overview, all_spools);
+}
+
+fn reset_tray_inventory_match(tray: &mut BambuLiveObservedTrayRow) {
     tray.matched_inventory_spool_id = None;
     tray.matched_inventory_mode = None;
-    let has_live_unknown_rfid = tray.loaded && live_tray_identity_text(tray).is_some();
+}
 
+fn apply_exact_rfid_match_status(
+    tray: &mut BambuLiveObservedTrayRow,
+    exact_match_candidates: &[SpoolWithMasterRow],
+) -> bool {
     if let Some(observed_rfid) = live_tray_identity_text(tray) {
-        let exact_matches: Vec<_> = all_spools
+        let exact_matches: Vec<_> = exact_match_candidates
             .iter()
             .filter(|row| spool_available_for_exact_live_rfid_match(row))
             .filter(|row| eq_ignore_case(Some(observed_rfid), row.spool.rfid_tag.as_deref()))
@@ -167,16 +189,24 @@ pub(crate) fn apply_tray_match_status(
             tray.matched_inventory_mode = Some("exact_rfid".to_string());
             tray.match_status = Some("clear_match".to_string());
             tray.match_note = Some("Exact RFID/AMS identity match against inventory.".to_string());
-            return;
+            return true;
         }
         if exact_matches.len() > 1 {
             tray.match_status = Some("ambiguous".to_string());
             tray.match_note =
                 Some("Multiple inventory rolls share this saved RFID/AMS identity.".to_string());
-            return;
+            return true;
         }
     }
+    false
+}
 
+fn apply_tray_match_status_after_exact(
+    tray: &mut BambuLiveObservedTrayRow,
+    overview: &PrinterOverviewRow,
+    all_spools: &[SpoolWithMasterRow],
+) {
+    let has_live_unknown_rfid = tray.loaded && live_tray_identity_text(tray).is_some();
     if !tray.loaded {
         tray.match_status = Some("unknown_from_printer".to_string());
         tray.match_note = Some(

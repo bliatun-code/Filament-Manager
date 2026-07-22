@@ -52,6 +52,28 @@ test("InventoryBambuBatchModal portals above the add modal and preserves camera 
   assert.doesNotMatch(source, /object-cover/);
 });
 
+test("InventoryBambuBatchModal owns the detector while camera permission is pending", () => {
+  const createDetectorIndex = source.indexOf(
+    "createBambuFilamentCodeCameraDetector()",
+  );
+  const ownDetectorIndex = source.indexOf("detectorRef.current = detector");
+  const requestStreamIndex = source.indexOf(
+    "requestBambuFilamentCodeCameraStream()",
+  );
+
+  assert.ok(createDetectorIndex >= 0);
+  assert.ok(ownDetectorIndex > createDetectorIndex);
+  assert.ok(requestStreamIndex > ownDetectorIndex);
+  assert.match(
+    source.slice(createDetectorIndex, ownDetectorIndex),
+    /if \(!mountedRef\.current\) \{\s*detector\?\.close\?\.\(\);\s*return;/,
+  );
+  assert.match(
+    source.slice(requestStreamIndex, source.indexOf("streamRef.current = stream")),
+    /if \(!stream\) \{\s*stopCameraStream\(\);/,
+  );
+});
+
 function master(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
   return {
     id: "master-code",

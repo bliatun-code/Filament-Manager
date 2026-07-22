@@ -697,7 +697,16 @@ function renderSpoolRows(options) {
     });
   }
 
-  return spools
+  const renderLimit = Math.max(150, Number(state.inventoryRenderLimit) || 150);
+  const renderedSpools = spools.slice(0, renderLimit);
+  const selected = state.selectedSpoolId
+    ? spools.find((row) => row.spool.id === state.selectedSpoolId)
+    : null;
+  if (selected && !renderedSpools.some((row) => row.spool.id === selected.spool.id)) {
+    renderedSpools.push(selected);
+  }
+
+  const rowsMarkup = renderedSpools
     .map((row) => {
       const active = row.spool.id === state.selectedSpoolId;
       const swatch = row.master.hex_color || "#ced8e3";
@@ -744,6 +753,17 @@ function renderSpoolRows(options) {
       });
     })
     .join("");
+  if (renderedSpools.length >= spools.length) {
+    return rowsMarkup;
+  }
+  const nextVisible = Math.min(spools.length, renderLimit + 150);
+  return `${rowsMarkup}${renderCompanionActionButton({
+    variant: "ghost",
+    attributes: { "data-action": "show-more-inventory" },
+    className: "companion-load-more",
+    escapeHtml,
+    label: `+${nextVisible - renderLimit} · ${nextVisible}/${spools.length}`,
+  })}`;
 }
 
 export function renderStorageShell(options) {

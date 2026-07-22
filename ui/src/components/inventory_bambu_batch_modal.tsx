@@ -364,6 +364,7 @@ function BambuFilamentCodeBatchPanel({
     scanBusyRef.current = false;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    detectorRef.current?.close?.();
     detectorRef.current = null;
     seenCameraKeysRef.current = new Set();
     emptyCameraFrameCountRef.current = 0;
@@ -578,6 +579,7 @@ function BambuFilamentCodeBatchPanel({
 
       const detector = await cameraScanModule.createBambuFilamentCodeCameraDetector();
       if (!mountedRef.current) {
+        detector?.close?.();
         return;
       }
       if (!detector) {
@@ -591,12 +593,17 @@ function BambuFilamentCodeBatchPanel({
         return;
       }
 
+      // Own the detector before requesting camera permission so cleanup can close it
+      // if getUserMedia rejects or the modal unmounts while the prompt is open.
+      detectorRef.current = detector;
+
       const stream = await cameraScanModule.requestBambuFilamentCodeCameraStream();
       if (!mountedRef.current) {
         stream?.getTracks().forEach((track) => track.stop());
         return;
       }
       if (!stream) {
+        stopCameraStream();
         setCameraStatus("unsupported");
         setCameraMessage(
           t(
@@ -607,7 +614,6 @@ function BambuFilamentCodeBatchPanel({
         return;
       }
 
-      detectorRef.current = detector;
       streamRef.current = stream;
       seenCameraKeysRef.current = new Set();
       emptyCameraFrameCountRef.current = 0;

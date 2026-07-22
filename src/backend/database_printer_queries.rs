@@ -47,8 +47,45 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
     let mut output = Vec::with_capacity(printers.len());
 
     for printer in printers {
-        let manual_usage = conn.query_row(
-            "SELECT
+        output.push(build_printer_overview(conn, printer)?);
+    }
+
+    Ok(output)
+}
+
+pub(crate) fn get_printer_overview(
+    conn: &Connection,
+    printer_id: &str,
+) -> InventoryResult<Option<PrinterOverviewRow>> {
+    let printer = conn
+        .query_row(
+            "SELECT id, model, name, created_at, updated_at
+             FROM printers
+             WHERE id = ?1
+             LIMIT 1",
+            params![printer_id],
+            |row| {
+                Ok(PrinterRow {
+                    id: row.get(0)?,
+                    model: row.get(1)?,
+                    name: row.get(2)?,
+                    created_at: row.get(3)?,
+                    updated_at: row.get(4)?,
+                })
+            },
+        )
+        .optional()?;
+    printer
+        .map(|printer| build_printer_overview(conn, printer))
+        .transpose()
+}
+
+fn build_printer_overview(
+    conn: &Connection,
+    printer: PrinterRow,
+) -> InventoryResult<PrinterOverviewRow> {
+    let manual_usage = conn.query_row(
+        "SELECT
                 COUNT(*) AS total_jobs,
                 COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successful_jobs,
                 COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS failed_jobs,
@@ -56,19 +93,19 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 MAX(datetime(ended_at)) AS last_job_at
              FROM print_jobs
              WHERE printer_id = ?1",
-            params![&printer.id],
-            |row| {
-                Ok(PrinterUsageRow {
-                    total_jobs: row.get(0)?,
-                    successful_jobs: row.get(1)?,
-                    failed_jobs: row.get(2)?,
-                    total_used_g: row.get(3)?,
-                    last_job_at: row.get(4)?,
-                })
-            },
-        )?;
-        let live_usage = conn.query_row(
-            "SELECT
+        params![&printer.id],
+        |row| {
+            Ok(PrinterUsageRow {
+                total_jobs: row.get(0)?,
+                successful_jobs: row.get(1)?,
+                failed_jobs: row.get(2)?,
+                total_used_g: row.get(3)?,
+                last_job_at: row.get(4)?,
+            })
+        },
+    )?;
+    let live_usage = conn.query_row(
+        "SELECT
                 COUNT(*) AS total_jobs,
                 COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS successful_jobs,
                 COALESCE(SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END), 0) AS failed_jobs,
@@ -82,30 +119,30 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                    WHERE us.session_id = u.id
                      AND us.used_g > 0
                )",
-            params![&printer.id],
-            |row| {
-                Ok(PrinterUsageRow {
-                    total_jobs: row.get(0)?,
-                    successful_jobs: row.get(1)?,
-                    failed_jobs: row.get(2)?,
-                    total_used_g: row.get(3)?,
-                    last_job_at: row.get(4)?,
-                })
-            },
-        )?;
-        let usage = PrinterUsageRow {
-            total_jobs: manual_usage.total_jobs + live_usage.total_jobs,
-            successful_jobs: manual_usage.successful_jobs + live_usage.successful_jobs,
-            failed_jobs: manual_usage.failed_jobs + live_usage.failed_jobs,
-            total_used_g: manual_usage.total_used_g + live_usage.total_used_g,
-            last_job_at: [manual_usage.last_job_at, live_usage.last_job_at]
-                .into_iter()
-                .flatten()
-                .max(),
-        };
+        params![&printer.id],
+        |row| {
+            Ok(PrinterUsageRow {
+                total_jobs: row.get(0)?,
+                successful_jobs: row.get(1)?,
+                failed_jobs: row.get(2)?,
+                total_used_g: row.get(3)?,
+                last_job_at: row.get(4)?,
+            })
+        },
+    )?;
+    let usage = PrinterUsageRow {
+        total_jobs: manual_usage.total_jobs + live_usage.total_jobs,
+        successful_jobs: manual_usage.successful_jobs + live_usage.successful_jobs,
+        failed_jobs: manual_usage.failed_jobs + live_usage.failed_jobs,
+        total_used_g: manual_usage.total_used_g + live_usage.total_used_g,
+        last_job_at: [manual_usage.last_job_at, live_usage.last_job_at]
+            .into_iter()
+            .flatten()
+            .max(),
+    };
 
-        let mut stmt = conn.prepare(&format!(
-            "SELECT
+    let mut stmt = conn.prepare(&format!(
+        "SELECT
                 s.id, s.ams_id, s.slot_index, s.spool_id,
                 sp.status,
                 CASE
@@ -134,68 +171,65 @@ pub(crate) fn list_printer_overview(conn: &Connection) -> InventoryResult<Vec<Pr
                 u.id COLLATE NOCASE ASC,
                 s.slot_index ASC,
                 s.id COLLATE NOCASE ASC",
-        ))?;
-        let rows = stmt.query_map(params![&printer.id], |row| {
-            Ok(PrinterAmsSlotRow {
-                slot_id: row.get(0)?,
-                ams_id: row.get(1)?,
-                slot_index: row.get(2)?,
-                spool_id: row.get(3)?,
-                spool_status: row.get(4)?,
-                spool_ownership_type: row.get(5)?,
-                spool_owner_name: row.get(6)?,
-                spool_remaining_g: row.get(7)?,
-                spool_rfid_tag: row.get(8)?,
-                spool_material: row.get(9)?,
-                spool_filament_name: row.get(10)?,
-                spool_color_name: row.get(11)?,
-                spool_hex_color: row.get(12)?,
-                rfid_override_tray_uuid: row.get(13)?,
-                rfid_override_color_hex: row.get(14)?,
-                live_cache_cleared_at: row.get(15)?,
-                live_loaded: None,
-                live_observed_rfid_tag: None,
-                live_tray_uuid: None,
-                live_chip_id: None,
-                live_tray_info_idx: None,
-                live_tray_id_name: None,
-                live_nozzle_temp_min_c: None,
-                live_nozzle_temp_max_c: None,
-                live_filament_type: None,
-                live_filament_name: None,
-                live_color_hex: None,
-                live_tray_weight_g: None,
-                live_remaining_percent: None,
-                live_last_identity_seen_at: None,
-                live_match_status: None,
-                live_match_note: None,
-                live_matched_inventory_spool_id: None,
-                live_matched_inventory_mode: None,
-                live_is_active: None,
-                live_progress_percent: None,
-                live_remaining_minutes: None,
-                live_nozzle_temp_c: None,
-                live_bed_temp_c: None,
-                live_ams_humidity_index: None,
-                live_ams_temperature_c: None,
-                live_printer_last_seen_at: None,
-                live_mqtt_connected: None,
-                live_ams_exist_bits: None,
-                live_ams_read_done_bits: None,
-                live_ams_bambu_bits: None,
-            })
-        })?;
-        let mut slots = Vec::new();
-        for row in rows {
-            slots.push(row?);
-        }
-
-        output.push(PrinterOverviewRow {
-            printer,
-            usage,
-            slots,
-        });
+    ))?;
+    let rows = stmt.query_map(params![&printer.id], |row| {
+        Ok(PrinterAmsSlotRow {
+            slot_id: row.get(0)?,
+            ams_id: row.get(1)?,
+            slot_index: row.get(2)?,
+            spool_id: row.get(3)?,
+            spool_status: row.get(4)?,
+            spool_ownership_type: row.get(5)?,
+            spool_owner_name: row.get(6)?,
+            spool_remaining_g: row.get(7)?,
+            spool_rfid_tag: row.get(8)?,
+            spool_material: row.get(9)?,
+            spool_filament_name: row.get(10)?,
+            spool_color_name: row.get(11)?,
+            spool_hex_color: row.get(12)?,
+            rfid_override_tray_uuid: row.get(13)?,
+            rfid_override_color_hex: row.get(14)?,
+            live_cache_cleared_at: row.get(15)?,
+            live_loaded: None,
+            live_observed_rfid_tag: None,
+            live_tray_uuid: None,
+            live_chip_id: None,
+            live_tray_info_idx: None,
+            live_tray_id_name: None,
+            live_nozzle_temp_min_c: None,
+            live_nozzle_temp_max_c: None,
+            live_filament_type: None,
+            live_filament_name: None,
+            live_color_hex: None,
+            live_tray_weight_g: None,
+            live_remaining_percent: None,
+            live_last_identity_seen_at: None,
+            live_match_status: None,
+            live_match_note: None,
+            live_matched_inventory_spool_id: None,
+            live_matched_inventory_mode: None,
+            live_is_active: None,
+            live_progress_percent: None,
+            live_remaining_minutes: None,
+            live_nozzle_temp_c: None,
+            live_bed_temp_c: None,
+            live_ams_humidity_index: None,
+            live_ams_temperature_c: None,
+            live_printer_last_seen_at: None,
+            live_mqtt_connected: None,
+            live_ams_exist_bits: None,
+            live_ams_read_done_bits: None,
+            live_ams_bambu_bits: None,
+        })
+    })?;
+    let mut slots = Vec::new();
+    for row in rows {
+        slots.push(row?);
     }
 
-    Ok(output)
+    Ok(PrinterOverviewRow {
+        printer,
+        usage,
+        slots,
+    })
 }
