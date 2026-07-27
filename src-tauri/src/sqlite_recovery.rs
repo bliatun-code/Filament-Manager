@@ -568,6 +568,9 @@ fn secure_new_database_file(path: &Path, destination_existed: bool) -> Result<()
         return Ok(());
     }
 
+    #[cfg(not(unix))]
+    let _ = path;
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
