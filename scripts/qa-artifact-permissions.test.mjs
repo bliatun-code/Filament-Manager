@@ -11,21 +11,25 @@ import {
   securePrivateQaArtifact,
 } from "./qa-artifact-permissions.mjs";
 
-test("QA artifacts use private POSIX directory and file modes", async () => {
-  const root = mkdtempSync(join(tmpdir(), "filament-manager-private-qa-"));
-  const directory = join(root, "captures");
-  const artifact = join(directory, "capture.png");
-  try {
-    await preparePrivateQaArtifactDirectory(directory, { platform: "darwin" });
-    writeFileSync(artifact, "synthetic screenshot", { mode: 0o644 });
-    await securePrivateQaArtifact(artifact, { platform: "darwin" });
+test(
+  "QA artifacts use private POSIX directory and file modes",
+  { skip: process.platform === "win32" },
+  async () => {
+    const root = mkdtempSync(join(tmpdir(), "filament-manager-private-qa-"));
+    const directory = join(root, "captures");
+    const artifact = join(directory, "capture.png");
+    try {
+      await preparePrivateQaArtifactDirectory(directory, { platform: "darwin" });
+      writeFileSync(artifact, "synthetic screenshot", { mode: 0o644 });
+      await securePrivateQaArtifact(artifact, { platform: "darwin" });
 
-    assert.equal(statSync(directory).mode & 0o777, PRIVATE_QA_DIRECTORY_MODE);
-    assert.equal(statSync(artifact).mode & 0o777, PRIVATE_QA_ARTIFACT_MODE);
-  } finally {
-    rmSync(root, { force: true, recursive: true });
-  }
-});
+      assert.equal(statSync(directory).mode & 0o777, PRIVATE_QA_DIRECTORY_MODE);
+      assert.equal(statSync(artifact).mode & 0o777, PRIVATE_QA_ARTIFACT_MODE);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  },
+);
 
 test("QA artifact permission helpers avoid POSIX chmod on Windows", async () => {
   const calls = [];
