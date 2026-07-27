@@ -30,6 +30,8 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with physical size choices" width="220"></a>
   <a href="docs/screenshots/inventory-label-sheet.jpg"><img src="docs/screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet preview with A4 and US Letter choices" width="220"></a>
   <a href="docs/screenshots/filament-history.jpg"><img src="docs/screenshots/filament-history-thumb.jpg" alt="Filament roll history timeline" width="220"></a>
+  <a href="docs/screenshots/settings-general.jpg"><img src="docs/screenshots/settings-general-thumb.jpg" alt="Settings with the compact language selector" width="220"></a>
+  <a href="docs/screenshots/settings-updates.jpg"><img src="docs/screenshots/settings-updates-thumb.jpg" alt="Program version and manual application update check" width="220"></a>
   <a href="docs/screenshots/companion-tablet-inventory.jpg"><img src="docs/screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet inventory view" width="220"></a>
   <a href="docs/screenshots/companion-phone-inventory.jpg"><img src="docs/screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone inventory view" width="220"></a>
 </p>
@@ -44,7 +46,9 @@ Start with the user guide for product behavior and workflows:
 - macOS installation and verification:
   [docs/MACOS_DISTRIBUTION.md](docs/MACOS_DISTRIBUTION.md)
 - Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Community standards: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 - Security policy: [SECURITY.md](SECURITY.md)
+- Release integrity and source SBOM: [docs/SUPPLY_CHAIN.md](docs/SUPPLY_CHAIN.md)
 
 Release notes:
 
@@ -59,9 +63,11 @@ Release notes:
 
 ## Feature Overview
 
-- Inventory for owned and borrowed-in filament spools.
+- Inventory for owned and borrowed-in filament spools, with progressive
+  rendering and shown/total controls for large result sets.
 - Add filament flow for Bambu, eSUN, generic/manual entries, Bambu Filament
-  Code lookup, manual Bambu code batch entry, and wishlist/order planning.
+  Code lookup, manual Bambu code batch entry, and quantity-aware wishlist/order
+  receipt with partial deliveries.
 - Loan tracking for outgoing loans and borrowed-in spools, including returns and
   CSV export.
 - Printer profiles for Bambu AMS, Prusa MMU3, Prusa XL toolheads, and
@@ -74,11 +80,27 @@ Release notes:
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
   A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.
-- Local companion/webapp for paired phones, tablets, and workshop browsers.
+- Local companion/webapp for paired phones, tablets, and workshop browsers;
+  long inventory and loan lists use incremental result controls, and library
+  reads and writes require an authenticated paired session.
 - Host/client library mode for sharing one desktop-owned library with other
-  desktop installations.
+  authenticated desktop installations.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
-- Backup, import/export, reset, and maintenance tools.
+- Portable full JSON backups that omit device-local credentials and pairing
+  state. Backup v1 includes schema/app metadata while remaining compatible with
+  older v1 files that lack it; backups from a newer schema are rejected before
+  data is changed. Program maintenance also shows when this device last
+  completed a validated full-backup download.
+- Schema v2 startup checks and verified local SQLite recovery snapshots before
+  older-schema upgrades, full restores, and storage migrations that replace or
+  merge an existing database.
+- Application/database health diagnostics and a privacy-sanitized support JSON
+  download under **Settings → Program maintenance**.
+- A dismissible, data-backed setup checklist plus device-local preferences for
+  Inventory layout/filter expansion and the last-used Settings tab.
+- An explicit **Check for updates** action that compares with the latest GitHub
+  release when release metadata is available, reports when it is unavailable,
+  and leaves download and installation manual.
 
 ## Languages
 
@@ -90,9 +112,9 @@ Filament Manager can be used in 21 languages:
 - Ukrainian, Russian, and Hungarian.
 
 Language is selected from one compact list under **Settings → General**. English
-remains the canonical fallback. German and French have completed named review;
-the other new translations have complete catalogs and automated visual QA, and
-community corrections are welcome through
+remains the canonical fallback. All non-English translations have complete
+catalogs and automated visual QA, and are published for community use and
+review. Corrections and current-catalog native review are welcome through
 [GitHub issues](https://github.com/bliatun-code/Filament-Manager/issues) or pull
 requests.
 
@@ -112,9 +134,10 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 
 ## Repository Layout
 
-- `src-tauri/`: Tauri shell, Rust commands, companion server, Bambu live sync,
-  trusted-LAN, and desktop integration.
-- `src/backend/`: shared Rust backend modules used by the Tauri app.
+- `Cargo.toml` + `src/backend/`: the private `filament-manager-core` workspace
+  crate with platform-neutral domain and SQLite behavior.
+- `src-tauri/`: Tauri shell, Rust commands, Companion server, Bambu Live
+  transport/sync, trusted-LAN, storage startup, and desktop integration.
 - `src/scraper/`: TypeScript catalog scraper utilities.
 - `ui/`: React desktop UI, UI models, tests, and styling.
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
@@ -122,6 +145,9 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `.github/workflows/release-build.yml`: protected tag/manual workflow for the
   signed Apple Silicon DMG and Windows MSI artifacts, including Developer ID
   signing, notarization, stapling, installer verification, and checksums.
+
+See [Architecture](docs/ARCHITECTURE.md) for the Rust workspace, startup and
+Bambu Live boundaries.
 
 ## Requirements
 
@@ -188,6 +214,7 @@ What `verify` covers:
 - seed catalog, Bambu catalog data, and printer model data contracts
 - Tauri invoke and companion route contract checks
 - UI reachability and architecture checks
+- tracked-file privacy, secret-shape, internal-document, and broken-link checks
 - version consistency checks
 - doctor/runtime checks
 - Rust formatting
@@ -231,11 +258,30 @@ Build only a macOS DMG:
 npm run tauri -- build --bundles dmg
 ```
 
+Validate an ordinary local Apple Silicon DMG after the build:
+
+```bash
+npm run verify:macos-local -- /path/to/Filament\ Manager_0.21.2_aarch64.dmg \
+  --architectures=arm64
+```
+
+This local gate checks DMG integrity and install layout, the exact app version,
+bundle identity, minimum macOS version, architecture, privacy strings,
+entitlements, and a strict ad-hoc Hardened Runtime signature. Disk-image
+creation, mounting, and verification require access to the macOS DiskImages
+service and therefore cannot run inside a restricted build sandbox. The local
+gate does not claim Developer ID signing or notarization; only
+`verify:macos-release` accepts an official release artifact.
+
 On macOS, `npm run tauri` ad-hoc signs ordinary local builds so bundle
-entitlements are applied. Official tagged macOS artifacts are Developer ID
-signed, notarized, stapled, and verified before publication. The public macOS
-contract is Apple Silicon (`arm64`) on macOS 11 Big Sur or newer; Intel and
-universal artifacts are not currently published. See
+entitlements are applied. To avoid Apple File Provider metadata invalidating a
+reused app bundle, a signed local build without an explicit
+`CARGO_TARGET_DIR` writes to the temporary target path printed by the wrapper.
+Set `CARGO_TARGET_DIR` to another non-File-Provider location when a stable
+output path is needed. Official tagged macOS artifacts are Developer ID signed,
+notarized, stapled, and verified before publication. The public macOS contract
+is Apple Silicon (`arm64`) on macOS 11 Big Sur or newer; Intel and universal
+artifacts are not currently published. See
 [macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
 installation and checksum flow.
 
@@ -278,8 +324,10 @@ npm run verify
 
 The release workflow builds installer artifacts from version tags and
 maintainer-approved manual runs. A version tag publishes the GitHub release
-only after the exact commit has passed macOS and Windows CI and both installers
-and both checksum manifests pass verification:
+only after the exact commit has passed macOS and Windows CI, both installers
+and their checksum manifests pass verification, the source dependency SBOM and
+its checksum pass validation, and public releases receive signed installer
+provenance:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: a version tag matching `v*`
@@ -289,6 +337,10 @@ and both checksum manifests pass verification:
     `SHA256SUMS.txt`
   - `filament-manager-windows-msi-<run-id>` with the verified MSI and
     `SHA256SUMS-windows.txt`
+  - `filament-manager-release-sbom-<run-id>` with a validated SPDX 2.3 source
+    dependency SBOM and `SHA256SUMS-sbom.txt`
+  - for public tag releases, `filament-manager-release-provenance-<run-id>`
+    with signed GitHub/Sigstore provenance for both installers
 
 The macOS job fails instead of publishing an ad-hoc fallback when signing,
 notarization, stapling, verification, or checksum generation fails. Release
@@ -297,7 +349,10 @@ likewise fails before upload unless exactly one non-empty MSI
 has the expected product name, normalized release version, and x64 package
 architecture, and its checksum is written successfully. Release assets are
 treated as immutable; a mismatch is investigated rather than silently
-replaced.
+replaced. The SBOM describes source and lockfile dependencies rather than the
+exact binary contents of either installer. See
+[Release Integrity And Supply Chain](docs/SUPPLY_CHAIN.md) for verification and
+scope details.
 
 ## Installers and App Data
 
@@ -325,6 +380,32 @@ Windows:
   default install path.
 - Uninstall removes installed app files but keeps local app data unless that data
   is removed manually.
+
+## Database Safety and Support Diagnostics
+
+Before writing to an existing database at startup, the app performs a read-only
+schema compatibility preflight and SQLite `quick_check`. A database created by
+a newer schema or one that fails the integrity check is stopped rather than
+silently rewritten. An existing unversioned or schema-v1 database receives a
+verified local recovery snapshot before its automatic schema v2 upgrade. The
+same safeguard is used before a full restore and storage migrations that
+replace or merge an existing database; the operation does not continue if its
+snapshot cannot be created and verified.
+
+Portable `filament-manager-backup-v1` exports include `schema_version` and
+`app_version` metadata. Older v1 exports without these fields remain supported,
+while a declared schema version newer than the app supports is rejected before
+the active library is modified. The Backup panel records the time of the latest
+validated full-backup download on the current device. This local activity hint
+does not inspect or upload the saved file and is separate from backup contents.
+
+**Settings → Program maintenance → Application diagnostics** shows app/schema
+version, SQLite quick/FK checks, journal mode, database size, and the local
+database path after an explicit reveal. The downloadable support JSON
+deliberately excludes database contents and the local path, as well as names,
+IP addresses, printer serials, tokens, QR/RFID values, and raw printer
+telemetry. It contains only high-level health metadata and privacy-filtered
+operational events.
 
 ## Catalog Scraping
 

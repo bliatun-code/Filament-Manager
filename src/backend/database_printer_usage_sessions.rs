@@ -3,7 +3,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use super::database_ids::new_id;
 use super::database_result::{InventoryError, InventoryResult};
 
-pub(crate) const LIVE_USAGE_PROVISIONAL_SESSION_KEY: &str = "active-print";
+pub const LIVE_USAGE_PROVISIONAL_SESSION_KEY: &str = "active-print";
 
 pub struct LiveUsageDeltaInput<'a> {
     pub printer_id: &'a str,

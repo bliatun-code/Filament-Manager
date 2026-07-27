@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
@@ -33,6 +34,7 @@ const slotOptionSwatchClassName =
   "h-4.5 w-4.5 shrink-0 rounded";
 const slotSelectorButtonClassName =
   "flex w-full items-center justify-between gap-2 rounded-xl border border-slate-600/70 bg-white/70 px-2.5 py-2 text-left text-sm text-slate-800 outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-transparent dark:bg-slate-900/55 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+const SLOT_OPTION_PAGE_SIZE = 120;
 
 function slotOptionButtonClassName(selected: boolean, selectedExtraClassName = ""): string {
   const base =
@@ -94,9 +96,23 @@ export function PrinterSlotPicker({
   const [selectorHovered, setSelectorHovered] = useState(false);
   const [hoveredTargetSpoolId, setHoveredTargetSpoolId] = useState<string | null>(null);
   const [dropdownPlacement, setDropdownPlacement] = useState<"above" | "below">("below");
+  const [visibleOptionLimit, setVisibleOptionLimit] = useState(SLOT_OPTION_PAGE_SIZE);
   const filteredSlotOptions = isDropdownOpen
     ? filterSlotOptionsBySearch(slotOptions, draft.search)
     : [];
+  useEffect(() => {
+    setVisibleOptionLimit(SLOT_OPTION_PAGE_SIZE);
+  }, [draft.search, isDropdownOpen, slotOptions]);
+  const renderedSlotOptions = filteredSlotOptions.slice(0, visibleOptionLimit);
+  const selectedFilteredOption = draft.targetSpoolId
+    ? filteredSlotOptions.find((row) => row.spool.id === draft.targetSpoolId)
+    : null;
+  if (
+    selectedFilteredOption &&
+    !renderedSlotOptions.some((row) => row.spool.id === selectedFilteredOption.spool.id)
+  ) {
+    renderedSlotOptions.push(selectedFilteredOption);
+  }
   const selectorEmphasis =
     isDropdownOpen
       ? "selected"
@@ -331,7 +347,7 @@ export function PrinterSlotPicker({
                 </span>
               </span>
             </button>
-            {filteredSlotOptions.map((row) => {
+            {renderedSlotOptions.map((row) => {
               const placementLabel = formatPlacementLabel(t, row.spool.location_id);
               const displayTitle = formatFilamentDisplayTitle(
                 row.master.material,
@@ -389,6 +405,19 @@ export function PrinterSlotPicker({
                 </button>
               );
             })}
+            {renderedSlotOptions.length < filteredSlotOptions.length ? (
+              <button
+                type="button"
+                className={`${slotOptionButtonClassName(false, "font-semibold")} justify-center border-dashed py-2`}
+                onClick={() =>
+                  setVisibleOptionLimit((current) => current + SLOT_OPTION_PAGE_SIZE)
+                }
+                disabled={!tauri || busy}
+              >
+                {renderedSlotOptions.length} / {filteredSlotOptions.length}{" "}
+                {t("inventory.showMoreHistory", "Show more")}
+              </button>
+            ) : null}
             {filteredSlotOptions.length === 0 ? (
               <div className="px-1 py-2 text-xs text-slate-500 dark:text-slate-400">
                 {t("inventory.noMatch", "No spools match current filters.")}

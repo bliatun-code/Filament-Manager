@@ -133,9 +133,9 @@ export function useTrustedLanStatusActions({
   ]);
 
   const refreshTrustedLanPairedBrowsers = useCallback(
-    async (options?: RefreshTrustedLanPairedBrowsersOptions) => {
+    async (options?: RefreshTrustedLanPairedBrowsersOptions): Promise<boolean> => {
       if (!tauri || refreshInFlightRef.current) {
-        return;
+        return true;
       }
       refreshInFlightRef.current = true;
       try {
@@ -148,6 +148,7 @@ export function useTrustedLanStatusActions({
         if (options?.announceNewPairing && newActiveIds.length > 0) {
           setInfo(buildTrustedLanLoadMessage("newBrowserPaired", trustedLanLoadMessageLabels()));
         }
+        return true;
       } catch (refreshError) {
         console.error(refreshError);
         if (!options?.suppressErrors) {
@@ -158,6 +159,7 @@ export function useTrustedLanStatusActions({
             ),
           );
         }
+        return false;
       } finally {
         refreshInFlightRef.current = false;
       }

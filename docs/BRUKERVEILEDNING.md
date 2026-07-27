@@ -54,7 +54,7 @@ Velg Vert når én maskin skal være felles lager for flere enheter.
 
 Klient betyr at desktop-appen kobler seg til en Vert.
 
-- Klienten leser bibliotek, lager, utlån, printere og ønskeliste fra verten.
+- Klienten leser bibliotek, lager, utlån, printere og ønskeliste fra verten gjennom en autentisert desktop-paring.
 - Når verten er tilgjengelig og klienten er paret, kan klienten utføre støttede endringer mot verten.
 - Når verten ikke er tilgjengelig, kan klienten vise en lokal cache som lesbar fallback.
 - Klientens lokale database er ikke hovedbiblioteket.
@@ -68,10 +68,15 @@ Webappen er en lokal companion-flate som serveres fra desktop-appen.
 - Den kjøres fra maskinen som har webapp aktivert.
 - Nettlesere pares med kortvarig lenke eller QR.
 - Paret nettleser får en tryggere lokal økt med CSRF-beskyttelse.
+- Å åpne LAN-adressen gir ikke tilgang til lageret: lesing og skriving av bibliotekdata krever en autentisert, paret økt.
 - Webappen er laget for rask bruk på mobil, iPad eller annen verkstedmaskin.
 - Vertsmaskinen kan trekke tilbake nettleserøkter fra innstillingene.
 
 Webappen er nyttig for raske operasjoner ved printeren: sjekke lager, se printerspor, låne ut, returnere, legge til ruller og oppdatere vekt.
+
+Lange lager- og utlånslister vises i håndterlige bolker. Når flere treff
+gjenstår, viser Companion størrelsen på neste bolk og vist/totalt; bruk **Vis
+mer** på nytt for å fortsette gjennom resultatene.
 
 ## Hovedsidene
 
@@ -91,6 +96,16 @@ Den viser blant annet:
 - fremdriftsmål og statusblokker når relevant
 
 Oversikt er ment som en rask temperaturmåling, ikke som stedet for detaljstyring.
+Når biblioteket ennå ikke har ruller, viser lagerhelsen **Ikke nok data** i
+stedet for en misvisende prosent. Bruk **Legg til filament** i panelet for å
+åpne den vanlige registreringsflyten i Lager.
+
+Den avvisbare sjekklisten **Fullfør oppsettet** vises etter at programmet har
+lastet et brukbart bibliotek. Den peker til første rull eller import, valgfritt
+printer- og nettleseroppsett, og første komplette sikkerhetskopi. Fremdriften
+hentes fra biblioteket og denne enhetens historikk for validerte
+sikkerhetskopier. En midlertidig nettverks- eller vertsfeil vises derfor ikke
+som om hele oppsettet mangler.
 
 ### Lager
 
@@ -111,6 +126,15 @@ Her kan du:
 - håndtere ønskeliste og bestillinger
 
 Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuelle ruller og plasseringer. Dette gjør at lageret er lett å skanne uten å miste sporbarhet.
+
+Store filtrerte lager vises trinnvis for å holde visningen responsiv.
+Resultattelleren viser hvor mange ruller som vises av alle treffene; velg **Vis
+mer** for å fortsette. Søk og filtre gjelder fortsatt hele lageret.
+
+Programmet husker kort-/listevisning og om avanserte filtre er åpne på denne
+enheten. Nullstilling av filtre endrer ikke valgt visning. Når du åpner lav
+beholdning fra Oversikt kan listevisning brukes midlertidig uten å erstatte den
+lagrede innstillingen.
 
 Slik lager du en etikett for én rull:
 
@@ -244,6 +268,7 @@ Innstillinger er delt i flere områder.
 Generelt:
 
 - programversjon
+- manuell sjekk etter oppdateringer
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
@@ -254,6 +279,15 @@ forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
 for hver flate, og engelsk brukes som fallback ved behov. Korrigeringer til
 community-oversettelsene kan foreslås via issues eller pull requests på GitHub.
+
+Velg **Se etter oppdateringer** når du vil sammenligne installert versjon med
+siste publiserte GitHub-release. Sjekken skjer ikke automatisk. Hvis
+utgivelsesinformasjonen ikke kan nås, melder Innstillinger fra om dette uten å
+endre programmet. Når en nyere release finnes, åpner **Vis utgivelsen** den
+faste releasesiden for Filament Manager; nedlasting og installasjon er fortsatt
+uttrykkelige, manuelle valg.
+Innstillinger husker også sist brukte fane på denne enheten, mens direkte
+snarveier fra Oversikt fremdeles åpner riktig fane.
 
 Slik lager du etikettark for rullene som er på lager:
 
@@ -299,6 +333,21 @@ Programvedlikehold:
 - import/eksport
 - reset/vedlikeholdsfunksjoner
 - validering av data før større flytting mellom roller
+- applikasjons- og databasediagnostikk
+- personvernfiltrert support-JSON
+
+Åpne **Innstillinger → Programvedlikehold → Applikasjonsdiagnostikk** for å se
+app- og databaseskjemaversjon, SQLite `quick_check`, fremmednøkkelkontroll,
+journalmodus, databasestørrelse og den lokale databasebanen etter at du
+uttrykkelig viser den. Bruk **Last ned
+sanitert supportfil** når du trenger en kompakt JSON-fil til feilsøking.
+
+Supportfilen inneholder ikke databaseinnhold eller lokal databasebane. Den
+utelater også navn, IP-adresser, printerserienumre, tokens, QR-/RFID-verdier og
+rå printertelemetri. Den inneholder bare overordnet helsestatus og
+personvernfiltrerte driftshendelser. Dette er noe annet enn en full
+sikkerhetskopi, som inneholder private bibliotekdata og ikke bør deles som
+diagnostikk.
 
 ## Legg til filament
 
@@ -371,10 +420,12 @@ Statusene brukes slik:
 
 Du kan legge gjeldende katalogvalg i ønskelisten fra Legg til filament. Når varen senere faktisk skal inn i lageret, registrerer du den som en fysisk rull med riktig vekt og plassering. Ønskelisten er planlegging og innkjøpsoppfølging; lageret er beholdningen du faktisk kan bruke.
 
-Bruk statusfanene for å avgrense køen, søkefeltet for å finne et planlagt kjøp
-etter navn, farge eller leverandør, og **Lagerfør rull nå** når en bestilt vare
-kommer. **Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en
-lagerrull.
+Bruk statusfanene for å avgrense køen og søkefeltet for å finne et planlagt kjøp
+etter navn, farge eller leverandør. Når en bestilling kommer, velger du hvor mange
+ruller som ble mottatt og trykker **Lagerfør rull nå**. Programmet oppretter
+akkurat dette antallet fysiske ruller, reduserer gjenstående antall og markerer
+ønskelisteraden som Mottatt først når ingenting gjenstår. **Fjern** sletter bare
+ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
 
 ### Mangler filamentet?
 
@@ -643,6 +694,51 @@ Sletting av rull er normalt en myk sletting fra aktiv visning, slik at historikk
 ## Backup og flytting
 
 Bruk Programvedlikehold for sikkerhetskopi, import og reset.
+
+Sikkerhetskopipanelet viser når denne enheten sist fullførte en validert
+nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
+aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
+blir ikke med i den flyttbare sikkerhetskopien.
+
+Den lokale databasen bruker skjemaversjon 2. Før appen skriver til en eksisterende
+database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
+av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
+ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
+varsel.
+
+Før en eksisterende database uten registrert skjemaversjon eller med skjema v1
+oppgraderes automatisk til skjema v2, oppretter og verifiserer appen en lokal
+gjenopprettingskopi. En verifisert kopi opprettes også før full gjenoppretting
+og før lagringsmigreringer som erstatter eller slår sammen en eksisterende
+database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter ikke
+oppgraderingen, gjenopprettingen eller migreringen.
+
+Fullstendige JSON-sikkerhetskopier er laget for å kunne flyttes. De tar med
+bibliotekdata som lager, historikk, katalogdata og printerprofiler, men utelater
+maskinlokale tilgangsopplysninger og paringstilstand. Bambu Live-tilkobling,
+lokale nettverksinnstillinger, desktop-klientøkter og Companion-/nettleserparinger
+må konfigureres eller pares på nytt på målmaskinen. Importen ignorerer også
+maskinlokale tilgangsopplysninger eller paringer i eldre sikkerhetskopier.
+Filen inneholder fortsatt lagerdata, QR-/RFID-referanser og utlånsdetaljer, så
+behandle den som private data selv om den ikke inneholder brukbare
+enhetslegitimasjoner.
+
+Det flyttbare formatet heter fortsatt `filament-manager-backup-v1` og registrerer
+versjonen til appen og databaseskjemaet som eksporterte filen. Eldre v1-backuper
+uten denne metadataen kan fortsatt importeres. Hvis en backup uttrykkelig oppgir
+en skjemaversjon som er nyere enn den installerte appen støtter, stopper
+validering og import før det aktive biblioteket endres. Den registrerte
+appversjonen er til informasjon og blokkerer ikke i seg selv en kompatibel
+gjenoppretting.
+
+Når du velger en gyldig full sikkerhetskopi, ber appen om bekreftelse fordi
+gjenopprettingen erstatter det aktive biblioteket. Den verifiserte
+gjenopprettingskopien som er beskrevet ovenfor, lagres ved siden av den aktive
+databasen.
+
+I motsetning til den flyttbare eksporten er gjenopprettingskopien en lokal kopi
+av hele databasen før gjenoppretting og kan inneholde maskinens
+tilgangsopplysninger og paringer. Hold appdatamappen privat.
 
 Ved bytte mellom Vert, Klient og Kun lokal bør du tenke gjennom hvem som skal eie biblioteket. En full backup fra gammel vert er den tryggeste måten å flytte bibliotekets historikk til en ny vert.
 

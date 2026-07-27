@@ -3,14 +3,15 @@ use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveObservedTrayRow, FilamentDatabase,
     FilamentMasterCatalogRow, PrinterOverviewRow, SpoolHistoryEventRow, SpoolLoanDetailsRow,
     SpoolLoanRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
+    WishlistReceiptResult,
 };
 use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
-    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
-    UpdateWishlistStatusInput, WeightSource,
+    ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
+    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
+    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
@@ -225,6 +226,13 @@ impl CompanionService {
         input: UpdateWishlistStatusInput,
     ) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.update_wishlist_item_status(input))
+    }
+
+    pub fn receive_wishlist_item(
+        &self,
+        input: ReceiveWishlistItemInput,
+    ) -> InventoryResult<WishlistReceiptResult> {
+        self.with_inventory(|engine| engine.receive_wishlist_item(input))
     }
 
     pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {

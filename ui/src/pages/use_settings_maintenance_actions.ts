@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction } from "react";
+import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache";
 import { toErrorMessage } from "../lib/error_text";
 import {
   resetAppData,
@@ -62,6 +63,7 @@ export function useSettingsMaintenanceActions({
     setInfo(null);
     try {
       await resetAppData();
+      clearDashboardPageSnapshot();
       setLastCatalogReset(null);
       await reloadSettings();
       setInfo(buildSettingsAppResetSuccessMessage(settingsMaintenanceResetMessageLabels()));

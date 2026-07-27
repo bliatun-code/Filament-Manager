@@ -4,8 +4,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use super::database_result::{InventoryError, InventoryResult};
-use super::database_tables::FULL_BACKUP_TABLES;
-use super::database_values::sqlite_value_to_json;
+use super::database_schema::{
+    ensure_database_quick_check, ensure_no_foreign_key_violations, table_columns,
+    CURRENT_SCHEMA_VERSION,
+};
+use super::database_tables::{
+    is_required_full_backup_table, portable_backup_row, FULL_BACKUP_TABLES,
+};
+use super::database_values::{json_value_to_sql, sqlite_value_to_json};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BackupValidationStats {
@@ -19,6 +25,7 @@ pub struct BackupValidationStats {
 
 pub(crate) struct ParsedFullBackup {
     pub format: String,
+    pub schema_version: Option<i64>,
     pub tables: BTreeMap<String, Vec<Map<String, Value>>>,
 }
 
@@ -41,6 +48,9 @@ pub(crate) fn parse_full_backup_content(content: &str) -> InventoryResult<Parsed
             "Unsupported backup format: {format}"
         )));
     }
+
+    let schema_version = optional_schema_version(root)?;
+    validate_optional_app_version(root)?;
 
     let raw_tables = root
         .get("tables")
@@ -66,14 +76,45 @@ pub(crate) fn parse_full_backup_content(content: &str) -> InventoryResult<Parsed
 
     Ok(ParsedFullBackup {
         format: format.to_string(),
+        schema_version,
         tables,
     })
 }
 
+fn optional_schema_version(root: &Map<String, Value>) -> InventoryResult<Option<i64>> {
+    let Some(value) = root.get("schema_version") else {
+        return Ok(None);
+    };
+    let version = value.as_i64().ok_or_else(|| {
+        InventoryError::Db("Backup schema_version must be an integer".to_string())
+    })?;
+    if version < 0 {
+        return Err(InventoryError::Db(
+            "Backup schema_version cannot be negative".to_string(),
+        ));
+    }
+    Ok(Some(version))
+}
+
+fn validate_optional_app_version(root: &Map<String, Value>) -> InventoryResult<()> {
+    let Some(value) = root.get("app_version") else {
+        return Ok(());
+    };
+    if value.is_string() {
+        return Ok(());
+    }
+    Err(InventoryError::Db(
+        "Backup app_version must be a string".to_string(),
+    ))
+}
+
 pub(crate) fn validate_full_backup_content(
     content: &str,
+    schema_sql: &str,
 ) -> InventoryResult<BackupValidationStats> {
     let parsed = parse_full_backup_content(content)?;
+    ensure_full_backup_is_safe_to_import(&parsed)?;
+    ensure_full_backup_rows_are_importable(&parsed, schema_sql)?;
     let table_entries: Vec<(&str, &Vec<Map<String, Value>>)> = parsed
         .tables
         .iter()
@@ -115,21 +156,154 @@ pub(crate) fn validate_full_backup_content(
     })
 }
 
+pub(crate) fn ensure_full_backup_rows_are_importable(
+    parsed: &ParsedFullBackup,
+    schema_sql: &str,
+) -> InventoryResult<()> {
+    let scratch = rusqlite::Connection::open_in_memory()?;
+    scratch.execute_batch(schema_sql)?;
+    scratch.execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
+
+    let result = (|| {
+        insert_portable_full_backup_rows(&scratch, parsed)?;
+        ensure_no_foreign_key_violations(&scratch, "Full backup preflight")?;
+        ensure_database_quick_check(&scratch)
+    })();
+
+    let rollback_result = scratch.execute_batch("ROLLBACK; PRAGMA foreign_keys = ON;");
+    match result {
+        Err(error) => Err(error),
+        Ok(()) => {
+            rollback_result?;
+            Ok(())
+        }
+    }
+}
+
+pub(crate) fn insert_portable_full_backup_rows(
+    conn: &rusqlite::Connection,
+    parsed: &ParsedFullBackup,
+) -> InventoryResult<()> {
+    for table in FULL_BACKUP_TABLES {
+        let Some(rows) = parsed.tables.get(table) else {
+            continue;
+        };
+        let allowed_columns = table_columns(conn, table)?;
+
+        for (row_index, row) in rows.iter().enumerate() {
+            if !full_backup_table_is_entirely_local(table)
+                && !row.keys().any(|column| allowed_columns.contains(column))
+            {
+                return Err(unrecognized_backup_row_error(table, row_index));
+            }
+
+            let Some(row) = portable_backup_row(table, row.clone()) else {
+                continue;
+            };
+            insert_portable_backup_row(conn, table, row_index, &row, &allowed_columns)?;
+        }
+    }
+    Ok(())
+}
+
+fn insert_portable_backup_row(
+    conn: &rusqlite::Connection,
+    table: &str,
+    row_index: usize,
+    row: &Map<String, Value>,
+    allowed_columns: &HashSet<String>,
+) -> InventoryResult<()> {
+    let columns: Vec<String> = row
+        .keys()
+        .filter(|column| allowed_columns.contains(*column))
+        .cloned()
+        .collect();
+    if columns.is_empty() {
+        return Err(unrecognized_backup_row_error(table, row_index));
+    }
+
+    let placeholders = vec!["?"; columns.len()].join(", ");
+    let sql = format!(
+        "INSERT INTO {table} ({}) VALUES ({})",
+        columns.join(", "),
+        placeholders
+    );
+    let values: Vec<rusqlite::types::Value> = columns
+        .iter()
+        .map(|column| json_value_to_sql(row.get(column).unwrap_or(&Value::Null)))
+        .collect();
+    conn.execute(&sql, rusqlite::params_from_iter(values.iter()))?;
+    Ok(())
+}
+
+fn full_backup_table_is_entirely_local(table: &str) -> bool {
+    matches!(
+        table,
+        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue"
+    )
+}
+
+fn unrecognized_backup_row_error(table: &str, row_index: usize) -> InventoryError {
+    InventoryError::Db(format!(
+        "Backup row {} for `{table}` contains no recognized importable columns",
+        row_index + 1
+    ))
+}
+
+pub(crate) fn ensure_full_backup_is_safe_to_import(
+    parsed: &ParsedFullBackup,
+) -> InventoryResult<()> {
+    if let Some(schema_version) = parsed.schema_version {
+        if schema_version > CURRENT_SCHEMA_VERSION {
+            return Err(InventoryError::Db(format!(
+                "Backup schema version {schema_version} is newer than the supported schema version {CURRENT_SCHEMA_VERSION}"
+            )));
+        }
+    }
+
+    let missing_required_tables: Vec<&str> = FULL_BACKUP_TABLES
+        .iter()
+        .copied()
+        .filter(|table| is_required_full_backup_table(table))
+        .filter(|table| !parsed.tables.contains_key(*table))
+        .collect();
+
+    if missing_required_tables.is_empty() {
+        return Ok(());
+    }
+
+    Err(InventoryError::Db(format!(
+        "Backup is incomplete and cannot be imported safely. Missing required tables: {}",
+        missing_required_tables.join(", ")
+    )))
+}
+
 pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> InventoryResult<String> {
-    let exported_at: String = conn.query_row("SELECT datetime('now')", [], |row| row.get(0))?;
+    let transaction = conn.unchecked_transaction()?;
+    let exported_at: String =
+        transaction.query_row("SELECT datetime('now')", [], |row| row.get(0))?;
 
     let mut tables = Map::new();
     for table in FULL_BACKUP_TABLES {
         tables.insert(
             table.to_string(),
-            Value::Array(export_table_rows(conn, table)?),
+            Value::Array(export_table_rows(&transaction, table)?),
         );
     }
+    transaction.commit()?;
 
     let mut root = Map::new();
     root.insert(
         "format".to_string(),
         Value::String("filament-manager-backup-v1".to_string()),
+    );
+    root.insert(
+        "schema_version".to_string(),
+        Value::Number(CURRENT_SCHEMA_VERSION.into()),
+    );
+    root.insert(
+        "app_version".to_string(),
+        Value::String(env!("CARGO_PKG_VERSION").to_string()),
     );
     root.insert("exported_at".to_string(), Value::String(exported_at));
     root.insert("tables".to_string(), Value::Object(tables));
@@ -155,7 +329,9 @@ fn export_table_rows(conn: &rusqlite::Connection, table: &str) -> InventoryResul
             let value = row.get_ref(index)?;
             object.insert(column_name.clone(), sqlite_value_to_json(value));
         }
-        output.push(Value::Object(object));
+        if let Some(object) = portable_backup_row(table, object) {
+            output.push(Value::Object(object));
+        }
     }
     Ok(output)
 }

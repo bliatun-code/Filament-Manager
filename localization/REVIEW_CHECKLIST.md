@@ -1,9 +1,11 @@
 # Localization review checklist
 
 Use this checklist for community corrections or complete native review of any
-registered locale. German and French are currently maintained with named
-review; the other published non-source locales are community-review candidates.
-This checklist supplements the canonical terminology and workflow in
+registered locale. All non-English locales are currently published
+community-review candidates. Norwegian Bokmål, German, and French retain a
+named review record for an earlier source fingerprint and require a renewed
+handoff before maintained status. This checklist supplements the canonical
+terminology and workflow in
 [`docs/LOCALIZATION.md`](../docs/LOCALIZATION.md); it does not replace a named
 reviewer or record approval by itself.
 

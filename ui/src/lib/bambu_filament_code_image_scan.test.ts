@@ -318,6 +318,30 @@ test("createBambuFilamentBarcodeScanner tries fallback when native finds only an
   ]);
 });
 
+test("createBambuFilamentBarcodeScanner reuses and closes its lazy camera fallback", async () => {
+  let closeCount = 0;
+  let factoryCount = 0;
+  const scanner = await createBambuFilamentBarcodeScanner({
+    barcodeDetector: detectorFor([]),
+    fallbackBarcodeScanner: async () => {
+      factoryCount += 1;
+      return {
+        close: () => {
+          closeCount += 1;
+        },
+        detect: async () => [],
+      };
+    },
+  });
+
+  await scanner?.detect({});
+  await scanner?.detect({});
+  scanner?.close?.();
+
+  assert.equal(factoryCount, 1);
+  assert.equal(closeCount, 1);
+});
+
 test("createBambuFilamentBarcodeScanner lets native one dimensional formats win before QR", async () => {
   const calls: string[][] = [];
   const Detector = class {

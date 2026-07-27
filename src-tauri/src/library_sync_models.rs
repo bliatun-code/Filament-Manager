@@ -1,5 +1,6 @@
 use crate::backend::filament_database::{
-    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    LibraryDomainRevisions, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
+    WishlistItemRow,
 };
 use crate::backend::statistics::InventoryOverview;
 use crate::optional_update::OptionalUpdate;
@@ -26,6 +27,11 @@ pub(crate) struct LibrarySyncSpoolListInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) limit: Option<i64>,
     pub(crate) offset: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct SaveLibrarySyncSpoolCacheInput {
+    pub(crate) rows: Vec<SpoolWithMasterRow>,
 }
 
 #[derive(Deserialize)]
@@ -177,6 +183,13 @@ pub(crate) struct LibrarySyncFullBackupResponse {
     pub(crate) content: String,
 }
 
+#[derive(Serialize, Deserialize)]
+pub(crate) struct LibrarySyncDomainRevisionsResponse {
+    pub(crate) library_id: String,
+    #[serde(flatten)]
+    pub(crate) revisions: LibraryDomainRevisions,
+}
+
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncCreateSpoolInput {
     pub(crate) base_url: String,
@@ -214,6 +227,14 @@ pub(crate) struct LibrarySyncUpdateWishlistStatusInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) item_id: String,
     pub(crate) status: String,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncReceiveWishlistItemInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) item_id: String,
+    pub(crate) quantity: i64,
 }
 
 #[derive(Deserialize)]

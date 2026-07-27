@@ -163,6 +163,8 @@ version = "0.21.2"
 dependencies = [
  "axum",
  "base64 0.22.1",
+ "filament-manager-core",
+ "flate2",
  "if-addrs",
  "native-tls",
  "objc2",
@@ -173,6 +175,7 @@ dependencies = [
  "rand",
  "reqwest",
  "rusqlite",
+ "semver",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -943,6 +946,18 @@ checksum = "38e2275cc4e4fc009b0669731a1e5ab7ebf11f469eaede2bab9309a5b4d6057f"
 dependencies = [
  "memoffset",
  "rustc_version",
+]
+
+[[package]]
+name = "filament-manager-core"
+version = "0.1.0"
+dependencies = [
+ "rand",
+ "reqwest",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "time",
 ]
 
 [[package]]

@@ -76,7 +76,7 @@ export function createCompanionWishlistMutations({
     }
   }
 
-  async function submitWishlistStock(itemIdValue) {
+  async function submitWishlistStock(itemIdValue, quantityValue = "1") {
     const itemId = String(itemIdValue || "").trim();
     const item = Array.isArray(state.wishlistItems)
       ? state.wishlistItems.find((row) => String(row?.id || "").trim() === itemId)
@@ -86,34 +86,26 @@ export function createCompanionWishlistMutations({
       render();
       return;
     }
-
-    const linkedMaster = item.master_id
-      ? (Array.isArray(state.catalogMasters)
-          ? state.catalogMasters.find((master) => master?.id === item.master_id)
-          : null)
-      : null;
+    const quantity = Number.parseInt(String(quantityValue || "").trim(), 10);
+    const remainingQuantity = Math.max(0, Number.parseInt(String(item.quantity || "0"), 10) || 0);
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > remainingQuantity) {
+      setStatus(tr("status.wishlistStockFailed", "Failed to stock spool from wishlist."), "error");
+      render();
+      return;
+    }
 
     setBusy(true);
     setStatus(tr("status.wishlistStocking", "Adding wishlist spool to inventory..."), "default");
     try {
-      const payload = await postJson("/api/v1/spools/owned", linkedMaster
-        ? {
-            master_id: linkedMaster.id,
-            initial_weight_g: linkedMaster.default_weight,
-          }
-        : {
-            material: item.material,
-            filament_name: item.filament_name,
-            color_name: item.color_name,
-            vendor: item.vendor,
-            initial_weight_g: 1000,
-            hex_color: null,
-          });
-      const spoolId = String(payload?.spool_id || "").trim();
-      await postJson(`/api/v1/wishlist/${encodeURIComponent(item.id)}/status`, {
-        status: "RECEIVED",
+      const payload = await postJson(`/api/v1/wishlist/${encodeURIComponent(item.id)}/receive`, {
+        quantity,
       });
-      state.activeTaskSheet = null;
+      const spoolId = Array.isArray(payload?.spool_ids)
+        ? String(payload.spool_ids[0] || "").trim()
+        : "";
+      if (Number(payload?.remaining_quantity) === 0) {
+        state.activeTaskSheet = null;
+      }
       await refreshOverview();
       if (spoolId) {
         state.selectedSpoolId = spoolId;

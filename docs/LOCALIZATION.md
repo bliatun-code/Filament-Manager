@@ -1,11 +1,12 @@
 # Localization workflow
 
-English is the canonical source language. Norwegian Bokmål, German, and French
-are maintained with named review. Seventeen additional complete catalogs are
-published as community-review candidates, so the desktop app and Companion
-currently offer 21 languages in the same compact selector. English remains the
-runtime fallback. Generated pseudo-locales are QA tools and must never appear as
-user choices.
+English is the canonical source language. All 20 non-English catalogs are
+complete and published as community-review candidates, so the desktop app and
+Companion currently offer 21 languages in the same compact selector. Norwegian
+Bokmål, German, and French retain their prior named-review record, but must be
+reviewed against the current source fingerprint before returning to maintained
+status. English remains the runtime fallback. Generated pseudo-locales are QA
+tools and must never appear as user choices.
 
 `catalogKind`, `selectable`, and `releaseStatus` describe different concerns:
 
@@ -16,11 +17,9 @@ user choices.
 - `releaseStatus: "maintained"` records named native review against a specific
   English source fingerprint.
 
-The currently published community-review candidates are Spanish, Brazilian
-Portuguese, Italian, Polish, Dutch, Czech, Simplified Chinese, Traditional
-Chinese, Japanese, Korean, Turkish, Ukrainian, Russian, Hungarian, Swedish,
-Danish, and Finnish. Their catalogs and automated visual QA are complete, but
-availability must not be described as named native approval.
+All non-English locales are currently published community-review candidates.
+Their catalogs and automated visual QA are complete, but availability must not
+be described as named native approval against the current source fingerprint.
 
 ## Canonical terminology
 
@@ -100,9 +99,10 @@ copying the new value without native review.
 
 Every locale marked `maintained` must have one named native reviewer or
 maintainer in `localization/locale-status.json`. Norwegian Bokmål, German, and
-French currently have named review. A locale without an owner can be selectable
-as a clearly described community-review candidate, but is not eligible for
-`maintained` status.
+French retain a named review of an earlier source fingerprint and are candidates
+until that handoff is repeated for the current catalog. A locale without an
+owner can be selectable as a clearly described community-review candidate, but
+is not eligible for `maintained` status.
 
 A maintained locale becomes stale whenever its reviewed source fingerprint no
 longer matches the combined English desktop and Companion catalogs. Stale
@@ -118,9 +118,9 @@ development, but must not ship as fully supported. Release readiness requires:
 
 ## Collaboration model
 
-GitHub pull requests are sufficient for the current maintained locales because
-the catalogs are code-reviewed, the reviewer group is small, and automated
-contracts already run in CI. Reconsider a translation platform if contributor
+GitHub pull requests are sufficient for the current review workflow because the
+catalogs are code-reviewed, the reviewer group is small, and automated contracts
+already run in CI. Reconsider a translation platform if contributor
 volume, review latency, plural/context discussions, or stale catalog
 coordination becomes difficult. Do not add a platform merely to export the same
 files through another system.
@@ -128,11 +128,11 @@ files through another system.
 ## Reviewer handoff
 
 Use [`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md) for
-both focused community corrections and a complete native review. German and
-French were approved against the maintained source fingerprint; repeat the
-handoff whenever English changes make a maintained catalog stale. Community
-review candidates remain selectable while retaining their review-candidate
-status and English fallback contract.
+both focused community corrections and a complete native review. Norwegian
+Bokmål, German, and French retain their previous reviewed fingerprint; repeat
+the handoff before promoting them against the current source. Community review
+candidates remain selectable while retaining their review-candidate status and
+English fallback contract.
 
 The complete English user guide is the documented fallback for languages that
 do not yet have a reviewed locale-specific guide. Translated guides follow real

@@ -2,9 +2,13 @@
 
 mod app_error;
 mod app_services;
-mod backend;
+mod app_storage;
 mod bambu_live;
+mod bambu_live_matching;
+mod bambu_live_observation;
+mod bambu_live_persistence;
 mod bambu_live_sync;
+mod bambu_live_usage;
 mod bambu_mqtt;
 mod bambu_thermal;
 mod catalog_commands;
@@ -29,6 +33,7 @@ mod inventory_read_commands;
 mod inventory_stats_commands;
 mod inventory_update_commands;
 mod inventory_wishlist_commands;
+mod library_revision_commands;
 mod library_sync_cache_commands;
 mod library_sync_cache_refresh;
 mod library_sync_command_support;
@@ -55,7 +60,9 @@ mod printer_read_commands;
 mod printer_settings_commands;
 mod printer_slot_write_commands;
 mod printer_usage_commands;
+mod release_update_commands;
 mod security;
+mod sqlite_recovery;
 mod state;
 mod trusted_lan_browser_read_commands;
 mod trusted_lan_browser_revoke_all_commands;
@@ -68,68 +75,36 @@ mod trusted_lan_pairing_commands;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
 
-use backend::database_tables::FULL_BACKUP_TABLES;
 use backend::filament_database::FilamentDatabase;
 use backend::inventory_engine::InventoryEngine;
 use backend::statistics::StatisticsEngine;
+use filament_manager_core::backend;
 #[cfg(target_os = "macos")]
 use objc2::{AnyThread, MainThreadMarker};
+#[cfg(all(target_os = "macos", debug_assertions))]
+use objc2_app_kit::NSWindow;
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{NSApp, NSImage};
 #[cfg(target_os = "macos")]
 use objc2_foundation::NSData;
-#[cfg(any(target_os = "windows", test))]
-use rusqlite::OptionalExtension;
 use state::AppState;
 #[cfg(target_os = "macos")]
 use std::ffi::c_void;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 
-pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
-pub(crate) const APP_DB_PATH_ENV_VAR: &str = "FILAMENT_MANAGER_DB_PATH";
+#[cfg(test)]
+use app_storage::*;
+
 #[cfg(debug_assertions)]
 const VISUAL_QA_SCENARIO_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 #[cfg(debug_assertions)]
 const VISUAL_QA_LOCALE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 #[cfg(debug_assertions)]
 const VISUAL_QA_THEME_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_THEME";
-pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
-pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
-pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
-const AUTO_GENERATED_LIBRARY_ID_SETTING_KEY: &str = "library_sync_library_id";
-#[cfg(any(target_os = "windows", test))]
-const WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY: &str = "windows_split_brain_merge_v1";
-#[cfg(any(target_os = "windows", test))]
-const WINDOWS_SPLIT_BRAIN_MERGE_MARKER_VALUE: &str = "complete";
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum DatabaseUserDataState {
-    DomainData,
-    AncillaryData,
-    NoData,
-    Unreadable,
-}
-
-struct AppStorageResolution {
-    app_dir: PathBuf,
-    #[cfg(any(target_os = "windows", test))]
-    windows_split_brain_source: Option<PathBuf>,
-}
-
-#[cfg(any(target_os = "windows", test))]
-#[derive(Debug)]
-struct DatabaseMergePreflight {
-    needs_merge: bool,
-    conflict: Option<String>,
-}
-
-#[cfg(any(target_os = "windows", test))]
-struct DatabaseTableMergeSchema {
-    columns: Vec<String>,
-    primary_key_indices: Vec<usize>,
-}
+#[cfg(all(debug_assertions, target_os = "macos"))]
+const VISUAL_QA_WINDOW_SIZE_ENV_VAR: &str = "FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE";
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+const VISUAL_QA_WINDOW_EDGE_INSET: f64 = 24.0;
 
 #[cfg(target_os = "macos")]
 const DOCK_ICON_LIGHT_BYTES: &[u8] = include_bytes!("../icons/dock-light.png");
@@ -161,6 +136,45 @@ fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
     Ok(app.package_info().version.to_string())
 }
 
+#[cfg(debug_assertions)]
+fn normalize_desktop_visual_qa_readiness_token(value: &str) -> Option<&'static str> {
+    match value.trim() {
+        "printer-live-telemetry" => Some("printer-live-telemetry"),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+fn signal_desktop_visual_qa_readiness(token: String) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        let token = normalize_desktop_visual_qa_readiness_token(&token)
+            .ok_or_else(|| "Unknown desktop visual QA readiness token".to_string())?;
+        eprintln!("FILAMENT_MANAGER_VISUAL_QA_READY:{token}");
+        Ok(())
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = token;
+        Err("Desktop visual QA readiness is unavailable in release builds".to_string())
+    }
+}
+
+#[tauri::command]
+fn prepare_desktop_visual_qa_window(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(debug_assertions)]
+    {
+        apply_visual_qa_window_size(&app)
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = app;
+        Err("Desktop visual QA window preparation is unavailable in release builds".to_string())
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn apply_macos_dock_icon(app: &tauri::AppHandle, icon_bytes: &'static [u8]) -> Result<(), String> {
     let (sender, receiver) = std::sync::mpsc::channel::<Result<(), String>>();
@@ -190,7 +204,19 @@ fn apply_macos_dock_icon(app: &tauri::AppHandle, icon_bytes: &'static [u8]) -> R
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            let db_path = ensure_db(app)?;
+            if let Ok(log_dir) = app.path().app_log_dir() {
+                if let Err(error) = app_error::operational_log::initialize_operational_log(&log_dir)
+                {
+                    eprintln!("Operational log unavailable: {error}");
+                }
+            }
+            let db_path = app_storage::ensure_db(app).inspect_err(|_| {
+                let _ = app_error::operational_log::record_operational_event(
+                    app_error::operational_log::OperationalLogLevel::Error,
+                    app_error::operational_log::OperationalLogContext::DatabaseStartupFailure,
+                    None,
+                );
+            })?;
             let trusted_lan_runtime = trusted_lan_runtime_commands::load_trusted_lan_runtime(
                 db_path.to_string_lossy().as_ref(),
             )?;
@@ -200,6 +226,9 @@ fn main() {
                 companion,
             };
             app.manage(state.clone());
+
+            #[cfg(debug_assertions)]
+            apply_visual_qa_window_size(app.handle())?;
 
             #[cfg(debug_assertions)]
             apply_visual_qa_scenario_url(app)?;
@@ -245,7 +274,13 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
+            signal_desktop_visual_qa_readiness,
+            prepare_desktop_visual_qa_window,
+            app_error::application_diagnostics::get_application_diagnostics,
+            app_error::application_diagnostics::get_sanitized_support_bundle_json,
             library_sync_settings_commands::get_library_sync_settings,
+            library_revision_commands::get_library_domain_revisions,
+            library_revision_commands::fetch_library_sync_domain_revisions,
             library_sync_settings_commands::save_library_sync_settings,
             library_sync_validation_commands::validate_library_sync_host,
             library_sync_snapshot_commands::fetch_library_sync_snapshot,
@@ -255,6 +290,7 @@ fn main() {
             library_sync_read_commands::fetch_library_sync_wishlist_items,
             library_sync_read_commands::fetch_library_sync_full_backup_json,
             library_sync_cache_commands::fetch_cached_library_sync_spools,
+            library_sync_cache_commands::save_library_sync_spool_cache,
             library_sync_read_commands::fetch_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_printer_settings,
             library_sync_cache_commands::fetch_cached_library_sync_printer_overview,
@@ -271,6 +307,7 @@ fn main() {
             library_sync_printer_write_commands::update_library_sync_host_master_catalog_entry,
             library_sync_printer_write_commands::refresh_library_sync_host_vendor_catalog,
             library_sync_wishlist_write_commands::update_library_sync_host_wishlist_item_status,
+            library_sync_wishlist_write_commands::receive_library_sync_host_wishlist_item,
             library_sync_wishlist_write_commands::delete_library_sync_host_wishlist_item,
             library_sync_danger_zone_commands::delete_library_sync_host_spool,
             library_sync_printer_write_commands::delete_library_sync_host_printer,
@@ -302,6 +339,7 @@ fn main() {
             inventory_loan_commands::list_loan_usage_by_person,
             inventory_loan_commands::list_spool_loans,
             inventory_wishlist_commands::update_wishlist_item_status,
+            inventory_wishlist_commands::receive_wishlist_item,
             inventory_wishlist_commands::delete_wishlist_item,
             inventory_loan_commands::lend_spool,
             inventory_loan_commands::return_spool_loan,
@@ -323,6 +361,7 @@ fn main() {
             document_commands::export_inventory_label_sheet_pdf,
             document_commands::export_label_png,
             external_url_commands::open_external_url,
+            release_update_commands::check_for_app_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -332,6 +371,7 @@ fn main() {
 fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
     match value.trim().to_ascii_lowercase().as_str() {
         "dashboard-overview" | "dashboard" => Some("dashboard-overview"),
+        "dashboard-onboarding" | "onboarding" | "getting-started" => Some("dashboard-onboarding"),
         "inventory-overview" | "inventory" => Some("inventory-overview"),
         "add-filament" | "inventory-add" => Some("add-filament"),
         "wishlist-queue" | "inventory-wishlist" | "wishlist-orders" | "order-queue" => {
@@ -356,6 +396,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "borrowed-in-hand-back"
         | "hand-back-borrowed-in" => Some("return-inbound-loan"),
         "printer-board" | "printers" => Some("printer-board"),
+        "printer-overview" | "printers-static" | "printer-summary" => Some("printer-overview"),
         "add-printer" | "printer-add" | "add-printer-modal" => Some("add-printer"),
         "printer-slot-assignment" | "printer-slot-dropdown" | "slot-assignment" => {
             Some("printer-slot-assignment")
@@ -376,6 +417,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
+        "settings-updates" | "update-check" | "settings-update-check" => Some("settings-updates"),
         "settings-inventory-label-sheet" | "inventory-label-sheet" | "settings-label-sheet" => {
             Some("settings-inventory-label-sheet")
         }
@@ -431,6 +473,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "missing-swatches" => Some("settings-catalog-swatch-review"),
         "settings-maintenance" | "maintenance-settings" | "program-maintenance" => {
             Some("settings-maintenance")
+        }
+        "settings-application-diagnostics" | "settings-diagnostics" | "application-diagnostics" => {
+            Some("settings-application-diagnostics")
         }
         "statistics-overview" | "statistics" | "usage-statistics" | "print-statistics" => {
             Some("statistics-overview")
@@ -508,6 +553,95 @@ fn visual_qa_theme_from_env() -> Option<&'static str> {
     normalize_visual_qa_theme(&value)
 }
 
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+fn normalize_visual_qa_window_size(value: &str) -> Option<(f64, f64)> {
+    let normalized = value.trim().to_ascii_lowercase().replace('×', "x");
+    let (width, height) = normalized.split_once('x')?;
+    let width = width.trim().parse::<u32>().ok()?;
+    let height = height.trim().parse::<u32>().ok()?;
+    if !(320..=8192).contains(&width) || !(320..=8192).contains(&height) {
+        return None;
+    }
+    Some((f64::from(width), f64::from(height)))
+}
+
+#[cfg(any(test, all(debug_assertions, target_os = "macos")))]
+fn visual_qa_window_origin(
+    visible_x: f64,
+    visible_y: f64,
+    visible_width: f64,
+    visible_height: f64,
+    window_width: f64,
+    window_height: f64,
+) -> Option<(f64, f64)> {
+    let values = [
+        visible_x,
+        visible_y,
+        visible_width,
+        visible_height,
+        window_width,
+        window_height,
+    ];
+    if values.iter().any(|value| !value.is_finite())
+        || visible_width <= 0.0
+        || visible_height <= 0.0
+        || window_width <= 0.0
+        || window_height <= 0.0
+        || window_width > visible_width
+        || window_height > visible_height
+    {
+        return None;
+    }
+
+    let horizontal_inset =
+        ((visible_width - window_width) / 2.0).clamp(0.0, VISUAL_QA_WINDOW_EDGE_INSET);
+    let vertical_inset =
+        ((visible_height - window_height) / 2.0).clamp(0.0, VISUAL_QA_WINDOW_EDGE_INSET);
+    Some((
+        visible_x + horizontal_inset,
+        visible_y + visible_height - window_height - vertical_inset,
+    ))
+}
+
+#[cfg(all(debug_assertions, target_os = "macos"))]
+fn apply_visual_qa_window_size(app: &tauri::AppHandle) -> Result<(), String> {
+    let Some(raw_size) = std::env::var(VISUAL_QA_WINDOW_SIZE_ENV_VAR).ok() else {
+        return Ok(());
+    };
+    let (width, height) = normalize_visual_qa_window_size(&raw_size)
+        .ok_or_else(|| "Invalid desktop visual QA window size".to_string())?;
+    let Some(window) = app.get_webview_window("main") else {
+        return Err("Desktop visual QA main window is unavailable".to_string());
+    };
+    let raw_window = window.ns_window().map_err(|error| error.to_string())?;
+    let native_window: &NSWindow = unsafe { &*raw_window.cast() };
+    let screen = native_window
+        .screen()
+        .ok_or_else(|| "Desktop visual QA window is not attached to a screen".to_string())?;
+    let visible_frame = screen.visibleFrame();
+    let (origin_x, origin_y) = visual_qa_window_origin(
+        visible_frame.origin.x,
+        visible_frame.origin.y,
+        visible_frame.size.width,
+        visible_frame.size.height,
+        width,
+        height,
+    )
+    .ok_or_else(|| "Desktop visual QA window does not fit on the visible screen".to_string())?;
+    let mut frame = native_window.frame();
+    frame.origin.x = origin_x;
+    frame.origin.y = origin_y;
+    frame.size.width = width;
+    frame.size.height = height;
+    native_window.setFrame_display(frame, true);
+    Ok(())
+}
+
+#[cfg(all(debug_assertions, not(target_os = "macos")))]
+fn apply_visual_qa_window_size(_app: &tauri::AppHandle) -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg(debug_assertions)]
 fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
     let Some(scenario) = visual_qa_scenario_from_env() else {
@@ -525,1035 +659,6 @@ fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
             .append_pair("bfm_visual_qa_theme", theme);
     }
     window.navigate(url).map_err(|error| error.to_string())
-}
-
-fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
-    if let Some(path) = app_db_path_override_from_env() {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
-        }
-        let db = FilamentDatabase::open(&path).map_err(|error| format!("DB open: {error:?}"))?;
-        db.apply_schema()
-            .map_err(|error| format!("DB schema: {error:?}"))?;
-        return Ok(path);
-    }
-
-    prepare_resolved_app_database(resolve_app_storage_dir_for_app(app)?)
-}
-
-fn prepare_resolved_app_database(resolution: AppStorageResolution) -> Result<PathBuf, String> {
-    prepare_app_storage_dir(&resolution.app_dir)?;
-    let db_path = resolution.app_dir.join(APP_DB_FILE_NAME);
-    let db = FilamentDatabase::open(&db_path).map_err(|error| format!("DB open: {error:?}"))?;
-    db.apply_schema()
-        .map_err(|error| format!("DB schema: {error:?}"))?;
-
-    #[cfg(any(target_os = "windows", test))]
-    if let Some(source_path) = resolution.windows_split_brain_source {
-        drop(db);
-        merge_windows_split_brain_databases(&source_path, &db_path)?;
-    }
-
-    Ok(db_path)
-}
-
-fn app_db_path_override_from_env() -> Option<PathBuf> {
-    env_path(APP_DB_PATH_ENV_VAR).or_else(|| env_path(LEGACY_APP_DB_PATH_ENV_VAR))
-}
-
-fn env_path(name: &str) -> Option<PathBuf> {
-    std::env::var_os(name)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-}
-
-fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<AppStorageResolution, String> {
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
-    #[cfg(target_os = "windows")]
-    {
-        let app_local_data_dir = app
-            .path()
-            .app_local_data_dir()
-            .map_err(|error| error.to_string())?;
-        Ok(resolve_windows_storage_resolution(
-            app_data_dir,
-            app_local_data_dir,
-        ))
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        Ok(AppStorageResolution {
-            app_dir: app_data_dir,
-            #[cfg(test)]
-            windows_split_brain_source: None,
-        })
-    }
-}
-
-fn prepare_app_storage_dir(app_dir: &Path) -> Result<(), String> {
-    migrate_legacy_app_storage_if_needed(app_dir)?;
-    std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())
-}
-
-fn migrate_legacy_app_storage_if_needed(app_dir: &Path) -> Result<(), String> {
-    let Some((legacy_db_path, legacy_dir)) = legacy_database_source(app_dir) else {
-        return Ok(());
-    };
-
-    let current_db_path = app_dir.join(APP_DB_FILE_NAME);
-    let current_db_exists = current_db_path.exists();
-    let should_migrate = if current_db_exists {
-        should_replace_current_database_with_legacy(
-            database_user_data_state(&current_db_path),
-            database_user_data_state(&legacy_db_path),
-        )
-    } else {
-        true
-    };
-    if !should_migrate {
-        return Ok(());
-    }
-
-    if let Some(legacy_dir) = legacy_dir {
-        copy_dir_contents_without_overwrite(&legacy_dir, app_dir)?;
-    } else {
-        std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())?;
-    }
-    let snapshot_path = legacy_migration_snapshot_path(app_dir);
-    let migration_result = (|| {
-        sqlite_online_backup(&legacy_db_path, &snapshot_path)?;
-        if current_db_exists {
-            let backup_path = legacy_migration_backup_path(app_dir);
-            sqlite_online_backup(&current_db_path, &backup_path)?;
-        }
-        sqlite_online_backup(&snapshot_path, &current_db_path)
-    })();
-    let _ = std::fs::remove_file(snapshot_path);
-    migration_result
-}
-
-fn should_replace_current_database_with_legacy(
-    current: DatabaseUserDataState,
-    legacy: DatabaseUserDataState,
-) -> bool {
-    matches!(
-        (current, legacy),
-        (
-            DatabaseUserDataState::NoData,
-            DatabaseUserDataState::DomainData | DatabaseUserDataState::AncillaryData
-        ) | (
-            DatabaseUserDataState::AncillaryData,
-            DatabaseUserDataState::DomainData
-        )
-    )
-}
-
-fn sqlite_online_backup(source_path: &Path, destination_path: &Path) -> Result<(), String> {
-    use rusqlite::backup::{Backup, StepResult};
-
-    let source = rusqlite::Connection::open_with_flags(
-        source_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .map_err(|error| {
-        format!(
-            "failed to open SQLite backup source {}: {error}",
-            source_path.display()
-        )
-    })?;
-    let mut destination = rusqlite::Connection::open(destination_path).map_err(|error| {
-        format!(
-            "failed to open SQLite backup destination {}: {error}",
-            destination_path.display()
-        )
-    })?;
-
-    {
-        let backup = Backup::new(&source, &mut destination)
-            .map_err(|error| format!("failed to initialize SQLite backup: {error}"))?;
-        let deadline = Instant::now() + Duration::from_secs(5);
-        loop {
-            let step_result = backup
-                .step(128)
-                .map_err(|error| format!("SQLite backup failed: {error}"))?;
-            match step_result {
-                StepResult::Done => break,
-                StepResult::More => {}
-                StepResult::Busy | StepResult::Locked => {
-                    if Instant::now() >= deadline {
-                        return Err(format!(
-                            "SQLite backup remained locked for {}",
-                            source_path.display()
-                        ));
-                    }
-                    std::thread::sleep(Duration::from_millis(25));
-                }
-                _ => return Err("SQLite backup returned an unsupported state".to_string()),
-            }
-        }
-    }
-
-    let quick_check = destination
-        .query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
-        .map_err(|error| format!("failed to validate SQLite backup: {error}"))?;
-    if quick_check != "ok" {
-        return Err(format!(
-            "SQLite backup validation failed for {}: {quick_check}",
-            destination_path.display()
-        ));
-    }
-
-    Ok(())
-}
-
-fn legacy_database_source(app_dir: &Path) -> Option<(PathBuf, Option<PathBuf>)> {
-    let mut candidates = Vec::new();
-
-    let same_dir_legacy_db = app_dir.join(LEGACY_APP_DB_FILE_NAME);
-    if same_dir_legacy_db.exists() {
-        candidates.push((same_dir_legacy_db, None));
-    }
-
-    if let Some(parent_dir) = app_dir.parent() {
-        let legacy_dir = parent_dir.join(LEGACY_APP_DATA_DIR_NAME);
-        for file_name in [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME] {
-            let legacy_db_path = legacy_dir.join(file_name);
-            if legacy_db_path.exists() {
-                candidates.push((legacy_db_path, Some(legacy_dir.clone())));
-            }
-        }
-    }
-
-    let mut ancillary_fallback = None;
-    let mut empty_fallback = None;
-    for candidate in candidates {
-        match database_user_data_state(&candidate.0) {
-            DatabaseUserDataState::DomainData => return Some(candidate),
-            DatabaseUserDataState::AncillaryData if ancillary_fallback.is_none() => {
-                ancillary_fallback = Some(candidate);
-            }
-            DatabaseUserDataState::NoData if empty_fallback.is_none() => {
-                empty_fallback = Some(candidate);
-            }
-            DatabaseUserDataState::AncillaryData
-            | DatabaseUserDataState::NoData
-            | DatabaseUserDataState::Unreadable => {}
-        }
-    }
-
-    ancillary_fallback.or(empty_fallback)
-}
-
-fn copy_dir_contents_without_overwrite(source_dir: &Path, target_dir: &Path) -> Result<(), String> {
-    std::fs::create_dir_all(target_dir).map_err(|error| error.to_string())?;
-    for entry in std::fs::read_dir(source_dir).map_err(|error| error.to_string())? {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let source_path = entry.path();
-        let target_path = target_dir.join(entry.file_name());
-        let file_type = entry.file_type().map_err(|error| error.to_string())?;
-
-        if file_type.is_dir() {
-            if target_path.exists() && !target_path.is_dir() {
-                continue;
-            }
-            copy_dir_contents_without_overwrite(&source_path, &target_path)?;
-        } else if file_type.is_file() && !target_path.exists() {
-            std::fs::copy(&source_path, &target_path).map_err(|error| error.to_string())?;
-        }
-    }
-    Ok(())
-}
-
-fn database_user_data_state(db_path: &Path) -> DatabaseUserDataState {
-    let connection = match rusqlite::Connection::open_with_flags(
-        db_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    ) {
-        Ok(connection) => connection,
-        Err(_) => return DatabaseUserDataState::Unreadable,
-    };
-
-    for table in FULL_BACKUP_TABLES {
-        if table == "filament_master_list" || database_table_is_ancillary(table) {
-            continue;
-        }
-        let has_rows = match database_table_has_rows(&connection, table) {
-            Ok(has_rows) => has_rows,
-            Err(error) if error.to_string().contains("no such table") => false,
-            Err(_) => return DatabaseUserDataState::Unreadable,
-        };
-        if has_rows {
-            return DatabaseUserDataState::DomainData;
-        }
-    }
-
-    match database_catalog_has_user_data(&connection) {
-        Ok(true) => return DatabaseUserDataState::DomainData,
-        Ok(false) => {}
-        Err(_) => return DatabaseUserDataState::Unreadable,
-    }
-
-    for table in [
-        "settings",
-        "trusted_lan_pairings",
-        "trusted_lan_paired_browsers",
-        "sync_queue",
-    ] {
-        let has_rows_result = if table == "settings" {
-            database_settings_have_user_data(&connection)
-        } else {
-            database_table_has_rows(&connection, table)
-        };
-        let has_rows = match has_rows_result {
-            Ok(has_rows) => has_rows,
-            Err(error) if error.to_string().contains("no such table") => false,
-            Err(_) => return DatabaseUserDataState::Unreadable,
-        };
-        if has_rows {
-            return DatabaseUserDataState::AncillaryData;
-        }
-    }
-
-    DatabaseUserDataState::NoData
-}
-
-fn database_table_is_ancillary(table: &str) -> bool {
-    matches!(
-        table,
-        "settings" | "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue"
-    )
-}
-
-fn database_settings_have_user_data(connection: &rusqlite::Connection) -> rusqlite::Result<bool> {
-    connection
-        .query_row(
-            "SELECT EXISTS(
-                SELECT 1 FROM settings WHERE key != ?1
-             )",
-            [AUTO_GENERATED_LIBRARY_ID_SETTING_KEY],
-            |row| row.get::<_, i64>(0),
-        )
-        .map(|value| value != 0)
-}
-
-fn database_table_has_rows(
-    connection: &rusqlite::Connection,
-    table: &str,
-) -> rusqlite::Result<bool> {
-    let sql = format!("SELECT EXISTS(SELECT 1 FROM {table})");
-    connection
-        .query_row(&sql, [], |row| row.get::<_, i64>(0))
-        .map(|value| value != 0)
-}
-
-fn database_catalog_has_user_data(connection: &rusqlite::Connection) -> rusqlite::Result<bool> {
-    let (catalog_table_exists, has_catalog_source, has_catalog_user_edited) = {
-        let mut statement = connection.prepare("PRAGMA table_info(filament_master_list)")?;
-        let mut rows = statement.query([])?;
-        let mut catalog_table_exists = false;
-        let mut has_catalog_source = false;
-        let mut has_catalog_user_edited = false;
-        while let Some(row) = rows.next()? {
-            catalog_table_exists = true;
-            let column_name = row.get::<_, String>(1)?;
-            has_catalog_source |= column_name == "catalog_source";
-            has_catalog_user_edited |= column_name == "catalog_user_edited";
-        }
-        (
-            catalog_table_exists,
-            has_catalog_source,
-            has_catalog_user_edited,
-        )
-    };
-
-    if !catalog_table_exists {
-        return Ok(false);
-    }
-
-    let sql = match (has_catalog_source, has_catalog_user_edited) {
-        (true, true) => {
-            "SELECT EXISTS(
-                SELECT 1 FROM filament_master_list
-                WHERE COALESCE(catalog_source, 'unknown') NOT IN ('seeded', 'scraped')
-                   OR catalog_user_edited != 0
-            )"
-        }
-        (true, false) => {
-            "SELECT EXISTS(
-                SELECT 1 FROM filament_master_list
-                WHERE COALESCE(catalog_source, 'unknown') NOT IN ('seeded', 'scraped')
-            )"
-        }
-        (false, _) => "SELECT EXISTS(SELECT 1 FROM filament_master_list)",
-    };
-    connection
-        .query_row(sql, [], |row| row.get::<_, i64>(0))
-        .map(|value| value != 0)
-}
-
-fn legacy_migration_backup_path(app_dir: &Path) -> PathBuf {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis();
-    app_dir.join(format!(
-        "{APP_DB_FILE_NAME}.backup-before-legacy-migration-{timestamp}"
-    ))
-}
-
-fn legacy_migration_snapshot_path(app_dir: &Path) -> PathBuf {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    app_dir.join(format!(
-        ".{APP_DB_FILE_NAME}.legacy-migration-{}-{timestamp}.sqlite.tmp",
-        std::process::id()
-    ))
-}
-
-#[cfg(test)]
-fn resolve_windows_storage_dir(roaming_dir: PathBuf, local_dir: PathBuf) -> PathBuf {
-    resolve_windows_storage_resolution(roaming_dir, local_dir).app_dir
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn resolve_windows_storage_resolution(
-    roaming_dir: PathBuf,
-    local_dir: PathBuf,
-) -> AppStorageResolution {
-    let split_brain_source = windows_legacy_roaming_merge_source(&roaming_dir, &local_dir);
-    if split_brain_source.is_some() {
-        return AppStorageResolution {
-            app_dir: local_dir,
-            windows_split_brain_source: split_brain_source,
-        };
-    }
-
-    AppStorageResolution {
-        app_dir: resolve_windows_storage_dir_without_split_merge(roaming_dir, local_dir),
-        windows_split_brain_source: None,
-    }
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn windows_legacy_roaming_merge_source(roaming_dir: &Path, local_dir: &Path) -> Option<PathBuf> {
-    let current_roaming_has_user_data = storage_dir_current_database_candidates(roaming_dir)
-        .iter()
-        .any(|path| {
-            matches!(
-                database_user_data_state(path),
-                DatabaseUserDataState::DomainData | DatabaseUserDataState::AncillaryData
-            )
-        });
-    if current_roaming_has_user_data {
-        return None;
-    }
-
-    let current_local_database = local_dir.join(APP_DB_FILE_NAME);
-    if current_local_database.exists()
-        && database_user_data_state(&current_local_database) == DatabaseUserDataState::Unreadable
-    {
-        return None;
-    }
-
-    storage_dir_legacy_database_candidates(roaming_dir)
-        .into_iter()
-        .find(|path| database_user_data_state(path) == DatabaseUserDataState::DomainData)
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn resolve_windows_storage_dir_without_split_merge(
-    roaming_dir: PathBuf,
-    local_dir: PathBuf,
-) -> PathBuf {
-    for state in [
-        DatabaseUserDataState::DomainData,
-        DatabaseUserDataState::AncillaryData,
-    ] {
-        if database_candidates_have_state(
-            &storage_dir_current_database_candidates(&local_dir),
-            state,
-        ) {
-            return local_dir;
-        }
-        if database_candidates_have_state(
-            &storage_dir_current_database_candidates(&roaming_dir),
-            state,
-        ) {
-            return roaming_dir;
-        }
-        if database_candidates_have_state(
-            &storage_dir_legacy_database_candidates(&local_dir),
-            state,
-        ) {
-            return local_dir;
-        }
-        if database_candidates_have_state(
-            &storage_dir_legacy_database_candidates(&roaming_dir),
-            state,
-        ) {
-            return roaming_dir;
-        }
-    }
-    if database_candidates_exist(&storage_dir_current_database_candidates(&local_dir)) {
-        return local_dir;
-    }
-    if database_candidates_exist(&storage_dir_current_database_candidates(&roaming_dir)) {
-        return roaming_dir;
-    }
-    if database_candidates_exist(&storage_dir_legacy_database_candidates(&local_dir)) {
-        return local_dir;
-    }
-    if database_candidates_exist(&storage_dir_legacy_database_candidates(&roaming_dir)) {
-        return roaming_dir;
-    }
-    local_dir
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn database_candidates_have_state(candidates: &[PathBuf], state: DatabaseUserDataState) -> bool {
-    candidates
-        .iter()
-        .any(|path| database_user_data_state(path) == state)
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn database_candidates_exist(candidates: &[PathBuf]) -> bool {
-    candidates.iter().any(|path| path.exists())
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn storage_dir_current_database_candidates(dir: &Path) -> [PathBuf; 2] {
-    [
-        dir.join(APP_DB_FILE_NAME),
-        dir.join(LEGACY_APP_DB_FILE_NAME),
-    ]
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn storage_dir_legacy_database_candidates(dir: &Path) -> Vec<PathBuf> {
-    if let Some(parent_dir) = dir.parent() {
-        let legacy_dir = parent_dir.join(LEGACY_APP_DATA_DIR_NAME);
-        return vec![
-            legacy_dir.join(APP_DB_FILE_NAME),
-            legacy_dir.join(LEGACY_APP_DB_FILE_NAME),
-        ];
-    }
-    Vec::new()
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn merge_windows_split_brain_databases(
-    source_path: &Path,
-    target_path: &Path,
-) -> Result<Option<PathBuf>, String> {
-    if source_path == target_path {
-        return Err("Windows split-brain merge source and target must be different".to_string());
-    }
-    if windows_split_brain_merge_is_marked(target_path)? {
-        return Ok(None);
-    }
-
-    let preflight = preflight_windows_split_brain_merge(source_path, target_path)?;
-    if !preflight.needs_merge {
-        write_windows_split_brain_merge_marker(target_path)?;
-        return Ok(None);
-    }
-
-    let backup_path = windows_split_brain_merge_backup_path(target_path)?;
-    sqlite_online_backup(target_path, &backup_path)?;
-
-    if let Some(conflict) = preflight.conflict {
-        return Err(format!(
-            "{conflict}. The target backup is {} and the source database was left unchanged",
-            backup_path.display()
-        ));
-    }
-
-    apply_windows_split_brain_merge(source_path, target_path).map_err(|error| {
-        format!(
-            "{error}. The merge was rolled back, the target backup is {}, and the source database was left unchanged",
-            backup_path.display()
-        )
-    })?;
-    Ok(Some(backup_path))
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn preflight_windows_split_brain_merge(
-    source_path: &Path,
-    target_path: &Path,
-) -> Result<DatabaseMergePreflight, String> {
-    let source = rusqlite::Connection::open_with_flags(
-        source_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .map_err(|error| {
-        format!(
-            "failed to open Windows split-brain source {}: {error}",
-            source_path.display()
-        )
-    })?;
-    let target = rusqlite::Connection::open_with_flags(
-        target_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,
-    )
-    .map_err(|error| {
-        format!(
-            "failed to open Windows split-brain target {}: {error}",
-            target_path.display()
-        )
-    })?;
-
-    let mut needs_merge = false;
-    for table in FULL_BACKUP_TABLES {
-        if database_merge_skips_table(table) {
-            continue;
-        }
-        if table == "settings" {
-            for (key, _) in read_safe_merge_settings(&source)? {
-                let target_value = target
-                    .query_row("SELECT value FROM settings WHERE key = ?1", [&key], |row| {
-                        row.get::<_, String>(0)
-                    })
-                    .optional()
-                    .map_err(|error| error.to_string())?;
-                if target_value.is_none() {
-                    needs_merge = true;
-                }
-            }
-            continue;
-        }
-
-        let Some(schema) = database_table_merge_schema(&source, &target, table)? else {
-            continue;
-        };
-        for source_row in read_database_table_rows(&source, table, &schema.columns)? {
-            match find_database_merge_target_row(&target, table, &schema, &source_row)? {
-                Some(target_row) => {
-                    if table == "filament_master_list"
-                        && database_catalog_merge_row_is_automatic(&schema.columns, &source_row)
-                    {
-                        continue;
-                    }
-                    if target_row != source_row {
-                        return Ok(DatabaseMergePreflight {
-                            needs_merge: true,
-                            conflict: Some(format!(
-                                "Windows split-brain merge found a conflicting primary key in `{table}`"
-                            )),
-                        });
-                    }
-                }
-                None => needs_merge = true,
-            }
-        }
-    }
-
-    Ok(DatabaseMergePreflight {
-        needs_merge,
-        conflict: None,
-    })
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn apply_windows_split_brain_merge(source_path: &Path, target_path: &Path) -> Result<(), String> {
-    let source = rusqlite::Connection::open_with_flags(
-        source_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .map_err(|error| error.to_string())?;
-    let mut target = rusqlite::Connection::open(target_path).map_err(|error| error.to_string())?;
-    target
-        .execute_batch("PRAGMA foreign_keys = ON;")
-        .map_err(|error| error.to_string())?;
-    let transaction = target
-        .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-        .map_err(|error| error.to_string())?;
-    transaction
-        .execute_batch("PRAGMA defer_foreign_keys = ON;")
-        .map_err(|error| error.to_string())?;
-
-    let merge_result = (|| -> Result<(), String> {
-        for table in FULL_BACKUP_TABLES {
-            if database_merge_skips_table(table) || table == "settings" {
-                continue;
-            }
-            let Some(schema) = database_table_merge_schema(&source, &transaction, table)? else {
-                continue;
-            };
-            for source_row in read_database_table_rows(&source, table, &schema.columns)? {
-                if let Some(target_row) =
-                    find_database_merge_target_row(&transaction, table, &schema, &source_row)?
-                {
-                    if table == "filament_master_list"
-                        && database_catalog_merge_row_is_automatic(&schema.columns, &source_row)
-                    {
-                        continue;
-                    }
-                    if target_row != source_row {
-                        return Err(format!(
-                            "Windows split-brain merge found a conflicting primary key in `{table}`"
-                        ));
-                    }
-                    continue;
-                }
-                insert_database_merge_row(&transaction, table, &schema.columns, &source_row)?;
-            }
-        }
-
-        for (key, value) in read_safe_merge_settings(&source)? {
-            transaction
-                .execute(
-                    "INSERT INTO settings (key, value) VALUES (?1, ?2)
-                     ON CONFLICT(key) DO NOTHING",
-                    rusqlite::params![key, value],
-                )
-                .map_err(|error| error.to_string())?;
-        }
-        transaction
-            .execute(
-                "INSERT INTO settings (key, value) VALUES (?1, ?2)
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                rusqlite::params![
-                    WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY,
-                    WINDOWS_SPLIT_BRAIN_MERGE_MARKER_VALUE
-                ],
-            )
-            .map_err(|error| error.to_string())?;
-
-        let mut statement = transaction
-            .prepare("PRAGMA foreign_key_check")
-            .map_err(|error| error.to_string())?;
-        let mut rows = statement.query([]).map_err(|error| error.to_string())?;
-        if let Some(row) = rows.next().map_err(|error| error.to_string())? {
-            let table: String = row.get(0).map_err(|error| error.to_string())?;
-            let parent: String = row.get(2).map_err(|error| error.to_string())?;
-            return Err(format!(
-                "Windows split-brain merge would leave `{table}` referencing missing `{parent}` data"
-            ));
-        }
-        drop(rows);
-        drop(statement);
-        Ok(())
-    })();
-
-    match merge_result {
-        Ok(()) => transaction.commit().map_err(|error| error.to_string()),
-        Err(error) => {
-            let _ = transaction.rollback();
-            Err(error)
-        }
-    }
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn database_merge_skips_table(table: &str) -> bool {
-    matches!(
-        table,
-        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue"
-    )
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn database_table_merge_schema(
-    source: &rusqlite::Connection,
-    target: &rusqlite::Connection,
-    table: &str,
-) -> Result<Option<DatabaseTableMergeSchema>, String> {
-    let (source_columns, _) = database_table_columns_and_primary_key(source, table)?;
-    if source_columns.is_empty() {
-        return Ok(None);
-    }
-    let (target_columns, target_primary_key) =
-        database_table_columns_and_primary_key(target, table)?;
-    if target_columns.is_empty() {
-        return Err(format!(
-            "Windows split-brain target is missing the `{table}` table"
-        ));
-    }
-
-    let source_column_set = source_columns
-        .into_iter()
-        .collect::<std::collections::HashSet<_>>();
-    let columns = target_columns
-        .into_iter()
-        .filter(|column| source_column_set.contains(column))
-        .collect::<Vec<_>>();
-    let primary_key_indices = target_primary_key
-        .iter()
-        .map(|column| {
-            columns.iter().position(|candidate| candidate == column).ok_or_else(|| {
-                format!(
-                    "Windows split-brain source is missing primary-key column `{column}` for `{table}`"
-                )
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    if primary_key_indices.is_empty() {
-        return Err(format!(
-            "Windows split-brain merge requires a primary key for `{table}`"
-        ));
-    }
-
-    Ok(Some(DatabaseTableMergeSchema {
-        columns,
-        primary_key_indices,
-    }))
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn database_table_columns_and_primary_key(
-    connection: &rusqlite::Connection,
-    table: &str,
-) -> Result<(Vec<String>, Vec<String>), String> {
-    let mut statement = connection
-        .prepare(&format!(
-            "PRAGMA table_info({})",
-            quote_sql_identifier(table)
-        ))
-        .map_err(|error| error.to_string())?;
-    let mut rows = statement.query([]).map_err(|error| error.to_string())?;
-    let mut columns = Vec::new();
-    let mut primary_key = Vec::new();
-    while let Some(row) = rows.next().map_err(|error| error.to_string())? {
-        let column_name: String = row.get(1).map_err(|error| error.to_string())?;
-        let primary_key_order: i64 = row.get(5).map_err(|error| error.to_string())?;
-        columns.push(column_name.clone());
-        if primary_key_order > 0 {
-            primary_key.push((primary_key_order, column_name));
-        }
-    }
-    primary_key.sort_by_key(|(order, _)| *order);
-    Ok((
-        columns,
-        primary_key.into_iter().map(|(_, column)| column).collect(),
-    ))
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn read_database_table_rows(
-    connection: &rusqlite::Connection,
-    table: &str,
-    columns: &[String],
-) -> Result<Vec<Vec<rusqlite::types::Value>>, String> {
-    let column_list = columns
-        .iter()
-        .map(|column| quote_sql_identifier(column))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let mut statement = connection
-        .prepare(&format!(
-            "SELECT {column_list} FROM {}",
-            quote_sql_identifier(table)
-        ))
-        .map_err(|error| error.to_string())?;
-    let rows = statement
-        .query_map([], |row| {
-            (0..columns.len())
-                .map(|index| row.get::<_, rusqlite::types::Value>(index))
-                .collect::<rusqlite::Result<Vec<_>>>()
-        })
-        .map_err(|error| error.to_string())?;
-    rows.collect::<rusqlite::Result<Vec<_>>>()
-        .map_err(|error| error.to_string())
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn find_database_merge_target_row(
-    target: &rusqlite::Connection,
-    table: &str,
-    schema: &DatabaseTableMergeSchema,
-    source_row: &[rusqlite::types::Value],
-) -> Result<Option<Vec<rusqlite::types::Value>>, String> {
-    let column_list = schema
-        .columns
-        .iter()
-        .map(|column| quote_sql_identifier(column))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let predicate = schema
-        .primary_key_indices
-        .iter()
-        .enumerate()
-        .map(|(parameter_index, column_index)| {
-            format!(
-                "{} IS ?{}",
-                quote_sql_identifier(&schema.columns[*column_index]),
-                parameter_index + 1
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(" AND ");
-    let sql = format!(
-        "SELECT {column_list} FROM {} WHERE {predicate}",
-        quote_sql_identifier(table)
-    );
-    target
-        .query_row(
-            &sql,
-            rusqlite::params_from_iter(
-                schema
-                    .primary_key_indices
-                    .iter()
-                    .map(|index| &source_row[*index]),
-            ),
-            |row| {
-                (0..schema.columns.len())
-                    .map(|index| row.get::<_, rusqlite::types::Value>(index))
-                    .collect::<rusqlite::Result<Vec<_>>>()
-            },
-        )
-        .optional()
-        .map_err(|error| error.to_string())
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn insert_database_merge_row(
-    target: &rusqlite::Connection,
-    table: &str,
-    columns: &[String],
-    row: &[rusqlite::types::Value],
-) -> Result<(), String> {
-    let column_list = columns
-        .iter()
-        .map(|column| quote_sql_identifier(column))
-        .collect::<Vec<_>>()
-        .join(", ");
-    let placeholders = vec!["?"; columns.len()].join(", ");
-    target
-        .execute(
-            &format!(
-                "INSERT INTO {} ({column_list}) VALUES ({placeholders})",
-                quote_sql_identifier(table)
-            ),
-            rusqlite::params_from_iter(row.iter()),
-        )
-        .map_err(|error| format!("failed to merge `{table}`: {error}"))?;
-    Ok(())
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn database_catalog_merge_row_is_automatic(
-    columns: &[String],
-    row: &[rusqlite::types::Value],
-) -> bool {
-    let Some(source_index) = columns.iter().position(|column| column == "catalog_source") else {
-        return false;
-    };
-    let source_is_automatic = matches!(
-        row.get(source_index),
-        Some(rusqlite::types::Value::Text(source)) if source == "seeded" || source == "scraped"
-    );
-    let user_edited = columns
-        .iter()
-        .position(|column| column == "catalog_user_edited")
-        .and_then(|index| row.get(index))
-        .is_some_and(|value| match value {
-            rusqlite::types::Value::Integer(value) => *value != 0,
-            rusqlite::types::Value::Real(value) => *value != 0.0,
-            rusqlite::types::Value::Text(value) => value != "0" && !value.is_empty(),
-            rusqlite::types::Value::Null | rusqlite::types::Value::Blob(_) => false,
-        });
-    source_is_automatic && !user_edited
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn read_safe_merge_settings(
-    connection: &rusqlite::Connection,
-) -> Result<Vec<(String, String)>, String> {
-    let (columns, _) = database_table_columns_and_primary_key(connection, "settings")?;
-    if !columns.iter().any(|column| column == "key")
-        || !columns.iter().any(|column| column == "value")
-    {
-        return Ok(Vec::new());
-    }
-    let mut statement = connection
-        .prepare("SELECT key, value FROM settings ORDER BY key")
-        .map_err(|error| error.to_string())?;
-    let rows = statement
-        .query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-        })
-        .map_err(|error| error.to_string())?;
-    let mut settings = Vec::new();
-    for row in rows {
-        let (key, value) = row.map_err(|error| error.to_string())?;
-        let normalized_key = key.to_ascii_lowercase();
-        if normalized_key == WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY
-            || normalized_key.starts_with("library_sync_")
-            || normalized_key.starts_with("trusted_lan_")
-        {
-            continue;
-        }
-        settings.push((key, value));
-    }
-    Ok(settings)
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn windows_split_brain_merge_is_marked(target_path: &Path) -> Result<bool, String> {
-    let connection = rusqlite::Connection::open_with_flags(
-        target_path,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-    )
-    .map_err(|error| error.to_string())?;
-    let marker = connection
-        .query_row(
-            "SELECT value FROM settings WHERE key = ?1",
-            [WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(|error| error.to_string())?;
-    Ok(marker.as_deref() == Some(WINDOWS_SPLIT_BRAIN_MERGE_MARKER_VALUE))
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn write_windows_split_brain_merge_marker(target_path: &Path) -> Result<(), String> {
-    let mut connection =
-        rusqlite::Connection::open(target_path).map_err(|error| error.to_string())?;
-    let transaction = connection
-        .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-        .map_err(|error| error.to_string())?;
-    transaction
-        .execute(
-            "INSERT INTO settings (key, value) VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-            rusqlite::params![
-                WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY,
-                WINDOWS_SPLIT_BRAIN_MERGE_MARKER_VALUE
-            ],
-        )
-        .map_err(|error| error.to_string())?;
-    transaction.commit().map_err(|error| error.to_string())
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn quote_sql_identifier(identifier: &str) -> String {
-    format!("\"{}\"", identifier.replace('"', "\"\""))
-}
-
-#[cfg(any(target_os = "windows", test))]
-fn windows_split_brain_merge_backup_path(target_path: &Path) -> Result<PathBuf, String> {
-    let parent = target_path.parent().ok_or_else(|| {
-        format!(
-            "Windows split-brain target {} has no parent directory",
-            target_path.display()
-        )
-    })?;
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    Ok(parent.join(format!(
-        "{APP_DB_FILE_NAME}.backup-before-windows-split-merge-{timestamp}"
-    )))
 }
 
 pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>

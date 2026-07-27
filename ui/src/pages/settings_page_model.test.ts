@@ -9,6 +9,7 @@ import {
   buildSettingsPageTabButtons,
   buildSettingsPageTabLabels,
   buildSettingsPageTabs,
+  isSettingsTabKey,
   SETTINGS_PAGE_TAB_ORDER,
   normalizeSettingsInitialTab,
   resolveSettingsPagePrinters,
@@ -121,6 +122,11 @@ test("settings initial tab normalizer preserves valid tab keys", () => {
   assert.equal(normalizeSettingsInitialTab("PRINTERS"), "PRINTERS");
   assert.equal(normalizeSettingsInitialTab("CATALOG"), "CATALOG");
   assert.equal(normalizeSettingsInitialTab("MAINTENANCE"), "MAINTENANCE");
+  assert.equal(normalizeSettingsInitialTab("library"), "GENERAL");
+  assert.equal(normalizeSettingsInitialTab(null), "GENERAL");
+  assert.equal(isSettingsTabKey("LIBRARY"), true);
+  assert.equal(isSettingsTabKey("library"), false);
+  assert.equal(isSettingsTabKey(null), false);
 });
 
 test("settings page printers prefer host overview rows in client mode", () => {
@@ -206,6 +212,7 @@ test("settings page data model prepares reload state in one place", () => {
     bambuLiveIntegrations: { host: { enabled: true } },
     catalogRows,
     overviewRows,
+    revisionPollComplete: true,
     snapshot,
     spoolRows,
     syncSettings,
@@ -216,4 +223,5 @@ test("settings page data model prepares reload state in one place", () => {
   assert.equal(model.librarySyncDeviceNameDraft, "Desk");
   assert.equal(model.librarySyncHostBaseUrlDraft, "http://host.local");
   assert.equal(model.swatchDraftById["master-1"], "#111");
+  assert.equal(model.revisionPollComplete, true);
 });

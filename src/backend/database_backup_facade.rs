@@ -32,7 +32,7 @@ impl FilamentDatabase {
         &self,
         content: &str,
     ) -> InventoryResult<BackupValidationStats> {
-        validate_full_backup_content(content)
+        validate_full_backup_content(content, SCHEMA_SQL)
     }
 
     pub fn import_full_backup_json(&self, content: &str) -> InventoryResult<()> {

@@ -7,6 +7,7 @@ const DATABASE_LIBRARY_SYNC_FACADE_SOURCE: &str = include_str!("database_library
 const DATABASE_LOAN_FACADE_SOURCE: &str = include_str!("database_loan_facade.rs");
 const DATABASE_PRINTER_FACADE_SOURCE: &str = include_str!("database_printer_facade.rs");
 const DATABASE_RESET_FACADE_SOURCE: &str = include_str!("database_reset_facade.rs");
+const DATABASE_REVISION_FACADE_SOURCE: &str = include_str!("database_revision_facade.rs");
 const DATABASE_SETTINGS_FACADE_SOURCE: &str = include_str!("database_settings_facade.rs");
 const DATABASE_SPOOL_FACADE_SOURCE: &str = include_str!("database_spool_facade.rs");
 const DATABASE_SPOOL_UPDATE_FACADE_SOURCE: &str = include_str!("database_spool_update_facade.rs");
@@ -50,6 +51,7 @@ const DATABASE_PRINTER_SLOT_ASSIGNMENT_SOURCE: &str =
 const DATABASE_PRINTER_USAGE_SESSIONS_SOURCE: &str =
     include_str!("database_printer_usage_sessions.rs");
 const DATABASE_RESET_SOURCE: &str = include_str!("database_reset.rs");
+const DATABASE_REVISION_SOURCE: &str = include_str!("database_revision.rs");
 const DATABASE_ROWS_SOURCE: &str = include_str!("database_rows.rs");
 const DATABASE_SCHEMA_SOURCE: &str = include_str!("database_schema.rs");
 const DATABASE_SCHEMA_SETUP_SOURCE: &str = include_str!("database_schema_setup.rs");
@@ -106,6 +108,10 @@ fn focused_facades_extend_database_core_directly() {
         ("database_loan_facade.rs", DATABASE_LOAN_FACADE_SOURCE),
         ("database_printer_facade.rs", DATABASE_PRINTER_FACADE_SOURCE),
         ("database_reset_facade.rs", DATABASE_RESET_FACADE_SOURCE),
+        (
+            "database_revision_facade.rs",
+            DATABASE_REVISION_FACADE_SOURCE,
+        ),
         (
             "database_settings_facade.rs",
             DATABASE_SETTINGS_FACADE_SOURCE,
@@ -215,6 +221,7 @@ fn low_level_database_modules_do_not_depend_on_compatibility_facade() {
             DATABASE_PRINTER_USAGE_SESSIONS_SOURCE,
         ),
         ("database_reset.rs", DATABASE_RESET_SOURCE),
+        ("database_revision.rs", DATABASE_REVISION_SOURCE),
         ("database_rows.rs", DATABASE_ROWS_SOURCE),
         ("database_schema.rs", DATABASE_SCHEMA_SOURCE),
         ("database_schema_setup.rs", DATABASE_SCHEMA_SETUP_SOURCE),

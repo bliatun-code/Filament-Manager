@@ -530,15 +530,22 @@ export function renderDetailModalShell(options) {
   return `
     <div class="detail-modal-backdrop" data-layout="${escapeHtml(layoutMode)}">
       <div class="detail-modal-shell">
-        <section class="detail-panel detail-modal surface-panel">
+        <section
+          class="detail-panel detail-modal surface-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="companion-detail-dialog-title"
+          tabindex="-1"
+          data-companion-overlay="detail"
+        >
           <div class="detail-panel-header">
             <div class="detail-modal-copy">
               <p class="workflow-kicker">${escapeHtml(t(locale, "detail.spoolHeading", "Spool"))}</p>
-              ${showSelectedTitleInHeader ? `<h2>${escapeHtml(selectedTitle)}</h2>` : ""}
+              <h2 id="companion-detail-dialog-title"${showSelectedTitleInHeader ? "" : ' class="sr-only"'}>${escapeHtml(selectedTitle)}</h2>
             </div>
             <div class="detail-modal-actions">
               ${statusChips.length > 0 ? `<div class="pill-row detail-modal-status">${statusChips.join("")}</div>` : ""}
-              <button class="ghost-button compact-back-button" type="button" data-action="close-detail">
+              <button class="ghost-button compact-back-button" type="button" data-action="close-detail" data-overlay-initial-focus>
                 ${escapeHtml(closeLabel)}
               </button>
             </div>
@@ -571,14 +578,21 @@ export function renderTaskSheetShell(options) {
   return `
     <div class="task-sheet-backdrop" data-layout="${escapeHtml(layoutMode)}">
       <div class="${escapeHtml(shellClasses)}">
-        <section class="${escapeHtml(panelClasses)}">
+        <section
+          class="${escapeHtml(panelClasses)}"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="companion-task-sheet-title"
+          tabindex="-1"
+          data-companion-overlay="task-sheet"
+        >
           <div class="task-sheet-header">
             <div class="task-sheet-copy">
               ${kicker ? `<p class="workflow-kicker">${escapeHtml(kicker)}</p>` : ""}
-              <h2>${escapeHtml(title)}</h2>
+              <h2 id="companion-task-sheet-title">${escapeHtml(title)}</h2>
               ${subtitle ? `<p class="section-copy">${escapeHtml(subtitle)}</p>` : ""}
             </div>
-            <button class="ghost-button compact-back-button" type="button" data-action="close-task-sheet">
+            <button class="ghost-button compact-back-button" type="button" data-action="close-task-sheet" data-overlay-initial-focus>
               ${escapeHtml(closeLabel)}
             </button>
           </div>

@@ -113,6 +113,14 @@ export function routeCompanionSubmitAction(action, data, handlers) {
     return true;
   }
 
+  if (action === "wishlist-stock-form") {
+    handlers.submitWishlistStock(
+      String(data.get("wishlist-id") || ""),
+      String(data.get("received-quantity") || "1"),
+    );
+    return true;
+  }
+
   if (action === "update-borrowed-in-form") {
     handlers.submitBorrowedInUpdate(
       String(data.get("spool-id") || ""),

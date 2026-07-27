@@ -184,6 +184,10 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
   assert.equal(result.syncSource, "local");
   assert.equal(result.syncMode, "STANDALONE");
   assert.equal(result.clientHostNeedsRepair, false);
+  assert.equal(result.clientHostPaired, false);
+  assert.equal(result.setupDataAvailable, true);
+  assert.deepEqual(result.revisionSource, { kind: "local" });
+  assert.equal(result.revisionPollComplete, true);
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
@@ -197,6 +201,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
           host_base_url: " http://host ",
           library_id: " library-1 ",
           host_device_name: "Configured Host",
+          client_auth_paired: true,
         }),
       loadTrustedLanStatus: async () => null,
       validateHost: async (baseUrl, libraryId) => {
@@ -230,7 +235,15 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   assert.equal(result.syncSource, "client-live");
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.clientHostDisplayName, "Live Host");
+  assert.equal(result.clientHostPaired, true);
+  assert.equal(result.setupDataAvailable, true);
   assert.equal(result.capturedAt, "2026-04-01 10:00:00");
+  assert.deepEqual(result.revisionSource, {
+    kind: "host",
+    baseUrl: "http://host",
+    libraryId: "library-1",
+  });
+  assert.equal(result.revisionPollComplete, true);
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
@@ -265,8 +278,10 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
   );
 
   assert.equal(result.syncSource, "client-cached");
+  assert.equal(result.setupDataAvailable, true);
   assert.equal(result.capturedAt, "printer-cache");
   assert.equal(result.clientHostCompanionTone, "live");
+  assert.equal(result.revisionPollComplete, false);
   assert.deepEqual(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
   assert.equal(errors.length, 1);
 });
@@ -307,6 +322,8 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.clientHostDisplayName, "Cached Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
+  assert.equal(result.revisionSource, null);
+  assert.equal(result.revisionPollComplete, false);
 });
 
 test("loadDashboardData uses cached client rows without a cached snapshot", async () => {
@@ -472,6 +489,8 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
   );
 
   assert.equal(result.syncSource, "client-offline");
+  assert.equal(result.clientHostPaired, false);
+  assert.equal(result.setupDataAvailable, false);
   assert.equal(result.capturedAt, null);
   assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "0");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "0");

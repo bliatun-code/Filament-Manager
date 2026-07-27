@@ -10,22 +10,22 @@
       "reviewedSourceFingerprint": "canonical"
     },
     "nb": {
-      "releaseStatus": "maintained",
+      "releaseStatus": "draft",
       "nativeReviewer": "@bliatun-code",
-      "reviewedAt": "2026-07-11",
-      "reviewedSourceFingerprint": "sha256:576efe447da456fc06b4aa236f52403e3f007d916d5526ec377cbe751f88fa79"
+      "reviewedAt": "2026-07-22",
+      "reviewedSourceFingerprint": "sha256:b2a017e647cf4fbd8883172cecc975f7471e8177513df513e1707e74c66321a3"
     },
     "de": {
-      "releaseStatus": "maintained",
+      "releaseStatus": "draft",
       "nativeReviewer": "@bliatun-code",
-      "reviewedAt": "2026-07-11",
-      "reviewedSourceFingerprint": "sha256:576efe447da456fc06b4aa236f52403e3f007d916d5526ec377cbe751f88fa79"
+      "reviewedAt": "2026-07-22",
+      "reviewedSourceFingerprint": "sha256:b2a017e647cf4fbd8883172cecc975f7471e8177513df513e1707e74c66321a3"
     },
     "fr": {
-      "releaseStatus": "maintained",
+      "releaseStatus": "draft",
       "nativeReviewer": "@bliatun-code",
-      "reviewedAt": "2026-07-11",
-      "reviewedSourceFingerprint": "sha256:576efe447da456fc06b4aa236f52403e3f007d916d5526ec377cbe751f88fa79"
+      "reviewedAt": "2026-07-22",
+      "reviewedSourceFingerprint": "sha256:b2a017e647cf4fbd8883172cecc975f7471e8177513df513e1707e74c66321a3"
     },
     "es": {
       "releaseStatus": "draft",

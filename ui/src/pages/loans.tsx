@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   exportLoansCsv,
   isTauri,
@@ -8,6 +8,7 @@ import { LoanHistoryCard } from "../components/loan_history_card";
 import { LoanOutModal } from "../components/loan_out_modal";
 import { LoanReturnModal } from "../components/loan_return_modal";
 import { PageHeaderButton } from "../components/page_header_button";
+import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { neutralChipClass } from "../lib/chip_styles";
 import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
@@ -21,6 +22,7 @@ import {
 } from "../lib/loan_display";
 import { buildLoansCsv } from "../lib/loan_export";
 import { isInboundLoan, isLoanCurrentlyActive, isOutboundLoan } from "../lib/loan_state";
+import { usePageRefreshState } from "../lib/page_refresh_state";
 import {
   loadLoanRowsPage,
   returnInventoryLoan,
@@ -36,7 +38,15 @@ import { useLibrarySyncState } from "./use_library_sync_state";
 export default function LoansPage() {
   const { t, locale } = useI18n();
   const tauri = isTauri();
-  const [loading, setLoading] = useState(tauri);
+  const {
+    beginRefresh,
+    completeRefresh,
+    error: loadError,
+    failRefresh,
+    loading,
+    refreshing,
+  } = usePageRefreshState(tauri);
+  const reloadRequestRef = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -74,7 +84,9 @@ export default function LoansPage() {
     if (!tauri) {
       return;
     }
-    setLoading(true);
+    const requestId = reloadRequestRef.current + 1;
+    reloadRequestRef.current = requestId;
+    beginRefresh();
     try {
       const result = await loadLoanRowsPage({
         clientReadOnly,
@@ -82,21 +94,35 @@ export default function LoansPage() {
         clientLibraryId,
         limit: 2000,
       });
+      if (requestId !== reloadRequestRef.current) {
+        return;
+      }
       if (clientReadOnly) {
         setClientLoanSource(result.source);
         setClientLoanUpdatedAt(result.updatedAt);
       }
       setLoans(result.rows);
       if (clientReadOnly && result.source === "OFFLINE") {
-        setError(t("loans.error.load", "Failed to load loan data."));
+        failRefresh(t("loans.error.load", "Failed to load loan data."));
+      } else {
+        completeRefresh();
       }
     } catch (loadError) {
       console.error(loadError);
-      setError(t("loans.error.load", "Failed to load loan data."));
-    } finally {
-      setLoading(false);
+      if (requestId === reloadRequestRef.current) {
+        failRefresh(t("loans.error.load", "Failed to load loan data."));
+      }
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri]);
+  }, [
+    beginRefresh,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    completeRefresh,
+    failRefresh,
+    t,
+    tauri,
+  ]);
 
   useEffect(() => {
     if (!tauri || !librarySyncReady) {
@@ -422,6 +448,15 @@ export default function LoansPage() {
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
         </FeedbackBanner>
+      ) : null}
+      {loadError ? (
+        <PageLoadErrorBanner
+          message={loadError}
+          onRetry={() => void reload()}
+          retryDisabled={!tauri || busy || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
       {clientReadOnly && clientLoanSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">

@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createCompanionDataController } from "./companion_data_controller.js";
+import {
+  createCompanionDataController,
+  createLatestAsyncCommitter,
+  fetchAllSpoolRows,
+} from "./companion_data_controller.js";
 import { createInitialCompanionState } from "./session_state.js";
 
 function createDataHarness(overrides = {}) {
@@ -64,6 +68,64 @@ function createDataHarness(overrides = {}) {
     },
   };
 }
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+test("latest async committer ignores a locale load that resolves after a newer selection", async () => {
+  const commitLatest = createLatestAsyncCommitter();
+  const first = deferred();
+  const second = deferred();
+  const commits = [];
+  const rejections = [];
+
+  const select = (locale, pending) =>
+    commitLatest(() => pending.promise, {
+      commit: () => commits.push(locale),
+      reject: () => rejections.push(locale),
+    });
+
+  const firstSelection = select("de", first);
+  const secondSelection = select("fr", second);
+  second.resolve();
+  assert.equal(await secondSelection, true);
+  first.resolve();
+  assert.equal(await firstSelection, false);
+
+  assert.deepEqual(commits, ["fr"]);
+  assert.deepEqual(rejections, []);
+});
+
+test("latest async committer ignores a stale locale load failure", async () => {
+  const commitLatest = createLatestAsyncCommitter();
+  const first = deferred();
+  const second = deferred();
+  const commits = [];
+  const rejections = [];
+
+  const firstSelection = commitLatest(() => first.promise, {
+    commit: () => commits.push("de"),
+    reject: () => rejections.push("de"),
+  });
+  const secondSelection = commitLatest(() => second.promise, {
+    commit: () => commits.push("fr"),
+    reject: () => rejections.push("fr"),
+  });
+  second.resolve();
+  await secondSelection;
+  first.reject(new Error("late failure"));
+  await firstSelection;
+
+  assert.deepEqual(commits, ["fr"]);
+  assert.deepEqual(rejections, []);
+});
 
 test("refreshOverview selects the first spool and loads its detail when nothing is selected", async () => {
   const harness = createDataHarness({
@@ -147,6 +209,58 @@ test("refreshOverview loads all spool pages from the host", async () => {
   assert.ok(paths.includes("/api/v1/inventory/spools?limit=250&offset=0"));
   assert.ok(paths.includes("/api/v1/inventory/spools?limit=250&offset=250"));
   assert.equal(paths.includes("/api/v1/inventory/spools?limit=250&offset=500"), false);
+});
+
+test("fetchAllSpoolRows rejects duplicate ids from unstable pagination", async () => {
+  const paths = [];
+  await assert.rejects(
+    () =>
+      fetchAllSpoolRows(
+        async (path) => {
+          paths.push(path);
+          return paths.length === 1
+            ? [
+                { spool: { id: "spool-1" }, master: {} },
+                { spool: { id: "spool-2" }, master: {} },
+              ]
+            : [
+                { spool: { id: "spool-2" }, master: {} },
+                { spool: { id: "spool-3" }, master: {} },
+              ];
+        },
+        { pageSize: 2, maxPages: 4 },
+      ),
+    /pagination repeated id spool-2/,
+  );
+
+  assert.deepEqual(paths, [
+    "/api/v1/inventory/spools?limit=2&offset=0",
+    "/api/v1/inventory/spools?limit=2&offset=2",
+  ]);
+});
+
+test("fetchAllSpoolRows stops after a bounded number of full pages", async () => {
+  const paths = [];
+  await assert.rejects(
+    () =>
+      fetchAllSpoolRows(
+        async (path) => {
+          paths.push(path);
+          const offset = Number(new URL(path, "http://companion.local").searchParams.get("offset"));
+          return [
+            { spool: { id: `spool-${offset}` }, master: {} },
+            { spool: { id: `spool-${offset + 1}` }, master: {} },
+          ];
+        },
+        { pageSize: 2, maxPages: 2 },
+      ),
+    /pagination did not finish/,
+  );
+
+  assert.deepEqual(paths, [
+    "/api/v1/inventory/spools?limit=2&offset=0",
+    "/api/v1/inventory/spools?limit=2&offset=2",
+  ]);
 });
 
 test("loadSpoolDetail ignores stale response races and keeps the latest detail", async () => {

@@ -29,6 +29,7 @@ export type SettingsPageData = {
   overviewRows: PrinterOverviewRow[];
   spoolRows: NormalizedSpoolWithMasterRow[];
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
+  revisionPollComplete: boolean;
 };
 
 type SettingsPageDataDependencies = {
@@ -86,8 +87,10 @@ export async function loadSettingsPageData(
   let overviewRows: PrinterOverviewRow[];
   let spoolRows: SpoolWithMasterRow[];
   let bambuLiveIntegrations = mapBambuLiveIntegrations(snapshot.bambu_live_integrations);
+  let revisionPollComplete = true;
 
   if (syncSettings.mode === "CLIENT") {
+    revisionPollComplete = false;
     const cachedPrinterRows = syncSettings.cached_printers?.rows ?? [];
     const cachedSpoolRows = syncSettings.cached_spools?.rows ?? [];
     spoolRows = cachedSpoolRows;
@@ -116,7 +119,7 @@ export async function loadSettingsPageData(
             clientHostBaseUrl: hostTarget.baseUrl,
             clientLibraryId: hostTarget.libraryId,
           },
-          5000,
+          1000,
         ),
       ]);
 
@@ -149,6 +152,12 @@ export async function loadSettingsPageData(
           hostPrinterSettingsResult.value.bambu_live_integrations,
         );
       }
+      revisionPollComplete = [
+        hostCatalogRowsResult,
+        hostOverviewResult,
+        hostPrinterSettingsResult,
+        hostSpoolRowsResult,
+      ].every((result) => result.status === "fulfilled");
     } else {
       overviewRows = cachedPrinterRows;
     }
@@ -161,7 +170,7 @@ export async function loadSettingsPageData(
       {
         clientReadOnly: false,
       },
-      5000,
+      1000,
     );
     overviewRows = await listLocalPrinterOverview();
   }
@@ -173,6 +182,7 @@ export async function loadSettingsPageData(
     overviewRows,
     spoolRows: normalizeSpoolWithMasterRows(spoolRows),
     bambuLiveIntegrations,
+    revisionPollComplete,
   };
 }
 

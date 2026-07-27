@@ -56,6 +56,12 @@ jobs:
           npm run check:command-portability
           node --test ./scripts/release-workflow-contract.test.mjs
 
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
+            && "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Manual release builds must run from the main branch."
+            exit 1
+          fi
+
           if [[ "$GITHUB_EVENT_NAME" == "push" \
             || "$SELECTED_PLATFORM" == "windows" \
             || "$SELECTED_PLATFORM" == "both" ]]; then
@@ -336,13 +342,182 @@ jobs:
           overwrite: true
           retention-days: 14
 
+  generate-release-sbom:
+    name: Generate source dependency SBOM
+    needs: validate-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 24
+
+      - name: Prepare SBOM output
+        id: sbom-output
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          sbom_name="Filament-Manager_${package_version}_source.spdx.json"
+          mkdir -p release-metadata
+          echo "package-version=$package_version" >> "$GITHUB_OUTPUT"
+          echo "sbom-path=release-metadata/$sbom_name" >> "$GITHUB_OUTPUT"
+
+      - name: Generate pinned source dependency SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: ${{ steps['sbom-output'].outputs['sbom-path'] }}
+          syft-version: v1.42.3
+          dependency-snapshot: false
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Validate source dependency SBOM
+        run: >-
+          node ./scripts/verify-release-sbom.mjs
+          "${{ steps['sbom-output'].outputs['sbom-path'] }}"
+          --expected-package=bambu-filament-manager
+          --expected-version="${{ steps['sbom-output'].outputs['package-version'] }}"
+
+      - name: Write SBOM checksum
+        env:
+          SBOM_PATH: ${{ steps['sbom-output'].outputs['sbom-path'] }}
+        run: |
+          set -euo pipefail
+          sbom_directory="$(dirname "$SBOM_PATH")"
+          sbom_name="$(basename "$SBOM_PATH")"
+          cd "$sbom_directory"
+          sha256sum "$sbom_name" > SHA256SUMS-sbom.txt
+
+      - name: Upload verified source dependency SBOM
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: filament-manager-release-sbom-${{ github.run_id }}
+          path: |
+            release-metadata/*.spdx.json
+            release-metadata/SHA256SUMS-sbom.txt
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+
+  attest-public-release:
+    name: Attest public release installers
+    needs:
+      - validate-release
+      - build-macos-dmg
+      - build-windows-msi
+      - generate-release-sbom
+    if: github.event_name == 'push' && github.ref_type == 'tag' && github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      artifact-metadata: write
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - name: Download verified macOS artifact for attestation
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-macos-dmg-${{ github.run_id }}
+          path: attestation-subjects/macos
+
+      - name: Download verified Windows artifact for attestation
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-windows-msi-${{ github.run_id }}
+          path: attestation-subjects/windows
+
+      - name: Reverify installer subjects
+        id: installer-subjects
+        run: |
+          set -euo pipefail
+          mapfile -t dmgs < <(find attestation-subjects/macos -maxdepth 1 -type f -name '*.dmg' -print)
+          mapfile -t msis < <(find attestation-subjects/windows -maxdepth 1 -type f -name '*.msi' -print)
+          if [[ ${#dmgs[@]} -ne 1 || ${#msis[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one verified DMG and one verified MSI for attestation."
+            exit 1
+          fi
+
+          macos_manifest="attestation-subjects/macos/SHA256SUMS.txt"
+          windows_manifest="attestation-subjects/windows/SHA256SUMS-windows.txt"
+          if [[ ! -f "$macos_manifest" || ! -f "$windows_manifest" ]]; then
+            echo "::error::Installer checksum manifests are required before attestation."
+            exit 1
+          fi
+          if [[ $(grep -cve '^[[:space:]]*$' "$macos_manifest") -ne 1 \
+            || $(grep -cve '^[[:space:]]*$' "$windows_manifest") -ne 1 ]]; then
+            echo "::error::Each installer checksum manifest must describe exactly one artifact."
+            exit 1
+          fi
+
+          (cd attestation-subjects/macos && sha256sum --check SHA256SUMS.txt)
+          (cd attestation-subjects/windows && sha256sum --check SHA256SUMS-windows.txt)
+          echo "dmg-path=${dmgs[0]}" >> "$GITHUB_OUTPUT"
+          echo "msi-path=${msis[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate signed build provenance
+        id: installer-provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: |
+            ${{ steps['installer-subjects'].outputs['dmg-path'] }}
+            ${{ steps['installer-subjects'].outputs['msi-path'] }}
+
+      - name: Normalize signed provenance bundle
+        env:
+          ATTESTATION_BUNDLE_PATH: ${{ steps['installer-provenance'].outputs['bundle-path'] }}
+        run: |
+          set -euo pipefail
+          if [[ ! -s "$ATTESTATION_BUNDLE_PATH" ]]; then
+            echo "::error::The signed provenance bundle is missing or empty."
+            exit 1
+          fi
+          package_version="${GITHUB_REF_NAME#v}"
+          mkdir -p release-provenance
+          cp -- \
+            "$ATTESTATION_BUNDLE_PATH" \
+            "release-provenance/Filament-Manager_${package_version}_provenance.sigstore.json"
+
+      - name: Upload signed provenance bundle
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: filament-manager-release-provenance-${{ github.run_id }}
+          path: release-provenance/*.sigstore.json
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+
   publish-github-release:
     name: Publish verified GitHub release
     needs:
       - validate-release
       - build-macos-dmg
       - build-windows-msi
-    if: github.event_name == 'push' && github.ref_type == 'tag'
+      - generate-release-sbom
+      - attest-public-release
+    if: >-
+      !cancelled() &&
+      github.event_name == 'push' &&
+      github.ref_type == 'tag' &&
+      needs['validate-release'].result == 'success' &&
+      needs['build-macos-dmg'].result == 'success' &&
+      needs['build-windows-msi'].result == 'success' &&
+      needs['generate-release-sbom'].result == 'success' &&
+      (
+        (github.event.repository.private == false && needs['attest-public-release'].result == 'success') ||
+        (github.event.repository.private == true && needs['attest-public-release'].result == 'skipped')
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -407,9 +582,23 @@ jobs:
           name: filament-manager-windows-msi-${{ github.run_id }}
           path: release-assets/windows
 
+      - name: Download verified source dependency SBOM
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-release-sbom-${{ github.run_id }}
+          path: release-assets/sbom
+
+      - name: Download signed public provenance
+        if: github.event.repository.private == false
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-release-provenance-${{ github.run_id }}
+          path: release-assets/provenance
+
       - name: Assemble and verify release assets
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
@@ -421,29 +610,56 @@ jobs:
 
           mapfile -t dmgs < <(find release-assets/macos -maxdepth 1 -type f -name '*.dmg' -print)
           mapfile -t msis < <(find release-assets/windows -maxdepth 1 -type f -name '*.msi' -print)
-          if [[ ${#dmgs[@]} -ne 1 || ${#msis[@]} -ne 1 ]]; then
-            echo "::error::Expected exactly one verified DMG and one verified MSI."
+          mapfile -t sboms < <(find release-assets/sbom -maxdepth 1 -type f -name '*.spdx.json' -print)
+          if [[ ${#dmgs[@]} -ne 1 || ${#msis[@]} -ne 1 || ${#sboms[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one verified DMG, MSI and source dependency SBOM."
             exit 1
           fi
 
           macos_manifest="release-assets/macos/SHA256SUMS.txt"
           windows_manifest="release-assets/windows/SHA256SUMS-windows.txt"
-          if [[ ! -f "$macos_manifest" || ! -f "$windows_manifest" ]]; then
-            echo "::error::Both platform checksum manifests are required."
+          sbom_manifest="release-assets/sbom/SHA256SUMS-sbom.txt"
+          if [[ ! -f "$macos_manifest" || ! -f "$windows_manifest" || ! -f "$sbom_manifest" ]]; then
+            echo "::error::Installer and SBOM checksum manifests are required."
             exit 1
           fi
           if [[ $(grep -cve '^[[:space:]]*$' "$macos_manifest") -ne 1 \
-            || $(grep -cve '^[[:space:]]*$' "$windows_manifest") -ne 1 ]]; then
+            || $(grep -cve '^[[:space:]]*$' "$windows_manifest") -ne 1 \
+            || $(grep -cve '^[[:space:]]*$' "$sbom_manifest") -ne 1 ]]; then
             echo "::error::Each checksum manifest must describe exactly one artifact."
             exit 1
           fi
 
           (cd release-assets/macos && sha256sum --check SHA256SUMS.txt)
           (cd release-assets/windows && sha256sum --check SHA256SUMS-windows.txt)
+          (cd release-assets/sbom && sha256sum --check SHA256SUMS-sbom.txt)
+          node ./scripts/verify-release-sbom.mjs \
+            "${sboms[0]}" \
+            --expected-package=bambu-filament-manager \
+            --expected-version="$package_version"
+
+          provenance_assets=()
+          if [[ "$REPOSITORY_PRIVATE" == "false" ]]; then
+            mapfile -t provenance_assets < <(
+              find release-assets/provenance -maxdepth 1 -type f -name '*.sigstore.json' -print
+            )
+            if [[ ${#provenance_assets[@]} -ne 1 || ! -s "${provenance_assets[0]}" ]]; then
+              echo "::error::A public release requires exactly one non-empty signed provenance bundle."
+              exit 1
+            fi
+          fi
 
           publish_dir="$RUNNER_TEMP/filament-manager-release-assets"
           mkdir -p "$publish_dir"
-          cp -- "${dmgs[0]}" "${msis[0]}" "$macos_manifest" "$windows_manifest" "$publish_dir/"
+          cp -- \
+            "${dmgs[0]}" \
+            "${msis[0]}" \
+            "${sboms[0]}" \
+            "$macos_manifest" \
+            "$windows_manifest" \
+            "$sbom_manifest" \
+            "${provenance_assets[@]}" \
+            "$publish_dir/"
           echo "FILAMENT_MANAGER_RELEASE_ASSET_DIR=$publish_dir" >> "$GITHUB_ENV"
           echo "FILAMENT_MANAGER_RELEASE_NOTES_PATH=$notes_path" >> "$GITHUB_ENV"
 

@@ -3,6 +3,7 @@ import {
   collectTestFiles,
   normalizeNodeTestArgs,
   runNodeTestCommand,
+  toNodeImportSpecifier,
 } from "./test-runner-utils.mjs";
 
 const testsDir = resolve("src-tauri", "companion_browser");
@@ -13,4 +14,10 @@ if (testFiles.length === 0) {
   process.exit(1);
 }
 
-runNodeTestCommand(["--test", ...normalizeNodeTestArgs(process.argv.slice(2)), ...testFiles]);
+runNodeTestCommand([
+  "--import",
+  toNodeImportSpecifier(resolve("scripts", "preload-companion-locales.mjs")),
+  "--test",
+  ...normalizeNodeTestArgs(process.argv.slice(2)),
+  ...testFiles,
+]);

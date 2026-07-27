@@ -8,6 +8,7 @@ import {
   noticeUrlForAppVersion,
   screenshotTourUrl,
   sourceUrlForAppVersion,
+  latestReleaseUrl,
   userGuideUrlForLocale,
 } from "./app_metadata";
 
@@ -38,4 +39,8 @@ test("app metadata exposes AGPL licensing and stable main-branch source links", 
     userGuideUrlForLocale("fr"),
     `${APP_REPOSITORY_URL}/blob/main/docs/USER_GUIDE.md`,
   );
+});
+
+test("latest release link stays on the repository", () => {
+  assert.equal(latestReleaseUrl(), `${APP_REPOSITORY_URL}/releases/latest`);
 });

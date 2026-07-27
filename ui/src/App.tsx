@@ -13,6 +13,7 @@ import {
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
+import { prepareDesktopVisualQaWindow } from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
@@ -31,11 +32,11 @@ function initialPageFromUrl(): PageKey {
   return resolveInitialPageFromSearch(window.location.search);
 }
 
-function initialSettingsTabFromUrl(): SettingsTabKey {
+function initialSettingsTabFromUrl(): SettingsTabKey | null {
   if (typeof window === "undefined") {
-    return "GENERAL";
+    return null;
   }
-  return desktopVisualQaInitialSettingsTab(window.location.search) ?? "GENERAL";
+  return desktopVisualQaInitialSettingsTab(window.location.search);
 }
 
 export default function App() {
@@ -49,7 +50,7 @@ export default function App() {
   const [inventoryNavigationIntent, setInventoryNavigationIntent] =
     useState<InventoryNavigationIntent>(null);
   const [settingsInitialTab, setSettingsInitialTab] =
-    useState<SettingsTabKey>(() => initialSettingsTabFromUrl());
+    useState<SettingsTabKey | null>(() => initialSettingsTabFromUrl());
   const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export default function App() {
       const page = desktopVisualQaInitialPage(window.location.search);
       if (page) {
         setInventoryNavigationIntent(null);
-        setSettingsInitialTab(desktopVisualQaInitialSettingsTab(window.location.search) ?? "GENERAL");
+        setSettingsInitialTab(desktopVisualQaInitialSettingsTab(window.location.search));
         setActivePage(page);
         if (intervalId !== null) {
           window.clearInterval(intervalId);
@@ -85,6 +86,23 @@ export default function App() {
         window.clearInterval(intervalId);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !import.meta.env.DEV ||
+      !isTauri() ||
+      !desktopVisualQaInitialPage(window.location.search)
+    ) {
+      return;
+    }
+    const frameId = window.requestAnimationFrame(() => {
+      void prepareDesktopVisualQaWindow().catch((error) => {
+        console.error("Failed to prepare desktop visual QA window.", error);
+      });
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, []);
 
   useEffect(() => {
@@ -143,9 +161,17 @@ export default function App() {
     startTransition(() => {
       setInventoryNavigationIntent(nextInventoryIntent);
       if (page !== "settings") {
-        setSettingsInitialTab("GENERAL");
+        setSettingsInitialTab(null);
       }
       setActivePage(page);
+    });
+  };
+
+  const openSettingsTab = (tab: SettingsTabKey) => {
+    startTransition(() => {
+      setInventoryNavigationIntent(null);
+      setSettingsInitialTab(tab);
+      setActivePage("settings");
     });
   };
 
@@ -155,13 +181,17 @@ export default function App() {
         return (
           <DashboardPage
             onNavigate={(page) => navigateToPage(page)}
-            onOpenCompanionSettings={() => {
-              startTransition(() => {
-                setInventoryNavigationIntent(null);
-                setSettingsInitialTab("LIBRARY");
-                setActivePage("settings");
+            onAddFirstSpool={() => {
+              navigateToPage("inventory", {
+                kind: "ADD_SPOOL",
+                seq: Date.now(),
               });
             }}
+            onOpenCompanionSettings={() => {
+              openSettingsTab("LIBRARY");
+            }}
+            onOpenMaintenanceSettings={() => openSettingsTab("MAINTENANCE")}
+            onOpenPrinters={() => navigateToPage("printers")}
             onOpenLowStock={() => {
               navigateToPage("inventory", {
                 kind: "LOW_STOCK",

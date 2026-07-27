@@ -1,8 +1,18 @@
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  closeSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  realpathSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { copyFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { networkInterfaces, tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
@@ -21,6 +31,10 @@ export const VISUAL_QA_FIXTURE_WISHLIST_QUEUE = "wishlist-queue";
 export const VISUAL_QA_FIXTURE_LOAN_DIALOGS = "loan-dialogs";
 export const VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE = "trusted-lan-interface";
 export const VISUAL_QA_TRUSTED_LAN_PORT = 4279;
+export const VISUAL_QA_LOOPBACK_INTERFACE = Object.freeze({
+  address: "127.0.0.1",
+  name: "Loopback QA",
+});
 
 export const DEFAULT_VISUAL_QA_DB_CANDIDATES = [
   "data/filament_manager.db",
@@ -81,7 +95,72 @@ export function normalizeVisualQaPath(path, cwd = process.cwd()) {
   if (!trimmed) {
     return null;
   }
-  return isAbsolute(trimmed) ? trimmed : resolve(cwd, trimmed);
+  return resolve(cwd, trimmed);
+}
+
+export function assertVisualQaLaunchUsesCopy(live, context = "Visual QA launch") {
+  if (Boolean(live)) {
+    throw new Error(
+      `${context} refuses --live. Select the source database with --source; QA always launches against an isolated temporary copy.`,
+    );
+  }
+}
+
+function comparableVisualQaPath(path, platform = process.platform) {
+  let normalized = resolve(path).normalize("NFC");
+  if (platform === "win32") {
+    normalized = normalized
+      .split(/([\\/]+)/)
+      .map((component, index) =>
+        index % 2 === 0 ? component.replace(/[ .]+$/u, "") : component,
+      )
+      .join("");
+  }
+  return ["darwin", "win32"].includes(platform)
+    ? normalized.toLocaleLowerCase("en-US")
+    : normalized;
+}
+
+function visualQaCanonicalPath(path, platform = process.platform) {
+  const normalized = resolve(path);
+  let canonical;
+  try {
+    canonical = realpathSync(normalized);
+  } catch {
+    try {
+      canonical = resolve(realpathSync(dirname(normalized)), basename(normalized));
+    } catch {
+      canonical = normalized;
+    }
+  }
+  return comparableVisualQaPath(canonical, platform);
+}
+
+function visualQaPathIsSymbolicLink(path) {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch (error) {
+    if (error?.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+function visualQaPathsReferenceSameFile(leftPath, rightPath, platform = process.platform) {
+  if (
+    visualQaCanonicalPath(leftPath, platform) ===
+    visualQaCanonicalPath(rightPath, platform)
+  ) {
+    return true;
+  }
+  try {
+    const left = statSync(leftPath);
+    const right = statSync(rightPath);
+    return left.dev === right.dev && left.ino === right.ino;
+  } catch {
+    return false;
+  }
 }
 
 export function normalizeVisualQaProfile(profile) {
@@ -178,14 +257,52 @@ function copyWithSqliteCli(sourcePath, targetPath) {
   runSqlite(sourcePath, formatSqliteCliBackupCommand(targetPath));
 }
 
-async function copySqliteDatabase(sourcePath, targetPath) {
-  mkdirSync(dirname(targetPath), { recursive: true });
+function preparePrivateVisualQaCopyTarget(targetPath, options = {}) {
+  const platform = options.platform ?? process.platform;
+  const targetDirectory = dirname(targetPath);
+  mkdirSync(targetDirectory, {
+    recursive: true,
+    ...(platform === "win32" ? {} : { mode: 0o700 }),
+  });
+  if (platform !== "win32" && options.privateDirectory) {
+    chmodSync(targetDirectory, 0o700);
+  }
+
+  if (visualQaPathIsSymbolicLink(targetPath)) {
+    throw new Error(
+      "Visual QA copy target must not be a symbolic link. Use a regular file path for the isolated database copy.",
+    );
+  }
+
+  if (!existsSync(targetPath)) {
+    const descriptor = openSync(targetPath, "wx", 0o600);
+    closeSync(descriptor);
+  }
+  if (platform !== "win32") {
+    chmodSync(targetPath, 0o600);
+  }
+}
+
+function enforcePrivateVisualQaCopyMode(targetPath, platform = process.platform) {
+  if (platform !== "win32") {
+    chmodSync(targetPath, 0o600);
+  }
+}
+
+async function copySqliteDatabase(sourcePath, targetPath, options = {}) {
+  const platform = options.platform ?? process.platform;
+  preparePrivateVisualQaCopyTarget(targetPath, {
+    platform,
+    privateDirectory: options.privateDirectory,
+  });
   try {
     await copyWithBetterSqlite(sourcePath, targetPath);
+    enforcePrivateVisualQaCopyMode(targetPath, platform);
     return "better-sqlite3";
   } catch (betterSqliteError) {
     try {
       copyWithSqliteCli(sourcePath, targetPath);
+      enforcePrivateVisualQaCopyMode(targetPath, platform);
       return "sqlite3";
     } catch (sqliteCliError) {
       if (existsSync(`${sourcePath}-wal`) || existsSync(`${sourcePath}-shm`)) {
@@ -194,6 +311,7 @@ async function copySqliteDatabase(sourcePath, targetPath) {
         );
       }
       await copyFile(sourcePath, targetPath);
+      enforcePrivateVisualQaCopyMode(targetPath, platform);
       return `copy-file (${betterSqliteError.message}; ${sqliteCliError.message})`;
     }
   }
@@ -329,12 +447,6 @@ function writeSetting(db, key, value) {
 }
 
 async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options = {}) {
-  const availableInterfaces = options.interfaces ?? listPrivateVisualQaNetworkInterfaces();
-  const selectedInterface = availableInterfaces[0] ?? null;
-  if (!selectedInterface) {
-    return null;
-  }
-
   const module = await import("better-sqlite3");
   const Database = module.default ?? module;
   const db = new Database(dbPath);
@@ -351,12 +463,27 @@ async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options =
       return null;
     }
 
+    const availableInterfaces =
+      Array.isArray(options.interfaces) && options.interfaces.length > 0
+        ? options.interfaces
+        : [VISUAL_QA_LOOPBACK_INTERFACE];
+    const selectedInterface = availableInterfaces.find(
+      ({ address }) => String(address ?? "").trim() === VISUAL_QA_LOOPBACK_INTERFACE.address,
+    );
+    if (!selectedInterface) {
+      throw new Error(
+        "Visual QA trusted-LAN fixture only accepts the 127.0.0.1 loopback interface.",
+      );
+    }
+    const selectedInterfaceName =
+      String(selectedInterface.name ?? "").trim() || VISUAL_QA_LOOPBACK_INTERFACE.name;
+
     const previousName = String(readSetting(db, TRUSTED_LAN_KEYS.interfaceName) ?? "").trim();
     const previousAddress = String(readSetting(db, TRUSTED_LAN_KEYS.interfaceAddress) ?? "").trim();
     const previousPort = String(readSetting(db, TRUSTED_LAN_KEYS.port) ?? "").trim();
     const fixturePort = String(options.trustedLanPort ?? VISUAL_QA_TRUSTED_LAN_PORT);
     if (
-      previousName === selectedInterface.name &&
+      previousName === selectedInterfaceName &&
       previousAddress === selectedInterface.address &&
       previousPort === fixturePort
     ) {
@@ -364,7 +491,7 @@ async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options =
     }
 
     const transaction = db.transaction(() => {
-      writeSetting(db, TRUSTED_LAN_KEYS.interfaceName, selectedInterface.name);
+      writeSetting(db, TRUSTED_LAN_KEYS.interfaceName, selectedInterfaceName);
       writeSetting(db, TRUSTED_LAN_KEYS.interfaceAddress, selectedInterface.address);
       writeSetting(db, TRUSTED_LAN_KEYS.port, fixturePort);
     });
@@ -373,7 +500,7 @@ async function applyTrustedLanInterfaceFixtureWithBetterSqlite(dbPath, options =
     return {
       fixture: VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
       interfaceAddress: selectedInterface.address,
-      interfaceName: selectedInterface.name,
+      interfaceName: selectedInterfaceName,
       previousInterfaceAddress: previousAddress || null,
       previousInterfaceName: previousName || null,
       previousPort: previousPort || null,
@@ -727,7 +854,10 @@ async function applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options
     }
 
     const now = (options.now ?? new Date()).toISOString();
-    const fixtureIdentity = `VISUALQA-${target.slot.slot_id}`;
+    const fixtureAmsNumber = Number.isFinite(Number(target.tray.ams_index))
+      ? Math.max(1, Number(target.tray.ams_index) + 1)
+      : 1;
+    const fixtureIdentity = `VISUALQA-AMS${fixtureAmsNumber}-SLOT${target.slot.slot_index}`;
     const nextTray = {
       ...target.tray,
       loaded: true,
@@ -747,6 +877,10 @@ async function applyPrinterSlotOnboardingFixtureWithBetterSqlite(dbPath, options
       match_note: "Visual QA fixture: unknown Bambu RFID for catalog onboarding.",
     };
     const nextConfig = structuredClone(target.config);
+    // The reviewed public seed keeps live polling disabled. This isolated scenario copy
+    // enables the signal so production matching logic recognizes the synthetic tray as
+    // a live unknown RFID and opens the normal onboarding flow.
+    nextConfig.enabled = true;
     nextConfig.observed_state = nextConfig.observed_state ?? {};
     nextConfig.observed_state.online = true;
     nextConfig.observed_state.mqtt_connected = true;
@@ -1286,13 +1420,13 @@ async function applyLoanDialogsFixtureWithBetterSqlite(dbPath, options = {}) {
         colorName: "Lagoon Blue",
         hexColor: "#0081A7",
         ownershipType: "BORROWED_IN",
-        ownerName: "Maja Solberg",
-        ownerContact: "maja@example.test",
+        ownerName: "Sample workshop",
+        ownerContact: null,
         ownershipNote: "Visual QA fixture: borrowed-in roll for hand-back review.",
         currentWeight: 742,
         direction: "INBOUND",
         status: "ACTIVE",
-        partyName: "Maja Solberg",
+        partyName: "Sample workshop",
         lentAt: inboundLentAt,
         returnedAt: null,
         returnedGrams: null,
@@ -1314,7 +1448,7 @@ async function applyLoanDialogsFixtureWithBetterSqlite(dbPath, options = {}) {
         currentWeight: 620,
         direction: "OUTBOUND",
         status: "RETURNED",
-        partyName: "Nora Berg",
+        partyName: "Sample maker space",
         lentAt: outboundLentAt,
         returnedAt: outboundReturnedAt,
         returnedGrams: 620,
@@ -1645,6 +1779,48 @@ export function visualQaTempDbPath(sourcePath, now = new Date()) {
   );
 }
 
+export function assertVisualQaDatabaseTarget({
+  cwd = process.cwd(),
+  live = false,
+  platform = process.platform,
+  sourcePath,
+  targetPath,
+}) {
+  const normalizedSource = normalizeVisualQaPath(sourcePath, cwd);
+  const normalizedTarget = normalizeVisualQaPath(targetPath, cwd);
+  const realSource = normalizedSource
+    ? visualQaCanonicalPath(normalizedSource, platform)
+    : null;
+  const protectedPaths = normalizedSource
+    ? [...new Set(
+        [normalizedSource, realSource]
+          .filter(Boolean)
+          .flatMap((path) => [path, `${path}-wal`, `${path}-shm`, `${path}-journal`]),
+      )]
+    : [];
+  if (
+    !live &&
+    normalizedTarget &&
+    visualQaPathIsSymbolicLink(normalizedTarget)
+  ) {
+    throw new Error(
+      "Visual QA copy target must not be a symbolic link. Use a regular file path for the isolated database copy.",
+    );
+  }
+  if (
+    !live &&
+    normalizedTarget &&
+    protectedPaths.some((protectedPath) =>
+      visualQaPathsReferenceSameFile(protectedPath, normalizedTarget, platform),
+    )
+  ) {
+    throw new Error(
+      "Visual QA copy target must differ from its source database and SQLite sidecars. Use --live only for an explicitly approved read-only inspection.",
+    );
+  }
+  return { sourcePath: normalizedSource, targetPath: normalizedTarget };
+}
+
 export async function prepareVisualQaDatabase(options = {}) {
   const cwd = options.cwd ?? process.cwd();
   const profile = normalizeVisualQaProfile(options.profile);
@@ -1684,11 +1860,19 @@ export async function prepareVisualQaDatabase(options = {}) {
   }
 
   const generatedTarget = options.targetPath == null;
-  const targetPath = generatedTarget
+  const requestedTargetPath = generatedTarget
     ? visualQaTempDbPath(source.path, options.now ?? new Date())
     : options.targetPath;
+  const { targetPath } = assertVisualQaDatabaseTarget({
+    cwd,
+    live,
+    sourcePath: source.path,
+    targetPath: requestedTargetPath,
+  });
   try {
-    const copyMethod = await copySqliteDatabase(source.path, targetPath);
+    const copyMethod = await copySqliteDatabase(source.path, targetPath, {
+      privateDirectory: generatedTarget,
+    });
     const trustedLanFixture = await applyTrustedLanInterfaceFixture(targetPath, {
       interfaces: options.interfaces,
       trustedLanPort: options.trustedLanPort,

@@ -136,6 +136,11 @@ pub(crate) struct UpdateWishlistItemStatusRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct ReceiveWishlistItemRequest {
+    pub(crate) quantity: i64,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct SetActivePrinterRequest {
     pub(crate) printer_id: Option<String>,
 }

@@ -211,6 +211,7 @@ test("loadPrinterPageData uses cached client data when host target is incomplete
   );
 
   assert.equal(result.source, "CACHED");
+  assert.equal(result.revisionPollComplete, false);
   assert.equal(result.updatedAt, "2026-04-01 12:00:00");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
   assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
@@ -234,7 +235,7 @@ test("loadPrinterPageData keeps fulfilled client spools when host overview fails
       loadHostSpools: async (options, limit, offset) => {
         assert.equal(options.clientHostBaseUrl, "http://host");
         assert.equal(options.clientLibraryId, "library-1");
-        assert.equal(limit, 1200);
+        assert.equal(limit, 1000);
         assert.equal(offset, 0);
         return [spoolRow("host-spool")];
       },
@@ -251,6 +252,7 @@ test("loadPrinterPageData keeps fulfilled client spools when host overview fails
   );
 
   assert.equal(result.source, "CACHED");
+  assert.equal(result.revisionPollComplete, false);
   assert.equal(result.updatedAt, "2026-04-01 11:00:00");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
   assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["host-spool"]);
@@ -286,6 +288,7 @@ test("loadPrinterPageData uses cached spool timestamp when spool data falls back
   );
 
   assert.equal(result.source, "CACHED");
+  assert.equal(result.revisionPollComplete, false);
   assert.equal(result.updatedAt, "2026-04-01 12:00:00");
   assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-host"]);
   assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
@@ -355,5 +358,38 @@ test("loadPrinterPageData reports offline when host and cache are unavailable", 
     printerModels: ["Generic"],
     source: "OFFLINE",
     updatedAt: null,
+    revisionPollComplete: false,
   });
+});
+
+test("loadPrinterPageData marks complete local and fully live host reads", async () => {
+  const local = await loadPrinterPageData(
+    {
+      clientReadOnly: false,
+      supportedPrinterModels: ["Generic"],
+    },
+    {
+      listLocalOverview: async () => [printerOverviewRow("printer-local")],
+      loadLocalSpools: async () => [spoolRow("spool-local")],
+      loadLocalSettings: async () => printerSettingsSnapshot("printer-local"),
+    },
+  );
+  assert.equal(local.revisionPollComplete, true);
+
+  const host = await loadPrinterPageData(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      supportedPrinterModels: ["Generic"],
+    },
+    {
+      fetchHostOverview: async () => [printerOverviewRow("printer-host")],
+      loadHostSpools: async () => [spoolRow("spool-host")],
+      fetchHostSettings: async () => printerSettingsSnapshot("printer-host"),
+      fetchCachedOverview: async () => null,
+      fetchCachedSpools: async () => null,
+    },
+  );
+  assert.equal(host.revisionPollComplete, true);
 });

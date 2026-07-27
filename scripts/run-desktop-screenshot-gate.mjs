@@ -1,6 +1,6 @@
 import { execFile as execFileCallback, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -11,7 +11,12 @@ import {
 } from "../src-tauri/companion_browser/supported_locales.js";
 import { pseudoLocalizeMessageForLocale } from "../src-tauri/companion_browser/pseudo_locale.js";
 import {
+  preparePrivateQaArtifactDirectory,
+  securePrivateQaArtifact,
+} from "./qa-artifact-permissions.mjs";
+import {
   APP_DB_PATH_ENV_VAR,
+  assertVisualQaLaunchUsesCopy,
   cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
   prepareVisualQaDatabase,
@@ -22,10 +27,22 @@ const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 const DEFAULT_PROCESS_NAME = "bambu-filament-manager";
 const DEFAULT_WINDOW_TITLE = "Filament Manager";
 export const DEFAULT_WINDOW_COMMAND_TIMEOUT_MS = 15_000;
-export const DESKTOP_PRINTER_LIVE_WAIT_MS = 30_000;
+export const DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS = 60_000;
+export const DESKTOP_CAPTURE_EDGE_INSET = 24;
+// macOS can clamp the requested top edge around menu-bar/notch safe areas.
+// Keep a bounded inset range that still rejects the stale 0,0 launch frame.
+export const DESKTOP_CAPTURE_POSITION_TOLERANCE = 12;
+export const DESKTOP_VISUAL_QA_STATIC_SETTLE_MS = 3_500;
+export const DESKTOP_VISUAL_QA_READINESS_PREFIX =
+  "FILAMENT_MANAGER_VISUAL_QA_READY:";
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const VISUAL_QA_LOCALE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 const VISUAL_QA_THEME_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_THEME";
+const VISUAL_QA_WINDOW_SIZE_ENV_VAR =
+  "FILAMENT_MANAGER_VISUAL_QA_WINDOW_SIZE";
+const MACOS_WINDOW_INFO_HELPER_PATH = fileURLToPath(
+  new URL("./macos-window-info.swift", import.meta.url),
+);
 export const DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN = 96;
 export const DESKTOP_DARK_THEME_MAX_LUMA_MEAN = 128;
 const DESKTOP_VISUAL_QA_SCENARIO_MANIFEST = JSON.parse(
@@ -401,16 +418,49 @@ export function desktopVisualQaScenarioRequiresDatabaseFixture(scenario) {
   );
 }
 
+export function desktopVisualQaScenarioReadiness(scenario) {
+  return desktopVisualQaScenarioDefinition(scenario)?.readiness ?? null;
+}
+
 export function defaultDesktopVisualQaCaptureDelayMs(scenarios) {
-  if (
-    scenarios.some(
-      (scenario) =>
-        desktopVisualQaScenarioDefinition(scenario)?.page === "printers",
-    )
-  ) {
-    return DESKTOP_PRINTER_LIVE_WAIT_MS;
+  return scenarios.some(Boolean) ? DESKTOP_VISUAL_QA_STATIC_SETTLE_MS : 0;
+}
+
+export function desktopVisualQaReadinessMarker(token) {
+  return `${DESKTOP_VISUAL_QA_READINESS_PREFIX}${String(token ?? "").trim()}`;
+}
+
+export function desktopVisualQaOutputHasReadinessToken(output, token) {
+  const marker = desktopVisualQaReadinessMarker(token);
+  return String(output ?? "")
+    .split(/\r?\n/)
+    .some((line) => line.trim() === marker);
+}
+
+export async function waitForDesktopVisualQaReadiness(options = {}) {
+  const timeoutMs = options.timeoutMs ?? 35_000;
+  const intervalMs = options.intervalMs ?? 250;
+  const nowFn = options.nowFn ?? Date.now;
+  const waitFn = options.waitFn ?? wait;
+  const readOutput = options.readOutput ?? (() => "");
+  const startedAt = nowFn();
+  let isFirstAttempt = true;
+
+  while (isFirstAttempt || nowFn() - startedAt <= timeoutMs) {
+    isFirstAttempt = false;
+    if (options.shouldAbort?.()) {
+      return false;
+    }
+    if (desktopVisualQaOutputHasReadinessToken(readOutput(), options.token)) {
+      return true;
+    }
+    if (nowFn() - startedAt >= timeoutMs) {
+      break;
+    }
+    await waitFn(intervalMs);
   }
-  return scenarios.some(Boolean) ? 3_500 : 0;
+
+  return false;
 }
 
 export function desktopVisualQaExpectedWindowTitles(scenario, locale) {
@@ -517,7 +567,7 @@ tell application "System Events"
     set processName to name of appProcess as text
     repeat with appWindow in windows of appProcess
       set windowName to name of appWindow as text
-      if windowName contains "${title}" or processName contains "${processName}" then
+      if processName is "${processName}" and windowName contains "${title}" then
         set windowPosition to position of appWindow
         set windowSize to size of appWindow
         return processName & tab & windowName & tab & (item 1 of windowPosition as text) & tab & (item 2 of windowPosition as text) & tab & (item 1 of windowSize as text) & tab & (item 2 of windowSize as text)
@@ -573,17 +623,41 @@ export function buildDesktopWindowResizeScript(windowInfo, windowSize) {
   return `
 tell application "System Events"
   tell first application process whose name is "${processName}"
-    set size of first window whose name is "${windowTitle}" to {${width}, ${height}}
+    set appWindow to first window whose name is "${windowTitle}"
+    set size of appWindow to {${width}, ${height}}
+    set position of appWindow to {${DESKTOP_CAPTURE_EDGE_INSET}, ${DESKTOP_CAPTURE_EDGE_INSET}}
   end tell
 end tell
 `.trim();
+}
+
+export function parseDesktopScreenInfo(raw) {
+  const parts = String(raw ?? "")
+    .trim()
+    .split("\t");
+  if (parts.length !== 4) {
+    return null;
+  }
+  const [xRaw, yRaw, widthRaw, heightRaw] = parts;
+  const x = Number.parseInt(xRaw, 10);
+  const y = Number.parseInt(yRaw, 10);
+  const width = Number.parseInt(widthRaw, 10);
+  const height = Number.parseInt(heightRaw, 10);
+  if (
+    ![x, y, width, height].every(Number.isFinite) ||
+    width <= 0 ||
+    height <= 0
+  ) {
+    return null;
+  }
+  return { height, width, x, y };
 }
 
 export function parseDesktopWindowInfo(raw) {
   const parts = String(raw ?? "")
     .trim()
     .split("\t");
-  if (parts.length < 6 || !parts[0] || !parts[1]) {
+  if (parts.length < 6 || !parts[0]) {
     return null;
   }
   const [processName, title, xRaw, yRaw, widthRaw, heightRaw] = parts;
@@ -614,40 +688,198 @@ export function parseDesktopWindowList(raw) {
     .filter((window) => window != null);
 }
 
+function normalizeDesktopWindowIdentity(value) {
+  return String(value ?? "")
+    .trim()
+    .normalize("NFKC")
+    .toLocaleLowerCase("en-US");
+}
+
+export function selectDesktopWindowForProcess(
+  windows,
+  { processName, windowTitle },
+) {
+  const processWindows = desktopWindowsForProcess(windows, processName);
+  if (processWindows.length === 0) {
+    return null;
+  }
+  const expectedWindowTitle = normalizeDesktopWindowIdentity(windowTitle);
+  return (
+    processWindows.find(
+      (window) =>
+        expectedWindowTitle &&
+        normalizeDesktopWindowIdentity(window?.title).includes(
+          expectedWindowTitle,
+        ),
+    ) ??
+    processWindows.find((window) => String(window?.title ?? "").trim()) ??
+    processWindows[0]
+  );
+}
+
+export function desktopWindowsForProcess(windows, processName) {
+  const expectedProcessName = normalizeDesktopWindowIdentity(processName);
+  if (!expectedProcessName) {
+    return [];
+  }
+  return windows.filter(
+    (window) =>
+      normalizeDesktopWindowIdentity(window?.processName) ===
+      expectedProcessName,
+  );
+}
+
 export async function listDesktopWindows(options = {}) {
   const execFileFn = options.execFileFn ?? execFile;
-  const { stdout } = await execFileWithTimeout(
-    execFileFn,
-    "osascript",
-    ["-e", buildDesktopWindowListScript()],
-    {
-      label: "Desktop visible-window diagnostics",
-      timeoutMs:
-        options.windowCommandTimeoutMs ??
-        options.desktopCommandTimeoutMs ??
-        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
-    },
-  );
-  return parseDesktopWindowList(stdout);
+  let appleScriptError = null;
+  try {
+    const { stdout } = await execFileWithTimeout(
+      execFileFn,
+      "osascript",
+      ["-e", buildDesktopWindowListScript()],
+      {
+        label: "Desktop visible-window diagnostics",
+        timeoutMs:
+          options.windowCommandTimeoutMs ??
+          options.desktopCommandTimeoutMs ??
+          DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+      },
+    );
+    const windows = parseDesktopWindowList(stdout);
+    if (windows.length > 0) {
+      return windows;
+    }
+  } catch (error) {
+    appleScriptError = error;
+  }
+  try {
+    return await listDesktopWindowsWithNativeHelper(options);
+  } catch (nativeError) {
+    if (appleScriptError) {
+      throw new AggregateError(
+        [appleScriptError, nativeError],
+        `Both macOS desktop window diagnostics failed: ${childProcessErrorDetail(appleScriptError)}; native fallback: ${childProcessErrorDetail(nativeError)}.`,
+        { cause: appleScriptError },
+      );
+    }
+    throw nativeError;
+  }
 }
 
 export async function findDesktopWindow(options = {}) {
   const execFileFn = options.execFileFn ?? execFile;
   const windowTitle = options.windowTitle ?? DEFAULT_WINDOW_TITLE;
   const processName = options.processName ?? DEFAULT_PROCESS_NAME;
-  const { stdout } = await execFileWithTimeout(
-    execFileFn,
-    "osascript",
-    ["-e", buildDesktopWindowLookupScript({ processName, windowTitle })],
-    {
-      label: "Desktop window lookup",
-      timeoutMs:
-        options.windowCommandTimeoutMs ??
-        options.desktopCommandTimeoutMs ??
-        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
-    },
+  let appleScriptError = null;
+  try {
+    const { stdout } = await execFileWithTimeout(
+      execFileFn,
+      "osascript",
+      ["-e", buildDesktopWindowListScript()],
+      {
+        label: "Desktop window lookup",
+        timeoutMs:
+          options.windowCommandTimeoutMs ??
+          options.desktopCommandTimeoutMs ??
+          DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+      },
+    );
+    const window = selectDesktopWindowForProcess(
+      parseDesktopWindowList(stdout),
+      { processName, windowTitle },
+    );
+    if (window) {
+      return { ...window, lookupSource: "applescript" };
+    }
+  } catch (error) {
+    appleScriptError = error;
+  }
+  try {
+    return await findDesktopWindowWithNativeHelper(options);
+  } catch (nativeError) {
+    if (appleScriptError) {
+      throw new AggregateError(
+        [appleScriptError, nativeError],
+        `Both macOS desktop window lookups failed: ${childProcessErrorDetail(appleScriptError)}; native fallback: ${childProcessErrorDetail(nativeError)}.`,
+        { cause: appleScriptError },
+      );
+    }
+    throw nativeError;
+  }
+}
+
+export function resolveMacosWindowInfoHelperLaunch(command, args = []) {
+  return {
+    args: [MACOS_WINDOW_INFO_HELPER_PATH, command, ...args],
+    command: "swift",
+    shell: false,
+  };
+}
+
+async function runMacosWindowInfoHelper(command, args, options = {}) {
+  const execFileFn = options.nativeWindowExecFileFn ?? options.execFileFn ?? execFile;
+  const launch = resolveMacosWindowInfoHelperLaunch(command, args);
+  return await execFileWithTimeout(execFileFn, launch.command, launch.args, {
+    label: `Native macOS window ${command}`,
+    timeoutMs:
+      options.nativeWindowCommandTimeoutMs ??
+      DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS,
+  });
+}
+
+export async function listDesktopWindowsWithNativeHelper(options = {}) {
+  const { stdout } = await runMacosWindowInfoHelper("list", [], options);
+  return parseDesktopWindowList(stdout);
+}
+
+export async function findDesktopWindowWithNativeHelper(options = {}) {
+  const { stdout } = await runMacosWindowInfoHelper(
+    "list",
+    [],
+    options,
   );
-  return parseDesktopWindowInfo(stdout);
+  const window = normalizeNativeDesktopWindowFrame(
+    selectDesktopWindowForProcess(parseDesktopWindowList(stdout), {
+      processName: options.processName ?? DEFAULT_PROCESS_NAME,
+      windowTitle: options.windowTitle ?? DEFAULT_WINDOW_TITLE,
+    }),
+    options.windowSize,
+  );
+  return window ? { ...window, lookupSource: "native" } : null;
+}
+
+export async function findPrimaryDesktopScreen(options = {}) {
+  const { stdout } = await runMacosWindowInfoHelper("main-screen", [], options);
+  const screen = parseDesktopScreenInfo(stdout);
+  if (!screen) {
+    throw new Error("Native macOS screen lookup returned no primary display bounds.");
+  }
+  return screen;
+}
+
+export function normalizeNativeDesktopWindowFrame(windowInfo, windowSize) {
+  if (!windowInfo || !windowSize) {
+    return windowInfo;
+  }
+  const widthDelta = Number(windowSize.width) - Number(windowInfo.width);
+  const heightDelta = Number(windowSize.height) - Number(windowInfo.height);
+  if (
+    widthDelta < 0 ||
+    heightDelta < 0 ||
+    widthDelta > 32 ||
+    heightDelta > 32
+  ) {
+    return windowInfo;
+  }
+  const adjustedX = Number(windowInfo.x) - Math.round(widthDelta / 2);
+  const adjustedY = Number(windowInfo.y) - Math.round(heightDelta / 2);
+  return {
+    ...windowInfo,
+    height: Number(windowSize.height),
+    width: Number(windowSize.width),
+    x: Number(windowInfo.x) >= 0 ? Math.max(0, adjustedX) : adjustedX,
+    y: Number(windowInfo.y) >= 0 ? Math.max(0, adjustedY) : adjustedY,
+  };
 }
 
 async function wait(ms) {
@@ -698,18 +930,25 @@ export async function activateDesktopWindow(windowInfo, options = {}) {
     return;
   }
   const execFileFn = options.execFileFn ?? execFile;
-  await execFileWithTimeout(
-    execFileFn,
-    "osascript",
-    ["-e", buildDesktopWindowActivateScript(windowInfo.processName)],
-    {
-      label: "Desktop window activation",
-      timeoutMs:
-        options.windowCommandTimeoutMs ??
-        options.desktopCommandTimeoutMs ??
-        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
-    },
-  );
+  try {
+    await execFileWithTimeout(
+      execFileFn,
+      "osascript",
+      ["-e", buildDesktopWindowActivateScript(windowInfo.processName)],
+      {
+        label: "Desktop window activation",
+        timeoutMs:
+          options.windowCommandTimeoutMs ??
+          options.desktopCommandTimeoutMs ??
+          DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+      },
+    );
+  } catch (cause) {
+    throw new Error(
+      "Desktop visual QA requires macOS Accessibility permission to activate the verified Filament Manager window before capture.",
+      { cause },
+    );
+  }
   await wait(options.waitAfterActivateMs ?? 350);
 }
 
@@ -723,10 +962,33 @@ export function desktopWindowMatchesRequestedSize(
   }
   const allowedDelta = Number.isFinite(tolerance) ? Math.max(0, tolerance) : 2;
   return (
+    Number(windowInfo.x) >= 0 &&
+    Number(windowInfo.y) >= 0 &&
     Math.abs(Number(windowInfo.width) - Number(windowSize.width)) <=
       allowedDelta &&
     Math.abs(Number(windowInfo.height) - Number(windowSize.height)) <=
       allowedDelta
+  );
+}
+
+export function desktopWindowMatchesRequestedPosition(
+  windowInfo,
+  tolerance = DESKTOP_CAPTURE_POSITION_TOLERANCE,
+) {
+  if (!windowInfo) {
+    return false;
+  }
+  const allowedDelta = Number.isFinite(tolerance)
+    ? Math.max(0, tolerance)
+    : DESKTOP_CAPTURE_POSITION_TOLERANCE;
+  const x = Number(windowInfo.x);
+  const y = Number(windowInfo.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return false;
+  }
+  return (
+    Math.abs(x - DESKTOP_CAPTURE_EDGE_INSET) <= allowedDelta &&
+    Math.abs(y - DESKTOP_CAPTURE_EDGE_INSET) <= allowedDelta
   );
 }
 
@@ -739,21 +1001,28 @@ export async function resizeDesktopWindow(
     return windowInfo;
   }
   const execFileFn = options.execFileFn ?? execFile;
-  await execFileWithTimeout(
-    execFileFn,
-    "osascript",
-    ["-e", buildDesktopWindowResizeScript(windowInfo, windowSize)],
-    {
-      label: "Desktop window resize",
-      timeoutMs:
-        options.windowCommandTimeoutMs ??
-        options.desktopCommandTimeoutMs ??
-        DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
-    },
-  );
+  let resizeError = null;
+  let lastLookupError = null;
+  try {
+    await execFileWithTimeout(
+      execFileFn,
+      "osascript",
+      ["-e", buildDesktopWindowResizeScript(windowInfo, windowSize)],
+      {
+        label: "Desktop window resize",
+        timeoutMs:
+          options.windowCommandTimeoutMs ??
+          options.desktopCommandTimeoutMs ??
+          DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
+      },
+    );
+  } catch (error) {
+    resizeError = error;
+  }
 
   const findWindowFn = options.findWindowFn ?? findDesktopWindow;
   let latestWindow = windowInfo;
+  const resizeWindowTimeoutMs = options.resizeWindowTimeoutMs ?? 3_000;
   const resizedWindow = await waitForDesktopWindow({
     ...options,
     findWindowFn: async (lookupOptions) => {
@@ -769,10 +1038,32 @@ export async function resizeDesktopWindow(
         candidate,
         windowSize,
         options.windowSizeTolerance,
+      ) &&
+      desktopWindowMatchesRequestedPosition(
+        candidate,
+        options.windowPositionTolerance,
       ),
-    timeoutMs: options.resizeWindowTimeoutMs ?? 3_000,
+    onLookupAttempt: (attempt) => {
+      lastLookupError = attempt.error ?? null;
+      options.onLookupAttempt?.(attempt);
+    },
+    timeoutMs: resizeWindowTimeoutMs,
   });
-  return resizedWindow ?? latestWindow;
+  if (!resizedWindow) {
+    if (options.shouldAbort?.()) {
+      return latestWindow;
+    }
+    if (resizeError) {
+      throw resizeError;
+    }
+    if (lastLookupError) {
+      throw lastLookupError;
+    }
+    throw new Error(
+      `Desktop window did not reach requested frame ${windowSize.width}x${windowSize.height} at ${DESKTOP_CAPTURE_EDGE_INSET},${DESKTOP_CAPTURE_EDGE_INSET} (±${options.windowPositionTolerance ?? DESKTOP_CAPTURE_POSITION_TOLERANCE}px) within ${resizeWindowTimeoutMs}ms; latest frame was ${latestWindow?.x},${latestWindow?.y},${latestWindow?.width},${latestWindow?.height}.`,
+    );
+  }
+  return resizedWindow;
 }
 
 function screenshotPath(outputDir, name = "desktop-window") {
@@ -780,13 +1071,35 @@ function screenshotPath(outputDir, name = "desktop-window") {
 }
 
 export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
+  if (Number(windowInfo?.x) < 0 || Number(windowInfo?.y) < 0) {
+    throw new Error(
+      `Desktop window must be inside the primary capture area before capture (x=${windowInfo?.x}, y=${windowInfo?.y}).`,
+    );
+  }
+  const findPrimaryScreenFn =
+    options.findPrimaryScreenFn ?? findPrimaryDesktopScreen;
+  const screen = options.screenInfo ?? (await findPrimaryScreenFn(options));
+  const windowRight = Number(windowInfo.x) + Number(windowInfo.width);
+  const windowBottom = Number(windowInfo.y) + Number(windowInfo.height);
+  const screenRight = Number(screen.x) + Number(screen.width);
+  const screenBottom = Number(screen.y) + Number(screen.height);
+  if (
+    Number(windowInfo.x) < Number(screen.x) ||
+    Number(windowInfo.y) < Number(screen.y) ||
+    windowRight >= screenRight ||
+    windowBottom >= screenBottom
+  ) {
+    throw new Error(
+      `Desktop window capture rectangle must stay inside the primary display (window ${windowInfo.x},${windowInfo.y},${windowInfo.width},${windowInfo.height}; display ${screen.x},${screen.y},${screen.width},${screen.height}).`,
+    );
+  }
   const execFileFn = options.execFileFn ?? execFile;
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
-  await mkdir(outputDir, { recursive: true });
+  await preparePrivateQaArtifactDirectory(outputDir, options);
   const path = screenshotPath(outputDir, options.name);
   const region = [
-    Math.max(0, windowInfo.x),
-    Math.max(0, windowInfo.y),
+    windowInfo.x,
+    windowInfo.y,
     Math.max(1, windowInfo.width),
     Math.max(1, windowInfo.height),
   ].join(",");
@@ -802,6 +1115,7 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
         8_000,
     },
   );
+  await securePrivateQaArtifact(path, options);
   return {
     buffer: await readFile(path),
     path,
@@ -931,6 +1245,11 @@ export function validateDesktopScreenshotTheme(metric, themeMode) {
 export function validateDesktopWindowSize(metric, windowSize, tolerance = 2) {
   if (!windowSize || !metric?.window) {
     return [];
+  }
+  if (Number(metric.window.x) < 0 || Number(metric.window.y) < 0) {
+    return [
+      `Desktop window begins outside the primary capture area at x=${metric.window.x}, y=${metric.window.y}.`,
+    ];
   }
   if (desktopWindowMatchesRequestedSize(metric.window, windowSize, tolerance)) {
     return [];
@@ -1259,6 +1578,11 @@ export function buildDesktopVisualQaLaunchEnv(
     ...(options.themeMode
       ? { [VISUAL_QA_THEME_ENV_VAR]: options.themeMode }
       : {}),
+    ...(options.windowSize
+      ? {
+          [VISUAL_QA_WINDOW_SIZE_ENV_VAR]: `${options.windowSize.width}x${options.windowSize.height}`,
+        }
+      : {}),
   };
 }
 
@@ -1286,6 +1610,22 @@ export function spawnDesktopTauriDev(spawnFn, options, database) {
 
 export async function runLaunchedDesktopScreenshotGate(options = {}) {
   assertDesktopScreenshotPlatform(options);
+  assertVisualQaLaunchUsesCopy(options.live, "Desktop screenshot launch");
+
+  const platform = options.platform ?? process.platform;
+  if (platform === "darwin") {
+    const listPreexistingWindowsFn =
+      options.listPreexistingWindowsFn ?? listDesktopWindowsWithNativeHelper;
+    const preexistingWindows = desktopWindowsForProcess(
+      await listPreexistingWindowsFn(options),
+      options.processName ?? DEFAULT_PROCESS_NAME,
+    );
+    if (preexistingWindows.length > 0) {
+      throw new Error(
+        "Desktop visual QA requires every existing Filament Manager window to be closed before launch so a live library can never be captured by mistake.",
+      );
+    }
+  }
 
   const prepareDatabase =
     options.prepareVisualQaDatabase ?? prepareVisualQaDatabase;
@@ -1301,12 +1641,8 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       terminateChild(child, {
         platform: options.platform ?? process.platform,
       }));
-  const forceCopyForFixture = Boolean(
-    options.live &&
-    desktopVisualQaScenarioRequiresDatabaseFixture(options.scenario),
-  );
   const database = await prepareDatabase({
-    live: Boolean(options.live) && !forceCopyForFixture,
+    live: false,
     profile: options.profile,
     scenario: options.scenario,
     sourcePath: options.sourcePath,
@@ -1317,10 +1653,6 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   let child;
   let expectedWindowTitles;
   try {
-    if (forceCopyForFixture) {
-      database.liveOverrideReason =
-        "Scenario requires a temporary DB fixture, so --live was ignored for this capture.";
-    }
     expectedWindowTitles = desktopVisualQaExpectedWindowTitles(
       options.scenario,
       options.locale,
@@ -1472,6 +1804,27 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
 
     if (result == null && launchStopped()) {
       result = stoppedLaunchResult("desktop window preparation");
+    }
+
+    const requiredReadiness = desktopVisualQaScenarioReadiness(options.scenario);
+    if (result == null && requiredReadiness) {
+      const readinessReached = await waitForDesktopVisualQaReadiness({
+        intervalMs: options.readinessPollMs ?? 250,
+        nowFn: options.readinessNowFn,
+        readOutput: () => outputTail,
+        shouldAbort: launchStopped,
+        timeoutMs:
+          options.readinessTimeoutMs ?? requiredReadiness.timeoutMs,
+        token: requiredReadiness.token,
+        waitFn: options.readinessWaitFn,
+      });
+      if (!readinessReached && launchStopped()) {
+        result = stoppedLaunchResult("desktop readiness wait");
+      } else if (!readinessReached) {
+        throw new Error(
+          `Desktop visual QA scenario ${options.scenario} did not signal required readiness token ${requiredReadiness.token} within ${options.readinessTimeoutMs ?? requiredReadiness.timeoutMs}ms. Live printer telemetry was not available, so no screenshot was captured.`,
+        );
+      }
     }
 
     if (result == null && options.captureDelayMs) {

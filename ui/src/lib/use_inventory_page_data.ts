@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { loadActiveLoanRows } from "./loan_data_source";
 import {
   loadInventorySpoolDetail,
   loadInventorySpools,
 } from "./inventory_data_source";
 import { loadLibrarySyncPageState } from "./library_sync_state";
+import { usePageRefreshState } from "./page_refresh_state";
 import { loadPrinterOverviewData } from "./printer_data_source";
 import { sortPrinterSlotsExtLast } from "./printer_profiles";
 import { loadWishlistItems } from "./wishlist_data_source";
@@ -25,20 +33,33 @@ import type {
 import type { InventorySpool } from "./inventory_list_model";
 
 type InventoryPageDataInput = {
-  setError: Dispatch<SetStateAction<string | null>>;
   setRfidCaptureFieldsBySlotId: Dispatch<SetStateAction<Record<string, RfidCaptureField[]>>>;
   tauriAvailable: boolean;
   t: ReturnType<typeof useI18n>["t"];
 };
 
+type InventoryReloadReporter = (successful: boolean) => void;
+
+type InventoryRefreshInput = {
+  reloadCatalog: (reportResult?: InventoryReloadReporter) => Promise<void>;
+  selectedSpoolId?: string | null;
+};
+
 export function useInventoryPageData({
-  setError,
   setRfidCaptureFieldsBySlotId,
   tauriAvailable,
   t,
 }: InventoryPageDataInput) {
   const [spools, setSpools] = useState<InventorySpool[]>([]);
-  const [loading, setLoading] = useState(tauriAvailable);
+  const {
+    beginRefresh,
+    completeRefresh,
+    error: loadError,
+    failRefresh,
+    loading,
+    refreshing,
+  } = usePageRefreshState(tauriAvailable);
+  const refreshInFlightRef = useRef(false);
   const [clientReadOnly, setClientReadOnly] = useState(false);
   const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
@@ -90,11 +111,11 @@ export function useInventoryPageData({
     };
   }, [tauriAvailable]);
 
-  const reloadSpools = useCallback(async () => {
+  const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
+      reportResult?.(false);
       return;
     }
-    setLoading(true);
     try {
       const result = await loadInventorySpools({
         clientReadOnly,
@@ -105,20 +126,21 @@ export function useInventoryPageData({
         setClientInventorySource(result.source);
         setClientInventoryUpdatedAt(result.updatedAt);
         if (result.source === "OFFLINE") {
-          setError(t("inventory.error.loadSpools", "Could not load inventory spools."));
+          reportResult?.(false);
+          return;
         }
       }
       setSpools(result.rows);
+      reportResult?.(true);
     } catch (loadError) {
       console.error(loadError);
-      setError(t("inventory.error.loadSpools", "Could not load inventory spools."));
-    } finally {
-      setLoading(false);
+      reportResult?.(false);
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, setError, t, tauriAvailable]);
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
 
-  const reloadWishlist = useCallback(async () => {
+  const reloadWishlist = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
+      reportResult?.(false);
       return;
     }
     setWishlistLoading(true);
@@ -129,16 +151,18 @@ export function useInventoryPageData({
         clientLibraryId,
       });
       setWishlistItems(rows);
+      reportResult?.(true);
     } catch (wishlistError) {
       console.error(wishlistError);
-      setWishlistItems([]);
+      reportResult?.(false);
     } finally {
       setWishlistLoading(false);
     }
   }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
 
-  const reloadActiveLoans = useCallback(async () => {
+  const reloadActiveLoans = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
+      reportResult?.(false);
       return;
     }
     try {
@@ -148,14 +172,16 @@ export function useInventoryPageData({
         clientLibraryId,
       });
       setActiveLoans(rows);
+      reportResult?.(true);
     } catch (loanError) {
       console.error(loanError);
-      setActiveLoans([]);
+      reportResult?.(false);
     }
   }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
 
-  const reloadPrinterOverview = useCallback(async () => {
+  const reloadPrinterOverview = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
+      reportResult?.(false);
       return;
     }
     try {
@@ -164,6 +190,10 @@ export function useInventoryPageData({
         clientHostBaseUrl,
         clientLibraryId,
       });
+      if (overview.source === "OFFLINE") {
+        reportResult?.(false);
+        return;
+      }
       const rows = overview.printers;
       setPrinterOverview(
         rows.map((printer) => ({
@@ -172,7 +202,9 @@ export function useInventoryPageData({
         })),
       );
       const nextIntegrations = overview.bambuLiveIntegrations;
-      setBambuLiveIntegrations(nextIntegrations);
+      if (overview.source === "LIVE" || Object.keys(nextIntegrations).length > 0) {
+        setBambuLiveIntegrations(nextIntegrations);
+      }
       setRfidCaptureFieldsBySlotId((current) => {
         const seeded = buildBaselineCaptureFieldsBySlotId(rows, nextIntegrations);
         if (Object.keys(seeded).length === 0) {
@@ -184,10 +216,10 @@ export function useInventoryPageData({
         }
         return merged;
       });
+      reportResult?.(true);
     } catch (overviewError) {
       console.error(overviewError);
-      setPrinterOverview([]);
-      setBambuLiveIntegrations({});
+      reportResult?.(false);
     }
   }, [
     clientHostBaseUrl,
@@ -197,8 +229,19 @@ export function useInventoryPageData({
     tauriAvailable,
   ]);
 
-  const reloadSpoolDetail = useCallback(async (spoolId: string) => {
+  const reloadSpoolDetail = useCallback(async (
+    spoolId: string,
+    reportResult?: InventoryReloadReporter,
+  ) => {
     if (!tauriAvailable) {
+      reportResult?.(false);
+      return;
+    }
+    if (
+      clientReadOnly &&
+      (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim())
+    ) {
+      reportResult?.(false);
       return;
     }
     setHistoryLoading(true);
@@ -212,15 +255,69 @@ export function useInventoryPageData({
       });
       setHistoryRows(detail.historyRows);
       setUsagePoints(detail.usagePoints);
+      reportResult?.(true);
     } catch (detailError) {
       console.error(detailError);
-      setHistoryRows([]);
-      setUsagePoints([]);
+      reportResult?.(false);
     } finally {
       setHistoryLoading(false);
       setUsageLoading(false);
     }
   }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+
+  const refreshInventoryData = useCallback(async ({
+    reloadCatalog,
+    selectedSpoolId,
+  }: InventoryRefreshInput) => {
+    if (!tauriAvailable || refreshInFlightRef.current) {
+      return;
+    }
+    refreshInFlightRef.current = true;
+    beginRefresh();
+    let successfulLoads = 0;
+    let failedLoads = 0;
+    const reportResult: InventoryReloadReporter = (successful) => {
+      if (successful) {
+        successfulLoads += 1;
+      } else {
+        failedLoads += 1;
+      }
+    };
+    try {
+      const refreshes = [
+        reloadSpools(reportResult),
+        reloadWishlist(reportResult),
+        reloadActiveLoans(reportResult),
+        reloadPrinterOverview(reportResult),
+        reloadCatalog(reportResult),
+      ];
+      if (selectedSpoolId) {
+        refreshes.push(reloadSpoolDetail(selectedSpoolId, reportResult));
+      }
+      await Promise.all(refreshes);
+      if (failedLoads === 0) {
+        completeRefresh();
+        return;
+      }
+      if (successfulLoads > 0) {
+        completeRefresh();
+      }
+      failRefresh(t("errors.requestFailed", "The request could not be completed."));
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, [
+    beginRefresh,
+    completeRefresh,
+    failRefresh,
+    reloadActiveLoans,
+    reloadPrinterOverview,
+    reloadSpoolDetail,
+    reloadSpools,
+    reloadWishlist,
+    t,
+    tauriAvailable,
+  ]);
 
   return {
     activeLoans,
@@ -232,13 +329,16 @@ export function useInventoryPageData({
     clientInventoryUpdatedAt,
     clientLibraryId,
     clientReadOnly,
+    completeDataLoad: completeRefresh,
     historyLoading,
     historyRows,
     librarySyncReady,
+    loadError,
     loading,
     printerOverview,
     reloadActiveLoans,
     reloadPrinterOverview,
+    refreshInventoryData,
     reloadSpoolDetail,
     reloadSpools,
     reloadWishlist,
@@ -246,12 +346,12 @@ export function useInventoryPageData({
     setBambuLiveIntegrations,
     setHistoryLoading,
     setHistoryRows,
-    setLoading,
     setPrinterOverview,
     setSpools,
     setUsageLoading,
     setUsagePoints,
     spools,
+    refreshing,
     usageLoading,
     usagePoints,
     wishlistItems,

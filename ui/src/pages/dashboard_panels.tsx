@@ -1,3 +1,4 @@
+import { PageHeaderButton } from "../components/page_header_button";
 import type { DashboardHealth } from "../lib/dashboard_model";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -16,6 +17,7 @@ type OwnershipSnapshotPanelProps = {
 
 type InventoryHealthPanelProps = {
   health: DashboardHealth;
+  onAddFirstSpool?: () => void;
   t: TranslateFn;
 };
 
@@ -99,7 +101,16 @@ export function OwnershipSnapshotPanel({
   );
 }
 
-export function InventoryHealthPanel({ health, t }: InventoryHealthPanelProps) {
+export function InventoryHealthPanel({
+  health,
+  onAddFirstSpool,
+  t,
+}: InventoryHealthPanelProps) {
+  const hasHealthScore = health.score !== null;
+  const scoreClassName = hasHealthScore
+    ? "border-emerald-200/85 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.96),rgba(220,252,231,0.98)_52%,rgba(167,243,208,0.94))] text-emerald-800 shadow-inner shadow-white/70 dark:border-emerald-400/28 dark:bg-[radial-gradient(circle_at_30%_28%,rgba(52,211,153,0.26),rgba(15,23,42,0.96)_62%,rgba(2,6,23,1))] dark:text-emerald-200 dark:shadow-none"
+    : "border-slate-300/80 bg-slate-100/80 text-slate-500 dark:border-slate-700/80 dark:bg-slate-900/70 dark:text-slate-300";
+
   return (
     <div className="surface-card">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -113,10 +124,24 @@ export function InventoryHealthPanel({ health, t }: InventoryHealthPanelProps) {
           <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
             {health.detail}
           </div>
+          {!hasHealthScore && onAddFirstSpool ? (
+            <div className="mt-4">
+              <PageHeaderButton
+                onClick={onAddFirstSpool}
+                responsive={false}
+                variant="primary"
+              >
+                {t("inventory.addSpoolAction", "Add spool")}
+              </PageHeaderButton>
+            </div>
+          ) : null}
         </div>
-        <div className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-emerald-200/85 bg-[radial-gradient(circle_at_30%_28%,rgba(255,255,255,0.96),rgba(220,252,231,0.98)_52%,rgba(167,243,208,0.94))] text-2xl font-semibold text-emerald-800 shadow-inner shadow-white/70 dark:border-emerald-400/28 dark:bg-[radial-gradient(circle_at_30%_28%,rgba(52,211,153,0.26),rgba(15,23,42,0.96)_62%,rgba(2,6,23,1))] dark:text-emerald-200 dark:shadow-none">
-          <span className="absolute inset-[8px] rounded-full border border-emerald-200/80 dark:border-emerald-300/10" />
-          <span className="relative">{health.score}%</span>
+        <div
+          aria-label={hasHealthScore ? `${health.score}%` : health.headline}
+          className={`relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border text-2xl font-semibold ${scoreClassName}`}
+        >
+          <span className="absolute inset-[8px] rounded-full border border-current opacity-20" />
+          <span className="relative">{hasHealthScore ? `${health.score}%` : "—"}</span>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3">

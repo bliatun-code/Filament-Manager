@@ -52,6 +52,15 @@ export type LibrarySyncSettings = {
   cached_wishlist?: LibrarySyncCachedWishlistList | null;
 };
 
+export type LibraryDomainRevisions = {
+  inventory: number;
+  catalog: number;
+  loans: number;
+  printers: number;
+  jobs: number;
+  wishlist: number;
+};
+
 export type LibrarySyncHostValidationResult = {
   base_url: string;
   reachable: boolean;
@@ -123,6 +132,22 @@ export async function getLibrarySyncSettings() {
   return invoke<LibrarySyncSettings>("get_library_sync_settings");
 }
 
+export async function getLibraryDomainRevisions() {
+  return invoke<LibraryDomainRevisions>("get_library_domain_revisions");
+}
+
+export async function fetchLibrarySyncDomainRevisions(
+  baseUrl: string,
+  expectedLibraryId?: string | null,
+) {
+  return invoke<LibraryDomainRevisions>("fetch_library_sync_domain_revisions", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+    },
+  });
+}
+
 export async function saveLibrarySyncSettings(input: LibrarySyncSettings) {
   return invoke<LibrarySyncSettings>("save_library_sync_settings", { input });
 }
@@ -154,7 +179,7 @@ export async function fetchLibrarySyncSnapshot(
 export async function fetchLibrarySyncSpools(
   baseUrl: string,
   expectedLibraryId?: string | null,
-  limit = 1200,
+  limit = 1000,
   offset = 0,
 ) {
   return invoke<SpoolWithMasterRow[]>("fetch_library_sync_spools", {
@@ -211,6 +236,10 @@ export async function fetchLibrarySyncPrinterSettings(
 
 export async function fetchCachedLibrarySyncSpools() {
   return invoke<LibrarySyncCachedSpoolList | null>("fetch_cached_library_sync_spools");
+}
+
+export async function saveLibrarySyncSpoolCache(rows: SpoolWithMasterRow[]) {
+  return invoke<void>("save_library_sync_spool_cache", { input: { rows } });
 }
 
 export async function fetchCachedLibrarySyncPrinterOverview() {

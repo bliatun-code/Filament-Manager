@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   collectStaticUiCopyFromSource,
+  shouldCheckStaticUiCopyFile,
   validateStaticUiCopy,
 } from "./check-i18n-ui-copy.mjs";
 
@@ -29,4 +30,18 @@ test("static UI copy contract allows technical units and rejects user copy", () 
   assert.deepEqual(errors, [
     `example.tsx:2:1: untranslated text copy "Save".`,
   ]);
+});
+
+test("static UI copy contract excludes only the isolated accessibility harness", () => {
+  assert.equal(
+    shouldCheckStaticUiCopyFile(
+      "ui/src/accessibility/app_modal_accessibility_harness.tsx",
+    ),
+    false,
+  );
+  assert.equal(
+    shouldCheckStaticUiCopyFile("ui/src/accessibility/future_product_surface.tsx"),
+    true,
+  );
+  assert.equal(shouldCheckStaticUiCopyFile("ui/src/pages/dashboard.tsx"), true);
 });

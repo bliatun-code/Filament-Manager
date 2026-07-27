@@ -45,6 +45,7 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(resolveInitialPageFromSearch("?bfm_visual_qa=return-inbound-loan"), "loans");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-board"), "printers");
+  assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-overview"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=add-printer"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-assignment"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-onboarding"), "printers");
@@ -98,6 +99,10 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
     "settings",
   );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-maintenance"), "settings");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-application-diagnostics"),
+    "settings",
+  );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-consumption"), "statistics");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=statistics-borrower"), "statistics");

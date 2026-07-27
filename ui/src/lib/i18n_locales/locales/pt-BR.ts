@@ -48,6 +48,26 @@ export const ptBRDictionary: DictionaryNode = {
     unknown: "Desconhecido",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Comece com um carretel ou importe um inventário ou backup existente.",
+    onboardingInventoryTitle: "Adicionar ou importar inventário",
+    onboardingPrinterBody:
+      "Adicione qualquer impressora compatível. O Bambu Live pode ser ativado quando estiver disponível.",
+    onboardingPrinterTitle: "Configurar uma impressora",
+    onboardingCompanionBody:
+      "Ative o acesso pelo navegador em uma rede confiável ou pare este computador com um host.",
+    onboardingCompanionTitle: "Configurar acesso pelo navegador",
+    onboardingBackupBody:
+      "Crie um backup completo quando a biblioteca estiver pronta.",
+    onboardingEyebrow: "Primeiros passos",
+    onboardingTitle: "Concluir configuração",
+    onboardingDescription:
+      "Use as etapas adequadas à sua configuração. A impressora e o acesso pelo navegador são opcionais.",
+    onboardingProgress: "{completed} de {total} concluídos",
+    onboardingDismiss: "Fechar lista",
+    onboardingComplete: "Concluído",
+    onboardingOptional: "Opcional",
+    onboardingPending: "A fazer",
     achievements: "Metas de progresso",
     achievementsHint:
       "Metas em tempo real com base no seu inventário atual e na atividade da impressora.",
@@ -127,7 +147,7 @@ export const ptBRDictionary: DictionaryNode = {
     noActivePrinter: "Nenhuma impressora ativa selecionada",
     noAlerts: "Sem alertas",
     noBorrowedInStock: "Sem estoque emprestado",
-    noInventoryData: "Não há dados de inventário",
+    noInventoryData: "Dados insuficientes",
     noPrintersConfigured: "Nenhuma impressora configurada",
     noRecentActivity: "Nenhuma atividade recente ainda.",
     noUsageTrendYet: "Nenhuma tendência de uso ainda",
@@ -1040,6 +1060,20 @@ export const ptBRDictionary: DictionaryNode = {
     withToolheads: "Multi-ferramenta",
   },
   settings: {
+    updates: "Atualizações",
+    updateCheckHint:
+      "Consulta o GitHub somente quando você solicita. O download e a instalação continuam manuais.",
+    checkForUpdates: "Verificar atualizações",
+    checkingForUpdates: "Verificando…",
+    updateAvailable: "A versão {version} está disponível.",
+    updateUpToDate: "A versão {version} é a versão publicada mais recente.",
+    updateDevelopmentBuild:
+      "Esta compilação é mais recente que a última versão publicada ({version}).",
+    updateCheckFailed:
+      "Não foi possível verificar atualizações. Tente novamente mais tarde.",
+    updateInfoUnavailable:
+      "As informações da versão não estão disponíveis no momento. Tente novamente mais tarde.",
+    viewRelease: "Ver versão",
     activeCleared: "Impressora ativa apagada.",
     activePrinter: "Impressora ativa",
     activeUpdated: "Impressora ativa atualizada.",
@@ -1060,6 +1094,8 @@ export const ptBRDictionary: DictionaryNode = {
     backupImported: "Backup completo importado com sucesso.",
     backupImportGroup: "Importação e validação",
     backupTitle: "Backup",
+    latestFullBackupExportOnDevice: "Exportação mais recente de backup completo neste dispositivo",
+    noFullBackupExportRecordedOnDevice: "Nenhuma exportação de backup completo foi registrada neste dispositivo ainda",
     backupValidationDone: "Validação de backup concluída.",
     backupValidationSummary: "Resumo de validação de backup",
     bambuLiveAccessCode: "Código de acesso",
@@ -1245,6 +1281,25 @@ export const ptBRDictionary: DictionaryNode = {
       "O aplicativo vem com um catálogo de sementes local. As atualizações do fornecedor adicionam produtos recém-descobertos e atualizam famílias de materiais selecionadas.",
     clientHostBackupRequiresPairing:
       "Emparelhe este cliente com o host antes de exportar um backup completo do host.",
+    applicationDiagnosticsTitle: "Diagnóstico do aplicativo",
+    applicationDiagnosticsDescription: "Verifique a integridade do banco de dados local e baixe um arquivo de suporte higienizado, sem conteúdo do inventário nem credenciais.",
+    diagnosticsHealthy: "Íntegro",
+    diagnosticsNeedsAttention: "Requer atenção",
+    diagnosticsUnavailable: "Banco de dados indisponível",
+    diagnosticsRefreshFailed: "Não foi possível atualizar o diagnóstico do aplicativo.",
+    diagnosticsLastGoodVisible: "O último resultado bem-sucedido continua visível.",
+    diagnosticsSchema: "Esquema atual / compatível",
+    diagnosticsDatabaseSize: "Tamanho do banco de dados",
+    diagnosticsQuickCheck: "Verificação rápida",
+    diagnosticsForeignKeyCheck: "Verificação de chaves estrangeiras",
+    diagnosticsJournalMode: "Modo de diário",
+    diagnosticsLocalPath: "Caminho do banco de dados local",
+    diagnosticsCheckOk: "Aprovada",
+    diagnosticsCheckIssues: "Problemas encontrados",
+    diagnosticsCheckUnavailable: "Indisponível",
+    diagnosticsDownloadSupport: "Baixar arquivo de suporte higienizado",
+    diagnosticsSupportDownloaded: "Arquivo de suporte higienizado baixado.",
+    diagnosticsSupportDownloadFailed: "Não foi possível baixar o arquivo de suporte higienizado.",
     clientHostOnlyMaintenance:
       "Este dispositivo é um cliente. O backup completo é exportado do host emparelhado. As ações de importação, redefinição e reparo ainda devem ser executadas no host para que os dados da biblioteca permaneçam em um só lugar.",
     columnsHint:

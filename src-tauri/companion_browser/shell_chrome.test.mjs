@@ -16,6 +16,7 @@ import {
   renderSwatchListRow,
   renderSwatchSelectionCard,
   renderSwatchSurface,
+  renderTaskSheetShell,
   renderTopbar,
   renderTrustedLanPairingApp,
 } from "./shell_chrome.js";
@@ -427,10 +428,16 @@ test("detail modal shell wraps the provided body and close affordance", () => {
   });
 
   assert.match(html, /<p class="workflow-kicker">Spool<\/p>/);
-  assert.doesNotMatch(html, /PLA · Basic · White/);
   assert.doesNotMatch(html, /#1/);
   assert.match(html, /Detail body/);
   assert.match(html, /data-action="close-detail"/);
+  assert.match(html, /role="dialog"/);
+  assert.match(html, /aria-modal="true"/);
+  assert.match(html, /aria-labelledby="companion-detail-dialog-title"/);
+  assert.match(html, /tabindex="-1"/);
+  assert.match(html, /data-companion-overlay="detail"/);
+  assert.match(html, /id="companion-detail-dialog-title" class="sr-only"/);
+  assert.match(html, /data-overlay-initial-focus/);
 });
 
 test("phone detail modal uses the compact header chrome", () => {
@@ -447,6 +454,24 @@ test("phone detail modal uses the compact header chrome", () => {
   assert.match(html, /Done/);
   assert.doesNotMatch(html, /#1/);
   assert.doesNotMatch(html, /Review this spool/);
+});
+
+test("task sheet shell exposes a named modal dialog and initial focus target", () => {
+  const html = renderTaskSheetShell({
+    layoutMode: "desktop",
+    title: "Load filament",
+    subtitle: "Brutus · AMS 1",
+    body: "<form>Task body</form>",
+    escapeHtml,
+  });
+
+  assert.match(html, /role="dialog"/);
+  assert.match(html, /aria-modal="true"/);
+  assert.match(html, /aria-labelledby="companion-task-sheet-title"/);
+  assert.match(html, /tabindex="-1"/);
+  assert.match(html, /data-companion-overlay="task-sheet"/);
+  assert.match(html, /<h2 id="companion-task-sheet-title">Load filament<\/h2>/);
+  assert.match(html, /data-action="close-task-sheet" data-overlay-initial-focus/);
 });
 
 test("trusted-LAN shell renders the pairing handoff state", () => {

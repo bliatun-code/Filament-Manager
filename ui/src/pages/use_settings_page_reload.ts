@@ -1,4 +1,14 @@
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
+import {
+  createLibraryRevisionTracker,
+  fetchLibraryDomainRevisionsForSource,
+  LIBRARY_REVISION_DOMAINS,
+  markLibraryRevisionUnavailable,
+  observeLibraryDomainRevisions,
+  resolveLibraryRevisionSource,
+  type LibraryRevisionSource,
+  type LibraryRevisionTracker,
+} from "../lib/library_domain_revisions";
 import type {
   BambuLiveIntegrationEntry,
   LibrarySyncHostValidationResult,
@@ -33,8 +43,25 @@ type UseSettingsPageReloadInput = {
   setSpoolRows: Dispatch<SetStateAction<NormalizedSpoolWithMasterRow[]>>;
   setSwatchDraftById: Dispatch<SetStateAction<Record<string, string>>>;
   settingsPageMessageLabels: () => SettingsPageMessageLabels;
+  settingsClientHostBaseUrl: string | null;
+  settingsClientLibraryId: string | null;
+  settingsClientReadOnly: boolean;
   tauri: boolean;
 };
+
+type SettingsReloadOptions = {
+  revisionCheck?: boolean;
+  silent?: boolean;
+};
+
+const SETTINGS_REVISION_DOMAINS = [
+  LIBRARY_REVISION_DOMAINS.inventory,
+  LIBRARY_REVISION_DOMAINS.catalog,
+  LIBRARY_REVISION_DOMAINS.printers,
+  LIBRARY_REVISION_DOMAINS.jobs,
+] as const;
+
+class SettingsRevisionPollError extends Error {}
 
 export function useSettingsPageReload({
   setBambuLiveIntegrations,
@@ -52,24 +79,66 @@ export function useSettingsPageReload({
   setSpoolRows,
   setSwatchDraftById,
   settingsPageMessageLabels,
+  settingsClientHostBaseUrl,
+  settingsClientLibraryId,
+  settingsClientReadOnly,
   tauri,
 }: UseSettingsPageReloadInput) {
   const silentReloadInFlightRef = useRef(false);
+  const revisionTrackerRef = useRef(createLibraryRevisionTracker());
 
-  return useCallback(async (options?: { silent?: boolean }) => {
+  return useCallback(async (options?: SettingsReloadOptions) => {
     if (!tauri) {
       return;
     }
-    if (options?.silent && silentReloadInFlightRef.current) {
+    if (silentReloadInFlightRef.current) {
+      if (options?.revisionCheck) {
+        throw new SettingsRevisionPollError("Settings reload is already running.");
+      }
       return;
     }
-    if (options?.silent) {
-      silentReloadInFlightRef.current = true;
-    }
-    if (!options?.silent) {
-      setLoading(true);
-    }
+    silentReloadInFlightRef.current = true;
+    let revisionSource: LibraryRevisionSource | null = null;
+    let observedTracker: LibraryRevisionTracker | null = null;
+    let revisionSignalFailed = false;
+    let revisionLoadIncomplete = false;
     try {
+      if (options?.revisionCheck) {
+        revisionSource = resolveLibraryRevisionSource({
+          clientReadOnly: settingsClientReadOnly,
+          clientHostBaseUrl: settingsClientHostBaseUrl,
+          clientLibraryId: settingsClientLibraryId,
+        });
+        const revisions = await fetchLibraryDomainRevisionsForSource(
+          revisionSource,
+        ).catch(() => null);
+
+        if (!revisionSource || !revisions) {
+          revisionTrackerRef.current = markLibraryRevisionUnavailable(
+            revisionTrackerRef.current,
+            revisionSource,
+          );
+          // The caller applies bounded backoff after this fallback. Continue to
+          // refresh at that cadence when an older host has no revision route.
+          revisionSignalFailed = true;
+        } else {
+          const observation = observeLibraryDomainRevisions(
+            revisionTrackerRef.current,
+            revisionSource,
+            revisions,
+            SETTINGS_REVISION_DOMAINS,
+          );
+          if (!observation.shouldReload) {
+            revisionTrackerRef.current = observation.tracker;
+            return;
+          }
+          observedTracker = observation.tracker;
+        }
+      }
+
+      if (!options?.silent) {
+        setLoading(true);
+      }
       const pageData = buildSettingsPageDataModel(
         await loadSettingsPageData({
           onHostLoadError: (loadError) => {
@@ -86,22 +155,49 @@ export function useSettingsPageReload({
       setBambuLiveIntegrations(pageData.bambuLiveIntegrations);
       setCatalogMasters(pageData.catalogRows);
       setLibrarySyncSettings(pageData.librarySyncSettings);
-      setLibrarySyncModeDraft(pageData.librarySyncModeDraft);
-      setLibrarySyncDeviceNameDraft(pageData.librarySyncDeviceNameDraft);
-      setLibrarySyncHostBaseUrlDraft(pageData.librarySyncHostBaseUrlDraft);
-      setLibrarySyncValidation(null);
       setLibrarySyncSnapshot(pageData.librarySyncSettings.cached_snapshot ?? null);
-      setSwatchDraftById(pageData.swatchDraftById);
-    } catch (loadError) {
-      console.error(loadError);
-      setError(buildSettingsPageLoadErrorMessage(settingsPageMessageLabels()));
-    } finally {
-      if (options?.silent) {
-        silentReloadInFlightRef.current = false;
+      if (!options?.silent) {
+        setLibrarySyncModeDraft(pageData.librarySyncModeDraft);
+        setLibrarySyncDeviceNameDraft(pageData.librarySyncDeviceNameDraft);
+        setLibrarySyncHostBaseUrlDraft(pageData.librarySyncHostBaseUrlDraft);
+        setLibrarySyncValidation(null);
+        setSwatchDraftById(pageData.swatchDraftById);
       }
+      if (options?.revisionCheck) {
+        if (observedTracker && pageData.revisionPollComplete) {
+          revisionTrackerRef.current = observedTracker;
+        } else {
+          revisionTrackerRef.current = markLibraryRevisionUnavailable(
+            revisionTrackerRef.current,
+            revisionSource,
+          );
+          revisionLoadIncomplete = !revisionSignalFailed;
+        }
+      }
+    } catch (loadError) {
+      if (!(loadError instanceof SettingsRevisionPollError)) {
+        console.error(loadError);
+        setError(buildSettingsPageLoadErrorMessage(settingsPageMessageLabels()));
+      }
+      if (options?.revisionCheck) {
+        revisionTrackerRef.current = markLibraryRevisionUnavailable(
+          revisionTrackerRef.current,
+          revisionSource,
+        );
+        throw loadError;
+      }
+    } finally {
+      silentReloadInFlightRef.current = false;
       if (!options?.silent) {
         setLoading(false);
       }
+    }
+    if (revisionSignalFailed || revisionLoadIncomplete) {
+      throw new SettingsRevisionPollError(
+        revisionSignalFailed
+          ? "Library revision signal is unavailable."
+          : "Settings data used a partial cached refresh.",
+      );
     }
   }, [
     setBambuLiveIntegrations,
@@ -118,6 +214,9 @@ export function useSettingsPageReload({
     setPrinters,
     setSpoolRows,
     setSwatchDraftById,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
     settingsPageMessageLabels,
     tauri,
   ]);

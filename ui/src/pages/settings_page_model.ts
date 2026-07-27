@@ -40,6 +40,7 @@ export type SettingsPageDataModel = {
   librarySyncSettings: SettingsPageData["syncSettings"];
   printerOverview: SettingsPageData["overviewRows"];
   printers: SettingsPageData["snapshot"]["printers"];
+  revisionPollComplete: SettingsPageData["revisionPollComplete"];
   spoolRows: SettingsPageData["spoolRows"];
   swatchDraftById: Record<string, string>;
 };
@@ -88,8 +89,12 @@ export function buildSettingsPageTabButtons(
   }));
 }
 
-export function normalizeSettingsInitialTab(initialTab: SettingsTabKey): SettingsTabKey {
-  return initialTab;
+export function isSettingsTabKey(value: unknown): value is SettingsTabKey {
+  return SETTINGS_PAGE_TAB_ORDER.some((tab) => tab === value);
+}
+
+export function normalizeSettingsInitialTab(initialTab: unknown): SettingsTabKey {
+  return isSettingsTabKey(initialTab) ? initialTab : "GENERAL";
 }
 
 export function resolveSettingsPagePrinters<Printer>({
@@ -118,6 +123,7 @@ export function buildSettingsPageDataModel(data: SettingsPageData): SettingsPage
       snapshot: data.snapshot,
       syncMode: data.syncSettings.mode,
     }),
+    revisionPollComplete: data.revisionPollComplete,
     spoolRows: data.spoolRows,
     swatchDraftById: buildSettingsSwatchDrafts(data.catalogRows),
   };

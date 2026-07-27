@@ -12,6 +12,7 @@ import type {
 import type { InventorySpool } from "./inventory_list_model";
 
 type InventoryDetailVisualFixtureInput = {
+  completeDataLoad: () => void;
   detailVisualFixture: InventoryDetailVisualFixture | null;
   resetFilters: () => void;
   setBambuLiveIntegrations: Dispatch<SetStateAction<Record<string, BambuLiveIntegrationSettings>>>;
@@ -19,7 +20,6 @@ type InventoryDetailVisualFixtureInput = {
   setHistoryLoading: Dispatch<SetStateAction<boolean>>;
   setHistoryRows: Dispatch<SetStateAction<SpoolHistoryEventRow[]>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
-  setLoading: Dispatch<SetStateAction<boolean>>;
   setMasters: Dispatch<SetStateAction<MasterCatalogRow[]>>;
   setPrinterOverview: Dispatch<SetStateAction<PrinterOverviewRow[]>>;
   setRfidCaptureFieldsBySlotId: Dispatch<SetStateAction<Record<string, RfidCaptureField[]>>>;
@@ -34,6 +34,7 @@ type InventoryDetailVisualFixtureInput = {
 };
 
 export function useInventoryDetailVisualFixture({
+  completeDataLoad,
   detailVisualFixture,
   resetFilters,
   setBambuLiveIntegrations,
@@ -41,7 +42,6 @@ export function useInventoryDetailVisualFixture({
   setHistoryLoading,
   setHistoryRows,
   setInfoMessage,
-  setLoading,
   setMasters,
   setPrinterOverview,
   setRfidCaptureFieldsBySlotId,
@@ -71,12 +71,13 @@ export function useInventoryDetailVisualFixture({
     setShowRollModal(true);
     switchToManageMode();
     resetFilters();
-    setLoading(false);
+    completeDataLoad();
     setHistoryLoading(false);
     setUsageLoading(false);
     setError(null);
     setInfoMessage(t("inventory.visualFixtureLoaded", "Inventory detail fixture loaded."));
   }, [
+    completeDataLoad,
     detailVisualFixture,
     resetFilters,
     setBambuLiveIntegrations,
@@ -84,7 +85,6 @@ export function useInventoryDetailVisualFixture({
     setHistoryLoading,
     setHistoryRows,
     setInfoMessage,
-    setLoading,
     setMasters,
     setPrinterOverview,
     setRfidCaptureFieldsBySlotId,

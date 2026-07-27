@@ -21,6 +21,7 @@ import {
   canStockWishlistItem,
   createWishlistEntry,
   deleteWishlistEntry,
+  receiveWishlistEntry,
   updateWishlistEntryStatus,
   type WishlistStatus,
 } from "./wishlist_data_source";
@@ -43,7 +44,6 @@ type InventoryCreateActionsInput = {
   manualHexColor: string;
   manualMaterial: string;
   manualVendor: string;
-  masters: MasterCatalogRow[];
   newInitialWeight: string;
   newLocation: string;
   newOwnershipType: OwnershipType;
@@ -82,7 +82,6 @@ export function useInventoryCreateActions({
   manualHexColor,
   manualMaterial,
   manualVendor,
-  masters,
   newInitialWeight,
   newLocation,
   newOwnershipType,
@@ -386,7 +385,7 @@ export function useInventoryCreateActions({
     }
   }
 
-  async function handleStockFromWishlist(item: WishlistItemRow) {
+  async function handleStockFromWishlist(item: WishlistItemRow, quantity: number) {
     if (!canStockWishlistItem(item.status)) {
       return;
     }
@@ -396,58 +395,18 @@ export function useInventoryCreateActions({
     setConfirmWishlistRemoveId(null);
     setBusy(true);
     setError(null);
-    const id = `spool_${Date.now()}`;
     try {
-      const linkedMaster = item.master_id
-        ? masters.find((master) => master.id === item.master_id) ?? null
-        : null;
-      const createdSpoolId = linkedMaster
-        ? await createInventorySpoolFromMaster(
-            {
-              id,
-              master_id: linkedMaster.id,
-              qr_code: null,
-              status: "IN_STOCK",
-              initial_weight_g: linkedMaster.default_weight,
-              current_weight_g: linkedMaster.default_weight,
-              location_id: null,
-              purchase_date: null,
-              purchase_price: null,
-              batch_code: null,
-            },
-            hostWriteTarget,
-          )
-        : await createManualInventorySpool(
-            {
-              id,
-              vendor: item.vendor,
-              material: item.material,
-              filament_name: item.filament_name,
-              color_name: item.color_name,
-              hex_color: null,
-              product_url: null,
-              default_weight_g: 1000,
-              qr_code: null,
-              status: "IN_STOCK",
-              initial_weight_g: 1000,
-              location: null,
-            },
-            hostWriteTarget,
-          );
-
-      await updateWishlistEntryStatus(
-        {
-          item_id: item.id,
-          status: "RECEIVED",
-        },
+      const receipt = await receiveWishlistEntry(
+        { item_id: item.id, quantity },
         hostWriteTarget,
       );
       await reloadSpools();
       await reloadWishlist();
+      const createdSpoolId = receipt.spool_ids[0] ?? null;
       setSelectedSpoolId(createdSpoolId);
       setRecentlyAddedSpoolId(createdSpoolId);
       setInfoMessage(
-        `${t("inventory.addedFromWishlist", "Added from wishlist")}: ${formatInventoryDisplayTitle(
+        `${t("inventory.addedFromWishlist", "Added from wishlist")}: ${receipt.received_quantity} × ${formatInventoryDisplayTitle(
           item.material,
           item.filament_name,
           item.color_name,

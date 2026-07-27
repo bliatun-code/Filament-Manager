@@ -141,7 +141,7 @@ fn write_ancillary_settings_db(path: &Path) -> Result<(), String> {
     }
     let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
     db.apply_schema().map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT INTO settings (key, value) VALUES
                 ('library_sync_mode', 'STANDALONE'),
@@ -165,7 +165,7 @@ fn write_split_brain_domain_db(
     }
     let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
     db.apply_schema().map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT INTO filament_master_list (
                 id, material, filament_name, color_name, vendor,
@@ -178,7 +178,7 @@ fn write_split_brain_domain_db(
             ],
         )
         .map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT INTO filament_spools (id, master_id, status, current_weight_g)
              VALUES (?1, ?2, 'IN_STOCK', 750)",
@@ -188,7 +188,7 @@ fn write_split_brain_domain_db(
             ],
         )
         .map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES
                 ('split_merge_safe_setting', ?1),
@@ -211,7 +211,7 @@ fn write_split_brain_ancillary_db(
     }
     let db = FilamentDatabase::open(path).map_err(|error| error.to_string())?;
     db.apply_schema().map_err(|error| error.to_string())?;
-    db.conn
+    db.connection()
         .execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES
                 ('split_merge_safe_setting', ?1),
@@ -248,15 +248,14 @@ fn split_brain_spool_exists(path: &Path, spool_id: &str) -> Result<bool, String>
 }
 
 fn split_brain_backup_count(app_dir: &Path) -> Result<usize, String> {
+    recovery_snapshot_count(app_dir, "recovery-windows-storage-merge-")
+}
+
+fn recovery_snapshot_count(app_dir: &Path, name_fragment: &str) -> Result<usize, String> {
     Ok(std::fs::read_dir(app_dir)
         .map_err(|error| error.to_string())?
         .filter_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .file_name()
-                .to_string_lossy()
-                .starts_with("filament-manager.db.backup-before-windows-split-merge-")
-        })
+        .filter(|entry| entry.file_name().to_string_lossy().contains(name_fragment))
         .count())
 }
 
@@ -312,6 +311,10 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
     assert_eq!(
         normalize_visual_qa_scenario("add-printer-modal"),
         Some("add-printer")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("printers-static"),
+        Some("printer-overview")
     );
     assert_eq!(
         normalize_visual_qa_scenario("roll-history"),
@@ -376,6 +379,34 @@ fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
     assert_eq!(
         normalize_visual_qa_scenario("settings-printer-editor-discard"),
         Some("settings-printer-editor-discard")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-application-diagnostics"),
+        Some("settings-application-diagnostics")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("settings-diagnostics"),
+        Some("settings-application-diagnostics")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("application-diagnostics"),
+        Some("settings-application-diagnostics")
+    );
+}
+
+#[test]
+fn visual_qa_window_origin_stays_inside_the_visible_screen() {
+    assert_eq!(
+        super::visual_qa_window_origin(0.0, 80.0, 1710.0, 993.0, 1200.0, 800.0),
+        Some((24.0, 249.0))
+    );
+    assert_eq!(
+        super::visual_qa_window_origin(0.0, 80.0, 1710.0, 993.0, 1710.0, 993.0),
+        Some((0.0, 80.0))
+    );
+    assert_eq!(
+        super::visual_qa_window_origin(0.0, 80.0, 1710.0, 993.0, 1711.0, 800.0),
+        None
     );
 }
 
@@ -465,6 +496,39 @@ fn visual_qa_theme_normalizer_accepts_only_supported_modes() {
 }
 
 #[test]
+fn visual_qa_window_size_normalizer_accepts_bounded_outer_frames() {
+    use super::normalize_visual_qa_window_size;
+
+    assert_eq!(
+        normalize_visual_qa_window_size(" 900×700 "),
+        Some((900.0, 700.0))
+    );
+    assert_eq!(
+        normalize_visual_qa_window_size("1500x900"),
+        Some((1500.0, 900.0))
+    );
+    assert_eq!(normalize_visual_qa_window_size("319x900"), None);
+    assert_eq!(normalize_visual_qa_window_size("900x8193"), None);
+    assert_eq!(normalize_visual_qa_window_size("wide"), None);
+}
+
+#[test]
+#[cfg(debug_assertions)]
+fn visual_qa_readiness_normalizer_accepts_only_live_printer_telemetry() {
+    use super::normalize_desktop_visual_qa_readiness_token;
+
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token(" printer-live-telemetry "),
+        Some("printer-live-telemetry")
+    );
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token("printer-board"),
+        None
+    );
+    assert_eq!(normalize_desktop_visual_qa_readiness_token(""), None);
+}
+
+#[test]
 fn app_db_path_override_prefers_current_env_var() {
     use super::{app_db_path_override_from_env, APP_DB_PATH_ENV_VAR, LEGACY_APP_DB_PATH_ENV_VAR};
 
@@ -508,6 +572,188 @@ fn app_db_path_override_ignores_empty_current_env_var() {
         app_db_path_override_from_env().as_deref(),
         Some(legacy.as_path())
     );
+}
+
+#[test]
+fn existing_unversioned_database_gets_recovery_snapshot_before_schema_upgrade() {
+    use super::open_database_and_apply_schema;
+
+    let base = temp_dir_path("schema-upgrade-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let connection = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(
+                "CREATE TABLE recovery_probe (value TEXT NOT NULL);\n\
+                 INSERT INTO recovery_probe (value) VALUES ('before schema upgrade');",
+            )
+            .map_err(|error| error.to_string())?;
+        drop(connection);
+
+        let db = open_database_and_apply_schema(&db_path)?;
+        let schema_version: i64 = db
+            .connection()
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        assert!(schema_version > 0);
+        drop(db);
+
+        let snapshot_path = std::fs::read_dir(&base)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains("recovery-schema-upgrade-successful-")
+            })
+            .map(|entry| entry.path())
+            .ok_or_else(|| "missing successful schema-upgrade snapshot".to_string())?;
+        let snapshot =
+            rusqlite::Connection::open(snapshot_path).map_err(|error| error.to_string())?;
+        let snapshot_version: i64 = snapshot
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        let preserved_value: String = snapshot
+            .query_row("SELECT value FROM recovery_probe", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(snapshot_version, 0);
+        assert_eq!(preserved_value, "before schema upgrade");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn existing_version_one_database_gets_recovery_snapshot_before_schema_upgrade() {
+    use super::open_database_and_apply_schema;
+    use crate::backend::database_schema::CURRENT_SCHEMA_VERSION;
+
+    let base = temp_dir_path("version-one-schema-upgrade-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let connection = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(include_str!("../../src/database/schema.sql"))
+            .map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES (
+                    'version-one-master', 'PLA', 'Snapshot probe', 'Blue', 1000, 'Generic'
+                 );
+                 PRAGMA user_version = 1;",
+            )
+            .map_err(|error| error.to_string())?;
+        drop(connection);
+
+        let db = open_database_and_apply_schema(&db_path)?;
+        let upgraded_version: i64 = db
+            .connection()
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(upgraded_version, CURRENT_SCHEMA_VERSION);
+        drop(db);
+
+        let snapshot_path = std::fs::read_dir(&base)
+            .map_err(|error| error.to_string())?
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .contains("recovery-schema-upgrade-successful-")
+            })
+            .map(|entry| entry.path())
+            .ok_or_else(|| "missing version-one schema-upgrade snapshot".to_string())?;
+        let snapshot =
+            rusqlite::Connection::open(snapshot_path).map_err(|error| error.to_string())?;
+        let snapshot_version: i64 = snapshot
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .map_err(|error| error.to_string())?;
+        let preserved_name: String = snapshot
+            .query_row(
+                "SELECT filament_name FROM filament_master_list
+                 WHERE id = 'version-one-master'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(snapshot_version, 1);
+        assert_eq!(preserved_name, "Snapshot probe");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn new_database_does_not_create_schema_upgrade_recovery_snapshot() {
+    use super::open_database_and_apply_schema;
+
+    let base = temp_dir_path("new-schema-no-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let db = open_database_and_apply_schema(&db_path)?;
+        drop(db);
+        assert_eq!(
+            recovery_snapshot_count(&base, "recovery-schema-upgrade-")?,
+            0
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn failed_schema_upgrade_keeps_failed_recovery_snapshot() {
+    use super::open_database_and_apply_schema;
+
+    let base = temp_dir_path("failed-schema-recovery");
+    let db_path = base.join("filament-manager.db");
+    let result = (|| -> Result<(), String> {
+        std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+        let connection = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch("CREATE VIEW filament_spools AS SELECT 'spool-id' AS id;")
+            .map_err(|error| error.to_string())?;
+        drop(connection);
+
+        let error = match open_database_and_apply_schema(&db_path) {
+            Ok(_) => return Err("incompatible v0 schema unexpectedly migrated".to_string()),
+            Err(error) => error,
+        };
+        assert!(error.contains("DB schema"));
+        assert_eq!(
+            recovery_snapshot_count(&base, "recovery-schema-upgrade-failed-")?,
+            1
+        );
+        assert_eq!(
+            recovery_snapshot_count(&base, "recovery-schema-upgrade-successful-")?,
+            0
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
 }
 
 #[test]
@@ -572,7 +818,7 @@ fn app_storage_migration_copies_legacy_bundle_data_once() {
                 entry
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("filament-manager.db.backup-before-legacy-migration-")
+                    .starts_with("filament-manager.db.recovery-legacy-bundle-migration-")
             });
         assert_eq!(migrated_spool_count, 1);
         assert_eq!(migrated_label, b"legacy-label");
@@ -678,7 +924,7 @@ fn app_storage_migration_replaces_ancillary_current_data_with_legacy_domain_data
                 entry
                     .file_name()
                     .to_string_lossy()
-                    .starts_with("filament-manager.db.backup-before-legacy-migration-")
+                    .starts_with("filament-manager.db.recovery-legacy-bundle-migration-")
             });
         assert!(has_ancillary_backup);
 
@@ -1208,6 +1454,10 @@ fn windows_split_brain_merge_rolls_back_conflicting_primary_keys() {
             .map_err(|error| error.to_string())?;
         assert_eq!(legacy_color, "Legacy Blue");
         assert_eq!(split_brain_backup_count(&local_dir)?, 1);
+        assert_eq!(
+            recovery_snapshot_count(&local_dir, "recovery-windows-storage-merge-failed-")?,
+            1
+        );
         assert!(local_db_path.exists());
         Ok(())
     })();
@@ -1312,7 +1562,7 @@ fn database_user_data_state_classifies_settings_beyond_generated_library_id_as_a
             DatabaseUserDataState::NoData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "INSERT INTO settings (key, value) VALUES ('active_printer_id', 'printer-1')",
                 [],
@@ -1357,7 +1607,7 @@ fn windows_storage_preserves_legacy_roaming_inventory_locations() {
                 .apply_schema()
                 .map_err(|error| error.to_string())?;
             legacy_db
-                .conn
+                .connection()
                 .execute(
                     "INSERT INTO inventory_locations (id, name, type)
                      VALUES ('legacy-location', 'Legacy shelf', 'SHELF')",
@@ -1399,7 +1649,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             DatabaseUserDataState::NoData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "UPDATE filament_master_list SET catalog_source = 'scraped'",
                 [],
@@ -1410,7 +1660,7 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             DatabaseUserDataState::NoData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "UPDATE filament_master_list
                  SET catalog_user_edited = 1
@@ -1423,13 +1673,13 @@ fn database_user_data_state_distinguishes_seeded_and_custom_catalog_rows() {
             DatabaseUserDataState::DomainData
         );
 
-        db.conn
+        db.connection()
             .execute(
                 "UPDATE filament_master_list SET catalog_user_edited = 0",
                 [],
             )
             .map_err(|error| error.to_string())?;
-        db.conn
+        db.connection()
             .execute(
                 "INSERT INTO filament_master_list (
                     id, material, filament_name, color_name, vendor, catalog_source

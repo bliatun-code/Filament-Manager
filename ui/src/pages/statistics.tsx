@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
+import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { formatDateTime } from "../lib/date_time";
 import {
   DESKTOP_VISUAL_QA_BORROWER_NAME,
@@ -84,6 +85,8 @@ export default function StatisticsPage() {
     overview,
     overviewConsumptionRows,
     printers,
+    refreshing,
+    reloadData,
     spoolRows,
   } = useStatisticsPageData({ tauri, t });
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
@@ -395,9 +398,13 @@ export default function StatisticsPage() {
         </FeedbackBanner>
       ) : null}
       {error ? (
-        <FeedbackBanner tone="danger" className="mt-4">
-          {error}
-        </FeedbackBanner>
+        <PageLoadErrorBanner
+          message={error}
+          onRetry={() => void reloadData()}
+          retryDisabled={!tauri || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
       {clientReadOnly && clientStatsSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">

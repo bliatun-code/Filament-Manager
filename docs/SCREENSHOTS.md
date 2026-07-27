@@ -7,11 +7,16 @@ wide, tablet, and phone screens.
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
-The current captures were produced from the v0.21.0 UI in the English dark
-theme with a production-shaped temporary QA database. The v0.21.1 release
-changed macOS distribution rather than these UI workflows. Printer, RFID, and
-Bambu diagnostics captures wait for live telemetry before the image is
-accepted; the source library is not modified.
+The current captures were produced from the current UI in the English dark
+theme with the committed, production-shaped, sanitized QA fixture. Every
+desktop and Companion capture launches against a temporary database copy; no
+real inventory library is opened or modified. Names, identifiers, QR targets,
+counts, swatches, loans, and printer assignments shown here are synthetic.
+
+The public printer overview documents ordinary assigned-slot behavior from the
+fixture. Live-printer QA remains a separate opt-in path: any capture that claims
+fresh Bambu telemetry must use a private source copy and receive the bounded
+live-readiness signal before the gate will create an image.
 
 ## Quick Preview
 
@@ -24,6 +29,7 @@ accepted; the source library is not modified.
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
+  <a href="#program-and-manual-update-check"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version and manual update check" width="150"></a>
   <a href="#inventory-label-sheet"><img src="screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet" width="150"></a>
   <a href="#companion-tablet"><img src="screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet" width="150"></a>
   <a href="#companion-phone"><img src="screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone" width="150"></a>
@@ -35,14 +41,17 @@ accepted; the source library is not modified.
 ### Dashboard
 
 Inventory health, printer activity, low-stock signals, recent activity, and
-library/webapp status in one overview.
+library/webapp status in one overview. A dismissible, data-backed setup
+checklist guides a new or upgraded installation through inventory, optional
+printer/browser access, and the first full backup without blocking normal use.
 
 ![Dashboard overview](screenshots/dashboard.jpg)
 
 ### Inventory
 
 Searchable spool cards with remaining weight, location, material/vendor badges,
-ownership, and low-stock state.
+ownership, and low-stock state. Large result sets render progressively with a
+shown/total counter and **Show more** control.
 
 ![Inventory grid](screenshots/inventory.jpg)
 
@@ -95,8 +104,9 @@ with bounded expansion for long histories.
 
 ### RFID Capture
 
-RFID capture compares the live AMS identity with catalog and inventory data,
-shows raw captured fields, and lets you save the RFID to the selected spool.
+RFID capture compares an AMS identity with catalog and inventory data, shows
+the captured fields, and lets you save the RFID to the selected spool. The
+public image uses the deterministic synthetic RFID fixture.
 
 ![RFID capture](screenshots/rfid-capture.jpg)
 
@@ -131,9 +141,10 @@ and removal of the borrowed spool from active inventory.
 
 ### Printers
 
-Printer and AMS slot state with live Bambu observations, current assignments,
-collapsed slot swatches/material labels, weight updates, RFID matching, and
-candidate suggestions.
+Printer and multi-material slot state with current assignments, collapsed slot
+swatches/material labels, usage statistics, and manual/non-live printer
+coverage. Optional live observations, RFID matching, and candidate suggestions
+appear in the same workspace when Bambu Live is enabled.
 
 ![Printer slot overview](screenshots/printers.jpg)
 
@@ -194,12 +205,20 @@ material consumed outside printer sessions.
 
 ### General
 
-Version, license/source links, appearance, documentation links, and a compact
-selector for the 21 published interface languages. The screenshot records the
-v0.21.0 UI baseline; v0.21.1 changed signed macOS distribution rather than this
-screen.
+Appearance controls and a compact selector for the 21 published interface
+languages.
 
 ![Settings general](screenshots/settings-general.jpg)
+
+### Program And Manual Update Check
+
+The Program section shows the exact version, license/source links, and
+documentation shortcuts. Its on-demand GitHub release check reports whether
+this version is current, whether a newer release exists, or whether release
+metadata is unavailable. It never downloads or installs an update
+automatically.
+
+![Manual update check](screenshots/settings-updates.jpg)
 
 ### Inventory Label Sheet
 
@@ -230,23 +249,11 @@ confirmed.
 ### Bambu Live Diagnostics
 
 Bambu Live diagnostics show connection health, observed AMS slots, matching
-signals, and the live field capture session used while evaluating printer data.
-
-![Bambu Live diagnostics](screenshots/settings-printer-diagnostics.jpg)
-
-### Captured Live Fields
-
-Captured field tables expose raw live printer fields, recent values, change
-counts, and export controls for debugging AMS/printer behavior.
-
-![Captured live fields](screenshots/settings-printer-diagnostics-fields.jpg)
-
-### Paused Capture
-
-Live capture can be paused to freeze the current diagnostic session while still
-showing the last observed printer and AMS state.
-
-![Paused live capture](screenshots/settings-printer-diagnostics-paused.jpg)
+signals, and a field-capture session that can be paused for review. Those three
+screens are intentionally not included in the public image set: a meaningful
+capture requires a real printer and fresh telemetry. The private visual-QA gate
+waits up to its bounded readiness timeout and fails without creating an image
+when live data never arrives.
 
 ### Unsaved Printer Changes
 
@@ -265,7 +272,9 @@ and refresh/maintenance actions.
 ### Program Maintenance
 
 Backup validation, import/export, reset actions, and other local maintenance
-tools live in the maintenance tab.
+tools live in the maintenance tab. Portable full backups omit device-local
+credentials and pairing state. A full restore requires confirmation and creates
+a validated local SQLite recovery snapshot before replacing library data.
 
 ![Settings maintenance](screenshots/settings-maintenance.jpg)
 
@@ -273,13 +282,15 @@ tools live in the maintenance tab.
 
 Companion is a local webapp served by the desktop app on the same LAN. Enable
 the Companion/webapp server in **Settings -> Library & web app**, pair the
-browser if required, and keep the desktop app running while using Companion from
-a phone, tablet, or workshop browser.
+browser, and keep the desktop app running while using Companion from a phone,
+tablet, or workshop browser. Inventory and other library data remain unavailable
+until the browser has an authenticated paired session.
 
 ### Wide Companion
 
 The wide Companion view is useful for a workshop browser or secondary screen
 when you want quick stock, printer, and loan access away from the desktop app.
+Long inventory and loan lists use incremental shown/total controls.
 
 ![Companion wide inventory](screenshots/companion-wide-inventory.jpg)
 

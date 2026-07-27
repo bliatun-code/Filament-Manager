@@ -37,6 +37,11 @@ spctl --assess --type execute --verbose=2 "/Applications/Filament Manager.app"
 These checks supplement normal Gatekeeper behavior; users do not need them for
 every installation.
 
+Tagged releases also include a validated source dependency SBOM. Public tag
+releases include GitHub/Sigstore build provenance for the DMG and MSI. See
+[Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification
+commands and scope.
+
 ## Troubleshooting
 
 An official signed and notarized release should open without removing

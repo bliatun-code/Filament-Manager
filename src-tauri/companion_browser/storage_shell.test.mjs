@@ -145,6 +145,21 @@ test("storage shell collapses to an empty state when no visible spools match", (
   assert.match(html, /No local spools matched the current search/);
 });
 
+test("storage shell bounds a 10,000-spool render while keeping the full total visible", () => {
+  const spools = Array.from({ length: 10_000 }, (_, index) =>
+    createSpoolRow(`spool-${index}`),
+  );
+  const html = renderShell({
+    spools,
+    selectedSpool: spools[0],
+  });
+
+  assert.equal((html.match(/data-action="select-spool"/g) || []).length, 150);
+  assert.match(html, /10000 visible/);
+  assert.match(html, /data-action="show-more-inventory"/);
+  assert.match(html, />\+150 · 300\/10000</);
+});
+
 test("add filament task sheet exposes stock and wishlist flows from the same selection", () => {
   const state = createInitialCompanionState();
   state.catalogMasters = [
@@ -182,7 +197,10 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-action="select-master"/);
   assert.match(html, /data-action="set-filament-ownership"/);
   assert.match(html, /data-action="wishlist-update-status"/);
-  assert.match(html, /data-action="wishlist-stock-now"/);
+  assert.match(html, /data-action="wishlist-stock-form"/);
+  assert.match(html, /data-form-key="wishlist-stock:wish-1"/);
+  assert.match(html, /name="received-quantity"/);
+  assert.match(html, /max="2"/);
   assert.match(html, /data-action="wishlist-delete"/);
   assert.match(html, /data-action="add-spool-form"/);
   assert.match(html, /data-action="wishlist-item-form"/);

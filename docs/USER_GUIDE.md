@@ -54,7 +54,7 @@ Use Host when one stable machine should serve the shared inventory for several d
 
 Client means the desktop app connects to another Host.
 
-- The client reads inventory, loans, printers, wishlist items, and settings from the host.
+- The client reads inventory, loans, printers, wishlist items, and settings from the host through its authenticated desktop pairing.
 - When the host is reachable and the client is paired, supported writes are performed against the host.
 - When the host is unavailable, the client can show a local read-only cache.
 - The client's local database is not the primary library.
@@ -68,10 +68,15 @@ The webapp is a local companion interface served by the desktop app.
 - It runs from the machine where webapp hosting is enabled.
 - Browsers are paired with a short-lived link or QR code.
 - Paired browsers receive a protected local session with CSRF protection.
+- Opening the LAN address does not expose inventory: library reads and writes require an authenticated paired session.
 - The webapp is designed for quick use on a phone, tablet, or workshop browser.
 - The host can revoke browser sessions from settings.
 
 The webapp is useful at the printer: check stock, inspect printer slots, loan out filament, return filament, add spools, and update weight.
+
+Long inventory and loan lists are shown in manageable batches. When more
+matches remain, Companion shows the next batch size and a shown/total count;
+use **Show more** again to continue through the results.
 
 ## Main Pages
 
@@ -91,6 +96,16 @@ It shows, among other things:
 - progress and status panels when relevant
 
 Dashboard is meant as a quick status check, not as the main place for detailed editing.
+When the library has no spools yet, inventory health is shown as **Not enough
+data** instead of a misleading percentage. Use **Add spool** in that panel
+to open the normal inventory entry flow.
+
+The dismissible **Finish setup** checklist appears after the app has loaded a
+usable library. It links to adding or importing the first spool, optional
+printer and browser-access setup, and the first full backup. Completion is
+derived from the current library and this device's validated backup history;
+temporary host or network failures do not turn an unavailable library into a
+list of missing setup steps.
 
 ### Inventory
 
@@ -111,6 +126,16 @@ You can:
 - manage wishlist items and orders
 
 Inventory cards group identical filament and color entries while still showing individual spools and locations. This keeps the inventory easy to scan without losing traceability.
+
+Large filtered inventories are rendered progressively to keep the view
+responsive. The result counter shows how many spools are currently displayed
+out of the complete matching set; choose **Show more** to continue. Search and
+filters still apply to the full inventory.
+
+The app remembers the card/list choice and whether advanced filters are open on
+this device. Resetting the filters does not reset the chosen layout. Opening a
+low-stock result from Dashboard may temporarily use the list without replacing
+the saved preference.
 
 To create a label for one spool:
 
@@ -242,6 +267,7 @@ Settings is split into several areas.
 General:
 
 - app version
+- a manual update check
 - theme: Auto, Light, Dark
 - language, selected from one compact list
 - inventory QR label sheets
@@ -253,6 +279,14 @@ Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
 stored locally for each surface. English remains the fallback when needed.
 Corrections to community translations can be proposed through the project’s
 GitHub issues or pull requests.
+
+Choose **Check for updates** when you want to compare the installed version
+with the latest published GitHub release. The check is not automatic. If release
+metadata cannot be reached, Settings reports that without changing the app.
+When a newer release exists, **View release** opens the fixed Filament Manager
+releases page; downloading and installing remain explicit manual actions.
+Settings also remembers the last tab used on this device, while direct links
+from Dashboard still open the relevant tab.
 
 To create label sheets for the on-hand inventory:
 
@@ -298,6 +332,20 @@ Program maintenance:
 - import/export
 - reset and maintenance functions
 - validation before larger role or host migrations
+- application and database diagnostics
+- privacy-sanitized support JSON
+
+Open **Settings → Program maintenance → Application diagnostics** to review the
+app and database schema versions, SQLite quick and foreign-key checks, journal
+mode, database size, and the local database path after you explicitly reveal
+it. Use **Download sanitized
+support file** when you need a compact JSON file for troubleshooting.
+
+The support file does not include database contents or the local database path.
+It also excludes names, IP addresses, printer serials, tokens, QR/RFID values,
+and raw printer telemetry. It contains only high-level health metadata and
+privacy-filtered operational events. This is different from a full backup,
+which contains private library data and should not be shared as diagnostics.
 
 ## Add Filament
 
@@ -370,10 +418,12 @@ The statuses are:
 
 You can add the current catalog selection to the wishlist from Add filament. When the item later becomes a physical spool, register it as inventory with the correct weight and location. The wishlist is for planning and purchasing follow-up; inventory is the stock you can actually use.
 
-Use the status tabs to focus the queue, the search field to find a planned
-purchase by name, color, or vendor, and **Stock roll now** when an ordered item
-arrives. **Remove** deletes only the wishlist/order entry; it does not delete an
-inventory spool.
+Use the status tabs to focus the queue and the search field to find a planned
+purchase by name, color, or vendor. When an order arrives, choose how many rolls
+were received and select **Stock roll now**. The app creates that number of
+physical spools, reduces the outstanding quantity, and marks the wishlist row as
+Received only when nothing remains. **Remove** deletes only the wishlist/order
+entry; it does not delete an inventory spool.
 
 ### Missing Filament?
 
@@ -643,6 +693,45 @@ Deleting a spool is normally a soft delete from active views so history remains 
 ## Backup and Moving Libraries
 
 Use Program maintenance for backup, import, and reset.
+
+The Backup panel shows when this device last completed a validated full-backup
+download. The timestamp is a device-local activity hint; it does not inspect
+the downloaded file later and is not included in the portable backup.
+
+The local database uses schema version 2. Before writing to an existing database
+at startup, the app performs a read-only schema compatibility preflight and
+SQLite `quick_check`. A database from a newer schema, or one that fails the
+integrity check, is stopped instead of being silently rewritten.
+
+Before automatically upgrading an existing unversioned or schema-v1 database
+to schema v2, the app creates and verifies a local recovery snapshot. A verified
+snapshot is also created before a full restore and before storage migrations
+that replace or merge an existing database. If the snapshot cannot be created
+and verified, the upgrade, restore, or migration does not continue.
+
+Full JSON backups are portable. They include library data such as inventory,
+history, catalog data, and printer profiles, but omit device-local connection
+credentials and pairing state. Bambu Live connection details, local network
+settings, desktop-client sessions, and Companion/browser pairings must be
+configured or paired again on the destination machine. Import also ignores
+machine-local credentials or pairings found in older backup files.
+The file still contains your inventory, QR/RFID references, and loan details,
+so treat it as private data even though it contains no usable device credentials.
+
+The current portable format remains `filament-manager-backup-v1` and records
+the exporting app and database schema versions. Older v1 backups without this
+metadata remain importable. If a backup explicitly declares a schema version
+newer than the installed app supports, validation and import stop before the
+active library is changed. The recorded app version is informational and does
+not by itself block a compatible restore.
+
+When you select a valid full backup, the app asks for confirmation because the
+restore replaces the current library. The verified recovery snapshot described
+above is stored next to the active database.
+
+Unlike the portable export, the recovery snapshot is a local copy of the
+pre-restore database and can contain this machine's credentials and pairings.
+Keep the application-data directory private.
 
 When switching between Host, Client, and Standalone, decide which machine should own the library. A full backup from the old host is the safest way to move library history to a new host.
 

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { neutralChipClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
 import type { OwnershipFilter, StatusFilter } from "../lib/inventory_list_model";
-import type { InventoryViewMode } from "../lib/use_inventory_filters";
+import type { InventoryViewMode } from "../lib/inventory_page_preferences";
 import { materialTone } from "../lib/material_theme";
 import { PageHeaderButton } from "./page_header_button";
 

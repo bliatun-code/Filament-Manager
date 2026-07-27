@@ -15,6 +15,7 @@ import {
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
   normalizeCompanionScreenshotLocale,
+  resolveCompanionQaLoopbackBaseUrl,
   resolveCompanionScreenshotTauriLaunch,
   runLaunchedCompanionScreenshotGate,
   summarizeCompanionScreenshotPixels,
@@ -260,6 +261,43 @@ test("companion screenshot metric validation accepts rich rendered surfaces", ()
   ]);
 
   assert.deepEqual(errors, []);
+});
+
+test("Companion QA launch resolves database settings to loopback only", () => {
+  const database = createVisualQaDatabase({
+    inspection: {
+      counts: {},
+      details: {
+        trustedLanCompanionUrl: "http://192.168.1.50:5312/companion",
+        trustedLanPort: 5312,
+      },
+      tables: [],
+    },
+  });
+
+  assert.equal(
+    resolveCompanionQaLoopbackBaseUrl(null, database),
+    "http://127.0.0.1:5312",
+  );
+  assert.throws(
+    () => resolveCompanionQaLoopbackBaseUrl("http://192.168.1.50:5312", database),
+    /restricted to http:\/\/127\.0\.0\.1/,
+  );
+});
+
+test("launched Companion QA refuses live databases before preparation", async () => {
+  let prepareCalls = 0;
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate({
+      live: true,
+      prepareVisualQaDatabase: async () => {
+        prepareCalls += 1;
+        return createVisualQaDatabase();
+      },
+    }),
+    /refuses --live/,
+  );
+  assert.equal(prepareCalls, 0);
 });
 
 test("companion screenshot scenarios cover wide, tablet, and phone task surfaces", () => {
@@ -630,6 +668,7 @@ test("companion screenshot cleanup validates Windows process tree ids", async ()
 
 test("launched companion screenshot gate starts Tauri dev and cleans up temp DB", async () => {
   const child = createFakeChild();
+  const chmodFn = async () => {};
   const calls = {
     cleanup: [],
     order: [],
@@ -645,6 +684,7 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
       calls.cleanup.push(path);
       calls.order.push("cleanup");
     },
+    chmodFn,
     cwd: testProjectDir,
     outputDir: testOutputDir,
     platform: "win32",
@@ -718,6 +758,8 @@ test("launched companion screenshot gate starts Tauri dev and cleans up temp DB"
   assert.equal(calls.wait[0]?.baseUrl, "http://127.0.0.1:4278");
   assert.equal(calls.visual[0]?.timeoutMs, 1234);
   assert.equal(calls.screenshot[0]?.themeMode, "dark");
+  assert.equal(calls.screenshot[0]?.platform, "win32");
+  assert.equal(calls.screenshot[0]?.chmodFn, chmodFn);
   assert.deepEqual(calls.cleanup, [testVisualDatabasePath]);
   assert.deepEqual(calls.order, ["taskkill", "cleanup"]);
   assert.equal(child.killedSignal, undefined);
@@ -776,39 +818,6 @@ test("launched companion gate preserves synchronous spawn and cleanup failures",
       assert.equal(error.temporaryDatabaseRetained, true);
       assert.ok(error.message.includes(testVisualDatabasePath));
       assert.match(error.message, /cleanup failed or may be incomplete/i);
-      return true;
-    },
-  );
-});
-
-test("launched companion gate preserves missing URL and cleanup failures", async () => {
-  const cleanupError = new Error("cleanup denied");
-
-  await assert.rejects(
-    runLaunchedCompanionScreenshotGate(
-      createLaunchedCompanionOptions({
-        cleanupVisualQaDatabase: () => {
-          throw cleanupError;
-        },
-        prepareVisualQaDatabase: async () =>
-          createVisualQaDatabase({
-            inspection: {
-              ...createVisualQaDatabase().inspection,
-              details: {
-                ...createVisualQaDatabase().inspection.details,
-                trustedLanCompanionUrl: null,
-              },
-            },
-          }),
-      }),
-    ),
-    (error) => {
-      assert.ok(error instanceof AggregateError);
-      assert.match(error.errors[0].message, /needs a companion base URL/i);
-      assert.equal(error.errors[1], cleanupError);
-      assert.equal(error.cause, error.errors[0]);
-      assert.equal(error.temporaryDatabaseRetained, true);
-      assert.ok(error.message.includes(testVisualDatabasePath));
       return true;
     },
   );

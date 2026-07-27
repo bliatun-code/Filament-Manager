@@ -130,6 +130,8 @@ function loanRow(
 test("buildDashboardBadges clamps progress and formats status copy", () => {
   const badges = buildDashboardBadges({
     goalMetrics: {
+      totalSpools: 4,
+      configuredPrinters: 2,
       activeSpools: 4,
       placedActiveSpools: 3,
       totalJobs: 30,
@@ -150,6 +152,8 @@ test("buildDashboardBadges clamps progress and formats status copy", () => {
 test("buildDashboardBadges handles empty location and slot goals", () => {
   const badges = buildDashboardBadges({
     goalMetrics: {
+      totalSpools: 0,
+      configuredPrinters: 0,
       activeSpools: 0,
       placedActiveSpools: 0,
       totalJobs: 4,
@@ -196,6 +200,38 @@ test("buildDashboardDerivedState keeps borrowed rows out of inventory health sco
 
   assert.equal(result.ownershipOnHand.total, 1);
   assert.equal(result.health.score, 0);
+});
+
+test("buildDashboardDerivedState reports insufficient data for an empty library", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(result.ownershipOnHand.total, 0);
+  assert.equal(result.health.score, null);
+  assert.equal(result.health.headline, "Not enough data");
+  assert.equal(result.health.detail, "Add rolls to start health tracking.");
+  assert.equal(result.goalMetrics.totalSpools, 0);
+  assert.equal(result.goalMetrics.configuredPrinters, 0);
+});
+
+test("dashboard setup metrics count historical spools and configured printers", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview({ total_spools: 1 }),
+    printers: [printer("printer-1", [])],
+    spoolRows: [spoolRow("empty-history", { status: "EMPTY", remaining_g: 0 })],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(result.goalMetrics.totalSpools, 1);
+  assert.equal(result.goalMetrics.configuredPrinters, 1);
 });
 
 test("buildDashboardDerivedState localizes daily grams for Norwegian", () => {

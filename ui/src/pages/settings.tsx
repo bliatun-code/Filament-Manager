@@ -23,10 +23,10 @@ import { useSettingsMessageGroups } from "./use_settings_message_groups";
 import { isLibrarySyncDeviceNameDirty } from "./settings_library_device_name";
 
 type SettingsPageProps = {
-  initialTab?: SettingsTabKey;
+  initialTab?: SettingsTabKey | null;
 };
 
-export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPageProps) {
+export default function SettingsPage({ initialTab = null }: SettingsPageProps) {
   const tauri = isTauri();
   const desktopVisualQaScenario = resolveDesktopVisualQaScenario();
   const desktopVisualQaScenarioRef = useRef(desktopVisualQaScenario);
@@ -48,11 +48,49 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     settingsTabButtons,
     showTransientInfo,
   } = useSettingsPageShellState({
+    activeTabPersistenceEnabled: !desktopVisualQaScenario,
     initialTab,
     setInfo,
     tauri,
     t,
   });
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenarioRef.current !== "settings-updates" ||
+      activeTab !== "GENERAL"
+    ) {
+      return;
+    }
+
+    let scheduledFrameId: number | null = null;
+    const revealUpdateCheck = () => {
+      const target = document.getElementById("settings-update-check");
+      if (!target) {
+        return;
+      }
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        target.scrollIntoView({ behavior: "auto", block: "center" });
+      });
+    };
+
+    revealUpdateCheck();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealUpdateCheck, delay),
+    );
+    window.addEventListener("resize", revealUpdateCheck);
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealUpdateCheck);
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [activeTab]);
   const libraryRuntime = useSettingsLibraryRuntime({
     locale,
     tauri,
@@ -321,6 +359,9 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     setSpoolRows,
     setSwatchDraftById,
     settingsPageMessageLabels,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientReadOnly,
     tauri,
   });
   useEffect(() => {
@@ -330,6 +371,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
   useSettingsSilentReload({ reloadSettings, tauri });
 
   const {
+    applicationDiagnosticsStatus,
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
@@ -337,6 +379,7 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     inventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   } = useSettingsMaintenanceSection({
+    applicationDiagnosticsEnabled: activeTab === "MAINTENANCE",
     backupValidationHasExtraTables,
     backupValidationHasMissingTables,
     backupValidationHasWarnings,
@@ -381,6 +424,48 @@ export default function SettingsPage({ initialTab = "GENERAL" }: SettingsPagePro
     t,
     trustedLanStatus,
   });
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenarioRef.current !== "settings-application-diagnostics" ||
+      applicationDiagnosticsStatus !== "success"
+    ) {
+      return;
+    }
+    const target = document.getElementById("settings-application-diagnostics-panel");
+    if (!target) {
+      return;
+    }
+
+    let scheduledFrameId: number | null = null;
+    const revealDiagnostics = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        target.scrollIntoView({ behavior: "auto", block: "center" });
+      });
+    };
+
+    revealDiagnostics();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealDiagnostics, delay),
+    );
+    window.addEventListener("resize", revealDiagnostics);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealDiagnostics);
+    resizeObserver?.observe(target);
+
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealDiagnostics);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [applicationDiagnosticsStatus]);
 
   const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,

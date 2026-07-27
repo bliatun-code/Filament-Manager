@@ -9,6 +9,7 @@ import {
   type BambuFilamentBarcodeDetector,
   type BambuFilamentBarcodeDetectorConstructor,
 } from "./bambu_filament_code_image_scan";
+import { createBambuFilamentCodeCameraWorkerScanner } from "./bambu_filament_code_camera_worker_client";
 
 type BambuFilamentCodeCameraMediaDevices = Pick<MediaDevices, "getUserMedia">;
 
@@ -99,7 +100,9 @@ export async function createBambuFilamentCodeCameraDetector(
     "fallbackBarcodeScanner",
   )
     ? dependencies.fallbackBarcodeScanner
-    : async () => createFastBambuFilamentBoxBarcodeScanner();
+    : async () =>
+        createBambuFilamentCodeCameraWorkerScanner() ??
+        createFastBambuFilamentBoxBarcodeScanner();
   return createBambuFilamentBarcodeScanner({
     ...dependencies,
     fallbackBarcodeScanner,

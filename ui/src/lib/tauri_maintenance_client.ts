@@ -16,8 +16,53 @@ export type ImportDataStats = {
   updated_count: number;
 };
 
+export type DiagnosticCheckStatus = "ok" | "issues_found" | "unavailable";
+
+export type DatabaseDiagnostics = {
+  available: boolean;
+  schema_version: number | null;
+  supported_schema_version: number;
+  quick_check: DiagnosticCheckStatus;
+  foreign_key_check: DiagnosticCheckStatus;
+  journal_mode: string | null;
+  size_bytes: number | null;
+  local_db_path: string;
+};
+
+export type ApplicationDiagnostics = {
+  generated_at_ms: number;
+  app_version: string;
+  database: DatabaseDiagnostics;
+};
+
+export type AppUpdateStatus =
+  | "UPDATE_AVAILABLE"
+  | "UP_TO_DATE"
+  | "DEVELOPMENT_BUILD"
+  | "RELEASE_INFO_UNAVAILABLE";
+
+export type AppUpdateCheckResult = {
+  current_version: string;
+  latest_version: string | null;
+  latest_tag: string | null;
+  release_url: string;
+  status: AppUpdateStatus;
+};
+
 export async function getAppVersion() {
   return invoke<string>("get_app_version");
+}
+
+export async function getApplicationDiagnostics() {
+  return invoke<ApplicationDiagnostics>("get_application_diagnostics");
+}
+
+export async function getSanitizedSupportBundleJson() {
+  return invoke<string>("get_sanitized_support_bundle_json");
+}
+
+export async function checkForAppUpdate() {
+  return invoke<AppUpdateCheckResult>("check_for_app_update");
 }
 
 export async function resetAppData() {

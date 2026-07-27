@@ -40,3 +40,11 @@ test("add-printer visual QA initializes only local form state", () => {
   const previewBlock = workflowSource.slice(previewStart, regularOpenStart);
   assert.doesNotMatch(previewBlock, /createManagedPrinter|handleAddPrinter|reloadData/);
 });
+
+test("slot-onboarding visual QA retries until the real modal opens", () => {
+  assert.match(pageSource, /desktopVisualQaScenario !== "printer-slot-onboarding"/);
+  assert.match(
+    pageSource,
+    /master &&[\s\S]*createLiveBambuCatalogSpool\([\s\S]*\)[\s\S]*\{[\s\S]*setDesktopVisualQaApplied\(true\)/,
+  );
+});

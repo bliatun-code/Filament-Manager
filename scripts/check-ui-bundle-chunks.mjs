@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 const assetsDir = resolve("ui", "dist", "assets");
 const heavyVendorPrefixes = ["vendor-pdf-lib-", "vendor-qrcode-", "vendor-zxing-"];
+const requiredRuntimeAssetPrefixes = ["bambu_filament_code_camera_worker-"];
 const allowedVendorImporters = new Map([
   ["vendor-pdf-lib-", ["inventory_overview_print-"]],
   ["vendor-qrcode-", ["filament_label_print-", "trusted_lan_pairing_qr-"]],
@@ -58,6 +59,12 @@ export function validateUiBundleChunks(assets) {
   for (const vendorPrefix of heavyVendorPrefixes) {
     if (!assetNames.some((assetName) => assetName.startsWith(vendorPrefix))) {
       errors.push(`Expected ${vendorPrefix}*.js in the production bundle.`);
+    }
+  }
+
+  for (const assetPrefix of requiredRuntimeAssetPrefixes) {
+    if (!assetNames.some((assetName) => assetName.startsWith(assetPrefix))) {
+      errors.push(`Expected ${assetPrefix}*.js in the production bundle.`);
     }
   }
 

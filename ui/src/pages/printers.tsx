@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { isTauri, type SpoolWithMasterRow } from "../lib/tauri_client";
+import {
+  isTauri,
+  signalDesktopVisualQaReadiness,
+  type SpoolWithMasterRow,
+} from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
 import { PageHeaderButton } from "../components/page_header_button";
+import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { PrinterOverviewCard } from "../components/printer_overview_card";
 import { RfidOverrideModal } from "../components/rfid_override_modal";
 import { SlotCatalogOnboardingModal } from "../components/slot_catalog_onboarding_modal";
 import { useI18n } from "../lib/i18n";
 import { formatDateTime } from "../lib/printer_live_display";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
+import {
+  DESKTOP_VISUAL_QA_PRINTER_LIVE_READINESS_TOKEN,
+  hasFreshPrinterLiveTelemetry,
+} from "../lib/desktop_visual_qa_readiness";
 import { findPrinterSlotById } from "../lib/printer_slot_model";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
 import { useResolvedTheme } from "../lib/theme_mode";
@@ -38,6 +47,10 @@ export default function PrintersPage() {
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
+  const [desktopVisualQaPrinterObservedAfterMs] = useState(
+    () => Date.now(),
+  );
+  const desktopVisualQaReadinessSignaledRef = useRef(false);
   const desktopVisualQaNeedsPrinterAction =
     desktopVisualQaScenario === "add-printer" ||
     desktopVisualQaScenario === "printer-slot-assignment" ||
@@ -66,16 +79,9 @@ export default function PrintersPage() {
   } = useLibrarySyncState(tauri);
   const supportedPrinterModels = useMemo(() => listSupportedPrinterModels(), []);
 
-  const handlePrinterLoadError = useCallback(
-    (loadError: unknown) => {
-      console.error(loadError);
-      setError(t("printers.error.load", "Failed to load printer overview."));
-    },
-    [t],
-  );
-
   const {
     loading,
+    loadError,
     printers,
     spools,
     bambuLiveIntegrations,
@@ -83,6 +89,7 @@ export default function PrintersPage() {
     clientPrinterSource,
     clientPrinterUpdatedAt,
     printerModels,
+    refreshing,
     reloadData,
   } = usePrinterPageData({
     tauri,
@@ -91,9 +98,42 @@ export default function PrintersPage() {
     clientHostBaseUrl,
     clientLibraryId,
     supportedPrinterModels,
-    onLoadError: handlePrinterLoadError,
+    loadErrorMessage: t("printers.error.load", "Failed to load printer overview."),
     onInteractiveReload: handleInteractiveReload,
   });
+  const desktopVisualQaHasFreshPrinterTelemetry = useMemo(
+    () =>
+      desktopVisualQaScenario === "printer-board" &&
+      hasFreshPrinterLiveTelemetry(
+        bambuLiveIntegrations,
+        desktopVisualQaPrinterObservedAfterMs,
+        t,
+      ),
+    [
+      bambuLiveIntegrations,
+      desktopVisualQaPrinterObservedAfterMs,
+      desktopVisualQaScenario,
+      t,
+    ],
+  );
+
+  useEffect(() => {
+    if (
+      !tauri ||
+      loading ||
+      !desktopVisualQaHasFreshPrinterTelemetry ||
+      desktopVisualQaReadinessSignaledRef.current
+    ) {
+      return;
+    }
+    desktopVisualQaReadinessSignaledRef.current = true;
+    void signalDesktopVisualQaReadiness(
+      DESKTOP_VISUAL_QA_PRINTER_LIVE_READINESS_TOKEN,
+    ).catch((signalError) => {
+      desktopVisualQaReadinessSignaledRef.current = false;
+      console.error("Failed to signal desktop visual QA readiness.", signalError);
+    });
+  }, [desktopVisualQaHasFreshPrinterTelemetry, loading, tauri]);
 
   const { canUseClientHostWrite, ensureLocalWriteAllowed } = useClientWriteGuards({
     clientHostBaseUrl,
@@ -283,13 +323,15 @@ export default function PrintersPage() {
           continue;
         }
         const [master] = displayState.liveCatalogMatch.candidates;
-        if (master) {
+        if (
+          master &&
           createLiveBambuCatalogSpool(
             printer,
             slot,
             displayState.effectiveLiveTray,
             master,
-          );
+          )
+        ) {
           setDesktopVisualQaApplied(true);
           return;
         }
@@ -467,6 +509,15 @@ export default function PrintersPage() {
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
         </FeedbackBanner>
+      ) : null}
+      {loadError ? (
+        <PageLoadErrorBanner
+          message={loadError}
+          onRetry={() => void reloadData()}
+          retryDisabled={!tauri || busy || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
       {info ? (
         <FeedbackBanner tone="success" className="mt-4">

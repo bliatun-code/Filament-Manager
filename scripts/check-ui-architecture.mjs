@@ -25,6 +25,8 @@ const lazyOnlyModules = new Set(
 const allowedLazyIslandStaticImports = new Set(
   [
     ["ui/src/lib/bambu_filament_code_camera_scan.ts", "ui/src/lib/bambu_filament_code_image_scan.ts"],
+    ["ui/src/lib/bambu_filament_code_camera_worker_client.ts", "ui/src/lib/bambu_filament_code_image_scan.ts"],
+    ["ui/src/lib/bambu_filament_code_camera_worker.ts", "ui/src/lib/bambu_filament_code_image_scan.ts"],
     ["ui/src/lib/spool_qr_artifacts.ts", "ui/src/lib/filament_qr_payload.ts"],
   ].map(([fromFile, toFile]) => `${resolve(repoRoot, fromFile)}=>${resolve(repoRoot, toFile)}`),
 );

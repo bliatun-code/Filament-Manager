@@ -71,6 +71,26 @@ export const esDictionary: DictionaryNode = {
     settings: "Ajustes",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Empieza con una bobina o importa un inventario o una copia de seguridad existentes.",
+    onboardingInventoryTitle: "Añadir o importar inventario",
+    onboardingPrinterBody:
+      "Añade cualquier impresora compatible. Bambu Live se puede activar cuando esté disponible.",
+    onboardingPrinterTitle: "Configurar una impresora",
+    onboardingCompanionBody:
+      "Activa el acceso desde el navegador en una red de confianza o vincula este equipo con un host.",
+    onboardingCompanionTitle: "Configurar el acceso desde el navegador",
+    onboardingBackupBody:
+      "Crea una copia de seguridad completa cuando la biblioteca esté lista.",
+    onboardingEyebrow: "Primeros pasos",
+    onboardingTitle: "Finalizar la configuración",
+    onboardingDescription:
+      "Sigue los pasos que se adapten a tu instalación. La impresora y el acceso desde el navegador son opcionales.",
+    onboardingProgress: "{completed} de {total} completados",
+    onboardingDismiss: "Cerrar la lista",
+    onboardingComplete: "Completado",
+    onboardingOptional: "Opcional",
+    onboardingPending: "Pendiente",
     subtitle:
       "Consulta el estado del inventario, el consumo actual y la actividad de las impresoras en un solo lugar.",
     totalSpools: "Bobinas totales",
@@ -159,7 +179,7 @@ export const esDictionary: DictionaryNode = {
     lowStockShort: "stock bajo",
     lowest: "mínimo",
     noActivePrinter: "No se seleccionó ninguna impresora activa",
-    noInventoryData: "Sin datos de inventario",
+    noInventoryData: "Datos insuficientes",
     noPrintersConfigured: "No hay impresoras configuradas",
     noUsageTrendYet: "Aún no hay tendencia de uso",
     onOrder: "en orden",
@@ -1188,6 +1208,20 @@ export const esDictionary: DictionaryNode = {
     },
   },
   settings: {
+    updates: "Actualizaciones",
+    updateCheckHint:
+      "Solo consulta GitHub cuando lo solicitas. La descarga y la instalación siguen siendo manuales.",
+    checkForUpdates: "Buscar actualizaciones",
+    checkingForUpdates: "Buscando…",
+    updateAvailable: "La versión {version} está disponible.",
+    updateUpToDate: "La versión {version} es la última publicada.",
+    updateDevelopmentBuild:
+      "Esta compilación es más reciente que la última versión publicada ({version}).",
+    updateCheckFailed:
+      "No se pudieron buscar actualizaciones. Inténtalo de nuevo más tarde.",
+    updateInfoUnavailable:
+      "La información de la versión no está disponible en este momento. Inténtalo de nuevo más tarde.",
+    viewRelease: "Ver versión",
     tabGeneral: "General",
     tabLibrary: "Biblioteca y web app",
     tabCompanion: "Acceso desde navegador",
@@ -1590,8 +1624,29 @@ export const esDictionary: DictionaryNode = {
     current: "Actual",
     maintenance: "Mantenimiento",
     backupTitle: "Copia de seguridad",
+    latestFullBackupExportOnDevice: "Última exportación de copia de seguridad completa en este dispositivo",
+    noFullBackupExportRecordedOnDevice: "Aún no se ha registrado ninguna exportación de copia de seguridad completa en este dispositivo",
     backupDescription:
       "Exporta una copia de seguridad JSON completa con el inventario, el historial y las impresoras configuradas.",
+    applicationDiagnosticsTitle: "Diagnóstico de la aplicación",
+    applicationDiagnosticsDescription: "Comprueba el estado de la base de datos local y descarga un archivo de soporte depurado, sin contenido del inventario ni credenciales.",
+    diagnosticsHealthy: "Correcto",
+    diagnosticsNeedsAttention: "Requiere atención",
+    diagnosticsUnavailable: "Base de datos no disponible",
+    diagnosticsRefreshFailed: "No se pudo actualizar el diagnóstico de la aplicación.",
+    diagnosticsLastGoodVisible: "El último resultado correcto sigue visible.",
+    diagnosticsSchema: "Esquema actual / compatible",
+    diagnosticsDatabaseSize: "Tamaño de la base de datos",
+    diagnosticsQuickCheck: "Comprobación rápida",
+    diagnosticsForeignKeyCheck: "Comprobación de claves foráneas",
+    diagnosticsJournalMode: "Modo de diario",
+    diagnosticsLocalPath: "Ruta local de la base de datos",
+    diagnosticsCheckOk: "Superada",
+    diagnosticsCheckIssues: "Se encontraron problemas",
+    diagnosticsCheckUnavailable: "No disponible",
+    diagnosticsDownloadSupport: "Descargar archivo de soporte depurado",
+    diagnosticsSupportDownloaded: "Archivo de soporte depurado descargado.",
+    diagnosticsSupportDownloadFailed: "No se pudo descargar el archivo de soporte depurado.",
     clientHostOnlyMaintenance:
       "Este dispositivo es un cliente. La copia de seguridad completa se exporta desde el host vinculado. Las importaciones, los restablecimientos y las reparaciones deben realizarse en el host para mantener la biblioteca en un único lugar.",
     clientHostBackupRequiresPairing:

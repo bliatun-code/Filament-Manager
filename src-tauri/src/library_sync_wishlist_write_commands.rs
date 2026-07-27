@@ -1,12 +1,17 @@
-use crate::library_sync_cache_refresh::refresh_library_sync_wishlist_cache;
+use crate::backend::filament_database::WishlistReceiptResult;
+use crate::library_sync_cache_refresh::{
+    refresh_library_sync_spool_cache, refresh_library_sync_wishlist_cache,
+};
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
     trimmed_non_empty,
 };
-use crate::library_sync_host_client::perform_library_sync_host_write;
+use crate::library_sync_host_client::{
+    perform_library_sync_host_write, perform_library_sync_host_write_and_parse,
+};
 use crate::library_sync_models::{
     LibrarySyncCreateWishlistItemInput, LibrarySyncDeleteWishlistItemInput,
-    LibrarySyncUpdateWishlistStatusInput,
+    LibrarySyncReceiveWishlistItemInput, LibrarySyncUpdateWishlistStatusInput,
 };
 use crate::state::AppState;
 
@@ -61,6 +66,30 @@ pub(crate) fn update_library_sync_host_wishlist_item_status(
     refresh_library_sync_wishlist_cache(&state, &normalized_base_url);
     save_library_sync_success(&state, "Host wishlist item updated.", None)?;
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) fn receive_library_sync_host_wishlist_item(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncReceiveWishlistItemInput,
+) -> Result<WishlistReceiptResult, String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let item_id = input.item_id.trim();
+    if item_id.is_empty() {
+        return Err("Wishlist item id is required.".to_string());
+    }
+
+    let result = perform_library_sync_host_write_and_parse(
+        &state,
+        &normalized_base_url,
+        &format!("/api/v1/wishlist/{item_id}/receive"),
+        &serde_json::json!({ "quantity": input.quantity }),
+    )?;
+    refresh_library_sync_spool_cache(&state, &normalized_base_url);
+    refresh_library_sync_wishlist_cache(&state, &normalized_base_url);
+    save_library_sync_success(&state, "Host wishlist receipt saved.", None)?;
+    Ok(result)
 }
 
 #[tauri::command]

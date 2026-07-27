@@ -1,5 +1,6 @@
 import type { Locale } from "../lib/i18n";
 import { SELECTABLE_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
+import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import type { ThemeMode } from "../lib/theme_mode";
 import {
   APP_LICENSE_ID,
@@ -10,7 +11,13 @@ import {
   sourceUrlForAppVersion,
   userGuideUrlForLocale,
 } from "../lib/app_metadata";
+import {
+  appUpdateCheckMessage,
+  shouldShowReleaseAction,
+  trustedReleaseUrl,
+} from "../lib/app_update_check";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
+import { useAppUpdateCheck } from "../lib/use_app_update_check";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -23,7 +30,7 @@ import {
   type SettingsInventoryLabelSheetModalProps,
 } from "./settings_inventory_label_sheet_modal";
 
-type TranslateFn = (key: string, fallback: string) => string;
+type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
 export type SettingsGeneralTabProps = {
   appVersion: string | null;
@@ -50,12 +57,16 @@ export function SettingsGeneralTab({
   onOpenInventoryLabelSheet,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
+  const updateCheck = useAppUpdateCheck();
   const displayVersion = appVersion?.trim() || t("common.unknown", "Unknown");
   const sourceUrl = sourceUrlForAppVersion(appVersion);
   const licenseUrl = licenseUrlForAppVersion(appVersion);
   const noticeUrl = noticeUrlForAppVersion(appVersion);
   const tourUrl = screenshotTourUrl();
   const userGuideUrl = userGuideUrlForLocale(locale);
+  const checkingForUpdates = updateCheck.state.status === "CHECKING";
+
+  const updateMessage = appUpdateCheckMessage(updateCheck.state, t);
 
   return (
     <>
@@ -170,6 +181,52 @@ export function SettingsGeneralTab({
           >
             {t("settings.viewNotices", "Notices")}
           </button>
+        </div>
+        <div
+          id="settings-update-check"
+          className="border-t border-slate-200/80 pt-4 dark:border-slate-700/80"
+        >
+          <div className={settingsSectionLabelClass}>
+            {t("settings.updates", "Updates")}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {t(
+              "settings.updateCheckHint",
+              "Checks GitHub only when you ask. Download and installation remain manual.",
+            )}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void updateCheck.check()}
+              className={settingsActionButtonClass()}
+              disabled={!tauri || busy || checkingForUpdates}
+            >
+              {checkingForUpdates
+                ? t("settings.checkingForUpdates", "Checking…")
+                : t("settings.checkForUpdates", "Check for updates")}
+            </button>
+            {shouldShowReleaseAction(updateCheck.state) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (updateCheck.state.status === "SUCCESS") {
+                    void openExternalUrl(trustedReleaseUrl(updateCheck.state.result));
+                  }
+                }}
+                className={settingsActionButtonClass("accent")}
+              >
+                {t("settings.viewRelease", "View release")}
+              </button>
+            ) : null}
+          </div>
+          <div
+            className="mt-2 min-h-5 text-xs leading-5 text-slate-600 dark:text-slate-300"
+            aria-live="polite"
+            role="status"
+          >
+            {updateMessage}
+          </div>
         </div>
       </SettingsSurfaceCard>
 

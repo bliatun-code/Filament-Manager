@@ -1,15 +1,24 @@
 import { createCompanionApiClient } from "./companion_api_client.js";
 import { createCompanionAppShellRenderer } from "./companion_app_shell.js";
-import { createCompanionDataController } from "./companion_data_controller.js";
+import {
+  createCompanionDataController,
+  createLatestAsyncCommitter,
+} from "./companion_data_controller.js";
 import { installCompanionDomEvents } from "./companion_dom_events.js";
 import {
   COMPANION_LOCALE_STORAGE_KEY,
+  loadCompanionLocale,
   normalizeCompanionLocale,
   resolveInitialCompanionLocale,
   t,
 } from "./companion_i18n.js";
 import { createCompanionLogic } from "./companion_logic.js";
+import { createCompanionLiveRegionAnnouncer } from "./companion_live_regions.js";
 import { createCompanionMutations } from "./companion_mutations.js";
+import {
+  companionOverlayKey,
+  createCompanionOverlayFocusLifecycle,
+} from "./companion_overlay_focus.js";
 import { createCompanionRuntimeState } from "./companion_runtime_state.js";
 import { renderMarkupPreservingFocus } from "./companion_render_focus.js";
 import { createCompanionShellState, detectCompanionLayoutMode } from "./companion_shell_state.js";
@@ -48,6 +57,9 @@ function syncRecoverySectionLabels(locale) {
 }
 
 const state = createInitialCompanionState();
+const companionLiveRegionAnnouncer = createCompanionLiveRegionAnnouncer({
+  documentRef: document,
+});
 const companionLogic = createCompanionLogic({
   state,
   sections: RECOVERY_SECTIONS,
@@ -58,6 +70,7 @@ const { selectionClearedAfterBorrowedInHandBack } = companionLogic;
 const companionRuntimeState = createCompanionRuntimeState({
   state,
   render,
+  announceStatus: companionLiveRegionAnnouncer.announceRuntimeStatus,
 });
 const { setStatus, setBusy, setDetailFeedback, clearDetailFeedback } = companionRuntimeState;
 
@@ -96,10 +109,26 @@ const {
   startPrinterSlotAssignment,
   setRootFlow,
   showAllLoans,
+  showMoreInventory,
+  showMoreLoans,
+  showMoreLoanPicker,
   syncLegacySectionState,
   toggleBorrowedInForm,
   toggleLoanReturn,
 } = companionShellState;
+
+const companionOverlayFocusLifecycle = createCompanionOverlayFocusLifecycle({
+  documentRef: document,
+  closeOverlay() {
+    if (state.detailOpen) {
+      closeDetailModal();
+      return;
+    }
+    if (state.activeTaskSheet) {
+      closeActiveTaskSheet();
+    }
+  },
+});
 
 const companionDataController = createCompanionDataController({
   state,
@@ -184,22 +213,41 @@ function setThemeMode(nextMode) {
   render();
 }
 
-function setLocale(nextLocale) {
+const commitLatestLocaleSelection = createLatestAsyncCommitter();
+
+async function setLocale(nextLocale) {
   const normalizedLocale = normalizeCompanionLocale(nextLocale);
-  state.locale = normalizedLocale;
-  syncDocumentLocale(normalizedLocale);
-  syncRecoverySectionLabels(normalizedLocale);
-  persistCompanionPreference(LOCALE_STORAGE_KEY, normalizedLocale);
-  const definition = localeDefinition(normalizedLocale);
-  setStatus(
-    definition
-      ? t(
-          normalizedLocale,
-          definition.companionSelectionMessageKey,
-          definition.selectionMessageFallback,
-        )
-      : normalizedLocale,
-    "success",
+  await commitLatestLocaleSelection(
+    () => loadCompanionLocale(normalizedLocale),
+    {
+      commit() {
+        state.locale = normalizedLocale;
+        syncDocumentLocale(normalizedLocale);
+        syncRecoverySectionLabels(normalizedLocale);
+        persistCompanionPreference(LOCALE_STORAGE_KEY, normalizedLocale);
+        const definition = localeDefinition(normalizedLocale);
+        setStatus(
+          definition
+            ? t(
+                normalizedLocale,
+                definition.companionSelectionMessageKey,
+                definition.selectionMessageFallback,
+              )
+            : normalizedLocale,
+          "success",
+        );
+      },
+      reject() {
+        setStatus(
+          t(
+            state.locale || "en",
+            "status.refreshFailed",
+            "Companion data could not be loaded.",
+          ),
+          "error",
+        );
+      },
+    },
   );
 }
 
@@ -326,14 +374,20 @@ async function initializeCompanionEntry() {
 
 }
 
-function main() {
+async function main() {
   installLayoutWatcher();
   installThemeWatcher();
 
-  state.locale = resolveInitialCompanionLocale(
+  const initialLocale = resolveInitialCompanionLocale(
     readBrowserStorage(),
     readBrowserGlobal("navigator"),
   );
+  try {
+    state.locale = await loadCompanionLocale(initialLocale);
+  } catch {
+    await loadCompanionLocale("en");
+    state.locale = "en";
+  }
   syncDocumentLocale(state.locale);
   state.statusMessage = t(
     state.locale,
@@ -441,18 +495,22 @@ function syncOverlayScrollLock() {
 }
 
 function render() {
+  const overlayKey = companionOverlayKey(state);
+  companionOverlayFocusLifecycle.prepareForRender(overlayKey);
   syncOverlayScrollLock();
   renderMarkupPreservingFocus({
     root,
     documentRef: document,
     markup: companionAppShellRenderer.renderRoot(),
   });
+  companionOverlayFocusLifecycle.restoreAfterRender(overlayKey);
 }
 
 installCompanionDomEvents({
   documentRef: document,
   root,
   state,
+  overlayFocusLifecycle: companionOverlayFocusLifecycle,
   closeActiveTaskSheet,
   closeDetailModal,
   setStatus,
@@ -472,6 +530,9 @@ installCompanionDomEvents({
   openSpoolDetail,
   clearInventorySearch,
   showAllLoans,
+  showMoreInventory,
+  showMoreLoans,
+  showMoreLoanPicker,
   setLoanStatusFilter,
   setWishlistQueueFilter,
   setPrinterSpoolSearch,
@@ -498,4 +559,4 @@ installCompanionDomEvents({
   setLocale,
 });
 
-main();
+void main();

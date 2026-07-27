@@ -13,6 +13,7 @@ import {
 const loansShellSource = readFileSync(new URL("./loans_shell.js", import.meta.url), "utf8");
 
 function createLoanRow(overrides = {}) {
+  const { loan: loanOverrides = {}, ...rowOverrides } = overrides;
   return {
     loan: {
       id: "loan-1",
@@ -23,7 +24,7 @@ function createLoanRow(overrides = {}) {
       grams_out: 640,
       lent_note: "",
       return_note: "",
-      ...overrides.loan,
+      ...loanOverrides,
     },
     material: "PLA",
     filament_name: "Basic",
@@ -32,7 +33,7 @@ function createLoanRow(overrides = {}) {
     spool_remaining_g: 500,
     spool_tare_weight_g: 250,
     hex_color: "#ffffff",
-    ...overrides,
+    ...rowOverrides,
   };
 }
 
@@ -107,6 +108,38 @@ test("loans shell routes empty and info states through shared companion cards", 
   assert.match(html, /class="empty-card">No loans match this search or filter\./);
 });
 
+test("loan lists and the loan picker render large candidate sets progressively", () => {
+  const loanRows = Array.from({ length: 5_000 }, (_, index) =>
+    createLoanRow({
+      loan: {
+        id: `loan-${index}`,
+        spool_id: `spool-${index}`,
+      },
+    }),
+  );
+  const loanSpoolOptions = Array.from({ length: 10_000 }, (_, index) =>
+    createSelectedSpool({ spool: { id: `candidate-${index}` } }),
+  );
+  const shellHtml = renderShell({
+    loanRows,
+    loanSummary: { active: 5_000, returned: 0, total: 5_000 },
+    loanSpoolOptions,
+    selectedSpool: null,
+  });
+  assert.equal((shellHtml.match(/loan-card compact-loan-card swatch-surface/g) || []).length, 150);
+  assert.match(shellHtml, /data-action="show-more-loans"/);
+
+  const pickerHtml = renderLoanPickerTaskSheetBody({
+    state: createInitialCompanionState(),
+    loanSpoolOptions,
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+  assert.equal((pickerHtml.match(/data-action="select-loan-spool"/g) || []).length, 150);
+  assert.match(pickerHtml, /data-action="show-more-loan-picker"/);
+  assert.match(pickerHtml, />\+150 · 300\/10000</);
+});
+
 test("loans shell keeps return UI out of the row until a task sheet opens", () => {
   const html = renderShell({
     state: {
@@ -176,6 +209,7 @@ test("loan return task sheet renders the compact return form", () => {
   assert.doesNotMatch(returnButton, /swatch-action-button|disabled/);
   assert.match(html, /class="metric-card loan-date-metric"/);
   assert.match(html, /Returned total weight incl\. spool \(g\)/);
+  assert.match(html, /data-form-key="loan-return:loan-1"/);
   assert.match(html, /aria-describedby="loan-return-calculation"/);
   assert.match(html, /Suggested return calculation/);
   assert.doesNotMatch(html, /role="status"|aria-live=/);

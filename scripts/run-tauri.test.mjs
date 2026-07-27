@@ -258,7 +258,7 @@ test("required macOS signing rejects explicit Tauri config overrides", () => {
   }
 });
 
-test("required macOS signing keeps generated bundles outside File Provider folders", () => {
+test("signed macOS builds keep generated bundles outside File Provider folders", () => {
   const env = {
     [FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV]: "1",
     [TAURI_MACOS_SIGNING_IDENTITY_ENV]: "Developer ID Application: Example AS",
@@ -290,7 +290,55 @@ test("required macOS signing keeps generated bundles outside File Provider folde
       args: ["build"],
       env: {},
       platform: "darwin",
+      temporaryDirectory,
+    }).CARGO_TARGET_DIR,
+    path.join(temporaryDirectory, "filament-manager-macos-signing-target"),
+  );
+  assert.equal(
+    withMacosSigningBuildEnvironment({
+      args: ["build", "--no-sign"],
+      env: {},
+      platform: "darwin",
+      temporaryDirectory,
     }).CARGO_TARGET_DIR,
     undefined,
   );
+  assert.equal(
+    withMacosSigningBuildEnvironment({
+      args: ["build", "--no-bundle"],
+      env: {},
+      platform: "darwin",
+      temporaryDirectory,
+    }).CARGO_TARGET_DIR,
+    undefined,
+  );
+  assert.equal(
+    withMacosSigningBuildEnvironment({
+      args: ["build", "--bundles", "app"],
+      env: { CI: "true" },
+      platform: "darwin",
+      temporaryDirectory,
+    }).CARGO_TARGET_DIR,
+    undefined,
+  );
+  assert.equal(
+    withMacosSigningBuildEnvironment({
+      args: ["dev"],
+      env: {},
+      platform: "darwin",
+      temporaryDirectory,
+    }).CARGO_TARGET_DIR,
+    undefined,
+  );
+  for (const platform of ["linux", "win32"]) {
+    assert.equal(
+      withMacosSigningBuildEnvironment({
+        args: ["build"],
+        env: {},
+        platform,
+        temporaryDirectory,
+      }).CARGO_TARGET_DIR,
+      undefined,
+    );
+  }
 });

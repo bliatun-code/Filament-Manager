@@ -1,5 +1,6 @@
 import { type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
+import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache";
 import { toErrorMessage } from "../lib/error_text";
 import {
   importDataFile,
@@ -43,6 +44,7 @@ type UseSettingsBackupFileActionsInput = {
   settingsClientReadOnly: boolean;
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   tauri: boolean;
+  t: (key: string, fallback?: string) => string;
 };
 
 export function useSettingsBackupFileActions({
@@ -67,6 +69,7 @@ export function useSettingsBackupFileActions({
   settingsClientReadOnly,
   settingsImportMessageLabels,
   tauri,
+  t,
 }: UseSettingsBackupFileActionsInput) {
   async function handleImportDataFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -80,7 +83,29 @@ export function useSettingsBackupFileActions({
     setInfo(null);
     try {
       const content = await file.text();
+      let fullBackupValidation: BackupValidationStats | null = null;
+      try {
+        fullBackupValidation = await validateFullBackupJson(content);
+      } catch {
+        // Inventory CSV/JSON imports are not full-library restores and continue
+        // through the non-destructive merge path below. Malformed full backups
+        // are rejected by the command-side preflight before any write occurs.
+      }
+      if (
+        fullBackupValidation &&
+        !window.confirm(
+          t(
+            "settings.confirmImportBackup",
+            "Import full backup now?\n\nThis will replace current inventory, history, configured printers and maintenance data.",
+          ),
+        )
+      ) {
+        return;
+      }
       const result = await importDataFile(content);
+      if (fullBackupValidation) {
+        clearDashboardPageSnapshot();
+      }
       setLastCatalogReset(null);
       clearBackupValidation();
       await reloadSettings();

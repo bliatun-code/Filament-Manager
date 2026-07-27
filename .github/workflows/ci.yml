@@ -39,6 +39,9 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
       - name: Install UI dependencies
         working-directory: ui
         run: npm ci
@@ -46,10 +49,14 @@ jobs:
       - name: Run full verification
         run: npm run verify
 
+      - name: Run data-backed Companion E2E
+        timeout-minutes: 10
+        run: npm run qa:visual:companion:data-e2e
+
   windows-smoke:
     name: Windows Smoke
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -74,6 +81,9 @@ jobs:
 
       - name: Install root dependencies
         run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
 
       - name: Run portability checks
         run: npm run test:portability
@@ -108,3 +118,36 @@ jobs:
             -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
             -ExpectedArchitecture "x64" `
             -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
+
+      - name: Exercise clean MSI installation
+        shell: pwsh
+        env:
+          WINDOWS_MSI_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-msi-smoke
+        run: |
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $msiFiles = @(Get-ChildItem -LiteralPath "target/debug/bundle/msi" -Filter "*.msi" -File)
+          if ($msiFiles.Count -ne 1) {
+            throw "Expected exactly one verified debug MSI; found $($msiFiles.Count)."
+          }
+
+          ./scripts/smoke-windows-msi.ps1 `
+            -MsiPath $msiFiles[0].FullName `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedExecutableName "bambu-filament-manager.exe" `
+            -ExpectedWindowTitles @($tauriConfig.productName, "Dashboard") `
+            -ExpectedInstallDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.productName) `
+            -ExpectedAppDataDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.identifier) `
+            -ExpectedDatabaseName "filament-manager.db" `
+            -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
+            -SignaturePolicy "Off" `
+            -LaunchTimeoutSeconds 90
+
+      - name: Upload MSI smoke logs
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: filament-manager-windows-msi-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-windows-msi-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7

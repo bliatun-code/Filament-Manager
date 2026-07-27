@@ -5,6 +5,7 @@ use tokio::sync::oneshot;
 
 const COMPANION_API_VERSION: &str = "v1";
 const TRUSTED_LAN_COMPANION_AUTH_MODE: &str = "pairing-session";
+const VISUAL_QA_LOOPBACK_ADDRESS: &str = "127.0.0.1";
 pub const TRUSTED_LAN_DEFAULT_PORT: u16 = 4278;
 
 #[derive(Clone)]
@@ -198,6 +199,10 @@ impl TrustedLanCompanionRuntime {
             return None;
         }
 
+        if self.qa_mode {
+            return Some(format!("{VISUAL_QA_LOOPBACK_ADDRESS}:{listen_port}"));
+        }
+
         selected_interface.map(|(_, address)| format!("{address}:{listen_port}"))
     }
 
@@ -209,6 +214,10 @@ impl TrustedLanCompanionRuntime {
         );
         if !enabled {
             return None;
+        }
+
+        if self.qa_mode {
+            return Some(format!("http://{VISUAL_QA_LOOPBACK_ADDRESS}:{listen_port}"));
         }
 
         selected_interface.map(|(_, address)| format!("http://{address}:{listen_port}"))
@@ -252,15 +261,20 @@ impl TrustedLanCompanionRuntime {
             .and_then(|value| value.selected_interface.as_ref())
             .map(|value| value.address.clone());
 
+        let effective_interface_address = if self.qa_mode {
+            Some(VISUAL_QA_LOOPBACK_ADDRESS.to_string())
+        } else {
+            selected_interface_address.clone()
+        };
         let bind_address = if enabled {
-            selected_interface_address
+            effective_interface_address
                 .as_ref()
                 .map(|address| format!("{address}:{listen_port}"))
         } else {
             None
         };
         let base_url = if enabled {
-            selected_interface_address
+            effective_interface_address
                 .as_ref()
                 .map(|address| format!("http://{address}:{listen_port}"))
         } else {
@@ -358,5 +372,28 @@ mod tests {
             Some("http://192.168.0.42:4278/companion")
         );
         assert_eq!(snapshot.auth_mode, "pairing-session");
+    }
+
+    #[test]
+    fn visual_qa_runtime_binds_only_to_loopback() {
+        let runtime = TrustedLanCompanionRuntime::new(4279)
+            .with_selected_interface("Wi-Fi", "192.168.1.50")
+            .with_enabled(true)
+            .with_qa_mode(true);
+
+        assert_eq!(runtime.bind_address().as_deref(), Some("127.0.0.1:4279"));
+        assert_eq!(runtime.base_url().as_deref(), Some("http://127.0.0.1:4279"));
+
+        let snapshot = runtime.snapshot();
+        assert_eq!(
+            snapshot.selected_interface_address.as_deref(),
+            Some("192.168.1.50")
+        );
+        assert_eq!(snapshot.bind_address.as_deref(), Some("127.0.0.1:4279"));
+        assert_eq!(snapshot.base_url.as_deref(), Some("http://127.0.0.1:4279"));
+        assert_eq!(
+            snapshot.shell_url.as_deref(),
+            Some("http://127.0.0.1:4279/companion"),
+        );
     }
 }

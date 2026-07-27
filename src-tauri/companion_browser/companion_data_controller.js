@@ -2,27 +2,74 @@ import { t } from "./companion_i18n.js";
 import { isLoanCurrentlyActive } from "./companion_loan_state.js";
 
 const SPOOL_PAGE_SIZE = 250;
+const MAX_SPOOL_PAGES = 500;
+
+export function createLatestAsyncCommitter() {
+  let latestRequestId = 0;
+
+  return async function commitLatest(load, { commit, reject }) {
+    const requestId = latestRequestId + 1;
+    latestRequestId = requestId;
+    let value;
+    try {
+      value = await load();
+    } catch (error) {
+      if (requestId !== latestRequestId) {
+        return false;
+      }
+      reject(error);
+      return false;
+    }
+    if (requestId !== latestRequestId) {
+      return false;
+    }
+    commit(value);
+    return true;
+  };
+}
 
 function normalizeDetailRootFlow(rootFlow) {
   return rootFlow === "printers" || rootFlow === "loans" ? rootFlow : "storage";
 }
 
-async function fetchAllSpoolRows(fetchJson) {
+export async function fetchAllSpoolRows(fetchJson, options = {}) {
+  const pageSize = Math.max(
+    1,
+    Math.floor(Number(options.pageSize) || SPOOL_PAGE_SIZE),
+  );
+  const maxPages = Math.max(
+    1,
+    Math.floor(Number(options.maxPages) || MAX_SPOOL_PAGES),
+  );
   const rows = [];
+  const seenSpoolIds = new Set();
   let offset = 0;
-  while (true) {
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
     const page = await fetchJson(
-      `/api/v1/inventory/spools?limit=${SPOOL_PAGE_SIZE}&offset=${offset}`,
+      `/api/v1/inventory/spools?limit=${pageSize}&offset=${offset}`,
     );
     if (!Array.isArray(page)) {
-      return [];
+      throw new Error("Stopped loading spools because a page was invalid.");
+    }
+    for (const row of page) {
+      const spoolId = String(row?.spool?.id || "").trim();
+      if (!spoolId) {
+        throw new Error("Stopped loading spools because a row had no spool id.");
+      }
+      if (seenSpoolIds.has(spoolId)) {
+        throw new Error(
+          `Stopped loading spools because pagination repeated id ${spoolId}.`,
+        );
+      }
+      seenSpoolIds.add(spoolId);
     }
     rows.push(...page);
-    if (page.length < SPOOL_PAGE_SIZE) {
+    if (page.length < pageSize) {
       return rows;
     }
     offset += page.length;
   }
+  throw new Error("Stopped loading spools because pagination did not finish.");
 }
 
 export function createCompanionDataController(options) {

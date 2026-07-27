@@ -1,6 +1,13 @@
+use crate::companion_assets::CachedCompanionAsset;
 use crate::companion_error::CompanionApiError;
 use crate::state::TrustedLanCompanionRuntime;
 use axum::body::Body;
+use axum::http::{
+    header::{
+        ACCEPT_ENCODING, CACHE_CONTROL, CONTENT_ENCODING, CONTENT_TYPE, ETAG, IF_NONE_MATCH, VARY,
+    },
+    HeaderMap, StatusCode,
+};
 use axum::response::{IntoResponse, Response};
 
 pub(crate) fn normalize_optional_text(value: Option<&str>) -> Option<String> {
@@ -176,10 +183,49 @@ pub(crate) fn string_response(content_type: &'static str, content: String) -> Re
         .into_response()
 }
 
-pub(crate) fn bytes_response(content_type: &'static str, content: &'static [u8]) -> Response {
-    Response::builder()
-        .header(axum::http::header::CONTENT_TYPE, content_type)
-        .header(axum::http::header::CACHE_CONTROL, "no-store, max-age=0")
+pub(crate) fn static_asset_response(
+    request_headers: &HeaderMap,
+    asset: &CachedCompanionAsset,
+) -> Response {
+    let can_gzip = asset.gzip_content.is_some();
+    if request_headers
+        .get(IF_NONE_MATCH)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| weak_etag_matches(value, &asset.weak_etag))
+    {
+        let mut builder = Response::builder()
+            .status(StatusCode::NOT_MODIFIED)
+            .header(CACHE_CONTROL, "private, no-cache")
+            .header(ETAG, asset.weak_etag.as_str());
+        if can_gzip {
+            builder = builder.header(VARY, ACCEPT_ENCODING.as_str());
+        }
+        return builder
+            .body(Body::empty())
+            .unwrap_or_else(|_| Response::new(Body::empty()));
+    }
+
+    let serve_gzip = can_gzip && accepts_gzip(request_headers);
+    let mut builder = Response::builder()
+        .header(CONTENT_TYPE, asset.content_type)
+        .header(CACHE_CONTROL, "private, no-cache")
+        .header(ETAG, asset.weak_etag.as_str());
+    if can_gzip {
+        builder = builder.header(VARY, ACCEPT_ENCODING.as_str());
+    }
+    if serve_gzip {
+        builder = builder.header(CONTENT_ENCODING, "gzip");
+    }
+
+    let content = if serve_gzip {
+        asset
+            .gzip_content
+            .clone()
+            .unwrap_or_else(|| asset.content.clone())
+    } else {
+        asset.content.clone()
+    };
+    builder
         .body(Body::from(content))
         .unwrap_or_else(|_| Response::new(Body::empty()))
 }
@@ -190,6 +236,55 @@ pub(crate) fn html_response(content: &'static str) -> Response {
 
 fn encode_versioned_qr_ref(reference: &str) -> String {
     format!("v1:{}", reference.trim())
+}
+
+fn accepts_gzip(headers: &HeaderMap) -> bool {
+    let Some(value) = headers
+        .get(ACCEPT_ENCODING)
+        .and_then(|value| value.to_str().ok())
+    else {
+        return false;
+    };
+
+    let mut gzip_quality = None;
+    let mut wildcard_quality = None;
+    for entry in value.split(',') {
+        let mut parts = entry.trim().split(';');
+        let coding = parts.next().unwrap_or_default().trim();
+        let mut quality = 1.0;
+        for parameter in parts {
+            let Some((name, value)) = parameter.trim().split_once('=') else {
+                continue;
+            };
+            if name.trim().eq_ignore_ascii_case("q") {
+                quality = value
+                    .trim()
+                    .parse::<f32>()
+                    .ok()
+                    .filter(|quality| quality.is_finite() && (0.0..=1.0).contains(quality))
+                    .unwrap_or(0.0);
+                break;
+            }
+        }
+        if coding.eq_ignore_ascii_case("gzip") {
+            gzip_quality = Some(quality);
+        } else if coding == "*" {
+            wildcard_quality = Some(quality);
+        }
+    }
+
+    gzip_quality.or(wildcard_quality).unwrap_or(0.0) > 0.0
+}
+
+fn weak_etag_matches(if_none_match: &str, current_etag: &str) -> bool {
+    let current = current_etag
+        .trim()
+        .strip_prefix("W/")
+        .unwrap_or(current_etag.trim());
+    if_none_match.split(',').any(|candidate| {
+        let candidate = candidate.trim();
+        candidate == "*" || candidate.strip_prefix("W/").unwrap_or(candidate) == current
+    })
 }
 
 #[cfg(test)]
@@ -217,5 +312,29 @@ mod tests {
     fn rejects_invalid_optional_swatch_colors() {
         assert!(normalize_optional_swatch_color(Some("not-a-color")).is_err());
         assert!(normalize_optional_swatch_color(Some("multi(#EC984C,not-a-color)")).is_err());
+    }
+
+    #[test]
+    fn parses_gzip_quality_and_weak_etag_lists() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            ACCEPT_ENCODING,
+            "br, gzip;q=0.8".parse().expect("valid header"),
+        );
+        assert!(accepts_gzip(&headers));
+
+        headers.insert(
+            ACCEPT_ENCODING,
+            "*;q=1, gzip;q=0".parse().expect("valid header"),
+        );
+        assert!(!accepts_gzip(&headers));
+        headers.insert(
+            ACCEPT_ENCODING,
+            "gzip;q=invalid".parse().expect("valid header"),
+        );
+        assert!(!accepts_gzip(&headers));
+        assert!(weak_etag_matches("\"old\", W/\"current\"", "W/\"current\""));
+        assert!(weak_etag_matches("*", "W/\"current\""));
+        assert!(!weak_etag_matches("W/\"other\"", "W/\"current\""));
     }
 }

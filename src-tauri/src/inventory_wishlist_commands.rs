@@ -1,4 +1,5 @@
-use crate::backend::inventory_engine::UpdateWishlistStatusInput;
+use crate::backend::filament_database::WishlistReceiptResult;
+use crate::backend::inventory_engine::{ReceiveWishlistItemInput, UpdateWishlistStatusInput};
 use crate::state::AppState;
 use crate::with_inventory;
 
@@ -8,6 +9,14 @@ pub(crate) fn update_wishlist_item_status(
     input: UpdateWishlistStatusInput,
 ) -> Result<(), String> {
     with_inventory(&state, |engine| engine.update_wishlist_item_status(input))
+}
+
+#[tauri::command]
+pub(crate) fn receive_wishlist_item(
+    state: tauri::State<'_, AppState>,
+    input: ReceiveWishlistItemInput,
+) -> Result<WishlistReceiptResult, String> {
+    with_inventory(&state, |engine| engine.receive_wishlist_item(input))
 }
 
 #[tauri::command]

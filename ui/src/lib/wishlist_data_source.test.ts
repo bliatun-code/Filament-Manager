@@ -11,7 +11,9 @@ import {
   filterWishlistQueueItems,
   listWishlistCatalogMastersByVendor,
   loadWishlistItems,
+  normalizeWishlistReceiptQuantity,
   normalizeWishlistStatus,
+  receiveWishlistEntry,
   selectWishlistCatalogMaster,
   summarizeWishlistQueue,
   updateWishlistEntryStatus,
@@ -123,6 +125,13 @@ test("canStockWishlistItem rejects already received wishlist rows", () => {
   assert.equal(canStockWishlistItem("WISHLIST"), true);
   assert.equal(canStockWishlistItem("ON_ORDER"), true);
   assert.equal(canStockWishlistItem("RECEIVED"), false);
+});
+
+test("normalizeWishlistReceiptQuantity keeps receipt counts inside the remaining quantity", () => {
+  assert.equal(normalizeWishlistReceiptQuantity("2", 5), 2);
+  assert.equal(normalizeWishlistReceiptQuantity("99", 3), 3);
+  assert.equal(normalizeWishlistReceiptQuantity("0", 3), 1);
+  assert.equal(normalizeWishlistReceiptQuantity("invalid", 3), 1);
 });
 
 function catalogMaster(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
@@ -396,6 +405,48 @@ test("updateWishlistEntryStatus routes status changes to the host", async () => 
   assert.deepEqual(calls, [{ baseUrl: "http://host", itemId: "wish-1", status: "RECEIVED" }]);
 });
 
+test("receiveWishlistEntry uses the same quantity contract for host and local writes", async () => {
+  const hostCalls: Array<{ baseUrl: string; itemId: string; quantity: number }> = [];
+  const hostResult = await receiveWishlistEntry(
+    { item_id: "wish-host", quantity: 2 },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      receiveHostWishlistItem: async (baseUrl, _libraryId, input) => {
+        hostCalls.push({ baseUrl, itemId: input.item_id, quantity: input.quantity });
+        return {
+          spool_ids: ["spool-1", "spool-2"],
+          received_quantity: 2,
+          remaining_quantity: 1,
+          status: "ON_ORDER",
+        };
+      },
+    },
+  );
+  assert.deepEqual(hostCalls, [
+    { baseUrl: "http://host", itemId: "wish-host", quantity: 2 },
+  ]);
+  assert.equal(hostResult.remaining_quantity, 1);
+
+  const localCalls: Array<{ itemId: string; quantity: number }> = [];
+  const localResult = await receiveWishlistEntry(
+    { item_id: "wish-local", quantity: 1 },
+    { clientReadOnly: false },
+    {
+      receiveLocalWishlistItem: async (input) => {
+        localCalls.push({ itemId: input.item_id, quantity: input.quantity });
+        return {
+          spool_ids: ["spool-3"],
+          received_quantity: 1,
+          remaining_quantity: 0,
+          status: "RECEIVED",
+        };
+      },
+    },
+  );
+  assert.deepEqual(localCalls, [{ itemId: "wish-local", quantity: 1 }]);
+  assert.equal(localResult.status, "RECEIVED");
+});
+
 test("deleteWishlistEntry routes deletes to the host", async () => {
   const calls: Array<{ baseUrl: string; itemId: string }> = [];
 
@@ -415,6 +466,14 @@ test("deleteWishlistEntry routes deletes to the host", async () => {
 test("wishlist host mutations reject missing client host details", async () => {
   await assert.rejects(
     () => createWishlistEntry(wishlistInput(), { clientReadOnly: true, clientHostBaseUrl: "" }),
+    /Host connection details/,
+  );
+  await assert.rejects(
+    () =>
+      receiveWishlistEntry(
+        { item_id: "wish-1", quantity: 1 },
+        { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
+      ),
     /Host connection details/,
   );
   await assert.rejects(

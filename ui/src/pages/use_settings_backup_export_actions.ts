@@ -30,6 +30,7 @@ type UseSettingsBackupExportActionsInput = {
     validationSummary: BackupValidationStats,
     exportedAt: string,
   ) => void;
+  recordFullBackupExport: (exportedAt: string) => void;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
@@ -47,6 +48,7 @@ export function useSettingsBackupExportActions({
   busy,
   loadSettingsInventoryRows,
   recordExportedBackupValidation,
+  recordFullBackupExport,
   setBusy,
   setError,
   setInfo,
@@ -92,6 +94,7 @@ export function useSettingsBackupExportActions({
         "application/json;charset=utf-8",
       );
       const exportedAt = new Date().toISOString();
+      recordFullBackupExport(exportedAt);
       recordExportedBackupValidation(validationSummary, exportedAt);
       setInfo(buildSettingsBackupExportSuccessMessage({
         backupExported: t(

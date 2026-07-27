@@ -1,0 +1,468 @@
+{
+  "fixtureVersion": 1,
+  "schemaVersion": 2,
+  "expectedCounts": {
+    "filament_master_list": 5,
+    "filament_spools": 8,
+    "inventory_locations": 2,
+    "printers": 2,
+    "ams_units": 4,
+    "ams_slots": 11,
+    "spool_history_events": 9,
+    "spool_loans": 2,
+    "wishlist_items": 2,
+    "print_jobs": 1,
+    "printer_live_events": 1,
+    "printer_live_usage_sessions": 1,
+    "printer_live_usage_session_spools": 1,
+    "settings": 5
+  },
+  "tables": {
+    "filament_master_list": [
+      {
+        "id": "qa_master_bambu_pla_black",
+        "material": "PLA",
+        "filament_name": "PLA Basic",
+        "color_name": "Black",
+        "hex_color": "#111827",
+        "default_weight": 1000,
+        "vendor": "Bambu Lab",
+        "catalog_source": "fixture",
+        "catalog_user_edited": 0
+      },
+      {
+        "id": "qa_master_bambu_asa_marine_blue",
+        "material": "ASA",
+        "filament_name": "ASA",
+        "color_name": "Marine Blue",
+        "hex_color": "#256D85",
+        "default_weight": 1000,
+        "vendor": "Bambu Lab",
+        "catalog_source": "fixture",
+        "catalog_user_edited": 0
+      },
+      {
+        "id": "qa_master_esun_petg_blue",
+        "material": "PETG",
+        "filament_name": "PETG+HS",
+        "color_name": "Deep Blue",
+        "hex_color": "#2563EB",
+        "default_weight": 1000,
+        "vendor": "eSUN",
+        "catalog_source": "fixture",
+        "catalog_user_edited": 0
+      },
+      {
+        "id": "qa_master_generic_abs_orange",
+        "material": "ABS",
+        "filament_name": "ABS Pro",
+        "color_name": "Signal Orange",
+        "hex_color": "#F97316",
+        "default_weight": 1000,
+        "vendor": "Generic",
+        "catalog_source": "fixture",
+        "catalog_user_edited": 0
+      },
+      {
+        "id": "qa_master_generic_tpu_green",
+        "material": "TPU",
+        "filament_name": "Flexible 95A",
+        "color_name": "Forest Green",
+        "hex_color": "#15803D",
+        "default_weight": 1000,
+        "vendor": "Generic",
+        "catalog_source": "fixture",
+        "catalog_user_edited": 0
+      }
+    ],
+    "inventory_locations": [
+      {
+        "id": "QA Shelf A",
+        "name": "QA Shelf A",
+        "type": "SHELF"
+      },
+      {
+        "id": "QA Dry box",
+        "name": "QA Dry box",
+        "type": "CONTAINER"
+      }
+    ],
+    "filament_spools": [
+      {
+        "id": "spool_demo_100001",
+        "master_id": "qa_master_bambu_pla_black",
+        "qr_code": "demo:spool:100001",
+        "status": "IN_STOCK",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 820,
+        "remaining_g": 820,
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A",
+        "purchase_date": "2026-01-10"
+      },
+      {
+        "id": "spool_demo_100002",
+        "master_id": "qa_master_esun_petg_blue",
+        "qr_code": "demo:spool:100002",
+        "status": "IN_STOCK",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 610,
+        "remaining_g": 610,
+        "location_id": "QA Dry box",
+        "home_location_id": "QA Dry box",
+        "purchase_date": "2026-02-12"
+      },
+      {
+        "id": "spool_demo_100003",
+        "master_id": "qa_master_esun_petg_blue",
+        "qr_code": "demo:spool:100003",
+        "status": "IN_STOCK",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 780,
+        "remaining_g": 780,
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Dry box",
+        "purchase_date": "2026-03-01"
+      },
+      {
+        "id": "spool_demo_100004",
+        "master_id": "qa_master_generic_abs_orange",
+        "qr_code": "demo:spool:100004",
+        "status": "IN_STOCK",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 450,
+        "remaining_g": 450,
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A",
+        "purchase_date": "2026-03-03"
+      },
+      {
+        "id": "spool_demo_100005",
+        "master_id": "qa_master_generic_tpu_green",
+        "qr_code": "demo:spool:100005",
+        "status": "IN_STOCK",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 900,
+        "remaining_g": 900,
+        "location_id": "QA Dry box",
+        "home_location_id": "QA Dry box",
+        "purchase_date": "2026-04-08"
+      },
+      {
+        "id": "spool_demo_100006",
+        "master_id": "qa_master_esun_petg_blue",
+        "qr_code": "demo:spool:100006",
+        "status": "IN_STOCK",
+        "ownership_type": "BORROWED_IN",
+        "owner_name": "Sample workshop",
+        "ownership_note": "Synthetic QA record",
+        "initial_weight_g": 1000,
+        "current_weight_g": 730,
+        "remaining_g": 730,
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A"
+      },
+      {
+        "id": "spool_demo_100007",
+        "master_id": "qa_master_bambu_pla_black",
+        "qr_code": "demo:spool:100007",
+        "status": "EMPTY",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 0,
+        "remaining_g": 0,
+        "location_id": "QA Shelf A",
+        "home_location_id": "QA Shelf A"
+      },
+      {
+        "id": "spool_demo_100008",
+        "master_id": "qa_master_esun_petg_blue",
+        "qr_code": "demo:spool:100008",
+        "status": "LOANED_OUT",
+        "ownership_type": "OWNED",
+        "initial_weight_g": 1000,
+        "current_weight_g": 640,
+        "remaining_g": 640,
+        "home_location_id": "QA Dry box",
+        "purchase_date": "2026-03-20"
+      }
+    ],
+    "printers": [
+      {
+        "id": "qa_printer_bambu",
+        "model": "Bambu Lab P1S",
+        "name": "Atlas QA"
+      },
+      {
+        "id": "qa_printer_prusa",
+        "model": "Prusa MK4S",
+        "name": "Nova QA"
+      }
+    ],
+    "ams_units": [
+      {
+        "id": "qa_printer_bambu_ams_1",
+        "printer_id": "qa_printer_bambu",
+        "slot_count": 4
+      },
+      {
+        "id": "qa_printer_bambu_ext",
+        "printer_id": "qa_printer_bambu",
+        "slot_count": 1
+      },
+      {
+        "id": "qa_printer_prusa_mmu_1",
+        "printer_id": "qa_printer_prusa",
+        "slot_count": 5
+      },
+      {
+        "id": "qa_printer_prusa_ext",
+        "printer_id": "qa_printer_prusa",
+        "slot_count": 1
+      }
+    ],
+    "ams_slots": [
+      {
+        "id": "qa_bambu_slot_1",
+        "ams_id": "qa_printer_bambu_ams_1",
+        "slot_index": 1,
+        "spool_id": "spool_demo_100001"
+      },
+      {
+        "id": "qa_bambu_slot_2",
+        "ams_id": "qa_printer_bambu_ams_1",
+        "slot_index": 2,
+        "spool_id": "spool_demo_100002"
+      },
+      {
+        "id": "qa_bambu_slot_3",
+        "ams_id": "qa_printer_bambu_ams_1",
+        "slot_index": 3,
+        "spool_id": "spool_demo_100004"
+      },
+      {
+        "id": "qa_bambu_slot_4",
+        "ams_id": "qa_printer_bambu_ams_1",
+        "slot_index": 4
+      },
+      {
+        "id": "qa_bambu_ext_slot",
+        "ams_id": "qa_printer_bambu_ext",
+        "slot_index": 1
+      },
+      {
+        "id": "qa_prusa_slot_1",
+        "ams_id": "qa_printer_prusa_mmu_1",
+        "slot_index": 1,
+        "spool_id": "spool_demo_100005"
+      },
+      {
+        "id": "qa_prusa_slot_2",
+        "ams_id": "qa_printer_prusa_mmu_1",
+        "slot_index": 2
+      },
+      {
+        "id": "qa_prusa_slot_3",
+        "ams_id": "qa_printer_prusa_mmu_1",
+        "slot_index": 3
+      },
+      {
+        "id": "qa_prusa_slot_4",
+        "ams_id": "qa_printer_prusa_mmu_1",
+        "slot_index": 4
+      },
+      {
+        "id": "qa_prusa_slot_5",
+        "ams_id": "qa_printer_prusa_mmu_1",
+        "slot_index": 5
+      },
+      {
+        "id": "qa_prusa_ext_slot",
+        "ams_id": "qa_printer_prusa_ext",
+        "slot_index": 1
+      }
+    ],
+    "spool_history_events": [
+      {
+        "id": "qa_history_black_created",
+        "spool_id": "spool_demo_100001",
+        "event_type": "CREATED",
+        "payload_json": "{}",
+        "created_at": "2026-01-10 10:00:00"
+      },
+      {
+        "id": "qa_history_black_weight",
+        "spool_id": "spool_demo_100001",
+        "event_type": "WEIGHT_UPDATED",
+        "payload_json": "{\"from_g\":900,\"to_g\":820}",
+        "created_at": "2026-05-02 12:00:00"
+      },
+      {
+        "id": "qa_history_blue_created",
+        "spool_id": "spool_demo_100002",
+        "event_type": "CREATED",
+        "payload_json": "{}",
+        "created_at": "2026-02-12 10:00:00"
+      },
+      {
+        "id": "qa_history_blue_spare_created",
+        "spool_id": "spool_demo_100003",
+        "event_type": "CREATED",
+        "payload_json": "{\"status\":\"IN_STOCK\",\"ownership_type\":\"OWNED\",\"vendor\":\"eSUN\"}",
+        "created_at": "2026-03-01 10:00:00"
+      },
+      {
+        "id": "qa_history_blue_spare_location",
+        "spool_id": "spool_demo_100003",
+        "event_type": "LOCATION_UPDATED",
+        "payload_json": "{\"location\":\"QA Shelf A\"}",
+        "created_at": "2026-03-10 14:30:00"
+      },
+      {
+        "id": "qa_history_blue_spare_weight",
+        "spool_id": "spool_demo_100003",
+        "event_type": "WEIGHT_UPDATED",
+        "payload_json": "{\"previous_grams\":840,\"grams\":780,\"remaining_percent\":78,\"source\":\"manual_measurement\"}",
+        "created_at": "2026-04-02 16:15:00"
+      },
+      {
+        "id": "qa_history_orange_created",
+        "spool_id": "spool_demo_100004",
+        "event_type": "CREATED",
+        "payload_json": "{}",
+        "created_at": "2026-03-03 10:00:00"
+      },
+      {
+        "id": "qa_history_green_created",
+        "spool_id": "spool_demo_100005",
+        "event_type": "CREATED",
+        "payload_json": "{}",
+        "created_at": "2026-04-08 10:00:00"
+      },
+      {
+        "id": "qa_history_empty",
+        "spool_id": "spool_demo_100007",
+        "event_type": "MARKED_EMPTY",
+        "payload_json": "{}",
+        "created_at": "2026-05-10 12:00:00"
+      }
+    ],
+    "spool_loans": [
+      {
+        "id": "qa_loan_returned",
+        "spool_id": "spool_demo_100004",
+        "borrower_name": "Sample maker space",
+        "loan_direction": "OUTBOUND",
+        "loan_status": "RETURNED",
+        "grams_out": 520,
+        "lent_at": "2026-04-10 09:00:00",
+        "returned_at": "2026-04-18 15:00:00",
+        "returned_grams": 470,
+        "consumed_grams": 50
+      },
+      {
+        "id": "qa_loan_active",
+        "spool_id": "spool_demo_100008",
+        "borrower_name": "Sample maker space",
+        "loan_direction": "OUTBOUND",
+        "loan_status": "ACTIVE",
+        "grams_out": 640,
+        "lent_at": "2026-05-01 09:00:00"
+      }
+    ],
+    "wishlist_items": [
+      {
+        "id": "qa_wishlist_white_pla",
+        "material": "PLA",
+        "filament_name": "PLA Basic",
+        "color_name": "Jade White",
+        "vendor": "Bambu Lab",
+        "status": "WISHLIST",
+        "quantity": 2,
+        "note": "Synthetic QA record"
+      },
+      {
+        "id": "qa_wishlist_red_petg",
+        "material": "PETG",
+        "filament_name": "PETG+HS",
+        "color_name": "Fire Red",
+        "vendor": "eSUN",
+        "status": "WISHLIST",
+        "quantity": 1,
+        "note": "Synthetic QA record"
+      }
+    ],
+    "print_jobs": [
+      {
+        "id": "qa_print_job_finished",
+        "printer_id": "qa_printer_bambu",
+        "spool_id": "spool_demo_100001",
+        "job_name": "QA calibration sample",
+        "started_at": "2026-05-02 11:00:00",
+        "ended_at": "2026-05-02 12:00:00",
+        "material_used_g": 80,
+        "success": 1
+      }
+    ],
+    "printer_live_events": [
+      {
+        "id": "qa_live_event_idle",
+        "printer_id": "qa_printer_bambu",
+        "event_type": "STATE_OBSERVED",
+        "payload_json": "{\"state\":\"idle\"}",
+        "created_at": "2026-05-02 12:05:00"
+      }
+    ],
+    "printer_live_usage_sessions": [
+      {
+        "id": "qa_usage_session_finished",
+        "printer_id": "qa_printer_bambu",
+        "session_key": "qa-session-finished",
+        "job_name": "QA calibration sample",
+        "print_type": "fixture",
+        "started_at": "2026-05-02 11:00:00",
+        "last_seen_at": "2026-05-02 12:00:00",
+        "finished_at": "2026-05-02 12:00:00",
+        "status": "FINISHED",
+        "success": 1,
+        "total_used_g": 80,
+        "source": "FIXTURE"
+      }
+    ],
+    "printer_live_usage_session_spools": [
+      {
+        "id": "qa_usage_spool_black",
+        "session_id": "qa_usage_session_finished",
+        "spool_id": "spool_demo_100001",
+        "used_g": 80
+      }
+    ],
+    "settings": [
+      {
+        "key": "theme_mode",
+        "value": "dark"
+      },
+      {
+        "key": "app_language",
+        "value": "en"
+      },
+      {
+        "key": "library_sync_library_id",
+        "value": "qa-library"
+      },
+      {
+        "key": "trusted_lan_enabled",
+        "value": "1"
+      },
+      {
+        "key": "bambu_live_integration:qa_printer_bambu",
+        "value": "{\"enabled\":false,\"observed_state\":{\"online\":true,\"last_seen_at\":\"2026-05-02T12:05:00Z\",\"mqtt_connected\":true,\"progress_percent\":64,\"remaining_minutes\":18,\"gcode_state\":\"RUNNING\",\"active_ams_index\":0,\"active_tray_index\":0,\"nozzle_temp_c\":218,\"bed_temp_c\":55,\"ams_humidity_index\":2,\"ams_temperature_c\":27,\"trays\":[{\"ams_index\":0,\"tray_index\":0,\"loaded\":true,\"filament_type\":\"PLA\",\"filament_name\":\"PLA Basic\",\"color_hex\":\"#111827\",\"tray_weight_g\":1000,\"remaining_percent\":82,\"remaining_grams\":820,\"last_identity_seen_at\":\"2026-05-02T12:05:00Z\"}]}}"
+      }
+    ]
+  }
+}

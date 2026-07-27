@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   APP_DB_PATH_ENV_VAR,
+  assertVisualQaLaunchUsesCopy,
   cleanupVisualQaDatabase,
   formatVisualQaDatasetReport,
   prepareVisualQaDatabase,
@@ -76,6 +77,7 @@ export async function runVisualQaCli(options = {}) {
   const keep = argv.includes("--keep");
   const live = argv.includes("--live");
   const prepareOnly = argv.includes("--prepare-only");
+  assertVisualQaLaunchUsesCopy(live, "Visual QA app launch");
   const result = await prepareDatabase({ live, profile, sourcePath });
   let cleanupAttempted = false;
   const cleanupOnce = (primaryError = null) => {

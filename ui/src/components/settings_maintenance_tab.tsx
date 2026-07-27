@@ -1,5 +1,6 @@
 import type { ChangeEvent, RefObject } from "react";
 import { SettingsBackupValidationSummary } from "./settings_backup_validation_summary";
+import { SettingsApplicationDiagnosticsPanel } from "./settings_application_diagnostics_panel";
 import {
   SettingsMetricTile,
   SettingsNotice,
@@ -10,7 +11,14 @@ import {
   SettingsSurfaceCard,
 } from "./settings_ui";
 import { settingsActionButtonClass } from "../lib/settings_ui_classes";
-import type { BackupValidationStats, CatalogResetStats } from "../lib/tauri_client";
+import type {
+  ApplicationDiagnostics,
+  BackupValidationStats,
+  CatalogResetStats,
+} from "../lib/tauri_client";
+import type { SettingsDiagnosticsRequestStatus } from "../pages/settings_application_diagnostics_model";
+import type { Locale } from "../lib/i18n";
+import { formatSettingsDateTime } from "../lib/settings_utils";
 
 type TranslateFn = (key: string, fallback: string) => string;
 type ResetConfirmAction = "APP" | "CATALOG";
@@ -62,6 +70,9 @@ function SettingsResetConfirmation({
 }
 
 export type SettingsMaintenanceTabProps = {
+  applicationDiagnostics: ApplicationDiagnostics | null;
+  applicationDiagnosticsError: string | null;
+  applicationDiagnosticsStatus: SettingsDiagnosticsRequestStatus;
   backupImportInputRef: RefObject<HTMLInputElement | null>;
   backupValidateInputRef: RefObject<HTMLInputElement | null>;
   backupValidationHasExtraTables: boolean;
@@ -72,13 +83,18 @@ export type SettingsMaintenanceTabProps = {
   confirmResetAction: ResetConfirmAction | null;
   lastBackupValidation: BackupValidationStats | null;
   lastCatalogReset: CatalogResetStats | null;
+  latestFullBackupExportedAt: string | null;
+  locale: Locale;
   missingSwatchCount: number;
   printerCount: number;
   settingsClientHostWritePaired: boolean;
   settingsClientReadOnly: boolean;
+  supportBundleError: string | null;
+  supportBundleStatus: SettingsDiagnosticsRequestStatus;
   tauri: boolean;
   t: TranslateFn;
   onExportFullBackup: () => void;
+  onDownloadSanitizedSupportBundle: () => void;
   onExportInventoryCsv: () => void;
   onExportInventoryJson: () => void;
   onImportDataFile: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -87,10 +103,14 @@ export type SettingsMaintenanceTabProps = {
   onOpenDataImport: () => void;
   onResetAppData: () => void;
   onResetCatalogs: () => void;
+  onRefreshApplicationDiagnostics: () => void;
   onValidateBackupFile: (event: ChangeEvent<HTMLInputElement>) => void;
 };
 
 export function SettingsMaintenanceTab({
+  applicationDiagnostics,
+  applicationDiagnosticsError,
+  applicationDiagnosticsStatus,
   backupImportInputRef,
   backupValidateInputRef,
   backupValidationHasExtraTables,
@@ -101,13 +121,18 @@ export function SettingsMaintenanceTab({
   confirmResetAction,
   lastBackupValidation,
   lastCatalogReset,
+  latestFullBackupExportedAt,
+  locale,
   missingSwatchCount,
   printerCount,
   settingsClientHostWritePaired,
   settingsClientReadOnly,
+  supportBundleError,
+  supportBundleStatus,
   tauri,
   t,
   onExportFullBackup,
+  onDownloadSanitizedSupportBundle,
   onExportInventoryCsv,
   onExportInventoryJson,
   onImportDataFile,
@@ -116,6 +141,7 @@ export function SettingsMaintenanceTab({
   onOpenDataImport,
   onResetAppData,
   onResetCatalogs,
+  onRefreshApplicationDiagnostics,
   onValidateBackupFile,
 }: SettingsMaintenanceTabProps) {
   const hostOnlyActionDisabled = !tauri || busy || settingsClientReadOnly;
@@ -144,6 +170,26 @@ export function SettingsMaintenanceTab({
                 value={missingSwatchCount}
               />
             </>
+          }
+          status={
+            <div className="max-w-sm rounded-lg border border-slate-300/70 bg-white/60 px-3 py-2 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-300">
+              <div className="font-semibold text-slate-800 dark:text-slate-100">
+                {latestFullBackupExportedAt
+                  ? t(
+                      "settings.latestFullBackupExportOnDevice",
+                      "Latest full-backup export on this device",
+                    )
+                  : t(
+                      "settings.noFullBackupExportRecordedOnDevice",
+                      "No full-backup export recorded on this device yet",
+                    )}
+              </div>
+              {latestFullBackupExportedAt ? (
+                <div className="mt-0.5 tabular-nums">
+                  {formatSettingsDateTime(latestFullBackupExportedAt, locale)}
+                </div>
+              ) : null}
+            </div>
           }
         >
           {settingsClientReadOnly ? (
@@ -246,6 +292,20 @@ export function SettingsMaintenanceTab({
           onChange={onValidateBackupFile}
         />
       </SettingsSectionPanel>
+
+      {tauri ? (
+        <SettingsApplicationDiagnosticsPanel
+          diagnostics={applicationDiagnostics}
+          diagnosticsError={applicationDiagnosticsError}
+          diagnosticsStatus={applicationDiagnosticsStatus}
+          supportBundleError={supportBundleError}
+          supportBundleStatus={supportBundleStatus}
+          tauri={tauri}
+          t={t}
+          onDownloadSanitizedSupportBundle={onDownloadSanitizedSupportBundle}
+          onRefreshApplicationDiagnostics={onRefreshApplicationDiagnostics}
+        />
+      ) : null}
 
       <div className="mt-6 border-t border-slate-200 pt-4 dark:border-slate-700">
         <div className="section-eyebrow">

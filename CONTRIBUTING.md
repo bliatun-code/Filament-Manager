@@ -29,6 +29,12 @@ Run the full verification suite:
 npm run verify
 ```
 
+Check the public repository surface before sharing a branch or pull request:
+
+```bash
+npm run check:public-readiness
+```
+
 Useful focused checks:
 
 ```bash
@@ -49,9 +55,16 @@ npm run check:contracts
 - Do not commit local databases, logs, `.env` files, private pairing URLs, or
   screenshots containing LAN addresses, printer serials, access codes, full
   RFID values, scannable private QR targets, names, or other personal data.
+- Use the committed sanitized visual-QA fixture for screenshots intended for
+  documentation or a pull request. Keep captures from a real printer or live
+  library local unless every private field has been reviewed and removed.
+
+Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## Areas That Need Extra Care
 
+- Read [the architecture guide](docs/ARCHITECTURE.md) before moving Rust
+  modules or changing startup, database, or Bambu Live boundaries.
 - Bambu Live/AMS matching and RFID onboarding must be conservative. A weak hint
   should not overwrite a deliberate slot assignment or RFID identity.
 - Companion and Trusted-LAN changes must preserve browser session and CSRF

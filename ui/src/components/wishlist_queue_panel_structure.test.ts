@@ -12,6 +12,8 @@ test("WishlistQueuePanel shares action button chrome across stock, remove, and c
   assert.match(source, /InventorySwatchChip/);
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /wishlistQueueActionButtonClassName\("stock"\)/);
+  assert.match(source, /normalizeWishlistReceiptQuantity/);
+  assert.match(source, /onStockItem\(item, receiptQuantity\)/);
   assert.match(source, /wishlistQueueActionButtonClassName\("remove"\)/);
   assert.match(source, /wishlistQueueActionButtonClassName\("danger"\)/);
   assert.doesNotMatch(

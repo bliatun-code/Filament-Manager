@@ -11,6 +11,27 @@ const labelSheetModalSource = readFileSync(
   new URL("../components/settings_inventory_label_sheet_modal.tsx", import.meta.url),
   "utf8",
 );
+const diagnosticsPanelSource = readFileSync(
+  new URL("../components/settings_application_diagnostics_panel.tsx", import.meta.url),
+  "utf8",
+);
+const maintenanceSectionSource = readFileSync(
+  new URL("./use_settings_maintenance_section.ts", import.meta.url),
+  "utf8",
+);
+const generalTabSource = readFileSync(
+  new URL("../components/settings_general_tab.tsx", import.meta.url),
+  "utf8",
+);
+
+test("update-check visual QA reveals the real manual update controls", () => {
+  assert.match(source, /desktopVisualQaScenarioRef\.current !== "settings-updates"/);
+  assert.match(source, /getElementById\("settings-update-check"\)/);
+  assert.match(source, /target\.scrollIntoView\(\{ behavior: "auto", block: "center" \}\)/);
+  assert.match(source, /window\.addEventListener\("resize", revealUpdateCheck\)/);
+  assert.match(generalTabSource, /id="settings-update-check"/);
+  assert.match(generalTabSource, /updateCheck\.check\(\)/);
+});
 
 test("inventory label sheet visual QA opens the real data-backed modal", () => {
   assert.match(source, /desktopVisualQaScenario === "settings-inventory-label-sheet"/);
@@ -148,4 +169,27 @@ test("captured diagnostics visual QA waits for fields and re-reveals them after 
     printersSectionSource,
     /window\.removeEventListener\("resize", scheduleReveal\)/,
   );
+});
+
+test("application diagnostics visual QA waits for real data and centers the stable panel", () => {
+  assert.match(
+    source,
+    /desktopVisualQaScenarioRef\.current !== "settings-application-diagnostics"[\s\S]*applicationDiagnosticsStatus !== "success"/,
+  );
+  assert.match(
+    source,
+    /getElementById\("settings-application-diagnostics-panel"\)/,
+  );
+  assert.match(
+    source,
+    /target\.scrollIntoView\(\{ behavior: "auto", block: "center" \}\)/,
+  );
+  assert.match(source, /\[150, 450, 900\]\.map/);
+  assert.match(source, /window\.addEventListener\("resize", revealDiagnostics\)/);
+  assert.match(source, /new ResizeObserver\(revealDiagnostics\)/);
+  assert.match(
+    diagnosticsPanelSource,
+    /id="settings-application-diagnostics-panel"/,
+  );
+  assert.match(maintenanceSectionSource, /return \{[\s\S]*applicationDiagnosticsStatus/);
 });

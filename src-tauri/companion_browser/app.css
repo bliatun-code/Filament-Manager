@@ -1,5 +1,18 @@
 @import url("/companion/theme.css");
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .companion-shell {
   min-height: 100vh;
   padding: 1.4rem;
@@ -1123,6 +1136,21 @@
 
 .add-spool-wishlist-actions {
   gap: 0.45rem;
+}
+
+.wishlist-receipt-form {
+  display: flex;
+  align-items: end;
+  gap: 0.45rem;
+}
+
+.wishlist-receipt-quantity {
+  width: 4.75rem;
+}
+
+.wishlist-receipt-quantity .weight-input {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.65rem;
 }
 
 .companion-selection-card {

@@ -97,8 +97,10 @@ function renderHiddenSelectionBanner(selectedSpool, loanRows, escapeHtml, format
 }
 
 function renderLoanPickerRows(options) {
-  const { locale, loanSpoolOptions, escapeHtml, formatGrams } = options;
-  return loanSpoolOptions
+  const { state, locale, loanSpoolOptions, escapeHtml, formatGrams } = options;
+  const renderLimit = Math.max(150, Number(state.loanPickerRenderLimit) || 150);
+  const renderedOptions = loanSpoolOptions.slice(0, renderLimit);
+  const rowsMarkup = renderedOptions
     .map((row) => {
       const swatch =
         row.master?.hex_color ||
@@ -126,6 +128,17 @@ function renderLoanPickerRows(options) {
       });
     })
     .join("");
+  if (renderedOptions.length >= loanSpoolOptions.length) {
+    return rowsMarkup;
+  }
+  const nextVisible = Math.min(loanSpoolOptions.length, renderLimit + 150);
+  return `${rowsMarkup}${renderCompanionActionButton({
+    variant: "ghost",
+    attributes: { "data-action": "show-more-loan-picker" },
+    className: "companion-load-more",
+    escapeHtml,
+    label: `+${nextVisible - renderLimit} · ${nextVisible}/${loanSpoolOptions.length}`,
+  })}`;
 }
 
 function renderLoanRows(options) {
@@ -139,7 +152,18 @@ function renderLoanRows(options) {
     });
   }
 
-  return loanRows
+  const renderLimit = Math.max(150, Number(state.loanRenderLimit) || 150);
+  const renderedLoans = loanRows.slice(0, renderLimit);
+  const selectedLoan = state.selectedSpoolId
+    ? loanRows.find((row) => row.loan.spool_id === state.selectedSpoolId)
+    : null;
+  if (
+    selectedLoan &&
+    !renderedLoans.some((row) => row.loan.id === selectedLoan.loan.id)
+  ) {
+    renderedLoans.push(selectedLoan);
+  }
+  const rowsMarkup = renderedLoans
     .map((row) => {
       const direction = normalizeLoanDirection(row);
       const counterparty =
@@ -228,6 +252,17 @@ function renderLoanRows(options) {
       });
     })
     .join("");
+  if (renderedLoans.length >= loanRows.length) {
+    return rowsMarkup;
+  }
+  const nextVisible = Math.min(loanRows.length, renderLimit + 150);
+  return `${rowsMarkup}${renderCompanionActionButton({
+    variant: "ghost",
+    attributes: { "data-action": "show-more-loans" },
+    className: "companion-load-more",
+    escapeHtml,
+    label: `+${nextVisible - renderLimit} · ${nextVisible}/${loanRows.length}`,
+  })}`;
 }
 
 export function renderLoanPickerTaskSheetBody(options) {
@@ -244,7 +279,7 @@ export function renderLoanPickerTaskSheetBody(options) {
   return `
     <div class="stack loan-picker-sheet">
       <div class="stack loan-list">
-        ${renderLoanPickerRows({ locale, loanSpoolOptions, escapeHtml, formatGrams })}
+        ${renderLoanPickerRows({ state, locale, loanSpoolOptions, escapeHtml, formatGrams })}
       </div>
     </div>
   `;
@@ -333,7 +368,7 @@ export function renderLoanReturnTaskSheetBody(options) {
               <div class="metric-value">${escapeHtml(formatDate(loanRow.loan.lent_at, locale))}</div>
             </div>
           </div>
-          <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}">
+          <form class="stack loan-return-sheet" data-action="${escapeHtml(direction === "INBOUND" ? "hand-back-loan-form" : "return-loan-history-form")}" data-form-key="loan-return:${escapeHtml(loanRow.loan.id)}">
             <input type="hidden" name="loan-id" value="${escapeHtml(loanRow.loan.id)}" />
             <input type="hidden" name="spool-id" value="${escapeHtml(loanRow.loan.spool_id)}" />
             ${renderDetailField({

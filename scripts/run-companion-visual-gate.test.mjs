@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   formatCompanionVisualGateReport,
   normalizeCompanionBaseUrl,
+  normalizeCompanionQaLoopbackBaseUrl,
   runCompanionVisualGate,
 } from "./run-companion-visual-gate.mjs";
 
@@ -56,6 +57,11 @@ function companionFixtureHandler(request, response) {
       auth_mode: "trusted-lan",
       sync_mode: "STANDALONE",
     });
+    return;
+  }
+  if (!authenticated && url.pathname.startsWith("/api/v1/library/")) {
+    response.writeHead(401, { "content-type": "application/json" });
+    response.end(JSON.stringify({ error: "Missing or invalid companion session" }));
     return;
   }
   if (url.pathname === "/api/v1/library/snapshot") {
@@ -165,6 +171,23 @@ test("normalizeCompanionBaseUrl accepts companion URLs and strips paths", () => 
     "http://192.168.1.50:4278",
   );
   assert.equal(normalizeCompanionBaseUrl("  "), null);
+});
+
+test("Companion QA authentication accepts only explicit IPv4 loopback URLs", () => {
+  assert.equal(
+    normalizeCompanionQaLoopbackBaseUrl("http://127.0.0.1:4278/companion"),
+    "http://127.0.0.1:4278",
+  );
+  for (const url of [
+    "http://localhost:4278",
+    "http://192.168.1.50:4278",
+    "https://127.0.0.1:4278",
+  ]) {
+    assert.throws(
+      () => normalizeCompanionQaLoopbackBaseUrl(url),
+      /restricted to http:\/\/127\.0\.0\.1/,
+    );
+  }
 });
 
 test("companion visual gate passes data-rich fixture responses", async () => {

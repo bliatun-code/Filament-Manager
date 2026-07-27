@@ -25,6 +25,10 @@ export type InventoryNavigationIntent =
       kind: "LOW_STOCK";
       seq: number;
     }
+  | {
+      kind: "ADD_SPOOL";
+      seq: number;
+    }
   | null;
 
 export function resolveInitialPageFromSearch(

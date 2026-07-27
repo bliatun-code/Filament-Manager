@@ -8,6 +8,21 @@ export function routeCompanionClickAction(action, target, handlers) {
     return true;
   }
 
+  if (action === "show-more-inventory") {
+    handlers.showMoreInventory();
+    return true;
+  }
+
+  if (action === "show-more-loans") {
+    handlers.showMoreLoans();
+    return true;
+  }
+
+  if (action === "show-more-loan-picker") {
+    handlers.showMoreLoanPicker();
+    return true;
+  }
+
   if (action === "set-root-flow") {
     handlers.setRootFlow(readAttr(target, "data-root-flow") || "storage");
     return true;

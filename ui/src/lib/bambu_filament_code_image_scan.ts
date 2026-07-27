@@ -3,6 +3,11 @@ import {
   isIgnoredBambuFilamentBatchScanValue,
   type BambuFilamentCodeBatchScanAppendResult,
 } from "./bambu_filament_code_batch";
+import {
+  BAMBU_FILAMENT_BARCODE_SCAN_CROP_SPECS,
+  bambuFilamentBarcodeScanCropDimensions,
+  type BambuFilamentBarcodeScanCropSpec,
+} from "./bambu_filament_code_camera_performance";
 import { BAMBU_BOX_CODE_ALIASES } from "./bambu_filament_code_lookup";
 
 export type BambuFilamentBarcodeDetection = {
@@ -10,6 +15,7 @@ export type BambuFilamentBarcodeDetection = {
 };
 
 export type BambuFilamentBarcodeDetector = {
+  close?: () => void;
   detect: (image: unknown) => Promise<BambuFilamentBarcodeDetection[]>;
 };
 
@@ -88,34 +94,26 @@ const ZXING_LINEAR_BARCODE_FORMAT_KEYS = [
 
 const ZXING_MATRIX_BARCODE_FORMAT_KEYS = ["QR_CODE", "DATA_MATRIX"] as const;
 
-type BarcodeScanCropSpec = {
-  enhance?: boolean;
-  height: number;
-  scale?: number;
-  width: number;
-  x: number;
-  y: number;
-};
-
-const MAX_BARCODE_SCAN_CANVAS_WIDTH = 1600;
 const NATIVE_BARCODE_CROP_CANDIDATE_LIMIT = 6;
 const KNOWN_BAMBU_BOX_EAN_CANDIDATE_LIMIT = 6;
 const KNOWN_BAMBU_BOX_EAN_MIN_RANK = 110;
-const BARCODE_SCAN_CROP_SPECS: BarcodeScanCropSpec[] = [
-  { x: 0.28, y: 0.3, width: 0.44, height: 0.28, scale: 2.5, enhance: true },
-  { x: 0.32, y: 0.32, width: 0.36, height: 0.24, scale: 3, enhance: true },
-  { x: 0.36, y: 0.34, width: 0.3, height: 0.22, scale: 3.3 },
-  { x: 0.24, y: 0.42, width: 0.52, height: 0.26, scale: 2.1 },
-  { x: 0.26, y: 0.46, width: 0.48, height: 0.24, scale: 2.4, enhance: true },
-  { x: 0.3, y: 0.46, width: 0.4, height: 0.24, scale: 2.8 },
-  { x: 0.3, y: 0.5, width: 0.4, height: 0.2, scale: 3, enhance: true },
-  { x: 0.04, y: 0.32, width: 0.92, height: 0.34, scale: 1.35 },
-  { x: 0.04, y: 0.5, width: 0.92, height: 0.34, scale: 1.45 },
-  { x: 0.04, y: 0.16, width: 0.92, height: 0.34, scale: 1.35 },
-  { x: 0.12, y: 0.24, width: 0.76, height: 0.5, scale: 1.55 },
-  { x: 0.04, y: 0.32, width: 0.92, height: 0.34, scale: 1.45, enhance: true },
-  { x: 0.04, y: 0.5, width: 0.92, height: 0.34, scale: 1.55, enhance: true },
-];
+
+type BambuFilamentBarcodeScanCanvasContext = Pick<
+  CanvasRenderingContext2D,
+  | "drawImage"
+  | "filter"
+  | "getImageData"
+  | "imageSmoothingEnabled"
+>;
+
+type BambuFilamentBarcodeScanCanvas = {
+  getContext: (
+    contextId: "2d",
+    options?: CanvasRenderingContext2DSettings,
+  ) => BambuFilamentBarcodeScanCanvasContext | null;
+  height: number;
+  width: number;
+};
 
 const EAN13_LEFT_ODD_PATTERNS = [
   "0001101",
@@ -484,12 +482,42 @@ function imageDimension(input: unknown, keys: string[]): number {
   return 0;
 }
 
-function createCanvasForBarcodeScan(image: unknown): HTMLCanvasElement | null {
-  if (typeof HTMLCanvasElement !== "undefined" && image instanceof HTMLCanvasElement) {
-    return image;
+function barcodeScanCanvasSurface(
+  width: number,
+  height: number,
+): BambuFilamentBarcodeScanCanvas | null {
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    return canvas as unknown as BambuFilamentBarcodeScanCanvas;
   }
-  if (typeof document === "undefined") {
+
+  const offscreenCanvasConstructor = (
+    globalThis as typeof globalThis & {
+      OffscreenCanvas?: new (width: number, height: number) => OffscreenCanvas;
+    }
+  ).OffscreenCanvas;
+  if (typeof offscreenCanvasConstructor !== "function") {
     return null;
+  }
+  return new offscreenCanvasConstructor(
+    width,
+    height,
+  ) as unknown as BambuFilamentBarcodeScanCanvas;
+}
+
+function createCanvasForBarcodeScan(
+  image: unknown,
+): BambuFilamentBarcodeScanCanvas | null {
+  const canvasLike = image as Partial<BambuFilamentBarcodeScanCanvas> | null;
+  if (
+    canvasLike &&
+    typeof canvasLike.getContext === "function" &&
+    Number(canvasLike.width) > 0 &&
+    Number(canvasLike.height) > 0
+  ) {
+    return canvasLike as BambuFilamentBarcodeScanCanvas;
   }
 
   const width = imageDimension(image, ["videoWidth", "naturalWidth", "width"]);
@@ -498,9 +526,10 @@ function createCanvasForBarcodeScan(image: unknown): HTMLCanvasElement | null {
     return null;
   }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  const canvas = barcodeScanCanvasSurface(width, height);
+  if (!canvas) {
+    return null;
+  }
   const context = canvas.getContext("2d");
   if (!context) {
     return null;
@@ -509,40 +538,22 @@ function createCanvasForBarcodeScan(image: unknown): HTMLCanvasElement | null {
   return canvas;
 }
 
-function clampBarcodeCropValue(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
-
 function createBarcodeScanCropCanvas(
-  source: HTMLCanvasElement,
-  spec: BarcodeScanCropSpec,
-): HTMLCanvasElement | null {
-  if (typeof document === "undefined") {
+  source: BambuFilamentBarcodeScanCanvas,
+  spec: BambuFilamentBarcodeScanCropSpec,
+): BambuFilamentBarcodeScanCanvas | null {
+  const dimensions = bambuFilamentBarcodeScanCropDimensions({
+    frameHeight: source.height,
+    frameWidth: source.width,
+    spec,
+  });
+  const canvas = barcodeScanCanvasSurface(
+    dimensions.targetWidth,
+    dimensions.targetHeight,
+  );
+  if (!canvas) {
     return null;
   }
-
-  const cropX = clampBarcodeCropValue(spec.x);
-  const cropY = clampBarcodeCropValue(spec.y);
-  const cropWidth = clampBarcodeCropValue(spec.width);
-  const cropHeight = clampBarcodeCropValue(spec.height);
-  const sx = Math.round(source.width * cropX);
-  const sy = Math.round(source.height * cropY);
-  const sw = Math.max(1, Math.round(source.width * cropWidth));
-  const sh = Math.max(1, Math.round(source.height * cropHeight));
-  const boundedSw = Math.max(1, Math.min(sw, source.width - sx));
-  const boundedSh = Math.max(1, Math.min(sh, source.height - sy));
-  const scale = spec.scale ?? 1;
-  let targetWidth = Math.max(1, Math.round(boundedSw * scale));
-  let targetHeight = Math.max(1, Math.round(boundedSh * scale));
-  if (targetWidth > MAX_BARCODE_SCAN_CANVAS_WIDTH) {
-    const resize = MAX_BARCODE_SCAN_CANVAS_WIDTH / targetWidth;
-    targetWidth = MAX_BARCODE_SCAN_CANVAS_WIDTH;
-    targetHeight = Math.max(1, Math.round(targetHeight * resize));
-  }
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
   const context = canvas.getContext("2d");
   if (!context) {
     return null;
@@ -553,24 +564,24 @@ function createBarcodeScanCropCanvas(
     context.filter = "grayscale(100%) contrast(190%) brightness(108%)";
   }
   context.drawImage(
-    source,
-    sx,
-    sy,
-    boundedSw,
-    boundedSh,
+    source as unknown as CanvasImageSource,
+    dimensions.sourceX,
+    dimensions.sourceY,
+    dimensions.sourceWidth,
+    dimensions.sourceHeight,
     0,
     0,
-    targetWidth,
-    targetHeight,
+    dimensions.targetWidth,
+    dimensions.targetHeight,
   );
   return canvas;
 }
 
 function createBarcodeScanCandidateCanvases(
-  source: HTMLCanvasElement,
-): HTMLCanvasElement[] {
+  source: BambuFilamentBarcodeScanCanvas,
+): BambuFilamentBarcodeScanCanvas[] {
   const candidates = [source];
-  for (const spec of BARCODE_SCAN_CROP_SPECS) {
+  for (const spec of BAMBU_FILAMENT_BARCODE_SCAN_CROP_SPECS) {
     const crop = createBarcodeScanCropCanvas(source, spec);
     if (crop) {
       candidates.push(crop);
@@ -914,7 +925,7 @@ function decodeEan13FromBinaryRow(row: boolean[]): string | null {
 }
 
 export function decodeBambuEan13BarcodeFromCanvas(
-  canvas: Pick<HTMLCanvasElement, "getContext" | "height" | "width">,
+  canvas: BambuFilamentBarcodeScanCanvas,
 ): string | null {
   if (canvas.width <= 0 || canvas.height <= 0) {
     return null;
@@ -1303,7 +1314,7 @@ function scoreKnownBambuBoxEanColumns(input: {
 }
 
 export function detectKnownBambuBoxEanFromCanvas(
-  canvas: Pick<HTMLCanvasElement, "getContext" | "height" | "width">,
+  canvas: BambuFilamentBarcodeScanCanvas,
 ): string | null {
   if (
     KNOWN_BAMBU_BOX_EAN_PATTERNS.length === 0 ||
@@ -1352,7 +1363,7 @@ export function detectKnownBambuBoxEanFromCanvas(
 }
 
 function detectKnownBambuBoxEanFromBarcodeCanvasCandidates(
-  canvases: HTMLCanvasElement[],
+  canvases: BambuFilamentBarcodeScanCanvas[],
 ): BambuFilamentBarcodeDetection[] {
   const scanCanvases =
     canvases.length > 1
@@ -1368,7 +1379,7 @@ function detectKnownBambuBoxEanFromBarcodeCanvasCandidates(
 }
 
 function detectEan13FromBarcodeCanvasCandidates(
-  canvases: HTMLCanvasElement[],
+  canvases: BambuFilamentBarcodeScanCanvas[],
 ): BambuFilamentBarcodeDetection[] {
   for (const canvas of canvases) {
     const ean13 = decodeBambuEan13BarcodeFromCanvas(canvas);
@@ -1428,14 +1439,16 @@ function createZxingReader(
 }
 
 function decodeZxingCanvasCandidates(input: {
-  canvases: HTMLCanvasElement[];
+  canvases: BambuFilamentBarcodeScanCanvas[];
   readers: import("@zxing/browser").BrowserMultiFormatReader[];
 }): BambuFilamentBarcodeDetection[] | null {
   let lastMiss: unknown = null;
   for (const reader of input.readers) {
     for (const canvas of input.canvases) {
       try {
-        const result = reader.decodeFromCanvas(canvas);
+        const result = reader.decodeFromCanvas(
+          canvas as unknown as HTMLCanvasElement,
+        );
         return normalizeZxingResult(result);
       } catch (error) {
         if (isBambuFilamentBarcodeDecodeMiss(error)) {
@@ -1641,7 +1654,28 @@ export async function createBambuFilamentBarcodeScanner(
   }
 
   const fallbackScannerFactory = fallbackFactory;
+  let fallbackScannerPromise: Promise<BambuFilamentBarcodeDetector | null> | null =
+    null;
+  let fallbackScannerInstance: BambuFilamentBarcodeDetector | null = null;
+  let fallbackCloseRequested = false;
+  const fallbackScanner = () => {
+    fallbackScannerPromise ??= (
+      fallbackScannerFactory?.() ?? Promise.resolve(null)
+    ).then((detector) => {
+      fallbackScannerInstance = detector;
+      if (fallbackCloseRequested) {
+        detector?.close?.();
+      }
+      return detector;
+    });
+    return fallbackScannerPromise;
+  };
   return {
+    close: () => {
+      fallbackCloseRequested = true;
+      nativeDetectors.forEach((detector) => detector.close?.());
+      fallbackScannerInstance?.close?.();
+    },
     detect: async (image: unknown) => {
       let ignoredNativeDetections: BambuFilamentBarcodeDetection[] = [];
       for (const nativeDetector of nativeDetectors) {
@@ -1671,8 +1705,9 @@ export async function createBambuFilamentBarcodeScanner(
         }
       }
 
-      const fallbackScanner = await fallbackScannerFactory?.();
-      const fallbackDetections = (await fallbackScanner?.detect(image)) ?? [];
+      const resolvedFallbackScanner = await fallbackScanner();
+      const fallbackDetections =
+        (await resolvedFallbackScanner?.detect(image)) ?? [];
       if (
         ignoredNativeDetections.length > 0 &&
         rawDetectionValues(fallbackDetections).length === 0

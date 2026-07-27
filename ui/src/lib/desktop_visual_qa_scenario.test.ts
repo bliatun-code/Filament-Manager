@@ -33,10 +33,11 @@ function spool(overrides: Partial<InventorySpool>): InventorySpool {
 }
 
 test("desktop visual QA scenario parser accepts stable aliases in dev only", () => {
-  assert.equal(DESKTOP_VISUAL_QA_BORROWER_NAME, "Nora Berg");
+  assert.equal(DESKTOP_VISUAL_QA_BORROWER_NAME, "Sample maker space");
   assert.equal(DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID, "visual_qa_spool_inbound_lagoon");
   assert.deepEqual(DESKTOP_VISUAL_QA_SCENARIOS, [
     "dashboard-overview",
+    "dashboard-onboarding",
     "inventory-overview",
     "add-filament",
     "wishlist-queue",
@@ -51,6 +52,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "return-loan",
     "return-inbound-loan",
     "printer-board",
+    "printer-overview",
     "add-printer",
     "printer-slot-assignment",
     "printer-slot-onboarding",
@@ -58,6 +60,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "printer-slot-replacement",
     "printer-slot-clear",
     "settings-general",
+    "settings-updates",
     "settings-inventory-label-sheet",
     "settings-library",
     "settings-library-role-change",
@@ -75,12 +78,14 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "settings-catalog",
     "settings-catalog-swatch-review",
     "settings-maintenance",
+    "settings-application-diagnostics",
     "statistics-overview",
     "statistics-consumption",
     "statistics-borrower",
     "statistics-loans",
   ]);
   assert.equal(normalizeDesktopVisualQaScenario("dashboard"), "dashboard-overview");
+  assert.equal(normalizeDesktopVisualQaScenario("getting-started"), "dashboard-onboarding");
   assert.equal(normalizeDesktopVisualQaScenario("inventory"), "inventory-overview");
   assert.equal(normalizeDesktopVisualQaScenario("inventory-add"), "add-filament");
   assert.equal(normalizeDesktopVisualQaScenario("wishlist-orders"), "wishlist-queue");
@@ -99,6 +104,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "return-inbound-loan",
   );
   assert.equal(normalizeDesktopVisualQaScenario("printers"), "printer-board");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("printers-static"),
+    "printer-overview",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("printer-add"), "add-printer");
   assert.equal(normalizeDesktopVisualQaScenario("slot-assignment"), "printer-slot-assignment");
   assert.equal(normalizeDesktopVisualQaScenario("ams-onboarding"), "printer-slot-onboarding");
@@ -107,6 +116,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(normalizeDesktopVisualQaScenario("slot-unload"), "printer-slot-clear");
   assert.equal(normalizeDesktopVisualQaScenario("batch-add"), "bambu-batch-add");
   assert.equal(normalizeDesktopVisualQaScenario("general-settings"), "settings-general");
+  assert.equal(normalizeDesktopVisualQaScenario("update-check"), "settings-updates");
   assert.equal(
     normalizeDesktopVisualQaScenario("inventory-label-sheet"),
     "settings-inventory-label-sheet",
@@ -163,6 +173,14 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "settings-catalog-swatch-review",
   );
   assert.equal(normalizeDesktopVisualQaScenario("program-maintenance"), "settings-maintenance");
+  assert.equal(
+    normalizeDesktopVisualQaScenario("settings-diagnostics"),
+    "settings-application-diagnostics",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("application-diagnostics"),
+    "settings-application-diagnostics",
+  );
   assert.equal(normalizeDesktopVisualQaScenario("usage-statistics"), "statistics-overview");
   assert.equal(normalizeDesktopVisualQaScenario("total-consumption"), "statistics-consumption");
   assert.equal(
@@ -184,10 +202,36 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
     page: "inventory",
   });
   assert.equal(
+    desktopVisualQaScenarioDefinition("onboarding")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("update-check")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
     desktopVisualQaScenarioDefinition("ams-onboarding")?.requiresDatabaseFixture,
     true,
   );
+  assert.deepEqual(desktopVisualQaScenarioDefinition("printers")?.readiness, {
+    timeoutMs: 35_000,
+    token: "printer-live-telemetry",
+  });
+  assert.equal(
+    desktopVisualQaScenarioDefinition("printer-summary")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(desktopVisualQaScenarioDefinition("printer-summary")?.readiness, undefined);
+  assert.equal(desktopVisualQaScenarioDefinition("add-printer")?.readiness, undefined);
   assert.equal(desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture, true);
+  assert.equal(
+    desktopVisualQaScenarioDefinition("settings-diagnostics")?.requiresDatabaseFixture,
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("application-diagnostics")?.settingsTab,
+    "MAINTENANCE",
+  );
   assert.equal(desktopVisualQaScenarioDefinition("trusted-lan-details")?.settingsTab, "LIBRARY");
   assert.equal(
     desktopVisualQaScenarioDefinition("inventory-label-sheet")?.settingsTab,
@@ -239,6 +283,7 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
 
 test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=dashboard-overview"), "dashboard");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=dashboard-onboarding"), "dashboard");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=inventory-overview"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=add-filament"), "inventory");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=wishlist-queue"), "inventory");
@@ -252,6 +297,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=return-inbound-loan"), "loans");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-board"), "printers");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-overview"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=add-printer"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-assignment"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-onboarding"), "printers");
@@ -259,6 +305,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-replacement"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=printer-slot-clear"), "printers");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-general"), "settings");
+  assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-updates"), "settings");
   assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-inventory-label-sheet"),
     "settings",
@@ -309,6 +356,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
     "settings",
   );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=settings-maintenance"), "settings");
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-application-diagnostics"),
+    "settings",
+  );
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-overview"), "statistics");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-consumption"), "statistics");
   assert.equal(desktopVisualQaInitialPage("?bfm_visual_qa=statistics-borrower"), "statistics");
@@ -319,6 +370,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
 
 test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-general"), "GENERAL");
+  assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-updates"), "GENERAL");
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-inventory-label-sheet"),
     "GENERAL",
@@ -381,6 +433,10 @@ test("desktop visual QA settings scenarios resolve to the intended tab", () => {
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-maintenance"),
     "MAINTENANCE",
   );
+  assert.equal(
+    desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-application-diagnostics"),
+    "MAINTENANCE",
+  );
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=add-filament"), null);
   assert.equal(desktopVisualQaInitialSettingsTab("?bfm_visual_qa=unknown"), null);
 });
@@ -397,6 +453,18 @@ test("desktop visual QA spool chooser prefers assigned RFID rolls for RFID captu
     "assigned",
   );
   assert.equal(chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll"), "stock");
+});
+
+test("desktop visual QA RFID capture falls back to an assigned Bambu roll", () => {
+  const spools = [
+    spool({ id: "generic", vendor: "Generic", status: "ASSIGNED" }),
+    spool({ id: "bambu", vendor: "Bambu Lab", status: "ASSIGNED" }),
+  ];
+
+  assert.equal(
+    chooseDesktopVisualQaSpoolId(spools, new Set(["generic", "bambu"]), "rfid-capture"),
+    "bambu",
+  );
 });
 
 test("desktop visual QA spool chooser prefers non-Bambu detail examples", () => {
@@ -436,6 +504,43 @@ test("desktop visual QA selected-roll prefers a real bright neutral edge case", 
   assert.equal(
     chooseDesktopVisualQaSpoolId(spools, new Set(), "selected-roll-danger-zone"),
     "colorful",
+  );
+});
+
+test("desktop visual QA history prefers an unassigned used owned roll", () => {
+  const spools = [
+    spool({
+      id: "loaned",
+      vendor: "eSUN",
+      colorName: "Deep Blue",
+      status: "BORROWED",
+    }),
+    spool({
+      id: "assigned",
+      vendor: "eSUN",
+      colorName: "Signal Orange",
+    }),
+    spool({
+      id: "borrowed-in",
+      vendor: "eSUN",
+      colorName: "Forest Green",
+      ownershipType: "BORROWED_IN",
+    }),
+    spool({
+      id: "history",
+      vendor: "eSUN",
+      colorName: "Ocean Blue",
+      remainingGrams: 780,
+    }),
+  ];
+
+  assert.equal(
+    chooseDesktopVisualQaSpoolId(
+      spools,
+      new Set(["assigned"]),
+      "selected-roll-history",
+    ),
+    "history",
   );
 });
 

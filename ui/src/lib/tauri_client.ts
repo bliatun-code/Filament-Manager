@@ -7,3 +7,4 @@ export * from "./tauri_maintenance_client";
 export * from "./tauri_printer_client";
 export * from "./tauri_statistics_client";
 export * from "./tauri_wishlist_client";
+export * from "./tauri_visual_qa_client";

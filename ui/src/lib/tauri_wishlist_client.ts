@@ -30,6 +30,18 @@ export type UpdateWishlistStatusInput = {
   status: string;
 };
 
+export type ReceiveWishlistItemInput = {
+  item_id: string;
+  quantity: number;
+};
+
+export type WishlistReceiptResult = {
+  spool_ids: string[];
+  received_quantity: number;
+  remaining_quantity: number;
+  status: string;
+};
+
 export async function listWishlistItems(limit = 500) {
   return invoke<WishlistItemRow[]>("list_wishlist_items", { limit });
 }
@@ -60,6 +72,25 @@ export async function createLibrarySyncHostWishlistItem(
 
 export async function updateWishlistItemStatus(input: UpdateWishlistStatusInput) {
   return invoke<void>("update_wishlist_item_status", { input });
+}
+
+export async function receiveWishlistItem(input: ReceiveWishlistItemInput) {
+  return invoke<WishlistReceiptResult>("receive_wishlist_item", { input });
+}
+
+export async function receiveLibrarySyncHostWishlistItem(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: ReceiveWishlistItemInput,
+) {
+  return invoke<WishlistReceiptResult>("receive_library_sync_host_wishlist_item", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      item_id: input.item_id,
+      quantity: input.quantity,
+    },
+  });
 }
 
 export async function updateLibrarySyncHostWishlistItemStatus(

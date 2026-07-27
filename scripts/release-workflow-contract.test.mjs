@@ -5,6 +5,16 @@ import test from "node:test";
 const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf8");
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
+const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
+const windowsAuthenticodeVerifier = readFileSync(
+  "scripts/verify-windows-authenticode.ps1",
+  "utf8",
+);
+const windowsDatabaseVerifier = readFileSync(
+  "scripts/verify-windows-app-database.mjs",
+  "utf8",
+);
+const packageManifest = JSON.parse(readFileSync("package.json", "utf8"));
 
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
@@ -44,9 +54,24 @@ test("release workflow gates tag and manual installer builds", () => {
   const windowsJob = readSection(
     releaseWorkflow,
     "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+  const sbomJob = readSection(
+    releaseWorkflow,
+    "  generate-release-sbom:",
+    "  attest-public-release:",
+  );
+  const attestationJob = readSection(
+    releaseWorkflow,
+    "  attest-public-release:",
     "  publish-github-release:",
   );
   const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
+  const requiredChecksStep = readSection(
+    publishJob,
+    "      - name: Require successful CI checks",
+    "      - name: Checkout release notes",
+  );
 
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
@@ -64,6 +89,14 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(validationJob, /"\$SELECTED_PLATFORM" == "both"/);
   assert.match(validationJob, /"\$CONFIRM_MACOS_NOTARIZATION" != "true"/);
   assert.match(validationJob, /Manual macOS release builds require notarization confirmation/);
+  assert.match(
+    validationJob,
+    /"\$GITHUB_EVENT_NAME" == "workflow_dispatch"[\s\S]*?"\$GITHUB_REF" != "refs\/heads\/main"/,
+  );
+  assert.match(
+    validationJob,
+    /Manual release builds must run from the main branch/,
+  );
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
   assert.match(macosJob, /needs: validate-release/);
   assert.match(
@@ -149,11 +182,21 @@ test("release workflow gates tag and manual installer builds", () => {
 
   assert.match(
     publishJob,
-    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- build-windows-msi/,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- build-windows-msi\s*\n\s+- generate-release-sbom\s*\n\s+- attest-public-release/,
+  );
+  assert.match(publishJob, /if: >-\s+!cancelled\(\) &&/);
+  assert.doesNotMatch(publishJob, /always\(\)/);
+  assert.match(publishJob, /needs\['validate-release'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['build-macos-dmg'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['build-windows-msi'\]\.result == 'success'/);
+  assert.match(publishJob, /needs\['generate-release-sbom'\]\.result == 'success'/);
+  assert.match(
+    publishJob,
+    /github\.event\.repository\.private == false && needs\['attest-public-release'\]\.result == 'success'/,
   );
   assert.match(
     publishJob,
-    /if: github\.event_name == 'push' && github\.ref_type == 'tag'/,
+    /github\.event\.repository\.private == true && needs\['attest-public-release'\]\.result == 'skipped'/,
   );
   assert.match(
     publishJob,
@@ -162,6 +205,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(
     publishJob,
     /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+  );
+  assert.equal(
+    countOccurrences(requiredChecksStep, "GH_TOKEN: ${{ github.token }}"),
+    1,
   );
   assert.match(
     publishJob,
@@ -185,10 +232,25 @@ test("release workflow gates tag and manual installer builds", () => {
     publishJob,
     /- name: Download verified Windows artifact[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}\s+path: release-assets\/windows/,
   );
+  assert.match(
+    publishJob,
+    /- name: Download verified source dependency SBOM[\s\S]*?name: filament-manager-release-sbom-\$\{\{ github\.run_id \}\}\s+path: release-assets\/sbom/,
+  );
+  assert.match(
+    publishJob,
+    /- name: Download signed public provenance\s+if: github\.event\.repository\.private == false[\s\S]*?name: filament-manager-release-provenance-\$\{\{ github\.run_id \}\}\s+path: release-assets\/provenance/,
+  );
   assert.match(publishJob, /SHA256SUMS\.txt/);
   assert.match(publishJob, /SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /SHA256SUMS-sbom\.txt/);
   assert.match(publishJob, /sha256sum --check SHA256SUMS\.txt/);
   assert.match(publishJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(publishJob, /sha256sum --check SHA256SUMS-sbom\.txt/);
+  assert.match(publishJob, /node \.\/scripts\/verify-release-sbom\.mjs/);
+  assert.match(
+    publishJob,
+    /A public release requires exactly one non-empty signed provenance bundle/,
+  );
   assert.match(publishJob, /gh release create "\$GITHUB_REF_NAME"/);
   assert.match(publishJob, /--verify-tag/);
   assert.match(publishJob, /--target "\$GITHUB_SHA"/);
@@ -199,8 +261,108 @@ test("release workflow gates tag and manual installer builds", () => {
     "Checkout release notes",
     "Download verified macOS artifact",
     "Download verified Windows artifact",
+    "Download verified source dependency SBOM",
+    "Download signed public provenance",
     "Assemble and verify release assets",
     "Publish immutable release",
+  ]);
+
+  assert.match(sbomJob, /needs: validate-release/);
+  assert.match(attestationJob, /needs:[\s\S]*?- generate-release-sbom/);
+});
+
+test("release SBOM generation is pinned, read-only and fail-closed", () => {
+  const sbomJob = readSection(
+    releaseWorkflow,
+    "  generate-release-sbom:",
+    "  attest-public-release:",
+  );
+
+  assert.match(
+    sbomJob,
+    /permissions:\s*\n\s+contents: read\s*\n\s+steps:/,
+  );
+  assert.doesNotMatch(sbomJob, /permissions:[\s\S]*?\n\s+\w[\w-]*: write/);
+  assert.match(
+    sbomJob,
+    /anchore\/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0\.24\.0/,
+  );
+  assert.match(sbomJob, /format: spdx-json/);
+  assert.match(sbomJob, /syft-version: v1\.42\.3/);
+  assert.match(sbomJob, /dependency-snapshot: false/);
+  assert.match(sbomJob, /upload-artifact: false/);
+  assert.match(sbomJob, /upload-release-assets: false/);
+  assert.match(sbomJob, /node \.\/scripts\/verify-release-sbom\.mjs/);
+  assert.match(sbomJob, /--expected-package=bambu-filament-manager/);
+  assert.match(sbomJob, /sha256sum "\$sbom_name" > SHA256SUMS-sbom\.txt/);
+  assert.match(
+    sbomJob,
+    /name: filament-manager-release-sbom-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    sbomJob,
+    /- name: Upload verified source dependency SBOM[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
+  );
+  assert.doesNotMatch(sbomJob, /github\.run_attempt/);
+
+  assertStepOrder(sbomJob, [
+    "Checkout release source",
+    "Setup Node",
+    "Prepare SBOM output",
+    "Generate pinned source dependency SBOM",
+    "Validate source dependency SBOM",
+    "Write SBOM checksum",
+    "Upload verified source dependency SBOM",
+  ]);
+});
+
+test("public provenance uses an isolated least-privilege fail-closed job", () => {
+  const attestationJob = readSection(
+    releaseWorkflow,
+    "  attest-public-release:",
+    "  publish-github-release:",
+  );
+
+  assert.match(
+    attestationJob,
+    /if: github\.event_name == 'push' && github\.ref_type == 'tag' && github\.event\.repository\.private == false/,
+  );
+  assert.match(
+    attestationJob,
+    /permissions:\s*\n\s+actions: read\s*\n\s+artifact-metadata: write\s*\n\s+attestations: write\s*\n\s+contents: read\s*\n\s+id-token: write/,
+  );
+  assert.doesNotMatch(attestationJob, /contents: write/);
+  assert.doesNotMatch(attestationJob, /APPLE_[A-Z_]+|macos-release/);
+  assert.match(
+    attestationJob,
+    /actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4\.2\.0/,
+  );
+  assert.match(
+    attestationJob,
+    /subject-path:\s*\|\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['dmg-path'\] \}\}\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['msi-path'\] \}\}/,
+  );
+  assert.match(attestationJob, /sha256sum --check SHA256SUMS\.txt/);
+  assert.match(attestationJob, /sha256sum --check SHA256SUMS-windows\.txt/);
+  assert.match(
+    attestationJob,
+    /steps\['installer-provenance'\]\.outputs\['bundle-path'\]/,
+  );
+  assert.match(
+    attestationJob,
+    /name: filament-manager-release-provenance-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    attestationJob,
+    /- name: Upload signed provenance bundle[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
+  );
+
+  assertStepOrder(attestationJob, [
+    "Download verified macOS artifact for attestation",
+    "Download verified Windows artifact for attestation",
+    "Reverify installer subjects",
+    "Generate signed build provenance",
+    "Normalize signed provenance bundle",
+    "Upload signed provenance bundle",
   ]);
 });
 
@@ -213,13 +375,28 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   const windowsJob = readSection(
     releaseWorkflow,
     "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+  const sbomJob = readSection(
+    releaseWorkflow,
+    "  generate-release-sbom:",
+    "  attest-public-release:",
+  );
+  const attestationJob = readSection(
+    releaseWorkflow,
+    "  attest-public-release:",
     "  publish-github-release:",
   );
   const macosArtifactName = "filament-manager-macos-dmg-${{ github.run_id }}";
   const windowsArtifactName = "filament-manager-windows-msi-${{ github.run_id }}";
+  const sbomArtifactName = "filament-manager-release-sbom-${{ github.run_id }}";
+  const provenanceArtifactName =
+    "filament-manager-release-provenance-${{ github.run_id }}";
 
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 2);
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 2);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 3);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 3);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`), 2);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${provenanceArtifactName}`), 2);
   assert.doesNotMatch(releaseWorkflow, /github\.run_attempt/);
   assert.match(
     macosJob,
@@ -228,6 +405,14 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   assert.match(
     windowsJob,
     /- name: Upload verified MSI artifact[\s\S]*?overwrite: true/,
+  );
+  assert.match(
+    sbomJob,
+    /- name: Upload verified source dependency SBOM[\s\S]*?overwrite: true/,
+  );
+  assert.match(
+    attestationJob,
+    /- name: Upload signed provenance bundle[\s\S]*?overwrite: true/,
   );
 });
 
@@ -259,6 +444,79 @@ test("Windows MSI verifier fails closed and writes a portable checksum", () => {
   assert.match(verifier, /\$msiFile\.Name/);
   assert.match(verifier, /UTF8Encoding\]::new\(\$false\)/);
   assert.match(verifier, /WriteAllText[\s\S]*`n/);
+});
+
+test("Windows Authenticode verifier requires publisher, code-signing EKU and timestamp", () => {
+  assert.equal(existsSync("scripts/verify-windows-authenticode.ps1"), true);
+
+  assert.match(windowsAuthenticodeVerifier, /\[string\[\]\]\$FilePath/);
+  assert.match(windowsAuthenticodeVerifier, /\[string\]\$ExpectedPublisherSubject/);
+  assert.match(windowsAuthenticodeVerifier, /\("\.exe", "\.msi"\)/);
+  assert.match(windowsAuthenticodeVerifier, /Get-AuthenticodeSignature -LiteralPath/);
+  assert.match(windowsAuthenticodeVerifier, /\[string\]\$signature\.Status, "Valid"/);
+  assert.match(windowsAuthenticodeVerifier, /\$signature\.SignerCertificate\.Subject\.Trim\(\)/);
+  assert.match(windowsAuthenticodeVerifier, /\[StringComparison\]::Ordinal/);
+  assert.match(windowsAuthenticodeVerifier, /1\.3\.6\.1\.5\.5\.7\.3\.3/);
+  assert.match(windowsAuthenticodeVerifier, /\$signature\.TimeStamperCertificate/);
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /verify \/pa \/all \/v \/tw \$resolvedFilePath/,
+  );
+  assert.match(windowsAuthenticodeVerifier, /\$signToolExitCode -ne 0/);
+  assert.match(windowsAuthenticodeVerifier, /SignTool Warning/);
+  assert.match(windowsAuthenticodeVerifier, /\$signToolWarnings\.Count -ne 0/);
+  assert.doesNotMatch(releaseWorkflow, /verify-windows-authenticode\.ps1/);
+});
+
+test("Windows MSI smoke exercises install, UI readiness, data retention and uninstall", () => {
+  assert.equal(existsSync("scripts/smoke-windows-msi.ps1"), true);
+  assert.equal(existsSync("scripts/verify-windows-app-database.mjs"), true);
+
+  assert.match(windowsMsiSmoke, /\[ValidateSet\("Off", "Required"\)\]/);
+  assert.match(windowsMsiSmoke, /Get-MsiProperty[\s\S]*"ProductCode"/);
+  assert.match(windowsMsiSmoke, /msiexec\.exe/);
+  assert.match(windowsMsiSmoke, /"\/qn"/);
+  assert.match(windowsMsiSmoke, /"\/norestart"/);
+  assert.match(windowsMsiSmoke, /"\/L\*V"/);
+  assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/i"/);
+  assert.match(windowsMsiSmoke, /Get-HkcuUninstallRegistrationPaths/);
+  assert.match(windowsMsiSmoke, /\[EnvironmentVariableTarget\]::User/);
+  assert.match(windowsMsiSmoke, /Desktop shortcut already exists/);
+  assert.match(windowsMsiSmoke, /Start Menu product directory already exists/);
+  assert.match(windowsMsiSmoke, /user PATH already contains the install directory/);
+  assert.match(windowsMsiSmoke, /Install did not create an HKCU uninstall registration/);
+  assert.match(windowsMsiSmoke, /Install did not create the expected Desktop shortcut/);
+  assert.match(windowsMsiSmoke, /Install did not create the expected Start Menu shortcut/);
+  assert.match(windowsMsiSmoke, /Install did not add the install directory to the user PATH/);
+  assert.match(windowsMsiSmoke, /Start-Process[\s\S]*-FilePath \$installedExecutablePath/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.MainWindowHandle -ne 0/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.Responding/);
+  assert.match(windowsMsiSmoke, /verify-windows-app-database\.mjs/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.CloseMainWindow\(\)/);
+  assert.match(windowsMsiSmoke, /\$appProcess\.WaitForExit\(15000\)/);
+  assert.match(windowsMsiSmoke, /Get-FileHash[\s\S]*-Algorithm SHA256/);
+  assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/x"/);
+  assert.match(windowsMsiSmoke, /Uninstall left the HKCU product registration behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the Desktop shortcut behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the Start Menu shortcut behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the Start Menu product directory behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left the install directory in the user PATH/);
+  assert.match(windowsMsiSmoke, /Uninstall removed the user database instead of retaining it/);
+  assert.match(windowsMsiSmoke, /The retained database changed during uninstall/);
+  assert.match(
+    windowsMsiSmoke,
+    /\$applicationStoppedForCleanup -and[\s\S]*?\$canRemoveSmokeAppData -and[\s\S]*?Test-Path -LiteralPath \$resolvedAppDataDirectory/,
+  );
+
+  assert.match(windowsDatabaseVerifier, /pragma\("quick_check", \{ simple: true \}\)/);
+  assert.match(windowsDatabaseVerifier, /pragma\("user_version", \{ simple: true \}\)/);
+  assert.match(windowsDatabaseVerifier, /REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION/);
+  assert.match(windowsDatabaseVerifier, /pragma\("foreign_key_check"\)/);
+  assert.match(windowsDatabaseVerifier, /filament_master_list/);
+  assert.match(windowsDatabaseVerifier, /filament_spools/);
+  assert.match(windowsDatabaseVerifier, /settings/);
+  assert.match(windowsDatabaseVerifier, /readonly: true/);
+  assert.match(windowsDatabaseVerifier, /fileMustExist: true/);
 });
 
 test("Windows MSI uninstall preserves the system Desktop directory", () => {
@@ -340,8 +598,10 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
     "Prepare MSI smoke version override",
     "Build MSI smoke bundle",
     "Verify MSI smoke bundle",
+    "Exercise clean MSI installation",
+    "Upload MSI smoke logs",
   ]);
-  assert.match(windowsJob, /timeout-minutes: 45/);
+  assert.match(windowsJob, /timeout-minutes: 60/);
   assert.match(
     windowsJob,
     /npm run tauri -- build --debug --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
@@ -351,6 +611,44 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   assert.match(
     windowsJob,
     /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
+  );
+  assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
+  assert.match(windowsJob, /-ExpectedExecutableName "bambu-filament-manager\.exe"/);
+  assert.match(
+    windowsJob,
+    /-ExpectedWindowTitles @\(\$tauriConfig\.productName, "Dashboard"\)/,
+  );
+  assert.match(windowsJob, /-ExpectedDatabaseName "filament-manager\.db"/);
+  assert.match(windowsJob, /-SignaturePolicy "Off"/);
+  assert.match(
+    windowsJob,
+    /- name: Upload MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
+});
+
+test("CI executes real browser accessibility and sanitized Companion workflows", () => {
+  const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const windowsJobStart = ciWorkflow.indexOf("  windows-smoke:");
+  assert.notEqual(windowsJobStart, -1, "Missing workflow section: windows-smoke:");
+  const windowsJob = ciWorkflow.slice(windowsJobStart);
+
+  assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
+  assertStepOrder(macosJob, [
+    "Install root dependencies",
+    "Install Playwright Chromium",
+    "Run full verification",
+    "Run data-backed Companion E2E",
+  ]);
+  assertStepOrder(windowsJob, [
+    "Install root dependencies",
+    "Install Playwright Chromium",
+    "Run full verification",
+  ]);
+  assert.match(macosJob, /- name: Install Playwright Chromium\s+run: npx playwright install chromium/);
+  assert.match(windowsJob, /- name: Install Playwright Chromium\s+run: npx playwright install chromium/);
+  assert.match(
+    macosJob,
+    /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e/,
   );
 });
 
@@ -378,6 +676,7 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(macosJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
+  assert.doesNotMatch(macosJob, /verify:macos-local/);
   assert.match(macosJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
   assert.match(
     macosJob,

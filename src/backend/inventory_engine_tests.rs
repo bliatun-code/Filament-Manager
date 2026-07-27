@@ -1,7 +1,8 @@
 use super::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-    DeleteSpoolInput, InventoryEngine, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, WeightSource,
+    CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, ReceiveWishlistItemInput,
+    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
+    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -16,6 +17,71 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-engine-{test_name}-{nanos}.db"))
+}
+
+#[test]
+fn active_printer_changes_increment_printer_revision_once() {
+    let db_path = temp_db_path("active-printer-revision");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "printer_1".to_string(),
+                model: "P1S".to_string(),
+                name: "Workshop".to_string(),
+                ams_units: Some(0),
+                slots_per_ams: Some(4),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .printers;
+
+        engine
+            .set_active_printer(Some(" printer_1 "))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 1
+        );
+        engine
+            .set_active_printer(Some("printer_1"))
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 1
+        );
+        engine
+            .set_active_printer(None)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            before + 2
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("active_printer_changes_increment_printer_revision_once failed: {message}");
+    }
 }
 
 #[test]
@@ -1390,5 +1456,171 @@ fn update_spool_ownership_marks_borrowed_in_spool_as_owned_without_deleting_it()
         panic!(
             "update_spool_ownership_marks_borrowed_in_spool_as_owned_without_deleting_it failed: {message}"
         );
+    }
+}
+
+#[test]
+fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
+    let db_path = temp_db_path("wishlist-partial-receipt");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PETG",
+                filament_name: "Basic",
+                color_name: "Ocean Blue",
+                hex_color: Some("#2266aa"),
+                product_url: None,
+                vendor: Some("eSUN"),
+                default_weight: Some(850),
+            })
+            .map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_wishlist_item(CreateWishlistItemInput {
+                id: "wish_partial_1".to_string(),
+                master_id: Some(master_id.clone()),
+                material: "PETG".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Ocean Blue".to_string(),
+                vendor: Some("eSUN".to_string()),
+                quantity: Some(3),
+                note: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .update_wishlist_item_status(UpdateWishlistStatusInput {
+                item_id: "wish_partial_1".to_string(),
+                status: "ON_ORDER".to_string(),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let partial = engine
+            .receive_wishlist_item(ReceiveWishlistItemInput {
+                item_id: "wish_partial_1".to_string(),
+                quantity: 2,
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(partial.received_quantity, 2);
+        assert_eq!(partial.spool_ids.len(), 2);
+        assert_eq!(partial.remaining_quantity, 1);
+        assert_eq!(partial.status, "ON_ORDER");
+
+        let partial_wishlist = engine
+            .list_wishlist_items(10)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(partial_wishlist[0].quantity, 1);
+        assert_eq!(partial_wishlist[0].status, "ON_ORDER");
+        let partial_spools = engine
+            .list_spools(10, 0)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(partial_spools.len(), 2);
+        assert!(partial_spools.iter().all(|row| {
+            row.spool.master_id == master_id
+                && row.spool.initial_weight_g == Some(850)
+                && row.spool.spool_tare_weight_g == Some(224)
+        }));
+
+        let complete = engine
+            .receive_wishlist_item(ReceiveWishlistItemInput {
+                item_id: "wish_partial_1".to_string(),
+                quantity: 1,
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(complete.received_quantity, 1);
+        assert_eq!(complete.remaining_quantity, 0);
+        assert_eq!(complete.status, "RECEIVED");
+        assert_eq!(
+            engine
+                .list_spools(10, 0)
+                .map_err(|error| error.to_string())?
+                .len(),
+            3
+        );
+
+        let completed_wishlist = engine
+            .list_wishlist_items(10)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(completed_wishlist[0].quantity, 0);
+        assert_eq!(completed_wishlist[0].status, "RECEIVED");
+        assert!(engine
+            .receive_wishlist_item(ReceiveWishlistItemInput {
+                item_id: "wish_partial_1".to_string(),
+                quantity: 1,
+            })
+            .is_err());
+        assert!(engine
+            .update_wishlist_item_status(UpdateWishlistStatusInput {
+                item_id: "wish_partial_1".to_string(),
+                status: "RECEIVED".to_string(),
+            })
+            .is_err());
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity failed: {message}");
+    }
+}
+
+#[test]
+fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
+    let db_path = temp_db_path("wishlist-receipt-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_wishlist_item(CreateWishlistItemInput {
+                id: "wish_rollback_1".to_string(),
+                master_id: None,
+                material: "PLA".to_string(),
+                filament_name: "Matte".to_string(),
+                color_name: "Red".to_string(),
+                vendor: Some("Generic".to_string()),
+                quantity: Some(2),
+                note: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_second_wishlist_receipt_spool
+                 BEFORE INSERT ON filament_spools
+                 WHEN (SELECT COUNT(*) FROM filament_spools) >= 1
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced receipt failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert!(engine
+            .receive_wishlist_item(ReceiveWishlistItemInput {
+                item_id: "wish_rollback_1".to_string(),
+                quantity: 2,
+            })
+            .is_err());
+        assert!(engine
+            .list_spools(10, 0)
+            .map_err(|error| error.to_string())?
+            .is_empty());
+        let wishlist = engine
+            .list_wishlist_items(10)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(wishlist[0].quantity, 2);
+        assert_eq!(wishlist[0].status, "WISHLIST");
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("receive_wishlist_item_rolls_back_spools_and_quantity_together failed: {message}");
     }
 }

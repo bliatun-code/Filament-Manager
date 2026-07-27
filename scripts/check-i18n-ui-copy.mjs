@@ -6,6 +6,9 @@ import { collectUiSourceFiles } from "./ui-source-utils.mjs";
 
 const repoRoot = resolve(".");
 const sourceRoot = resolve(repoRoot, "ui", "src");
+const intentionalNonLocalizedQaFiles = new Set([
+  resolve(sourceRoot, "accessibility", "app_modal_accessibility_harness.tsx"),
+]);
 const require = createRequire(import.meta.url);
 const ts = require(resolve(repoRoot, "ui", "node_modules", "typescript"));
 const userCopyAttributes = new Set(["alt", "aria-label", "placeholder", "title"]);
@@ -71,9 +74,13 @@ export function validateStaticUiCopy(findings) {
     );
 }
 
+export function shouldCheckStaticUiCopyFile(file) {
+  return !intentionalNonLocalizedQaFiles.has(resolve(file));
+}
+
 function runStaticUiCopyCheck() {
   const findings = collectUiSourceFiles(sourceRoot)
-    .filter((file) => file.endsWith(".tsx"))
+    .filter((file) => file.endsWith(".tsx") && shouldCheckStaticUiCopyFile(file))
     .flatMap((file) =>
       collectStaticUiCopyFromSource(readFileSync(file, "utf8"), file).map((finding) => ({
         ...finding,

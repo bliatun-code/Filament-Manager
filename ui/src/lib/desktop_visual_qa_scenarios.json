@@ -7,6 +7,13 @@
       "category": "overview"
     },
     {
+      "id": "dashboard-onboarding",
+      "aliases": ["onboarding", "getting-started"],
+      "page": "dashboard",
+      "category": "workflow",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "inventory-overview",
       "aliases": ["inventory"],
       "page": "inventory",
@@ -90,7 +97,18 @@
       "id": "printer-board",
       "aliases": ["printers"],
       "page": "printers",
-      "category": "overview"
+      "category": "overview",
+      "readiness": {
+        "token": "printer-live-telemetry",
+        "timeoutMs": 35000
+      }
+    },
+    {
+      "id": "printer-overview",
+      "aliases": ["printers-static", "printer-summary"],
+      "page": "printers",
+      "category": "overview",
+      "requiresDatabaseFixture": true
     },
     {
       "id": "add-printer",
@@ -136,6 +154,14 @@
       "page": "settings",
       "settingsTab": "GENERAL",
       "category": "settings"
+    },
+    {
+      "id": "settings-updates",
+      "aliases": ["update-check", "settings-update-check"],
+      "page": "settings",
+      "settingsTab": "GENERAL",
+      "category": "workflow",
+      "requiresDatabaseFixture": true
     },
     {
       "id": "settings-inventory-label-sheet",
@@ -256,6 +282,14 @@
       "page": "settings",
       "settingsTab": "MAINTENANCE",
       "category": "settings"
+    },
+    {
+      "id": "settings-application-diagnostics",
+      "aliases": ["settings-diagnostics", "application-diagnostics"],
+      "page": "settings",
+      "settingsTab": "MAINTENANCE",
+      "category": "settings",
+      "requiresDatabaseFixture": true
     },
     {
       "id": "statistics-overview",

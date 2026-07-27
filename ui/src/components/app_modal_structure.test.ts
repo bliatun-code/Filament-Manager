@@ -21,6 +21,7 @@ test("AppModal owns dialog naming, focus lifecycle, trapping and Escape close", 
   assert.match(appModal, /modalFocusableElements\(panel\)\[0\] \?\? panel/);
   assert.match(appModal, /returnFocus\?\.isConnected/);
   assert.match(appModalFocus, /resolveAppModalTabTarget/);
+  assert.match(appModalFocus, /"summary"/);
   assert.match(appModal, /if \(event\.key === "Escape"\)/);
   assert.match(appModal, /if \(onBackdropClose\)/);
   assert.match(appModalContext, /AppModalTitleIdContext/);

@@ -6,12 +6,16 @@ import {
   fetchCachedLibrarySyncWishlist,
   fetchLibrarySyncWishlistItems,
   listWishlistItems,
+  receiveLibrarySyncHostWishlistItem,
+  receiveWishlistItem,
   updateLibrarySyncHostWishlistItemStatus,
   updateWishlistItemStatus,
   type CreateWishlistItemInput,
   type MasterCatalogRow,
+  type ReceiveWishlistItemInput,
   type UpdateWishlistStatusInput,
   type WishlistItemRow,
+  type WishlistReceiptResult,
 } from "./tauri_client";
 import {
   requireClientHostWriteTarget,
@@ -64,6 +68,8 @@ type WishlistDataSourceDependencies = {
   createLocalWishlistItem?: typeof createWishlistItem;
   updateHostWishlistItemStatus?: typeof updateLibrarySyncHostWishlistItemStatus;
   updateLocalWishlistItemStatus?: typeof updateWishlistItemStatus;
+  receiveHostWishlistItem?: typeof receiveLibrarySyncHostWishlistItem;
+  receiveLocalWishlistItem?: typeof receiveWishlistItem;
   deleteHostWishlistItem?: typeof deleteLibrarySyncHostWishlistItem;
   deleteLocalWishlistItem?: typeof deleteWishlistItem;
 };
@@ -121,6 +127,17 @@ export function normalizeWishlistStatus(statusRaw: string): WishlistStatus {
 
 export function canStockWishlistItem(statusRaw: string): boolean {
   return normalizeWishlistStatus(statusRaw) !== "RECEIVED";
+}
+
+export function normalizeWishlistReceiptQuantity(
+  quantityRaw: string | number,
+  remainingQuantity: number,
+): number {
+  const parsed = Number.parseInt(String(quantityRaw).trim(), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1;
+  }
+  return Math.min(parsed, Math.max(1, Math.trunc(remainingQuantity)));
 }
 
 export function listWishlistCatalogMastersByVendor(
@@ -283,6 +300,27 @@ export async function updateWishlistEntryStatus(
   }
 
   await updateLocalWishlistItemStatus(input);
+}
+
+export async function receiveWishlistEntry(
+  input: ReceiveWishlistItemInput,
+  options: WishlistDataSourceOptions = {},
+  dependencies: WishlistDataSourceDependencies = {},
+): Promise<WishlistReceiptResult> {
+  const receiveHostWishlistItem =
+    dependencies.receiveHostWishlistItem ?? receiveLibrarySyncHostWishlistItem;
+  const receiveLocalWishlistItem =
+    dependencies.receiveLocalWishlistItem ?? receiveWishlistItem;
+
+  if (options.clientReadOnly) {
+    const hostTarget = requireClientHostWriteTarget(
+      options,
+      missingWishlistHostTargetMessage,
+    );
+    return receiveHostWishlistItem(hostTarget.baseUrl, hostTarget.libraryId, input);
+  }
+
+  return receiveLocalWishlistItem(input);
 }
 
 export async function deleteWishlistEntry(

@@ -1,4 +1,4 @@
-use super::{is_live_print_running, merge_tray_payload};
+use super::{is_live_print_running, merge_tray_payload, run_bounded_blocking_polls};
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentDatabase, FilamentMasterSummary, ManualMasterInput,
     PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow, SpoolRow,
@@ -14,9 +14,40 @@ use serde_json::Value;
 use std::io::Cursor;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 type LiveUsageSessionRow = (String, String, i64, Option<i64>, Option<String>);
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn live_observer_bounds_parallel_printer_polls_and_isolates_failures() {
+    let active = Arc::new(AtomicUsize::new(0));
+    let completed = Arc::new(AtomicUsize::new(0));
+    let max_active = Arc::new(AtomicUsize::new(0));
+    let errors = run_bounded_blocking_polls((0..8).collect(), 3, {
+        let active = Arc::clone(&active);
+        let completed = Arc::clone(&completed);
+        let max_active = Arc::clone(&max_active);
+        move |index| {
+            let current = active.fetch_add(1, Ordering::SeqCst) + 1;
+            max_active.fetch_max(current, Ordering::SeqCst);
+            std::thread::sleep(Duration::from_millis(15));
+            active.fetch_sub(1, Ordering::SeqCst);
+            completed.fetch_add(1, Ordering::SeqCst);
+            if index == 4 {
+                Err("printer 4 offline".to_string())
+            } else {
+                Ok(())
+            }
+        }
+    })
+    .await;
+
+    assert_eq!(completed.load(Ordering::SeqCst), 8);
+    assert!((2..=3).contains(&max_active.load(Ordering::SeqCst)));
+    assert_eq!(errors, vec!["printer 4 offline"]);
+}
 
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
@@ -176,6 +207,104 @@ fn make_inventory_spool_with_status(
     let mut row = make_inventory_spool(id, rfid_tag);
     row.spool.status = status.to_string();
     row
+}
+
+#[test]
+fn enrich_with_match_status_finds_exact_rfid_after_first_5000_spools() {
+    let db_path = temp_db_path("exact-rfid-after-first-5000");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "P1S", "Printer 1", 1, 4)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Basic",
+                color_name: "Black",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let transaction = db
+            .connection()
+            .unchecked_transaction()
+            .map_err(|error| error.to_string())?;
+        {
+            let mut insert = transaction
+                .prepare(
+                    "INSERT INTO filament_spools (
+                        id, master_id, rfid_tag, status, ownership_type,
+                        initial_weight_g, current_weight_g, remaining_g,
+                        created_at, updated_at
+                     ) VALUES (?1, ?2, ?3, 'IN_STOCK', 'OWNED', 1000, 1000, 1000, ?4, ?4)",
+                )
+                .map_err(|error| error.to_string())?;
+            for index in 1..=5000 {
+                insert
+                    .execute((
+                        format!("spool_{index:05}"),
+                        &master_id,
+                        Option::<&str>::None,
+                        "2026-01-01 00:00:00",
+                    ))
+                    .map_err(|error| error.to_string())?;
+            }
+            insert
+                .execute((
+                    "spool_exact_after_5000",
+                    &master_id,
+                    Some("  TARGET-RFID  "),
+                    "2000-01-01 00:00:00",
+                ))
+                .map_err(|error| error.to_string())?;
+        }
+        transaction.commit().map_err(|error| error.to_string())?;
+
+        let capped_rows = db
+            .list_spools_with_master(5000, 0)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(capped_rows.len(), 5000);
+        assert!(capped_rows
+            .iter()
+            .all(|row| row.spool.id != "spool_exact_after_5000"));
+
+        let mut observed = super::default_offline_state();
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            tray_uuid: Some("target-rfid".to_string()),
+            observed_rfid_tag: None,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Basic".to_string()),
+            color_hex: Some("#111111".to_string()),
+            ..make_tray()
+        }];
+        let enriched = crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(
+            enriched.trays[0].matched_inventory_spool_id.as_deref(),
+            Some("spool_exact_after_5000")
+        );
+        assert_eq!(
+            enriched.trays[0].matched_inventory_mode.as_deref(),
+            Some("exact_rfid")
+        );
+        assert_eq!(
+            enriched.trays[0].match_status.as_deref(),
+            Some("clear_match")
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "enrich_with_match_status_finds_exact_rfid_after_first_5000_spools failed: {message}"
+        );
+    }
 }
 
 #[test]

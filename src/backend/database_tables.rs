@@ -27,6 +27,22 @@ pub const FULL_BACKUP_TABLES: [&str; 24] = [
     "sync_queue",
 ];
 
+/// Tables added after `filament-manager-backup-v1` was first released.
+///
+/// The v1 format did not include an explicit schema version, so an otherwise
+/// complete v1 backup created by an older release cannot be distinguished by
+/// metadata alone. Keep these additions optional when checking the minimum
+/// safe table set, while still reporting them as missing in validation stats.
+pub(crate) const LEGACY_OPTIONAL_FULL_BACKUP_TABLES: [&str; 3] = [
+    "printer_live_events",
+    "printer_live_usage_sessions",
+    "printer_live_usage_session_spools",
+];
+
+pub(crate) fn is_required_full_backup_table(table: &str) -> bool {
+    !LEGACY_OPTIONAL_FULL_BACKUP_TABLES.contains(&table)
+}
+
 pub const RESET_APP_STATE_TABLES: [&str; 22] = [
     "trusted_lan_pairings",
     "trusted_lan_paired_browsers",
@@ -52,23 +68,30 @@ pub const RESET_APP_STATE_TABLES: [&str; 22] = [
     "printers",
 ];
 
-pub(crate) fn should_import_backup_row(table: &str, row: &Map<String, Value>) -> bool {
+pub(crate) fn portable_backup_row(
+    table: &str,
+    mut row: Map<String, Value>,
+) -> Option<Map<String, Value>> {
     match table {
-        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue" => false,
-        "settings" => should_import_settings_backup_row(row),
-        _ => true,
+        "trusted_lan_pairings" | "trusted_lan_paired_browsers" | "sync_queue" => return None,
+        "settings" if !is_portable_backup_setting_row(&row) => return None,
+        "printers" => {
+            // These legacy columns contain device-local connection material and
+            // must never travel with a portable library backup.
+            row.remove("ip_address");
+            row.remove("access_token");
+        }
+        _ => {}
     }
+    Some(row)
 }
 
-fn should_import_settings_backup_row(row: &Map<String, Value>) -> bool {
+fn is_portable_backup_setting_row(row: &Map<String, Value>) -> bool {
     let Some(key) = row.get("key").and_then(Value::as_str).map(str::trim) else {
         return false;
     };
-    if key.starts_with("trusted_lan_") {
-        return false;
-    }
-    if key == "library_sync_library_id" {
-        return true;
-    }
-    !key.starts_with("library_sync_")
+    matches!(
+        key,
+        "active_printer_id" | "library_sync_library_id" | "theme_mode"
+    )
 }

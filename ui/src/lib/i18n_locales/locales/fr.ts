@@ -70,6 +70,26 @@ export const frDictionary: DictionaryNode = {
     generic: "Générique",
   },
   dashboard: {
+    onboardingInventoryBody:
+      "Commencez par une bobine, ou importez un stock ou une sauvegarde existants.",
+    onboardingInventoryTitle: "Ajouter ou importer le stock",
+    onboardingPrinterBody:
+      "Ajoutez une imprimante compatible. Bambu Live peut être activé lorsqu’il est disponible.",
+    onboardingPrinterTitle: "Configurer une imprimante",
+    onboardingCompanionBody:
+      "Activez l’accès par navigateur sur un réseau de confiance, ou associez cet ordinateur à un hôte.",
+    onboardingCompanionTitle: "Configurer l’accès par navigateur",
+    onboardingBackupBody:
+      "Créez une sauvegarde complète lorsque votre bibliothèque est prête.",
+    onboardingEyebrow: "Bien démarrer",
+    onboardingTitle: "Terminer la configuration",
+    onboardingDescription:
+      "Suivez les étapes adaptées à votre installation. L’imprimante et l’accès par navigateur sont facultatifs.",
+    onboardingProgress: "{completed} sur {total} terminé(s)",
+    onboardingDismiss: "Fermer la liste",
+    onboardingComplete: "Terminé",
+    onboardingOptional: "Facultatif",
+    onboardingPending: "À faire",
     subtitle: "Stock, consommation et activité des imprimantes en un coup d’œil.",
     totalSpools: "Bobines au total",
     totalSpoolsSubtitle: "Tous emplacements confondus",
@@ -137,7 +157,7 @@ export const frDictionary: DictionaryNode = {
     healthRestock: "Réapprovisionnement conseillé",
     healthBalanceHint:
       "Surveillez ensemble les stocks faibles, les prêts, les commandes et les emplacements chargés.",
-    noInventoryData: "Aucune donnée de stock",
+    noInventoryData: "Données insuffisantes",
     addRollsForHealth: "Ajoutez des bobines pour démarrer le suivi du stock.",
     syncedFromDb: "Synchronisé depuis la base locale",
     synced: "Synchronisé",
@@ -1139,6 +1159,20 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    updates: "Mises à jour",
+    updateCheckHint:
+      "GitHub n’est consulté qu’à votre demande. Le téléchargement et l’installation restent manuels.",
+    checkForUpdates: "Rechercher des mises à jour",
+    checkingForUpdates: "Recherche en cours…",
+    updateAvailable: "La version {version} est disponible.",
+    updateUpToDate: "La version {version} est la dernière version publiée.",
+    updateDevelopmentBuild:
+      "Cette version est plus récente que la dernière version publiée ({version}).",
+    updateCheckFailed:
+      "Impossible de rechercher les mises à jour. Réessayez plus tard.",
+    updateInfoUnavailable:
+      "Les informations sur la version ne sont pas disponibles pour le moment. Réessayez plus tard.",
+    viewRelease: "Voir la version",
     tabGeneral: "Général",
     tabLibrary: "Bibliothèque et web app",
     tabCompanion: "Accès navigateur",
@@ -1205,6 +1239,8 @@ export const frDictionary: DictionaryNode = {
     current: "Actuelle",
     maintenance: "Maintenance",
     backupTitle: "Sauvegarde",
+    latestFullBackupExportOnDevice: "Dernière sauvegarde complète exportée depuis cet appareil",
+    noFullBackupExportRecordedOnDevice: "Aucune sauvegarde complète n’a encore été exportée depuis cet appareil",
     exportFullBackup: "Exporter la sauvegarde complète (JSON)",
     importFullBackup: "Importer la sauvegarde complète",
     validateBackup: "Valider le fichier de sauvegarde",
@@ -1507,6 +1543,25 @@ export const frDictionary: DictionaryNode = {
     desktopOnly: "Les paramètres sont disponibles uniquement dans l’application de bureau.",
     backupDescription:
       "Exportez une sauvegarde JSON complète du stock, de l’historique et des imprimantes configurées.",
+    applicationDiagnosticsTitle: "Diagnostics de l’application",
+    applicationDiagnosticsDescription: "Vérifiez l’état de la base de données locale et téléchargez un fichier d’assistance filtré, sans données de stock ni identifiants de connexion.",
+    diagnosticsHealthy: "Aucun problème",
+    diagnosticsNeedsAttention: "À vérifier",
+    diagnosticsUnavailable: "Base de données indisponible",
+    diagnosticsRefreshFailed: "Impossible d’actualiser les diagnostics de l’application.",
+    diagnosticsLastGoodVisible: "Le dernier résultat valide reste affiché.",
+    diagnosticsSchema: "Version du schéma (actuelle / prise en charge)",
+    diagnosticsDatabaseSize: "Taille de la base de données",
+    diagnosticsQuickCheck: "Contrôle rapide",
+    diagnosticsForeignKeyCheck: "Contrôle des clés étrangères",
+    diagnosticsJournalMode: "Mode de journalisation",
+    diagnosticsLocalPath: "Chemin local de la base de données",
+    diagnosticsCheckOk: "Réussi",
+    diagnosticsCheckIssues: "Problèmes détectés",
+    diagnosticsCheckUnavailable: "Indisponible",
+    diagnosticsDownloadSupport: "Télécharger le fichier d’assistance filtré",
+    diagnosticsSupportDownloaded: "Fichier d’assistance filtré téléchargé.",
+    diagnosticsSupportDownloadFailed: "Impossible de télécharger le fichier d’assistance filtré.",
     clientHostOnlyMaintenance:
       "Cet appareil est un client. La sauvegarde complète est exportée depuis l’hôte associé. Les imports, réinitialisations et réparations doivent être exécutés sur l’hôte.",
     clientHostBackupRequiresPairing:

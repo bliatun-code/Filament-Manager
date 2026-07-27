@@ -18,6 +18,22 @@ const inventoryDetailModalSource = readFileSync(
   new URL("../components/inventory_spool_detail_modal.tsx", import.meta.url),
   "utf8",
 );
+const inventoryPageDataSource = readFileSync(
+  new URL("../lib/use_inventory_page_data.ts", import.meta.url),
+  "utf8",
+);
+const inventoryCatalogReloadSource = readFileSync(
+  new URL("../lib/use_inventory_catalog_reload.ts", import.meta.url),
+  "utf8",
+);
+const inventorySelectedDetailStateSource = readFileSync(
+  new URL("../lib/use_inventory_selected_spool_detail_state.ts", import.meta.url),
+  "utf8",
+);
+const inventoryFiltersSource = readFileSync(
+  new URL("../lib/use_inventory_filters.ts", import.meta.url),
+  "utf8",
+);
 
 test("inventory header actions stay inside the page header", () => {
   const headerIndex = inventoryPageWorkspaceSource.indexOf('<div className="page-header">');
@@ -77,6 +93,61 @@ test("inventory result summary counts all active filters and offers reset", () =
   assert.match(inventoryControlsSource, /activeFilterCount > 0/);
   assert.match(inventoryControlsSource, /onClick=\{onResetFilters\}/);
   assert.match(inventoryControlsSource, /inventory\.resetFilters/);
+});
+
+test("inventory layout preferences stay deterministic in visual QA and separate from filters", () => {
+  assert.match(
+    inventoryPageSource,
+    /deterministicPagePreferences: Boolean\(desktopVisualQaScenario \|\| detailVisualFixture\)/,
+  );
+  const resetFiltersSource = inventoryFiltersSource.slice(
+    inventoryFiltersSource.indexOf("const resetFilters"),
+    inventoryFiltersSource.indexOf("const showLowStockList"),
+  );
+  const lowStockSource = inventoryFiltersSource.slice(
+    inventoryFiltersSource.indexOf("const showLowStockList"),
+    inventoryFiltersSource.indexOf("return {"),
+  );
+  assert.doesNotMatch(resetFiltersSource, /setInventoryView/);
+  assert.match(lowStockSource, /setInventoryViewState\("LIST"\)/);
+  assert.doesNotMatch(lowStockSource, /writeInventoryPagePreferences/);
+});
+
+test("inventory refreshes every page dataset without a persistent header action", () => {
+  const headerActionsSource = inventoryControlsSource.slice(
+    inventoryControlsSource.indexOf("export function InventoryHeaderActions"),
+    inventoryControlsSource.indexOf("export function InventoryControlsPanel"),
+  );
+  const refreshSource = inventoryPageDataSource.slice(
+    inventoryPageDataSource.indexOf("const refreshInventoryData"),
+    inventoryPageDataSource.indexOf("return {"),
+  );
+
+  assert.doesNotMatch(headerActionsSource, /PageRefreshButton/);
+  assert.doesNotMatch(headerActionsSource, /onRefresh/);
+  assert.match(inventoryPageWorkspaceSource, /PageLoadErrorBanner/);
+  assert.match(inventoryPageSource, /onRetryLoadError=\{refreshInventoryPage\}/);
+  assert.match(inventoryPageDataSource, /usePageRefreshState/);
+  assert.match(refreshSource, /reloadSpools\(reportResult\)/);
+  assert.match(refreshSource, /reloadWishlist\(reportResult\)/);
+  assert.match(refreshSource, /reloadActiveLoans\(reportResult\)/);
+  assert.match(refreshSource, /reloadPrinterOverview\(reportResult\)/);
+  assert.match(refreshSource, /reloadCatalog\(reportResult\)/);
+  assert.match(refreshSource, /reloadSpoolDetail\(selectedSpoolId, reportResult\)/);
+  assert.match(refreshSource, /completeRefresh\(\)/);
+  assert.match(refreshSource, /failRefresh\(/);
+});
+
+test("inventory loaders preserve last-good state on transient failures", () => {
+  assert.doesNotMatch(inventoryPageDataSource, /setWishlistItems\(\[\]\)/);
+  assert.doesNotMatch(inventoryPageDataSource, /setActiveLoans\(\[\]\)/);
+  assert.doesNotMatch(inventoryPageDataSource, /setPrinterOverview\(\[\]\)/);
+  assert.doesNotMatch(inventoryPageDataSource, /setHistoryRows\(\[\]\)/);
+  assert.doesNotMatch(inventoryPageDataSource, /setUsagePoints\(\[\]\)/);
+  assert.doesNotMatch(inventoryCatalogReloadSource, /setMasters\(\[\]\)/);
+  assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current !== selectedSpool\.id/);
+  assert.match(inventoryPageSource, /error=\{error\}/);
+  assert.match(inventoryPageSource, /loadError=\{loadError\}/);
 });
 
 test("history visual QA waits for rows and targets the modal scroll container", () => {

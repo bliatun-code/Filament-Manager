@@ -33,16 +33,14 @@ test("InventorySpoolCollection shares focus treatment for roll buttons", () => {
   );
 });
 
-test("InventorySpoolCollection lets grouped cards reveal every roll", () => {
-  assert.match(source, /const groupExpanded = expandedGroupKeys\.has\(group\.key\)/);
-  assert.match(
-    source,
-    /const visibleRolls = groupExpanded \? sortedRolls : sortedRolls\.slice\(0, 3\)/,
-  );
+test("InventorySpoolCollection reveals large grouped roll sets in bounded pages", () => {
+  assert.match(source, /const groupRollLimit = visibleRollLimitsByGroup\.get\(group\.key\) \?\? 3/);
+  assert.match(source, /const visibleRolls = sortedRolls\.slice\(0, groupRollLimit\)/);
+  assert.match(source, /Math\.min\(rollCount, currentLimit \+ 100\)/);
   assert.match(source, /aria-expanded=\{groupExpanded\}/);
   assert.match(source, /aria-controls=\{rollListId\}/);
   assert.match(source, /id=\{rollListId\}/);
-  assert.match(source, /toggleGroupExpanded\(group\.key\)/);
+  assert.match(source, /updateGroupRollLimit\(group\.key, group\.rolls\.length\)/);
   assert.match(source, /inventory\.showAllRolls/);
   assert.match(source, /inventory\.showFewerRolls/);
   assert.doesNotMatch(

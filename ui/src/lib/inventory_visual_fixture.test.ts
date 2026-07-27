@@ -23,4 +23,6 @@ test("inventory detail visual fixture opens a selected spool with RFID context",
   assert.equal(selectedSlot?.spool_id, fixture.selectedSpoolId);
   assert.ok(fixture.rfidCaptureFieldsBySlotId[fixture.selectedRfidCaptureSlotId]?.length);
   assert.ok(fixture.historyRows.some((row) => row.event_type === "RFID_TAG_UPDATED"));
+  assert.ok(fixture.spools.every((spool) => !/[æøå]/iu.test(spool.location ?? "")));
+  assert.ok(fixture.spools.every((spool) => !/[æøå]/iu.test(spool.homeLocation ?? "")));
 });

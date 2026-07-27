@@ -6,6 +6,7 @@ import {
   InventoryHeaderActions,
 } from "./inventory_controls_panel";
 import { InventorySpoolCollection } from "./inventory_spool_collection";
+import { PageLoadErrorBanner } from "./page_load_error_banner";
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 
@@ -21,6 +22,10 @@ type InventoryPageWorkspaceProps = {
   error: string | null;
   headerActionsProps: ComponentProps<typeof InventoryHeaderActions>;
   infoMessage: string | null;
+  loadError: string | null;
+  loadErrorRetryDisabled: boolean;
+  loadErrorRetrying: boolean;
+  onRetryLoadError: () => void;
   showRollModal: boolean;
 };
 
@@ -36,6 +41,10 @@ export function InventoryPageWorkspace({
   error,
   headerActionsProps,
   infoMessage,
+  loadError,
+  loadErrorRetryDisabled,
+  loadErrorRetrying,
+  onRetryLoadError,
   showRollModal,
 }: InventoryPageWorkspaceProps) {
   const { locale, t } = useI18n();
@@ -61,6 +70,16 @@ export function InventoryPageWorkspace({
         <FeedbackBanner tone="danger" className="mt-4">
           {error}
         </FeedbackBanner>
+      ) : null}
+
+      {loadError ? (
+        <PageLoadErrorBanner
+          message={loadError}
+          onRetry={onRetryLoadError}
+          retryDisabled={loadErrorRetryDisabled}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={loadErrorRetrying}
+        />
       ) : null}
 
       {!error && infoMessage && !addModalActive && !showRollModal ? (
