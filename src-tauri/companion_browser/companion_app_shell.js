@@ -233,7 +233,7 @@ function renderDetailModal(options) {
       selectedSpool,
       selectedDetail: detailMatchesSelection ? state.selectedDetail : null,
       detailFeedback,
-      busy: state.busy,
+      busy: state.busy || state.detailBusy,
       compactDetail: state.layoutMode === "phone",
       findAssignedSlotForSpool,
       loanActionState,

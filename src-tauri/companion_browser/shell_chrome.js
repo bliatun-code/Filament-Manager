@@ -534,6 +534,7 @@ export function renderDetailModalShell(options) {
           class="detail-panel detail-modal surface-panel"
           role="dialog"
           aria-modal="true"
+          aria-busy="${detailBusy ? "true" : "false"}"
           aria-labelledby="companion-detail-dialog-title"
           tabindex="-1"
           data-companion-overlay="detail"
