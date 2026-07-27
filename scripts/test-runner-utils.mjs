@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 export function collectTestFiles(directory, pattern) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -32,6 +33,10 @@ export function normalizeNodeTestArgs(argv) {
     normalized.push(arg);
   }
   return normalized;
+}
+
+export function toNodeImportSpecifier(filePath) {
+  return pathToFileURL(filePath).href;
 }
 
 export function runNodeTestCommand(args, options = {}) {
