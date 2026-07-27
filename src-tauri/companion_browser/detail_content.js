@@ -121,7 +121,7 @@ export function renderSelectedSpoolDetailBody(options) {
           >
             <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
             ${renderDetailField({
-              body: `<input class="weight-input" name="grams" type="number" min="0" step="1" value="${escapeHtml(defaultMeasuredWeight)}" />`,
+              body: `<input class="weight-input" name="grams" type="number" min="0" step="1" value="${escapeHtml(defaultMeasuredWeight)}" ${busy ? "disabled" : ""} />`,
               escapeHtml,
               label: t(locale, "detail.measuredWeightGrams", "Measured total weight (g)"),
             })}
@@ -133,7 +133,7 @@ export function renderSelectedSpoolDetailBody(options) {
           >
             <input type="hidden" name="spool-id" value="${escapeHtml(selectedSpool.spool.id)}" />
             ${renderDetailField({
-              body: `<input class="weight-input" name="tare-grams" type="number" min="0" step="1" value="${escapeHtml(detailTareWeight)}" />`,
+              body: `<input class="weight-input" name="tare-grams" type="number" min="0" step="1" value="${escapeHtml(detailTareWeight)}" ${busy ? "disabled" : ""} />`,
               escapeHtml,
               label: t(locale, "detail.emptySpoolWeight", "Empty spool weight (g)"),
             })}

@@ -313,7 +313,9 @@ async function updateWeight(page, baseUrl, timeoutMs, dbPath, spoolId, record) {
     record.initialWeight,
   );
   await row.click();
-  const form = page.locator('[data-action="update-weight-form"]');
+  const readyDetail = page.locator('.detail-modal[aria-busy="false"]');
+  await readyDetail.waitFor({ state: "visible", timeout: timeoutMs });
+  const form = readyDetail.locator('[data-action="update-weight-form"]');
   await form.waitFor({ state: "visible", timeout: timeoutMs });
   const gramsInput = form.locator('input[name="grams"]');
   const expectedWeight = String(record.measuredWeight);
