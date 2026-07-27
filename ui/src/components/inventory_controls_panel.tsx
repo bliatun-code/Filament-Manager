@@ -5,7 +5,6 @@ import type { OwnershipFilter, StatusFilter } from "../lib/inventory_list_model"
 import type { InventoryViewMode } from "../lib/inventory_page_preferences";
 import { materialTone } from "../lib/material_theme";
 import { PageHeaderButton } from "./page_header_button";
-import { PageRefreshButton } from "./page_refresh_button";
 
 export type { InventoryViewMode };
 
@@ -47,12 +46,9 @@ type InventoryHeaderActionsProps = {
   onAddSpool: () => void;
   onLoanOutRoll: () => void;
   onLowStockOnlyChange: (value: boolean) => void;
-  onRefresh: () => void;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: StatusFilter) => void;
   primaryActionsDisabled: boolean;
-  refreshDisabled: boolean;
-  refreshing: boolean;
   search: string;
   statusFilter: StatusFilter;
 };
@@ -109,12 +105,9 @@ export function InventoryHeaderActions({
   onAddSpool,
   onLoanOutRoll,
   onLowStockOnlyChange,
-  onRefresh,
   onSearchChange,
   onStatusFilterChange,
   primaryActionsDisabled,
-  refreshDisabled,
-  refreshing,
   search,
   statusFilter,
 }: InventoryHeaderActionsProps) {
@@ -123,12 +116,6 @@ export function InventoryHeaderActions({
   return (
     <div className="page-header-actions">
       <div className="page-header-tools">
-        <PageRefreshButton
-          disabled={refreshDisabled}
-          label={t("common.refresh", "Refresh")}
-          onRefresh={onRefresh}
-          refreshing={refreshing}
-        />
         <PageHeaderButton
           onClick={onAddSpool}
           variant="primary"

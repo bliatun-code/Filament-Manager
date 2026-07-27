@@ -1,5 +1,6 @@
 import { type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
+import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache";
 import { toErrorMessage } from "../lib/error_text";
 import {
   importDataFile,
@@ -102,6 +103,9 @@ export function useSettingsBackupFileActions({
         return;
       }
       const result = await importDataFile(content);
+      if (fullBackupValidation) {
+        clearDashboardPageSnapshot();
+      }
       setLastCatalogReset(null);
       clearBackupValidation();
       await reloadSettings();

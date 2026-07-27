@@ -8,7 +8,7 @@ import { LoanHistoryCard } from "../components/loan_history_card";
 import { LoanOutModal } from "../components/loan_out_modal";
 import { LoanReturnModal } from "../components/loan_return_modal";
 import { PageHeaderButton } from "../components/page_header_button";
-import { PageRefreshButton } from "../components/page_refresh_button";
+import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { neutralChipClass } from "../lib/chip_styles";
 import { downloadTextFile } from "../lib/download_file";
 import { useI18n } from "../lib/i18n";
@@ -338,12 +338,6 @@ export default function LoansPage() {
         </div>
         <div className="page-header-actions page-header-action-grid">
           <div className="page-header-tools">
-            <PageRefreshButton
-              disabled={!tauri || busy || loading}
-              label={t("common.refresh", "Refresh")}
-              onRefresh={() => void reload()}
-              refreshing={refreshing}
-            />
             <PageHeaderButton
               onClick={() => {
                 if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -456,9 +450,13 @@ export default function LoansPage() {
         </FeedbackBanner>
       ) : null}
       {loadError ? (
-        <FeedbackBanner tone="danger" className="mt-4">
-          {loadError}
-        </FeedbackBanner>
+        <PageLoadErrorBanner
+          message={loadError}
+          onRetry={() => void reload()}
+          retryDisabled={!tauri || busy || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
       {clientReadOnly && clientLoanSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">

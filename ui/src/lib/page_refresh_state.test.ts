@@ -16,6 +16,17 @@ test("a refresh after successful data keeps the previous data visible", () => {
   assert.equal(refreshing.refreshing, true);
 });
 
+test("cached successful data starts ready while its background refresh runs", () => {
+  const cached = createPageRefreshState(true, true);
+  const refreshing = reducePageRefreshState(cached, { type: "begin" });
+
+  assert.equal(cached.hasSuccessfulData, true);
+  assert.equal(cached.loading, false);
+  assert.equal(refreshing.hasSuccessfulData, true);
+  assert.equal(refreshing.loading, false);
+  assert.equal(refreshing.refreshing, true);
+});
+
 test("a failed refresh preserves successful-data state and exposes the error", () => {
   const loaded = reducePageRefreshState(createPageRefreshState(true), {
     type: "success",

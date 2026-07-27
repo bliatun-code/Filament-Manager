@@ -7,6 +7,13 @@ import {
   type DashboardStat,
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
+import {
+  beginDashboardPageSnapshotRequest,
+  readDashboardPageSnapshotGeneration,
+  readDashboardPageSnapshot,
+  updateDashboardPageSnapshot,
+  writeDashboardPageSnapshot,
+} from "../lib/dashboard_page_snapshot_cache";
 import { formatDashboardSyncTime } from "../lib/dashboard_sync_time";
 import {
   createLibraryRevisionTracker,
@@ -44,8 +51,6 @@ type DashboardRefreshOutcome = {
   revisionSource: LibraryRevisionSource | null;
   succeeded: boolean;
 };
-
-let cachedGoalMetrics: DashboardGoalMetrics | null = null;
 
 function createDefaultGoalMetrics(): DashboardGoalMetrics {
   return {
@@ -146,8 +151,16 @@ function createDefaultHealth(t: TranslateFn): DashboardHealth {
 
 export function useDashboardPageData(t: TranslateFn, locale: string) {
   const tauri = isTauri();
+  const [initialSnapshot] = useState(() =>
+    readDashboardPageSnapshot(locale),
+  );
+  const dashboardPageSnapshotGenerationRef = useRef(
+    readDashboardPageSnapshotGeneration(),
+  );
   const refreshInFlightRef = useRef(false);
-  const revisionSourceRef = useRef<LibraryRevisionSource | null>(null);
+  const revisionSourceRef = useRef<LibraryRevisionSource | null>(
+    initialSnapshot?.revisionSource ?? null,
+  );
   const revisionTrackerRef = useRef(createLibraryRevisionTracker());
   const {
     beginRefresh,
@@ -156,36 +169,67 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     failRefresh,
     loading,
     refreshing,
-  } = usePageRefreshState(tauri);
+  } = usePageRefreshState(tauri, initialSnapshot !== null);
   const [goalMetrics, setGoalMetrics] = useState<DashboardGoalMetrics>(
-    () => cachedGoalMetrics ?? createDefaultGoalMetrics(),
+    () => initialSnapshot?.goalMetrics ?? createDefaultGoalMetrics(),
   );
-  const [stats, setStats] = useState<DashboardStat[]>(() => createDefaultStats(t));
-  const [activity, setActivity] = useState<ActivityItem[]>(() => createEmptyActivity(t));
-  const [usagePoints, setUsagePoints] = useState<number[]>([0, 0]);
-  const [ownershipLowStock, setOwnershipLowStock] = useState({
-    owned: 0,
-    borrowedIn: 0,
-  });
-  const [ownershipOnHand, setOwnershipOnHand] = useState({
-    total: 0,
-    owned: 0,
-    borrowedIn: 0,
-    inUse: 0,
-  });
-  const [health, setHealth] = useState<DashboardHealth>(() => createDefaultHealth(t));
+  const [stats, setStats] = useState<DashboardStat[]>(
+    () => initialSnapshot?.stats ?? createDefaultStats(t),
+  );
+  const [activity, setActivity] = useState<ActivityItem[]>(
+    () => initialSnapshot?.activity ?? createEmptyActivity(t),
+  );
+  const [usagePoints, setUsagePoints] = useState<number[]>(
+    () => initialSnapshot?.usagePoints ?? [0, 0],
+  );
+  const [ownershipLowStock, setOwnershipLowStock] = useState(
+    () =>
+      initialSnapshot?.ownershipLowStock ?? {
+        owned: 0,
+        borrowedIn: 0,
+      },
+  );
+  const [ownershipOnHand, setOwnershipOnHand] = useState(
+    () =>
+      initialSnapshot?.ownershipOnHand ?? {
+        total: 0,
+        owned: 0,
+        borrowedIn: 0,
+        inUse: 0,
+      },
+  );
+  const [health, setHealth] = useState<DashboardHealth>(
+    () => initialSnapshot?.health ?? createDefaultHealth(t),
+  );
   const [lastSyncLabel, setLastSyncLabel] = useState(
-    t("dashboard.syncedFromDb", "Synced from local DB"),
+    () =>
+      initialSnapshot?.lastSyncLabel ??
+      t("dashboard.syncedFromDb", "Synced from local DB"),
   );
-  const [companionStatus, setCompanionStatus] = useState<TrustedLanCompanionStatus | null>(null);
-  const [dashboardSyncMode, setDashboardSyncMode] = useState<string>("STANDALONE");
+  const [companionStatus, setCompanionStatus] =
+    useState<TrustedLanCompanionStatus | null>(
+      () => initialSnapshot?.companionStatus ?? null,
+    );
+  const [dashboardSyncMode, setDashboardSyncMode] = useState<string>(
+    () => initialSnapshot?.dashboardSyncMode ?? "STANDALONE",
+  );
   const [clientHostCompanionTone, setClientHostCompanionTone] = useState<"off" | "live" | "warn">(
-    "off",
+    () => initialSnapshot?.clientHostCompanionTone ?? "off",
   );
-  const [clientHostDisplayName, setClientHostDisplayName] = useState<string | null>(null);
-  const [clientHostNeedsRepair, setClientHostNeedsRepair] = useState(false);
-  const [clientHostPaired, setClientHostPaired] = useState(false);
-  const [setupDataAvailable, setSetupDataAvailable] = useState(false);
+  const [clientHostDisplayName, setClientHostDisplayName] = useState<
+    string | null
+  >(
+    () => initialSnapshot?.clientHostDisplayName ?? null,
+  );
+  const [clientHostNeedsRepair, setClientHostNeedsRepair] = useState(
+    () => initialSnapshot?.clientHostNeedsRepair ?? false,
+  );
+  const [clientHostPaired, setClientHostPaired] = useState(
+    () => initialSnapshot?.clientHostPaired ?? false,
+  );
+  const [setupDataAvailable, setSetupDataAvailable] = useState(
+    () => initialSnapshot?.setupDataAvailable ?? false,
+  );
 
   const performDashboardRefresh = useCallback(
     async (cancelledRef?: { current: boolean }) => {
@@ -197,13 +241,67 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         } satisfies DashboardRefreshOutcome;
       }
       refreshInFlightRef.current = true;
+      const snapshotRequest = beginDashboardPageSnapshotRequest(
+        dashboardPageSnapshotGenerationRef.current,
+      );
       beginRefresh();
       try {
         const loaded = await loadDashboardData({
           previousClientHostNeedsRepair: clientHostNeedsRepair,
           t,
         });
-        if (cancelledRef?.current) {
+
+        let nextLastSyncLabel: string;
+        if (loaded.syncSource !== "local") {
+          const capturedAt = parseDateTime(loaded.capturedAt);
+          const sourceLabel = t(
+            loaded.syncSource === "client-live"
+              ? "dashboard.clientSnapshotSyncedLive"
+              : loaded.syncSource === "client-cached"
+                ? "dashboard.clientSnapshotSyncedCached"
+                : "dashboard.clientSnapshotOffline",
+            loaded.syncSource === "client-live"
+              ? "Live host snapshot"
+              : loaded.syncSource === "client-cached"
+                ? "Cached host snapshot"
+                : "Host snapshot unavailable",
+          );
+          const timeLabel = capturedAt
+            ? formatDashboardSyncTime(capturedAt, locale)
+            : loaded.capturedAt;
+          nextLastSyncLabel = timeLabel
+            ? `${sourceLabel} ${timeLabel}`
+            : sourceLabel;
+        } else {
+          nextLastSyncLabel = `${t(
+            "dashboard.synced",
+            "Synced",
+          )} ${formatDashboardSyncTime(new Date(), locale)}`;
+        }
+
+        const cacheAccepted = writeDashboardPageSnapshot(
+          {
+            activity: loaded.derived.activity,
+            clientHostCompanionTone: loaded.clientHostCompanionTone,
+            clientHostDisplayName: loaded.clientHostDisplayName,
+            clientHostNeedsRepair: loaded.clientHostNeedsRepair,
+            clientHostPaired: loaded.clientHostPaired,
+            companionStatus: loaded.trustedLan,
+            dashboardSyncMode: loaded.syncMode,
+            goalMetrics: loaded.derived.goalMetrics,
+            health: loaded.derived.health,
+            lastSyncLabel: nextLastSyncLabel,
+            locale,
+            ownershipLowStock: loaded.derived.ownershipLowStock,
+            ownershipOnHand: loaded.derived.ownershipOnHand,
+            revisionSource: loaded.revisionSource,
+            setupDataAvailable: loaded.setupDataAvailable,
+            stats: loaded.derived.stats,
+            usagePoints: loaded.derived.usagePoints,
+          },
+          snapshotRequest,
+        );
+        if (cancelledRef?.current || !cacheAccepted) {
           return {
             revisionPollComplete: false,
             revisionSource: loaded.revisionSource,
@@ -225,33 +323,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         setUsagePoints(loaded.derived.usagePoints);
         setOwnershipOnHand(loaded.derived.ownershipOnHand);
         setOwnershipLowStock(loaded.derived.ownershipLowStock);
-        cachedGoalMetrics = loaded.derived.goalMetrics;
-        setGoalMetrics(cachedGoalMetrics);
+        setGoalMetrics(loaded.derived.goalMetrics);
         setHealth(loaded.derived.health);
-
-        if (loaded.syncSource !== "local") {
-          const capturedAt = parseDateTime(loaded.capturedAt);
-          const sourceLabel = t(
-            loaded.syncSource === "client-live"
-              ? "dashboard.clientSnapshotSyncedLive"
-              : loaded.syncSource === "client-cached"
-                ? "dashboard.clientSnapshotSyncedCached"
-                : "dashboard.clientSnapshotOffline",
-            loaded.syncSource === "client-live"
-              ? "Live host snapshot"
-              : loaded.syncSource === "client-cached"
-                ? "Cached host snapshot"
-                : "Host snapshot unavailable",
-          );
-          const timeLabel = capturedAt
-            ? formatDashboardSyncTime(capturedAt, locale)
-            : loaded.capturedAt;
-          setLastSyncLabel(timeLabel ? `${sourceLabel} ${timeLabel}` : sourceLabel);
-        } else {
-          setLastSyncLabel(
-            `${t("dashboard.synced", "Synced")} ${formatDashboardSyncTime(new Date(), locale)}`,
-          );
-        }
+        setLastSyncLabel(nextLastSyncLabel);
         completeRefresh();
         if (!loaded.revisionPollComplete) {
           revisionTrackerRef.current = markLibraryRevisionUnavailable(
@@ -308,7 +382,14 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         return true;
       }
       if (trustedLanResult.status === "fulfilled") {
-        setCompanionStatus(trustedLanResult.value);
+        const cacheAccepted = updateDashboardPageSnapshot(
+          locale,
+          { companionStatus: trustedLanResult.value },
+          dashboardPageSnapshotGenerationRef.current,
+        );
+        if (cacheAccepted) {
+          setCompanionStatus(trustedLanResult.value);
+        }
       }
 
       const revisions =
@@ -354,7 +435,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       );
       return false;
     },
-    [performDashboardRefresh],
+    [locale, performDashboardRefresh],
   );
 
   useEffect(() => {

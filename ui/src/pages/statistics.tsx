@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
-import { PageRefreshButton } from "../components/page_refresh_button";
+import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { formatDateTime } from "../lib/date_time";
 import {
   DESKTOP_VISUAL_QA_BORROWER_NAME,
@@ -390,16 +390,6 @@ export default function StatisticsPage() {
             )}
           </p>
         </div>
-        <div className="page-header-actions">
-          <div className="page-header-tools">
-            <PageRefreshButton
-              disabled={!tauri || loading}
-              label={t("common.refresh", "Refresh")}
-              onRefresh={() => void reloadData()}
-              refreshing={refreshing}
-            />
-          </div>
-        </div>
       </div>
 
       {!tauri ? (
@@ -408,9 +398,13 @@ export default function StatisticsPage() {
         </FeedbackBanner>
       ) : null}
       {error ? (
-        <FeedbackBanner tone="danger" className="mt-4">
-          {error}
-        </FeedbackBanner>
+        <PageLoadErrorBanner
+          message={error}
+          onRetry={() => void reloadData()}
+          retryDisabled={!tauri || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
       {clientReadOnly && clientStatsSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">

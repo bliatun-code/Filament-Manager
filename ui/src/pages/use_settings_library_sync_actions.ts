@@ -1,4 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache";
 import { toErrorMessage } from "../lib/error_text";
 import {
   clearLibrarySyncClientAuth,
@@ -154,6 +155,7 @@ export function useSettingsLibrarySyncActions({
         }),
       );
 
+      clearDashboardPageSnapshot();
       setLibrarySyncSettings(saved);
       setLibrarySyncModeDraft((saved.mode as LibrarySyncMode) ?? "STANDALONE");
       setLibrarySyncDeviceNameDraft(saved.device_name ?? "");
@@ -335,6 +337,7 @@ export function useSettingsLibrarySyncActions({
           hostDeviceName: validation.device_name,
         }),
       );
+      clearDashboardPageSnapshot();
       const saved = await pairLibrarySyncHost(validation.base_url, pairingInput);
       setLibrarySyncSettings(saved);
       setLibrarySyncModeDraft("CLIENT");
@@ -395,6 +398,7 @@ export function useSettingsLibrarySyncActions({
     setInfo(null);
     try {
       const cleared = await clearLibrarySyncClientAuth();
+      clearDashboardPageSnapshot();
       setLibrarySyncSettings(cleared);
       setLibrarySyncPairingDraft("");
       setInfo(buildLibrarySyncActionMessage("clientAuthCleared", librarySyncActionMessageLabels()));
@@ -430,6 +434,7 @@ export function useSettingsLibrarySyncActions({
     setInfo(null);
     try {
       const cleared = await clearLibrarySyncClientAuth();
+      clearDashboardPageSnapshot();
       setLibrarySyncSettings(cleared);
       setLibrarySyncValidation(null);
       setLibrarySyncPairingDraft("");

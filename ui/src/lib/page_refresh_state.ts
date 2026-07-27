@@ -12,11 +12,14 @@ type PageRefreshAction =
   | { type: "failure"; error: string }
   | { type: "success" };
 
-export function createPageRefreshState(enabled: boolean): PageRefreshState {
+export function createPageRefreshState(
+  enabled: boolean,
+  hasSuccessfulData = false,
+): PageRefreshState {
   return {
     error: null,
-    hasSuccessfulData: false,
-    loading: enabled,
+    hasSuccessfulData,
+    loading: enabled && !hasSuccessfulData,
     refreshing: false,
   };
 }
@@ -49,11 +52,14 @@ export function reducePageRefreshState(
   }
 }
 
-export function usePageRefreshState(enabled: boolean) {
+export function usePageRefreshState(
+  enabled: boolean,
+  initialHasSuccessfulData = false,
+) {
   const [state, dispatch] = useReducer(
     reducePageRefreshState,
-    enabled,
-    createPageRefreshState,
+    undefined,
+    () => createPageRefreshState(enabled, initialHasSuccessfulData),
   );
   const beginRefresh = useCallback(() => dispatch({ type: "begin" }), []);
   const failRefresh = useCallback(

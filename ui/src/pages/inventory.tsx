@@ -1027,17 +1027,17 @@ export default function InventoryPage({
         }}
         error={error}
         loadError={loadError}
+        loadErrorRetryDisabled={!tauri || loading || manageBusy}
+        loadErrorRetrying={refreshing}
+        onRetryLoadError={refreshInventoryPage}
         headerActionsProps={{
           lowStockOnly,
           onAddSpool: () => openAddModal(),
           onLoanOutRoll: openLoanTrackingModal,
-          onRefresh: refreshInventoryPage,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,
           primaryActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
-          refreshDisabled: !tauri || loading || manageBusy,
-          refreshing,
           search,
           statusFilter,
         }}

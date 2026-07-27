@@ -113,7 +113,7 @@ test("inventory layout preferences stay deterministic in visual QA and separate 
   assert.doesNotMatch(lowStockSource, /writeInventoryPagePreferences/);
 });
 
-test("inventory exposes one shared refresh action for every page dataset", () => {
+test("inventory refreshes every page dataset without a persistent header action", () => {
   const headerActionsSource = inventoryControlsSource.slice(
     inventoryControlsSource.indexOf("export function InventoryHeaderActions"),
     inventoryControlsSource.indexOf("export function InventoryControlsPanel"),
@@ -123,8 +123,10 @@ test("inventory exposes one shared refresh action for every page dataset", () =>
     inventoryPageDataSource.indexOf("return {"),
   );
 
-  assert.match(headerActionsSource, /PageRefreshButton/);
-  assert.match(headerActionsSource, /t\("common\.refresh", "Refresh"\)/);
+  assert.doesNotMatch(headerActionsSource, /PageRefreshButton/);
+  assert.doesNotMatch(headerActionsSource, /onRefresh/);
+  assert.match(inventoryPageWorkspaceSource, /PageLoadErrorBanner/);
+  assert.match(inventoryPageSource, /onRetryLoadError=\{refreshInventoryPage\}/);
   assert.match(inventoryPageDataSource, /usePageRefreshState/);
   assert.match(refreshSource, /reloadSpools\(reportResult\)/);
   assert.match(refreshSource, /reloadWishlist\(reportResult\)/);

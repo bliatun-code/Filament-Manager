@@ -5,10 +5,9 @@ import {
   StatCard,
   UsageChart,
 } from "../components/dashboard_widgets";
-import { FeedbackBanner } from "../components/feedback_banner";
 import { DashboardOnboardingChecklist } from "../components/dashboard_onboarding_checklist";
 import { PageHeaderButton } from "../components/page_header_button";
-import { PageRefreshButton } from "../components/page_refresh_button";
+import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import {
   buildDashboardBadges,
   buildDashboardCompanionPresentation,
@@ -144,12 +143,6 @@ export default function DashboardPage({
           </div>
         </div>
         <div className="flex items-center gap-3 xl:pt-1">
-          <PageRefreshButton
-            disabled={!refreshAvailable || loading}
-            label={t("common.refresh", "Refresh")}
-            onRefresh={() => void refreshDashboard()}
-            refreshing={refreshing}
-          />
           <PageHeaderButton
             onClick={() => onOpenCompanionSettings?.()}
             className="gap-2"
@@ -167,9 +160,13 @@ export default function DashboardPage({
       </div>
 
       {error ? (
-        <FeedbackBanner tone="danger" className="mt-4">
-          {error}
-        </FeedbackBanner>
+        <PageLoadErrorBanner
+          message={error}
+          onRetry={() => void refreshDashboard()}
+          retryDisabled={!refreshAvailable || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
 
       {showOnboarding ? (
