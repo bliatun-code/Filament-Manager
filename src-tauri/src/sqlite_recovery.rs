@@ -10,6 +10,7 @@ const SQLITE_BACKUP_RETRY_DELAY: Duration = Duration::from_millis(25);
 const SQLITE_BACKUP_PAGES_PER_STEP: i32 = 128;
 const MAX_SUCCESSFUL_RECOVERY_SNAPSHOTS_PER_REASON: usize = 3;
 const MAX_INCOMPLETE_RECOVERY_SNAPSHOTS_PER_STATE_PER_REASON: usize = 3;
+const SNAPSHOT_ID_LENGTH: usize = 25;
 
 static SNAPSHOT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -221,15 +222,42 @@ pub(crate) fn online_backup(source_path: &Path, destination_path: &Path) -> Resu
                     destination_path.display()
                 )
             })?;
+        if !destination_existed {
+            let journal_mode = destination
+                .query_row("PRAGMA journal_mode = MEMORY", [], |row| {
+                    row.get::<_, String>(0)
+                })
+                .map_err(|error| {
+                    format!(
+                        "failed to configure temporary SQLite backup journal for {}: {error}",
+                        destination_path.display()
+                    )
+                })?;
+            if !journal_mode.eq_ignore_ascii_case("memory") {
+                return Err(format!(
+                    "SQLite backup destination {} retained unsupported temporary journal mode {journal_mode}",
+                    destination_path.display()
+                ));
+            }
+        }
 
         {
-            let backup = Backup::new(&source, &mut destination)
-                .map_err(|error| format!("failed to initialize SQLite backup: {error}"))?;
+            let backup = Backup::new(&source, &mut destination).map_err(|error| {
+                format!(
+                    "failed to initialize SQLite backup from {} to {}: {error}",
+                    source_path.display(),
+                    destination_path.display()
+                )
+            })?;
             let deadline = Instant::now() + SQLITE_BUSY_TIMEOUT;
             loop {
-                let step_result = backup
-                    .step(SQLITE_BACKUP_PAGES_PER_STEP)
-                    .map_err(|error| format!("SQLite backup failed: {error}"))?;
+                let step_result = backup.step(SQLITE_BACKUP_PAGES_PER_STEP).map_err(|error| {
+                    format!(
+                        "SQLite backup from {} to {} failed: {error}",
+                        source_path.display(),
+                        destination_path.display()
+                    )
+                })?;
                 match step_result {
                     StepResult::Done => break,
                     StepResult::More => {}
@@ -249,11 +277,45 @@ pub(crate) fn online_backup(source_path: &Path, destination_path: &Path) -> Resu
             }
         }
 
+        if !destination_existed {
+            destination
+                .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+                .map_err(|error| {
+                    format!(
+                        "failed to checkpoint SQLite backup destination {}: {error}",
+                        destination_path.display()
+                    )
+                })?;
+            let journal_mode = destination
+                .query_row("PRAGMA journal_mode = DELETE", [], |row| {
+                    row.get::<_, String>(0)
+                })
+                .map_err(|error| {
+                    format!(
+                        "failed to make SQLite backup destination {} self-contained: {error}",
+                        destination_path.display()
+                    )
+                })?;
+            if !journal_mode.eq_ignore_ascii_case("delete") {
+                return Err(format!(
+                    "SQLite backup destination {} retained unsupported journal mode {journal_mode}",
+                    destination_path.display()
+                ));
+            }
+        }
+
         validate_database_connection(&destination, destination_path)
     })();
 
-    let result =
-        result.and_then(|()| secure_new_database_file(destination_path, destination_existed));
+    let result = result
+        .and_then(|()| secure_new_database_file(destination_path, destination_existed))
+        .and_then(|()| {
+            if destination_existed {
+                Ok(())
+            } else {
+                remove_sqlite_sidecars(destination_path)
+            }
+        });
     // New targets are disposable until backup, validation and permissions all
     // succeed. Existing databases rely on SQLite's backup transaction rollback.
     if result.is_err() && !destination_existed {
@@ -450,9 +512,20 @@ fn unique_snapshot_id() -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
-        .as_nanos();
-    let sequence = SNAPSHOT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-    format!("{nanos:020}-{}-{sequence:010}", std::process::id())
+        .as_nanos() as u64;
+    let sequence = SNAPSHOT_SEQUENCE.fetch_add(1, Ordering::Relaxed) as u32;
+    let value = ((nanos as u128) << 64) | ((std::process::id() as u128) << 32) | sequence as u128;
+    fixed_base36(value)
+}
+
+fn fixed_base36(mut value: u128) -> String {
+    const DIGITS: &[u8; 36] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    let mut encoded = [b'0'; SNAPSHOT_ID_LENGTH];
+    for position in (0..SNAPSHOT_ID_LENGTH).rev() {
+        encoded[position] = DIGITS[(value % 36) as usize];
+        value /= 36;
+    }
+    String::from_utf8(encoded.to_vec()).expect("base36 snapshot IDs are valid UTF-8")
 }
 
 fn remove_sqlite_artifacts(path: &Path) {
@@ -466,15 +539,32 @@ fn remove_sqlite_artifacts(path: &Path) {
 }
 
 fn sqlite_artifact_paths(path: &Path) -> [PathBuf; 3] {
+    let [wal_path, shm_path] = sqlite_sidecar_paths(path);
+    [path.to_path_buf(), wal_path, shm_path]
+}
+
+fn sqlite_sidecar_paths(path: &Path) -> [PathBuf; 2] {
     let mut wal_path = OsString::from(path.as_os_str());
     wal_path.push("-wal");
     let mut shm_path = OsString::from(path.as_os_str());
     shm_path.push("-shm");
-    [
-        path.to_path_buf(),
-        PathBuf::from(wal_path),
-        PathBuf::from(shm_path),
-    ]
+    [PathBuf::from(wal_path), PathBuf::from(shm_path)]
+}
+
+fn remove_sqlite_sidecars(path: &Path) -> Result<(), String> {
+    for sidecar_path in sqlite_sidecar_paths(path) {
+        match std::fs::remove_file(&sidecar_path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                return Err(format!(
+                    "failed to remove SQLite backup sidecar {}: {error}",
+                    sidecar_path.display()
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn secure_new_database_file(path: &Path, destination_existed: bool) -> Result<(), String> {
@@ -538,7 +628,12 @@ mod tests {
             .into_iter()
             .flatten()
             .filter_map(Result::ok)
-            .filter(|entry| entry.file_name().to_string_lossy().contains(fragment))
+            .filter(|entry| entry.file_type().is_ok_and(|file_type| file_type.is_file()))
+            .filter(|entry| {
+                let file_name = entry.file_name();
+                let file_name = file_name.to_string_lossy();
+                file_name.contains(fragment) && file_name.ends_with(".sqlite")
+            })
             .count()
     }
 
@@ -562,6 +657,18 @@ mod tests {
             let snapshot = RecoverySnapshot::create(&source_path, RecoveryReason::FullRestore)?;
             let snapshot_path = snapshot.mark_operation_succeeded();
             assert_eq!(read_probe_value(&snapshot_path)?, "committed in wal");
+            let snapshot_journal_mode = Connection::open(&snapshot_path)
+                .map_err(|error| error.to_string())?
+                .query_row("PRAGMA journal_mode", [], |row| row.get::<_, String>(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(snapshot_journal_mode, "delete");
+            for sidecar_path in sqlite_sidecar_paths(&snapshot_path) {
+                assert!(
+                    !sidecar_path.exists(),
+                    "self-contained snapshot retained {}",
+                    sidecar_path.display()
+                );
+            }
             assert!(snapshot_path
                 .file_name()
                 .and_then(|value| value.to_str())
@@ -580,6 +687,70 @@ mod tests {
                     .mode()
                     & 0o777;
                 assert_eq!(mode, 0o600);
+            }
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn snapshot_ids_are_compact_portable_and_ordered() {
+        let first = fixed_base36(
+            ((1_783_729_194_916_541_000_u64 as u128) << 64) | ((4_294_967_295_u128) << 32) | 41,
+        );
+        let second = fixed_base36(
+            ((1_783_729_194_916_541_000_u64 as u128) << 64) | ((4_294_967_295_u128) << 32) | 42,
+        );
+
+        assert_eq!(first.len(), SNAPSHOT_ID_LENGTH);
+        assert!(first
+            .bytes()
+            .all(|value| value.is_ascii_digit() || value.is_ascii_lowercase()));
+        assert!(first < second);
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn new_backup_avoids_disk_journal_at_the_windows_path_limit() {
+        use std::os::windows::ffi::OsStrExt;
+
+        let base = temp_dir("windows-path-limit");
+        let source_path = base.join("source.db");
+        let result = (|| -> Result<(), String> {
+            std::fs::create_dir_all(&base).map_err(|error| error.to_string())?;
+            let source = Connection::open(&source_path).map_err(|error| error.to_string())?;
+            source
+                .execute_batch(
+                    "PRAGMA journal_mode = WAL;\
+                     CREATE TABLE recovery_probe (value TEXT NOT NULL);\
+                     INSERT INTO recovery_probe (value) VALUES ('long path');",
+                )
+                .map_err(|error| error.to_string())?;
+
+            const DESTINATION_PATH_LENGTH: usize = 252;
+            const EXTENSION: &str = ".sqlite";
+            let base_length = base.as_os_str().encode_wide().count();
+            let stem_length = DESTINATION_PATH_LENGTH
+                .checked_sub(base_length + 1 + EXTENSION.len())
+                .ok_or_else(|| "Windows temporary path is too long for the test".to_string())?;
+            let destination_path = base.join(format!("{}{EXTENSION}", "s".repeat(stem_length)));
+            assert_eq!(
+                destination_path.as_os_str().encode_wide().count(),
+                DESTINATION_PATH_LENGTH
+            );
+
+            online_backup(&source_path, &destination_path)?;
+            assert_eq!(read_probe_value(&destination_path)?, "long path");
+            for sidecar_path in sqlite_sidecar_paths(&destination_path) {
+                assert!(
+                    !sidecar_path.exists(),
+                    "long-path backup retained {}",
+                    sidecar_path.display()
+                );
             }
             Ok(())
         })();
