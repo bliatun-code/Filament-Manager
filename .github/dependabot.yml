@@ -53,7 +53,7 @@ updates:
           - "minor"
 
   - package-ecosystem: "cargo"
-    directory: "/src-tauri"
+    directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
