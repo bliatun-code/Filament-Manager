@@ -3,7 +3,9 @@
 import {
   mkdtempSync,
   mkdirSync,
+  lstatSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   rmSync,
   writeFileSync,
@@ -17,6 +19,15 @@ const DEFAULT_BUNDLE_ID = "no.bliatun.filamentmanager";
 const TAURI_CONFIG_PATH = fileURLToPath(
   new URL("../src-tauri/tauri.conf.json", import.meta.url),
 );
+const PACKAGE_JSON_PATH = fileURLToPath(new URL("../package.json", import.meta.url));
+const DEFAULT_APP_VERSION = (() => {
+  const manifest = JSON.parse(readFileSync(PACKAGE_JSON_PATH, "utf8"));
+  const value = manifest?.version;
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("package.json must declare a non-empty version.");
+  }
+  return value.trim();
+})();
 const DEFAULT_MINIMUM_SYSTEM_VERSION = (() => {
   const config = JSON.parse(readFileSync(TAURI_CONFIG_PATH, "utf8"));
   const value = config?.bundle?.macOS?.minimumSystemVersion;
@@ -178,8 +189,58 @@ export function validateCodesignDetails(
   }
 }
 
+export function validateLocalCodesignDetails(
+  details,
+  { expectedBundleId = DEFAULT_BUNDLE_ID } = {},
+) {
+  if (details.identifier !== expectedBundleId) {
+    throw new Error(
+      `Expected bundle identifier ${expectedBundleId}, found ${details.identifier ?? "none"}.`,
+    );
+  }
+  if (details.signature?.toLowerCase() !== "adhoc") {
+    throw new Error("The local app is not ad-hoc signed.");
+  }
+  if (details.authorities.length > 0) {
+    throw new Error("The local ad-hoc app unexpectedly contains signing authorities.");
+  }
+  if (details.teamIdentifier && details.teamIdentifier !== "not set") {
+    throw new Error("The local ad-hoc app unexpectedly contains a TeamIdentifier.");
+  }
+  if (details.timestamp) {
+    throw new Error("The local ad-hoc app unexpectedly contains a secure timestamp.");
+  }
+  if (!details.runtime) {
+    throw new Error("The local app signature does not enable Hardened Runtime.");
+  }
+}
+
+export function validateBundleExecutableName(value) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("Expected a non-empty CFBundleExecutable in Info.plist.");
+  }
+  if (
+    value !== value.trim() ||
+    value === "." ||
+    value === ".." ||
+    value.includes("/") ||
+    value.includes("\\") ||
+    /[\0\r\n]/.test(value)
+  ) {
+    throw new Error("Expected CFBundleExecutable to be a single safe filename.");
+  }
+  return value;
+}
+
+export function validateBundleExecutableEntry({ isFile, isSymbolicLink }) {
+  if (!isFile || isSymbolicLink) {
+    throw new Error("Expected the main app executable to be a real file, not a link.");
+  }
+}
+
 export function validateReleaseMetadata({
   entitlements,
+  expectedAppVersion = DEFAULT_APP_VERSION,
   expectedBundleId = DEFAULT_BUNDLE_ID,
   expectedMinimumSystemVersion = DEFAULT_MINIMUM_SYSTEM_VERSION,
   infoPlist,
@@ -198,6 +259,14 @@ export function validateReleaseMetadata({
         `found ${minimumSystemVersion ?? "none"}.`,
     );
   }
+  for (const versionKey of ["CFBundleShortVersionString", "CFBundleVersion"]) {
+    const value = infoPlist?.[versionKey];
+    if (value !== expectedAppVersion) {
+      throw new Error(
+        `Expected ${versionKey} ${expectedAppVersion}, found ${value ?? "none"}.`,
+      );
+    }
+  }
   for (const entitlement of EXPECTED_ENTITLEMENTS) {
     if (entitlements?.[entitlement] !== true) {
       throw new Error(`Expected signed entitlement ${entitlement}=true.`);
@@ -214,11 +283,13 @@ export function validateReleaseMetadata({
       throw new Error(`Expected non-empty Info.plist privacy key ${privacyKey}.`);
     }
   }
-  const executableName = infoPlist?.CFBundleExecutable;
-  if (typeof executableName !== "string" || executableName.trim().length === 0) {
-    throw new Error("Expected a non-empty CFBundleExecutable in Info.plist.");
-  }
-  return { bundleId, executableName, minimumSystemVersion };
+  const executableName = validateBundleExecutableName(infoPlist?.CFBundleExecutable);
+  return {
+    appVersion: expectedAppVersion,
+    bundleId,
+    executableName,
+    minimumSystemVersion,
+  };
 }
 
 export function validateExpectedArchitectures(actualValue, expectedValue) {
@@ -241,12 +312,43 @@ export function validateExpectedArchitectures(actualValue, expectedValue) {
   return actual;
 }
 
-function findAppBundle(mountPoint) {
-  const appNames = readdirSync(mountPoint).filter((name) => name.endsWith(".app"));
+export function validateDmgLayout({ appNames, applicationsTarget }) {
   if (appNames.length !== 1) {
     throw new Error(`Expected one app bundle in the DMG, found ${appNames.length}.`);
   }
-  return path.join(mountPoint, appNames[0]);
+  if (applicationsTarget !== "/Applications") {
+    throw new Error(
+      "Expected the DMG Applications link to target /Applications, " +
+        `found ${applicationsTarget ?? "none"}.`,
+    );
+  }
+  return appNames[0];
+}
+
+export function validateDmgAppEntry({ isDirectory, isSymbolicLink }) {
+  if (!isDirectory || isSymbolicLink) {
+    throw new Error("Expected the DMG app bundle to be a real directory, not a link.");
+  }
+}
+
+function findAppBundle(mountPoint) {
+  const appNames = readdirSync(mountPoint).filter((name) => name.endsWith(".app"));
+  let applicationsTarget;
+  try {
+    applicationsTarget = readlinkSync(path.join(mountPoint, "Applications"));
+  } catch {
+    applicationsTarget = undefined;
+  }
+  const appPath = path.join(
+    mountPoint,
+    validateDmgLayout({ appNames, applicationsTarget }),
+  );
+  const appStats = lstatSync(appPath);
+  validateDmgAppEntry({
+    isDirectory: appStats.isDirectory(),
+    isSymbolicLink: appStats.isSymbolicLink(),
+  });
+  return appPath;
 }
 
 function verifyExpectedArchitectures(executablePath, expectedArchitectures) {
@@ -256,18 +358,20 @@ function verifyExpectedArchitectures(executablePath, expectedArchitectures) {
   );
 }
 
-export function verifyMacosRelease({
+function verifyMacosDmg({
   dmgPath,
   expectedArchitectures = [],
+  expectedAppVersion = DEFAULT_APP_VERSION,
   expectedBundleId = DEFAULT_BUNDLE_ID,
   expectedMinimumSystemVersion = DEFAULT_MINIMUM_SYSTEM_VERSION,
   expectedTeamId,
+  signatureMode,
 } = {}) {
   if (process.platform !== "darwin") {
-    throw new Error("macOS release verification must run on macOS.");
+    throw new Error("macOS DMG verification must run on macOS.");
   }
   if (!dmgPath) {
-    throw new Error("Usage: node scripts/verify-macos-release.mjs <path-to-dmg>");
+    throw new Error("A macOS DMG path is required.");
   }
   const requiredArchitectures = normalizeExpectedArchitectures(expectedArchitectures);
   if (requiredArchitectures.length === 0) {
@@ -277,8 +381,11 @@ export function verifyMacosRelease({
     );
   }
   const requiredTeamId = typeof expectedTeamId === "string" ? expectedTeamId.trim() : "";
-  if (!requiredTeamId) {
+  if (signatureMode === "release" && !requiredTeamId) {
     throw new Error("EXPECTED_APPLE_TEAM_ID is required for macOS release verification.");
+  }
+  if (!new Set(["local", "release"]).has(signatureMode)) {
+    throw new Error(`Unsupported macOS signature verification mode ${signatureMode ?? "none"}.`);
   }
 
   const absoluteDmgPath = path.resolve(dmgPath);
@@ -291,16 +398,18 @@ export function verifyMacosRelease({
 
   try {
     runCommand("hdiutil", ["verify", absoluteDmgPath]);
-    runCommand("xcrun", ["stapler", "validate", absoluteDmgPath]);
-    runCommand("spctl", [
-      "--assess",
-      "--type",
-      "open",
-      "--context",
-      "context:primary-signature",
-      "--verbose=4",
-      absoluteDmgPath,
-    ]);
+    if (signatureMode === "release") {
+      runCommand("xcrun", ["stapler", "validate", absoluteDmgPath]);
+      runCommand("spctl", [
+        "--assess",
+        "--type",
+        "open",
+        "--context",
+        "context:primary-signature",
+        "--verbose=4",
+        absoluteDmgPath,
+      ]);
+    }
     runCommand("hdiutil", [
       "attach",
       "-nobrowse",
@@ -322,10 +431,14 @@ export function verifyMacosRelease({
     runCommand("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath]);
     const codesignOutput = runCommand("codesign", ["-d", "--verbose=4", appPath]).combined;
     const codesignDetails = parseCodesignDetails(codesignOutput);
-    validateCodesignDetails(codesignDetails, {
-      expectedBundleId,
-      expectedTeamId: requiredTeamId,
-    });
+    if (signatureMode === "release") {
+      validateCodesignDetails(codesignDetails, {
+        expectedBundleId,
+        expectedTeamId: requiredTeamId,
+      });
+    } else {
+      validateLocalCodesignDetails(codesignDetails, { expectedBundleId });
+    }
 
     const entitlementsResult = runCommand("codesign", [
       "-d",
@@ -338,14 +451,21 @@ export function verifyMacosRelease({
     writeFileSync(entitlementsPath, entitlementsResult.stdout);
     runCommand("plutil", ["-lint", entitlementsPath]);
     const entitlements = readPlistObject(entitlementsPath);
-    const { bundleId, executableName, minimumSystemVersion } = validateReleaseMetadata({
-      entitlements,
-      expectedBundleId,
-      expectedMinimumSystemVersion,
-      infoPlist,
-    });
+    const { appVersion, bundleId, executableName, minimumSystemVersion } =
+      validateReleaseMetadata({
+        entitlements,
+        expectedAppVersion,
+        expectedBundleId,
+        expectedMinimumSystemVersion,
+        infoPlist,
+      });
 
     const executablePath = path.join(appPath, "Contents", "MacOS", executableName);
+    const executableStats = lstatSync(executablePath);
+    validateBundleExecutableEntry({
+      isFile: executableStats.isFile(),
+      isSymbolicLink: executableStats.isSymbolicLink(),
+    });
     const deploymentTargets = validateMacosDeploymentTargets(
       parseMacosDeploymentTargets(runCommand("otool", ["-l", executablePath]).stdout),
       expectedMinimumSystemVersion,
@@ -355,20 +475,24 @@ export function verifyMacosRelease({
       requiredArchitectures,
     );
 
-    runCommand("spctl", [
-      "--assess",
-      "--type",
-      "execute",
-      "--verbose=4",
-      mountedAppPath,
-    ]);
+    if (signatureMode === "release") {
+      runCommand("spctl", [
+        "--assess",
+        "--type",
+        "execute",
+        "--verbose=4",
+        mountedAppPath,
+      ]);
+    }
     verificationResult = {
       appName: path.basename(appPath),
+      appVersion,
       architectures: actualArchitectures,
       bundleId,
       deploymentTargets,
       minimumSystemVersion,
-      teamId: codesignDetails.teamIdentifier,
+      signatureMode,
+      teamId: codesignDetails.teamIdentifier ?? null,
     };
   } catch (error) {
     verificationError = error instanceof Error ? error : new Error(String(error));
@@ -405,6 +529,14 @@ export function verifyMacosRelease({
   return verificationResult;
 }
 
+export function verifyMacosRelease(options = {}) {
+  return verifyMacosDmg({ ...options, signatureMode: "release" });
+}
+
+export function verifyLocalMacosDmg(options = {}) {
+  return verifyMacosDmg({ ...options, signatureMode: "local" });
+}
+
 function cliOptions(argv) {
   const dmgPaths = argv.filter((arg) => !arg.startsWith("--"));
   if (dmgPaths.length !== 1) {
@@ -421,6 +553,7 @@ function cliOptions(argv) {
         process.env.EXPECTED_MACOS_ARCHITECTURES,
     ),
     expectedBundleId: process.env.EXPECTED_MACOS_BUNDLE_ID ?? DEFAULT_BUNDLE_ID,
+    expectedAppVersion: process.env.EXPECTED_MACOS_APP_VERSION ?? DEFAULT_APP_VERSION,
     expectedMinimumSystemVersion:
       process.env.EXPECTED_MACOS_MINIMUM_SYSTEM_VERSION ??
       DEFAULT_MINIMUM_SYSTEM_VERSION,
@@ -433,7 +566,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const result = verifyMacosRelease(cliOptions(process.argv.slice(2)));
     console.log(
       `macOS release verification passed (${result.bundleId}, ${result.teamId}, ` +
-        `macOS ${result.minimumSystemVersion}+, ${result.architectures.join(", ")}).`,
+        `version ${result.appVersion}, macOS ${result.minimumSystemVersion}+, ` +
+        `${result.architectures.join(", ")}).`,
     );
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

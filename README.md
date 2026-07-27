@@ -258,6 +258,21 @@ Build only a macOS DMG:
 npm run tauri -- build --bundles dmg
 ```
 
+Validate an ordinary local Apple Silicon DMG after the build:
+
+```bash
+npm run verify:macos-local -- /path/to/Filament\ Manager_0.21.2_aarch64.dmg \
+  --architectures=arm64
+```
+
+This local gate checks DMG integrity and install layout, the exact app version,
+bundle identity, minimum macOS version, architecture, privacy strings,
+entitlements, and a strict ad-hoc Hardened Runtime signature. Disk-image
+creation, mounting, and verification require access to the macOS DiskImages
+service and therefore cannot run inside a restricted build sandbox. The local
+gate does not claim Developer ID signing or notarization; only
+`verify:macos-release` accepts an official release artifact.
+
 On macOS, `npm run tauri` ad-hoc signs ordinary local builds so bundle
 entitlements are applied. To avoid Apple File Provider metadata invalidating a
 reused app bundle, a signed local build without an explicit

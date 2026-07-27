@@ -676,6 +676,7 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(macosJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
+  assert.doesNotMatch(macosJob, /verify:macos-local/);
   assert.match(macosJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
   assert.match(
     macosJob,

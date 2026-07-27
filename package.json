@@ -45,6 +45,7 @@
     "test:rust": "npm run fmt:rust && cargo test && cargo clippy --all-targets -- -D warnings && cargo clippy --release --all-targets -- -D warnings",
     "test:ui": "node ./scripts/run-ui-tests.mjs",
     "test:settings-ui": "npm run test:ui",
+    "verify:macos-local": "node ./scripts/verify-macos-local.mjs",
     "verify:macos-release": "node ./scripts/verify-macos-release.mjs",
     "smoke": "npm --prefix ./ui run build && npm run lint:ui && npm run test:companion && npm run test:scripts && npm run test:a11y:app-modal && npm run test:ui && npm run check:contracts && npm run doctor",
     "verify": "npm run smoke && npm run test:rust",
