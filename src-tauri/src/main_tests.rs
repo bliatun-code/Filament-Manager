@@ -255,7 +255,12 @@ fn recovery_snapshot_count(app_dir: &Path, name_fragment: &str) -> Result<usize,
     Ok(std::fs::read_dir(app_dir)
         .map_err(|error| error.to_string())?
         .filter_map(Result::ok)
-        .filter(|entry| entry.file_name().to_string_lossy().contains(name_fragment))
+        .filter(|entry| entry.file_type().is_ok_and(|file_type| file_type.is_file()))
+        .filter(|entry| {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+            file_name.contains(name_fragment) && file_name.ends_with(".sqlite")
+        })
         .count())
 }
 
