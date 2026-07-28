@@ -433,11 +433,26 @@ test("detail modal shell wraps the provided body and close affordance", () => {
   assert.match(html, /data-action="close-detail"/);
   assert.match(html, /role="dialog"/);
   assert.match(html, /aria-modal="true"/);
+  assert.match(html, /aria-busy="false"/);
   assert.match(html, /aria-labelledby="companion-detail-dialog-title"/);
   assert.match(html, /tabindex="-1"/);
   assert.match(html, /data-companion-overlay="detail"/);
   assert.match(html, /id="companion-detail-dialog-title" class="sr-only"/);
   assert.match(html, /data-overlay-initial-focus/);
+});
+
+test("detail modal shell exposes refresh state to assistive technology and automation", () => {
+  const html = renderDetailModalShell({
+    layoutMode: "desktop",
+    selectedSpool: createSelectedSpool(),
+    detailBusy: true,
+    detailBusyLabel: "Opening spool-1",
+    body: "<div>Existing detail body</div>",
+    escapeHtml: (value) => String(value ?? ""),
+  });
+
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /Opening spool-1/);
 });
 
 test("phone detail modal uses the compact header chrome", () => {

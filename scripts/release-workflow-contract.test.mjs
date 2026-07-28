@@ -479,12 +479,16 @@ test("Windows MSI smoke exercises install, UI readiness, data retention and unin
   assert.match(windowsMsiSmoke, /"\/norestart"/);
   assert.match(windowsMsiSmoke, /"\/L\*V"/);
   assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/i"/);
-  assert.match(windowsMsiSmoke, /Get-HkcuUninstallRegistrationPaths/);
+  assert.match(windowsMsiSmoke, /Get-MsiProductState/);
+  assert.match(windowsMsiSmoke, /"ProductState"/);
+  assert.match(windowsMsiSmoke, /\$initialProductState -ne -1/);
+  assert.match(windowsMsiSmoke, /\$installedProductState -ne 5/);
+  assert.match(windowsMsiSmoke, /\$uninstalledProductState -ne -1/);
   assert.match(windowsMsiSmoke, /\[EnvironmentVariableTarget\]::User/);
   assert.match(windowsMsiSmoke, /Desktop shortcut already exists/);
   assert.match(windowsMsiSmoke, /Start Menu product directory already exists/);
   assert.match(windowsMsiSmoke, /user PATH already contains the install directory/);
-  assert.match(windowsMsiSmoke, /Install did not create an HKCU uninstall registration/);
+  assert.match(windowsMsiSmoke, /Install did not register[\s\S]*for the current user/);
   assert.match(windowsMsiSmoke, /Install did not create the expected Desktop shortcut/);
   assert.match(windowsMsiSmoke, /Install did not create the expected Start Menu shortcut/);
   assert.match(windowsMsiSmoke, /Install did not add the install directory to the user PATH/);
@@ -496,7 +500,7 @@ test("Windows MSI smoke exercises install, UI readiness, data retention and unin
   assert.match(windowsMsiSmoke, /\$appProcess\.WaitForExit\(15000\)/);
   assert.match(windowsMsiSmoke, /Get-FileHash[\s\S]*-Algorithm SHA256/);
   assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/x"/);
-  assert.match(windowsMsiSmoke, /Uninstall left the HKCU product registration behind/);
+  assert.match(windowsMsiSmoke, /Uninstall left Windows Installer product state/);
   assert.match(windowsMsiSmoke, /Uninstall left the Desktop shortcut behind/);
   assert.match(windowsMsiSmoke, /Uninstall left the Start Menu shortcut behind/);
   assert.match(windowsMsiSmoke, /Uninstall left the Start Menu product directory behind/);
@@ -523,6 +527,13 @@ test("Windows MSI uninstall preserves the system Desktop directory", () => {
   assert.doesNotMatch(
     windowsWixTemplate,
     /<RemoveFolder\s+Id="DesktopFolder"\b/,
+  );
+});
+
+test("Windows MSI remains a limited per-user package", () => {
+  assert.match(
+    windowsWixTemplate,
+    /<Package[\s\S]*?\bInstallScope="perUser"[\s\S]*?\bInstallPrivileges="limited"[\s\S]*?\/>/,
   );
 });
 

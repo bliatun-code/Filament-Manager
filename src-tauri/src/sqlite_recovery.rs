@@ -278,16 +278,12 @@ pub(crate) fn online_backup(source_path: &Path, destination_path: &Path) -> Resu
         }
 
         if !destination_existed {
-            destination
-                .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
-                .map_err(|error| {
-                    format!(
-                        "failed to checkpoint SQLite backup destination {}: {error}",
-                        destination_path.display()
-                    )
-                })?;
+            // Online Backup copies the source header and can therefore restore
+            // WAL mode. MEMORY rewrites it to rollback mode without creating a
+            // `-journal` path; after this connection closes, a reopen reports
+            // DELETE. This keeps long Windows snapshot paths self-contained.
             let journal_mode = destination
-                .query_row("PRAGMA journal_mode = DELETE", [], |row| {
+                .query_row("PRAGMA journal_mode = MEMORY", [], |row| {
                     row.get::<_, String>(0)
                 })
                 .map_err(|error| {
@@ -296,7 +292,7 @@ pub(crate) fn online_backup(source_path: &Path, destination_path: &Path) -> Resu
                         destination_path.display()
                     )
                 })?;
-            if !journal_mode.eq_ignore_ascii_case("delete") {
+            if !journal_mode.eq_ignore_ascii_case("memory") {
                 return Err(format!(
                     "SQLite backup destination {} retained unsupported journal mode {journal_mode}",
                     destination_path.display()
@@ -572,6 +568,9 @@ fn secure_new_database_file(path: &Path, destination_existed: bool) -> Result<()
         return Ok(());
     }
 
+    #[cfg(not(unix))]
+    let _ = path;
+
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -745,6 +744,11 @@ mod tests {
 
             online_backup(&source_path, &destination_path)?;
             assert_eq!(read_probe_value(&destination_path)?, "long path");
+            let destination_journal_mode = Connection::open(&destination_path)
+                .map_err(|error| error.to_string())?
+                .query_row("PRAGMA journal_mode", [], |row| row.get::<_, String>(0))
+                .map_err(|error| error.to_string())?;
+            assert_eq!(destination_journal_mode, "delete");
             for sidecar_path in sqlite_sidecar_paths(&destination_path) {
                 assert!(
                     !sidecar_path.exists(),
