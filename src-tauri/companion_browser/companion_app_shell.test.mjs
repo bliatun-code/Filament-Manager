@@ -320,6 +320,22 @@ test("app shell renderer includes the selected spool detail modal when opened", 
   assert.match(html, /class="shell-scaffold"[^>]* inert aria-hidden="true"/);
 });
 
+test("app shell disables detail weight inputs until the selected spool refresh completes", () => {
+  const renderer = createRenderer({
+    state: {
+      detailOpen: true,
+      detailBusy: true,
+      selectedDetail: createSelectedDetail("spool-1"),
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /name="grams"[^>]* disabled/);
+  assert.match(html, /name="tare-grams"[^>]* disabled/);
+});
+
 test("app shell renderer uses observed tag uid as RFID capture fallback", () => {
   const renderer = createRenderer({
     state: {
