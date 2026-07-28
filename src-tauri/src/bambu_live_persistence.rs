@@ -1,6 +1,6 @@
 use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{
-    BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
+    BambuLiveIntegrationEntryRow, BambuLiveObservedStateRow, BambuLiveTlsIdentityRow,
     FilamentDatabase,
 };
 use crate::bambu_live_matching::count_review_trays;
@@ -13,15 +13,23 @@ pub(crate) fn persist_observation(
     entry: &BambuLiveIntegrationEntryRow,
     observed_state: Option<BambuLiveObservedStateRow>,
     last_error: Option<String>,
+    observed_tls_identity: Option<&BambuLiveTlsIdentityRow>,
     previous: Option<&BambuLiveObservedStateRow>,
     next: Option<&BambuLiveObservedStateRow>,
 ) -> Result<(), String> {
     let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-    let mut next_config: BambuLiveIntegrationRow = entry.config.clone();
-    next_config.last_error = last_error;
-    next_config.observed_state = observed_state;
-    db.save_bambu_live_integration(&entry.printer_id, &next_config)
+    let applied = db
+        .update_bambu_live_observation_if_current(
+            &entry.printer_id,
+            &entry.config,
+            observed_state,
+            last_error,
+            observed_tls_identity,
+        )
         .map_err(|error| error.to_string())?;
+    if !applied {
+        return Ok(());
+    }
     if let Some(next_state) = next {
         log_state_changes(&db, &entry.printer_id, previous, next_state)
             .map_err(|error| error.to_string())?;

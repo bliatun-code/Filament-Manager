@@ -144,10 +144,38 @@ pub struct BambuLiveObservedStateRow {
 pub struct BambuLiveIntegrationRow {
     pub enabled: bool,
     pub host: Option<String>,
+    /// Legacy plaintext storage used only by the one-time OS credential-store
+    /// migration. New writes must keep this field empty.
+    #[serde(default, skip_serializing)]
     pub access_code: Option<String>,
+    #[serde(default)]
+    pub access_code_configured: bool,
+    /// Selects one immutable platform credential. Replacements and delete/re-add
+    /// flows receive a fresh random binding before this pointer changes, so an
+    /// in-flight poll can never load a later access code through an old snapshot.
+    #[serde(default)]
+    pub access_code_binding_id: Option<String>,
+    /// Superseded bindings awaiting idempotent platform-store cleanup.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub access_code_stale_binding_ids: Vec<String>,
     pub printer_serial: Option<String>,
     pub last_error: Option<String>,
+    #[serde(default)]
+    pub tls_identity: Option<BambuLiveTlsIdentityRow>,
     pub observed_state: Option<BambuLiveObservedStateRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BambuLiveTlsIdentityRow {
+    #[serde(default)]
+    pub trusted_spki_sha256: Option<String>,
+    #[serde(default)]
+    pub trusted_certificate_sha256: Option<String>,
+    #[serde(default)]
+    pub trusted_at: Option<String>,
+    pub observed_spki_sha256: String,
+    pub observed_certificate_sha256: String,
+    pub observed_at: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

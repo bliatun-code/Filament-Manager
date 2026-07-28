@@ -9,6 +9,14 @@ export function useSettingsPrinterMessages(t: SettingsTranslator) {
       "settings.error.bambuLiveFieldsRequired",
       "Host, access code and printer serial are required when live Bambu status is enabled.",
     ),
+    bambuLiveIdentityCheckFailed: t(
+      "settings.error.bambuLiveIdentityCheckFailed",
+      "Could not check the printer identity.",
+    ),
+    bambuLiveTrustRequired: t(
+      "settings.error.bambuLiveTrustRequired",
+      "Check and trust the printer identity before enabling live Bambu status.",
+    ),
     confirmDeleteTapAgain: t(
       "settings.confirmDeleteTapAgain",
       "Click Remove again to confirm deleting printer",

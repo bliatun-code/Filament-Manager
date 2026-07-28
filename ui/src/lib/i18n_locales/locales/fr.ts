@@ -1230,8 +1230,49 @@ export const frDictionary: DictionaryNode = {
     bambuLiveStandaloneOnly: "L’état Bambu en direct se configure sur l’application desktop hôte.",
     bambuLiveHost: "Hôte / IP de l’imprimante",
     bambuLiveAccessCode: "Code d’accès",
+    bambuLiveAccessCodeSaved: "Code d’accès enregistré de façon sécurisée",
+    bambuLiveAccessCodeMissing: "Aucun code d’accès enregistré",
+    bambuLiveAccessCodeSavedPlaceholder:
+      "Enregistré de façon sécurisée — saisissez un nouveau code pour le remplacer",
+    bambuLiveAccessCodeReplacePending:
+      "Le code d’accès enregistré sera remplacé lors de l’enregistrement.",
+    bambuLiveAccessCodeSavePending:
+      "Le code d’accès sera enregistré de façon sécurisée lors de l’enregistrement.",
+    bambuLiveAccessCodeClear: "Supprimer le code enregistré",
+    bambuLiveAccessCodeClearPending:
+      "Le code d’accès enregistré sera supprimé lors de l’enregistrement. Les connexions en direct resteront en pause jusqu’à la saisie d’un nouveau code.",
+    bambuLiveAccessCodeKeep: "Conserver le code enregistré",
+    bambuLiveAccessCodeHostConfigured:
+      "Un code d’accès est enregistré sur l’application desktop hôte.",
+    bambuLiveAccessCodeHostMissing:
+      "Aucun code d’accès n’est enregistré sur l’application desktop hôte.",
     bambuLivePrinterSerial: "Numéro de série de l’imprimante",
-    bambuLiveCredentialsNote: "Les identifiants sont enregistrés localement sur cet appareil.",
+    bambuLiveCredentialsNote:
+      "Les codes d’accès sont enregistrés dans le stockage sécurisé des identifiants du système d’exploitation.",
+    bambuTlsTrustTitle: "Identité de l’imprimante",
+    bambuTlsTrustTrusted: "Approuvée",
+    bambuTlsTrustUnpaired: "Pas encore approuvée",
+    bambuTlsTrustChanged: "Identité modifiée",
+    bambuTlsTrustPending: "Approbation en attente",
+    bambuTlsClearPending: "Suppression de l’approbation en attente",
+    bambuTlsTrustTrustedHint:
+      "Le certificat de l’imprimante correspond à l’identité enregistrée.",
+    bambuTlsTrustUnpairedHint:
+      "Le code d’accès ne sera pas envoyé tant que vous n’aurez pas explicitement approuvé cette identité d’imprimante.",
+    bambuTlsTrustChangedHint:
+      "L’identité de l’imprimante a changé. La connexion a été interrompue avant l’envoi du code d’accès.",
+    bambuTlsTrustPendingHint:
+      "Cette identité d’imprimante sera approuvée lors de l’enregistrement.",
+    bambuTlsClearPendingHint:
+      "L’approbation sera supprimée lors de l’enregistrement. Les connexions en direct resteront bloquées jusqu’à une nouvelle approbation de l’imprimante.",
+    bambuTlsFingerprint: "Empreinte du certificat",
+    bambuTlsFingerprintUnavailable:
+      "Enregistrez ou vérifiez la connexion à l’imprimante pour lire son identité.",
+    bambuTlsCheckCurrent: "Vérifier l’identité",
+    bambuTlsTrustCurrent: "Approuver cette identité",
+    bambuTlsRetrustCurrent: "Approuver la nouvelle identité",
+    bambuTlsForget: "Oublier l’identité approuvée",
+    bambuTlsUndoTrustChange: "Annuler la modification d’approbation",
     bambuLiveDisabledNote:
       "Laissez cette option désactivée pour conserver le fonctionnement actuel de l’imprimante.",
     activePrinter: "Imprimante active",
@@ -1855,6 +1896,10 @@ export const frDictionary: DictionaryNode = {
       load: "Échec du chargement des paramètres.",
       bambuLiveFieldsRequired:
         "L’hôte, le code d’accès et le numéro de série sont requis lorsque l’état Bambu en direct est activé.",
+      bambuLiveIdentityCheckFailed:
+        "Impossible de vérifier l’identité de l’imprimante.",
+      bambuLiveTrustRequired:
+        "Vérifiez et approuvez l’identité de l’imprimante avant d’activer l’état Bambu en direct.",
       printerRequired: "Le nom et le modèle de l’imprimante sont requis.",
       addPrinter: "Échec de l’ajout de l’imprimante.",
       updatePrinter: "Échec de la mise à jour de l’imprimante.",

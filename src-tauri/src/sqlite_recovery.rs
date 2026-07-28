@@ -1,5 +1,7 @@
 use rusqlite::backup::{Backup, StepResult};
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{params, Connection, OpenFlags};
+use serde_json::Value;
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -11,6 +13,9 @@ const SQLITE_BACKUP_PAGES_PER_STEP: i32 = 128;
 const MAX_SUCCESSFUL_RECOVERY_SNAPSHOTS_PER_REASON: usize = 3;
 const MAX_INCOMPLETE_RECOVERY_SNAPSHOTS_PER_STATE_PER_REASON: usize = 3;
 const SNAPSHOT_ID_LENGTH: usize = 25;
+const CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY: &str = "secure_credential_snapshot_sanitized_v2";
+const LEGACY_CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY: &str =
+    "secure_credential_snapshot_sanitized_v1";
 
 static SNAPSHOT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
@@ -176,6 +181,475 @@ impl Drop for SqliteWorkingCopy {
     fn drop(&mut self) {
         remove_sqlite_artifacts(&self.path);
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(crate) struct RecoveryCredentialSanitizeStats {
+    pub(crate) snapshots_checked: usize,
+    pub(crate) snapshots_sanitized: usize,
+    pub(crate) invalid_pending_snapshots_removed: usize,
+    pub(crate) invalid_or_unknown_snapshots_skipped: usize,
+    pub(crate) snapshot_sanitization_failures: usize,
+}
+
+/// Removes obsolete plaintext credentials from app-owned recovery snapshots
+/// created alongside this application's database.
+///
+/// Pending snapshots are included because this function only runs at startup or
+/// after the guarded operation has ended; an interrupted pending snapshot must
+/// not retain old plaintext secrets indefinitely. Working copies, symlinks,
+/// nested paths and filenames that do not exactly match an app-owned recovery
+/// name remain excluded. Valid files with an unknown schema and completed
+/// snapshots that cannot be validated are left untouched; definitively invalid
+/// app-owned pending artifacts are removed together with their sidecars.
+pub(crate) fn sanitize_app_recovery_snapshot_credentials(
+    database_path: &Path,
+) -> Result<RecoveryCredentialSanitizeStats, String> {
+    let parent = database_path.parent().ok_or_else(|| {
+        format!(
+            "database path has no parent directory: {}",
+            database_path.display()
+        )
+    })?;
+    let base_file_name = portable_file_name_component(database_path);
+    let entries = std::fs::read_dir(parent).map_err(|error| {
+        format!(
+            "failed to inspect recovery snapshot directory {}: {error}",
+            parent.display()
+        )
+    })?;
+    let mut snapshot_paths = Vec::new();
+
+    for entry in entries {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() || file_type.is_symlink() {
+            continue;
+        }
+        let file_name = entry.file_name();
+        let Some(file_name) = file_name.to_str() else {
+            continue;
+        };
+        if !is_app_recovery_snapshot_name(file_name, &base_file_name) {
+            continue;
+        }
+        snapshot_paths.push(entry.path());
+    }
+
+    // A stable order makes one corrupt snapshot demonstrably independent of
+    // every later recovery point. Per-snapshot failures are counted without
+    // retaining paths or database error text, which avoids leaking local
+    // filesystem details into startup diagnostics.
+    snapshot_paths.sort();
+    let mut stats = RecoveryCredentialSanitizeStats::default();
+    for snapshot_path in snapshot_paths {
+        stats.snapshots_checked += 1;
+        match sanitize_recovery_snapshot_credentials(&snapshot_path) {
+            Ok(RecoverySnapshotSanitizeOutcome::Sanitized) => {
+                stats.snapshots_sanitized += 1;
+            }
+            Ok(RecoverySnapshotSanitizeOutcome::Clean) => {}
+            Ok(RecoverySnapshotSanitizeOutcome::InvalidOrUnknown) => {
+                let is_invalid_pending = snapshot_path
+                    .file_name()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|file_name| {
+                        is_app_pending_recovery_snapshot_name(file_name, &base_file_name)
+                    })
+                    && database_is_definitively_invalid(&snapshot_path);
+                if is_invalid_pending {
+                    match remove_sqlite_artifacts_checked(&snapshot_path) {
+                        Ok(()) => stats.invalid_pending_snapshots_removed += 1,
+                        Err(_) => stats.snapshot_sanitization_failures += 1,
+                    }
+                } else {
+                    stats.invalid_or_unknown_snapshots_skipped += 1;
+                }
+            }
+            Err(_) => stats.snapshot_sanitization_failures += 1,
+        }
+    }
+    Ok(stats)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RecoverySnapshotSanitizeOutcome {
+    Sanitized,
+    Clean,
+    InvalidOrUnknown,
+}
+
+fn is_app_recovery_snapshot_name(file_name: &str, base_file_name: &str) -> bool {
+    is_app_recovery_snapshot_name_with_states(
+        file_name,
+        base_file_name,
+        &["successful", "failed", "pending"],
+    )
+}
+
+fn is_app_pending_recovery_snapshot_name(file_name: &str, base_file_name: &str) -> bool {
+    is_app_recovery_snapshot_name_with_states(file_name, base_file_name, &["pending"])
+}
+
+fn is_app_recovery_snapshot_name_with_states(
+    file_name: &str,
+    base_file_name: &str,
+    states: &[&str],
+) -> bool {
+    let Some(rest) = file_name
+        .strip_prefix(&format!("{base_file_name}.recovery-"))
+        .and_then(|value| value.strip_suffix(".sqlite"))
+    else {
+        return false;
+    };
+    const REASONS: [&str; 4] = [
+        "full-restore",
+        "legacy-bundle-migration",
+        "schema-upgrade",
+        "windows-storage-merge",
+    ];
+
+    REASONS.iter().any(|reason| {
+        states.iter().any(|state| {
+            rest.strip_prefix(&format!("{reason}-{state}-"))
+                .is_some_and(valid_snapshot_id)
+        })
+    })
+}
+
+fn valid_snapshot_id(value: &str) -> bool {
+    value.len() == SNAPSHOT_ID_LENGTH
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || byte.is_ascii_lowercase())
+}
+
+fn sanitize_recovery_snapshot_credentials(
+    snapshot_path: &Path,
+) -> Result<RecoverySnapshotSanitizeOutcome, String> {
+    sanitize_database_credentials(snapshot_path, true, physically_erase_removed_credentials)
+}
+
+/// Scrubs a retired legacy database after its data has been copied or merged
+/// into the active database. The source remains a usable recovery point for
+/// domain data, but it can no longer reintroduce machine-local credentials on a
+/// later first-run migration.
+pub(crate) fn sanitize_legacy_database_credentials(database_path: &Path) -> Result<(), String> {
+    let metadata = std::fs::symlink_metadata(database_path).map_err(|error| {
+        format!(
+            "failed to inspect legacy database {}: {error}",
+            database_path.display()
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(format!(
+            "legacy database is not a regular file: {}",
+            database_path.display()
+        ));
+    }
+    match sanitize_database_credentials(database_path, false, physically_erase_removed_credentials)?
+    {
+        RecoverySnapshotSanitizeOutcome::Sanitized
+        | RecoverySnapshotSanitizeOutcome::Clean
+        | RecoverySnapshotSanitizeOutcome::InvalidOrUnknown => Ok(()),
+    }
+}
+
+fn sanitize_database_credentials<F>(
+    database_path: &Path,
+    invalid_database_is_unknown: bool,
+    physical_cleanup: F,
+) -> Result<RecoverySnapshotSanitizeOutcome, String>
+where
+    F: FnOnce(Connection, &Path) -> Result<(), String>,
+{
+    let connection = match Connection::open_with_flags(
+        database_path,
+        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    ) {
+        Ok(connection) => connection,
+        Err(error) if invalid_database_is_unknown => {
+            let _ = error;
+            return Ok(RecoverySnapshotSanitizeOutcome::InvalidOrUnknown);
+        }
+        Err(error) => {
+            return Err(format!(
+                "failed to open legacy database {} for credential sanitization: {error}",
+                database_path.display()
+            ));
+        }
+    };
+    if let Err(error) = connection.busy_timeout(SQLITE_BUSY_TIMEOUT) {
+        if invalid_database_is_unknown {
+            return Ok(RecoverySnapshotSanitizeOutcome::InvalidOrUnknown);
+        }
+        return Err(format!(
+            "failed to configure credential sanitization timeout for {}: {error}",
+            database_path.display()
+        ));
+    }
+    if let Err(error) = validate_database_connection(&connection, database_path) {
+        if invalid_database_is_unknown {
+            return Ok(RecoverySnapshotSanitizeOutcome::InvalidOrUnknown);
+        }
+        return Err(error);
+    }
+
+    let settings_columns = table_columns(&connection, "settings").map_err(|error| {
+        format!(
+            "failed to inspect settings schema in {}: {error}",
+            database_path.display()
+        )
+    })?;
+    let printer_columns = table_columns(&connection, "printers").map_err(|error| {
+        format!(
+            "failed to inspect printer schema in {}: {error}",
+            database_path.display()
+        )
+    })?;
+    let has_settings = settings_columns
+        .as_ref()
+        .is_some_and(|columns| columns.contains("key") && columns.contains("value"));
+    let has_legacy_printer_token = printer_columns
+        .as_ref()
+        .is_some_and(|columns| columns.contains("access_token"));
+    if !has_settings && !has_legacy_printer_token {
+        return Ok(RecoverySnapshotSanitizeOutcome::InvalidOrUnknown);
+    }
+    if has_settings
+        && connection
+            .query_row(
+                "SELECT EXISTS(
+                    SELECT 1 FROM settings WHERE key = ?1 AND value = 'complete'
+                 )",
+                [CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|error| {
+                format!(
+                    "failed to inspect credential sanitization marker in {}: {error}",
+                    database_path.display()
+                )
+            })?
+    {
+        return Ok(RecoverySnapshotSanitizeOutcome::Clean);
+    }
+
+    connection
+        .execute_batch("PRAGMA secure_delete = ON; BEGIN IMMEDIATE;")
+        .map_err(|error| {
+            format!(
+                "failed to begin credential sanitization for {}: {error}",
+                database_path.display()
+            )
+        })?;
+    let result = (|| -> Result<usize, String> {
+        let mut changed = 0;
+        if has_settings {
+            let integrations = {
+                let mut statement = connection
+                    .prepare(
+                        "SELECT key, value
+                         FROM settings
+                         WHERE key LIKE 'bambu_live_integration:%'",
+                    )
+                    .map_err(|error| error.to_string())?;
+                let rows = statement
+                    .query_map([], |row| {
+                        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                    })
+                    .map_err(|error| error.to_string())?;
+                rows.collect::<Result<Vec<_>, _>>()
+                    .map_err(|error| error.to_string())?
+            };
+
+            for (key, payload) in integrations {
+                match serde_json::from_str::<Value>(&payload) {
+                    Ok(mut config) => {
+                        let Some(object) = config.as_object_mut() else {
+                            changed += connection
+                                .execute("DELETE FROM settings WHERE key = ?1", [&key])
+                                .map_err(|error| error.to_string())?;
+                            continue;
+                        };
+                        let removed_secret = object.remove("access_code").is_some();
+                        let removed_binding = object.remove("access_code_binding_id").is_some();
+                        let removed_stale_bindings =
+                            object.remove("access_code_stale_binding_ids").is_some();
+                        // Pre-release revision fields are also scrubbed so local
+                        // development snapshots cannot retain stale references.
+                        let removed_revision = object.remove("access_code_revision").is_some();
+                        let removed_stale_revisions =
+                            object.remove("access_code_stale_revisions").is_some();
+                        let was_configured = object
+                            .get("access_code_configured")
+                            .is_some_and(|value| value != &Value::Bool(false));
+                        if removed_secret
+                            || removed_revision
+                            || removed_stale_revisions
+                            || removed_binding
+                            || removed_stale_bindings
+                            || was_configured
+                        {
+                            object.insert("access_code_configured".to_string(), Value::Bool(false));
+                            let sanitized = serde_json::to_string(&config)
+                                .map_err(|error| error.to_string())?;
+                            changed += connection
+                                .execute(
+                                    "UPDATE settings SET value = ?1 WHERE key = ?2",
+                                    params![sanitized, key],
+                                )
+                                .map_err(|error| error.to_string())?;
+                        }
+                    }
+                    Err(_) => {
+                        // A malformed integration cannot be restored by the
+                        // application, and its opaque payload may itself be an
+                        // access code. Remove only that unusable setting while
+                        // continuing to scrub every independent credential.
+                        changed += connection
+                            .execute("DELETE FROM settings WHERE key = ?1", [&key])
+                            .map_err(|error| error.to_string())?;
+                    }
+                }
+            }
+
+            changed += connection
+                .execute(
+                    "DELETE FROM settings
+                     WHERE key IN (
+                        'library_sync_client_session_id',
+                        'library_sync_client_device_token',
+                        'library_sync_client_csrf_token'
+                     )",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+            // A marker from an interrupted/older sanitizer must not survive
+            // until physical erasure has completed.
+            changed += connection
+                .execute(
+                    "DELETE FROM settings WHERE key IN (?1, ?2)",
+                    params![
+                        CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY,
+                        LEGACY_CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY
+                    ],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        if has_legacy_printer_token {
+            changed += connection
+                .execute(
+                    "UPDATE printers
+                     SET access_token = NULL
+                     WHERE access_token IS NOT NULL",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+        }
+        Ok(changed)
+    })();
+
+    match result {
+        Ok(_) => {
+            connection.execute_batch("COMMIT").map_err(|error| {
+                format!(
+                    "failed to commit credential sanitization for {}: {error}",
+                    database_path.display()
+                )
+            })?;
+        }
+        Err(error) => {
+            let _ = connection.execute_batch("ROLLBACK");
+            return Err(format!(
+                "failed to sanitize credentials in {}: {error}",
+                database_path.display()
+            ));
+        }
+    }
+
+    // The completion marker is deliberately written only after VACUUM and all
+    // disk sidecars have been removed successfully. A failed physical cleanup
+    // therefore leaves the database marker-free and guarantees a retry.
+    physical_cleanup(connection, database_path)?;
+    if has_settings {
+        mark_credential_sanitization_complete(database_path)?;
+    }
+    Ok(RecoverySnapshotSanitizeOutcome::Sanitized)
+}
+
+fn physically_erase_removed_credentials(
+    connection: Connection,
+    database_path: &Path,
+) -> Result<(), String> {
+    // VACUUM is required even when no live credential row remained: SQLite
+    // freeblocks in a pre-migration database can still contain prior values.
+    connection.execute_batch("VACUUM;").map_err(|error| {
+        format!(
+            "failed to compact sanitized database {}: {error}",
+            database_path.display()
+        )
+    })?;
+    validate_database_connection(&connection, database_path)?;
+    drop(connection);
+    remove_sqlite_sidecars(database_path)
+}
+
+fn mark_credential_sanitization_complete(database_path: &Path) -> Result<(), String> {
+    let connection = Connection::open_with_flags(
+        database_path,
+        OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|error| {
+        format!(
+            "failed to reopen sanitized database {}: {error}",
+            database_path.display()
+        )
+    })?;
+    connection
+        .busy_timeout(SQLITE_BUSY_TIMEOUT)
+        .map_err(|error| error.to_string())?;
+    connection
+        .execute(
+            "INSERT INTO settings (key, value)
+             VALUES (?1, 'complete')
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY],
+        )
+        .map_err(|error| {
+            format!(
+                "failed to record credential sanitization completion for {}: {error}",
+                database_path.display()
+            )
+        })?;
+    validate_database_connection(&connection, database_path)?;
+    Ok(())
+}
+
+fn table_columns(
+    connection: &Connection,
+    table_name: &str,
+) -> Result<Option<BTreeSet<String>>, rusqlite::Error> {
+    let table_exists = connection.query_row(
+        "SELECT EXISTS(
+            SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1
+         )",
+        [table_name],
+        |row| row.get::<_, bool>(0),
+    )?;
+    if !table_exists {
+        return Ok(None);
+    }
+
+    let mut statement = connection.prepare(&format!("PRAGMA table_info({table_name})"))?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))?
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    Ok(Some(columns))
 }
 
 pub(crate) fn online_backup(source_path: &Path, destination_path: &Path) -> Result<(), String> {
@@ -364,6 +838,43 @@ fn database_is_usable(path: &Path) -> bool {
     validate_database_connection(&connection, path).is_ok()
 }
 
+fn database_is_definitively_invalid(path: &Path) -> bool {
+    let connection = match Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
+        Ok(connection) => connection,
+        Err(error) => return sqlite_error_is_definitively_invalid(&error),
+    };
+    if connection.busy_timeout(SQLITE_BUSY_TIMEOUT).is_err() {
+        return false;
+    }
+    let mut statement = match connection.prepare("PRAGMA quick_check") {
+        Ok(statement) => statement,
+        Err(error) => return sqlite_error_is_definitively_invalid(&error),
+    };
+    let rows = match statement.query_map([], |row| row.get::<_, String>(0)) {
+        Ok(rows) => rows,
+        Err(error) => return sqlite_error_is_definitively_invalid(&error),
+    };
+    let mut messages = Vec::new();
+    for row in rows {
+        match row {
+            Ok(message) => messages.push(message),
+            Err(error) => return sqlite_error_is_definitively_invalid(&error),
+        }
+    }
+    !(messages.len() == 1 && messages[0] == "ok")
+}
+
+fn sqlite_error_is_definitively_invalid(error: &rusqlite::Error) -> bool {
+    matches!(
+        error,
+        rusqlite::Error::SqliteFailure(failure, _)
+            if matches!(
+                failure.code,
+                rusqlite::ErrorCode::DatabaseCorrupt | rusqlite::ErrorCode::NotADatabase
+            )
+    )
+}
+
 fn recovery_snapshot_path(
     parent: &Path,
     base_file_name: &str,
@@ -534,17 +1045,53 @@ fn remove_sqlite_artifacts(path: &Path) {
     }
 }
 
-fn sqlite_artifact_paths(path: &Path) -> [PathBuf; 3] {
-    let [wal_path, shm_path] = sqlite_sidecar_paths(path);
-    [path.to_path_buf(), wal_path, shm_path]
+fn remove_sqlite_artifacts_checked(path: &Path) -> Result<(), String> {
+    // Keep the main app-owned pending file until every sidecar is gone. If one
+    // deletion fails, the recognizable main path remains for a later retry.
+    let mut first_error = None;
+    for sidecar_path in sqlite_sidecar_paths(path) {
+        match std::fs::remove_file(&sidecar_path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) if first_error.is_none() => {
+                first_error = Some(format!(
+                    "failed to remove invalid pending SQLite sidecar {}: {error}",
+                    sidecar_path.display()
+                ));
+            }
+            Err(_) => {}
+        }
+    }
+    if let Some(error) = first_error {
+        return Err(error);
+    }
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!(
+            "failed to remove invalid pending SQLite snapshot {}: {error}",
+            path.display()
+        )),
+    }
 }
 
-fn sqlite_sidecar_paths(path: &Path) -> [PathBuf; 2] {
+fn sqlite_artifact_paths(path: &Path) -> [PathBuf; 4] {
+    let [wal_path, shm_path, journal_path] = sqlite_sidecar_paths(path);
+    [path.to_path_buf(), wal_path, shm_path, journal_path]
+}
+
+fn sqlite_sidecar_paths(path: &Path) -> [PathBuf; 3] {
     let mut wal_path = OsString::from(path.as_os_str());
     wal_path.push("-wal");
     let mut shm_path = OsString::from(path.as_os_str());
     shm_path.push("-shm");
-    [PathBuf::from(wal_path), PathBuf::from(shm_path)]
+    let mut journal_path = OsString::from(path.as_os_str());
+    journal_path.push("-journal");
+    [
+        PathBuf::from(wal_path),
+        PathBuf::from(shm_path),
+        PathBuf::from(journal_path),
+    ]
 }
 
 fn remove_sqlite_sidecars(path: &Path) -> Result<(), String> {
@@ -622,6 +1169,36 @@ mod tests {
             .map_err(|error| error.to_string())
     }
 
+    fn write_legacy_credential_database(path: &Path) -> Result<(), String> {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        let connection = Connection::open(path).map_err(|error| error.to_string())?;
+        connection
+            .execute_batch(
+                "CREATE TABLE settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                 );
+                 CREATE TABLE printers (
+                    id TEXT PRIMARY KEY,
+                    access_token TEXT
+                 );
+                 INSERT INTO settings (key, value) VALUES
+                    (
+                        'bambu_live_integration:printer_1',
+                        '{\"enabled\":true,\"access_code\":\"snapshot-bambu-secret\",\"access_code_configured\":true,\"access_code_binding_id\":\"77777777777777777777777777777777\",\"access_code_stale_binding_ids\":[\"11111111111111111111111111111111\",\"66666666666666666666666666666666\"]}'
+                    ),
+                    ('library_sync_client_session_id', 'snapshot-session-secret'),
+                    ('library_sync_client_device_token', 'snapshot-device-secret'),
+                    ('library_sync_client_csrf_token', 'snapshot-csrf-secret'),
+                    ('trusted_lan_host_token_hash', 'hash-must-remain');
+                 INSERT INTO printers (id, access_token)
+                 VALUES ('printer_1', 'snapshot-legacy-printer-secret');",
+            )
+            .map_err(|error| error.to_string())
+    }
+
     fn snapshot_count(parent: &Path, fragment: &str) -> usize {
         std::fs::read_dir(parent)
             .into_iter()
@@ -687,6 +1264,473 @@ mod tests {
                     & 0o777;
                 assert_eq!(mode, 0o600);
             }
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn app_snapshots_are_sanitized_without_touching_token_hashes() {
+        let base = temp_dir("credential-sanitize");
+        let source_path = base.join("filament-manager.db");
+        let result = (|| -> Result<(), String> {
+            write_legacy_credential_database(&source_path)?;
+            let successful = RecoverySnapshot::create(&source_path, RecoveryReason::FullRestore)?
+                .mark_operation_succeeded();
+            let failed = RecoverySnapshot::create(&source_path, RecoveryReason::SchemaUpgrade)?
+                .mark_operation_failed();
+            let rollback_journal = sqlite_sidecar_paths(&successful)[2].clone();
+            std::fs::write(&rollback_journal, b"snapshot-bambu-secret")
+                .map_err(|error| error.to_string())?;
+
+            let stats = sanitize_app_recovery_snapshot_credentials(&source_path)?;
+            assert_eq!(
+                stats,
+                RecoveryCredentialSanitizeStats {
+                    snapshots_checked: 2,
+                    snapshots_sanitized: 2,
+                    invalid_pending_snapshots_removed: 0,
+                    invalid_or_unknown_snapshots_skipped: 0,
+                    snapshot_sanitization_failures: 0,
+                }
+            );
+
+            for snapshot_path in [&successful, &failed] {
+                let connection =
+                    Connection::open(snapshot_path).map_err(|error| error.to_string())?;
+                let payload: String = connection
+                    .query_row(
+                        "SELECT value FROM settings
+                         WHERE key = 'bambu_live_integration:printer_1'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|error| error.to_string())?;
+                let payload: Value =
+                    serde_json::from_str(&payload).map_err(|error| error.to_string())?;
+                assert!(payload["access_code"].is_null());
+                assert_eq!(payload["access_code_configured"], false);
+                assert!(payload["access_code_binding_id"].is_null());
+                assert!(payload["access_code_stale_binding_ids"].is_null());
+
+                let removed_library_secrets: i64 = connection
+                    .query_row(
+                        "SELECT COUNT(*) FROM settings
+                         WHERE key IN (
+                            'library_sync_client_session_id',
+                            'library_sync_client_device_token',
+                            'library_sync_client_csrf_token'
+                         )",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|error| error.to_string())?;
+                assert_eq!(removed_library_secrets, 0);
+                let retained_hash: String = connection
+                    .query_row(
+                        "SELECT value FROM settings
+                         WHERE key = 'trusted_lan_host_token_hash'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|error| error.to_string())?;
+                assert_eq!(retained_hash, "hash-must-remain");
+                let legacy_printer_token: Option<String> = connection
+                    .query_row(
+                        "SELECT access_token FROM printers WHERE id = 'printer_1'",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|error| error.to_string())?;
+                assert!(legacy_printer_token.is_none());
+                drop(connection);
+
+                for artifact_path in sqlite_artifact_paths(snapshot_path) {
+                    if !artifact_path.exists() {
+                        continue;
+                    }
+                    let raw = std::fs::read(&artifact_path).map_err(|error| error.to_string())?;
+                    for secret in [
+                        "snapshot-bambu-secret",
+                        "snapshot-session-secret",
+                        "snapshot-device-secret",
+                        "snapshot-csrf-secret",
+                        "snapshot-legacy-printer-secret",
+                    ] {
+                        assert!(
+                            !raw.windows(secret.len())
+                                .any(|window| window == secret.as_bytes()),
+                            "{secret} remained in {}",
+                            artifact_path.display()
+                        );
+                    }
+                }
+                for sidecar_path in sqlite_sidecar_paths(snapshot_path) {
+                    assert!(
+                        !sidecar_path.exists(),
+                        "sanitized snapshot retained {}",
+                        sidecar_path.display()
+                    );
+                }
+            }
+            assert!(
+                !rollback_journal.exists(),
+                "sanitization retained rollback journal {}",
+                rollback_journal.display()
+            );
+            assert_eq!(
+                sanitize_app_recovery_snapshot_credentials(&source_path)?,
+                RecoveryCredentialSanitizeStats {
+                    snapshots_checked: 2,
+                    snapshots_sanitized: 0,
+                    invalid_pending_snapshots_removed: 0,
+                    invalid_or_unknown_snapshots_skipped: 0,
+                    snapshot_sanitization_failures: 0,
+                }
+            );
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn snapshot_sanitizer_removes_secure_store_references_without_plaintext() {
+        let base = temp_dir("credential-reference-sanitize");
+        let source_path = base.join("filament-manager.db");
+        let result = (|| -> Result<(), String> {
+            write_legacy_credential_database(&source_path)?;
+            Connection::open(&source_path)
+                .map_err(|error| error.to_string())?
+                .execute(
+                    "UPDATE settings SET value = ?1
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    ["{\"enabled\":true,\"access_code_configured\":true,\
+                         \"access_code_binding_id\":\"99999999999999999999999999999999\",\
+                         \"access_code_stale_binding_ids\":[\
+                           \"33333333333333333333333333333333\",\
+                           \"88888888888888888888888888888888\"]}"],
+                )
+                .map_err(|error| error.to_string())?;
+            let snapshot = RecoverySnapshot::create(&source_path, RecoveryReason::FullRestore)?
+                .mark_operation_succeeded();
+
+            let stats = sanitize_app_recovery_snapshot_credentials(&source_path)?;
+            assert_eq!(stats.snapshots_sanitized, 1);
+            let payload: String = Connection::open(&snapshot)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT value FROM settings
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let payload: Value =
+                serde_json::from_str(&payload).map_err(|error| error.to_string())?;
+            assert_eq!(payload["access_code_configured"], false);
+            assert!(payload["access_code_binding_id"].is_null());
+            assert!(payload["access_code_stale_binding_ids"].is_null());
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn malformed_bambu_setting_does_not_block_independent_secret_scrubbing() {
+        let base = temp_dir("credential-sanitize-malformed-bambu");
+        let source_path = base.join("filament-manager.db");
+        let result = (|| -> Result<(), String> {
+            write_probe_database(&source_path, "source")?;
+            let malformed_path = base.join(format!(
+                "filament-manager.db.recovery-full-restore-failed-{}.sqlite",
+                "4".repeat(SNAPSHOT_ID_LENGTH)
+            ));
+            write_legacy_credential_database(&malformed_path)?;
+            Connection::open(&malformed_path)
+                .map_err(|error| error.to_string())?
+                .execute(
+                    "UPDATE settings SET value = ?1
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    ["malformed-json-with-snapshot-secret"],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let later_path = base.join(format!(
+                "filament-manager.db.recovery-full-restore-successful-{}.sqlite",
+                "5".repeat(SNAPSHOT_ID_LENGTH)
+            ));
+            write_legacy_credential_database(&later_path)?;
+
+            assert_eq!(
+                sanitize_app_recovery_snapshot_credentials(&source_path)?,
+                RecoveryCredentialSanitizeStats {
+                    snapshots_checked: 2,
+                    snapshots_sanitized: 2,
+                    invalid_pending_snapshots_removed: 0,
+                    invalid_or_unknown_snapshots_skipped: 0,
+                    snapshot_sanitization_failures: 0,
+                }
+            );
+
+            let later_payload: String = Connection::open(&later_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT value FROM settings
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let later_payload: Value =
+                serde_json::from_str(&later_payload).map_err(|error| error.to_string())?;
+            assert!(later_payload["access_code"].is_null());
+            assert_eq!(later_payload["access_code_configured"], false);
+
+            let malformed = Connection::open(&malformed_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT COUNT(*) FROM settings
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(malformed, 0);
+            let remaining_independent_secrets: i64 = Connection::open(&malformed_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT COUNT(*) FROM settings
+                     WHERE key IN (
+                        'library_sync_client_session_id',
+                        'library_sync_client_device_token',
+                        'library_sync_client_csrf_token'
+                     )",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(remaining_independent_secrets, 0);
+            for artifact_path in sqlite_artifact_paths(&malformed_path) {
+                if !artifact_path.exists() {
+                    continue;
+                }
+                let raw = std::fs::read(&artifact_path).map_err(|error| error.to_string())?;
+                assert!(
+                    !raw.windows("malformed-json-with-snapshot-secret".len())
+                        .any(|window| window == b"malformed-json-with-snapshot-secret"),
+                    "malformed credential payload remained in {}",
+                    artifact_path.display()
+                );
+            }
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn physical_cleanup_failure_leaves_no_completion_marker_and_retries() {
+        let base = temp_dir("credential-sanitize-physical-retry");
+        let snapshot_path = base.join(format!(
+            "filament-manager.db.recovery-full-restore-successful-{}.sqlite",
+            "6".repeat(SNAPSHOT_ID_LENGTH)
+        ));
+        let result = (|| -> Result<(), String> {
+            write_legacy_credential_database(&snapshot_path)?;
+            let journal_path = sqlite_sidecar_paths(&snapshot_path)[2].clone();
+            let error = sanitize_database_credentials(&snapshot_path, true, |connection, _| {
+                connection
+                    .execute_batch("VACUUM")
+                    .map_err(|error| error.to_string())?;
+                drop(connection);
+                std::fs::write(&journal_path, b"snapshot-bambu-secret")
+                    .map_err(|error| error.to_string())?;
+                Err("injected physical cleanup failure".to_string())
+            })
+            .unwrap_err();
+            assert!(error.contains("injected physical cleanup failure"));
+            assert!(journal_path.exists());
+
+            let marker_count: i64 = Connection::open(&snapshot_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT COUNT(*) FROM settings WHERE key = ?1",
+                    [CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(marker_count, 0);
+
+            assert_eq!(
+                sanitize_recovery_snapshot_credentials(&snapshot_path)?,
+                RecoverySnapshotSanitizeOutcome::Sanitized
+            );
+            let marker: String = Connection::open(&snapshot_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT value FROM settings WHERE key = ?1",
+                    [CREDENTIAL_SNAPSHOT_SANITIZE_MARKER_KEY],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(marker, "complete");
+            for artifact_path in sqlite_artifact_paths(&snapshot_path) {
+                if !artifact_path.exists() {
+                    continue;
+                }
+                let raw = std::fs::read(&artifact_path).map_err(|error| error.to_string())?;
+                assert!(
+                    !raw.windows("snapshot-bambu-secret".len())
+                        .any(|window| window == b"snapshot-bambu-secret"),
+                    "credential remained in {} after retry",
+                    artifact_path.display()
+                );
+            }
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn snapshot_sanitizer_cleans_pending_and_skips_invalid_and_unknown_files() {
+        let base = temp_dir("credential-sanitize-scope");
+        let source_path = base.join("filament-manager.db");
+        let result = (|| -> Result<(), String> {
+            write_legacy_credential_database(&source_path)?;
+            let pending = RecoverySnapshot::create(&source_path, RecoveryReason::FullRestore)?;
+            let pending_path = pending.path().to_path_buf();
+            drop(pending);
+
+            let invalid_path = base.join(format!(
+                "filament-manager.db.recovery-full-restore-successful-{}.sqlite",
+                "0".repeat(SNAPSHOT_ID_LENGTH)
+            ));
+            std::fs::write(&invalid_path, b"not sqlite").map_err(|error| error.to_string())?;
+            let invalid_pending_path = base.join(format!(
+                "filament-manager.db.recovery-schema-upgrade-pending-{}.sqlite",
+                "3".repeat(SNAPSHOT_ID_LENGTH)
+            ));
+            std::fs::write(
+                &invalid_pending_path,
+                b"partial SQLite pages with snapshot-plaintext-secret",
+            )
+            .map_err(|error| error.to_string())?;
+            for sidecar_path in sqlite_sidecar_paths(&invalid_pending_path) {
+                std::fs::write(&sidecar_path, b"snapshot-plaintext-secret")
+                    .map_err(|error| error.to_string())?;
+            }
+            let unknown_path = base.join(format!(
+                "filament-manager.db.recovery-schema-upgrade-failed-{}.sqlite",
+                "1".repeat(SNAPSHOT_ID_LENGTH)
+            ));
+            write_probe_database(&unknown_path, "not an app schema")?;
+            std::fs::write(
+                base.join(format!(
+                    "other.db.recovery-full-restore-successful-{}.sqlite",
+                    "2".repeat(SNAPSHOT_ID_LENGTH)
+                )),
+                b"foreign file",
+            )
+            .map_err(|error| error.to_string())?;
+
+            let stats = sanitize_app_recovery_snapshot_credentials(&source_path)?;
+            assert_eq!(
+                stats,
+                RecoveryCredentialSanitizeStats {
+                    snapshots_checked: 4,
+                    snapshots_sanitized: 1,
+                    invalid_pending_snapshots_removed: 1,
+                    invalid_or_unknown_snapshots_skipped: 2,
+                    snapshot_sanitization_failures: 0,
+                }
+            );
+            for artifact_path in sqlite_artifact_paths(&invalid_pending_path) {
+                assert!(
+                    !artifact_path.exists(),
+                    "invalid app-owned pending artifact was retained: {}",
+                    artifact_path.display()
+                );
+            }
+            assert!(
+                invalid_path.exists(),
+                "completed invalid snapshot must be handled conservatively"
+            );
+            assert!(
+                unknown_path.exists(),
+                "valid snapshot with an unknown schema must be retained"
+            );
+            let pending_payload: String = Connection::open(&pending_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT value FROM settings
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let pending_payload: Value =
+                serde_json::from_str(&pending_payload).map_err(|error| error.to_string())?;
+            assert!(pending_payload["access_code"].is_null());
+            assert_eq!(pending_payload["access_code_configured"], false);
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_dir_all(&base);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn snapshot_sanitizer_never_follows_terminal_name_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let base = temp_dir("credential-sanitize-symlink");
+        let source_path = base.join("filament-manager.db");
+        let outside_path = base.join("outside.sqlite");
+        let result = (|| -> Result<(), String> {
+            write_probe_database(&source_path, "source")?;
+            write_legacy_credential_database(&outside_path)?;
+            let link_path = base.join(format!(
+                "filament-manager.db.recovery-full-restore-successful-{}.sqlite",
+                "3".repeat(SNAPSHOT_ID_LENGTH)
+            ));
+            symlink(&outside_path, &link_path).map_err(|error| error.to_string())?;
+
+            assert_eq!(
+                sanitize_app_recovery_snapshot_credentials(&source_path)?,
+                RecoveryCredentialSanitizeStats::default()
+            );
+            let payload: String = Connection::open(&outside_path)
+                .map_err(|error| error.to_string())?
+                .query_row(
+                    "SELECT value FROM settings
+                     WHERE key = 'bambu_live_integration:printer_1'",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert!(payload.contains("snapshot-bambu-secret"));
             Ok(())
         })();
 
@@ -935,8 +1979,18 @@ mod tests {
                 .file_name()
                 .and_then(|value| value.to_str())
                 .is_some_and(|value| value.contains("legacy-bundle-migration-working")));
+            for sidecar_path in sqlite_sidecar_paths(&working_path) {
+                std::fs::write(&sidecar_path, b"stale sqlite sidecar")
+                    .map_err(|error| error.to_string())?;
+            }
             drop(working_copy);
-            assert!(!working_path.exists());
+            for artifact_path in sqlite_artifact_paths(&working_path) {
+                assert!(
+                    !artifact_path.exists(),
+                    "working-copy cleanup retained {}",
+                    artifact_path.display()
+                );
+            }
             Ok(())
         })();
 

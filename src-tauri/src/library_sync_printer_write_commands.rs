@@ -186,57 +186,18 @@ pub(crate) fn refresh_library_sync_host_vendor_catalog(
 
 #[tauri::command]
 pub(crate) fn save_library_sync_host_bambu_live_integration(
-    state: tauri::State<'_, AppState>,
-    input: LibrarySyncSaveBambuLiveIntegrationInput,
+    _state: tauri::State<'_, AppState>,
+    _input: LibrarySyncSaveBambuLiveIntegrationInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
-
-    let printer_id = input.printer_id.trim();
-    if printer_id.is_empty() {
-        return Err("Printer id is required.".to_string());
-    }
-
-    perform_library_sync_host_write(
-        &state,
-        &normalized_base_url,
-        &format!("/api/v1/printers/{printer_id}/bambu-live"),
-        &serde_json::json!({
-            "enabled": input.enabled,
-            "host": trimmed_non_empty(input.host.as_deref()),
-            "access_code": trimmed_non_empty(input.access_code.as_deref()),
-            "printer_serial": trimmed_non_empty(input.printer_serial.as_deref()),
-        }),
-    )?;
-
-    refresh_library_sync_printer_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host Bambu Live integration saved.", None)?;
-    Ok(())
+    Err("Bambu credentials and TLS trust can only be changed on the host desktop.".to_string())
 }
 
 #[tauri::command]
 pub(crate) fn delete_library_sync_host_bambu_live_integration(
-    state: tauri::State<'_, AppState>,
-    input: LibrarySyncDeleteBambuLiveIntegrationInput,
+    _state: tauri::State<'_, AppState>,
+    _input: LibrarySyncDeleteBambuLiveIntegrationInput,
 ) -> Result<(), String> {
-    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
-
-    let printer_id = input.printer_id.trim();
-    if printer_id.is_empty() {
-        return Err("Printer id is required.".to_string());
-    }
-
-    perform_library_sync_host_write(
-        &state,
-        &normalized_base_url,
-        &format!("/api/v1/printers/{printer_id}/bambu-live/delete"),
-        &serde_json::json!({}),
-    )?;
-
-    refresh_library_sync_printer_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host Bambu Live integration deleted.", None)?;
-    Ok(())
+    Err("Bambu credentials and TLS trust can only be changed on the host desktop.".to_string())
 }
 
 #[tauri::command]

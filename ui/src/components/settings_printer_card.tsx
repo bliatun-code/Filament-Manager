@@ -14,7 +14,10 @@ import { useI18n } from "../lib/i18n";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { SemanticChipTone } from "../lib/chip_styles";
 import type {
+  BambuAccessCodeAction,
   BambuLiveIntegrationSettings,
+  BambuTlsTrustAction,
+  BambuTlsTrustState,
   PrinterAmsSlotRow,
   PrinterRow,
 } from "../lib/tauri_client";
@@ -27,9 +30,15 @@ import { SettingsPrinterEditForm } from "./settings_printer_edit_form";
 
 export type SettingsPrinterEditDraft = {
   bambuLiveAccessCode: string;
+  bambuLiveAccessCodeAction: BambuAccessCodeAction;
+  bambuLiveAccessCodeConfigured: boolean;
   bambuLiveEnabled: boolean;
   bambuLiveHost: string;
   bambuLivePrinterSerial: string;
+  bambuLiveTlsCertificateFingerprint: string | null;
+  bambuLiveTlsSpkiFingerprint: string | null;
+  bambuLiveTlsTrustAction: BambuTlsTrustAction;
+  bambuLiveTlsTrustState: BambuTlsTrustState;
   model: string;
   modelProfile: PrinterModelProfile;
   name: string;
@@ -39,9 +48,12 @@ export type SettingsPrinterEditDraft = {
 
 export type SettingsPrinterEditActions = {
   onBambuLiveAccessCodeChange: (value: string) => void;
+  onBambuLiveAccessCodeActionChange: (value: BambuAccessCodeAction) => void;
   onBambuLiveEnabledChange: (value: boolean) => void;
   onBambuLiveHostChange: (value: string) => void;
+  onBambuLiveIdentityCheck: () => void;
   onBambuLivePrinterSerialChange: (value: string) => void;
+  onBambuLiveTlsTrustActionChange: (value: BambuTlsTrustAction) => void;
   onCancel: () => void;
   onModelChange: (value: string) => void;
   onNameChange: (value: string) => void;
@@ -174,9 +186,17 @@ export function SettingsPrinterCard({
       {isEditing ? (
         <SettingsPrinterEditForm
           bambuLiveAccessCode={editDraft.bambuLiveAccessCode}
+          bambuLiveAccessCodeAction={editDraft.bambuLiveAccessCodeAction}
+          bambuLiveAccessCodeConfigured={editDraft.bambuLiveAccessCodeConfigured}
           bambuLiveEnabled={editDraft.bambuLiveEnabled}
           bambuLiveHost={editDraft.bambuLiveHost}
           bambuLivePrinterSerial={editDraft.bambuLivePrinterSerial}
+          bambuLiveTlsCertificateFingerprint={
+            editDraft.bambuLiveTlsCertificateFingerprint
+          }
+          bambuLiveTlsSpkiFingerprint={editDraft.bambuLiveTlsSpkiFingerprint}
+          bambuLiveTlsTrustAction={editDraft.bambuLiveTlsTrustAction}
+          bambuLiveTlsTrustState={editDraft.bambuLiveTlsTrustState}
           busy={busy}
           dirty={editDirty}
           model={editDraft.model}
@@ -190,9 +210,16 @@ export function SettingsPrinterCard({
           t={t}
           units={editDraft.units}
           onBambuLiveAccessCodeChange={editActions.onBambuLiveAccessCodeChange}
+          onBambuLiveAccessCodeActionChange={
+            editActions.onBambuLiveAccessCodeActionChange
+          }
           onBambuLiveEnabledChange={editActions.onBambuLiveEnabledChange}
           onBambuLiveHostChange={editActions.onBambuLiveHostChange}
+          onBambuLiveIdentityCheck={editActions.onBambuLiveIdentityCheck}
           onBambuLivePrinterSerialChange={editActions.onBambuLivePrinterSerialChange}
+          onBambuLiveTlsTrustActionChange={
+            editActions.onBambuLiveTlsTrustActionChange
+          }
           onModelChange={(nextModel) => {
             editActions.onModelChange(nextModel);
             const exactProfile = findPrinterModelProfileExact(nextModel);

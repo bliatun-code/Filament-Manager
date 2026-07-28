@@ -76,7 +76,9 @@ Release notes:
   visible while detailed slots are collapsed.
 - Optional Bambu Live integration for local AMS slot observations, RFID matching,
   estimated AMS weight, Bambu filament settings/status diagnostics, nozzle
-  temperature, and print-session usage accounting.
+  temperature, and print-session usage accounting. Printer identity is approved
+  locally before authentication; reusable secrets stay in macOS Keychain or
+  Windows Credential Manager instead of SQLite.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
   A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.

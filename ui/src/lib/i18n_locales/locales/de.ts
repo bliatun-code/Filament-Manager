@@ -1665,8 +1665,49 @@ export const deDictionary: DictionaryNode = {
     bambuLiveStandaloneOnly: "Der Bambu-Livestatus wird auf dem Host-Desktop konfiguriert.",
     bambuLiveHost: "Drucker-Host / IP",
     bambuLiveAccessCode: "Zugriffscode",
+    bambuLiveAccessCodeSaved: "Zugriffscode sicher gespeichert",
+    bambuLiveAccessCodeMissing: "Kein Zugriffscode gespeichert",
+    bambuLiveAccessCodeSavedPlaceholder:
+      "Sicher gespeichert — zum Ersetzen neuen Code eingeben",
+    bambuLiveAccessCodeReplacePending:
+      "Der gespeicherte Zugriffscode wird beim Speichern ersetzt.",
+    bambuLiveAccessCodeSavePending:
+      "Der Zugriffscode wird beim Speichern sicher gespeichert.",
+    bambuLiveAccessCodeClear: "Gespeicherten Code entfernen",
+    bambuLiveAccessCodeClearPending:
+      "Der gespeicherte Zugriffscode wird beim Speichern entfernt. Liveverbindungen pausieren, bis Sie einen neuen Code eingeben.",
+    bambuLiveAccessCodeKeep: "Gespeicherten Code behalten",
+    bambuLiveAccessCodeHostConfigured:
+      "Auf dem Host-Desktop ist ein Zugriffscode gespeichert.",
+    bambuLiveAccessCodeHostMissing:
+      "Auf dem Host-Desktop ist kein Zugriffscode gespeichert.",
     bambuLivePrinterSerial: "Druckerseriennummer",
-    bambuLiveCredentialsNote: "Zugangsdaten werden lokal auf diesem Desktop gespeichert.",
+    bambuLiveCredentialsNote:
+      "Zugriffscodes werden im sicheren Anmeldedatenspeicher des Betriebssystems gespeichert.",
+    bambuTlsTrustTitle: "Druckeridentität",
+    bambuTlsTrustTrusted: "Vertrauenswürdig",
+    bambuTlsTrustUnpaired: "Noch nicht vertrauenswürdig",
+    bambuTlsTrustChanged: "Identität geändert",
+    bambuTlsTrustPending: "Vertrauen ausstehend",
+    bambuTlsClearPending: "Entfernen des Vertrauens ausstehend",
+    bambuTlsTrustTrustedHint:
+      "Das Druckerzertifikat entspricht der gespeicherten Identität.",
+    bambuTlsTrustUnpairedHint:
+      "Der Zugriffscode wird erst gesendet, wenn Sie dieser Druckeridentität ausdrücklich vertrauen.",
+    bambuTlsTrustChangedHint:
+      "Die Druckeridentität hat sich geändert. Die Verbindung wurde gestoppt, bevor der Zugriffscode gesendet wurde.",
+    bambuTlsTrustPendingHint:
+      "Dieser Druckeridentität wird beim Speichern vertraut.",
+    bambuTlsClearPendingHint:
+      "Das Vertrauen wird beim Speichern entfernt. Liveverbindungen bleiben blockiert, bis Sie dem Drucker erneut vertrauen.",
+    bambuTlsFingerprint: "Zertifikatfingerabdruck",
+    bambuTlsFingerprintUnavailable:
+      "Speichern oder prüfen Sie die Druckerverbindung, um ihre Identität zu lesen.",
+    bambuTlsCheckCurrent: "Identität prüfen",
+    bambuTlsTrustCurrent: "Dieser Identität vertrauen",
+    bambuTlsRetrustCurrent: "Neuer Identität vertrauen",
+    bambuTlsForget: "Vertrauenswürdige Identität vergessen",
+    bambuTlsUndoTrustChange: "Vertrauensänderung rückgängig machen",
     bambuLiveDisabledNote: "Deaktiviert lassen, um den bisherigen Druckerablauf unverändert zu verwenden.",
     activePrinter: "Aktiver Drucker",
     noActivePrinter: "Kein aktiver Drucker",
@@ -1801,6 +1842,10 @@ export const deDictionary: DictionaryNode = {
       load: "Einstellungen konnten nicht geladen werden.",
       bambuLiveFieldsRequired:
         "Host, Zugriffscode und Druckerseriennummer sind erforderlich, wenn der Bambu-Livestatus aktiviert ist.",
+      bambuLiveIdentityCheckFailed:
+        "Die Druckeridentität konnte nicht geprüft werden.",
+      bambuLiveTrustRequired:
+        "Prüfen Sie die Druckeridentität und vertrauen Sie ihr, bevor Sie den Bambu-Livestatus aktivieren.",
       librarySyncSnapshot: "Host-Momentaufnahme konnte nicht abgerufen werden.",
       printerRequired: "Druckername und Modell sind erforderlich.",
       addPrinter: "Drucker konnte nicht hinzugefügt werden.",

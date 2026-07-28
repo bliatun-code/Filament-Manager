@@ -256,22 +256,10 @@ pub(crate) struct LibrarySyncCreatePrinterInput {
 }
 
 #[derive(Deserialize)]
-pub(crate) struct LibrarySyncSaveBambuLiveIntegrationInput {
-    pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
-    pub(crate) printer_id: String,
-    pub(crate) enabled: bool,
-    pub(crate) host: Option<String>,
-    pub(crate) access_code: Option<String>,
-    pub(crate) printer_serial: Option<String>,
-}
+pub(crate) struct LibrarySyncSaveBambuLiveIntegrationInput {}
 
 #[derive(Deserialize)]
-pub(crate) struct LibrarySyncDeleteBambuLiveIntegrationInput {
-    pub(crate) base_url: String,
-    pub(crate) expected_library_id: Option<String>,
-    pub(crate) printer_id: String,
-}
+pub(crate) struct LibrarySyncDeleteBambuLiveIntegrationInput {}
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncDeletePrinterInput {

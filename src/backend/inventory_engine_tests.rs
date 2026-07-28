@@ -680,8 +680,12 @@ fn assert_assign_printer_slot_derives_unknown_live_rfid_override(
                     enabled: true,
                     host: Some("192.168.1.10".to_string()),
                     access_code: None,
+                    access_code_configured: false,
+                    access_code_binding_id: None,
+                    access_code_stale_binding_ids: Vec::new(),
                     printer_serial: Some("SERIAL-1".to_string()),
                     last_error: None,
+                    tls_identity: None,
                     observed_state: Some(BambuLiveObservedStateRow {
                         online: true,
                         last_seen_at: Some("2026-04-16T12:00:00Z".to_string()),

@@ -1,5 +1,8 @@
 import type {
+  BambuAccessCodeAction,
   BambuLiveIntegrationEntry,
+  BambuTlsTrustAction,
+  BambuTlsTrustState,
   CreatePrinterInput,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
@@ -23,7 +26,13 @@ export type PrinterReconfigureDraft = {
   bambuLiveEnabled: boolean;
   bambuLiveHost: string;
   bambuLiveAccessCode: string;
+  bambuLiveAccessCodeAction: BambuAccessCodeAction;
+  bambuLiveAccessCodeConfigured: boolean;
   bambuLivePrinterSerial: string;
+  bambuLiveTlsCertificateFingerprint: string | null;
+  bambuLiveTlsSpkiFingerprint: string | null;
+  bambuLiveTlsTrustAction: BambuTlsTrustAction;
+  bambuLiveTlsTrustState: BambuTlsTrustState;
 };
 
 export type NormalizedPrinterReconfigureDraft = {
@@ -35,7 +44,13 @@ export type NormalizedPrinterReconfigureDraft = {
   bambuLiveEnabled: boolean;
   bambuLiveHost: string | null;
   bambuLiveAccessCode: string | null;
+  bambuLiveAccessCodeAction: BambuAccessCodeAction;
+  bambuLiveAccessCodeConfigured: boolean;
   bambuLivePrinterSerial: string | null;
+  bambuLiveTlsCertificateFingerprint: string | null;
+  bambuLiveTlsSpkiFingerprint: string | null;
+  bambuLiveTlsTrustAction: BambuTlsTrustAction;
+  bambuLiveTlsTrustState: BambuTlsTrustState;
 };
 
 export type PreparedPrinterReconfigure =
@@ -46,12 +61,19 @@ export type PreparedPrinterReconfigure =
         enabled: boolean;
         host: string | null;
         accessCode: string | null;
+        accessCodeAction: BambuAccessCodeAction;
         printerSerial: string | null;
+        tlsTrustAction: BambuTlsTrustAction;
+        expectedTlsCertificateSha256: string | null;
+        expectedTlsSpkiSha256: string | null;
       };
     }
   | {
       ok: false;
-      reason: "missing_printer" | "missing_bambu_live_fields";
+      reason:
+        | "missing_printer"
+        | "missing_bambu_live_fields"
+        | "missing_bambu_live_trust";
     };
 
 export function buildPrinterSlotsByPrinterId(
@@ -140,8 +162,19 @@ export function normalizePrinterReconfigureDraft(
     slotsPerUnit,
     bambuLiveEnabled: draft.bambuLiveEnabled,
     bambuLiveHost: draft.bambuLiveHost.trim() || null,
-    bambuLiveAccessCode: draft.bambuLiveAccessCode.trim() || null,
+    bambuLiveAccessCode:
+      draft.bambuLiveAccessCodeAction === "REPLACE"
+        ? draft.bambuLiveAccessCode.trim() || null
+        : null,
+    bambuLiveAccessCodeAction: draft.bambuLiveAccessCodeAction,
+    bambuLiveAccessCodeConfigured: draft.bambuLiveAccessCodeConfigured,
     bambuLivePrinterSerial: draft.bambuLivePrinterSerial.trim() || null,
+    bambuLiveTlsCertificateFingerprint:
+      draft.bambuLiveTlsCertificateFingerprint?.trim() || null,
+    bambuLiveTlsSpkiFingerprint:
+      draft.bambuLiveTlsSpkiFingerprint?.trim() || null,
+    bambuLiveTlsTrustAction: draft.bambuLiveTlsTrustAction,
+    bambuLiveTlsTrustState: draft.bambuLiveTlsTrustState,
   };
 }
 
@@ -172,19 +205,28 @@ export function isPrinterReconfigureDraftDirty(
     return true;
   }
 
+  const securityActionChanged =
+    normalizedBaseline.bambuLiveAccessCodeAction !==
+      normalizedCurrent.bambuLiveAccessCodeAction ||
+    normalizedBaseline.bambuLiveTlsTrustAction !==
+      normalizedCurrent.bambuLiveTlsTrustAction;
+
   return (
-    normalizedCurrent.bambuLiveEnabled &&
-    (normalizedBaseline.bambuLiveHost !== normalizedCurrent.bambuLiveHost ||
-      normalizedBaseline.bambuLiveAccessCode !==
-        normalizedCurrent.bambuLiveAccessCode ||
-      normalizedBaseline.bambuLivePrinterSerial !==
-        normalizedCurrent.bambuLivePrinterSerial)
+    securityActionChanged ||
+    (normalizedCurrent.bambuLiveEnabled &&
+      (normalizedBaseline.bambuLiveHost !== normalizedCurrent.bambuLiveHost ||
+        (normalizedCurrent.bambuLiveAccessCodeAction === "REPLACE" &&
+          normalizedBaseline.bambuLiveAccessCode !==
+            normalizedCurrent.bambuLiveAccessCode) ||
+        normalizedBaseline.bambuLivePrinterSerial !==
+          normalizedCurrent.bambuLivePrinterSerial))
   );
 }
 
 export function preparePrinterReconfigure(input: {
   currentExists: boolean;
   draft: PrinterReconfigureDraft;
+  manageBambuLive?: boolean;
 }): PreparedPrinterReconfigure {
   const normalized = normalizePrinterReconfigureDraft(input.draft);
   const { id, model, name } = normalized;
@@ -196,11 +238,34 @@ export function preparePrinterReconfigure(input: {
   const liveHost = normalized.bambuLiveHost;
   const liveAccessCode = normalized.bambuLiveAccessCode;
   const livePrinterSerial = normalized.bambuLivePrinterSerial;
+  const securityRemovalPending =
+    normalized.bambuLiveAccessCodeAction === "CLEAR" ||
+    normalized.bambuLiveTlsTrustAction === "CLEAR";
+  const liveEnabled =
+    normalized.bambuLiveEnabled && !securityRemovalPending;
+  const accessCodeReady =
+    (normalized.bambuLiveAccessCodeAction === "KEEP" &&
+      normalized.bambuLiveAccessCodeConfigured) ||
+    (normalized.bambuLiveAccessCodeAction === "REPLACE" && Boolean(liveAccessCode));
+  const tlsTrustReady =
+    (normalized.bambuLiveTlsTrustAction === "KEEP" &&
+      normalized.bambuLiveTlsTrustState === "TRUSTED") ||
+    (normalized.bambuLiveTlsTrustAction === "TRUST_CURRENT" &&
+      Boolean(normalized.bambuLiveTlsCertificateFingerprint) &&
+      Boolean(normalized.bambuLiveTlsSpkiFingerprint));
   if (
-    normalized.bambuLiveEnabled &&
-    (!liveHost || !liveAccessCode || !livePrinterSerial)
+    input.manageBambuLive !== false &&
+    liveEnabled &&
+    (!liveHost || !accessCodeReady || !livePrinterSerial)
   ) {
     return { ok: false, reason: "missing_bambu_live_fields" };
+  }
+  if (
+    input.manageBambuLive !== false &&
+    liveEnabled &&
+    !tlsTrustReady
+  ) {
+    return { ok: false, reason: "missing_bambu_live_trust" };
   }
 
   return {
@@ -213,10 +278,20 @@ export function preparePrinterReconfigure(input: {
       slots_per_ams: normalized.slotsPerUnit,
     },
     bambuLive: {
-      enabled: normalized.bambuLiveEnabled,
+      enabled: liveEnabled,
       host: liveHost,
       accessCode: liveAccessCode,
+      accessCodeAction: normalized.bambuLiveAccessCodeAction,
       printerSerial: livePrinterSerial,
+      tlsTrustAction: normalized.bambuLiveTlsTrustAction,
+      expectedTlsCertificateSha256:
+        normalized.bambuLiveTlsTrustAction === "TRUST_CURRENT"
+          ? normalized.bambuLiveTlsCertificateFingerprint
+          : null,
+      expectedTlsSpkiSha256:
+        normalized.bambuLiveTlsTrustAction === "TRUST_CURRENT"
+          ? normalized.bambuLiveTlsSpkiFingerprint
+          : null,
     },
   };
 }
@@ -237,8 +312,21 @@ export function canUseSettingsPrinterWriteTarget(input: {
   );
 }
 
+export function shouldPersistLocalBambuLiveIntegration(input: {
+  enabled: boolean;
+  hasSavedIntegration: boolean;
+  settingsClientReadOnly: boolean;
+}): boolean {
+  return (
+    !input.settingsClientReadOnly &&
+    (input.enabled || input.hasSavedIntegration)
+  );
+}
+
 export type SettingsPrinterMessageLabels = {
   bambuLiveFieldsRequired: string;
+  bambuLiveIdentityCheckFailed: string;
+  bambuLiveTrustRequired: string;
   confirmDeleteTapAgain: string;
   deletePrinterFailed: string;
   printerRequired: string;
@@ -250,6 +338,8 @@ export type SettingsPrinterMessageLabels = {
 
 export type SettingsPrinterErrorMessageKey =
   | "bambuLiveFieldsRequired"
+  | "bambuLiveIdentityCheckFailed"
+  | "bambuLiveTrustRequired"
   | "deletePrinterFailed"
   | "updatePrinterFailed"
   | "writeRequiresPairing";

@@ -21,6 +21,9 @@ mod companion_payload;
 mod companion_routes;
 mod companion_session;
 mod companion_state;
+mod credential_migration;
+mod credential_profile_migration;
+mod credential_store;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
@@ -44,6 +47,7 @@ mod library_sync_models;
 mod library_sync_pairing_commands;
 mod library_sync_printer_write_commands;
 mod library_sync_read_commands;
+mod library_sync_runtime_auth;
 mod library_sync_settings_commands;
 mod library_sync_snapshot_commands;
 mod library_sync_spool_write_commands;
@@ -61,6 +65,7 @@ mod printer_settings_commands;
 mod printer_slot_write_commands;
 mod printer_usage_commands;
 mod release_update_commands;
+mod secure_credential_mutation;
 mod security;
 mod sqlite_recovery;
 mod state;
@@ -217,6 +222,78 @@ fn main() {
                     None,
                 );
             })?;
+            let credential_profile_id = FilamentDatabase::open(&db_path)
+                .and_then(|db| db.get_or_create_credential_store_profile_id())
+                .map_err(|error| {
+                    std::io::Error::other(format!(
+                        "Credential profile identity could not be loaded: {error}"
+                    ))
+                })?;
+            let credentials =
+                credential_store::CredentialStore::system(&credential_profile_id).map_err(|error| {
+                std::io::Error::other(format!(
+                    "Secure credential storage could not be initialized: {error}"
+                ))
+            })?;
+            let library_sync_auth = library_sync_runtime_auth::LibrarySyncRuntimeAuth::new();
+            let pending_credential_cleanup_completed =
+                inventory_maintenance_commands::retry_pending_credential_cleanup(
+                &db_path,
+                &credentials,
+                &library_sync_auth,
+            )
+            .map_err(|error| {
+                std::io::Error::other(format!(
+                    "Pending secure credential cleanup could not be completed and will be retried on the next start: {error}"
+                ))
+            })?;
+            if pending_credential_cleanup_completed {
+                eprintln!("Completed a pending secure credential cleanup.");
+            }
+            let credential_profile_migration =
+                credential_profile_migration::migrate_legacy_credential_profile(
+                    db_path.to_string_lossy().as_ref(),
+                    &credentials,
+                )
+                .map_err(std::io::Error::other)?;
+            if credential_profile_migration.credentials_moved > 0 {
+                eprintln!(
+                    "Moved {} credential(s) into the machine-local credential profile.",
+                    credential_profile_migration.credentials_moved
+                );
+            }
+            let credential_migration = credential_migration::migrate_legacy_credentials(
+                db_path.to_string_lossy().as_ref(),
+                &credentials,
+                &library_sync_auth,
+            )
+            .map_err(std::io::Error::other)?;
+            let recovery_sanitize =
+                sqlite_recovery::sanitize_app_recovery_snapshot_credentials(&db_path)
+                    .map_err(std::io::Error::other)?;
+            if credential_migration.bambu_access_codes_migrated > 0
+                || credential_migration.bambu_credential_refs_repaired > 0
+                || credential_migration.library_device_token_migrated
+            {
+                eprintln!(
+                    "Secure credential migration completed: {} Bambu credential(s), {} repaired reference(s), library client token migrated: {}.",
+                    credential_migration.bambu_access_codes_migrated,
+                    credential_migration.bambu_credential_refs_repaired,
+                    credential_migration.library_device_token_migrated
+                );
+            }
+            if recovery_sanitize.snapshots_sanitized > 0 {
+                eprintln!(
+                    "Sanitized credentials in {} app recovery snapshot(s).",
+                    recovery_sanitize.snapshots_sanitized
+                );
+            }
+            if recovery_sanitize.snapshot_sanitization_failures > 0 {
+                eprintln!(
+                    "Could not sanitize {} app recovery snapshot(s); they will be retried on the next start.",
+                    recovery_sanitize.snapshot_sanitization_failures
+                );
+            }
             let trusted_lan_runtime = trusted_lan_runtime_commands::load_trusted_lan_runtime(
                 db_path.to_string_lossy().as_ref(),
             )?;
@@ -224,6 +301,8 @@ fn main() {
             let state = AppState {
                 db_path: db_path.to_string_lossy().to_string(),
                 companion,
+                credentials,
+                library_sync_auth,
             };
             app.manage(state.clone());
 
@@ -268,6 +347,7 @@ fn main() {
             inventory_create_commands::create_wishlist_item,
             inventory_create_commands::create_manual_spool,
             printer_create_commands::create_printer,
+            printer_bambu_live_commands::inspect_bambu_live_tls_identity,
             printer_bambu_live_commands::save_bambu_live_integration,
             printer_bambu_live_commands::delete_bambu_live_integration,
             printer_danger_zone_commands::delete_printer,

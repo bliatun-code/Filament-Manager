@@ -1153,7 +1153,7 @@ export const itITDictionary: DictionaryNode = {
     bambuLiveConnected: "Collegato",
     bambuLiveCopyRawPayload: "Copia il carico utile",
     bambuLiveCredentialsNote:
-      "Le credenziali vengono archiviate localmente su questo desktop.",
+      "I codici di accesso vengono archiviati nel deposito sicuro delle credenziali del sistema operativo.",
     bambuLiveDiagnostics: "Diagnostica",
     bambuLiveDisabledNote:
       "Lasciare disabilitato per mantenere invariato il flusso corrente della stampante.",
@@ -1236,6 +1236,46 @@ export const itITDictionary: DictionaryNode = {
     bambuLivePresetSignal: "Impostazioni del filamento preimpostate",
     bambuLivePrinterOnline: "In linea",
     bambuLivePrinterSerial: "Seriale della stampante",
+    bambuTlsCheckCurrent: "Verifica identità",
+    bambuLiveAccessCodeSaved: "Codice di accesso salvato in modo sicuro",
+    bambuLiveAccessCodeMissing: "Nessun codice di accesso salvato",
+    bambuLiveAccessCodeSavedPlaceholder:
+      "Salvato in modo sicuro — inserisci un nuovo codice per sostituirlo",
+    bambuLiveAccessCodeReplacePending:
+      "Il codice di accesso salvato verrà sostituito al salvataggio.",
+    bambuLiveAccessCodeSavePending:
+      "Il codice di accesso verrà salvato in modo sicuro al salvataggio.",
+    bambuLiveAccessCodeClear: "Rimuovi il codice salvato",
+    bambuLiveAccessCodeClearPending:
+      "Il codice di accesso salvato verrà rimosso al salvataggio. Le connessioni in tempo reale resteranno in pausa finché non inserirai un nuovo codice.",
+    bambuLiveAccessCodeKeep: "Mantieni il codice salvato",
+    bambuLiveAccessCodeHostConfigured:
+      "Sul computer host è salvato un codice di accesso.",
+    bambuLiveAccessCodeHostMissing:
+      "Sul computer host non è salvato alcun codice di accesso.",
+    bambuTlsTrustTitle: "Identità della stampante",
+    bambuTlsTrustTrusted: "Attendibile",
+    bambuTlsTrustUnpaired: "Non ancora attendibile",
+    bambuTlsTrustChanged: "Identità modificata",
+    bambuTlsTrustPending: "Attendibilità in sospeso",
+    bambuTlsClearPending: "Rimozione dell’attendibilità in sospeso",
+    bambuTlsTrustTrustedHint:
+      "Il certificato della stampante corrisponde all’identità salvata.",
+    bambuTlsTrustUnpairedHint:
+      "Il codice di accesso non verrà inviato finché non renderai esplicitamente attendibile questa identità della stampante.",
+    bambuTlsTrustChangedHint:
+      "L’identità della stampante è cambiata. La connessione è stata interrotta prima dell’invio del codice di accesso.",
+    bambuTlsTrustPendingHint:
+      "Questa identità della stampante diventerà attendibile al salvataggio.",
+    bambuTlsClearPendingHint:
+      "L’attendibilità verrà rimossa al salvataggio. Le connessioni in tempo reale resteranno bloccate finché non renderai nuovamente attendibile la stampante.",
+    bambuTlsFingerprint: "Impronta digitale del certificato",
+    bambuTlsFingerprintUnavailable:
+      "Salva o verifica la connessione alla stampante per leggerne l’identità.",
+    bambuTlsTrustCurrent: "Rendi attendibile questa identità",
+    bambuTlsRetrustCurrent: "Rendi attendibile la nuova identità",
+    bambuTlsForget: "Dimentica l’identità attendibile",
+    bambuTlsUndoTrustChange: "Annulla la modifica dell’attendibilità",
     bambuLiveRawPayload: "Ultimi dati grezzi in tempo reale",
     bambuLiveRawPayloadCopied: "Payload live non elaborato copiato.",
     bambuLiveSecondaryExternalSlotLabel: "Secondario esterno slot",
@@ -1375,6 +1415,10 @@ export const itITDictionary: DictionaryNode = {
       addPrinter: "Impossibile aggiungere la stampante.",
       bambuLiveFieldsRequired:
         "Host, codice di accesso e seriale della stampante sono richiesti quando lo stato live Bambu è abilitato.",
+      bambuLiveIdentityCheckFailed:
+        "Impossibile verificare l'identità della stampante.",
+      bambuLiveTrustRequired:
+        "Verifica l'identità della stampante e contrassegnala come attendibile prima di abilitare lo stato Bambu in tempo reale.",
       copyBambuLiveRawPayload:
         "Impossibile copiare il payload live non elaborato.",
       copyCompanionShellUrl: "Impossibile copiare companion shell URL.",

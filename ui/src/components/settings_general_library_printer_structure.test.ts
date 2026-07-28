@@ -43,6 +43,7 @@ test("library role confirmation keeps its actions visible while migration steps 
 
 test("printer edit form uses shared settings form controls", () => {
   const source = readComponentSource("settings_printer_edit_form.tsx");
+  const securitySource = readComponentSource("settings_bambu_live_security_controls.tsx");
   const cardSource = readComponentSource("settings_printer_card.tsx");
 
   assert.match(source, /settingsFormControlClass/);
@@ -58,7 +59,10 @@ test("printer edit form uses shared settings form controls", () => {
   assert.match(source, /aria-describedby=\{configurationHintId\}/);
   assert.match(source, /htmlFor=\{liveHostInputId\}/);
   assert.match(source, /aria-describedby=\{liveHintId\}/);
-  assert.match(source, /aria-describedby=\{`\$\{liveHintId\} \$\{liveNoteId\}`\}/);
+  assert.match(source, /noteId=\{`\$\{liveHintId\} \$\{liveNoteId\}`\}/);
+  assert.match(securitySource, /aria-describedby=\{noteId\}/);
+  assert.match(securitySource, /settingsFormControlClass/);
+  assert.match(securitySource, /settingsSectionLabelClass/);
   assert.match(source, /id=\{liveHintId\}/);
   assert.match(source, /id=\{liveNoteId\}/);
   assert.match(source, /<form/);

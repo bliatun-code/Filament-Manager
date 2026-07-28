@@ -7,6 +7,7 @@ use crate::backend::inventory_engine::{
 use crate::companion_http::COMPANION_CSRF_HEADER;
 use crate::companion_routes::build_router;
 use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
+use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
 use crate::state::TrustedLanCompanionRuntime;
 use axum::body::{to_bytes, Body};
 use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
@@ -114,6 +115,7 @@ fn test_state(db_path: &Path) -> CompanionApiState {
     CompanionApiState::new(
         db_path.to_string_lossy().to_string(),
         trusted_lan_runtime_for_address("127.0.0.1"),
+        CredentialStore::in_memory(),
     )
 }
 
@@ -121,6 +123,7 @@ fn qa_test_state(db_path: &Path) -> CompanionApiState {
     CompanionApiState::new(
         db_path.to_string_lossy().to_string(),
         trusted_lan_runtime_for_address("127.0.0.1").with_qa_mode(true),
+        CredentialStore::in_memory(),
     )
 }
 
@@ -128,6 +131,7 @@ fn trusted_lan_test_state(db_path: &Path) -> CompanionApiState {
     CompanionApiState::new(
         db_path.to_string_lossy().to_string(),
         trusted_lan_runtime_for_address("192.168.1.50"),
+        CredentialStore::in_memory(),
     )
 }
 
@@ -2451,7 +2455,9 @@ async fn companion_api_creates_and_deletes_printer() {
     let db_path = temp_db_path("printer-create-delete");
     let result = async {
         seed_db(&db_path)?;
-        let router = build_router(test_state(&db_path));
+        let state = test_state(&db_path);
+        let credentials = state.credentials.clone();
+        let router = build_router(state);
 
         let AuthenticatedTestSession {
             session_cookie,
@@ -2507,11 +2513,28 @@ async fn companion_api_creates_and_deletes_printer() {
                 &BambuLiveIntegrationRow {
                     enabled: true,
                     host: Some("192.168.1.42".to_string()),
-                    access_code: Some("test-access-code".to_string()),
+                    access_code: None,
+                    access_code_configured: true,
+                    access_code_binding_id: Some(
+                        "11111111111111111111111111111111".to_string(),
+                    ),
+                    access_code_stale_binding_ids: Vec::new(),
                     printer_serial: Some("TEST-SERIAL".to_string()),
                     last_error: None,
+                    tls_identity: None,
                     observed_state: None,
                 },
+            )
+            .map_err(|error| error.to_string())?;
+        let credential_key = CredentialKey::bambu_access_code(
+            "printer_sync_test",
+            "11111111111111111111111111111111",
+        )
+        .map_err(|error| error.to_string())?;
+        credentials
+            .set(
+                &credential_key,
+                &SecretValue::from_utf8("test-access-code".to_string()),
             )
             .map_err(|error| error.to_string())?;
 
@@ -2559,6 +2582,10 @@ async fn companion_api_creates_and_deletes_printer() {
         assert!(!live_integrations
             .iter()
             .any(|entry| entry.printer_id == "printer_sync_test"));
+        assert!(credentials
+            .get(&credential_key)
+            .map_err(|error| error.to_string())?
+            .is_none());
 
         Ok::<(), String>(())
     }
@@ -2571,7 +2598,7 @@ async fn companion_api_creates_and_deletes_printer() {
 }
 
 #[tokio::test]
-async fn companion_api_saves_and_deletes_bambu_live_integration() {
+async fn companion_api_blocks_bambu_credential_and_trust_mutations() {
     let db_path = temp_db_path("printer-bambu-live");
     let result = async {
         seed_db(&db_path)?;
@@ -2601,20 +2628,13 @@ async fn companion_api_saves_and_deletes_bambu_live_integration() {
             )
             .await
             .map_err(|error| error.to_string())?;
-        assert_eq!(save_live.status(), StatusCode::OK);
+        assert_eq!(save_live.status(), StatusCode::FORBIDDEN);
 
         let integrations = FilamentDatabase::open(&db_path)
             .map_err(|error| error.to_string())?
             .list_bambu_live_integrations()
             .map_err(|error| error.to_string())?;
-        let live = integrations
-            .iter()
-            .find(|entry| entry.printer_id == "printer_1")
-            .ok_or_else(|| "missing saved Bambu Live integration".to_string())?;
-        assert!(live.config.enabled);
-        assert_eq!(live.config.host.as_deref(), Some("192.168.1.42"));
-        assert_eq!(live.config.access_code.as_deref(), Some("access-code"));
-        assert_eq!(live.config.printer_serial.as_deref(), Some("TEST-SERIAL"));
+        assert!(integrations.is_empty());
 
         let delete_live = router
             .clone()
@@ -2632,7 +2652,7 @@ async fn companion_api_saves_and_deletes_bambu_live_integration() {
             )
             .await
             .map_err(|error| error.to_string())?;
-        assert_eq!(delete_live.status(), StatusCode::OK);
+        assert_eq!(delete_live.status(), StatusCode::FORBIDDEN);
 
         let integrations = FilamentDatabase::open(&db_path)
             .map_err(|error| error.to_string())?
@@ -2648,7 +2668,94 @@ async fn companion_api_saves_and_deletes_bambu_live_integration() {
 
     let _ = std::fs::remove_file(&db_path);
     if let Err(error) = result {
-        panic!("companion_api_saves_and_deletes_bambu_live_integration failed: {error}");
+        panic!("companion_api_blocks_bambu_credential_and_trust_mutations failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_printer_settings_never_return_bambu_access_code() {
+    let db_path = temp_db_path("printer-settings-secret-redaction");
+    let result = async {
+        seed_db(&db_path)?;
+        FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .save_bambu_live_integration(
+                "printer_1",
+                &BambuLiveIntegrationRow {
+                    enabled: false,
+                    host: Some("192.168.1.42".to_string()),
+                    access_code: Some("legacy-secret".to_string()),
+                    access_code_configured: true,
+                    access_code_binding_id: Some("11111111111111111111111111111111".to_string()),
+                    access_code_stale_binding_ids: Vec::new(),
+                    printer_serial: Some("TEST-SERIAL".to_string()),
+                    last_error: None,
+                    tls_identity: None,
+                    observed_state: None,
+                },
+            )
+            .map_err(|error| error.to_string())?;
+
+        let state = test_state(&db_path);
+        let credentials = state.credentials.clone();
+        let credential_key =
+            CredentialKey::bambu_access_code("printer_1", "11111111111111111111111111111111")
+                .map_err(|error| error.to_string())?;
+        credentials
+            .set(
+                &credential_key,
+                &SecretValue::from_utf8("stored-secret".to_string()),
+            )
+            .map_err(|error| error.to_string())?;
+        let router = build_router(state);
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
+
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/printer-settings")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let payload: serde_json::Value =
+            serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+        let config = payload["bambu_live_integrations"][0]["config"]
+            .as_object()
+            .ok_or_else(|| "missing sanitized Bambu integration config".to_string())?;
+
+        assert!(config.get("access_code").is_none());
+        assert_eq!(
+            config
+                .get("access_code_configured")
+                .and_then(serde_json::Value::as_bool),
+            Some(true)
+        );
+        assert!(config.get("host").is_some_and(serde_json::Value::is_null));
+        assert!(config
+            .get("printer_serial")
+            .is_some_and(serde_json::Value::is_null));
+        let payload_text = String::from_utf8(body.to_vec()).map_err(|error| error.to_string())?;
+        assert!(!payload_text.contains("legacy-secret"));
+        assert!(!payload_text.contains("stored-secret"));
+        assert!(!payload_text.contains("192.168.1.42"));
+        assert!(!payload_text.contains("TEST-SERIAL"));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("companion_printer_settings_never_return_bambu_access_code failed: {error}");
     }
 }
 

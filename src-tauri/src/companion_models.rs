@@ -1,6 +1,7 @@
-use crate::backend::filament_database::{BambuLiveIntegrationEntryRow, PrinterRow, SpoolLoanRow};
+use crate::backend::filament_database::{PrinterRow, SpoolLoanRow};
 use crate::backend::statistics::InventoryOverview;
 use crate::optional_update::OptionalUpdate;
+use crate::printer_settings_commands::BambuLiveIntegrationSettingsEntry;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Default)]
@@ -32,7 +33,7 @@ pub(crate) struct CompanionPrinterSettingsResponse {
     pub(crate) active_printer_id: Option<String>,
     pub(crate) printers: Vec<PrinterRow>,
     pub(crate) printer_models: Vec<String>,
-    pub(crate) bambu_live_integrations: Vec<BambuLiveIntegrationEntryRow>,
+    pub(crate) bambu_live_integrations: Vec<BambuLiveIntegrationSettingsEntry>,
 }
 
 #[derive(Deserialize, Default)]
@@ -146,12 +147,7 @@ pub(crate) struct SetActivePrinterRequest {
 }
 
 #[derive(Deserialize)]
-pub(crate) struct SaveBambuLiveIntegrationRequest {
-    pub(crate) enabled: bool,
-    pub(crate) host: Option<String>,
-    pub(crate) access_code: Option<String>,
-    pub(crate) printer_serial: Option<String>,
-}
+pub(crate) struct SaveBambuLiveIntegrationRequest {}
 
 #[derive(Deserialize)]
 pub(crate) struct UpdateMasterCatalogEntryRequest {

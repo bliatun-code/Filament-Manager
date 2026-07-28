@@ -1,8 +1,8 @@
 use crate::app_services::CompanionSpoolDetail;
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, BambuLiveIntegrationRow, FilamentDatabase, FilamentMasterCatalogRow,
-    LibrarySyncSettingsRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
-    WishlistItemRow, WishlistReceiptResult,
+    ActiveSpoolLoanRow, FilamentDatabase, FilamentMasterCatalogRow, LibrarySyncSettingsRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    WishlistReceiptResult,
 };
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_engine::{
@@ -34,9 +34,12 @@ use crate::companion_session::{
     random_hex_token, unix_epoch_millis,
 };
 use crate::companion_state::CompanionApiState;
+use crate::credential_store::{CredentialKey, SecretValue};
 use crate::library_sync_models::{
     LibrarySyncDomainRevisionsResponse, LibrarySyncFullBackupResponse,
 };
+use crate::printer_settings_commands::sanitized_bambu_live_integrations;
+use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::security::hash_secret;
 use crate::state::AppState;
 use axum::body::Body;
@@ -77,8 +80,11 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
         }
     };
 
-    let api_state =
-        CompanionApiState::new(state.db_path.clone(), state.companion.trusted_lan.clone());
+    let api_state = CompanionApiState::new(
+        state.db_path.clone(),
+        state.companion.trusted_lan.clone(),
+        state.credentials.clone(),
+    );
     let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
     let runtime = state.companion.trusted_lan.clone();
     let join_handle = tauri::async_runtime::spawn(async move {
@@ -254,15 +260,10 @@ pub(super) async fn handle_library_printer_settings(
     let bambu_live_integrations = FilamentDatabase::open(&state.db_path)
         .map_err(CompanionApiError::from)?
         .list_bambu_live_integrations()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .map(|mut entry| {
-            entry.config.host = None;
-            entry.config.access_code = None;
-            entry.config.printer_serial = None;
-            entry
-        })
-        .collect();
+        .map_err(CompanionApiError::from)?;
+    let bambu_live_integrations =
+        sanitized_bambu_live_integrations(bambu_live_integrations, &state.credentials, true)
+            .map_err(CompanionApiError::Internal)?;
     let printers = FilamentDatabase::open(&state.db_path)
         .map_err(CompanionApiError::from)?
         .list_printers()
@@ -366,7 +367,7 @@ pub(super) async fn handle_session_status(
 
     if let Some(session) = active_session {
         authenticated = true;
-        csrf_token = Some(session.csrf_token);
+        csrf_token = Some(session.csrf_token.clone());
     } else {
         can_renew = find_active_trusted_lan_browser(&state.db_path, &headers)?.is_some();
     }
@@ -616,11 +617,106 @@ pub(super) async fn handle_delete_printer(
             "printer_id is required".to_string(),
         ));
     }
+    let _credential_mutation =
+        lock_secure_credential_mutation().map_err(CompanionApiError::Internal)?;
 
-    state
-        .service
-        .delete_printer(printer_id)
-        .map_err(CompanionApiError::from)?;
+    let integration = state
+        .open_db()?
+        .list_bambu_live_integrations()
+        .map_err(CompanionApiError::from)?
+        .into_iter()
+        .find(|entry| entry.printer_id == printer_id)
+        .map(|entry| entry.config);
+    let mut binding_ids = integration
+        .as_ref()
+        .map(|config| config.access_code_stale_binding_ids.clone())
+        .unwrap_or_default();
+    if let Some(current) = integration
+        .as_ref()
+        .and_then(|config| config.access_code_binding_id.clone())
+    {
+        binding_ids.push(current);
+    }
+    binding_ids.retain(|binding_id| !binding_id.trim().is_empty());
+    binding_ids.sort_unstable();
+    binding_ids.dedup();
+    let credential_keys = binding_ids
+        .into_iter()
+        .map(|binding_id| CredentialKey::bambu_access_code(printer_id, &binding_id))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let mut previous_secrets = Vec::new();
+    for credential_key in &credential_keys {
+        let previous = state
+            .credentials
+            .get(credential_key)
+            .map_err(|error| CompanionApiError::Internal(error.to_string()))?
+            .map(|secret| zeroize::Zeroizing::new(secret.expose_bytes().to_vec()));
+        previous_secrets.push((credential_key.clone(), previous));
+    }
+    let restore_previous_secret = || -> Result<(), String> {
+        for (credential_key, previous_secret) in &previous_secrets {
+            match previous_secret.as_ref() {
+                Some(previous_secret) => {
+                    let secret = SecretValue::from_bytes(previous_secret.to_vec());
+                    state
+                        .credentials
+                        .set(credential_key, &secret)
+                        .map_err(|error| error.to_string())?;
+                    let restored = state
+                        .credentials
+                        .get(credential_key)
+                        .map_err(|error| error.to_string())?
+                        .ok_or_else(|| {
+                            "Bambu access code was absent after credential rollback.".to_string()
+                        })?;
+                    if restored.expose_bytes() != secret.expose_bytes() {
+                        return Err("Bambu access code did not match after credential rollback."
+                            .to_string());
+                    }
+                }
+                None => {
+                    state
+                        .credentials
+                        .delete(credential_key)
+                        .map_err(|error| error.to_string())?;
+                }
+            }
+        }
+        Ok(())
+    };
+    for credential_key in &credential_keys {
+        if let Err(error) = state.credentials.delete(credential_key) {
+            if let Err(rollback_error) = restore_previous_secret() {
+                return Err(CompanionApiError::Internal(format!(
+                    "Credential deletion failed: {error}. Credential rollback failed: {rollback_error}"
+                )));
+            }
+            return Err(CompanionApiError::Internal(error.to_string()));
+        }
+        match state.credentials.get(credential_key) {
+            Ok(None) => {}
+            Ok(Some(_)) => {
+                restore_previous_secret().map_err(CompanionApiError::Internal)?;
+                return Err(CompanionApiError::Internal(
+                    "Bambu access code remained present after deletion.".to_string(),
+                ));
+            }
+            Err(error) => {
+                restore_previous_secret().map_err(CompanionApiError::Internal)?;
+                return Err(CompanionApiError::Internal(error.to_string()));
+            }
+        }
+    }
+
+    if let Err(error) = state.service.delete_printer(printer_id) {
+        if let Err(rollback_error) = restore_previous_secret() {
+            return Err(CompanionApiError::Internal(format!(
+                "Printer deletion failed: {error:?}. Credential rollback failed: {rollback_error}"
+            )));
+        }
+        return Err(CompanionApiError::from(error));
+    }
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -629,66 +725,22 @@ pub(super) async fn handle_delete_printer(
 }
 
 pub(super) async fn handle_save_bambu_live_integration(
-    State(state): State<CompanionApiState>,
-    Path(printer_id): Path<String>,
-    Json(payload): Json<SaveBambuLiveIntegrationRequest>,
+    State(_state): State<CompanionApiState>,
+    Path(_printer_id): Path<String>,
+    Json(_payload): Json<SaveBambuLiveIntegrationRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let printer_id = printer_id.trim();
-    if printer_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "printer_id is required".to_string(),
-        ));
-    }
-
-    let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
-    let exists = db
-        .list_printers()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .any(|printer| printer.id == printer_id);
-    if !exists {
-        return Err(CompanionApiError::NotFound("Printer not found".to_string()));
-    }
-
-    db.save_bambu_live_integration(
-        printer_id,
-        &BambuLiveIntegrationRow {
-            enabled: payload.enabled,
-            host: normalize_optional_text(payload.host.as_deref()),
-            access_code: normalize_optional_text(payload.access_code.as_deref()),
-            printer_serial: normalize_optional_text(payload.printer_serial.as_deref()),
-            last_error: None,
-            observed_state: None,
-        },
-    )
-    .map_err(CompanionApiError::from)?;
-
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Bambu Live integration saved".to_string(),
-    }))
+    Err(CompanionApiError::Forbidden(
+        "Bambu credentials and TLS trust can only be changed on the host desktop.".to_string(),
+    ))
 }
 
 pub(super) async fn handle_delete_bambu_live_integration(
-    State(state): State<CompanionApiState>,
-    Path(printer_id): Path<String>,
+    State(_state): State<CompanionApiState>,
+    Path(_printer_id): Path<String>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let printer_id = printer_id.trim();
-    if printer_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "printer_id is required".to_string(),
-        ));
-    }
-
-    FilamentDatabase::open(&state.db_path)
-        .map_err(CompanionApiError::from)?
-        .delete_bambu_live_integration(printer_id)
-        .map_err(CompanionApiError::from)?;
-
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Bambu Live integration deleted".to_string(),
-    }))
+    Err(CompanionApiError::Forbidden(
+        "Bambu credentials and TLS trust can only be changed on the host desktop.".to_string(),
+    ))
 }
 
 pub(super) async fn handle_set_active_printer(

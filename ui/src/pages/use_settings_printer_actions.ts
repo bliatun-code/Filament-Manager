@@ -2,13 +2,16 @@ import { type Dispatch, type SetStateAction } from "react";
 import { toErrorMessage } from "../lib/error_text";
 import {
   createManagedPrinter,
-  deleteManagedBambuLiveIntegration,
   deleteManagedPrinter,
   saveManagedBambuLiveIntegration,
   type PrinterWriteTarget,
 } from "../lib/printer_writes";
 import {
+  inspectBambuLiveTlsIdentity,
+  type BambuAccessCodeAction,
   type BambuLiveIntegrationEntry,
+  type BambuTlsTrustAction,
+  type BambuTlsTrustState,
   type PrinterOverviewRow,
   type PrinterRow,
 } from "../lib/tauri_client";
@@ -20,6 +23,7 @@ import {
   buildSettingsPrinterUpdatedMessage,
   canUseSettingsPrinterWriteTarget,
   preparePrinterReconfigure,
+  shouldPersistLocalBambuLiveIntegration,
   type SettingsPrinterMessageLabels,
 } from "./settings_printer_model";
 
@@ -30,9 +34,15 @@ type UseSettingsPrinterActionsInput = {
   confirmDeletePrinterId: string | null;
   editAmsUnits: string;
   editBambuLiveAccessCode: string;
+  editBambuLiveAccessCodeAction: BambuAccessCodeAction;
+  editBambuLiveAccessCodeConfigured: boolean;
   editBambuLiveEnabled: boolean;
   editBambuLiveHost: string;
   editBambuLivePrinterSerial: string;
+  editBambuLiveTlsCertificateFingerprint: string | null;
+  editBambuLiveTlsSpkiFingerprint: string | null;
+  editBambuLiveTlsTrustAction: BambuTlsTrustAction;
+  editBambuLiveTlsTrustState: BambuTlsTrustState;
   editPrinterDirty: boolean;
   editPrinterId: string | null;
   editPrinterModel: string;
@@ -45,6 +55,10 @@ type UseSettingsPrinterActionsInput = {
   setConfirmDeletePrinterId: Dispatch<SetStateAction<string | null>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
+  setEditBambuLiveTlsCertificateFingerprint: Dispatch<SetStateAction<string | null>>;
+  setEditBambuLiveTlsSpkiFingerprint: Dispatch<SetStateAction<string | null>>;
+  setEditBambuLiveTlsTrustAction: Dispatch<SetStateAction<BambuTlsTrustAction>>;
+  setEditBambuLiveTlsTrustState: Dispatch<SetStateAction<BambuTlsTrustState>>;
   settingsClientHostBaseUrl: string | null;
   settingsClientHostWritePaired: boolean;
   settingsClientLibraryId: string | null;
@@ -65,9 +79,15 @@ export function useSettingsPrinterActions({
   confirmDeletePrinterId,
   editAmsUnits,
   editBambuLiveAccessCode,
+  editBambuLiveAccessCodeAction,
+  editBambuLiveAccessCodeConfigured,
   editBambuLiveEnabled,
   editBambuLiveHost,
   editBambuLivePrinterSerial,
+  editBambuLiveTlsCertificateFingerprint,
+  editBambuLiveTlsSpkiFingerprint,
+  editBambuLiveTlsTrustAction,
+  editBambuLiveTlsTrustState,
   editPrinterDirty,
   editPrinterId,
   editPrinterModel,
@@ -80,6 +100,10 @@ export function useSettingsPrinterActions({
   setConfirmDeletePrinterId,
   setError,
   setInfo,
+  setEditBambuLiveTlsCertificateFingerprint,
+  setEditBambuLiveTlsSpkiFingerprint,
+  setEditBambuLiveTlsTrustAction,
+  setEditBambuLiveTlsTrustState,
   settingsClientHostBaseUrl,
   settingsClientHostWritePaired,
   settingsClientLibraryId,
@@ -101,6 +125,55 @@ export function useSettingsPrinterActions({
     cancelPrinterEdit();
   }
 
+  async function handleInspectBambuLiveTlsIdentity() {
+    const host = editBambuLiveHost.trim();
+    const printerSerial = editBambuLivePrinterSerial.trim();
+    if (
+      !tauri ||
+      busy ||
+      settingsClientReadOnly ||
+      !editPrinterId ||
+      !host ||
+      !printerSerial
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const inspected = await inspectBambuLiveTlsIdentity({
+        host,
+        printer_serial: printerSerial,
+      });
+      const identityChanged =
+        Boolean(editBambuLiveTlsSpkiFingerprint) &&
+        editBambuLiveTlsSpkiFingerprint !== inspected.spki_sha256;
+      setEditBambuLiveTlsCertificateFingerprint(
+        inspected.certificate_sha256,
+      );
+      setEditBambuLiveTlsSpkiFingerprint(inspected.spki_sha256);
+      setEditBambuLiveTlsTrustAction("KEEP");
+      if (editBambuLiveTlsTrustState === "TRUSTED" && identityChanged) {
+        setEditBambuLiveTlsTrustState("CHANGED");
+      }
+    } catch (inspectError) {
+      console.error(inspectError);
+      setError(
+        toErrorMessage(
+          inspectError,
+          buildSettingsPrinterErrorMessage(
+            "bambuLiveIdentityCheckFailed",
+            settingsPrinterMessageLabels(),
+          ),
+        ),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSavePrinterReconfigure() {
     if (!tauri || busy || !editPrinterId || !editPrinterDirty) {
       return;
@@ -108,6 +181,7 @@ export function useSettingsPrinterActions({
     const current = printers.find((printer) => printer.id === editPrinterId) ?? null;
     const prepared = preparePrinterReconfigure({
       currentExists: Boolean(current),
+      manageBambuLive: !settingsClientReadOnly,
       draft: {
         id: editPrinterId,
         model: editPrinterModel,
@@ -117,7 +191,14 @@ export function useSettingsPrinterActions({
         bambuLiveEnabled: editBambuLiveEnabled,
         bambuLiveHost: editBambuLiveHost,
         bambuLiveAccessCode: editBambuLiveAccessCode,
+        bambuLiveAccessCodeAction: editBambuLiveAccessCodeAction,
+        bambuLiveAccessCodeConfigured: editBambuLiveAccessCodeConfigured,
         bambuLivePrinterSerial: editBambuLivePrinterSerial,
+        bambuLiveTlsCertificateFingerprint:
+          editBambuLiveTlsCertificateFingerprint,
+        bambuLiveTlsSpkiFingerprint: editBambuLiveTlsSpkiFingerprint,
+        bambuLiveTlsTrustAction: editBambuLiveTlsTrustAction,
+        bambuLiveTlsTrustState: editBambuLiveTlsTrustState,
       },
     });
     if (!prepared.ok) {
@@ -125,6 +206,15 @@ export function useSettingsPrinterActions({
         setError(
           buildSettingsPrinterErrorMessage(
             "bambuLiveFieldsRequired",
+            settingsPrinterMessageLabels(),
+          ),
+        );
+        return;
+      }
+      if (prepared.reason === "missing_bambu_live_trust") {
+        setError(
+          buildSettingsPrinterErrorMessage(
+            "bambuLiveTrustRequired",
             settingsPrinterMessageLabels(),
           ),
         );
@@ -162,21 +252,35 @@ export function useSettingsPrinterActions({
           }
         : {};
 
-      await createManagedPrinter(prepared.printer, writeTarget);
-      if (prepared.bambuLive.enabled) {
+      const hasSavedBambuLiveIntegration = Boolean(
+        bambuLiveIntegrations[prepared.printer.id],
+      );
+      if (shouldPersistLocalBambuLiveIntegration({
+        enabled: prepared.bambuLive.enabled,
+        hasSavedIntegration: hasSavedBambuLiveIntegration,
+        settingsClientReadOnly,
+      })) {
+        // Fail fast on identity/security changes before applying the general
+        // printer edit. This prevents a rejected TLS pairing from leaving
+        // name/model/slot changes partially applied.
         await saveManagedBambuLiveIntegration(
           {
             printer_id: prepared.printer.id,
-            enabled: true,
+            enabled: prepared.bambuLive.enabled,
             host: prepared.bambuLive.host,
+            access_code_action: prepared.bambuLive.accessCodeAction,
             access_code: prepared.bambuLive.accessCode,
             printer_serial: prepared.bambuLive.printerSerial,
+            tls_trust_action: prepared.bambuLive.tlsTrustAction,
+            expected_tls_certificate_sha256:
+              prepared.bambuLive.expectedTlsCertificateSha256,
+            expected_tls_spki_sha256:
+              prepared.bambuLive.expectedTlsSpkiSha256,
           },
-          writeTarget,
+          {},
         );
-      } else {
-        await deleteManagedBambuLiveIntegration(prepared.printer.id, writeTarget);
       }
+      await createManagedPrinter(prepared.printer, writeTarget);
       await reloadSettings();
       setInfo(
         buildSettingsPrinterUpdatedMessage(prepared.printer.name, settingsPrinterMessageLabels()),
@@ -258,6 +362,7 @@ export function useSettingsPrinterActions({
   return {
     handleCancelEditPrinter,
     handleDeletePrinter,
+    handleInspectBambuLiveTlsIdentity,
     handleSavePrinterReconfigure,
     handleStartEditPrinter,
   };

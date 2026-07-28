@@ -95,8 +95,10 @@ function bambuLiveInput(
     printer_id: "printer-1",
     enabled: true,
     host: "192.168.1.42",
+    access_code_action: "REPLACE",
     access_code: "access",
     printer_serial: "serial",
+    tls_trust_action: "KEEP",
     ...overrides,
   };
 }

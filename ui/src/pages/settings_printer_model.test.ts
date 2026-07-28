@@ -14,6 +14,7 @@ import {
   isPrinterReconfigureDraftDirty,
   normalizePrinterReconfigureDraft,
   preparePrinterReconfigure,
+  shouldPersistLocalBambuLiveIntegration,
   sortSettingsPrinters,
 } from "./settings_printer_model";
 import type { PrinterOverviewRow, PrinterRow } from "../lib/tauri_client";
@@ -42,7 +43,13 @@ function reconfigureDraft(
     bambuLiveEnabled: false,
     bambuLiveHost: "",
     bambuLiveAccessCode: "",
+    bambuLiveAccessCodeAction: "KEEP",
+    bambuLiveAccessCodeConfigured: false,
     bambuLivePrinterSerial: "",
+    bambuLiveTlsCertificateFingerprint: null,
+    bambuLiveTlsSpkiFingerprint: null,
+    bambuLiveTlsTrustAction: "KEEP",
+    bambuLiveTlsTrustState: "UNPAIRED",
     ...overrides,
   };
 }
@@ -177,7 +184,13 @@ test("preparePrinterReconfigure trims required fields and clamps model-specific 
       bambuLiveEnabled: true,
       bambuLiveHost: " 192.168.1.20 ",
       bambuLiveAccessCode: " 12345678 ",
+      bambuLiveAccessCodeAction: "REPLACE",
+      bambuLiveAccessCodeConfigured: false,
       bambuLivePrinterSerial: " 00M09 ",
+      bambuLiveTlsCertificateFingerprint: "a".repeat(64),
+      bambuLiveTlsSpkiFingerprint: "b".repeat(64),
+      bambuLiveTlsTrustAction: "TRUST_CURRENT",
+      bambuLiveTlsTrustState: "UNPAIRED",
     },
   });
 
@@ -196,7 +209,11 @@ test("preparePrinterReconfigure trims required fields and clamps model-specific 
     enabled: true,
     host: "192.168.1.20",
     accessCode: "12345678",
+    accessCodeAction: "REPLACE",
     printerSerial: "00M09",
+    tlsTrustAction: "TRUST_CURRENT",
+    expectedTlsCertificateSha256: "a".repeat(64),
+    expectedTlsSpkiSha256: "b".repeat(64),
   });
 });
 
@@ -211,7 +228,13 @@ test("normalizePrinterReconfigureDraft matches the persisted reconfigure values"
         bambuLiveEnabled: true,
         bambuLiveHost: " 192.168.1.20 ",
         bambuLiveAccessCode: " 12345678 ",
+        bambuLiveAccessCodeAction: "REPLACE",
+        bambuLiveAccessCodeConfigured: false,
         bambuLivePrinterSerial: " 00M09 ",
+        bambuLiveTlsCertificateFingerprint: " SHA256:123 ",
+        bambuLiveTlsSpkiFingerprint: " SPKI:456 ",
+        bambuLiveTlsTrustAction: "TRUST_CURRENT",
+        bambuLiveTlsTrustState: "UNPAIRED",
       }),
     ),
     {
@@ -223,7 +246,13 @@ test("normalizePrinterReconfigureDraft matches the persisted reconfigure values"
       bambuLiveEnabled: true,
       bambuLiveHost: "192.168.1.20",
       bambuLiveAccessCode: "12345678",
+      bambuLiveAccessCodeAction: "REPLACE",
+      bambuLiveAccessCodeConfigured: false,
       bambuLivePrinterSerial: "00M09",
+      bambuLiveTlsCertificateFingerprint: "SHA256:123",
+      bambuLiveTlsSpkiFingerprint: "SPKI:456",
+      bambuLiveTlsTrustAction: "TRUST_CURRENT",
+      bambuLiveTlsTrustState: "UNPAIRED",
     },
   );
 });
@@ -240,7 +269,9 @@ test("printer reconfigure dirty check ignores whitespace and equivalent clamped 
     name: "A1 Mini",
     bambuLiveEnabled: true,
     bambuLiveHost: "192.168.1.20",
-    bambuLiveAccessCode: "12345678",
+    bambuLiveAccessCode: "",
+    bambuLiveAccessCodeAction: "KEEP",
+    bambuLiveAccessCodeConfigured: true,
     bambuLivePrinterSerial: "00M09",
   });
 
@@ -254,7 +285,9 @@ test("printer reconfigure dirty check ignores whitespace and equivalent clamped 
         slotsPerUnit: "12",
         bambuLiveEnabled: true,
         bambuLiveHost: " 192.168.1.20 ",
-        bambuLiveAccessCode: " 12345678 ",
+        bambuLiveAccessCode: "",
+        bambuLiveAccessCodeAction: "KEEP",
+        bambuLiveAccessCodeConfigured: true,
         bambuLivePrinterSerial: " 00M09 ",
       }),
     ),
@@ -309,11 +342,11 @@ test("printer reconfigure dirty check tracks model and name", () => {
   );
 });
 
-test("printer reconfigure dirty check tracks live toggle and enabled credentials", () => {
+test("printer reconfigure dirty check tracks live toggle and explicit security actions", () => {
   const disabled = reconfigureDraft({
     bambuLiveEnabled: false,
     bambuLiveHost: "stored-host",
-    bambuLiveAccessCode: "stored-code",
+    bambuLiveAccessCodeConfigured: true,
     bambuLivePrinterSerial: "stored-serial",
   });
 
@@ -322,9 +355,32 @@ test("printer reconfigure dirty check tracks live toggle and enabled credentials
       ...disabled,
       bambuLiveHost: "ignored-host",
       bambuLiveAccessCode: "ignored-code",
+      bambuLiveAccessCodeAction: "REPLACE",
+      bambuLivePrinterSerial: "ignored-serial",
+    }),
+    true,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(disabled, {
+      ...disabled,
+      bambuLiveHost: "ignored-host",
       bambuLivePrinterSerial: "ignored-serial",
     }),
     false,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(disabled, {
+      ...disabled,
+      bambuLiveAccessCodeAction: "CLEAR",
+    }),
+    true,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(disabled, {
+      ...disabled,
+      bambuLiveTlsTrustAction: "CLEAR",
+    }),
+    true,
   );
   assert.equal(
     isPrinterReconfigureDraftDirty(disabled, {
@@ -339,16 +395,17 @@ test("printer reconfigure dirty check tracks live toggle and enabled credentials
     isPrinterReconfigureDraftDirty(enabled, {
       ...enabled,
       bambuLiveAccessCode: "new-code",
+      bambuLiveAccessCodeAction: "REPLACE",
     }),
     true,
   );
 });
 
-test("printer reconfigure dirty check handles an invalid enabled live baseline", () => {
+test("printer reconfigure dirty check keeps saved access codes out of the draft", () => {
   const baseline = reconfigureDraft({
     bambuLiveEnabled: true,
     bambuLiveHost: "192.168.1.20",
-    bambuLiveAccessCode: "   ",
+    bambuLiveAccessCodeConfigured: true,
     bambuLivePrinterSerial: "00M09",
   });
 
@@ -363,9 +420,74 @@ test("printer reconfigure dirty check handles an invalid enabled live baseline",
     isPrinterReconfigureDraftDirty(baseline, {
       ...baseline,
       bambuLiveAccessCode: "12345678",
+      bambuLiveAccessCodeAction: "REPLACE",
     }),
     true,
   );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      bambuLiveAccessCodeAction: "CLEAR",
+    }),
+    true,
+  );
+});
+
+test("printer reconfigure dirty check tracks explicit TLS trust actions", () => {
+  const baseline = reconfigureDraft({
+    bambuLiveEnabled: true,
+    bambuLiveHost: "192.168.1.20",
+    bambuLiveAccessCodeConfigured: true,
+    bambuLivePrinterSerial: "00M09",
+    bambuLiveTlsCertificateFingerprint: "SHA256:123",
+    bambuLiveTlsSpkiFingerprint: "SPKI:123",
+    bambuLiveTlsTrustState: "CHANGED",
+  });
+
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      bambuLiveTlsTrustAction: "TRUST_CURRENT",
+    }),
+    true,
+  );
+  assert.equal(
+    isPrinterReconfigureDraftDirty(baseline, {
+      ...baseline,
+      bambuLiveTlsTrustAction: "CLEAR",
+    }),
+    true,
+  );
+});
+
+test("preparePrinterReconfigure keeps or explicitly clears a configured access code", () => {
+  const baseline = reconfigureDraft({
+    bambuLiveEnabled: true,
+    bambuLiveHost: "192.168.1.20",
+    bambuLiveAccessCodeConfigured: true,
+    bambuLivePrinterSerial: "00M09",
+    bambuLiveTlsCertificateFingerprint: "a".repeat(64),
+    bambuLiveTlsSpkiFingerprint: "b".repeat(64),
+    bambuLiveTlsTrustState: "TRUSTED",
+  });
+  const kept = preparePrinterReconfigure({
+    currentExists: true,
+    draft: baseline,
+  });
+  const cleared = preparePrinterReconfigure({
+    currentExists: true,
+    draft: { ...baseline, bambuLiveAccessCodeAction: "CLEAR" },
+  });
+
+  assert.equal(kept.ok, true);
+  assert.equal(cleared.ok, true);
+  if (kept.ok && cleared.ok) {
+    assert.equal(kept.bambuLive.accessCode, null);
+    assert.equal(kept.bambuLive.accessCodeAction, "KEEP");
+    assert.equal(cleared.bambuLive.accessCode, null);
+    assert.equal(cleared.bambuLive.accessCodeAction, "CLEAR");
+    assert.equal(cleared.bambuLive.enabled, false);
+  }
 });
 
 test("preparePrinterReconfigure validates missing printer and Bambu live fields", () => {
@@ -381,7 +503,13 @@ test("preparePrinterReconfigure validates missing printer and Bambu live fields"
         bambuLiveEnabled: false,
         bambuLiveHost: "",
         bambuLiveAccessCode: "",
+        bambuLiveAccessCodeAction: "KEEP",
+        bambuLiveAccessCodeConfigured: false,
         bambuLivePrinterSerial: "",
+        bambuLiveTlsCertificateFingerprint: null,
+        bambuLiveTlsSpkiFingerprint: null,
+        bambuLiveTlsTrustAction: "KEEP",
+        bambuLiveTlsTrustState: "UNPAIRED",
       },
     }),
     { ok: false, reason: "missing_printer" },
@@ -399,17 +527,47 @@ test("preparePrinterReconfigure validates missing printer and Bambu live fields"
         bambuLiveEnabled: true,
         bambuLiveHost: "192.168.1.20",
         bambuLiveAccessCode: "",
+        bambuLiveAccessCodeAction: "KEEP",
+        bambuLiveAccessCodeConfigured: false,
         bambuLivePrinterSerial: "00M09",
+        bambuLiveTlsCertificateFingerprint: null,
+        bambuLiveTlsSpkiFingerprint: null,
+        bambuLiveTlsTrustAction: "KEEP",
+        bambuLiveTlsTrustState: "UNPAIRED",
       },
     }),
     { ok: false, reason: "missing_bambu_live_fields" },
   );
 });
 
+test("preparePrinterReconfigure requires reviewed TLS trust for an enabled local integration", () => {
+  const unpaired = reconfigureDraft({
+    bambuLiveEnabled: true,
+    bambuLiveHost: "192.168.1.20",
+    bambuLiveAccessCodeConfigured: true,
+    bambuLivePrinterSerial: "00M09",
+  });
+
+  assert.deepEqual(
+    preparePrinterReconfigure({ currentExists: true, draft: unpaired }),
+    { ok: false, reason: "missing_bambu_live_trust" },
+  );
+
+  const clientEdit = preparePrinterReconfigure({
+    currentExists: true,
+    draft: unpaired,
+    manageBambuLive: false,
+  });
+  assert.equal(clientEdit.ok, true);
+});
+
 test("settings printer messages quote the printer name consistently", () => {
   const errorLabels = {
     bambuLiveFieldsRequired:
       "Host, access code and printer serial are required when live Bambu status is enabled.",
+    bambuLiveIdentityCheckFailed: "Could not check the printer identity.",
+    bambuLiveTrustRequired:
+      "Check and trust the printer identity before enabling live Bambu status.",
     deletePrinterFailed: "Failed to delete printer.",
     updatePrinterFailed: "Failed to update printer.",
     writeRequiresPairing: "Pair this desktop client with the host before changing printers.",
@@ -491,6 +649,33 @@ test("canUseSettingsPrinterWriteTarget blocks unpaired client writes only", () =
       settingsClientHostBaseUrl: null,
       settingsClientHostWritePaired: true,
       settingsClientLibraryId: "library-1",
+    }),
+    false,
+  );
+});
+
+test("Bambu security writes stay on the host desktop and paused configs persist locally", () => {
+  assert.equal(
+    shouldPersistLocalBambuLiveIntegration({
+      enabled: true,
+      hasSavedIntegration: true,
+      settingsClientReadOnly: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldPersistLocalBambuLiveIntegration({
+      enabled: false,
+      hasSavedIntegration: true,
+      settingsClientReadOnly: false,
+    }),
+    true,
+  );
+  assert.equal(
+    shouldPersistLocalBambuLiveIntegration({
+      enabled: false,
+      hasSavedIntegration: false,
+      settingsClientReadOnly: false,
     }),
     false,
   );

@@ -1,8 +1,12 @@
 use super::database_core::FilamentDatabase;
+#[cfg(any(test, feature = "test-support"))]
+use super::database_library_sync_auth::save_library_sync_client_auth_state as save_library_sync_client_auth_state_rows;
 use super::database_library_sync_auth::{
     clear_library_sync_client_auth_state as clear_library_sync_client_auth_state_rows,
+    finalize_library_sync_client_auth_migration as finalize_library_sync_client_auth_migration_rows,
     get_library_sync_client_auth_state as get_library_sync_client_auth_state_rows,
-    save_library_sync_client_auth_state as save_library_sync_client_auth_state_rows,
+    save_library_sync_client_auth_metadata as save_library_sync_client_auth_metadata_rows,
+    scrub_library_sync_client_auth_secrets as scrub_library_sync_client_auth_secret_rows,
 };
 use super::database_library_sync_cache::{
     save_library_sync_cached_loans as save_library_sync_cached_loan_rows,
@@ -39,7 +43,10 @@ impl FilamentDatabase {
         &self,
         settings: &LibrarySyncSettingsRow,
     ) -> InventoryResult<LibrarySyncSettingsRow> {
-        save_library_sync_setting_rows(self.connection(), settings)
+        let transaction = self.connection().unchecked_transaction()?;
+        let saved = save_library_sync_setting_rows(&transaction, settings)?;
+        transaction.commit()?;
+        Ok(saved)
     }
 
     pub fn save_library_sync_validation_state(
@@ -56,6 +63,7 @@ impl FilamentDatabase {
         )
     }
 
+    #[cfg(any(test, feature = "test-support"))]
     pub fn save_library_sync_client_auth_state(
         &self,
         session_id: &str,
@@ -73,7 +81,56 @@ impl FilamentDatabase {
     }
 
     pub fn clear_library_sync_client_auth_state(&self) -> InventoryResult<()> {
-        clear_library_sync_client_auth_state_rows(self.connection())
+        let transaction = self.connection().unchecked_transaction()?;
+        clear_library_sync_client_auth_state_rows(&transaction)?;
+        transaction.commit()?;
+        Ok(())
+    }
+
+    pub fn save_library_sync_client_auth_metadata(
+        &self,
+        expires_at: Option<&str>,
+    ) -> InventoryResult<()> {
+        save_library_sync_client_auth_metadata_rows(self.connection(), expires_at)
+    }
+
+    pub fn finalize_library_sync_client_pairing(
+        &self,
+        expires_at: Option<&str>,
+        message: &str,
+        host_device_name: Option<&str>,
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
+        let transaction = self.connection().unchecked_transaction()?;
+        save_library_sync_client_auth_metadata_rows(&transaction, expires_at)?;
+        scrub_library_sync_client_auth_secret_rows(&transaction)?;
+        save_library_sync_validation_state_row(
+            &transaction,
+            true,
+            Some(message),
+            host_device_name,
+        )?;
+        let settings = get_library_sync_setting_rows(&transaction)?;
+        transaction.commit()?;
+        Ok(settings)
+    }
+
+    pub fn scrub_library_sync_client_auth_secrets(&self) -> InventoryResult<()> {
+        let transaction = self.connection().unchecked_transaction()?;
+        scrub_library_sync_client_auth_secret_rows(&transaction)?;
+        transaction.commit()?;
+        Ok(())
+    }
+
+    pub fn finalize_library_sync_client_auth_migration(
+        &self,
+        canonical_host_base_url: &str,
+        expires_at: Option<&str>,
+    ) -> InventoryResult<()> {
+        finalize_library_sync_client_auth_migration_rows(
+            self.connection(),
+            canonical_host_base_url,
+            expires_at,
+        )
     }
 
     pub fn get_library_sync_client_auth_state(

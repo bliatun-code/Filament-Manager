@@ -92,13 +92,18 @@ impl IntoResponse for CompanionApiError {
                 )
             }
             CompanionApiError::Internal(detail) => {
+                // Internal errors can originate from database/network layers
+                // whose messages may contain local paths, hosts, or submitted
+                // values. Keep only a correlation id in user-visible and
+                // operational output.
+                drop(detail);
                 let diagnostic_id = crate::app_error::next_diagnostic_id();
                 let _ = crate::app_error::operational_log::record_operational_event(
                     crate::app_error::operational_log::OperationalLogLevel::Error,
                     crate::app_error::operational_log::OperationalLogContext::CompanionApiFailure,
                     Some(&diagnostic_id),
                 );
-                eprintln!("[{diagnostic_id}] Companion API internal error: {detail}");
+                eprintln!("[{diagnostic_id}] Companion API internal error");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "common.internal",

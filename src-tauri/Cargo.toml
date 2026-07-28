@@ -20,15 +20,22 @@ sha2 = "0.11.0"
 qrcode = "0.14.1"
 base64 = { version = "0.23.0", default-features = false, features = ["std"] }
 native-tls = "0.2.18"
+x509-parser = { version = "0.18.1", default-features = false }
 time = { workspace = true }
 url = "2.5.8"
 flate2 = "1.1.9"
 semver = "1.0.28"
+zeroize = "1.9.0"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
 objc2-app-kit = { version = "0.3.2", features = ["NSApplication", "NSImage", "NSScreen", "NSWindow"] }
 objc2-foundation = { version = "0.3.2", features = ["NSData"] }
+security-framework = "3.7.0"
+security-framework-sys = "2.17.0"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security_Credentials"] }
 
 [build-dependencies]
 tauri-build = { version = "2.6.3", features = [] }

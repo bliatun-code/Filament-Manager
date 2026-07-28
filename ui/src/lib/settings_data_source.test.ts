@@ -42,8 +42,10 @@ function printerSettingsSnapshot(printerId: string): PrinterSettingsSnapshot {
         config: {
           enabled: true,
           host: "192.168.1.10",
-          access_code: null,
+          access_code_configured: true,
           printer_serial: null,
+          tls_trust_state: "TRUSTED",
+          tls_certificate_fingerprint: "SHA256:AA",
           last_error: null,
           observed_state: null,
         },

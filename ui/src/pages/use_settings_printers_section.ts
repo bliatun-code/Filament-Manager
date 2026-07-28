@@ -69,9 +69,15 @@ export function useSettingsPrintersSection({
     diagnosticSortByPrinterId,
     editAmsUnits,
     editBambuLiveAccessCode,
+    editBambuLiveAccessCodeAction,
+    editBambuLiveAccessCodeConfigured,
     editBambuLiveEnabled,
     editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editBambuLiveTlsCertificateFingerprint,
+    editBambuLiveTlsSpkiFingerprint,
+    editBambuLiveTlsTrustAction,
+    editBambuLiveTlsTrustState,
     editModelProfile,
     editPrinterDirty,
     editPrinterId,
@@ -87,9 +93,14 @@ export function useSettingsPrintersSection({
     setDiagnosticSortByPrinterId,
     setEditAmsUnits,
     setEditBambuLiveAccessCode,
+    setEditBambuLiveAccessCodeAction,
     setEditBambuLiveEnabled,
     setEditBambuLiveHost,
     setEditBambuLivePrinterSerial,
+    setEditBambuLiveTlsCertificateFingerprint,
+    setEditBambuLiveTlsSpkiFingerprint,
+    setEditBambuLiveTlsTrustAction,
+    setEditBambuLiveTlsTrustState,
     setEditPrinterModel,
     setEditPrinterName,
     setEditSlotsPerUnit,
@@ -356,6 +367,7 @@ export function useSettingsPrintersSection({
   const {
     handleCancelEditPrinter,
     handleDeletePrinter,
+    handleInspectBambuLiveTlsIdentity,
     handleSavePrinterReconfigure,
     handleStartEditPrinter,
   } = useSettingsPrinterActions({
@@ -365,9 +377,15 @@ export function useSettingsPrintersSection({
     confirmDeletePrinterId,
     editAmsUnits,
     editBambuLiveAccessCode,
+    editBambuLiveAccessCodeAction,
+    editBambuLiveAccessCodeConfigured,
     editBambuLiveEnabled,
     editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editBambuLiveTlsCertificateFingerprint,
+    editBambuLiveTlsSpkiFingerprint,
+    editBambuLiveTlsTrustAction,
+    editBambuLiveTlsTrustState,
     editPrinterId,
     editPrinterDirty,
     editPrinterModel,
@@ -380,6 +398,10 @@ export function useSettingsPrintersSection({
     setConfirmDeletePrinterId,
     setError,
     setInfo,
+    setEditBambuLiveTlsCertificateFingerprint,
+    setEditBambuLiveTlsSpkiFingerprint,
+    setEditBambuLiveTlsTrustAction,
+    setEditBambuLiveTlsTrustState,
     settingsClientHostBaseUrl,
     settingsClientHostWritePaired,
     settingsClientLibraryId,
@@ -401,9 +423,15 @@ export function useSettingsPrintersSection({
     diagnosticSortByPrinterId,
     editAmsUnits,
     editBambuLiveAccessCode,
+    editBambuLiveAccessCodeAction,
+    editBambuLiveAccessCodeConfigured,
     editBambuLiveEnabled,
     editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editBambuLiveTlsCertificateFingerprint,
+    editBambuLiveTlsSpkiFingerprint,
+    editBambuLiveTlsTrustAction,
+    editBambuLiveTlsTrustState,
     editModelProfile,
     editPrinterDirty,
     editPrinterId,
@@ -419,9 +447,24 @@ export function useSettingsPrintersSection({
     spoolRows,
     tauri,
     onBambuLiveAccessCodeChange: setEditBambuLiveAccessCode,
+    onBambuLiveAccessCodeActionChange: setEditBambuLiveAccessCodeAction,
     onBambuLiveEnabledChange: setEditBambuLiveEnabled,
-    onBambuLiveHostChange: setEditBambuLiveHost,
-    onBambuLivePrinterSerialChange: setEditBambuLivePrinterSerial,
+    onBambuLiveHostChange: (value) => {
+      setEditBambuLiveHost(value);
+      setEditBambuLiveTlsCertificateFingerprint(null);
+      setEditBambuLiveTlsSpkiFingerprint(null);
+      setEditBambuLiveTlsTrustAction("KEEP");
+      setEditBambuLiveTlsTrustState("UNPAIRED");
+    },
+    onBambuLiveIdentityCheck: handleInspectBambuLiveTlsIdentity,
+    onBambuLivePrinterSerialChange: (value) => {
+      setEditBambuLivePrinterSerial(value);
+      setEditBambuLiveTlsCertificateFingerprint(null);
+      setEditBambuLiveTlsSpkiFingerprint(null);
+      setEditBambuLiveTlsTrustAction("KEEP");
+      setEditBambuLiveTlsTrustState("UNPAIRED");
+    },
+    onBambuLiveTlsTrustActionChange: setEditBambuLiveTlsTrustAction,
     onCancelEditPrinter: handleCancelEditPrinter,
     onCopyError: setError,
     onCopySuccess: setInfo,

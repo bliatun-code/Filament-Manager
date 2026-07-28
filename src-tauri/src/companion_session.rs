@@ -11,6 +11,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+use zeroize::Zeroize;
 
 pub(crate) const COMPANION_SESSION_COOKIE: &str = "bfm_companion_session";
 pub(crate) const COMPANION_TRUSTED_LAN_DEVICE_COOKIE: &str = "bfm_trusted_lan_device";
@@ -19,12 +20,18 @@ const COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS: u64 = 30 * 24 * 60 * 60;
 
 pub(crate) type CompanionSessionStore = Arc<RwLock<HashMap<String, CompanionSession>>>;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone)]
 pub(crate) struct CompanionSession {
     pub(crate) csrf_token: String,
     created_at_epoch_s: u64,
     paired_browser_id: Option<String>,
     qa_session: bool,
+}
+
+impl Drop for CompanionSession {
+    fn drop(&mut self) {
+        self.csrf_token.zeroize();
+    }
 }
 
 #[derive(Serialize)]

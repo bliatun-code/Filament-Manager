@@ -11,7 +11,10 @@ import { useI18n } from "../lib/i18n";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { PrinterModelProfile } from "../lib/printer_profiles";
 import type {
+  BambuAccessCodeAction,
   BambuLiveIntegrationEntry,
+  BambuTlsTrustAction,
+  BambuTlsTrustState,
   MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterRow,
@@ -41,9 +44,15 @@ export type SettingsPrintersTabProps = {
   diagnosticSortByPrinterId: Record<string, DiagnosticSortKey>;
   editAmsUnits: string;
   editBambuLiveAccessCode: string;
+  editBambuLiveAccessCodeAction: BambuAccessCodeAction;
+  editBambuLiveAccessCodeConfigured: boolean;
   editBambuLiveEnabled: boolean;
   editBambuLiveHost: string;
   editBambuLivePrinterSerial: string;
+  editBambuLiveTlsCertificateFingerprint: string | null;
+  editBambuLiveTlsSpkiFingerprint: string | null;
+  editBambuLiveTlsTrustAction: BambuTlsTrustAction;
+  editBambuLiveTlsTrustState: BambuTlsTrustState;
   editModelProfile: PrinterModelProfile;
   editPrinterDirty: boolean;
   editPrinterId: string | null;
@@ -59,9 +68,12 @@ export type SettingsPrintersTabProps = {
   spoolRows: NormalizedSpoolWithMasterRow[];
   tauri: boolean;
   onBambuLiveAccessCodeChange: (value: string) => void;
+  onBambuLiveAccessCodeActionChange: (value: BambuAccessCodeAction) => void;
   onBambuLiveEnabledChange: (value: boolean) => void;
   onBambuLiveHostChange: (value: string) => void;
+  onBambuLiveIdentityCheck: () => void;
   onBambuLivePrinterSerialChange: (value: string) => void;
+  onBambuLiveTlsTrustActionChange: (value: BambuTlsTrustAction) => void;
   onCancelEditPrinter: () => void;
   onCopyError: (message: string) => void;
   onCopySuccess: (message: string) => void;
@@ -91,9 +103,15 @@ export function SettingsPrintersTab({
   diagnosticSortByPrinterId,
   editAmsUnits,
   editBambuLiveAccessCode,
+  editBambuLiveAccessCodeAction,
+  editBambuLiveAccessCodeConfigured,
   editBambuLiveEnabled,
   editBambuLiveHost,
   editBambuLivePrinterSerial,
+  editBambuLiveTlsCertificateFingerprint,
+  editBambuLiveTlsSpkiFingerprint,
+  editBambuLiveTlsTrustAction,
+  editBambuLiveTlsTrustState,
   editModelProfile,
   editPrinterDirty,
   editPrinterId,
@@ -109,9 +127,12 @@ export function SettingsPrintersTab({
   spoolRows,
   tauri,
   onBambuLiveAccessCodeChange,
+  onBambuLiveAccessCodeActionChange,
   onBambuLiveEnabledChange,
   onBambuLiveHostChange,
+  onBambuLiveIdentityCheck,
   onBambuLivePrinterSerialChange,
+  onBambuLiveTlsTrustActionChange,
   onCancelEditPrinter,
   onCopyError,
   onCopySuccess,
@@ -131,9 +152,15 @@ export function SettingsPrintersTab({
   const { locale, t } = useI18n();
   const editDraft: SettingsPrinterEditDraft = {
     bambuLiveAccessCode: editBambuLiveAccessCode,
+    bambuLiveAccessCodeAction: editBambuLiveAccessCodeAction,
+    bambuLiveAccessCodeConfigured: editBambuLiveAccessCodeConfigured,
     bambuLiveEnabled: editBambuLiveEnabled,
     bambuLiveHost: editBambuLiveHost,
     bambuLivePrinterSerial: editBambuLivePrinterSerial,
+    bambuLiveTlsCertificateFingerprint: editBambuLiveTlsCertificateFingerprint,
+    bambuLiveTlsSpkiFingerprint: editBambuLiveTlsSpkiFingerprint,
+    bambuLiveTlsTrustAction: editBambuLiveTlsTrustAction,
+    bambuLiveTlsTrustState: editBambuLiveTlsTrustState,
     model: editPrinterModel,
     modelProfile: editModelProfile,
     name: editPrinterName,
@@ -176,9 +203,12 @@ export function SettingsPrintersTab({
           const isEditing = editPrinterId === printer.id;
           const editActions: SettingsPrinterEditActions = {
             onBambuLiveAccessCodeChange,
+            onBambuLiveAccessCodeActionChange,
             onBambuLiveEnabledChange,
             onBambuLiveHostChange,
+            onBambuLiveIdentityCheck,
             onBambuLivePrinterSerialChange,
+            onBambuLiveTlsTrustActionChange,
             onCancel: onCancelEditPrinter,
             onModelChange: onEditPrinterModelChange,
             onNameChange: onEditPrinterNameChange,

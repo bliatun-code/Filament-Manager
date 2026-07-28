@@ -24,8 +24,9 @@ pub(crate) fn get_library_sync_settings(
         .map(|value| value.trim().trim_end_matches('/').to_string())
         .filter(|value| !value.is_empty());
     let host_device_name = trimmed_setting(conn, "library_sync_host_device_name")?;
-    let client_session_id = trimmed_setting(conn, "library_sync_client_session_id")?;
-    let client_auth_paired = client_session_id.is_some();
+    let client_auth_paired = trimmed_setting(conn, "library_sync_client_auth_configured")?
+        .is_some()
+        || trimmed_setting(conn, "library_sync_client_session_id")?.is_some();
     let client_auth_paired_at = trimmed_setting(conn, "library_sync_client_auth_paired_at")?;
     let client_auth_expires_at = trimmed_setting(conn, "library_sync_client_auth_expires_at")?;
     let last_checked_at = trimmed_setting(conn, "library_sync_last_checked_at")?;

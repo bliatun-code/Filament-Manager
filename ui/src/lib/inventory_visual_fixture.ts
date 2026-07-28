@@ -257,7 +257,12 @@ export function buildInventoryDetailVisualFixture(
       "fixture-x1c": {
         enabled: true,
         host: "192.0.2.42",
-        access_code: "fixture",
+        access_code_configured: true,
+        tls_trust_state: "TRUSTED",
+        tls_certificate_fingerprint:
+          "SHA256:12:34:56:78:90:AB:CD:EF:12:34:56:78:90:AB:CD:EF",
+        tls_spki_fingerprint:
+          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         printer_serial: "FIXTURE-X1C",
         observed_state: {
           online: true,

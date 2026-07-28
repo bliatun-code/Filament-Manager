@@ -519,10 +519,21 @@ Typical setup:
 6. Enable Live Bambu status.
 7. Enter the printer IP/host.
 8. Enter the access code.
-9. Enter the printer serial if needed.
-10. Open live details and verify that AMS slots are visible.
+9. Enter the printer serial.
+10. Select **Check identity**. Compare the observed printer serial and
+    fingerprint before selecting **Trust this identity**.
+11. Save the printer.
+12. Open live details and verify that AMS slots are visible.
 
 Live Bambu status is local and reads printer data on the same network. It should be configured on the host machine when using a Host/Client setup.
+
+The first identity check sends no authentication data: the app performs only a
+TLS handshake to inspect the printer certificate. It does not read or send the
+access code until the configured serial and locally approved public-key
+fingerprint match the exact TLS connection. A changed identity stops the
+connection and requires explicit re-pairing. The access code is stored in
+macOS Keychain or Windows Credential Manager, not in the library database or
+portable backup.
 
 ### What the Live Integration Observes
 

@@ -1539,8 +1539,49 @@ export const nbDictionary: DictionaryNode = {
       bambuLiveStandaloneOnly: "Live Bambu-status konfigureres på vertsmaskinen.",
       bambuLiveHost: "Printeradresse / IP",
       bambuLiveAccessCode: "Tilgangskode",
+      bambuLiveAccessCodeSaved: "Tilgangskoden er lagret sikkert",
+      bambuLiveAccessCodeMissing: "Ingen tilgangskode er lagret",
+      bambuLiveAccessCodeSavedPlaceholder:
+        "Lagret sikkert — skriv inn en ny kode for å erstatte",
+      bambuLiveAccessCodeReplacePending:
+        "Den lagrede tilgangskoden erstattes når du lagrer.",
+      bambuLiveAccessCodeSavePending:
+        "Tilgangskoden lagres sikkert når du lagrer.",
+      bambuLiveAccessCodeClear: "Fjern lagret kode",
+      bambuLiveAccessCodeClearPending:
+        "Den lagrede tilgangskoden fjernes når du lagrer. Live-tilkoblinger settes på pause til du skriver inn en ny kode.",
+      bambuLiveAccessCodeKeep: "Behold lagret kode",
+      bambuLiveAccessCodeHostConfigured:
+        "En tilgangskode er lagret på vertsmaskinen.",
+      bambuLiveAccessCodeHostMissing:
+        "Ingen tilgangskode er lagret på vertsmaskinen.",
       bambuLivePrinterSerial: "Printerserienummer",
-      bambuLiveCredentialsNote: "Tilgangsopplysningene lagres lokalt på denne maskinen.",
+      bambuLiveCredentialsNote:
+        "Tilgangskoder lagres i operativsystemets sikre lagring for tilgangsopplysninger.",
+      bambuTlsTrustTitle: "Printeridentitet",
+      bambuTlsTrustTrusted: "Godkjent",
+      bambuTlsTrustUnpaired: "Ikke godkjent ennå",
+      bambuTlsTrustChanged: "Identiteten er endret",
+      bambuTlsTrustPending: "Godkjenning venter",
+      bambuTlsClearPending: "Fjerning av godkjenning venter",
+      bambuTlsTrustTrustedHint:
+        "Printersertifikatet samsvarer med den lagrede identiteten.",
+      bambuTlsTrustUnpairedHint:
+        "Tilgangskoden sendes ikke før du uttrykkelig godkjenner denne printeridentiteten.",
+      bambuTlsTrustChangedHint:
+        "Printeridentiteten er endret. Tilkoblingen ble stoppet før tilgangskoden ble sendt.",
+      bambuTlsTrustPendingHint:
+        "Denne printeridentiteten blir godkjent når du lagrer.",
+      bambuTlsClearPendingHint:
+        "Godkjenningen fjernes når du lagrer. Live-tilkoblinger forblir blokkert til du godkjenner printeren på nytt.",
+      bambuTlsFingerprint: "Sertifikatfingeravtrykk",
+      bambuTlsFingerprintUnavailable:
+        "Lagre eller kontroller printertilkoblingen for å lese identiteten.",
+      bambuTlsCheckCurrent: "Kontroller identitet",
+      bambuTlsTrustCurrent: "Godkjenn denne identiteten",
+      bambuTlsRetrustCurrent: "Godkjenn ny identitet",
+      bambuTlsForget: "Glem godkjent identitet",
+      bambuTlsUndoTrustChange: "Angre endring av godkjenning",
       bambuLiveDisabledNote:
         "La funksjonen være deaktivert for å beholde gjeldende printerflyt uendret.",
       activePrinter: "Aktiv printer",
@@ -1870,6 +1911,10 @@ export const nbDictionary: DictionaryNode = {
         load: "Kunne ikke laste innstillinger.",
         bambuLiveFieldsRequired:
           "Vert, tilgangskode og printerserienummer er påkrevd når live Bambu-status er aktivert.",
+        bambuLiveIdentityCheckFailed:
+          "Kunne ikke kontrollere printeridentiteten.",
+        bambuLiveTrustRequired:
+          "Kontroller og godkjenn printeridentiteten før live Bambu-status aktiveres.",
         librarySyncSnapshot: "Kunne ikke hente øyeblikksbilde fra verten.",
         printerRequired: "Printernavn og printermodell er påkrevd.",
         addPrinter: "Kunne ikke legge til printer.",

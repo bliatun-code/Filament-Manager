@@ -1,5 +1,5 @@
 use super::{
-    BambuLiveIntegrationRow, BambuLiveObservedStateRow, FilamentDatabase,
+    BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveTlsIdentityRow, FilamentDatabase,
     LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput, SpoolRow,
     TrustedLanSettingsRow, FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
 };
@@ -940,8 +940,12 @@ fn delete_printer_removes_bambu_live_integration_setting() {
                 enabled: true,
                 host: Some("192.168.1.42".to_string()),
                 access_code: Some("test-access-code".to_string()),
+                access_code_configured: false,
+                access_code_binding_id: None,
+                access_code_stale_binding_ids: Vec::new(),
                 printer_serial: Some("TEST-SERIAL".to_string()),
                 last_error: None,
+                tls_identity: None,
                 observed_state: None,
             },
         )
@@ -982,8 +986,12 @@ fn bambu_live_setting_changes_increment_printer_revision_once() {
             enabled: true,
             host: Some("192.0.2.10".to_string()),
             access_code: Some("test-access-code".to_string()),
+            access_code_configured: false,
+            access_code_binding_id: None,
+            access_code_stale_binding_ids: Vec::new(),
             printer_serial: Some("TEST-SERIAL".to_string()),
             last_error: None,
+            tls_identity: None,
             observed_state: None,
         };
         let before = db
@@ -993,6 +1001,17 @@ fn bambu_live_setting_changes_increment_printer_revision_once() {
 
         db.save_bambu_live_integration("printer_1", &config)
             .map_err(|error| error.to_string())?;
+        let stored_payload = db
+            .get_setting("bambu_live_integration:printer_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "saved Bambu integration payload missing".to_string())?;
+        assert!(!stored_payload.contains("test-access-code"));
+        assert!(!stored_payload.contains("\"access_code\""));
+        assert!(db
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .all(|entry| entry.config.access_code.is_none()));
         assert_eq!(
             db.library_domain_revisions()
                 .map_err(|error| error.to_string())?
@@ -1063,9 +1082,13 @@ fn bambu_live_heartbeat_updates_refresh_at_most_once_per_minute() {
         let config = |observed_state| BambuLiveIntegrationRow {
             enabled: true,
             host: Some("192.0.2.10".to_string()),
-            access_code: Some("test-access-code".to_string()),
+            access_code: None,
+            access_code_configured: true,
+            access_code_binding_id: Some("11111111111111111111111111111111".to_string()),
+            access_code_stale_binding_ids: Vec::new(),
             printer_serial: Some("TEST-SERIAL".to_string()),
             last_error: None,
+            tls_identity: None,
             observed_state: Some(observed_state),
         };
 
@@ -1115,6 +1138,243 @@ fn bambu_live_heartbeat_updates_refresh_at_most_once_per_minute() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("bambu_live_heartbeat_updates_refresh_at_most_once_per_minute failed: {message}");
+    }
+}
+
+fn bambu_live_test_observation(marker: &str) -> BambuLiveObservedStateRow {
+    serde_json::from_value(json!({
+        "online": true,
+        "last_seen_at": "2026-07-28T12:00:00Z",
+        "mqtt_connected": true,
+        "raw_status_note": marker,
+        "trays": []
+    }))
+    .expect("build Bambu live observation")
+}
+
+fn bambu_live_test_tls_identity(
+    trusted_marker: &str,
+    observed_marker: &str,
+) -> BambuLiveTlsIdentityRow {
+    BambuLiveTlsIdentityRow {
+        trusted_spki_sha256: Some(format!("trusted-spki-{trusted_marker}")),
+        trusted_certificate_sha256: Some(format!("trusted-certificate-{trusted_marker}")),
+        trusted_at: Some(format!("trusted-at-{trusted_marker}")),
+        observed_spki_sha256: format!("observed-spki-{observed_marker}"),
+        observed_certificate_sha256: format!("observed-certificate-{observed_marker}"),
+        observed_at: format!("observed-at-{observed_marker}"),
+    }
+}
+
+fn bambu_live_test_config(marker: &str) -> BambuLiveIntegrationRow {
+    BambuLiveIntegrationRow {
+        enabled: true,
+        host: Some(format!("printer-{marker}.local")),
+        access_code: None,
+        access_code_configured: true,
+        access_code_binding_id: Some("11111111111111111111111111111111".to_string()),
+        access_code_stale_binding_ids: Vec::new(),
+        printer_serial: Some(format!("SERIAL-{marker}")),
+        last_error: Some(format!("error-{marker}")),
+        tls_identity: Some(bambu_live_test_tls_identity(marker, marker)),
+        observed_state: Some(bambu_live_test_observation(marker)),
+    }
+}
+
+#[test]
+fn bambu_live_observation_update_changes_only_runtime_fields() {
+    let db_path = temp_db_path("bambu-live-targeted-observation-update");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let expected = bambu_live_test_config("original");
+        db.save_bambu_live_integration("printer_1", &expected)
+            .map_err(|error| error.to_string())?;
+
+        let poll_tls = bambu_live_test_tls_identity("stale-poll-copy", "fresh-poll");
+        let fresh_observation = bambu_live_test_observation("fresh-poll");
+        assert!(db
+            .update_bambu_live_observation_if_current(
+                "printer_1",
+                &expected,
+                Some(fresh_observation.clone()),
+                None,
+                Some(&poll_tls),
+            )
+            .map_err(|error| error.to_string())?);
+
+        let stored = db
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .next()
+            .ok_or_else(|| "updated Bambu live integration missing".to_string())?
+            .config;
+        assert_eq!(stored.enabled, expected.enabled);
+        assert_eq!(stored.host, expected.host);
+        assert_eq!(
+            stored.access_code_configured,
+            expected.access_code_configured
+        );
+        assert_eq!(stored.printer_serial, expected.printer_serial);
+        assert_eq!(stored.last_error, None);
+        assert_eq!(stored.observed_state, Some(fresh_observation));
+        let stored_tls = stored
+            .tls_identity
+            .ok_or_else(|| "updated TLS identity missing".to_string())?;
+        let expected_tls = expected
+            .tls_identity
+            .as_ref()
+            .ok_or_else(|| "expected TLS identity missing".to_string())?;
+        assert_eq!(
+            stored_tls.trusted_spki_sha256,
+            expected_tls.trusted_spki_sha256
+        );
+        assert_eq!(
+            stored_tls.trusted_certificate_sha256,
+            expected_tls.trusted_certificate_sha256
+        );
+        assert_eq!(stored_tls.trusted_at, expected_tls.trusted_at);
+        assert_eq!(
+            stored_tls.observed_spki_sha256,
+            poll_tls.observed_spki_sha256
+        );
+        assert_eq!(
+            stored_tls.observed_certificate_sha256,
+            poll_tls.observed_certificate_sha256
+        );
+        assert_eq!(stored_tls.observed_at, poll_tls.observed_at);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("bambu_live_observation_update_changes_only_runtime_fields failed: {message}");
+    }
+}
+
+#[test]
+fn stale_bambu_live_poll_cannot_overwrite_newer_connection_or_trust() {
+    let db_path = temp_db_path("bambu-live-stale-poll-cas");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let expected = bambu_live_test_config("poll-start");
+        let stale_observation = bambu_live_test_observation("stale-poll-result");
+        let stale_tls = bambu_live_test_tls_identity("poll-start", "stale-poll-result");
+
+        for changed_field in ["host", "serial", "trusted-pin"] {
+            db.save_bambu_live_integration("printer_1", &expected)
+                .map_err(|error| error.to_string())?;
+            let mut newer = expected.clone();
+            newer.last_error = Some(format!("newer-{changed_field}-error"));
+            newer.observed_state = Some(bambu_live_test_observation(&format!(
+                "newer-{changed_field}"
+            )));
+            match changed_field {
+                "host" => newer.host = Some("newer-printer.local".to_string()),
+                "serial" => newer.printer_serial = Some("SERIAL-NEWER".to_string()),
+                "trusted-pin" => {
+                    newer.tls_identity =
+                        Some(bambu_live_test_tls_identity("newer-pin", "newer-pin"))
+                }
+                _ => unreachable!(),
+            }
+            db.save_bambu_live_integration("printer_1", &newer)
+                .map_err(|error| error.to_string())?;
+            let revision_before = db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers;
+
+            assert!(
+                !db.update_bambu_live_observation_if_current(
+                    "printer_1",
+                    &expected,
+                    Some(stale_observation.clone()),
+                    Some("stale-poll-error".to_string()),
+                    Some(&stale_tls),
+                )
+                .map_err(|error| error.to_string())?,
+                "a stale poll must be rejected after {changed_field} changes"
+            );
+            assert_eq!(
+                db.library_domain_revisions()
+                    .map_err(|error| error.to_string())?
+                    .printers,
+                revision_before,
+                "a rejected stale poll must not wake clients"
+            );
+            let stored = db
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .next()
+                .ok_or_else(|| "newer Bambu live integration missing".to_string())?
+                .config;
+            assert_eq!(
+                stored, newer,
+                "a stale poll overwrote the newer {changed_field}"
+            );
+        }
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "stale_bambu_live_poll_cannot_overwrite_newer_connection_or_trust failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn stale_bambu_live_poll_cannot_recreate_deleted_integration() {
+    let db_path = temp_db_path("bambu-live-stale-poll-delete");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let expected = bambu_live_test_config("poll-start");
+        db.save_bambu_live_integration("printer_1", &expected)
+            .map_err(|error| error.to_string())?;
+        db.delete_bambu_live_integration("printer_1")
+            .map_err(|error| error.to_string())?;
+        let revision_after_delete = db
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .printers;
+
+        assert!(!db
+            .update_bambu_live_observation_if_current(
+                "printer_1",
+                &expected,
+                Some(bambu_live_test_observation("stale-poll-result")),
+                Some("stale-poll-error".to_string()),
+                Some(&bambu_live_test_tls_identity(
+                    "poll-start",
+                    "stale-poll-result"
+                )),
+            )
+            .map_err(|error| error.to_string())?);
+        assert!(db
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?
+            .is_empty());
+        assert_eq!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            revision_after_delete
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("stale_bambu_live_poll_cannot_recreate_deleted_integration failed: {message}");
     }
 }
 
@@ -2317,6 +2577,55 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
 }
 
 #[test]
+fn library_sync_client_auth_metadata_survives_secret_scrubbing() {
+    let db_path = temp_db_path("library-sync-auth-secret-scrub");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+
+        db.save_library_sync_client_auth_state(
+            "session-secret",
+            "device-secret",
+            "csrf-secret",
+            Some("2026-08-01 10:30:00"),
+        )
+        .map_err(|error| error.to_string())?;
+        db.scrub_library_sync_client_auth_secrets()
+            .map_err(|error| error.to_string())?;
+
+        assert!(db
+            .get_library_sync_client_auth_state()
+            .map_err(|error| error.to_string())?
+            .is_none());
+        let settings = db
+            .get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        assert!(settings.client_auth_paired);
+        assert!(settings.client_auth_paired_at.is_some());
+        assert_eq!(
+            settings.client_auth_expires_at.as_deref(),
+            Some("2026-08-01 10:30:00")
+        );
+
+        db.clear_library_sync_client_auth_state()
+            .map_err(|error| error.to_string())?;
+        assert!(
+            !db.get_library_sync_settings()
+                .map_err(|error| error.to_string())?
+                .client_auth_paired
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("library_sync_client_auth_metadata_survives_secret_scrubbing failed: {message}");
+    }
+}
+
+#[test]
 fn full_backup_export_includes_schema_and_app_version_metadata() {
     let db_path = temp_db_path("backup-export-version-metadata");
 
@@ -2838,6 +3147,8 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
                 INSERT INTO settings (key, value) VALUES
                     ('theme_mode', 'dark'),
                     ('library_sync_library_id', 'library_portable'),
+                    ('credential_store_profile_id', 'credential_profile_11111111111111111111111111111111'),
+                    ('credential_store_profile_migration_v1', 'complete'),
                     ('library_sync_client_session_id', 'session-secret'),
                     ('library_sync_client_device_token', 'device-secret'),
                     ('library_sync_client_csrf_token', 'csrf-secret'),
@@ -2869,6 +3180,7 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
             "pairing-secret-hash",
             "browser-secret-hash",
             "queued-secret",
+            "credential_profile_11111111111111111111111111111111",
             "192.168.1.42",
             "192.168.1.50",
         ] {

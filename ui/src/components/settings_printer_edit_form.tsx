@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { PrinterModelProfile } from "../lib/printer_profiles";
+import type {
+  BambuAccessCodeAction,
+  BambuTlsTrustAction,
+  BambuTlsTrustState,
+} from "../lib/tauri_client";
 import {
   multiMaterialSlotsInputLabel,
   multiMaterialUnitsInputLabel,
@@ -11,13 +16,20 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { FeedbackBanner } from "./feedback_banner";
+import { SettingsBambuLiveSecurityControls } from "./settings_bambu_live_security_controls";
 import { settingsPrinterDomIdPrefix } from "./settings_bambu_live_dom_ids";
 
 type SettingsPrinterEditFormProps = {
   bambuLiveAccessCode: string;
+  bambuLiveAccessCodeAction: BambuAccessCodeAction;
+  bambuLiveAccessCodeConfigured: boolean;
   bambuLiveEnabled: boolean;
   bambuLiveHost: string;
   bambuLivePrinterSerial: string;
+  bambuLiveTlsCertificateFingerprint: string | null;
+  bambuLiveTlsSpkiFingerprint: string | null;
+  bambuLiveTlsTrustAction: BambuTlsTrustAction;
+  bambuLiveTlsTrustState: BambuTlsTrustState;
   busy: boolean;
   dirty: boolean;
   model: string;
@@ -31,9 +43,12 @@ type SettingsPrinterEditFormProps = {
   t: (key: string, fallback?: string) => string;
   units: string;
   onBambuLiveAccessCodeChange: (value: string) => void;
+  onBambuLiveAccessCodeActionChange: (value: BambuAccessCodeAction) => void;
   onBambuLiveEnabledChange: (value: boolean) => void;
   onBambuLiveHostChange: (value: string) => void;
+  onBambuLiveIdentityCheck: () => void;
   onBambuLivePrinterSerialChange: (value: string) => void;
+  onBambuLiveTlsTrustActionChange: (value: BambuTlsTrustAction) => void;
   onCancel: () => void;
   onModelChange: (value: string) => void;
   onNameChange: (value: string) => void;
@@ -44,9 +59,15 @@ type SettingsPrinterEditFormProps = {
 
 export function SettingsPrinterEditForm({
   bambuLiveAccessCode,
+  bambuLiveAccessCodeAction,
+  bambuLiveAccessCodeConfigured,
   bambuLiveEnabled,
   bambuLiveHost,
   bambuLivePrinterSerial,
+  bambuLiveTlsCertificateFingerprint,
+  bambuLiveTlsSpkiFingerprint,
+  bambuLiveTlsTrustAction,
+  bambuLiveTlsTrustState,
   busy,
   dirty,
   model,
@@ -60,9 +81,12 @@ export function SettingsPrinterEditForm({
   t,
   units,
   onBambuLiveAccessCodeChange,
+  onBambuLiveAccessCodeActionChange,
   onBambuLiveEnabledChange,
   onBambuLiveHostChange,
+  onBambuLiveIdentityCheck,
   onBambuLivePrinterSerialChange,
+  onBambuLiveTlsTrustActionChange,
   onCancel,
   onModelChange,
   onNameChange,
@@ -77,6 +101,11 @@ export function SettingsPrinterEditForm({
   const slotsDisabled =
     multiMaterialDisabled || !Number.isFinite(parsedUnits) || parsedUnits <= 0;
   const liveConfigDisabled = disabled || settingsClientReadOnly;
+  const showBambuLiveConfiguration =
+    bambuLiveEnabled ||
+    bambuLiveAccessCodeConfigured ||
+    bambuLiveTlsTrustState !== "UNPAIRED" ||
+    Boolean(bambuLiveHost.trim() || bambuLivePrinterSerial.trim());
   const fieldIdPrefix = settingsPrinterDomIdPrefix(printerId);
   const configurationHintId = `${fieldIdPrefix}-configuration-hint`;
   const modelInputId = `${fieldIdPrefix}-model`;
@@ -230,73 +259,81 @@ export function SettingsPrinterEditForm({
             </FeedbackBanner>
           ) : null}
 
-          {bambuLiveEnabled ? (
-            <div className="mt-3 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 lg:grid-cols-3">
-              <label className="flex min-w-0 flex-col gap-1" htmlFor={liveHostInputId}>
-                <span className={settingsSectionLabelClass}>
-                  {t("settings.bambuLiveHost", "Printer host / IP")}
-                </span>
-                <input
-                  id={liveHostInputId}
-                  type="text"
-                  value={bambuLiveHost}
-                  onChange={(event) => onBambuLiveHostChange(event.target.value)}
-                  aria-describedby={liveHintId}
-                  className={settingsFormControlClass}
-                  placeholder={t("settings.bambuLiveHost", "Printer host / IP")}
-                  autoCapitalize="none"
-                  autoComplete="off"
-                  disabled={liveConfigDisabled}
-                  required
-                  spellCheck={false}
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-1" htmlFor={liveAccessCodeInputId}>
-                <span className={settingsSectionLabelClass}>
-                  {t("settings.bambuLiveAccessCode", "Access code")}
-                </span>
-                <input
-                  id={liveAccessCodeInputId}
-                  type="password"
-                  value={bambuLiveAccessCode}
-                  onChange={(event) => onBambuLiveAccessCodeChange(event.target.value)}
-                  aria-describedby={`${liveHintId} ${liveNoteId}`}
-                  className={settingsFormControlClass}
-                  placeholder={t("settings.bambuLiveAccessCode", "Access code")}
-                  autoCapitalize="none"
-                  autoComplete="new-password"
-                  disabled={liveConfigDisabled}
-                  required
-                  spellCheck={false}
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-1" htmlFor={livePrinterSerialInputId}>
-                <span className={settingsSectionLabelClass}>
-                  {t("settings.bambuLivePrinterSerial", "Printer serial")}
-                </span>
-                <input
-                  id={livePrinterSerialInputId}
-                  type="text"
-                  value={bambuLivePrinterSerial}
-                  onChange={(event) => onBambuLivePrinterSerialChange(event.target.value)}
-                  aria-describedby={liveHintId}
-                  className={settingsFormControlClass}
-                  placeholder={t("settings.bambuLivePrinterSerial", "Printer serial")}
-                  autoCapitalize="characters"
-                  autoComplete="off"
-                  disabled={liveConfigDisabled}
-                  required
-                  spellCheck={false}
-                />
-              </label>
-            </div>
+          {showBambuLiveConfiguration ? (
+            <>
+              <div className="mt-3 grid grid-cols-1 gap-3 min-[720px]:grid-cols-2">
+                <label className="flex min-w-0 flex-col gap-1" htmlFor={liveHostInputId}>
+                  <span className={settingsSectionLabelClass}>
+                    {t("settings.bambuLiveHost", "Printer host / IP")}
+                  </span>
+                  <input
+                    id={liveHostInputId}
+                    type="text"
+                    value={bambuLiveHost}
+                    onChange={(event) => onBambuLiveHostChange(event.target.value)}
+                    aria-describedby={liveHintId}
+                    className={settingsFormControlClass}
+                    placeholder={t("settings.bambuLiveHost", "Printer host / IP")}
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    disabled={liveConfigDisabled}
+                    required={bambuLiveEnabled}
+                    spellCheck={false}
+                  />
+                </label>
+                <label className="flex min-w-0 flex-col gap-1" htmlFor={livePrinterSerialInputId}>
+                  <span className={settingsSectionLabelClass}>
+                    {t("settings.bambuLivePrinterSerial", "Printer serial")}
+                  </span>
+                  <input
+                    id={livePrinterSerialInputId}
+                    type="text"
+                    value={bambuLivePrinterSerial}
+                    onChange={(event) => onBambuLivePrinterSerialChange(event.target.value)}
+                    aria-describedby={liveHintId}
+                    className={settingsFormControlClass}
+                    placeholder={t("settings.bambuLivePrinterSerial", "Printer serial")}
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    disabled={liveConfigDisabled}
+                    required={bambuLiveEnabled}
+                    spellCheck={false}
+                  />
+                </label>
+              </div>
+              <SettingsBambuLiveSecurityControls
+                accessCode={bambuLiveAccessCode}
+                accessCodeAction={bambuLiveAccessCodeAction}
+                accessCodeConfigured={bambuLiveAccessCodeConfigured}
+                accessCodeInputId={liveAccessCodeInputId}
+                canCheckIdentity={Boolean(
+                  bambuLiveHost.trim() && bambuLivePrinterSerial.trim(),
+                )}
+                disabled={liveConfigDisabled}
+                liveEnabled={bambuLiveEnabled}
+                noteId={`${liveHintId} ${liveNoteId}`}
+                readOnlyHostManaged={settingsClientReadOnly}
+                tlsCertificateFingerprint={bambuLiveTlsCertificateFingerprint}
+                tlsIdentityReady={Boolean(
+                  bambuLiveTlsCertificateFingerprint &&
+                    bambuLiveTlsSpkiFingerprint,
+                )}
+                tlsTrustAction={bambuLiveTlsTrustAction}
+                tlsTrustState={bambuLiveTlsTrustState}
+                t={t}
+                onAccessCodeActionChange={onBambuLiveAccessCodeActionChange}
+                onAccessCodeChange={onBambuLiveAccessCodeChange}
+                onCheckIdentity={onBambuLiveIdentityCheck}
+                onTlsTrustActionChange={onBambuLiveTlsTrustActionChange}
+              />
+            </>
           ) : null}
 
           <p id={liveNoteId} className="mt-3 text-xs text-slate-500 dark:text-slate-400">
             {bambuLiveEnabled
               ? t(
                   "settings.bambuLiveCredentialsNote",
-                  "Credentials are stored locally on this desktop.",
+                  "Access codes are stored in this operating system's secure credential store.",
                 )
               : t(
                   "settings.bambuLiveDisabledNote",

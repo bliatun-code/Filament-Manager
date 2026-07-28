@@ -1616,7 +1616,47 @@ export const esDictionary: DictionaryNode = {
     bambuLiveAccessCode: "Código de acceso",
     bambuLivePrinterSerial: "Número de serie de la impresora",
     bambuLiveCredentialsNote:
-      "Las credenciales se guardan localmente en este equipo.",
+      "Los códigos de acceso se guardan en el almacén seguro de credenciales del sistema operativo.",
+    bambuTlsCheckCurrent: "Comprobar identidad",
+    bambuLiveAccessCodeSaved: "Código de acceso guardado de forma segura",
+    bambuLiveAccessCodeMissing: "No hay ningún código de acceso guardado",
+    bambuLiveAccessCodeSavedPlaceholder:
+      "Guardado de forma segura — introduce un código nuevo para reemplazarlo",
+    bambuLiveAccessCodeReplacePending:
+      "El código de acceso guardado se reemplazará cuando guardes.",
+    bambuLiveAccessCodeSavePending:
+      "El código de acceso se guardará de forma segura cuando guardes.",
+    bambuLiveAccessCodeClear: "Eliminar código guardado",
+    bambuLiveAccessCodeClearPending:
+      "El código de acceso guardado se eliminará cuando guardes. Las conexiones en directo se pausarán hasta que introduzcas un código nuevo.",
+    bambuLiveAccessCodeKeep: "Conservar código guardado",
+    bambuLiveAccessCodeHostConfigured:
+      "Hay un código de acceso guardado en el equipo host.",
+    bambuLiveAccessCodeHostMissing:
+      "No hay ningún código de acceso guardado en el equipo host.",
+    bambuTlsTrustTitle: "Identidad de la impresora",
+    bambuTlsTrustTrusted: "De confianza",
+    bambuTlsTrustUnpaired: "Aún no es de confianza",
+    bambuTlsTrustChanged: "La identidad ha cambiado",
+    bambuTlsTrustPending: "Confianza pendiente",
+    bambuTlsClearPending: "Retirada de confianza pendiente",
+    bambuTlsTrustTrustedHint:
+      "El certificado de la impresora coincide con la identidad guardada.",
+    bambuTlsTrustUnpairedHint:
+      "El código de acceso no se enviará hasta que confíes explícitamente en esta identidad de impresora.",
+    bambuTlsTrustChangedHint:
+      "La identidad de la impresora ha cambiado. La conexión se detuvo antes de enviar el código de acceso.",
+    bambuTlsTrustPendingHint:
+      "Se confiará en esta identidad de impresora cuando guardes.",
+    bambuTlsClearPendingHint:
+      "La confianza se retirará cuando guardes. Las conexiones en directo permanecerán bloqueadas hasta que vuelvas a confiar en la impresora.",
+    bambuTlsFingerprint: "Huella digital del certificado",
+    bambuTlsFingerprintUnavailable:
+      "Guarda o comprueba la conexión con la impresora para leer su identidad.",
+    bambuTlsTrustCurrent: "Confiar en esta identidad",
+    bambuTlsRetrustCurrent: "Confiar en la nueva identidad",
+    bambuTlsForget: "Olvidar identidad de confianza",
+    bambuTlsUndoTrustChange: "Deshacer cambio de confianza",
     bambuLiveDisabledNote:
       "Déjalo desactivado para mantener sin cambios el flujo actual.",
     activePrinter: "Impresora activa",
@@ -1967,6 +2007,10 @@ export const esDictionary: DictionaryNode = {
       addPrinter: "No se pudo agregar la impresora.",
       bambuLiveFieldsRequired:
         "Se requieren host, código de acceso y serie de la impresora cuando el estado Bambu en vivo está habilitado.",
+      bambuLiveIdentityCheckFailed:
+        "No se pudo comprobar la identidad de la impresora.",
+      bambuLiveTrustRequired:
+        "Comprueba la identidad de la impresora y márcala como de confianza antes de activar el estado en directo de Bambu.",
       copyBambuLiveRawPayload:
         "No se pudo copiar la carga útil en vivo sin procesar.",
       copyCompanionShellUrl: "No se pudo copiar el shell complementario URL.",

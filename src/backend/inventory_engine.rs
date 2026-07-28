@@ -276,6 +276,7 @@ impl InventoryEngine {
         self.db.save_library_sync_cached_wishlist(rows)
     }
 
+    #[cfg(any(test, feature = "test-support"))]
     pub fn save_library_sync_client_auth_state(
         &self,
         session_id: &str,
@@ -293,6 +294,27 @@ impl InventoryEngine {
 
     pub fn clear_library_sync_client_auth_state(&self) -> InventoryResult<()> {
         self.db.clear_library_sync_client_auth_state()
+    }
+
+    pub fn save_library_sync_client_auth_metadata(
+        &self,
+        expires_at: Option<&str>,
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_client_auth_metadata(expires_at)
+    }
+
+    pub fn finalize_library_sync_client_pairing(
+        &self,
+        expires_at: Option<&str>,
+        message: &str,
+        host_device_name: Option<&str>,
+    ) -> InventoryResult<LibrarySyncSettingsRow> {
+        self.db
+            .finalize_library_sync_client_pairing(expires_at, message, host_device_name)
+    }
+
+    pub fn scrub_library_sync_client_auth_secrets(&self) -> InventoryResult<()> {
+        self.db.scrub_library_sync_client_auth_secrets()
     }
 
     pub fn get_library_sync_client_auth_state(

@@ -1,4 +1,7 @@
-use crate::library_sync_host_client::renew_library_sync_host_session;
+use crate::library_sync_command_support::normalize_library_sync_base_url;
+use crate::library_sync_host_client::{
+    load_library_sync_device_token_optional, renew_and_cache_library_sync_auth,
+};
 use crate::library_sync_models::{LibrarySyncHostValidationResult, ValidateLibrarySyncHostInput};
 use crate::state::AppState;
 use crate::trusted_lan_health::CompanionHealthCheckResponse;
@@ -10,13 +13,11 @@ pub(crate) fn validate_library_sync_host(
     state: tauri::State<'_, AppState>,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncHostValidationResult, String> {
-    let normalized_base_url = input.base_url.trim().trim_end_matches('/').to_string();
-    if normalized_base_url.is_empty() {
-        return Err("Host URL is required.".to_string());
-    }
+    let normalized_base_url = normalize_library_sync_base_url(&input.base_url)?;
 
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_millis(900))
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|error| format!("Failed to prepare host validation client: {error}"))?;
 
@@ -103,25 +104,17 @@ pub(crate) fn validate_library_sync_host(
         )
     };
 
-    let saved_auth_state =
-        with_inventory(&state, |engine| engine.get_library_sync_client_auth_state())?;
     let mut pairing_checked = false;
     let mut pairing_valid = false;
 
     if parsed.ok && matches_library_id {
-        if let Some((_, device_token, _, _)) = saved_auth_state {
+        if let Some(device_token) =
+            load_library_sync_device_token_optional(&state, &normalized_base_url)?
+        {
             pairing_checked = true;
-            match renew_library_sync_host_session(&normalized_base_url, &device_token) {
-                Ok(renewed) => {
+            match renew_and_cache_library_sync_auth(&state, &normalized_base_url, &device_token) {
+                Ok(_) => {
                     pairing_valid = true;
-                    with_inventory(&state, |engine| {
-                        engine.save_library_sync_client_auth_state(
-                            &renewed.session_id,
-                            &renewed.device_token,
-                            &renewed.csrf_token,
-                            None,
-                        )
-                    })?;
                 }
                 Err(error) => {
                     message = if error.contains("401") {

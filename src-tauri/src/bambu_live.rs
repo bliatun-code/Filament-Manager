@@ -10,31 +10,51 @@ use crate::bambu_live_sync::enrich_with_match_status;
 use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
 };
+use crate::credential_store::{CredentialKey, CredentialStore};
 use crate::state::AppState;
-use native_tls::TlsConnector;
 use std::io::Write;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 use std::time::Duration;
+use zeroize::Zeroize;
 
 const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MAX_CONCURRENT_PRINTER_POLLS: usize = 3;
 
+#[path = "bambu_tls_identity.rs"]
+pub(crate) mod tls_identity;
+
+#[path = "bambu_live_security.rs"]
+mod live_security;
+#[cfg(test)]
+pub(crate) use live_security::format_mqtt_connect_errors_for_platform;
+pub(crate) use live_security::probe_printer_tls_identity;
+use live_security::{
+    format_mqtt_connect_errors, has_live_observation, identity_probe_tls_connector,
+    is_mqtt_read_timeout, record_observed_tls_identity, run_after_trusted_identity,
+    trusted_pin_from_config, BambuLivePollError,
+};
+
 pub async fn run_live_observer(state: AppState) {
     loop {
-        if let Err(error) = poll_enabled_integrations(&state.db_path).await {
+        if let Err(error) = poll_enabled_integrations(&state).await {
             eprintln!("Bambu live observer error: {error}");
         }
         tokio::time::sleep(Duration::from_secs(OBSERVER_INTERVAL_SECS)).await;
     }
 }
 
-async fn poll_enabled_integrations(db_path: &str) -> Result<(), String> {
-    let load_path = db_path.to_string();
-    let integrations = tauri::async_runtime::spawn_blocking(move || {
-        FilamentDatabase::open(&load_path)
-            .and_then(|db| db.list_bambu_live_integrations())
-            .map_err(|error| error.to_string())
+async fn poll_enabled_integrations(state: &AppState) -> Result<(), String> {
+    let load_path = state.db_path.clone();
+    let (credential_profile_id, integrations) = tauri::async_runtime::spawn_blocking(move || {
+        let db = FilamentDatabase::open(&load_path).map_err(|error| error.to_string())?;
+        let credential_profile_id = db
+            .get_or_create_credential_store_profile_id()
+            .map_err(|error| error.to_string())?;
+        let integrations = db
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?;
+        Ok::<_, String>((credential_profile_id, integrations))
     })
     .await
     .map_err(|join_error| format!("live integration list join failed: {join_error}"))??;
@@ -42,11 +62,19 @@ async fn poll_enabled_integrations(db_path: &str) -> Result<(), String> {
         .into_iter()
         .filter(|entry| entry.config.enabled)
         .collect::<Vec<_>>();
-    let poll_path = db_path.to_string();
+    let poll_path = state.db_path.clone();
+    // Keep the credential namespace immutable for this poll batch. A restore or
+    // reset may switch the app to another library profile while an older TLS
+    // connection is still in flight; that connection must never follow the
+    // mutable app-level profile to a newer secret.
+    let poll_credentials = state
+        .credentials
+        .scoped_to_profile_id(&credential_profile_id)
+        .map_err(|error| error.to_string())?;
     let errors = run_bounded_blocking_polls(
         enabled_integrations,
         MAX_CONCURRENT_PRINTER_POLLS,
-        move |entry| poll_single_integration(&poll_path, entry),
+        move |entry| poll_single_integration(&poll_path, &poll_credentials, entry),
     )
     .await;
     for error in errors {
@@ -93,7 +121,8 @@ where
 
 fn poll_single_integration(
     db_path: &str,
-    entry: BambuLiveIntegrationEntryRow,
+    credentials: &CredentialStore,
+    mut entry: BambuLiveIntegrationEntryRow,
 ) -> Result<(), String> {
     let host = entry
         .config
@@ -102,13 +131,6 @@ fn poll_single_integration(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .ok_or_else(|| "missing host".to_string())?;
-    let access_code = entry
-        .config
-        .access_code
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "missing access code".to_string())?;
     let printer_serial = entry
         .config
         .printer_serial
@@ -116,25 +138,42 @@ fn poll_single_integration(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .ok_or_else(|| "missing printer serial".to_string())?;
+    let trusted_pin = trusted_pin_from_config(printer_serial, entry.config.tls_identity.as_ref())?;
 
     let previous_state = entry.config.observed_state.clone();
-    let observed = match observe_printer_state(host, access_code, printer_serial) {
-        Ok(raw) => {
+    let observed = match observe_printer_state(
+        host,
+        printer_serial,
+        trusted_pin.as_ref(),
+        credentials,
+        &entry.printer_id,
+        entry.config.access_code_binding_id.as_deref(),
+    ) {
+        Ok((raw, tls_identity)) => {
+            record_observed_tls_identity(&mut entry, &tls_identity);
             let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
             let merged = merge_idle_observation(previous_state.as_ref(), raw);
             enrich_with_match_status(&db, &entry.printer_id, merged)
                 .map_err(|error| error.to_string())?
         }
         Err(error) => {
+            let observed_tls_identity = if let Some(tls_identity) = error.observed_identity.as_ref()
+            {
+                record_observed_tls_identity(&mut entry, tls_identity);
+                entry.config.tls_identity.as_ref()
+            } else {
+                None
+            };
             let mut next = previous_state.unwrap_or_else(default_offline_state);
             next.online = false;
             next.mqtt_connected = false;
-            next.raw_status_note = Some(error.clone());
+            next.raw_status_note = Some(error.message.clone());
             persist_observation(
                 db_path,
                 &entry,
                 Some(next.clone()),
-                Some(error),
+                Some(error.message),
+                observed_tls_identity,
                 Some(&next),
                 None,
             )?;
@@ -147,6 +186,7 @@ fn poll_single_integration(
         &entry,
         Some(observed.clone()),
         None,
+        entry.config.tls_identity.as_ref(),
         previous_state.as_ref(),
         Some(&observed),
     )?;
@@ -155,43 +195,118 @@ fn poll_single_integration(
 
 fn observe_printer_state(
     host: &str,
-    access_code: &str,
     printer_serial: &str,
-) -> Result<BambuLiveObservedStateRow, String> {
-    let tcp_stream = connect_printer_mqtt_tcp(host)?;
+    trusted_pin: Option<&tls_identity::BambuTlsPin>,
+    credentials: &CredentialStore,
+    printer_id: &str,
+    access_code_binding_id: Option<&str>,
+) -> Result<(BambuLiveObservedStateRow, tls_identity::BambuTlsIdentity), BambuLivePollError> {
+    let tcp_stream =
+        connect_printer_mqtt_tcp(host).map_err(BambuLivePollError::without_identity)?;
     tcp_stream
         .set_read_timeout(Some(Duration::from_secs(MQTT_TIMEOUT_SECS)))
-        .map_err(|error| format!("failed to set MQTT read timeout: {error}"))?;
+        .map_err(|error| {
+            BambuLivePollError::without_identity(format!(
+                "failed to set MQTT read timeout: {error}"
+            ))
+        })?;
     tcp_stream
         .set_write_timeout(Some(Duration::from_secs(MQTT_TIMEOUT_SECS)))
-        .map_err(|error| format!("failed to set MQTT write timeout: {error}"))?;
+        .map_err(|error| {
+            BambuLivePollError::without_identity(format!(
+                "failed to set MQTT write timeout: {error}"
+            ))
+        })?;
 
-    let connector = TlsConnector::builder()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .map_err(|error| format!("failed to prepare TLS connector: {error}"))?;
-    let mut stream = connector
-        .connect(host, tcp_stream)
-        .map_err(|error| format!("failed to establish TLS session: {error}"))?;
+    let connector = identity_probe_tls_connector().map_err(BambuLivePollError::without_identity)?;
+    let mut stream = connector.connect(host, tcp_stream).map_err(|error| {
+        BambuLivePollError::without_identity(format!("failed to establish TLS session: {error}"))
+    })?;
+    let peer_certificate = stream.peer_certificate().map_err(|error| {
+        BambuLivePollError::without_identity(format!(
+            "failed to read printer TLS certificate: {error}"
+        ))
+    })?;
+    let peer_certificate = peer_certificate.ok_or_else(|| {
+        BambuLivePollError::without_identity(
+            "printer TLS session did not provide a leaf certificate".to_string(),
+        )
+    })?;
+    let peer_leaf_der = peer_certificate.to_der().map_err(|error| {
+        BambuLivePollError::without_identity(format!(
+            "failed to read printer TLS certificate: {error}"
+        ))
+    })?;
+    let observed_identity =
+        tls_identity::identity_from_leaf_der(&peer_leaf_der).map_err(|error| {
+            BambuLivePollError::without_identity(format!(
+                "failed to inspect printer TLS identity: {error}"
+            ))
+        })?;
+
+    // The access code is intentionally loaded only after this exact TLS
+    // connection has passed the saved SPKI and printer-serial checks.
+    let trust_decision =
+        tls_identity::assess_trust(printer_serial, trusted_pin, &observed_identity)
+            .map_err(BambuLivePollError::without_identity)?;
+    let (access_code, observed_identity) = run_after_trusted_identity(trust_decision, || {
+        let access_code_binding_id = access_code_binding_id.ok_or_else(|| {
+            "Printer access code has no secure credential binding; re-enter it in Settings."
+                .to_string()
+        })?;
+        let credential_key =
+            CredentialKey::bambu_access_code(printer_id, access_code_binding_id)
+                .map_err(|error| format!("failed to identify the printer credential: {error}"))?;
+        credentials
+            .get(&credential_key)
+            .map_err(|error| format!("failed to read the printer access code: {error}"))?
+            .ok_or_else(|| "Printer access code is not configured in secure storage.".to_string())
+    })?;
+    let access_code_text = access_code.expose_utf8().map_err(|error| {
+        BambuLivePollError::with_identity(
+            format!("printer access code could not be decoded: {error}"),
+            observed_identity.clone(),
+        )
+    })?;
 
     let client_id = format!("bfm-{}", std::process::id());
-    let connect_packet = build_connect_packet(&client_id, "bblp", access_code);
-    stream
-        .write_all(&connect_packet)
-        .map_err(|error| format!("failed to send MQTT connect packet: {error}"))?;
-    let (packet_type, packet_payload) = read_mqtt_packet(&mut stream)?;
+    let mut connect_packet = build_connect_packet(&client_id, "bblp", access_code_text);
+    drop(access_code);
+    let connect_result = tls_identity::write_connect_after_trust(
+        &mut stream,
+        printer_serial,
+        trusted_pin,
+        &peer_leaf_der,
+        &connect_packet,
+    );
+    connect_packet.zeroize();
+    connect_result.map_err(|error| {
+        BambuLivePollError::with_identity(error.to_string(), observed_identity.clone())
+    })?;
+    let (packet_type, packet_payload) = read_mqtt_packet(&mut stream)
+        .map_err(|error| BambuLivePollError::with_identity(error, observed_identity.clone()))?;
     if packet_type != 0x20 || packet_payload.len() < 2 || packet_payload[1] != 0x00 {
-        return Err("printer rejected MQTT connection".to_string());
+        return Err(BambuLivePollError::with_identity(
+            "printer rejected MQTT connection",
+            observed_identity,
+        ));
     }
 
     let topic = format!("device/{printer_serial}/report");
     let subscribe_packet = build_subscribe_packet(&topic);
-    stream
-        .write_all(&subscribe_packet)
-        .map_err(|error| format!("failed to send MQTT subscribe packet: {error}"))?;
-    let (packet_type, _) = read_mqtt_packet(&mut stream)?;
+    stream.write_all(&subscribe_packet).map_err(|error| {
+        BambuLivePollError::with_identity(
+            format!("failed to send MQTT subscribe packet: {error}"),
+            observed_identity.clone(),
+        )
+    })?;
+    let (packet_type, _) = read_mqtt_packet(&mut stream)
+        .map_err(|error| BambuLivePollError::with_identity(error, observed_identity.clone()))?;
     if packet_type != 0x90 {
-        return Err("printer rejected MQTT subscription".to_string());
+        return Err(BambuLivePollError::with_identity(
+            "printer rejected MQTT subscription",
+            observed_identity,
+        ));
     }
 
     let started = std::time::Instant::now();
@@ -213,12 +328,16 @@ fn observe_printer_state(
                 }
                 break;
             }
-            Err(error) => return Err(error),
+            Err(error) => {
+                return Err(BambuLivePollError::with_identity(error, observed_identity));
+            }
         };
         if packet_type >> 4 != 3 {
             continue;
         }
-        if let Some(message) = parse_publish_payload(&payload)? {
+        if let Some(message) = parse_publish_payload(&payload)
+            .map_err(|error| BambuLivePollError::with_identity(error, observed_identity.clone()))?
+        {
             let received_at = now_iso_string();
             let previous_last_seen_at = merged.last_seen_at.clone();
             merged.last_seen_at = Some(received_at.clone());
@@ -234,7 +353,10 @@ fn observe_printer_state(
                         .get_ref()
                         .set_read_timeout(Some(Duration::from_millis(MQTT_BURST_SETTLE_MS)))
                         .map_err(|error| {
-                            format!("failed to set MQTT burst settle timeout: {error}")
+                            BambuLivePollError::with_identity(
+                                format!("failed to set MQTT burst settle timeout: {error}"),
+                                observed_identity.clone(),
+                            )
                         })?;
                 }
             } else {
@@ -254,10 +376,10 @@ fn observe_printer_state(
         last_payload_at.as_deref(),
         started.elapsed().as_millis().min(i64::MAX as u128) as i64,
     );
-    Ok(merged)
+    Ok((merged, observed_identity))
 }
 
-fn connect_printer_mqtt_tcp(host: &str) -> Result<TcpStream, String> {
+pub(crate) fn connect_printer_mqtt_tcp(host: &str) -> Result<TcpStream, String> {
     let addresses = resolve_printer_mqtt_addresses(host)?;
     let mut attempts = Vec::new();
 
@@ -284,80 +406,6 @@ fn resolve_printer_mqtt_addresses(host: &str) -> Result<Vec<SocketAddr>, String>
     Ok(addresses)
 }
 
-fn format_mqtt_connect_errors(attempts: &[(SocketAddr, std::io::Error)]) -> String {
-    format_mqtt_connect_errors_for_platform(attempts, cfg!(target_os = "macos"))
-}
-
-fn format_mqtt_connect_errors_for_platform(
-    attempts: &[(SocketAddr, std::io::Error)],
-    is_macos: bool,
-) -> String {
-    let base = match attempts {
-        [] => "failed to connect to printer MQTT: no printer address resolved".to_string(),
-        [(address, error)] => format!("failed to connect to printer MQTT at {address}: {error}"),
-        _ => {
-            let details = attempts
-                .iter()
-                .map(|(address, error)| format!("{address}: {error}"))
-                .collect::<Vec<_>>()
-                .join("; ");
-            format!(
-                "failed to connect to printer MQTT on all {} resolved addresses: {details}",
-                attempts.len()
-            )
-        }
-    };
-
-    if is_macos
-        && !attempts.is_empty()
-        && attempts
-            .iter()
-            .all(|(_, error)| looks_like_macos_local_network_block(error))
-    {
-        return format!(
-            "{base}. macOS may be blocking Filament Manager's Local Network access. Allow Filament Manager in System Settings > Privacy & Security > Local Network, then restart the app. If it is not listed, launch the app from Applications and retry the printer connection."
-        );
-    }
-    base
-}
-
-fn looks_like_macos_local_network_block(error: &std::io::Error) -> bool {
-    matches!(error.raw_os_error(), Some(51 | 65))
-        || error
-            .to_string()
-            .to_lowercase()
-            .contains("no route to host")
-}
-
-fn has_live_observation(state: &BambuLiveObservedStateRow) -> bool {
-    !state.trays.is_empty()
-        || state.gcode_state.is_some()
-        || state.print_type.is_some()
-        || state.subtask_id.is_some()
-        || state.subtask_name.is_some()
-        || state.progress_percent.is_some()
-        || state.remaining_minutes.is_some()
-        || state.prepare_percent.is_some()
-        || state.print_stage.is_some()
-        || state.print_error_code.is_some()
-        || state.job_state_code.is_some()
-        || state.nozzle_temp_c.is_some()
-        || state.bed_temp_c.is_some()
-        || state.active_ams_index.is_some()
-        || state.active_tray_index.is_some()
-        || state.ams_reading_bits.is_some()
-        || state.ams_exist_bits.is_some()
-        || state.ams_read_done_bits.is_some()
-        || state.ams_bambu_bits.is_some()
-        || state.ams_status_code.is_some()
-}
-
-fn is_mqtt_read_timeout(error: &str) -> bool {
-    error.contains("os error 35")
-        || error.contains("timed out")
-        || error.contains("Resource temporarily unavailable")
-}
-
 #[cfg(test)]
 use crate::bambu_live_observation::{
     is_live_print_running, merge_tray_payload, merge_tray_snapshots,
@@ -368,6 +416,10 @@ use crate::bambu_live_persistence::log_state_changes;
 #[cfg(test)]
 #[path = "bambu_live_architecture_tests.rs"]
 mod architecture_tests;
+
+#[cfg(test)]
+#[path = "bambu_live_tls_identity_tests.rs"]
+mod tls_identity_tests;
 
 #[cfg(test)]
 #[path = "bambu_live_tests.rs"]

@@ -1,10 +1,22 @@
 use crate::backend;
+use crate::backend::database_settings::{
+    CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY, CREDENTIAL_STORE_PROFILE_MIGRATION_SETTING_KEY,
+};
 use crate::backend::database_tables::FULL_BACKUP_TABLES;
 use crate::backend::filament_database::FilamentDatabase;
-use crate::sqlite_recovery::{online_backup, RecoveryReason, RecoverySnapshot, SqliteWorkingCopy};
+use crate::sqlite_recovery::{
+    online_backup, sanitize_legacy_database_credentials, RecoveryReason, RecoverySnapshot,
+    SqliteWorkingCopy,
+};
 #[cfg(any(target_os = "windows", test))]
 use rusqlite::OptionalExtension;
+use std::ffi::OsString;
+#[cfg(unix)]
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 
 pub(crate) const APP_DB_FILE_NAME: &str = "filament-manager.db";
@@ -13,6 +25,12 @@ pub(crate) const LEGACY_APP_DB_FILE_NAME: &str = "bambu.db";
 pub(crate) const LEGACY_APP_DATA_DIR_NAME: &str = "com.bambu.filament.manager";
 pub(crate) const LEGACY_APP_DB_PATH_ENV_VAR: &str = "BAMBU_DB_PATH";
 const AUTO_GENERATED_LIBRARY_ID_SETTING_KEY: &str = "library_sync_library_id";
+const RETIRED_LEGACY_DATABASE_SETTING_KEY: &str = "legacy_database_retired_v1";
+const RETIRED_LEGACY_DATABASE_SETTING_VALUE: &str = "complete";
+const RETIRED_LEGACY_DATABASE_SENTINEL_SUFFIX: &str =
+    ".filament-manager-retired-legacy-database-v1";
+const RETIRED_LEGACY_DATABASE_SENTINEL_CONTENTS: &[u8] =
+    b"filament-manager-retired-legacy-database-v1\n";
 #[cfg(any(target_os = "windows", test))]
 const WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY: &str = "windows_split_brain_merge_v1";
 #[cfg(any(target_os = "windows", test))]
@@ -30,6 +48,8 @@ pub(crate) struct AppStorageResolution {
     pub(crate) app_dir: PathBuf,
     #[cfg(any(target_os = "windows", test))]
     pub(crate) windows_split_brain_source: Option<PathBuf>,
+    #[cfg(any(target_os = "windows", test))]
+    pub(crate) windows_retired_legacy_cleanup_sources: Vec<PathBuf>,
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -61,6 +81,8 @@ pub(crate) fn prepare_resolved_app_database(
     resolution: AppStorageResolution,
 ) -> Result<PathBuf, String> {
     prepare_app_storage_dir(&resolution.app_dir)?;
+    #[cfg(any(target_os = "windows", test))]
+    sanitize_retired_legacy_database_sources(&resolution.windows_retired_legacy_cleanup_sources)?;
     let db_path = resolution.app_dir.join(APP_DB_FILE_NAME);
     let _db = open_database_and_apply_schema(&db_path)?;
 
@@ -68,6 +90,7 @@ pub(crate) fn prepare_resolved_app_database(
     if let Some(source_path) = resolution.windows_split_brain_source {
         drop(_db);
         merge_windows_split_brain_databases(&source_path, &db_path)?;
+        retire_legacy_database_source(&source_path)?;
     }
 
     Ok(db_path)
@@ -150,12 +173,15 @@ fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<AppStorageResolut
             app_dir: app_data_dir,
             #[cfg(test)]
             windows_split_brain_source: None,
+            #[cfg(test)]
+            windows_retired_legacy_cleanup_sources: Vec::new(),
         })
     }
 }
 
 pub(crate) fn prepare_app_storage_dir(app_dir: &Path) -> Result<(), String> {
     migrate_legacy_app_storage_if_needed(app_dir)?;
+    sanitize_known_legacy_database_sources(app_dir)?;
     std::fs::create_dir_all(app_dir).map_err(|error| error.to_string())
 }
 
@@ -216,27 +242,13 @@ fn should_replace_current_database_with_legacy(
     )
 }
 
-fn legacy_database_source(app_dir: &Path) -> Option<(PathBuf, Option<PathBuf>)> {
-    let mut candidates = Vec::new();
-
-    let same_dir_legacy_db = app_dir.join(LEGACY_APP_DB_FILE_NAME);
-    if same_dir_legacy_db.exists() {
-        candidates.push((same_dir_legacy_db, None));
-    }
-
-    if let Some(parent_dir) = app_dir.parent() {
-        let legacy_dir = parent_dir.join(LEGACY_APP_DATA_DIR_NAME);
-        for file_name in [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME] {
-            let legacy_db_path = legacy_dir.join(file_name);
-            if legacy_db_path.exists() {
-                candidates.push((legacy_db_path, Some(legacy_dir.clone())));
-            }
-        }
-    }
-
+pub(crate) fn legacy_database_source(app_dir: &Path) -> Option<(PathBuf, Option<PathBuf>)> {
     let mut ancillary_fallback = None;
     let mut empty_fallback = None;
-    for candidate in candidates {
+    for candidate in known_legacy_database_sources(app_dir) {
+        if legacy_database_is_retired(&candidate.0) {
+            continue;
+        }
         match database_user_data_state(&candidate.0) {
             DatabaseUserDataState::DomainData => return Some(candidate),
             DatabaseUserDataState::AncillaryData if ancillary_fallback.is_none() => {
@@ -252,6 +264,232 @@ fn legacy_database_source(app_dir: &Path) -> Option<(PathBuf, Option<PathBuf>)> 
     }
 
     ancillary_fallback.or(empty_fallback)
+}
+
+fn known_legacy_database_sources(app_dir: &Path) -> Vec<(PathBuf, Option<PathBuf>)> {
+    let mut candidates = Vec::new();
+    let same_dir_legacy_db = app_dir.join(LEGACY_APP_DB_FILE_NAME);
+    if same_dir_legacy_db.exists() {
+        candidates.push((same_dir_legacy_db, None));
+    }
+
+    if let Some(parent_dir) = app_dir.parent() {
+        let legacy_dir = parent_dir.join(LEGACY_APP_DATA_DIR_NAME);
+        for file_name in [APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME] {
+            let legacy_db_path = legacy_dir.join(file_name);
+            if legacy_db_path.exists() {
+                candidates.push((legacy_db_path, Some(legacy_dir.clone())));
+            }
+        }
+    }
+    let active_database_path = app_dir.join(APP_DB_FILE_NAME);
+    candidates.retain(|(path, _)| path != &active_database_path);
+    candidates.sort_by(|left, right| left.0.cmp(&right.0));
+    candidates.dedup_by(|left, right| left.0 == right.0);
+    candidates
+}
+
+pub(crate) fn sanitize_known_legacy_database_sources(app_dir: &Path) -> Result<(), String> {
+    for (source_path, _) in known_legacy_database_sources(app_dir) {
+        if database_user_data_state(&source_path) == DatabaseUserDataState::Unreadable {
+            // An unreadable stale file is never a migration candidate. Leave
+            // it untouched rather than blocking the active database; if it
+            // becomes readable on a later start, retirement is retried then.
+            continue;
+        }
+        retire_legacy_database_source(&source_path)?;
+    }
+    Ok(())
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn sanitize_retired_legacy_database_sources(paths: &[PathBuf]) -> Result<(), String> {
+    for source_path in paths {
+        // These paths are discovered separately from migration eligibility.
+        // Re-check retirement before touching one so this cleanup-only path can
+        // never turn a newly-created database into a retired source.
+        if !legacy_database_is_retired(source_path)
+            || database_user_data_state(source_path) == DatabaseUserDataState::Unreadable
+        {
+            continue;
+        }
+        retire_legacy_database_source(source_path)?;
+    }
+    Ok(())
+}
+
+fn retire_legacy_database_source(path: &Path) -> Result<(), String> {
+    ensure_legacy_database_retirement_sentinel(path)?;
+    if legacy_database_has_retirement_marker(path) {
+        return Ok(());
+    }
+    sanitize_legacy_database_credentials(path)?;
+    mark_legacy_database_retired(path)
+}
+
+fn legacy_database_is_retired(path: &Path) -> bool {
+    retirement_sentinel_path(path).symlink_metadata().is_ok()
+        || legacy_database_has_retirement_marker(path)
+}
+
+fn legacy_database_has_retirement_marker(path: &Path) -> bool {
+    use rusqlite::OptionalExtension;
+
+    let Ok(connection) = rusqlite::Connection::open_with_flags(
+        path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    ) else {
+        return false;
+    };
+    connection
+        .query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            [RETIRED_LEGACY_DATABASE_SETTING_KEY],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .is_ok_and(|value| value.as_deref() == Some(RETIRED_LEGACY_DATABASE_SETTING_VALUE))
+}
+
+pub(crate) fn ensure_legacy_database_retirement_sentinel(path: &Path) -> Result<(), String> {
+    let sentinel_path = retirement_sentinel_path(path);
+    match std::fs::symlink_metadata(&sentinel_path) {
+        Ok(metadata) => {
+            if !metadata.is_file() || metadata.file_type().is_symlink() {
+                return Err(format!(
+                    "legacy database retirement sentinel is not a regular file: {}",
+                    sentinel_path.display()
+                ));
+            }
+            let contents = std::fs::read(&sentinel_path).map_err(|error| error.to_string())?;
+            if contents != RETIRED_LEGACY_DATABASE_SENTINEL_CONTENTS {
+                return Err(format!(
+                    "legacy database retirement sentinel is invalid: {}",
+                    sentinel_path.display()
+                ));
+            }
+            return Ok(());
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.to_string()),
+    }
+
+    let parent = sentinel_path
+        .parent()
+        .ok_or_else(|| "legacy database retirement sentinel has no parent".to_string())?;
+    let temp_path = retirement_sentinel_temp_path(&sentinel_path);
+    let write_result = (|| -> Result<(), String> {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options
+            .open(&temp_path)
+            .map_err(|error| error.to_string())?;
+        file.write_all(RETIRED_LEGACY_DATABASE_SENTINEL_CONTENTS)
+            .map_err(|error| error.to_string())?;
+        file.sync_all().map_err(|error| error.to_string())?;
+        drop(file);
+        std::fs::rename(&temp_path, &sentinel_path).map_err(|error| error.to_string())?;
+        sync_retirement_sentinel_parent(parent)
+    })();
+    if write_result.is_err() {
+        let _ = std::fs::remove_file(&temp_path);
+    }
+    write_result
+}
+
+fn retirement_sentinel_path(path: &Path) -> PathBuf {
+    let mut value = OsString::from(path.as_os_str());
+    value.push(RETIRED_LEGACY_DATABASE_SENTINEL_SUFFIX);
+    PathBuf::from(value)
+}
+
+fn retirement_sentinel_temp_path(sentinel_path: &Path) -> PathBuf {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let mut value = OsString::from(sentinel_path.as_os_str());
+    value.push(format!(".tmp-{}-{nonce}", std::process::id()));
+    PathBuf::from(value)
+}
+
+#[cfg(unix)]
+fn sync_retirement_sentinel_parent(parent: &Path) -> Result<(), String> {
+    File::open(parent)
+        .and_then(|directory| directory.sync_all())
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(unix))]
+fn sync_retirement_sentinel_parent(_parent: &Path) -> Result<(), String> {
+    Ok(())
+}
+
+fn mark_legacy_database_retired(path: &Path) -> Result<(), String> {
+    let connection = rusqlite::Connection::open_with_flags(
+        path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|error| {
+        format!(
+            "failed to reopen migrated legacy database {}: {error}",
+            path.display()
+        )
+    })?;
+    connection
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| error.to_string())?;
+    connection
+        .execute_batch(
+            "BEGIN IMMEDIATE;
+             CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+             );",
+        )
+        .map_err(|error| error.to_string())?;
+    let retirement_result = connection
+        .execute(
+            "INSERT INTO settings (key, value)
+             VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![
+                RETIRED_LEGACY_DATABASE_SETTING_KEY,
+                RETIRED_LEGACY_DATABASE_SETTING_VALUE
+            ],
+        )
+        .map_err(|error| error.to_string());
+    match retirement_result {
+        Ok(_) => {
+            connection
+                .execute_batch("COMMIT")
+                .map_err(|error| error.to_string())?;
+            let retained = connection
+                .query_row(
+                    "SELECT value FROM settings WHERE key = ?1",
+                    [RETIRED_LEGACY_DATABASE_SETTING_KEY],
+                    |row| row.get::<_, String>(0),
+                )
+                .map_err(|error| error.to_string())?;
+            if retained == RETIRED_LEGACY_DATABASE_SETTING_VALUE {
+                Ok(())
+            } else {
+                Err(format!(
+                    "legacy database retirement marker was not retained for {}",
+                    path.display()
+                ))
+            }
+        }
+        Err(error) => {
+            let _ = connection.execute_batch("ROLLBACK");
+            Err(error)
+        }
+    }
 }
 
 fn copy_dir_contents_without_overwrite(source_dir: &Path, target_dir: &Path) -> Result<(), String> {
@@ -338,9 +576,14 @@ fn database_settings_have_user_data(connection: &rusqlite::Connection) -> rusqli
     connection
         .query_row(
             "SELECT EXISTS(
-                SELECT 1 FROM settings WHERE key != ?1
+                SELECT 1 FROM settings
+                 WHERE key NOT IN (?1, ?2, ?3)
              )",
-            [AUTO_GENERATED_LIBRARY_ID_SETTING_KEY],
+            rusqlite::params![
+                AUTO_GENERATED_LIBRARY_ID_SETTING_KEY,
+                CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY,
+                CREDENTIAL_STORE_PROFILE_MIGRATION_SETTING_KEY
+            ],
             |row| row.get::<_, i64>(0),
         )
         .map(|value| value != 0)
@@ -412,17 +655,29 @@ pub(crate) fn resolve_windows_storage_resolution(
     local_dir: PathBuf,
 ) -> AppStorageResolution {
     let split_brain_source = windows_legacy_roaming_merge_source(&roaming_dir, &local_dir);
+    let windows_retired_legacy_cleanup_sources =
+        windows_retired_legacy_cleanup_sources(&roaming_dir);
     if split_brain_source.is_some() {
         return AppStorageResolution {
             app_dir: local_dir,
             windows_split_brain_source: split_brain_source,
+            windows_retired_legacy_cleanup_sources,
         };
     }
 
     AppStorageResolution {
         app_dir: resolve_windows_storage_dir_without_split_merge(roaming_dir, local_dir),
         windows_split_brain_source: None,
+        windows_retired_legacy_cleanup_sources,
     }
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn windows_retired_legacy_cleanup_sources(roaming_dir: &Path) -> Vec<PathBuf> {
+    storage_dir_legacy_database_candidates(roaming_dir)
+        .into_iter()
+        .filter(|path| path.exists() && legacy_database_is_retired(path))
+        .collect()
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -430,10 +685,11 @@ fn windows_legacy_roaming_merge_source(roaming_dir: &Path, local_dir: &Path) -> 
     let current_roaming_has_user_data = storage_dir_current_database_candidates(roaming_dir)
         .iter()
         .any(|path| {
-            matches!(
-                database_user_data_state(path),
-                DatabaseUserDataState::DomainData | DatabaseUserDataState::AncillaryData
-            )
+            !legacy_database_is_retired(path)
+                && matches!(
+                    database_user_data_state(path),
+                    DatabaseUserDataState::DomainData | DatabaseUserDataState::AncillaryData
+                )
         });
     if current_roaming_has_user_data {
         return None;
@@ -448,7 +704,10 @@ fn windows_legacy_roaming_merge_source(roaming_dir: &Path, local_dir: &Path) -> 
 
     storage_dir_legacy_database_candidates(roaming_dir)
         .into_iter()
-        .find(|path| database_user_data_state(path) == DatabaseUserDataState::DomainData)
+        .find(|path| {
+            !legacy_database_is_retired(path)
+                && database_user_data_state(path) == DatabaseUserDataState::DomainData
+        })
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -504,12 +763,14 @@ fn resolve_windows_storage_dir_without_split_merge(
 fn database_candidates_have_state(candidates: &[PathBuf], state: DatabaseUserDataState) -> bool {
     candidates
         .iter()
-        .any(|path| database_user_data_state(path) == state)
+        .any(|path| !legacy_database_is_retired(path) && database_user_data_state(path) == state)
 }
 
 #[cfg(any(target_os = "windows", test))]
 fn database_candidates_exist(candidates: &[PathBuf]) -> bool {
-    candidates.iter().any(|path| path.exists())
+    candidates
+        .iter()
+        .any(|path| path.exists() && !legacy_database_is_retired(path))
 }
 
 #[cfg(any(target_os = "windows", test))]
@@ -976,6 +1237,7 @@ fn read_safe_merge_settings(
         let normalized_key = key.to_ascii_lowercase();
         if normalized_key == WINDOWS_SPLIT_BRAIN_MERGE_MARKER_KEY
             || normalized_key.starts_with("library_sync_")
+            || normalized_key.starts_with("credential_store_")
             || normalized_key.starts_with("trusted_lan_")
         {
             continue;

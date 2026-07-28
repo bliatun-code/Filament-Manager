@@ -1,3 +1,5 @@
+use crate::credential_store::CredentialStore;
+use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
 use serde::Serialize;
 use std::sync::{Arc, RwLock};
 use tauri::async_runtime::JoinHandle;
@@ -12,6 +14,8 @@ pub const TRUSTED_LAN_DEFAULT_PORT: u16 = 4278;
 pub struct AppState {
     pub db_path: String,
     pub companion: CompanionRuntimeState,
+    pub credentials: CredentialStore,
+    pub library_sync_auth: LibrarySyncRuntimeAuth,
 }
 
 #[derive(Clone)]

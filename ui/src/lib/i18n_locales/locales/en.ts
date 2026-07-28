@@ -1528,8 +1528,49 @@ export const enDictionary: DictionaryNode = {
       bambuLiveStandaloneOnly: "Live Bambu status is configured on the host desktop.",
       bambuLiveHost: "Printer host / IP",
       bambuLiveAccessCode: "Access code",
+      bambuLiveAccessCodeSaved: "Access code saved securely",
+      bambuLiveAccessCodeMissing: "No access code saved",
+      bambuLiveAccessCodeSavedPlaceholder:
+        "Saved securely — enter a new code to replace",
+      bambuLiveAccessCodeReplacePending:
+        "The saved access code will be replaced when you save.",
+      bambuLiveAccessCodeSavePending:
+        "The access code will be saved securely when you save.",
+      bambuLiveAccessCodeClear: "Remove saved code",
+      bambuLiveAccessCodeClearPending:
+        "The saved access code will be removed when you save. Live connections will pause until you enter a new code.",
+      bambuLiveAccessCodeKeep: "Keep saved code",
+      bambuLiveAccessCodeHostConfigured:
+        "An access code is saved on the host desktop.",
+      bambuLiveAccessCodeHostMissing:
+        "No access code is saved on the host desktop.",
       bambuLivePrinterSerial: "Printer serial",
-      bambuLiveCredentialsNote: "Credentials are stored locally on this desktop.",
+      bambuLiveCredentialsNote:
+        "Access codes are stored in this operating system's secure credential store.",
+      bambuTlsTrustTitle: "Printer identity",
+      bambuTlsTrustTrusted: "Trusted",
+      bambuTlsTrustUnpaired: "Not trusted yet",
+      bambuTlsTrustChanged: "Identity changed",
+      bambuTlsTrustPending: "Trust pending",
+      bambuTlsClearPending: "Trust removal pending",
+      bambuTlsTrustTrustedHint:
+        "The printer certificate matches the saved identity.",
+      bambuTlsTrustUnpairedHint:
+        "The access code will not be sent until you explicitly trust this printer identity.",
+      bambuTlsTrustChangedHint:
+        "The printer identity changed. The connection stopped before the access code was sent.",
+      bambuTlsTrustPendingHint:
+        "This printer identity will be trusted when you save.",
+      bambuTlsClearPendingHint:
+        "Trust will be removed when you save. Live connections will stay blocked until you trust the printer again.",
+      bambuTlsFingerprint: "Certificate fingerprint",
+      bambuTlsFingerprintUnavailable:
+        "Save or check the printer connection to read its identity.",
+      bambuTlsCheckCurrent: "Check identity",
+      bambuTlsTrustCurrent: "Trust this identity",
+      bambuTlsRetrustCurrent: "Trust new identity",
+      bambuTlsForget: "Forget trusted identity",
+      bambuTlsUndoTrustChange: "Undo trust change",
       bambuLiveDisabledNote: "Leave disabled to keep the current printer flow unchanged.",
       activePrinter: "Active printer",
       noActivePrinter: "No active printer",
@@ -1858,6 +1899,10 @@ export const enDictionary: DictionaryNode = {
         load: "Failed to load settings.",
         bambuLiveFieldsRequired:
           "Host, access code and printer serial are required when live Bambu status is enabled.",
+        bambuLiveIdentityCheckFailed:
+          "Could not check the printer identity.",
+        bambuLiveTrustRequired:
+          "Check and trust the printer identity before enabling live Bambu status.",
         librarySyncSnapshot: "Failed to fetch host snapshot.",
         printerRequired: "Printer name and model are required.",
         addPrinter: "Failed to add printer.",

@@ -1,5 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import type { BambuLiveIntegrationEntry, PrinterOverviewRow, PrinterRow } from "../lib/tauri_client";
+import type {
+  BambuAccessCodeAction,
+  BambuLiveIntegrationEntry,
+  BambuTlsTrustAction,
+  BambuTlsTrustState,
+  PrinterOverviewRow,
+  PrinterRow,
+} from "../lib/tauri_client";
 import {
   derivePrinterMultiConfig,
   isPrinterReconfigureDraftDirty,
@@ -25,7 +32,23 @@ export function useSettingsPrinterEditDraft() {
   const [editBambuLiveEnabled, setEditBambuLiveEnabled] = useState(false);
   const [editBambuLiveHost, setEditBambuLiveHost] = useState("");
   const [editBambuLiveAccessCode, setEditBambuLiveAccessCode] = useState("");
+  const [editBambuLiveAccessCodeAction, setEditBambuLiveAccessCodeAction] =
+    useState<BambuAccessCodeAction>("KEEP");
+  const [editBambuLiveAccessCodeConfigured, setEditBambuLiveAccessCodeConfigured] =
+    useState(false);
   const [editBambuLivePrinterSerial, setEditBambuLivePrinterSerial] = useState("");
+  const [
+    editBambuLiveTlsCertificateFingerprint,
+    setEditBambuLiveTlsCertificateFingerprint,
+  ] = useState<string | null>(null);
+  const [
+    editBambuLiveTlsSpkiFingerprint,
+    setEditBambuLiveTlsSpkiFingerprint,
+  ] = useState<string | null>(null);
+  const [editBambuLiveTlsTrustAction, setEditBambuLiveTlsTrustAction] =
+    useState<BambuTlsTrustAction>("KEEP");
+  const [editBambuLiveTlsTrustState, setEditBambuLiveTlsTrustState] =
+    useState<BambuTlsTrustState>("UNPAIRED");
   const [expandedBambuDetailsPrinterId, setExpandedBambuDetailsPrinterId] =
     useState<string | null>(null);
 
@@ -39,7 +62,13 @@ export function useSettingsPrinterEditDraft() {
     setEditBambuLiveEnabled(false);
     setEditBambuLiveHost("");
     setEditBambuLiveAccessCode("");
+    setEditBambuLiveAccessCodeAction("KEEP");
+    setEditBambuLiveAccessCodeConfigured(false);
     setEditBambuLivePrinterSerial("");
+    setEditBambuLiveTlsCertificateFingerprint(null);
+    setEditBambuLiveTlsSpkiFingerprint(null);
+    setEditBambuLiveTlsTrustAction("KEEP");
+    setEditBambuLiveTlsTrustState("UNPAIRED");
     setExpandedBambuDetailsPrinterId(null);
   }, []);
 
@@ -62,8 +91,15 @@ export function useSettingsPrinterEditDraft() {
       slotsPerUnit: String(config.slotsPerUnit),
       bambuLiveEnabled: liveConfig?.enabled ?? false,
       bambuLiveHost: liveConfig?.host ?? "",
-      bambuLiveAccessCode: liveConfig?.access_code ?? "",
+      bambuLiveAccessCode: "",
+      bambuLiveAccessCodeAction: "KEEP",
+      bambuLiveAccessCodeConfigured: liveConfig?.access_code_configured ?? false,
       bambuLivePrinterSerial: liveConfig?.printer_serial ?? "",
+      bambuLiveTlsCertificateFingerprint:
+        liveConfig?.tls_certificate_fingerprint ?? null,
+      bambuLiveTlsSpkiFingerprint: liveConfig?.tls_spki_fingerprint ?? null,
+      bambuLiveTlsTrustAction: "KEEP",
+      bambuLiveTlsTrustState: liveConfig?.tls_trust_state ?? "UNPAIRED",
     };
     setEditPrinterBaseline(draft);
     setEditPrinterId(draft.id);
@@ -74,7 +110,15 @@ export function useSettingsPrinterEditDraft() {
     setEditBambuLiveEnabled(draft.bambuLiveEnabled);
     setEditBambuLiveHost(draft.bambuLiveHost);
     setEditBambuLiveAccessCode(draft.bambuLiveAccessCode);
+    setEditBambuLiveAccessCodeAction(draft.bambuLiveAccessCodeAction);
+    setEditBambuLiveAccessCodeConfigured(draft.bambuLiveAccessCodeConfigured);
     setEditBambuLivePrinterSerial(draft.bambuLivePrinterSerial);
+    setEditBambuLiveTlsCertificateFingerprint(
+      draft.bambuLiveTlsCertificateFingerprint,
+    );
+    setEditBambuLiveTlsSpkiFingerprint(draft.bambuLiveTlsSpkiFingerprint);
+    setEditBambuLiveTlsTrustAction(draft.bambuLiveTlsTrustAction);
+    setEditBambuLiveTlsTrustState(draft.bambuLiveTlsTrustState);
     setExpandedBambuDetailsPrinterId(null);
   }, []);
 
@@ -91,14 +135,27 @@ export function useSettingsPrinterEditDraft() {
       bambuLiveEnabled: editBambuLiveEnabled,
       bambuLiveHost: editBambuLiveHost,
       bambuLiveAccessCode: editBambuLiveAccessCode,
+      bambuLiveAccessCodeAction: editBambuLiveAccessCodeAction,
+      bambuLiveAccessCodeConfigured: editBambuLiveAccessCodeConfigured,
       bambuLivePrinterSerial: editBambuLivePrinterSerial,
+      bambuLiveTlsCertificateFingerprint:
+        editBambuLiveTlsCertificateFingerprint,
+      bambuLiveTlsSpkiFingerprint: editBambuLiveTlsSpkiFingerprint,
+      bambuLiveTlsTrustAction: editBambuLiveTlsTrustAction,
+      bambuLiveTlsTrustState: editBambuLiveTlsTrustState,
     });
   }, [
     editAmsUnits,
     editBambuLiveAccessCode,
+    editBambuLiveAccessCodeAction,
+    editBambuLiveAccessCodeConfigured,
     editBambuLiveEnabled,
     editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editBambuLiveTlsCertificateFingerprint,
+    editBambuLiveTlsSpkiFingerprint,
+    editBambuLiveTlsTrustAction,
+    editBambuLiveTlsTrustState,
     editPrinterBaseline,
     editPrinterId,
     editPrinterModel,
@@ -110,9 +167,15 @@ export function useSettingsPrinterEditDraft() {
     cancelPrinterEdit,
     editAmsUnits,
     editBambuLiveAccessCode,
+    editBambuLiveAccessCodeAction,
+    editBambuLiveAccessCodeConfigured,
     editBambuLiveEnabled,
     editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editBambuLiveTlsCertificateFingerprint,
+    editBambuLiveTlsSpkiFingerprint,
+    editBambuLiveTlsTrustAction,
+    editBambuLiveTlsTrustState,
     editPrinterId,
     editPrinterDirty,
     editPrinterModel,
@@ -121,9 +184,14 @@ export function useSettingsPrinterEditDraft() {
     expandedBambuDetailsPrinterId,
     setEditAmsUnits,
     setEditBambuLiveAccessCode,
+    setEditBambuLiveAccessCodeAction,
     setEditBambuLiveEnabled,
     setEditBambuLiveHost,
     setEditBambuLivePrinterSerial,
+    setEditBambuLiveTlsCertificateFingerprint,
+    setEditBambuLiveTlsSpkiFingerprint,
+    setEditBambuLiveTlsTrustAction,
+    setEditBambuLiveTlsTrustState,
     setEditPrinterModel,
     setEditPrinterName,
     setEditSlotsPerUnit,

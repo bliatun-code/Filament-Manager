@@ -8,29 +8,59 @@ import { SettingsPrinterEditForm } from "./settings_printer_edit_form";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-function renderEditForm(dirty = false) {
+function renderEditForm(
+  dirty = false,
+  security: {
+    accessCode?: string;
+    accessCodeAction?: "KEEP" | "REPLACE" | "CLEAR";
+    accessCodeConfigured?: boolean;
+    clientReadOnly?: boolean;
+    fingerprint?: string | null;
+    liveEnabled?: boolean;
+    spkiFingerprint?: string | null;
+    trustAction?: "KEEP" | "TRUST_CURRENT" | "CLEAR";
+    trustState?: "UNPAIRED" | "TRUSTED" | "CHANGED";
+  } = {},
+) {
   return renderToStaticMarkup(
     <SettingsPrinterEditForm
-      bambuLiveAccessCode="12345678"
-      bambuLiveEnabled
+      bambuLiveAccessCode={security.accessCode ?? ""}
+      bambuLiveAccessCodeAction={security.accessCodeAction ?? "KEEP"}
+      bambuLiveAccessCodeConfigured={security.accessCodeConfigured ?? true}
+      bambuLiveEnabled={security.liveEnabled ?? true}
       bambuLiveHost="192.168.1.20"
       bambuLivePrinterSerial="00M09"
+      bambuLiveTlsCertificateFingerprint={
+        security.fingerprint === undefined
+          ? "SHA256:AA:BB:CC:DD"
+          : security.fingerprint
+      }
+      bambuLiveTlsSpkiFingerprint={
+        security.spkiFingerprint === undefined
+          ? "aa11bb22"
+          : security.spkiFingerprint
+      }
+      bambuLiveTlsTrustAction={security.trustAction ?? "KEEP"}
+      bambuLiveTlsTrustState={security.trustState ?? "TRUSTED"}
       busy={false}
       dirty={dirty}
       model="Bambu Lab X1 Carbon"
       modelProfile={resolvePrinterModelProfile("Bambu Lab X1 Carbon")}
       name="Workshop"
       printerId="printer/42"
-      settingsClientReadOnly={false}
+      settingsClientReadOnly={security.clientReadOnly ?? false}
       slotsPerUnit="4"
       supportsBambuLive
       tauri
       t={(_key, fallback = "") => fallback}
       units="1"
       onBambuLiveAccessCodeChange={() => {}}
+      onBambuLiveAccessCodeActionChange={() => {}}
       onBambuLiveEnabledChange={() => {}}
       onBambuLiveHostChange={() => {}}
+      onBambuLiveIdentityCheck={() => {}}
       onBambuLivePrinterSerialChange={() => {}}
+      onBambuLiveTlsTrustActionChange={() => {}}
       onCancel={() => {}}
       onModelChange={() => {}}
       onNameChange={() => {}}
@@ -96,11 +126,17 @@ test("printer edit fields reference existing help text", () => {
   assert.match(html, new RegExp(`aria-describedby="${liveHintId} ${liveNoteId}"`));
   assert.match(html, /Choose model, name and multi-material capacity/);
   assert.match(html, /Optional local read-only integration/);
-  assert.match(html, /Credentials are stored locally/);
+  assert.match(html, /secure credential store/);
 });
 
 test("printer edit uses native required fields and keeps save after live configuration", () => {
-  const html = renderEditForm(true);
+  const html = renderEditForm(true, {
+    accessCode: "new-code",
+    accessCodeAction: "REPLACE",
+    accessCodeConfigured: false,
+    fingerprint: null,
+    trustState: "UNPAIRED",
+  });
   const liveFieldsetEnd = html.indexOf("</fieldset>");
   const saveButton = html.indexOf("Save changes</button>");
 
@@ -110,6 +146,77 @@ test("printer edit uses native required fields and keeps save after live configu
   assert.match(html, /<input[^>]*required=""[^>]*id="settings-printer-printer_x2f_42-model"|id="settings-printer-printer_x2f_42-model"[^>]*required=""/);
   assert.match(html, /autoComplete="new-password"|autocomplete="new-password"/);
   assert.match(html, />Unsaved changes<\/span>/);
+});
+
+test("printer edit never renders the stored access code and exposes explicit security actions", () => {
+  const html = renderEditForm();
+
+  assert.doesNotMatch(html, /12345678|stored-code/);
+  assert.match(html, /Saved securely — enter a new code to replace/);
+  assert.match(html, />Access code saved securely<\/span>/);
+  assert.match(html, />Remove saved code<\/button>/);
+  assert.match(html, />Printer identity<\//);
+  assert.match(html, />Trusted<\/span>/);
+  assert.match(html, /SHA256:AA:BB:CC:DD/);
+  assert.match(html, />Forget trusted identity<\/button>/);
+});
+
+test("changed printer identity is an alert with an explicit re-pair action", () => {
+  const html = renderEditForm(false, {
+    fingerprint: "SHA256:NEW",
+    trustState: "CHANGED",
+  });
+
+  assert.match(html, /role="alert"/);
+  assert.match(html, />Identity changed<\/span>/);
+  assert.match(html, /stopped before the access code was sent/);
+  assert.match(html, />Trust new identity<\/button>/);
+});
+
+test("first-time TLS pairing exposes a credential-free identity check before trust", () => {
+  const unchecked = renderEditForm(false, {
+    fingerprint: null,
+    spkiFingerprint: null,
+    trustState: "UNPAIRED",
+  });
+  const checked = renderEditForm(false, {
+    fingerprint: "reviewed-certificate",
+    spkiFingerprint: "reviewed-spki",
+    trustState: "UNPAIRED",
+  });
+
+  assert.match(unchecked, />Check identity<\/button>/);
+  assert.doesNotMatch(unchecked, />Trust this identity<\/button>/);
+  assert.match(checked, /reviewed-certificate/);
+  assert.match(checked, />Check identity<\/button>/);
+  assert.match(checked, />Trust this identity<\/button>/);
+});
+
+test("client mode shows host-managed security state without credential controls", () => {
+  const html = renderEditForm(false, { clientReadOnly: true });
+
+  assert.match(html, /An access code is saved on the host desktop/);
+  assert.doesNotMatch(html, /id="settings-printer-printer_x2f_42-live-access-code"/);
+  assert.doesNotMatch(html, />Remove saved code<\/button>/);
+  assert.doesNotMatch(html, />Check identity<\/button>/);
+  assert.doesNotMatch(html, />Forget trusted identity<\/button>/);
+});
+
+test("disabled live status keeps existing security controls available for cleanup", () => {
+  const html = renderEditForm(false, { liveEnabled: false });
+  const prefix = "settings-printer-printer_x2f_42";
+
+  assert.match(html, />Access code saved securely<\/span>/);
+  assert.match(html, />Remove saved code<\/button>/);
+  assert.match(html, />Forget trusted identity<\/button>/);
+  assert.match(html, /Leave disabled to keep the current printer flow unchanged/);
+  for (const suffix of ["live-host", "live-access-code", "live-printer-serial"]) {
+    const input = html.match(
+      new RegExp(`<input[^>]*id="${prefix}-${suffix}"[^>]*>`),
+    )?.[0];
+    assert.ok(input, `${suffix} remains rendered`);
+    assert.doesNotMatch(input, /required=""/);
+  }
 });
 
 test("printer edit disables save until the normalized draft changes", () => {

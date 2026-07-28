@@ -200,6 +200,116 @@ fn write_split_brain_domain_db(
     Ok(())
 }
 
+fn seed_legacy_plaintext_credentials(path: &Path, secret_suffix: &str) -> Result<(), String> {
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    connection
+        .execute(
+            "INSERT OR REPLACE INTO printers (
+                id, model, name, ip_address, access_token
+             ) VALUES (
+                'legacy-secret-printer', 'Bambu Lab P1S', 'Legacy secret printer',
+                '192.0.2.25', ?1
+             )",
+            [format!("legacy-printer-token-{secret_suffix}")],
+        )
+        .map_err(|error| error.to_string())?;
+    connection
+        .execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES
+                (
+                    'bambu_live_integration:legacy-secret-printer',
+                    ?1
+                ),
+                ('library_sync_client_session_id', ?2),
+                ('library_sync_client_device_token', ?3),
+                ('library_sync_client_csrf_token', ?4)",
+            rusqlite::params![
+                format!(
+                    "{{\"enabled\":true,\"access_code\":\"legacy-bambu-{secret_suffix}\",\"access_code_configured\":true}}"
+                ),
+                format!("legacy-session-{secret_suffix}"),
+                format!("legacy-device-{secret_suffix}"),
+                format!("legacy-csrf-{secret_suffix}"),
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+fn assert_legacy_database_credentials_sanitized(
+    path: &Path,
+    secret_suffix: &str,
+) -> Result<(), String> {
+    use rusqlite::OptionalExtension;
+
+    let connection = rusqlite::Connection::open(path).map_err(|error| error.to_string())?;
+    let payload: Option<String> = connection
+        .query_row(
+            "SELECT value FROM settings
+             WHERE key = 'bambu_live_integration:legacy-secret-printer'",
+            [],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+    if let Some(payload) = payload {
+        let payload: serde_json::Value =
+            serde_json::from_str(&payload).map_err(|error| error.to_string())?;
+        assert!(payload.get("access_code").is_none());
+        assert_eq!(payload["access_code_configured"], false);
+    }
+    let library_secret_count: i64 = connection
+        .query_row(
+            "SELECT COUNT(*) FROM settings
+             WHERE key IN (
+                'library_sync_client_session_id',
+                'library_sync_client_device_token',
+                'library_sync_client_csrf_token'
+             )",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    assert_eq!(library_secret_count, 0);
+    let printer_token: Option<String> = connection
+        .query_row(
+            "SELECT access_token FROM printers WHERE id = 'legacy-secret-printer'",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    assert!(printer_token.is_none());
+    drop(connection);
+
+    let mut artifact_paths = vec![path.to_path_buf()];
+    for suffix in ["-wal", "-shm", "-journal"] {
+        let mut value = path.as_os_str().to_os_string();
+        value.push(suffix);
+        artifact_paths.push(PathBuf::from(value));
+    }
+    for artifact_path in artifact_paths {
+        if !artifact_path.exists() {
+            continue;
+        }
+        let raw = std::fs::read(&artifact_path).map_err(|error| error.to_string())?;
+        for secret in [
+            format!("legacy-bambu-{secret_suffix}"),
+            format!("legacy-printer-token-{secret_suffix}"),
+            format!("legacy-session-{secret_suffix}"),
+            format!("legacy-device-{secret_suffix}"),
+            format!("legacy-csrf-{secret_suffix}"),
+        ] {
+            assert!(
+                !raw.windows(secret.len())
+                    .any(|window| window == secret.as_bytes()),
+                "{secret} remained in {}",
+                artifact_path.display()
+            );
+        }
+    }
+    Ok(())
+}
+
 fn write_split_brain_ancillary_db(
     path: &Path,
     safe_setting: &str,
@@ -870,6 +980,114 @@ fn app_storage_migration_renames_same_dir_legacy_database() {
 }
 
 #[test]
+fn legacy_bundle_source_is_physically_scrubbed_and_cannot_restore_plaintext_secrets() {
+    use super::{
+        open_database_and_apply_schema, prepare_app_storage_dir, APP_DB_FILE_NAME,
+        LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("legacy-source-credential-retirement");
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let current_path = app_dir.join(APP_DB_FILE_NAME);
+    let legacy_path = app_dir.join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_path,
+            "legacy-secret-source",
+            "Legacy Blue",
+            "safe-domain-setting",
+            "HOST",
+            "0",
+        )?;
+        seed_legacy_plaintext_credentials(&legacy_path, "bundle")?;
+
+        prepare_app_storage_dir(&app_dir)?;
+
+        assert!(split_brain_spool_exists(
+            &legacy_path,
+            "merge-spool-legacy-secret-source"
+        )?);
+        assert_legacy_database_credentials_sanitized(&legacy_path, "bundle")?;
+        let migrated_payload = split_brain_setting(
+            &current_path,
+            "bambu_live_integration:legacy-secret-printer",
+        )?
+        .ok_or_else(|| "migrated Bambu integration is missing".to_string())?;
+        assert!(
+            migrated_payload.contains("legacy-bambu-bundle"),
+            "the active copy must retain the credential until startup migration stores it securely"
+        );
+
+        std::fs::remove_file(&current_path).map_err(|error| error.to_string())?;
+        prepare_app_storage_dir(&app_dir)?;
+        assert!(
+            !current_path.exists(),
+            "retired legacy source recreated the reset active database"
+        );
+        drop(open_database_and_apply_schema(&current_path)?);
+        assert!(!split_brain_spool_exists(
+            &current_path,
+            "merge-spool-legacy-secret-source"
+        )?);
+        assert!(split_brain_setting(
+            &current_path,
+            "bambu_live_integration:legacy-secret-printer"
+        )?
+        .is_none());
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn pending_legacy_retirement_sentinel_blocks_reimport_and_retries_scrubbing() {
+    use super::{
+        ensure_legacy_database_retirement_sentinel, legacy_database_source,
+        sanitize_known_legacy_database_sources, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("legacy-source-pending-retirement");
+    let app_dir = base.join("no.bliatun.filamentmanager");
+    let legacy_path = app_dir.join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_path,
+            "pending-retirement",
+            "Legacy Blue",
+            "safe-domain-setting",
+            "HOST",
+            "0",
+        )?;
+        seed_legacy_plaintext_credentials(&legacy_path, "pending")?;
+
+        // This is the exact crash boundary: migration completed and the
+        // durable sentinel was written, but source scrubbing did not run yet.
+        ensure_legacy_database_retirement_sentinel(&legacy_path)?;
+        assert!(
+            legacy_database_source(&app_dir).is_none(),
+            "pending retirement source remained eligible for migration"
+        );
+
+        sanitize_known_legacy_database_sources(&app_dir)?;
+        assert_legacy_database_credentials_sanitized(&legacy_path, "pending")?;
+        assert!(split_brain_spool_exists(
+            &legacy_path,
+            "merge-spool-pending-retirement"
+        )?);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
 fn app_storage_migration_preserves_committed_wal_data() {
     use super::{prepare_app_storage_dir, APP_DB_FILE_NAME, LEGACY_APP_DB_FILE_NAME};
 
@@ -1064,6 +1282,136 @@ fn windows_storage_migrates_first_legacy_roaming_domain_database_into_local() {
 }
 
 #[test]
+fn windows_split_brain_source_is_scrubbed_before_it_can_be_remerged_after_reset() {
+    use super::{
+        prepare_resolved_app_database, resolve_windows_storage_resolution,
+        LEGACY_APP_DATA_DIR_NAME, LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-source-credential-retirement");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let legacy_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_path,
+            "windows-secret-source",
+            "Legacy Blue",
+            "safe-domain-setting",
+            "HOST",
+            "0",
+        )?;
+        seed_legacy_plaintext_credentials(&legacy_path, "windows")?;
+
+        let first_resolution =
+            resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        let first_target = prepare_resolved_app_database(first_resolution)?;
+        let first_payload = split_brain_setting(
+            &first_target,
+            "bambu_live_integration:legacy-secret-printer",
+        )?
+        .ok_or_else(|| "first merged Bambu integration is missing".to_string())?;
+        assert!(first_payload.contains("legacy-bambu-windows"));
+        assert_legacy_database_credentials_sanitized(&legacy_path, "windows")?;
+        assert!(split_brain_spool_exists(
+            &legacy_path,
+            "merge-spool-windows-secret-source"
+        )?);
+
+        std::fs::remove_file(&first_target).map_err(|error| error.to_string())?;
+        let second_resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
+        let second_target = prepare_resolved_app_database(second_resolution)?;
+        assert!(
+            split_brain_setting(
+                &second_target,
+                "bambu_live_integration:legacy-secret-printer"
+            )?
+            .is_none(),
+            "retired Windows source restored a Bambu integration after reset"
+        );
+        assert!(!split_brain_spool_exists(
+            &second_target,
+            "merge-spool-windows-secret-source"
+        )?);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn retired_windows_split_brain_source_retries_scrubbing_after_sentinel_crash_boundary() {
+    use super::{
+        ensure_legacy_database_retirement_sentinel, prepare_resolved_app_database,
+        resolve_windows_storage_resolution, APP_DB_FILE_NAME, LEGACY_APP_DATA_DIR_NAME,
+        LEGACY_APP_DB_FILE_NAME,
+    };
+
+    let base = temp_dir_path("windows-source-pending-retirement");
+    let roaming_root = base.join("roaming");
+    let local_root = base.join("local");
+    let roaming_dir = roaming_root.join("no.bliatun.filamentmanager");
+    let local_dir = local_root.join("no.bliatun.filamentmanager");
+    let legacy_path = roaming_root
+        .join(LEGACY_APP_DATA_DIR_NAME)
+        .join(LEGACY_APP_DB_FILE_NAME);
+    let result = (|| -> Result<(), String> {
+        write_split_brain_domain_db(
+            &legacy_path,
+            "windows-pending-retirement",
+            "Legacy Blue",
+            "safe-domain-setting",
+            "HOST",
+            "0",
+        )?;
+        seed_legacy_plaintext_credentials(&legacy_path, "windows-pending")?;
+
+        // Model a hard crash after the durable retirement sentinel was written,
+        // but before the cross-tree Roaming source was physically scrubbed.
+        ensure_legacy_database_retirement_sentinel(&legacy_path)?;
+        let resolution = resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        assert!(
+            resolution.windows_split_brain_source.is_none(),
+            "retired source remained eligible for merge"
+        );
+
+        let target = prepare_resolved_app_database(resolution)?;
+        assert_eq!(target, local_dir.join(APP_DB_FILE_NAME));
+        assert_legacy_database_credentials_sanitized(&legacy_path, "windows-pending")?;
+        assert!(split_brain_spool_exists(
+            &legacy_path,
+            "merge-spool-windows-pending-retirement"
+        )?);
+        assert!(!split_brain_spool_exists(
+            &target,
+            "merge-spool-windows-pending-retirement"
+        )?);
+
+        std::fs::remove_file(&target).map_err(|error| error.to_string())?;
+        let second_resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
+        assert!(second_resolution.windows_split_brain_source.is_none());
+        let second_target = prepare_resolved_app_database(second_resolution)?;
+        assert!(!split_brain_spool_exists(
+            &second_target,
+            "merge-spool-windows-pending-retirement"
+        )?);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_dir_all(&base);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
 fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_inventory() {
     use super::{
         database_user_data_state, prepare_resolved_app_database,
@@ -1089,9 +1437,16 @@ fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_in
             "HOST",
             "0",
         )?;
+        let legacy_credential_profile_id = {
+            let legacy_db = FilamentDatabase::open(&legacy_roaming_db_path)
+                .map_err(|error| error.to_string())?;
+            legacy_db
+                .initialize_fresh_credential_store_profile()
+                .map_err(|error| error.to_string())?
+        };
         std::fs::create_dir_all(&local_dir).map_err(|error| error.to_string())?;
 
-        let generated_library_id = {
+        let (generated_library_id, local_credential_profile_id) = {
             let local_db =
                 FilamentDatabase::open(&local_db_path).map_err(|error| error.to_string())?;
             local_db.apply_schema().map_err(|error| error.to_string())?;
@@ -1103,7 +1458,14 @@ fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_in
                 database_user_data_state(&local_db_path),
                 DatabaseUserDataState::NoData
             );
-            settings.library_id
+            let credential_profile_id = local_db
+                .initialize_fresh_credential_store_profile()
+                .map_err(|error| error.to_string())?;
+            assert_eq!(
+                database_user_data_state(&local_db_path),
+                DatabaseUserDataState::NoData
+            );
+            (settings.library_id, credential_profile_id)
         };
 
         let resolution = resolve_windows_storage_resolution(roaming_dir, local_dir.clone());
@@ -1117,6 +1479,11 @@ fn windows_storage_ignores_generated_local_library_id_when_legacy_roaming_has_in
             split_brain_setting(&target_db_path, "library_sync_library_id")?.as_deref(),
             Some(generated_library_id.as_str())
         );
+        assert_eq!(
+            split_brain_setting(&target_db_path, "credential_store_profile_id")?.as_deref(),
+            Some(local_credential_profile_id.as_str())
+        );
+        assert_ne!(local_credential_profile_id, legacy_credential_profile_id);
 
         Ok(())
     })();
@@ -1267,11 +1634,15 @@ fn windows_split_brain_merge_preserves_current_local_and_legacy_roaming_domain_d
         }
         let second_resolution =
             resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        assert!(
+            second_resolution.windows_split_brain_source.is_none(),
+            "retired split-brain source became eligible for a second merge"
+        );
         let second_target = prepare_resolved_app_database(second_resolution)?;
         assert_eq!(second_target, target_db_path);
         assert_eq!(
             split_brain_setting(&target_db_path, "windows_split_brain_merge_v1")?.as_deref(),
-            Some("complete")
+            None
         );
         assert_eq!(split_brain_backup_count(&local_dir)?, 1);
 
@@ -1288,6 +1659,7 @@ fn windows_split_brain_merge_preserves_current_local_and_legacy_roaming_domain_d
         }
         let third_resolution =
             resolve_windows_storage_resolution(roaming_dir.clone(), local_dir.clone());
+        assert!(third_resolution.windows_split_brain_source.is_none());
         prepare_resolved_app_database(third_resolution)?;
         assert_eq!(
             split_brain_setting(&target_db_path, "split_merge_safe_setting")?.as_deref(),
@@ -1561,6 +1933,8 @@ fn database_user_data_state_classifies_settings_beyond_generated_library_id_as_a
         let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
         db.apply_schema().map_err(|error| error.to_string())?;
         db.get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        db.initialize_fresh_credential_store_profile()
             .map_err(|error| error.to_string())?;
         assert_eq!(
             database_user_data_state(&db_path),

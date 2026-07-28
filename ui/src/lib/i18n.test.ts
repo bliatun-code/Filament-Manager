@@ -604,11 +604,23 @@ test("printer Live Bambu settings have explicit English and Norwegian locale cop
     ],
     bambuLiveHost: ["Printer host / IP", "Printeradresse / IP"],
     bambuLiveAccessCode: ["Access code", "Tilgangskode"],
+    bambuLiveAccessCodeSaved: [
+      "Access code saved securely",
+      "Tilgangskoden er lagret sikkert",
+    ],
+    bambuLiveAccessCodeClear: ["Remove saved code", "Fjern lagret kode"],
     bambuLivePrinterSerial: ["Printer serial", "Printerserienummer"],
     bambuLiveCredentialsNote: [
-      "Credentials are stored locally on this desktop.",
-      "Tilgangsopplysningene lagres lokalt på denne maskinen.",
+      "Access codes are stored in this operating system's secure credential store.",
+      "Tilgangskoder lagres i operativsystemets sikre lagring for tilgangsopplysninger.",
     ],
+    bambuTlsTrustTitle: ["Printer identity", "Printeridentitet"],
+    bambuTlsTrustChanged: ["Identity changed", "Identiteten er endret"],
+    bambuTlsTrustChangedHint: [
+      "The printer identity changed. The connection stopped before the access code was sent.",
+      "Printeridentiteten er endret. Tilkoblingen ble stoppet før tilgangskoden ble sendt.",
+    ],
+    bambuTlsRetrustCurrent: ["Trust new identity", "Godkjenn ny identitet"],
     bambuLiveDisabledNote: [
       "Leave disabled to keep the current printer flow unchanged.",
       "La funksjonen være deaktivert for å beholde gjeldende printerflyt uendret.",

@@ -5,6 +5,9 @@ use super::database_result::InventoryResult;
 use super::database_settings::{delete_setting, get_setting, set_setting};
 use super::database_time::sqlite_now;
 
+#[cfg(any(test, feature = "test-support"))]
+/// Test-support writer for constructing databases from the legacy plaintext
+/// format. Production authentication must use the platform credential store.
 pub(crate) fn save_library_sync_client_auth_state(
     conn: &Connection,
     session_id: &str,
@@ -13,6 +16,7 @@ pub(crate) fn save_library_sync_client_auth_state(
     expires_at: Option<&str>,
 ) -> InventoryResult<()> {
     let paired_at = sqlite_now(conn)?;
+    set_setting(conn, "library_sync_client_auth_configured", "1")?;
     set_setting(conn, "library_sync_client_session_id", session_id.trim())?;
     set_setting(
         conn,
@@ -28,7 +32,52 @@ pub(crate) fn save_library_sync_client_auth_state(
     Ok(())
 }
 
+pub(crate) fn save_library_sync_client_auth_metadata(
+    conn: &Connection,
+    expires_at: Option<&str>,
+) -> InventoryResult<()> {
+    let paired_at = sqlite_now(conn)?;
+    set_setting(conn, "library_sync_client_auth_configured", "1")?;
+    set_setting(conn, "library_sync_client_auth_paired_at", &paired_at)?;
+    match expires_at.map(str::trim).filter(|value| !value.is_empty()) {
+        Some(value) => set_setting(conn, "library_sync_client_auth_expires_at", value)?,
+        None => delete_setting(conn, "library_sync_client_auth_expires_at")?,
+    }
+    Ok(())
+}
+
+pub(crate) fn scrub_library_sync_client_auth_secrets(conn: &Connection) -> InventoryResult<()> {
+    delete_setting(conn, "library_sync_client_session_id")?;
+    delete_setting(conn, "library_sync_client_device_token")?;
+    delete_setting(conn, "library_sync_client_csrf_token")?;
+    Ok(())
+}
+
+/// Canonicalizes the paired host and removes legacy plaintext authentication
+/// material in one transaction.
+///
+/// This is deliberately one database operation so the desktop shell can safely
+/// roll back a newly-created platform credential if finalizing the SQLite side
+/// fails.
+pub(crate) fn finalize_library_sync_client_auth_migration(
+    conn: &Connection,
+    canonical_host_base_url: &str,
+    expires_at: Option<&str>,
+) -> InventoryResult<()> {
+    let transaction = conn.unchecked_transaction()?;
+    set_setting(
+        &transaction,
+        "library_sync_host_base_url",
+        canonical_host_base_url,
+    )?;
+    save_library_sync_client_auth_metadata(&transaction, expires_at)?;
+    scrub_library_sync_client_auth_secrets(&transaction)?;
+    transaction.commit()?;
+    Ok(())
+}
+
 pub(crate) fn clear_library_sync_client_auth_state(conn: &Connection) -> InventoryResult<()> {
+    delete_setting(conn, "library_sync_client_auth_configured")?;
     delete_setting(conn, "library_sync_client_session_id")?;
     delete_setting(conn, "library_sync_client_device_token")?;
     delete_setting(conn, "library_sync_client_csrf_token")?;

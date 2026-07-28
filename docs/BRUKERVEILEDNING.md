@@ -521,10 +521,21 @@ Typisk oppsett:
 6. Aktiver Live Bambu status.
 7. Fyll inn printerens IP/host.
 8. Fyll inn access code.
-9. Fyll inn printerens serial hvis nødvendig.
-10. Åpne live-detaljer og kontroller at AMS-spor vises.
+9. Fyll inn printerens serienummer.
+10. Velg **Kontroller identitet**. Sammenlign observert serienummer og
+    fingeravtrykk før du velger **Godkjenn denne identiteten**.
+11. Lagre printeren.
+12. Åpne live-detaljer og kontroller at AMS-spor vises.
 
 Live Bambu status er lokal og leser printerdata fra samme nettverk. Den bør konfigureres på host-maskinen når du bruker Vert/Klient-oppsett.
+
+Den første identitetskontrollen sender ingen autentiseringsdata: programmet gjør
+bare et TLS-håndtrykk for å lese printersertifikatet. Access code blir ikke lest
+eller sendt før konfigurert serienummer og lokalt godkjent offentlig
+nøkkelfingeravtrykk samsvarer med den samme TLS-forbindelsen. En endret
+identitet stopper forbindelsen og krever eksplisitt ny paring. Access code
+lagres i macOS-nøkkelringen eller Windows Credential Manager, ikke i
+bibliotekdatabasen eller en flyttbar sikkerhetskopi.
 
 ### Hva live-integrasjonen observerer
 

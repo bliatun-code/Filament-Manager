@@ -129,11 +129,18 @@ export type BambuLiveObservedState = {
   trays: BambuLiveObservedTray[];
 };
 
+export type BambuAccessCodeAction = "KEEP" | "REPLACE" | "CLEAR";
+export type BambuTlsTrustState = "UNPAIRED" | "TRUSTED" | "CHANGED";
+export type BambuTlsTrustAction = "KEEP" | "TRUST_CURRENT" | "CLEAR";
+
 export type BambuLiveIntegrationSettings = {
   enabled: boolean;
   host?: string | null;
-  access_code?: string | null;
+  access_code_configured?: boolean;
   printer_serial?: string | null;
+  tls_trust_state?: BambuTlsTrustState;
+  tls_certificate_fingerprint?: string | null;
+  tls_spki_fingerprint?: string | null;
   last_error?: string | null;
   observed_state?: BambuLiveObservedState | null;
 };
@@ -162,8 +169,22 @@ export type SaveBambuLiveIntegrationInput = {
   printer_id: string;
   enabled: boolean;
   host?: string | null;
+  access_code_action: BambuAccessCodeAction;
   access_code?: string | null;
   printer_serial?: string | null;
+  tls_trust_action: BambuTlsTrustAction;
+  expected_tls_certificate_sha256?: string | null;
+  expected_tls_spki_sha256?: string | null;
+};
+
+export type InspectBambuLiveTlsIdentityInput = {
+  host: string;
+  printer_serial: string;
+};
+
+export type BambuLiveTlsIdentityInspection = {
+  certificate_sha256: string;
+  spki_sha256: string;
 };
 
 export type AssignPrinterSlotInput = {
@@ -199,6 +220,15 @@ export async function saveBambuLiveIntegration(input: SaveBambuLiveIntegrationIn
   return invoke<void>("save_bambu_live_integration", { input });
 }
 
+export async function inspectBambuLiveTlsIdentity(
+  input: InspectBambuLiveTlsIdentityInput,
+) {
+  return invoke<BambuLiveTlsIdentityInspection>(
+    "inspect_bambu_live_tls_identity",
+    { input },
+  );
+}
+
 export async function saveLibrarySyncHostBambuLiveIntegration(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
@@ -211,8 +241,13 @@ export async function saveLibrarySyncHostBambuLiveIntegration(
       printer_id: input.printer_id,
       enabled: input.enabled,
       host: input.host ?? null,
+      access_code_action: input.access_code_action,
       access_code: input.access_code ?? null,
       printer_serial: input.printer_serial ?? null,
+      tls_trust_action: input.tls_trust_action,
+      expected_tls_certificate_sha256:
+        input.expected_tls_certificate_sha256 ?? null,
+      expected_tls_spki_sha256: input.expected_tls_spki_sha256 ?? null,
     },
   });
 }

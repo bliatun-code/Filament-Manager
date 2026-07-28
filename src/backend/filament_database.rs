@@ -12,7 +12,8 @@ pub use super::database_loan_models::{
 pub use super::database_printer_models::PrinterUsageRow;
 pub use super::database_printer_models::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
-    BambuLiveObservedTrayRow, PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow,
+    BambuLiveObservedTrayRow, BambuLiveTlsIdentityRow, PrinterAmsSlotRow, PrinterOverviewRow,
+    PrinterRow,
 };
 pub use super::database_reset_models::CatalogResetStats;
 pub use super::database_revision::LibraryDomainRevisions;

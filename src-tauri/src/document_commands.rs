@@ -2,7 +2,14 @@ use crate::app_error::{
     coded_command_error, document_command_error, document_inventory_error_to_command_string,
 };
 use crate::backend::filament_database::{BackupValidationStats, FilamentDatabase, ImportDataStats};
-use crate::sqlite_recovery::{RecoveryReason, RecoverySnapshot};
+use crate::inventory_maintenance_commands::{
+    clear_pending_credential_cleanup, persist_pending_credential_cleanup,
+    retry_pending_credential_cleanup_under_gate, StoredCredentialScopes,
+};
+use crate::secure_credential_mutation::lock_secure_credential_mutation;
+use crate::sqlite_recovery::{
+    sanitize_app_recovery_snapshot_credentials, RecoveryReason, RecoverySnapshot,
+};
 use crate::state::AppState;
 use base64::Engine;
 use serde::Serialize;
@@ -45,21 +52,36 @@ pub(crate) fn import_full_backup_json(
     state: tauri::State<'_, AppState>,
     content: String,
 ) -> Result<(), String> {
+    import_full_backup_json_inner(&state, content)
+}
+
+fn import_full_backup_json_inner(state: &AppState, content: String) -> Result<(), String> {
+    let _credential_mutation = lock_secure_credential_mutation()?;
+    retry_pending_full_restore_credential_cleanup(state)?;
     let db = open_exclusive_document_database(&state.db_path)?;
     db.validate_full_backup_json(&content)
         .map_err(document_inventory_error_to_command_string)?;
+    let credential_scopes = StoredCredentialScopes::from_database(&db)
+        .map_err(document_inventory_error_to_command_string)?;
+    prepare_full_restore_credential_cleanup(state, &credential_scopes)?;
     let recovery_snapshot = create_full_restore_recovery_snapshot(Path::new(&state.db_path))
         .map_err(|error| {
+            let _ = clear_pending_credential_cleanup(Path::new(&state.db_path));
             document_command_error(
                 "common.internal",
                 "Create recovery snapshot before full backup restore",
                 error,
             )
         })?;
-    finish_full_restore(
+    let restore_result = db
+        .import_full_backup_json(&content)
+        .map_err(document_inventory_error_to_command_string);
+    drop(db);
+    finish_full_restore_and_purge_credentials(
+        state,
+        credential_scopes,
         recovery_snapshot,
-        db.import_full_backup_json(&content)
-            .map_err(document_inventory_error_to_command_string),
+        restore_result,
     )
 }
 
@@ -68,25 +90,40 @@ pub(crate) fn import_data_file(
     state: tauri::State<'_, AppState>,
     content: String,
 ) -> Result<ImportDataStats, String> {
+    import_data_file_inner(&state, content)
+}
+
+fn import_data_file_inner(state: &AppState, content: String) -> Result<ImportDataStats, String> {
     if is_full_backup_candidate(&content) {
+        let _credential_mutation = lock_secure_credential_mutation()?;
+        retry_pending_full_restore_credential_cleanup(state)?;
         let db = open_exclusive_document_database(&state.db_path)?;
         db.validate_full_backup_json(&content)
             .map_err(document_inventory_error_to_command_string)?;
+        let credential_scopes = StoredCredentialScopes::from_database(&db)
+            .map_err(document_inventory_error_to_command_string)?;
+        prepare_full_restore_credential_cleanup(state, &credential_scopes)?;
         let recovery_snapshot = create_full_restore_recovery_snapshot(Path::new(&state.db_path))
             .map_err(|error| {
+                let _ = clear_pending_credential_cleanup(Path::new(&state.db_path));
                 document_command_error(
                     "common.internal",
                     "Create recovery snapshot before data-file restore",
                     error,
                 )
             })?;
-        finish_full_restore(
+        let restore_result = db
+            .import_data_content(&content)
+            .map_err(document_inventory_error_to_command_string);
+        drop(db);
+        finish_full_restore_and_purge_credentials(
+            state,
+            credential_scopes,
             recovery_snapshot,
-            db.import_data_content(&content)
-                .map_err(document_inventory_error_to_command_string),
+            restore_result,
         )
     } else {
-        with_document_db(&state, |db| db.import_data_content(&content))
+        with_document_db(state, |db| db.import_data_content(&content))
     }
 }
 
@@ -117,6 +154,38 @@ fn create_full_restore_recovery_snapshot(source_path: &Path) -> Result<RecoveryS
     RecoverySnapshot::create(source_path, RecoveryReason::FullRestore)
 }
 
+fn prepare_full_restore_credential_cleanup(
+    state: &AppState,
+    credential_scopes: &StoredCredentialScopes,
+) -> Result<(), String> {
+    let db_path = Path::new(&state.db_path);
+    persist_pending_credential_cleanup(db_path, &state.credentials, credential_scopes).map_err(
+        |error| {
+            document_command_error(
+                "common.internal",
+                "Persist secure credential cleanup before full restore",
+                error,
+            )
+        },
+    )
+}
+
+fn retry_pending_full_restore_credential_cleanup(state: &AppState) -> Result<(), String> {
+    retry_pending_credential_cleanup_under_gate(
+        Path::new(&state.db_path),
+        &state.credentials,
+        &state.library_sync_auth,
+    )
+    .map(|_| ())
+    .map_err(|error| {
+        document_command_error(
+            "common.internal",
+            "Retry pending secure credential cleanup before full restore",
+            error,
+        )
+    })
+}
+
 fn finish_full_restore<T>(
     recovery_snapshot: RecoverySnapshot,
     result: Result<T, String>,
@@ -128,6 +197,60 @@ fn finish_full_restore<T>(
         }
         Err(error) => {
             recovery_snapshot.mark_operation_failed();
+            Err(error)
+        }
+    }
+}
+
+fn finish_full_restore_and_purge_credentials<T>(
+    state: &AppState,
+    _credential_scopes: StoredCredentialScopes,
+    recovery_snapshot: RecoverySnapshot,
+    result: Result<T, String>,
+) -> Result<T, String> {
+    let restore_result = finish_full_restore(recovery_snapshot, result);
+    let snapshot_sanitize_result =
+        sanitize_app_recovery_snapshot_credentials(Path::new(&state.db_path));
+
+    match restore_result {
+        Ok(value) => {
+            let purge_result = retry_pending_credential_cleanup_under_gate(
+                Path::new(&state.db_path),
+                &state.credentials,
+                &state.library_sync_auth,
+            );
+            if let Err(error) = purge_result {
+                return Err(document_command_error(
+                    "common.internal",
+                    "Remove machine-local credentials after full restore",
+                    error,
+                ));
+            }
+            snapshot_sanitize_result.map_err(|error| {
+                document_command_error(
+                    "common.internal",
+                    "Sanitize recovery snapshots after full restore",
+                    error,
+                )
+            })?;
+            Ok(value)
+        }
+        Err(error) => {
+            if let Err(cleanup_error) = clear_pending_credential_cleanup(Path::new(&state.db_path))
+            {
+                let _ = document_command_error(
+                    "common.internal",
+                    "Cancel secure credential cleanup after failed full restore",
+                    cleanup_error,
+                );
+            }
+            if let Err(snapshot_error) = snapshot_sanitize_result {
+                let _ = document_command_error(
+                    "common.internal",
+                    "Sanitize failed full-restore recovery snapshot",
+                    snapshot_error,
+                );
+            }
             Err(error)
         }
     }
@@ -337,13 +460,141 @@ pub(crate) fn chrono_id() -> String {
 mod tests {
     use super::{
         chrono_id, create_full_restore_recovery_snapshot, decode_pdf_payload, finish_full_restore,
-        is_full_backup_candidate, png_with_dpi, sanitize_generated_filename_stem,
-        write_generated_file,
+        import_data_file_inner, import_full_backup_json_inner, is_full_backup_candidate,
+        png_with_dpi, sanitize_generated_filename_stem, write_generated_file,
     };
-    use crate::backend::filament_database::FilamentDatabase;
+    use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
+    use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
+    use crate::inventory_maintenance_commands::retry_pending_credential_cleanup;
+    use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+    use crate::state::{
+        AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
+    };
     use base64::Engine;
+    use std::path::Path;
     use std::sync::{mpsc, Arc, Barrier};
     use std::time::Duration;
+
+    fn credential_test_state(label: &str) -> AppState {
+        credential_test_state_with_store(label, CredentialStore::in_memory())
+    }
+
+    fn credential_test_state_with_store(label: &str, credentials: CredentialStore) -> AppState {
+        let db_path = std::env::temp_dir().join(format!(
+            "filament-manager-{label}-{}-{}.sqlite",
+            std::process::id(),
+            chrono_id()
+        ));
+        let db = FilamentDatabase::open(&db_path).expect("create test database");
+        db.apply_schema().expect("apply schema");
+        AppState {
+            db_path: db_path.to_string_lossy().into_owned(),
+            companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+                TRUSTED_LAN_DEFAULT_PORT,
+            )),
+            credentials,
+            library_sync_auth: LibrarySyncRuntimeAuth::new(),
+        }
+    }
+
+    fn seed_machine_local_credentials(state: &AppState) -> (CredentialKey, CredentialKey) {
+        let printer_id = "printer_1";
+        let library_host = "http://library-host.local:4278";
+        let db = FilamentDatabase::open(&state.db_path).expect("open test database");
+        db.upsert_printer_with_ams(printer_id, "Bambu Lab P1S", "Printer", 1, 4)
+            .expect("create printer");
+        db.save_bambu_live_integration(
+            printer_id,
+            &BambuLiveIntegrationRow {
+                enabled: true,
+                host: Some("192.168.1.42".to_string()),
+                access_code: None,
+                access_code_configured: true,
+                access_code_binding_id: Some("11111111111111111111111111111111".to_string()),
+                access_code_stale_binding_ids: Vec::new(),
+                printer_serial: Some("SERIAL".to_string()),
+                last_error: None,
+                tls_identity: None,
+                observed_state: None,
+            },
+        )
+        .expect("save Bambu integration");
+        let mut settings = db
+            .get_library_sync_settings()
+            .expect("read library settings");
+        settings.mode = "CLIENT".to_string();
+        settings.host_base_url = Some(library_host.to_string());
+        db.save_library_sync_settings(&settings)
+            .expect("save library settings");
+        drop(db);
+
+        let bambu_key =
+            CredentialKey::bambu_access_code(printer_id, "11111111111111111111111111111111")
+                .expect("Bambu key");
+        state
+            .credentials
+            .set(
+                &bambu_key,
+                &SecretValue::from_utf8("access-code".to_string()),
+            )
+            .expect("store Bambu credential");
+        let library_key =
+            CredentialKey::library_sync_client_device_token(library_host).expect("library key");
+        state
+            .credentials
+            .set(
+                &library_key,
+                &SecretValue::from_utf8("device-token".to_string()),
+            )
+            .expect("store library credential");
+        state
+            .library_sync_auth
+            .replace(library_host, "session", "csrf")
+            .expect("store runtime auth");
+        (bambu_key, library_key)
+    }
+
+    fn empty_full_backup() -> String {
+        let path = std::env::temp_dir().join(format!(
+            "filament-manager-empty-backup-{}-{}.sqlite",
+            std::process::id(),
+            chrono_id()
+        ));
+        let db = FilamentDatabase::open(&path).expect("create source database");
+        db.apply_schema().expect("apply source schema");
+        let content = db.export_full_backup_json().expect("export source backup");
+        drop(db);
+        let _ = std::fs::remove_file(path);
+        content
+    }
+
+    fn remove_test_database_and_snapshots(state: &AppState) {
+        let path = std::path::Path::new(&state.db_path);
+        let base_name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        if let Some(parent) = path.parent() {
+            if let Ok(entries) = std::fs::read_dir(parent) {
+                for entry in entries.flatten() {
+                    if entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with(&format!("{base_name}.recovery-"))
+                    {
+                        let _ = std::fs::remove_file(entry.path());
+                    }
+                }
+            }
+        }
+        let mut cleanup_manifest_name = path.file_name().map_or_else(
+            || std::ffi::OsString::from("filament-manager.db"),
+            std::ffi::OsString::from,
+        );
+        cleanup_manifest_name.push(".pending-credential-cleanup-v1.json");
+        let _ = std::fs::remove_file(path.with_file_name(cleanup_manifest_name));
+        let _ = std::fs::remove_file(path);
+    }
 
     #[test]
     fn generated_file_write_persists_contents() {
@@ -566,6 +817,144 @@ mod tests {
         })();
 
         let _ = std::fs::remove_file(&source_path);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn successful_full_restore_removes_machine_local_credentials() {
+        let state = credential_test_state("restore-credential-cleanup");
+        let (bambu_key, library_key) = seed_machine_local_credentials(&state);
+        let result = (|| -> Result<(), String> {
+            import_full_backup_json_inner(&state, empty_full_backup())?;
+
+            assert!(state
+                .credentials
+                .get(&bambu_key)
+                .map_err(|error| error.to_string())?
+                .is_none());
+            assert!(state
+                .credentials
+                .get(&library_key)
+                .map_err(|error| error.to_string())?
+                .is_none());
+            assert!(state.library_sync_auth.current()?.is_none());
+            let db = FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
+            assert!(db
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?
+                .is_empty());
+            Ok(())
+        })();
+
+        remove_test_database_and_snapshots(&state);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn successful_full_backup_import_through_data_file_removes_credentials() {
+        let state = credential_test_state("data-file-credential-cleanup");
+        let (bambu_key, library_key) = seed_machine_local_credentials(&state);
+        let result = (|| -> Result<(), String> {
+            let stats = import_data_file_inner(&state, empty_full_backup())?;
+            assert_eq!(stats.detected_format, "FULL_BACKUP");
+            assert!(state
+                .credentials
+                .get(&bambu_key)
+                .map_err(|error| error.to_string())?
+                .is_none());
+            assert!(state
+                .credentials
+                .get(&library_key)
+                .map_err(|error| error.to_string())?
+                .is_none());
+            assert!(state.library_sync_auth.current()?.is_none());
+            Ok(())
+        })();
+
+        remove_test_database_and_snapshots(&state);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn failed_post_restore_purge_is_retained_and_retried_durably() {
+        let state = credential_test_state_with_store(
+            "restore-pending-credential-cleanup",
+            CredentialStore::in_memory_with_delete_failures(1),
+        );
+        let (bambu_key, library_key) = seed_machine_local_credentials(&state);
+        let result = (|| -> Result<(), String> {
+            import_full_backup_json_inner(&state, empty_full_backup())
+                .expect_err("injected credential deletion must fail restore cleanup");
+
+            let restored_db =
+                FilamentDatabase::open(&state.db_path).map_err(|error| error.to_string())?;
+            assert!(restored_db
+                .list_printers()
+                .map_err(|error| error.to_string())?
+                .is_empty());
+            drop(restored_db);
+
+            assert!(retry_pending_credential_cleanup(
+                Path::new(&state.db_path),
+                &state.credentials,
+                &state.library_sync_auth,
+            )?);
+            assert!(state
+                .credentials
+                .get(&bambu_key)
+                .map_err(|error| error.to_string())?
+                .is_none());
+            assert!(state
+                .credentials
+                .get(&library_key)
+                .map_err(|error| error.to_string())?
+                .is_none());
+            assert!(!retry_pending_credential_cleanup(
+                Path::new(&state.db_path),
+                &state.credentials,
+                &state.library_sync_auth,
+            )?);
+            Ok(())
+        })();
+
+        remove_test_database_and_snapshots(&state);
+        if let Err(error) = result {
+            panic!("{error}");
+        }
+    }
+
+    #[test]
+    fn rejected_full_restore_keeps_existing_credentials_and_runtime_auth() {
+        let state = credential_test_state("failed-restore-credential-preservation");
+        let (bambu_key, library_key) = seed_machine_local_credentials(&state);
+        let result = (|| -> Result<(), String> {
+            let error = import_full_backup_json_inner(
+                &state,
+                r#"{"format":"filament-manager-backup-v1","tables":{}}"#.to_string(),
+            )
+            .expect_err("incomplete backup must be rejected");
+            assert!(!error.is_empty());
+            assert!(state
+                .credentials
+                .get(&bambu_key)
+                .map_err(|error| error.to_string())?
+                .is_some());
+            assert!(state
+                .credentials
+                .get(&library_key)
+                .map_err(|error| error.to_string())?
+                .is_some());
+            assert!(state.library_sync_auth.current()?.is_some());
+            Ok(())
+        })();
+
+        remove_test_database_and_snapshots(&state);
         if let Err(error) = result {
             panic!("{error}");
         }
