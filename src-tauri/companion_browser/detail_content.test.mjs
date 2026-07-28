@@ -165,6 +165,14 @@ test("detail content falls back invalid status values to IN_STOCK and shows matc
   assert.match(html, /name="home-location"/);
 });
 
+test("detail content disables weight editing while spool detail is refreshing", () => {
+  const html = renderBody({ busy: true });
+
+  assert.match(html, /name="grams"[^>]* disabled/);
+  assert.match(html, /name="tare-grams"[^>]* disabled/);
+  assert.match(html, /type="submit"[^>]* disabled/);
+});
+
 test("compact detail keeps history collapsed behind a short summary", () => {
   const html = renderBody({
     compactDetail: true,

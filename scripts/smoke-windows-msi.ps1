@@ -163,14 +163,25 @@ function Resolve-SafeLocalAppDataChild {
     return $candidate
 }
 
-function Get-HkcuUninstallRegistrationPaths {
+function Get-MsiProductState {
     param([Parameter(Mandatory = $true)][string]$ProductCode)
 
-    $candidatePaths = @(
-        "Registry::HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode",
-        "Registry::HKEY_CURRENT_USER\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$ProductCode"
-    )
-    return @($candidatePaths | Where-Object { Test-Path -LiteralPath $_ })
+    # ProductState is independent of the implementation-specific registry hive/view:
+    # -1 is unknown, while 5 means installed for the current user.
+    $installer = $null
+    try {
+        $installer = New-Object -ComObject WindowsInstaller.Installer
+        return [int]$installer.GetType().InvokeMember(
+            "ProductState",
+            [Reflection.BindingFlags]::GetProperty,
+            $null,
+            $installer,
+            @($ProductCode)
+        )
+    }
+    finally {
+        Release-ComObject $installer
+    }
 }
 
 function Test-UserPathContainsDirectory {
@@ -352,11 +363,9 @@ try {
         throw "MSI ProductCode is invalid: $($msiIdentity.ProductCode)"
     }
     $productCode = $msiIdentity.ProductCode
-    $existingUninstallRegistrations = @(
-        Get-HkcuUninstallRegistrationPaths -ProductCode $productCode
-    )
-    if ($existingUninstallRegistrations.Count -ne 0) {
-        throw "Clean-install precondition failed; HKCU already contains the MSI product registration."
+    $initialProductState = Get-MsiProductState -ProductCode $productCode
+    if ($initialProductState -ne -1) {
+        throw "Clean-install precondition failed; Windows Installer already reports product state $initialProductState for $productCode."
     }
 
     if ($SignaturePolicy -eq "Required") {
@@ -375,11 +384,9 @@ try {
     if (-not (Test-Path -LiteralPath $installedExecutablePath -PathType Leaf)) {
         throw "Installed executable was not found: $installedExecutablePath"
     }
-    $createdUninstallRegistrations = @(
-        Get-HkcuUninstallRegistrationPaths -ProductCode $productCode
-    )
-    if ($createdUninstallRegistrations.Count -eq 0) {
-        throw "Install did not create an HKCU uninstall registration for $productCode."
+    $installedProductState = Get-MsiProductState -ProductCode $productCode
+    if ($installedProductState -ne 5) {
+        throw "Install did not register $productCode for the current user; expected Windows Installer product state 5, found $installedProductState."
     }
     if (-not (Test-Path -LiteralPath $desktopShortcutPath -PathType Leaf)) {
         throw "Install did not create the expected Desktop shortcut: $desktopShortcutPath"
@@ -450,10 +457,9 @@ try {
     if (Test-Path -LiteralPath $resolvedInstallDirectory) {
         throw "Uninstall left the install directory behind: $resolvedInstallDirectory"
     }
-    foreach ($registrationPath in $createdUninstallRegistrations) {
-        if (Test-Path -LiteralPath $registrationPath) {
-            throw "Uninstall left the HKCU product registration behind: $registrationPath"
-        }
+    $uninstalledProductState = Get-MsiProductState -ProductCode $productCode
+    if ($uninstalledProductState -ne -1) {
+        throw "Uninstall left Windows Installer product state $uninstalledProductState behind for $productCode."
     }
     if (Test-Path -LiteralPath $desktopShortcutPath) {
         throw "Uninstall left the Desktop shortcut behind: $desktopShortcutPath"
@@ -489,7 +495,7 @@ try {
         "Observed window title: $observedTitle",
         "Database: $databasePath",
         "Database SHA-256 retained: $($databaseHashAfterUninstall.ToLowerInvariant())",
-        "HKCU uninstall registration removed: yes",
+        "Windows Installer current-user registration removed: yes",
         "Desktop and Start Menu shortcuts removed: yes",
         "User PATH entry removed: yes",
         "Signature policy: $SignaturePolicy",
