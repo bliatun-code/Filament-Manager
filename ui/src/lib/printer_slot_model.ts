@@ -22,6 +22,7 @@ import {
 } from "./inventory_domain";
 import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
+import { parsePositiveWeight } from "./weight_display";
 
 type PrinterSlotNormalizedSpoolRow = SpoolWithMasterRow["spool"] & {
   normalized_status: SpoolStatus | null;
@@ -84,7 +85,8 @@ export type SlotCatalogOnboardingOpenBlockReason =
 
 export type SlotCatalogOnboardingSaveBlockReason =
   | SlotCatalogOnboardingOpenBlockReason
-  | "borrowed_owner_required";
+  | "borrowed_owner_required"
+  | "initial_weight_invalid";
 
 export type SlotCatalogOnboardingOpenState = {
   disabled: boolean;
@@ -424,6 +426,9 @@ export function buildSlotCatalogOnboardingSaveState(
 ): SlotCatalogOnboardingSaveState {
   const openState = buildSlotCatalogOnboardingOpenState(prompt.slot, prompt.liveTray, options);
   let reason: SlotCatalogOnboardingSaveBlockReason | null = openState.reason;
+  if (!reason && parsePositiveWeight(prompt.initialWeight) === null) {
+    reason = "initial_weight_invalid";
+  }
   if (
     !reason &&
     isBorrowedInOwnership(prompt.ownershipType) &&

@@ -419,6 +419,7 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
       tauriAvailable: true,
       busy: false,
       isBambuMode: true,
+      initialWeightValid: true,
       borrowedOwnerRequired: false,
     }),
     {
@@ -437,6 +438,7 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
       tauriAvailable: false,
       busy: false,
       isBambuMode: true,
+      initialWeightValid: true,
       borrowedOwnerRequired: false,
     }).reason,
     "missing_runtime",
@@ -447,6 +449,7 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
       tauriAvailable: true,
       busy: true,
       isBambuMode: true,
+      initialWeightValid: true,
       borrowedOwnerRequired: false,
     }).reason,
     "busy",
@@ -457,6 +460,7 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
       tauriAvailable: true,
       busy: false,
       isBambuMode: false,
+      initialWeightValid: true,
       borrowedOwnerRequired: false,
     }).reason,
     "wrong_mode",
@@ -467,9 +471,21 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
       tauriAvailable: true,
       busy: false,
       isBambuMode: true,
+      initialWeightValid: true,
       borrowedOwnerRequired: true,
     }).reason,
     "borrowed_owner_required",
+  );
+  assert.equal(
+    buildBambuFilamentCodeBatchCreateState({
+      batch,
+      tauriAvailable: true,
+      busy: false,
+      isBambuMode: true,
+      initialWeightValid: false,
+      borrowedOwnerRequired: false,
+    }).reason,
+    "invalid_weight",
   );
   assert.equal(
     buildBambuFilamentCodeBatchCreateState({
@@ -477,6 +493,7 @@ test("buildBambuFilamentCodeBatchCreateState reports ready, partial, and borrowe
       tauriAvailable: true,
       busy: false,
       isBambuMode: true,
+      initialWeightValid: true,
       borrowedOwnerRequired: false,
     }).reason,
     "no_ready_rows",

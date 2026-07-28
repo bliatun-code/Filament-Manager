@@ -81,6 +81,7 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
       mode: "manual",
       manualFilamentName: "PLA",
       manualColorName: "Blue",
+      initialWeightRaw: "1000",
       ownershipType: "OWNED",
     }),
     true,
@@ -91,6 +92,7 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
       busy: false,
       mode: "bambu",
       selectedBambuMaster: null,
+      initialWeightRaw: "1000",
       ownershipType: "OWNED",
     }),
     true,
@@ -102,6 +104,7 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
       mode: "manual",
       manualFilamentName: "PLA",
       manualColorName: "Blue",
+      initialWeightRaw: "1000",
       ownershipType: "BORROWED_IN",
       borrowedFromName: " ",
     }),
@@ -113,6 +116,7 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
       busy: false,
       mode: "bambu",
       selectedBambuMaster: master(),
+      initialWeightRaw: "1000",
       ownershipType: "BORROWED_IN",
       borrowedFromName: " ",
     }),
@@ -124,6 +128,7 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
       busy: false,
       mode: "esun",
       selectedEsunMaster: master({ vendor: "eSUN" }),
+      initialWeightRaw: "1000",
       ownershipType: "BORROWED_IN",
       borrowedFromName: "Ada",
     }),
@@ -136,11 +141,27 @@ test("isInventoryCreateDisabled guards runtime, required selection, and borrowed
       mode: "manual",
       manualFilamentName: "PLA",
       manualColorName: "Blue",
+      initialWeightRaw: "1000",
       ownershipType: "BORROWED_IN",
       borrowedFromName: "Ada",
     }),
     false,
   );
+  for (const initialWeightRaw of ["", "0", "-250", "750.5", "750 g"]) {
+    assert.equal(
+      isInventoryCreateDisabled({
+        tauriAvailable: true,
+        busy: false,
+        mode: "manual",
+        manualFilamentName: "PLA",
+        manualColorName: "Blue",
+        initialWeightRaw,
+        ownershipType: "OWNED",
+      }),
+      true,
+      `invalid weight ${JSON.stringify(initialWeightRaw)} should disable creation`,
+    );
+  }
 });
 
 test("formatInventoryCreateAddedLabel mirrors catalog and manual success labels", () => {
@@ -184,7 +205,7 @@ test("buildInventoryCreateSelectionSummary previews catalog selections", () => {
   );
 });
 
-test("buildInventoryCreateSelectionSummary previews manual entries with defaults", () => {
+test("buildInventoryCreateSelectionSummary exposes invalid manual weight without substituting it", () => {
   assert.deepEqual(
     buildInventoryCreateSelectionSummary({
       mode: "manual",
@@ -199,7 +220,7 @@ test("buildInventoryCreateSelectionSummary previews manual entries with defaults
       title: "Tough · Blue",
       detail: "Generic · PLA",
       hexColor: "#2563EB",
-      initialWeightGrams: 1000,
+      initialWeightGrams: null,
     },
   );
 });
@@ -271,7 +292,7 @@ test("buildInventoryCreateSpoolRequest builds manual create payloads with defaul
       manualFilamentName: " Tough ",
       manualColorName: " Blue ",
       manualHexColor: "2563eb",
-      initialWeightRaw: "invalid",
+      initialWeightRaw: "1000",
       ownershipType: "OWNED",
       location: " ",
     }),
@@ -338,6 +359,27 @@ test("buildInventoryCreateSpoolRequest clears owner fields for owned spools", ()
 });
 
 test("buildInventoryCreateSpoolRequest reports validation failures", () => {
+  assert.deepEqual(
+    buildInventoryCreateSpoolRequest({
+      id: "spool-1",
+      mode: "manual",
+      manualFilamentName: "PLA",
+      manualColorName: "Blue",
+      initialWeightRaw: "-100",
+      ownershipType: "OWNED",
+    }),
+    { ok: false, error: "INITIAL_WEIGHT_INVALID" },
+  );
+  assert.deepEqual(
+    buildInventoryCreateSpoolRequest({
+      id: "spool-1",
+      mode: "bambu",
+      selectedBambuMaster: master(),
+      initialWeightRaw: "999.5",
+      ownershipType: "OWNED",
+    }),
+    { ok: false, error: "INITIAL_WEIGHT_INVALID" },
+  );
   assert.deepEqual(
     buildInventoryCreateSpoolRequest({
       id: "spool-1",

@@ -5,6 +5,7 @@ import type { OwnershipType } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import { formatDateTime } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
+import { parsePositiveWeight } from "../lib/weight_display";
 import {
   buildSlotCatalogOnboardingSaveState,
   type SlotCatalogOnboardingPrompt,
@@ -42,6 +43,8 @@ type SlotCatalogOnboardingModalProps = {
   onSave: () => void;
 };
 
+const INITIAL_WEIGHT_ERROR_ID = "slot-catalog-onboarding-initial-weight-error";
+
 export function SlotCatalogOnboardingModal({
   busy,
   currentSlot,
@@ -71,6 +74,10 @@ export function SlotCatalogOnboardingModal({
     : t("printers.addCatalogRollAndSaveRfid", "Add + save RFID");
   const slotAlreadyAssigned = Boolean((currentSlot ?? prompt.slot).spool_id);
   const saveDisabled = saveState.disabled;
+  const initialWeightInvalid = parsePositiveWeight(prompt.initialWeight) === null;
+  const initialWeightErrorMessage = initialWeightInvalid
+    ? t("inventory.error.invalidWeight", "Weight value is invalid.")
+    : null;
   let saveBlockMessage: string | null = null;
   if (saveState.reason === "missing_rfid") {
     saveBlockMessage = t(
@@ -236,16 +243,33 @@ export function SlotCatalogOnboardingModal({
           </ModalFactCard>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <ModalFormField label={t("inventory.initialWeight", "Initial weight (g)")}>
-              <input
-                type="number"
-                min={0}
-                value={prompt.initialWeight}
-                onChange={(event) => onInitialWeightChange(event.target.value)}
-                className={modalFormInputClassName}
-                autoFocus={!isBorrowedIn}
-              />
-            </ModalFormField>
+            <div>
+              <ModalFormField label={t("inventory.initialWeight", "Initial weight (g)")}>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={prompt.initialWeight}
+                  onChange={(event) => onInitialWeightChange(event.target.value)}
+                  className={modalFormInputClassName}
+                  autoFocus={!isBorrowedIn}
+                  aria-invalid={initialWeightInvalid}
+                  aria-describedby={
+                    initialWeightInvalid ? INITIAL_WEIGHT_ERROR_ID : undefined
+                  }
+                />
+              </ModalFormField>
+              {initialWeightErrorMessage ? (
+                <p
+                  id={INITIAL_WEIGHT_ERROR_ID}
+                  role="alert"
+                  className="mt-1 text-xs leading-5 text-rose-600 dark:text-rose-300"
+                >
+                  {initialWeightErrorMessage}
+                </p>
+              ) : null}
+            </div>
             <ModalFormField
               label={t("inventory.homeLocationOptional", "Home location (optional)")}
             >

@@ -147,6 +147,8 @@ export function useInventoryCreateActions({
       setError(t("inventory.error.selectBambuFirst", "Select a Bambu filament first."));
     } else if (error === "ESUN_MASTER_REQUIRED") {
       setError(t("inventory.error.selectEsunFirst", "Select an eSUN filament first."));
+    } else if (error === "INITIAL_WEIGHT_INVALID") {
+      setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
     } else if (error === "BATCH_EMPTY") {
       setError(
         t(

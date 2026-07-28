@@ -338,6 +338,16 @@ test("buildSlotCatalogOnboardingCreateRequest prepares owned and borrowed catalo
   );
 
   assert.deepEqual(
+    buildSlotCatalogOnboardingCreateRequest(
+      {
+        ...prompt,
+        initialWeight: "750.5",
+      },
+      { id: "spool-invalid-weight" },
+    ),
+    { ok: false, error: "initial_weight_invalid" },
+  );
+  assert.deepEqual(
     buildSlotCatalogOnboardingCreateRequest(prompt, {
       id: "spool-occupied",
       currentSlot: { ...slot, spool_id: "freshly-assigned-spool" } as PrinterAmsSlotRow,
@@ -580,6 +590,20 @@ test("buildSlotCatalogOnboardingSaveState blocks unsafe catalog slot onboarding 
       observedRfid: "RFID-1",
     },
   );
+  for (const initialWeight of ["", "0", "-1", "1.5", "1e3", "invalid"]) {
+    assert.deepEqual(
+      buildSlotCatalogOnboardingSaveState({
+        ...readyPrompt,
+        initialWeight,
+      }),
+      {
+        disabled: true,
+        reason: "initial_weight_invalid",
+        observedRfid: "RFID-1",
+      },
+      `expected ${JSON.stringify(initialWeight)} to block catalog onboarding`,
+    );
+  }
   assert.equal(
     buildSlotCatalogOnboardingSaveState({
       ...readyPrompt,

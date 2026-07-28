@@ -6,6 +6,7 @@ import {
   resolveInitialCompanionLocale,
   t,
 } from "./companion_i18n.js";
+import { SELECTABLE_LOCALES } from "./supported_locales.js";
 
 test("readStoredCompanionLocale falls back when storage throws", () => {
   assert.equal(
@@ -86,6 +87,46 @@ test("Companion accepts pseudo locale only through an explicit QA value", () => 
   const cjkOutput = t("zh-XB", "settings.spoolCount", "", { count: 2 });
   assert.match(cjkOutput, /^【.*2.*】$/);
   assert.match(cjkOutput, /[設品項]/);
+});
+
+test("Companion language-selection feedback is localized for all 21 selectable locales", () => {
+  const expectedMessages = {
+    en: "Language selected: English.",
+    nb: "Valgt språk: Norsk (bokmål).",
+    de: "Ausgewählte Sprache: Deutsch.",
+    fr: "Langue sélectionnée : Français.",
+    es: "Idioma seleccionado: Español.",
+    "pt-BR": "Idioma selecionado: Português (Brasil).",
+    "it-IT": "Lingua selezionata: Italiano.",
+    "pl-PL": "Wybrany język: Polski.",
+    "nl-NL": "Geselecteerde taal: Nederlands.",
+    "cs-CZ": "Vybraný jazyk: Čeština.",
+    "zh-CN": "已选择语言：简体中文。",
+    "ja-JP": "選択した言語：日本語",
+    "ko-KR": "선택한 언어: 한국어.",
+    "zh-TW": "已選擇語言：繁體中文。",
+    "tr-TR": "Seçilen dil: Türkçe.",
+    "uk-UA": "Вибрана мова: Українська.",
+    "ru-RU": "Выбранный язык: Русский.",
+    "hu-HU": "Kiválasztott nyelv: Magyar.",
+    "sv-SE": "Valt språk: Svenska.",
+    "da-DK": "Valgt sprog: Dansk.",
+    "fi-FI": "Valittu kieli: Suomi.",
+  };
+
+  assert.equal(SELECTABLE_LOCALES.length, 21);
+  for (const definition of SELECTABLE_LOCALES) {
+    assert.equal(
+      t(
+        definition.id,
+        definition.companionSelectionMessageKey,
+        definition.selectionMessageFallback,
+        { language: definition.nativeLabel },
+      ),
+      expectedMessages[definition.id],
+      definition.id,
+    );
+  }
 });
 
 test("German locale uses translated source copy", () => {

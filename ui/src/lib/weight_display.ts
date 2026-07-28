@@ -10,10 +10,12 @@ export function formatGrams(
   return `${Math.max(0, value)} g`;
 }
 
-export function parsePositiveWeight(raw: string, fallback: number): number {
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
+export function parsePositiveWeight(raw: string): number | null {
+  const normalized = raw.trim();
+  if (!/^[1-9]\d*$/.test(normalized)) {
+    return null;
   }
-  return parsed;
+
+  const parsed = Number(normalized);
+  return Number.isSafeInteger(parsed) ? parsed : null;
 }

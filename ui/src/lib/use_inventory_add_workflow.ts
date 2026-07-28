@@ -11,6 +11,7 @@ import { useInventoryCatalogReload } from "./use_inventory_catalog_reload";
 import { useInventoryCreateActions } from "./use_inventory_create_actions";
 import { useInventoryCreateDraft } from "./use_inventory_create_draft";
 import { useWishlistQueue } from "./use_wishlist_queue";
+import { parsePositiveWeight } from "./weight_display";
 import type { useI18n } from "./i18n";
 import type { ResolvedTheme } from "./theme_mode";
 import type { WishlistStatusFilter } from "./wishlist_data_source";
@@ -253,6 +254,7 @@ export function useInventoryAddWorkflow({
     selectedEsunMaster,
     manualFilamentName,
     manualColorName,
+    initialWeightRaw: newInitialWeight,
     ownershipType: newOwnershipType,
     borrowedFromName,
   });
@@ -271,6 +273,7 @@ export function useInventoryAddWorkflow({
     tauriAvailable,
     busy,
     isBambuMode: createMode === "bambu",
+    initialWeightValid: parsePositiveWeight(newInitialWeight) !== null,
     borrowedOwnerRequired: newSpoolBorrowedIn && !borrowedFromName.trim(),
   });
   const addModalActive = showAddModal && sidePanelMode === "ADD";

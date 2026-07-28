@@ -232,6 +232,7 @@ async function setLocale(nextLocale) {
                 normalizedLocale,
                 definition.companionSelectionMessageKey,
                 definition.selectionMessageFallback,
+                { language: definition.nativeLabel },
               )
             : normalizedLocale,
           "success",

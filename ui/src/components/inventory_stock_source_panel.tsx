@@ -14,6 +14,7 @@ import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
+import { ModalFormField } from "./modal_chrome";
 
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
@@ -255,51 +256,60 @@ export function InventoryStockSourcePanel({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                type="text"
-                value={manualVendor}
-                onChange={(event) => onManualVendorChange(event.target.value)}
-                placeholder={t("wishlist.vendorPlaceholder", "Vendor")}
-                className={inventoryFormControlClassName}
-                disabled={!tauriAvailable}
-              />
-              <input
-                type="text"
-                value={manualMaterial}
-                onChange={(event) => onManualMaterialChange(event.target.value)}
-                placeholder={t("wishlist.materialPlaceholder", "Material")}
-                className={inventoryFormControlClassName}
-                disabled={!tauriAvailable}
-              />
-              <input
-                type="text"
-                value={manualFilamentName}
-                onChange={(event) => onManualFilamentNameChange(event.target.value)}
-                placeholder={t("wishlist.filamentName", "Filament name")}
-                className={inventoryFormControlClassName}
-                disabled={!tauriAvailable}
-              />
-              <input
-                type="text"
-                value={manualColorName}
-                onChange={(event) => onManualColorNameChange(event.target.value)}
-                placeholder={t("wishlist.colorName", "Color name")}
-                className={inventoryFormControlClassName}
-                disabled={!tauriAvailable}
-              />
+              <ModalFormField label={t("wishlist.vendorPlaceholder", "Vendor")}>
+                <input
+                  type="text"
+                  value={manualVendor}
+                  onChange={(event) => onManualVendorChange(event.target.value)}
+                  className={`mt-1.5 ${inventoryFormControlClassName}`}
+                  disabled={!tauriAvailable}
+                />
+              </ModalFormField>
+              <ModalFormField label={t("wishlist.materialPlaceholder", "Material")}>
+                <input
+                  type="text"
+                  value={manualMaterial}
+                  onChange={(event) => onManualMaterialChange(event.target.value)}
+                  className={`mt-1.5 ${inventoryFormControlClassName}`}
+                  disabled={!tauriAvailable}
+                />
+              </ModalFormField>
+              <ModalFormField label={t("wishlist.filamentName", "Filament name")}>
+                <input
+                  type="text"
+                  value={manualFilamentName}
+                  onChange={(event) => onManualFilamentNameChange(event.target.value)}
+                  className={`mt-1.5 ${inventoryFormControlClassName}`}
+                  disabled={!tauriAvailable}
+                />
+              </ModalFormField>
+              <ModalFormField label={t("wishlist.colorName", "Color name")}>
+                <input
+                  type="text"
+                  value={manualColorName}
+                  onChange={(event) => onManualColorNameChange(event.target.value)}
+                  className={`mt-1.5 ${inventoryFormControlClassName}`}
+                  disabled={!tauriAvailable}
+                />
+              </ModalFormField>
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={manualHexColor}
-                onChange={(event) => onManualHexColorChange(event.target.value)}
-                placeholder={t("wishlist.hexOptional", "Hex color")}
-                className={inventoryFormControlClassName}
-                disabled={!tauriAvailable}
-              />
+            <div className="flex items-end gap-2">
+              <ModalFormField
+                className="min-w-0 flex-1"
+                label={t("wishlist.hexOptional", "Hex color")}
+              >
+                <input
+                  type="text"
+                  value={manualHexColor}
+                  onChange={(event) => onManualHexColorChange(event.target.value)}
+                  className={`mt-1.5 ${inventoryFormControlClassName}`}
+                  disabled={!tauriAvailable}
+                />
+              </ModalFormField>
               <input
                 type="color"
+                aria-label={t("wishlist.hexOptional", "Hex color")}
                 value={toSwatchColor(manualHexColor)}
                 onChange={(event) => onManualHexColorChange(event.target.value)}
                 className="h-10 w-12 rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-950/80"

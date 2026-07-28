@@ -10,7 +10,7 @@ export type InventoryCreateSelectionSummary = {
   title: string;
   detail: string;
   hexColor: string | null;
-  initialWeightGrams: number;
+  initialWeightGrams: number | null;
 };
 
 export function isInventoryCatalogCreateMode(mode: InventoryCreateMode): boolean {
@@ -64,6 +64,7 @@ export function isInventoryCreateDisabled(input: {
   selectedEsunMaster?: MasterCatalogRow | null;
   manualFilamentName?: string | null;
   manualColorName?: string | null;
+  initialWeightRaw: string;
   ownershipType: OwnershipType;
   borrowedFromName?: string | null;
 }): boolean {
@@ -82,6 +83,9 @@ export function isInventoryCreateDisabled(input: {
     !(input.manualFilamentName ?? "").trim() ||
     !(input.manualColorName ?? "").trim()
   ) {
+    return true;
+  }
+  if (parsePositiveWeight(input.initialWeightRaw) === null) {
     return true;
   }
 
@@ -127,7 +131,7 @@ export function buildInventoryCreateSelectionSummary(input: {
       title: `${master.filament_name} · ${master.color_name}`,
       detail: `${master.vendor} · ${master.material}`,
       hexColor: master.hex_color ?? null,
-      initialWeightGrams: parsePositiveWeight(input.initialWeightRaw, master.default_weight),
+      initialWeightGrams: parsePositiveWeight(input.initialWeightRaw),
     };
   }
 
@@ -147,7 +151,7 @@ export function buildInventoryCreateSelectionSummary(input: {
       (input.manualMaterial ?? "").trim() || "PLA"
     }`,
     hexColor: normalizeSwatchValue(input.manualHexColor, { uppercase: true }),
-    initialWeightGrams: parsePositiveWeight(input.initialWeightRaw, 1000),
+    initialWeightGrams: parsePositiveWeight(input.initialWeightRaw),
   };
 }
 
@@ -155,6 +159,7 @@ export type InventoryCreateSpoolError =
   | "BORROWED_OWNER_REQUIRED"
   | "BAMBU_MASTER_REQUIRED"
   | "ESUN_MASTER_REQUIRED"
+  | "INITIAL_WEIGHT_INVALID"
   | "MANUAL_FIELDS_REQUIRED";
 
 export type InventoryCreateBatchError = InventoryCreateSpoolError | "BATCH_EMPTY";
@@ -233,7 +238,10 @@ export function buildInventoryCreateSpoolRequest(input: {
         error: input.mode === "bambu" ? "BAMBU_MASTER_REQUIRED" : "ESUN_MASTER_REQUIRED",
       };
     }
-    const initialWeight = parsePositiveWeight(input.initialWeightRaw, master.default_weight);
+    const initialWeight = parsePositiveWeight(input.initialWeightRaw);
+    if (initialWeight === null) {
+      return { ok: false, error: "INITIAL_WEIGHT_INVALID" };
+    }
     return {
       ok: true,
       kind: "catalog",
@@ -259,7 +267,10 @@ export function buildInventoryCreateSpoolRequest(input: {
   if (!filamentName || !colorName) {
     return { ok: false, error: "MANUAL_FIELDS_REQUIRED" };
   }
-  const initialWeight = parsePositiveWeight(input.initialWeightRaw, 1000);
+  const initialWeight = parsePositiveWeight(input.initialWeightRaw);
+  if (initialWeight === null) {
+    return { ok: false, error: "INITIAL_WEIGHT_INVALID" };
+  }
   return {
     ok: true,
     kind: "manual",

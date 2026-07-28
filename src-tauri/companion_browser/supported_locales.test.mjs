@@ -169,6 +169,28 @@ test("locale registry owns format, guide, and native-label metadata", () => {
   assert.equal(guidePathForLocale("unknown"), "docs/USER_GUIDE.md");
 });
 
+test("all 21 selectable locales use the parameterized language-selection contract", () => {
+  assert.equal(SELECTABLE_LOCALES.length, 21);
+  for (const definition of SELECTABLE_LOCALES) {
+    assert.equal(
+      definition.selectionMessageKey,
+      "settings.languageSelected",
+      definition.id,
+    );
+    assert.equal(
+      definition.companionSelectionMessageKey,
+      "status.languageSelected",
+      definition.id,
+    );
+    assert.equal(
+      definition.selectionMessageFallback,
+      "Language selected: {language}.",
+      definition.id,
+    );
+    assert.ok(definition.nativeLabel, definition.id);
+  }
+});
+
 test("locale registry applies html language and direction", () => {
   const documentRef = { documentElement: { lang: "", dir: "" } };
 

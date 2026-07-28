@@ -1848,10 +1848,7 @@ export const nbDictionary: DictionaryNode = {
       failed: "feilet",
       skipped: "hoppet over",
       themeSetTo: "Temamodus satt til",
-      langSetNb: "Språk satt til norsk.",
-      langSetEn: "Språk satt til engelsk.",
-      langSetDe: "Språk satt til tysk.",
-      langSetFr: "Språk satt til fransk.",
+      languageSelected: "Valgt språk: {language}.",
       confirmBulkSwatch: "Autoutfyll swatcher for alle synlige manglende oppføringer?",
       confirmBulkSwatchTapAgain:
         "Trykk Autoutfyll synlige manglende swatcher igjen for å bekrefte.",

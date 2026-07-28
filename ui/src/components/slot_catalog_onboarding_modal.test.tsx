@@ -147,6 +147,30 @@ test("SlotCatalogOnboardingModal renders the owned catalog onboarding save path"
   assert.doesNotMatch(saveButton, /style=/);
 });
 
+test("SlotCatalogOnboardingModal exposes strict initial-weight validation", () => {
+  const html = renderModal({
+    prompt: prompt({ initialWeight: "1000.5" }),
+    currentSlot: slot(),
+    currentLiveTray: liveTray(),
+  });
+  const initialWeightInput = html.match(/<input[^>]*type="number"[^>]*>/)?.[0];
+
+  assert.ok(initialWeightInput);
+  assert.match(initialWeightInput, /min="1"/);
+  assert.match(initialWeightInput, /step="1"/);
+  assert.match(initialWeightInput, /inputMode="numeric"/);
+  assert.match(initialWeightInput, /aria-invalid="true"/);
+  assert.match(
+    initialWeightInput,
+    /aria-describedby="slot-catalog-onboarding-initial-weight-error"/,
+  );
+  assert.match(
+    html,
+    /id="slot-catalog-onboarding-initial-weight-error"[^>]*role="alert"[^>]*>Weight value is invalid\.<\/p>/,
+  );
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
+});
+
 test("SlotCatalogOnboardingModal marks discontinued catalog fallback rows", () => {
   const html = renderModal({
     prompt: prompt({

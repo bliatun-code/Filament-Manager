@@ -12,7 +12,7 @@ import {
 import { cleanupVisualQaDatabase } from "./visual-qa-db.mjs";
 
 export const DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX = Object.freeze([
-  Object.freeze({ locale: "zh-CN", scenario: "add-filament", width: 900 }),
+  Object.freeze({ height: 500, locale: "zh-CN", scenario: "add-filament", width: 900 }),
   Object.freeze({ locale: "de", scenario: "dashboard-onboarding", width: 900 }),
   Object.freeze({ locale: "fr", scenario: "settings-general", width: 1050 }),
   Object.freeze({ locale: "nb", scenario: "selected-roll", width: 1200 }),
@@ -62,7 +62,7 @@ export function desktopVisualQaMatrixEntries(options = {}) {
 }
 
 export function desktopVisualQaMatrixEntryOptions(entry, options = {}) {
-  const height = options.height ?? 900;
+  const height = options.height ?? entry.height ?? 900;
   return {
     captureDelayMs: defaultDesktopVisualQaCaptureDelayMs([entry.scenario]),
     keep: Boolean(options.keep),
@@ -76,6 +76,7 @@ export function desktopVisualQaMatrixEntryOptions(entry, options = {}) {
     scenario: entry.scenario,
     sourcePath: options.sourcePath,
     themeMode: options.themeMode ?? "dark",
+    windowPositionTolerance: options.windowPositionTolerance ?? 40,
     windowSize: { height, width: entry.width },
   };
 }
@@ -139,7 +140,7 @@ export async function runDesktopVisualQaMatrix(
 async function runCli() {
   const argv = process.argv.slice(2);
   const options = {
-    height: parsePositiveInteger(argv, "--height", 900),
+    height: parsePositiveInteger(argv, "--height", undefined),
     includeLivePrinter: argv.includes("--include-live-printer"),
     keep: argv.includes("--keep"),
     keepAppOnFail: argv.includes("--keep-app-on-fail"),

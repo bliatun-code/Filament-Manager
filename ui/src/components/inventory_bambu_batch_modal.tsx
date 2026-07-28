@@ -139,6 +139,9 @@ function bambuBatchCreateStateMessage(
       "Enter who the spools are borrowed from before creating this borrowed-in batch.",
     );
   }
+  if (state.reason === "invalid_weight") {
+    return t("inventory.error.invalidWeight", "Weight value is invalid.");
+  }
   if (state.reason === "no_ready_rows") {
     return t(
       "inventory.bambuBatchNoneReady",

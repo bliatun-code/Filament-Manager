@@ -48,6 +48,7 @@ test("custom modal headers provide labels and SaveOnlyModal delegates optional c
 test("generic modal panels stay within the dynamic viewport and scroll from a visible top", () => {
   const appModal = readComponentSource("app_modal.tsx");
   const modalPanelClass = readComponentSource("modal_panel_class.ts");
+  const inventoryModalChrome = readComponentSource("inventory_modal_chrome.ts");
 
   assert.match(appModal, /fixed inset-0 flex items-center justify-center/);
   for (const source of [appModal, modalPanelClass]) {
@@ -56,4 +57,13 @@ test("generic modal panels stay within the dynamic viewport and scroll from a vi
     assert.match(source, /overscroll-contain/);
   }
   assert.doesNotMatch(modalPanelClass, /w-full overflow-hidden/);
+  assert.match(
+    inventoryModalChrome,
+    /h-\[min\(calc\(100dvh-3rem\),58rem\)\]/,
+  );
+  assert.match(
+    inventoryModalChrome,
+    /max-h-\[min\(calc\(100dvh-3rem\),58rem\)\]/,
+  );
+  assert.doesNotMatch(inventoryModalChrome, /92vh/);
 });

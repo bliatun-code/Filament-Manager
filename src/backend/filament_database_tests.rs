@@ -132,6 +132,96 @@ fn assert_invalid_full_backup_master_row_leaves_database_unchanged(
 }
 
 #[test]
+fn spool_usage_point_limit_selects_latest_readings_and_returns_them_chronologically() {
+    let db_path = temp_db_path("spool-usage-points-latest-limit");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES (
+                    'usage_master', 'PLA', 'Usage test', 'Blue', 1000, 'Test'
+                 );
+
+                 INSERT INTO filament_spools (
+                    id, master_id, status, initial_weight_g, remaining_g
+                 ) VALUES (
+                    'usage_spool', 'usage_master', 'IN_STOCK', 1000, 900
+                 );
+
+                 INSERT INTO scales (id, name, protocol)
+                 VALUES ('usage_scale', 'Usage test scale', 'manual');
+
+                 INSERT INTO weight_readings (
+                    id, scale_id, spool_id, grams, captured_at, source
+                 ) VALUES
+                    (
+                        'reading_001', 'usage_scale', 'usage_spool', 100,
+                        '2026-07-28 08:00:00', 'source_001'
+                    ),
+                    (
+                        'reading_002', 'usage_scale', 'usage_spool', 200,
+                        '2026-07-28 09:00:00', 'source_002'
+                    ),
+                    (
+                        'reading_003', 'usage_scale', 'usage_spool', 300,
+                        '2026-07-28 10:00:00', 'source_003'
+                    ),
+                    (
+                        'reading_004', 'usage_scale', 'usage_spool', 400,
+                        '2026-07-28 10:00:00', 'source_004'
+                    ),
+                    (
+                        'reading_005', 'usage_scale', 'usage_spool', 500,
+                        '2026-07-28 10:00:00', 'source_005'
+                    ),
+                    (
+                        'reading_006', 'usage_scale', 'usage_spool', 600,
+                        '2026-07-28 11:00:00', 'source_006'
+                    );",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let points = db
+            .list_spool_usage_points("usage_spool", 3)
+            .map_err(|error| error.to_string())?;
+        let actual = points
+            .iter()
+            .map(|point| {
+                (
+                    point.captured_at.as_str(),
+                    point.grams,
+                    point.source.as_str(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            actual,
+            vec![
+                ("2026-07-28 10:00:00", 400, "source_004"),
+                ("2026-07-28 10:00:00", 500, "source_005"),
+                ("2026-07-28 11:00:00", 600, "source_006"),
+            ],
+            "the newest readings should be selected deterministically, then displayed oldest-first"
+        );
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "spool_usage_point_limit_selects_latest_readings_and_returns_them_chronologically \
+             failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn historical_sql_migrations_upgrade_to_current_schema() {
     let db_path = temp_db_path("historical-migration-upgrade");
 

@@ -1462,10 +1462,7 @@ export const ptBRDictionary: DictionaryNode = {
     inventoryOverviewRendering: "Preparando folhas de etiquetas...",
     inventoryOverviewSingleLabelHint:
       "Precisa de apenas uma etiqueta? Abra a bobina no Inventário e escolha Criar etiqueta QR.",
-    langSetDe: "Idioma definido como alemão.",
-    langSetEn: "Idioma definido como inglês.",
-    langSetFr: "Idioma definido como francês.",
-    langSetNb: "Idioma definido como Norueguês.",
+    languageSelected: "Idioma selecionado: {language}.",
     language: "Idioma",
     languageHint:
       "Escolha o idioma do aplicativo para todas as visualizações principais.",

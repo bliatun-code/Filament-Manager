@@ -9,9 +9,13 @@ test("formatGrams clamps negative values and supports empty display modes", () =
   assert.equal(formatGrams(undefined, "zero"), "0 g");
 });
 
-test("parsePositiveWeight returns fallback for invalid or non-positive values", () => {
-  assert.equal(parsePositiveWeight("850", 1000), 850);
-  assert.equal(parsePositiveWeight("0", 1000), 1000);
-  assert.equal(parsePositiveWeight("-2", 1000), 1000);
-  assert.equal(parsePositiveWeight("nope", 750), 750);
+test("parsePositiveWeight accepts only positive safe whole grams", () => {
+  assert.equal(parsePositiveWeight("850"), 850);
+  assert.equal(parsePositiveWeight(" 850 "), 850);
+  assert.equal(parsePositiveWeight("0"), null);
+  assert.equal(parsePositiveWeight("-2"), null);
+  assert.equal(parsePositiveWeight("2.5"), null);
+  assert.equal(parsePositiveWeight("850 g"), null);
+  assert.equal(parsePositiveWeight(""), null);
+  assert.equal(parsePositiveWeight(String(Number.MAX_SAFE_INTEGER + 1)), null);
 });

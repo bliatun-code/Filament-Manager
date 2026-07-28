@@ -17,12 +17,27 @@ const sourceDatabasePath = join(tmpdir(), "desktop-visual-matrix-library.db");
 
 test("desktop visual matrix keeps the sparse width and locale coverage", () => {
   assert.deepEqual(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX, [
-    { locale: "zh-CN", scenario: "add-filament", width: 900 },
+    { height: 500, locale: "zh-CN", scenario: "add-filament", width: 900 },
     { locale: "de", scenario: "dashboard-onboarding", width: 900 },
     { locale: "fr", scenario: "settings-general", width: 1050 },
     { locale: "nb", scenario: "selected-roll", width: 1200 },
     { locale: "en", scenario: "statistics-overview", width: 1500 },
   ]);
+});
+
+test("desktop visual matrix keeps Add filament in a low-window regression entry", () => {
+  assert.deepEqual(
+    desktopVisualQaMatrixEntryOptions(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX[0], {
+      sourcePath: sourceDatabasePath,
+    }).windowSize,
+    { height: 500, width: 900 },
+  );
+  assert.deepEqual(
+    desktopVisualQaMatrixEntryOptions(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX[1], {
+      sourcePath: sourceDatabasePath,
+    }).windowSize,
+    { height: 900, width: 900 },
+  );
 });
 
 test("desktop visual matrix keeps genuine live telemetry explicitly opt-in", () => {
@@ -75,6 +90,7 @@ test("desktop visual matrix builds rich data-backed launch options", () => {
       scenario: "add-filament",
       sourcePath: sourceDatabasePath,
       themeMode: "light",
+      windowPositionTolerance: 40,
       windowSize: { height: 840, width: 900 },
     },
   );

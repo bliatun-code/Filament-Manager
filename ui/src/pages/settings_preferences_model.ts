@@ -1,12 +1,17 @@
 import type { Locale } from "../lib/i18n";
 import type { ThemeMode } from "../lib/theme_mode";
+import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import { localeDefinition } from "../../../src-tauri/companion_browser/supported_locales.js";
 
 export type SettingsPreferenceMessageLabels = {
   themeSetTo: string;
 };
 
-type TranslateFn = (key: string, fallback?: string) => string;
+type TranslateFn = (
+  key: string,
+  fallback?: string,
+  params?: MessageParams,
+) => string;
 
 export function buildSettingsThemeSelectionMessage(
   mode: ThemeMode,
@@ -23,5 +28,9 @@ export function buildSettingsLocaleSelectionMessage(
   if (!definition) {
     return locale;
   }
-  return t(definition.selectionMessageKey, definition.selectionMessageFallback);
+  return t(
+    definition.selectionMessageKey,
+    definition.selectionMessageFallback,
+    { language: definition.nativeLabel },
+  );
 }

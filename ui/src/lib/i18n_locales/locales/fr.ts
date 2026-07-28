@@ -1833,10 +1833,7 @@ export const frDictionary: DictionaryNode = {
     failed: "échec",
     skipped: "ignoré",
     themeSetTo: "Mode d’apparence défini sur",
-    langSetNb: "Langue définie sur le norvégien.",
-    langSetEn: "Langue définie sur l’anglais.",
-    langSetDe: "Langue définie sur l’allemand.",
-    langSetFr: "Langue définie sur le français.",
+    languageSelected: "Langue sélectionnée : {language}.",
     confirmBulkSwatch: "Compléter automatiquement toutes les couleurs manquantes visibles ?",
     confirmBulkSwatchTapAgain:
       "Cliquez de nouveau sur Compléter les couleurs manquantes visibles pour confirmer.",

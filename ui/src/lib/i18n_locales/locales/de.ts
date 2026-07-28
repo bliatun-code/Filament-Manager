@@ -1782,10 +1782,7 @@ export const deDictionary: DictionaryNode = {
     noBackupValidationYet:
       "Prüfe hier eine Sicherungsdatei, um vor dem Import Kompatibilitätsdetails anzuzeigen.",
     themeSetTo: "Darstellung eingestellt auf",
-    langSetNb: "Sprache auf Norwegisch eingestellt.",
-    langSetEn: "Sprache auf Englisch eingestellt.",
-    langSetDe: "Sprache auf Deutsch eingestellt.",
-    langSetFr: "Sprache auf Französisch eingestellt.",
+    languageSelected: "Ausgewählte Sprache: {language}.",
     confirmDeletePrinter: "Drucker löschen",
     confirmDeletePrinterSuffix: "und seine Platzzuweisungen?",
     confirmDeleteTapAgain: "Klicke erneut auf Entfernen, um den Drucker zu löschen",

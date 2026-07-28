@@ -1476,10 +1476,7 @@ export const itITDictionary: DictionaryNode = {
     inventoryOverviewRendering: "Preparazione dei fogli di etichette...",
     inventoryOverviewSingleLabelHint:
       "Hai bisogno di una sola etichetta? Apri la bobina in Inventario e scegli Crea etichetta QR.",
-    langSetDe: "La lingua impostata è il tedesco.",
-    langSetEn: "La lingua impostata è l'inglese.",
-    langSetFr: "La lingua impostata è il francese.",
-    langSetNb: "La lingua impostata è il norvegese.",
+    languageSelected: "Lingua selezionata: {language}.",
     language: "Lingua",
     languageHint:
       "Scegli la lingua dell'app per tutte le visualizzazioni principali.",

@@ -25,6 +25,7 @@ export type BambuFilamentCodeBatchCreateBlockReason =
   | "busy"
   | "wrong_mode"
   | "missing_runtime"
+  | "invalid_weight"
   | "no_ready_rows"
   | "borrowed_owner_required";
 
@@ -263,6 +264,7 @@ export function buildBambuFilamentCodeBatchCreateState(input: {
   tauriAvailable: boolean;
   busy: boolean;
   isBambuMode: boolean;
+  initialWeightValid: boolean;
   borrowedOwnerRequired: boolean;
 }): BambuFilamentCodeBatchCreateState {
   const readyCount = input.batch.creatableRows.length;
@@ -275,6 +277,8 @@ export function buildBambuFilamentCodeBatchCreateState(input: {
     reason = "busy";
   } else if (!input.isBambuMode) {
     reason = "wrong_mode";
+  } else if (!input.initialWeightValid) {
+    reason = "invalid_weight";
   } else if (readyCount === 0) {
     reason = "no_ready_rows";
   } else if (input.borrowedOwnerRequired) {

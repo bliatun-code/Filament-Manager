@@ -90,10 +90,14 @@ pub(crate) fn list_spool_usage_points(
 ) -> InventoryResult<Vec<SpoolUsagePointRow>> {
     let mut stmt = conn.prepare(
         "SELECT captured_at, grams, source
-         FROM weight_readings
-         WHERE spool_id = ?1
-         ORDER BY captured_at ASC
-         LIMIT ?2",
+         FROM (
+            SELECT id, captured_at, grams, source
+            FROM weight_readings
+            WHERE spool_id = ?1
+            ORDER BY captured_at DESC, id DESC
+            LIMIT ?2
+         )
+         ORDER BY captured_at ASC, id ASC",
     )?;
     let rows = stmt.query_map(params![spool_id, limit], |row| {
         Ok(SpoolUsagePointRow {

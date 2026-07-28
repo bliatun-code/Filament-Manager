@@ -22,7 +22,24 @@ test("inventory form controls share the inventory input chrome", () => {
   assert.match(createActions, /SwatchSelectionPreviewHeader/);
   assert.match(createActions, /<ModalFactCard\s+padding="none"\s+surface="plain"/);
   assert.match(createActions, /selectionPreview/);
+  assert.match(createActions, /ModalFormField/);
+  assert.match(createActions, /inventory\.initialWeight/);
+  assert.match(createActions, /inventory\.homeLocationOptional/);
+  assert.match(createActions, /min=\{1\}/);
+  assert.match(createActions, /step=\{1\}/);
+  assert.match(createActions, /aria-invalid=\{initialWeightInvalid\}/);
+  assert.match(createActions, /inventory\.error\.invalidWeight/);
   assert.match(stockSource, /inventoryFormControlClassName/);
+  assert.match(stockSource, /ModalFormField/);
+  for (const key of [
+    "wishlist.vendorPlaceholder",
+    "wishlist.materialPlaceholder",
+    "wishlist.filamentName",
+    "wishlist.colorName",
+    "wishlist.hexOptional",
+  ]) {
+    assert.match(stockSource, new RegExp(key.replaceAll(".", "\\.")));
+  }
   assert.doesNotMatch(createActions, rawInventoryInputClass);
   assert.doesNotMatch(
     createActions,

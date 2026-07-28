@@ -92,6 +92,7 @@ function master(overrides: Partial<MasterCatalogRow> = {}): MasterCatalogRow {
 
 function renderBatchModal(options: {
   input?: string;
+  initialWeightValid?: boolean;
   locale?: Locale;
   masters?: MasterCatalogRow[];
   selectedMasterIds?: Record<string, string>;
@@ -108,6 +109,7 @@ function renderBatchModal(options: {
     tauriAvailable: true,
     busy: false,
     isBambuMode: true,
+    initialWeightValid: options.initialWeightValid ?? true,
     borrowedOwnerRequired: false,
   });
 
@@ -247,6 +249,16 @@ test("InventoryBambuBatchModal keeps review rows visible before batch creation",
   assert.match(html, /No match/);
   assert.match(html, /Only ready rows will be added; review rows are skipped/);
   assert.match(html, /Choose catalog row/);
+});
+
+test("InventoryBambuBatchModal explains when shared start weight blocks the batch", () => {
+  const html = renderBatchModal({
+    input: "53400",
+    initialWeightValid: false,
+  });
+
+  assert.match(html, /Weight value is invalid\./);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add ready matches/);
 });
 
 test("InventoryBambuBatchModal lets discontinued batch rows choose a catalog row", () => {

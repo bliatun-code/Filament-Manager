@@ -50,6 +50,11 @@ function renderPanel(options: {
   mode: InventoryCreateMode;
   masters?: MasterCatalogRow[];
   catalogQuery?: string;
+  manualColorName?: string;
+  manualFilamentName?: string;
+  manualHexColor?: string;
+  manualMaterial?: string;
+  manualVendor?: string;
   selectedMasterId?: string | null;
   locale?: Locale;
 }) {
@@ -67,11 +72,11 @@ function renderPanel(options: {
         catalogQuery,
         createMode: options.mode,
         isCatalogCreateMode: options.mode !== "manual",
-        manualColorName: "",
-        manualFilamentName: "",
-        manualHexColor: "",
-        manualMaterial: "PLA",
-        manualVendor: "Generic",
+        manualColorName: options.manualColorName ?? "",
+        manualFilamentName: options.manualFilamentName ?? "",
+        manualHexColor: options.manualHexColor ?? "",
+        manualMaterial: options.manualMaterial ?? "PLA",
+        manualVendor: options.manualVendor ?? "Generic",
         onCatalogQueryChange: () => {},
         onCreateModeChange: () => {},
         onManualColorNameChange: () => {},
@@ -191,6 +196,31 @@ test("InventoryStockSourcePanel hides Bambu code controls outside Bambu catalog 
   assert.match(manualHtml, /Manual details/);
   assert.doesNotMatch(manualHtml, /Filament Code/);
   assert.doesNotMatch(manualHtml, /Batch Filament Codes/);
+});
+
+test("InventoryStockSourcePanel keeps permanent labels on populated manual fields", () => {
+  const html = renderPanel({
+    mode: "manual",
+    manualVendor: "Prusament",
+    manualMaterial: "PETG",
+    manualFilamentName: "PETG Galaxy",
+    manualColorName: "Black",
+    manualHexColor: "#111827",
+  });
+
+  for (const [label, value] of [
+    ["Vendor", "Prusament"],
+    ["Material", "PETG"],
+    ["Filament name", "PETG Galaxy"],
+    ["Color name", "Black"],
+    ["Hex color", "#111827"],
+  ]) {
+    assert.match(
+      html,
+      new RegExp(`<label[^>]*>[\\s\\S]*?<span>${label}</span>[\\s\\S]*?value="${value}"`),
+    );
+  }
+  assert.match(html, /type="color" aria-label="Hex color"/);
 });
 
 test("InventoryStockSourcePanel renders ambiguous Bambu code matches for manual selection", () => {
