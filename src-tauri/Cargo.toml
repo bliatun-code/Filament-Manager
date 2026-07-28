@@ -7,23 +7,23 @@ license = "AGPL-3.0-or-later"
 [dependencies]
 filament-manager-core = { path = ".." }
 tauri = { version = "2.11.5", features = [] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
-rusqlite = { version = "0.40.1", features = ["backup", "bundled"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rusqlite = { workspace = true }
 axum = "0.8.9"
-tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "time", "sync"] }
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "time", "sync"] }
 open = { version = "5.4.0", features = ["shellexecute-on-windows"] }
-reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls"] }
-rand = "0.10.2"
+reqwest = { workspace = true }
+rand = { workspace = true }
 if-addrs = "0.15.0"
 sha2 = "0.11.0"
 qrcode = "0.14.1"
-base64 = "0.22.1"
+base64 = { version = "0.23.0", default-features = false, features = ["std"] }
 native-tls = "0.2.18"
-time = { version = "0.3.53", features = ["parsing"] }
+time = { workspace = true }
 url = "2.5.8"
 flate2 = "1.1.9"
-semver = "1.0.27"
+semver = "1.0.28"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"

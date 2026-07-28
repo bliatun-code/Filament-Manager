@@ -31,6 +31,7 @@ test("AppModal accessibility harness compiles into a standalone browser document
   assert.match(document, /<!doctype html>/i);
   assert.match(document, /AppModalAccessibilityHarness/);
   assert.match(document, /<style>/);
+  assert.match(document, /overflow-y:\s*auto/);
   assert.match(document, /<script>/);
 });
 

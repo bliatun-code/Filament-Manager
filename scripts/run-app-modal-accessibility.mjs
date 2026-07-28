@@ -54,9 +54,11 @@ const requireFromUi = createRequire(new URL("../ui/package.json", import.meta.ur
 export async function buildAppModalAccessibilityHarnessDocument() {
   const viteEntry = pathToFileURL(requireFromUi.resolve("vite")).href;
   const reactPluginEntry = pathToFileURL(requireFromUi.resolve("@vitejs/plugin-react")).href;
-  const [{ build }, { default: react }] = await Promise.all([
+  const tailwindPluginEntry = pathToFileURL(requireFromUi.resolve("@tailwindcss/vite")).href;
+  const [{ build }, { default: react }, { default: tailwindcss }] = await Promise.all([
     import(viteEntry),
     import(reactPluginEntry),
+    import(tailwindPluginEntry),
   ]);
   const buildResult = await build({
     root: UI_ROOT,
@@ -65,7 +67,7 @@ export async function buildAppModalAccessibilityHarnessDocument() {
       "process.env.NODE_ENV": JSON.stringify("production"),
     },
     logLevel: "error",
-    plugins: [react()],
+    plugins: [tailwindcss(), react()],
     build: {
       cssCodeSplit: false,
       emptyOutDir: false,

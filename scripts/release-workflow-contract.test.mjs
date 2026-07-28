@@ -655,8 +655,14 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
     "Install Playwright Chromium",
     "Run full verification",
   ]);
-  assert.match(macosJob, /- name: Install Playwright Chromium\s+run: npx playwright install chromium/);
-  assert.match(windowsJob, /- name: Install Playwright Chromium\s+run: npx playwright install chromium/);
+  assert.match(
+    macosJob,
+    /- name: Install Playwright Chromium\s+run: node \.\/node_modules\/playwright\/cli\.js install chromium/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Install Playwright Chromium\s+run: node \.\/node_modules\/playwright\/cli\.js install chromium/,
+  );
   assert.match(
     macosJob,
     /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e/,

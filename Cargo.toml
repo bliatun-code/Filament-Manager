@@ -10,14 +10,22 @@ default = []
 test-support = []
 
 [dependencies]
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
-rusqlite = { version = "0.40.1", features = ["backup", "bundled"] }
-reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls"] }
-rand = "0.10.2"
-time = { version = "0.3.53", features = ["parsing"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rusqlite = { workspace = true }
+reqwest = { workspace = true }
+rand = { workspace = true }
+time = { workspace = true }
 
 [workspace]
 members = ["src-tauri"]
 default-members = [".", "src-tauri"]
 resolver = "2"
+
+[workspace.dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+rusqlite = { version = "0.40.1", features = ["backup", "bundled"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "rustls"] }
+rand = "0.10.2"
+time = { version = "0.3.54", features = ["parsing"] }
