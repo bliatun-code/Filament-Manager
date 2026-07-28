@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   COMPANION_E2E_RECORD,
   assertCompanionDataE2eOptions,
+  formatCompanionDataE2eLaunchFailure,
   formatCompanionDataE2eReport,
   parseCompanionDataE2eCliOptions,
   readCompanionDataE2eState,
@@ -54,8 +55,33 @@ test("Companion data E2E CLI refuses every explicit source form", () => {
   );
   assert.deepEqual(parseCompanionDataE2eCliOptions(["--timeout-ms", "25000"]), {
     live: false,
+    startupTimeoutMs: undefined,
     timeoutMs: 25_000,
   });
+  assert.deepEqual(
+    parseCompanionDataE2eCliOptions([
+      "--startup-timeout-ms",
+      "120000",
+      "--timeout-ms=30000",
+    ]),
+    {
+      live: false,
+      startupTimeoutMs: 120_000,
+      timeoutMs: 30_000,
+    },
+  );
+  assert.throws(
+    () =>
+      parseCompanionDataE2eCliOptions([
+        "--startup-timeout-ms",
+        "invalid",
+      ]),
+    /--startup-timeout-ms must be a positive integer/,
+  );
+  assert.throws(
+    () => parseCompanionDataE2eCliOptions(["--timeout-ms=0"]),
+    /--timeout-ms must be a positive integer/,
+  );
 });
 
 test("Companion data E2E reader returns an empty workflow state for a clean fixture", () => {
@@ -144,4 +170,25 @@ test("Companion data E2E report lists all persisted workflow outcomes", () => {
   assert.match(report, /weight after return: 900 g/);
   assert.match(report, /final loan status: RETURNED/);
   assert.match(report, /LOAN_RETURNED/);
+});
+
+test("Companion data E2E launch failure includes the captured Tauri output", () => {
+  assert.equal(
+    formatCompanionDataE2eLaunchFailure({
+      errors: ["Companion server did not become reachable."],
+      launchOutputTail: "  Compiling filament-manager\nFinished dev profile  ",
+    }),
+    [
+      "Companion server did not become reachable.",
+      "Tauri launch output tail:",
+      "Compiling filament-manager\nFinished dev profile",
+    ].join("\n"),
+  );
+  assert.equal(
+    formatCompanionDataE2eLaunchFailure({
+      errors: ["Companion server did not become reachable."],
+      launchOutputTail: "   ",
+    }),
+    "Companion server did not become reachable.",
+  );
 });

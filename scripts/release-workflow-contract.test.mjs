@@ -665,7 +665,7 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
   );
   assert.match(
     macosJob,
-    /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e/,
+    /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000[ \t]*(?:\r?\n|$)/,
   );
 });
 

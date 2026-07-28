@@ -599,7 +599,7 @@ export async function runCompanionDataE2e(options = {}) {
       }),
     });
     if (launchedResult.errors.length > 0) {
-      throw new Error(launchedResult.errors.join("\n"));
+      throw new Error(formatCompanionDataE2eLaunchFailure(launchedResult));
     }
     result = {
       baseUrl: launchedResult.baseUrl,
@@ -640,6 +640,39 @@ export function formatCompanionDataE2eReport(result) {
   ].join("\n");
 }
 
+export function formatCompanionDataE2eLaunchFailure(result) {
+  const lines = [...result.errors];
+  const launchOutputTail =
+    typeof result.launchOutputTail === "string"
+      ? result.launchOutputTail.trim()
+      : "";
+  if (launchOutputTail) {
+    lines.push("Tauri launch output tail:", launchOutputTail);
+  }
+  return lines.join("\n");
+}
+
+function parsePositiveIntegerCliOption(args, optionName) {
+  const optionIndex = args.indexOf(optionName);
+  const inlinePrefix = `${optionName}=`;
+  const inlineOption = args.find((argument) => argument.startsWith(inlinePrefix));
+  if (optionIndex < 0 && inlineOption === undefined) {
+    return undefined;
+  }
+  const rawValue =
+    optionIndex >= 0
+      ? args[optionIndex + 1]
+      : inlineOption?.slice(inlinePrefix.length);
+  if (typeof rawValue !== "string" || !/^\d+$/.test(rawValue)) {
+    throw new Error(`${optionName} must be a positive integer.`);
+  }
+  const parsedValue = Number(rawValue);
+  if (!Number.isSafeInteger(parsedValue) || parsedValue <= 0) {
+    throw new Error(`${optionName} must be a positive integer.`);
+  }
+  return parsedValue;
+}
+
 export function parseCompanionDataE2eCliOptions(args) {
   if (
     args.some(
@@ -650,11 +683,13 @@ export function parseCompanionDataE2eCliOptions(args) {
       "Companion data E2E refuses --source. It always generates a sanitized fixture.",
     );
   }
-  const timeoutIndex = args.indexOf("--timeout-ms");
-  const parsedTimeout = timeoutIndex >= 0 ? Number.parseInt(args[timeoutIndex + 1], 10) : undefined;
   return {
     live: args.includes("--live"),
-    timeoutMs: Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : undefined,
+    startupTimeoutMs: parsePositiveIntegerCliOption(
+      args,
+      "--startup-timeout-ms",
+    ),
+    timeoutMs: parsePositiveIntegerCliOption(args, "--timeout-ms"),
   };
 }
 

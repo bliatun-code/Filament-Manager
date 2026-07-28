@@ -51,7 +51,7 @@ jobs:
 
       - name: Run data-backed Companion E2E
         timeout-minutes: 10
-        run: npm run qa:visual:companion:data-e2e
+        run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000
 
   windows-smoke:
     name: Windows Smoke
