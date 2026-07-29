@@ -158,7 +158,10 @@ test("macOS DMG smoke resolves staging below the user Applications directory", (
   );
 });
 
-test("macOS DMG smoke creates private staging and preserves existing apps", () => {
+test(
+  "macOS DMG smoke creates private staging and preserves existing apps",
+  { skip: process.platform === "win32" },
+  () => {
   const testDirectory = mkdtempSync(
     path.join(tmpdir(), "filament-manager-staging-test-"),
   );
@@ -189,9 +192,13 @@ test("macOS DMG smoke creates private staging and preserves existing apps", () =
     }
     rmSync(testDirectory, { force: true, recursive: true });
   }
-});
+  },
+);
 
-test("macOS DMG smoke removes only an empty Applications directory it created", () => {
+test(
+  "macOS DMG smoke removes only an empty Applications directory it created",
+  { skip: process.platform === "win32" },
+  () => {
   const testDirectory = mkdtempSync(
     path.join(tmpdir(), "filament-manager-staging-parent-test-"),
   );
@@ -212,9 +219,13 @@ test("macOS DMG smoke removes only an empty Applications directory it created", 
     }
     rmSync(testDirectory, { force: true, recursive: true });
   }
-});
+  },
+);
 
-test("macOS DMG smoke fails closed if its unique staging identity changes", () => {
+test(
+  "macOS DMG smoke fails closed if its unique staging identity changes",
+  { skip: process.platform === "win32" },
+  () => {
   const testDirectory = mkdtempSync(
     path.join(tmpdir(), "filament-manager-staging-identity-test-"),
   );
@@ -240,7 +251,8 @@ test("macOS DMG smoke fails closed if its unique staging identity changes", () =
     }
     rmSync(testDirectory, { force: true, recursive: true });
   }
-});
+  },
+);
 
 test(
   "macOS DMG smoke rejects a symlinked user Applications directory",
@@ -319,7 +331,10 @@ test("macOS DMG smoke keeps LaunchServices paths outside the requested log tree"
   );
 });
 
-test("macOS DMG smoke publishes all runtime logs atomically with mode 0600", () => {
+test(
+  "macOS DMG smoke publishes all runtime logs atomically with mode 0600",
+  { skip: process.platform === "win32" },
+  () => {
   const testDirectory = mkdtempSync(
     path.join(tmpdir(), "filament-manager-log-publish-test-"),
   );
@@ -359,7 +374,8 @@ test("macOS DMG smoke publishes all runtime logs atomically with mode 0600", () 
   } finally {
     rmSync(testDirectory, { force: true, recursive: true });
   }
-});
+  },
+);
 
 test(
   "macOS DMG smoke refuses a symlinked requested log destination",
