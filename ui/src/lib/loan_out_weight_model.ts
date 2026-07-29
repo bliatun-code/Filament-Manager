@@ -1,9 +1,13 @@
 import type { LoanableSpool } from "./loan_out_data_source";
+import type { NumberDisplayLocale } from "./number_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import { formatGrams as formatWeightGrams } from "./weight_display";
 
-export function formatLoanOutGrams(value?: number | null): string {
-  return formatWeightGrams(value, "zero");
+export function formatLoanOutGrams(
+  value?: number | null,
+  locale: NumberDisplayLocale = "en",
+): string {
+  return formatWeightGrams(value, "zero", locale);
 }
 
 export function resolveLoanableSpoolTareWeight(spool: LoanableSpool): number {

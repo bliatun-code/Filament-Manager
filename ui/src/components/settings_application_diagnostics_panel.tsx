@@ -19,6 +19,7 @@ import {
   formatDiagnosticBytes,
   type SettingsDiagnosticsRequestStatus,
 } from "../pages/settings_application_diagnostics_model";
+import type { Locale } from "../lib/i18n";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -55,6 +56,7 @@ export function SettingsApplicationDiagnosticsPanel({
   diagnosticsStatus,
   supportBundleError,
   supportBundleStatus,
+  locale,
   tauri,
   t,
   onDownloadSanitizedSupportBundle,
@@ -65,6 +67,7 @@ export function SettingsApplicationDiagnosticsPanel({
   diagnosticsStatus: SettingsDiagnosticsRequestStatus;
   supportBundleError: string | null;
   supportBundleStatus: SettingsDiagnosticsRequestStatus;
+  locale: Locale;
   tauri: boolean;
   t: TranslateFn;
   onDownloadSanitizedSupportBundle: () => void;
@@ -124,7 +127,7 @@ export function SettingsApplicationDiagnosticsPanel({
               />
               <SettingsMetricTile
                 label={t("settings.diagnosticsDatabaseSize", "Database size")}
-                value={formatDiagnosticBytes(diagnostics.database.size_bytes)}
+                value={formatDiagnosticBytes(diagnostics.database.size_bytes, locale)}
               />
             </div>
 

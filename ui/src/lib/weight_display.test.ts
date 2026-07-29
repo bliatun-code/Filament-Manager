@@ -9,6 +9,11 @@ test("formatGrams clamps negative values and supports empty display modes", () =
   assert.equal(formatGrams(undefined, "zero"), "0 g");
 });
 
+test("formatGrams localizes grouping and decimal separators", () => {
+  assert.equal(formatGrams(1234.5, "dash", "en"), "1,234.5 g");
+  assert.equal(formatGrams(1234.5, "dash", "nb"), "1\u00a0234,5 g");
+});
+
 test("parsePositiveWeight accepts only positive safe whole grams", () => {
   assert.equal(parsePositiveWeight("850"), 850);
   assert.equal(parsePositiveWeight(" 850 "), 850);

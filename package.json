@@ -40,6 +40,7 @@
     "fmt:rust": "cargo fmt --all -- --check",
     "test:companion": "node ./scripts/run-companion-tests.mjs",
     "test:a11y:app-modal": "node ./scripts/run-app-modal-accessibility.mjs",
+    "test:a11y:data-backed": "node ./scripts/run-data-backed-accessibility.mjs",
     "test:scripts": "node --test ./scripts/*.test.mjs",
     "test:portability": "npm run check:path-portability && npm run check:command-portability && node --test ./scripts/check-path-portability.test.mjs ./scripts/check-command-portability.test.mjs ./scripts/doctor-command.test.mjs ./scripts/doctor-database.test.mjs ./scripts/export-seed-catalog.test.mjs ./scripts/normalize-msi-version.test.mjs ./scripts/release-workflow-contract.test.mjs ./scripts/run-tauri.test.mjs ./scripts/run-visual-qa.test.mjs ./scripts/run-desktop-screenshot-gate.test.mjs ./scripts/run-companion-screenshot-gate.test.mjs ./scripts/visual-qa-db.test.mjs ./scripts/check-companion-css-vars.test.mjs ./scripts/shell-environment-command.test.mjs ./scripts/ui-source-utils.test.mjs",
     "test:rust": "npm run fmt:rust && cargo test && cargo clippy --all-targets -- -D warnings && cargo clippy --release --all-targets -- -D warnings",
@@ -52,7 +53,7 @@
     "verify:macos-local": "node ./scripts/verify-macos-local.mjs",
     "verify:macos-release": "node ./scripts/verify-macos-release.mjs",
     "smoke:macos-dmg": "node ./scripts/smoke-macos-dmg.mjs",
-    "smoke": "npm --prefix ./ui run build && npm run lint:ui && npm run test:companion && npm run test:scripts && npm run test:a11y:app-modal && npm run test:ui && npm run test:performance && npm run check:contracts && npm run doctor",
+    "smoke": "npm --prefix ./ui run build && npm run lint:ui && npm run test:companion && npm run test:scripts && npm run test:a11y:app-modal && npm run test:a11y:data-backed && npm run test:ui && npm run test:performance && npm run check:contracts && npm run doctor",
     "verify": "npm run smoke && npm run test:rust",
     "qa:visual:db": "node ./scripts/visual-qa-db.mjs",
     "qa:release:upgrade-fixture": "node ./scripts/prepare-release-upgrade-fixture.mjs",
@@ -77,6 +78,7 @@
     "better-sqlite3": "^13.0.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@tauri-apps/cli": "^2.11.4",
     "playwright": "^1.62.0",
     "tsx": "^4.23.1"

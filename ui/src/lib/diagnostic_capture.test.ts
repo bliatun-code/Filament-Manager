@@ -13,6 +13,7 @@ import {
   diagnosticTraySnapshotKey,
   exportDiagnosticCaptureSessionCsv,
   extractDiagnosticTraySnapshots,
+  formatIntervalMs,
   updateDiagnosticCaptureSessionFromPayload,
 } from "./diagnostic_capture";
 
@@ -422,10 +423,16 @@ test("diagnostic tray helpers build fallback display trays", () => {
       remaining_grams: 870,
       match_status: null,
       match_note:
-        "RFID: tag-1 · uuid-1 · AMS bits: slot present, RFID read done, Bambu tag bit · AMS estimate: 870 g / 1000 g · 87% · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
+        "RFID: tag-1 · uuid-1 · AMS bits: slot present, RFID read done, Bambu tag bit · AMS estimate: 870 g / 1,000 g · 87% · Settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle · Nozzle range: 190-240 C",
     },
   ]);
   assert.equal(countDiagnosticIdentitySignals(session.fields), 2);
+});
+
+test("diagnostic intervals use the selected locale", () => {
+  assert.equal(formatIntervalMs(1250, "en"), "1.3 s");
+  assert.equal(formatIntervalMs(1250, "nb"), "1,3 s");
+  assert.equal(formatIntervalMs(90_000, "nb"), "1,5 min");
 });
 
 test("diagnostic tray snapshots ignore implausible AMS estimates and nozzle settings", () => {

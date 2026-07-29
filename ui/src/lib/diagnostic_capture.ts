@@ -1,3 +1,8 @@
+import {
+  formatDisplayInteger,
+  formatDisplayNumber,
+  type NumberDisplayLocale,
+} from "./number_display";
 import type { BambuLiveIntegrationEntry } from "./tauri_client";
 
 export type DiagnosticCaptureField = {
@@ -252,19 +257,28 @@ export function diffMs(laterIso: string, earlierIso: string): number | null {
   return Math.max(0, later - earlier);
 }
 
-export function formatIntervalMs(value: number | null): string {
+export function formatIntervalMs(
+  value: number | null,
+  locale: NumberDisplayLocale = "en",
+): string {
   if (value == null) {
     return "—";
   }
   const seconds = value / 1000;
   if (seconds < 1) {
-    return `${Math.round(value)} ms`;
+    return `${formatDisplayInteger(value, locale)} ms`;
   }
   if (seconds < 60) {
-    return `${seconds.toFixed(seconds < 10 ? 1 : 0)} s`;
+    return `${formatDisplayNumber(seconds, locale, {
+      maximumFractionDigits: seconds < 10 ? 1 : 0,
+      minimumFractionDigits: seconds < 10 ? 1 : 0,
+    })} s`;
   }
   const minutes = seconds / 60;
-  return `${minutes.toFixed(minutes < 10 ? 1 : 0)} min`;
+  return `${formatDisplayNumber(minutes, locale, {
+    maximumFractionDigits: minutes < 10 ? 1 : 0,
+    minimumFractionDigits: minutes < 10 ? 1 : 0,
+  })} min`;
 }
 
 export function buildDiagnosticCaptureSession(

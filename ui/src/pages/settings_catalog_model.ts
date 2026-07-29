@@ -3,6 +3,10 @@ import {
   normalizeSwatchValue,
   suggestHexFromColor,
 } from "../lib/color_utils";
+import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
 import bambuMaterialFamiliesJson from "../../../src/data/bambu_material_families.json?raw";
 
@@ -145,8 +149,18 @@ export type SettingsCatalogRefreshSummaryLabels = {
 export function buildSettingsCatalogRefreshSuccessMessage(
   summary: CatalogRefreshResult,
   labels: SettingsCatalogRefreshSummaryLabels,
+  locale: NumberDisplayLocale = "en",
 ): string {
-  return `${labels.imported} ${summary.imported} · ${labels.reactivated} ${summary.reactivated_count} · ${labels.discontinued} ${summary.discontinued_count}`;
+  return `${labels.imported} ${formatDisplayInteger(
+    summary.imported,
+    locale,
+  )} · ${labels.reactivated} ${formatDisplayInteger(
+    summary.reactivated_count,
+    locale,
+  )} · ${labels.discontinued} ${formatDisplayInteger(
+    summary.discontinued_count,
+    locale,
+  )}`;
 }
 
 export type SettingsCatalogRefreshMessageLabels = {

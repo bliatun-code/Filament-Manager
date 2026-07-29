@@ -36,8 +36,61 @@ function isFormElementLike(target) {
   return tagName === "FORM";
 }
 
+function focusRootFlowControl(documentRef, control) {
+  const id = String(control?.getAttribute?.("id") || "").trim();
+  const renderedControl = id ? documentRef?.getElementById?.(id) : null;
+  const focusTarget = renderedControl || control;
+  if (typeof focusTarget?.focus !== "function") {
+    return;
+  }
+  try {
+    focusTarget.focus({ preventScroll: true });
+  } catch {
+    focusTarget.focus();
+  }
+}
+
+function handleRootFlowTabKeydown(event, options) {
+  const key = String(event?.key || "");
+  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(key)) {
+    return false;
+  }
+
+  const currentTab = event?.target?.closest?.('[role="tab"][data-action="set-root-flow"]');
+  const tablist = currentTab?.closest?.('[role="tablist"]');
+  const tabs = Array.from(
+    tablist?.querySelectorAll?.('[role="tab"][data-action="set-root-flow"]') || [],
+  ).filter((tab) => !tab.disabled && tab.getAttribute?.("aria-disabled") !== "true");
+  const currentIndex = tabs.indexOf(currentTab);
+  if (currentIndex < 0 || tabs.length === 0) {
+    return false;
+  }
+
+  const nextIndex =
+    key === "Home"
+      ? 0
+      : key === "End"
+        ? tabs.length - 1
+        : key === "ArrowRight"
+          ? (currentIndex + 1) % tabs.length
+          : (currentIndex - 1 + tabs.length) % tabs.length;
+  const nextTab = tabs[nextIndex];
+  const nextFlow = String(nextTab?.getAttribute?.("data-root-flow") || "").trim();
+  if (!nextFlow) {
+    return false;
+  }
+
+  event.preventDefault?.();
+  options.setRootFlow(nextFlow);
+  focusRootFlowControl(options.documentRef, nextTab);
+  return true;
+}
+
 export function handleCompanionKeydownEvent(event, options) {
   if (options.overlayFocusLifecycle?.handleKeydown?.(event)) {
+    return true;
+  }
+  if (handleRootFlowTabKeydown(event, options)) {
     return true;
   }
   if (event?.key === "Escape" && options.state.detailOpen) {
@@ -66,7 +119,10 @@ export function handleCompanionClickEvent(event, options) {
     showMoreInventory: options.showMoreInventory,
     showMoreLoans: options.showMoreLoans,
     showMoreLoanPicker: options.showMoreLoanPicker,
-    setRootFlow: options.setRootFlow,
+    setRootFlow: (nextFlow) => {
+      options.setRootFlow(nextFlow);
+      focusRootFlowControl(options.documentRef, target);
+    },
     startPrinterSlotAssignment: options.startPrinterSlotAssignment,
     startPrinterWeightUpdate: options.startPrinterWeightUpdate,
     toggleBorrowedInForm: options.toggleBorrowedInForm,

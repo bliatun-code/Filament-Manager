@@ -102,10 +102,12 @@ to open the normal inventory entry flow.
 
 The dismissible **Finish setup** checklist appears after the app has loaded a
 usable library. It links to adding or importing the first spool, optional
-printer and browser-access setup, and the first full backup. Completion is
-derived from the current library and this device's validated backup history;
-temporary host or network failures do not turn an unavailable library into a
-list of missing setup steps.
+printer and browser-access setup, and the first full backup. Required inventory
+and backup work is shown separately from optional printer and Companion work.
+Completed items move into one collapsed summary, and progress counts only the
+required steps. Completion is derived from the current library and this
+device's validated backup history; temporary host or network failures do not
+turn an unavailable library into a list of missing setup steps.
 
 ### Inventory
 
@@ -277,8 +279,10 @@ French, Spanish, Brazilian Portuguese, Italian, Polish, Dutch, Czech,
 Simplified Chinese, Traditional Chinese, Japanese, Korean, Turkish, Ukrainian,
 Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
 stored locally for each surface. English remains the fallback when needed.
-Corrections to community translations can be proposed through the project’s
-GitHub issues or pull requests.
+Corrections to community translations can be proposed through the dedicated
+[translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
+or pull requests. The current language set stays fixed while the existing
+non-English catalogs receive community and native-language review.
 
 Choose **Check for updates** when you want to compare the installed version
 with the latest published GitHub release. The check is not automatic. If release

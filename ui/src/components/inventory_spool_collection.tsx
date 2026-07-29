@@ -19,6 +19,7 @@ import {
   inventorySwatchInteractiveInsetStyle,
 } from "../lib/inventory_swatch_style";
 import { materialTone } from "../lib/material_theme";
+import { formatDisplayInteger } from "../lib/number_display";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import { formatGrams } from "../lib/weight_display";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
@@ -124,7 +125,7 @@ export function InventorySpoolCollection({
   resolvedTheme,
   selectedSpoolId,
 }: InventorySpoolCollectionProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const collectionId = useId();
   const [visibleRollLimitsByGroup, setVisibleRollLimitsByGroup] = useState<Map<string, number>>(
     () => new Map(),
@@ -234,7 +235,8 @@ export function InventorySpoolCollection({
                         {t("inventory.rolls", "Rolls")}: {group.rolls.length}
                       </span>
                       <span>
-                        {t("inventory.total", "Total")}: {formatGrams(group.totalRemaining)}
+                        {t("inventory.total", "Total")}:{" "}
+                        {formatGrams(group.totalRemaining, "dash", locale)}
                       </span>
                     </div>
                     {isBorrowedInOwnership(group.ownershipType) && group.ownerName ? (
@@ -280,7 +282,7 @@ export function InventorySpoolCollection({
                           {t("inventory.remaining", "Remaining")}
                         </div>
                         <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
-                          {formatGrams(singleVisibleRoll.remainingGrams)}
+                          {formatGrams(singleVisibleRoll.remainingGrams, "dash", locale)}
                         </div>
                       </div>
                     </div>
@@ -330,7 +332,7 @@ export function InventorySpoolCollection({
                                 {t("inventory.remaining", "Remaining")}
                               </div>
                               <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
-                                {formatGrams(roll.remainingGrams)}
+                                {formatGrams(roll.remainingGrams, "dash", locale)}
                               </div>
                             </div>
                           </button>
@@ -415,7 +417,7 @@ export function InventorySpoolCollection({
                       {t("inventory.remaining", "Remaining")}
                     </div>
                     <div className="mt-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {formatGrams(roll.remainingGrams)}
+                      {formatGrams(roll.remainingGrams, "dash", locale)}
                     </div>
                   </div>
                 </div>
@@ -427,9 +429,13 @@ export function InventorySpoolCollection({
         <div className={inventoryView === "CARDS" ? "col-span-full" : undefined}>
           <div className="surface-subtle flex flex-col items-center justify-center gap-2 border-dashed px-4 py-3 sm:flex-row sm:gap-3">
             <div className="text-xs font-medium text-slate-600 dark:text-slate-300" aria-live="polite">
-              <span className="tabular-nums">{collectionWindow.representedSpoolCount}</span>
+              <span className="tabular-nums">
+                {formatDisplayInteger(collectionWindow.representedSpoolCount, locale)}
+              </span>
               {" / "}
-              <span className="tabular-nums">{collectionWindow.totalSpoolCount}</span>{" "}
+              <span className="tabular-nums">
+                {formatDisplayInteger(collectionWindow.totalSpoolCount, locale)}
+              </span>{" "}
               {collectionWindow.totalSpoolCount === 1
                 ? t("inventory.spoolResult", "spool")
                 : t("inventory.spoolResults", "spools")}

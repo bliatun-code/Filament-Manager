@@ -20,6 +20,11 @@ import {
   type DiagnosticFilterKey,
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
+import {
+  formatDisplayInteger,
+  formatDisplayPercent,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 import type {
   BambuLiveIntegrationSettings,
   BambuLiveObservedState,
@@ -61,6 +66,7 @@ type BuildSettingsBambuLiveDiagnosticsModelInput = {
   diagnosticSort: DiagnosticSortKey;
   formatDateTime: FormatDateTimeFn;
   liveConfig: BambuLiveIntegrationSettings | null;
+  locale?: NumberDisplayLocale;
   printerSlots?: PrinterAmsSlotRow[];
   selectedChartFieldPath?: string | null;
   spoolRows: NormalizedSpoolWithMasterRow[];
@@ -97,13 +103,14 @@ const WAITING_FOR_STATUS_BURST_NOTE =
 function buildSettingsBambuLiveSummaryParts(
   source: SettingsBambuLiveSummarySource,
   t: TranslateFn,
+  locale: NumberDisplayLocale,
 ): string[] {
   const parts: string[] = [];
   if (source.progressPercent != null) {
-    parts.push(`${source.progressPercent}%`);
+    parts.push(formatDisplayPercent(source.progressPercent, locale, 1));
   }
   if (source.remainingMinutes != null) {
-    parts.push(`${source.remainingMinutes} min`);
+    parts.push(`${formatDisplayInteger(source.remainingMinutes, locale)} min`);
   }
   if (source.activeTrayIndex != null) {
     parts.push(
@@ -116,17 +123,28 @@ function buildSettingsBambuLiveSummaryParts(
   }
   if (source.amsHumidityIndex != null) {
     parts.push(
-      `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${source.amsHumidityIndex}`,
+      `${t("settings.bambuLiveSummaryAmsHumidity", "AMS humidity")} ${formatDisplayInteger(
+        source.amsHumidityIndex,
+        locale,
+      )}`,
     );
   }
   if (source.jobStateCode != null) {
-    parts.push(`${t("settings.bambuLiveSummaryJobState", "Job state")} ${source.jobStateCode}`);
+    parts.push(
+      `${t("settings.bambuLiveSummaryJobState", "Job state")} ${formatDisplayInteger(
+        source.jobStateCode,
+        locale,
+      )}`,
+    );
   }
   if (source.amsStatusCode != null) {
     const statusValue =
       source.amsStatusMain != null && source.amsStatusSub != null
-        ? `${source.amsStatusMain}/${source.amsStatusSub}`
-        : String(source.amsStatusCode);
+        ? `${formatDisplayInteger(source.amsStatusMain, locale)}/${formatDisplayInteger(
+            source.amsStatusSub,
+            locale,
+          )}`
+        : formatDisplayInteger(source.amsStatusCode, locale);
     parts.push(`${t("settings.bambuLiveSummaryAmsStatus", "AMS status")} ${statusValue}`);
   }
   return parts;
@@ -135,6 +153,7 @@ function buildSettingsBambuLiveSummaryParts(
 export function buildSettingsBambuLiveFallbackSummaryParts(
   diagnosticFields: DiagnosticCaptureSession["fields"],
   t: TranslateFn,
+  locale: NumberDisplayLocale = "en",
 ): string[] {
   const fallbackSummary = buildDiagnosticFallbackSummary(diagnosticFields);
   return buildSettingsBambuLiveSummaryParts(
@@ -150,12 +169,14 @@ export function buildSettingsBambuLiveFallbackSummaryParts(
       remainingMinutes: fallbackSummary.remainingMinutes,
     },
     t,
+    locale,
   );
 }
 
 export function buildSettingsBambuLiveObservedSummaryParts(
   observedState: BambuLiveObservedState | null,
   t: TranslateFn,
+  locale: NumberDisplayLocale = "en",
 ): string[] {
   return buildSettingsBambuLiveSummaryParts(
     {
@@ -170,6 +191,7 @@ export function buildSettingsBambuLiveObservedSummaryParts(
       remainingMinutes: observedState?.remaining_minutes,
     },
     t,
+    locale,
   );
 }
 
@@ -336,6 +358,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   diagnosticSort,
   formatDateTime,
   liveConfig,
+  locale = "en",
   printerSlots,
   selectedChartFieldPath,
   spoolRows,
@@ -359,7 +382,11 @@ export function buildSettingsBambuLiveDiagnosticsModel({
       tray,
     ]),
   );
-  const displayTrays = buildDiagnosticDisplayTrays(observedState?.trays ?? [], diagnosticFields);
+  const displayTrays = buildDiagnosticDisplayTrays(
+    observedState?.trays ?? [],
+    diagnosticFields,
+    locale,
+  );
   const captureSessionStartedAt = diagnosticSession?.startedAt ?? null;
   const captureSessionSeededAt = diagnosticSession?.seededFromObservedAt ?? null;
   const captureSessionLastSeenAt = latestDiagnosticCaptureSeenAt(
@@ -370,8 +397,16 @@ export function buildSettingsBambuLiveDiagnosticsModel({
   const identityFieldCount = countDiagnosticIdentitySignals(diagnosticFields);
   const amsReadInProgress = isDiagnosticAmsReadInProgress(diagnosticFields);
   const signalQualityBuckets = buildSettingsBambuLiveSignalQualityBuckets(diagnosticFields, t);
-  const fallbackSummaryParts = buildSettingsBambuLiveFallbackSummaryParts(diagnosticFields, t);
-  const observedSummaryParts = buildSettingsBambuLiveObservedSummaryParts(observedState, t);
+  const fallbackSummaryParts = buildSettingsBambuLiveFallbackSummaryParts(
+    diagnosticFields,
+    t,
+    locale,
+  );
+  const observedSummaryParts = buildSettingsBambuLiveObservedSummaryParts(
+    observedState,
+    t,
+    locale,
+  );
   const statusNote = buildSettingsBambuLiveStatusNote({
     fallbackSummaryParts,
     observedState,
@@ -399,6 +434,7 @@ export function buildSettingsBambuLiveDiagnosticsModel({
     catalogRows,
     captureTrayByKey,
     displayTrays,
+    locale,
     printerSlots,
     spoolRows,
     t,

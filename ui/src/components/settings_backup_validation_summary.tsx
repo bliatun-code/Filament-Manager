@@ -1,5 +1,7 @@
 import { SettingsMetricTile } from "./settings_ui";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
+import type { Locale } from "../lib/i18n";
+import { formatDisplayInteger } from "../lib/number_display";
 import type { BackupValidationStats } from "../lib/tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -8,6 +10,7 @@ type SettingsBackupValidationSummaryProps = {
   hasExtraTables: boolean;
   hasMissingTables: boolean;
   hasWarnings: boolean;
+  locale?: Locale;
   summary: BackupValidationStats;
   t: TranslateFn;
 };
@@ -16,6 +19,7 @@ export function SettingsBackupValidationSummary({
   hasExtraTables,
   hasMissingTables,
   hasWarnings,
+  locale = "en",
   summary,
   t,
 }: SettingsBackupValidationSummaryProps) {
@@ -39,7 +43,10 @@ export function SettingsBackupValidationSummary({
         />
         <SettingsMetricTile
           label={t("settings.validationTables", "Tables")}
-          value={`${summary.present_tables}/${summary.expected_tables}`}
+          value={`${formatDisplayInteger(
+            summary.present_tables,
+            locale,
+          )}/${formatDisplayInteger(summary.expected_tables, locale)}`}
           className="bg-white/80 dark:bg-slate-900/60"
         />
         <SettingsMetricTile
@@ -60,7 +67,9 @@ export function SettingsBackupValidationSummary({
             {t("settings.validationMissingTables", "Missing tables")}
           </div>
           <div className="mt-1 text-xs leading-relaxed">
-            {summary.missing_tables.length > 0 ? summary.missing_tables.join(", ") : "0"}
+            {summary.missing_tables.length > 0
+              ? summary.missing_tables.join(", ")
+              : formatDisplayInteger(0, locale)}
           </div>
         </div>
         <div
@@ -74,7 +83,9 @@ export function SettingsBackupValidationSummary({
             {t("settings.validationExtraTables", "Extra tables")}
           </div>
           <div className="mt-1 text-xs leading-relaxed">
-            {summary.extra_tables.length > 0 ? summary.extra_tables.join(", ") : "0"}
+            {summary.extra_tables.length > 0
+              ? summary.extra_tables.join(", ")
+              : formatDisplayInteger(0, locale)}
           </div>
         </div>
       </div>

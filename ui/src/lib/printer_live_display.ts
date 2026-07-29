@@ -6,6 +6,10 @@ import {
 } from "./color_utils";
 import { parseDateTimeMs } from "./date_time";
 import { parseSpoolStatus } from "./inventory_domain";
+import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "./number_display";
 import type {
   BambuLiveIntegrationEntry,
   BambuLiveObservedTray,
@@ -23,7 +27,11 @@ const LIGHT_PRINTER_SWATCH_SURFACE_BORDER = "rgba(100, 116, 139, 0.42)";
 const LIGHT_PRINTER_SWATCH_HOVER_BORDER = "rgba(2, 132, 199, 0.86)";
 const LIGHT_PRINTER_SWATCH_SELECTED_BORDER = "rgba(2, 132, 199, 0.94)";
 
-export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn): string | null {
+export function formatRelativeAge(
+  raw: string | null | undefined,
+  t: TranslateFn,
+  locale: NumberDisplayLocale = "en",
+): string | null {
   const parsedMs = parseDateTimeMs(raw);
   if (parsedMs == null) {
     return null;
@@ -34,14 +42,14 @@ export function formatRelativeAge(raw: string | null | undefined, t: TranslateFn
     return t("common.justNow", "just now");
   }
   if (diffMinutes < 60) {
-    return `${diffMinutes} ${t("common.minutes", "min")}`;
+    return `${formatDisplayInteger(diffMinutes, locale)} ${t("common.minutes", "min")}`;
   }
   const diffHours = Math.round(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours} ${t("common.hoursShort", "h")}`;
+    return `${formatDisplayInteger(diffHours, locale)} ${t("common.hoursShort", "h")}`;
   }
   const diffDays = Math.round(diffHours / 24);
-  return `${diffDays} ${t("common.daysShort", "d")}`;
+  return `${formatDisplayInteger(diffDays, locale)} ${t("common.daysShort", "d")}`;
 }
 
 export function isOlderThanMinutes(raw?: string | null, minutes = 10): boolean {

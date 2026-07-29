@@ -130,6 +130,15 @@ test("settings import success message describes full backup imports", () => {
     }),
     "Full backup imported successfully. Rows: 42. This device is now prepared as the next host. Review Library roles and save when ready to take over.",
   );
+  assert.equal(
+    buildSettingsImportSuccessMessage({
+      importedOnClient: false,
+      labels: importLabels,
+      locale: "nb",
+      result: importStats({ detected_format: "FULL_BACKUP", imported_count: 1234 }),
+    }),
+    "Full backup imported successfully. Rows: 1\u00a0234.",
+  );
 });
 
 test("settings backup export success message includes auto validation guidance", () => {

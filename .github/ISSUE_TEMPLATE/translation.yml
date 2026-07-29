@@ -1,0 +1,86 @@
+name: Translation correction
+description: Report incorrect, unclear, truncated, or untranslated text in a language already available in Filament Manager.
+title: "[Translation]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for improving an existing translation. Filament Manager is currently keeping its 21-language set stable while the published catalogs receive community and native-language review.
+
+        Please do not include printer addresses, access codes, pairing links, personal inventory details, or other private data in text or screenshots.
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      description: Select the existing app language where the problem appears.
+      options:
+        - Norsk (bokmål)
+        - Deutsch
+        - Français
+        - Español
+        - Português (Brasil)
+        - Italiano
+        - Polski
+        - Nederlands
+        - Čeština
+        - 简体中文
+        - 日本語
+        - 한국어
+        - 繁體中文
+        - Türkçe
+        - Українська
+        - Русский
+        - Magyar
+        - Svenska
+        - Dansk
+        - Suomi
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: "0.22.0"
+    validations:
+      required: true
+  - type: textarea
+    id: location
+    attributes:
+      label: Where does the text appear?
+      description: Name the desktop or Companion page, panel, button, message, or workflow.
+      placeholder: "Desktop → Settings → General → Language"
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current text
+      description: Copy the text exactly as it appears, or provide a sanitized screenshot.
+    validations:
+      required: true
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested correction
+      description: Include the preferred wording and, if useful, why it is clearer or more accurate.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Desktop app
+        - Companion browser app
+        - Label or exported document
+        - User guide or repository documentation
+        - More than one surface
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Optional context about terminology, grammar, available space, or plural/number formatting.

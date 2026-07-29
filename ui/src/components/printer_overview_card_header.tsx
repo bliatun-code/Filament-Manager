@@ -39,7 +39,7 @@ export function PrinterOverviewCardHeader({
   liveConfig,
   resolvedTheme,
 }: PrinterOverviewCardHeaderProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const configuredSetup = describeConfiguredPrinterSetup(
     t,
     printer.printer.model,
@@ -50,8 +50,8 @@ export function PrinterOverviewCardHeader({
     "compact",
     resolvedTheme,
   );
-  const usageMetrics = buildPrinterUsageMetrics(printer.usage, t);
-  const liveTelemetry = buildPrinterLiveTelemetry(liveConfig, t);
+  const usageMetrics = buildPrinterUsageMetrics(printer.usage, t, locale);
+  const liveTelemetry = buildPrinterLiveTelemetry(liveConfig, t, locale);
 
   return (
     <div className="flex flex-wrap items-start justify-between gap-3">

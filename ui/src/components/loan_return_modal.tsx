@@ -49,7 +49,7 @@ export function LoanReturnModal({
   onGramsChange,
   onNoteChange,
 }: LoanReturnModalProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
 
   if (!loan) {
@@ -134,7 +134,11 @@ export function LoanReturnModal({
               <ModalDetailItem
                 label={isInbound ? t("loans.startWeight", "Start") : t("loans.out", "Out")}
               >
-                {formatGrams(toMeasuredTotalWeight(loan, loan.loan.grams_out))}
+                {formatGrams(
+                  toMeasuredTotalWeight(loan, loan.loan.grams_out),
+                  "zero",
+                  locale,
+                )}
               </ModalDetailItem>
             </ModalDetailGrid>
           </LoanSwatchInsetCard>

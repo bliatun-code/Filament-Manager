@@ -14,12 +14,12 @@ type LoanReturnSummaryCardProps = {
   loan: NormalizedLoanDetailsRow;
 };
 
-function summaryGrams(value: number | null): string {
-  return value == null ? "—" : formatGrams(value);
+function summaryGrams(value: number | null, locale: string): string {
+  return value == null ? "—" : formatGrams(value, "zero", locale);
 }
 
 export function LoanReturnSummaryCard({ grams, loan }: LoanReturnSummaryCardProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const isInbound = isInboundLoan(loan);
   const summary = resolveLoanReturnSummary(loan, grams);
 
@@ -39,7 +39,7 @@ export function LoanReturnSummaryCard({ grams, loan }: LoanReturnSummaryCardProp
               : t("loans.loanedGrams", "Loaned")
           }
         >
-          {summaryGrams(summary.loanedGrams)}
+          {summaryGrams(summary.loanedGrams, locale)}
         </ModalDetailItem>
         <ModalDetailItem
           label={
@@ -48,10 +48,10 @@ export function LoanReturnSummaryCard({ grams, loan }: LoanReturnSummaryCardProp
               : t("loans.returnedFilamentGrams", "Returned")
           }
         >
-          {summaryGrams(summary.returnedGrams)}
+          {summaryGrams(summary.returnedGrams, locale)}
         </ModalDetailItem>
         <ModalDetailItem label={t("loans.estimatedUsedGrams", "Estimated used")}>
-          {summaryGrams(summary.estimatedUsedGrams)}
+          {summaryGrams(summary.estimatedUsedGrams, locale)}
         </ModalDetailItem>
       </ModalDetailGrid>
     </ModalFactCard>

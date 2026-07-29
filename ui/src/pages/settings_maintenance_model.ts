@@ -1,3 +1,7 @@
+import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 import type { CatalogResetStats } from "../lib/tauri_client";
 
 export type SettingsCatalogResetMessageLabels = {
@@ -23,8 +27,15 @@ export type SettingsMaintenanceErrorAction = "app" | "catalog";
 export function buildSettingsCatalogResetMessage(
   result: CatalogResetStats,
   labels: SettingsCatalogResetMessageLabels,
+  locale: NumberDisplayLocale = "en",
 ): string {
-  return `${labels.catalogResetDone}. ${labels.removed} ${result.removed_count}, ${labels.remaining} ${result.remaining_count}, ${labels.reactivated} ${result.reactivated_count}.`;
+  return `${labels.catalogResetDone}. ${labels.removed} ${formatDisplayInteger(
+    result.removed_count,
+    locale,
+  )}, ${labels.remaining} ${formatDisplayInteger(
+    result.remaining_count,
+    locale,
+  )}, ${labels.reactivated} ${formatDisplayInteger(result.reactivated_count, locale)}.`;
 }
 
 export function buildSettingsResetConfirmMessage(

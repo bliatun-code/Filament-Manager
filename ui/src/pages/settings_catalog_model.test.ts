@@ -234,6 +234,18 @@ test("settings catalog refresh success message keeps the compact summary stable"
     }),
     "Imported 12 · Reactivated 2 · Discontinued 1",
   );
+  assert.equal(
+    buildSettingsCatalogRefreshSuccessMessage(
+      refreshResult({ imported: 1234 }),
+      {
+        imported: "Importert",
+        reactivated: "Reaktivert",
+        discontinued: "Utgått",
+      },
+      "nb",
+    ),
+    "Importert 1\u00a0234 · Reaktivert 2 · Utgått 1",
+  );
 });
 
 test("settings catalog refresh vendor messages follow the selected vendor", () => {

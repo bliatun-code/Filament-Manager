@@ -24,8 +24,10 @@ import {
   observeLibraryDomainRevisions,
   type LibraryRevisionSource,
 } from "../lib/library_domain_revisions";
+import { formatDisplayInteger } from "../lib/number_display";
 import { usePageRefreshState } from "../lib/page_refresh_state";
 import { boundedPollingBackoffDelay } from "../lib/polling_schedule";
+import { formatGrams } from "../lib/weight_display";
 import {
   getTrustedLanCompanionStatus,
   isTauri,
@@ -64,12 +66,12 @@ function createDefaultGoalMetrics(): DashboardGoalMetrics {
   };
 }
 
-function createDefaultStats(t: TranslateFn): DashboardStat[] {
+function createDefaultStats(t: TranslateFn, locale: string): DashboardStat[] {
   return [
     {
       id: "total",
       title: t("dashboard.totalSpools", "Total Spools"),
-      value: "0",
+      value: formatDisplayInteger(0, locale),
       subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
       trend: "—",
       accent: "sky",
@@ -77,7 +79,7 @@ function createDefaultStats(t: TranslateFn): DashboardStat[] {
     {
       id: "activePrinters",
       title: t("dashboard.activePrinters", "Active Printers"),
-      value: "0",
+      value: formatDisplayInteger(0, locale),
       subtitle: t("dashboard.amsOnline", "Slots online"),
       trend: "—",
       accent: "emerald",
@@ -85,7 +87,7 @@ function createDefaultStats(t: TranslateFn): DashboardStat[] {
     {
       id: "lowStock",
       title: t("dashboard.lowStock", "Low Stock"),
-      value: "0",
+      value: formatDisplayInteger(0, locale),
       subtitle: t("dashboard.below20", "Below 20%"),
       trend: "—",
       accent: "rose",
@@ -93,7 +95,7 @@ function createDefaultStats(t: TranslateFn): DashboardStat[] {
     {
       id: "monthlyUsage",
       title: t("dashboard.monthlyUsage", "Monthly Usage"),
-      value: "0 g",
+      value: formatGrams(0, "zero", locale),
       subtitle: t("dashboard.last30", "Last 30 days"),
       trend: "—",
       accent: "amber",
@@ -115,7 +117,7 @@ function createEmptyActivity(t: TranslateFn): ActivityItem[] {
   ];
 }
 
-function createDefaultHealth(t: TranslateFn): DashboardHealth {
+function createDefaultHealth(t: TranslateFn, locale: string): DashboardHealth {
   return {
     score: null,
     headline: t("dashboard.noInventoryData", "Not enough data"),
@@ -124,25 +126,25 @@ function createDefaultHealth(t: TranslateFn): DashboardHealth {
       {
         id: "lowStock",
         label: t("dashboard.lowStockShort", "low stock"),
-        value: "0",
+        value: formatDisplayInteger(0, locale),
         tone: "rose",
       },
       {
         id: "loaned",
         label: t("dashboard.loaned", "loaned"),
-        value: "0",
+        value: formatDisplayInteger(0, locale),
         tone: "amber",
       },
       {
         id: "onOrder",
         label: t("dashboard.onOrder", "on order"),
-        value: "0",
+        value: formatDisplayInteger(0, locale),
         tone: "sky",
       },
       {
         id: "loaded",
         label: t("dashboard.amsLoaded", "slots loaded"),
-        value: "0",
+        value: formatDisplayInteger(0, locale),
         tone: "emerald",
       },
     ],
@@ -174,7 +176,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     () => initialSnapshot?.goalMetrics ?? createDefaultGoalMetrics(),
   );
   const [stats, setStats] = useState<DashboardStat[]>(
-    () => initialSnapshot?.stats ?? createDefaultStats(t),
+    () => initialSnapshot?.stats ?? createDefaultStats(t, locale),
   );
   const [activity, setActivity] = useState<ActivityItem[]>(
     () => initialSnapshot?.activity ?? createEmptyActivity(t),
@@ -199,7 +201,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       },
   );
   const [health, setHealth] = useState<DashboardHealth>(
-    () => initialSnapshot?.health ?? createDefaultHealth(t),
+    () => initialSnapshot?.health ?? createDefaultHealth(t, locale),
   );
   const [lastSyncLabel, setLastSyncLabel] = useState(
     () =>
@@ -247,6 +249,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       beginRefresh();
       try {
         const loaded = await loadDashboardData({
+          locale,
           previousClientHostNeedsRepair: clientHostNeedsRepair,
           t,
         });

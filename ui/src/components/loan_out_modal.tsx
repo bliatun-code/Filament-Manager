@@ -71,7 +71,7 @@ export function LoanOutModal({
   clientLibraryId = null,
   onLoanCreated,
 }: LoanOutModalProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const [loading, setLoading] = useState(false);
@@ -290,7 +290,7 @@ export function LoanOutModal({
                           label={t("inventory.remaining", "Remaining")}
                           style={inventorySwatchInsetStyle(selectedSpool.hexColor, resolvedTheme)}
                         >
-                          {formatLoanOutGrams(selectedSpool.remainingGrams)}
+                          {formatLoanOutGrams(selectedSpool.remainingGrams, locale)}
                         </ModalDetailItem>
                         <ModalDetailItem
                           card
@@ -335,6 +335,7 @@ export function LoanOutModal({
                                     selectedSpool,
                                     selectedSpool.remainingGrams,
                                   ),
+                                  locale,
                                 )}
                               </>
                             }

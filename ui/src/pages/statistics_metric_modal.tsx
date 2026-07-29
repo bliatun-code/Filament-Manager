@@ -4,6 +4,11 @@ import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import { formatFilamentDisplayTitle } from "../lib/display_format";
 import {
+  formatDisplayInteger,
+  formatDisplayPercent,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
+import {
   formatActiveSlotLabel,
   ownershipBadgeClass,
   ownershipLabel,
@@ -15,6 +20,7 @@ import {
 } from "../lib/statistics_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { PrinterOverviewRow } from "../lib/tauri_client";
+import { formatGrams } from "../lib/weight_display";
 import {
   StatisticsEmptyState,
   StatisticsPrinterMetricCard,
@@ -27,6 +33,7 @@ export function StatisticsMetricDetailModal({
   activeSlotRows,
   failedPrinterRows,
   filteredActiveSlotRows,
+  locale = "en",
   loggedPrinterRows,
   metricModalKind,
   onClose,
@@ -39,6 +46,7 @@ export function StatisticsMetricDetailModal({
   activeSlotRows: ActiveSlotDisplayRow[];
   failedPrinterRows: PrinterOverviewRow[];
   filteredActiveSlotRows: ActiveSlotDisplayRow[];
+  locale?: NumberDisplayLocale;
   loggedPrinterRows: PrinterOverviewRow[];
   metricModalKind: MetricModalKind;
   onClose: () => void;
@@ -80,22 +88,22 @@ export function StatisticsMetricDetailModal({
               >
                 <SummaryMetricTile
                   label={t("printers.jobs", "Jobs")}
-                  value={row.usage.total_jobs.toString()}
+                  value={formatDisplayInteger(row.usage.total_jobs, locale)}
                   tone="sky"
                 />
                 <SummaryMetricTile
                   label={t("printers.success", "Success")}
-                  value={row.usage.successful_jobs.toString()}
+                  value={formatDisplayInteger(row.usage.successful_jobs, locale)}
                   tone="emerald"
                 />
                 <SummaryMetricTile
                   label={t("printers.failed", "Failed")}
-                  value={row.usage.failed_jobs.toString()}
+                  value={formatDisplayInteger(row.usage.failed_jobs, locale)}
                   tone="rose"
                 />
                 <SummaryMetricTile
                   label={t("printers.used", "Used")}
-                  value={`${row.usage.total_used_g} g`}
+                  value={formatGrams(row.usage.total_used_g, "zero", locale)}
                   tone="amber"
                   className="col-span-2 min-[960px]:col-span-1"
                 />
@@ -127,12 +135,12 @@ export function StatisticsMetricDetailModal({
                 >
                   <SummaryMetricTile
                     label={t("printers.failed", "Failed")}
-                    value={row.usage.failed_jobs.toString()}
+                    value={formatDisplayInteger(row.usage.failed_jobs, locale)}
                     tone="rose"
                   />
                   <SummaryMetricTile
                     label={t("statistics.failureRate", "Failure rate")}
-                    value={`${failureRate}%`}
+                    value={formatDisplayPercent(failureRate, locale)}
                     tone="amber"
                   />
                 </StatisticsPrinterMetricCard>
@@ -168,7 +176,7 @@ export function StatisticsMetricDetailModal({
                 </option>
               </select>
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                {`${t("inventory.ownedByUs", "Owned")}: ${activeSlotOwnershipCounts.owned} · ${t("inventory.borrowedIn", "Borrowed in")}: ${activeSlotOwnershipCounts.borrowedIn}`}
+                {`${t("inventory.ownedByUs", "Owned")}: ${formatDisplayInteger(activeSlotOwnershipCounts.owned, locale)} · ${t("inventory.borrowedIn", "Borrowed in")}: ${formatDisplayInteger(activeSlotOwnershipCounts.borrowedIn, locale)}`}
               </div>
             </div>
             {filteredActiveSlotRows.length === 0 ? (
@@ -220,7 +228,11 @@ export function StatisticsMetricDetailModal({
                       <div className="grid w-full grid-cols-2 gap-2 min-[960px]:w-auto min-[960px]:min-w-[12rem]">
                         <SummaryMetricTile
                           label={t("inventory.remaining", "Remaining")}
-                          value={`${row.slot.spool_remaining_g ?? 0} g`}
+                          value={formatGrams(
+                            row.slot.spool_remaining_g ?? 0,
+                            "zero",
+                            locale,
+                          )}
                           tone="emerald"
                         />
                         <SummaryMetricTile

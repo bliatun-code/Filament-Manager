@@ -1,3 +1,10 @@
+import {
+  formatDisplayGrams,
+  formatDisplayNumber,
+  formatDisplayPercent,
+  type NumberDisplayLocale,
+} from "./number_display";
+
 export function finiteAmsWeightNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -17,8 +24,13 @@ export function saneAmsSpoolWeight(value: number | null | undefined): number | n
   return finite != null && finite > 0 ? finite : null;
 }
 
-export function formatAmsWeightNumber(value: number): string {
-  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+export function formatAmsWeightNumber(
+  value: number,
+  locale: NumberDisplayLocale = "en",
+): string {
+  return formatDisplayNumber(value, locale, {
+    maximumFractionDigits: 1,
+  });
 }
 
 export function deriveAmsRemainingGrams(
@@ -33,12 +45,14 @@ export function deriveAmsRemainingGrams(
 export function formatAmsWeightEstimate({
   basisLabel = "AMS spool basis",
   estimateLabel = "AMS estimate",
+  locale = "en",
   remainingGrams,
   remainingPercent,
   trayWeightG,
 }: {
   basisLabel?: string;
   estimateLabel?: string;
+  locale?: NumberDisplayLocale;
   remainingGrams?: number | null;
   remainingPercent?: number | null;
   trayWeightG?: number | null;
@@ -48,19 +62,18 @@ export function formatAmsWeightEstimate({
   const trayWeight = saneAmsSpoolWeight(trayWeightG);
 
   if (grams != null && trayWeight != null) {
-    const percentNote = percent != null ? ` · ${formatAmsWeightNumber(percent)}%` : "";
-    return `${estimateLabel}: ${formatAmsWeightNumber(grams)} g / ${formatAmsWeightNumber(
-      trayWeight,
-    )} g${percentNote}`;
+    const percentNote =
+      percent != null ? ` · ${formatDisplayPercent(percent, locale, 1)}` : "";
+    return `${estimateLabel}: ${formatDisplayGrams(grams, locale)} / ${formatDisplayGrams(trayWeight, locale)}${percentNote}`;
   }
   if (grams != null) {
-    return `${estimateLabel}: ${formatAmsWeightNumber(grams)} g`;
+    return `${estimateLabel}: ${formatDisplayGrams(grams, locale)}`;
   }
   if (percent != null) {
-    return `${estimateLabel}: ${formatAmsWeightNumber(percent)}%`;
+    return `${estimateLabel}: ${formatDisplayPercent(percent, locale, 1)}`;
   }
   if (trayWeight != null) {
-    return `${basisLabel}: ${formatAmsWeightNumber(trayWeight)} g`;
+    return `${basisLabel}: ${formatDisplayGrams(trayWeight, locale)}`;
   }
   return null;
 }

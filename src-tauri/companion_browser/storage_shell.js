@@ -341,18 +341,26 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
             `
             : `
               <div class="stack add-spool-catalog-block">
-                <input
-                  class="search-input"
-                  name="filament-catalog-search"
-                  type="search"
-                  value="${escapeHtml(String(draft.catalogSearch || ""))}"
-                  placeholder="${escapeHtml(
+                <label class="search-field" for="companion-filament-catalog-search">
+                  <span class="search-field-label">${escapeHtml(
                     selection.source === "bambu"
                       ? t(locale, "storage.catalogSearchBambu", "Search material, color, or filament code")
                       : t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"),
-                  )}"
-                  autocomplete="off"
-                />
+                  )}</span>
+                  <input
+                    id="companion-filament-catalog-search"
+                    class="search-input"
+                    name="filament-catalog-search"
+                    type="search"
+                    value="${escapeHtml(String(draft.catalogSearch || ""))}"
+                    placeholder="${escapeHtml(
+                      selection.source === "bambu"
+                        ? t(locale, "storage.catalogSearchBambu", "Search material, color, or filament code")
+                        : t(locale, "storage.catalogSearch", "Search material, filament, color, or vendor"),
+                    )}"
+                    autocomplete="off"
+                  />
+                </label>
                 <div class="dense-list add-spool-catalog-list">
                   ${
                     selection.visibleCatalogMasters.length > 0
@@ -802,13 +810,18 @@ export function renderStorageShell(options) {
 
       <div class="workflow-toolbar">
         <div class="toolbar-row">
-          <input
-            class="search-input toolbar-search"
-            name="inventory-search"
-            value="${escapeHtml(state.search)}"
-            placeholder="${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}"
-            autocomplete="off"
-          />
+          <label class="search-field toolbar-search" for="companion-inventory-search">
+            <span class="search-field-label">${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}</span>
+            <input
+              id="companion-inventory-search"
+              class="search-input"
+              name="inventory-search"
+              type="search"
+              value="${escapeHtml(state.search)}"
+              placeholder="${escapeHtml(t(locale, "storage.searchPlaceholder", "Search filament, color, owner, or placement"))}"
+              autocomplete="off"
+            />
+          </label>
           <div class="toolbar-actions">
             ${renderCompanionActionButton({
               disabled: state.busy,

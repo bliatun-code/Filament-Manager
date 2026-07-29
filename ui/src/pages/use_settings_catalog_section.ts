@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { MasterCatalogRow } from "../lib/tauri_client";
+import type { Locale } from "../lib/i18n";
 import type {
   SettingsCatalogRefreshMessageLabels,
   SettingsCatalogRefreshSummaryLabels,
@@ -18,6 +19,7 @@ type TranslateFn = (key: string, fallback?: string) => string;
 type UseSettingsCatalogSectionInput = {
   busy: boolean;
   catalogMasters: MasterCatalogRow[];
+  locale: Locale;
   reloadSettings: () => Promise<void>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
@@ -36,6 +38,7 @@ type UseSettingsCatalogSectionInput = {
 export function useSettingsCatalogSection({
   busy,
   catalogMasters,
+  locale,
   reloadSettings,
   setError,
   setInfo,
@@ -109,6 +112,7 @@ export function useSettingsCatalogSection({
     completeCatalogRefreshResult,
     failCatalogRefreshResult,
     getCatalogRefreshMaterials,
+    locale,
     reloadSettings,
     setCatalogRefreshBusy,
     setCatalogRefreshPhase,

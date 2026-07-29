@@ -110,6 +110,13 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     [data.loanRows[0]],
   );
   assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "list_spool_loans", {
+      direction: "ALL",
+      includeReturned: true,
+    }),
+    data.loanRows,
+  );
+  assert.deepEqual(
     resolveUiBrowserPerformanceInvoke(data, "list_filament_consumption", {
       printerId: "printer-b",
     }),

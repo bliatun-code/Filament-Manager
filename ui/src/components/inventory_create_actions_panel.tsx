@@ -55,7 +55,7 @@ export function InventoryCreateActionsPanel({
   selectionSummary,
   tauriAvailable,
 }: InventoryCreateActionsPanelProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const borrowedIn = isBorrowedInOwnership(ownershipType);
   const initialWeightErrorId = useId();
   const initialWeightInvalid = parsePositiveWeight(initialWeight) === null;
@@ -77,7 +77,9 @@ export function InventoryCreateActionsPanel({
               </div>
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                 <span>{selectionSummary.detail}</span>
-                <span>{formatGrams(selectionSummary.initialWeightGrams)}</span>
+                <span>
+                  {formatGrams(selectionSummary.initialWeightGrams, "dash", locale)}
+                </span>
               </div>
             </>
           ) : (

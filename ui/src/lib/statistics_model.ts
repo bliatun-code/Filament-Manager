@@ -31,6 +31,10 @@ import type {
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
 import type { I18nContextValue } from "./i18n";
+import {
+  formatDisplayKilograms,
+  type NumberDisplayLocale,
+} from "./number_display";
 
 export type ConsumptionSort = "USED_DESC" | "USED_ASC" | "NAME_ASC" | "JOBS_DESC";
 export type LoanUsageListFilter = "ALL" | "ACTIVE" | "COMPLETED";
@@ -84,8 +88,13 @@ export const DEFAULT_BORROWER_PREFS: BorrowerPopupPrefs = {
   search: "",
 };
 
-export function gramsToKgText(value: number): string {
-  return `${(value / 1000).toFixed(2)} kg`;
+export function gramsToKgText(
+  value: number,
+  locale: NumberDisplayLocale = "en",
+): string {
+  return formatDisplayKilograms(value / 1000, locale, {
+    minimumFractionDigits: 2,
+  });
 }
 
 export function groupedLoanUsage(rows: NormalizedLoanDetailsRow[]): BorrowerFilamentUsageRow[] {

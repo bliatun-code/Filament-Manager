@@ -7,6 +7,8 @@ import {
   SettingsSectionPanel,
 } from "../components/settings_ui";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
+import { useI18n } from "../lib/i18n";
+import { formatDisplayInteger } from "../lib/number_display";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -70,10 +72,14 @@ export function SettingsCatalogRefreshPanel({
   onToggleCatalogRefreshLog,
   onToggleCatalogRefreshMaterial,
 }: SettingsCatalogRefreshPanelProps) {
+  const { locale } = useI18n();
   const refreshActionLabel =
     activeCatalogRefreshMaterials.length === 0
       ? t("settings.runFullVendorAudit", "Run full vendor audit")
-      : `${t("settings.refreshSelectedMaterials", "Refresh selected materials")} (${activeCatalogRefreshMaterials.length})`;
+      : `${t("settings.refreshSelectedMaterials", "Refresh selected materials")} (${formatDisplayInteger(
+          activeCatalogRefreshMaterials.length,
+          locale,
+        )})`;
 
   return (
     <SettingsSectionPanel className="mt-4">
@@ -85,7 +91,8 @@ export function SettingsCatalogRefreshPanel({
         )}
         status={
           <div className={inlineStatusSignalClass("neutral", "text-sm")}>
-            {t("settings.totalCatalog", "Catalog")}: {catalogCount}
+            {t("settings.totalCatalog", "Catalog")}:{" "}
+            {formatDisplayInteger(catalogCount, locale)}
           </div>
         }
         metrics={

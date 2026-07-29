@@ -101,6 +101,104 @@ test("keydown handler delegates overlay focus trapping and Escape handling to th
   assert.deepEqual(calls, [event]);
 });
 
+test("keydown handler cycles tablet tabs, switches flow and restores focus after render", () => {
+  const flows = [];
+  const focusCalls = [];
+  const tablist = {
+    querySelectorAll(selector) {
+      assert.equal(selector, '[role="tab"][data-action="set-root-flow"]');
+      return tabs;
+    },
+  };
+  function createTab(flow) {
+    return {
+      disabled: false,
+      closest(selector) {
+        if (selector === '[role="tab"][data-action="set-root-flow"]') {
+          return this;
+        }
+        return selector === '[role="tablist"]' ? tablist : null;
+      },
+      getAttribute(name) {
+        if (name === "data-root-flow") {
+          return flow;
+        }
+        if (name === "id") {
+          return `companion-root-tab-${flow}`;
+        }
+        return null;
+      },
+      focus(options) {
+        focusCalls.push([flow, options]);
+      },
+    };
+  }
+  const tabs = ["storage", "loans", "printers", "settings"].map(createTab);
+  let prevented = false;
+  const options = createBaseOptions({
+    documentRef: {
+      getElementById(id) {
+        return tabs.find((tab) => tab.getAttribute("id") === id) || null;
+      },
+    },
+    setRootFlow(flow) {
+      flows.push(flow);
+    },
+  });
+
+  const handled = handleCompanionKeydownEvent(
+    {
+      key: "ArrowRight",
+      target: tabs[0],
+      preventDefault() {
+        prevented = true;
+      },
+    },
+    options,
+  );
+
+  assert.equal(handled, true);
+  assert.equal(prevented, true);
+  assert.deepEqual(flows, ["loans"]);
+  assert.deepEqual(focusCalls, [["loans", { preventScroll: true }]]);
+});
+
+test("keydown handler supports Home, End and wrapped ArrowLeft tab navigation", () => {
+  const flows = [];
+  const tablist = {
+    querySelectorAll() {
+      return tabs;
+    },
+  };
+  function createTab(flow) {
+    return {
+      disabled: false,
+      closest(selector) {
+        return selector === '[role="tab"][data-action="set-root-flow"]'
+          ? this
+          : selector === '[role="tablist"]'
+            ? tablist
+            : null;
+      },
+      getAttribute(name) {
+        return name === "data-root-flow" ? flow : "";
+      },
+      focus() {},
+    };
+  }
+  const tabs = ["storage", "loans", "printers", "settings"].map(createTab);
+  const options = createBaseOptions({
+    setRootFlow(flow) {
+      flows.push(flow);
+    },
+  });
+
+  assert.equal(handleCompanionKeydownEvent({ key: "End", target: tabs[1] }, options), true);
+  assert.equal(handleCompanionKeydownEvent({ key: "Home", target: tabs[2] }, options), true);
+  assert.equal(handleCompanionKeydownEvent({ key: "ArrowLeft", target: tabs[0] }, options), true);
+  assert.deepEqual(flows, ["settings", "storage", "settings"]);
+});
+
 test("click handler refreshes current trusted-LAN companion data", async () => {
   let refreshCount = 0;
   const options = createBaseOptions({
@@ -150,6 +248,36 @@ test("click handler remembers pointer openers before an overlay-opening action r
 
   assert.equal(handleCompanionClickEvent({ target }, options), true);
   assert.deepEqual(remembered, [target]);
+});
+
+test("click handler restores focus to a tablet tab after switching root flow", () => {
+  const flows = [];
+  const focusCalls = [];
+  const renderedTab = {
+    focus(options) {
+      focusCalls.push(options);
+    },
+  };
+  const target = createActionTarget({
+    id: "companion-root-tab-loans",
+    role: "tab",
+    "data-action": "set-root-flow",
+    "data-root-flow": "loans",
+  });
+  const options = createBaseOptions({
+    documentRef: {
+      getElementById(id) {
+        return id === "companion-root-tab-loans" ? renderedTab : null;
+      },
+    },
+    setRootFlow(flow) {
+      flows.push(flow);
+    },
+  });
+
+  assert.equal(handleCompanionClickEvent({ target }, options), true);
+  assert.deepEqual(flows, ["loans"]);
+  assert.deepEqual(focusCalls, [{ preventScroll: true }]);
 });
 
 test("click handler dispatches wishlist deletion from the rendered queue", () => {

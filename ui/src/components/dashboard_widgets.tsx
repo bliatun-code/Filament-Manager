@@ -1,4 +1,5 @@
 import { useI18n } from "../lib/i18n";
+import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
 
 type StatCardProps = {
   title: string;
@@ -290,7 +291,7 @@ const panelCountClass =
   "rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1 text-sm font-semibold text-slate-900 shadow-sm dark:border-slate-500/70 dark:bg-slate-900 dark:text-slate-50 dark:shadow-none";
 
 export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const itemCount = items.length === 1 && items[0]?.id === "empty" ? 0 : items.length;
   return (
     <div className="surface-card">
@@ -301,7 +302,7 @@ export function ActivityTimeline({ items }: { items: ActivityItem[] }) {
           </div>
         </div>
         <div className={panelCountClass}>
-          {itemCount}
+          {formatDisplayInteger(itemCount, locale)}
         </div>
       </div>
       <div className="mt-4 space-y-3">
@@ -349,7 +350,7 @@ type Badge = {
 };
 
 export function BadgePanel({ badges }: { badges: Badge[] }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const accentStyles = [
     {
       panel:
@@ -388,7 +389,7 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
           </div>
         </div>
         <div className={panelCountClass}>
-          {badges.length}
+          {formatDisplayInteger(badges.length, locale)}
         </div>
       </div>
       <div className="mt-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
@@ -409,7 +410,7 @@ export function BadgePanel({ badges }: { badges: Badge[] }) {
                   </div>
                 </div>
                 <div className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${tone.pill}`}>
-                  {Math.round(badge.progress * 100)}%
+                  {formatDisplayPercent(badge.progress * 100, locale)}
                 </div>
               </div>
               <div className="mt-3 text-sm font-medium text-slate-800 dark:text-slate-100">

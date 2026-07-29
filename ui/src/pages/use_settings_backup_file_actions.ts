@@ -1,5 +1,6 @@
 import { type ChangeEvent, type Dispatch, type SetStateAction } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
+import type { Locale } from "../lib/i18n";
 import { clearDashboardPageSnapshot } from "../lib/dashboard_page_snapshot_cache";
 import { toErrorMessage } from "../lib/error_text";
 import {
@@ -27,6 +28,7 @@ type UseSettingsBackupFileActionsInput = {
   clearBackupValidation: () => void;
   clearConfirmResetAction: () => void;
   librarySyncModeDraft: LibrarySyncMode;
+  locale: Locale;
   recordBackupValidation: (summary: BackupValidationStats, validatedAt: string) => void;
   recordImportedFullBackup: (importedAt: string) => void;
   reloadSettings: () => Promise<void>;
@@ -52,6 +54,7 @@ export function useSettingsBackupFileActions({
   clearBackupValidation,
   clearConfirmResetAction,
   librarySyncModeDraft,
+  locale,
   recordBackupValidation,
   recordImportedFullBackup,
   reloadSettings,
@@ -127,6 +130,7 @@ export function useSettingsBackupFileActions({
           setInfo(buildSettingsImportSuccessMessage({
             importedOnClient: true,
             labels: settingsImportMessageLabels(),
+            locale,
             result,
           }));
           return;
@@ -134,12 +138,14 @@ export function useSettingsBackupFileActions({
         setInfo(buildSettingsImportSuccessMessage({
           importedOnClient: false,
           labels: settingsImportMessageLabels(),
+          locale,
           result,
         }));
       } else {
         setInfo(buildSettingsImportSuccessMessage({
           importedOnClient: false,
           labels: settingsImportMessageLabels(),
+          locale,
           result,
         }));
       }

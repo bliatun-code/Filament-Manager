@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { parseDateTime } from "../lib/date_time";
+import { formatDateTime, parseDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
+import { formatGrams } from "../lib/weight_display";
 
 type UsagePoint = {
   captured_at: string;
@@ -18,12 +19,12 @@ const CHART_WIDTH = 360;
 const CHART_HEIGHT = 120;
 const CHART_PADDING = 14;
 
-function toDisplayTime(raw: string): string {
+function toDisplayTime(raw: string, locale: Parameters<typeof formatDateTime>[1]): string {
   const parsed = parseDateTime(raw);
   if (!parsed) {
     return raw;
   }
-  return parsed.toLocaleString();
+  return formatDateTime(raw, locale);
 }
 
 export function RollUsageChart({
@@ -31,7 +32,7 @@ export function RollUsageChart({
   loading = false,
   initialWeight = null,
 }: RollUsageChartProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const baselineWeight = Math.max(Math.round(initialWeight ?? 0), 0);
   const sortedPoints = useMemo(
     () =>
@@ -173,24 +174,26 @@ export function RollUsageChart({
         <div>
           {t("chart.latest", "Latest")}:{" "}
           <span className="font-semibold text-slate-800 dark:text-slate-100">
-            {stats.last.remaining} g
+            {formatGrams(stats.last.remaining, "zero", locale)}
           </span>{" "}
           {t("inventory.remaining", "remaining")} ·{" "}
           <span className="font-semibold text-slate-800 dark:text-slate-100">
-            {stats.totalConsumed} g
+            {formatGrams(stats.totalConsumed, "zero", locale)}
           </span>{" "}
           {t("chart.totalConsumed", "consumed")}
           {" "}
-          {t("chart.at", "at")} {toDisplayTime(stats.last.captured_at)}
+          {t("chart.at", "at")} {toDisplayTime(stats.last.captured_at, locale)}
         </div>
         <div>
           {t("chart.consumed", "Consumed over chart")}:{" "}
           <span className="font-semibold text-slate-800 dark:text-slate-100">
-            {stats.consumedInWindow} g
+            {formatGrams(stats.consumedInWindow, "zero", locale)}
           </span>
         </div>
         <div>
-          {t("chart.range", "Range")}: {stats.scaleMax} g - 0 g
+          {t("chart.range", "Range")}:{" "}
+          {formatGrams(stats.scaleMax, "zero", locale)} -{" "}
+          {formatGrams(0, "zero", locale)}
         </div>
       </div>
     </div>

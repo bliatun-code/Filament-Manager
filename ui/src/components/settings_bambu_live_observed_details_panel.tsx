@@ -4,6 +4,7 @@ import type {
   DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
 import { useI18n } from "../lib/i18n";
+import { formatDisplayInteger } from "../lib/number_display";
 import {
   settingsActionButtonClass,
   settingsSectionLabelClass,
@@ -196,11 +197,14 @@ export function SettingsBambuLiveObservedDetailsPanel({
               </div>
               <div>
                 {t("settings.bambuLiveFieldCount", "Observed top-level fields")}:{" "}
-                {countObservedTopLevelFields(observedState.raw_payload_json)}
+                {formatDisplayInteger(
+                  countObservedTopLevelFields(observedState.raw_payload_json),
+                  locale,
+                )}
               </div>
               <div>
                 {t("settings.bambuLiveCapturedFieldCount", "Captured fields in this session")}:{" "}
-                {diagnosticFields.length}
+                {formatDisplayInteger(diagnosticFields.length, locale)}
               </div>
             </div>
             <SettingsBambuLiveDiagnosticsSummary

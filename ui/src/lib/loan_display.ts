@@ -5,9 +5,13 @@ import {
   type LoanDirection,
 } from "./inventory_domain";
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
+import type { NumberDisplayLocale } from "./number_display";
 import { isLoanCurrentlyActive, isLoanReturned } from "./loan_state";
 import { resolveSpoolTareWeight } from "./spool_weight";
-import { formatGrams as formatWeightGrams } from "./weight_display";
+import {
+  formatGrams as formatWeightGrams,
+  type EmptyWeightDisplay,
+} from "./weight_display";
 export { formatDateTime } from "./date_time";
 export { normalizeLoanDirection, type LoanDirection };
 
@@ -15,8 +19,12 @@ export type LoanFilter = "ALL" | "ACTIVE" | "RETURNED";
 export type LoanDirectionFilter = "ALL" | LoanDirection;
 export type LoanDisplayRow = NormalizedLoanDetailsRow;
 
-export function formatGrams(value?: number | null): string {
-  return formatWeightGrams(value, "zero");
+export function formatGrams(
+  value?: number | null,
+  empty: EmptyWeightDisplay = "zero",
+  locale: NumberDisplayLocale = "en",
+): string {
+  return formatWeightGrams(value, empty, locale);
 }
 
 function resolveLoanTareWeight(loan: LoanDisplayRow): number {

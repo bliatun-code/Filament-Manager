@@ -1,5 +1,10 @@
 import { PageHeaderButton } from "../components/page_header_button";
 import type { DashboardHealth } from "../lib/dashboard_model";
+import {
+  formatDisplayInteger,
+  formatDisplayPercent,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -12,11 +17,13 @@ type OwnershipSnapshotPanelProps = {
     owned: number;
     borrowedIn: number;
   };
+  locale?: NumberDisplayLocale;
   t: TranslateFn;
 };
 
 type InventoryHealthPanelProps = {
   health: DashboardHealth;
+  locale?: NumberDisplayLocale;
   onAddFirstSpool?: () => void;
   t: TranslateFn;
 };
@@ -36,6 +43,7 @@ function healthMetricClass(tone: DashboardHealth["metrics"][number]["tone"]): st
 
 export function OwnershipSnapshotPanel({
   lowStock,
+  locale = "en",
   onHand,
   t,
 }: OwnershipSnapshotPanelProps) {
@@ -62,7 +70,7 @@ export function OwnershipSnapshotPanel({
       >
         <div className="rounded-lg border border-sky-200/80 bg-sky-50/58 px-3 py-3 dark:border-sky-400/22 dark:bg-sky-500/[0.08]">
           <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-            {onHand.owned}
+            {formatDisplayInteger(onHand.owned, locale)}
           </div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             {t("dashboard.ownedOnHand", "Owned on hand")}
@@ -71,7 +79,7 @@ export function OwnershipSnapshotPanel({
         {hasBorrowedInStock ? (
           <div className="rounded-lg border border-amber-200/80 bg-amber-50/58 px-3 py-3 dark:border-amber-400/22 dark:bg-amber-500/[0.08]">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {onHand.borrowedIn}
+              {formatDisplayInteger(onHand.borrowedIn, locale)}
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("dashboard.borrowedInOnHand", "Borrowed in on hand")}
@@ -80,7 +88,7 @@ export function OwnershipSnapshotPanel({
         ) : null}
         <div className="rounded-lg border border-rose-200/80 bg-rose-50/58 px-3 py-3 dark:border-rose-400/22 dark:bg-rose-500/[0.08]">
           <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-            {lowStock.owned}
+            {formatDisplayInteger(lowStock.owned, locale)}
           </div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
             {t("dashboard.ownedLowStock", "Owned low stock")}
@@ -89,7 +97,7 @@ export function OwnershipSnapshotPanel({
         {hasBorrowedInStock ? (
           <div className="rounded-lg border border-orange-200/80 bg-orange-50/58 px-3 py-3 dark:border-orange-400/22 dark:bg-orange-500/[0.08]">
             <div className="text-lg font-semibold text-slate-950 dark:text-slate-50">
-              {lowStock.borrowedIn}
+              {formatDisplayInteger(lowStock.borrowedIn, locale)}
             </div>
             <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
               {t("dashboard.borrowedInLowStock", "Borrowed-in low stock")}
@@ -103,6 +111,7 @@ export function OwnershipSnapshotPanel({
 
 export function InventoryHealthPanel({
   health,
+  locale = "en",
   onAddFirstSpool,
   t,
 }: InventoryHealthPanelProps) {
@@ -137,11 +146,17 @@ export function InventoryHealthPanel({
           ) : null}
         </div>
         <div
-          aria-label={hasHealthScore ? `${health.score}%` : health.headline}
+          aria-label={
+            hasHealthScore
+              ? formatDisplayPercent(health.score ?? 0, locale)
+              : health.headline
+          }
           className={`relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border text-2xl font-semibold ${scoreClassName}`}
         >
           <span className="absolute inset-[8px] rounded-full border border-current opacity-20" />
-          <span className="relative">{hasHealthScore ? `${health.score}%` : "—"}</span>
+          <span className="relative">
+            {hasHealthScore ? formatDisplayPercent(health.score ?? 0, locale) : "—"}
+          </span>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3">

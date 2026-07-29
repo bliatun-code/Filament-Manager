@@ -106,5 +106,12 @@ Architecture tests guard the core-crate import, startup ownership, and the
 Bambu Live orchestration boundaries. Update a guard only when the replacement
 boundary is equally explicit and covered by behavior tests.
 
+The accessibility gate has two layers. The isolated AppModal harness exercises
+focus order, focus return, keyboard trapping, Escape, and 200% zoom. The
+data-backed axe analysis renders the sanitized application fixture and checks
+Dashboard, Inventory, Loans, Printers, Statistics, and Settings after each page
+has loaded real fixture evidence. Both layers run in `npm run smoke`; a static
+component-only assertion is not a replacement for either browser pass.
+
 Performance regression contracts and the current budgets are documented in
 [`PERFORMANCE_BASELINE.md`](PERFORMANCE_BASELINE.md).

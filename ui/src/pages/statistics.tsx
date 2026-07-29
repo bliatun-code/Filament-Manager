@@ -8,6 +8,7 @@ import {
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
+import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
 import {
   buildActiveSlotRows,
   countActiveSlotOwnerships,
@@ -431,7 +432,7 @@ export default function StatisticsPage() {
       <div className="content-section grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title={t("statistics.totalConsumption", "Total Consumption")}
-          value={gramsToKgText(totals.totalUsed)}
+          value={gramsToKgText(totals.totalUsed, locale)}
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
           trend={t("statistics.allTime", "All time")}
           accent="amber"
@@ -443,7 +444,7 @@ export default function StatisticsPage() {
         />
         <StatCard
           title={t("statistics.loggedJobs", "Logged Jobs")}
-          value={totals.totalJobs.toString()}
+          value={formatDisplayInteger(totals.totalJobs, locale)}
           subtitle={t("statistics.linkedActivity", "Printer-linked activity")}
           trend={t(
             "statistics.printerCount",
@@ -457,7 +458,7 @@ export default function StatisticsPage() {
         />
         <StatCard
           title={t("statistics.activeAms", "Active loaded slots")}
-          value={totals.activeSlots.toString()}
+          value={formatDisplayInteger(totals.activeSlots, locale)}
           subtitle={t("statistics.assignedSlots", "Slots with assigned rolls")}
           trend={t("statistics.currentSnapshot", "Current snapshot")}
           accent="emerald"
@@ -467,9 +468,14 @@ export default function StatisticsPage() {
         />
         <StatCard
           title={t("statistics.failedJobs", "Failed Jobs")}
-          value={totals.failedJobs.toString()}
+          value={formatDisplayInteger(totals.failedJobs, locale)}
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          trend={totals.totalJobs > 0 ? `${Math.round((totals.failedJobs / totals.totalJobs) * 100)}%` : "0%"}
+          trend={formatDisplayPercent(
+            totals.totalJobs > 0
+              ? (totals.failedJobs / totals.totalJobs) * 100
+              : 0,
+            locale,
+          )}
           accent="rose"
           actionLabel={t("statistics.viewDetails", "View details")}
           opensDialog
@@ -477,10 +483,15 @@ export default function StatisticsPage() {
         />
       </div>
 
-      <StatisticsOwnershipSnapshotPanel ownershipOverview={ownershipOverview} t={t} />
+      <StatisticsOwnershipSnapshotPanel
+        locale={locale}
+        ownershipOverview={ownershipOverview}
+        t={t}
+      />
 
       <StatisticsPerPrinterUsagePanel
         loading={loading}
+        locale={locale}
         onOpenConsumption={(row) => {
           void openConsumptionModal(row);
         }}
@@ -499,6 +510,7 @@ export default function StatisticsPage() {
           consumptionRows={consumptionRows}
           consumptionVendorOptions={consumptionVendorOptions}
           filteredConsumptionRows={filteredConsumptionRows}
+          locale={locale}
           onClose={() => setShowConsumptionModal(false)}
           setConsumptionPrefs={setConsumptionPrefs}
           t={t}
@@ -507,6 +519,7 @@ export default function StatisticsPage() {
 
       <StatisticsOutboundLoanUsagePanel
         filteredLoanUsage={filteredLoanUsage}
+        locale={locale}
         loading={loading}
         loanUsageListFilter={loanUsageListFilter}
         onOpenBorrower={(borrowerName) => {
@@ -518,6 +531,7 @@ export default function StatisticsPage() {
 
       <StatisticsInboundLoanUsagePanel
         inboundLoanUsage={inboundLoanUsage}
+        locale={locale}
         loading={loading}
         onOpenOwner={(ownerName) => {
           void openBorrowerModal(ownerName, "INBOUND");
@@ -534,6 +548,7 @@ export default function StatisticsPage() {
           borrowerPrefs={borrowerPrefs}
           borrowerRows={borrowerRows}
           filteredBorrowerRows={filteredBorrowerRows}
+          locale={locale}
           onClose={() => setShowBorrowerModal(false)}
           setBorrowerPrefs={setBorrowerPrefs}
           t={t}
@@ -546,6 +561,7 @@ export default function StatisticsPage() {
           activeSlotRows={activeSlotRows}
           failedPrinterRows={failedPrinterRows}
           filteredActiveSlotRows={filteredActiveSlotRows}
+          locale={locale}
           loggedPrinterRows={loggedPrinterRows}
           metricModalKind={metricModalKind}
           onClose={() => setMetricModalKind(null)}

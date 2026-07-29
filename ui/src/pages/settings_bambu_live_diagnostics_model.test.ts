@@ -241,7 +241,7 @@ test("buildSettingsBambuLiveDiagnosticsModel centralizes chart, tray and summary
   assert.equal(model.diagnosticTrayCards[0].observedRfidLabel, "Observed RFID/AMS identity: ABC123");
   assert.equal(
     model.diagnosticTrayCards[0].amsWeightLabel,
-    "AMS estimate: 760 g / 1000 g · 76%",
+    "AMS estimate: 760 g / 1,000 g · 76%",
   );
   assert.deepEqual(model.observedSummaryParts, [
     "42%",
@@ -371,6 +371,14 @@ test("Bambu live summary builders keep display order and omit missing values", (
   assert.deepEqual(
     buildSettingsBambuLiveObservedSummaryParts(liveConfig.observed_state ?? null, t),
     ["42%", "18 min", "Tray 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
+  );
+  assert.deepEqual(
+    buildSettingsBambuLiveObservedSummaryParts(
+      liveConfig.observed_state ?? null,
+      t,
+      "nb",
+    ),
+    ["42\u00a0%", "18 min", "Tray 1", "AMS humidity 3", "Job state 4", "AMS status 3/1"],
   );
   assert.deepEqual(buildSettingsBambuLiveObservedSummaryParts(null, t), []);
 
@@ -992,7 +1000,7 @@ test("Bambu live AMS weight label formats live and captured estimates", () => {
       t,
       tray: createObservedTray({ remaining_percent: null }),
     }),
-    "AMS estimate: 770 g / 1000 g · 77%",
+    "AMS estimate: 770 g / 1,000 g · 77%",
   );
 
   assert.equal(
@@ -1008,7 +1016,7 @@ test("Bambu live AMS weight label formats live and captured estimates", () => {
         tray_weight_g: 1000,
       }),
     }),
-    "AMS estimate: 735 g / 1000 g · 74%",
+    "AMS estimate: 735 g / 1,000 g · 74%",
   );
 
   assert.equal(
@@ -1017,7 +1025,7 @@ test("Bambu live AMS weight label formats live and captured estimates", () => {
       t,
       tray: createObservedTray({ remaining_percent: null }),
     }),
-    "AMS spool basis: 1000 g",
+    "AMS spool basis: 1,000 g",
   );
 
   assert.equal(
@@ -1044,7 +1052,7 @@ test("Bambu live AMS weight label ignores implausible live estimates", () => {
         tray_weight_g: -1000,
       }),
     }),
-    "AMS estimate: 770 g / 1000 g · 77%",
+    "AMS estimate: 770 g / 1,000 g · 77%",
   );
 
   assert.equal(
@@ -1335,7 +1343,7 @@ test("Bambu live diagnostic tray card composes RFID match and metadata candidate
     exactCard.presetSignalLabel,
     "Filament settings preset: GFSA00_04 · Bambu PLA Basic · P1S · 0.4 mm nozzle",
   );
-  assert.equal(exactCard.amsWeightLabel, "AMS estimate: 770 g / 1000 g · 77%");
+  assert.equal(exactCard.amsWeightLabel, "AMS estimate: 770 g / 1,000 g · 77%");
   assert.equal(exactCard.nozzleRangeLabel, "Nozzle range: 190-240 C");
   assert.equal(exactCard.hasReview, true);
   assert.equal(exactCard.matchNote, "rfid_mismatch");

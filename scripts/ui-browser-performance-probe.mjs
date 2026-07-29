@@ -586,9 +586,10 @@ export function resolveUiBrowserPerformanceInvoke(
     case "list_active_spool_loans":
       return fixture.activeLoanRows;
     case "list_spool_loans": {
-      const direction = payload.direction
+      const requestedDirection = payload.direction
         ? String(payload.direction).toUpperCase()
         : null;
+      const direction = requestedDirection === "ALL" ? null : requestedDirection;
       const includeReturned = payload.includeReturned ?? true;
       const rows = fixture.loanRows.filter(
         ({ loan }) =>
@@ -600,9 +601,10 @@ export function resolveUiBrowserPerformanceInvoke(
       return boundedSlice(rows, payload, 500);
     }
     case "list_loan_usage_by_person": {
-      const direction = payload.direction
+      const requestedDirection = payload.direction
         ? String(payload.direction).toUpperCase()
         : null;
+      const direction = requestedDirection === "ALL" ? null : requestedDirection;
       return fixture.loanUsage
         .filter(
           (row) =>

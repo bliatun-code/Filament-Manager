@@ -129,6 +129,19 @@ test("companion controls use shared focus and radius primitives", () => {
   assert.match(css, /\.phone-nav-button\s*\{[\s\S]*border-radius: var\(--segmented-item-radius\);/);
 });
 
+test("search fields keep a permanent visible label above the input", () => {
+  const css = readCssBundle();
+
+  assert.match(
+    css,
+    /\.search-field\s*\{[^}]*display: grid;[^}]*gap: 0\.38rem;[^}]*min-width: 0;/,
+  );
+  assert.match(
+    css,
+    /\.search-field-label\s*\{[^}]*color: var\(--text-muted\);[^}]*font-size: 0\.78rem;[^}]*font-weight: 700;/,
+  );
+});
+
 test("light form controls use an opaque three-to-one border without changing dark mode", () => {
   const css = readCssBundle();
   const tokenMatch = css.match(/:root\s*\{[^}]*--form-control-border:\s*(#[0-9a-f]{6});/i);

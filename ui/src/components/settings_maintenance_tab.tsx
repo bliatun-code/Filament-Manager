@@ -18,6 +18,7 @@ import type {
 } from "../lib/tauri_client";
 import type { SettingsDiagnosticsRequestStatus } from "../pages/settings_application_diagnostics_model";
 import type { Locale } from "../lib/i18n";
+import { formatDisplayInteger } from "../lib/number_display";
 import { formatSettingsDateTime } from "../lib/settings_utils";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -271,6 +272,7 @@ export function SettingsMaintenanceTab({
                 hasExtraTables={backupValidationHasExtraTables}
                 hasMissingTables={backupValidationHasMissingTables}
                 hasWarnings={backupValidationHasWarnings}
+                locale={locale}
                 summary={lastBackupValidation}
                 t={t}
               />
@@ -298,6 +300,7 @@ export function SettingsMaintenanceTab({
           diagnostics={applicationDiagnostics}
           diagnosticsError={applicationDiagnosticsError}
           diagnosticsStatus={applicationDiagnosticsStatus}
+          locale={locale}
           supportBundleError={supportBundleError}
           supportBundleStatus={supportBundleStatus}
           tauri={tauri}
@@ -409,9 +412,12 @@ export function SettingsMaintenanceTab({
       </div>
       {lastCatalogReset ? (
         <SettingsNotice className="mt-4" tone="neutral">
-          {t("settings.removed", "Removed")}: {lastCatalogReset.removed_count} /{" "}
-          {t("settings.remaining", "Remaining")}: {lastCatalogReset.remaining_count} /{" "}
-          {t("settings.reactivated", "Reactivated")}: {lastCatalogReset.reactivated_count}
+          {t("settings.removed", "Removed")}:{" "}
+          {formatDisplayInteger(lastCatalogReset.removed_count, locale)} /{" "}
+          {t("settings.remaining", "Remaining")}:{" "}
+          {formatDisplayInteger(lastCatalogReset.remaining_count, locale)} /{" "}
+          {t("settings.reactivated", "Reactivated")}:{" "}
+          {formatDisplayInteger(lastCatalogReset.reactivated_count, locale)}
         </SettingsNotice>
       ) : null}
     </SettingsSurfaceCard>

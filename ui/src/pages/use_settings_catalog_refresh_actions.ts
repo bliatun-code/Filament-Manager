@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction } from "react";
 import { refreshManagedVendorCatalog } from "../lib/catalog_writes";
 import { toErrorMessage } from "../lib/error_text";
 import type { CatalogRefreshResult } from "../lib/tauri_client";
+import type { NumberDisplayLocale } from "../lib/number_display";
 import {
   buildSettingsCatalogRefreshFallbackErrorMessage,
   buildSettingsCatalogRefreshPreparingMessage,
@@ -19,6 +20,7 @@ type UseSettingsCatalogRefreshActionsInput = {
   completeCatalogRefreshResult: (summary: CatalogRefreshResult) => void;
   failCatalogRefreshResult: (message: string) => void;
   getCatalogRefreshMaterials: (vendor: SettingsCatalogVendor) => string[];
+  locale: NumberDisplayLocale;
   reloadSettings: () => Promise<void>;
   setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
   setCatalogRefreshPhase: Dispatch<SetStateAction<string>>;
@@ -43,6 +45,7 @@ export function useSettingsCatalogRefreshActions({
   completeCatalogRefreshResult,
   failCatalogRefreshResult,
   getCatalogRefreshMaterials,
+  locale,
   reloadSettings,
   setCatalogRefreshBusy,
   setCatalogRefreshPhase,
@@ -95,7 +98,11 @@ export function useSettingsCatalogRefreshActions({
         );
       } else {
         setInfo(
-          buildSettingsCatalogRefreshSuccessMessage(summary, settingsCatalogRefreshSummaryLabels()),
+          buildSettingsCatalogRefreshSuccessMessage(
+            summary,
+            settingsCatalogRefreshSummaryLabels(),
+            locale,
+          ),
         );
       }
     } catch (refreshError) {

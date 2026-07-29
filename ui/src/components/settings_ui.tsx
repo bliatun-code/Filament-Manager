@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { I18nContext } from "../lib/i18n";
+import { formatDisplayInteger } from "../lib/number_display";
 import { settingsSectionLabelClass } from "../lib/settings_ui_classes";
 import { joinClassNames } from "./ui_class_names";
 
@@ -183,13 +185,17 @@ export function SettingsMetricTile({
   hint?: string;
   className?: string;
 }) {
+  const locale = useContext(I18nContext)?.locale ?? "en";
+  const displayValue =
+    typeof value === "number" ? formatDisplayInteger(value, locale) : value;
+
   return (
     <div
       className={`rounded-lg border border-slate-300/70 bg-white/58 px-4 py-3 dark:border-slate-700/72 dark:bg-slate-950/30 ${className}`.trim()}
     >
       <div className={settingsSectionLabelClass}>{label}</div>
       <div className="mt-2 break-words text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">
-        {value}
+        {displayValue}
       </div>
       {hint ? (
         <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">{hint}</div>

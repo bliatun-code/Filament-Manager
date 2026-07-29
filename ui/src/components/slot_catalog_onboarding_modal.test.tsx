@@ -185,7 +185,7 @@ test("SlotCatalogOnboardingModal marks discontinued catalog fallback rows", () =
   });
 
   assert.match(html, /PLA Archived · Black/);
-  assert.match(html, /Bambu Lab · 1000 g · Discontinued/);
+  assert.match(html, /Bambu Lab · 1,000 g · Discontinued/);
   assert.match(html, /Add \+ save RFID/);
 });
 

@@ -1,4 +1,8 @@
 import type { BackupValidationStats, ImportDataStats } from "../lib/tauri_client";
+import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 import { isFullBackupValidationFormat } from "../lib/settings_utils";
 
 export type SettingsBackupValidationState = {
@@ -155,15 +159,20 @@ export function resolveSettingsFullBackupImportedAt({
 export function buildSettingsImportSuccessMessage({
   importedOnClient,
   labels,
+  locale = "en",
   result,
 }: {
   importedOnClient: boolean;
   labels: SettingsImportMessageLabels;
+  locale?: NumberDisplayLocale;
   result: ImportDataStats;
 }): string {
   if (result.detected_format === "FULL_BACKUP") {
     const clientHint = importedOnClient ? ` ${labels.librarySyncImportedOnClientHint}` : "";
-    return `${labels.backupImported} ${labels.rows}: ${result.imported_count}.${clientHint}`;
+    return `${labels.backupImported} ${labels.rows}: ${formatDisplayInteger(
+      result.imported_count,
+      locale,
+    )}.${clientHint}`;
   }
 
   const sourceLabel =
@@ -171,5 +180,11 @@ export function buildSettingsImportSuccessMessage({
       ? labels.importDetectedInventoryCsv
       : labels.importDetectedInventoryJson;
 
-  return `${labels.inventoryImportDone} ${labels.importSource}: ${sourceLabel}. ${labels.rows}: ${result.imported_count} (${labels.created} ${result.created_count}, ${labels.updated} ${result.updated_count}).`;
+  return `${labels.inventoryImportDone} ${labels.importSource}: ${sourceLabel}. ${labels.rows}: ${formatDisplayInteger(
+    result.imported_count,
+    locale,
+  )} (${labels.created} ${formatDisplayInteger(
+    result.created_count,
+    locale,
+  )}, ${labels.updated} ${formatDisplayInteger(result.updated_count, locale)}).`;
 }

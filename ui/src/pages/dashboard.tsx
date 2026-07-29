@@ -78,8 +78,8 @@ export default function DashboardPage({
     forceOnboardingVisible ? false : Boolean(readLatestFullBackupExport()),
   );
   const badges = useMemo(
-    () => buildDashboardBadges({ goalMetrics, t }),
-    [goalMetrics, t],
+    () => buildDashboardBadges({ goalMetrics, locale, t }),
+    [goalMetrics, locale, t],
   );
   const companionPresentation = useMemo(
     () =>
@@ -207,6 +207,7 @@ export default function DashboardPage({
       </div>
 
       <OwnershipSnapshotPanel
+        locale={locale}
         lowStock={ownershipLowStock}
         onHand={ownershipOnHand}
         t={t}
@@ -230,6 +231,7 @@ export default function DashboardPage({
         <ActivityTimeline items={activity} />
         <InventoryHealthPanel
           health={health}
+          locale={locale}
           onAddFirstSpool={onAddFirstSpool}
           t={t}
         />

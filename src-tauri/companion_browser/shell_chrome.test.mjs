@@ -337,6 +337,33 @@ test("topbar renders the tablet root switch with all primary flows", () => {
   assert.doesNotMatch(html, /<h1 class="app-title">/);
 });
 
+test("tablet root switch exposes complete tab semantics and a single active tab stop", () => {
+  const html = renderTopbar({
+    layoutMode: "tablet",
+    activeRootFlow: "loans",
+    activeRootFlowItem: rootFlowItems[1],
+    rootFlowItems,
+    busy: false,
+    statusMessage: "",
+    statusTone: "default",
+    escapeHtml,
+  });
+
+  assert.match(html, /class="root-switch" role="tablist"/);
+  assert.equal((html.match(/role="tab"/g) || []).length, rootFlowItems.length);
+  assert.equal((html.match(/aria-controls="companion-root-panel"/g) || []).length, rootFlowItems.length);
+  assert.match(
+    html,
+    /id="companion-root-tab-loans"[\s\S]*?role="tab"[\s\S]*?aria-selected="true"[\s\S]*?tabindex="0"/,
+  );
+  assert.match(
+    html,
+    /id="companion-root-tab-storage"[\s\S]*?role="tab"[\s\S]*?aria-selected="false"[\s\S]*?tabindex="-1"/,
+  );
+  assert.equal((html.match(/aria-selected="true"/g) || []).length, 1);
+  assert.equal((html.match(/tabindex="0"/g) || []).length, 1);
+});
+
 test("desktop topbar stays a utility strip instead of repeating the page heading or refresh control", () => {
   const html = renderTopbar({
     layoutMode: "desktop",
@@ -383,7 +410,28 @@ test("phone bottom nav renders just the four primary flow labels", () => {
   assert.match(html, /data-root-flow="loans"/);
   assert.match(html, /data-root-flow="printers"/);
   assert.match(html, /data-root-flow="settings"/);
+  assert.match(
+    html,
+    /data-root-flow="loans"[\s\S]*?data-active="true"[\s\S]*?aria-current="page"/,
+  );
+  assert.equal((html.match(/aria-current="page"/g) || []).length, 1);
   assert.doesNotMatch(html, />On</);
+});
+
+test("desktop root navigation marks only the active destination as current", () => {
+  const html = renderDesktopRail({
+    activeRootFlow: "printers",
+    rootFlowItems,
+    activeLoansCount: 2,
+    escapeHtml,
+  });
+
+  assert.match(
+    html,
+    /data-root-flow="printers"[\s\S]*?data-active="true"[\s\S]*?aria-current="page"/,
+  );
+  assert.equal((html.match(/aria-current="page"/g) || []).length, 1);
+  assert.doesNotMatch(html, /role="tab"/);
 });
 
 test("root flow navigation labels use the active locale for assistive text", () => {

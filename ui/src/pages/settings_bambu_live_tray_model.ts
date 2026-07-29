@@ -21,6 +21,12 @@ import {
 } from "../lib/bambu_settings_profiles";
 import { saneNozzleSettingTemp } from "../lib/bambu_nozzle_settings";
 import {
+  formatDisplayInteger,
+  formatDisplayNumber,
+  formatDisplayPercent,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
+import {
   deriveAmsRemainingGrams,
   formatAmsWeightEstimate,
   saneAmsRemainingGrams,
@@ -40,6 +46,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
   amsReadInProgress: boolean;
   catalogRows?: MasterCatalogRow[];
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  locale?: NumberDisplayLocale;
   printerSlots?: PrinterAmsSlotRow[];
   spoolRows: NormalizedSpoolWithMasterRow[];
   t: TranslateFn;
@@ -51,6 +58,7 @@ type BuildSettingsBambuLiveDiagnosticTrayCardsInput = {
   catalogRows?: MasterCatalogRow[];
   captureTrayByKey: Map<string, DiagnosticTraySnapshot>;
   displayTrays: BambuLiveObservedTray[];
+  locale?: NumberDisplayLocale;
   printerSlots?: PrinterAmsSlotRow[];
   spoolRows: NormalizedSpoolWithMasterRow[];
   t: TranslateFn;
@@ -201,16 +209,23 @@ export function buildSettingsBambuLivePresetSignalLabel({
   return `${t("settings.bambuLivePresetSignal", "Filament settings preset")}: ${presetSignal}`;
 }
 
-function formatNozzleTemperature(value: number): string {
-  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+function formatNozzleTemperature(
+  value: number,
+  locale: NumberDisplayLocale,
+): string {
+  return formatDisplayNumber(value, locale, {
+    maximumFractionDigits: 1,
+  });
 }
 
 export function buildSettingsBambuLiveAmsWeightLabel({
   capturedTraySnapshot,
+  locale = "en",
   t,
   tray,
 }: {
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  locale?: NumberDisplayLocale;
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 }): string | null {
@@ -238,6 +253,7 @@ export function buildSettingsBambuLiveAmsWeightLabel({
   return formatAmsWeightEstimate({
     basisLabel: t("settings.bambuLiveAmsWeightBasis", "AMS spool basis"),
     estimateLabel: t("settings.bambuLiveAmsWeightEstimate", "AMS estimate"),
+    locale,
     remainingGrams: derivedRemainingGrams,
     remainingPercent,
     trayWeightG,
@@ -246,10 +262,12 @@ export function buildSettingsBambuLiveAmsWeightLabel({
 
 export function buildSettingsBambuLiveNozzleRangeLabel({
   capturedTraySnapshot,
+  locale = "en",
   t,
   tray,
 }: {
   capturedTraySnapshot: DiagnosticTraySnapshot | null;
+  locale?: NumberDisplayLocale;
   t: TranslateFn;
   tray?: Pick<BambuLiveObservedTray, "nozzle_temp_max_c" | "nozzle_temp_min_c"> | null;
 }): string | null {
@@ -265,21 +283,23 @@ export function buildSettingsBambuLiveNozzleRangeLabel({
 
   const label = t("settings.bambuLiveNozzleRange", "Nozzle range");
   if (hasMin && hasMax) {
-    return `${label}: ${formatNozzleTemperature(min)}-${formatNozzleTemperature(max)} C`;
+    return `${label}: ${formatNozzleTemperature(min, locale)}-${formatNozzleTemperature(max, locale)} C`;
   }
   if (hasMin) {
-    return `${label}: min ${formatNozzleTemperature(min)} C`;
+    return `${label}: min ${formatNozzleTemperature(min, locale)} C`;
   }
   if (hasMax && max != null) {
-    return `${label}: max ${formatNozzleTemperature(max)} C`;
+    return `${label}: max ${formatNozzleTemperature(max, locale)} C`;
   }
   return null;
 }
 
 export function buildSettingsBambuLiveTrayDisplayText({
+  locale = "en",
   t,
   tray,
 }: {
+  locale?: NumberDisplayLocale;
   t: TranslateFn;
   tray: BambuLiveObservedTray;
 }) {
@@ -288,7 +308,9 @@ export function buildSettingsBambuLiveTrayDisplayText({
     detailText:
       [
         tray.filament_type,
-        remainingPercent != null ? `${remainingPercent}%` : null,
+        remainingPercent != null
+          ? formatDisplayPercent(remainingPercent, locale, 1)
+          : null,
       ]
         .filter(Boolean)
         .join(" · ") || "—",
@@ -459,6 +481,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   amsReadInProgress,
   catalogRows = [],
   capturedTraySnapshot,
+  locale = "en",
   printerSlots = [],
   spoolRows,
   t,
@@ -509,15 +532,21 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   });
   const amsWeightLabel = buildSettingsBambuLiveAmsWeightLabel({
     capturedTraySnapshot,
+    locale,
     t,
     tray,
   });
   const nozzleRangeLabel = buildSettingsBambuLiveNozzleRangeLabel({
     capturedTraySnapshot,
+    locale,
     t,
     tray,
   });
-  const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({ t, tray });
+  const { detailText, statusText } = buildSettingsBambuLiveTrayDisplayText({
+    locale,
+    t,
+    tray,
+  });
   const { matchLabel, matchSwatchColor } = buildSettingsBambuLiveInventoryMatchPresentation({
     capturedTraySnapshot,
     primaryCatalogMatch,
@@ -539,9 +568,9 @@ export function buildSettingsBambuLiveDiagnosticTrayCard({
   return {
     candidateCountText:
       inventoryMatch.kind === "metadata_multiple"
-        ? `${inventoryMatch.candidates.length} ${t("settings.bambuLiveCandidateCount", "candidates")}`
+        ? `${formatDisplayInteger(inventoryMatch.candidates.length, locale)} ${t("settings.bambuLiveCandidateCount", "candidates")}`
         : catalogMatch.kind === "catalog_multiple"
-          ? `${catalogMatch.candidates.length} ${t("settings.bambuLiveCatalogCandidateCount", "catalog entries")}`
+          ? `${formatDisplayInteger(catalogMatch.candidates.length, locale)} ${t("settings.bambuLiveCatalogCandidateCount", "catalog entries")}`
         : null,
     candidates:
       inventoryMatch.kind !== "none"
@@ -586,6 +615,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCards({
   catalogRows = [],
   captureTrayByKey,
   displayTrays,
+  locale = "en",
   printerSlots,
   spoolRows,
   t,
@@ -599,6 +629,7 @@ export function buildSettingsBambuLiveDiagnosticTrayCards({
       amsReadInProgress,
       catalogRows,
       capturedTraySnapshot,
+      locale,
       printerSlots,
       spoolRows,
       t,

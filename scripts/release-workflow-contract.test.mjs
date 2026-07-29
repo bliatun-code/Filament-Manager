@@ -741,6 +741,7 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
   const windowsJob = ciWorkflow.slice(windowsJobStart);
 
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
+  assert.match(packageManifest.scripts.smoke, /npm run test:a11y:data-backed/);
   assertStepOrder(macosJob, [
     "Install root dependencies",
     "Install Playwright Chromium",

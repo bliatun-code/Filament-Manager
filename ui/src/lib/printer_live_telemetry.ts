@@ -1,4 +1,10 @@
 import { isOlderThanMinutes } from "./printer_live_display";
+import {
+  formatDisplayCelsius,
+  formatDisplayInteger,
+  formatDisplayPercent,
+  type NumberDisplayLocale,
+} from "./number_display";
 import type { BambuLiveIntegrationSettings } from "./tauri_client";
 
 type TranslateFn = (key: string, fallback?: string) => string;
@@ -30,45 +36,58 @@ function finiteNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function formatTemperature(value: number | null | undefined): string | null {
+function formatTemperature(
+  value: number | null | undefined,
+  locale: NumberDisplayLocale,
+): string | null {
   const parsed = finiteNumber(value);
   if (parsed == null) {
     return null;
   }
-  return `${Math.round(parsed)} C`;
+  return formatDisplayCelsius(parsed, locale);
 }
 
-function formatAmsTemperature(value: number | null | undefined): string | null {
+function formatAmsTemperature(
+  value: number | null | undefined,
+  locale: NumberDisplayLocale,
+): string | null {
   const parsed = finiteNumber(value);
   if (parsed == null || parsed < -20 || parsed > 80) {
     return null;
   }
-  return formatTemperature(parsed);
+  return formatTemperature(parsed, locale);
 }
 
-function formatPercent(value: number | null | undefined): string | null {
+function formatPercent(
+  value: number | null | undefined,
+  locale: NumberDisplayLocale,
+): string | null {
   const parsed = finiteNumber(value);
   if (parsed == null) {
     return null;
   }
-  return `${Math.max(0, Math.min(100, Math.round(parsed)))}%`;
+  return formatDisplayPercent(Math.max(0, Math.min(100, parsed)), locale);
 }
 
-function formatRemainingMinutes(value: number | null | undefined, t: TranslateFn): string | null {
+function formatRemainingMinutes(
+  value: number | null | undefined,
+  t: TranslateFn,
+  locale: NumberDisplayLocale,
+): string | null {
   const parsed = finiteNumber(value);
   if (parsed == null || parsed < 0) {
     return null;
   }
   const minutes = Math.round(parsed);
   if (minutes < 60) {
-    return `${minutes} ${t("common.minutes", "min")}`;
+    return `${formatDisplayInteger(minutes, locale)} ${t("common.minutes", "min")}`;
   }
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   if (remainingMinutes === 0) {
-    return `${hours} ${t("common.hoursShort", "h")}`;
+    return `${formatDisplayInteger(hours, locale)} ${t("common.hoursShort", "h")}`;
   }
-  return `${hours} ${t("common.hoursShort", "h")} ${remainingMinutes} ${t("common.minutes", "min")}`;
+  return `${formatDisplayInteger(hours, locale)} ${t("common.hoursShort", "h")} ${formatDisplayInteger(remainingMinutes, locale)} ${t("common.minutes", "min")}`;
 }
 
 export function normalizeAmsHumidityIndex(value: number | null | undefined): number | null {
@@ -182,6 +201,7 @@ function stateLabel(state: PrinterLiveTelemetryState, t: TranslateFn): string {
 export function buildPrinterLiveTelemetry(
   liveConfig: BambuLiveIntegrationSettings | null,
   t: TranslateFn,
+  locale: NumberDisplayLocale = "en",
 ): PrinterLiveTelemetry | null {
   const observed = liveConfig?.observed_state ?? null;
   if (!liveConfig?.enabled || !observed || isOlderThanMinutes(observed.last_seen_at, 5)) {
@@ -193,12 +213,16 @@ export function buildPrinterLiveTelemetry(
   const telemetry: PrinterLiveTelemetry = {
     state,
     stateLabel: stateLabel(state, t),
-    progressLabel: showProgressDetails ? formatPercent(observed.progress_percent) : null,
-    remainingLabel: showProgressDetails ? formatRemainingMinutes(observed.remaining_minutes, t) : null,
-    nozzleTempLabel: formatTemperature(observed.nozzle_temp_c),
-    bedTempLabel: formatTemperature(observed.bed_temp_c),
+    progressLabel: showProgressDetails
+      ? formatPercent(observed.progress_percent, locale)
+      : null,
+    remainingLabel: showProgressDetails
+      ? formatRemainingMinutes(observed.remaining_minutes, t, locale)
+      : null,
+    nozzleTempLabel: formatTemperature(observed.nozzle_temp_c, locale),
+    bedTempLabel: formatTemperature(observed.bed_temp_c, locale),
     humidity: buildHumidityTelemetry(observed.ams_humidity_index, t),
-    amsTempLabel: formatAmsTemperature(observed.ams_temperature_c),
+    amsTempLabel: formatAmsTemperature(observed.ams_temperature_c, locale),
   };
 
   const hasLiveDetails =

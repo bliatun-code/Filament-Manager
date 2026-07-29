@@ -64,6 +64,25 @@ test("storage shell keeps search and primary actions close to the spool list", (
   assert.match(html, /Browse inventory and open the spool you need\./);
 });
 
+test("storage and catalog search fields keep visible associated labels", () => {
+  const shellHtml = renderShell();
+  assert.match(
+    shellHtml,
+    /<label class="search-field toolbar-search" for="companion-inventory-search">[\s\S]*?<span class="search-field-label">Search filament, color, owner, or placement<\/span>[\s\S]*?<input[\s\S]*?id="companion-inventory-search"[\s\S]*?name="inventory-search"[\s\S]*?type="search"/,
+  );
+
+  const state = createInitialCompanionState();
+  const catalogHtml = renderAddFilamentTaskSheetBody(
+    state,
+    false,
+    (value) => String(value ?? ""),
+  );
+  assert.match(
+    catalogHtml,
+    /<label class="search-field" for="companion-filament-catalog-search">[\s\S]*?<span class="search-field-label">Search material, color, or filament code<\/span>[\s\S]*?<input[\s\S]*?id="companion-filament-catalog-search"[\s\S]*?name="filament-catalog-search"/,
+  );
+});
+
 test("storage shell routes empty states through shared companion cards", () => {
   assert.match(storageShellSource, /renderCompanionStateCard/);
   assert.doesNotMatch(storageShellSource, /<div class="(?:empty-card|info-card)"/);

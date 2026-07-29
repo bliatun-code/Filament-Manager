@@ -87,7 +87,7 @@ export function PrinterSlotPicker({
   openIncomingWeightDialog,
   openEmptySlotWeightDialog,
 }: PrinterSlotPickerProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const popupId = useId();
   const searchInputId = useId();
   const selectorButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -241,7 +241,7 @@ export function PrinterSlotPicker({
             </span>
             <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
               {selectedTargetSpool
-                ? `${selectedTargetSpool.master.vendor} · ${formatSpoolReference(selectedTargetSpool.spool.id)} · ${formatGrams(selectedTargetSpool.spool.remaining_g)}`
+                ? `${selectedTargetSpool.master.vendor} · ${formatSpoolReference(selectedTargetSpool.spool.id)} · ${formatGrams(selectedTargetSpool.spool.remaining_g, "dash", locale)}`
                 : t("printers.targetEmpty", "Target: Empty slot")}
             </span>
           </span>
@@ -395,7 +395,7 @@ export function PrinterSlotPicker({
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-slate-600 dark:text-slate-400">
                         {row.master.vendor} · {formatSpoolReference(row.spool.id)} ·{" "}
-                        {formatGrams(row.spool.remaining_g)}
+                        {formatGrams(row.spool.remaining_g, "dash", locale)}
                       </span>
                       <span className="mt-px block truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
                         {placementLabel}

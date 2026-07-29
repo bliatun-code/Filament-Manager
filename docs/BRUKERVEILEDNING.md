@@ -102,10 +102,13 @@ stedet for en misvisende prosent. Bruk **Legg til filament** i panelet for å
 
 Den avvisbare sjekklisten **Fullfør oppsettet** vises etter at programmet har
 lastet et brukbart bibliotek. Den peker til første rull eller import, valgfritt
-printer- og nettleseroppsett, og første komplette sikkerhetskopi. Fremdriften
-hentes fra biblioteket og denne enhetens historikk for validerte
-sikkerhetskopier. En midlertidig nettverks- eller vertsfeil vises derfor ikke
-som om hele oppsettet mangler.
+printer- og nettleseroppsett, og første komplette sikkerhetskopi. Obligatorisk
+arbeid med lager og sikkerhetskopi vises separat fra valgfrie printer- og
+Companion-steg. Fullførte punkter flyttes til ett sammenfoldet sammendrag, og
+fremdriften teller bare de obligatoriske stegene. Statusen hentes fra
+biblioteket og denne enhetens historikk for validerte sikkerhetskopier. En
+midlertidig nettverks- eller vertsfeil vises derfor ikke som om hele oppsettet
+mangler.
 
 ### Lager
 
@@ -278,7 +281,10 @@ spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
 forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
 for hver flate, og engelsk brukes som fallback ved behov. Korrigeringer til
-community-oversettelsene kan foreslås via issues eller pull requests på GitHub.
+community-oversettelsene kan foreslås via det egne
+[skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
+eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
+ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
 
 Velg **Se etter oppdateringer** når du vil sammenligne installert versjon med
 siste publiserte GitHub-release. Sjekken skjer ikke automatisk. Hvis

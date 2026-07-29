@@ -5,6 +5,10 @@ import { ModalHeader } from "../components/modal_chrome";
 import { modalPanelClassName } from "../components/modal_panel_class";
 import type { I18nContextValue } from "../lib/i18n";
 import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
+import {
   DEFAULT_BORROWER_PREFS,
   DEFAULT_CONSUMPTION_PREFS,
   isInboundLoanDirection,
@@ -18,6 +22,7 @@ import {
   type LoanDirection,
 } from "../lib/statistics_model";
 import type { FilamentConsumptionRow } from "../lib/tauri_client";
+import { formatGrams } from "../lib/weight_display";
 import {
   statisticsFilterButtonClass,
   statisticsFilterInputClass,
@@ -69,6 +74,7 @@ export function StatisticsConsumptionModal({
   consumptionRows,
   consumptionVendorOptions,
   filteredConsumptionRows,
+  locale = "en",
   onClose,
   setConsumptionPrefs,
   t,
@@ -81,6 +87,7 @@ export function StatisticsConsumptionModal({
   consumptionRows: FilamentConsumptionRow[];
   consumptionVendorOptions: string[];
   filteredConsumptionRows: FilamentConsumptionRow[];
+  locale?: NumberDisplayLocale;
   onClose: () => void;
   setConsumptionPrefs: Dispatch<SetStateAction<ConsumptionPopupPrefs>>;
   t: Translate;
@@ -289,12 +296,12 @@ export function StatisticsConsumptionModal({
             >
               <SummaryMetricTile
                 label={t("printers.jobs", "Jobs")}
-                value={row.jobs.toString()}
+                value={formatDisplayInteger(row.jobs, locale)}
                 tone="sky"
               />
               <SummaryMetricTile
                 label={t("printers.used", "Used")}
-                value={`${row.used_grams} g`}
+                value={formatGrams(row.used_grams, "zero", locale)}
                 tone="amber"
               />
             </StatisticsFilamentUsageRowCard>
@@ -313,6 +320,7 @@ export function StatisticsBorrowerUsageModal({
   borrowerPrefs,
   borrowerRows,
   filteredBorrowerRows,
+  locale = "en",
   onClose,
   setBorrowerPrefs,
   t,
@@ -324,6 +332,7 @@ export function StatisticsBorrowerUsageModal({
   borrowerPrefs: BorrowerPopupPrefs;
   borrowerRows: BorrowerFilamentUsageRow[];
   filteredBorrowerRows: BorrowerFilamentUsageRow[];
+  locale?: NumberDisplayLocale;
   onClose: () => void;
   setBorrowerPrefs: Dispatch<SetStateAction<BorrowerPopupPrefs>>;
   t: Translate;
@@ -440,7 +449,7 @@ export function StatisticsBorrowerUsageModal({
             >
               <SummaryMetricTile
                 label={t("printers.used", "Used")}
-                value={`${row.consumedGrams} g`}
+                value={formatGrams(row.consumedGrams, "zero", locale)}
                 tone="amber"
               />
               <SummaryMetricTile
@@ -449,12 +458,12 @@ export function StatisticsBorrowerUsageModal({
                     ? t("statistics.borrowedInShort", "In")
                     : t("statistics.lentOutShort", "Out")
                 }
-                value={`${row.lentOutGrams} g`}
+                value={formatGrams(row.lentOutGrams, "zero", locale)}
                 tone="sky"
               />
               <SummaryMetricTile
                 label={t("statistics.loansShort", "Loans")}
-                value={`${row.loans} · ${row.activeLoans} ${t("common.active", "Active")}`}
+                value={`${formatDisplayInteger(row.loans, locale)} · ${formatDisplayInteger(row.activeLoans, locale)} ${t("common.active", "Active")}`}
                 tone="slate"
                 className="col-span-2 min-[960px]:col-span-1"
               />

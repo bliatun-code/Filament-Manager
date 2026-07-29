@@ -129,7 +129,7 @@ export function derivePrinterSlotDisplayState(options: {
   const lastLiveObservationAt = liveSlotInUse
     ? lastLiveActiveAt ?? lastLiveIdentityAt
     : lastLiveIdentityAt;
-  const liveObservedAge = formatRelativeAge(lastLiveObservationAt, t);
+  const liveObservedAge = formatRelativeAge(lastLiveObservationAt, t, locale);
   const liveObservedAtLabel = lastLiveObservationAt
     ? formatDateTime(lastLiveObservationAt, locale)
     : null;

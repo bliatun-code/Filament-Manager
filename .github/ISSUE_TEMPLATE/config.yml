@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Translation correction
+    url: https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml
+    about: Report incorrect or unclear text in one of the languages already available in the app.
   - name: User guide
     url: https://github.com/bliatun-code/Filament-Manager/blob/main/docs/USER_GUIDE.md
     about: Start here for expected workflows and current behavior.

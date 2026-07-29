@@ -15,11 +15,13 @@ import {
   type SettingsMaintenanceResetMessageLabels,
 } from "./settings_maintenance_model";
 import type { SettingsResetConfirmAction } from "./use_settings_reset_confirm";
+import type { Locale } from "../lib/i18n";
 
 type UseSettingsMaintenanceActionsInput = {
   busy: boolean;
   clearConfirmResetAction: () => void;
   confirmResetAction: SettingsResetConfirmAction | null;
+  locale: Locale;
   reloadSettings: () => Promise<void>;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setConfirmResetAction: Dispatch<SetStateAction<SettingsResetConfirmAction | null>>;
@@ -36,6 +38,7 @@ export function useSettingsMaintenanceActions({
   busy,
   clearConfirmResetAction,
   confirmResetAction,
+  locale,
   reloadSettings,
   setBusy,
   setConfirmResetAction,
@@ -97,7 +100,13 @@ export function useSettingsMaintenanceActions({
     try {
       const result = await resetCatalogData();
       setLastCatalogReset(result);
-      setInfo(buildSettingsCatalogResetMessage(result, settingsCatalogResetMessageLabels()));
+      setInfo(
+        buildSettingsCatalogResetMessage(
+          result,
+          settingsCatalogResetMessageLabels(),
+          locale,
+        ),
+      );
     } catch (resetError) {
       console.error(resetError);
       setError(

@@ -5,7 +5,7 @@ import type { OwnershipType } from "../lib/inventory_list_model";
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import { formatDateTime } from "../lib/printer_live_display";
 import { formatPrinterSlotLabelForModel } from "../lib/printer_profiles";
-import { parsePositiveWeight } from "../lib/weight_display";
+import { formatGrams, parsePositiveWeight } from "../lib/weight_display";
 import {
   buildSlotCatalogOnboardingSaveState,
   type SlotCatalogOnboardingPrompt,
@@ -157,7 +157,8 @@ export function SlotCatalogOnboardingModal({
                 )}
               </div>
               <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                {prompt.master.vendor} · {prompt.master.default_weight} g
+                {prompt.master.vendor} ·{" "}
+                {formatGrams(prompt.master.default_weight, "zero", locale)}
                 {prompt.master.is_discontinued
                   ? ` · ${t("common.discontinued", "Discontinued")}`
                   : ""}

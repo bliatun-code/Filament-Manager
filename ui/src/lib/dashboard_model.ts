@@ -16,6 +16,11 @@ import type {
   WishlistItemRow,
 } from "./tauri_client";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
+import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "./number_display";
+import { formatGrams } from "./weight_display";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -96,9 +101,10 @@ function progressRatio(current: number, target: number): number {
 export function buildDashboardBadges(params: {
   goalMetrics: DashboardGoalMetrics;
   jobGoal?: number;
+  locale?: NumberDisplayLocale;
   t: TranslateFn;
 }): DashboardBadge[] {
-  const { goalMetrics, t } = params;
+  const { goalMetrics, locale = "en", t } = params;
   const jobGoal = params.jobGoal ?? 20;
   const locationProgress =
     goalMetrics.activeSpools > 0
@@ -116,7 +122,7 @@ export function buildDashboardBadges(params: {
       title: t("dashboard.badgeLocationCoverage", "Location coverage"),
       status:
         goalMetrics.activeSpools > 0
-          ? `${goalMetrics.placedActiveSpools}/${goalMetrics.activeSpools} ${t(
+          ? `${formatDisplayInteger(goalMetrics.placedActiveSpools, locale)}/${formatDisplayInteger(goalMetrics.activeSpools, locale)} ${t(
               "dashboard.badgeActiveSpoolsPlaced",
               "active spools placed",
             )}`
@@ -132,8 +138,8 @@ export function buildDashboardBadges(params: {
       title: t("dashboard.badgeJobLogging", "Job logging"),
       status:
         goalMetrics.totalJobs > jobGoal
-          ? `${goalMetrics.totalJobs} ${t("dashboard.badgeJobsLogged", "jobs logged")}`
-          : `${goalMetrics.totalJobs}/${jobGoal} ${t("dashboard.badgeJobsLogged", "jobs logged")}`,
+          ? `${formatDisplayInteger(goalMetrics.totalJobs, locale)} ${t("dashboard.badgeJobsLogged", "jobs logged")}`
+          : `${formatDisplayInteger(goalMetrics.totalJobs, locale)}/${formatDisplayInteger(jobGoal, locale)} ${t("dashboard.badgeJobsLogged", "jobs logged")}`,
       description: t(
         "dashboard.badgeJobLoggingDesc",
         "Log printer-linked jobs so consumption stays grounded in real usage.",
@@ -145,7 +151,7 @@ export function buildDashboardBadges(params: {
       title: t("dashboard.badgeSlotReadiness", "Slot readiness"),
       status:
         goalMetrics.totalSlots > 0
-          ? `${goalMetrics.loadedSlots}/${goalMetrics.totalSlots} ${t(
+          ? `${formatDisplayInteger(goalMetrics.loadedSlots, locale)}/${formatDisplayInteger(goalMetrics.totalSlots, locale)} ${t(
               "dashboard.badgeSlotsLoaded",
               "slots loaded",
             )}`
@@ -225,9 +231,19 @@ export function buildDashboardDerivedState(params: {
   loans: NormalizedLoanDetailsRow[];
   wishlist: WishlistItemRow[];
   materialRows?: MaterialUsageRow[] | null;
+  locale?: NumberDisplayLocale;
   t: TranslateFn;
 }): DashboardDerivedState {
-  const { overview, printers, spoolRows, loans, wishlist, materialRows, t } = params;
+  const {
+    overview,
+    printers,
+    spoolRows,
+    loans,
+    wishlist,
+    materialRows,
+    locale = "en",
+    t,
+  } = params;
   const activeLoans = loans.filter(isActiveOutboundLoan);
   const printerCount = printers.length;
   const effectiveSlotTotals = printers.reduce(
@@ -269,7 +285,7 @@ export function buildDashboardDerivedState(params: {
       id: row.spool.id,
       name: row.master.filament_name,
       color: row.master.color_name,
-      remaining: `${row.spool.remaining_g ?? 0} g`,
+      remaining: formatGrams(row.spool.remaining_g ?? 0, "zero", locale),
     }));
   const lowStockCount = lowStockRows.length;
   const ownedLowStockCount = spoolRows.filter((row) => {
@@ -295,13 +311,13 @@ export function buildDashboardDerivedState(params: {
     ...activeLoans.slice(0, 3).map((loan) => ({
       id: `loan-${loan.loan.id}`,
       title: `${t("dashboard.loanedTo", "Loaned to")} ${loan.loan.borrower_name}`,
-      detail: `${loan.material} ${loan.filament_name} · ${loan.loan.grams_out} g`,
+      detail: `${loan.material} ${loan.filament_name} · ${formatGrams(loan.loan.grams_out, "zero", locale)}`,
       tone: "amber" as const,
     })),
     ...printers.slice(0, 3).map((printer) => ({
       id: `printer-${printer.printer.id}`,
       title: printer.printer.name,
-      detail: `${printer.usage.total_jobs} ${t("printers.jobs", "jobs")} · ${printer.usage.total_used_g} g ${t("printers.used", "used")}`,
+      detail: `${formatDisplayInteger(printer.usage.total_jobs, locale)} ${t("printers.jobs", "jobs")} · ${formatGrams(printer.usage.total_used_g, "zero", locale)} ${t("printers.used", "used")}`,
       tone: "sky" as const,
     })),
   ];
@@ -310,16 +326,16 @@ export function buildDashboardDerivedState(params: {
     {
       id: "total",
       title: t("dashboard.totalSpools", "Total Spools"),
-      value: onHandTotal.toString(),
+      value: formatDisplayInteger(onHandTotal, locale),
       subtitle: t("dashboard.totalSpoolsSubtitle", "Across all locations"),
-      trend: `${onHandInUse} ${t("dashboard.assigned", "assigned")}`,
+      trend: `${formatDisplayInteger(onHandInUse, locale)} ${t("dashboard.assigned", "assigned")}`,
       accent: "sky",
     },
     {
       id: "activePrinters",
       title: t("dashboard.activePrinters", "Active Printers"),
-      value: printerCount.toString(),
-      subtitle: `${printerCount} ${t("dashboard.configured", "configured")}`,
+      value: formatDisplayInteger(printerCount, locale),
+      subtitle: `${formatDisplayInteger(printerCount, locale)} ${t("dashboard.configured", "configured")}`,
       trend:
         printerCount > 0
           ? ""
@@ -329,7 +345,7 @@ export function buildDashboardDerivedState(params: {
     {
       id: "lowStock",
       title: t("dashboard.lowStock", "Low Stock"),
-      value: lowStockCount.toString(),
+      value: formatDisplayInteger(lowStockCount, locale),
       subtitle: t("dashboard.below200", "Below 200g"),
       trend: lowStockRows.length > 0 ? `${lowStockRows[0].remaining} ${t("dashboard.lowest", "lowest")}` : t("dashboard.noAlerts", "No alerts"),
       accent: "rose",
@@ -337,11 +353,11 @@ export function buildDashboardDerivedState(params: {
     {
       id: "monthlyUsage",
       title: t("dashboard.monthlyUsage", "Monthly Usage"),
-      value: `${overview.total_consumption_30d} g`,
+      value: formatGrams(overview.total_consumption_30d, "zero", locale),
       subtitle: t("dashboard.last30", "Last 30 days"),
       trend: t("dashboard.gramsPerDay", "{count} g/day").replace(
         "{count}",
-        String(Math.round(overview.total_consumption_30d / 30)),
+        formatDisplayInteger(overview.total_consumption_30d / 30, locale),
       ),
       accent: "amber",
     },
@@ -401,25 +417,25 @@ export function buildDashboardDerivedState(params: {
       {
         id: "lowStock",
         label: t("dashboard.lowStockShort", "low stock"),
-        value: lowStockCount.toString(),
+        value: formatDisplayInteger(lowStockCount, locale),
         tone: "rose",
       },
       {
         id: "loaned",
         label: t("dashboard.loaned", "loaned"),
-        value: activeLoans.length.toString(),
+        value: formatDisplayInteger(activeLoans.length, locale),
         tone: "amber",
       },
       {
         id: "onOrder",
         label: t("dashboard.onOrder", "on order"),
-        value: onOrderCount.toString(),
+        value: formatDisplayInteger(onOrderCount, locale),
         tone: "sky",
       },
       {
         id: "loaded",
         label: t("dashboard.amsLoaded", "slots loaded"),
-        value: effectiveSlotTotals.loadedSlots.toString(),
+        value: formatDisplayInteger(effectiveSlotTotals.loadedSlots, locale),
         tone: "emerald",
       },
     ],

@@ -99,8 +99,10 @@ Release notes:
   merge an existing database.
 - Application/database health diagnostics and a privacy-sanitized support JSON
   download under **Settings → Program maintenance**.
-- A dismissible, data-backed setup checklist plus device-local preferences for
-  Inventory layout/filter expansion and the last-used Settings tab.
+- A dismissible, data-backed setup checklist that separates required setup from
+  optional printer/Companion work and collapses completed steps, plus
+  device-local preferences for Inventory layout/filter expansion and the
+  last-used Settings tab.
 - An explicit **Check for updates** action that compares with the latest GitHub
   release when release metadata is available, reports when it is unavailable,
   and leaves download and installation manual.
@@ -118,8 +120,10 @@ Language is selected from one compact list under **Settings → General**. Engli
 remains the canonical fallback. All non-English translations have complete
 catalogs and automated visual QA, and are published for community use and
 review. Corrections and current-catalog native review are welcome through
-[GitHub issues](https://github.com/bliatun-code/Filament-Manager/issues) or pull
-requests.
+the dedicated
+[translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
+or pull requests. The current language set is intentionally stable while these
+20 non-English catalogs receive actual community and native-language review.
 
 ## License
 

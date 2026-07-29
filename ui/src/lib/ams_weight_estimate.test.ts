@@ -33,11 +33,11 @@ test("AMS weight helpers format estimates and basis values consistently", () => 
       remainingPercent: 76,
       trayWeightG: 1000,
     }),
-    "AMS estimate: 760 g / 1000 g · 76%",
+    "AMS estimate: 760 g / 1,000 g · 76%",
   );
   assert.equal(
     formatAmsWeightEstimate({ remainingGrams: 735, trayWeightG: 1000 }),
-    "AMS estimate: 735 g / 1000 g",
+    "AMS estimate: 735 g / 1,000 g",
   );
   assert.equal(
     formatAmsWeightEstimate({ remainingPercent: 12.5 }),
@@ -46,6 +46,15 @@ test("AMS weight helpers format estimates and basis values consistently", () => 
   assert.equal(
     formatAmsWeightEstimate({ basisLabel: "Basis", trayWeightG: 250 }),
     "Basis: 250 g",
+  );
+  assert.equal(
+    formatAmsWeightEstimate({
+      locale: "nb",
+      remainingGrams: 735.5,
+      remainingPercent: 73.5,
+      trayWeightG: 1000,
+    }),
+    "AMS estimate: 735,5 g / 1\u00a0000 g · 73,5\u00a0%",
   );
   assert.equal(
     formatAmsWeightEstimate({

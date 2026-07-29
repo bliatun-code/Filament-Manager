@@ -396,7 +396,7 @@ test("10,000-spool fixture keeps transformation and render work bounded", () => 
   assert.equal(dashboard.goalMetrics.totalSpools, TEN_THOUSAND_SPOOLS);
   assert.equal(
     dashboard.stats.find((stat) => stat.id === "total")?.value,
-    TEN_THOUSAND_SPOOLS.toString(),
+    "10,000",
   );
 
   const exactSearch = filterInventorySpools(inventorySpools, {

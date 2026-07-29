@@ -95,6 +95,15 @@ test("loans shell renders outbound history as its own primary flow", () => {
   assert.match(html, /data-action="start-loan-picker"/);
 });
 
+test("loan search keeps a permanent visible associated label", () => {
+  const html = renderShell();
+
+  assert.match(
+    html,
+    /<label class="search-field toolbar-search" for="companion-loan-search">[\s\S]*?<span class="search-field-label">Search borrower, note, filament, or reference<\/span>[\s\S]*?<input[\s\S]*?id="companion-loan-search"[\s\S]*?name="loan-search"[\s\S]*?type="search"/,
+  );
+});
+
 test("loans shell routes empty and info states through shared companion cards", () => {
   assert.match(loansShellSource, /renderCompanionStateCard/);
   assert.doesNotMatch(loansShellSource, /<div class="(?:empty-card|info-card)"/);

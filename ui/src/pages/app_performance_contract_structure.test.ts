@@ -132,7 +132,7 @@ test("dashboard navigation restores its last-good view before background I/O", (
   );
   assert.match(
     dashboardHookSource,
-    /\(\) => initialSnapshot\?\.stats \?\? createDefaultStats\(t\)/,
+    /\(\) => initialSnapshot\?\.stats \?\? createDefaultStats\(t, locale\)/,
   );
 });
 

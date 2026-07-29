@@ -21,6 +21,14 @@ export type DashboardOnboardingState = {
   totalCount: number;
 };
 
+export type DashboardOnboardingTaskGroups = {
+  completed: DashboardOnboardingTask[];
+  pendingOptional: DashboardOnboardingTask[];
+  pendingRequired: DashboardOnboardingTask[];
+  requiredCompletedCount: number;
+  requiredTotalCount: number;
+};
+
 type DashboardOnboardingStorageRecord = {
   dismissedAt: string;
   version: typeof DASHBOARD_ONBOARDING_STORAGE_VERSION;
@@ -104,5 +112,20 @@ export function buildDashboardOnboardingState(input: {
     completedCount: tasks.filter((task) => task.complete).length,
     tasks,
     totalCount: tasks.length,
+  };
+}
+
+export function groupDashboardOnboardingTasks(
+  state: DashboardOnboardingState,
+): DashboardOnboardingTaskGroups {
+  const required = state.tasks.filter((task) => !task.optional);
+  return {
+    completed: state.tasks.filter((task) => task.complete),
+    pendingOptional: state.tasks.filter(
+      (task) => task.optional && !task.complete,
+    ),
+    pendingRequired: required.filter((task) => !task.complete),
+    requiredCompletedCount: required.filter((task) => task.complete).length,
+    requiredTotalCount: required.length,
   };
 }

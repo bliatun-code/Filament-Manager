@@ -125,6 +125,20 @@ volume, review latency, plural/context discussions, or stale catalog
 coordination becomes difficult. Do not add a platform merely to export the same
 files through another system.
 
+The selectable set is frozen at the current 21 languages while review debt is
+reduced. Fixes to the 20 non-English catalogs take priority over adding another
+locale. Users can report a focused correction through the
+[translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml).
+The form records the language, affected surface, current wording, suggested
+wording, and context without treating a single correction as complete native
+review of the catalog.
+
+User-facing counts, decimal values, percentages, temperatures, and weights use
+the selected app locale through the shared `Intl.NumberFormat` helpers. Storage,
+command payloads, calculations, CSV fields, and identifiers remain
+locale-neutral so changing language cannot alter persisted values or machine
+interfaces.
+
 ## Reviewer handoff
 
 Use [`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md) for

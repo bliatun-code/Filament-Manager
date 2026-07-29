@@ -27,6 +27,8 @@ import {
 } from "./printer_workspace.js";
 import { renderSettingsShell } from "./settings_shell.js";
 import {
+  COMPANION_ROOT_FLOW_PANEL_ID,
+  companionRootFlowTabId,
   renderDesktopRail,
   renderDetailModalShell,
   renderPhoneBottomNav,
@@ -522,7 +524,14 @@ export function createCompanionAppShellRenderer(options) {
               statusTone: state.statusTone,
               escapeHtml,
             })}
-            <div class="workflow-stage">
+            <div
+              class="workflow-stage"
+              ${
+                state.layoutMode === "tablet"
+                  ? `id="${COMPANION_ROOT_FLOW_PANEL_ID}" role="tabpanel" aria-labelledby="${escapeHtml(companionRootFlowTabId(state.activeRootFlow))}" tabindex="0"`
+                  : ""
+              }
+            >
               ${renderWorkflowShell({
                 state,
                 loanRows,

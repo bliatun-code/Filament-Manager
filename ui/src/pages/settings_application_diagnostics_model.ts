@@ -3,6 +3,11 @@ import type {
   DiagnosticCheckStatus,
 } from "../lib/tauri_client";
 import type { SemanticChipTone } from "../lib/chip_styles";
+import {
+  formatDisplayInteger,
+  formatDisplayNumber,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 
 export type SettingsDiagnosticsRequestStatus = "idle" | "loading" | "success" | "error";
 
@@ -116,12 +121,15 @@ export function diagnosticCheckTone(status: DiagnosticCheckStatus): SemanticChip
   return "neutral";
 }
 
-export function formatDiagnosticBytes(bytes: number | null): string {
+export function formatDiagnosticBytes(
+  bytes: number | null,
+  locale: NumberDisplayLocale = "en",
+): string {
   if (bytes == null || !Number.isFinite(bytes) || bytes < 0) {
     return "—";
   }
   if (bytes < 1024) {
-    return `${Math.round(bytes)} B`;
+    return `${formatDisplayInteger(bytes, locale)} B`;
   }
 
   const units = ["KB", "MB", "GB", "TB"];
@@ -132,5 +140,8 @@ export function formatDiagnosticBytes(bytes: number | null): string {
     unitIndex += 1;
   }
   const fractionDigits = value >= 10 ? 0 : 1;
-  return `${value.toFixed(fractionDigits)} ${units[unitIndex]}`;
+  return `${formatDisplayNumber(value, locale, {
+    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: fractionDigits,
+  })} ${units[unitIndex]}`;
 }

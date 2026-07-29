@@ -29,6 +29,7 @@ import {
   resolveLibraryRevisionSource,
   type LibraryRevisionSource,
 } from "./library_domain_revisions";
+import type { NumberDisplayLocale } from "./number_display";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -95,6 +96,7 @@ export function hasInvalidClientPairingMessage(message?: string | null): boolean
 
 export async function loadDashboardData(
   params: {
+    locale?: NumberDisplayLocale;
     previousClientHostNeedsRepair: boolean;
     t: TranslateFn;
   },
@@ -291,6 +293,7 @@ export async function loadDashboardData(
         loans: (clientLoanRows ?? []).map(normalizeLoanDetailsRow),
         wishlist: clientWishlistRows,
         materialRows: null,
+        locale: params.locale,
         t: params.t,
       }),
       syncMode,
@@ -330,6 +333,7 @@ export async function loadDashboardData(
       loans: loans.map(normalizeActiveLoanRow),
       wishlist,
       materialRows,
+      locale: params.locale,
       t: params.t,
     }),
     syncMode,

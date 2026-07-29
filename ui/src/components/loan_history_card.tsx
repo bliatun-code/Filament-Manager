@@ -24,7 +24,7 @@ const loanHistoryReturnButtonClassName =
   "shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 outline-none transition hover:bg-emerald-100 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none dark:hover:bg-emerald-500/25 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
 export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const isActive = isLoanCurrentlyActive(loan);
   const isInbound = isInboundLoan(loan);
@@ -109,7 +109,7 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
           <ModalDetailItem
             label={isInbound ? t("loans.startWeight", "Start") : t("loans.out", "Out")}
           >
-            {formatGrams(loan.loan.grams_out)}
+            {formatGrams(loan.loan.grams_out, "zero", locale)}
           </ModalDetailItem>
           <ModalDetailItem
             label={
@@ -134,10 +134,10 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
               <ModalDetailItem
                 label={isInbound ? t("loans.back", "Back") : t("loans.in", "In")}
               >
-                {formatGrams(loan.loan.returned_grams)}
+                {formatGrams(loan.loan.returned_grams, "zero", locale)}
               </ModalDetailItem>
               <ModalDetailItem label={t("loans.consumed", "Consumed")}>
-                {formatGrams(loan.loan.consumed_grams)}
+                {formatGrams(loan.loan.consumed_grams, "zero", locale)}
               </ModalDetailItem>
             </>
           ) : null}

@@ -59,7 +59,7 @@ test("LoanReturnSummaryCard renders a live data-derived summary in English", () 
     html,
     /role="status"[^>]*aria-atomic="true"[^>]*aria-label="Return summary"[^>]*aria-live="polite"/,
   );
-  assert.match(html, />Loaned<\/div><div[^>]*>1000 g<\/div>/);
+  assert.match(html, />Loaned<\/div><div[^>]*>1,000 g<\/div>/);
   assert.match(html, />Returned<\/div><div[^>]*>700 g<\/div>/);
   assert.match(html, />Estimated used<\/div><div[^>]*>300 g<\/div>/);
 });
@@ -68,7 +68,7 @@ test("LoanReturnSummaryCard renders the localized Norwegian summary", () => {
   const html = renderSummary("nb", "950");
 
   assert.match(html, /aria-label="Returoppsummering"/);
-  assert.match(html, />Utlånt<\/div><div[^>]*>1000 g<\/div>/);
+  assert.match(html, />Utlånt<\/div><div[^>]*>1\u00a0000 g<\/div>/);
   assert.match(html, />Returnert<\/div><div[^>]*>700 g<\/div>/);
   assert.match(html, />Beregnet brukt<\/div><div[^>]*>300 g<\/div>/);
 });

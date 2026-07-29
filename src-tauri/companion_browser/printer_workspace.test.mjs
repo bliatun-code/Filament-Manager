@@ -887,6 +887,10 @@ test("printer workspace renders a direct load picker body for the targeted slot"
   });
 
   assert.match(html, /1 ready to load/);
+  assert.match(
+    html,
+    /<label class="search-field" for="companion-printer-spool-search">[\s\S]*?<span class="search-field-label">Search by material, color, vendor, or reference<\/span>[\s\S]*?<input[\s\S]*?id="companion-printer-spool-search"[\s\S]*?name="printer-spool-search"[\s\S]*?type="search"/,
+  );
   assert.match(html, /data-action="assign-selected-spool"/);
   assert.match(html, /printer-picker-row/);
   assert.match(html, /Bambu · #1/);

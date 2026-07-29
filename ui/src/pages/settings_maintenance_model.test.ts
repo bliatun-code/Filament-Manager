@@ -26,6 +26,23 @@ test("settings catalog reset message formats reset counts", () => {
     ),
     "Catalog reset done. Removed 4, remaining 12, reactivated 2.",
   );
+  assert.equal(
+    buildSettingsCatalogResetMessage(
+      {
+        reactivated_count: 2,
+        remaining_count: 1234,
+        removed_count: 4,
+      },
+      {
+        catalogResetDone: "Katalog nullstilt",
+        reactivated: "reaktivert",
+        remaining: "gjenstår",
+        removed: "Fjernet",
+      },
+      "nb",
+    ),
+    "Katalog nullstilt. Fjernet 4, gjenstår 1\u00a0234, reaktivert 2.",
+  );
 });
 
 test("settings reset confirm messages follow the requested action", () => {

@@ -614,13 +614,18 @@ export function renderLoansShell(options) {
 
       <div class="workflow-toolbar">
         <div class="toolbar-row">
-          <input
-            class="search-input toolbar-search"
-            name="loan-search"
-            value="${escapeHtml(state.loanSearch)}"
-            placeholder="${escapeHtml(t(locale, "loans.searchPlaceholder", "Search borrower, note, filament, or reference"))}"
-            autocomplete="off"
-          />
+          <label class="search-field toolbar-search" for="companion-loan-search">
+            <span class="search-field-label">${escapeHtml(t(locale, "loans.searchPlaceholder", "Search borrower, note, filament, or reference"))}</span>
+            <input
+              id="companion-loan-search"
+              class="search-input"
+              name="loan-search"
+              type="search"
+              value="${escapeHtml(state.loanSearch)}"
+              placeholder="${escapeHtml(t(locale, "loans.searchPlaceholder", "Search borrower, note, filament, or reference"))}"
+              autocomplete="off"
+            />
+          </label>
           <div class="toolbar-actions">
             ${renderCompanionActionButton({
               attributes: { "data-action": "start-loan-picker" },

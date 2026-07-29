@@ -55,7 +55,7 @@ export function InventorySpoolDetailHeader({
   statusLabel,
   statusTone,
 }: InventorySpoolDetailHeaderProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const currentMaterialTone = materialTone(spool.material);
 
   return (
@@ -90,7 +90,7 @@ export function InventorySpoolDetailHeader({
             {statusLabel}
           </span>
           <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-100">
-            {formatGrams(spool.remainingGrams)}
+            {formatGrams(spool.remainingGrams, "dash", locale)}
           </span>
         </div>
         <CloseButton label={t("common.close", "Close")} onClick={onClose} />
@@ -184,7 +184,7 @@ export function InventorySpoolIdentityPanel({
         </InventoryDetailFactCard>
         <InventoryDetailFactCard label={t("inventory.initialWeight", "Initial weight (g)")}>
           <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
-            {formatGrams(spool.initialWeightGrams)}
+            {formatGrams(spool.initialWeightGrams, "dash", locale)}
           </div>
         </InventoryDetailFactCard>
       </div>

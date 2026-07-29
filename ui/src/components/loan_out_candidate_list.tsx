@@ -50,7 +50,7 @@ export function LoanOutCandidateList({
   onSelectSpool,
   renderVendorBadge,
 }: LoanOutCandidateListProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const searchId = useId();
   const listId = useId();
@@ -211,7 +211,9 @@ export function LoanOutCandidateList({
                       <span className="font-mono" title={`#${spool.id}`}>
                         {referenceLabel}
                       </span>
-                      <span>{formatLoanOutGrams(spool.remainingGrams)}</span>
+                      <span>
+                        {formatLoanOutGrams(spool.remainingGrams, locale)}
+                      </span>
                       <span className="truncate max-w-[11rem]" title={placementLabel}>
                         {placementLabel}
                       </span>

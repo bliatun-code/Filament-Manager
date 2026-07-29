@@ -1,7 +1,12 @@
 import { printerBrandSurfaceStyle } from "../lib/printer_branding";
+import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
 import type { TranslateFn } from "../lib/statistics_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { InventoryOverview, PrinterOverviewRow } from "../lib/tauri_client";
+import { formatGrams } from "../lib/weight_display";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
 import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
@@ -41,9 +46,11 @@ function OwnershipMetricTile({
 }
 
 export function StatisticsOwnershipSnapshotPanel({
+  locale = "en",
   ownershipOverview,
   t,
 }: {
+  locale?: NumberDisplayLocale;
   ownershipOverview: InventoryOverview | null;
   t: TranslateFn;
 }) {
@@ -64,19 +71,26 @@ export function StatisticsOwnershipSnapshotPanel({
         <OwnershipMetricTile
           key={`owned-on-hand-${ownershipOverview?.total_owned_spools ?? 0}`}
           label={t("statistics.ownedOnHand", "Owned on hand")}
-          value={(ownershipOverview?.total_owned_spools ?? 0).toString()}
+          value={formatDisplayInteger(ownershipOverview?.total_owned_spools ?? 0, locale)}
           ownership="owned"
         />
         <OwnershipMetricTile
           key={`borrowed-on-hand-${ownershipOverview?.total_borrowed_in_spools ?? 0}`}
           label={t("statistics.borrowedInOnHand", "Borrowed in on hand")}
-          value={(ownershipOverview?.total_borrowed_in_spools ?? 0).toString()}
+          value={formatDisplayInteger(
+            ownershipOverview?.total_borrowed_in_spools ?? 0,
+            locale,
+          )}
           ownership="borrowed"
         />
         <OwnershipMetricTile
           key={`owned-consumption-${ownershipOverview?.owned_consumption_30d ?? 0}`}
           label={t("statistics.ownedPrintUsage30d", "Recorded print use · owned")}
-          value={`${ownershipOverview?.owned_consumption_30d ?? 0} g`}
+          value={formatGrams(
+            ownershipOverview?.owned_consumption_30d ?? 0,
+            "zero",
+            locale,
+          )}
           ownership="owned"
         />
         <OwnershipMetricTile
@@ -85,28 +99,38 @@ export function StatisticsOwnershipSnapshotPanel({
             "statistics.borrowedInPrintUsage30d",
             "Recorded print use · borrowed from others",
           )}
-          value={`${ownershipOverview?.borrowed_in_consumption_30d ?? 0} g`}
+          value={formatGrams(
+            ownershipOverview?.borrowed_in_consumption_30d ?? 0,
+            "zero",
+            locale,
+          )}
           ownership="borrowed"
         />
         <OwnershipMetricTile
           label={t("statistics.ownedInUse", "Owned assigned")}
-          value={(ownershipOverview?.owned_in_use ?? 0).toString()}
+          value={formatDisplayInteger(ownershipOverview?.owned_in_use ?? 0, locale)}
           ownership="owned"
         />
         <OwnershipMetricTile
           label={t("statistics.borrowedInInUse", "Borrowed assigned")}
-          value={(ownershipOverview?.borrowed_in_in_use ?? 0).toString()}
+          value={formatDisplayInteger(
+            ownershipOverview?.borrowed_in_in_use ?? 0,
+            locale,
+          )}
           ownership="borrowed"
         />
         <OwnershipMetricTile
           label={t("statistics.ownedLowStock", "Owned low stock")}
-          value={(ownershipOverview?.owned_low_stock ?? 0).toString()}
+          value={formatDisplayInteger(ownershipOverview?.owned_low_stock ?? 0, locale)}
           ownership="owned"
           lowStock
         />
         <OwnershipMetricTile
           label={t("statistics.borrowedInLowStock", "Borrowed-in low stock")}
-          value={(ownershipOverview?.borrowed_in_low_stock ?? 0).toString()}
+          value={formatDisplayInteger(
+            ownershipOverview?.borrowed_in_low_stock ?? 0,
+            locale,
+          )}
           ownership="borrowed"
           lowStock
         />
@@ -116,12 +140,14 @@ export function StatisticsOwnershipSnapshotPanel({
 }
 
 export function StatisticsPerPrinterUsagePanel({
+  locale = "en",
   loading,
   onOpenConsumption,
   printers,
   resolvedTheme,
   t,
 }: {
+  locale?: NumberDisplayLocale;
   loading: boolean;
   onOpenConsumption: (printer: PrinterOverviewRow) => void;
   printers: PrinterOverviewRow[];
@@ -180,17 +206,17 @@ export function StatisticsPerPrinterUsagePanel({
               <span className="grid w-full grid-cols-3 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem]">
                 <SummaryMetricTile
                   label={t("printers.jobs", "Jobs")}
-                  value={row.usage.total_jobs.toString()}
+                  value={formatDisplayInteger(row.usage.total_jobs, locale)}
                   tone="sky"
                 />
                 <SummaryMetricTile
                   label={t("printers.used", "Used")}
-                  value={`${row.usage.total_used_g} g`}
+                  value={formatGrams(row.usage.total_used_g, "zero", locale)}
                   tone="amber"
                 />
                 <SummaryMetricTile
                   label={t("printers.failed", "Failed")}
-                  value={row.usage.failed_jobs.toString()}
+                  value={formatDisplayInteger(row.usage.failed_jobs, locale)}
                   tone="rose"
                 />
               </span>

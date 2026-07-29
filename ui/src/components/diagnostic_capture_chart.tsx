@@ -1,6 +1,10 @@
 import { useMemo } from "react";
-import { parseDateTime } from "../lib/date_time";
+import { formatDateTime, parseDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
+import {
+  formatDisplayInteger,
+  formatDisplayNumber,
+} from "../lib/number_display";
 
 type DiagnosticCaptureChartPoint = {
   observedAt: string;
@@ -18,19 +22,19 @@ const CHART_HEIGHT = 180;
 const CHART_PADDING_X = 18;
 const CHART_PADDING_Y = 16;
 
-function formatObservedAt(raw: string): string {
+function formatObservedAt(raw: string, locale: Parameters<typeof formatDateTime>[1]): string {
   const parsed = parseDateTime(raw);
   if (!parsed) {
     return raw;
   }
-  return parsed.toLocaleString();
+  return formatDateTime(raw, locale);
 }
 
 export function DiagnosticCaptureChart({
   fieldPath,
   points,
 }: DiagnosticCaptureChartProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   const chartPoints = useMemo(() => {
     const filtered = points.filter((point) => Number.isFinite(point.value));
@@ -154,22 +158,28 @@ export function DiagnosticCaptureChart({
           <span className="font-semibold text-slate-800 dark:text-slate-100">
             {stats.last.valueText}
           </span>{" "}
-          · {formatObservedAt(stats.last.observedAt)}
+          · {formatObservedAt(stats.last.observedAt, locale)}
         </div>
         <div>
           {t("settings.bambuLiveChartRange", "Range")}:{" "}
           <span className="font-semibold text-slate-800 dark:text-slate-100">
-            {stats.min.toFixed(stats.span < 10 ? 2 : 1)}
+            {formatDisplayNumber(stats.min, locale, {
+              maximumFractionDigits: stats.span < 10 ? 2 : 1,
+              minimumFractionDigits: stats.span < 10 ? 2 : 1,
+            })}
           </span>{" "}
           →{" "}
           <span className="font-semibold text-slate-800 dark:text-slate-100">
-            {stats.max.toFixed(stats.span < 10 ? 2 : 1)}
+            {formatDisplayNumber(stats.max, locale, {
+              maximumFractionDigits: stats.span < 10 ? 2 : 1,
+              minimumFractionDigits: stats.span < 10 ? 2 : 1,
+            })}
           </span>
         </div>
         <div>
           {t("settings.bambuLiveChartWindow", "Samples in capture window")}:{" "}
           <span className="font-semibold text-slate-800 dark:text-slate-100">
-            {chartPoints.length}
+            {formatDisplayInteger(chartPoints.length, locale)}
           </span>
         </div>
       </div>

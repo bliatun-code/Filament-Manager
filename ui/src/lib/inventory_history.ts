@@ -1,5 +1,6 @@
 import { isBorrowedInOwnership, normalizeOwnershipType } from "./inventory_domain";
 import type { Locale } from "./i18n";
+import { formatDisplayGrams, formatDisplayPercent } from "./number_display";
 import type { SpoolHistoryEventRow } from "./tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -130,21 +131,26 @@ export function formatInventoryHistoryEventDetails(
     const remainingPercent = payloadNumber(payload, "remaining_percent");
     const correctionGrams = payloadNumber(payload, "correction_grams");
     const source = payloadString(payload, "source");
-    const gramsText = grams == null ? "—" : `${grams} g`;
+    const gramsText = grams == null ? "—" : formatDisplayGrams(grams, locale);
     const details = [`${gramsText}`];
     if (previousGrams != null && grams != null && previousGrams !== grams) {
       const delta = grams - previousGrams;
-      const deltaPrefix = delta > 0 ? "+" : "";
-      details.push(`${deltaPrefix}${delta} g`);
+      details.push(
+        formatDisplayGrams(delta, locale, {
+          signDisplay: "exceptZero",
+        }),
+      );
     }
     if (source) {
       details.push(source.replace(/_/g, " "));
     }
     if (event.event_type === "WEIGHT_CORRECTED" && correctionGrams != null) {
-      details.push(`${t("inventory.historyEvent.correction", "Correction")}: ${correctionGrams} g`);
+      details.push(
+        `${t("inventory.historyEvent.correction", "Correction")}: ${formatDisplayGrams(correctionGrams, locale)}`,
+      );
     }
     if (remainingPercent != null) {
-      details.push(`${remainingPercent}%`);
+      details.push(formatDisplayPercent(remainingPercent, locale, 1));
     }
     return details.join(" · ");
   }
@@ -215,10 +221,12 @@ export function formatInventoryHistoryEventDetails(
     const jobName = payloadString(payload, "job_name");
     const parts = [printerName];
     if (used != null) {
-      parts.push(`${t("printers.used", "Used")}: ${used} g`);
+      parts.push(`${t("printers.used", "Used")}: ${formatDisplayGrams(used, locale)}`);
     }
     if (remaining != null) {
-      parts.push(`${t("inventory.remaining", "Remaining")}: ${remaining} g`);
+      parts.push(
+        `${t("inventory.remaining", "Remaining")}: ${formatDisplayGrams(remaining, locale)}`,
+      );
     }
     if (jobName) {
       parts.push(`Job: ${jobName}`);
@@ -233,7 +241,7 @@ export function formatInventoryHistoryEventDetails(
       parts.push(`${t("loans.borrower", "Borrower")}: ${borrower}`);
     }
     if (gramsOut != null) {
-      parts.push(`${t("inventory.out", "Out")}: ${gramsOut} g`);
+      parts.push(`${t("inventory.out", "Out")}: ${formatDisplayGrams(gramsOut, locale)}`);
     }
     return parts.join(" · ") || historyPayloadText(payload);
   }
@@ -246,10 +254,14 @@ export function formatInventoryHistoryEventDetails(
       parts.push(`${t("loans.borrower", "Borrower")}: ${borrower}`);
     }
     if (returned != null) {
-      parts.push(`${t("loans.returned", "Returned")}: ${returned} g`);
+      parts.push(
+        `${t("loans.returned", "Returned")}: ${formatDisplayGrams(returned, locale)}`,
+      );
     }
     if (consumed != null) {
-      parts.push(`${t("loans.consumed", "Consumed")}: ${consumed} g`);
+      parts.push(
+        `${t("loans.consumed", "Consumed")}: ${formatDisplayGrams(consumed, locale)}`,
+      );
     }
     return parts.join(" · ") || historyPayloadText(payload);
   }
@@ -265,7 +277,9 @@ export function formatInventoryHistoryEventDetails(
       parts.push(ownerContact);
     }
     if (gramsOut != null) {
-      parts.push(`${t("inventory.initialWeight", "Initial weight (g)")}: ${gramsOut} g`);
+      parts.push(
+        `${t("inventory.initialWeight", "Initial weight (g)")}: ${formatDisplayGrams(gramsOut, locale)}`,
+      );
     }
     return parts.join(" · ") || historyPayloadText(payload);
   }
@@ -278,10 +292,14 @@ export function formatInventoryHistoryEventDetails(
       parts.push(`${t("inventory.borrowedFrom", "Borrowed from")}: ${counterparty}`);
     }
     if (returned != null) {
-      parts.push(`${t("loans.returned", "Returned")}: ${returned} g`);
+      parts.push(
+        `${t("loans.returned", "Returned")}: ${formatDisplayGrams(returned, locale)}`,
+      );
     }
     if (consumed != null) {
-      parts.push(`${t("loans.consumed", "Consumed")}: ${consumed} g`);
+      parts.push(
+        `${t("loans.consumed", "Consumed")}: ${formatDisplayGrams(consumed, locale)}`,
+      );
     }
     return parts.join(" · ") || historyPayloadText(payload);
   }

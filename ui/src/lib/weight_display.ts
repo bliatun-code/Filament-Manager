@@ -1,13 +1,16 @@
+import { formatDisplayGrams, type NumberDisplayLocale } from "./number_display";
+
 export type EmptyWeightDisplay = "dash" | "zero";
 
 export function formatGrams(
   value?: number | null,
   empty: EmptyWeightDisplay = "dash",
+  locale: NumberDisplayLocale = "en",
 ): string {
   if (value == null) {
-    return empty === "zero" ? "0 g" : "—";
+    return empty === "zero" ? formatDisplayGrams(0, locale) : "—";
   }
-  return `${Math.max(0, value)} g`;
+  return formatDisplayGrams(Math.max(0, value), locale);
 }
 
 export function parsePositiveWeight(raw: string): number | null {

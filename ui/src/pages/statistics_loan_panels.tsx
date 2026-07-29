@@ -1,10 +1,15 @@
 import { neutralChipClass } from "../lib/chip_styles";
 import {
+  formatDisplayInteger,
+  type NumberDisplayLocale,
+} from "../lib/number_display";
+import {
   isInboundLoanDirection,
   type LoanUsageListFilter,
   type TranslateFn,
 } from "../lib/statistics_model";
 import type { LoanUsageByPersonRow } from "../lib/tauri_client";
+import { formatGrams } from "../lib/weight_display";
 import { StatisticsEmptyState, SummaryMetricTile } from "./statistics_primitives";
 import { statisticsInteractiveCardClass } from "./statistics_view_helpers";
 
@@ -18,6 +23,7 @@ function statisticsResultCount(t: TranslateFn, count: number): string {
 
 export function StatisticsOutboundLoanUsagePanel({
   filteredLoanUsage,
+  locale = "en",
   loading,
   loanUsageListFilter,
   onOpenBorrower,
@@ -25,6 +31,7 @@ export function StatisticsOutboundLoanUsagePanel({
   t,
 }: {
   filteredLoanUsage: LoanUsageByPersonRow[];
+  locale?: NumberDisplayLocale;
   loading: boolean;
   loanUsageListFilter: LoanUsageListFilter;
   onOpenBorrower: (borrowerName: string) => void;
@@ -86,6 +93,7 @@ export function StatisticsOutboundLoanUsagePanel({
         {filteredLoanUsage.map((row) => (
           <StatisticsLoanUsageRow
             key={`${row.loan_direction}-${row.borrower_name}`}
+            locale={locale}
             onOpen={() => onOpenBorrower(row.borrower_name)}
             row={row}
             t={t}
@@ -98,11 +106,13 @@ export function StatisticsOutboundLoanUsagePanel({
 
 export function StatisticsInboundLoanUsagePanel({
   inboundLoanUsage,
+  locale = "en",
   loading,
   onOpenOwner,
   t,
 }: {
   inboundLoanUsage: LoanUsageByPersonRow[];
+  locale?: NumberDisplayLocale;
   loading: boolean;
   onOpenOwner: (ownerName: string) => void;
   t: TranslateFn;
@@ -143,6 +153,7 @@ export function StatisticsInboundLoanUsagePanel({
         {inboundLoanUsage.map((row) => (
           <StatisticsLoanUsageRow
             key={`${row.loan_direction}-${row.borrower_name}`}
+            locale={locale}
             onOpen={() => onOpenOwner(row.borrower_name)}
             row={row}
             t={t}
@@ -154,10 +165,12 @@ export function StatisticsInboundLoanUsagePanel({
 }
 
 function StatisticsLoanUsageRow({
+  locale,
   onOpen,
   row,
   t,
 }: {
+  locale: NumberDisplayLocale;
   onOpen: () => void;
   row: LoanUsageByPersonRow;
   t: TranslateFn;
@@ -193,17 +206,17 @@ function StatisticsLoanUsageRow({
         <span className="grid w-full grid-cols-2 gap-2 min-[1080px]:w-auto min-[1080px]:min-w-[18rem] min-[1080px]:grid-cols-3">
           <SummaryMetricTile
             label={t("printers.used", "Used")}
-            value={`${row.total_consumed_g} g`}
+            value={formatGrams(row.total_consumed_g, "zero", locale)}
             tone="amber"
           />
           <SummaryMetricTile
             label={t("statistics.completed", "Completed")}
-            value={row.completed_loans.toString()}
+            value={formatDisplayInteger(row.completed_loans, locale)}
             tone="sky"
           />
           <SummaryMetricTile
             label={t("common.active", "Active")}
-            value={row.active_loans.toString()}
+            value={formatDisplayInteger(row.active_loans, locale)}
             tone="emerald"
             className="col-span-2 min-[1080px]:col-span-1"
           />

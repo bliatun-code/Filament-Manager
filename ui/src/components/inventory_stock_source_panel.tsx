@@ -8,6 +8,7 @@ import {
 } from "../lib/chip_styles";
 import { toSwatchColor } from "../lib/color_utils";
 import { useI18n } from "../lib/i18n";
+import { formatGrams } from "../lib/weight_display";
 import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
@@ -79,7 +80,7 @@ export function InventoryStockSourcePanel({
   selectedCatalogMasterId,
   tauriAvailable,
 }: InventoryStockSourcePanelProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [hoveredCatalogMasterId, setHoveredCatalogMasterId] = useState<string | null>(
     null,
   );
@@ -188,7 +189,7 @@ export function InventoryStockSourcePanel({
                       </span>
                       <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                         <span>{master.material}</span>
-                        <span>{master.default_weight} g</span>
+                        <span>{formatGrams(master.default_weight, "zero", locale)}</span>
                         {master.is_discontinued ? (
                           <span className={inlineStatusSignalClass("warning", "text-[11px]")}>
                             {t("common.discontinued", "Discontinued")}

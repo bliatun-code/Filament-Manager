@@ -10,6 +10,7 @@ import {
 } from "./ams_weight_estimate";
 import { saneNozzleSettingTemp } from "./bambu_nozzle_settings";
 import { decodeTrayExistBitsSlotPresence } from "./inventory_rfid_payload";
+import type { NumberDisplayLocale } from "./number_display";
 
 export function normalizeDiagnosticHexColor(value: string | null): string | null {
   const normalized = value?.trim().replace(/^#/, "") ?? "";
@@ -258,6 +259,7 @@ function formatDiagnosticTrayBitEvidence(tray: DiagnosticTraySnapshot): string |
 export function buildDiagnosticDisplayTrays(
   observedTrays: BambuLiveObservedTray[],
   fields: DiagnosticCaptureField[],
+  locale: NumberDisplayLocale = "en",
 ): BambuLiveObservedTray[] {
   if (observedTrays.length > 0) {
     return observedTrays;
@@ -271,6 +273,7 @@ export function buildDiagnosticDisplayTrays(
     );
     const bitEvidenceNote = formatDiagnosticTrayBitEvidence(tray);
     const amsEstimateNote = formatAmsWeightEstimate({
+      locale,
       remainingGrams: tray.remainingGrams,
       remainingPercent: tray.remainingPercent,
       trayWeightG: tray.trayWeightG,

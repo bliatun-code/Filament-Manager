@@ -140,6 +140,27 @@ test("app shell renderer composes the mobile shell with the four primary tabs", 
   assert.doesNotMatch(html, /class="shell-scaffold"[^>]* inert/);
 });
 
+test("tablet app shell relates the active tab to its workflow panel", () => {
+  const renderer = createRenderer({
+    state: {
+      activeRootFlow: "printers",
+      layoutMode: "tablet",
+      printers: [createPrinterRow()],
+    },
+  });
+
+  const html = renderer.renderRoot();
+
+  assert.match(
+    html,
+    /id="companion-root-tab-printers"[\s\S]*?role="tab"[\s\S]*?aria-selected="true"/,
+  );
+  assert.match(
+    html,
+    /class="workflow-stage"[\s\S]*?id="companion-root-panel" role="tabpanel" aria-labelledby="companion-root-tab-printers" tabindex="0"/,
+  );
+});
+
 test("app shell formats displayed grams with the selected Norwegian locale", () => {
   const spool = createSpoolRow("spool-1", {
     spool: {

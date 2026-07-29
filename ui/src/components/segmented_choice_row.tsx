@@ -3,6 +3,8 @@ import {
   appControlFocusClassName,
   joinClassNames,
 } from "./ui_class_names";
+import { useI18n } from "../lib/i18n";
+import { formatDisplayInteger } from "../lib/number_display";
 
 export type SegmentedChoiceOption<T extends string> = {
   value: T;
@@ -64,6 +66,8 @@ export function SegmentedChoiceRow<T extends string>({
   optionSizeClassName,
   isOptionDisabled,
 }: SegmentedChoiceRowProps<T>) {
+  const { locale } = useI18n();
+
   return (
     <div
       className={joinClassNames(
@@ -101,7 +105,9 @@ export function SegmentedChoiceRow<T extends string>({
             >
               <span>{option.label}</span>
               {typeof option.count === "number" ? (
-                <span className={segmentedChoiceCountClass(active)}>{option.count}</span>
+                <span className={segmentedChoiceCountClass(active)}>
+                  {formatDisplayInteger(option.count, locale)}
+                </span>
               ) : null}
             </button>
           );

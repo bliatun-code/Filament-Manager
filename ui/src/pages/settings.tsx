@@ -329,6 +329,7 @@ export default function SettingsPage({ initialTab = null }: SettingsPageProps) {
   } = useSettingsCatalogSection({
     busy,
     catalogMasters,
+    locale,
     reloadSettings: () => reloadSettingsRef.current(),
     setError,
     setInfo,

@@ -2,14 +2,37 @@ import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
 import { swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 
-function renderRootFlowButton(activeRootFlow, item, escapeHtml) {
+export const COMPANION_ROOT_FLOW_PANEL_ID = "companion-root-panel";
+
+export function companionRootFlowTabId(flow) {
+  return `companion-root-tab-${String(flow || "").trim()}`;
+}
+
+function companionRootFlowNavigationId(flow) {
+  return `companion-root-nav-${String(flow || "").trim()}`;
+}
+
+function renderRootFlowButton(activeRootFlow, item, escapeHtml, semantics = "navigation") {
+  const active = activeRootFlow === item.flow;
+  const tabAttributes =
+    semantics === "tabs"
+      ? `
+      id="${escapeHtml(companionRootFlowTabId(item.flow))}"
+      role="tab"
+      aria-selected="${active ? "true" : "false"}"
+      aria-controls="${COMPANION_ROOT_FLOW_PANEL_ID}"
+      tabindex="${active ? "0" : "-1"}"`
+      : `
+      id="${escapeHtml(companionRootFlowNavigationId(item.flow))}"${
+        active ? '\n      aria-current="page"' : ""
+      }`;
   return `
     <button
       class="root-flow-button"
       type="button"
       data-action="set-root-flow"
       data-root-flow="${escapeHtml(item.flow)}"
-      data-active="${activeRootFlow === item.flow ? "true" : "false"}"
+      data-active="${active ? "true" : "false"}"${tabAttributes}
     >
       <span class="root-flow-label">${escapeHtml(item.label)}</span>
       <span class="root-flow-meta">${escapeHtml(item.meta)}</span>
@@ -412,7 +435,7 @@ export function renderSwatchListRow(options) {
 function renderTabletRootSwitch(activeRootFlow, rootFlowItems, escapeHtml, locale = "en") {
   return `
     <div class="root-switch" role="tablist" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">
-      ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml)).join("")}
+      ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml, "tabs")).join("")}
     </div>
   `;
 }
@@ -426,7 +449,7 @@ export function renderDesktopRail(options) {
         <div class="desktop-rail-title">${escapeHtml(t(locale, "rail.title", "Filament Manager"))}</div>
       </div>
       <nav class="desktop-rail-nav" aria-label="${escapeHtml(t(locale, "nav.primaryFlowsAria", "Primary flows"))}">
-        ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml)).join("")}
+        ${rootFlowItems.map((item) => renderRootFlowButton(activeRootFlow, item, escapeHtml, "navigation")).join("")}
       </nav>
       <div class="desktop-rail-meta">
         <span class="desktop-rail-meta-line">${escapeHtml(t(locale, "rail.activeLoans", "{count} active loans", { count: activeLoansCount }))}</span>
@@ -444,10 +467,12 @@ export function renderPhoneBottomNav(options) {
           (item) => `
             <button
               class="phone-nav-button"
+              id="${escapeHtml(companionRootFlowNavigationId(item.flow))}"
               type="button"
               data-action="set-root-flow"
               data-root-flow="${escapeHtml(item.flow)}"
               data-active="${activeRootFlow === item.flow ? "true" : "false"}"
+              ${activeRootFlow === item.flow ? 'aria-current="page"' : ""}
             >
               <span>${escapeHtml(item.label)}</span>
             </button>
