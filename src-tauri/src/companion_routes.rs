@@ -1,5 +1,10 @@
 use crate::companion_api::*;
 use crate::companion_http::apply_companion_cache_policy;
+use crate::companion_inventory_read_api::{
+    handle_find_spool_by_qr, handle_get_spool_detail, handle_list_active_spool_loans,
+    handle_list_catalog_masters, handle_list_printer_overview, handle_list_spool_loans,
+    handle_list_spools, handle_list_wishlist_items, handle_spool_qr_image_svg,
+};
 use crate::companion_library_api::*;
 use crate::companion_state::CompanionApiState;
 use axum::middleware;

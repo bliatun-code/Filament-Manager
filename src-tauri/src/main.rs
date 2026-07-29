@@ -16,6 +16,7 @@ mod companion_api;
 mod companion_assets;
 mod companion_error;
 mod companion_http;
+mod companion_inventory_read_api;
 mod companion_library_api;
 mod companion_models;
 mod companion_payload;

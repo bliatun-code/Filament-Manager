@@ -5,6 +5,7 @@ use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
 };
 use crate::companion_http::COMPANION_CSRF_HEADER;
+use crate::companion_payload::{build_companion_spool_qr_payload, build_qr_svg};
 use crate::companion_routes::build_router;
 use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
 use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
@@ -1801,6 +1802,69 @@ async fn companion_api_qa_delay_header_keeps_detail_route_working() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_qa_delay_header_keeps_detail_route_working failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_serves_authenticated_spool_qr_svg() {
+    let db_path = temp_db_path("spool-qr-svg");
+    let result = async {
+        seed_db(&db_path)?;
+        let state = test_state(&db_path);
+        let expected_svg =
+            build_qr_svg(&build_companion_spool_qr_payload(&state.runtime, "spool_1"))
+                .map_err(|error| format!("{error:?}"))?;
+        let router = build_router(state);
+
+        let unauthenticated = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1/qr-image.svg")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
+
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
+
+        let qr_image = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1/qr-image.svg")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(qr_image.status(), StatusCode::OK);
+        assert_eq!(
+            qr_image
+                .headers()
+                .get(axum::http::header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok()),
+            Some("image/svg+xml; charset=utf-8")
+        );
+
+        let qr_body = to_bytes(qr_image.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let qr_text = String::from_utf8(qr_body.to_vec()).map_err(|error| error.to_string())?;
+        assert_eq!(qr_text, expected_svg);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_serves_authenticated_spool_qr_svg failed: {message}");
     }
 }
 
@@ -3938,6 +4002,7 @@ async fn companion_api_rejects_invalid_browser_lend_request() {
 fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
     let sources = [
         include_str!("companion_api.rs"),
+        include_str!("companion_inventory_read_api.rs"),
         include_str!("companion_library_api.rs"),
     ];
     let blocking_io_markers = [

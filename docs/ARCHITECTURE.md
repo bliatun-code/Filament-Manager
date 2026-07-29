@@ -29,7 +29,9 @@ focused behavior or contract coverage.
 The current seams are:
 
 - `companion_api.rs` owns Companion mutations, sessions, credentials, and
-  workflow handlers; read-only health and `/library/*` handlers live in
+  request protection; protected inventory, catalog, printer, loan, wishlist,
+  QR, and spool-detail reads live in `companion_inventory_read_api.rs`, while
+  read-only health and `/library/*` handlers live in
   `companion_library_api.rs`;
 - `inventory_engine.rs` remains the public transaction-oriented domain API,
   while Bambu Live context derivation for printer-slot assignments is isolated
