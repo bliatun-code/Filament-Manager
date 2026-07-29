@@ -24,6 +24,12 @@ export function appUpdateCheckMessage(
     return null;
   }
   const { status } = state.result;
+  if (status === "UPDATE_CHANNEL_DISABLED") {
+    return t(
+      "settings.updateChannelDisabled",
+      "This build has no public update channel. Check the source where you downloaded the app for newer releases.",
+    );
+  }
   if (status === "RELEASE_INFO_UNAVAILABLE") {
     return t(
       "settings.updateInfoUnavailable",

@@ -1221,6 +1221,8 @@ export const esDictionary: DictionaryNode = {
       "No se pudieron buscar actualizaciones. Inténtalo de nuevo más tarde.",
     updateInfoUnavailable:
       "La información de la versión no está disponible en este momento. Inténtalo de nuevo más tarde.",
+    updateChannelDisabled:
+      "Esta compilación no tiene un canal público de actualizaciones. Busca versiones más recientes en el lugar desde el que descargaste la aplicación.",
     viewRelease: "Ver versión",
     tabGeneral: "General",
     tabLibrary: "Biblioteca y web app",

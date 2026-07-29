@@ -129,8 +129,116 @@ function isGenericHomeName(name) {
   );
 }
 
-function decodeTrackedText(content) {
+function hasBytePrefix(buffer, prefix) {
+  return (
+    buffer.length >= prefix.length &&
+    prefix.every((byte, index) => buffer[index] === byte)
+  );
+}
+
+function hasByteSuffix(buffer, suffix) {
+  const offset = buffer.length - suffix.length;
+  return (
+    offset >= 0 &&
+    suffix.every((byte, index) => buffer[offset + index] === byte)
+  );
+}
+
+function isPng(buffer) {
+  return (
+    buffer.length >= 20 &&
+    hasBytePrefix(buffer, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) &&
+    hasByteSuffix(buffer, [
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x49,
+      0x45,
+      0x4e,
+      0x44,
+      0xae,
+      0x42,
+      0x60,
+      0x82,
+    ])
+  );
+}
+
+function isJpeg(buffer) {
+  return (
+    buffer.length >= 4 &&
+    hasBytePrefix(buffer, [0xff, 0xd8, 0xff]) &&
+    hasByteSuffix(buffer, [0xff, 0xd9])
+  );
+}
+
+function isIco(buffer) {
+  if (
+    buffer.length < 22 ||
+    !hasBytePrefix(buffer, [0x00, 0x00, 0x01, 0x00])
+  ) {
+    return false;
+  }
+  const imageCount = buffer.readUInt16LE(4);
+  return imageCount > 0 && buffer.length >= 6 + imageCount * 16;
+}
+
+function isIcns(buffer) {
+  return (
+    buffer.length >= 8 &&
+    hasBytePrefix(buffer, [0x69, 0x63, 0x6e, 0x73]) &&
+    buffer.readUInt32BE(4) === buffer.length
+  );
+}
+
+export function isExplicitlyRecognizedBinaryAsset(file, content) {
   const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+  const normalized = normalizeTrackedPath(file).toLowerCase();
+
+  if (normalized.endsWith(".png")) {
+    return isPng(buffer);
+  }
+  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) {
+    return isJpeg(buffer);
+  }
+  if (normalized.endsWith(".ico")) {
+    return isIco(buffer);
+  }
+  if (normalized.endsWith(".icns")) {
+    return isIcns(buffer);
+  }
+  return false;
+}
+
+export function decodeTrackedText(content) {
+  const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+  if (
+    hasBytePrefix(buffer, [0xff, 0xfe, 0x00, 0x00]) ||
+    hasBytePrefix(buffer, [0x00, 0x00, 0xfe, 0xff])
+  ) {
+    return null;
+  }
+  if (hasBytePrefix(buffer, [0xff, 0xfe])) {
+    try {
+      const source = new TextDecoder("utf-16le", { fatal: true }).decode(
+        buffer.subarray(2),
+      );
+      return source.includes("\0") ? null : source;
+    } catch {
+      return null;
+    }
+  }
+  if (hasBytePrefix(buffer, [0xfe, 0xff])) {
+    try {
+      const source = new TextDecoder("utf-16be", { fatal: true }).decode(
+        buffer.subarray(2),
+      );
+      return source.includes("\0") ? null : source;
+    } catch {
+      return null;
+    }
+  }
   if (buffer.includes(0)) {
     return null;
   }
@@ -141,7 +249,7 @@ function decodeTrackedText(content) {
   }
 }
 
-function forbiddenTrackedPathError(file) {
+export function forbiddenTrackedPathError(file) {
   const normalized = normalizeTrackedPath(file);
   const basename = posix.basename(normalized);
   const pathSegments = normalized.split("/");
@@ -186,7 +294,7 @@ function forbiddenTrackedPathError(file) {
   return null;
 }
 
-function collectContentErrors(source, file) {
+export function collectContentErrors(source, file) {
   const errors = [];
   const lines = source.split(/\r?\n/);
 
@@ -333,8 +441,10 @@ export function analyzePublicReadiness(options = {}) {
     }
 
     let source;
+    let content;
     try {
-      source = decodeTrackedText(readTrackedFile(file));
+      content = readTrackedFile(file);
+      source = decodeTrackedText(content);
     } catch (error) {
       errors.push({
         file,
@@ -345,6 +455,21 @@ export function analyzePublicReadiness(options = {}) {
       continue;
     }
     if (source === null) {
+      if (isExplicitlyRecognizedBinaryAsset(file, content)) {
+        errors.push(
+          ...collectContentErrors(
+            Buffer.from(content).toString("latin1"),
+            file,
+          ),
+        );
+      } else {
+        errors.push({
+          file,
+          line: null,
+          label:
+            "tracked file is neither supported text nor an explicitly recognized binary asset",
+        });
+      }
       continue;
     }
     textFilesChecked += 1;

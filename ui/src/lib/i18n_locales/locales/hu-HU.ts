@@ -1016,6 +1016,7 @@ export const huHUDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Ez a build újabb, mint a legutóbbi közzétett kiadás ({version}).",
     "updateCheckFailed": "Nem sikerült frissítéseket keresni. Próbálja újra később.",
     "updateInfoUnavailable": "A kiadási információk jelenleg nem érhetők el. Próbálja újra később.",
+    "updateChannelDisabled": "Ennek a buildnek nincs nyilvános frissítési csatornája. Keressen újabb kiadásokat annál a forrásnál, ahonnan letöltötte az alkalmazást.",
     "viewRelease": "Kiadás megtekintése",
     "applicationDiagnosticsTitle": "Alkalmazásdiagnosztika",
     "applicationDiagnosticsDescription": "Ellenőrizze a helyi adatbázis állapotát, és töltsön le készletadatok és hitelesítő adatok nélküli, megtisztított támogatási fájlt.",

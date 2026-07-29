@@ -1152,7 +1152,7 @@ export const enDictionary: DictionaryNode = {
     settings: {
       updates: "Updates",
       updateCheckHint:
-        "Checks GitHub only when you ask. Download and installation remain manual.",
+        "Uses public release metadata only when configured, and only when you ask. Download and installation remain manual.",
       checkForUpdates: "Check for updates",
       checkingForUpdates: "Checking…",
       updateAvailable: "Version {version} is available.",
@@ -1161,6 +1161,8 @@ export const enDictionary: DictionaryNode = {
         "This build is newer than the latest published release ({version}).",
       updateCheckFailed: "Could not check for updates. Try again later.",
       updateInfoUnavailable: "Release information is not available right now. Try again later.",
+      updateChannelDisabled:
+        "This build has no public update channel. Check the source where you downloaded the app for newer releases.",
       viewRelease: "View release",
       tabGeneral: "General",
       tabLibrary: "Library & web app",

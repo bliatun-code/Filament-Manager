@@ -98,13 +98,14 @@ Release notes:
   older-schema upgrades, full restores, and storage migrations that replace or
   merge an existing database.
 - Application/database health diagnostics and a privacy-sanitized support JSON
-  download under **Settings → Program maintenance**.
+  download under **Settings → Program maintenance**, including the non-secret
+  build commit, target, and distribution channel.
 - A dismissible, data-backed setup checklist that separates required setup from
   optional printer/Companion work and collapses completed steps, plus
   device-local preferences for Inventory layout/filter expansion and the
   last-used Settings tab.
-- An explicit **Check for updates** action that compares with the latest GitHub
-  release when release metadata is available, reports when it is unavailable,
+- An explicit **Check for updates** action that uses only a build-configured
+  public metadata channel, reports when the channel is disabled or unavailable,
   and leaves download and installation manual.
 
 ## Languages
@@ -246,10 +247,18 @@ Dependency/audit checks:
 ```bash
 npm outdated
 npm --prefix ./ui outdated
-npm audit --audit-level=moderate
-npm --prefix ./ui audit --audit-level=moderate
+npm run check:npm-licenses
+npm run audit:npm
+npm run audit:cargo
+npm run check:cargo-licenses
 cargo update --dry-run --verbose
 ```
+
+`npm run audit:dependencies` runs both vulnerability audits and both license
+policies together. GitHub also runs these live advisory checks on a weekly
+schedule; they intentionally remain outside the reproducible `verify` command.
+See [Dependency Security And License Policy](docs/DEPENDENCY_SECURITY.md) for
+the reviewed allowlists, exact tool versions, and exception rules.
 
 ## Build
 
@@ -286,10 +295,11 @@ reused app bundle, a signed local build without an explicit
 `CARGO_TARGET_DIR` writes to the temporary target path printed by the wrapper.
 Set `CARGO_TARGET_DIR` to another non-File-Provider location when a stable
 output path is needed. Official tagged macOS artifacts are Developer ID signed,
-notarized, and stapled. Before upload, the workflow mounts the exact release
-DMG, copies its app without clearing quarantine metadata, opens the isolated
-installation through LaunchServices, and checks its window and isolated runtime
-database. The public macOS contract is Apple Silicon
+notarized, and stapled. Before GitHub release publication, the workflow
+downloads the internally uploaded candidate, mounts that exact release DMG,
+copies its app without clearing quarantine metadata, opens the isolated
+installation through LaunchServices, and checks its window and isolated
+runtime database. The public macOS contract is Apple Silicon
 (`arm64`) on macOS 11 Big Sur or newer; Intel and universal artifacts are not
 currently published. See
 [macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
@@ -307,10 +317,11 @@ npm run tauri -- build --bundles msi
 
 Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 Official Windows artifacts are checked for the expected product name, version,
-and x64 architecture, then the exact release MSI is installed and launched
-with an isolated runtime database before upload. The smoke also requires both
-the MSI and installed executable to report Authenticode `NotSigned`; Windows
-installer signing remains intentionally deferred. See
+and x64 architecture. The uploaded candidate is then downloaded again,
+installed, and launched with an isolated runtime database before its workflow
+job can succeed. The smoke also requires both the MSI and installed executable
+to report Authenticode `NotSigned`; Windows installer signing remains
+intentionally deferred. See
 [Windows Installation And Verification](docs/WINDOWS_DISTRIBUTION.md) for the
 download and checksum flow.
 
@@ -345,6 +356,8 @@ receive signed installer provenance:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: a version tag matching `v*`
+- Publish environment: `github-release`; repository settings must restrict it
+  to matching version tags
 - Manual trigger: `workflow_dispatch` for a selected platform
 - Outputs:
   - `filament-manager-macos-dmg-<run-id>` with the normalized DMG and
@@ -361,13 +374,19 @@ notarization, stapling, verification, or checksum generation fails. Release
 assets are assembled only from those verified job outputs. The Windows job
 likewise fails before upload unless exactly one non-empty MSI has the expected
 product name, normalized release version, and x64 package architecture. Both
-jobs also install and launch the exact release artifact against an isolated
-database before writing the uploadable output. Release assets are treated as
-immutable; a mismatch is investigated rather than silently replaced. The SBOM
-describes source and lockfile dependencies rather than the exact binary
-contents of either installer. See
+jobs then download their uploaded candidate, verify it again, and install and
+launch that exact artifact against an isolated database. A failed candidate
+cannot reach the publish job. Release assets are treated as immutable; a
+mismatch is investigated rather than silently replaced. The SBOM describes
+source and lockfile dependencies rather than the exact binary contents of
+either installer. See
 [Release Integrity And Supply Chain](docs/SUPPLY_CHAIN.md) for verification and
 scope details.
+
+The current private development history is not intended for direct
+publication. The first public repository must be a new one-commit source
+mirror that passes the complete object/history audit described in
+[Public Repository Publication](docs/PUBLIC_REPOSITORY.md).
 
 ## Installers and App Data
 
@@ -420,7 +439,14 @@ database path after an explicit reveal. The downloadable support JSON
 deliberately excludes database contents and the local path, as well as names,
 IP addresses, printer serials, tokens, QR/RFID values, and raw printer
 telemetry. It contains only high-level health metadata and privacy-filtered
-operational events.
+operational events, plus the build commit, target, and distribution channel.
+The update metadata URL is not included.
+
+Update checking is disabled unless a release build explicitly contains an
+anonymous public HTTPS metadata endpoint. This avoids treating the anonymous
+`404` from private GitHub releases as a usable update service. See
+[Update Metadata Channel](docs/UPDATE_CHANNEL.md) for the fail-safe contract
+and publication choices.
 
 ## Catalog Scraping
 

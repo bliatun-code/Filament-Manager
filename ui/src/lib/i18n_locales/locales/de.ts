@@ -1135,6 +1135,8 @@ export const deDictionary: DictionaryNode = {
     updateCheckFailed: "Updates konnten nicht geprüft werden. Versuche es später erneut.",
     updateInfoUnavailable:
       "Veröffentlichungsinformationen sind derzeit nicht verfügbar. Versuche es später erneut.",
+    updateChannelDisabled:
+      "Dieser Build hat keinen öffentlichen Update-Kanal. Suche dort, wo du die App heruntergeladen hast, nach neueren Versionen.",
     viewRelease: "Veröffentlichung ansehen",
     tabGeneral: "Allgemein",
     tabLibrary: "Bibliothek & Web-App",

@@ -1081,6 +1081,8 @@ export const itITDictionary: DictionaryNode = {
       "Impossibile controllare gli aggiornamenti. Riprova più tardi.",
     updateInfoUnavailable:
       "Le informazioni sulla versione non sono disponibili al momento. Riprova più tardi.",
+    updateChannelDisabled:
+      "Questa build non dispone di un canale di aggiornamento pubblico. Cerca versioni più recenti nel luogo da cui hai scaricato l’app.",
     viewRelease: "Vedi versione",
     activeCleared: "Stampante attiva cancellata.",
     activePrinter: "Stampante attiva",

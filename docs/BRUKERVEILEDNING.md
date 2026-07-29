@@ -287,11 +287,12 @@ eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterend
 ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
 
 Velg **Se etter oppdateringer** når du vil sammenligne installert versjon med
-siste publiserte GitHub-release. Sjekken skjer ikke automatisk. Hvis
-utgivelsesinformasjonen ikke kan nås, melder Innstillinger fra om dette uten å
-endre programmet. Når en nyere release finnes, åpner **Vis utgivelsen** den
-faste releasesiden for Filament Manager; nedlasting og installasjon er fortsatt
-uttrykkelige, manuelle valg.
+publiserte utgivelsesmetadata. Sjekken skjer ikke automatisk og gjør bare en
+forespørsel når denne programversjonen har en uttrykkelig konfigurert offentlig
+metadatakanal. Innstillinger melder tydelig fra om en deaktivert kanal eller
+utilgjengelige metadata uten å endre programmet. Når en nyere release finnes,
+åpner **Vis utgivelsen** den faste releasesiden for Filament Manager;
+nedlasting og installasjon er fortsatt uttrykkelige, manuelle valg.
 Innstillinger husker også sist brukte fane på denne enheten, mens direkte
 snarveier fra Oversikt fremdeles åpner riktig fane.
 
@@ -351,9 +352,10 @@ sanitert supportfil** når du trenger en kompakt JSON-fil til feilsøking.
 Supportfilen inneholder ikke databaseinnhold eller lokal databasebane. Den
 utelater også navn, IP-adresser, printerserienumre, tokens, QR-/RFID-verdier og
 rå printertelemetri. Den inneholder bare overordnet helsestatus og
-personvernfiltrerte driftshendelser. Dette er noe annet enn en full
-sikkerhetskopi, som inneholder private bibliotekdata og ikke bør deles som
-diagnostikk.
+personvernfiltrerte driftshendelser, i tillegg til build-commit, target og
+distribusjonskanal. URL-en til oppdateringsmetadata tas ikke med. Dette er noe
+annet enn en full sikkerhetskopi, som inneholder private bibliotekdata og ikke
+bør deles som diagnostikk.
 
 ## Legg til filament
 

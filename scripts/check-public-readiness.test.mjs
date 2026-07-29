@@ -6,6 +6,29 @@ import {
   collectTrackedFiles,
 } from "./check-public-readiness.mjs";
 
+const MINIMAL_RECOGNIZED_PNG = Buffer.from([
+  0x89,
+  0x50,
+  0x4e,
+  0x47,
+  0x0d,
+  0x0a,
+  0x1a,
+  0x0a,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4e,
+  0x44,
+  0xae,
+  0x42,
+  0x60,
+  0x82,
+]);
+
 function analyzeFixture(files) {
   return analyzePublicReadiness({
     trackedFiles: Object.keys(files),
@@ -38,12 +61,94 @@ test("public readiness accepts generic examples, templates, and valid local refe
       "Placeholder only: github_pat_REPLACE_ME",
     ].join("\n"),
     "docs/GUIDE.md": "[Back](../README.md)\n",
-    "docs/screenshots/example.png": Buffer.from([0, 1, 2, 3]),
+    "docs/screenshots/example.png": MINIMAL_RECOGNIZED_PNG,
   });
 
   assert.deepEqual(result.errors, []);
   assert.equal(result.trackedFilesChecked, 4);
   assert.equal(result.textFilesChecked, 3);
+});
+
+test("public readiness scans UTF-16LE and UTF-16BE text with a BOM", () => {
+  const token = ["github", "_pat_", "A".repeat(32)].join("");
+  const source = `Public notes\n${token}\n`;
+  const littleEndianBody = Buffer.from(source, "utf16le");
+  const bigEndianBody = Buffer.from(littleEndianBody);
+  bigEndianBody.swap16();
+  const result = analyzeFixture({
+    "docs/little-endian.txt": Buffer.concat([
+      Buffer.from([0xff, 0xfe]),
+      littleEndianBody,
+    ]),
+    "docs/big-endian.txt": Buffer.concat([
+      Buffer.from([0xfe, 0xff]),
+      bigEndianBody,
+    ]),
+  });
+
+  assert.deepEqual(
+    result.errors.map(({ file, line, label }) => ({ file, line, label })),
+    [
+      {
+        file: "docs/little-endian.txt",
+        line: 2,
+        label: "GitHub access token",
+      },
+      {
+        file: "docs/big-endian.txt",
+        line: 2,
+        label: "GitHub access token",
+      },
+    ],
+  );
+  assert.equal(result.textFilesChecked, 2);
+});
+
+test("public readiness fails closed on opaque bytes and false binary extensions", () => {
+  const result = analyzeFixture({
+    "docs/opaque.dat": Buffer.from([0xc3, 0x28, 0xff]),
+    "docs/not-really.png": Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00]),
+  });
+
+  assert.deepEqual(
+    result.errors.map(({ file, label }) => ({ file, label })),
+    [
+      {
+        file: "docs/opaque.dat",
+        label:
+          "tracked file is neither supported text nor an explicitly recognized binary asset",
+      },
+      {
+        file: "docs/not-really.png",
+        label:
+          "tracked file is neither supported text nor an explicitly recognized binary asset",
+      },
+    ],
+  );
+  assert.equal(result.textFilesChecked, 0);
+});
+
+test("public readiness scans recognizable ASCII secrets inside accepted binary assets", () => {
+  const token = ["github", "_pat_", "A".repeat(32)].join("");
+  const pngWithMetadata = Buffer.concat([
+    MINIMAL_RECOGNIZED_PNG.subarray(0, 8),
+    Buffer.from(token, "ascii"),
+    MINIMAL_RECOGNIZED_PNG.subarray(8),
+  ]);
+  const result = analyzeFixture({
+    "docs/metadata.png": pngWithMetadata,
+  });
+
+  assert.deepEqual(
+    result.errors.map(({ file, label }) => ({ file, label })),
+    [
+      {
+        file: "docs/metadata.png",
+        label: "GitHub access token",
+      },
+    ],
+  );
+  assert.equal(result.textFilesChecked, 0);
 });
 
 test("public readiness rejects internal notes and sensitive or built artifacts", () => {

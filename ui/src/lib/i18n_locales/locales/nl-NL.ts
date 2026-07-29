@@ -872,6 +872,7 @@ export const nlNLDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Deze build is nieuwer dan de nieuwste gepubliceerde versie ({version}).",
     "updateCheckFailed": "Kan niet op updates controleren. Probeer het later opnieuw.",
     "updateInfoUnavailable": "Release-informatie is momenteel niet beschikbaar. Probeer het later opnieuw.",
+    "updateChannelDisabled": "Deze build heeft geen openbaar updatekanaal. Controleer op nieuwere versies bij de bron waar je de app hebt gedownload.",
     "viewRelease": "Versie bekijken",
     "applicationDiagnosticsTitle": "Toepassingsdiagnose",
     "applicationDiagnosticsDescription": "Controleer de lokale database en download een opgeschoond ondersteuningsbestand zonder inventarisinhoud of inloggegevens.",

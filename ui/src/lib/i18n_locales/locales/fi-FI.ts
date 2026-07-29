@@ -1016,6 +1016,7 @@ export const fiFIDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Tämä koontiversio on uusinta julkaistua versiota ({version}) uudempi.",
     "updateCheckFailed": "Päivityksiä ei voitu tarkistaa. Yritä myöhemmin uudelleen.",
     "updateInfoUnavailable": "Julkaisutietoja ei ole juuri nyt saatavilla. Yritä myöhemmin uudelleen.",
+    "updateChannelDisabled": "Tässä koontiversiossa ei ole julkista päivityskanavaa. Tarkista uudemmat julkaisut siitä lähteestä, josta latasit sovelluksen.",
     "viewRelease": "Näytä julkaisu",
     "applicationDiagnosticsTitle": "Sovelluksen diagnostiikka",
     "applicationDiagnosticsDescription": "Tarkista paikallisen tietokannan kunto ja lataa puhdistettu tukitiedosto ilman varastosisältöä tai kirjautumistietoja.",

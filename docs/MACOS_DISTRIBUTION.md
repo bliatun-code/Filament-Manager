@@ -37,11 +37,12 @@ spctl --assess --type execute --verbose=2 "/Applications/Filament Manager.app"
 These checks supplement normal Gatekeeper behavior; users do not need them for
 every installation.
 
-Before a release DMG can be uploaded, the release workflow mounts that exact
-DMG, copies its app to an isolated test installation without clearing
-quarantine metadata, opens the installed copy through LaunchServices with an
-isolated runtime database, and verifies SQLite integrity, schema compatibility,
-required tables, foreign keys, and a visible application window.
+Before a release DMG can be published on GitHub, the release workflow downloads
+the internally uploaded candidate, mounts that exact DMG, copies its app to an
+isolated test installation without clearing quarantine metadata, opens the
+installed copy through LaunchServices with an isolated runtime database, and
+verifies SQLite integrity, schema compatibility, required tables, foreign keys,
+and a visible application window.
 
 Tagged releases also include a validated source dependency SBOM. Public tag
 releases include GitHub/Sigstore build provenance for the DMG and MSI. See
@@ -61,3 +62,6 @@ quarantine metadata or weakening Gatekeeper. If it does not:
 Before attaching logs or screenshots, remove private LAN addresses, printer
 serials, access codes, pairing links, RFID values, names, and inventory data.
 Security-sensitive reports should follow [the security policy](../SECURITY.md).
+The sanitized support file available under **Settings → Program maintenance**
+includes the non-secret build commit, target, and distribution channel, but not
+the configured update metadata URL.

@@ -872,6 +872,7 @@ export const zhCNDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "当前构建比最新发布版本（{version}）更新。",
     "updateCheckFailed": "无法检查更新，请稍后重试。",
     "updateInfoUnavailable": "目前无法获取发布信息。请稍后重试。",
+    "updateChannelDisabled": "此构建没有公共更新渠道。请在下载此应用的来源处查看是否有更新版本。",
     "viewRelease": "查看发布版本",
     "applicationDiagnosticsTitle": "应用诊断",
     "applicationDiagnosticsDescription": "检查本地数据库的运行状况，并下载不含库存内容或凭据的净化支持文件。",

@@ -1158,7 +1158,7 @@ export const nbDictionary: DictionaryNode = {
     settings: {
       updates: "Oppdateringer",
       updateCheckHint:
-        "Sjekker GitHub bare når du ber om det. Nedlasting og installasjon gjøres fortsatt manuelt.",
+        "Bruker offentlige utgivelsesmetadata bare når dette er konfigurert, og bare når du ber om det. Nedlasting og installasjon gjøres fortsatt manuelt.",
       checkForUpdates: "Se etter oppdateringer",
       checkingForUpdates: "Ser etter oppdateringer…",
       updateAvailable: "Versjon {version} er tilgjengelig.",
@@ -1168,6 +1168,8 @@ export const nbDictionary: DictionaryNode = {
       updateCheckFailed: "Kunne ikke se etter oppdateringer. Prøv igjen senere.",
       updateInfoUnavailable:
         "Utgivelsesinformasjon er ikke tilgjengelig akkurat nå. Prøv igjen senere.",
+      updateChannelDisabled:
+        "Denne versjonen har ingen offentlig oppdateringskanal. Sjekk kilden du lastet ned appen fra for nyere utgivelser.",
       viewRelease: "Vis utgivelsen",
       tabGeneral: "Generelt",
       tabLibrary: "Bibliotek og webapp",

@@ -872,6 +872,7 @@ export const trTRDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Bu derleme, yayımlanan en son sürümden ({version}) daha yenidir.",
     "updateCheckFailed": "Güncellemeler denetlenemedi. Daha sonra tekrar deneyin.",
     "updateInfoUnavailable": "Sürüm bilgileri şu anda kullanılamıyor. Daha sonra tekrar deneyin.",
+    "updateChannelDisabled": "Bu derlemenin genel kullanıma açık bir güncelleme kanalı yok. Daha yeni sürümler için uygulamayı indirdiğiniz kaynağı kontrol edin.",
     "viewRelease": "Sürümü görüntüle",
     "applicationDiagnosticsTitle": "Uygulama tanılaması",
     "applicationDiagnosticsDescription": "Yerel veritabanının durumunu denetleyin ve envanter içeriği ya da kimlik bilgileri içermeyen temizlenmiş bir destek dosyası indirin.",

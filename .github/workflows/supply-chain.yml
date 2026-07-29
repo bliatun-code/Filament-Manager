@@ -1,0 +1,65 @@
+name: Scheduled supply-chain audit
+
+on:
+  schedule:
+    - cron: "27 4 * * 2"
+  workflow_dispatch:
+
+concurrency:
+  group: supply-chain-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm vulnerabilities and licenses
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Enforce npm dependency license policy
+        run: npm run check:npm-licenses
+
+      - name: Audit root npm lockfile
+        run: npm audit --audit-level=moderate --package-lock-only
+
+      - name: Audit UI npm lockfile
+        run: npm --prefix ./ui audit --audit-level=moderate --package-lock-only
+
+  cargo-audit:
+    name: Cargo vulnerabilities and licenses
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+
+      - name: Install pinned cargo-audit
+        run: cargo install --locked cargo-audit --version 0.22.1
+
+      - name: Audit Cargo lockfile
+        run: cargo audit
+
+      - name: Install pinned cargo-deny
+        run: cargo install --locked cargo-deny --version 0.19.4
+
+      - name: Enforce Cargo dependency license policy
+        run: cargo deny --all-features check licenses

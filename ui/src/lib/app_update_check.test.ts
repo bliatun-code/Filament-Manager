@@ -21,6 +21,7 @@ function result(
     latest_version: "0.22.0",
     release_url: releaseUrl,
     status,
+    update_channel: status === "UPDATE_CHANNEL_DISABLED" ? "DISABLED" : "PUBLIC_METADATA",
   };
 }
 
@@ -38,6 +39,17 @@ test("release action is shown only for a newer published version", () => {
       status: "SUCCESS",
       result: {
         ...result("RELEASE_INFO_UNAVAILABLE"),
+        latest_tag: null,
+        latest_version: null,
+      },
+    }),
+    false,
+  );
+  assert.equal(
+    shouldShowReleaseAction({
+      status: "SUCCESS",
+      result: {
+        ...result("UPDATE_CHANNEL_DISABLED"),
         latest_tag: null,
         latest_version: null,
       },
@@ -93,6 +105,20 @@ test("update-check messages cover errors and every successful result", () => {
       t,
     ),
     "Release information is not available right now. Try again later.",
+  );
+  assert.equal(
+    appUpdateCheckMessage(
+      {
+        status: "SUCCESS",
+        result: {
+          ...result("UPDATE_CHANNEL_DISABLED"),
+          latest_tag: null,
+          latest_version: null,
+        },
+      },
+      t,
+    ),
+    "This build has no public update channel. Check the source where you downloaded the app for newer releases.",
   );
   assert.equal(
     appUpdateCheckMessage({ status: "SUCCESS", result: result("UPDATE_AVAILABLE") }, t),

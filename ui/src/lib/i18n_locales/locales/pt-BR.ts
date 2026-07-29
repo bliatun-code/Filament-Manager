@@ -1073,6 +1073,8 @@ export const ptBRDictionary: DictionaryNode = {
       "Não foi possível verificar atualizações. Tente novamente mais tarde.",
     updateInfoUnavailable:
       "As informações da versão não estão disponíveis no momento. Tente novamente mais tarde.",
+    updateChannelDisabled:
+      "Esta versão não tem um canal público de atualizações. Procure versões mais recentes no local de onde você baixou o aplicativo.",
     viewRelease: "Ver versão",
     activeCleared: "Impressora ativa apagada.",
     activePrinter: "Impressora ativa",

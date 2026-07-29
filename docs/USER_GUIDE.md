@@ -285,10 +285,12 @@ or pull requests. The current language set stays fixed while the existing
 non-English catalogs receive community and native-language review.
 
 Choose **Check for updates** when you want to compare the installed version
-with the latest published GitHub release. The check is not automatic. If release
-metadata cannot be reached, Settings reports that without changing the app.
-When a newer release exists, **View release** opens the fixed Filament Manager
-releases page; downloading and installing remain explicit manual actions.
+with published release metadata. The check is not automatic and makes a
+request only when this build has an explicitly configured public metadata
+channel. Settings clearly reports a disabled channel or unavailable metadata
+without changing the app. When a newer release exists, **View release** opens
+the fixed Filament Manager releases page; downloading and installing remain
+explicit manual actions.
 Settings also remembers the last tab used on this device, while direct links
 from Dashboard still open the relevant tab.
 
@@ -348,8 +350,10 @@ support file** when you need a compact JSON file for troubleshooting.
 The support file does not include database contents or the local database path.
 It also excludes names, IP addresses, printer serials, tokens, QR/RFID values,
 and raw printer telemetry. It contains only high-level health metadata and
-privacy-filtered operational events. This is different from a full backup,
-which contains private library data and should not be shared as diagnostics.
+privacy-filtered operational events, together with the build commit, target,
+and distribution channel. It does not contain the update metadata URL. This is
+different from a full backup, which contains private library data and should
+not be shared as diagnostics.
 
 ## Add Filament
 

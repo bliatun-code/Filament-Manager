@@ -10,7 +10,7 @@ use super::operational_log::{
 use crate::backend::database_schema::{database_schema_version, CURRENT_SCHEMA_VERSION};
 use crate::state::AppState;
 
-const SUPPORT_BUNDLE_FORMAT: &str = "filament-manager-support-v1";
+const SUPPORT_BUNDLE_FORMAT: &str = "filament-manager-support-v2";
 const DIAGNOSTICS_BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -51,11 +51,19 @@ struct SanitizedDatabaseDiagnostics {
     size_bytes: Option<u64>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
+struct SanitizedBuildMetadata {
+    commit: &'static str,
+    target: &'static str,
+    distribution_channel: &'static str,
+}
+
 #[derive(Debug, Serialize)]
 struct SanitizedSupportBundle {
     format: &'static str,
     generated_at_ms: u64,
     app_version: String,
+    build: SanitizedBuildMetadata,
     database: SanitizedDatabaseDiagnostics,
     operational_log_available: bool,
     operational_log: Vec<OperationalLogEntry>,
@@ -140,11 +148,20 @@ pub(crate) fn sanitized_support_bundle_json(db_path: &Path) -> Result<String, se
         format: SUPPORT_BUNDLE_FORMAT,
         generated_at_ms: diagnostics.generated_at_ms,
         app_version: diagnostics.app_version,
+        build: sanitized_build_metadata(),
         database: SanitizedDatabaseDiagnostics::from(&diagnostics.database),
         operational_log_available,
         operational_log,
     };
     serde_json::to_string_pretty(&bundle)
+}
+
+fn sanitized_build_metadata() -> SanitizedBuildMetadata {
+    SanitizedBuildMetadata {
+        commit: env!("FILAMENT_MANAGER_BUILD_COMMIT"),
+        target: env!("FILAMENT_MANAGER_BUILD_TARGET"),
+        distribution_channel: env!("FILAMENT_MANAGER_DISTRIBUTION_CHANNEL"),
+    }
 }
 
 #[tauri::command]
@@ -323,8 +340,35 @@ mod tests {
         let encoded = sanitized_support_bundle_json(&db_path).expect("serialize support bundle");
         let parsed: serde_json::Value = serde_json::from_str(&encoded).expect("valid JSON");
         assert_eq!(parsed["format"], SUPPORT_BUNDLE_FORMAT);
+        assert_eq!(
+            parsed["build"]["commit"],
+            env!("FILAMENT_MANAGER_BUILD_COMMIT")
+        );
+        assert_eq!(
+            parsed["build"]["target"],
+            env!("FILAMENT_MANAGER_BUILD_TARGET")
+        );
+        assert_eq!(
+            parsed["build"]["distribution_channel"],
+            env!("FILAMENT_MANAGER_DISTRIBUTION_CHANNEL")
+        );
+        assert_eq!(
+            parsed["build"]
+                .as_object()
+                .expect("build metadata object")
+                .keys()
+                .cloned()
+                .collect::<HashSet<_>>(),
+            HashSet::from([
+                "commit".to_string(),
+                "target".to_string(),
+                "distribution_channel".to_string(),
+            ])
+        );
         assert!(parsed["database"].get("local_db_path").is_none());
         assert!(parsed.get("local_db_path").is_none());
+        assert!(parsed.get("update_metadata_url").is_none());
+        assert!(parsed["build"].get("update_metadata_url").is_none());
         for sensitive in [
             db_path.to_string_lossy().as_ref(),
             "Alice",

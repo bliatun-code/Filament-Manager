@@ -1016,6 +1016,7 @@ export const daDKDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Denne build er nyere end den seneste udgivne version ({version}).",
     "updateCheckFailed": "Kunne ikke søge efter opdateringer. Prøv igen senere.",
     "updateInfoUnavailable": "Udgivelsesoplysninger er ikke tilgængelige lige nu. Prøv igen senere.",
+    "updateChannelDisabled": "Denne build har ingen offentlig opdateringskanal. Se efter nyere udgivelser dér, hvor du hentede appen.",
     "viewRelease": "Vis udgivelse",
     "applicationDiagnosticsTitle": "Programdiagnostik",
     "applicationDiagnosticsDescription": "Kontrollér den lokale databases tilstand, og download en renset supportfil uden lagerindhold eller loginoplysninger.",

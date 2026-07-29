@@ -872,6 +872,7 @@ export const plPLDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Ta kompilacja jest nowsza niż najnowsze opublikowane wydanie ({version}).",
     "updateCheckFailed": "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później.",
     "updateInfoUnavailable": "Informacje o wydaniu są obecnie niedostępne. Spróbuj ponownie później.",
+    "updateChannelDisabled": "Ta kompilacja nie ma publicznego kanału aktualizacji. Sprawdź dostępność nowszych wydań w miejscu, z którego pobrano aplikację.",
     "viewRelease": "Zobacz wydanie",
     "applicationDiagnosticsTitle": "Diagnostyka aplikacji",
     "applicationDiagnosticsDescription": "Sprawdź stan lokalnej bazy danych i pobierz oczyszczony plik pomocy bez zawartości magazynu ani danych logowania.",

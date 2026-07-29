@@ -1,21 +1,26 @@
 use reqwest::header::{ACCEPT, CACHE_CONTROL, USER_AGENT};
-use reqwest::StatusCode;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::time::Duration;
+use url::Url;
 
-const GITHUB_LATEST_RELEASE_API_URL: &str =
-    "https://api.github.com/repos/bliatun-code/Filament-Manager/releases/latest";
 const GITHUB_LATEST_RELEASE_PAGE_URL: &str =
     "https://github.com/bliatun-code/Filament-Manager/releases/latest";
-const GITHUB_API_VERSION: &str = "2026-03-10";
+const CONFIGURED_UPDATE_METADATA_URL: &str = env!("FILAMENT_MANAGER_UPDATE_METADATA_URL");
 const UPDATE_CHECK_TIMEOUT: Duration = Duration::from_secs(5);
 const UPDATE_RESPONSE_MAX_BYTES: u64 = 64 * 1024;
 
 #[derive(Debug, Deserialize)]
-struct GithubLatestReleaseResponse {
+struct LatestReleaseMetadata {
     tag_name: String,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum AppUpdateChannel {
+    Disabled,
+    PublicMetadata,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -25,6 +30,7 @@ pub(crate) enum AppUpdateStatus {
     UpToDate,
     DevelopmentBuild,
     ReleaseInfoUnavailable,
+    UpdateChannelDisabled,
 }
 
 #[derive(Debug, Eq, PartialEq, Serialize)]
@@ -34,6 +40,7 @@ pub(crate) struct AppUpdateCheckResult {
     latest_tag: Option<String>,
     release_url: String,
     status: AppUpdateStatus,
+    update_channel: AppUpdateChannel,
 }
 
 fn parse_current_version(current_version: &str) -> Result<Version, String> {
@@ -70,6 +77,7 @@ fn build_update_check_result(
         latest_tag: Some(latest_tag.trim().to_string()),
         release_url: GITHUB_LATEST_RELEASE_PAGE_URL.to_string(),
         status,
+        update_channel: AppUpdateChannel::PublicMetadata,
     })
 }
 
@@ -83,50 +91,96 @@ fn build_release_info_unavailable_result(
         latest_tag: None,
         release_url: GITHUB_LATEST_RELEASE_PAGE_URL.to_string(),
         status: AppUpdateStatus::ReleaseInfoUnavailable,
+        update_channel: AppUpdateChannel::PublicMetadata,
     })
 }
 
-fn check_for_app_update_blocking(current_version: &str) -> Result<AppUpdateCheckResult, String> {
-    let client = reqwest::blocking::Client::builder()
+fn build_update_channel_disabled_result(
+    current_version: &str,
+) -> Result<AppUpdateCheckResult, String> {
+    let current = parse_current_version(current_version)?;
+    Ok(AppUpdateCheckResult {
+        current_version: current.to_string(),
+        latest_version: None,
+        latest_tag: None,
+        release_url: GITHUB_LATEST_RELEASE_PAGE_URL.to_string(),
+        status: AppUpdateStatus::UpdateChannelDisabled,
+        update_channel: AppUpdateChannel::Disabled,
+    })
+}
+
+fn public_update_metadata_url(configured_url: &str) -> Option<Url> {
+    let configured_url = configured_url.trim();
+    if configured_url.is_empty() {
+        return None;
+    }
+    let url = Url::parse(configured_url).ok()?;
+    if url.scheme() != "https"
+        || url.host_str().is_none()
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return None;
+    }
+    Some(url)
+}
+
+fn check_for_app_update_blocking(
+    current_version: &str,
+    configured_metadata_url: &str,
+) -> Result<AppUpdateCheckResult, String> {
+    let Some(metadata_url) = public_update_metadata_url(configured_metadata_url) else {
+        return build_update_channel_disabled_result(current_version);
+    };
+    let client = match reqwest::blocking::Client::builder()
         .timeout(UPDATE_CHECK_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
         .build()
-        .map_err(|_| "Update check could not be prepared.".to_string())?;
-    let response = client
-        .get(GITHUB_LATEST_RELEASE_API_URL)
-        .header(ACCEPT, "application/vnd.github+json")
+    {
+        Ok(client) => client,
+        Err(_) => return build_release_info_unavailable_result(current_version),
+    };
+    let response = match client
+        .get(metadata_url)
+        .header(ACCEPT, "application/json")
         .header(CACHE_CONTROL, "no-cache")
         .header(
             USER_AGENT,
             format!("Filament-Manager/{}", env!("CARGO_PKG_VERSION")),
         )
-        .header("X-GitHub-Api-Version", GITHUB_API_VERSION)
         .send()
-        .map_err(|_| "Latest release could not be reached.".to_string())?;
+    {
+        Ok(response) => response,
+        Err(_) => return build_release_info_unavailable_result(current_version),
+    };
 
-    if response.status() == StatusCode::NOT_FOUND {
-        return build_release_info_unavailable_result(current_version);
-    }
     if !response.status().is_success() {
-        return Err("Latest release is not available.".to_string());
+        return build_release_info_unavailable_result(current_version);
     }
     if response
         .content_length()
         .is_some_and(|length| length > UPDATE_RESPONSE_MAX_BYTES)
     {
-        return Err("Latest release response is too large.".to_string());
+        return build_release_info_unavailable_result(current_version);
     }
 
     let mut body = Vec::new();
-    response
+    if response
         .take(UPDATE_RESPONSE_MAX_BYTES + 1)
         .read_to_end(&mut body)
-        .map_err(|_| "Latest release response could not be read.".to_string())?;
-    if body.len() as u64 > UPDATE_RESPONSE_MAX_BYTES {
-        return Err("Latest release response is too large.".to_string());
+        .is_err()
+    {
+        return build_release_info_unavailable_result(current_version);
     }
-    let release: GithubLatestReleaseResponse = serde_json::from_slice(&body)
-        .map_err(|_| "Latest release response is invalid.".to_string())?;
+    if body.len() as u64 > UPDATE_RESPONSE_MAX_BYTES {
+        return build_release_info_unavailable_result(current_version);
+    }
+    let release: LatestReleaseMetadata = match serde_json::from_slice(&body) {
+        Ok(release) => release,
+        Err(_) => return build_release_info_unavailable_result(current_version),
+    };
     build_update_check_result(current_version, &release.tag_name)
 }
 
@@ -135,16 +189,19 @@ pub(crate) async fn check_for_app_update(
     app: tauri::AppHandle,
 ) -> Result<AppUpdateCheckResult, String> {
     let current_version = app.package_info().version.to_string();
-    tauri::async_runtime::spawn_blocking(move || check_for_app_update_blocking(&current_version))
-        .await
-        .map_err(|_| "Update check did not complete.".to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        check_for_app_update_blocking(&current_version, CONFIGURED_UPDATE_METADATA_URL)
+    })
+    .await
+    .map_err(|_| "Update check did not complete.".to_string())?
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        build_release_info_unavailable_result, build_update_check_result, parse_release_version,
-        AppUpdateStatus,
+        build_release_info_unavailable_result, build_update_channel_disabled_result,
+        build_update_check_result, check_for_app_update_blocking, parse_release_version,
+        public_update_metadata_url, AppUpdateChannel, AppUpdateStatus,
     };
 
     #[test]
@@ -184,6 +241,7 @@ mod tests {
             result.release_url,
             "https://github.com/bliatun-code/Filament-Manager/releases/latest"
         );
+        assert_eq!(result.update_channel, AppUpdateChannel::PublicMetadata);
     }
 
     #[test]
@@ -193,5 +251,48 @@ mod tests {
         assert_eq!(result.latest_version, None);
         assert_eq!(result.latest_tag, None);
         assert_eq!(result.status, AppUpdateStatus::ReleaseInfoUnavailable);
+        assert_eq!(result.update_channel, AppUpdateChannel::PublicMetadata);
+    }
+
+    #[test]
+    fn update_channel_is_disabled_without_explicit_public_metadata() {
+        let result = build_update_channel_disabled_result("0.21.2").unwrap();
+        assert_eq!(result.current_version, "0.21.2");
+        assert_eq!(result.latest_version, None);
+        assert_eq!(result.latest_tag, None);
+        assert_eq!(result.status, AppUpdateStatus::UpdateChannelDisabled);
+        assert_eq!(result.update_channel, AppUpdateChannel::Disabled);
+
+        assert_eq!(check_for_app_update_blocking("0.21.2", "").unwrap(), result);
+        assert_eq!(
+            check_for_app_update_blocking("0.21.2", "http://updates.example/latest").unwrap(),
+            result
+        );
+        let serialized = serde_json::to_value(&result).expect("serialize update result");
+        assert_eq!(serialized["status"], "UPDATE_CHANNEL_DISABLED");
+        assert_eq!(serialized["update_channel"], "DISABLED");
+    }
+
+    #[test]
+    fn public_metadata_url_requires_plain_https_without_embedded_secrets() {
+        assert_eq!(
+            public_update_metadata_url("https://updates.example/latest.json")
+                .map(|url| url.to_string()),
+            Some("https://updates.example/latest.json".to_string())
+        );
+        for invalid in [
+            "",
+            "http://updates.example/latest.json",
+            "https://user:token@updates.example/latest.json",
+            "https://updates.example/latest.json?token=secret",
+            "https://updates.example/latest.json#latest",
+            "not a URL",
+        ] {
+            assert_eq!(
+                public_update_metadata_url(invalid),
+                None,
+                "unexpected accepted metadata URL: {invalid}"
+            );
+        }
     }
 }

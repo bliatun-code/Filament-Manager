@@ -872,6 +872,7 @@ export const jaJPDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "このビルドは最新の公開版（{version}）より新しいものです。",
     "updateCheckFailed": "アップデートを確認できませんでした。後でもう一度お試しください。",
     "updateInfoUnavailable": "現在、リリース情報を取得できません。後でもう一度お試しください。",
+    "updateChannelDisabled": "このビルドには公開更新チャネルがありません。新しいリリースについては、アプリをダウンロードした配布元を確認してください。",
     "viewRelease": "リリースを表示",
     "applicationDiagnosticsTitle": "アプリ診断",
     "applicationDiagnosticsDescription": "ローカルデータベースの状態を確認し、在庫内容や認証情報を含まないサニタイズ済みサポートファイルをダウンロードします。",

@@ -1172,6 +1172,8 @@ export const frDictionary: DictionaryNode = {
       "Impossible de rechercher les mises à jour. Réessayez plus tard.",
     updateInfoUnavailable:
       "Les informations sur la version ne sont pas disponibles pour le moment. Réessayez plus tard.",
+    updateChannelDisabled:
+      "Cette version ne dispose d’aucun canal de mise à jour public. Vérifiez si une version plus récente est disponible là où vous avez téléchargé l’application.",
     viewRelease: "Voir la version",
     tabGeneral: "Général",
     tabLibrary: "Bibliothèque et web app",

@@ -80,6 +80,10 @@ test("release workflow gates tag and manual installer builds", () => {
 
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
+  assert.match(
+    validationJob,
+    /outputs:\s*\n\s+package-version: \$\{\{ steps\['release-request'\]\.outputs\['package-version'\] \}\}\s*\n\s+release-tag: \$\{\{ steps\['release-request'\]\.outputs\['release-tag'\] \}\}/,
+  );
   assert.match(validationJob, /npm run check:version/);
   assert.match(validationJob, /npm run check:msi-version/);
   assert.match(validationJob, /npm run check:path-portability/);
@@ -101,6 +105,23 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(
     validationJob,
     /Manual release builds must run from the main branch/,
+  );
+  assert.match(validationJob, /release_tag="v\$package_version"/);
+  assert.match(
+    validationJob,
+    /echo "package-version=\$package_version" >> "\$GITHUB_OUTPUT"/,
+  );
+  assert.match(
+    validationJob,
+    /echo "release-tag=\$release_tag" >> "\$GITHUB_OUTPUT"/,
+  );
+  assert.match(
+    validationJob,
+    /"\$GITHUB_EVENT_NAME" == "push"[\s\S]*?"\$GITHUB_REF_TYPE" != "tag"[\s\S]*?"\$GITHUB_REF_NAME" != "\$release_tag"[\s\S]*?"\$GITHUB_REF" != "refs\/tags\/\$release_tag"/,
+  );
+  assert.match(
+    validationJob,
+    /Release publishing is restricted to the exact version tag refs\/tags\/\$release_tag/,
   );
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
   assert.match(macosJob, /needs: validate-release/);
@@ -124,7 +145,18 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     windowsJob,
-    /- name: Build MSI bundle\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: npm run tauri -- build --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+    /- name: Build MSI bundle\s+env:\s+FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: npm run tauri -- build --bundles msi --config "\$env:MSI_VERSION_CONFIG_PATH"/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Build signed and notarized DMG[\s\S]*?FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}[\s\S]*?run: npm run tauri -- build --bundles dmg/,
+  );
+  assert.equal(
+    countOccurrences(
+      releaseWorkflow,
+      "FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}",
+    ),
+    2,
   );
   assert.doesNotMatch(
     windowsJob,
@@ -157,8 +189,23 @@ test("release workflow gates tag and manual installer builds", () => {
     windowsJob,
     /- name: Upload verified MSI artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
   );
-  assert.match(windowsJob, /- name: Exercise release MSI installation/);
-  assert.match(windowsJob, /target\/release\/bundle\/msi/);
+  assert.match(
+    windowsJob,
+    /- name: Download release MSI candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}[\s\S]*?filament-manager-windows-release-candidate/,
+  );
+  assert.match(windowsJob, /- name: Verify downloaded MSI candidate/);
+  assert.match(windowsJob, /SHA256SUMS-windows\.txt/);
+  assert.match(windowsJob, /\[regex\]::Match/);
+  assert.match(windowsJob, /Get-FileHash -LiteralPath \$candidatePath -Algorithm SHA256/);
+  assert.match(
+    windowsJob,
+    /-MsiDirectory \$env:WINDOWS_MSI_CANDIDATE_DIR/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Exercise release MSI installation from downloaded artifact/,
+  );
+  assert.match(windowsJob, /WINDOWS_MSI_CANDIDATE_DIR/);
   assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
   assert.match(windowsJob, /-SignaturePolicy "UnsignedRequired"/);
   assert.match(windowsJob, /-LaunchTimeoutSeconds 120/);
@@ -191,9 +238,11 @@ test("release workflow gates tag and manual installer builds", () => {
     "Verify MSI preparation leaves manifests unchanged",
     "Build MSI bundle",
     "Verify MSI bundle and write checksum",
-    "Exercise release MSI installation",
-    "Upload release MSI smoke logs",
     "Upload verified MSI artifact",
+    "Download release MSI candidate",
+    "Verify downloaded MSI candidate",
+    "Exercise release MSI installation from downloaded artifact",
+    "Upload release MSI smoke logs",
   ]);
 
   assert.match(
@@ -202,6 +251,10 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(publishJob, /if: >-\s+!cancelled\(\) &&/);
   assert.doesNotMatch(publishJob, /always\(\)/);
+  assert.match(
+    publishJob,
+    /github\.ref == format\('refs\/tags\/\{0\}', needs\['validate-release'\]\.outputs\['release-tag'\]\)/,
+  );
   assert.match(publishJob, /needs\['validate-release'\]\.result == 'success'/);
   assert.match(publishJob, /needs\['build-macos-dmg'\]\.result == 'success'/);
   assert.match(publishJob, /needs\['build-windows-msi'\]\.result == 'success'/);
@@ -217,6 +270,24 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(
     publishJob,
     /permissions:\s*\n\s+checks: read\s*\n\s+contents: write/,
+  );
+  assert.match(publishJob, /environment: github-release/);
+  assert.equal(countOccurrences(releaseWorkflow, "environment: github-release"), 1);
+  assert.doesNotMatch(macosJob, /environment: github-release/);
+  assert.doesNotMatch(windowsJob, /environment: github-release/);
+  assert.match(macosJob, /environment: macos-release/);
+  assert.match(
+    publishJob,
+    /\/repos\/\$GITHUB_REPOSITORY\/commits\/\$GITHUB_REF_NAME/,
+  );
+  assert.match(publishJob, /--jq \.sha/);
+  assert.match(
+    publishJob,
+    /if \[\[ "\$tag_commit" != "\$GITHUB_SHA" \]\]; then[\s\S]*?Release tag \$GITHUB_REF_NAME no longer points to workflow commit \$GITHUB_SHA/,
+  );
+  assert.match(
+    publishJob,
+    /tag_commit="\$\([\s\S]*?\)"[\s\S]*?gh release create "\$GITHUB_REF_NAME"/,
   );
   assert.match(
     publishJob,
@@ -341,7 +412,7 @@ test("public provenance uses an isolated least-privilege fail-closed job", () =>
 
   assert.match(
     attestationJob,
-    /if: github\.event_name == 'push' && github\.ref_type == 'tag' && github\.event\.repository\.private == false/,
+    /if: >-\s+github\.event_name == 'push' &&\s+github\.ref_type == 'tag' &&\s+github\.ref == format\('refs\/tags\/\{0\}', needs\['validate-release'\]\.outputs\['release-tag'\]\) &&\s+github\.event\.repository\.private == false/,
   );
   assert.match(
     attestationJob,
@@ -409,8 +480,8 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   const provenanceArtifactName =
     "filament-manager-release-provenance-${{ github.run_id }}";
 
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 3);
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 3);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 4);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 4);
   assert.equal(countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`), 2);
   assert.equal(countOccurrences(releaseWorkflow, `name: ${provenanceArtifactName}`), 2);
   assert.doesNotMatch(releaseWorkflow, /github\.run_attempt/);
@@ -419,8 +490,16 @@ test("release artifacts remain stable across partial workflow reruns", () => {
     /- name: Upload verified DMG artifact[\s\S]*?overwrite: true/,
   );
   assert.match(
+    macosJob,
+    /- name: Download release DMG candidate[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
     windowsJob,
     /- name: Upload verified MSI artifact[\s\S]*?overwrite: true/,
+  );
+  assert.match(
+    windowsJob,
+    /- name: Download release MSI candidate[\s\S]*?name: filament-manager-windows-msi-\$\{\{ github\.run_id \}\}/,
   );
   assert.match(
     sbomJob,
@@ -794,7 +873,7 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(macosJob, /npm run smoke:macos-dmg --/);
   assert.match(
     macosJob,
-    /- name: Exercise installed signed application[\s\S]*?EXPECTED_APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}[\s\S]*?--expected-team-id="\$EXPECTED_APPLE_TEAM_ID"/,
+    /- name: Exercise installed signed application from downloaded artifact[\s\S]*?EXPECTED_APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}[\s\S]*?"\$FILAMENT_MANAGER_DMG_SMOKE_PATH"[\s\S]*?--expected-team-id="\$EXPECTED_APPLE_TEAM_ID"/,
   );
   assert.match(macosJob, /--launch-timeout-ms=120000/);
   assert.match(macosJob, /--signature-policy=release/);
@@ -811,6 +890,16 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(
     macosJob,
     /- name: Upload verified DMG artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Download release DMG candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(macosJob, /- name: Verify downloaded DMG candidate/);
+  assert.match(macosJob, /shasum -a 256 --check SHA256SUMS\.txt/);
+  assert.match(
+    macosJob,
+    /FILAMENT_MANAGER_DMG_SMOKE_PATH=\$\{candidate_dmgs\[0\]\}/,
   );
   assert.doesNotMatch(
     macosJob,
@@ -831,10 +920,12 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     "Normalize DMG filename",
     "Notarize and staple final DMG",
     "Verify signed release",
-    "Exercise installed signed application",
-    "Upload installed macOS smoke logs",
     "Write DMG checksum",
     "Upload verified DMG artifact",
+    "Download release DMG candidate",
+    "Verify downloaded DMG candidate",
+    "Exercise installed signed application from downloaded artifact",
+    "Upload installed macOS smoke logs",
     "Remove Apple credentials",
   ]);
 });

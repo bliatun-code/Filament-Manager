@@ -225,10 +225,10 @@ languages.
 ### Program And Manual Update Check
 
 The Program section shows the exact version, license/source links, and
-documentation shortcuts. Its on-demand GitHub release check reports whether
-this version is current, whether a newer release exists, or whether release
-metadata is unavailable. It never downloads or installs an update
-automatically.
+documentation shortcuts. Its on-demand public-metadata check reports whether
+this version is current, whether a newer release exists, whether metadata is
+unavailable, or whether this build has no configured update channel. It never
+downloads or installs an update automatically.
 
 ![Manual update check](screenshots/settings-updates.jpg)
 

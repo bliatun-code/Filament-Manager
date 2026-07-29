@@ -872,6 +872,7 @@ export const csCZDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Toto sestavení je novější než nejnovější zveřejněná verze ({version}).",
     "updateCheckFailed": "Aktualizace se nepodařilo zkontrolovat. Zkuste to znovu později.",
     "updateInfoUnavailable": "Informace o verzi teď nejsou k dispozici. Zkuste to znovu později.",
+    "updateChannelDisabled": "Toto sestavení nemá veřejný aktualizační kanál. Novější verze hledejte u zdroje, odkud jste aplikaci stáhli.",
     "viewRelease": "Zobrazit verzi",
     "applicationDiagnosticsTitle": "Diagnostika aplikace",
     "applicationDiagnosticsDescription": "Zkontrolujte stav místní databáze a stáhněte očištěný soubor podpory bez obsahu skladu nebo přihlašovacích údajů.",

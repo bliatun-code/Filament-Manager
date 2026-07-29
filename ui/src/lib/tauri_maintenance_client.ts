@@ -39,7 +39,10 @@ export type AppUpdateStatus =
   | "UPDATE_AVAILABLE"
   | "UP_TO_DATE"
   | "DEVELOPMENT_BUILD"
-  | "RELEASE_INFO_UNAVAILABLE";
+  | "RELEASE_INFO_UNAVAILABLE"
+  | "UPDATE_CHANNEL_DISABLED";
+
+export type AppUpdateChannel = "DISABLED" | "PUBLIC_METADATA";
 
 export type AppUpdateCheckResult = {
   current_version: string;
@@ -47,6 +50,7 @@ export type AppUpdateCheckResult = {
   latest_tag: string | null;
   release_url: string;
   status: AppUpdateStatus;
+  update_channel: AppUpdateChannel;
 };
 
 export async function getAppVersion() {

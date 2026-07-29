@@ -3,11 +3,20 @@
 Official Filament Manager releases are assembled by the tagged GitHub Actions
 workflow from verified job outputs. A release is not published when a required
 installer, checksum, source dependency SBOM, or eligible provenance step fails.
-Before either installer enters those outputs, the exact release DMG or MSI is
-installed and launched with an isolated runtime database, whose integrity and
-expected schema are checked. The Windows MSI remains intentionally unsigned.
-Its installer smoke fails unless both the MSI and installed executable report
-the exact Authenticode status `NotSigned`.
+Each job uploads its statically verified candidate, downloads that exact
+workflow artifact again, verifies its checksum and package metadata, and then
+installs and launches it with an isolated runtime database. The publish job
+cannot run unless both candidate jobs succeed. The Windows MSI remains
+intentionally unsigned. Its installer smoke fails unless both the MSI and
+installed executable report the exact Authenticode status `NotSigned`.
+
+Release publication uses the separate `github-release` environment and an
+exact `refs/tags/v<package-version>` source check. The GitHub environment must
+also be configured to accept only `v*` tags, while a tag ruleset limits who can
+create, update, or delete those tags. The publish job resolves the remote tag
+again immediately before creating the release and requires it to still point
+to the workflow commit. Apple credentials remain isolated in the separate
+`macos-release` environment.
 
 ## Release Assets
 
@@ -27,6 +36,13 @@ then checked by the repository's fail-closed validator. It describes
 dependencies discoverable from the source tree and lockfiles. It can include
 development and build dependencies; it is not an exact inventory of files or
 runtime libraries inside either installer.
+
+The scheduled dependency-security workflow separately checks both npm
+lockfiles and the Cargo graph for live vulnerability advisories and license
+policy violations. See
+[Dependency Security And License Policy](DEPENDENCY_SECURITY.md). These
+network-dependent checks deliberately remain outside the deterministic
+`npm run verify` gate.
 
 ## Verify Checksums
 
@@ -85,3 +101,10 @@ Checksums prove byte identity with the published manifests, and attestations
 bind public installer artifacts to the release workflow and source tag. Neither
 is proof that an artifact is vulnerability-free. Report security concerns
 through [the security policy](../SECURITY.md).
+
+Before the source repository is made public, follow the clean-mirror and
+full-history procedure in
+[Public Repository Publication](PUBLIC_REPOSITORY.md). The ordinary
+public-readiness check covers the current tree only; the mirror audit also
+checks every reachable text blob, historical filename, commit message, ref,
+and Git object, and rejects inherited or unreachable private objects.

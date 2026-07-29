@@ -872,6 +872,7 @@ export const koKRDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "이 빌드는 최신 공개 릴리스({version})보다 새 버전입니다.",
     "updateCheckFailed": "업데이트를 확인하지 못했습니다. 나중에 다시 시도하세요.",
     "updateInfoUnavailable": "현재 릴리스 정보를 확인할 수 없습니다. 나중에 다시 시도하세요.",
+    "updateChannelDisabled": "이 빌드에는 공개 업데이트 채널이 없습니다. 새 릴리스가 있는지 앱을 다운로드한 배포처를 확인하세요.",
     "viewRelease": "릴리스 보기",
     "applicationDiagnosticsTitle": "애플리케이션 진단",
     "applicationDiagnosticsDescription": "로컬 데이터베이스 상태를 확인하고 재고 내용이나 자격 증명이 없는 정리된 지원 파일을 다운로드합니다.",

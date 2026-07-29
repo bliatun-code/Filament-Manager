@@ -47,11 +47,12 @@ installer signing remains intentionally deferred.
 
 ## Automated installer smoke test
 
-Before upload, the Windows release job exercises the exact release MSI on a
-clean hosted Windows runner profile. It exercises the MSI's per-user installation
-path, which is configured not to request elevation, launches the installed
-executable with an isolated runtime database, waits for a responsive application
-window, and verifies that SQLite
+Before GitHub release publication, the Windows release job downloads and
+exercises the internally uploaded MSI candidate on a clean hosted Windows
+runner profile. It exercises the MSI's per-user installation path, which is
+configured not to request elevation, launches the installed executable with an
+isolated runtime database, waits for a responsive application window, and
+verifies that SQLite
 `quick_check`, schema compatibility, and the required catalog, inventory, and
 settings tables pass. CI then closes the app normally, uninstalls it, and
 confirms that the executable, installer registration, shortcuts, and user
@@ -94,4 +95,5 @@ app/schema version, SQLite quick and foreign-key checks, journal mode, database
 size, and local database path. **Download sanitized support file** creates JSON
 for troubleshooting without database contents or the local path. It also omits
 names, IP addresses, printer serials, tokens, QR/RFID values, and raw printer
-telemetry.
+telemetry. The file includes the non-secret build commit, target, and
+distribution channel, but not the configured update metadata URL.

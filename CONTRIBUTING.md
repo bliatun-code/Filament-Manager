@@ -35,6 +35,11 @@ Check the public repository surface before sharing a branch or pull request:
 npm run check:public-readiness
 ```
 
+The first public repository is created from a reviewed, one-commit source
+mirror rather than the private development history. Maintainers must also run
+`npm run audit:public-mirror` in that new repository and follow
+[the publication checklist](docs/PUBLIC_REPOSITORY.md) before its first push.
+
 Useful focused checks:
 
 ```bash

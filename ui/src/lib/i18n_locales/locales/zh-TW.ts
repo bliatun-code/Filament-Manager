@@ -872,6 +872,7 @@ export const zhTWDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "目前組建比最新發布版本（{version}）更新。",
     "updateCheckFailed": "無法檢查更新，請稍後再試。",
     "updateInfoUnavailable": "目前無法取得發布資訊。請稍後再試。",
+    "updateChannelDisabled": "此組建沒有公開更新管道。請至下載此應用程式的來源查看是否有較新的版本。",
     "viewRelease": "檢視發布版本",
     "applicationDiagnosticsTitle": "應用程式診斷",
     "applicationDiagnosticsDescription": "檢查本機資料庫的健康狀態，並下載不含庫存內容或憑證的淨化支援檔案。",

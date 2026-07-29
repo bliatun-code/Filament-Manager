@@ -1016,6 +1016,7 @@ export const svSEDictionary: DictionaryNode = {
     "updateDevelopmentBuild": "Den här versionen är nyare än den senaste publicerade utgåvan ({version}).",
     "updateCheckFailed": "Det gick inte att söka efter uppdateringar. Försök igen senare.",
     "updateInfoUnavailable": "Utgåveinformationen är inte tillgänglig just nu. Försök igen senare.",
+    "updateChannelDisabled": "Den här versionen har ingen offentlig uppdateringskanal. Leta efter nyare utgåvor där du hämtade appen.",
     "viewRelease": "Visa utgåva",
     "applicationDiagnosticsTitle": "Programdiagnostik",
     "applicationDiagnosticsDescription": "Kontrollera den lokala databasens hälsa och hämta en rensad supportfil utan lagerinnehåll eller inloggningsuppgifter.",
