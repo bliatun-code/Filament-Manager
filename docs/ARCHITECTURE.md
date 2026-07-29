@@ -44,10 +44,12 @@ The current seams are:
   while `workspace.css` contains the application shell and workflow layouts.
   Their order in `index.html` is part of the visual contract.
 
-`use_printer_slot_interactions.ts` is still intentionally cohesive around
-stateful slot operations. Extract from it only when a changed interaction
-exposes a small effect boundary that can be tested independently; do not move
-code merely to reduce the file length.
+`use_printer_slot_interactions.ts` remains cohesive around stateful slot
+operations, permissions, validation, and writes. Pure incoming-weight dialog
+preparation and draft discard behavior live in
+`printer_slot_weight_interaction_model.ts`. Extract further only when a changed
+interaction exposes another small effect boundary that can be tested
+independently; do not move code merely to reduce the file length.
 
 ## Startup And Storage
 

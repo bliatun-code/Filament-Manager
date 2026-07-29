@@ -13,10 +13,7 @@ import {
   resolveSpoolTareWeightById as resolveSpoolTareWeightFromMap,
 } from "../lib/printer_page_model";
 import {
-  buildEmptySlotWeightPrompt,
-  buildIncomingWeightPrompt,
   buildLiveRfidCandidateRegistrationState,
-  buildMeasuredTotalWeightDraft,
   buildRfidOverridePrompt,
   buildSavedRfidPrinterSlotAssignment,
   buildSlotCatalogOnboardingOpenState,
@@ -29,7 +26,6 @@ import {
   prepareMeasuredWeightUpdate,
   preparePrinterSlotAssignment,
   resolveLiveRfidObservedAt,
-  resolveSpoolTareWeightForRow,
   type IncomingWeightPrompt,
   type SlotCatalogOnboardingPrompt,
   type SlotRfidOverridePrompt,
@@ -63,21 +59,15 @@ import type {
 import type { I18nContextValue } from "../lib/i18n";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { PrinterSnapshotSource } from "../lib/printer_data_source";
+import {
+  buildClosedSlotWeightDialog,
+  discardIncomingWeightSlotDraft,
+  prepareEmptySlotWeightDialog,
+  prepareIncomingWeightDialog,
+} from "./printer_slot_weight_interaction_model";
 import { useSlotDropdownDismissal } from "./use_slot_dropdown_dismissal";
 
 type Translate = I18nContextValue["t"];
-
-export function discardIncomingWeightSlotDraft(
-  current: Record<string, SlotSwapDraft>,
-  slotId: string | null | undefined,
-): Record<string, SlotSwapDraft> {
-  if (!slotId || !(slotId in current)) {
-    return current;
-  }
-  const next = { ...current };
-  delete next[slotId];
-  return next;
-}
 
 type UsePrinterSlotInteractionsInput = {
   bambuLiveIntegrations: Record<string, BambuLiveIntegrationEntry["config"]>;
@@ -250,19 +240,15 @@ export function usePrinterSlotInteractions({
 
   const openIncomingWeightDialog = useCallback(
     (printerId: string, slot: PrinterAmsSlotRow, row: SpoolWithMasterRow) => {
-      const prompt = buildIncomingWeightPrompt(printerId, slot, row);
-      setIncomingWeightPrompt(prompt);
-      setIncomingWeightValue(
-        buildMeasuredTotalWeightDraft(row.spool.remaining_g, resolveSpoolTareWeightForRow(row)),
+      const prepared = prepareIncomingWeightDialog(
+        printerId,
+        slot,
+        row,
+        resolveSpoolTareWeightById,
       );
-      setOutgoingWeightValue(
-        prompt.requiresOutgoingWeight && slot.spool_remaining_g != null
-          ? buildMeasuredTotalWeightDraft(
-              slot.spool_remaining_g,
-              resolveSpoolTareWeightById(slot.spool_id ?? null),
-            )
-          : "",
-      );
+      setIncomingWeightPrompt(prepared.prompt);
+      setIncomingWeightValue(prepared.incomingWeightValue);
+      setOutgoingWeightValue(prepared.outgoingWeightValue);
     },
     [resolveSpoolTareWeightById],
   );
@@ -272,16 +258,14 @@ export function usePrinterSlotInteractions({
       if (!slot.spool_id) {
         return;
       }
-      setIncomingWeightPrompt(buildEmptySlotWeightPrompt(printerId, slot));
-      setIncomingWeightValue("");
-      setOutgoingWeightValue(
-        slot.spool_remaining_g != null
-          ? buildMeasuredTotalWeightDraft(
-              slot.spool_remaining_g,
-              resolveSpoolTareWeightById(slot.spool_id ?? null),
-            )
-          : "",
+      const prepared = prepareEmptySlotWeightDialog(
+        printerId,
+        slot,
+        resolveSpoolTareWeightById,
       );
+      setIncomingWeightPrompt(prepared.prompt);
+      setIncomingWeightValue(prepared.incomingWeightValue);
+      setOutgoingWeightValue(prepared.outgoingWeightValue);
     },
     [resolveSpoolTareWeightById],
   );
@@ -291,14 +275,16 @@ export function usePrinterSlotInteractions({
       return;
     }
 
-    const slotId = incomingWeightPrompt?.slotId;
-    if (slotId) {
-      setSlotDrafts((current) => discardIncomingWeightSlotDraft(current, slotId));
+    const closed = buildClosedSlotWeightDialog(incomingWeightPrompt);
+    if (closed.discardSlotId) {
+      setSlotDrafts((current) =>
+        discardIncomingWeightSlotDraft(current, closed.discardSlotId),
+      );
     }
-    setIncomingWeightPrompt(null);
-    setIncomingWeightValue("");
-    setOutgoingWeightValue("");
-  }, [busy, incomingWeightPrompt?.slotId]);
+    setIncomingWeightPrompt(closed.prompt);
+    setIncomingWeightValue(closed.incomingWeightValue);
+    setOutgoingWeightValue(closed.outgoingWeightValue);
+  }, [busy, incomingWeightPrompt]);
 
   const applyMeasuredWeightWithUsage = useCallback(
     async (
