@@ -93,5 +93,6 @@ pub mod printer_slot_location;
 pub mod spool_defaults;
 pub mod statistics;
 pub mod vendor_lookup;
+mod vendor_lookup_cache;
 mod vendor_lookup_material_scope;
 mod vendor_lookup_parsing;

@@ -6,6 +6,9 @@ use std::collections::{HashMap, HashSet};
 use std::thread;
 use std::time::Duration;
 
+use crate::backend::vendor_lookup_cache::{
+    append_known_entries_for_product_url, build_known_entry_lookup,
+};
 use crate::backend::vendor_lookup_material_scope::*;
 use crate::backend::vendor_lookup_parsing::*;
 
@@ -914,76 +917,6 @@ fn matches_listing_candidate_material(
     filter_product_urls_by_material_hints(vec![candidate.product_url.clone()], material_filters)
         .len()
         == 1
-}
-
-fn build_known_entry_lookup(
-    entries: Vec<EsunKnownCatalogEntry>,
-) -> HashMap<String, Vec<EsunKnownCatalogEntry>> {
-    let mut lookup = HashMap::new();
-    for entry in entries {
-        let key = normalize_catalog_product_url(&entry.entry.product_url);
-        if key.is_empty() {
-            continue;
-        }
-        lookup.entry(key).or_insert_with(Vec::new).push(entry);
-    }
-    lookup
-}
-
-fn append_known_entries_for_product_url(
-    product_url: &str,
-    known_entries_by_product_url: &HashMap<String, Vec<EsunKnownCatalogEntry>>,
-    stale_before: Option<&str>,
-    entries: &mut Vec<EsunCatalogEntry>,
-    entry_keys: &mut HashSet<String>,
-) -> bool {
-    let normalized = normalize_catalog_product_url(product_url);
-    let Some(known_entries) = known_entries_by_product_url.get(&normalized) else {
-        return false;
-    };
-    if known_entries
-        .iter()
-        .any(|known| is_known_entry_stale(known, stale_before))
-    {
-        return false;
-    }
-    let before = entries.len();
-    for entry in known_entries {
-        let key = format!(
-            "{}|{}|{}",
-            entry.entry.material.to_lowercase(),
-            entry.entry.filament_name.to_lowercase(),
-            entry.entry.color_name.to_lowercase()
-        );
-        if !entry_keys.insert(key) {
-            continue;
-        }
-        entries.push(entry.entry.clone());
-    }
-    entries.len() > before
-}
-
-fn is_known_entry_stale(entry: &EsunKnownCatalogEntry, stale_before: Option<&str>) -> bool {
-    match (entry.last_seen_at.as_deref(), stale_before) {
-        (Some(last_seen_at), Some(cutoff)) => last_seen_at < cutoff,
-        (None, Some(_)) => true,
-        _ => false,
-    }
-}
-
-fn normalize_catalog_product_url(url: &str) -> String {
-    let trimmed = url.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    match Url::parse(trimmed) {
-        Ok(mut parsed) => {
-            parsed.set_query(None);
-            parsed.set_fragment(None);
-            parsed.to_string()
-        }
-        Err(_) => trimmed.to_string(),
-    }
 }
 
 fn extract_site_listing_candidates(html: &str) -> Vec<EsunSiteListingCandidate> {
