@@ -24,6 +24,12 @@ export type BambuBatchCameraStatus =
   | "unsupported"
   | "error";
 
+export const bambuBatchCodeFieldClassName =
+  "rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-950/75 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+
+export const bambuBatchPanelClassName =
+  "rounded-2xl border border-slate-200/90 bg-white/72 shadow-sm shadow-slate-900/[0.03] dark:border-slate-700/80 dark:bg-slate-950/45";
+
 export function bambuBatchWorkspaceClassName(cameraPanelVisible: boolean): string {
   const desktopColumns = cameraPanelVisible
     ? "min-[900px]:grid-cols-[minmax(0,1fr)_minmax(20rem,1fr)]"

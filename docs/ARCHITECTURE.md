@@ -38,8 +38,10 @@ The current seams are:
   reusable HTML, color, handle, and weight parsing lives in
   `vendor_lookup_parsing.rs`, while pure eSUN material-filter and source
   selection policy lives in `vendor_lookup_material_scope.rs`;
-- `inventory_bambu_batch_modal.tsx` owns modal state, effects, and rendering;
-  pure labels, previews, messages, and presentation classes live in
+- `inventory_bambu_batch_modal.tsx` owns camera/image state, effects, timers,
+  and modal composition; the state-free batch review surface lives in
+  `inventory_bambu_batch_review_panel.tsx`, while pure labels, previews,
+  messages, and shared presentation classes live in
   `inventory_bambu_batch_modal_model.ts`;
 - Companion `app.css` contains the shared foundation and reusable components,
   while `workspace.css` contains the application shell and workflow layouts.

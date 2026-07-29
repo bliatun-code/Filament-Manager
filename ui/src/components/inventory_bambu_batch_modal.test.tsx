@@ -16,6 +16,11 @@ const source = readFileSync(
   new URL("./inventory_bambu_batch_modal.tsx", import.meta.url),
   "utf8",
 );
+const reviewSource = readFileSync(
+  new URL("./inventory_bambu_batch_review_panel.tsx", import.meta.url),
+  "utf8",
+);
+const componentSource = `${source}\n${reviewSource}`;
 const modelSource = readFileSync(
   new URL("./inventory_bambu_batch_modal_model.ts", import.meta.url),
   "utf8",
@@ -149,31 +154,40 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
     /import\s+[\s\S]*from "\.\.\/lib\/bambu_filament_code_(?:camera|image)_scan"/,
   );
   assert.match(source, /bambuBatchCodeFieldClassName/);
-  assert.match(source, /bambuBatchRowSelectClassName/);
+  assert.match(reviewSource, /bambuBatchCodeFieldClassName/);
+  assert.match(modelSource, /export const bambuBatchCodeFieldClassName/);
+  assert.match(reviewSource, /bambuBatchRowSelectClassName/);
   assert.match(source, /bambuBatchSecondaryButtonClassName/);
   assert.match(source, /bambuBatchPanelClassName/);
+  assert.match(reviewSource, /bambuBatchPanelClassName/);
+  assert.match(modelSource, /export const bambuBatchPanelClassName/);
   assert.match(source, /bambuBatchScanPanelClassName/);
-  assert.match(source, /bambuBatchReviewPanelClassName/);
+  assert.match(source, /<InventoryBambuBatchReviewPanel/);
+  assert.match(reviewSource, /bambuBatchReviewPanelClassName/);
   assert.match(source, /<ModalBody/);
-  assert.match(source, /<ModalFooter/);
+  assert.match(reviewSource, /<ModalBody/);
+  assert.match(reviewSource, /<ModalFooter/);
   assert.match(source, /scroll=\{false\}/);
-  assert.match(source, /overscrollContain/);
-  assert.match(source, /<ModalActionButton/);
-  assert.match(source, /variant="solid"/);
-  assert.match(source, /size="roomy"/);
-  assert.match(source, /fullWidth/);
-  assert.match(source, /focus-visible:border-sky-300/);
-  assert.doesNotMatch(source, /modalActionButtonClassName/);
-  assert.doesNotMatch(source, /min-h-0 flex-1 overflow-y-auto/);
-  assert.doesNotMatch(source, /shrink-0 border-t/);
-  assert.doesNotMatch(source, /focus:border-slate-400/);
-  assert.doesNotMatch(source, /rounded-xl border border-slate-900 bg-slate-900 px-3 py-2\.5/);
+  assert.match(reviewSource, /overscrollContain/);
+  assert.match(reviewSource, /<ModalActionButton/);
+  assert.match(reviewSource, /variant="solid"/);
+  assert.match(reviewSource, /size="roomy"/);
+  assert.match(reviewSource, /fullWidth/);
+  assert.match(componentSource, /focus-visible:border-sky-300/);
+  assert.doesNotMatch(componentSource, /modalActionButtonClassName/);
+  assert.doesNotMatch(componentSource, /min-h-0 flex-1 overflow-y-auto/);
+  assert.doesNotMatch(componentSource, /shrink-0 border-t/);
+  assert.doesNotMatch(componentSource, /focus:border-slate-400/);
   assert.doesNotMatch(
-    source,
+    componentSource,
+    /rounded-xl border border-slate-900 bg-slate-900 px-3 py-2\.5/,
+  );
+  assert.doesNotMatch(
+    componentSource,
     /shrink-0 rounded-2xl border border-slate-200\/90 bg-white\/72 p-3/,
   );
   assert.doesNotMatch(
-    source,
+    componentSource,
     /flex min-h-0 flex-col rounded-2xl border border-slate-200\/90 bg-white\/72/,
   );
   assert.match(html, /Batch add from boxes/);

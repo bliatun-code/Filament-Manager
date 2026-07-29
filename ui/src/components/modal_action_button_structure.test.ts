@@ -10,7 +10,10 @@ test("modal action buttons share secondary and primary chrome", () => {
   const addPrinterModal = readComponentSource("add_printer_modal.tsx");
   const actionButtonComponent = readComponentSource("modal_action_button.tsx");
   const actionButtonClass = readComponentSource("modal_action_button_class.ts");
-  const batchModal = readComponentSource("inventory_bambu_batch_modal.tsx");
+  const batchModal = [
+    readComponentSource("inventory_bambu_batch_modal.tsx"),
+    readComponentSource("inventory_bambu_batch_review_panel.tsx"),
+  ].join("\n");
   const createActions = readComponentSource("inventory_create_actions_panel.tsx");
   const loanReturnModal = readComponentSource("loan_return_modal.tsx");
   const modalChrome = readComponentSource("modal_chrome.tsx");
