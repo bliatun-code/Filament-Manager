@@ -52,6 +52,7 @@ jobs:
         id: release-request
         env:
           CONFIRM_MACOS_NOTARIZATION: ${{ inputs.confirm_macos_notarization }}
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
           SELECTED_PLATFORM: ${{ inputs.platform }}
         run: |
           set -euo pipefail
@@ -85,6 +86,15 @@ jobs:
             || "$SELECTED_PLATFORM" == "windows" \
             || "$SELECTED_PLATFORM" == "both" ]]; then
             npm run check:msi-version
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" \
+            || "$SELECTED_PLATFORM" == "macos" \
+            || "$SELECTED_PLATFORM" == "both" ]]; then
+            if [[ ! "$EXPECTED_APPLE_TEAM_ID" =~ ^[A-Z0-9]{10}$ ]]; then
+              echo "::error::Repository variable EXPECTED_APPLE_TEAM_ID must contain the 10-character public Apple Team ID."
+              exit 1
+            fi
           fi
 
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" \
@@ -139,12 +149,18 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Record build environment
         run: |
           set -euo pipefail
           sw_vers
-          uname -m
+          runner_architecture="$(uname -m)"
+          if [[ "$runner_architecture" != "arm64" ]]; then
+            echo "::error::The Universal 2 build and Apple Silicon smoke must run on arm64, found $runner_architecture."
+            exit 1
+          fi
           xcodebuild -version
           xcrun --sdk macosx --show-sdk-version
 
@@ -172,6 +188,7 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
 
@@ -190,6 +207,10 @@ jobs:
               exit 1
             fi
           done
+          if [[ "$APPLE_TEAM_ID" != "$EXPECTED_APPLE_TEAM_ID" ]]; then
+            echo "::error::The macos-release APPLE_TEAM_ID secret does not match repository variable EXPECTED_APPLE_TEAM_ID."
+            exit 1
+          fi
 
           printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$FILAMENT_MANAGER_CERTIFICATE_PATH"
           printf '%s' "$APPLE_API_PRIVATE_KEY" > "$APPLE_API_KEY_PATH"
@@ -226,13 +247,17 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}
           FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"
-        run: npm run tauri -- build --bundles dmg
+        run: >-
+          npm run tauri --
+          build
+          --target universal-apple-darwin
+          --bundles dmg
 
       - name: Normalize DMG filename
         run: |
           set -euo pipefail
           shopt -s nullglob
-          dmgs=("$CARGO_TARGET_DIR"/release/bundle/dmg/*.dmg)
+          dmgs=("$CARGO_TARGET_DIR"/universal-apple-darwin/release/bundle/dmg/*.dmg)
           if [[ ${#dmgs[@]} -ne 1 ]]; then
             echo "::error::Expected exactly one signed DMG, found ${#dmgs[@]}."
             exit 1
@@ -263,10 +288,12 @@ jobs:
 
       - name: Verify signed release
         env:
-          EXPECTED_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          npm run verify:macos-release -- "$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64
+          npm run verify:macos-release -- \
+            "$FILAMENT_MANAGER_DMG_PATH" \
+            --architectures=arm64,x86_64
 
       - name: Write DMG checksum
         run: |
@@ -281,8 +308,8 @@ jobs:
         with:
           name: filament-manager-macos-dmg-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/*.dmg
-            ${{ runner.temp }}/filament-manager-target/release/bundle/dmg/SHA256SUMS.txt
+            ${{ runner.temp }}/filament-manager-target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            ${{ runner.temp }}/filament-manager-target/universal-apple-darwin/release/bundle/dmg/SHA256SUMS.txt
           if-no-files-found: error
           overwrite: true
           retention-days: 14
@@ -313,9 +340,9 @@ jobs:
           )
           echo "FILAMENT_MANAGER_DMG_SMOKE_PATH=${candidate_dmgs[0]}" >> "$GITHUB_ENV"
 
-      - name: Exercise installed signed application from downloaded artifact
+      - name: Exercise installed signed application on Apple Silicon
         env:
-          EXPECTED_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
           FILAMENT_MANAGER_MACOS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-macos-dmg-smoke
         run: >-
           npm run smoke:macos-dmg --
@@ -340,6 +367,100 @@ jobs:
         run: |
           security delete-keychain "$FILAMENT_MANAGER_KEYCHAIN_PATH" 2>/dev/null || true
           rm -f "$FILAMENT_MANAGER_CERTIFICATE_PATH" "$APPLE_API_KEY_PATH"
+
+  smoke-macos-dmg-intel:
+    name: Smoke Universal 2 DMG on Intel
+    needs:
+      - validate-release
+      - build-macos-dmg
+    if: >-
+      needs['build-macos-dmg'].result == 'success' &&
+      (
+        github.event_name == 'push' ||
+        github.event.inputs.platform == 'both' ||
+        github.event.inputs.platform == 'macos'
+      )
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Require native Intel runner
+        run: |
+          set -euo pipefail
+          runner_architecture="$(uname -m)"
+          if [[ "$runner_architecture" != "x86_64" ]]; then
+            echo "::error::The Intel release smoke must run natively on x86_64, found $runner_architecture."
+            exit 1
+          fi
+
+      - name: Install smoke dependencies
+        run: npm ci
+
+      - name: Download Universal 2 DMG candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-macos-dmg-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-macos-intel-release-candidate
+
+      - name: Verify downloaded Universal 2 DMG candidate
+        env:
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          candidate_directory="$RUNNER_TEMP/filament-manager-macos-intel-release-candidate"
+          shopt -s nullglob
+          candidate_dmgs=("$candidate_directory"/*.dmg)
+          if [[ ${#candidate_dmgs[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one downloaded Universal 2 DMG, found ${#candidate_dmgs[@]}."
+            exit 1
+          fi
+          if [[ ! -f "$candidate_directory/SHA256SUMS.txt" ]]; then
+            echo "::error::The downloaded Universal 2 DMG checksum manifest is missing."
+            exit 1
+          fi
+          (
+            cd "$candidate_directory"
+            shasum -a 256 --check SHA256SUMS.txt
+          )
+          npm run verify:macos-release -- \
+            "${candidate_dmgs[0]}" \
+            --architectures=arm64,x86_64
+          echo "FILAMENT_MANAGER_INTEL_DMG_SMOKE_PATH=${candidate_dmgs[0]}" >> "$GITHUB_ENV"
+
+      - name: Exercise installed signed application on Intel
+        env:
+          EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
+          FILAMENT_MANAGER_MACOS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-macos-dmg-intel-smoke
+        run: >-
+          npm run smoke:macos-dmg --
+          "$FILAMENT_MANAGER_INTEL_DMG_SMOKE_PATH"
+          --log-dir="$FILAMENT_MANAGER_MACOS_SMOKE_LOG_DIR"
+          --expected-team-id="$EXPECTED_APPLE_TEAM_ID"
+          --launch-timeout-ms=120000
+          --signature-policy=release
+
+      - name: Upload Intel macOS smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-macos-dmg-intel-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-macos-dmg-intel-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
 
   build-windows-msi:
     name: Build Windows MSI
@@ -563,6 +684,7 @@ jobs:
     needs:
       - validate-release
       - build-macos-dmg
+      - smoke-macos-dmg-intel
       - build-windows-msi
       - generate-release-sbom
     if: >-
@@ -656,6 +778,7 @@ jobs:
     needs:
       - validate-release
       - build-macos-dmg
+      - smoke-macos-dmg-intel
       - build-windows-msi
       - generate-release-sbom
       - attest-public-release
@@ -666,6 +789,7 @@ jobs:
       github.ref == format('refs/tags/{0}', needs['validate-release'].outputs['release-tag']) &&
       needs['validate-release'].result == 'success' &&
       needs['build-macos-dmg'].result == 'success' &&
+      needs['smoke-macos-dmg-intel'].result == 'success' &&
       needs['build-windows-msi'].result == 'success' &&
       needs['generate-release-sbom'].result == 'success' &&
       (

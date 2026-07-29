@@ -151,7 +151,7 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
 - `docs/`: user-facing guides.
 - `.github/workflows/release-build.yml`: protected tag/manual workflow for the
-  signed Apple Silicon DMG and Windows MSI artifacts, including Developer ID
+  signed Universal 2 DMG and Windows MSI artifacts, including Developer ID
   signing, notarization, stapling, installer verification, and checksums.
 
 See [Architecture](docs/ARCHITECTURE.md) for the Rust workspace, startup and
@@ -164,7 +164,7 @@ Bambu Live boundaries.
 - Rust toolchain for Tauri builds
 - Xcode app + Command Line Tools for macOS builds
 - `sqlite3` CLI recommended for scraper fallback behavior
-- Current macOS DMG: Apple Silicon and macOS 11.0 Big Sur or newer
+- Current macOS DMG: Apple Silicon or Intel and macOS 11.0 Big Sur or newer
 
 The project uses the local Tauri CLI from npm dependencies through
 `npm run tauri`, so a global `cargo tauri` install is not required.
@@ -268,17 +268,19 @@ Build the desktop app with the local Tauri CLI:
 npm run tauri -- build
 ```
 
-Build only a macOS DMG:
+Build a local Universal 2 macOS DMG:
 
 ```bash
-npm run tauri -- build --bundles dmg
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+npm run tauri -- build --target universal-apple-darwin --bundles dmg
 ```
 
-Validate an ordinary local Apple Silicon DMG after the build:
+Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
-npm run verify:macos-local -- /path/to/Filament\ Manager_0.22.0_aarch64.dmg \
-  --architectures=arm64
+npm run verify:macos-local -- \
+  /path/to/Filament\ Manager_0.22.0_universal.dmg \
+  --architectures=arm64,x86_64
 ```
 
 This local gate checks DMG integrity and install layout, the exact app version,
@@ -299,9 +301,10 @@ notarized, and stapled. Before GitHub release publication, the workflow
 downloads the internally uploaded candidate, mounts that exact release DMG,
 copies its app without clearing quarantine metadata, opens the isolated
 installation through LaunchServices, and checks its window and isolated
-runtime database. The public macOS contract is Apple Silicon
-(`arm64`) on macOS 11 Big Sur or newer; Intel and universal artifacts are not
-currently published. See
+runtime database. The public macOS contract is one Universal 2 artifact with
+native `arm64` and `x86_64` executables on macOS 11 Big Sur or newer. The exact
+downloaded DMG is installed and launched on both Apple Silicon and Intel
+GitHub-hosted runners before publication. See
 [macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
 installation and checksum flow.
 
@@ -358,6 +361,9 @@ receive signed installer provenance:
 - Tag trigger: a version tag matching `v*`
 - Publish environment: `github-release`; repository settings must restrict it
   to matching version tags
+- Public verification identity: repository variable `EXPECTED_APPLE_TEAM_ID`;
+  it must contain the 10-character Apple Team ID and match the protected
+  `macos-release` environment secret before a macOS build starts
 - Manual trigger: `workflow_dispatch` for a selected platform
 - Outputs:
   - `filament-manager-macos-dmg-<run-id>` with the normalized DMG and
@@ -369,17 +375,18 @@ receive signed installer provenance:
   - for public tag releases, `filament-manager-release-provenance-<run-id>`
     with signed GitHub/Sigstore provenance for both installers
 
-The macOS job fails instead of publishing an ad-hoc fallback when signing,
-notarization, stapling, verification, or checksum generation fails. Release
-assets are assembled only from those verified job outputs. The Windows job
-likewise fails before upload unless exactly one non-empty MSI has the expected
-product name, normalized release version, and x64 package architecture. Both
-jobs then download their uploaded candidate, verify it again, and install and
-launch that exact artifact against an isolated database. A failed candidate
-cannot reach the publish job. Release assets are treated as immutable; a
-mismatch is investigated rather than silently replaced. The SBOM describes
-source and lockfile dependencies rather than the exact binary contents of
-either installer. See
+The macOS build job fails instead of publishing an ad-hoc fallback when
+signing, notarization, stapling, Universal 2 verification, checksum generation,
+or the Apple Silicon installation smoke fails. A separate least-privilege Intel
+job downloads the same checksummed DMG and verifies, installs, and launches it
+natively. Release publication and public provenance require both macOS jobs.
+Release assets are assembled only from those verified job outputs. The Windows
+job likewise fails before upload unless exactly one non-empty MSI has the
+expected product name, normalized release version, and x64 package
+architecture. A failed candidate cannot reach the publish job. Release assets
+are treated as immutable; a mismatch is investigated rather than silently
+replaced. The SBOM describes source and lockfile dependencies rather than the
+exact binary contents of either installer. See
 [Release Integrity And Supply Chain](docs/SUPPLY_CHAIN.md) for verification and
 scope details.
 

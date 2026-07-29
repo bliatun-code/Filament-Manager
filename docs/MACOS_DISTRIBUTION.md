@@ -1,8 +1,9 @@
 # macOS Installation And Verification
 
-Official Filament Manager releases for macOS are distributed as an Apple
-Silicon (`arm64`) DMG for macOS 11 Big Sur or newer. The app and DMG are signed
-with Apple Developer ID, notarized by Apple, and shipped with a stapled
+Official Filament Manager releases for macOS are distributed as one Universal
+2 DMG for macOS 11 Big Sur or newer. Its application executable contains native
+`arm64` and `x86_64` code for Apple Silicon and Intel Macs. The app and DMG are
+signed with Apple Developer ID, notarized by Apple, and shipped with a stapled
 notarization ticket.
 
 ## Install
@@ -13,9 +14,6 @@ notarization ticket.
 3. Open Filament Manager from Applications.
 4. Allow Camera or Local Network access only when you use a feature that needs
    it, such as webcam scanning, Bambu Live, or Companion.
-
-The current DMG is not an Intel or universal build. Intel Macs are not part of
-the published compatibility contract.
 
 ## Verify The Download
 
@@ -37,12 +35,13 @@ spctl --assess --type execute --verbose=2 "/Applications/Filament Manager.app"
 These checks supplement normal Gatekeeper behavior; users do not need them for
 every installation.
 
-Before a release DMG can be published on GitHub, the release workflow downloads
-the internally uploaded candidate, mounts that exact DMG, copies its app to an
-isolated test installation without clearing quarantine metadata, opens the
-installed copy through LaunchServices with an isolated runtime database, and
-verifies SQLite integrity, schema compatibility, required tables, foreign keys,
-and a visible application window.
+Before a release DMG can be published on GitHub, the release workflow requires
+the executable to contain exactly `arm64` and `x86_64`. It downloads the same
+checksummed candidate on native Apple Silicon and Intel runners, mounts it,
+copies its app to an isolated test installation without clearing quarantine
+metadata, opens the installed copy through LaunchServices with an isolated
+runtime database, and verifies SQLite integrity, schema compatibility, required
+tables, foreign keys, and a visible application window on both architectures.
 
 Tagged releases also include a validated source dependency SBOM. Public tag
 releases include GitHub/Sigstore build provenance for the DMG and MSI. See
@@ -55,7 +54,7 @@ An official signed and notarized release should open without removing
 quarantine metadata or weakening Gatekeeper. If it does not:
 
 - confirm that the checksum matches;
-- confirm that the Mac is Apple Silicon and runs macOS 11 or newer;
+- confirm that the Apple Silicon or Intel Mac runs macOS 11 or newer;
 - download the DMG again from the official release page;
 - report the app version, macOS version, Mac architecture, and the exact error.
 

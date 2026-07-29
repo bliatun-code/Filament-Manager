@@ -29,8 +29,10 @@ Release date: 2026-07-29
 ## Release Reliability
 
 - macOS release artifacts are Developer ID signed, notarized, stapled, and
-  checked for bundle identity, architecture, deployment target, entitlements,
-  privacy strings, hardened runtime, and Gatekeeper acceptance.
+  checked for bundle identity, the exact Universal 2 architecture set,
+  deployment target, entitlements, privacy strings, hardened runtime, and
+  Gatekeeper acceptance. The same DMG is installed and launched natively on
+  Apple Silicon and Intel before publication.
 - Windows remains intentionally unsigned. The per-user x64 MSI is verified for
   product metadata and then installed, launched, database-checked, uninstalled,
   and checked for user-data retention in CI. Both the MSI and installed EXE
@@ -48,15 +50,16 @@ Release date: 2026-07-29
   scanning with a controlled test video source. Packaged-app camera permissions
   and real-camera optics remain manual hardware checks.
 - Brother P-Touch 24 mm PNG labels plus A4 and US Letter PDF label sheets.
-- Installed release-artifact smoke tests on macOS and Windows.
+- Installed release-artifact smoke tests on Apple Silicon macOS, Intel macOS,
+  and Windows.
 - Data-backed desktop and Companion screenshot gates.
 - Full UI, Companion, script, Rust, Clippy, localization, portability, and
   public-readiness verification.
 
 ## Artifacts
 
-- Apple Silicon macOS DMG, signed with Apple Developer ID, notarized, stapled,
-  and accompanied by `SHA256SUMS.txt`.
+- Universal 2 macOS DMG for Apple Silicon and Intel, signed with Apple Developer
+  ID, notarized, stapled, and accompanied by `SHA256SUMS.txt`.
 - Per-user Windows 11 x64 MSI, intentionally unsigned and accompanied by
   `SHA256SUMS-windows.txt`.
 - SPDX 2.3 source dependency SBOM and checksum manifest.

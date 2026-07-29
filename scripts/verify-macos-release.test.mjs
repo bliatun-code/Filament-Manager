@@ -21,6 +21,14 @@ import {
 const expectedAppVersion = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ).version;
+const localVerifierSource = readFileSync(
+  new URL("./verify-macos-local.mjs", import.meta.url),
+  "utf8",
+);
+const releaseVerifierSource = readFileSync(
+  new URL("./verify-macos-release.mjs", import.meta.url),
+  "utf8",
+);
 
 const validCodesignOutput = `
 Identifier=no.bliatun.filamentmanager
@@ -180,6 +188,12 @@ test("macOS release verifier normalizes architecture expectations", () => {
   ]);
 });
 
+test("macOS verifier CLI usage advertises the Universal 2 contract", () => {
+  for (const source of [localVerifierSource, releaseVerifierSource]) {
+    assert.match(source, /--architectures=arm64,x86_64/);
+  }
+});
+
 test("macOS release verifier requires an exact architecture contract", () => {
   assert.deepEqual(validateExpectedArchitectures("arm64 x86_64", ["x86_64", "arm64"]), [
     "arm64",
@@ -311,6 +325,10 @@ Load command 11
   assert.deepEqual(validateMacosDeploymentTargets(["11.0"], "11"), ["11.0"]);
   assert.throws(
     () => validateMacosDeploymentTargets(["10.13"], "11.0"),
+    /Expected macOS deployment target 11\.0, found 10\.13/,
+  );
+  assert.throws(
+    () => validateMacosDeploymentTargets(["11.0", "10.13"], "11.0"),
     /Expected macOS deployment target 11\.0, found 10\.13/,
   );
   assert.throws(

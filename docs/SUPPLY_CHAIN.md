@@ -3,12 +3,14 @@
 Official Filament Manager releases are assembled by the tagged GitHub Actions
 workflow from verified job outputs. A release is not published when a required
 installer, checksum, source dependency SBOM, or eligible provenance step fails.
-Each job uploads its statically verified candidate, downloads that exact
-workflow artifact again, verifies its checksum and package metadata, and then
-installs and launches it with an isolated runtime database. The publish job
-cannot run unless both candidate jobs succeed. The Windows MSI remains
-intentionally unsigned. Its installer smoke fails unless both the MSI and
-installed executable report the exact Authenticode status `NotSigned`.
+Each build job uploads its statically verified candidate and downloads that
+exact workflow artifact again before installation testing. The Universal 2 DMG
+is additionally downloaded, verified, installed, and launched on a separate
+native Intel runner; the build job performs the same checks on Apple Silicon.
+The publish and public-provenance jobs cannot proceed unless both macOS
+architecture smokes and the Windows candidate job succeed. The Windows MSI
+remains intentionally unsigned. Its installer smoke fails unless both the MSI
+and installed executable report the exact Authenticode status `NotSigned`.
 
 Release publication uses the separate `github-release` environment and an
 exact `refs/tags/v<package-version>` source check. The GitHub environment must
@@ -16,13 +18,16 @@ also be configured to accept only `v*` tags, while a tag ruleset limits who can
 create, update, or delete those tags. The publish job resolves the remote tag
 again immediately before creating the release and requires it to still point
 to the workflow commit. Apple credentials remain isolated in the separate
-`macos-release` environment.
+`macos-release` environment. The Intel smoke receives no signing or
+notarization secrets; it uses the public `EXPECTED_APPLE_TEAM_ID` repository
+variable to verify the already signed artifact.
 
 ## Release Assets
 
 A tagged release contains:
 
-- the Developer ID-signed, notarized, and stapled Apple Silicon DMG;
+- the Developer ID-signed, notarized, and stapled Universal 2 DMG for Apple
+  Silicon and Intel;
 - the currently unsigned per-user Windows x64 MSI;
 - one SHA-256 manifest for each installer;
 - `Filament-Manager_<version>_source.spdx.json`, an SPDX 2.3 source dependency

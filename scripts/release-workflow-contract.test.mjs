@@ -54,6 +54,11 @@ test("release workflow gates tag and manual installer builds", () => {
   const macosJob = readSection(
     releaseWorkflow,
     "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const intelMacosSmokeJob = readSection(
+    releaseWorkflow,
+    "  smoke-macos-dmg-intel:",
     "  build-windows-msi:",
   );
   const windowsJob = readSection(
@@ -90,6 +95,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(validationJob, /npm run check:command-portability/);
   assert.match(
     validationJob,
+    /EXPECTED_APPLE_TEAM_ID: \$\{\{ vars\.EXPECTED_APPLE_TEAM_ID \}\}/,
+  );
+  assert.match(
+    validationJob,
     /node --test \.\/scripts\/release-workflow-contract\.test\.mjs/,
   );
   assert.match(validationJob, /"\$SELECTED_PLATFORM" != "windows"/);
@@ -107,6 +116,11 @@ test("release workflow gates tag and manual installer builds", () => {
     /Manual release builds must run from the main branch/,
   );
   assert.match(validationJob, /release_tag="v\$package_version"/);
+  assert.match(validationJob, /\^\[A-Z0-9\]\{10\}\$/);
+  assert.match(
+    validationJob,
+    /Repository variable EXPECTED_APPLE_TEAM_ID must contain the 10-character public Apple Team ID/,
+  );
   assert.match(
     validationJob,
     /echo "package-version=\$package_version" >> "\$GITHUB_OUTPUT"/,
@@ -149,7 +163,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     macosJob,
-    /- name: Build signed and notarized DMG[\s\S]*?FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}[\s\S]*?run: npm run tauri -- build --bundles dmg/,
+    /- name: Build signed and notarized DMG[\s\S]*?FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}[\s\S]*?npm run tauri --[\s\S]*?build[\s\S]*?--target universal-apple-darwin[\s\S]*?--bundles dmg/,
   );
   assert.equal(
     countOccurrences(
@@ -247,7 +261,7 @@ test("release workflow gates tag and manual installer builds", () => {
 
   assert.match(
     publishJob,
-    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- build-windows-msi\s*\n\s+- generate-release-sbom\s*\n\s+- attest-public-release/,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg\s*\n\s+- smoke-macos-dmg-intel\s*\n\s+- build-windows-msi\s*\n\s+- generate-release-sbom\s*\n\s+- attest-public-release/,
   );
   assert.match(publishJob, /if: >-\s+!cancelled\(\) &&/);
   assert.doesNotMatch(publishJob, /always\(\)/);
@@ -257,6 +271,10 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(publishJob, /needs\['validate-release'\]\.result == 'success'/);
   assert.match(publishJob, /needs\['build-macos-dmg'\]\.result == 'success'/);
+  assert.match(
+    publishJob,
+    /needs\['smoke-macos-dmg-intel'\]\.result == 'success'/,
+  );
   assert.match(publishJob, /needs\['build-windows-msi'\]\.result == 'success'/);
   assert.match(publishJob, /needs\['generate-release-sbom'\]\.result == 'success'/);
   assert.match(
@@ -274,8 +292,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(publishJob, /environment: github-release/);
   assert.equal(countOccurrences(releaseWorkflow, "environment: github-release"), 1);
   assert.doesNotMatch(macosJob, /environment: github-release/);
+  assert.doesNotMatch(intelMacosSmokeJob, /environment: github-release/);
   assert.doesNotMatch(windowsJob, /environment: github-release/);
   assert.match(macosJob, /environment: macos-release/);
+  assert.doesNotMatch(intelMacosSmokeJob, /environment:/);
   assert.match(
     publishJob,
     /\/repos\/\$GITHUB_REPOSITORY\/commits\/\$GITHUB_REF_NAME/,
@@ -355,7 +375,10 @@ test("release workflow gates tag and manual installer builds", () => {
   ]);
 
   assert.match(sbomJob, /needs: validate-release/);
-  assert.match(attestationJob, /needs:[\s\S]*?- generate-release-sbom/);
+  assert.match(
+    attestationJob,
+    /needs:[\s\S]*?- build-macos-dmg[\s\S]*?- smoke-macos-dmg-intel[\s\S]*?- build-windows-msi[\s\S]*?- generate-release-sbom/,
+  );
 });
 
 test("release SBOM generation is pinned, read-only and fail-closed", () => {
@@ -457,6 +480,11 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   const macosJob = readSection(
     releaseWorkflow,
     "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const intelMacosSmokeJob = readSection(
+    releaseWorkflow,
+    "  smoke-macos-dmg-intel:",
     "  build-windows-msi:",
   );
   const windowsJob = readSection(
@@ -480,7 +508,7 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   const provenanceArtifactName =
     "filament-manager-release-provenance-${{ github.run_id }}";
 
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 4);
+  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 5);
   assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 4);
   assert.equal(countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`), 2);
   assert.equal(countOccurrences(releaseWorkflow, `name: ${provenanceArtifactName}`), 2);
@@ -492,6 +520,10 @@ test("release artifacts remain stable across partial workflow reruns", () => {
   assert.match(
     macosJob,
     /- name: Download release DMG candidate[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    intelMacosSmokeJob,
+    /- name: Download Universal 2 DMG candidate[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
   );
   assert.match(
     windowsJob,
@@ -850,6 +882,11 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   const macosJob = readSection(
     releaseWorkflow,
     "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const intelMacosSmokeJob = readSection(
+    releaseWorkflow,
+    "  smoke-macos-dmg-intel:",
     "  build-windows-msi:",
   );
 
@@ -858,22 +895,46 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(releaseWorkflow, /permissions:\s*\n\s*contents: read/);
   assert.match(macosJob, /environment: macos-release/);
   assert.match(macosJob, /runs-on: macos-15/);
+  assert.match(
+    macosJob,
+    /targets: aarch64-apple-darwin,x86_64-apple-darwin/,
+  );
+  assert.match(macosJob, /runner_architecture="\$\(uname -m\)"/);
+  assert.match(macosJob, /"\$runner_architecture" != "arm64"/);
   assert.match(macosJob, /- name: Prepare Apple credentials/);
   assert.match(macosJob, /APPLE_API_ISSUER: \$\{\{ secrets\.APPLE_API_ISSUER \}\}/);
   assert.match(macosJob, /APPLE_API_PRIVATE_KEY: \$\{\{ secrets\.APPLE_API_PRIVATE_KEY \}\}/);
   assert.match(macosJob, /APPLE_CERTIFICATE: \$\{\{ secrets\.APPLE_CERTIFICATE \}\}/);
   assert.match(macosJob, /APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}/);
+  assert.match(
+    macosJob,
+    /EXPECTED_APPLE_TEAM_ID: \$\{\{ vars\.EXPECTED_APPLE_TEAM_ID \}\}/,
+  );
+  assert.match(
+    macosJob,
+    /"\$APPLE_TEAM_ID" != "\$EXPECTED_APPLE_TEAM_ID"/,
+  );
   assert.match(macosJob, /FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"/);
-  assert.match(macosJob, /npm run tauri -- build --bundles dmg/);
+  assert.match(
+    macosJob,
+    /npm run tauri --[\s\S]*?build[\s\S]*?--target universal-apple-darwin[\s\S]*?--bundles dmg/,
+  );
+  assert.match(
+    macosJob,
+    /"\$CARGO_TARGET_DIR"\/universal-apple-darwin\/release\/bundle\/dmg\/\*\.dmg/,
+  );
   assert.match(macosJob, /xcrun notarytool submit "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /--wait/);
   assert.match(macosJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
-  assert.match(macosJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
+  assert.match(
+    macosJob,
+    /npm run verify:macos-release --[\s\S]*?"\$FILAMENT_MANAGER_DMG_PATH"[\s\S]*?--architectures=arm64,x86_64/,
+  );
   assert.match(macosJob, /npm run smoke:macos-dmg --/);
   assert.match(
     macosJob,
-    /- name: Exercise installed signed application from downloaded artifact[\s\S]*?EXPECTED_APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}[\s\S]*?"\$FILAMENT_MANAGER_DMG_SMOKE_PATH"[\s\S]*?--expected-team-id="\$EXPECTED_APPLE_TEAM_ID"/,
+    /- name: Exercise installed signed application on Apple Silicon[\s\S]*?EXPECTED_APPLE_TEAM_ID: \$\{\{ vars\.EXPECTED_APPLE_TEAM_ID \}\}[\s\S]*?"\$FILAMENT_MANAGER_DMG_SMOKE_PATH"[\s\S]*?--expected-team-id="\$EXPECTED_APPLE_TEAM_ID"/,
   );
   assert.match(macosJob, /--launch-timeout-ms=120000/);
   assert.match(macosJob, /--signature-policy=release/);
@@ -905,8 +966,14 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     macosJob,
     /name: filament-manager-macos-dmg-\$\{\{ github\.ref_name \}\}/,
   );
-  assert.match(macosJob, /bundle\/dmg\/\*\.dmg/);
-  assert.match(macosJob, /bundle\/dmg\/SHA256SUMS\.txt/);
+  assert.match(
+    macosJob,
+    /universal-apple-darwin\/release\/bundle\/dmg\/\*\.dmg/,
+  );
+  assert.match(
+    macosJob,
+    /universal-apple-darwin\/release\/bundle\/dmg\/SHA256SUMS\.txt/,
+  );
   assert.match(macosJob, /if-no-files-found: error/);
   assert.match(macosJob, /retention-days: 14/);
   assert.match(macosJob, /normalized_name="\$\{original_name\/\/ \/-\}"/);
@@ -924,8 +991,58 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     "Upload verified DMG artifact",
     "Download release DMG candidate",
     "Verify downloaded DMG candidate",
-    "Exercise installed signed application from downloaded artifact",
+    "Exercise installed signed application on Apple Silicon",
     "Upload installed macOS smoke logs",
     "Remove Apple credentials",
+  ]);
+
+  assert.match(
+    intelMacosSmokeJob,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- build-macos-dmg/,
+  );
+  assert.match(
+    intelMacosSmokeJob,
+    /if: >-\s+needs\['build-macos-dmg'\]\.result == 'success' &&\s+\(\s+github\.event_name == 'push' \|\|\s+github\.event\.inputs\.platform == 'both' \|\|\s+github\.event\.inputs\.platform == 'macos'\s+\)/,
+  );
+  assert.doesNotMatch(intelMacosSmokeJob, /environment:/);
+  assert.match(intelMacosSmokeJob, /runs-on: macos-15-intel/);
+  assert.match(intelMacosSmokeJob, /timeout-minutes: 30/);
+  assert.match(
+    intelMacosSmokeJob,
+    /permissions:\s*\n\s+contents: read\s*\n\s+steps:/,
+  );
+  assert.match(intelMacosSmokeJob, /"\$runner_architecture" != "x86_64"/);
+  assert.match(intelMacosSmokeJob, /- name: Install smoke dependencies\s+run: npm ci/);
+  assert.match(
+    intelMacosSmokeJob,
+    /- name: Download Universal 2 DMG candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
+  );
+  assert.match(
+    intelMacosSmokeJob,
+    /- name: Verify downloaded Universal 2 DMG candidate[\s\S]*?shasum -a 256 --check SHA256SUMS\.txt[\s\S]*?npm run verify:macos-release --[\s\S]*?--architectures=arm64,x86_64/,
+  );
+  assert.match(
+    intelMacosSmokeJob,
+    /- name: Exercise installed signed application on Intel[\s\S]*?EXPECTED_APPLE_TEAM_ID: \$\{\{ vars\.EXPECTED_APPLE_TEAM_ID \}\}[\s\S]*?"\$FILAMENT_MANAGER_INTEL_DMG_SMOKE_PATH"[\s\S]*?--expected-team-id="\$EXPECTED_APPLE_TEAM_ID"/,
+  );
+  assert.match(intelMacosSmokeJob, /--launch-timeout-ms=120000/);
+  assert.match(intelMacosSmokeJob, /--signature-policy=release/);
+  assert.match(
+    intelMacosSmokeJob,
+    /- name: Upload Intel macOS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
+  assert.doesNotMatch(
+    intelMacosSmokeJob,
+    /secrets\.|APPLE_API_(?:ISSUER|KEY|PRIVATE_KEY)|APPLE_CERTIFICATE|APPLE_SIGNING_IDENTITY|notarytool|stapler/,
+  );
+  assertStepOrder(intelMacosSmokeJob, [
+    "Checkout release source",
+    "Setup Node",
+    "Require native Intel runner",
+    "Install smoke dependencies",
+    "Download Universal 2 DMG candidate",
+    "Verify downloaded Universal 2 DMG candidate",
+    "Exercise installed signed application on Intel",
+    "Upload Intel macOS smoke logs",
   ]);
 });

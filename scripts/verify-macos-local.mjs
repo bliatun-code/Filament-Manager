@@ -13,7 +13,7 @@ function cliOptions(argv) {
   if (dmgPaths.length !== 1) {
     throw new Error(
       "Usage: node scripts/verify-macos-local.mjs <path-to-dmg> " +
-        "--architectures=arm64",
+        "--architectures=arm64,x86_64",
     );
   }
   const architectureArgument = argv.find((arg) => arg.startsWith("--architectures="));
