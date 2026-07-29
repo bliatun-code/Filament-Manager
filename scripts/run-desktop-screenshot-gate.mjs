@@ -1,6 +1,7 @@
 import { execFile as execFileCallback, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -960,7 +961,7 @@ export function desktopWindowMatchesRequestedSize(
   if (!windowInfo || !windowSize) {
     return false;
   }
-  const allowedDelta = Number.isFinite(tolerance) ? Math.max(0, tolerance) : 2;
+  const allowedDelta = normalizeDesktopWindowTolerance(tolerance, 2);
   return (
     Number(windowInfo.x) >= 0 &&
     Number(windowInfo.y) >= 0 &&
@@ -971,6 +972,36 @@ export function desktopWindowMatchesRequestedSize(
   );
 }
 
+function normalizeDesktopWindowTolerance(value, fallback) {
+  const normalized =
+    typeof value === "string" && value.trim() === ""
+      ? Number.NaN
+      : Number(value);
+  return Number.isFinite(normalized) ? Math.max(0, normalized) : fallback;
+}
+
+function desktopWindowRequestedFrameStatus(
+  windowInfo,
+  windowSize,
+  sizeTolerance,
+  positionTolerance,
+) {
+  const sizeMatches = desktopWindowMatchesRequestedSize(
+    windowInfo,
+    windowSize,
+    sizeTolerance,
+  );
+  const positionMatches = desktopWindowMatchesRequestedPosition(
+    windowInfo,
+    positionTolerance,
+  );
+  return {
+    matches: sizeMatches && positionMatches,
+    positionMatches,
+    sizeMatches,
+  };
+}
+
 export function desktopWindowMatchesRequestedPosition(
   windowInfo,
   tolerance = DESKTOP_CAPTURE_POSITION_TOLERANCE,
@@ -978,9 +1009,10 @@ export function desktopWindowMatchesRequestedPosition(
   if (!windowInfo) {
     return false;
   }
-  const allowedDelta = Number.isFinite(tolerance)
-    ? Math.max(0, tolerance)
-    : DESKTOP_CAPTURE_POSITION_TOLERANCE;
+  const allowedDelta = normalizeDesktopWindowTolerance(
+    tolerance,
+    DESKTOP_CAPTURE_POSITION_TOLERANCE,
+  );
   const x = Number(windowInfo.x);
   const y = Number(windowInfo.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
@@ -998,6 +1030,24 @@ export async function resizeDesktopWindow(
   options = {},
 ) {
   if (!windowInfo || !windowSize) {
+    return windowInfo;
+  }
+  const windowSizeTolerance = normalizeDesktopWindowTolerance(
+    options.windowSizeTolerance,
+    2,
+  );
+  const windowPositionTolerance = normalizeDesktopWindowTolerance(
+    options.windowPositionTolerance,
+    DESKTOP_CAPTURE_POSITION_TOLERANCE,
+  );
+  const requestedFrameStatus = (candidate) =>
+    desktopWindowRequestedFrameStatus(
+      candidate,
+      windowSize,
+      windowSizeTolerance,
+      windowPositionTolerance,
+    );
+  if (requestedFrameStatus(windowInfo).matches) {
     return windowInfo;
   }
   const execFileFn = options.execFileFn ?? execFile;
@@ -1022,6 +1072,8 @@ export async function resizeDesktopWindow(
 
   const findWindowFn = options.findWindowFn ?? findDesktopWindow;
   let latestWindow = windowInfo;
+  let lookupAttempts = 0;
+  let observedWindows = 0;
   const resizeWindowTimeoutMs = options.resizeWindowTimeoutMs ?? 3_000;
   const resizedWindow = await waitForDesktopWindow({
     ...options,
@@ -1033,23 +1085,22 @@ export async function resizeDesktopWindow(
       return nextWindow;
     },
     intervalMs: options.resizeWindowPollMs ?? 100,
-    isWindowReady: (candidate) =>
-      desktopWindowMatchesRequestedSize(
-        candidate,
-        windowSize,
-        options.windowSizeTolerance,
-      ) &&
-      desktopWindowMatchesRequestedPosition(
-        candidate,
-        options.windowPositionTolerance,
-      ),
+    isWindowReady: (candidate) => requestedFrameStatus(candidate).matches,
     onLookupAttempt: (attempt) => {
+      lookupAttempts += 1;
+      if (attempt.window) {
+        observedWindows += 1;
+      }
       lastLookupError = attempt.error ?? null;
       options.onLookupAttempt?.(attempt);
     },
     timeoutMs: resizeWindowTimeoutMs,
   });
   if (!resizedWindow) {
+    const latestFrameStatus = requestedFrameStatus(latestWindow);
+    if (latestFrameStatus.matches) {
+      return latestWindow;
+    }
     if (options.shouldAbort?.()) {
       return latestWindow;
     }
@@ -1060,7 +1111,7 @@ export async function resizeDesktopWindow(
       throw lastLookupError;
     }
     throw new Error(
-      `Desktop window did not reach requested frame ${windowSize.width}x${windowSize.height} at ${DESKTOP_CAPTURE_EDGE_INSET},${DESKTOP_CAPTURE_EDGE_INSET} (±${options.windowPositionTolerance ?? DESKTOP_CAPTURE_POSITION_TOLERANCE}px) within ${resizeWindowTimeoutMs}ms; latest frame was ${latestWindow?.x},${latestWindow?.y},${latestWindow?.width},${latestWindow?.height}.`,
+      `Desktop window did not reach requested frame ${windowSize.width}x${windowSize.height} at ${DESKTOP_CAPTURE_EDGE_INSET},${DESKTOP_CAPTURE_EDGE_INSET} (±${windowPositionTolerance}px) within ${resizeWindowTimeoutMs}ms; latest frame was ${latestWindow?.x},${latestWindow?.y},${latestWindow?.width},${latestWindow?.height}. Frame checks: size=${latestFrameStatus.sizeMatches} (±${windowSizeTolerance}px), position=${latestFrameStatus.positionMatches} (±${windowPositionTolerance}px); observed windows=${observedWindows}/${lookupAttempts}.`,
     );
   }
   return resizedWindow;
@@ -1068,6 +1119,217 @@ export async function resizeDesktopWindow(
 
 function screenshotPath(outputDir, name = "desktop-window") {
   return resolve(outputDir, `${name}.png`);
+}
+
+function privateFullScreenScreenshotPath(outputDir) {
+  return resolve(
+    outputDir,
+    `.desktop-full-screen-${process.pid}-${randomUUID()}.png`,
+  );
+}
+
+function requiredSafeInteger(value, label, { positive = false } = {}) {
+  const normalized = Number(value);
+  if (
+    !Number.isSafeInteger(normalized) ||
+    (positive ? normalized <= 0 : normalized < 0)
+  ) {
+    throw new Error(
+      `Desktop full-screen crop requires ${label} to be a ` +
+        `${positive ? "positive " : "non-negative "}integer; found ${String(value)}.`,
+    );
+  }
+  return normalized;
+}
+
+function exactScaledInteger(value, scale, label) {
+  const scaled = value * scale;
+  const rounded = Math.round(scaled);
+  if (
+    !Number.isSafeInteger(rounded) ||
+    Math.abs(scaled - rounded) > Number.EPSILON * Math.max(1, Math.abs(scaled)) * 8
+  ) {
+    throw new Error(
+      `Desktop full-screen crop scale ${scale} does not map ${label} ` +
+        `${value} to an exact pixel coordinate.`,
+    );
+  }
+  return rounded;
+}
+
+export function desktopFullScreenCropGeometry(
+  windowInfo,
+  screenInfo,
+  screenshotPixels,
+) {
+  const screenX = requiredSafeInteger(screenInfo?.x, "display x");
+  const screenY = requiredSafeInteger(screenInfo?.y, "display y");
+  const screenWidth = requiredSafeInteger(
+    screenInfo?.width,
+    "display width",
+    { positive: true },
+  );
+  const screenHeight = requiredSafeInteger(
+    screenInfo?.height,
+    "display height",
+    { positive: true },
+  );
+  const pixelWidth = requiredSafeInteger(
+    screenshotPixels?.width,
+    "full-screen pixel width",
+    { positive: true },
+  );
+  const pixelHeight = requiredSafeInteger(
+    screenshotPixels?.height,
+    "full-screen pixel height",
+    { positive: true },
+  );
+  const windowX = requiredSafeInteger(windowInfo?.x, "window x");
+  const windowY = requiredSafeInteger(windowInfo?.y, "window y");
+  const windowWidth = requiredSafeInteger(
+    windowInfo?.width,
+    "window width",
+    { positive: true },
+  );
+  const windowHeight = requiredSafeInteger(
+    windowInfo?.height,
+    "window height",
+    { positive: true },
+  );
+
+  if (
+    !Number.isSafeInteger(pixelWidth * screenHeight) ||
+    !Number.isSafeInteger(pixelHeight * screenWidth) ||
+    pixelWidth * screenHeight !== pixelHeight * screenWidth
+  ) {
+    throw new Error(
+      `Desktop full-screen PNG ${pixelWidth}x${pixelHeight} has an ` +
+        `inconsistent screen scale for native main-screen bounds ` +
+        `${screenWidth}x${screenHeight}.`,
+    );
+  }
+
+  const scale = pixelWidth / screenWidth;
+  const x = exactScaledInteger(windowX - screenX, scale, "window x");
+  const y = exactScaledInteger(windowY - screenY, scale, "window y");
+  const width = exactScaledInteger(windowWidth, scale, "window width");
+  const height = exactScaledInteger(windowHeight, scale, "window height");
+  if (
+    x < 0 ||
+    y < 0 ||
+    x + width > pixelWidth ||
+    y + height > pixelHeight
+  ) {
+    throw new Error(
+      `Desktop full-screen crop ${x},${y},${width},${height} exceeds ` +
+        `the ${pixelWidth}x${pixelHeight} PNG.`,
+    );
+  }
+  return { height, scale, width, x, y };
+}
+
+function desktopCaptureFallbackError(regionError, fallbackError, cleanupError) {
+  const failures = [regionError, fallbackError, cleanupError].filter(Boolean);
+  const detail = [
+    `region capture: ${childProcessErrorDetail(regionError)}`,
+    fallbackError
+      ? `full-screen crop fallback: ${childProcessErrorDetail(fallbackError)}`
+      : null,
+    cleanupError
+      ? `private full-screen cleanup: ${childProcessErrorDetail(cleanupError)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
+  return new AggregateError(
+    failures,
+    `Desktop window screenshot capture failed (${detail}).`,
+    { cause: regionError },
+  );
+}
+
+async function captureDesktopWindowScreenshotFromFullScreen({
+  execFileFn,
+  outputPath,
+  options,
+  outputDir,
+  regionError,
+  screen,
+  windowInfo,
+}) {
+  const fullScreenPath = privateFullScreenScreenshotPath(outputDir);
+  const readFileFn = options.readFileFn ?? readFile;
+  const removeFileFn = options.removeFileFn ?? rm;
+  const measureScreenshotPixelsFn =
+    options.measureScreenshotPixelsFn ?? measureScreenshotPixels;
+  const commandTimeoutMs =
+    options.screenshotCommandTimeoutMs ??
+    options.desktopCommandTimeoutMs ??
+    8_000;
+  let result = null;
+  let fallbackError = null;
+  let cleanupError = null;
+
+  try {
+    await execFileWithTimeout(
+      execFileFn,
+      "screencapture",
+      ["-x", fullScreenPath],
+      {
+        label: "Desktop full-screen screenshot fallback",
+        timeoutMs: commandTimeoutMs,
+      },
+    );
+    await securePrivateQaArtifact(fullScreenPath, options);
+    const fullScreenBuffer = await readFileFn(fullScreenPath);
+    const fullScreenPixels = measureScreenshotPixelsFn(fullScreenBuffer);
+    const crop = desktopFullScreenCropGeometry(
+      windowInfo,
+      screen,
+      fullScreenPixels,
+    );
+    await execFileWithTimeout(
+      execFileFn,
+      "sips",
+      [
+        "-c",
+        String(crop.height),
+        String(crop.width),
+        "--cropOffset",
+        String(crop.y),
+        String(crop.x),
+        fullScreenPath,
+        "--out",
+        outputPath,
+      ],
+      {
+        label: "Desktop full-screen screenshot crop",
+        timeoutMs: commandTimeoutMs,
+      },
+    );
+    await securePrivateQaArtifact(outputPath, options);
+    result = {
+      buffer: await readFileFn(outputPath),
+      path: outputPath,
+    };
+  } catch (error) {
+    fallbackError = error;
+  } finally {
+    try {
+      await removeFileFn(fullScreenPath, { force: true });
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+
+  if (fallbackError || cleanupError) {
+    throw desktopCaptureFallbackError(
+      regionError,
+      fallbackError,
+      cleanupError,
+    );
+  }
+  return result;
 }
 
 export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
@@ -1103,21 +1365,37 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
     Math.max(1, windowInfo.width),
     Math.max(1, windowInfo.height),
   ].join(",");
-  await execFileWithTimeout(
-    execFileFn,
-    "screencapture",
-    ["-x", "-R", region, path],
-    {
-      label: "Desktop window screenshot capture",
-      timeoutMs:
-        options.screenshotCommandTimeoutMs ??
-        options.desktopCommandTimeoutMs ??
-        8_000,
-    },
-  );
+  try {
+    await execFileWithTimeout(
+      execFileFn,
+      "screencapture",
+      ["-x", "-R", region, path],
+      {
+        label: "Desktop window screenshot capture",
+        timeoutMs:
+          options.screenshotCommandTimeoutMs ??
+          options.desktopCommandTimeoutMs ??
+          8_000,
+      },
+    );
+  } catch (regionError) {
+    const fallback = await captureDesktopWindowScreenshotFromFullScreen({
+      execFileFn,
+      options,
+      outputDir,
+      outputPath: path,
+      regionError,
+      screen,
+      windowInfo,
+    });
+    return {
+      ...fallback,
+      region,
+    };
+  }
   await securePrivateQaArtifact(path, options);
   return {
-    buffer: await readFile(path),
+    buffer: await (options.readFileFn ?? readFile)(path),
     path,
     region,
   };

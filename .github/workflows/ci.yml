@@ -139,7 +139,7 @@ jobs:
             -ExpectedAppDataDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.identifier) `
             -ExpectedDatabaseName "filament-manager.db" `
             -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
-            -SignaturePolicy "Off" `
+            -SignaturePolicy "UnsignedRequired" `
             -LaunchTimeoutSeconds 90
 
       - name: Upload MSI smoke logs

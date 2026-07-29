@@ -6,6 +6,11 @@ const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
+const macosDmgSmoke = readFileSync("scripts/smoke-macos-dmg.mjs", "utf8");
+const macosWindowHelper = readFileSync(
+  "scripts/macos-window-info.swift",
+  "utf8",
+);
 const windowsAuthenticodeVerifier = readFileSync(
   "scripts/verify-windows-authenticode.ps1",
   "utf8",
@@ -152,6 +157,15 @@ test("release workflow gates tag and manual installer builds", () => {
     windowsJob,
     /- name: Upload verified MSI artifact[\s\S]*?if-no-files-found: error\s+overwrite: true\s+retention-days: 14/,
   );
+  assert.match(windowsJob, /- name: Exercise release MSI installation/);
+  assert.match(windowsJob, /target\/release\/bundle\/msi/);
+  assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
+  assert.match(windowsJob, /-SignaturePolicy "UnsignedRequired"/);
+  assert.match(windowsJob, /-LaunchTimeoutSeconds 120/);
+  assert.match(
+    windowsJob,
+    /- name: Upload release MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
   assert.doesNotMatch(
     windowsJob,
     /name: filament-manager-windows-msi-\$\{\{ github\.ref_name \}\}/,
@@ -177,6 +191,8 @@ test("release workflow gates tag and manual installer builds", () => {
     "Verify MSI preparation leaves manifests unchanged",
     "Build MSI bundle",
     "Verify MSI bundle and write checksum",
+    "Exercise release MSI installation",
+    "Upload release MSI smoke logs",
     "Upload verified MSI artifact",
   ]);
 
@@ -472,7 +488,30 @@ test("Windows MSI smoke exercises install, UI readiness, data retention and unin
   assert.equal(existsSync("scripts/smoke-windows-msi.ps1"), true);
   assert.equal(existsSync("scripts/verify-windows-app-database.mjs"), true);
 
-  assert.match(windowsMsiSmoke, /\[ValidateSet\("Off", "Required"\)\]/);
+  assert.match(
+    windowsMsiSmoke,
+    /\[ValidateSet\("UnsignedRequired", "Required"\)\]/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /\[string\]\$SignaturePolicy = "UnsignedRequired"/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Get-AuthenticodeSignature -LiteralPath \$Path/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /\[string\]::Equals\([\s\S]*?"NotSigned"[\s\S]*?\[StringComparison\]::Ordinal/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Assert-UnsignedAuthenticode -Path \$resolvedMsiPath/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Assert-UnsignedAuthenticode -Path \$installedExecutablePath/,
+  );
   assert.match(windowsMsiSmoke, /Get-MsiProperty[\s\S]*"ProductCode"/);
   assert.match(windowsMsiSmoke, /msiexec\.exe/);
   assert.match(windowsMsiSmoke, /"\/qn"/);
@@ -521,6 +560,64 @@ test("Windows MSI smoke exercises install, UI readiness, data retention and unin
   assert.match(windowsDatabaseVerifier, /settings/);
   assert.match(windowsDatabaseVerifier, /readonly: true/);
   assert.match(windowsDatabaseVerifier, /fileMustExist: true/);
+});
+
+test("macOS DMG smoke installs and launches the verified application", () => {
+  assert.equal(existsSync("scripts/smoke-macos-dmg.mjs"), true);
+  assert.match(macosDmgSmoke, /hdiutil/);
+  assert.match(macosDmgSmoke, /command: "ditto"/);
+  assert.doesNotMatch(macosDmgSmoke, /--noextattr|--noqtn|\bxattr\b/);
+  assert.match(macosDmgSmoke, /codesign/);
+  assert.match(macosDmgSmoke, /spctl/);
+  assert.match(macosDmgSmoke, /validateCodesignDetails/);
+  assert.match(macosDmgSmoke, /expectedTeamId/);
+  assert.match(macosDmgSmoke, /"\/usr\/bin\/open"/);
+  assert.match(macosDmgSmoke, /macosLaunchServicesArguments/);
+  assert.match(macosDmgSmoke, /resolveMacosDmgSmokeStagingPaths/);
+  assert.match(macosDmgSmoke, /createMacosDmgSmokeStaging/);
+  assert.match(macosDmgSmoke, /validateMacosDmgSmokeStaging/);
+  assert.match(macosDmgSmoke, /cleanupMacosDmgSmokeStaging/);
+  assert.match(macosDmgSmoke, /"Applications"/);
+  assert.match(macosDmgSmoke, /chmodSync\(stagingDirectory, 0o700\)/);
+  assert.match(macosDmgSmoke, /resolveMacosDmgSmokeLogPaths/);
+  assert.match(macosDmgSmoke, /"runtime-logs"/);
+  assert.match(macosDmgSmoke, /publishMacosDmgSmokeRuntimeLogs/);
+  assert.match(macosDmgSmoke, /copyFileSync/);
+  assert.match(macosDmgSmoke, /renameSync/);
+  assert.match(macosDmgSmoke, /chmodSync\(temporaryPath, 0o600\)/);
+  assert.doesNotMatch(
+    macosDmgSmoke,
+    /path\.join\(logDirectory, "app-(?:stdout|stderr)\.log"\)/,
+  );
+  assert.match(
+    macosDmgSmoke,
+    /appStdoutPath: stdoutPath,[\s\S]*?logPaths\.runtimePaths/,
+  );
+  assert.doesNotMatch(
+    macosDmgSmoke,
+    /path\.join\(temporaryDirectory, "Applications"\)/,
+  );
+  assert.match(macosDmgSmoke, /bundlePaths/);
+  assert.match(macosDmgSmoke, /executablePaths/);
+  assert.match(macosDmgSmoke, /FILAMENT_MANAGER_DB_PATH/);
+  assert.match(macosDmgSmoke, /quick_check/);
+  assert.match(macosDmgSmoke, /foreign_key_check/);
+  assert.match(macosDmgSmoke, /macos-window-info\.swift/);
+  assert.match(macosDmgSmoke, /SIGTERM/);
+  assert.match(macosWindowHelper, /running-apps/);
+  assert.match(macosWindowHelper, /kCGWindowOwnerPID/);
+  const detachIndex = macosDmgSmoke.lastIndexOf(
+    'runCommand("hdiutil", ["detach"',
+  );
+  const publishLogsIndex = macosDmgSmoke.lastIndexOf(
+    "publishMacosDmgSmokeRuntimeLogs(logPaths)",
+  );
+  const removeRuntimeIndex = macosDmgSmoke.lastIndexOf(
+    "rmSync(temporaryDirectory",
+  );
+  assert.equal(detachIndex > 0, true);
+  assert.equal(publishLogsIndex > detachIndex, true);
+  assert.equal(removeRuntimeIndex > publishLogsIndex, true);
 });
 
 test("Windows MSI uninstall preserves the system Desktop directory", () => {
@@ -630,7 +727,7 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
     /-ExpectedWindowTitles @\(\$tauriConfig\.productName, "Dashboard"\)/,
   );
   assert.match(windowsJob, /-ExpectedDatabaseName "filament-manager\.db"/);
-  assert.match(windowsJob, /-SignaturePolicy "Off"/);
+  assert.match(windowsJob, /-SignaturePolicy "UnsignedRequired"/);
   assert.match(
     windowsJob,
     /- name: Upload MSI smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
@@ -693,6 +790,17 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(macosJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
   assert.match(macosJob, /npm run verify:macos-release -- "\$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64/);
+  assert.match(macosJob, /npm run smoke:macos-dmg --/);
+  assert.match(
+    macosJob,
+    /- name: Exercise installed signed application[\s\S]*?EXPECTED_APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}[\s\S]*?--expected-team-id="\$EXPECTED_APPLE_TEAM_ID"/,
+  );
+  assert.match(macosJob, /--launch-timeout-ms=120000/);
+  assert.match(macosJob, /--signature-policy=release/);
+  assert.match(
+    macosJob,
+    /- name: Upload installed macOS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
   assert.doesNotMatch(macosJob, /verify:macos-local/);
   assert.match(macosJob, /shasum -a 256 "\$dmg_name" > SHA256SUMS\.txt/);
   assert.match(
@@ -722,6 +830,8 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     "Normalize DMG filename",
     "Notarize and staple final DMG",
     "Verify signed release",
+    "Exercise installed signed application",
+    "Upload installed macOS smoke logs",
     "Write DMG checksum",
     "Upload verified DMG artifact",
     "Remove Apple credentials",

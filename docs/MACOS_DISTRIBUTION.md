@@ -37,6 +37,12 @@ spctl --assess --type execute --verbose=2 "/Applications/Filament Manager.app"
 These checks supplement normal Gatekeeper behavior; users do not need them for
 every installation.
 
+Before a release DMG can be uploaded, the release workflow mounts that exact
+DMG, copies its app to an isolated test installation without clearing
+quarantine metadata, opens the installed copy through LaunchServices with an
+isolated runtime database, and verifies SQLite integrity, schema compatibility,
+required tables, foreign keys, and a visible application window.
+
 Tagged releases also include a validated source dependency SBOM. Public tag
 releases include GitHub/Sigstore build provenance for the DMG and MSI. See
 [Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification

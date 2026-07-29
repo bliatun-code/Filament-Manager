@@ -84,6 +84,24 @@ test("requestBambuFilamentCodeCameraStream asks for an environment-facing video 
   });
 });
 
+test("requestBambuFilamentCodeCameraStream preserves camera permission denials", async () => {
+  const permissionError = new DOMException(
+    "Camera permission was denied.",
+    "NotAllowedError",
+  );
+
+  await assert.rejects(
+    requestBambuFilamentCodeCameraStream({
+      mediaDevices: {
+        getUserMedia: async () => {
+          throw permissionError;
+        },
+      },
+    }),
+    (error) => error === permissionError,
+  );
+});
+
 test("applyBambuFilamentCodeCameraTrackHints asks for continuous camera tuning when supported", async () => {
   let appliedConstraints: MediaTrackConstraints | null = null;
 

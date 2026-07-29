@@ -24,6 +24,7 @@ import {
   DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
   DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS,
   desktopScreenshotScale,
+  desktopFullScreenCropGeometry,
   desktopScreenshotNameForScenario,
   desktopWindowsForProcess,
   desktopWindowMatchesRequestedSize,
@@ -2780,6 +2781,76 @@ test("desktop screenshot gate waits for a correctly sized edge window to reach i
   );
 });
 
+test("desktop screenshot gate accepts a serialized matrix position tolerance", async () => {
+  const clock = createFakeClock();
+  let attempts = 0;
+  const window = await resizeDesktopWindow(
+    {
+      ...createMetric().window,
+      height: 900,
+      width: 1050,
+      x: 24,
+      y: 200,
+    },
+    { height: 900, width: 1050 },
+    {
+      execFileFn: async () => ({ stdout: "" }),
+      findWindowFn: async () => {
+        attempts += 1;
+        return {
+          ...createMetric().window,
+          height: 900,
+          width: 1050,
+          x: 24,
+          y: 58,
+        };
+      },
+      nowFn: clock.now,
+      resizeWindowPollMs: 1,
+      resizeWindowTimeoutMs: 3_000,
+      waitFn: clock.wait,
+      windowPositionTolerance: "40",
+    },
+  );
+
+  assert.equal(attempts, 1);
+  assert.deepEqual(
+    { height: window?.height, width: window?.width, x: window?.x, y: window?.y },
+    { height: 900, width: 1050, x: 24, y: 58 },
+  );
+});
+
+test("desktop screenshot gate reuses an already accepted clamped frame", async () => {
+  let commandCalls = 0;
+  let lookupCalls = 0;
+  const originalWindow = {
+    ...createMetric().window,
+    height: 900,
+    width: 1500,
+    x: 24,
+    y: 58,
+  };
+  const window = await resizeDesktopWindow(
+    originalWindow,
+    { height: 900, width: 1500 },
+    {
+      execFileFn: async () => {
+        commandCalls += 1;
+        return { stdout: "" };
+      },
+      findWindowFn: async () => {
+        lookupCalls += 1;
+        return null;
+      },
+      windowPositionTolerance: 40,
+    },
+  );
+
+  assert.equal(window, originalWindow);
+  assert.equal(commandCalls, 0);
+  assert.equal(lookupCalls, 0);
+});
+
 test("desktop screenshot gate fails when a correctly sized window never reaches its inset", async () => {
   const clock = createFakeClock();
   let attempts = 0;
@@ -2812,7 +2883,7 @@ test("desktop screenshot gate fails when a correctly sized window never reaches 
         waitFn: clock.wait,
       },
     ),
-    /did not reach requested frame 1200x800 at 24,24 \(±12px\) within 2ms; latest frame was 0,24,1200,800/,
+    /did not reach requested frame 1200x800 at 24,24 \(±12px\) within 2ms; latest frame was 0,24,1200,800\. Frame checks: size=true \(±2px\), position=false \(±12px\); observed windows=3\/3/,
   );
 
   assert.equal(attempts, 3);
@@ -2976,6 +3047,13 @@ test("desktop screenshot gate validates the requested size against the captured 
   );
   assert.equal(
     desktopWindowMatchesRequestedPosition(
+      createMetric({ window: { x: 24, y: 58 } }).window,
+      "40",
+    ),
+    true,
+  );
+  assert.equal(
+    desktopWindowMatchesRequestedPosition(
       createMetric({
         window: {
           x: DESKTOP_CAPTURE_EDGE_INSET - DESKTOP_CAPTURE_POSITION_TOLERANCE - 1,
@@ -3069,6 +3147,186 @@ test("desktop screenshot capture refuses a rectangle touching the display edge",
     /must stay inside the primary display.*window 0,307,1200,800/,
   );
   assert.equal(execCalls, 0);
+});
+
+test("desktop screenshot capture falls back to an exact private full-screen crop", async () => {
+  const calls = [];
+  const removed = [];
+  const secured = [];
+  const regionError = new Error("region capture failed on macOS beta");
+  const croppedBuffer = Buffer.from("cropped-window");
+  const fullScreenBuffer = Buffer.from("private-full-screen");
+  let fullScreenPath = null;
+
+  const result = await captureDesktopWindowScreenshot(
+    {
+      ...createMetric().window,
+      height: 700,
+      width: 900,
+      x: 24,
+      y: 24,
+    },
+    {
+      chmodFn: async (artifactPath) => {
+        secured.push(artifactPath);
+      },
+      execFileFn: async (command, args) => {
+        calls.push({ args, command });
+        if (calls.length === 1) {
+          throw regionError;
+        }
+        if (command === "screencapture") {
+          fullScreenPath = args[1];
+        }
+        return { stderr: "", stdout: "" };
+      },
+      measureScreenshotPixelsFn: (buffer) => {
+        assert.equal(buffer, fullScreenBuffer);
+        return { height: 2214, width: 3420 };
+      },
+      mkdirFn: async () => {},
+      outputDir: testOutputDir,
+      readFileFn: async (artifactPath) =>
+        artifactPath === fullScreenPath ? fullScreenBuffer : croppedBuffer,
+      removeFileFn: async (artifactPath, options) => {
+        removed.push({ artifactPath, options });
+      },
+      screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
+    },
+  );
+
+  assert.equal(result.buffer, croppedBuffer);
+  assert.equal(result.region, "24,24,900,700");
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls[0], {
+    args: ["-x", "-R", "24,24,900,700", result.path],
+    command: "screencapture",
+  });
+  assert.equal(calls[1].command, "screencapture");
+  assert.deepEqual(calls[1].args, ["-x", fullScreenPath]);
+  assert.equal(path.dirname(fullScreenPath), path.resolve(testOutputDir));
+  assert.match(path.basename(fullScreenPath), /^\.desktop-full-screen-/);
+  assert.deepEqual(calls[2], {
+    args: [
+      "-c",
+      "1400",
+      "1800",
+      "--cropOffset",
+      "48",
+      "48",
+      fullScreenPath,
+      "--out",
+      result.path,
+    ],
+    command: "sips",
+  });
+  assert.deepEqual(removed, [
+    { artifactPath: fullScreenPath, options: { force: true } },
+  ]);
+  assert.ok(secured.includes(fullScreenPath));
+  assert.ok(secured.includes(result.path));
+});
+
+test("desktop full-screen crop rejects an inconsistent native screen scale", async () => {
+  assert.deepEqual(
+    desktopFullScreenCropGeometry(
+      { height: 700, width: 900, x: 24, y: 24 },
+      { height: 1107, width: 1710, x: 0, y: 0 },
+      { height: 2214, width: 3420 },
+    ),
+    { height: 1400, scale: 2, width: 1800, x: 48, y: 48 },
+  );
+
+  const regionError = new Error("native region capture failed");
+  const removed = [];
+  let fullScreenPath = null;
+  await assert.rejects(
+    captureDesktopWindowScreenshot(
+      { height: 700, width: 900, x: 24, y: 24 },
+      {
+        chmodFn: async () => {},
+        execFileFn: async (command, args) => {
+          if (command === "screencapture" && args.includes("-R")) {
+            throw regionError;
+          }
+          if (command === "screencapture") {
+            fullScreenPath = args[1];
+          }
+          return { stderr: "", stdout: "" };
+        },
+        measureScreenshotPixelsFn: () => ({
+          height: 2213,
+          width: 3420,
+        }),
+        mkdirFn: async () => {},
+        outputDir: testOutputDir,
+        readFileFn: async () => Buffer.from("full-screen"),
+        removeFileFn: async (artifactPath) => {
+          removed.push(artifactPath);
+        },
+        screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
+      },
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.cause, regionError);
+      assert.equal(error.errors[0], regionError);
+      assert.match(error.errors[1]?.message, /inconsistent screen scale/);
+      assert.match(error.message, /native region capture failed/);
+      assert.match(error.message, /inconsistent screen scale/);
+      return true;
+    },
+  );
+  assert.deepEqual(removed, [fullScreenPath]);
+});
+
+test("desktop full-screen fallback deletes its private source after crop failure", async () => {
+  const regionError = new Error("region capture unavailable");
+  const cropError = new Error("sips crop failed");
+  const removed = [];
+  let fullScreenPath = null;
+
+  await assert.rejects(
+    captureDesktopWindowScreenshot(
+      { height: 700, width: 900, x: 24, y: 24 },
+      {
+        chmodFn: async () => {},
+        execFileFn: async (command, args) => {
+          if (command === "screencapture" && args.includes("-R")) {
+            throw regionError;
+          }
+          if (command === "screencapture") {
+            fullScreenPath = args[1];
+            return { stderr: "", stdout: "" };
+          }
+          throw cropError;
+        },
+        measureScreenshotPixelsFn: () => ({
+          height: 2214,
+          width: 3420,
+        }),
+        mkdirFn: async () => {},
+        outputDir: testOutputDir,
+        readFileFn: async () => Buffer.from("full-screen"),
+        removeFileFn: async (artifactPath, options) => {
+          removed.push({ artifactPath, options });
+        },
+        screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
+      },
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.cause, regionError);
+      assert.deepEqual(error.errors, [regionError, cropError]);
+      assert.match(error.message, /region capture unavailable/);
+      assert.match(error.message, /sips crop failed/);
+      return true;
+    },
+  );
+
+  assert.deepEqual(removed, [
+    { artifactPath: fullScreenPath, options: { force: true } },
+  ]);
 });
 
 test("desktop screenshot report lists window and artifact details", () => {

@@ -3,6 +3,11 @@
 Official Filament Manager releases are assembled by the tagged GitHub Actions
 workflow from verified job outputs. A release is not published when a required
 installer, checksum, source dependency SBOM, or eligible provenance step fails.
+Before either installer enters those outputs, the exact release DMG or MSI is
+installed and launched with an isolated runtime database, whose integrity and
+expected schema are checked. The Windows MSI remains intentionally unsigned.
+Its installer smoke fails unless both the MSI and installed executable report
+the exact Authenticode status `NotSigned`.
 
 ## Release Assets
 

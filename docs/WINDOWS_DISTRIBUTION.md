@@ -47,16 +47,19 @@ installer signing remains intentionally deferred.
 
 ## Automated installer smoke test
 
-The Windows CI job also exercises the installer on a clean hosted Windows
-runner profile. It installs the generated MSI without Administrator privileges,
-launches the installed executable, waits for a responsive application window,
-and verifies that the newly initialized SQLite database passes `quick_check`
-and contains the core catalog, inventory, and settings tables. CI then closes
-the app normally, uninstalls it, and confirms that the executable, installer
-registration, shortcuts, and user `PATH` entry are removed while the user
-database remains healthy and unchanged. Verbose install, uninstall,
-application, and smoke-test logs are retained as a CI artifact for
-troubleshooting.
+Before upload, the Windows release job exercises the exact release MSI on a
+clean hosted Windows runner profile. It exercises the MSI's per-user installation
+path, which is configured not to request elevation, launches the installed
+executable with an isolated runtime database, waits for a responsive application
+window, and verifies that SQLite
+`quick_check`, schema compatibility, and the required catalog, inventory, and
+settings tables pass. CI then closes the app normally, uninstalls it, and
+confirms that the executable, installer registration, shortcuts, and user
+`PATH` entry are removed while the isolated database remains healthy and
+unchanged. Verbose install, uninstall, application, and smoke-test logs are
+retained as a CI artifact for troubleshooting. The MSI is intentionally
+unsigned; the smoke test fails unless both the source MSI and installed
+executable report the exact Authenticode status `NotSigned`.
 
 ## Runtime database safeguards
 

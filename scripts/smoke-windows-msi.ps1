@@ -33,8 +33,8 @@ param(
     [string]$LogDirectory,
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("Off", "Required")]
-    [string]$SignaturePolicy = "Off",
+    [ValidateSet("UnsignedRequired", "Required")]
+    [string]$SignaturePolicy = "UnsignedRequired",
 
     [Parameter(Mandatory = $false)]
     [string]$ExpectedPublisherSubject = "",
@@ -181,6 +181,23 @@ function Get-MsiProductState {
     }
     finally {
         Release-ComObject $installer
+    }
+}
+
+function Assert-UnsignedAuthenticode {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $signature = Get-AuthenticodeSignature -LiteralPath $Path
+    if ($null -eq $signature) {
+        throw "Authenticode inspection returned no result for '$Path'."
+    }
+    $status = [string]$signature.Status
+    if (-not [string]::Equals(
+        $status,
+        "NotSigned",
+        [StringComparison]::Ordinal
+    )) {
+        throw "Expected an unsigned release artifact, but '$Path' has Authenticode status '$status'."
     }
 }
 
@@ -368,7 +385,10 @@ try {
         throw "Clean-install precondition failed; Windows Installer already reports product state $initialProductState for $productCode."
     }
 
-    if ($SignaturePolicy -eq "Required") {
+    if ($SignaturePolicy -eq "UnsignedRequired") {
+        Assert-UnsignedAuthenticode -Path $resolvedMsiPath
+    }
+    elseif ($SignaturePolicy -eq "Required") {
         if ([string]::IsNullOrWhiteSpace($ExpectedPublisherSubject)) {
             throw "ExpectedPublisherSubject is required when SignaturePolicy is Required."
         }
@@ -397,7 +417,10 @@ try {
     if (-not (Test-UserPathContainsDirectory -Directory $resolvedInstallDirectory)) {
         throw "Install did not add the install directory to the user PATH."
     }
-    if ($SignaturePolicy -eq "Required") {
+    if ($SignaturePolicy -eq "UnsignedRequired") {
+        Assert-UnsignedAuthenticode -Path $installedExecutablePath
+    }
+    elseif ($SignaturePolicy -eq "Required") {
         & (Join-Path $PSScriptRoot "verify-windows-authenticode.ps1") `
             -FilePath $installedExecutablePath `
             -ExpectedPublisherSubject $ExpectedPublisherSubject

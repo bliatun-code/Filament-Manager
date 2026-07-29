@@ -249,6 +249,28 @@ jobs:
           set -euo pipefail
           npm run verify:macos-release -- "$FILAMENT_MANAGER_DMG_PATH" --architectures=arm64
 
+      - name: Exercise installed signed application
+        env:
+          EXPECTED_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          FILAMENT_MANAGER_MACOS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-macos-dmg-smoke
+        run: >-
+          npm run smoke:macos-dmg --
+          "$FILAMENT_MANAGER_DMG_PATH"
+          --log-dir="$FILAMENT_MANAGER_MACOS_SMOKE_LOG_DIR"
+          --expected-team-id="$EXPECTED_APPLE_TEAM_ID"
+          --launch-timeout-ms=120000
+          --signature-policy=release
+
+      - name: Upload installed macOS smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-macos-dmg-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-macos-dmg-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
+
       - name: Write DMG checksum
         run: |
           set -euo pipefail
@@ -279,7 +301,7 @@ jobs:
     needs: validate-release
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'windows'
     runs-on: windows-latest
-    timeout-minutes: 50
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -330,6 +352,39 @@ jobs:
             -ExpectedProductVersion $msiVersionConfig.bundle.windows.wix.version `
             -ExpectedArchitecture "x64" `
             -NormalizedFileName "Filament-Manager_$($tauriConfig.version)_x64_en-US.msi"
+
+      - name: Exercise release MSI installation
+        shell: pwsh
+        env:
+          WINDOWS_MSI_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-msi-smoke
+        run: |
+          $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
+          $msiFiles = @(Get-ChildItem -LiteralPath "target/release/bundle/msi" -Filter "*.msi" -File)
+          if ($msiFiles.Count -ne 1) {
+            throw "Expected exactly one verified release MSI; found $($msiFiles.Count)."
+          }
+
+          ./scripts/smoke-windows-msi.ps1 `
+            -MsiPath $msiFiles[0].FullName `
+            -ExpectedProductName $tauriConfig.productName `
+            -ExpectedExecutableName "bambu-filament-manager.exe" `
+            -ExpectedWindowTitles @($tauriConfig.productName, "Dashboard") `
+            -ExpectedInstallDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.productName) `
+            -ExpectedAppDataDirectory (Join-Path $env:LOCALAPPDATA $tauriConfig.identifier) `
+            -ExpectedDatabaseName "filament-manager.db" `
+            -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
+            -SignaturePolicy "UnsignedRequired" `
+            -LaunchTimeoutSeconds 120
+
+      - name: Upload release MSI smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-windows-release-msi-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-windows-release-msi-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
 
       - name: Upload verified MSI artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -52,6 +52,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.22.0](RELEASE_NOTES_v0.22.0.md)
 - [v0.21.2](RELEASE_NOTES_v0.21.2.md)
 - [v0.21.1](RELEASE_NOTES_v0.21.1.md)
 - [v0.21.0](RELEASE_NOTES_v0.21.0.md)
@@ -263,7 +264,7 @@ npm run tauri -- build --bundles dmg
 Validate an ordinary local Apple Silicon DMG after the build:
 
 ```bash
-npm run verify:macos-local -- /path/to/Filament\ Manager_0.21.2_aarch64.dmg \
+npm run verify:macos-local -- /path/to/Filament\ Manager_0.22.0_aarch64.dmg \
   --architectures=arm64
 ```
 
@@ -281,9 +282,12 @@ reused app bundle, a signed local build without an explicit
 `CARGO_TARGET_DIR` writes to the temporary target path printed by the wrapper.
 Set `CARGO_TARGET_DIR` to another non-File-Provider location when a stable
 output path is needed. Official tagged macOS artifacts are Developer ID signed,
-notarized, stapled, and verified before publication. The public macOS contract
-is Apple Silicon (`arm64`) on macOS 11 Big Sur or newer; Intel and universal
-artifacts are not currently published. See
+notarized, and stapled. Before upload, the workflow mounts the exact release
+DMG, copies its app without clearing quarantine metadata, opens the isolated
+installation through LaunchServices, and checks its window and isolated runtime
+database. The public macOS contract is Apple Silicon
+(`arm64`) on macOS 11 Big Sur or newer; Intel and universal artifacts are not
+currently published. See
 [macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
 installation and checksum flow.
 
@@ -299,14 +303,17 @@ npm run tauri -- build --bundles msi
 
 Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 Official Windows artifacts are checked for the expected product name, version,
-and x64 architecture before publication. See
+and x64 architecture, then the exact release MSI is installed and launched
+with an isolated runtime database before upload. The smoke also requires both
+the MSI and installed executable to report Authenticode `NotSigned`; Windows
+installer signing remains intentionally deferred. See
 [Windows Installation And Verification](docs/WINDOWS_DISTRIBUTION.md) for the
 download and checksum flow.
 
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.21.2`
+- Current version: `0.22.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
@@ -327,9 +334,10 @@ npm run verify
 The release workflow builds installer artifacts from version tags and
 maintainer-approved manual runs. A version tag publishes the GitHub release
 only after the exact commit has passed macOS and Windows CI, both installers
-and their checksum manifests pass verification, the source dependency SBOM and
-its checksum pass validation, and public releases receive signed installer
-provenance:
+and their checksum manifests pass verification, each exact release installer
+has been installed and launched with an isolated runtime database check, the
+source dependency SBOM and its checksum pass validation, and public releases
+receive signed installer provenance:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: a version tag matching `v*`
@@ -347,12 +355,13 @@ provenance:
 The macOS job fails instead of publishing an ad-hoc fallback when signing,
 notarization, stapling, verification, or checksum generation fails. Release
 assets are assembled only from those verified job outputs. The Windows job
-likewise fails before upload unless exactly one non-empty MSI
-has the expected product name, normalized release version, and x64 package
-architecture, and its checksum is written successfully. Release assets are
-treated as immutable; a mismatch is investigated rather than silently
-replaced. The SBOM describes source and lockfile dependencies rather than the
-exact binary contents of either installer. See
+likewise fails before upload unless exactly one non-empty MSI has the expected
+product name, normalized release version, and x64 package architecture. Both
+jobs also install and launch the exact release artifact against an isolated
+database before writing the uploadable output. Release assets are treated as
+immutable; a mismatch is investigated rather than silently replaced. The SBOM
+describes source and lockfile dependencies rather than the exact binary
+contents of either installer. See
 [Release Integrity And Supply Chain](docs/SUPPLY_CHAIN.md) for verification and
 scope details.
 

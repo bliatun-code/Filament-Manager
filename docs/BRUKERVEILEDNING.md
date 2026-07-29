@@ -366,6 +366,9 @@ Typisk flyt:
 5. Angi hjemmeplassering hvis du vil.
 6. Legg rullen på lager.
 
+Startvekt eller gjenstående vekt må være et positivt heltall i gram; null,
+negative tall og desimaltall avvises med en synlig valideringsmelding.
+
 For katalogbaserte ruller fyller programmet ut materiale, farge, leverandør, standardvekt og swatch der data finnes. For manuelle ruller skriver du inn dette selv.
 
 ### Bambu Filament Code
@@ -455,7 +458,7 @@ Typisk RFID-flyt for en rull som allerede ligger i Lager:
 2. Åpne rullens detaljpanel i Lager.
 3. Gå til QR/RFID-panelet.
 4. Velg riktig live-slot hvis programmet ikke allerede foreslår den.
-5. Refresh/les live-data fra printeren.
+5. Vent på at live-data fra printeren oppdateres automatisk.
 6. Kontroller at observert RFID, farge og spor ser riktig ut.
 7. Lagre RFID på rullen.
 

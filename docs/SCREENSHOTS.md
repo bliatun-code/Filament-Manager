@@ -7,16 +7,26 @@ wide, tablet, and phone screens.
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
-The current captures were produced from the current UI in the English dark
+Most current captures were produced from the current UI in the English dark
 theme with the committed, production-shaped, sanitized QA fixture. Every
 desktop and Companion capture launches against a temporary database copy; no
-real inventory library is opened or modified. Names, identifiers, QR targets,
-counts, swatches, loans, and printer assignments shown here are synthetic.
+real inventory library is opened or modified. Except for the live printer
+overview described below, names, identifiers, QR targets, counts, swatches,
+loans, and printer assignments shown here are synthetic.
 
-The public printer overview documents ordinary assigned-slot behavior from the
-fixture. Live-printer QA remains a separate opt-in path: any capture that claims
-fresh Bambu telemetry must use a private source copy and receive the bounded
-live-readiness signal before the gate will create an image.
+The v0.22.0 refresh regenerated Dashboard, Add Filament, Program and update
+check, Bambu Live security setup, and Unsaved Printer Changes on 2026-07-29
+from fixture seed SHA-256
+`81832c22714d81c227ac53875b928b66d564e006d7f9e414fc2e6c4a95629970`.
+The security-setup capture adds only a reserved TEST-NET address and a
+synthetic printer serial; it contains no access code or trusted fingerprint.
+
+The public printer overview was captured from a private copy of a populated
+library after real Bambu telemetry arrived. Printer display names were replaced
+with `Atlas` and `Nova` in that copy before launch. The capture was reviewed to
+contain no LAN address, printer serial, access code, or certificate
+fingerprint. The live gate waits up to its bounded readiness timeout and fails
+without creating an image when fresh telemetry never arrives.
 
 ## Quick Preview
 
@@ -30,6 +40,7 @@ live-readiness signal before the gate will create an image.
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
   <a href="#program-and-manual-update-check"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version and manual update check" width="150"></a>
+  <a href="#bambu-live-security-setup"><img src="screenshots/settings-printer-editor-thumb.jpg" alt="Bambu Live security setup" width="150"></a>
   <a href="#inventory-label-sheet"><img src="screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet" width="150"></a>
   <a href="#companion-tablet"><img src="screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet" width="150"></a>
   <a href="#companion-phone"><img src="screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone" width="150"></a>
@@ -144,7 +155,8 @@ and removal of the borrowed spool from active inventory.
 Printer and multi-material slot state with current assignments, collapsed slot
 swatches/material labels, usage statistics, and manual/non-live printer
 coverage. Optional live observations, RFID matching, and candidate suggestions
-appear in the same workspace when Bambu Live is enabled.
+appear in the same workspace when Bambu Live is enabled. This capture includes
+fresh, connected Bambu telemetry from the private QA copy described above.
 
 ![Printer slot overview](screenshots/printers.jpg)
 
@@ -254,6 +266,15 @@ screens are intentionally not included in the public image set: a meaningful
 capture requires a real printer and fresh telemetry. The private visual-QA gate
 waits up to its bounded readiness timeout and fails without creating an image
 when live data never arrives.
+
+### Bambu Live Security Setup
+
+Live status keeps the access code in the operating system credential store and
+checks the printer certificate identity before credentials may be sent. A new
+or changed identity remains untrusted until the user explicitly reviews it.
+The example below uses a reserved documentation address and synthetic serial.
+
+![Bambu Live security setup](screenshots/settings-printer-editor.jpg)
 
 ### Unsaved Printer Changes
 

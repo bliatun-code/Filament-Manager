@@ -13,7 +13,7 @@ body:
     attributes:
       label: App version
       description: Find this in Settings -> Program.
-      placeholder: "0.21.2"
+      placeholder: "0.22.0"
     validations:
       required: true
   - type: dropdown

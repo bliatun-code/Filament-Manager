@@ -364,6 +364,9 @@ Typical flow:
 5. Enter home location if useful.
 6. Add the spool to inventory.
 
+Starting or remaining weight must be a positive whole number of grams; zero,
+negative, and decimal values are rejected with a visible validation message.
+
 For catalog-based spools, the app fills material, color, vendor, default weight, and swatch when those data exist. For manual spools, you enter those details yourself.
 
 ### Bambu Filament Code
@@ -453,7 +456,7 @@ Typical RFID flow for an existing inventory spool:
 2. Open the spool detail panel in Inventory.
 3. Go to the QR/RFID panel.
 4. Select the correct live slot if the app does not already suggest it.
-5. Refresh/read live data from the printer.
+5. Wait for live data from the printer to update automatically.
 6. Verify that observed RFID, color, and slot look correct.
 7. Save RFID on the spool.
 
