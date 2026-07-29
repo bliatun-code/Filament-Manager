@@ -4004,6 +4004,7 @@ fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
         include_str!("companion_api.rs"),
         include_str!("companion_inventory_read_api.rs"),
         include_str!("companion_library_api.rs"),
+        include_str!("companion_wishlist_write_api.rs"),
     ];
     let blocking_io_markers = [
         "FilamentDatabase::open",

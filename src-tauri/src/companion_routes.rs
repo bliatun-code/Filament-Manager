@@ -7,6 +7,10 @@ use crate::companion_inventory_read_api::{
 };
 use crate::companion_library_api::*;
 use crate::companion_state::CompanionApiState;
+use crate::companion_wishlist_write_api::{
+    handle_create_wishlist_item, handle_delete_wishlist_item, handle_receive_wishlist_item,
+    handle_update_wishlist_item_status,
+};
 use axum::middleware;
 use axum::routing::{get, post};
 use axum::Router;

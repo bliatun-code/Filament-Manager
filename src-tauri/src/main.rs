@@ -23,6 +23,7 @@ mod companion_payload;
 mod companion_routes;
 mod companion_session;
 mod companion_state;
+mod companion_wishlist_write_api;
 mod credential_migration;
 mod credential_profile_migration;
 mod credential_store;
