@@ -3186,6 +3186,7 @@ test("desktop screenshot capture falls back to an exact private full-screen crop
       },
       mkdirFn: async () => {},
       outputDir: testOutputDir,
+      platform: "darwin",
       readFileFn: async (artifactPath) =>
         artifactPath === fullScreenPath ? fullScreenBuffer : croppedBuffer,
       removeFileFn: async (artifactPath, options) => {
