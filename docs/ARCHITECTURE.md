@@ -36,7 +36,8 @@ The current seams are:
   in `inventory_printer_slot_live.rs`;
 - `vendor_lookup.rs` owns vendor lookup orchestration and network behavior;
   reusable HTML, color, handle, and weight parsing lives in
-  `vendor_lookup_parsing.rs`;
+  `vendor_lookup_parsing.rs`, while pure eSUN material-filter and source
+  selection policy lives in `vendor_lookup_material_scope.rs`;
 - `inventory_bambu_batch_modal.tsx` owns modal state, effects, and rendering;
   pure labels, previews, messages, and presentation classes live in
   `inventory_bambu_batch_modal_model.ts`;

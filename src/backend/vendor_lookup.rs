@@ -6,10 +6,10 @@ use std::collections::{HashMap, HashSet};
 use std::thread;
 use std::time::Duration;
 
+use crate::backend::vendor_lookup_material_scope::*;
 use crate::backend::vendor_lookup_parsing::*;
 
 const ESUN_STORE_BASE_URL: &str = "https://esun3dstore.com";
-const ESUN_SITE_BASE_URL: &str = "https://www.esun3d.com";
 const ESUN_USER_AGENT: &str =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 const ESUN_MAX_HTTP_ATTEMPTS: usize = 2;
@@ -19,11 +19,6 @@ const ESUN_REQUEST_JITTER_MS: u64 = 220;
 const ESUN_ANTI_BOT_BREAK_THRESHOLD: usize = 3;
 const ESUN_EMPTY_PAGE_BREAK_THRESHOLD: usize = 2;
 const ESUN_FILTERED_DETAIL_FETCH_BUDGET: usize = 18;
-const ESUN_GENERAL_MATERIALS_PATH: &str = "/general-materials/";
-const ESUN_AESTHETIC_MATERIALS_PATH: &str = "/aesthetic-materials/";
-const ESUN_ENGINEERING_MATERIALS_PATH: &str = "/engineering-materials/";
-const ESUN_FUNCTIONAL_MATERIALS_PATH: &str = "/functional-materials/";
-const ESUN_FLEXIBLE_MATERIALS_PATH: &str = "/flexibility-elasticity/";
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EsunSearchResult {
@@ -871,77 +866,6 @@ fn append_entries_from_product_detail(
     }
 }
 
-fn normalize_material_filters(material_filters: Option<Vec<String>>) -> Vec<String> {
-    let mut values: Vec<String> = material_filters
-        .unwrap_or_default()
-        .into_iter()
-        .map(|value| value.trim().to_uppercase())
-        .filter(|value| !value.is_empty())
-        .collect();
-    values.sort();
-    values.dedup();
-    values
-}
-
-fn matches_material_filter(material: &str, material_filters: &[String]) -> bool {
-    if material_filters.is_empty() {
-        return true;
-    }
-    let normalized = material.trim().to_uppercase();
-    material_filters.iter().any(|value| value == &normalized)
-}
-
-fn esun_material_source_urls(material_filters: &[String]) -> Vec<String> {
-    let mut urls = Vec::new();
-    let mut seen = HashSet::new();
-
-    for material in material_filters {
-        for path in esun_material_source_paths(material) {
-            let url = format!("{ESUN_SITE_BASE_URL}{path}");
-            if seen.insert(url.clone()) {
-                urls.push(url);
-            }
-        }
-    }
-
-    urls
-}
-
-fn esun_material_source_paths(material: &str) -> &'static [&'static str] {
-    match material {
-        "PLA" => &[ESUN_GENERAL_MATERIALS_PATH, ESUN_AESTHETIC_MATERIALS_PATH],
-        "PETG" | "PET" => &[ESUN_GENERAL_MATERIALS_PATH, ESUN_AESTHETIC_MATERIALS_PATH],
-        "ABS" | "ASA" | "PA" | "PA12" | "PAHT" | "PC" => &[ESUN_ENGINEERING_MATERIALS_PATH],
-        "TPU" => &[ESUN_FLEXIBLE_MATERIALS_PATH],
-        "PVA" | "HIPS" => &[ESUN_FUNCTIONAL_MATERIALS_PATH],
-        _ => &[ESUN_GENERAL_MATERIALS_PATH, ESUN_ENGINEERING_MATERIALS_PATH],
-    }
-}
-
-fn filter_product_urls_by_material_hints(
-    product_urls: Vec<String>,
-    material_filters: &[String],
-) -> Vec<String> {
-    if material_filters.is_empty() {
-        return product_urls;
-    }
-
-    product_urls
-        .into_iter()
-        .filter(|url| {
-            let normalized = url.to_lowercase();
-            material_filters.iter().any(|material| {
-                let keywords = esun_material_url_keywords(material);
-                if keywords.is_empty() {
-                    normalized.contains(&material.to_lowercase())
-                } else {
-                    keywords.iter().any(|keyword| normalized.contains(keyword))
-                }
-            })
-        })
-        .collect()
-}
-
 fn dedupe_site_listing_candidates(
     candidates: Vec<EsunSiteListingCandidate>,
 ) -> Vec<EsunSiteListingCandidate> {
@@ -1059,24 +983,6 @@ fn normalize_catalog_product_url(url: &str) -> String {
             parsed.to_string()
         }
         Err(_) => trimmed.to_string(),
-    }
-}
-
-fn esun_material_url_keywords(material: &str) -> &'static [&'static str] {
-    match material {
-        "PLA" => &["pla"],
-        "PETG" => &["petg", "epetg"],
-        "ABS" => &["abs", "eabs"],
-        "TPU" => &["tpu", "etpu", "tpe", "peba"],
-        "ASA" => &["asa", "easa"],
-        "PA" => &["pa-", "epa-", "/epa", "nylon"],
-        "PA12" => &["pa12", "epa12"],
-        "PAHT" => &["paht"],
-        "PC" => &["pc"],
-        "PET" => &["pet-"],
-        "PVA" => &["pva"],
-        "HIPS" => &["hips"],
-        _ => &[],
     }
 }
 
