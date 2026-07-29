@@ -94,6 +94,7 @@ const COMPANION_BROWSER_STORAGE_SHELL_JS: &str =
     include_str!("../companion_browser/storage_shell.js");
 const COMPANION_BROWSER_CSS: &str = include_str!("../companion_browser/app.css");
 const COMPANION_BROWSER_THEME_CSS: &str = include_str!("../companion_browser/theme.css");
+const COMPANION_BROWSER_WORKSPACE_CSS: &str = include_str!("../companion_browser/workspace.css");
 const COMPANION_ICON_LIGHT_PNG: &[u8] = include_bytes!("../icons/dock-light.png");
 const COMPANION_ICON_DARK_PNG: &[u8] = include_bytes!("../icons/dock-dark.png");
 
@@ -443,6 +444,13 @@ const COMPANION_BROWSER_BASE_ASSETS: &[(&str, CompanionBrowserAsset)] = &[
             content: COMPANION_BROWSER_THEME_CSS,
         },
     ),
+    (
+        "workspace.css",
+        CompanionBrowserAsset {
+            content_type: "text/css; charset=utf-8",
+            content: COMPANION_BROWSER_WORKSPACE_CSS,
+        },
+    ),
 ];
 
 pub(crate) fn companion_browser_assets(
@@ -542,6 +550,12 @@ mod tests {
         assert!(asset.weak_etag.ends_with('"'));
         assert!(asset.gzip_content.is_some());
         assert_eq!(asset.content_type, "text/css; charset=utf-8");
+
+        let workspace =
+            cached_companion_browser_asset("workspace.css").expect("cached workspace CSS asset");
+        assert!(workspace.content.starts_with(b"#app {"));
+        assert!(workspace.gzip_content.is_some());
+        assert_eq!(workspace.content_type, "text/css; charset=utf-8");
 
         let icon = cached_companion_browser_asset("icon-dark.png").expect("cached icon");
         assert!(icon.gzip_content.is_none());

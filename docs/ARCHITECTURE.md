@@ -19,6 +19,36 @@ The Tauri crate must not include backend files through cross-tree `#[path]`
 attributes. Add a backend module to `src/backend/mod.rs` and expose only the
 smallest API the adapter needs.
 
+## Incremental Module Maintenance
+
+Large modules are reduced along existing responsibility boundaries when their
+area is otherwise being changed. Line count alone is not a reason for a broad
+rewrite, and an extraction must preserve the existing public API and gain
+focused behavior or contract coverage.
+
+The current seams are:
+
+- `companion_api.rs` owns Companion mutations, sessions, credentials, and
+  workflow handlers; read-only health and `/library/*` handlers live in
+  `companion_library_api.rs`;
+- `inventory_engine.rs` remains the public transaction-oriented domain API,
+  while Bambu Live context derivation for printer-slot assignments is isolated
+  in `inventory_printer_slot_live.rs`;
+- `vendor_lookup.rs` owns vendor lookup orchestration and network behavior;
+  reusable HTML, color, handle, and weight parsing lives in
+  `vendor_lookup_parsing.rs`;
+- `inventory_bambu_batch_modal.tsx` owns modal state, effects, and rendering;
+  pure labels, previews, messages, and presentation classes live in
+  `inventory_bambu_batch_modal_model.ts`;
+- Companion `app.css` contains the shared foundation and reusable components,
+  while `workspace.css` contains the application shell and workflow layouts.
+  Their order in `index.html` is part of the visual contract.
+
+`use_printer_slot_interactions.ts` is still intentionally cohesive around
+stateful slot operations. Extract from it only when a changed interaction
+exposes a small effect boundary that can be tested independently; do not move
+code merely to reduce the file length.
+
 ## Startup And Storage
 
 `src-tauri/src/main.rs` is application wiring. Database location selection,

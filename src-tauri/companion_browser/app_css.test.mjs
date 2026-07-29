@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-function readCssBundle(fileName = "./app.css", seen = new Set()) {
+function readCssFile(fileName, seen) {
   const fileUrl = new URL(fileName, import.meta.url);
   const filePath = fileUrl.pathname;
   if (seen.has(filePath)) {
@@ -12,8 +12,15 @@ function readCssBundle(fileName = "./app.css", seen = new Set()) {
 
   const css = fs.readFileSync(fileUrl, "utf8");
   return css.replace(/@import url\("\/companion\/([^"]+)"\);/g, (_match, importedFile) => {
-    return readCssBundle(`./${importedFile}`, seen);
+    return readCssFile(`./${importedFile}`, seen);
   });
+}
+
+function readCssBundle() {
+  const seen = new Set();
+  return ["./app.css", "./workspace.css"]
+    .map((fileName) => readCssFile(fileName, seen))
+    .join("\n");
 }
 
 function relativeLuminance([red, green, blue]) {

@@ -3936,7 +3936,10 @@ async fn companion_api_rejects_invalid_browser_lend_request() {
 
 #[test]
 fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
-    let source = include_str!("companion_api.rs");
+    let sources = [
+        include_str!("companion_api.rs"),
+        include_str!("companion_library_api.rs"),
+    ];
     let blocking_io_markers = [
         "FilamentDatabase::open",
         "StatisticsEngine::open",
@@ -3948,19 +3951,21 @@ fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
         ".credentials.",
     ];
 
-    for section in source.split("pub(super) async fn ").skip(1) {
-        let name = section
-            .split_once('(')
-            .map(|(name, _)| name.trim())
-            .expect("async companion handler name");
-        let contains_blocking_io = blocking_io_markers
-            .iter()
-            .any(|marker| section.contains(marker));
-        if contains_blocking_io {
-            assert!(
-                section.contains(".run_blocking("),
-                "{name} performs blocking I/O without the Companion executor"
-            );
+    for source in sources {
+        for section in source.split("pub(super) async fn ").skip(1) {
+            let name = section
+                .split_once('(')
+                .map(|(name, _)| name.trim())
+                .expect("async companion handler name");
+            let contains_blocking_io = blocking_io_markers
+                .iter()
+                .any(|marker| section.contains(marker));
+            if contains_blocking_io {
+                assert!(
+                    section.contains(".run_blocking("),
+                    "{name} performs blocking I/O without the Companion executor"
+                );
+            }
         }
     }
 }

@@ -50,6 +50,52 @@ npm run test:rust
 npm run check:contracts
 ```
 
+## Local Build And QA Cleanup
+
+Cargo profiles and local visual-QA output can grow substantially over time.
+Inspect the repository-owned cleanup plan before removing anything:
+
+```bash
+npm run cleanup:local
+```
+
+The command is a dry run by default. Its standard policy removes Cargo
+`debug`/`release` profiles only after 14 inactive days, measured from the newest
+modification anywhere in each profile without following symlinks. QA run
+directories are removed after 14 days while retaining the newest five. For the
+aggregate `release-artifacts/visual-qa/` directory, retention applies to each
+immediate run directory instead of the aggregate directory itself; loose files
+are left untouched. Versioned release directories are removed after 90 days
+while retaining the newest three.
+
+The cleanup only considers directories under this repository's `target/` and
+`release-artifacts/` roots. It refuses cleanup when either root is a symlink,
+does not follow symlinks within candidates, and verifies canonical ancestry,
+retention markers, and recursive build activity again immediately before
+removal.
+
+Apply the displayed policy explicitly:
+
+```bash
+npm run cleanup:local -- --apply
+```
+
+Stop running builds and local app instances before every apply operation. To
+make recent Cargo profiles eligible, preview the zero-day build policy and only
+then apply it:
+
+```bash
+npm run cleanup:local -- --scope build --build-days 0
+npm run cleanup:local -- --scope build --build-days 0 --apply
+```
+
+Place an empty `.cleanup-keep` file inside any build profile or artifact
+directory that must never be selected. Run
+`npm run cleanup:local -- --help` for the age, count, scope, and verbose
+options. Do not use an external recursive-delete command as a substitute; the
+repository command deliberately validates its root, candidates, markers, and
+modification times.
+
 ## Pull Requests
 
 - Keep changes focused and explain the user-facing behavior.

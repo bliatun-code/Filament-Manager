@@ -1,5 +1,6 @@
 use crate::companion_api::*;
 use crate::companion_http::apply_companion_cache_policy;
+use crate::companion_library_api::*;
 use crate::companion_state::CompanionApiState;
 use axum::middleware;
 use axum::routing::{get, post};

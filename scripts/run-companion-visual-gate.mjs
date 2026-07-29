@@ -292,9 +292,10 @@ export async function runCompanionVisualGate(options = {}) {
     ...(options.minimums ?? {}),
   };
 
-  const [shellHtml, css, js, health] = await Promise.all([
+  const [shellHtml, css, workspaceCss, js, health] = await Promise.all([
     fetchText(baseUrl, "/companion", timeoutMs),
     fetchText(baseUrl, "/companion/app.css", timeoutMs),
+    fetchText(baseUrl, "/companion/workspace.css", timeoutMs),
     fetchText(baseUrl, "/companion/app.js", timeoutMs),
     fetchJson(baseUrl, "/api/v1/health", timeoutMs),
   ]);
@@ -309,12 +310,18 @@ export async function runCompanionVisualGate(options = {}) {
   assertIncludes(errors, "companion shell", shellHtml, [
     'id="app"',
     "/companion/app.css",
+    "/companion/workspace.css",
     "/companion/app.js",
   ]);
   assertIncludes(errors, "companion CSS", css, [
     ".companion-shell",
     ".swatch-surface",
     ".list-row",
+  ]);
+  assertIncludes(errors, "companion workspace CSS", workspaceCss, [
+    ".shell-main",
+    ".workflow-stage",
+    ".detail-panel",
   ]);
   assertIncludes(errors, "companion JS", js, [
     "createCompanionAppShellRenderer",

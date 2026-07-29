@@ -50,14 +50,13 @@ use crate::backend::database_spool_updates::{
     update_spool_weight as update_spool_weight_row,
 };
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
-    FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow,
-    ManualMasterInput, MasterCatalogUpdateInput, PrinterOverviewRow, PrinterRow,
-    SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow,
-    SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
+    ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, LibrarySyncCachedSnapshotRow,
+    LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput,
+    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
+    SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
 };
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
-use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
+use crate::backend::inventory_printer_slot_live::derive_assign_printer_slot_live_context;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -1225,152 +1224,9 @@ impl InventoryEngine {
             .map(str::to_string)
     }
 
-    fn resolve_live_unknown_override(
-        &self,
-        printer_id: &str,
-        slot_index: i64,
-        ams_id: &str,
-    ) -> InventoryResult<Option<(String, String)>> {
-        if ams_id.ends_with("_ext") {
-            return Ok(None);
-        }
-
-        let integration = self
-            .db
-            .list_bambu_live_integrations()?
-            .into_iter()
-            .find(|entry| entry.printer_id == printer_id)
-            .map(|entry| entry.config);
-
-        Ok(integration.as_ref().and_then(|config| {
-            self.find_live_unknown_override_for_slot(config, slot_index, ams_id)
-        }))
-    }
-
-    fn find_live_unknown_override_for_slot(
-        &self,
-        config: &BambuLiveIntegrationRow,
-        slot_index: i64,
-        ams_id: &str,
-    ) -> Option<(String, String)> {
-        let tray = config
-            .observed_state
-            .as_ref()?
-            .trays
-            .iter()
-            .find(|candidate| {
-                bambu_live_slot_matches_tray(
-                    ams_id,
-                    slot_index,
-                    candidate.ams_index,
-                    candidate.tray_index,
-                )
-            })?;
-        self.live_unknown_override_from_tray(tray)
-    }
-
-    fn live_unknown_override_from_tray(
-        &self,
-        tray: &BambuLiveObservedTrayRow,
-    ) -> Option<(String, String)> {
-        if !tray.loaded || tray.match_status.as_deref() != Some("unknown_rfid") {
-            return None;
-        }
-
-        let tray_uuid = Self::normalize_optional_text(tray.tray_uuid.as_deref())
-            .or_else(|| Self::normalize_optional_text(tray.observed_rfid_tag.as_deref()))?;
-        let color_hex = Self::normalize_optional_text(tray.color_hex.as_deref())?;
-        Some((tray_uuid, color_hex))
-    }
-
-    fn derive_assign_printer_slot_live_context(
-        &self,
-        input: &AssignPrinterSlotInput,
-    ) -> InventoryResult<(Option<String>, Option<String>, bool)> {
-        let requested_spool_id = Self::normalize_optional_text(input.spool_id.as_deref());
-        let explicit_override_tray_uuid =
-            Self::normalize_optional_text(input.rfid_override_tray_uuid.as_deref());
-        let explicit_override_color_hex =
-            Self::normalize_optional_text(input.rfid_override_color_hex.as_deref());
-        let explicit_clear = input.clear_live_cache_before_next_refresh.unwrap_or(false);
-
-        let printer = match self
-            .db
-            .list_printer_overview()?
-            .into_iter()
-            .find(|row| row.printer.id == input.printer_id)
-        {
-            Some(row) => row,
-            None => {
-                return Ok((
-                    explicit_override_tray_uuid,
-                    explicit_override_color_hex,
-                    explicit_clear,
-                ));
-            }
-        };
-
-        let slot = match printer
-            .slots
-            .into_iter()
-            .find(|slot| slot.slot_id == input.slot_id)
-        {
-            Some(slot) => slot,
-            None => {
-                return Ok((
-                    explicit_override_tray_uuid,
-                    explicit_override_color_hex,
-                    explicit_clear,
-                ));
-            }
-        };
-
-        let current_slot_spool_id = Self::normalize_optional_text(slot.spool_id.as_deref());
-        let slot_has_spool = current_slot_spool_id.is_some();
-        let is_ext_slot = slot.ams_id.ends_with("_ext");
-        let effective_clear =
-            explicit_clear || (requested_spool_id.is_none() && slot_has_spool && !is_ext_slot);
-
-        if requested_spool_id.is_none() || is_ext_slot {
-            return Ok((
-                explicit_override_tray_uuid,
-                explicit_override_color_hex,
-                effective_clear,
-            ));
-        }
-
-        let mut effective_override_tray_uuid = explicit_override_tray_uuid;
-        let mut effective_override_color_hex = explicit_override_color_hex;
-
-        if effective_override_tray_uuid.is_none() || effective_override_color_hex.is_none() {
-            if let Some((derived_tray_uuid, derived_color_hex)) = self
-                .resolve_live_unknown_override(&input.printer_id, slot.slot_index, &slot.ams_id)?
-            {
-                if effective_override_tray_uuid.is_none() {
-                    effective_override_tray_uuid = Some(derived_tray_uuid);
-                }
-                if effective_override_color_hex.is_none() {
-                    effective_override_color_hex = Some(derived_color_hex);
-                }
-            }
-        }
-
-        let manual_reassignment_needs_live_suppression = !is_ext_slot
-            && requested_spool_id != current_slot_spool_id
-            && requested_spool_id.is_some()
-            && effective_override_tray_uuid.is_none()
-            && effective_override_color_hex.is_none();
-
-        Ok((
-            effective_override_tray_uuid,
-            effective_override_color_hex,
-            effective_clear || manual_reassignment_needs_live_suppression,
-        ))
-    }
-
     pub fn assign_printer_slot(&self, mut input: AssignPrinterSlotInput) -> InventoryResult<()> {
         let (effective_override_tray_uuid, effective_override_color_hex, effective_clear) =
-            self.derive_assign_printer_slot_live_context(&input)?;
+            derive_assign_printer_slot_live_context(&self.db, &input)?;
         input.rfid_override_tray_uuid = effective_override_tray_uuid;
         input.rfid_override_color_hex = effective_override_color_hex;
         input.clear_live_cache_before_next_refresh = Some(effective_clear);
@@ -1641,7 +1497,7 @@ fn resolve_spool_tare_weight_g(explicit_tare: Option<i64>, vendor: Option<&str>)
         .max(0)
 }
 
-fn normalize_optional_input_text(value: Option<&str>) -> Option<String> {
+pub(super) fn normalize_optional_input_text(value: Option<&str>) -> Option<String> {
     value
         .map(str::trim)
         .filter(|text| !text.is_empty())

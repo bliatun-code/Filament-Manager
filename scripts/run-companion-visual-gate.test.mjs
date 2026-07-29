@@ -36,13 +36,18 @@ function companionFixtureHandler(request, response) {
   if (url.pathname === "/companion") {
     response.writeHead(200, { "content-type": "text/html" });
     response.end(
-      '<div id="app"></div><link rel="stylesheet" href="/companion/app.css"><script type="module" src="/companion/app.js"></script>',
+      '<div id="app"></div><link rel="stylesheet" href="/companion/app.css"><link rel="stylesheet" href="/companion/workspace.css"><script type="module" src="/companion/app.js"></script>',
     );
     return;
   }
   if (url.pathname === "/companion/app.css") {
     response.writeHead(200, { "content-type": "text/css" });
     response.end(".companion-shell{} .swatch-surface{} .list-row{}");
+    return;
+  }
+  if (url.pathname === "/companion/workspace.css") {
+    response.writeHead(200, { "content-type": "text/css" });
+    response.end(".shell-main{} .workflow-stage{} .detail-panel{}");
     return;
   }
   if (url.pathname === "/companion/app.js") {

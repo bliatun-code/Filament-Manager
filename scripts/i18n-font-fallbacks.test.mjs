@@ -7,10 +7,12 @@ const companionThemeCss = readFileSync(
   new URL("../src-tauri/companion_browser/theme.css", import.meta.url),
   "utf8",
 );
-const companionCss = readFileSync(
-  new URL("../src-tauri/companion_browser/app.css", import.meta.url),
-  "utf8",
-);
+const companionCss = [
+  "../src-tauri/companion_browser/app.css",
+  "../src-tauri/companion_browser/workspace.css",
+]
+  .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
+  .join("\n");
 
 for (const [surface, css] of [
   ["desktop", desktopCss],

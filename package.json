@@ -10,6 +10,7 @@
   },
   "scripts": {
     "doctor": "node ./scripts/doctor.mjs",
+    "cleanup:local": "node ./scripts/cleanup-local-artifacts.mjs",
     "check:version": "node ./scripts/check-version-consistency.mjs",
     "check:msi-version": "node ./scripts/normalize-msi-version.mjs --check",
     "check:github-actions-pinning": "node ./scripts/check-github-actions-pinning.mjs",

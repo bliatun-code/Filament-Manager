@@ -16,6 +16,10 @@ const source = readFileSync(
   new URL("./inventory_bambu_batch_modal.tsx", import.meta.url),
   "utf8",
 );
+const modelSource = readFileSync(
+  new URL("./inventory_bambu_batch_modal_model.ts", import.meta.url),
+  "utf8",
+);
 
 const norwegianMessages: Record<string, string> = {
   "inventory.bambuBatchModalEyebrow": "Bambu-esker",
@@ -188,7 +192,10 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
   assert.match(html, /w-\[min\(100%,72rem\)\]/);
   assert.match(html, /xl:w-\[min\(80vw,72rem\)\]/);
   assert.match(html, /min-\[900px\]:grid-cols-\[minmax\(17rem,0.62fr\)_minmax\(0,1.38fr\)\]/);
-  assert.match(source, /min-\[900px\]:grid-cols-\[minmax\(0,1fr\)_minmax\(20rem,1fr\)\]/);
+  assert.match(
+    modelSource,
+    /min-\[900px\]:grid-cols-\[minmax\(0,1fr\)_minmax\(20rem,1fr\)\]/,
+  );
   assert.match(html, /<label[^>]*for="[^"]+"[^>]*>Codes in this batch<\/label>/);
   assert.match(html, /<textarea[^>]*id="[^"]+"/);
   assert.doesNotMatch(html, /Box label/);
