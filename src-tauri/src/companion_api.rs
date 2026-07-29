@@ -143,73 +143,75 @@ pub(super) async fn handle_health(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionHealthResponse>, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    let sync_settings = read_library_sync_settings(&state)?;
-    Ok(Json(CompanionHealthResponse {
-        ok: true,
-        api_version: "v1",
-        auth_mode: state.runtime.auth_mode().to_string(),
-        access_mode: "trusted-lan",
-        library_id: sync_settings.library_id,
-        device_name: sync_settings.device_name,
-        sync_mode: sync_settings.mode,
-    }))
+    state
+        .run_blocking("health check", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            let sync_settings = read_library_sync_settings(&state)?;
+            Ok(Json(CompanionHealthResponse {
+                ok: true,
+                api_version: "v1",
+                auth_mode: state.runtime.auth_mode().to_string(),
+                access_mode: "trusted-lan",
+                library_id: sync_settings.library_id,
+                device_name: sync_settings.device_name,
+                sync_mode: sync_settings.mode,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_library_snapshot(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionLibrarySnapshotResponse>, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    let sync_settings = read_library_sync_settings(&state)?;
-    let stats = StatisticsEngine::open(&state.db_path)
-        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-    let inventory = stats
-        .inventory_overview()
-        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-    let active_loans = state
-        .service
-        .list_active_spool_loans()
-        .map_err(CompanionApiError::from)?
-        .len() as i64;
-    let printers = state
-        .service
-        .list_printer_overview()
-        .map_err(CompanionApiError::from)?
-        .len() as i64;
-    let captured_at = FilamentDatabase::open(&state.db_path)
-        .map_err(CompanionApiError::from)?
-        .sqlite_now()
-        .map_err(CompanionApiError::from)?;
+    state
+        .run_blocking("library snapshot", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            let snapshot = state
+                .service
+                .library_snapshot()
+                .map_err(CompanionApiError::from)?;
 
-    Ok(Json(CompanionLibrarySnapshotResponse {
-        ok: true,
-        captured_at,
-        library_id: sync_settings.library_id,
-        device_name: sync_settings.device_name,
-        sync_mode: sync_settings.mode,
-        inventory,
-        active_loans,
-        printers,
-    }))
+            Ok(Json(CompanionLibrarySnapshotResponse {
+                ok: true,
+                captured_at: snapshot.captured_at,
+                library_id: snapshot.sync_settings.library_id,
+                device_name: snapshot.sync_settings.device_name,
+                sync_mode: snapshot.sync_settings.mode,
+                inventory: snapshot.inventory,
+                active_loans: snapshot.active_loans,
+                printers: snapshot.printers,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_library_domain_revisions(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<LibrarySyncDomainRevisionsResponse>, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
-    let library_id = db
-        .get_library_sync_library_id()
-        .map_err(CompanionApiError::from)?;
-    let revisions = db
-        .library_domain_revisions()
-        .map_err(CompanionApiError::from)?;
-    Ok(Json(LibrarySyncDomainRevisionsResponse {
-        library_id,
-        revisions,
-    }))
+    state
+        .run_blocking("library domain revisions", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
+            // Initialize the stable library ID before entering the read-only
+            // snapshot; the getter may persist it on a brand-new database.
+            db.get_library_sync_library_id()
+                .map_err(CompanionApiError::from)?;
+            let (library_id, revisions) = db
+                .with_read_transaction(|snapshot| {
+                    Ok((
+                        snapshot.get_library_sync_library_id()?,
+                        snapshot.library_domain_revisions()?,
+                    ))
+                })
+                .map_err(CompanionApiError::from)?;
+            Ok(Json(LibrarySyncDomainRevisionsResponse {
+                library_id,
+                revisions,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_library_spools(
@@ -221,9 +223,13 @@ pub(super) async fn handle_library_spools(
     let limit = query.limit.unwrap_or(250).clamp(1, 2_500);
     let offset = query.offset.unwrap_or(0).max(0);
     let rows = state
-        .service
-        .list_spools(limit, offset)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("library spool list", move |state| {
+            state
+                .service
+                .list_spools(limit, offset)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -231,13 +237,17 @@ pub(super) async fn handle_export_full_backup(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<LibrarySyncFullBackupResponse>, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    let db = FilamentDatabase::open(&state.db_path)
-        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-    let content = db
-        .export_full_backup_json()
-        .map_err(|error| CompanionApiError::Internal(format!("{error:?}")))?;
-    Ok(Json(LibrarySyncFullBackupResponse { content }))
+    state
+        .run_blocking("full backup export", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            let db = FilamentDatabase::open(&state.db_path)
+                .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+            let content = db
+                .export_full_backup_json()
+                .map_err(|error| CompanionApiError::Internal(format!("{error:?}")))?;
+            Ok(Json(LibrarySyncFullBackupResponse { content }))
+        })
+        .await
 }
 
 pub(super) async fn handle_library_printers(
@@ -246,9 +256,13 @@ pub(super) async fn handle_library_printers(
 ) -> Result<Json<Vec<PrinterOverviewRow>>, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
     let rows = state
-        .service
-        .list_printer_overview()
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("library printer list", move |state| {
+            state
+                .service
+                .list_printer_overview()
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -256,25 +270,33 @@ pub(super) async fn handle_library_printer_settings(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<CompanionPrinterSettingsResponse>, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    let bambu_live_integrations = FilamentDatabase::open(&state.db_path)
-        .map_err(CompanionApiError::from)?
-        .list_bambu_live_integrations()
-        .map_err(CompanionApiError::from)?;
-    let bambu_live_integrations =
-        sanitized_bambu_live_integrations(bambu_live_integrations, &state.credentials, true)
+    state
+        .run_blocking("library printer settings", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            let db = FilamentDatabase::open(&state.db_path).map_err(CompanionApiError::from)?;
+            let (bambu_live_integrations, printers) = db
+                .with_read_transaction(|snapshot| {
+                    Ok((
+                        snapshot.list_bambu_live_integrations()?,
+                        snapshot.list_printers()?,
+                    ))
+                })
+                .map_err(CompanionApiError::from)?;
+            let bambu_live_integrations = sanitized_bambu_live_integrations(
+                bambu_live_integrations,
+                &state.credentials,
+                true,
+            )
             .map_err(CompanionApiError::Internal)?;
-    let printers = FilamentDatabase::open(&state.db_path)
-        .map_err(CompanionApiError::from)?
-        .list_printers()
-        .map_err(CompanionApiError::from)?;
 
-    Ok(Json(CompanionPrinterSettingsResponse {
-        active_printer_id: None,
-        printers,
-        printer_models: Vec::new(),
-        bambu_live_integrations,
-    }))
+            Ok(Json(CompanionPrinterSettingsResponse {
+                active_printer_id: None,
+                printers,
+                printer_models: Vec::new(),
+                bambu_live_integrations,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_library_loans(
@@ -291,10 +313,15 @@ pub(super) async fn handle_library_loans(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or("ALL");
+    let direction = direction.to_string();
     let rows = state
-        .service
-        .list_spool_loans(limit, include_returned, Some(direction))
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("library loan list", move |state| {
+            state
+                .service
+                .list_spool_loans(limit, include_returned, Some(&direction))
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -307,14 +334,17 @@ pub(super) async fn handle_library_filament_consumption(
     let limit = query.limit.unwrap_or(500).clamp(1, 2_000);
     let printer_id = query
         .printer_id
-        .as_deref()
-        .map(str::trim)
+        .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
-    let stats = StatisticsEngine::open(&state.db_path)
-        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
-    let rows = stats
-        .filament_consumption(limit, printer_id)
-        .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+    let rows = state
+        .run_blocking("library filament consumption", move |state| {
+            let stats = StatisticsEngine::open(&state.db_path)
+                .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+            stats
+                .filament_consumption(limit, printer_id.as_deref())
+                .map_err(|error| CompanionApiError::Internal(error.to_string()))
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -325,10 +355,15 @@ pub(super) async fn handle_library_catalog_masters(
 ) -> Result<Json<Vec<FilamentMasterCatalogRow>>, CompanionApiError> {
     require_allowed_host(&headers, &state.runtime)?;
     let limit = query.limit.unwrap_or(1_000).clamp(1, 5_000);
+    let search = query.search;
     let rows = state
-        .service
-        .list_master_catalog(limit, query.search.as_deref())
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("library catalog list", move |state| {
+            state
+                .service
+                .list_master_catalog(limit, search.as_deref())
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -340,9 +375,13 @@ pub(super) async fn handle_library_wishlist_items(
     require_allowed_host(&headers, &state.runtime)?;
     let limit = query.limit.unwrap_or(500).clamp(1, 2_000);
     let rows = state
-        .service
-        .list_wishlist_items(limit)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("library wishlist list", move |state| {
+            state
+                .service
+                .list_wishlist_items(limit)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -358,28 +397,32 @@ pub(super) async fn handle_session_status(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Json<SessionStatusResponse>, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
+    state
+        .run_blocking("session status", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
 
-    let active_session = find_active_session(&state.sessions, &state.db_path, &headers)?;
-    let mut authenticated = false;
-    let mut csrf_token = None;
-    let mut can_renew = false;
+            let active_session = find_active_session(&state.sessions, &state.db_path, &headers)?;
+            let mut authenticated = false;
+            let mut csrf_token = None;
+            let mut can_renew = false;
 
-    if let Some(session) = active_session {
-        authenticated = true;
-        csrf_token = Some(session.csrf_token.clone());
-    } else {
-        can_renew = find_active_trusted_lan_browser(&state.db_path, &headers)?.is_some();
-    }
+            if let Some(session) = active_session {
+                authenticated = true;
+                csrf_token = Some(session.csrf_token.clone());
+            } else {
+                can_renew = find_active_trusted_lan_browser(&state.db_path, &headers)?.is_some();
+            }
 
-    Ok(Json(SessionStatusResponse {
-        ok: true,
-        auth_mode: state.runtime.auth_mode().to_string(),
-        access_mode: "trusted-lan".to_string(),
-        authenticated,
-        csrf_token,
-        can_renew,
-    }))
+            Ok(Json(SessionStatusResponse {
+                ok: true,
+                auth_mode: state.runtime.auth_mode().to_string(),
+                access_mode: "trusted-lan".to_string(),
+                authenticated,
+                csrf_token,
+                can_renew,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_pair_session(
@@ -387,66 +430,76 @@ pub(super) async fn handle_pair_session(
     headers: HeaderMap,
     Json(payload): Json<PairSessionRequest>,
 ) -> Result<Response, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    require_allowed_origin(&headers, &state.runtime)?;
+    state
+        .run_blocking("pair session", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            require_allowed_origin(&headers, &state.runtime)?;
 
-    let pairing_token = payload.pairing_token.trim();
-    if pairing_token.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "pairing_token is required".to_string(),
-        ));
-    }
+            let pairing_token = payload.pairing_token.trim();
+            if pairing_token.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "pairing_token is required".to_string(),
+                ));
+            }
 
-    let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-    let db = state.open_db()?;
-    let pairing_token_hash = hash_secret(pairing_token);
-    let pairing_display_name = db
-        .consume_trusted_lan_pairing(&pairing_token_hash)
-        .map_err(CompanionApiError::from)?
-        .ok_or_else(|| {
-            CompanionApiError::Unauthorized(
-                "Pairing link is invalid, expired, or already used".to_string(),
+            let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
+            let db = state.open_db()?;
+            let pairing_token_hash = hash_secret(pairing_token);
+            let pairing_display_name = db
+                .consume_trusted_lan_pairing(&pairing_token_hash)
+                .map_err(CompanionApiError::from)?
+                .ok_or_else(|| {
+                    CompanionApiError::Unauthorized(
+                        "Pairing link is invalid, expired, or already used".to_string(),
+                    )
+                })?;
+            let device_token = random_hex_token(32);
+            let device_token_hash = hash_secret(&device_token);
+            let paired_browser = db
+                .create_trusted_lan_paired_browser(
+                    pairing_display_name.as_deref(),
+                    &device_token_hash,
+                    origin.as_deref(),
+                )
+                .map_err(CompanionApiError::from)?;
+
+            build_authenticated_session_response(
+                &state.sessions,
+                &state.db_path,
+                Some(paired_browser.id),
+                Some(&device_token),
+                origin.as_deref(),
             )
-        })?;
-    let device_token = random_hex_token(32);
-    let device_token_hash = hash_secret(&device_token);
-    let paired_browser = db
-        .create_trusted_lan_paired_browser(
-            pairing_display_name.as_deref(),
-            &device_token_hash,
-            origin.as_deref(),
-        )
-        .map_err(CompanionApiError::from)?;
-
-    build_authenticated_session_response(
-        &state.sessions,
-        &state.db_path,
-        Some(paired_browser.id),
-        Some(&device_token),
-        origin.as_deref(),
-    )
+        })
+        .await
 }
 
 pub(super) async fn handle_renew_session(
     State(state): State<CompanionApiState>,
     headers: HeaderMap,
 ) -> Result<Response, CompanionApiError> {
-    require_allowed_host(&headers, &state.runtime)?;
-    require_allowed_origin(&headers, &state.runtime)?;
+    state
+        .run_blocking("renew session", move |state| {
+            require_allowed_host(&headers, &state.runtime)?;
+            require_allowed_origin(&headers, &state.runtime)?;
 
-    let paired_browser =
-        find_active_trusted_lan_browser(&state.db_path, &headers)?.ok_or_else(|| {
-            CompanionApiError::Unauthorized("Trusted-LAN browser pairing is required".to_string())
-        })?;
+            let paired_browser = find_active_trusted_lan_browser(&state.db_path, &headers)?
+                .ok_or_else(|| {
+                    CompanionApiError::Unauthorized(
+                        "Trusted-LAN browser pairing is required".to_string(),
+                    )
+                })?;
 
-    let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-    build_authenticated_session_response(
-        &state.sessions,
-        &state.db_path,
-        Some(paired_browser.id),
-        None,
-        origin.as_deref(),
-    )
+            let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
+            build_authenticated_session_response(
+                &state.sessions,
+                &state.db_path,
+                Some(paired_browser.id),
+                None,
+                origin.as_deref(),
+            )
+        })
+        .await
 }
 
 pub(super) async fn handle_qa_session(
@@ -472,11 +525,7 @@ pub(super) async fn handle_qa_expire_session(
     require_allowed_host(&headers, &state.runtime)?;
     require_allowed_origin(&headers, &state.runtime)?;
 
-    state
-        .sessions
-        .write()
-        .map_err(|_| CompanionApiError::Internal("Failed to write session state".to_string()))?
-        .clear();
+    state.sessions.clear()?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -491,9 +540,13 @@ pub(super) async fn handle_list_spools(
     let limit = query.limit.unwrap_or(250).clamp(1, 2_500);
     let offset = query.offset.unwrap_or(0).max(0);
     let rows = state
-        .service
-        .list_spools(limit, offset)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("inventory spool list", move |state| {
+            state
+                .service
+                .list_spools(limit, offset)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -502,10 +555,15 @@ pub(super) async fn handle_list_catalog_masters(
     Query(query): Query<CatalogListQuery>,
 ) -> Result<Json<Vec<FilamentMasterCatalogRow>>, CompanionApiError> {
     let limit = query.limit.unwrap_or(1_000).clamp(1, 5_000);
+    let search = query.search;
     let rows = state
-        .service
-        .list_master_catalog(limit, query.search.as_deref())
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("catalog list", move |state| {
+            state
+                .service
+                .list_master_catalog(limit, search.as_deref())
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -521,19 +579,24 @@ pub(super) async fn handle_update_master_catalog_entry(
         ));
     }
 
+    let master_id = master_id.to_string();
     state
-        .service
-        .update_master_catalog_entry(UpdateMasterCatalogEntryInput {
-            master_id: master_id.to_string(),
-            material: payload.material,
-            filament_name: payload.filament_name,
-            color_name: payload.color_name,
-            hex_color: payload.hex_color,
-            product_url: payload.product_url,
-            vendor: payload.vendor,
-            default_weight: payload.default_weight,
+        .run_blocking("catalog entry update", move |state| {
+            state
+                .service
+                .update_master_catalog_entry(UpdateMasterCatalogEntryInput {
+                    master_id,
+                    material: payload.material,
+                    filament_name: payload.filament_name,
+                    color_name: payload.color_name,
+                    hex_color: payload.hex_color,
+                    product_url: payload.product_url,
+                    vendor: payload.vendor,
+                    default_weight: payload.default_weight,
+                })
+                .map_err(CompanionApiError::from)
         })
-        .map_err(CompanionApiError::from)?;
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -552,18 +615,17 @@ pub(super) async fn handle_refresh_vendor_catalog(
         ));
     }
 
-    let service = state.service.clone();
     let material_types = payload.material_types;
-    let result = tokio::task::spawn_blocking(move || {
-        if vendor == "bambu" {
-            service.refresh_bambu_catalog(material_types)
-        } else {
-            service.refresh_esun_catalog(material_types)
-        }
-    })
-    .await
-    .map_err(|error| CompanionApiError::Internal(format!("Catalog refresh task failed: {error}")))?
-    .map_err(CompanionApiError::Internal)?;
+    let result = state
+        .run_blocking("catalog refresh", move |state| {
+            if vendor == "bambu" {
+                state.service.refresh_bambu_catalog(material_types)
+            } else {
+                state.service.refresh_esun_catalog(material_types)
+            }
+            .map_err(CompanionApiError::Internal)
+        })
+        .await?;
 
     Ok(Json(result))
 }
@@ -572,9 +634,13 @@ pub(super) async fn handle_list_printer_overview(
     State(state): State<CompanionApiState>,
 ) -> Result<Json<Vec<PrinterOverviewRow>>, CompanionApiError> {
     let rows = state
-        .service
-        .list_printer_overview()
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("printer overview", move |state| {
+            state
+                .service
+                .list_printer_overview()
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -590,16 +656,21 @@ pub(super) async fn handle_create_printer(
         ));
     }
 
+    let input = CreatePrinterInput {
+        id: payload.id.trim().to_string(),
+        model: model.to_string(),
+        name: name.to_string(),
+        ams_units: payload.ams_units,
+        slots_per_ams: payload.slots_per_ams,
+    };
     state
-        .service
-        .create_printer(CreatePrinterInput {
-            id: payload.id.trim().to_string(),
-            model: model.to_string(),
-            name: name.to_string(),
-            ams_units: payload.ams_units,
-            slots_per_ams: payload.slots_per_ams,
+        .run_blocking("printer create", move |state| {
+            state
+                .service
+                .create_printer(input)
+                .map_err(CompanionApiError::from)
         })
-        .map_err(CompanionApiError::from)?;
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -611,14 +682,16 @@ pub(super) async fn handle_delete_printer(
     State(state): State<CompanionApiState>,
     Path(printer_id): Path<String>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let printer_id = printer_id.trim();
-    if printer_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "printer_id is required".to_string(),
-        ));
-    }
-    let _credential_mutation =
-        lock_secure_credential_mutation().map_err(CompanionApiError::Internal)?;
+    state
+        .run_blocking("printer delete", move |state| {
+            let printer_id = printer_id.trim();
+            if printer_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "printer_id is required".to_string(),
+                ));
+            }
+            let _credential_mutation =
+                lock_secure_credential_mutation().map_err(CompanionApiError::Internal)?;
 
     let integration = state
         .open_db()?
@@ -718,10 +791,12 @@ pub(super) async fn handle_delete_printer(
         return Err(CompanionApiError::from(error));
     }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Printer deleted".to_string(),
-    }))
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Printer deleted".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_save_bambu_live_integration(
@@ -749,14 +824,17 @@ pub(super) async fn handle_set_active_printer(
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
     let printer_id = payload
         .printer_id
-        .as_deref()
-        .map(str::trim)
+        .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty());
 
     state
-        .service
-        .set_active_printer(printer_id)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("active printer update", move |state| {
+            state
+                .service
+                .set_active_printer(printer_id.as_deref())
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -772,14 +850,17 @@ pub(super) async fn handle_list_spool_loans(
     let include_returned = query.include_returned.unwrap_or(true);
     let direction = query
         .direction
-        .as_deref()
-        .map(str::trim)
+        .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
-        .unwrap_or("OUTBOUND");
+        .unwrap_or_else(|| "OUTBOUND".to_string());
     let rows = state
-        .service
-        .list_spool_loans(limit, include_returned, Some(direction))
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("loan list", move |state| {
+            state
+                .service
+                .list_spool_loans(limit, include_returned, Some(&direction))
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -787,9 +868,13 @@ pub(super) async fn handle_list_active_spool_loans(
     State(state): State<CompanionApiState>,
 ) -> Result<Json<Vec<ActiveSpoolLoanRow>>, CompanionApiError> {
     let rows = state
-        .service
-        .list_active_spool_loans()
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("active loan list", move |state| {
+            state
+                .service
+                .list_active_spool_loans()
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -799,9 +884,13 @@ pub(super) async fn handle_list_wishlist_items(
 ) -> Result<Json<Vec<WishlistItemRow>>, CompanionApiError> {
     let limit = query.limit.unwrap_or(250).clamp(1, 2_500);
     let rows = state
-        .service
-        .list_wishlist_items(limit)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("wishlist list", move |state| {
+            state
+                .service
+                .list_wishlist_items(limit)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(rows))
 }
 
@@ -811,22 +900,21 @@ pub(super) async fn handle_find_spool_by_qr(
 ) -> Result<Json<SpoolWithMasterRow>, CompanionApiError> {
     let qr_code = query
         .qr_code
-        .as_deref()
-        .map(str::trim)
+        .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
         .ok_or_else(|| CompanionApiError::BadRequest("qr_code is required".to_string()))?;
 
-    let spool = if let Some(spool) = state
-        .service
-        .find_spool_by_qr(qr_code)
-        .map_err(CompanionApiError::from)?
-    {
-        spool
-    } else {
-        return Err(CompanionApiError::NotFound(
-            "No spool found for that QR code".to_string(),
-        ));
-    };
+    let spool = state
+        .run_blocking("spool QR lookup", move |state| {
+            state
+                .service
+                .find_spool_by_qr(&qr_code)
+                .map_err(CompanionApiError::from)?
+                .ok_or_else(|| {
+                    CompanionApiError::NotFound("No spool found for that QR code".to_string())
+                })
+        })
+        .await?;
     Ok(Json(spool))
 }
 
@@ -834,236 +922,248 @@ pub(super) async fn handle_create_owned_spool(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateOwnedSpoolRequest>,
 ) -> Result<Json<CreateSpoolResponse>, CompanionApiError> {
-    validate_initial_weight(payload.initial_weight_g)?;
+    state
+        .run_blocking("owned spool create", move |state| {
+            validate_initial_weight(payload.initial_weight_g)?;
 
-    let spool_id = generate_companion_spool_id();
-    let master_id = normalize_optional_text(payload.master_id.as_deref());
-    let qr_code = normalize_optional_text(payload.qr_code.as_deref());
-    let location = normalize_optional_text(payload.location.as_deref());
-    if let Some(master_id) = master_id {
-        state
-            .service
-            .create_spool(CreateSpoolInput {
-                id: spool_id.clone(),
-                master_id,
-                qr_code: qr_code.clone(),
-                status: "IN_STOCK".to_string(),
-                ownership_type: Some("OWNED".to_string()),
-                owner_name: None,
-                owner_contact: None,
-                ownership_note: None,
-                initial_weight_g: payload.initial_weight_g,
-                current_weight_g: payload.initial_weight_g,
-                location_id: location.clone(),
-                home_location_id: location.clone(),
-                purchase_date: None,
-                purchase_price: None,
-                batch_code: None,
-            })
-            .map_err(CompanionApiError::from)?;
-    } else {
-        let manual = normalize_owned_manual_fields(
-            payload.material.as_deref(),
-            payload.filament_name.as_deref(),
-            payload.color_name.as_deref(),
-        )?;
-        state
-            .service
-            .create_manual_spool(CreateManualSpoolInput {
-                id: spool_id.clone(),
-                material: manual.material,
-                filament_name: manual.filament_name,
-                color_name: manual.color_name,
-                hex_color: normalize_optional_swatch_color(payload.hex_color.as_deref())?,
-                product_url: None,
-                vendor: Some(
-                    payload
-                        .vendor
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or("Generic")
-                        .to_string(),
-                ),
-                default_weight_g: payload.initial_weight_g,
-                qr_code,
-                status: Some("IN_STOCK".to_string()),
-                ownership_type: Some("OWNED".to_string()),
-                owner_name: None,
-                owner_contact: None,
-                ownership_note: None,
-                initial_weight_g: payload.initial_weight_g,
-                location,
-            })
-            .map_err(CompanionApiError::from)?;
-    }
+            let spool_id = generate_companion_spool_id();
+            let master_id = normalize_optional_text(payload.master_id.as_deref());
+            let qr_code = normalize_optional_text(payload.qr_code.as_deref());
+            let location = normalize_optional_text(payload.location.as_deref());
+            if let Some(master_id) = master_id {
+                state
+                    .service
+                    .create_spool(CreateSpoolInput {
+                        id: spool_id.clone(),
+                        master_id,
+                        qr_code: qr_code.clone(),
+                        status: "IN_STOCK".to_string(),
+                        ownership_type: Some("OWNED".to_string()),
+                        owner_name: None,
+                        owner_contact: None,
+                        ownership_note: None,
+                        initial_weight_g: payload.initial_weight_g,
+                        current_weight_g: payload.initial_weight_g,
+                        location_id: location.clone(),
+                        home_location_id: location.clone(),
+                        purchase_date: None,
+                        purchase_price: None,
+                        batch_code: None,
+                    })
+                    .map_err(CompanionApiError::from)?;
+            } else {
+                let manual = normalize_owned_manual_fields(
+                    payload.material.as_deref(),
+                    payload.filament_name.as_deref(),
+                    payload.color_name.as_deref(),
+                )?;
+                state
+                    .service
+                    .create_manual_spool(CreateManualSpoolInput {
+                        id: spool_id.clone(),
+                        material: manual.material,
+                        filament_name: manual.filament_name,
+                        color_name: manual.color_name,
+                        hex_color: normalize_optional_swatch_color(payload.hex_color.as_deref())?,
+                        product_url: None,
+                        vendor: Some(
+                            payload
+                                .vendor
+                                .as_deref()
+                                .map(str::trim)
+                                .filter(|value| !value.is_empty())
+                                .unwrap_or("Generic")
+                                .to_string(),
+                        ),
+                        default_weight_g: payload.initial_weight_g,
+                        qr_code,
+                        status: Some("IN_STOCK".to_string()),
+                        ownership_type: Some("OWNED".to_string()),
+                        owner_name: None,
+                        owner_contact: None,
+                        ownership_note: None,
+                        initial_weight_g: payload.initial_weight_g,
+                        location,
+                    })
+                    .map_err(CompanionApiError::from)?;
+            }
 
-    Ok(Json(CreateSpoolResponse {
-        ok: true,
-        message: "Filament added".to_string(),
-        spool_id,
-    }))
+            Ok(Json(CreateSpoolResponse {
+                ok: true,
+                message: "Filament added".to_string(),
+                spool_id,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_create_borrowed_in_spool(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateBorrowedInSpoolRequest>,
 ) -> Result<Json<CreateSpoolResponse>, CompanionApiError> {
-    let owner_name = payload.owner_name.trim();
-    if owner_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "owner_name is required".to_string(),
-        ));
-    }
+    state
+        .run_blocking("borrowed-in spool create", move |state| {
+            let owner_name = payload.owner_name.trim();
+            if owner_name.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "owner_name is required".to_string(),
+                ));
+            }
 
-    validate_initial_weight(payload.initial_weight_g)?;
+            validate_initial_weight(payload.initial_weight_g)?;
 
-    let spool_id = generate_companion_spool_id();
-    let master_id = normalize_optional_text(payload.master_id.as_deref());
-    let qr_code = normalize_optional_text(payload.qr_code.as_deref());
-    let location = normalize_optional_text(payload.location.as_deref());
-    let owner_contact = normalize_optional_text(payload.owner_contact.as_deref());
-    let ownership_note = normalize_optional_text(payload.ownership_note.as_deref());
-    if let Some(master_id) = master_id {
-        state
-            .service
-            .create_spool(CreateSpoolInput {
-                id: spool_id.clone(),
-                master_id,
-                qr_code: qr_code.clone(),
-                status: "IN_STOCK".to_string(),
-                ownership_type: Some("BORROWED_IN".to_string()),
-                owner_name: Some(owner_name.to_string()),
-                owner_contact: owner_contact.clone(),
-                ownership_note: ownership_note.clone(),
-                initial_weight_g: payload.initial_weight_g,
-                current_weight_g: payload.initial_weight_g,
-                location_id: None,
-                home_location_id: None,
-                purchase_date: None,
-                purchase_price: None,
-                batch_code: None,
-            })
-            .map_err(CompanionApiError::from)?;
-        if location.is_some() {
-            state
-                .service
-                .update_spool_details(UpdateSpoolDetailsInput {
-                    spool_id: spool_id.clone(),
-                    qr_code,
-                    status: "IN_STOCK".to_string(),
-                    location: location.clone(),
-                    home_location: Some(location.clone()),
-                })
-                .map_err(CompanionApiError::from)?;
-        }
-    } else {
-        let manual = normalize_owned_manual_fields(
-            payload.material.as_deref(),
-            payload.filament_name.as_deref(),
-            payload.color_name.as_deref(),
-        )?;
-        state
-            .service
-            .create_manual_spool(CreateManualSpoolInput {
-                id: spool_id.clone(),
-                material: manual.material,
-                filament_name: manual.filament_name,
-                color_name: manual.color_name,
-                hex_color: normalize_optional_swatch_color(payload.hex_color.as_deref())?,
-                product_url: None,
-                vendor: Some(
-                    payload
-                        .vendor
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or("Generic")
-                        .to_string(),
-                ),
-                default_weight_g: payload.initial_weight_g,
-                qr_code,
-                status: Some("IN_STOCK".to_string()),
-                ownership_type: Some("BORROWED_IN".to_string()),
-                owner_name: Some(owner_name.to_string()),
-                owner_contact,
-                ownership_note,
-                initial_weight_g: payload.initial_weight_g,
-                location,
-            })
-            .map_err(CompanionApiError::from)?;
-    }
+            let spool_id = generate_companion_spool_id();
+            let master_id = normalize_optional_text(payload.master_id.as_deref());
+            let qr_code = normalize_optional_text(payload.qr_code.as_deref());
+            let location = normalize_optional_text(payload.location.as_deref());
+            let owner_contact = normalize_optional_text(payload.owner_contact.as_deref());
+            let ownership_note = normalize_optional_text(payload.ownership_note.as_deref());
+            if let Some(master_id) = master_id {
+                state
+                    .service
+                    .create_spool(CreateSpoolInput {
+                        id: spool_id.clone(),
+                        master_id,
+                        qr_code: qr_code.clone(),
+                        status: "IN_STOCK".to_string(),
+                        ownership_type: Some("BORROWED_IN".to_string()),
+                        owner_name: Some(owner_name.to_string()),
+                        owner_contact: owner_contact.clone(),
+                        ownership_note: ownership_note.clone(),
+                        initial_weight_g: payload.initial_weight_g,
+                        current_weight_g: payload.initial_weight_g,
+                        location_id: None,
+                        home_location_id: None,
+                        purchase_date: None,
+                        purchase_price: None,
+                        batch_code: None,
+                    })
+                    .map_err(CompanionApiError::from)?;
+                if location.is_some() {
+                    state
+                        .service
+                        .update_spool_details(UpdateSpoolDetailsInput {
+                            spool_id: spool_id.clone(),
+                            qr_code,
+                            status: "IN_STOCK".to_string(),
+                            location: location.clone(),
+                            home_location: Some(location.clone()),
+                        })
+                        .map_err(CompanionApiError::from)?;
+                }
+            } else {
+                let manual = normalize_owned_manual_fields(
+                    payload.material.as_deref(),
+                    payload.filament_name.as_deref(),
+                    payload.color_name.as_deref(),
+                )?;
+                state
+                    .service
+                    .create_manual_spool(CreateManualSpoolInput {
+                        id: spool_id.clone(),
+                        material: manual.material,
+                        filament_name: manual.filament_name,
+                        color_name: manual.color_name,
+                        hex_color: normalize_optional_swatch_color(payload.hex_color.as_deref())?,
+                        product_url: None,
+                        vendor: Some(
+                            payload
+                                .vendor
+                                .as_deref()
+                                .map(str::trim)
+                                .filter(|value| !value.is_empty())
+                                .unwrap_or("Generic")
+                                .to_string(),
+                        ),
+                        default_weight_g: payload.initial_weight_g,
+                        qr_code,
+                        status: Some("IN_STOCK".to_string()),
+                        ownership_type: Some("BORROWED_IN".to_string()),
+                        owner_name: Some(owner_name.to_string()),
+                        owner_contact,
+                        ownership_note,
+                        initial_weight_g: payload.initial_weight_g,
+                        location,
+                    })
+                    .map_err(CompanionApiError::from)?;
+            }
 
-    Ok(Json(CreateSpoolResponse {
-        ok: true,
-        message: "Borrowed-in spool registered".to_string(),
-        spool_id,
-    }))
+            Ok(Json(CreateSpoolResponse {
+                ok: true,
+                message: "Borrowed-in spool registered".to_string(),
+                spool_id,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_create_wishlist_item(
     State(state): State<CompanionApiState>,
     Json(payload): Json<CreateWishlistItemRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let material = payload.material.trim();
-    if material.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "material is required".to_string(),
-        ));
-    }
-
-    let filament_name = payload.filament_name.trim();
-    if filament_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "filament_name is required".to_string(),
-        ));
-    }
-
-    let color_name = payload.color_name.trim();
-    if color_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "color_name is required".to_string(),
-        ));
-    }
-
-    if let Some(quantity) = payload.quantity {
-        if quantity <= 0 {
-            return Err(CompanionApiError::BadRequest(
-                "quantity must be greater than zero".to_string(),
-            ));
-        }
-    }
-
     state
-        .service
-        .create_wishlist_item(CreateWishlistItemInput {
-            id: format!(
-                "wish_companion_{}_{}",
-                unix_epoch_millis(),
-                random_hex_token(4)
-            ),
-            master_id: normalize_optional_text(payload.master_id.as_deref()),
-            material: material.to_string(),
-            filament_name: filament_name.to_string(),
-            color_name: color_name.to_string(),
-            vendor: Some(
-                payload
-                    .vendor
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty())
-                    .unwrap_or("Generic")
-                    .to_string(),
-            ),
-            quantity: payload.quantity,
-            note: normalize_optional_text(payload.note.as_deref()),
-        })
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("wishlist item create", move |state| {
+            let material = payload.material.trim();
+            if material.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "material is required".to_string(),
+                ));
+            }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Wishlist item added".to_string(),
-    }))
+            let filament_name = payload.filament_name.trim();
+            if filament_name.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "filament_name is required".to_string(),
+                ));
+            }
+
+            let color_name = payload.color_name.trim();
+            if color_name.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "color_name is required".to_string(),
+                ));
+            }
+
+            if let Some(quantity) = payload.quantity {
+                if quantity <= 0 {
+                    return Err(CompanionApiError::BadRequest(
+                        "quantity must be greater than zero".to_string(),
+                    ));
+                }
+            }
+
+            state
+                .service
+                .create_wishlist_item(CreateWishlistItemInput {
+                    id: format!(
+                        "wish_companion_{}_{}",
+                        unix_epoch_millis(),
+                        random_hex_token(4)
+                    ),
+                    master_id: normalize_optional_text(payload.master_id.as_deref()),
+                    material: material.to_string(),
+                    filament_name: filament_name.to_string(),
+                    color_name: color_name.to_string(),
+                    vendor: Some(
+                        payload
+                            .vendor
+                            .as_deref()
+                            .map(str::trim)
+                            .filter(|value| !value.is_empty())
+                            .unwrap_or("Generic")
+                            .to_string(),
+                    ),
+                    quantity: payload.quantity,
+                    note: normalize_optional_text(payload.note.as_deref()),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Wishlist item added".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_update_wishlist_item_status(
@@ -1071,32 +1171,36 @@ pub(super) async fn handle_update_wishlist_item_status(
     Path(item_id): Path<String>,
     Json(payload): Json<UpdateWishlistItemStatusRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let item_id = item_id.trim();
-    if item_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "item_id is required".to_string(),
-        ));
-    }
-
-    let status = payload.status.trim().to_uppercase();
-    if status != "WISHLIST" && status != "ON_ORDER" && status != "RECEIVED" {
-        return Err(CompanionApiError::BadRequest(
-            "status must be WISHLIST, ON_ORDER, or RECEIVED".to_string(),
-        ));
-    }
-
     state
-        .service
-        .update_wishlist_item_status(UpdateWishlistStatusInput {
-            item_id: item_id.to_string(),
-            status,
-        })
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("wishlist status update", move |state| {
+            let item_id = item_id.trim();
+            if item_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "item_id is required".to_string(),
+                ));
+            }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Wishlist status updated".to_string(),
-    }))
+            let status = payload.status.trim().to_uppercase();
+            if status != "WISHLIST" && status != "ON_ORDER" && status != "RECEIVED" {
+                return Err(CompanionApiError::BadRequest(
+                    "status must be WISHLIST, ON_ORDER, or RECEIVED".to_string(),
+                ));
+            }
+
+            state
+                .service
+                .update_wishlist_item_status(UpdateWishlistStatusInput {
+                    item_id: item_id.to_string(),
+                    status,
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Wishlist status updated".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_receive_wishlist_item(
@@ -1104,43 +1208,51 @@ pub(super) async fn handle_receive_wishlist_item(
     Path(item_id): Path<String>,
     Json(payload): Json<ReceiveWishlistItemRequest>,
 ) -> Result<Json<WishlistReceiptResult>, CompanionApiError> {
-    let item_id = item_id.trim();
-    if item_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "item_id is required".to_string(),
-        ));
-    }
+    state
+        .run_blocking("wishlist receipt", move |state| {
+            let item_id = item_id.trim();
+            if item_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "item_id is required".to_string(),
+                ));
+            }
 
-    let result = state
-        .service
-        .receive_wishlist_item(ReceiveWishlistItemInput {
-            item_id: item_id.to_string(),
-            quantity: payload.quantity,
+            let result = state
+                .service
+                .receive_wishlist_item(ReceiveWishlistItemInput {
+                    item_id: item_id.to_string(),
+                    quantity: payload.quantity,
+                })
+                .map_err(CompanionApiError::from)?;
+            Ok(Json(result))
         })
-        .map_err(CompanionApiError::from)?;
-    Ok(Json(result))
+        .await
 }
 
 pub(super) async fn handle_delete_wishlist_item(
     State(state): State<CompanionApiState>,
     Path(item_id): Path<String>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let item_id = item_id.trim();
-    if item_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "item_id is required".to_string(),
-        ));
-    }
-
     state
-        .service
-        .delete_wishlist_item(item_id)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("wishlist item delete", move |state| {
+            let item_id = item_id.trim();
+            if item_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "item_id is required".to_string(),
+                ));
+            }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Wishlist item deleted".to_string(),
-    }))
+            state
+                .service
+                .delete_wishlist_item(item_id)
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Wishlist item deleted".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_update_printer_slot_assignment(
@@ -1148,86 +1260,90 @@ pub(super) async fn handle_update_printer_slot_assignment(
     Path((printer_id, slot_id)): Path<(String, String)>,
     Json(payload): Json<UpdatePrinterSlotAssignmentRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let printer_id = printer_id.trim();
-    let slot_id = slot_id.trim();
-    if printer_id.is_empty() || slot_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "printer_id and slot_id are required".to_string(),
-        ));
-    }
+    state
+        .run_blocking("printer slot assignment", move |state| {
+            let printer_id = printer_id.trim();
+            let slot_id = slot_id.trim();
+            if printer_id.is_empty() || slot_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "printer_id and slot_id are required".to_string(),
+                ));
+            }
 
-    let target_spool_id = payload
-        .spool_id
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
-    let override_tray_uuid = payload
-        .rfid_override_tray_uuid
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
-    let override_color_hex = payload
-        .rfid_override_color_hex
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
-    let slot = state.find_printer_slot(printer_id, slot_id)?;
+            let target_spool_id = payload
+                .spool_id
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty());
+            let override_tray_uuid = payload
+                .rfid_override_tray_uuid
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty());
+            let override_color_hex = payload
+                .rfid_override_color_hex
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty());
+            let slot = state.find_printer_slot(printer_id, slot_id)?;
 
-    if slot.spool_id.is_none() && target_spool_id.is_none() {
-        return Err(CompanionApiError::BadRequest(
-            "Slot is already empty".to_string(),
-        ));
-    }
-    if let (Some(current_spool_id), Some(next_spool_id)) =
-        (slot.spool_id.as_deref(), target_spool_id)
-    {
-        if current_spool_id != next_spool_id {
-            return Err(CompanionApiError::BadRequest(
+            if slot.spool_id.is_none() && target_spool_id.is_none() {
+                return Err(CompanionApiError::BadRequest(
+                    "Slot is already empty".to_string(),
+                ));
+            }
+            if let (Some(current_spool_id), Some(next_spool_id)) =
+                (slot.spool_id.as_deref(), target_spool_id)
+            {
+                if current_spool_id != next_spool_id {
+                    return Err(CompanionApiError::BadRequest(
                 "Slot must be cleared before assigning another spool from the browser companion"
                     .to_string(),
             ));
-        }
-    }
-    if let Some(next_spool_id) = target_spool_id {
-        let spool = state
-            .service
-            .get_spool(next_spool_id)
-            .map_err(CompanionApiError::from)?
-            .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-        let spool_status = SpoolStatus::from_raw(Some(&spool.spool.status));
-        if matches!(
-            spool_status,
-            SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
-        ) {
-            return Err(CompanionApiError::BadRequest(
+                }
+            }
+            if let Some(next_spool_id) = target_spool_id {
+                let spool = state
+                    .service
+                    .get_spool(next_spool_id)
+                    .map_err(CompanionApiError::from)?
+                    .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
+                let spool_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+                if matches!(
+                    spool_status,
+                    SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
+                ) {
+                    return Err(CompanionApiError::BadRequest(
                 "Selected spool cannot be loaded into a printer slot from the browser companion"
                     .to_string(),
             ));
-        }
-    }
+                }
+            }
 
-    state
-        .service
-        .assign_printer_slot(
-            printer_id,
-            slot_id,
-            target_spool_id,
-            override_tray_uuid,
-            override_color_hex,
-            payload
-                .clear_live_cache_before_next_refresh
-                .unwrap_or(false),
-        )
-        .map_err(CompanionApiError::from)?;
+            state
+                .service
+                .assign_printer_slot(
+                    printer_id,
+                    slot_id,
+                    target_spool_id,
+                    override_tray_uuid,
+                    override_color_hex,
+                    payload
+                        .clear_live_cache_before_next_refresh
+                        .unwrap_or(false),
+                )
+                .map_err(CompanionApiError::from)?;
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: if target_spool_id.is_some() {
-            "Printer slot assigned".to_string()
-        } else {
-            "Printer slot cleared".to_string()
-        },
-    }))
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: if target_spool_id.is_some() {
+                    "Printer slot assigned".to_string()
+                } else {
+                    "Printer slot cleared".to_string()
+                },
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_record_print_usage(
@@ -1235,34 +1351,38 @@ pub(super) async fn handle_record_print_usage(
     Path((printer_id, spool_id)): Path<(String, String)>,
     Json(payload): Json<RecordPrintUsageRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let printer_id = printer_id.trim();
-    let spool_id = spool_id.trim();
-    if printer_id.is_empty() || spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "printer_id and spool_id are required".to_string(),
-        ));
-    }
-    if payload.grams <= 0 {
-        return Err(CompanionApiError::BadRequest(
-            "grams must be greater than zero".to_string(),
-        ));
-    }
-
     state
-        .service
-        .record_print_usage(RecordPrintUsageInput {
-            printer_id: printer_id.to_string(),
-            spool_id: spool_id.to_string(),
-            grams: payload.grams,
-            job_name: normalize_optional_text(payload.job_name.as_deref()),
-            success: Some(payload.success.unwrap_or(true)),
-        })
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("print usage record", move |state| {
+            let printer_id = printer_id.trim();
+            let spool_id = spool_id.trim();
+            if printer_id.is_empty() || spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "printer_id and spool_id are required".to_string(),
+                ));
+            }
+            if payload.grams <= 0 {
+                return Err(CompanionApiError::BadRequest(
+                    "grams must be greater than zero".to_string(),
+                ));
+            }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Print usage recorded".to_string(),
-    }))
+            state
+                .service
+                .record_print_usage(RecordPrintUsageInput {
+                    printer_id: printer_id.to_string(),
+                    spool_id: spool_id.to_string(),
+                    grams: payload.grams,
+                    job_name: normalize_optional_text(payload.job_name.as_deref()),
+                    success: Some(payload.success.unwrap_or(true)),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Print usage recorded".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_update_borrowed_in_spool(
@@ -1270,34 +1390,38 @@ pub(super) async fn handle_update_borrowed_in_spool(
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateBorrowedInSpoolRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-
-    let owner_name = payload.owner_name.trim();
-    if owner_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "owner_name is required".to_string(),
-        ));
-    }
-
     state
-        .service
-        .update_borrowed_in_spool(UpdateBorrowedInSpoolInput {
-            spool_id: spool_id.to_string(),
-            owner_name: owner_name.to_string(),
-            owner_contact: normalize_optional_text(payload.owner_contact.as_deref()),
-            ownership_note: normalize_optional_text(payload.ownership_note.as_deref()),
-        })
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("borrowed-in spool update", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Borrowed-in spool details updated".to_string(),
-    }))
+            let owner_name = payload.owner_name.trim();
+            if owner_name.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "owner_name is required".to_string(),
+                ));
+            }
+
+            state
+                .service
+                .update_borrowed_in_spool(UpdateBorrowedInSpoolInput {
+                    spool_id: spool_id.to_string(),
+                    owner_name: owner_name.to_string(),
+                    owner_contact: normalize_optional_text(payload.owner_contact.as_deref()),
+                    ownership_note: normalize_optional_text(payload.ownership_note.as_deref()),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Borrowed-in spool details updated".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_update_spool_ownership(
@@ -1305,34 +1429,38 @@ pub(super) async fn handle_update_spool_ownership(
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolOwnershipRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-    let ownership_type = payload.ownership_type.trim().to_ascii_uppercase();
-    if !matches!(ownership_type.as_str(), "OWNED" | "BORROWED_IN") {
-        return Err(CompanionApiError::BadRequest(
-            "ownership_type must be OWNED or BORROWED_IN".to_string(),
-        ));
-    }
-
     state
-        .service
-        .update_spool_ownership(UpdateSpoolOwnershipInput {
-            spool_id: spool_id.to_string(),
-            ownership_type,
-            owner_name: normalize_optional_text(payload.owner_name.as_deref()),
-            owner_contact: normalize_optional_text(payload.owner_contact.as_deref()),
-            ownership_note: normalize_optional_text(payload.ownership_note.as_deref()),
-        })
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("spool ownership update", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
+            let ownership_type = payload.ownership_type.trim().to_ascii_uppercase();
+            if !matches!(ownership_type.as_str(), "OWNED" | "BORROWED_IN") {
+                return Err(CompanionApiError::BadRequest(
+                    "ownership_type must be OWNED or BORROWED_IN".to_string(),
+                ));
+            }
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Spool ownership updated".to_string(),
-    }))
+            state
+                .service
+                .update_spool_ownership(UpdateSpoolOwnershipInput {
+                    spool_id: spool_id.to_string(),
+                    ownership_type,
+                    owner_name: normalize_optional_text(payload.owner_name.as_deref()),
+                    owner_contact: normalize_optional_text(payload.owner_contact.as_deref()),
+                    ownership_note: normalize_optional_text(payload.ownership_note.as_deref()),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Spool ownership updated".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_update_spool_details(
@@ -1340,7 +1468,9 @@ pub(super) async fn handle_update_spool_details(
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolDetailsRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
+    state
+        .run_blocking("spool details update", move |state| {
+            let spool_id = spool_id.trim();
     if spool_id.is_empty() {
         return Err(CompanionApiError::BadRequest(
             "spool_id is required".to_string(),
@@ -1409,32 +1539,38 @@ pub(super) async fn handle_update_spool_details(
         })
         .map_err(CompanionApiError::from)?;
 
-    Ok(Json(WriteResponse {
-        ok: true,
-        message: "Spool details updated".to_string(),
-    }))
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "Spool details updated".to_string(),
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_spool_qr_image_svg(
     State(state): State<CompanionApiState>,
     Path(spool_id): Path<String>,
 ) -> Result<Response, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
+    state
+        .run_blocking("spool QR image", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
 
-    let spool = state
-        .service
-        .get_spool(spool_id)
-        .map_err(CompanionApiError::from)?
-        .ok_or_else(|| CompanionApiError::NotFound("Spool not found".to_string()))?;
-    let reference = spool.spool.id.clone();
-    let payload = build_companion_spool_qr_payload(&state.runtime, &reference);
-    let svg = build_qr_svg(&payload)?;
-    Ok(string_response("image/svg+xml; charset=utf-8", svg))
+            let spool = state
+                .service
+                .get_spool(spool_id)
+                .map_err(CompanionApiError::from)?
+                .ok_or_else(|| CompanionApiError::NotFound("Spool not found".to_string()))?;
+            let reference = spool.spool.id.clone();
+            let payload = build_companion_spool_qr_payload(&state.runtime, &reference);
+            let svg = build_qr_svg(&payload)?;
+            Ok(string_response("image/svg+xml; charset=utf-8", svg))
+        })
+        .await
 }
 
 pub(super) async fn handle_get_spool_detail(
@@ -1452,9 +1588,13 @@ pub(super) async fn handle_get_spool_detail(
     maybe_apply_qa_delay(&state.runtime, &headers).await?;
 
     let detail = state
-        .service
-        .get_spool_detail(spool_id.trim(), query.history_limit, query.usage_limit)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("spool detail", move |state| {
+            state
+                .service
+                .get_spool_detail(spool_id.trim(), query.history_limit, query.usage_limit)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
     Ok(Json(detail))
 }
 
@@ -1463,70 +1603,75 @@ pub(super) async fn handle_lend_spool(
     Path(spool_id): Path<String>,
     Json(payload): Json<CreateSpoolLoanRequest>,
 ) -> Result<Json<LoanWriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
+    state
+        .run_blocking("spool lend", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
 
-    let borrower_name = payload.borrower_name.trim();
-    if borrower_name.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "borrower_name is required".to_string(),
-        ));
-    }
+            let borrower_name = payload.borrower_name.trim();
+            if borrower_name.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "borrower_name is required".to_string(),
+                ));
+            }
 
-    if let Some(grams_out) = payload.grams_out {
-        if grams_out < 0 {
-            return Err(CompanionApiError::BadRequest(
-                "grams_out must be zero or greater".to_string(),
-            ));
-        }
-    }
-
-    let spool = state
-        .service
-        .get_spool(spool_id)
-        .map_err(CompanionApiError::from)?
-        .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    if OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
-        return Err(CompanionApiError::BadRequest(
-            "Borrowed-in spools cannot be loaned out from the browser companion".to_string(),
-        ));
-    }
-
-    let spool_status = SpoolStatus::from_raw(Some(&spool.spool.status));
-    if matches!(
-        spool_status,
-        SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
-    ) {
-        return Err(CompanionApiError::BadRequest(
-            "Selected spool cannot be loaned out from the browser companion".to_string(),
-        ));
-    }
-
-    let loan = state
-        .service
-        .lend_spool(LendSpoolInput {
-            spool_id: spool_id.to_string(),
-            borrower_name: borrower_name.to_string(),
-            grams_out: payload.grams_out,
-            note: payload.note.as_deref().map(str::trim).and_then(|value| {
-                if value.is_empty() {
-                    None
-                } else {
-                    Some(value.to_string())
+            if let Some(grams_out) = payload.grams_out {
+                if grams_out < 0 {
+                    return Err(CompanionApiError::BadRequest(
+                        "grams_out must be zero or greater".to_string(),
+                    ));
                 }
-            }),
-        })
-        .map_err(CompanionApiError::from)?;
+            }
 
-    Ok(Json(LoanWriteResponse {
-        ok: true,
-        message: "Spool loan created".to_string(),
-        loan,
-    }))
+            let spool = state
+                .service
+                .get_spool(spool_id)
+                .map_err(CompanionApiError::from)?
+                .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
+            if OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
+                return Err(CompanionApiError::BadRequest(
+                    "Borrowed-in spools cannot be loaned out from the browser companion"
+                        .to_string(),
+                ));
+            }
+
+            let spool_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+            if matches!(
+                spool_status,
+                SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
+            ) {
+                return Err(CompanionApiError::BadRequest(
+                    "Selected spool cannot be loaned out from the browser companion".to_string(),
+                ));
+            }
+
+            let loan = state
+                .service
+                .lend_spool(LendSpoolInput {
+                    spool_id: spool_id.to_string(),
+                    borrower_name: borrower_name.to_string(),
+                    grams_out: payload.grams_out,
+                    note: payload.note.as_deref().map(str::trim).and_then(|value| {
+                        if value.is_empty() {
+                            None
+                        } else {
+                            Some(value.to_string())
+                        }
+                    }),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(LoanWriteResponse {
+                ok: true,
+                message: "Spool loan created".to_string(),
+                loan,
+            }))
+        })
+        .await
 }
 
 pub(super) async fn handle_return_spool_loan(
@@ -1534,51 +1679,57 @@ pub(super) async fn handle_return_spool_loan(
     Path(loan_id): Path<String>,
     Json(payload): Json<ReturnSpoolLoanRequest>,
 ) -> Result<Json<LoanWriteResponse>, CompanionApiError> {
-    let loan_id = loan_id.trim();
-    if loan_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "loan_id is required".to_string(),
-        ));
-    }
-    if payload.returned_grams < 0 {
-        return Err(CompanionApiError::BadRequest(
-            "returned_grams must be zero or greater".to_string(),
-        ));
-    }
+    state
+        .run_blocking("spool loan return", move |state| {
+            let loan_id = loan_id.trim();
+            if loan_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "loan_id is required".to_string(),
+                ));
+            }
+            if payload.returned_grams < 0 {
+                return Err(CompanionApiError::BadRequest(
+                    "returned_grams must be zero or greater".to_string(),
+                ));
+            }
 
-    let active_loan = state
-        .service
-        .list_active_spool_loans()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .find(|row| row.loan.id == loan_id)
-        .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    if LoanDirection::from_raw(Some(&active_loan.loan.loan_direction)) != LoanDirection::Outbound {
-        return Err(CompanionApiError::BadRequest(
-            "Inbound loan returns stay desktop-first for now".to_string(),
-        ));
-    }
+            let active_loan = state
+                .service
+                .list_active_spool_loans()
+                .map_err(CompanionApiError::from)?
+                .into_iter()
+                .find(|row| row.loan.id == loan_id)
+                .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
+            if LoanDirection::from_raw(Some(&active_loan.loan.loan_direction))
+                != LoanDirection::Outbound
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Inbound loan returns stay desktop-first for now".to_string(),
+                ));
+            }
 
-    let loan = state
-        .service
-        .return_spool_loan(ReturnSpoolLoanInput {
-            loan_id: loan_id.to_string(),
-            returned_grams: payload.returned_grams,
-            note: payload.note.as_deref().map(str::trim).and_then(|value| {
-                if value.is_empty() {
-                    None
-                } else {
-                    Some(value.to_string())
-                }
-            }),
+            let loan = state
+                .service
+                .return_spool_loan(ReturnSpoolLoanInput {
+                    loan_id: loan_id.to_string(),
+                    returned_grams: payload.returned_grams,
+                    note: payload.note.as_deref().map(str::trim).and_then(|value| {
+                        if value.is_empty() {
+                            None
+                        } else {
+                            Some(value.to_string())
+                        }
+                    }),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(LoanWriteResponse {
+                ok: true,
+                message: "Spool loan returned".to_string(),
+                loan,
+            }))
         })
-        .map_err(CompanionApiError::from)?;
-
-    Ok(Json(LoanWriteResponse {
-        ok: true,
-        message: "Spool loan returned".to_string(),
-        loan,
-    }))
+        .await
 }
 
 pub(super) async fn handle_hand_back_borrowed_in_spool(
@@ -1586,32 +1737,36 @@ pub(super) async fn handle_hand_back_borrowed_in_spool(
     Path(loan_id): Path<String>,
     Json(payload): Json<ReturnSpoolLoanRequest>,
 ) -> Result<Json<LoanWriteResponse>, CompanionApiError> {
-    let loan_id = loan_id.trim();
-    if loan_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "loan_id is required".to_string(),
-        ));
-    }
-    if payload.returned_grams < 0 {
-        return Err(CompanionApiError::BadRequest(
-            "returned_grams must be zero or greater".to_string(),
-        ));
-    }
+    state
+        .run_blocking("borrowed-in spool return", move |state| {
+            let loan_id = loan_id.trim();
+            if loan_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "loan_id is required".to_string(),
+                ));
+            }
+            if payload.returned_grams < 0 {
+                return Err(CompanionApiError::BadRequest(
+                    "returned_grams must be zero or greater".to_string(),
+                ));
+            }
 
-    let loan = state
-        .service
-        .return_inbound_spool_loan(ReturnSpoolLoanInput {
-            loan_id: loan_id.to_string(),
-            returned_grams: payload.returned_grams,
-            note: normalize_optional_text(payload.note.as_deref()),
+            let loan = state
+                .service
+                .return_inbound_spool_loan(ReturnSpoolLoanInput {
+                    loan_id: loan_id.to_string(),
+                    returned_grams: payload.returned_grams,
+                    note: normalize_optional_text(payload.note.as_deref()),
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(LoanWriteResponse {
+                ok: true,
+                message: "Borrowed-in spool handed back".to_string(),
+                loan,
+            }))
         })
-        .map_err(CompanionApiError::from)?;
-
-    Ok(Json(LoanWriteResponse {
-        ok: true,
-        message: "Borrowed-in spool handed back".to_string(),
-        loan,
-    }))
+        .await
 }
 
 pub(super) async fn handle_update_spool_weight(
@@ -1619,16 +1774,19 @@ pub(super) async fn handle_update_spool_weight(
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateWeightRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    if spool_id.trim().is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-
     state
-        .service
-        .update_spool_weight(spool_id.trim(), payload.grams, None, WeightSource::Manual)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("spool weight update", move |state| {
+            if spool_id.trim().is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
+            state
+                .service
+                .update_spool_weight(spool_id.trim(), payload.grams, None, WeightSource::Manual)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -1641,21 +1799,24 @@ pub(super) async fn handle_update_spool_tare_weight(
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolTareWeightRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    if spool_id.trim().is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-    if payload.grams < 0 {
-        return Err(CompanionApiError::BadRequest(
-            "tare grams must be zero or greater".to_string(),
-        ));
-    }
-
     state
-        .service
-        .update_spool_tare_weight(spool_id.trim(), payload.grams)
-        .map_err(CompanionApiError::from)?;
+        .run_blocking("spool tare weight update", move |state| {
+            if spool_id.trim().is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
+            if payload.grams < 0 {
+                return Err(CompanionApiError::BadRequest(
+                    "tare grams must be zero or greater".to_string(),
+                ));
+            }
+            state
+                .service
+                .update_spool_tare_weight(spool_id.trim(), payload.grams)
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -1668,21 +1829,24 @@ pub(super) async fn handle_update_spool_rfid_tag(
     Path(spool_id): Path<String>,
     Json(payload): Json<UpdateSpoolRfidTagRequest>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-
     state
-        .service
-        .update_spool_rfid_tag(crate::backend::inventory_engine::UpdateSpoolRfidTagInput {
-            spool_id: spool_id.to_string(),
-            rfid_tag: payload.rfid_tag,
-            rfid_observed_at: payload.rfid_observed_at,
+        .run_blocking("spool RFID update", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
+            state
+                .service
+                .update_spool_rfid_tag(crate::backend::inventory_engine::UpdateSpoolRfidTagInput {
+                    spool_id: spool_id.to_string(),
+                    rfid_tag: payload.rfid_tag,
+                    rfid_observed_at: payload.rfid_observed_at,
+                })
+                .map_err(CompanionApiError::from)
         })
-        .map_err(CompanionApiError::from)?;
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -1695,20 +1859,23 @@ pub(super) async fn handle_delete_spool(
     Path(spool_id): Path<String>,
     payload: Option<Json<DeleteSpoolRequest>>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-
     state
-        .service
-        .delete_spool(DeleteSpoolInput {
-            spool_id: spool_id.to_string(),
-            reason: payload.and_then(|Json(body)| body.reason),
+        .run_blocking("spool delete", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
+            state
+                .service
+                .delete_spool(DeleteSpoolInput {
+                    spool_id: spool_id.to_string(),
+                    reason: payload.and_then(|Json(body)| body.reason),
+                })
+                .map_err(CompanionApiError::from)
         })
-        .map_err(CompanionApiError::from)?;
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -1721,20 +1888,23 @@ pub(super) async fn handle_purge_spool(
     Path(spool_id): Path<String>,
     payload: Option<Json<DeleteSpoolRequest>>,
 ) -> Result<Json<WriteResponse>, CompanionApiError> {
-    let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
-
     state
-        .service
-        .purge_spool(PurgeSpoolInput {
-            spool_id: spool_id.to_string(),
-            reason: payload.and_then(|Json(body)| body.reason),
+        .run_blocking("spool purge", move |state| {
+            let spool_id = spool_id.trim();
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
+            state
+                .service
+                .purge_spool(PurgeSpoolInput {
+                    spool_id: spool_id.to_string(),
+                    reason: payload.and_then(|Json(body)| body.reason),
+                })
+                .map_err(CompanionApiError::from)
         })
-        .map_err(CompanionApiError::from)?;
+        .await?;
 
     Ok(Json(WriteResponse {
         ok: true,
@@ -1747,12 +1917,17 @@ pub(super) async fn require_companion_session(
     request: Request<Body>,
     next: Next,
 ) -> Response {
-    let headers = request.headers();
-    if let Err(error) = require_allowed_host(headers, &state.runtime) {
+    let headers = request.headers().clone();
+    if let Err(error) = require_allowed_host(&headers, &state.runtime) {
         return error.into_response();
     }
 
-    let session = match find_active_session(&state.sessions, &state.db_path, headers) {
+    let session = match state
+        .run_blocking("session authorization", move |state| {
+            find_active_session(&state.sessions, &state.db_path, &headers)
+        })
+        .await
+    {
         Ok(Some(value)) => value,
         Ok(None) => {
             return CompanionApiError::Unauthorized(
@@ -1764,10 +1939,10 @@ pub(super) async fn require_companion_session(
     };
 
     if requires_csrf(request.method()) {
-        if let Err(error) = require_allowed_origin(headers, &state.runtime) {
+        if let Err(error) = require_allowed_origin(request.headers(), &state.runtime) {
             return error.into_response();
         }
-        if !has_valid_csrf(headers, &session.csrf_token) {
+        if !has_valid_csrf(request.headers(), &session.csrf_token) {
             return CompanionApiError::Forbidden("Missing or invalid CSRF token".to_string())
                 .into_response();
         }

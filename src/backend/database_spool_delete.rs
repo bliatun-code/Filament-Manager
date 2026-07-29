@@ -6,7 +6,16 @@ use super::loan_defaults::ACTIVE_LOAN_PREDICATE_SQL;
 
 pub(crate) fn soft_delete_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
     let tx = conn.unchecked_transaction()?;
-    let active_loan_exists: Option<i64> = tx
+    soft_delete_spool_in_transaction(&tx, spool_id)?;
+    tx.commit()?;
+    Ok(())
+}
+
+pub(crate) fn soft_delete_spool_in_transaction(
+    conn: &Connection,
+    spool_id: &str,
+) -> InventoryResult<()> {
+    let active_loan_exists: Option<i64> = conn
         .query_row(
             &format!(
                 "SELECT 1
@@ -26,7 +35,7 @@ pub(crate) fn soft_delete_spool(conn: &Connection, spool_id: &str) -> InventoryR
         });
     }
 
-    let affected = tx.execute(
+    let affected = conn.execute(
         "UPDATE filament_spools
          SET deleted_at = datetime('now'),
              status = 'DELETED',
@@ -36,14 +45,13 @@ pub(crate) fn soft_delete_spool(conn: &Connection, spool_id: &str) -> InventoryR
         params![spool_id],
     )?;
     require_rows(affected)?;
-    tx.execute(
+    conn.execute(
         "UPDATE ams_slots
          SET spool_id = NULL,
              last_seen_at = datetime('now')
          WHERE spool_id = ?1",
         params![spool_id],
     )?;
-    tx.commit()?;
     Ok(())
 }
 

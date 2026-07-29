@@ -17,8 +17,24 @@ pub(crate) const COMPANION_SESSION_COOKIE: &str = "bfm_companion_session";
 pub(crate) const COMPANION_TRUSTED_LAN_DEVICE_COOKIE: &str = "bfm_trusted_lan_device";
 const COMPANION_SESSION_MAX_AGE_SECONDS: u64 = 8 * 60 * 60;
 const COMPANION_TRUSTED_LAN_DEVICE_MAX_AGE_SECONDS: u64 = 30 * 24 * 60 * 60;
+const COMPANION_SESSION_CAPACITY: usize = 512;
 
-pub(crate) type CompanionSessionStore = Arc<RwLock<HashMap<String, CompanionSession>>>;
+#[derive(Clone)]
+pub(crate) struct CompanionSessionStore {
+    state: Arc<RwLock<CompanionSessionStoreState>>,
+    capacity: usize,
+    max_age_seconds: u64,
+}
+
+struct CompanionSessionStoreState {
+    sessions: HashMap<String, StoredCompanionSession>,
+    next_sequence: u64,
+}
+
+struct StoredCompanionSession {
+    session: CompanionSession,
+    sequence: u64,
+}
 
 #[derive(Clone)]
 pub(crate) struct CompanionSession {
@@ -42,7 +58,105 @@ struct AuthenticatedSessionResponse {
 }
 
 pub(crate) fn new_companion_session_store() -> CompanionSessionStore {
-    Arc::new(RwLock::new(HashMap::new()))
+    CompanionSessionStore::new(
+        COMPANION_SESSION_CAPACITY,
+        COMPANION_SESSION_MAX_AGE_SECONDS,
+    )
+}
+
+impl CompanionSessionStore {
+    fn new(capacity: usize, max_age_seconds: u64) -> Self {
+        Self {
+            state: Arc::new(RwLock::new(CompanionSessionStoreState {
+                sessions: HashMap::new(),
+                next_sequence: 0,
+            })),
+            capacity: capacity.max(1),
+            max_age_seconds,
+        }
+    }
+
+    fn insert(
+        &self,
+        session_id: String,
+        session: CompanionSession,
+        now_epoch_s: u64,
+    ) -> Result<(), CompanionApiError> {
+        let mut state = self.state.write().map_err(|_| {
+            CompanionApiError::Internal("Failed to write session state".to_string())
+        })?;
+        prune_expired_sessions(&mut state.sessions, now_epoch_s, self.max_age_seconds);
+        state.sessions.remove(&session_id);
+        while state.sessions.len() >= self.capacity {
+            let oldest_session_id = state
+                .sessions
+                .iter()
+                .min_by_key(|(_, stored)| (stored.session.created_at_epoch_s, stored.sequence))
+                .map(|(id, _)| id.clone());
+            let Some(oldest_session_id) = oldest_session_id else {
+                break;
+            };
+            state.sessions.remove(&oldest_session_id);
+        }
+
+        let sequence = state.next_sequence;
+        state.next_sequence = state.next_sequence.wrapping_add(1);
+        state
+            .sessions
+            .insert(session_id, StoredCompanionSession { session, sequence });
+        Ok(())
+    }
+
+    fn get_active(
+        &self,
+        session_id: &str,
+        now_epoch_s: u64,
+    ) -> Result<Option<CompanionSession>, CompanionApiError> {
+        let mut state = self.state.write().map_err(|_| {
+            CompanionApiError::Internal("Failed to write session state".to_string())
+        })?;
+        prune_expired_sessions(&mut state.sessions, now_epoch_s, self.max_age_seconds);
+        Ok(state
+            .sessions
+            .get(session_id)
+            .map(|stored| stored.session.clone()))
+    }
+
+    pub(crate) fn clear(&self) -> Result<(), CompanionApiError> {
+        self.state
+            .write()
+            .map_err(|_| CompanionApiError::Internal("Failed to write session state".to_string()))?
+            .sessions
+            .clear();
+        Ok(())
+    }
+
+    fn remove(&self, session_id: &str) -> Result<(), CompanionApiError> {
+        self.state
+            .write()
+            .map_err(|_| CompanionApiError::Internal("Failed to write session state".to_string()))?
+            .sessions
+            .remove(session_id);
+        Ok(())
+    }
+
+    #[cfg(test)]
+    fn len_at(&self, now_epoch_s: u64) -> Result<usize, CompanionApiError> {
+        let mut state = self.state.write().map_err(|_| {
+            CompanionApiError::Internal("Failed to write session state".to_string())
+        })?;
+        prune_expired_sessions(&mut state.sessions, now_epoch_s, self.max_age_seconds);
+        Ok(state.sessions.len())
+    }
+}
+
+fn prune_expired_sessions(
+    sessions: &mut HashMap<String, StoredCompanionSession>,
+    now_epoch_s: u64,
+    max_age_seconds: u64,
+) {
+    sessions
+        .retain(|_, stored| !session_is_expired_at(&stored.session, now_epoch_s, max_age_seconds));
 }
 
 pub fn generate_pairing_token() -> String {
@@ -104,38 +218,28 @@ pub(crate) fn find_active_session(
         return Ok(None);
     };
 
-    let session = sessions
-        .read()
-        .map_err(|_| CompanionApiError::Internal("Failed to read session state".to_string()))?
-        .get(session_id.as_str())
-        .cloned();
-
-    let Some(session) = session else {
+    let Some(session) = sessions.get_active(session_id.as_str(), unix_epoch_seconds())? else {
         return Ok(None);
     };
-    if session_is_expired(&session) {
-        return Ok(None);
-    }
 
     let Some(browser_id) = session.paired_browser_id.as_deref() else {
         if session.qa_session {
             return Ok(Some(session));
         }
+        sessions.remove(&session_id)?;
         return Ok(None);
     };
     let db = open_companion_db(db_path)?;
     let browser = db
         .get_trusted_lan_paired_browser_by_id(browser_id)
         .map_err(CompanionApiError::from)?;
-    if browser
-        .as_ref()
-        .and_then(|value| value.revoked_at.as_ref())
-        .is_some()
-    {
-        return Ok(None);
+    match browser {
+        Some(browser) if browser.revoked_at.is_none() => Ok(Some(session)),
+        _ => {
+            sessions.remove(&session_id)?;
+            Ok(None)
+        }
     }
-
-    Ok(Some(session))
 }
 
 pub(crate) fn find_active_trusted_lan_browser(
@@ -185,17 +289,13 @@ fn build_session_response(
 ) -> Result<Response, CompanionApiError> {
     let session_id = random_hex_token(32);
     let csrf_token = random_hex_token(24);
+    let created_at_epoch_s = unix_epoch_seconds();
     let session = CompanionSession {
         csrf_token: csrf_token.clone(),
-        created_at_epoch_s: unix_epoch_seconds(),
+        created_at_epoch_s,
         paired_browser_id: paired_browser_id.clone(),
         qa_session,
     };
-
-    sessions
-        .write()
-        .map_err(|_| CompanionApiError::Internal("Failed to write session state".to_string()))?
-        .insert(session_id.clone(), session);
 
     if let Some(browser_id) = paired_browser_id.as_deref() {
         let Some(db_path) = db_path else {
@@ -207,6 +307,7 @@ fn build_session_response(
         db.touch_trusted_lan_paired_browser(browser_id, last_origin)
             .map_err(CompanionApiError::from)?;
     }
+    sessions.insert(session_id.clone(), session, created_at_epoch_s)?;
 
     let response_body = AuthenticatedSessionResponse {
         ok: true,
@@ -235,9 +336,12 @@ fn build_session_response(
     Ok(response)
 }
 
-fn session_is_expired(session: &CompanionSession) -> bool {
-    unix_epoch_seconds().saturating_sub(session.created_at_epoch_s)
-        > COMPANION_SESSION_MAX_AGE_SECONDS
+fn session_is_expired_at(
+    session: &CompanionSession,
+    now_epoch_s: u64,
+    max_age_seconds: u64,
+) -> bool {
+    now_epoch_s.saturating_sub(session.created_at_epoch_s) >= max_age_seconds
 }
 
 fn unix_epoch_seconds() -> u64 {
@@ -251,4 +355,95 @@ fn open_companion_db(db_path: &str) -> Result<FilamentDatabase, CompanionApiErro
     FilamentDatabase::open(db_path).map_err(|error| {
         CompanionApiError::Internal(format!("Failed to open companion database: {error}"))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_session(created_at_epoch_s: u64, csrf_token: &str) -> CompanionSession {
+        CompanionSession {
+            csrf_token: csrf_token.to_string(),
+            created_at_epoch_s,
+            paired_browser_id: None,
+            qa_session: true,
+        }
+    }
+
+    #[test]
+    fn expired_sessions_are_removed_deterministically_on_lookup() {
+        let store = CompanionSessionStore::new(4, 10);
+        store
+            .insert("expired".to_string(), test_session(100, "old"), 100)
+            .expect("insert expired candidate");
+        store
+            .insert("active".to_string(), test_session(101, "new"), 101)
+            .expect("insert active candidate");
+
+        assert!(store
+            .get_active("expired", 110)
+            .expect("lookup expired session")
+            .is_none());
+        assert_eq!(store.len_at(110).expect("count active sessions"), 1);
+        assert_eq!(
+            store
+                .get_active("active", 110)
+                .expect("lookup active session")
+                .expect("active session")
+                .csrf_token,
+            "new"
+        );
+    }
+
+    #[test]
+    fn session_capacity_evicts_oldest_in_stable_insertion_order() {
+        let store = CompanionSessionStore::new(2, 100);
+        store
+            .insert("first".to_string(), test_session(50, "first"), 50)
+            .expect("insert first");
+        store
+            .insert("second".to_string(), test_session(50, "second"), 50)
+            .expect("insert second");
+        store
+            .insert("third".to_string(), test_session(50, "third"), 50)
+            .expect("insert third");
+
+        assert!(store
+            .get_active("first", 51)
+            .expect("lookup first")
+            .is_none());
+        assert!(store
+            .get_active("second", 51)
+            .expect("lookup second")
+            .is_some());
+        assert!(store
+            .get_active("third", 51)
+            .expect("lookup third")
+            .is_some());
+        assert_eq!(store.len_at(51).expect("count capped sessions"), 2);
+    }
+
+    #[test]
+    fn expired_sessions_are_pruned_before_capacity_eviction() {
+        let store = CompanionSessionStore::new(2, 5);
+        store
+            .insert("expired".to_string(), test_session(10, "expired"), 10)
+            .expect("insert expired");
+        store
+            .insert("active".to_string(), test_session(14, "active"), 14)
+            .expect("insert active");
+        store
+            .insert("new".to_string(), test_session(15, "new"), 15)
+            .expect("insert new");
+
+        assert!(store
+            .get_active("expired", 15)
+            .expect("lookup expired")
+            .is_none());
+        assert!(store
+            .get_active("active", 15)
+            .expect("lookup active")
+            .is_some());
+        assert!(store.get_active("new", 15).expect("lookup new").is_some());
+    }
 }

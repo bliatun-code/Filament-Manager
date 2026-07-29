@@ -17,8 +17,29 @@ pub(crate) fn assign_spool_to_ams_slot(
     clear_live_cache_before_next_refresh: bool,
 ) -> InventoryResult<()> {
     let tx = conn.unchecked_transaction()?;
+    assign_spool_to_ams_slot_in_transaction(
+        &tx,
+        printer_id,
+        slot_id,
+        spool_id,
+        rfid_override_tray_uuid,
+        rfid_override_color_hex,
+        clear_live_cache_before_next_refresh,
+    )?;
+    tx.commit()?;
+    Ok(())
+}
 
-    let slot_entry: Option<(Option<String>, String)> = tx
+pub(crate) fn assign_spool_to_ams_slot_in_transaction(
+    conn: &Connection,
+    printer_id: &str,
+    slot_id: &str,
+    spool_id: Option<&str>,
+    rfid_override_tray_uuid: Option<&str>,
+    rfid_override_color_hex: Option<&str>,
+    clear_live_cache_before_next_refresh: bool,
+) -> InventoryResult<()> {
+    let slot_entry: Option<(Option<String>, String)> = conn
         .query_row(
             "SELECT s.spool_id, p.name
              FROM ams_slots s
@@ -34,10 +55,10 @@ pub(crate) fn assign_spool_to_ams_slot(
     let (previous_spool_id, printer_name) = slot_entry.ok_or(InventoryError::NotFound)?;
 
     if let Some(candidate_spool_id) = spool_id {
-        ensure_spool_exists(&tx, candidate_spool_id)?;
+        ensure_spool_exists(conn, candidate_spool_id)?;
     }
 
-    tx.execute(
+    conn.execute(
         "UPDATE ams_slots
          SET spool_id = ?1,
              last_seen_at = datetime('now'),
@@ -63,16 +84,15 @@ pub(crate) fn assign_spool_to_ams_slot(
 
     if previous_spool_id.as_deref() != spool_id {
         if let Some(old_spool_id) = previous_spool_id {
-            release_printer_spool(&tx, &old_spool_id)?;
+            release_printer_spool(conn, &old_spool_id)?;
         }
 
         if let Some(new_spool_id) = spool_id {
-            clear_spool_from_other_slots(&tx, new_spool_id, slot_id)?;
-            assign_spool_location(&tx, new_spool_id, &printer_name, slot_id)?;
+            clear_spool_from_other_slots(conn, new_spool_id, slot_id)?;
+            assign_spool_location(conn, new_spool_id, &printer_name, slot_id)?;
         }
     }
 
-    tx.commit()?;
     Ok(())
 }
 

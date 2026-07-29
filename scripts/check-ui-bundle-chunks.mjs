@@ -20,6 +20,20 @@ const pageChunkPrefixes = [
   "settings_",
   "statistics-",
 ];
+const performanceChunkBudgets = new Map([
+  // The entry chunk is the cold-start floor. Page implementations must stay
+  // behind their lazy imports rather than silently growing this bundle.
+  ["index-", 300_000],
+  // These are deliberately roomier than the v0.22.0 measurements. They catch
+  // accidental eager dependencies and large navigation regressions without
+  // making normal minifier/hash variation a release blocker.
+  ["dashboard-", 65_000],
+  ["inventory-", 260_000],
+  ["loans-", 55_000],
+  ["printers-", 115_000],
+  ["settings-", 190_000],
+  ["statistics-", 90_000],
+]);
 
 function importsForSource(source) {
   const imports = new Set();
@@ -55,6 +69,14 @@ export function readUiBundleAssets(distAssetsDir = assetsDir) {
 export function validateUiBundleChunks(assets) {
   const assetNames = assets.map((asset) => asset.name);
   const errors = [];
+
+  for (const prefix of performanceChunkBudgets.keys()) {
+    if (!assetNames.some((assetName) => assetName.startsWith(prefix))) {
+      errors.push(
+        `Expected ${prefix}*.js so its cold-start/navigation budget can be enforced.`,
+      );
+    }
+  }
 
   for (const vendorPrefix of heavyVendorPrefixes) {
     if (!assetNames.some((assetName) => assetName.startsWith(vendorPrefix))) {
@@ -101,6 +123,21 @@ export function validateUiBundleChunks(assets) {
     );
     if (importedHeavyVendors.length > 0) {
       errors.push(`${asset.name} pulls heavy lazy vendors into a page chunk.`);
+    }
+  }
+
+  for (const asset of assets) {
+    const matchingBudget = [...performanceChunkBudgets.entries()].find(([prefix]) =>
+      asset.name.startsWith(prefix),
+    );
+    if (!matchingBudget) {
+      continue;
+    }
+    const [prefix, maxBytes] = matchingBudget;
+    if (asset.size > maxBytes) {
+      errors.push(
+        `${asset.name} exceeds the ${prefix} cold-start/navigation budget (${asset.size} > ${maxBytes} bytes).`,
+      );
     }
   }
 

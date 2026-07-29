@@ -55,12 +55,10 @@ impl FilamentDatabase {
         message: Option<&str>,
         host_device_name: Option<&str>,
     ) -> InventoryResult<()> {
-        save_library_sync_validation_state_row(
-            self.connection(),
-            reachable,
-            message,
-            host_device_name,
-        )
+        let transaction = self.connection().unchecked_transaction()?;
+        save_library_sync_validation_state_row(&transaction, reachable, message, host_device_name)?;
+        transaction.commit()?;
+        Ok(())
     }
 
     #[cfg(any(test, feature = "test-support"))]
@@ -71,13 +69,16 @@ impl FilamentDatabase {
         csrf_token: &str,
         expires_at: Option<&str>,
     ) -> InventoryResult<()> {
+        let transaction = self.connection().unchecked_transaction()?;
         save_library_sync_client_auth_state_rows(
-            self.connection(),
+            &transaction,
             session_id,
             device_token,
             csrf_token,
             expires_at,
-        )
+        )?;
+        transaction.commit()?;
+        Ok(())
     }
 
     pub fn clear_library_sync_client_auth_state(&self) -> InventoryResult<()> {
@@ -91,7 +92,10 @@ impl FilamentDatabase {
         &self,
         expires_at: Option<&str>,
     ) -> InventoryResult<()> {
-        save_library_sync_client_auth_metadata_rows(self.connection(), expires_at)
+        let transaction = self.connection().unchecked_transaction()?;
+        save_library_sync_client_auth_metadata_rows(&transaction, expires_at)?;
+        transaction.commit()?;
+        Ok(())
     }
 
     pub fn finalize_library_sync_client_pairing(

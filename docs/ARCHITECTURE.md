@@ -34,6 +34,36 @@ Storage changes must preserve these rules:
 - keep device credentials and transport state out of portable data flows;
 - treat Windows split-location conflicts as failures, not silent overwrites.
 
+## Data Consistency And Request Responsiveness
+
+`InventoryEngine` is the transaction boundary for user-visible inventory
+changes. A command that changes a spool, related locations or loans, weight
+readings, print jobs, and history must commit all of those records together or
+leave all of them unchanged. Lower database helpers that already own a
+transaction expose an internal connection-based variant when they need to join
+an engine transaction; nested independent transactions are not an acceptable
+substitute.
+
+Compound detail and statistics responses use one deferred SQLite read
+transaction. Every query contributing to a response therefore observes the
+same database snapshot, even if another connection commits while the response
+is being assembled.
+
+The Companion server treats SQLite, credential-store, catalog-network, and
+other blocking work as blocking operations:
+
+- Axum handlers submit that work through the bounded Companion blocking
+  executor instead of running it on async worker threads;
+- request middleware performs database-backed session authorization through
+  the same boundary;
+- the in-memory session store removes expired sessions and enforces a fixed
+  capacity, evicting the oldest session first.
+
+Keep these boundaries explicit when adding a route. A fast handler may validate
+headers or transform an already-loaded value directly, but it must not open
+SQLite, contact a remote host, or access an operating-system credential store
+on an async worker thread.
+
 ## Bambu Live Boundaries
 
 The live-printer path is intentionally ordered:
@@ -75,3 +105,6 @@ cargo clippy --workspace --release --all-targets -- -D warnings
 Architecture tests guard the core-crate import, startup ownership, and the
 Bambu Live orchestration boundaries. Update a guard only when the replacement
 boundary is equally explicit and covered by behavior tests.
+
+Performance regression contracts and the current budgets are documented in
+[`PERFORMANCE_BASELINE.md`](PERFORMANCE_BASELINE.md).

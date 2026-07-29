@@ -11,6 +11,7 @@ pub(crate) enum CompanionApiError {
     Unauthorized(String),
     Forbidden(String),
     NotFound(String),
+    ServiceUnavailable(String),
     Internal(String),
 }
 
@@ -88,6 +89,15 @@ impl IntoResponse for CompanionApiError {
                     StatusCode::NOT_FOUND,
                     "common.not_found",
                     "The requested record was not found.".to_string(),
+                    None,
+                )
+            }
+            CompanionApiError::ServiceUnavailable(detail) => {
+                drop(detail);
+                (
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "common.unavailable",
+                    "The service is temporarily unavailable.".to_string(),
                     None,
                 )
             }

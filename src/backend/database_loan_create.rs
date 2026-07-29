@@ -16,15 +16,28 @@ pub(crate) fn create_spool_loan(
     grams_out: i64,
     lent_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
+    let tx = conn.unchecked_transaction()?;
+    let loan =
+        create_spool_loan_in_transaction(&tx, spool_id, borrower_name, grams_out, lent_note)?;
+    tx.commit()?;
+    Ok(loan)
+}
+
+pub(crate) fn create_spool_loan_in_transaction(
+    conn: &Connection,
+    spool_id: &str,
+    borrower_name: &str,
+    grams_out: i64,
+    lent_note: Option<&str>,
+) -> InventoryResult<SpoolLoanRow> {
     let borrower = borrower_name.trim();
     if borrower.is_empty() {
         return Err(InventoryError::Db("borrower name is required".to_string()));
     }
 
-    let tx = conn.unchecked_transaction()?;
-    ensure_spool_can_be_loaned(&tx, spool_id)?;
+    ensure_spool_can_be_loaned(conn, spool_id)?;
 
-    tx.execute(
+    conn.execute(
         "UPDATE ams_slots
          SET spool_id = NULL, last_seen_at = datetime('now')
          WHERE spool_id = ?1",
@@ -32,7 +45,7 @@ pub(crate) fn create_spool_loan(
     )?;
 
     let loan_id = new_id();
-    tx.execute(
+    conn.execute(
         "INSERT INTO spool_loans (
             id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
             counterparty_contact, counterparty_note, grams_out, lent_note, lent_at
@@ -41,14 +54,14 @@ pub(crate) fn create_spool_loan(
     )?;
 
     let location = format!("Loaned to: {borrower}");
-    tx.execute(
+    conn.execute(
         "INSERT INTO inventory_locations (id, name, type)
          VALUES (?1, ?2, 'LOAN')
          ON CONFLICT(id) DO UPDATE SET
             name = excluded.name",
         params![location, location],
     )?;
-    tx.execute(
+    conn.execute(
         "UPDATE filament_spools
          SET status = 'BORROWED',
              location_id = ?2,
@@ -59,12 +72,31 @@ pub(crate) fn create_spool_loan(
         params![spool_id, location, grams_out.max(0)],
     )?;
 
-    let loan = select_loan_by_id(&tx, &loan_id)?;
+    select_loan_by_id(conn, &loan_id)
+}
+
+pub(crate) fn create_inbound_spool_loan(
+    conn: &Connection,
+    spool_id: &str,
+    counterparty_name: &str,
+    counterparty_contact: Option<&str>,
+    counterparty_note: Option<&str>,
+    grams_out: i64,
+) -> InventoryResult<SpoolLoanRow> {
+    let tx = conn.unchecked_transaction()?;
+    let loan = create_inbound_spool_loan_in_transaction(
+        &tx,
+        spool_id,
+        counterparty_name,
+        counterparty_contact,
+        counterparty_note,
+        grams_out,
+    )?;
     tx.commit()?;
     Ok(loan)
 }
 
-pub(crate) fn create_inbound_spool_loan(
+pub(crate) fn create_inbound_spool_loan_in_transaction(
     conn: &Connection,
     spool_id: &str,
     counterparty_name: &str,
@@ -79,11 +111,10 @@ pub(crate) fn create_inbound_spool_loan(
         ));
     }
 
-    let tx = conn.unchecked_transaction()?;
-    ensure_spool_can_be_loaned(&tx, spool_id)?;
+    ensure_spool_can_be_loaned(conn, spool_id)?;
 
     let loan_id = new_id();
-    tx.execute(
+    conn.execute(
         "INSERT INTO spool_loans (
             id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
             counterparty_contact, counterparty_note, grams_out, lent_note, lent_at
@@ -98,9 +129,7 @@ pub(crate) fn create_inbound_spool_loan(
         ],
     )?;
 
-    let loan = select_loan_by_id(&tx, &loan_id)?;
-    tx.commit()?;
-    Ok(loan)
+    select_loan_by_id(conn, &loan_id)
 }
 
 fn ensure_spool_can_be_loaned(conn: &Connection, spool_id: &str) -> InventoryResult<()> {

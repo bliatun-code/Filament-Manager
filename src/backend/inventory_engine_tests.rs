@@ -1,8 +1,8 @@
 use super::{
     AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
     CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, ReceiveWishlistItemInput,
-    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
-    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -17,6 +17,736 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-engine-{test_name}-{nanos}.db"))
+}
+
+#[test]
+fn create_manual_spool_rolls_back_catalog_location_and_spool_when_history_fails() {
+    let db_path = temp_db_path("create-manual-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_borrowed_in_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'BORROWED_IN_REGISTERED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced borrowed-in history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        let error = engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "atomic_create_spool".to_string(),
+                material: "PCTG-ATOMIC".to_string(),
+                filament_name: "Rollback proof".to_string(),
+                color_name: "Transaction violet".to_string(),
+                hex_color: Some("#6543AA".to_string()),
+                product_url: None,
+                vendor: Some("Atomic test vendor".to_string()),
+                default_weight_g: Some(875),
+                qr_code: Some("atomic-create-qr".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("BORROWED_IN".to_string()),
+                owner_name: Some("Rollback owner".to_string()),
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(830),
+                location: Some("Atomic rollback shelf".to_string()),
+            })
+            .expect_err("forced history failure should abort spool creation");
+        assert!(error
+            .to_string()
+            .contains("forced borrowed-in history failure"));
+
+        let spool_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM filament_spools WHERE id = 'atomic_create_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let master_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list
+                 WHERE material = 'PCTG-ATOMIC'
+                   AND filament_name = 'Rollback proof'
+                   AND color_name = 'Transaction violet'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let location_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM inventory_locations
+                 WHERE id = 'Atomic rollback shelf'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let loan_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_loans WHERE spool_id = 'atomic_create_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let history_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_create_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(spool_count, 0);
+        assert_eq!(master_count, 0);
+        assert_eq!(location_count, 0);
+        assert_eq!(loan_count, 0);
+        assert_eq!(history_count, 0);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "create_manual_spool_rolls_back_catalog_location_and_spool_when_history_fails failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn update_spool_weight_rolls_back_weight_reading_and_scale_when_history_fails() {
+    let db_path = temp_db_path("update-weight-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "atomic_weight_spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Atomic weight".to_string(),
+                color_name: "White".to_string(),
+                hex_color: Some("#FFFFFF".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let history_before: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_weight_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_weight_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'WEIGHT_UPDATED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced weight history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .update_spool_weight(
+                "atomic_weight_spool",
+                760,
+                Some("atomic-test-scale"),
+                WeightSource::Manual,
+            )
+            .expect_err("forced history failure should abort weight update");
+        assert!(error.to_string().contains("forced weight history failure"));
+
+        let spool = engine
+            .db
+            .get_spool_by_id("atomic_weight_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after rolled-back weight update".to_string())?;
+        let reading_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM weight_readings
+                 WHERE spool_id = 'atomic_weight_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let scale_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM scales WHERE id = 'atomic-test-scale'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let history_after: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_weight_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(spool.current_weight_g, Some(1000));
+        assert_eq!(spool.remaining_g, Some(1000));
+        assert_eq!(reading_count, 0);
+        assert_eq!(scale_count, 0);
+        assert_eq!(history_after, history_before);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_spool_weight_rolls_back_weight_reading_and_scale_when_history_fails failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn record_print_usage_rolls_back_job_weight_status_and_history_together() {
+    let db_path = temp_db_path("record-print-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "atomic_printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Atomic printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "atomic_print_spool".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Atomic print".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#2266AA".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Print rollback shelf".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "atomic_printer".to_string(),
+                slot_id: "atomic_printer_ams_1_slot_1".to_string(),
+                spool_id: Some("atomic_print_spool".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let spool_before = engine
+            .db
+            .get_spool_by_id("atomic_print_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected assigned spool".to_string())?;
+        let history_before: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_print_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_print_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'PRINT_JOB_RECORDED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced print history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .record_print_usage(RecordPrintUsageInput {
+                printer_id: "atomic_printer".to_string(),
+                spool_id: "atomic_print_spool".to_string(),
+                grams: 125,
+                job_name: Some("Rollback cube".to_string()),
+                success: Some(true),
+            })
+            .expect_err("forced history failure should abort print usage");
+        assert!(error.to_string().contains("forced print history failure"));
+
+        let spool_after = engine
+            .db
+            .get_spool_by_id("atomic_print_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after rolled-back print usage".to_string())?;
+        let print_job_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM print_jobs
+                 WHERE spool_id = 'atomic_print_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let reading_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM weight_readings
+                 WHERE spool_id = 'atomic_print_spool' AND source = 'PRINT_JOB'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let scale_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM scales WHERE id = 'print-job'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let history_after: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_print_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(spool_after.current_weight_g, spool_before.current_weight_g);
+        assert_eq!(spool_after.remaining_g, spool_before.remaining_g);
+        assert_eq!(spool_after.status, spool_before.status);
+        assert_eq!(print_job_count, 0);
+        assert_eq!(reading_count, 0);
+        assert_eq!(scale_count, 0);
+        assert_eq!(history_after, history_before);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "record_print_usage_rolls_back_job_weight_status_and_history_together failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn empty_status_rolls_back_when_second_history_event_fails() {
+    let db_path = temp_db_path("empty-status-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "atomic_status_spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Atomic status".to_string(),
+                color_name: "Orange".to_string(),
+                hex_color: Some("#FF8800".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let history_before: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_status_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_used_up_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'USED_UP'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced used-up history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .update_spool_status("atomic_status_spool", "EMPTY")
+            .expect_err("second history failure should abort status update");
+        assert!(error.to_string().contains("forced used-up history failure"));
+
+        let spool = engine
+            .db
+            .get_spool_by_id("atomic_status_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after status rollback".to_string())?;
+        let history_after: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_status_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(spool.status, "IN_STOCK");
+        assert_eq!(history_after, history_before);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("empty_status_rolls_back_when_second_history_event_fails failed: {message}");
+    }
+}
+
+#[test]
+fn assign_printer_slot_rolls_back_slot_and_spool_when_history_fails() {
+    let db_path = temp_db_path("assign-slot-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "atomic_slot_printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Atomic slot printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "atomic_slot_spool".to_string(),
+                material: "ABS".to_string(),
+                filament_name: "Atomic slot".to_string(),
+                color_name: "Black".to_string(),
+                hex_color: Some("#000000".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Original atomic shelf".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_assignment_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'ASSIGNED_TO_AMS'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced assignment history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "atomic_slot_printer".to_string(),
+                slot_id: "atomic_slot_printer_ams_1_slot_1".to_string(),
+                spool_id: Some("atomic_slot_spool".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .expect_err("history failure should abort slot assignment");
+        assert!(error
+            .to_string()
+            .contains("forced assignment history failure"));
+
+        let spool = engine
+            .db
+            .get_spool_by_id("atomic_slot_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after assignment rollback".to_string())?;
+        let overview = engine
+            .db
+            .list_printer_overview()
+            .map_err(|error| error.to_string())?;
+        let slot = overview[0]
+            .slots
+            .iter()
+            .find(|slot| slot.slot_id == "atomic_slot_printer_ams_1_slot_1")
+            .ok_or_else(|| "expected printer slot after rollback".to_string())?;
+        let assignment_history_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'atomic_slot_spool'
+                   AND event_type = 'ASSIGNED_TO_AMS'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert!(slot.spool_id.is_none());
+        assert_eq!(spool.status, "IN_STOCK");
+        assert_eq!(spool.location_id.as_deref(), Some("Original atomic shelf"));
+        assert_eq!(
+            spool.home_location_id.as_deref(),
+            Some("Original atomic shelf")
+        );
+        assert_eq!(assignment_history_count, 0);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "assign_printer_slot_rolls_back_slot_and_spool_when_history_fails failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn return_spool_loan_rolls_back_loan_weight_and_reading_when_history_fails() {
+    let db_path = temp_db_path("loan-return-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "atomic_loan_spool".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Atomic loan".to_string(),
+                color_name: "Green".to_string(),
+                hex_color: Some("#338844".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(900),
+                location: Some("Loan shelf".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "atomic_loan_spool".to_string(),
+                borrower_name: "Atomic borrower".to_string(),
+                grams_out: Some(850),
+                note: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_loan_return_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'LOAN_RETURNED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced loan-return history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id.clone(),
+                returned_grams: 620,
+                note: Some("Should roll back".to_string()),
+            })
+            .expect_err("history failure should abort loan return");
+        assert!(error
+            .to_string()
+            .contains("forced loan-return history failure"));
+
+        let loan_state: (String, Option<String>, Option<i64>) = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT loan_status, returned_at, returned_grams
+                 FROM spool_loans
+                 WHERE id = ?1",
+                [&loan.id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        let spool = engine
+            .db
+            .get_spool_by_id("atomic_loan_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after loan rollback".to_string())?;
+        let return_reading_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM weight_readings
+                 WHERE spool_id = 'atomic_loan_spool' AND source = 'LOAN_RETURN'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(loan_state, ("ACTIVE".to_string(), None, None));
+        assert_eq!(spool.status, "BORROWED");
+        assert_eq!(spool.current_weight_g, Some(850));
+        assert_eq!(spool.remaining_g, Some(850));
+        assert_eq!(return_reading_count, 0);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "return_spool_loan_rolls_back_loan_weight_and_reading_when_history_fails failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn active_printer_setting_rolls_back_when_revision_bump_fails() {
+    let db_path = temp_db_path("active-printer-atomic-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "atomic_active_printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Atomic active printer".to_string(),
+                ams_units: Some(0),
+                slots_per_ams: Some(4),
+            })
+            .map_err(|error| error.to_string())?;
+        let revision_before = engine
+            .db
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .printers;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_active_printer_revision
+                 BEFORE UPDATE ON library_domain_revisions
+                 WHEN OLD.domain = 'printers'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced printer revision failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .set_active_printer(Some("atomic_active_printer"))
+            .expect_err("revision failure should abort active-printer setting");
+        assert!(error
+            .to_string()
+            .contains("forced printer revision failure"));
+
+        assert_eq!(
+            engine
+                .get_active_printer()
+                .map_err(|error| error.to_string())?,
+            None
+        );
+        assert_eq!(
+            engine
+                .db
+                .library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .printers,
+            revision_before
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("active_printer_setting_rolls_back_when_revision_bump_fails failed: {message}");
+    }
 }
 
 #[test]

@@ -32,7 +32,10 @@ impl FilamentDatabase {
         &self,
         input: MasterCatalogUpdateInput<'_>,
     ) -> InventoryResult<String> {
-        update_master_catalog_entry_row(self.connection(), input)
+        let transaction = self.connection().unchecked_transaction()?;
+        let master_id = update_master_catalog_entry_row(&transaction, input)?;
+        transaction.commit()?;
+        Ok(master_id)
     }
 
     pub fn ensure_catalog_lifecycle_columns(&self) -> InventoryResult<()> {

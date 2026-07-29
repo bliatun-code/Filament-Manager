@@ -1,5 +1,54 @@
+use crate::backend::database_catalog_manual::upsert_manual_master as upsert_manual_master_row;
+use crate::backend::database_events::{
+    ensure_scale as ensure_scale_row, insert_spool_history_event as insert_spool_history_event_row,
+    insert_weight_reading as insert_weight_reading_row,
+};
+use crate::backend::database_loan_create::{
+    create_inbound_spool_loan_in_transaction, create_spool_loan_in_transaction,
+};
+use crate::backend::database_loan_queries::{
+    find_active_spool_loan_for_direction as find_active_spool_loan_for_direction_row,
+    spool_has_active_loan as spool_has_active_loan_row,
+};
+use crate::backend::database_loan_return::{
+    return_inbound_spool_loan_in_transaction, return_spool_loan_in_transaction,
+};
+use crate::backend::database_loan_update::{
+    close_inbound_spool_loan_without_returning_spool as close_inbound_spool_loan_without_returning_spool_row,
+    update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row,
+};
+use crate::backend::database_locations::ensure_location as ensure_location_row;
+use crate::backend::database_print_jobs::insert_print_job as insert_print_job_row;
+use crate::backend::database_printer_queries::printer_exists as printer_exists_row;
+use crate::backend::database_printer_slot_assignment::assign_spool_to_ams_slot_in_transaction;
 use crate::backend::database_result::{InventoryError, InventoryResult};
-use crate::backend::database_revision::PRINTERS_REVISION_DOMAIN;
+use crate::backend::database_revision::{
+    bump_library_domain_revision as bump_library_domain_revision_row, PRINTERS_REVISION_DOMAIN,
+};
+use crate::backend::database_settings::{
+    delete_setting as delete_setting_row, get_setting as get_setting_row,
+    set_setting as set_setting_row,
+};
+use crate::backend::database_spool_assignment::{
+    spool_assigned_to_printer as spool_assigned_to_printer_row,
+    spool_assigned_to_specific_printer as spool_assigned_to_specific_printer_row,
+};
+use crate::backend::database_spool_delete::soft_delete_spool_in_transaction;
+use crate::backend::database_spool_insert::insert_spool as insert_spool_row;
+use crate::backend::database_spool_queries::{
+    get_spool_by_id as get_spool_by_id_row,
+    get_spool_with_master_by_id as get_spool_with_master_by_id_row,
+};
+use crate::backend::database_spool_updates::{
+    set_spool_home_location as set_spool_home_location_row,
+    set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
+    update_spool_ownership as update_spool_ownership_row,
+    update_spool_ownership_metadata as update_spool_ownership_metadata_row,
+    update_spool_rfid_tag as update_spool_rfid_tag_row,
+    update_spool_status as update_spool_status_row,
+    update_spool_tare_weight as update_spool_tare_weight_row,
+    update_spool_weight as update_spool_weight_row,
+};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationRow, BambuLiveObservedTrayRow, CatalogResetStats,
     FilamentDatabase, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LoanUsageByPersonRow,
@@ -371,15 +420,9 @@ impl InventoryEngine {
             ));
         }
         let remaining_g = compute_remaining(input.initial_weight_g, input.current_weight_g);
-        let location_id = match input.location_id.as_deref() {
-            Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
-            _ => None,
-        };
-        let home_location_id = match input.home_location_id.as_deref() {
-            Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
-            _ => location_id.clone(),
-        };
-        let spool = SpoolRow {
+        let requested_location = input.location_id;
+        let requested_home_location = input.home_location_id;
+        let mut spool = SpoolRow {
             id: input.id,
             master_id: input.master_id,
             qr_code: input.qr_code,
@@ -394,50 +437,65 @@ impl InventoryEngine {
             current_weight_g: input.current_weight_g,
             remaining_g,
             spool_tare_weight_g: None,
-            location_id: location_id.clone(),
-            home_location_id,
+            location_id: None,
+            home_location_id: None,
             purchase_date: input.purchase_date,
             purchase_price: input.purchase_price,
             batch_code: input.batch_code,
             last_used_at: None,
         };
-        self.db.insert_spool(&spool)?;
-        self.log_spool_event(
-            &spool_id,
-            "CREATED",
-            json!({
-                "status": spool.status,
-                "ownership_type": spool.ownership_type,
-            }),
-        )?;
-        if ownership_type_kind.is_borrowed_in() {
-            let loan = self.db.create_inbound_spool_loan(
+
+        self.db.with_inventory_transaction(|conn| {
+            spool.location_id = match requested_location.as_deref() {
+                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                _ => None,
+            };
+            spool.home_location_id = match requested_home_location.as_deref() {
+                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                _ => spool.location_id.clone(),
+            };
+
+            insert_spool_row(conn, &spool)?;
+            insert_json_history_event(
+                conn,
                 &spool_id,
-                owner_name.as_deref().unwrap_or(""),
-                owner_contact.as_deref(),
-                ownership_note.as_deref(),
-                spool
-                    .remaining_g
-                    .or(spool.current_weight_g)
-                    .or(spool.initial_weight_g)
-                    .unwrap_or(0),
-            )?;
-            self.log_spool_event(
-                &spool_id,
-                "BORROWED_IN_REGISTERED",
+                "CREATED",
                 json!({
-                    "loan_id": loan.id,
+                    "status": spool.status,
                     "ownership_type": spool.ownership_type,
-                    "owner_name": spool.owner_name,
-                    "owner_contact": spool.owner_contact,
-                    "ownership_note": spool.ownership_note,
-                    "loan_direction": loan.loan_direction,
-                    "counterparty_name": loan.counterparty_name,
-                    "grams_out": loan.grams_out,
                 }),
             )?;
-        }
-        Ok(())
+            if ownership_type_kind.is_borrowed_in() {
+                let loan = create_inbound_spool_loan_in_transaction(
+                    conn,
+                    &spool_id,
+                    owner_name.as_deref().unwrap_or(""),
+                    owner_contact.as_deref(),
+                    ownership_note.as_deref(),
+                    spool
+                        .remaining_g
+                        .or(spool.current_weight_g)
+                        .or(spool.initial_weight_g)
+                        .unwrap_or(0),
+                )?;
+                insert_json_history_event(
+                    conn,
+                    &spool_id,
+                    "BORROWED_IN_REGISTERED",
+                    json!({
+                        "loan_id": loan.id,
+                        "ownership_type": spool.ownership_type,
+                        "owner_name": spool.owner_name,
+                        "owner_contact": spool.owner_contact,
+                        "ownership_note": spool.ownership_note,
+                        "loan_direction": loan.loan_direction,
+                        "counterparty_name": loan.counterparty_name,
+                        "grams_out": loan.grams_out,
+                    }),
+                )?;
+            }
+            Ok(())
+        })
     }
 
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {
@@ -452,15 +510,6 @@ impl InventoryEngine {
                 "borrowed-in spools require an owner/counterparty name".to_string(),
             ));
         }
-        let master_id = self.db.upsert_manual_master(ManualMasterInput {
-            material: &input.material,
-            filament_name: &input.filament_name,
-            color_name: &input.color_name,
-            hex_color: input.hex_color.as_deref(),
-            product_url: input.product_url.as_deref(),
-            vendor: input.vendor.as_deref(),
-            default_weight: input.default_weight_g,
-        })?;
         let initial_weight = input
             .initial_weight_g
             .or(input.default_weight_g)
@@ -469,75 +518,99 @@ impl InventoryEngine {
             .as_str()
             .to_string();
         let vendor_label = input.vendor.clone().unwrap_or_else(|| "Manual".to_string());
-        let spool = SpoolRow {
-            id: spool_id.clone(),
-            master_id,
-            qr_code: input.qr_code,
-            rfid_tag: None,
-            rfid_observed_at: None,
-            status,
-            ownership_type: ownership_type.clone(),
-            owner_name: owner_name.clone(),
-            owner_contact: owner_contact.clone(),
-            ownership_note: ownership_note.clone(),
-            initial_weight_g: initial_weight,
-            current_weight_g: initial_weight,
-            remaining_g: initial_weight,
-            spool_tare_weight_g: default_spool_tare_for_vendor(Some(vendor_label.as_str())),
-            location_id: None,
-            home_location_id: None,
-            purchase_date: None,
-            purchase_price: None,
-            batch_code: None,
-            last_used_at: None,
-        };
-        self.db.insert_spool(&spool)?;
-        if let Some(location) = input.location.as_deref() {
-            if !location.trim().is_empty() {
-                self.assign_location(&spool_id, Some(location))?;
-            }
-        }
-        self.log_spool_event(
-            &spool_id,
-            "CREATED",
-            json!({
-                "status": spool.status,
-                "ownership_type": spool.ownership_type,
-                "vendor": vendor_label,
-            }),
-        )?;
-        if ownership_type_kind.is_borrowed_in() {
-            let loan = self.db.create_inbound_spool_loan(
-                &spool_id,
-                owner_name.as_deref().unwrap_or(""),
-                owner_contact.as_deref(),
-                ownership_note.as_deref(),
-                spool
-                    .remaining_g
-                    .or(spool.current_weight_g)
-                    .or(spool.initial_weight_g)
-                    .unwrap_or(0),
+        self.db.with_inventory_transaction(|conn| {
+            let master_id = upsert_manual_master_row(
+                conn,
+                ManualMasterInput {
+                    material: &input.material,
+                    filament_name: &input.filament_name,
+                    color_name: &input.color_name,
+                    hex_color: input.hex_color.as_deref(),
+                    product_url: input.product_url.as_deref(),
+                    vendor: input.vendor.as_deref(),
+                    default_weight: input.default_weight_g,
+                },
             )?;
-            self.log_spool_event(
+            let spool = SpoolRow {
+                id: spool_id.clone(),
+                master_id,
+                qr_code: input.qr_code,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status,
+                ownership_type: ownership_type.clone(),
+                owner_name: owner_name.clone(),
+                owner_contact: owner_contact.clone(),
+                ownership_note: ownership_note.clone(),
+                initial_weight_g: initial_weight,
+                current_weight_g: initial_weight,
+                remaining_g: initial_weight,
+                spool_tare_weight_g: default_spool_tare_for_vendor(Some(vendor_label.as_str())),
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            };
+            insert_spool_row(conn, &spool)?;
+
+            if let Some(location) = input.location.as_deref() {
+                if !location.trim().is_empty() {
+                    let location_id = ensure_location_row(conn, location)?;
+                    set_spool_location_row(conn, &spool_id, Some(&location_id))?;
+                    set_spool_home_location_row(conn, &spool_id, Some(&location_id))?;
+                    insert_json_history_event(
+                        conn,
+                        &spool_id,
+                        "LOCATION_UPDATED",
+                        json!({ "location": location_id }),
+                    )?;
+                }
+            }
+
+            insert_json_history_event(
+                conn,
                 &spool_id,
-                "BORROWED_IN_REGISTERED",
+                "CREATED",
                 json!({
-                    "loan_id": loan.id,
+                    "status": spool.status,
                     "ownership_type": spool.ownership_type,
-                    "owner_name": spool.owner_name,
-                    "owner_contact": spool.owner_contact,
-                    "ownership_note": spool.ownership_note,
-                    "loan_direction": loan.loan_direction,
-                    "counterparty_name": loan.counterparty_name,
-                    "grams_out": loan.grams_out,
-                    "vendor": input
-                        .vendor
-                        .clone()
-                        .unwrap_or_else(|| "Manual".to_string()),
+                    "vendor": vendor_label,
                 }),
             )?;
-        }
-        Ok(())
+            if ownership_type_kind.is_borrowed_in() {
+                let loan = create_inbound_spool_loan_in_transaction(
+                    conn,
+                    &spool_id,
+                    owner_name.as_deref().unwrap_or(""),
+                    owner_contact.as_deref(),
+                    ownership_note.as_deref(),
+                    spool
+                        .remaining_g
+                        .or(spool.current_weight_g)
+                        .or(spool.initial_weight_g)
+                        .unwrap_or(0),
+                )?;
+                insert_json_history_event(
+                    conn,
+                    &spool_id,
+                    "BORROWED_IN_REGISTERED",
+                    json!({
+                        "loan_id": loan.id,
+                        "ownership_type": spool.ownership_type,
+                        "owner_name": spool.owner_name,
+                        "owner_contact": spool.owner_contact,
+                        "ownership_note": spool.ownership_note,
+                        "loan_direction": loan.loan_direction,
+                        "counterparty_name": loan.counterparty_name,
+                        "grams_out": loan.grams_out,
+                        "vendor": input.vendor,
+                    }),
+                )?;
+            }
+            Ok(())
+        })
     }
 
     pub fn update_master_catalog_entry(
@@ -577,37 +650,37 @@ impl InventoryEngine {
         scale_id: Option<&str>,
         source: WeightSource,
     ) -> InventoryResult<()> {
-        let spool_with_master = self
-            .db
-            .get_spool_with_master_by_id(spool_id)?
-            .ok_or(InventoryError::NotFound)?;
-        let tare_g = resolve_spool_tare_weight_g(
-            spool_with_master.spool.spool_tare_weight_g,
-            Some(spool_with_master.master.vendor.as_str()),
-        );
-        let filament_grams = (grams - tare_g).max(0);
-        let remaining_g = Some(filament_grams);
         let effective_scale_id = scale_id.unwrap_or("manual-entry");
-        self.db
-            .ensure_scale(effective_scale_id, "Manual Entry", "MANUAL")?;
-        self.db
-            .update_spool_weight(spool_id, Some(filament_grams), remaining_g)?;
-        self.db.insert_weight_reading(
-            effective_scale_id,
-            spool_id,
-            filament_grams,
-            source.as_str(),
-        )?;
-        self.log_spool_event(
-            spool_id,
-            "WEIGHT_UPDATED",
-            json!({
-                "measured_grams": grams,
-                "tare_weight_g": tare_g,
-                "grams": filament_grams,
-                "source": source.as_str()
-            }),
-        )
+        self.db.with_inventory_transaction(|conn| {
+            let spool_with_master =
+                get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
+            let tare_g = resolve_spool_tare_weight_g(
+                spool_with_master.spool.spool_tare_weight_g,
+                Some(spool_with_master.master.vendor.as_str()),
+            );
+            let filament_grams = (grams - tare_g).max(0);
+
+            ensure_scale_row(conn, effective_scale_id, "Manual Entry", "MANUAL")?;
+            update_spool_weight_row(conn, spool_id, Some(filament_grams), Some(filament_grams))?;
+            insert_weight_reading_row(
+                conn,
+                effective_scale_id,
+                spool_id,
+                filament_grams,
+                source.as_str(),
+            )?;
+            insert_json_history_event(
+                conn,
+                spool_id,
+                "WEIGHT_UPDATED",
+                json!({
+                    "measured_grams": grams,
+                    "tare_weight_g": tare_g,
+                    "grams": filament_grams,
+                    "source": source.as_str()
+                }),
+            )
+        })
     }
 
     pub fn update_spool_tare_weight(&self, spool_id: &str, grams: i64) -> InventoryResult<()> {
@@ -616,33 +689,43 @@ impl InventoryEngine {
                 "spool tare weight must be zero or greater".to_string(),
             ));
         }
-        self.db.update_spool_tare_weight(spool_id, Some(grams))?;
-        self.log_spool_event(
-            spool_id,
-            "TARE_WEIGHT_UPDATED",
-            json!({ "tare_weight_g": grams }),
-        )?;
-        Ok(())
+        self.db.with_inventory_transaction(|conn| {
+            update_spool_tare_weight_row(conn, spool_id, Some(grams))?;
+            insert_json_history_event(
+                conn,
+                spool_id,
+                "TARE_WEIGHT_UPDATED",
+                json!({ "tare_weight_g": grams }),
+            )
+        })
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
         let status_kind = SpoolStatus::from_raw(Some(status));
         let normalized_status = status_kind.as_str();
-        if status_kind.is_assigned() && !self.db.spool_assigned_to_printer(spool_id)? {
-            return Err(InventoryError::Db(
-                "assign spool to a printer slot before setting ASSIGNED".to_string(),
-            ));
-        }
-        self.db.update_spool_status(spool_id, normalized_status)?;
-        self.log_spool_event(
-            spool_id,
-            "STATUS_UPDATED",
-            json!({ "status": normalized_status }),
-        )?;
-        if status_kind == SpoolStatus::Empty {
-            self.log_spool_event(spool_id, "USED_UP", json!({ "status": normalized_status }))?;
-        }
-        Ok(())
+        self.db.with_inventory_transaction(|conn| {
+            if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, spool_id)? {
+                return Err(InventoryError::Db(
+                    "assign spool to a printer slot before setting ASSIGNED".to_string(),
+                ));
+            }
+            update_spool_status_row(conn, spool_id, normalized_status)?;
+            insert_json_history_event(
+                conn,
+                spool_id,
+                "STATUS_UPDATED",
+                json!({ "status": normalized_status }),
+            )?;
+            if status_kind == SpoolStatus::Empty {
+                insert_json_history_event(
+                    conn,
+                    spool_id,
+                    "USED_UP",
+                    json!({ "status": normalized_status }),
+                )?;
+            }
+            Ok(())
+        })
     }
 
     pub fn assign_location(
@@ -650,79 +733,85 @@ impl InventoryEngine {
         spool_id: &str,
         location_id: Option<&str>,
     ) -> InventoryResult<()> {
-        let resolved = match location_id {
-            Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
-            _ => None,
-        };
-        self.db.set_spool_location(spool_id, resolved.as_deref())?;
-        self.db
-            .set_spool_home_location(spool_id, resolved.as_deref())?;
-        self.log_spool_event(
-            spool_id,
-            "LOCATION_UPDATED",
-            json!({ "location": resolved }),
-        )
+        self.db.with_inventory_transaction(|conn| {
+            let resolved = match location_id {
+                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                _ => None,
+            };
+            set_spool_location_row(conn, spool_id, resolved.as_deref())?;
+            set_spool_home_location_row(conn, spool_id, resolved.as_deref())?;
+            insert_json_history_event(
+                conn,
+                spool_id,
+                "LOCATION_UPDATED",
+                json!({ "location": resolved }),
+            )
+        })
     }
 
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
         let status_kind = SpoolStatus::from_raw(Some(&input.status));
         let status = status_kind.as_str().to_string();
-        if status_kind.is_assigned() && !self.db.spool_assigned_to_printer(&input.spool_id)? {
-            return Err(InventoryError::Db(
-                "assign spool to a printer slot before setting ASSIGNED".to_string(),
-            ));
-        }
-        let resolved_location = match input.location.as_deref() {
-            Some(value) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
-            _ => None,
-        };
-        let existing_spool = self
-            .db
-            .get_spool_by_id(&input.spool_id)?
-            .ok_or(InventoryError::NotFound)?;
-        let has_active_loan = self.db.spool_has_active_loan(&input.spool_id)?;
-        let resolved_home_location = match &input.home_location {
-            Some(Some(value)) if !value.trim().is_empty() => Some(self.db.ensure_location(value)?),
-            Some(_) => None,
-            None => existing_spool.home_location_id.clone(),
-        };
-        let should_preserve_current_location =
-            self.db.spool_assigned_to_printer(&input.spool_id)?
-                || has_active_loan
-                || SpoolStatus::from_raw(Some(&existing_spool.status)) == SpoolStatus::Borrowed;
-        let should_sync_home_to_current_location = input.home_location.is_some()
-            && !should_preserve_current_location
-            && match (&resolved_location, &existing_spool.location_id) {
-                (Some(requested), Some(existing)) => requested == existing,
-                (None, None) => true,
-                (None, Some(existing)) => existing.trim().is_empty(),
-                _ => false,
+        self.db.with_inventory_transaction(|conn| {
+            if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, &input.spool_id)? {
+                return Err(InventoryError::Db(
+                    "assign spool to a printer slot before setting ASSIGNED".to_string(),
+                ));
+            }
+            let resolved_location = match input.location.as_deref() {
+                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                _ => None,
             };
-        let effective_location =
-            if should_preserve_current_location && input.home_location.is_some() {
-                existing_spool.location_id.clone()
-            } else if should_sync_home_to_current_location {
-                resolved_home_location.clone()
-            } else {
-                resolved_location.clone()
+            let existing_spool =
+                get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
+            let has_active_loan = spool_has_active_loan_row(conn, &input.spool_id)?;
+            let resolved_home_location = match &input.home_location {
+                Some(Some(value)) if !value.trim().is_empty() => {
+                    Some(ensure_location_row(conn, value)?)
+                }
+                Some(_) => None,
+                None => existing_spool.home_location_id.clone(),
             };
-        self.db.update_spool_details(
-            &input.spool_id,
-            input.qr_code.as_deref(),
-            &status,
-            effective_location.as_deref(),
-            resolved_home_location.as_deref(),
-        )?;
-        self.log_spool_event(
-            &input.spool_id,
-            "DETAILS_UPDATED",
-            json!({
-                "status": status,
-                "qr_code": input.qr_code,
-                "location": effective_location,
-                "home_location": resolved_home_location
-            }),
-        )
+            let should_preserve_current_location =
+                spool_assigned_to_printer_row(conn, &input.spool_id)?
+                    || has_active_loan
+                    || SpoolStatus::from_raw(Some(&existing_spool.status)) == SpoolStatus::Borrowed;
+            let should_sync_home_to_current_location = input.home_location.is_some()
+                && !should_preserve_current_location
+                && match (&resolved_location, &existing_spool.location_id) {
+                    (Some(requested), Some(existing)) => requested == existing,
+                    (None, None) => true,
+                    (None, Some(existing)) => existing.trim().is_empty(),
+                    _ => false,
+                };
+            let effective_location =
+                if should_preserve_current_location && input.home_location.is_some() {
+                    existing_spool.location_id.clone()
+                } else if should_sync_home_to_current_location {
+                    resolved_home_location.clone()
+                } else {
+                    resolved_location.clone()
+                };
+            update_spool_details_row(
+                conn,
+                &input.spool_id,
+                input.qr_code.as_deref(),
+                &status,
+                effective_location.as_deref(),
+                resolved_home_location.as_deref(),
+            )?;
+            insert_json_history_event(
+                conn,
+                &input.spool_id,
+                "DETAILS_UPDATED",
+                json!({
+                    "status": status,
+                    "qr_code": input.qr_code,
+                    "location": effective_location,
+                    "home_location": resolved_home_location
+                }),
+            )
+        })
     }
 
     pub fn update_spool_rfid_tag(&self, input: UpdateSpoolRfidTagInput) -> InventoryResult<()> {
@@ -733,19 +822,23 @@ impl InventoryEngine {
         let normalized_rfid = normalize_optional_input_text(input.rfid_tag.as_deref());
         let normalized_observed_at =
             normalize_optional_input_text(input.rfid_observed_at.as_deref());
-        self.db.update_spool_rfid_tag(
-            spool_id,
-            normalized_rfid.as_deref(),
-            normalized_observed_at.as_deref(),
-        )?;
-        self.log_spool_event(
-            spool_id,
-            "RFID_TAG_UPDATED",
-            json!({
-                "rfid_tag": normalized_rfid,
-                "rfid_observed_at": normalized_observed_at,
-            }),
-        )
+        self.db.with_inventory_transaction(|conn| {
+            update_spool_rfid_tag_row(
+                conn,
+                spool_id,
+                normalized_rfid.as_deref(),
+                normalized_observed_at.as_deref(),
+            )?;
+            insert_json_history_event(
+                conn,
+                spool_id,
+                "RFID_TAG_UPDATED",
+                json!({
+                    "rfid_tag": normalized_rfid,
+                    "rfid_observed_at": normalized_observed_at,
+                }),
+            )
+        })
     }
 
     pub fn update_borrowed_in_spool(
@@ -763,41 +856,44 @@ impl InventoryEngine {
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
 
-        let spool = self
-            .db
-            .get_spool_with_master_by_id(spool_id)?
-            .ok_or(InventoryError::NotFound)?;
-        if !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
-            return Err(InventoryError::Db(
-                "this flow only supports borrowed-in spools".to_string(),
-            ));
-        }
+        self.db.with_inventory_transaction(|conn| {
+            let spool =
+                get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
+            if !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
+                return Err(InventoryError::Db(
+                    "this flow only supports borrowed-in spools".to_string(),
+                ));
+            }
 
-        self.db.update_spool_ownership_metadata(
-            spool_id,
-            Some(owner_name.as_str()),
-            owner_contact.as_deref(),
-            ownership_note.as_deref(),
-        )?;
-        self.db.update_active_inbound_spool_loan_counterparty(
-            spool_id,
-            owner_name.as_str(),
-            owner_contact.as_deref(),
-            ownership_note.as_deref(),
-        )?;
-        self.log_spool_event(
-            spool_id,
-            "DETAILS_UPDATED",
-            json!({
-                "status": spool.spool.status,
-                "qr_code": spool.spool.qr_code,
-                "location": spool.spool.location_id,
-                "ownership_type": spool.spool.ownership_type,
-                "owner_name": owner_name,
-                "owner_contact": owner_contact,
-                "ownership_note": ownership_note,
-            }),
-        )
+            update_spool_ownership_metadata_row(
+                conn,
+                spool_id,
+                Some(owner_name.as_str()),
+                owner_contact.as_deref(),
+                ownership_note.as_deref(),
+            )?;
+            update_active_inbound_spool_loan_counterparty_row(
+                conn,
+                spool_id,
+                owner_name.as_str(),
+                owner_contact.as_deref(),
+                ownership_note.as_deref(),
+            )?;
+            insert_json_history_event(
+                conn,
+                spool_id,
+                "DETAILS_UPDATED",
+                json!({
+                    "status": spool.spool.status,
+                    "qr_code": spool.spool.qr_code,
+                    "location": spool.spool.location_id,
+                    "ownership_type": spool.spool.ownership_type,
+                    "owner_name": owner_name,
+                    "owner_contact": owner_contact,
+                    "ownership_note": ownership_note,
+                }),
+            )
+        })
     }
 
     pub fn update_spool_ownership(&self, input: UpdateSpoolOwnershipInput) -> InventoryResult<()> {
@@ -810,149 +906,186 @@ impl InventoryEngine {
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
 
-        let spool = self
-            .db
-            .get_spool_with_master_by_id(spool_id)?
-            .ok_or(InventoryError::NotFound)?;
-        let previous_ownership_type_kind =
-            OwnershipType::from_raw(Some(&spool.spool.ownership_type));
-        let previous_ownership_type = previous_ownership_type_kind.as_str().to_string();
+        self.db.with_inventory_transaction(|conn| {
+            let spool =
+                get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
+            let previous_ownership_type_kind =
+                OwnershipType::from_raw(Some(&spool.spool.ownership_type));
+            let previous_ownership_type = previous_ownership_type_kind.as_str().to_string();
 
-        if next_ownership_type_kind.is_borrowed_in() {
-            let owner_name = owner_name.ok_or(InventoryError::Db(
-                "borrowed-in spools require an owner/counterparty name".to_string(),
-            ))?;
-            if previous_ownership_type_kind.is_borrowed_in() {
-                return self.update_borrowed_in_spool(UpdateBorrowedInSpoolInput {
-                    spool_id: spool_id.to_string(),
-                    owner_name,
-                    owner_contact,
-                    ownership_note,
-                });
+            if next_ownership_type_kind.is_borrowed_in() {
+                let owner_name = owner_name.ok_or(InventoryError::Db(
+                    "borrowed-in spools require an owner/counterparty name".to_string(),
+                ))?;
+                if previous_ownership_type_kind.is_borrowed_in() {
+                    update_spool_ownership_metadata_row(
+                        conn,
+                        spool_id,
+                        Some(owner_name.as_str()),
+                        owner_contact.as_deref(),
+                        ownership_note.as_deref(),
+                    )?;
+                    update_active_inbound_spool_loan_counterparty_row(
+                        conn,
+                        spool_id,
+                        owner_name.as_str(),
+                        owner_contact.as_deref(),
+                        ownership_note.as_deref(),
+                    )?;
+                    return insert_json_history_event(
+                        conn,
+                        spool_id,
+                        "DETAILS_UPDATED",
+                        json!({
+                            "status": spool.spool.status,
+                            "qr_code": spool.spool.qr_code,
+                            "location": spool.spool.location_id,
+                            "ownership_type": spool.spool.ownership_type,
+                            "owner_name": owner_name,
+                            "owner_contact": owner_contact,
+                            "ownership_note": ownership_note,
+                        }),
+                    );
+                }
+                if spool_has_active_loan_row(conn, spool_id)? {
+                    return Err(InventoryError::Db(
+                        "finish active loan history before changing ownership".to_string(),
+                    ));
+                }
+
+                update_spool_ownership_row(
+                    conn,
+                    spool_id,
+                    OwnershipType::BorrowedIn.as_str(),
+                    Some(owner_name.as_str()),
+                    owner_contact.as_deref(),
+                    ownership_note.as_deref(),
+                )?;
+                let grams_out = spool
+                    .spool
+                    .remaining_g
+                    .or(spool.spool.current_weight_g)
+                    .or(spool.spool.initial_weight_g)
+                    .unwrap_or(0);
+                let loan = create_inbound_spool_loan_in_transaction(
+                    conn,
+                    spool_id,
+                    owner_name.as_str(),
+                    owner_contact.as_deref(),
+                    ownership_note.as_deref(),
+                    grams_out,
+                )?;
+                insert_json_history_event(
+                    conn,
+                    spool_id,
+                    "OWNERSHIP_UPDATED",
+                    json!({
+                        "previous_ownership_type": previous_ownership_type,
+                        "ownership_type": OwnershipType::BorrowedIn.as_str(),
+                        "owner_name": owner_name,
+                        "owner_contact": owner_contact,
+                        "ownership_note": ownership_note,
+                    }),
+                )?;
+                insert_json_history_event(
+                    conn,
+                    spool_id,
+                    "BORROWED_IN_REGISTERED",
+                    json!({
+                        "loan_id": loan.id,
+                        "ownership_type": OwnershipType::BorrowedIn.as_str(),
+                        "owner_name": owner_name,
+                        "owner_contact": owner_contact,
+                        "ownership_note": ownership_note,
+                        "loan_direction": loan.loan_direction,
+                        "counterparty_name": loan.counterparty_name,
+                        "grams_out": loan.grams_out,
+                    }),
+                )?;
+                return Ok(());
             }
-            if self.db.spool_has_active_loan(spool_id)? {
+
+            if find_active_spool_loan_for_direction_row(
+                conn,
+                spool_id,
+                LoanDirection::Outbound.as_str(),
+            )?
+            .is_some()
+            {
                 return Err(InventoryError::Db(
-                    "finish active loan history before changing ownership".to_string(),
+                    "return loaned-out spool before changing ownership".to_string(),
                 ));
             }
 
-            self.db.update_spool_ownership(
+            let active_inbound = find_active_spool_loan_for_direction_row(
+                conn,
                 spool_id,
-                OwnershipType::BorrowedIn.as_str(),
-                Some(owner_name.as_str()),
-                owner_contact.as_deref(),
-                ownership_note.as_deref(),
+                LoanDirection::Inbound.as_str(),
             )?;
-            let grams_out = spool
-                .spool
-                .remaining_g
-                .or(spool.spool.current_weight_g)
-                .or(spool.spool.initial_weight_g)
-                .unwrap_or(0);
-            let loan = self.db.create_inbound_spool_loan(
+            update_spool_ownership_row(
+                conn,
                 spool_id,
-                owner_name.as_str(),
-                owner_contact.as_deref(),
-                ownership_note.as_deref(),
-                grams_out,
+                OwnershipType::Owned.as_str(),
+                None,
+                None,
+                None,
             )?;
-            self.log_spool_event(
+            insert_json_history_event(
+                conn,
                 spool_id,
                 "OWNERSHIP_UPDATED",
                 json!({
                     "previous_ownership_type": previous_ownership_type,
-                    "ownership_type": OwnershipType::BorrowedIn.as_str(),
-                    "owner_name": owner_name,
-                    "owner_contact": owner_contact,
-                    "ownership_note": ownership_note,
+                    "ownership_type": OwnershipType::Owned.as_str(),
+                    "owner_name": null,
+                    "owner_contact": null,
+                    "ownership_note": null,
                 }),
             )?;
-            self.log_spool_event(
-                spool_id,
-                "BORROWED_IN_REGISTERED",
-                json!({
-                    "loan_id": loan.id,
-                    "ownership_type": OwnershipType::BorrowedIn.as_str(),
-                    "owner_name": owner_name,
-                    "owner_contact": owner_contact,
-                    "ownership_note": ownership_note,
-                    "loan_direction": loan.loan_direction,
-                    "counterparty_name": loan.counterparty_name,
-                    "grams_out": loan.grams_out,
-                }),
-            )?;
-            return Ok(());
-        }
-
-        if self
-            .db
-            .find_active_spool_loan_for_direction(spool_id, LoanDirection::Outbound.as_str())?
-            .is_some()
-        {
-            return Err(InventoryError::Db(
-                "return loaned-out spool before changing ownership".to_string(),
-            ));
-        }
-
-        let active_inbound = self
-            .db
-            .find_active_spool_loan_for_direction(spool_id, LoanDirection::Inbound.as_str())?;
-        self.db.update_spool_ownership(
-            spool_id,
-            OwnershipType::Owned.as_str(),
-            None,
-            None,
-            None,
-        )?;
-        self.log_spool_event(
-            spool_id,
-            "OWNERSHIP_UPDATED",
-            json!({
-                "previous_ownership_type": previous_ownership_type,
-                "ownership_type": OwnershipType::Owned.as_str(),
-                "owner_name": null,
-                "owner_contact": null,
-                "ownership_note": null,
-            }),
-        )?;
-        if let Some(active_inbound) = active_inbound {
-            let returned_grams = spool
-                .spool
-                .remaining_g
-                .or(spool.spool.current_weight_g)
-                .or(spool.spool.initial_weight_g)
-                .unwrap_or(0);
-            let loan = self.db.close_inbound_spool_loan_without_returning_spool(
-                &active_inbound.loan.id,
-                returned_grams,
-                Some("Ownership changed to owned"),
-            )?;
-            self.log_spool_event(
-                spool_id,
-                "BORROWED_IN_ACQUIRED",
-                json!({
-                    "loan_id": loan.id,
-                    "loan_direction": loan.loan_direction,
-                    "counterparty_name": loan.counterparty_name,
-                    "returned_grams": loan.returned_grams,
-                    "consumed_grams": loan.consumed_grams,
-                }),
-            )?;
-        }
-        Ok(())
+            if let Some(active_inbound) = active_inbound {
+                let returned_grams = spool
+                    .spool
+                    .remaining_g
+                    .or(spool.spool.current_weight_g)
+                    .or(spool.spool.initial_weight_g)
+                    .unwrap_or(0);
+                let loan = close_inbound_spool_loan_without_returning_spool_row(
+                    conn,
+                    &active_inbound.loan.id,
+                    returned_grams,
+                    Some("Ownership changed to owned"),
+                )?;
+                insert_json_history_event(
+                    conn,
+                    spool_id,
+                    "BORROWED_IN_ACQUIRED",
+                    json!({
+                        "loan_id": loan.id,
+                        "loan_direction": loan.loan_direction,
+                        "counterparty_name": loan.counterparty_name,
+                        "returned_grams": loan.returned_grams,
+                        "consumed_grams": loan.consumed_grams,
+                    }),
+                )?;
+            }
+            Ok(())
+        })
     }
 
     pub fn delete_spool(&self, input: DeleteSpoolInput) -> InventoryResult<()> {
-        let snapshot = self.db.get_spool_by_id(&input.spool_id)?;
-        self.db.soft_delete_spool(&input.spool_id)?;
-        self.log_spool_event(
-            &input.spool_id,
-            "DELETED",
-            json!({
-                "reason": input.reason,
-                "snapshot": snapshot
-            }),
-        )
+        self.db.with_inventory_transaction(|conn| {
+            let snapshot = get_spool_by_id_row(conn, &input.spool_id)?;
+            soft_delete_spool_in_transaction(conn, &input.spool_id)?;
+            insert_json_history_event(
+                conn,
+                &input.spool_id,
+                "DELETED",
+                json!({
+                    "reason": input.reason,
+                    "snapshot": snapshot
+                }),
+            )
+        })
     }
 
     pub fn purge_spool(&self, input: PurgeSpoolInput) -> InventoryResult<()> {
@@ -1063,26 +1196,22 @@ impl InventoryEngine {
 
     pub fn set_active_printer(&self, printer_id: Option<&str>) -> InventoryResult<()> {
         let normalized_printer_id = Self::normalize_optional_text(printer_id);
-        if self.db.get_setting("active_printer_id")? == normalized_printer_id {
-            return Ok(());
-        }
-
-        match normalized_printer_id.as_deref() {
-            Some(id) => {
-                let exists = self
-                    .db
-                    .list_printers()?
-                    .into_iter()
-                    .any(|printer| printer.id == id);
-                if !exists {
-                    return Err(InventoryError::NotFound);
-                }
-                self.db.set_setting("active_printer_id", id)?;
+        self.db.with_inventory_transaction(|conn| {
+            if get_setting_row(conn, "active_printer_id")? == normalized_printer_id {
+                return Ok(());
             }
-            None => self.db.delete_setting("active_printer_id")?,
-        }
-        self.db
-            .bump_library_domain_revision(PRINTERS_REVISION_DOMAIN)
+
+            match normalized_printer_id.as_deref() {
+                Some(id) => {
+                    if !printer_exists_row(conn, id)? {
+                        return Err(InventoryError::NotFound);
+                    }
+                    set_setting_row(conn, "active_printer_id", id)?;
+                }
+                None => delete_setting_row(conn, "active_printer_id")?,
+            }
+            bump_library_domain_revision_row(conn, PRINTERS_REVISION_DOMAIN)
+        })
     }
 
     pub fn get_active_printer(&self) -> InventoryResult<Option<String>> {
@@ -1246,179 +1375,199 @@ impl InventoryEngine {
         input.rfid_override_color_hex = effective_override_color_hex;
         input.clear_live_cache_before_next_refresh = Some(effective_clear);
 
-        self.db.assign_spool_to_ams_slot(
-            &input.printer_id,
-            &input.slot_id,
-            input.spool_id.as_deref(),
-            input.rfid_override_tray_uuid.as_deref(),
-            input.rfid_override_color_hex.as_deref(),
-            effective_clear,
-        )?;
-
-        if let Some(spool_id) = input.spool_id {
-            self.log_spool_event(
-                &spool_id,
-                "ASSIGNED_TO_AMS",
-                json!({
-                    "printer_id": input.printer_id,
-                    "slot_id": input.slot_id,
-                    "rfid_override_tray_uuid": input.rfid_override_tray_uuid,
-                    "rfid_override_color_hex": input.rfid_override_color_hex,
-                    "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh,
-                }),
+        self.db.with_inventory_transaction(|conn| {
+            assign_spool_to_ams_slot_in_transaction(
+                conn,
+                &input.printer_id,
+                &input.slot_id,
+                input.spool_id.as_deref(),
+                input.rfid_override_tray_uuid.as_deref(),
+                input.rfid_override_color_hex.as_deref(),
+                effective_clear,
             )?;
-        }
 
-        Ok(())
+            if let Some(spool_id) = input.spool_id {
+                insert_json_history_event(
+                    conn,
+                    &spool_id,
+                    "ASSIGNED_TO_AMS",
+                    json!({
+                        "printer_id": input.printer_id,
+                        "slot_id": input.slot_id,
+                        "rfid_override_tray_uuid": input.rfid_override_tray_uuid,
+                        "rfid_override_color_hex": input.rfid_override_color_hex,
+                        "clear_live_cache_before_next_refresh": input.clear_live_cache_before_next_refresh,
+                    }),
+                )?;
+            }
+
+            Ok(())
+        })
     }
 
     pub fn record_print_usage(&self, input: RecordPrintUsageInput) -> InventoryResult<()> {
-        if !self.db.printer_exists(&input.printer_id)? {
-            return Err(InventoryError::NotFound);
-        }
-        if !self
-            .db
-            .spool_assigned_to_specific_printer(&input.spool_id, &input.printer_id)?
-        {
-            return Err(InventoryError::Db(
-                "spool must be assigned to selected printer slot before recording usage"
-                    .to_string(),
-            ));
-        }
+        self.db.with_inventory_transaction(|conn| {
+            if !printer_exists_row(conn, &input.printer_id)? {
+                return Err(InventoryError::NotFound);
+            }
+            if !spool_assigned_to_specific_printer_row(conn, &input.spool_id, &input.printer_id)? {
+                return Err(InventoryError::Db(
+                    "spool must be assigned to selected printer slot before recording usage"
+                        .to_string(),
+                ));
+            }
 
-        let spool = self
-            .db
-            .get_spool_by_id(&input.spool_id)?
-            .ok_or(InventoryError::NotFound)?;
+            let spool =
+                get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
+            let used_grams = input.grams.max(1);
+            let base_remaining = spool
+                .remaining_g
+                .or(spool.current_weight_g)
+                .or(spool.initial_weight_g)
+                .unwrap_or(0);
+            let next_remaining = (base_remaining - used_grams).max(0);
+            let next_status = if next_remaining == 0 {
+                "EMPTY"
+            } else {
+                "ASSIGNED"
+            };
+            let success = input.success.unwrap_or(true);
 
-        let used_grams = input.grams.max(1);
-        let base_remaining = spool
-            .remaining_g
-            .or(spool.current_weight_g)
-            .or(spool.initial_weight_g)
-            .unwrap_or(0);
-        let next_remaining = (base_remaining - used_grams).max(0);
-        let next_status = if next_remaining == 0 {
-            "EMPTY"
-        } else {
-            "ASSIGNED"
-        };
-
-        self.db.insert_print_job(
-            &input.printer_id,
-            &input.spool_id,
-            input.job_name.as_deref(),
-            used_grams,
-            input.success.unwrap_or(true),
-        )?;
-        self.db
-            .ensure_scale("print-job", "Print Job Usage", "VIRTUAL")?;
-        self.db
-            .update_spool_weight(&input.spool_id, Some(next_remaining), Some(next_remaining))?;
-        self.db
-            .insert_weight_reading("print-job", &input.spool_id, next_remaining, "PRINT_JOB")?;
-        self.db.update_spool_status(&input.spool_id, next_status)?;
-        self.log_spool_event(
-            &input.spool_id,
-            "PRINT_JOB_RECORDED",
-            json!({
-                "printer_id": input.printer_id,
-                "used_grams": used_grams,
-                "remaining_g": next_remaining,
-                "job_name": input.job_name,
-                "success": input.success.unwrap_or(true),
-            }),
-        )?;
-        Ok(())
+            insert_print_job_row(
+                conn,
+                &input.printer_id,
+                &input.spool_id,
+                input.job_name.as_deref(),
+                used_grams,
+                success,
+            )?;
+            ensure_scale_row(conn, "print-job", "Print Job Usage", "VIRTUAL")?;
+            update_spool_weight_row(
+                conn,
+                &input.spool_id,
+                Some(next_remaining),
+                Some(next_remaining),
+            )?;
+            insert_weight_reading_row(
+                conn,
+                "print-job",
+                &input.spool_id,
+                next_remaining,
+                "PRINT_JOB",
+            )?;
+            update_spool_status_row(conn, &input.spool_id, next_status)?;
+            insert_json_history_event(
+                conn,
+                &input.spool_id,
+                "PRINT_JOB_RECORDED",
+                json!({
+                    "printer_id": input.printer_id,
+                    "used_grams": used_grams,
+                    "remaining_g": next_remaining,
+                    "job_name": input.job_name,
+                    "success": success,
+                }),
+            )
+        })
     }
 
     pub fn lend_spool(&self, input: LendSpoolInput) -> InventoryResult<SpoolLoanRow> {
-        let spool = self
-            .db
-            .get_spool_by_id(&input.spool_id)?
-            .ok_or(InventoryError::NotFound)?;
-        if OwnershipType::from_raw(Some(&spool.ownership_type)).is_borrowed_in() {
-            return Err(InventoryError::Db(
-                "borrowed-in spools cannot be loaned out".to_string(),
-            ));
-        }
-        let grams_out = input
-            .grams_out
-            .unwrap_or_else(|| {
-                spool
-                    .remaining_g
-                    .or(spool.current_weight_g)
-                    .or(spool.initial_weight_g)
-                    .unwrap_or(0)
-            })
-            .max(0);
-        let loan = self.db.create_spool_loan(
-            &input.spool_id,
-            &input.borrower_name,
-            grams_out,
-            input.note.as_deref(),
-        )?;
-        self.log_spool_event(
-            &input.spool_id,
-            "LOANED_OUT",
-            json!({
-                "loan_id": loan.id,
-                "loan_direction": loan.loan_direction,
-                "borrower_name": loan.borrower_name,
-                "counterparty_name": loan.counterparty_name,
-                "grams_out": loan.grams_out,
-                "note": loan.lent_note,
-            }),
-        )?;
-        Ok(loan)
+        self.db.with_inventory_transaction(|conn| {
+            let spool =
+                get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
+            if OwnershipType::from_raw(Some(&spool.ownership_type)).is_borrowed_in() {
+                return Err(InventoryError::Db(
+                    "borrowed-in spools cannot be loaned out".to_string(),
+                ));
+            }
+            let grams_out = input
+                .grams_out
+                .unwrap_or_else(|| {
+                    spool
+                        .remaining_g
+                        .or(spool.current_weight_g)
+                        .or(spool.initial_weight_g)
+                        .unwrap_or(0)
+                })
+                .max(0);
+            let loan = create_spool_loan_in_transaction(
+                conn,
+                &input.spool_id,
+                &input.borrower_name,
+                grams_out,
+                input.note.as_deref(),
+            )?;
+            insert_json_history_event(
+                conn,
+                &input.spool_id,
+                "LOANED_OUT",
+                json!({
+                    "loan_id": loan.id,
+                    "loan_direction": loan.loan_direction,
+                    "borrower_name": loan.borrower_name,
+                    "counterparty_name": loan.counterparty_name,
+                    "grams_out": loan.grams_out,
+                    "note": loan.lent_note,
+                }),
+            )?;
+            Ok(loan)
+        })
     }
 
     pub fn return_spool_loan(&self, input: ReturnSpoolLoanInput) -> InventoryResult<SpoolLoanRow> {
-        let loan = self.db.return_spool_loan(
-            &input.loan_id,
-            input.returned_grams,
-            input.note.as_deref(),
-        )?;
-        self.log_spool_event(
-            &loan.spool_id,
-            "LOAN_RETURNED",
-            json!({
-                "loan_id": loan.id,
-                "loan_direction": loan.loan_direction,
-                "borrower_name": loan.borrower_name,
-                "counterparty_name": loan.counterparty_name,
-                "grams_out": loan.grams_out,
-                "returned_grams": loan.returned_grams,
-                "consumed_grams": loan.consumed_grams,
-                "note": loan.return_note,
-            }),
-        )?;
-        Ok(loan)
+        self.db.with_inventory_transaction(|conn| {
+            let loan = return_spool_loan_in_transaction(
+                conn,
+                &input.loan_id,
+                input.returned_grams,
+                input.note.as_deref(),
+            )?;
+            insert_json_history_event(
+                conn,
+                &loan.spool_id,
+                "LOAN_RETURNED",
+                json!({
+                    "loan_id": loan.id,
+                    "loan_direction": loan.loan_direction,
+                    "borrower_name": loan.borrower_name,
+                    "counterparty_name": loan.counterparty_name,
+                    "grams_out": loan.grams_out,
+                    "returned_grams": loan.returned_grams,
+                    "consumed_grams": loan.consumed_grams,
+                    "note": loan.return_note,
+                }),
+            )?;
+            Ok(loan)
+        })
     }
 
     pub fn return_inbound_spool_loan(
         &self,
         input: ReturnSpoolLoanInput,
     ) -> InventoryResult<SpoolLoanRow> {
-        let loan = self.db.return_inbound_spool_loan(
-            &input.loan_id,
-            input.returned_grams,
-            input.note.as_deref(),
-        )?;
-        self.log_spool_event(
-            &loan.spool_id,
-            "BORROWED_IN_RETURNED",
-            json!({
-                "loan_id": loan.id,
-                "loan_direction": loan.loan_direction,
-                "borrower_name": loan.borrower_name,
-                "counterparty_name": loan.counterparty_name,
-                "returned_grams": loan.returned_grams,
-                "consumed_grams": loan.consumed_grams,
-                "note": loan.return_note,
-            }),
-        )?;
-        Ok(loan)
+        self.db.with_inventory_transaction(|conn| {
+            let loan = return_inbound_spool_loan_in_transaction(
+                conn,
+                &input.loan_id,
+                input.returned_grams,
+                input.note.as_deref(),
+            )?;
+            insert_json_history_event(
+                conn,
+                &loan.spool_id,
+                "BORROWED_IN_RETURNED",
+                json!({
+                    "loan_id": loan.id,
+                    "loan_direction": loan.loan_direction,
+                    "borrower_name": loan.borrower_name,
+                    "counterparty_name": loan.counterparty_name,
+                    "returned_grams": loan.returned_grams,
+                    "consumed_grams": loan.consumed_grams,
+                    "note": loan.return_note,
+                }),
+            )?;
+            Ok(loan)
+        })
     }
 
     pub fn reset_app_state(&self) -> InventoryResult<()> {
@@ -1453,18 +1602,17 @@ impl InventoryEngine {
     pub fn find_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
         self.db.get_spool_by_qr(qr_code)
     }
+}
 
-    fn log_spool_event(
-        &self,
-        spool_id: &str,
-        event_type: &str,
-        payload: serde_json::Value,
-    ) -> InventoryResult<()> {
-        let payload_json = serde_json::to_string(&payload)
-            .map_err(|error| InventoryError::Db(error.to_string()))?;
-        self.db
-            .insert_spool_history_event(spool_id, event_type, &payload_json)
-    }
+fn insert_json_history_event(
+    conn: &rusqlite::Connection,
+    spool_id: &str,
+    event_type: &str,
+    payload: serde_json::Value,
+) -> InventoryResult<()> {
+    let payload_json =
+        serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
+    insert_spool_history_event_row(conn, spool_id, event_type, &payload_json)
 }
 
 fn compute_remaining(initial_weight_g: Option<i64>, current_weight_g: Option<i64>) -> Option<i64> {

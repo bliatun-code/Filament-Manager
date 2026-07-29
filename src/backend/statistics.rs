@@ -7,6 +7,7 @@ use super::spool_defaults::{
     SPOOL_OWNERSHIP_SELECT_SQL, SPOOL_OWNERSHIP_SELECT_SQL_S, SPOOL_STATUS_ASSIGNED_PREDICATE_SQL,
     SPOOL_STATUS_ON_HAND_PREDICATE_SQL,
 };
+use super::{database_result::InventoryResult, filament_database::FilamentDatabase};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InventoryOverview {
@@ -57,132 +58,7 @@ impl StatisticsEngine {
     }
 
     pub fn inventory_overview(&self) -> Result<InventoryOverview, rusqlite::Error> {
-        let (
-            total_spools,
-            total_owned_spools,
-            total_borrowed_in_spools,
-            in_use,
-            owned_in_use,
-            borrowed_in_in_use,
-            low_stock,
-            owned_low_stock,
-            borrowed_in_low_stock,
-        ): (i64, i64, i64, i64, i64, i64, i64, i64, i64) = self.conn.query_row(
-            &format!(
-                "SELECT
-                COUNT(*) AS total_spools,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                    THEN 1 ELSE 0
-                END), 0) AS total_owned_spools,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                    THEN 1 ELSE 0
-                END), 0) AS total_borrowed_in_spools,
-                COALESCE(SUM(CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 1 ELSE 0 END), 0) AS in_use,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
-                    THEN 1 ELSE 0
-                END), 0) AS owned_in_use,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
-                    THEN 1 ELSE 0
-                END), 0) AS borrowed_in_in_use,
-                COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL
-                     AND remaining_g > 0
-                     AND remaining_g <= 200
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                    THEN 1 ELSE 0
-                END), 0) AS low_stock,
-                COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL
-                     AND remaining_g > 0
-                     AND remaining_g <= 200
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
-                    THEN 1 ELSE 0
-                END), 0) AS owned_low_stock,
-                COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL
-                     AND remaining_g > 0
-                     AND remaining_g <= 200
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
-                    THEN 1 ELSE 0
-                END), 0) AS borrowed_in_low_stock
-             FROM filament_spools
-             WHERE deleted_at IS NULL"
-            ),
-            [],
-            |row| {
-                Ok((
-                    row.get(0)?,
-                    row.get(1)?,
-                    row.get(2)?,
-                    row.get(3)?,
-                    row.get(4)?,
-                    row.get(5)?,
-                    row.get(6)?,
-                    row.get(7)?,
-                    row.get(8)?,
-                ))
-            },
-        )?;
-        let (total_consumption_30d, owned_consumption_30d, borrowed_in_consumption_30d): (
-            i64,
-            i64,
-            i64,
-        ) = self.conn.query_row(
-            &format!(
-                "WITH usage_rows AS (
-                SELECT p.spool_id, p.started_at AS used_at, p.material_used_g AS used_g
-                FROM print_jobs p
-                UNION ALL
-                SELECT us.spool_id,
-                       COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
-                       us.used_g
-                FROM printer_live_usage_session_spools us
-                JOIN printer_live_usage_sessions u ON u.id = us.session_id
-                WHERE us.used_g > 0
-             )
-             SELECT
-                COALESCE(SUM(used_g), 0) AS total_consumption_30d,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'OWNED'
-                      OR s.id IS NULL
-                    THEN u.used_g ELSE 0
-                END), 0) AS owned_consumption_30d,
-                COALESCE(SUM(CASE
-                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
-                    THEN u.used_g ELSE 0
-                END), 0) AS borrowed_in_consumption_30d
-             FROM usage_rows u
-             LEFT JOIN filament_spools s ON s.id = u.spool_id
-             WHERE datetime(u.used_at) >= datetime('now', '-30 days')"
-            ),
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-        )?;
-
-        Ok(InventoryOverview {
-            total_spools,
-            total_owned_spools,
-            total_borrowed_in_spools,
-            in_use,
-            owned_in_use,
-            borrowed_in_in_use,
-            low_stock,
-            owned_low_stock,
-            borrowed_in_low_stock,
-            total_consumption_30d,
-            owned_consumption_30d,
-            borrowed_in_consumption_30d,
-        })
+        inventory_overview_from_connection(&self.conn)
     }
 
     pub fn top_materials(&self, limit: i64) -> Result<Vec<MaterialUsageRow>, rusqlite::Error> {
@@ -302,6 +178,143 @@ impl StatisticsEngine {
         }
         Ok(results)
     }
+}
+
+impl FilamentDatabase {
+    pub fn inventory_overview(&self) -> InventoryResult<InventoryOverview> {
+        inventory_overview_from_connection(self.connection()).map_err(Into::into)
+    }
+}
+
+fn inventory_overview_from_connection(
+    connection: &Connection,
+) -> Result<InventoryOverview, rusqlite::Error> {
+    let (
+            total_spools,
+            total_owned_spools,
+            total_borrowed_in_spools,
+            in_use,
+            owned_in_use,
+            borrowed_in_in_use,
+            low_stock,
+            owned_low_stock,
+            borrowed_in_low_stock,
+        ): (i64, i64, i64, i64, i64, i64, i64, i64, i64) = connection.query_row(
+            &format!(
+                "SELECT
+                COUNT(*) AS total_spools,
+                COALESCE(SUM(CASE
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                    THEN 1 ELSE 0
+                END), 0) AS total_owned_spools,
+                COALESCE(SUM(CASE
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                    THEN 1 ELSE 0
+                END), 0) AS total_borrowed_in_spools,
+                COALESCE(SUM(CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 1 ELSE 0 END), 0) AS in_use,
+                COALESCE(SUM(CASE
+                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
+                    THEN 1 ELSE 0
+                END), 0) AS owned_in_use,
+                COALESCE(SUM(CASE
+                    WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
+                    THEN 1 ELSE 0
+                END), 0) AS borrowed_in_in_use,
+                COALESCE(SUM(CASE
+                    WHEN remaining_g IS NOT NULL
+                     AND remaining_g > 0
+                     AND remaining_g <= 200
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                    THEN 1 ELSE 0
+                END), 0) AS low_stock,
+                COALESCE(SUM(CASE
+                    WHEN remaining_g IS NOT NULL
+                     AND remaining_g > 0
+                     AND remaining_g <= 200
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
+                    THEN 1 ELSE 0
+                END), 0) AS owned_low_stock,
+                COALESCE(SUM(CASE
+                    WHEN remaining_g IS NOT NULL
+                     AND remaining_g > 0
+                     AND remaining_g <= 200
+                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
+                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
+                    THEN 1 ELSE 0
+                END), 0) AS borrowed_in_low_stock
+             FROM filament_spools
+             WHERE deleted_at IS NULL"
+            ),
+            [],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                    row.get(6)?,
+                    row.get(7)?,
+                    row.get(8)?,
+                ))
+            },
+        )?;
+    let (total_consumption_30d, owned_consumption_30d, borrowed_in_consumption_30d): (
+        i64,
+        i64,
+        i64,
+    ) = connection.query_row(
+        &format!(
+            "WITH usage_rows AS (
+                SELECT p.spool_id, p.started_at AS used_at, p.material_used_g AS used_g
+                FROM print_jobs p
+                UNION ALL
+                SELECT us.spool_id,
+                       COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
+                       us.used_g
+                FROM printer_live_usage_session_spools us
+                JOIN printer_live_usage_sessions u ON u.id = us.session_id
+                WHERE us.used_g > 0
+             )
+             SELECT
+                COALESCE(SUM(used_g), 0) AS total_consumption_30d,
+                COALESCE(SUM(CASE
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'OWNED'
+                      OR s.id IS NULL
+                    THEN u.used_g ELSE 0
+                END), 0) AS owned_consumption_30d,
+                COALESCE(SUM(CASE
+                    WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
+                    THEN u.used_g ELSE 0
+                END), 0) AS borrowed_in_consumption_30d
+             FROM usage_rows u
+             LEFT JOIN filament_spools s ON s.id = u.spool_id
+             WHERE datetime(u.used_at) >= datetime('now', '-30 days')"
+        ),
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    )?;
+
+    Ok(InventoryOverview {
+        total_spools,
+        total_owned_spools,
+        total_borrowed_in_spools,
+        in_use,
+        owned_in_use,
+        borrowed_in_in_use,
+        low_stock,
+        owned_low_stock,
+        borrowed_in_low_stock,
+        total_consumption_30d,
+        owned_consumption_30d,
+        borrowed_in_consumption_30d,
+    })
 }
 
 #[cfg(test)]

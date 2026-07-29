@@ -18,6 +18,57 @@ fn temp_db_path(test_name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("filament-manager-companion-{test_name}-{nanos}.db"))
 }
 
+fn rust_function_body<'a>(source: &'a str, signature: &str) -> &'a str {
+    let start = source
+        .find(signature)
+        .unwrap_or_else(|| panic!("missing function signature: {signature}"));
+    let brace = source[start..]
+        .find('{')
+        .map(|offset| start + offset)
+        .expect("function body start");
+    let mut depth = 0usize;
+    for (offset, byte) in source.as_bytes()[brace..].iter().enumerate() {
+        match byte {
+            b'{' => depth += 1,
+            b'}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return &source[brace..=brace + offset];
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unterminated function body: {signature}");
+}
+
+#[test]
+fn compound_companion_reads_keep_one_database_snapshot() {
+    let source = include_str!("app_services.rs");
+    for signature in [
+        "pub fn library_snapshot(",
+        "pub fn get_spool_detail(",
+        "pub fn list_printer_overview(",
+    ] {
+        let body = rust_function_body(source, signature);
+        assert!(
+            body.contains(".with_read_transaction("),
+            "{signature} must retain one read transaction"
+        );
+        assert_eq!(
+            body.matches("FilamentDatabase::open").count(),
+            1,
+            "{signature} must open exactly one database connection"
+        );
+        if signature == "pub fn library_snapshot(" {
+            assert!(
+                body.find("get_library_sync_library_id") < body.find(".with_read_transaction("),
+                "library ID initialization must stay outside the read transaction"
+            );
+        }
+    }
+}
+
 #[test]
 fn companion_service_returns_spool_detail_and_updates_weight() {
     let db_path = temp_db_path("spool-detail");

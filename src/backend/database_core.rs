@@ -1,4 +1,4 @@
-use rusqlite::Connection;
+use rusqlite::{Connection, Transaction, TransactionBehavior};
 
 use super::database_connection::open_connection;
 use super::database_maintenance::DatabaseMaintenanceGuard;
@@ -33,6 +33,37 @@ impl FilamentDatabase {
 
     pub fn apply_schema(&self) -> InventoryResult<()> {
         apply_schema_migrations(&self.conn, SCHEMA_SQL)
+    }
+
+    /// Runs one inventory mutation in an immediate SQLite transaction.
+    ///
+    /// `Transaction::new_unchecked` is required because the database facade is
+    /// intentionally shared through immutable references. The transaction still
+    /// owns the connection state for its lifetime and rolls back on every early
+    /// return or panic.
+    pub(crate) fn with_inventory_transaction<T>(
+        &self,
+        operation: impl FnOnce(&Connection) -> InventoryResult<T>,
+    ) -> InventoryResult<T> {
+        let transaction = Transaction::new_unchecked(&self.conn, TransactionBehavior::Immediate)?;
+        let output = operation(&transaction)?;
+        transaction.commit()?;
+        Ok(output)
+    }
+
+    /// Runs related reads against one deferred SQLite snapshot.
+    ///
+    /// The callback receives the regular database facade so existing read
+    /// methods can be composed without exposing the underlying connection.
+    /// Callers must keep the callback read-only.
+    pub fn with_read_transaction<T>(
+        &self,
+        operation: impl FnOnce(&Self) -> InventoryResult<T>,
+    ) -> InventoryResult<T> {
+        let transaction = Transaction::new_unchecked(&self.conn, TransactionBehavior::Deferred)?;
+        let output = operation(self)?;
+        transaction.commit()?;
+        Ok(output)
     }
 
     /// Enables physical overwrite of deleted SQLite content for credential

@@ -1351,9 +1351,8 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
 
         state
             .sessions
-            .write()
-            .map_err(|_| "Failed to clear session state".to_string())?
-            .clear();
+            .clear()
+            .map_err(|_| "Failed to clear session state".to_string())?;
 
         let renewable_status = router
             .clone()
@@ -1473,9 +1472,8 @@ async fn companion_api_trusted_lan_pairs_renews_and_revokes_browser_sessions() {
 
         state
             .sessions
-            .write()
-            .map_err(|_| "Failed to clear session state".to_string())?
-            .clear();
+            .clear()
+            .map_err(|_| "Failed to clear session state".to_string())?;
 
         let revoked_status = router
             .clone()
@@ -3933,5 +3931,36 @@ async fn companion_api_rejects_invalid_browser_lend_request() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_rejects_invalid_browser_lend_request failed: {message}");
+    }
+}
+
+#[test]
+fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
+    let source = include_str!("companion_api.rs");
+    let blocking_io_markers = [
+        "FilamentDatabase::open",
+        "StatisticsEngine::open",
+        ".service",
+        ".open_db(",
+        "find_active_session(",
+        "find_active_trusted_lan_browser(",
+        "lock_secure_credential_mutation(",
+        ".credentials.",
+    ];
+
+    for section in source.split("pub(super) async fn ").skip(1) {
+        let name = section
+            .split_once('(')
+            .map(|(name, _)| name.trim())
+            .expect("async companion handler name");
+        let contains_blocking_io = blocking_io_markers
+            .iter()
+            .any(|marker| section.contains(marker));
+        if contains_blocking_io {
+            assert!(
+                section.contains(".run_blocking("),
+                "{name} performs blocking I/O without the Companion executor"
+            );
+        }
     }
 }

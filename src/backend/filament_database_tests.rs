@@ -1,7 +1,8 @@
 use super::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveTlsIdentityRow, FilamentDatabase,
-    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput, SpoolRow,
-    TrustedLanSettingsRow, FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
+    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput,
+    MasterCatalogUpdateInput, SpoolRow, TrustedLanSettingsRow, FULL_BACKUP_TABLES,
+    RESET_APP_STATE_TABLES,
 };
 use crate::backend::database_schema::{
     ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
@@ -25,6 +26,250 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-{test_name}-{nanos}.db"))
+}
+
+#[test]
+fn read_transaction_keeps_composed_reads_on_one_snapshot() {
+    let db_path = temp_db_path("read-transaction-snapshot");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "PRAGMA journal_mode = WAL;
+                 CREATE TABLE read_snapshot_probe (
+                    id INTEGER PRIMARY KEY,
+                    value TEXT NOT NULL
+                 );
+                 INSERT INTO read_snapshot_probe (id, value) VALUES (1, 'before');",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let (first_count, second_count) = db
+            .with_read_transaction(|snapshot| {
+                let first_count: i64 = snapshot.conn.query_row(
+                    "SELECT COUNT(*) FROM read_snapshot_probe",
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                let writer = rusqlite::Connection::open(&db_path)?;
+                writer.execute(
+                    "INSERT INTO read_snapshot_probe (id, value) VALUES (2, 'concurrent')",
+                    [],
+                )?;
+
+                let second_count: i64 = snapshot.conn.query_row(
+                    "SELECT COUNT(*) FROM read_snapshot_probe",
+                    [],
+                    |row| row.get(0),
+                )?;
+                Ok((first_count, second_count))
+            })
+            .map_err(|error| error.to_string())?;
+        let count_after_commit: i64 = db
+            .conn
+            .query_row("SELECT COUNT(*) FROM read_snapshot_probe", [], |row| {
+                row.get(0)
+            })
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(first_count, 1);
+        assert_eq!(second_count, 1);
+        assert_eq!(count_after_commit, 2);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("read_transaction_keeps_composed_reads_on_one_snapshot failed: {message}");
+    }
+}
+
+#[test]
+fn catalog_merge_rolls_back_all_references_when_final_delete_fails() {
+    let db_path = temp_db_path("catalog-merge-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, hex_color,
+                    default_weight, vendor, catalog_source, catalog_user_edited
+                 ) VALUES
+                    ('catalog_merge_source', 'PLA', 'Source profile', 'Blue', '#111111',
+                     900, 'Source vendor', 'manual', 1),
+                    ('catalog_merge_target', 'PETG', 'Target profile', 'Green', '#222222',
+                     1000, 'Target vendor', 'manual', 1);
+
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g
+                 ) VALUES (
+                    'catalog_merge_spool', 'catalog_merge_source', 'IN_STOCK', 'OWNED',
+                    900, 900, 900
+                 );
+
+                 INSERT INTO wishlist_items (
+                    id, master_id, material, filament_name, color_name, vendor, status, quantity
+                 ) VALUES (
+                    'catalog_merge_wishlist', 'catalog_merge_source', 'PLA', 'Source profile',
+                    'Blue', 'Source vendor', 'WISHLIST', 1
+                 );
+
+                 CREATE TRIGGER fail_catalog_source_delete
+                 BEFORE DELETE ON filament_master_list
+                 WHEN OLD.id = 'catalog_merge_source'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced catalog source delete failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = db
+            .update_master_catalog_entry(MasterCatalogUpdateInput {
+                master_id: "catalog_merge_source",
+                material: "PETG",
+                filament_name: "Target profile",
+                color_name: "Green",
+                hex_color: Some("#ABCDEF"),
+                product_url: None,
+                vendor: Some("Merged vendor"),
+                default_weight: Some(750),
+            })
+            .expect_err("late delete failure should roll back the catalog merge");
+        assert!(error
+            .to_string()
+            .contains("forced catalog source delete failure"));
+
+        let target: (String, i64, String) = db
+            .conn
+            .query_row(
+                "SELECT hex_color, default_weight, vendor
+                 FROM filament_master_list
+                 WHERE id = 'catalog_merge_target'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        let source_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM filament_master_list
+                 WHERE id = 'catalog_merge_source'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let spool_master: String = db
+            .conn
+            .query_row(
+                "SELECT master_id FROM filament_spools
+                 WHERE id = 'catalog_merge_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let wishlist: (String, String, String, String, String) = db
+            .conn
+            .query_row(
+                "SELECT master_id, material, filament_name, color_name, vendor
+                 FROM wishlist_items
+                 WHERE id = 'catalog_merge_wishlist'",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(
+            target,
+            ("#222222".to_string(), 1000, "Target vendor".to_string())
+        );
+        assert_eq!(source_count, 1);
+        assert_eq!(spool_master, "catalog_merge_source");
+        assert_eq!(
+            wishlist,
+            (
+                "catalog_merge_source".to_string(),
+                "PLA".to_string(),
+                "Source profile".to_string(),
+                "Blue".to_string(),
+                "Source vendor".to_string(),
+            )
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("catalog_merge_rolls_back_all_references_when_final_delete_fails failed: {message}");
+    }
+}
+
+#[test]
+fn library_sync_validation_state_rolls_back_all_settings_on_late_failure() {
+    let db_path = temp_db_path("library-sync-validation-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "CREATE TRIGGER fail_library_sync_host_device
+                 BEFORE INSERT ON settings
+                 WHEN NEW.key = 'library_sync_host_device_name'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced host-device setting failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = db
+            .save_library_sync_validation_state(
+                true,
+                Some("Host is reachable"),
+                Some("Workshop host"),
+            )
+            .expect_err("late setting failure should abort validation state");
+        assert!(error
+            .to_string()
+            .contains("forced host-device setting failure"));
+
+        let saved_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM settings
+                 WHERE key IN (
+                    'library_sync_last_checked_at',
+                    'library_sync_last_reachable_at',
+                    'library_sync_last_validation_message',
+                    'library_sync_host_device_name'
+                 )",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(saved_count, 0);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "library_sync_validation_state_rolls_back_all_settings_on_late_failure failed: {message}"
+        );
+    }
 }
 
 fn empty_current_full_backup() -> serde_json::Value {

@@ -15,7 +15,18 @@ pub(crate) fn return_spool_loan(
     return_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let tx = conn.unchecked_transaction()?;
-    let loan = select_loan_by_id_optional(&tx, loan_id)?.ok_or(InventoryError::NotFound)?;
+    let loan = return_spool_loan_in_transaction(&tx, loan_id, returned_grams, return_note)?;
+    tx.commit()?;
+    Ok(loan)
+}
+
+pub(crate) fn return_spool_loan_in_transaction(
+    conn: &Connection,
+    loan_id: &str,
+    returned_grams: i64,
+    return_note: Option<&str>,
+) -> InventoryResult<SpoolLoanRow> {
+    let loan = select_loan_by_id_optional(conn, loan_id)?.ok_or(InventoryError::NotFound)?;
     if !LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref()).is_active() {
         return Err(InventoryError::Db("loan already returned".to_string()));
     }
@@ -28,7 +39,7 @@ pub(crate) fn return_spool_loan(
     let safe_returned = returned_grams.max(0);
     let consumed = (loan.grams_out - safe_returned).max(0);
 
-    tx.execute(
+    conn.execute(
         "UPDATE spool_loans
          SET loan_status = 'RETURNED',
              returned_at = datetime('now'),
@@ -44,7 +55,7 @@ pub(crate) fn return_spool_loan(
     } else {
         "IN_STOCK"
     };
-    tx.execute(
+    conn.execute(
         "UPDATE filament_spools
          SET status = ?2,
              location_id = NULL,
@@ -55,7 +66,7 @@ pub(crate) fn return_spool_loan(
         params![loan.spool_id, next_status, safe_returned],
     )?;
 
-    tx.execute(
+    conn.execute(
         "INSERT INTO scales (id, name, protocol, created_at, updated_at)
          VALUES ('loan-return', 'Loan Return', 'VIRTUAL', datetime('now'), datetime('now'))
          ON CONFLICT(id) DO UPDATE SET
@@ -65,15 +76,13 @@ pub(crate) fn return_spool_loan(
         [],
     )?;
 
-    tx.execute(
+    conn.execute(
         "INSERT INTO weight_readings (id, scale_id, spool_id, grams, captured_at, source)
          VALUES (?1, 'loan-return', ?2, ?3, datetime('now'), 'LOAN_RETURN')",
         params![new_id(), loan.spool_id, safe_returned],
     )?;
 
-    let updated = select_loan_by_id(&tx, loan_id)?;
-    tx.commit()?;
-    Ok(updated)
+    select_loan_by_id(conn, loan_id)
 }
 
 pub(crate) fn return_inbound_spool_loan(
@@ -83,7 +92,18 @@ pub(crate) fn return_inbound_spool_loan(
     return_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let tx = conn.unchecked_transaction()?;
-    let loan = select_loan_by_id_optional(&tx, loan_id)?.ok_or(InventoryError::NotFound)?;
+    let loan = return_inbound_spool_loan_in_transaction(&tx, loan_id, returned_grams, return_note)?;
+    tx.commit()?;
+    Ok(loan)
+}
+
+pub(crate) fn return_inbound_spool_loan_in_transaction(
+    conn: &Connection,
+    loan_id: &str,
+    returned_grams: i64,
+    return_note: Option<&str>,
+) -> InventoryResult<SpoolLoanRow> {
+    let loan = select_loan_by_id_optional(conn, loan_id)?.ok_or(InventoryError::NotFound)?;
     if !LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref()).is_active() {
         return Err(InventoryError::Db("loan already returned".to_string()));
     }
@@ -93,7 +113,7 @@ pub(crate) fn return_inbound_spool_loan(
         ));
     }
 
-    let spool_exists: Option<i64> = tx
+    let spool_exists: Option<i64> = conn
         .query_row(
             "SELECT 1
              FROM filament_spools
@@ -111,7 +131,7 @@ pub(crate) fn return_inbound_spool_loan(
     let safe_returned = returned_grams.max(0);
     let consumed = (loan.grams_out - safe_returned).max(0);
 
-    tx.execute(
+    conn.execute(
         "UPDATE spool_loans
          SET loan_status = 'RETURNED',
              returned_at = datetime('now'),
@@ -127,14 +147,14 @@ pub(crate) fn return_inbound_spool_loan(
         ],
     )?;
 
-    tx.execute(
+    conn.execute(
         "UPDATE ams_slots
          SET spool_id = NULL, last_seen_at = datetime('now')
          WHERE spool_id = ?1",
         params![loan.spool_id],
     )?;
 
-    tx.execute(
+    conn.execute(
         "UPDATE filament_spools
          SET status = 'DELETED',
              deleted_at = datetime('now'),
@@ -147,9 +167,7 @@ pub(crate) fn return_inbound_spool_loan(
         params![loan.spool_id, safe_returned],
     )?;
 
-    let updated = select_loan_by_id(&tx, loan_id)?;
-    tx.commit()?;
-    Ok(updated)
+    select_loan_by_id(conn, loan_id)
 }
 
 fn select_loan_by_id_optional(

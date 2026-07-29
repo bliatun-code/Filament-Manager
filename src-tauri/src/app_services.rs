@@ -16,6 +16,7 @@ use crate::backend::inventory_engine::{
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
 };
+use crate::backend::statistics::InventoryOverview;
 use crate::catalog_commands::{
     refresh_bambu_catalog_blocking, refresh_esun_catalog_blocking, CatalogRefreshResult,
 };
@@ -37,6 +38,15 @@ pub struct CompanionSpoolDetail {
     pub history: Vec<SpoolHistoryEventRow>,
     pub usage: Vec<SpoolUsagePointRow>,
     pub active_loan: Option<ActiveSpoolLoanRow>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CompanionLibrarySnapshot {
+    pub sync_settings: crate::backend::filament_database::LibrarySyncSettingsRow,
+    pub inventory: InventoryOverview,
+    pub active_loans: i64,
+    pub printers: i64,
+    pub captured_at: String,
 }
 
 impl CompanionService {
@@ -86,9 +96,29 @@ impl CompanionService {
 
     pub fn list_printer_overview(&self) -> InventoryResult<Vec<PrinterOverviewRow>> {
         let db = FilamentDatabase::open(&self.db_path)?;
-        let rows = db.list_printer_overview()?;
-        let integrations = db.list_bambu_live_integrations()?;
+        let (rows, integrations) = db.with_read_transaction(|snapshot| {
+            Ok((
+                snapshot.list_printer_overview()?,
+                snapshot.list_bambu_live_integrations()?,
+            ))
+        })?;
         Ok(enrich_printer_overview_with_live_slots(rows, &integrations))
+    }
+
+    pub fn library_snapshot(&self) -> InventoryResult<CompanionLibrarySnapshot> {
+        let db = FilamentDatabase::open(&self.db_path)?;
+        // The legacy settings getter initializes a missing library ID. Do that
+        // before opening the read snapshot so the callback remains read-only.
+        db.get_library_sync_library_id()?;
+        db.with_read_transaction(|snapshot| {
+            Ok(CompanionLibrarySnapshot {
+                sync_settings: snapshot.get_library_sync_settings()?,
+                inventory: snapshot.inventory_overview()?,
+                active_loans: snapshot.list_active_spool_loans()?.len() as i64,
+                printers: snapshot.list_printer_overview()?.len() as i64,
+                captured_at: snapshot.sqlite_now()?,
+            })
+        })
     }
 
     pub fn list_active_spool_loans(&self) -> InventoryResult<Vec<ActiveSpoolLoanRow>> {
@@ -161,29 +191,31 @@ impl CompanionService {
             .unwrap_or(DEFAULT_SPOOL_USAGE_LIMIT)
             .clamp(1, 1_000);
 
-        let spool = self
-            .with_inventory(|engine| engine.get_spool_with_master(spool_id))?
-            .ok_or(InventoryError::NotFound)?;
-        let history = self.list_spool_history(spool_id, history_limit)?;
-        let usage = self.list_spool_usage(spool_id, usage_limit)?;
-        let outbound_active_loan = self
-            .list_active_spool_loans()?
-            .into_iter()
-            .find(|row| row.loan.spool_id == spool_id);
-        let active_loan = if outbound_active_loan.is_some()
-            || !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in()
-        {
-            outbound_active_loan
-        } else {
-            let db = FilamentDatabase::open(&self.db_path)?;
-            db.find_active_spool_loan_for_direction(spool_id, "INBOUND")?
-        };
+        let db = FilamentDatabase::open(&self.db_path)?;
+        db.with_read_transaction(|snapshot| {
+            let spool = snapshot
+                .get_spool_with_master_by_id(spool_id)?
+                .ok_or(InventoryError::NotFound)?;
+            let history = snapshot.list_spool_history_events(spool_id, history_limit)?;
+            let usage = snapshot.list_spool_usage_points(spool_id, usage_limit)?;
+            let outbound_active_loan = snapshot
+                .list_active_spool_loans()?
+                .into_iter()
+                .find(|row| row.loan.spool_id == spool_id);
+            let active_loan = if outbound_active_loan.is_some()
+                || !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in()
+            {
+                outbound_active_loan
+            } else {
+                snapshot.find_active_spool_loan_for_direction(spool_id, "INBOUND")?
+            };
 
-        Ok(CompanionSpoolDetail {
-            spool,
-            history,
-            usage,
-            active_loan,
+            Ok(CompanionSpoolDetail {
+                spool,
+                history,
+                usage,
+                active_loan,
+            })
         })
     }
 
