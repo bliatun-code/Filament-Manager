@@ -8,26 +8,26 @@ const workflow = readFileSync(
 );
 
 test("CodeQL covers every supported repository language", () => {
-  const matrixMatch = workflow.match(
-    /matrix:\s*\n\s+language:\s*\n((?:\s+- [^\n]+\n){3})/,
-  );
-  assert.ok(matrixMatch, "missing three-language CodeQL matrix");
-
-  const languages = [
-    ...matrixMatch[1].matchAll(/^\s+- ([^\s]+)\s*$/gm),
-  ].map((match) => match[1]);
-  assert.deepEqual(languages, [
-    "javascript-typescript",
-    "rust",
-    "actions",
+  const matrixEntries = [
+    ...workflow.matchAll(
+      /^\s+- language: ([^\s]+)\s*\n\s+category: "([^"]+)"$/gm,
+    ),
+  ].map((match) => ({
+    language: match[1],
+    category: match[2],
+  }));
+  assert.deepEqual(matrixEntries, [
+    {
+      language: "javascript-typescript",
+      category: ".github/workflows/codeql.yml:analyze",
+    },
+    { language: "rust", category: "/language:rust" },
+    { language: "actions", category: "/language:actions" },
   ]);
   assert.match(workflow, /fail-fast: false/);
   assert.match(workflow, /languages: \$\{\{ matrix\.language \}\}/);
   assert.match(workflow, /build-mode: none/);
-  assert.match(
-    workflow,
-    /category: "\/language:\$\{\{ matrix\.language \}\}"/,
-  );
+  assert.match(workflow, /category: \$\{\{ matrix\.category \}\}/);
 });
 
 test("CodeQL remains public-only, least privilege and credential-less", () => {
