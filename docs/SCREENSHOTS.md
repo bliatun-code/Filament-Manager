@@ -18,6 +18,9 @@ The v0.22.0 refresh regenerated Dashboard, Add Filament, Program and update
 check, Bambu Live security setup, and Unsaved Printer Changes on 2026-07-29
 from fixture seed SHA-256
 `81832c22714d81c227ac53875b928b66d564e006d7f9e414fc2e6c4a95629970`.
+The v0.22.1 candidate refreshed the Program and update-notification capture on
+2026-07-30 from fixture seed SHA-256
+`02920bf05064bd1ff74d546e26d2f1ea4c5acd0454d951a9ea386662d9b69c19`.
 The security-setup capture adds only a reserved TEST-NET address and a
 synthetic printer serial; it contains no access code or trusted fingerprint.
 
