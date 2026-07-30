@@ -1008,7 +1008,9 @@ export const fiFIDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Päivitykset",
-    "updateCheckHint": "GitHub tarkistetaan vain pyydettäessä. Lataus ja asennus tehdään edelleen käsin.",
+    "updateCheckHint": "Kun toiminto on käytössä, GitHub tarkistetaan automaattisesti enintään kerran päivässä. Lataus ja asennus tehdään edelleen käsin.",
+    "automaticUpdateChecks": "Tarkista automaattisesti",
+    "remindMeLater": "Myöhemmin",
     "checkForUpdates": "Tarkista päivitykset",
     "checkingForUpdates": "Tarkistetaan…",
     "updateAvailable": "Versio {version} on saatavilla.",

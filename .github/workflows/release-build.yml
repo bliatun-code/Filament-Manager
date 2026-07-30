@@ -53,6 +53,7 @@ jobs:
         env:
           CONFIRM_MACOS_NOTARIZATION: ${{ inputs.confirm_macos_notarization }}
           EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
+          FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}
           SELECTED_PLATFORM: ${{ inputs.platform }}
         run: |
           set -euo pipefail
@@ -79,6 +80,16 @@ jobs:
               || "$GITHUB_REF" != "refs/tags/$release_tag"
             ) ]]; then
             echo "::error::Release publishing is restricted to the exact version tag refs/tags/$release_tag."
+            exit 1
+          fi
+
+          canonical_repository="bliatun-code/Filament-Manager"
+          expected_update_metadata_url="https://api.github.com/repos/$GITHUB_REPOSITORY/releases/latest"
+          if [[ "$GITHUB_EVENT_NAME" == "push" \
+            && "$GITHUB_REF_TYPE" == "tag" \
+            && "$GITHUB_REPOSITORY" == "$canonical_repository" \
+            && "$FILAMENT_MANAGER_UPDATE_METADATA_URL" != "$expected_update_metadata_url" ]]; then
+            echo "::error::Canonical tag releases require repository variable FILAMENT_MANAGER_UPDATE_METADATA_URL to equal $expected_update_metadata_url."
             exit 1
           fi
 

@@ -3,6 +3,7 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
+import { AppUpdateProvider } from "../lib/app_update_provider";
 import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import { SettingsGeneralTab } from "./settings_general_tab";
 
@@ -32,33 +33,37 @@ function renderGeneralTab(locale: Locale = "en", labelSheetOpen = false) {
     React.createElement(
       I18nContext.Provider,
       { value: i18nValue(locale) },
-      React.createElement(SettingsGeneralTab, {
-        appVersion: "0.16.0",
-        busy: false,
-        inventoryLabelSheetModalProps: {
-          items: labelSheetOpen
-            ? [
-                {
-                  reference: "spool-1",
-                  pngDataUrl:
-                    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
-                },
-              ]
-            : [],
-          loading: false,
-          onClose: () => {},
-          onSave: () => {},
-          open: labelSheetOpen,
-          saving: false,
-        },
-        locale,
-        tauri: true,
-        themeMode: "dark",
-        t: i18nValue(locale).t,
-        onLocaleSelection: () => {},
-        onOpenInventoryLabelSheet: () => {},
-        onThemeSelection: () => {},
-      }),
+      React.createElement(
+        AppUpdateProvider,
+        null,
+        React.createElement(SettingsGeneralTab, {
+          appVersion: "0.16.0",
+          busy: false,
+          inventoryLabelSheetModalProps: {
+            items: labelSheetOpen
+              ? [
+                  {
+                    reference: "spool-1",
+                    pngDataUrl:
+                      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
+                  },
+                ]
+              : [],
+            loading: false,
+            onClose: () => {},
+            onSave: () => {},
+            open: labelSheetOpen,
+            saving: false,
+          },
+          locale,
+          tauri: true,
+          themeMode: "dark",
+          t: i18nValue(locale).t,
+          onLocaleSelection: () => {},
+          onOpenInventoryLabelSheet: () => {},
+          onThemeSelection: () => {},
+        }),
+      ),
     ),
   );
 }
@@ -73,6 +78,9 @@ test("SettingsGeneralTab exposes license and source links", () => {
   assert.match(html, /Product tour/);
   assert.match(html, /User manual/);
   assert.match(html, /Check for updates/);
+  assert.match(html, /Check automatically/);
+  assert.match(html, /type="checkbox"[^>]*checked=""/);
+  assert.match(html, /at most once per day/);
   assert.match(html, /Download and installation remain manual/);
   assert.match(html, /Need just one label\?/);
   assert.match(

@@ -864,7 +864,9 @@ export const plPLDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Aktualizacje",
-    "updateCheckHint": "GitHub jest sprawdzany tylko na żądanie. Pobieranie i instalacja pozostają ręczne.",
+    "updateCheckHint": "Po włączeniu automatycznie sprawdza GitHub nie częściej niż raz dziennie. Pobieranie i instalacja pozostają ręczne.",
+    "automaticUpdateChecks": "Sprawdzaj automatycznie",
+    "remindMeLater": "Później",
     "checkForUpdates": "Sprawdź aktualizacje",
     "checkingForUpdates": "Sprawdzanie…",
     "updateAvailable": "Dostępna jest wersja {version}.",

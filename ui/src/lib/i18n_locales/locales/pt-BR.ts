@@ -1062,7 +1062,9 @@ export const ptBRDictionary: DictionaryNode = {
   settings: {
     updates: "Atualizações",
     updateCheckHint:
-      "Consulta o GitHub somente quando você solicita. O download e a instalação continuam manuais.",
+      "Quando ativado, verifica o GitHub automaticamente no máximo uma vez por dia. O download e a instalação continuam manuais.",
+    automaticUpdateChecks: "Verificar automaticamente",
+    remindMeLater: "Mais tarde",
     checkForUpdates: "Verificar atualizações",
     checkingForUpdates: "Verificando…",
     updateAvailable: "A versão {version} está disponível.",

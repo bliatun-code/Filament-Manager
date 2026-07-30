@@ -1,8 +1,12 @@
 # Update Metadata Channel
 
-Filament Manager never checks for updates automatically. The manual
-**Check for updates** action is enabled only in builds made with an explicitly
-configured, anonymously readable metadata endpoint.
+Release builds made with an explicitly configured, anonymously readable
+metadata endpoint support both the retained manual **Check for updates** action
+and optional automatic update notifications. When automatic checking is
+enabled, the app waits briefly after startup and checks at most once per 24
+hours. The automatic path shows a banner only when a newer version exists;
+up-to-date, disabled-channel, unavailable-metadata, and other failure results
+stay silent. Download and installation always remain manual.
 
 The public repository now uses:
 
@@ -11,12 +15,14 @@ FILAMENT_MANAGER_UPDATE_METADATA_URL=https://api.github.com/repos/bliatun-code/F
 ```
 
 The repository variable was configured after the `v0.22.0` installers were
-built. Those existing binaries retain the disabled fail-safe; the next release
-build receives the public channel.
+built. Those existing binaries retain the disabled fail-safe and therefore need
+one manual bridge upgrade to a newer release. Automatic notifications can work
+only after that newer release build, which receives the public channel, is
+installed.
 
 ## Public metadata contract
 
-Release builds may set:
+Custom or non-canonical distribution builds may set:
 
 ```text
 FILAMENT_MANAGER_UPDATE_METADATA_URL=https://updates.example.org/filament-manager/latest.json
@@ -44,7 +50,9 @@ endpoint, redirects, network failures, non-success responses, oversized
 responses, malformed JSON, and invalid release versions all fail closed. An
 absent or invalid endpoint is reported as a disabled update channel without
 making a network request; failures from a configured public endpoint are
-reported as unavailable release information.
+reported as unavailable release information. These details remain visible from
+the manual action. Automatic checks suppress them and notify only for
+`UPDATE_AVAILABLE`.
 
 ## Publication model
 
@@ -55,10 +63,12 @@ the same minimal JSON contract. A usable unauthenticated download still
 requires a public release page or public artifact location.
 
 The URL is compiled into the application. Changing it therefore requires a new
-build. Release CI reads the optional
-`vars.FILAMENT_MANAGER_UPDATE_METADATA_URL` repository variable for both macOS
-and Windows builds; leaving it unset produces the disabled channel. The
-sanitized support file deliberately does not include the metadata URL.
+build. Release CI reads `vars.FILAMENT_MANAGER_UPDATE_METADATA_URL` for both
+macOS and Windows builds. A canonical tag release fails validation unless that
+variable exactly names the GitHub `releases/latest` API shown above. Manual
+workflow-dispatch and non-canonical builds may still leave it unset, producing
+the disabled channel used for release-candidate testing. The sanitized support
+file deliberately does not include the metadata URL.
 
 ## Build identity in support files
 

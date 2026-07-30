@@ -31,7 +31,7 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/inventory-label-sheet.jpg"><img src="docs/screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet preview with A4 and US Letter choices" width="220"></a>
   <a href="docs/screenshots/filament-history.jpg"><img src="docs/screenshots/filament-history-thumb.jpg" alt="Filament roll history timeline" width="220"></a>
   <a href="docs/screenshots/settings-general.jpg"><img src="docs/screenshots/settings-general-thumb.jpg" alt="Settings with the compact language selector" width="220"></a>
-  <a href="docs/screenshots/settings-updates.jpg"><img src="docs/screenshots/settings-updates-thumb.jpg" alt="Program version and manual application update check" width="220"></a>
+  <a href="docs/screenshots/settings-updates.jpg"><img src="docs/screenshots/settings-updates-thumb.jpg" alt="Program version, automatic update notification, and manual update check" width="220"></a>
   <a href="docs/screenshots/companion-tablet-inventory.jpg"><img src="docs/screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet inventory view" width="220"></a>
   <a href="docs/screenshots/companion-phone-inventory.jpg"><img src="docs/screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone inventory view" width="220"></a>
 </p>
@@ -104,9 +104,11 @@ Release notes:
   optional printer/Companion work and collapses completed steps, plus
   device-local preferences for Inventory layout/filter expansion and the
   last-used Settings tab.
-- An explicit **Check for updates** action that uses only a build-configured
-  public metadata channel, reports when the channel is disabled or unavailable,
-  and leaves download and installation manual.
+- Optional automatic update notifications plus an explicit **Check for
+  updates** action, both using only a build-configured public metadata channel.
+  When enabled, release builds check after a short startup delay at most once
+  per 24 hours and show a banner only for a newer version; download and
+  installation remain manual.
 
 ## Languages
 
@@ -452,10 +454,15 @@ operational events, plus the build commit, target, and distribution channel.
 The update metadata URL is not included.
 
 Update checking is disabled unless a release build explicitly contains an
-anonymous public HTTPS metadata endpoint. This avoids treating the anonymous
-`404` from private GitHub releases as a usable update service. See
-[Update Metadata Channel](docs/UPDATE_CHANNEL.md) for the fail-safe contract
-and publication choices.
+anonymous public HTTPS metadata endpoint. When automatic checking is enabled,
+eligible release builds check after a short startup delay at most once per 24
+hours. Only a newer version produces an automatic banner; current-version and
+failure results stay silent, while the manual check remains available for
+explicit status. Download and installation are always manual. Because the
+public channel was configured after the `v0.22.0` installers were built, those
+installations need one manual bridge upgrade before automatic notifications can
+work. See [Update Metadata Channel](docs/UPDATE_CHANNEL.md) for the fail-safe
+contract and publication choices.
 
 ## Catalog Scraping
 

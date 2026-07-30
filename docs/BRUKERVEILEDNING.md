@@ -271,7 +271,7 @@ Innstillinger er delt i flere områder.
 Generelt:
 
 - programversjon
-- manuell sjekk etter oppdateringer
+- automatiske oppdateringsvarsler og beholdt manuell oppdateringssjekk
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
@@ -286,13 +286,18 @@ community-oversettelsene kan foreslås via det egne
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
 ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
 
-Velg **Se etter oppdateringer** når du vil sammenligne installert versjon med
-publiserte utgivelsesmetadata. Sjekken skjer ikke automatisk og gjør bare en
-forespørsel når denne programversjonen har en uttrykkelig konfigurert offentlig
-metadatakanal. Innstillinger melder tydelig fra om en deaktivert kanal eller
-utilgjengelige metadata uten å endre programmet. Når en nyere release finnes,
-åpner **Vis utgivelsen** den faste releasesiden for Filament Manager;
-nedlasting og installasjon er fortsatt uttrykkelige, manuelle valg.
+Release-versjoner med en konfigurert offentlig metadatakanal kan sjekke
+automatisk når **Sjekk automatisk** er aktivert. Sjekken skjer etter en kort
+forsinkelse ved oppstart og maksimalt én gang per 24 timer. Bare en nyere
+versjon gir et banner; oppdatert versjon og feil er stille. Velg **Senere** for
+å skjule banneret foreløpig, eller **Vis utgivelsen** for å åpne den faste
+releasesiden for Filament Manager.
+
+Knappen **Se etter oppdateringer** beholdes når du vil ha uttrykkelig status,
+også for en deaktivert kanal eller utilgjengelige metadata. Nedlasting og
+installasjon er alltid manuelle valg. `v0.22.0`-installasjonene ble bygget før
+den offentlige kanalen ble konfigurert, og trenger derfor én manuell
+brooppgradering før automatiske varsler kan fungere.
 Innstillinger husker også sist brukte fane på denne enheten, mens direkte
 snarveier fra Oversikt fremdeles åpner riktig fane.
 

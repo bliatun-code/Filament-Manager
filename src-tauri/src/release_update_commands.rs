@@ -81,6 +81,16 @@ fn build_update_check_result(
     })
 }
 
+fn build_update_check_result_or_unavailable(
+    current_version: &str,
+    latest_tag: &str,
+) -> Result<AppUpdateCheckResult, String> {
+    match build_update_check_result(current_version, latest_tag) {
+        Ok(result) => Ok(result),
+        Err(_) => build_release_info_unavailable_result(current_version),
+    }
+}
+
 fn build_release_info_unavailable_result(
     current_version: &str,
 ) -> Result<AppUpdateCheckResult, String> {
@@ -181,7 +191,7 @@ fn check_for_app_update_blocking(
         Ok(release) => release,
         Err(_) => return build_release_info_unavailable_result(current_version),
     };
-    build_update_check_result(current_version, &release.tag_name)
+    build_update_check_result_or_unavailable(current_version, &release.tag_name)
 }
 
 #[tauri::command]
@@ -200,8 +210,9 @@ pub(crate) async fn check_for_app_update(
 mod tests {
     use super::{
         build_release_info_unavailable_result, build_update_channel_disabled_result,
-        build_update_check_result, check_for_app_update_blocking, parse_release_version,
-        public_update_metadata_url, AppUpdateChannel, AppUpdateStatus,
+        build_update_check_result, build_update_check_result_or_unavailable,
+        check_for_app_update_blocking, parse_release_version, public_update_metadata_url,
+        AppUpdateChannel, AppUpdateStatus,
     };
 
     #[test]
@@ -248,6 +259,16 @@ mod tests {
     fn unavailable_release_metadata_is_a_safe_result_without_release_values() {
         let result = build_release_info_unavailable_result("0.21.2").unwrap();
         assert_eq!(result.current_version, "0.21.2");
+        assert_eq!(result.latest_version, None);
+        assert_eq!(result.latest_tag, None);
+        assert_eq!(result.status, AppUpdateStatus::ReleaseInfoUnavailable);
+        assert_eq!(result.update_channel, AppUpdateChannel::PublicMetadata);
+    }
+
+    #[test]
+    fn invalid_release_version_is_reported_as_unavailable_metadata() {
+        let result = build_update_check_result_or_unavailable("0.22.0", "release-current").unwrap();
+        assert_eq!(result.current_version, "0.22.0");
         assert_eq!(result.latest_version, None);
         assert_eq!(result.latest_tag, None);
         assert_eq!(result.status, AppUpdateStatus::ReleaseInfoUnavailable);

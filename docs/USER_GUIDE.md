@@ -269,7 +269,7 @@ Settings is split into several areas.
 General:
 
 - app version
-- a manual update check
+- automatic update notifications and a retained manual update check
 - theme: Auto, Light, Dark
 - language, selected from one compact list
 - inventory QR label sheets
@@ -284,13 +284,18 @@ Corrections to community translations can be proposed through the dedicated
 or pull requests. The current language set stays fixed while the existing
 non-English catalogs receive community and native-language review.
 
-Choose **Check for updates** when you want to compare the installed version
-with published release metadata. The check is not automatic and makes a
-request only when this build has an explicitly configured public metadata
-channel. Settings clearly reports a disabled channel or unavailable metadata
-without changing the app. When a newer release exists, **View release** opens
-the fixed Filament Manager releases page; downloading and installing remain
-explicit manual actions.
+Release builds with a configured public metadata channel can check
+automatically when **Check automatically** is enabled. The check runs after a
+short startup delay and at most once per 24 hours. It shows a banner only when a
+newer version exists; up-to-date results and failures stay silent. Choose
+**Later** to dismiss the banner for now, or **View release** to open the fixed
+Filament Manager releases page.
+
+The **Check for updates** button remains available when you want explicit
+status, including a disabled channel or unavailable metadata. Downloading and
+installing always remain manual. The `v0.22.0` installers were built before the
+public channel was configured, so they need one manual bridge upgrade before
+automatic notifications can work.
 Settings also remembers the last tab used on this device, while direct links
 from Dashboard still open the relevant tab.
 

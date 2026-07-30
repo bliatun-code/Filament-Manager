@@ -1008,7 +1008,9 @@ export const ruRUDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Обновления",
-    "updateCheckHint": "GitHub проверяется только по вашему запросу. Загрузка и установка выполняются вручную.",
+    "updateCheckHint": "Если функция включена, GitHub автоматически проверяется не чаще одного раза в день. Загрузка и установка выполняются вручную.",
+    "automaticUpdateChecks": "Проверять автоматически",
+    "remindMeLater": "Позже",
     "checkForUpdates": "Проверить обновления",
     "checkingForUpdates": "Проверка…",
     "updateAvailable": "Доступна версия {version}.",

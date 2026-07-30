@@ -864,7 +864,9 @@ export const trTRDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Güncellemeler",
-    "updateCheckHint": "GitHub yalnızca siz istediğinizde kontrol edilir. İndirme ve kurulum manuel kalır.",
+    "updateCheckHint": "Etkinleştirildiğinde GitHub günde en fazla bir kez otomatik olarak kontrol edilir. İndirme ve kurulum manuel kalır.",
+    "automaticUpdateChecks": "Otomatik denetle",
+    "remindMeLater": "Daha sonra",
     "checkForUpdates": "Güncellemeleri denetle",
     "checkingForUpdates": "Denetleniyor…",
     "updateAvailable": "{version} sürümü kullanılabilir.",

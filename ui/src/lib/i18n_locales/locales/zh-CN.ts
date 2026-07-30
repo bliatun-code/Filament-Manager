@@ -864,7 +864,9 @@ export const zhCNDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "更新",
-    "updateCheckHint": "仅在你主动请求时检查 GitHub。下载和安装仍需手动完成。",
+    "updateCheckHint": "启用后，每天最多自动检查一次 GitHub。下载和安装仍需手动完成。",
+    "automaticUpdateChecks": "自动检查",
+    "remindMeLater": "稍后",
     "checkForUpdates": "检查更新",
     "checkingForUpdates": "正在检查…",
     "updateAvailable": "版本 {version} 已可用。",

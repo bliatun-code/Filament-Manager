@@ -1008,7 +1008,9 @@ export const daDKDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Opdateringer",
-    "updateCheckHint": "GitHub kontrolleres kun, når du beder om det. Download og installation forbliver manuel.",
+    "updateCheckHint": "Når funktionen er aktiveret, kontrolleres GitHub automatisk højst én gang om dagen. Download og installation forbliver manuel.",
+    "automaticUpdateChecks": "Kontrollér automatisk",
+    "remindMeLater": "Senere",
     "checkForUpdates": "Søg efter opdateringer",
     "checkingForUpdates": "Søger…",
     "updateAvailable": "Version {version} er tilgængelig.",

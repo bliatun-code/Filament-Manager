@@ -24,13 +24,14 @@ const generalTabSource = readFileSync(
   "utf8",
 );
 
-test("update-check visual QA reveals the real manual update controls", () => {
+test("update-check visual QA reveals the real automatic and manual update controls", () => {
   assert.match(source, /desktopVisualQaScenarioRef\.current !== "settings-updates"/);
   assert.match(source, /getElementById\("settings-update-check"\)/);
   assert.match(source, /target\.scrollIntoView\(\{ behavior: "auto", block: "center" \}\)/);
   assert.match(source, /window\.addEventListener\("resize", revealUpdateCheck\)/);
   assert.match(generalTabSource, /id="settings-update-check"/);
-  assert.match(generalTabSource, /updateCheck\.check\(\)/);
+  assert.match(generalTabSource, /settings\.automaticUpdateChecks/);
+  assert.match(generalTabSource, /updateCheck\.checkManually\(\)/);
 });
 
 test("inventory label sheet visual QA opens the real data-backed modal", () => {

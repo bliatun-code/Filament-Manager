@@ -1008,7 +1008,9 @@ export const svSEDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Uppdateringar",
-    "updateCheckHint": "GitHub kontrolleras bara när du ber om det. Hämtning och installation förblir manuella.",
+    "updateCheckHint": "När funktionen är aktiverad kontrolleras GitHub automatiskt högst en gång per dag. Hämtning och installation förblir manuella.",
+    "automaticUpdateChecks": "Kontrollera automatiskt",
+    "remindMeLater": "Senare",
     "checkForUpdates": "Sök efter uppdateringar",
     "checkingForUpdates": "Söker…",
     "updateAvailable": "Version {version} är tillgänglig.",

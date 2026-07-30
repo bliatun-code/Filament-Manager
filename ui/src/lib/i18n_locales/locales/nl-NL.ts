@@ -864,7 +864,9 @@ export const nlNLDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Updates",
-    "updateCheckHint": "Controleert GitHub alleen wanneer je daarom vraagt. Downloaden en installeren blijven handmatig.",
+    "updateCheckHint": "Controleert GitHub indien ingeschakeld automatisch maximaal één keer per dag. Downloaden en installeren blijven handmatig.",
+    "automaticUpdateChecks": "Automatisch controleren",
+    "remindMeLater": "Later herinneren",
     "checkForUpdates": "Controleren op updates",
     "checkingForUpdates": "Controleren…",
     "updateAvailable": "Versie {version} is beschikbaar.",

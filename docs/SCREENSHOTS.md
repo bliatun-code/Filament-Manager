@@ -39,7 +39,7 @@ without creating an image when fresh telemetry never arrives.
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
-  <a href="#program-and-manual-update-check"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version and manual update check" width="150"></a>
+  <a href="#program-and-update-notifications"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version, update notifications, and manual update check" width="150"></a>
   <a href="#bambu-live-security-setup"><img src="screenshots/settings-printer-editor-thumb.jpg" alt="Bambu Live security setup" width="150"></a>
   <a href="#inventory-label-sheet"><img src="screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet" width="150"></a>
   <a href="#companion-tablet"><img src="screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet" width="150"></a>
@@ -222,15 +222,19 @@ languages.
 
 ![Settings general](screenshots/settings-general.jpg)
 
-### Program And Manual Update Check
+### Program And Update Notifications
 
 The Program section shows the exact version, license/source links, and
-documentation shortcuts. Its on-demand public-metadata check reports whether
-this version is current, whether a newer release exists, whether metadata is
-unavailable, or whether this build has no configured update channel. It never
-downloads or installs an update automatically.
+documentation shortcuts. In configured release builds, **Check automatically**
+runs after a short startup delay at most once per 24 hours and shows a banner
+only for a newer version. Up-to-date and failure results stay silent
+automatically; the retained manual check reports explicit status, including an
+unavailable or disabled channel. **Later** dismisses the banner for now, while
+**View release** opens the fixed release page. Download and installation remain
+manual, and `v0.22.0` requires one manual bridge upgrade before automatic
+notifications can work.
 
-![Manual update check](screenshots/settings-updates.jpg)
+![Update notifications and manual check](screenshots/settings-updates.jpg)
 
 ### Inventory Label Sheet
 

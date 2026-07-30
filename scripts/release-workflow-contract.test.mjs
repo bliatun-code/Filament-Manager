@@ -82,6 +82,10 @@ test("release workflow gates tag and manual installer builds", () => {
     "      - name: Require successful CI checks",
     "      - name: Checkout release notes",
   );
+  const updateMetadataGate = validationJob.match(
+    /canonical_repository="bliatun-code\/Filament-Manager"[\s\S]*?Canonical tag releases require repository variable FILAMENT_MANAGER_UPDATE_METADATA_URL to equal \$expected_update_metadata_url\.[\s\S]*?\n\s+fi/,
+  )?.[0];
+  assert.ok(updateMetadataGate, "Missing canonical tag update metadata gate.");
 
   assert.match(releaseWorkflow, /tags:\s*\n\s*- "v\*"/);
   assert.match(releaseWorkflow, /confirm_macos_notarization:/);
@@ -96,6 +100,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(
     validationJob,
     /EXPECTED_APPLE_TEAM_ID: \$\{\{ vars\.EXPECTED_APPLE_TEAM_ID \}\}/,
+  );
+  assert.match(
+    validationJob,
+    /FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}/,
   );
   assert.match(
     validationJob,
@@ -137,6 +145,23 @@ test("release workflow gates tag and manual installer builds", () => {
     validationJob,
     /Release publishing is restricted to the exact version tag refs\/tags\/\$release_tag/,
   );
+  assert.match(
+    updateMetadataGate,
+    /canonical_repository="bliatun-code\/Filament-Manager"/,
+  );
+  assert.match(
+    updateMetadataGate,
+    /expected_update_metadata_url="https:\/\/api\.github\.com\/repos\/\$GITHUB_REPOSITORY\/releases\/latest"/,
+  );
+  assert.match(
+    updateMetadataGate,
+    /"\$GITHUB_EVENT_NAME" == "push"[\\\s]+&& "\$GITHUB_REF_TYPE" == "tag"[\\\s]+&& "\$GITHUB_REPOSITORY" == "\$canonical_repository"[\\\s]+&& "\$FILAMENT_MANAGER_UPDATE_METADATA_URL" != "\$expected_update_metadata_url"/,
+  );
+  assert.match(
+    updateMetadataGate,
+    /Canonical tag releases require repository variable FILAMENT_MANAGER_UPDATE_METADATA_URL to equal \$expected_update_metadata_url\./,
+  );
+  assert.doesNotMatch(updateMetadataGate, /workflow_dispatch|SELECTED_PLATFORM/);
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
   assert.match(macosJob, /needs: validate-release/);
   assert.match(
@@ -165,13 +190,11 @@ test("release workflow gates tag and manual installer builds", () => {
     macosJob,
     /- name: Build signed and notarized DMG[\s\S]*?FILAMENT_MANAGER_UPDATE_METADATA_URL: \$\{\{ vars\.FILAMENT_MANAGER_UPDATE_METADATA_URL \}\}[\s\S]*?npm run tauri --[\s\S]*?build[\s\S]*?--target universal-apple-darwin[\s\S]*?--bundles dmg/,
   );
-  assert.equal(
-    countOccurrences(
-      releaseWorkflow,
-      "FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}",
-    ),
-    2,
-  );
+  const updateMetadataVariableBinding =
+    "FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}";
+  assert.equal(countOccurrences(validationJob, updateMetadataVariableBinding), 1);
+  assert.equal(countOccurrences(macosJob, updateMetadataVariableBinding), 1);
+  assert.equal(countOccurrences(windowsJob, updateMetadataVariableBinding), 1);
   assert.doesNotMatch(
     windowsJob,
     /run: node \.\/scripts\/normalize-msi-version\.mjs\s*$/m,

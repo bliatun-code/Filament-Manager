@@ -864,7 +864,9 @@ export const ukUADictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Оновлення",
-    "updateCheckHint": "GitHub перевіряється лише на ваш запит. Завантаження та встановлення залишаються ручними.",
+    "updateCheckHint": "Якщо функцію ввімкнено, GitHub автоматично перевіряється не частіше одного разу на день. Завантаження та встановлення залишаються ручними.",
+    "automaticUpdateChecks": "Перевіряти автоматично",
+    "remindMeLater": "Пізніше",
     "checkForUpdates": "Перевірити оновлення",
     "checkingForUpdates": "Перевірка…",
     "updateAvailable": "Доступна версія {version}.",

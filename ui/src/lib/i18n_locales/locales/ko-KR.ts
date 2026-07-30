@@ -864,7 +864,9 @@ export const koKRDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "업데이트",
-    "updateCheckHint": "요청한 경우에만 GitHub를 확인합니다. 다운로드와 설치는 계속 수동으로 진행합니다.",
+    "updateCheckHint": "사용 설정하면 하루에 최대 한 번 GitHub를 자동으로 확인합니다. 다운로드와 설치는 계속 수동으로 진행합니다.",
+    "automaticUpdateChecks": "자동으로 확인",
+    "remindMeLater": "나중에",
     "checkForUpdates": "업데이트 확인",
     "checkingForUpdates": "확인 중…",
     "updateAvailable": "버전 {version}을 사용할 수 있습니다.",

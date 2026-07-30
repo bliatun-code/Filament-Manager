@@ -864,7 +864,9 @@ export const csCZDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Aktualizace",
-    "updateCheckHint": "GitHub se kontroluje jen na vyžádání. Stažení a instalace zůstávají ruční.",
+    "updateCheckHint": "Je-li tato možnost zapnutá, kontroluje se GitHub automaticky nejvýše jednou denně. Stažení a instalace zůstávají ruční.",
+    "automaticUpdateChecks": "Kontrolovat automaticky",
+    "remindMeLater": "Později",
     "checkForUpdates": "Zkontrolovat aktualizace",
     "checkingForUpdates": "Kontrola…",
     "updateAvailable": "Je k dispozici verze {version}.",

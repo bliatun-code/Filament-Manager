@@ -16,8 +16,8 @@ import {
   shouldShowReleaseAction,
   trustedReleaseUrl,
 } from "../lib/app_update_check";
+import { useAppUpdateContext } from "../lib/app_update_context";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
-import { useAppUpdateCheck } from "../lib/use_app_update_check";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -57,7 +57,7 @@ export function SettingsGeneralTab({
   onOpenInventoryLabelSheet,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
-  const updateCheck = useAppUpdateCheck();
+  const updateCheck = useAppUpdateContext();
   const displayVersion = appVersion?.trim() || t("common.unknown", "Unknown");
   const sourceUrl = sourceUrlForAppVersion(appVersion);
   const licenseUrl = licenseUrlForAppVersion(appVersion);
@@ -189,16 +189,31 @@ export function SettingsGeneralTab({
           <div className={settingsSectionLabelClass}>
             {t("settings.updates", "Updates")}
           </div>
-          <p className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          <p
+            id="settings-update-check-hint"
+            className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400"
+          >
             {t(
               "settings.updateCheckHint",
-              "Checks GitHub only when you ask. Download and installation remain manual.",
+              "Checks GitHub automatically at most once per day when enabled. Download and installation remain manual.",
             )}
           </p>
+          <label className="surface-subtle mt-3 flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+            <input
+              type="checkbox"
+              checked={updateCheck.automaticChecksEnabled}
+              onChange={(event) =>
+                updateCheck.setAutomaticChecksEnabled(event.target.checked)
+              }
+              aria-describedby="settings-update-check-hint"
+              disabled={!tauri || busy}
+            />
+            {t("settings.automaticUpdateChecks", "Check automatically")}
+          </label>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => void updateCheck.check()}
+              onClick={() => void updateCheck.checkManually()}
               className={settingsActionButtonClass()}
               disabled={!tauri || busy || checkingForUpdates}
             >

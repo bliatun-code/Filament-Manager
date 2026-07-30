@@ -1161,7 +1161,9 @@ export const frDictionary: DictionaryNode = {
   settings: {
     updates: "Mises à jour",
     updateCheckHint:
-      "GitHub n’est consulté qu’à votre demande. Le téléchargement et l’installation restent manuels.",
+      "Lorsque cette option est activée, GitHub est consulté automatiquement au maximum une fois par jour. Le téléchargement et l’installation restent manuels.",
+    automaticUpdateChecks: "Vérifier automatiquement",
+    remindMeLater: "Plus tard",
     checkForUpdates: "Rechercher des mises à jour",
     checkingForUpdates: "Recherche en cours…",
     updateAvailable: "La version {version} est disponible.",

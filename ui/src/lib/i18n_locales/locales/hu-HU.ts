@@ -1008,7 +1008,9 @@ export const huHUDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "Frissítések",
-    "updateCheckHint": "Csak kérésre ellenőrzi a GitHubot. A letöltés és a telepítés továbbra is kézi.",
+    "updateCheckHint": "Ha engedélyezve van, naponta legfeljebb egyszer automatikusan ellenőrzi a GitHubot. A letöltés és a telepítés továbbra is kézi.",
+    "automaticUpdateChecks": "Automatikus ellenőrzés",
+    "remindMeLater": "Később",
     "checkForUpdates": "Frissítések keresése",
     "checkingForUpdates": "Ellenőrzés…",
     "updateAvailable": "Elérhető a(z) {version} verzió.",

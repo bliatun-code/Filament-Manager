@@ -1125,7 +1125,9 @@ export const deDictionary: DictionaryNode = {
   settings: {
     updates: "Updates",
     updateCheckHint:
-      "GitHub wird nur auf deine Anforderung geprüft. Download und Installation bleiben manuell.",
+      "Wenn aktiviert, wird GitHub automatisch höchstens einmal täglich geprüft. Download und Installation bleiben manuell.",
+    automaticUpdateChecks: "Automatisch prüfen",
+    remindMeLater: "Später",
     checkForUpdates: "Nach Updates suchen",
     checkingForUpdates: "Suche läuft…",
     updateAvailable: "Version {version} ist verfügbar.",

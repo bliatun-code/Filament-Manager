@@ -1152,7 +1152,9 @@ export const enDictionary: DictionaryNode = {
     settings: {
       updates: "Updates",
       updateCheckHint:
-        "Uses public release metadata only when configured, and only when you ask. Download and installation remain manual.",
+        "Checks GitHub automatically at most once per day when enabled. Download and installation remain manual.",
+      automaticUpdateChecks: "Check automatically",
+      remindMeLater: "Later",
       checkForUpdates: "Check for updates",
       checkingForUpdates: "Checking…",
       updateAvailable: "Version {version} is available.",

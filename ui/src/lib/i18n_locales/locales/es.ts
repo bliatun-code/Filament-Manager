@@ -1210,7 +1210,9 @@ export const esDictionary: DictionaryNode = {
   settings: {
     updates: "Actualizaciones",
     updateCheckHint:
-      "Solo consulta GitHub cuando lo solicitas. La descarga y la instalación siguen siendo manuales.",
+      "Cuando está activado, consulta GitHub automáticamente como máximo una vez al día. La descarga y la instalación siguen siendo manuales.",
+    automaticUpdateChecks: "Buscar automáticamente",
+    remindMeLater: "Más tarde",
     checkForUpdates: "Buscar actualizaciones",
     checkingForUpdates: "Buscando…",
     updateAvailable: "La versión {version} está disponible.",

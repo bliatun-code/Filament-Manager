@@ -1158,7 +1158,9 @@ export const nbDictionary: DictionaryNode = {
     settings: {
       updates: "Oppdateringer",
       updateCheckHint:
-        "Bruker offentlige utgivelsesmetadata bare når dette er konfigurert, og bare når du ber om det. Nedlasting og installasjon gjøres fortsatt manuelt.",
+        "Sjekker GitHub automatisk maksimalt én gang per døgn når dette er aktivert. Nedlasting og installasjon gjøres fortsatt manuelt.",
+      automaticUpdateChecks: "Sjekk automatisk",
+      remindMeLater: "Senere",
       checkForUpdates: "Se etter oppdateringer",
       checkingForUpdates: "Ser etter oppdateringer…",
       updateAvailable: "Versjon {version} er tilgjengelig.",

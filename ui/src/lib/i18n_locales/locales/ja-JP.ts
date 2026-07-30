@@ -864,7 +864,9 @@ export const jaJPDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "アップデート",
-    "updateCheckHint": "要求したときだけ GitHub を確認します。ダウンロードとインストールは手動のままです。",
+    "updateCheckHint": "有効にすると、GitHub を自動で確認するのは1日1回までです。ダウンロードとインストールは引き続き手動です。",
+    "automaticUpdateChecks": "自動的に確認",
+    "remindMeLater": "後で",
     "checkForUpdates": "アップデートを確認",
     "checkingForUpdates": "確認中…",
     "updateAvailable": "バージョン {version} を利用できます。",

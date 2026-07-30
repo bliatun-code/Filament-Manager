@@ -864,7 +864,9 @@ export const zhTWDictionary: DictionaryNode = {
   },
   "settings": {
     "updates": "更新",
-    "updateCheckHint": "僅在你主動要求時檢查 GitHub。下載與安裝仍需手動進行。",
+    "updateCheckHint": "啟用後，每天最多自動檢查一次 GitHub。下載與安裝仍需手動進行。",
+    "automaticUpdateChecks": "自動檢查",
+    "remindMeLater": "稍後",
     "checkForUpdates": "檢查更新",
     "checkingForUpdates": "正在檢查…",
     "updateAvailable": "版本 {version} 已可用。",

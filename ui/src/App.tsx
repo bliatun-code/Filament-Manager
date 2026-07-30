@@ -10,11 +10,19 @@ import {
   desktopVisualQaInitialPage,
   desktopVisualQaInitialSettingsTab,
 } from "./lib/desktop_visual_qa_scenario";
+import { trustedReleaseUrl } from "./lib/app_update_check";
+import { useAppUpdateContext } from "./lib/app_update_context";
 import { useI18n } from "./lib/i18n";
 import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
-import { isTauri, setDockIconTheme, setWindowTitle } from "./lib/tauri_client";
+import {
+  isTauri,
+  openExternalUrl,
+  setDockIconTheme,
+  setWindowTitle,
+} from "./lib/tauri_client";
 import { prepareDesktopVisualQaWindow } from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
+import { AppUpdateBanner } from "./components/app_update_banner";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
@@ -41,6 +49,7 @@ function initialSettingsTabFromUrl(): SettingsTabKey | null {
 
 export default function App() {
   const { t } = useI18n();
+  const appUpdate = useAppUpdateContext();
   const [activePage, setActivePage] = useState<PageKey>(() => initialPageFromUrl());
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
     typeof document !== "undefined" && document.documentElement.classList.contains("dark")
@@ -156,6 +165,10 @@ export default function App() {
   }, [activePage]);
 
   const activePageLabel = pages.find((page) => page.key === activePage)?.label ?? t("app.title", "Filament Manager");
+  const availableUpdate =
+    appUpdate.showUpdateNotification && appUpdate.state.status === "SUCCESS"
+      ? appUpdate.state.result
+      : null;
 
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
     startTransition(() => {
@@ -264,6 +277,16 @@ export default function App() {
           </div>
         </div>
       </nav>
+      {availableUpdate ? (
+        <AppUpdateBanner
+          result={availableUpdate}
+          t={t}
+          onDismiss={appUpdate.dismissAvailableUpdate}
+          onViewRelease={() => {
+            void openExternalUrl(trustedReleaseUrl(availableUpdate));
+          }}
+        />
+      ) : null}
       <main id="app-main-content" tabIndex={-1}>
         <Suspense
           fallback={

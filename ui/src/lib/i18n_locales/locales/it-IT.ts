@@ -1070,7 +1070,9 @@ export const itITDictionary: DictionaryNode = {
   settings: {
     updates: "Aggiornamenti",
     updateCheckHint:
-      "Controlla GitHub solo quando lo richiedi. Il download e l’installazione restano manuali.",
+      "Se attivato, controlla automaticamente GitHub al massimo una volta al giorno. Il download e l’installazione restano manuali.",
+    automaticUpdateChecks: "Controlla automaticamente",
+    remindMeLater: "Più tardi",
     checkForUpdates: "Controlla aggiornamenti",
     checkingForUpdates: "Controllo in corso…",
     updateAvailable: "È disponibile la versione {version}.",
