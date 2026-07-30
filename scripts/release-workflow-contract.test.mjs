@@ -359,9 +359,52 @@ test("release workflow gates tag and manual installer builds", () => {
     /A public release requires exactly one non-empty signed provenance bundle/,
   );
   assert.match(publishJob, /gh release create "\$GITHUB_REF_NAME"/);
+  assert.match(
+    publishJob,
+    /gh release create "\$GITHUB_REF_NAME"[\s\S]*?--draft[\s\S]*?--verify-tag/,
+  );
   assert.match(publishJob, /--verify-tag/);
   assert.match(publishJob, /--target "\$GITHUB_SHA"/);
   assert.match(publishJob, /--notes-file "\$FILAMENT_MANAGER_RELEASE_NOTES_PATH"/);
+  assert.match(
+    publishJob,
+    /gh release upload "\$GITHUB_REF_NAME"[\s\S]*?"\$FILAMENT_MANAGER_RELEASE_ASSET_DIR"\/\*/,
+  );
+  assert.doesNotMatch(publishJob, /--clobber/);
+  assert.match(
+    publishJob,
+    /gh release edit "\$GITHUB_REF_NAME"[\s\S]*?--draft=false[\s\S]*?--latest[\s\S]*?--verify-tag/,
+  );
+  assert.match(
+    publishJob,
+    /find "\$FILAMENT_MANAGER_RELEASE_ASSET_DIR"[\s\S]*?-printf '%f\\t%s\\n'/,
+  );
+  assert.match(
+    publishJob,
+    /Draft release assets do not exactly match the verified local files/,
+  );
+  assert.match(
+    publishJob,
+    /select\(\.draft == true\) \| \.id \/\/ empty/,
+  );
+  assert.match(
+    publishJob,
+    /--method DELETE[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases\/\$draft_release_id/,
+  );
+  assert.match(
+    publishJob,
+    /published_state[\s\S]*?false:false:\$GITHUB_REF_NAME/,
+  );
+  assert.ok(
+    publishJob.indexOf('gh release create "$GITHUB_REF_NAME"') <
+      publishJob.indexOf('gh release upload "$GITHUB_REF_NAME"'),
+    "draft creation must precede asset upload",
+  );
+  assert.ok(
+    publishJob.indexOf('gh release upload "$GITHUB_REF_NAME"') <
+      publishJob.indexOf('gh release edit "$GITHUB_REF_NAME"'),
+    "asset upload must precede publication",
+  );
 
   assertStepOrder(publishJob, [
     "Require successful CI checks",
@@ -371,7 +414,7 @@ test("release workflow gates tag and manual installer builds", () => {
     "Download verified source dependency SBOM",
     "Download signed public provenance",
     "Assemble and verify release assets",
-    "Publish immutable release",
+    "Publish immutable-ready release",
   ]);
 
   assert.match(sbomJob, /needs: validate-release/);

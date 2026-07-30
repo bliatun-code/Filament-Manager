@@ -942,11 +942,40 @@ jobs:
           echo "FILAMENT_MANAGER_RELEASE_ASSET_DIR=$publish_dir" >> "$GITHUB_ENV"
           echo "FILAMENT_MANAGER_RELEASE_NOTES_PATH=$notes_path" >> "$GITHUB_ENV"
 
-      - name: Publish immutable release
+      - name: Publish immutable-ready release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          draft_created=false
+          draft_release_id=""
+
+          cleanup_failed_draft() {
+            exit_code=$?
+            trap - EXIT
+            if [[ $exit_code -ne 0 && "$draft_created" == "true" ]]; then
+              draft_json="$(
+                gh api \
+                  --method GET \
+                  -H "Accept: application/vnd.github+json" \
+                  "/repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+                  2>/dev/null || true
+              )"
+              draft_release_id="$(
+                jq -r 'select(.draft == true) | .id // empty' <<< "$draft_json"
+              )"
+              if [[ -n "$draft_release_id" ]]; then
+                gh api \
+                  --method DELETE \
+                  -H "Accept: application/vnd.github+json" \
+                  "/repos/$GITHUB_REPOSITORY/releases/$draft_release_id" \
+                  >/dev/null || true
+              fi
+            fi
+            exit "$exit_code"
+          }
+          trap cleanup_failed_draft EXIT
+
           tag_commit="$(
             gh api \
               --method GET \
@@ -959,10 +988,77 @@ jobs:
             exit 1
           fi
 
+          if gh api \
+            --method GET \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+            >/dev/null 2>&1; then
+            echo "::error::Release $GITHUB_REF_NAME already exists."
+            exit 1
+          fi
+
           gh release create "$GITHUB_REF_NAME" \
-            "$FILAMENT_MANAGER_RELEASE_ASSET_DIR"/* \
             --repo "$GITHUB_REPOSITORY" \
+            --draft \
             --verify-tag \
             --target "$GITHUB_SHA" \
             --title "Filament Manager $GITHUB_REF_NAME" \
             --notes-file "$FILAMENT_MANAGER_RELEASE_NOTES_PATH"
+          draft_created=true
+
+          draft_release_id="$(
+            gh api \
+              --method GET \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+              --jq 'select(.draft == true) | .id'
+          )"
+          if [[ -z "$draft_release_id" ]]; then
+            echo "::error::The newly created release is not an editable draft."
+            exit 1
+          fi
+
+          gh release upload "$GITHUB_REF_NAME" \
+            "$FILAMENT_MANAGER_RELEASE_ASSET_DIR"/* \
+            --repo "$GITHUB_REPOSITORY"
+
+          local_assets="$(
+            find "$FILAMENT_MANAGER_RELEASE_ASSET_DIR" \
+              -maxdepth 1 \
+              -type f \
+              -printf '%f\t%s\n' \
+              | LC_ALL=C sort
+          )"
+          remote_assets="$(
+            gh api \
+              --method GET \
+              --paginate \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/releases/$draft_release_id/assets?per_page=100" \
+              --jq '.[] | "\(.name)\t\(.size)"' \
+              | LC_ALL=C sort
+          )"
+          if [[ -z "$local_assets" || "$remote_assets" != "$local_assets" ]]; then
+            echo "::error::Draft release assets do not exactly match the verified local files."
+            exit 1
+          fi
+
+          gh release edit "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --latest \
+            --verify-tag
+
+          published_state="$(
+            gh api \
+              --method GET \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/releases/$draft_release_id" \
+              --jq '"\(.draft):\(.prerelease):\(.tag_name)"'
+          )"
+          if [[ "$published_state" != "false:false:$GITHUB_REF_NAME" ]]; then
+            echo "::error::Release $GITHUB_REF_NAME was not published in the expected state."
+            exit 1
+          fi
+
+          trap - EXIT

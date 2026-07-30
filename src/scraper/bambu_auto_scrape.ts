@@ -24,6 +24,17 @@ function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, "");
 }
 
+export function hasExactHostname(
+  value: string,
+  expectedHostname: string,
+): boolean {
+  try {
+    return new URL(value).hostname === expectedHostname;
+  } catch {
+    return false;
+  }
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -329,7 +340,7 @@ async function detectStore(): Promise<{ baseUrl: string; handle: string }> {
 
   const fallbackBase =
     explicitBase ??
-    baseUrls.find((url) => url.includes("eu.store.bambulab.com")) ??
+    baseUrls.find((url) => hasExactHostname(url, "eu.store.bambulab.com")) ??
     baseUrls[0];
   const fallbackHandle = explicitHandle ?? DEFAULT_COLLECTION_HANDLE;
   warnVerbose(

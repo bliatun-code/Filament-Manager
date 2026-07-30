@@ -32,7 +32,7 @@ test("AppModal accessibility harness compiles into a standalone browser document
   assert.match(document, /AppModalAccessibilityHarness/);
   assert.match(document, /<style>/);
   assert.match(document, /overflow-y:\s*auto/);
-  assert.match(document, /<script>/);
+  assert.ok(document.includes("<script>"));
 });
 
 test("200% zoom metrics reject page overflow and require internal modal scrolling", () => {

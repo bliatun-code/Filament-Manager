@@ -14,13 +14,22 @@ and installed executable report the exact Authenticode status `NotSigned`.
 
 Release publication uses the separate `github-release` environment and an
 exact `refs/tags/v<package-version>` source check. The GitHub environment must
-also be configured to accept only `v*` tags, while a tag ruleset limits who can
-create, update, or delete those tags. The publish job resolves the remote tag
-again immediately before creating the release and requires it to still point
-to the workflow commit. Apple credentials remain isolated in the separate
-`macos-release` environment. The Intel smoke receives no signing or
-notarization secrets; it uses the public `EXPECTED_APPLE_TEAM_ID` repository
-variable to verify the already signed artifact.
+also be configured to accept only `v*` tags. One tag ruleset restricts creation
+to the release maintainer; a second prevents updates, non-fast-forward changes,
+and deletion. The publish job resolves the remote tag again immediately before
+creating a draft and requires it to still point to the workflow commit. It
+uploads without replacement, verifies the remote asset names and sizes against
+the local verified set, and only then publishes. If the job fails before
+publication, it removes only the draft created by that run. Apple credentials
+remain isolated in the separate `macos-release` environment. The Intel smoke
+receives no signing or notarization secrets; it uses the public
+`EXPECTED_APPLE_TEAM_ID` repository variable to verify the already signed
+artifact.
+
+GitHub release immutability applies after publication and only to releases
+created after the repository setting was enabled. Drafts remain editable so
+the workflow can upload and verify the complete asset set before making it
+public.
 
 ## Release Assets
 
@@ -98,18 +107,19 @@ gh attestation verify Filament-Manager_<version>_<platform>.<ext> \
 ```
 
 The release's `.sigstore.json` bundle can also be retained for later or offline
-verification. Private-repository builds intentionally skip attestation because
-GitHub does not provide this capability for private repositories on every
-account plan; they still require the verified SBOM and installer checksums.
+verification. Builds made while the repository was private intentionally
+skipped attestation because GitHub does not provide this capability for private
+repositories on every account plan; they still required the verified SBOM and
+installer checksums. The first build made from a public version tag is expected
+to be the first release with public provenance.
 
 Checksums prove byte identity with the published manifests, and attestations
 bind public installer artifacts to the release workflow and source tag. Neither
 is proof that an artifact is vulnerability-free. Report security concerns
 through [the security policy](../SECURITY.md).
 
-Before the source repository is made public, follow the clean-mirror and
-full-history procedure in
-[Public Repository Publication](PUBLIC_REPOSITORY.md). The ordinary
-public-readiness check covers the current tree only; the mirror audit also
-checks every reachable text blob, historical filename, commit message, ref,
-and Git object, and rejects inherited or unreachable private objects.
+The repository is public. Follow
+[Public Repository Security](PUBLIC_REPOSITORY.md) for the current full-history
+secret-scanning procedure and the separate clean-mirror audit used for future
+source exports. The ordinary public-readiness check covers the current tree
+only.

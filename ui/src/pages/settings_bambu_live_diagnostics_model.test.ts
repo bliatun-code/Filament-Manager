@@ -1202,7 +1202,7 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       tray: createObservedTray({ tray_index: 255 }),
     }),
     {
-      key: "live-tray-legacy-255",
+      key: "live-tray-legacy-255", // gitleaks:allow -- deterministic UI identity, not a credential
       mqttTrayLabel: "MQTT external tray",
       observedRfidLabel: null,
       slotLabel: "External slot",
@@ -1216,7 +1216,7 @@ test("Bambu live tray labels keep stable ids and optional RFID text", () => {
       tray: createObservedTray({ tray_index: 254 }),
     }),
     {
-      key: "live-tray-legacy-254",
+      key: "live-tray-legacy-254", // gitleaks:allow -- deterministic UI identity, not a credential
       mqttTrayLabel: "MQTT secondary external tray",
       observedRfidLabel: null,
       slotLabel: "Secondary external slot",

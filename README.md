@@ -384,16 +384,18 @@ Release assets are assembled only from those verified job outputs. The Windows
 job likewise fails before upload unless exactly one non-empty MSI has the
 expected product name, normalized release version, and x64 package
 architecture. A failed candidate cannot reach the publish job. Release assets
-are treated as immutable; a mismatch is investigated rather than silently
-replaced. The SBOM describes source and lockfile dependencies rather than the
-exact binary contents of either installer. See
+are assembled into a draft, checked against the verified local file names and
+sizes, and published only after the upload is complete. Repository release
+immutability then prevents later replacement of assets for releases created
+after that setting was enabled; a mismatch is investigated rather than
+silently replaced. The SBOM describes source and lockfile dependencies rather
+than the exact binary contents of either installer. See
 [Release Integrity And Supply Chain](docs/SUPPLY_CHAIN.md) for verification and
 scope details.
 
-The current private development history is not intended for direct
-publication. The first public repository must be a new one-commit source
-mirror that passes the complete object/history audit described in
-[Public Repository Publication](docs/PUBLIC_REPOSITORY.md).
+The source repository is public. Its security controls, history-scanning
+procedure, contribution boundary, and release-setting checklist are described
+in [Public Repository Security](docs/PUBLIC_REPOSITORY.md).
 
 ## Installers and App Data
 

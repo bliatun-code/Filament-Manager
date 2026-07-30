@@ -1,13 +1,18 @@
 # Update Metadata Channel
 
 Filament Manager never checks for updates automatically. The manual
-**Check for updates** action is also disabled at build time unless the build
-has an explicitly configured, anonymously readable metadata endpoint.
+**Check for updates** action is enabled only in builds made with an explicitly
+configured, anonymously readable metadata endpoint.
 
-This fail-safe default is intentional. An anonymous request to
-`releases/latest` returns `404 Not Found` while the GitHub repository is
-private, so a private release page is not a reliable application update
-channel.
+The public repository now uses:
+
+```text
+FILAMENT_MANAGER_UPDATE_METADATA_URL=https://api.github.com/repos/bliatun-code/Filament-Manager/releases/latest
+```
+
+The repository variable was configured after the `v0.22.0` installers were
+built. Those existing binaries retain the disabled fail-safe; the next release
+build receives the public channel.
 
 ## Public metadata contract
 
@@ -41,16 +46,13 @@ absent or invalid endpoint is reported as a disabled update channel without
 making a network request; failures from a configured public endpoint are
 reported as unavailable release information.
 
-## Choosing the publication model
+## Publication model
 
-Before enabling the channel, choose one of these models:
-
-1. Make the clean public repository and its releases anonymously readable,
-   then build with its public GitHub `releases/latest` API URL.
-2. Keep release source or assets private, but publish the minimal JSON document
-   above at a stable public endpoint. This can notify users that a version
-   exists, but a usable unauthenticated download still requires a public
-   release page or public artifact location.
+The canonical source repository and releases are anonymously readable, so the
+GitHub `releases/latest` API is the selected metadata source. If that
+publication model changes later, use a stable public endpoint that implements
+the same minimal JSON contract. A usable unauthenticated download still
+requires a public release page or public artifact location.
 
 The URL is compiled into the application. Changing it therefore requires a new
 build. Release CI reads the optional

@@ -48,6 +48,21 @@ function renderPanel(initialWeight: string): string {
   );
 }
 
+function assertLabelContainsValue(html: string, label: string, value: string): void {
+  const labelText = `<span>${label}</span>`;
+  const labelTextIndex = html.indexOf(labelText);
+  assert.notEqual(labelTextIndex, -1, `missing label text: ${label}`);
+
+  const labelEndIndex = html.indexOf("</label>", labelTextIndex);
+  assert.notEqual(labelEndIndex, -1, `missing closing label tag: ${label}`);
+
+  const valueIndex = html.indexOf(`value="${value}"`, labelTextIndex);
+  assert.ok(
+    valueIndex > labelTextIndex && valueIndex < labelEndIndex,
+    `label does not contain expected value: ${label}`,
+  );
+}
+
 test("InventoryCreateActionsPanel keeps permanent labels on populated stock fields", () => {
   const html = renderPanel("1000");
 
@@ -58,10 +73,7 @@ test("InventoryCreateActionsPanel keeps permanent labels on populated stock fiel
     ["Initial weight (g)", "1000"],
     ["Home location (optional)", "Shelf A"],
   ]) {
-    assert.match(
-      html,
-      new RegExp(`<label[^>]*>[\\s\\S]*?<span>${label.replace(/[()]/g, "\\$&")}</span>[\\s\\S]*?value="${value}"`),
-    );
+    assertLabelContainsValue(html, label, value);
   }
   assert.match(html, /type="number" min="1" step="1" inputMode="numeric"/);
   assert.doesNotMatch(html, /role="alert"/);
