@@ -37,6 +37,8 @@ export const COMPANION_SCREENSHOT_VIEWPORTS = {
 
 const DEFAULT_OUTPUT_DIR = "release-artifacts/visual-qa";
 export const COMPANION_PRINTER_LIVE_WAIT_MS = 30_000;
+export const POSIX_PROCESS_GROUP_TERM_GRACE_MS = 3_000;
+export const POSIX_PROCESS_GROUP_KILL_GRACE_MS = 5_000;
 export const WINDOWS_PROCESS_TREE_TERMINATION_TIMEOUT_MS = 10_000;
 const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 const COMPANION_LOCALE_STORAGE_KEY = "bfm-companion-locale";
@@ -275,15 +277,25 @@ async function terminateChild(child, options = {}) {
     };
     if (!groupStopped || !wrapperStopped) {
       signalChildProcessGroup(child, "SIGTERM", killProcessFn);
-      await confirmStop(options.groupTermGraceMs ?? 3_000);
+      await confirmStop(
+        options.groupTermGraceMs ?? POSIX_PROCESS_GROUP_TERM_GRACE_MS,
+      );
     }
     if (!groupStopped || !wrapperStopped) {
       signalChildProcessGroup(child, "SIGKILL", killProcessFn);
-      await confirmStop(options.groupKillGraceMs ?? 1_000);
+      await confirmStop(
+        options.groupKillGraceMs ?? POSIX_PROCESS_GROUP_KILL_GRACE_MS,
+      );
     }
     child.stdout?.destroy();
     child.stderr?.destroy();
-    return groupStopped && wrapperStopped;
+    if (!groupStopped || !wrapperStopped) {
+      throw new Error(
+        "Companion POSIX process-group termination could not be confirmed " +
+          `(groupStopped=${groupStopped}, wrapperStopped=${wrapperStopped}, pid=${child.pid}).`,
+      );
+    }
+    return true;
   }
 
   let stopped = child.exitCode != null || child.signalCode != null;

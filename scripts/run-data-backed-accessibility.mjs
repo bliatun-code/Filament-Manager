@@ -69,6 +69,22 @@ export function formatAxeViolations(pageLabel, violations) {
   );
 }
 
+function normalizeBrowserErrorMessage(error) {
+  const message = String(error?.message ?? error ?? "(empty browser error)")
+    .replace(/\s+/g, " ")
+    .trim();
+  return (message || "(empty browser error)").slice(0, 2_000);
+}
+
+export function formatBrowserErrorDetails(errors) {
+  return errors
+    .map(
+      (error, index) =>
+        `  ${index + 1}. ${normalizeBrowserErrorMessage(error)}`,
+    )
+    .join("\n");
+}
+
 async function createUiViteServer(options) {
   const viteEntry = requireFromUi.resolve("vite");
   const { createServer } = await import(pathToFileURL(viteEntry).href);
@@ -199,11 +215,21 @@ export async function runDataBackedAccessibilityAnalysis(options) {
     try {
       const calls = [];
       const browserErrors = [];
+      let activePageLabel =
+        DATA_BACKED_ACCESSIBILITY_PAGES[0]?.label ?? "Startup";
       const page = await context.newPage();
-      page.on("pageerror", (error) => browserErrors.push(error));
+      const recordBrowserError = (source, error) => {
+        browserErrors.push(
+          new Error(
+            `${activePageLabel} ${source}: ${normalizeBrowserErrorMessage(error)}`,
+            error instanceof Error ? { cause: error } : undefined,
+          ),
+        );
+      };
+      page.on("pageerror", (error) => recordBrowserError("pageerror", error));
       page.on("console", (message) => {
         if (message.type() === "error") {
-          browserErrors.push(new Error(message.text()));
+          recordBrowserError("console.error", message.text());
         }
       });
       await installTauriFixtureBridge(page, fixture, calls);
@@ -213,6 +239,7 @@ export async function runDataBackedAccessibilityAnalysis(options) {
 
       const scans = [];
       for (const [index, spec] of DATA_BACKED_ACCESSIBILITY_PAGES.entries()) {
+        activePageLabel = spec.label;
         if (index > 0) {
           await page
             .getByRole("button", { exact: true, name: spec.label })
@@ -237,7 +264,8 @@ export async function runDataBackedAccessibilityAnalysis(options) {
       if (browserErrors.length > 0) {
         throw new AggregateError(
           browserErrors,
-          `Data-backed accessibility pages raised ${browserErrors.length} browser error(s).`,
+          `Data-backed accessibility pages raised ${browserErrors.length} browser error(s):\n` +
+            formatBrowserErrorDetails(browserErrors),
         );
       }
       const errors = scans.flatMap((scan) =>

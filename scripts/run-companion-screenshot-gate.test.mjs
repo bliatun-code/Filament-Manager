@@ -15,6 +15,8 @@ import {
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
   normalizeCompanionScreenshotLocale,
+  POSIX_PROCESS_GROUP_KILL_GRACE_MS,
+  POSIX_PROCESS_GROUP_TERM_GRACE_MS,
   resolveCompanionQaLoopbackBaseUrl,
   resolveCompanionScreenshotTauriLaunch,
   runLaunchedCompanionScreenshotGate,
@@ -29,6 +31,11 @@ const testOutputDir = path.join(tmpdir(), "visual-qa");
 const testProjectDir = path.join(tmpdir(), "filament manager project");
 const testSourceDatabasePath = path.join(tmpdir(), "source.db");
 const testVisualDatabasePath = path.join(tmpdir(), "visual.db");
+
+test("POSIX process-group termination keeps bounded runner headroom", () => {
+  assert.equal(POSIX_PROCESS_GROUP_TERM_GRACE_MS, 3_000);
+  assert.equal(POSIX_PROCESS_GROUP_KILL_GRACE_MS, 5_000);
+});
 
 function createMetric(overrides = {}) {
   return {
@@ -1084,6 +1091,8 @@ test("launched companion gate retains the DB when a stopped wrapper leaves a liv
       assert.equal(error.launchOwnershipUnresolved, true);
       assert.equal(error.temporaryDatabaseRetained, true);
       assert.match(error.message, /termination could not be confirmed/i);
+      assert.match(error.message, /groupStopped=false/);
+      assert.match(error.message, /wrapperStopped=true/);
       return true;
     },
   );

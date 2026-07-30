@@ -645,6 +645,16 @@ export function resolveUiBrowserPerformanceInvoke(
     }
     case "get_app_version":
       return fixture.appVersion;
+    case "check_for_app_update":
+      return {
+        current_version: fixture.appVersion,
+        latest_version: fixture.appVersion,
+        latest_tag: `v${fixture.appVersion}`,
+        release_url:
+          "https://github.com/bliatun-code/Filament-Manager/releases/latest",
+        status: "UP_TO_DATE",
+        update_channel: "PUBLIC_METADATA",
+      };
     case "list_trusted_lan_interfaces":
     case "list_trusted_lan_paired_browsers":
       return [];

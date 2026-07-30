@@ -122,6 +122,18 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     }),
     [data.consumptionRows[1]],
   );
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "check_for_app_update"),
+    {
+      current_version: "0.22.0",
+      latest_version: "0.22.0",
+      latest_tag: "v0.22.0",
+      release_url:
+        "https://github.com/bliatun-code/Filament-Manager/releases/latest",
+      status: "UP_TO_DATE",
+      update_channel: "PUBLIC_METADATA",
+    },
+  );
   assert.throws(
     () =>
       resolveUiBrowserPerformanceInvoke(

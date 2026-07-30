@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   DATA_BACKED_ACCESSIBILITY_PAGES,
   formatAxeViolations,
+  formatBrowserErrorDetails,
   parseDataBackedAccessibilityOptions,
 } from "./run-data-backed-accessibility.mjs";
 
@@ -50,5 +51,16 @@ test("axe violations retain page, rule, impact, target and failure summary", () 
     [
       "Inventory: label (critical) at #search: Fix any of the following: Add a label",
     ],
+  );
+});
+
+test("browser errors retain page, source, order and readable detail", () => {
+  assert.equal(
+    formatBrowserErrorDetails([
+      new Error("Dashboard pageerror: render failed"),
+      new Error("Printers console.error: request failed\nwith context"),
+    ]),
+    "  1. Dashboard pageerror: render failed\n" +
+      "  2. Printers console.error: request failed with context",
   );
 });
