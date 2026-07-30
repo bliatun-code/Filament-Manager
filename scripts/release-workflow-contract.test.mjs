@@ -330,7 +330,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
-    /tag_commit="\$\([\s\S]*?\)"[\s\S]*?gh release create "\$GITHUB_REF_NAME"/,
+    /tag_commit="\$\([\s\S]*?\)"[\s\S]*?draft_release_json="\$\(/,
   );
   assert.match(
     publishJob,
@@ -381,22 +381,39 @@ test("release workflow gates tag and manual installer builds", () => {
     publishJob,
     /A public release requires exactly one non-empty signed provenance bundle/,
   );
-  assert.match(publishJob, /gh release create "\$GITHUB_REF_NAME"/);
   assert.match(
     publishJob,
-    /gh release create "\$GITHUB_REF_NAME"[\s\S]*?--draft[\s\S]*?--verify-tag/,
+    /draft_release_json="\$\([\s\S]*?tag_name: \$tag_name,[\s\S]*?target_commitish: \$target_commitish,[\s\S]*?draft: true,[\s\S]*?prerelease: false[\s\S]*?--method POST[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases"[\s\S]*?--input -/,
   );
-  assert.match(publishJob, /--verify-tag/);
-  assert.match(publishJob, /--target "\$GITHUB_SHA"/);
-  assert.match(publishJob, /--notes-file "\$FILAMENT_MANAGER_RELEASE_NOTES_PATH"/);
   assert.match(
     publishJob,
-    /gh release upload "\$GITHUB_REF_NAME"[\s\S]*?"\$FILAMENT_MANAGER_RELEASE_ASSET_DIR"\/\*/,
+    /--rawfile body "\$FILAMENT_MANAGER_RELEASE_NOTES_PATH"/,
   );
+  assert.match(
+    publishJob,
+    /release_asset_paths=\("\$FILAMENT_MANAGER_RELEASE_ASSET_DIR"\/\*\)[\s\S]*?for asset_path in "\$\{release_asset_paths\[@\]\}"[\s\S]*?--fail-with-body[\s\S]*?--location[\s\S]*?--data-binary "@\$asset_path"[\s\S]*?https:\/\/uploads\.github\.com\/repos\/\$GITHUB_REPOSITORY\/releases\/\$draft_release_id\/assets\?name=\$encoded_asset_name/,
+  );
+  assert.match(publishJob, /jq -rn --arg value "\$asset_name" '\$value \| @uri'/);
+  assert.match(publishJob, /Authorization: Bearer \$GH_TOKEN/);
+  assert.match(publishJob, /Content-Type: application\/octet-stream/);
   assert.doesNotMatch(publishJob, /--clobber/);
+  assert.doesNotMatch(publishJob, /gh release (?:create|upload|edit)/);
   assert.match(
     publishJob,
-    /gh release edit "\$GITHUB_REF_NAME"[\s\S]*?--draft=false[\s\S]*?--latest[\s\S]*?--verify-tag/,
+    /releases_for_tag\(\) \{[\s\S]*?--paginate[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases\?per_page=100[\s\S]*?\[\.\[\]\[\] \| select\(\.tag_name == \$tag\)\]/,
+  );
+  assert.doesNotMatch(publishJob, /\/releases\/tags\//);
+  assert.match(
+    publishJob,
+    /existing_releases="\$\(releases_for_tag\)"[\s\S]*?existing_release_count="\$\(jq -r 'length'[\s\S]*?Refusing to replace or delete a preexisting release/,
+  );
+  assert.match(
+    publishJob,
+    /draft_release_id="\$\([\s\S]*?select\(\.draft == true and \.tag_name == \$tag\) \| \.id \/\/ empty[\s\S]*?release API did not return the expected editable draft/,
+  );
+  assert.match(
+    publishJob,
+    /--method PATCH[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases\/\$draft_release_id"[\s\S]*?-F draft=false[\s\S]*?-F prerelease=false[\s\S]*?-f make_latest=true/,
   );
   assert.match(
     publishJob,
@@ -408,24 +425,39 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
-    /select\(\.draft == true\) \| \.id \/\/ empty/,
+    /select\(\.draft == true and \.tag_name == \$tag\) \| \.id \/\/ empty/,
+  );
+  assert.doesNotMatch(publishJob, /cleanup_releases=/);
+  assert.match(
+    publishJob,
+    /if \[\[ \$exit_code -ne 0 && "\$draft_created" == "true" \]\]; then[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases\/\$cleanup_release_id[\s\S]*?confirmed_draft_release_id/,
   );
   assert.match(
     publishJob,
-    /--method DELETE[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases\/\$draft_release_id/,
+    /--method DELETE[\s\S]*?\/repos\/\$GITHUB_REPOSITORY\/releases\/\$confirmed_draft_release_id/,
   );
   assert.match(
     publishJob,
     /published_state[\s\S]*?false:false:\$GITHUB_REF_NAME/,
   );
   assert.ok(
-    publishJob.indexOf('gh release create "$GITHUB_REF_NAME"') <
-      publishJob.indexOf('gh release upload "$GITHUB_REF_NAME"'),
+    publishJob.indexOf('draft_release_json="$(') <
+      publishJob.indexOf('for asset_path in "${release_asset_paths[@]}"'),
     "draft creation must precede asset upload",
   );
   assert.ok(
-    publishJob.indexOf('gh release upload "$GITHUB_REF_NAME"') <
-      publishJob.indexOf('gh release edit "$GITHUB_REF_NAME"'),
+    publishJob.indexOf('existing_releases="$(releases_for_tag)"') <
+      publishJob.indexOf('draft_release_json="$('),
+    "preexisting draft and published releases must be rejected before creation",
+  );
+  assert.ok(
+    publishJob.indexOf("draft_created=true") <
+      publishJob.lastIndexOf('draft_release_id="$('),
+    "cleanup ownership must be recorded before validating the new draft response",
+  );
+  assert.ok(
+    publishJob.indexOf('for asset_path in "${release_asset_paths[@]}"') <
+      publishJob.indexOf("--method PATCH"),
     "asset upload must precede publication",
   );
 

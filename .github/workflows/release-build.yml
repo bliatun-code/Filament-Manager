@@ -961,26 +961,51 @@ jobs:
           draft_created=false
           draft_release_id=""
 
+          releases_for_tag() {
+            gh api \
+              --method GET \
+              --paginate \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              | jq -s \
+                --arg tag "$GITHUB_REF_NAME" \
+                '[.[][] | select(.tag_name == $tag)]'
+          }
+
           cleanup_failed_draft() {
             exit_code=$?
             trap - EXIT
             if [[ $exit_code -ne 0 && "$draft_created" == "true" ]]; then
-              draft_json="$(
-                gh api \
-                  --method GET \
-                  -H "Accept: application/vnd.github+json" \
-                  "/repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+              cleanup_release_id="$draft_release_id"
+
+              cleanup_release_json=""
+              if [[ -n "$cleanup_release_id" ]]; then
+                cleanup_release_json="$(
+                  gh api \
+                    --method GET \
+                    -H "Accept: application/vnd.github+json" \
+                    "/repos/$GITHUB_REPOSITORY/releases/$cleanup_release_id" \
+                    2>/dev/null || true
+                )"
+              fi
+              confirmed_draft_release_id="$(
+                jq -r \
+                  --arg tag "$GITHUB_REF_NAME" \
+                  'select(.draft == true and .tag_name == $tag) | .id // empty' \
+                  <<< "${cleanup_release_json:-{}}" \
                   2>/dev/null || true
               )"
-              draft_release_id="$(
-                jq -r 'select(.draft == true) | .id // empty' <<< "$draft_json"
-              )"
-              if [[ -n "$draft_release_id" ]]; then
-                gh api \
+              if [[ "$confirmed_draft_release_id" == "$cleanup_release_id" \
+                && -n "$confirmed_draft_release_id" ]]; then
+                if ! gh api \
                   --method DELETE \
                   -H "Accept: application/vnd.github+json" \
-                  "/repos/$GITHUB_REPOSITORY/releases/$draft_release_id" \
-                  >/dev/null || true
+                  "/repos/$GITHUB_REPOSITORY/releases/$confirmed_draft_release_id" \
+                  >/dev/null; then
+                  echo "::warning::Failed to remove draft release $GITHUB_REF_NAME (id $confirmed_draft_release_id)."
+                fi
+              else
+                echo "::warning::Skipped release cleanup because the workflow could not confirm its draft release identity."
               fi
             fi
             exit "$exit_code"
@@ -999,39 +1024,76 @@ jobs:
             exit 1
           fi
 
-          if gh api \
-            --method GET \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
-            >/dev/null 2>&1; then
-            echo "::error::Release $GITHUB_REF_NAME already exists."
+          existing_releases="$(releases_for_tag)"
+          existing_release_count="$(jq -r 'length' <<< "$existing_releases")"
+          if [[ "$existing_release_count" -ne 0 ]]; then
+            existing_release_summary="$(
+              jq -r \
+                'map("\(.id):" + (if .draft then "draft" else "published" end)) | join(", ")' \
+                <<< "$existing_releases"
+            )"
+            echo "::error::Release $GITHUB_REF_NAME already exists ($existing_release_summary). Refusing to replace or delete a preexisting release."
             exit 1
           fi
 
-          gh release create "$GITHUB_REF_NAME" \
-            --repo "$GITHUB_REPOSITORY" \
-            --draft \
-            --verify-tag \
-            --target "$GITHUB_SHA" \
-            --title "Filament Manager $GITHUB_REF_NAME" \
-            --notes-file "$FILAMENT_MANAGER_RELEASE_NOTES_PATH"
+          draft_release_json="$(
+            jq -n \
+              --arg tag_name "$GITHUB_REF_NAME" \
+              --arg target_commitish "$GITHUB_SHA" \
+              --arg name "Filament Manager $GITHUB_REF_NAME" \
+              --rawfile body "$FILAMENT_MANAGER_RELEASE_NOTES_PATH" \
+              '{
+                tag_name: $tag_name,
+                target_commitish: $target_commitish,
+                name: $name,
+                body: $body,
+                draft: true,
+                prerelease: false
+              }' \
+              | gh api \
+                  --method POST \
+                  -H "Accept: application/vnd.github+json" \
+                  "/repos/$GITHUB_REPOSITORY/releases" \
+                  --input -
+          )"
           draft_created=true
 
           draft_release_id="$(
-            gh api \
-              --method GET \
-              -H "Accept: application/vnd.github+json" \
-              "/repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
-              --jq 'select(.draft == true) | .id'
+            jq -r \
+              --arg tag "$GITHUB_REF_NAME" \
+              'select(.draft == true and .tag_name == $tag) | .id // empty' \
+              <<< "$draft_release_json"
           )"
           if [[ -z "$draft_release_id" ]]; then
-            echo "::error::The newly created release is not an editable draft."
+            echo "::error::The release API did not return the expected editable draft."
             exit 1
           fi
 
-          gh release upload "$GITHUB_REF_NAME" \
-            "$FILAMENT_MANAGER_RELEASE_ASSET_DIR"/* \
-            --repo "$GITHUB_REPOSITORY"
+          shopt -s nullglob
+          release_asset_paths=("$FILAMENT_MANAGER_RELEASE_ASSET_DIR"/*)
+          if [[ ${#release_asset_paths[@]} -eq 0 ]]; then
+            echo "::error::No verified release assets were available for upload."
+            exit 1
+          fi
+          for asset_path in "${release_asset_paths[@]}"; do
+            asset_name="$(basename "$asset_path")"
+            encoded_asset_name="$(
+              jq -rn --arg value "$asset_name" '$value | @uri'
+            )"
+            curl \
+              --fail-with-body \
+              --location \
+              --silent \
+              --show-error \
+              --request POST \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "Content-Type: application/octet-stream" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --data-binary "@$asset_path" \
+              "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$draft_release_id/assets?name=$encoded_asset_name" \
+              >/dev/null
+          done
 
           local_assets="$(
             find "$FILAMENT_MANAGER_RELEASE_ASSET_DIR" \
@@ -1054,11 +1116,14 @@ jobs:
             exit 1
           fi
 
-          gh release edit "$GITHUB_REF_NAME" \
-            --repo "$GITHUB_REPOSITORY" \
-            --draft=false \
-            --latest \
-            --verify-tag
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$GITHUB_REPOSITORY/releases/$draft_release_id" \
+            -F draft=false \
+            -F prerelease=false \
+            -f make_latest=true \
+            >/dev/null
 
           published_state="$(
             gh api \
