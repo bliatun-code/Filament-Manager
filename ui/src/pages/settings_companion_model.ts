@@ -31,8 +31,11 @@ export type TrustedLanCompanionModel = {
   interfaceHint: string;
   portValue: string;
   portHint: string;
-  shellUrlValue: string;
-  shellUrlHint: string;
+  stableAddressValue: string;
+  stableAddressHint: string;
+  directAddressValue: string;
+  directAddressHint: string;
+  localNameWarning: string | null;
   authLabel: string;
   authHint: string;
   pairActionDisabled: boolean;
@@ -144,7 +147,21 @@ export function buildTrustedLanCompanionModel(
   const { trustedLanStatus, statusLoading, actionBusy, t } = input;
   const status = trustedLanStatus;
   const enabled = Boolean(trustedLanStatus?.enabled);
-  const reachable = Boolean(trustedLanStatus?.running && trustedLanStatus?.shell_reachable);
+  const serverReachable = Boolean(
+    trustedLanStatus?.running && trustedLanStatus?.shell_reachable,
+  );
+  const localNameRunning = Boolean(trustedLanStatus?.local_name_running);
+  const stableShellAddress = trustedLanStatus?.shell_url?.trim() ?? "";
+  const usesDirectCanonicalAddress = Boolean(
+    stableShellAddress &&
+      trustedLanStatus?.base_url?.trim() &&
+      trustedLanStatus?.base_url?.trim() === trustedLanStatus?.direct_base_url?.trim(),
+  );
+  const canonicalAddressReady = Boolean(
+    stableShellAddress && (localNameRunning || usesDirectCanonicalAddress),
+  );
+  const localNameUnavailable = enabled && serverReachable && !canonicalAddressReady;
+  const reachable = serverReachable && canonicalAddressReady;
   const statusTone: TrustedLanCompanionStatusTone = !status || !status.enabled
     ? "idle"
     : reachable
@@ -165,6 +182,16 @@ export function buildTrustedLanCompanionModel(
   } else if (reachable) {
     statusPillLabel = t("settings.trustedLanStateLive", "Live");
     statusLabel = t("settings.companionStatusRunning", "Running");
+  } else if (localNameUnavailable) {
+    statusPillLabel = statusLoading
+      ? t("settings.trustedLanStateChecking", "Checking")
+      : t("settings.trustedLanStateNeedsAttention", "Check");
+    statusLabel = statusLoading && !status.local_name_error
+      ? t("settings.trustedLanStatusStarting", "Starting...")
+      : t(
+          "settings.trustedLanLocalNameUnavailable",
+          "Stable local address unavailable",
+        );
   } else {
     statusPillLabel = statusLoading
       ? t("settings.trustedLanStateChecking", "Checking")
@@ -176,7 +203,13 @@ export function buildTrustedLanCompanionModel(
       : t("settings.companionStatusStopped", "Not running");
   }
 
+  const localNameUnavailableHint = t(
+    "settings.trustedLanLocalNameUnavailableHint",
+    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
+  );
+  const localNameWarning = localNameUnavailable ? localNameUnavailableHint : null;
   const statusHint =
+    localNameWarning ??
     trustedLanStatus?.health_error ??
     trustedLanStatus?.last_error ??
     (!trustedLanStatus?.enabled
@@ -195,11 +228,8 @@ export function buildTrustedLanCompanionModel(
         ));
 
   const interfaceName = trustedLanStatus?.selected_interface_name?.trim() ?? "";
-  const interfaceAddress = trustedLanStatus?.selected_interface_address?.trim() ?? "";
   const interfaceValue =
-    interfaceName && interfaceAddress
-      ? `${interfaceName} (${interfaceAddress})`
-      : interfaceAddress || interfaceName || t("settings.trustedLanInterfaceNotSelected", "Not selected");
+    interfaceName || t("settings.trustedLanInterfaceNotSelected", "Not selected");
 
   const interfaceHint =
     trustedLanStatus?.bind_address ??
@@ -213,19 +243,35 @@ export function buildTrustedLanCompanionModel(
           "No LAN interface is exposed while trusted-LAN mode is disabled.",
         ));
 
-  const shellUrlValue =
-    trustedLanStatus?.shell_url?.trim() ||
-    t("settings.trustedLanUrlUnavailable", "Not available until trusted-LAN mode is enabled");
+  const stableAddress = stableShellAddress;
+  const stableAddressValue =
+    stableAddress ||
+    (enabled
+      ? t(
+          "settings.trustedLanStableAddressUnavailable",
+          "Unavailable until the stable local name is running",
+        )
+      : t(
+          "settings.trustedLanUrlUnavailable",
+          "Not available until trusted-LAN mode is enabled",
+        ));
 
-  const shellUrlHint = trustedLanStatus?.shell_url
+  const stableAddressHint = stableAddress
     ? t(
         "settings.trustedLanUrlHintEnabled",
-        "This exact LAN URL will later be used for browser pairing on your trusted network.",
+        "Use this exact address for pairing and permanent QR links on your trusted network.",
       )
     : t(
         "settings.trustedLanUrlHintDisabled",
         "No LAN URL is exposed while trusted-LAN mode stays disabled.",
       );
+  const directAddressValue =
+    trustedLanStatus?.direct_base_url?.trim() ||
+    t("settings.trustedLanUrlUnavailable", "Not available until trusted-LAN mode is enabled");
+  const directAddressHint = t(
+    "settings.trustedLanDirectAddressHint",
+    "Diagnostic address for the currently selected IP. It can change when the network does not reserve an address for this computer.",
+  );
 
   const authLabel =
     trustedLanStatus?.auth_mode === "pairing-session"
@@ -246,8 +292,11 @@ export function buildTrustedLanCompanionModel(
       "settings.trustedLanPortHint",
       "Use a fixed port so pairing links and exact host/origin checks stay predictable.",
     ),
-    shellUrlValue,
-    shellUrlHint,
+    stableAddressValue,
+    stableAddressHint,
+    directAddressValue,
+    directAddressHint,
+    localNameWarning,
     authLabel,
     authHint: t(
       "settings.trustedLanAuthHint",

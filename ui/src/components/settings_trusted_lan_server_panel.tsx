@@ -77,6 +77,22 @@ export function SettingsTrustedLanServerPanel({
         </button>
       </div>
 
+      {companionModel.localNameWarning ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-amber-300/70 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-100"
+        >
+          <span className="font-semibold">
+            {t(
+              "settings.trustedLanLocalNameUnavailable",
+              "Stable local address unavailable",
+            )}
+          </span>{" "}
+          {companionModel.localNameWarning}
+        </div>
+      ) : null}
+
       {showNetworkSummary ? (
         <div id="trusted-lan-network-details" className="scroll-mt-24 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -170,17 +186,24 @@ export function SettingsTrustedLanServerPanel({
           ) : (
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_140px]">
               <SettingsMetricTile
-                label={t("settings.trustedLanNetworkInterface", "Network interface (IP)")}
+                className="sm:col-span-2"
+                label={t("settings.trustedLanStableAddress", "Stable local address")}
+                value={companionModel.stableAddressValue}
+                hint={companionModel.stableAddressHint}
+              />
+              <SettingsMetricTile
+                className="sm:col-span-2"
+                label={t("settings.trustedLanDirectAddress", "Current direct address")}
+                value={companionModel.directAddressValue}
+                hint={companionModel.directAddressHint}
+              />
+              <SettingsMetricTile
+                label={t("settings.trustedLanInterface", "Selected interface")}
                 value={companionModel.interfaceValue}
               />
               <SettingsMetricTile
                 label={t("settings.trustedLanWebappPort", "Web app port")}
                 value={companionModel.portValue}
-              />
-              <SettingsMetricTile
-                className="sm:col-span-2"
-                label={t("settings.trustedLanShellUrl", "LAN URL")}
-                value={companionModel.shellUrlValue}
               />
             </div>
           )}

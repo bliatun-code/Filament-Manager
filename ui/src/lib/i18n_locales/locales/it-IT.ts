@@ -613,7 +613,7 @@ export const itITDictionary: DictionaryNode = {
     qrCode: "Codice QR",
     qrCompanionLinkLabel: "Collegamento Companion",
     qrCompanionUnavailable:
-      "Il collegamento Companion non è al momento disponibile. Avviare Trusted-LAN companion sullo host attivo per creare un collegamento browser diretto.",
+      "I link QR di Companion richiedono l'indirizzo locale stabile. Rendilo disponibile sull'host attivo prima di creare un'etichetta.",
     qrLabel: "QR",
     qrTarget: "Obiettivo QR",
     qrTargetCompanionHint:
@@ -1551,7 +1551,7 @@ export const itITDictionary: DictionaryNode = {
     librarySyncClientAuthPersistentHint:
       "Questo client rimane associato finché non rimuovi l'associazione qui o su host.",
     librarySyncClientAuthRepairHint:
-      "Host è ancora raggiungibile, ma questo client desktop deve essere nuovamente associato prima che le azioni di sincronizzazione protette possano continuare.",
+      "Se questo client desktop usa ancora un indirizzo IP numerico, rimuovi la vecchia associazione e associalo di nuovo usando un nuovo link fornito dall'host.",
     librarySyncClientAuthTitle: "Associazione client Desktop",
     librarySyncClientAuthUnpaired: "Non accoppiato",
     librarySyncClientHint:
@@ -1877,6 +1877,15 @@ export const itITDictionary: DictionaryNode = {
     trustedLanServerControl: "Controllo del server",
     trustedLanServerTitle: "Server dell'applicazione Web",
     trustedLanShellUrl: "LANURL",
+    trustedLanStableAddress: "Indirizzo locale stabile",
+    trustedLanDirectAddress: "Indirizzo diretto attuale",
+    trustedLanStableAddressUnavailable:
+      "Non disponibile finché il nome locale stabile non è attivo",
+    trustedLanDirectAddressHint:
+      "Indirizzo di diagnostica per l'IP attualmente selezionato. Può cambiare se la rete non riserva un indirizzo per questo computer.",
+    trustedLanLocalNameUnavailable: "Indirizzo locale stabile non disponibile",
+    trustedLanLocalNameUnavailableHint:
+      "L'app web è in esecuzione sull'IP attuale, ma l'associazione e i link QR permanenti restano disattivati finché l'indirizzo locale stabile non è disponibile.",
     trustedLanShowNetwork: "Mostra rete",
     trustedLanShowRevoked: "Mostra {count} revocato",
     trustedLanStartingInfo: "Avvio del server dell'app Web...",

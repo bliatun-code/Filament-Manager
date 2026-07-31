@@ -9,6 +9,8 @@ export type TrustedLanCompanionStatus = {
   selected_interface_name?: string | null;
   selected_interface_address?: string | null;
   bind_address?: string | null;
+  advertised_hostname?: string | null;
+  direct_base_url?: string | null;
   base_url?: string | null;
   shell_url?: string | null;
   listen_port: number;
@@ -16,6 +18,8 @@ export type TrustedLanCompanionStatus = {
   health_error?: string | null;
   running: boolean;
   last_error?: string | null;
+  local_name_running: boolean;
+  local_name_error?: string | null;
   api_version: string;
   auth_mode: string;
 };

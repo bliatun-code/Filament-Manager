@@ -74,6 +74,30 @@ Webappen er en lokal companion-flate som serveres fra desktop-appen.
 
 Webappen er nyttig for raske operasjoner ved printeren: sjekke lager, se printerspor, låne ut, returnere, legge til ruller og oppdatere vekt.
 
+#### Stabil lokal Companion-adresse
+
+På macOS og Windows annonserer verten én stabil `.local`-adresse for Companion
+via mDNS. Nye paringer av nettlesere og desktop-klienter og nye QR-etiketter
+bruker denne adressen, slik at de fortsetter å virke hvis DHCP senere gir verten
+en annen IP-adresse.
+
+Verten og enheten som kobler til, må være på samme lokale nettverk, og nettverket
+må tillate mDNS/Bonjour-trafikk. Gjestenettverk og klientisolasjon kan hindre
+oppdagelse. På Windows tillater du Filament Manager på private nettverk hvis
+Windows Defender-brannmuren spør; ikke åpne for offentlige nettverk. Innstillinger
+viser fortsatt vertens eksakte numeriske IP-adresse som
+diagnostisk reserve, men den kan endres og bør ikke brukes til nye paringer eller
+etiketter.
+
+Etter oppgradering må en nettleser eller desktop-klient som ble paret via den
+gamle IP-adressen, pares én gang på nytt med en ny lenke. QR-etiketter som ble
+skrevet ut med den gamle IP-adressen, må skrives ut på nytt.
+
+Kjør bare én aktiv Companion-vert for et bibliotek. Hvis en annen vert startes
+fra en kopi av den samme portable sikkerhetskopien, får den samme stabile navn;
+vert nummer to nekter da å publisere paringslenker og permanente QR-lenker i
+stedet for å endre navnet automatisk.
+
 Lange lager- og utlånslister vises i håndterlige bolker. Når flere treff
 gjenstår, viser Companion størrelsen på neste bolk og vist/totalt; bruk **Vis
 mer** på nytt for å fortsette gjennom resultatene.

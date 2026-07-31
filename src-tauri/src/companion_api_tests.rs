@@ -1,4 +1,6 @@
-use super::{companion_browser_assets, hash_secret, CompanionApiState};
+use super::{
+    companion_browser_assets, companion_service_instance_name, hash_secret, CompanionApiState,
+};
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
 use crate::backend::inventory_engine::{
@@ -112,10 +114,29 @@ fn trusted_lan_runtime_for_address(address: &str) -> TrustedLanCompanionRuntime 
     runtime
 }
 
+#[test]
+fn companion_service_instance_name_is_unique_without_exposing_the_library_id() {
+    assert_eq!(
+        companion_service_instance_name("filament-manager-0123456789abcdef01234567.local"),
+        "Filament Manager 0123456789abcdef01234567"
+    );
+}
+
 fn test_state(db_path: &Path) -> CompanionApiState {
     CompanionApiState::new(
         db_path.to_string_lossy().to_string(),
         trusted_lan_runtime_for_address("127.0.0.1"),
+        CredentialStore::in_memory(),
+    )
+}
+
+fn stable_name_test_state(db_path: &Path) -> CompanionApiState {
+    let runtime = trusted_lan_runtime_for_address("127.0.0.1")
+        .with_advertised_hostname("filament-manager-0123456789abcdef01234567.local");
+    runtime.mark_local_name_running();
+    CompanionApiState::new(
+        db_path.to_string_lossy().to_string(),
+        runtime,
         CredentialStore::in_memory(),
     )
 }
@@ -928,8 +949,8 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
                     .method("POST")
                     .uri("/api/v1/auth/bootstrap")
                     .header("content-type", "application/json")
-                    .header("host", "192.168.1.50:4278")
-                    .header("origin", "http://192.168.1.50:4278")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
                     .body(Body::from("{}"))
                     .map_err(|error| error.to_string())?,
             )
@@ -944,6 +965,66 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_trusted_lan_requires_exact_host_and_pairing failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn stable_companion_name_is_required_outside_the_direct_health_probe() {
+    let db_path = temp_db_path("stable-host-only");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(stable_name_test_state(&db_path));
+
+        let direct_health = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/health")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(direct_health.status(), StatusCode::OK);
+
+        let direct_shell = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(direct_shell.status(), StatusCode::FORBIDDEN);
+
+        let stable_shell = router
+            .oneshot(
+                Request::builder()
+                    .uri("/companion")
+                    .header(
+                        "host",
+                        "filament-manager-0123456789abcdef01234567.local:4278",
+                    )
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(stable_shell.status(), StatusCode::OK);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "stable_companion_name_is_required_outside_the_direct_health_probe failed: {message}"
+        );
     }
 }
 
@@ -1811,9 +1892,9 @@ async fn companion_api_serves_authenticated_spool_qr_svg() {
     let result = async {
         seed_db(&db_path)?;
         let state = test_state(&db_path);
-        let expected_svg =
-            build_qr_svg(&build_companion_spool_qr_payload(&state.runtime, "spool_1"))
-                .map_err(|error| format!("{error:?}"))?;
+        let expected_payload = build_companion_spool_qr_payload(&state.runtime, "spool_1")
+            .map_err(|error| format!("{error:?}"))?;
+        let expected_svg = build_qr_svg(&expected_payload).map_err(|error| format!("{error:?}"))?;
         let router = build_router(state);
 
         let unauthenticated = router
@@ -3663,10 +3744,24 @@ async fn companion_shell_route_serves_browser_ui() {
         seed_db(&db_path)?;
         let router = build_router(test_state(&db_path));
 
+        let missing_host = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(missing_host.status(), StatusCode::FORBIDDEN);
+        assert_no_store(missing_host.headers());
+
         let response = router
             .oneshot(
                 Request::builder()
                     .uri("/companion")
+                    .header("host", "127.0.0.1:4278")
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
             )
@@ -3704,11 +3799,26 @@ async fn companion_shell_route_serves_module_assets() {
         seed_db(&db_path)?;
         let router = build_router(test_state(&db_path));
 
+        let rejected_host = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion/companion_api_client.js")
+                    .header("host", "localhost:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_host.status(), StatusCode::FORBIDDEN);
+        assert_no_store(rejected_host.headers());
+
         let module_response = router
             .clone()
             .oneshot(
                 Request::builder()
                     .uri("/companion/companion_api_client.js")
+                    .header("host", "127.0.0.1:4278")
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
             )
@@ -3748,6 +3858,7 @@ async fn companion_shell_route_serves_module_assets() {
             .oneshot(
                 Request::builder()
                     .uri("/companion/companion_api_client.js")
+                    .header("host", "127.0.0.1:4278")
                     .header(axum::http::header::IF_NONE_MATCH, &module_etag)
                     .header(axum::http::header::ACCEPT_ENCODING, "gzip")
                     .body(Body::empty())
@@ -3780,6 +3891,7 @@ async fn companion_shell_route_serves_module_assets() {
             .oneshot(
                 Request::builder()
                     .uri("/companion/companion_api_client.js")
+                    .header("host", "127.0.0.1:4278")
                     .header(axum::http::header::ACCEPT_ENCODING, "br, gzip;q=0.7")
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
@@ -3811,6 +3923,7 @@ async fn companion_shell_route_serves_module_assets() {
                 .oneshot(
                     Request::builder()
                         .uri(format!("/companion/{asset_path}"))
+                        .header("host", "127.0.0.1:4278")
                         .body(Body::empty())
                         .map_err(|error| error.to_string())?,
                 )
@@ -3851,6 +3964,7 @@ async fn companion_shell_route_serves_module_assets() {
             .oneshot(
                 Request::builder()
                     .uri("/companion/icon-dark.png")
+                    .header("host", "127.0.0.1:4278")
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
             )
@@ -3868,6 +3982,7 @@ async fn companion_shell_route_serves_module_assets() {
             .oneshot(
                 Request::builder()
                     .uri("/companion/missing.js")
+                    .header("host", "127.0.0.1:4278")
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
             )

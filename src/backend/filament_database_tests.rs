@@ -3392,6 +3392,7 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
                 INSERT INTO settings (key, value) VALUES
                     ('theme_mode', 'dark'),
                     ('library_sync_library_id', 'library_portable'),
+                    ('trusted_lan_port', '4279'),
                     ('credential_store_profile_id', 'credential_profile_11111111111111111111111111111111'),
                     ('credential_store_profile_migration_v1', 'complete'),
                     ('library_sync_client_session_id', 'session-secret'),
@@ -3479,7 +3480,7 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
             .collect::<HashSet<_>>();
         assert_eq!(
             exported_setting_keys,
-            HashSet::from(["theme_mode", "library_sync_library_id"])
+            HashSet::from(["theme_mode", "library_sync_library_id", "trusted_lan_port",])
         );
 
         // Simulate a backup created by an older build that still carried
@@ -3532,6 +3533,13 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
                 .map_err(|error| error.to_string())?
                 .as_deref(),
             Some("dark")
+        );
+        assert_eq!(
+            restored
+                .get_setting("trusted_lan_port")
+                .map_err(|error| error.to_string())?
+                .as_deref(),
+            Some("4279")
         );
 
         Ok(())

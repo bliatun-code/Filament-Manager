@@ -10,7 +10,7 @@ const BROWSER_ENTRY = fileURLToPath(
   new URL("../../test-fixtures/filament_label_browser_entry.ts", import.meta.url),
 );
 const QR_PAYLOAD =
-  "http://192.0.2.10:4278/companion?spool_qr=v1%3Aspool_1775592053186";
+  "http://filament-manager-0123456789abcdef01234567.local:4278/companion?spool_qr=v1%3Aspool_1775592053186";
 
 async function buildBrowserHarnessDocument(): Promise<string> {
   const buildResult = await build({

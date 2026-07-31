@@ -498,7 +498,7 @@ export const deDictionary: DictionaryNode = {
     visualFixtureLoaded: "Bestandsdetail-Testdaten geladen.",
     updatingRoll: "Ausgewählte Rolle wird aktualisiert...",
     qrCompanionUnavailable:
-      "Companion-Link derzeit nicht verfügbar. Starte die Trusted-LAN-Web-App auf dem aktiven Host, um einen direkten Browserlink zu erstellen.",
+      "Companion-QR-Links benötigen die stabile lokale Adresse. Stelle sie auf dem aktiven Host bereit, bevor du ein Etikett erstellst.",
     bambuBatchPlaceholder: "53400 53600 65103",
     bambuBatchBorrowedOwnerRequired:
       "Gib vor dem Erstellen dieses geliehenen Stapels an, von wem die Rollen geliehen sind.",
@@ -1210,7 +1210,7 @@ export const deDictionary: DictionaryNode = {
     librarySyncClientAuthPersistentHint:
       "Dieser Client bleibt gekoppelt, bis du die Kopplung hier oder auf dem Host entfernst.",
     librarySyncClientAuthRepairHint:
-      "Der Host ist weiterhin erreichbar, aber dieser Desktop-Client muss erneut gekoppelt werden, bevor geschützte Synchronisierungsaktionen fortgesetzt werden können.",
+      "Wenn dieser Desktop-Client noch eine numerische IP-Adresse verwendet, entferne die alte Kopplung und kopple ihn mit einem neuen Link vom Host erneut.",
     cachedReused: "Cache wiederverwendet",
     detailFetches: "Detailabrufe",
     librarySyncClearClientAuth: "Kopplung entfernen",
@@ -1361,10 +1361,19 @@ export const deDictionary: DictionaryNode = {
     trustedLanPort: "Port",
     trustedLanPortHint: "Halte den Port stabil, damit Kopplungslinks vorhersehbar bleiben.",
     trustedLanShellUrl: "LAN-URL",
+    trustedLanStableAddress: "Stabile lokale Adresse",
+    trustedLanDirectAddress: "Aktuelle Direktadresse",
+    trustedLanStableAddressUnavailable:
+      "Nicht verfügbar, bis der stabile lokale Name aktiv ist",
     trustedLanUrlUnavailable: "Erst verfügbar, wenn der Trusted-LAN-Modus aktiviert ist",
-    trustedLanUrlHintEnabled: "Verwende genau diese URL zur Kopplung in deinem vertrauenswürdigen Netzwerk.",
+    trustedLanUrlHintEnabled: "Verwende genau diese Adresse zur Kopplung und für dauerhafte QR-Links in deinem vertrauenswürdigen Netzwerk.",
     trustedLanUrlHintDisabled:
       "Solange Trusted-LAN deaktiviert bleibt, wird keine LAN-URL freigegeben.",
+    trustedLanDirectAddressHint:
+      "Diagnoseadresse für die aktuell ausgewählte IP. Sie kann sich ändern, wenn das Netzwerk keine Adresse für diesen Computer reserviert.",
+    trustedLanLocalNameUnavailable: "Stabile lokale Adresse nicht verfügbar",
+    trustedLanLocalNameUnavailableHint:
+      "Die Web-App läuft über ihre aktuelle IP-Adresse, aber Kopplung und dauerhafte QR-Links bleiben deaktiviert, bis die stabile lokale Adresse verfügbar ist.",
     trustedLanAuth: "Authentifizierung",
     trustedLanAuthPairing: "Kopplung pro Browser",
     trustedLanAuthHint: "Browserweise Kopplung mit Cookies, Erneuerung und CSRF-Prüfungen.",

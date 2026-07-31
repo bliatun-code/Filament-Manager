@@ -92,6 +92,6 @@ fn is_portable_backup_setting_row(row: &Map<String, Value>) -> bool {
     };
     matches!(
         key,
-        "active_printer_id" | "library_sync_library_id" | "theme_mode"
+        "active_printer_id" | "library_sync_library_id" | "theme_mode" | "trusted_lan_port"
     )
 }

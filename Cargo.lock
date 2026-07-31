@@ -205,6 +205,7 @@ dependencies = [
  "filament-manager-core",
  "flate2",
  "if-addrs",
+ "libc",
  "native-tls",
  "objc2",
  "objc2-app-kit",

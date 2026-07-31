@@ -1,9 +1,10 @@
 use crate::credential_store::CredentialStore;
 use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+use crate::local_service_advertisement::{AdvertisementError, LocalServiceAdvertisement};
 use serde::Serialize;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use tauri::async_runtime::JoinHandle;
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, OwnedMutexGuard};
 
 const COMPANION_API_VERSION: &str = "v1";
 const TRUSTED_LAN_COMPANION_AUTH_MODE: &str = "pairing-session";
@@ -28,6 +29,8 @@ pub struct TrustedLanCompanionRuntime {
     config: Arc<RwLock<TrustedLanCompanionConfig>>,
     status: Arc<RwLock<TrustedLanCompanionRuntimeStatus>>,
     server: Arc<RwLock<Option<TrustedLanCompanionServerHandle>>>,
+    local_service_advertisement: Arc<Mutex<Option<LocalServiceAdvertisement>>>,
+    reconcile_gate: Arc<tokio::sync::Mutex<()>>,
     qa_mode: bool,
 }
 
@@ -35,6 +38,7 @@ pub struct TrustedLanCompanionRuntime {
 struct TrustedLanCompanionConfig {
     enabled: bool,
     selected_interface: Option<TrustedLanCompanionInterface>,
+    advertised_hostname: Option<String>,
     listen_port: u16,
 }
 
@@ -53,6 +57,8 @@ pub(crate) struct TrustedLanCompanionServerHandle {
 struct TrustedLanCompanionRuntimeStatus {
     running: bool,
     last_error: Option<String>,
+    local_name_running: bool,
+    local_name_error: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -61,6 +67,8 @@ pub struct TrustedLanCompanionRuntimeSnapshot {
     pub selected_interface_name: Option<String>,
     pub selected_interface_address: Option<String>,
     pub bind_address: Option<String>,
+    pub advertised_hostname: Option<String>,
+    pub direct_base_url: Option<String>,
     pub base_url: Option<String>,
     pub shell_url: Option<String>,
     pub listen_port: u16,
@@ -68,6 +76,8 @@ pub struct TrustedLanCompanionRuntimeSnapshot {
     pub health_error: Option<String>,
     pub running: bool,
     pub last_error: Option<String>,
+    pub local_name_running: bool,
+    pub local_name_error: Option<String>,
     pub api_version: String,
     pub auth_mode: String,
 }
@@ -89,10 +99,13 @@ impl TrustedLanCompanionRuntime {
             config: Arc::new(RwLock::new(TrustedLanCompanionConfig {
                 enabled: false,
                 selected_interface: None,
+                advertised_hostname: None,
                 listen_port: port,
             })),
             status: Arc::new(RwLock::new(TrustedLanCompanionRuntimeStatus::default())),
             server: Arc::new(RwLock::new(None)),
+            local_service_advertisement: Arc::new(Mutex::new(None)),
+            reconcile_gate: Arc::new(tokio::sync::Mutex::new(())),
             qa_mode: companion_visual_qa_enabled(),
         }
     }
@@ -114,6 +127,14 @@ impl TrustedLanCompanionRuntime {
                 name: name.into(),
                 address: address.into(),
             });
+        }
+        self
+    }
+
+    pub fn with_advertised_hostname(self, hostname: impl Into<String>) -> Self {
+        let hostname = normalize_local_hostname(&hostname.into());
+        if let Ok(mut config) = self.config.write() {
+            config.advertised_hostname = hostname;
         }
         self
     }
@@ -141,6 +162,22 @@ impl TrustedLanCompanionRuntime {
         }
     }
 
+    pub fn apply_loaded_config(
+        &self,
+        enabled: bool,
+        selected_interface: Option<(String, String)>,
+        listen_port: u16,
+        advertised_hostname: &str,
+    ) {
+        if let Ok(mut config) = self.config.write() {
+            config.enabled = enabled;
+            config.listen_port = normalize_trusted_lan_port(listen_port);
+            config.selected_interface = selected_interface
+                .map(|(name, address)| TrustedLanCompanionInterface { name, address });
+            config.advertised_hostname = normalize_local_hostname(advertised_hostname);
+        }
+    }
+
     pub fn mark_running(&self) {
         if let Ok(mut status) = self.status.write() {
             status.running = true;
@@ -159,6 +196,27 @@ impl TrustedLanCompanionRuntime {
         if let Ok(mut status) = self.status.write() {
             status.running = false;
             status.last_error = Some(error.into());
+        }
+    }
+
+    pub fn mark_local_name_running(&self) {
+        if let Ok(mut status) = self.status.write() {
+            status.local_name_running = true;
+            status.local_name_error = None;
+        }
+    }
+
+    pub fn mark_local_name_stopped(&self) {
+        if let Ok(mut status) = self.status.write() {
+            status.local_name_running = false;
+            status.local_name_error = None;
+        }
+    }
+
+    pub fn mark_local_name_failed(&self, error: impl Into<String>) {
+        if let Ok(mut status) = self.status.write() {
+            status.local_name_running = false;
+            status.local_name_error = Some(error.into());
         }
     }
 
@@ -183,6 +241,31 @@ impl TrustedLanCompanionRuntime {
             .ok()
             .and_then(|config| config.selected_interface.clone())
             .map(|value| (value.name, value.address))
+    }
+
+    pub fn advertised_hostname(&self) -> Option<String> {
+        self.config
+            .read()
+            .ok()
+            .and_then(|config| config.advertised_hostname.clone())
+    }
+
+    pub fn local_name_running(&self) -> bool {
+        self.status
+            .read()
+            .map(|status| status.local_name_running)
+            .unwrap_or(false)
+    }
+
+    pub fn running(&self) -> bool {
+        self.status
+            .read()
+            .map(|status| status.running)
+            .unwrap_or(false)
+    }
+
+    pub(crate) async fn lock_reconcile(&self) -> OwnedMutexGuard<()> {
+        Arc::clone(&self.reconcile_gate).lock_owned().await
     }
 
     pub fn qa_mode(&self) -> bool {
@@ -210,7 +293,7 @@ impl TrustedLanCompanionRuntime {
         selected_interface.map(|(_, address)| format!("{address}:{listen_port}"))
     }
 
-    pub fn base_url(&self) -> Option<String> {
+    pub fn direct_base_url(&self) -> Option<String> {
         let (enabled, selected_interface, listen_port) = (
             self.enabled(),
             self.selected_interface(),
@@ -225,6 +308,64 @@ impl TrustedLanCompanionRuntime {
         }
 
         selected_interface.map(|(_, address)| format!("http://{address}:{listen_port}"))
+    }
+
+    pub fn base_url(&self) -> Option<String> {
+        if self.qa_mode {
+            return self.direct_base_url();
+        }
+        let Some(hostname) = self.advertised_hostname() else {
+            // Test and legacy runtimes created without a stable hostname keep the historical
+            // direct URL. Production runtimes always configure an advertised hostname.
+            return self.direct_base_url();
+        };
+        if self.enabled() && self.local_name_running() {
+            return Some(format!("http://{hostname}:{}", self.listen_port()));
+        }
+        None
+    }
+
+    pub fn allowed_host_authorities(&self) -> Vec<String> {
+        let mut values = self
+            .bind_address()
+            .into_iter()
+            .map(|value| value.to_ascii_lowercase())
+            .collect::<Vec<_>>();
+        if let Some(value) = self.stable_host_authority() {
+            values.push(value);
+        }
+        values.sort();
+        values.dedup();
+        values
+    }
+
+    pub fn allowed_origins(&self) -> Vec<String> {
+        let mut values = if self.qa_mode || self.advertised_hostname().is_none() {
+            self.direct_base_url()
+                .into_iter()
+                .map(|value| value.to_ascii_lowercase())
+                .collect::<Vec<_>>()
+        } else {
+            Vec::new()
+        };
+        if let Some(value) = self.base_url() {
+            values.push(value.to_ascii_lowercase());
+        }
+        values.sort();
+        values.dedup();
+        values
+    }
+
+    pub fn stable_host_authority(&self) -> Option<String> {
+        if !self.enabled() || !self.local_name_running() {
+            return None;
+        }
+        self.advertised_hostname()
+            .map(|hostname| format!("{hostname}:{}", self.listen_port()).to_ascii_lowercase())
+    }
+
+    pub fn stable_request_host_required(&self) -> bool {
+        !self.qa_mode && self.advertised_hostname().is_some()
     }
 
     pub(crate) fn install_server_handle(
@@ -246,6 +387,34 @@ impl TrustedLanCompanionRuntime {
             .ok()
             .and_then(|mut server| server.take())
     }
+
+    pub(crate) fn install_local_service_advertisement(
+        &self,
+        advertisement: LocalServiceAdvertisement,
+    ) {
+        if let Ok(mut current) = self.local_service_advertisement.lock() {
+            *current = Some(advertisement);
+        }
+    }
+
+    pub(crate) fn take_local_service_advertisement(&self) -> Option<LocalServiceAdvertisement> {
+        self.local_service_advertisement
+            .lock()
+            .ok()
+            .and_then(|mut current| current.take())
+    }
+
+    pub(crate) fn local_service_advertisement_health(&self) -> Result<(), AdvertisementError> {
+        let current = self
+            .local_service_advertisement
+            .lock()
+            .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
+        current
+            .as_ref()
+            .ok_or(AdvertisementError::RegistrationWorkerStopped)?
+            .health()
+    }
+
     pub fn snapshot(&self) -> TrustedLanCompanionRuntimeSnapshot {
         let config = self.config.read().ok();
         let status = self.status.read().ok();
@@ -264,6 +433,13 @@ impl TrustedLanCompanionRuntime {
             .as_ref()
             .and_then(|value| value.selected_interface.as_ref())
             .map(|value| value.address.clone());
+        let advertised_hostname = config
+            .as_ref()
+            .and_then(|value| value.advertised_hostname.clone());
+        let local_name_running = status
+            .as_ref()
+            .map(|value| value.local_name_running)
+            .unwrap_or(false);
 
         let effective_interface_address = if self.qa_mode {
             Some(VISUAL_QA_LOOPBACK_ADDRESS.to_string())
@@ -277,10 +453,19 @@ impl TrustedLanCompanionRuntime {
         } else {
             None
         };
-        let base_url = if enabled {
+        let direct_base_url = if enabled {
             effective_interface_address
                 .as_ref()
                 .map(|address| format!("http://{address}:{listen_port}"))
+        } else {
+            None
+        };
+        let base_url = if self.qa_mode || advertised_hostname.is_none() {
+            direct_base_url.clone()
+        } else if enabled && local_name_running {
+            advertised_hostname
+                .as_ref()
+                .map(|hostname| format!("http://{hostname}:{listen_port}"))
         } else {
             None
         };
@@ -293,17 +478,37 @@ impl TrustedLanCompanionRuntime {
             selected_interface_name,
             selected_interface_address,
             bind_address,
+            advertised_hostname,
+            direct_base_url,
             base_url,
             shell_url,
             listen_port,
             shell_reachable: false,
             health_error: None,
             running: status.as_ref().map(|value| value.running).unwrap_or(false),
-            last_error: status.and_then(|value| value.last_error.clone()),
+            last_error: status.as_ref().and_then(|value| value.last_error.clone()),
+            local_name_running,
+            local_name_error: status.and_then(|value| value.local_name_error.clone()),
             api_version: COMPANION_API_VERSION.to_string(),
             auth_mode: TRUSTED_LAN_COMPANION_AUTH_MODE.to_string(),
         }
     }
+}
+
+fn normalize_local_hostname(value: &str) -> Option<String> {
+    let normalized = value.trim().trim_end_matches('.').to_ascii_lowercase();
+    if normalized.is_empty()
+        || !normalized.ends_with(".local")
+        || normalized
+            .split('.')
+            .any(|label| label.is_empty() || label.len() > 63)
+        || !normalized
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '-' | '.'))
+    {
+        return None;
+    }
+    Some(normalized)
 }
 
 impl TrustedLanCompanionServerHandle {
@@ -368,6 +573,10 @@ mod tests {
         assert!(snapshot.enabled);
         assert_eq!(snapshot.bind_address.as_deref(), Some("192.168.0.42:4278"));
         assert_eq!(
+            snapshot.direct_base_url.as_deref(),
+            Some("http://192.168.0.42:4278")
+        );
+        assert_eq!(
             snapshot.base_url.as_deref(),
             Some("http://192.168.0.42:4278")
         );
@@ -376,6 +585,47 @@ mod tests {
             Some("http://192.168.0.42:4278/companion")
         );
         assert_eq!(snapshot.auth_mode, "pairing-session");
+    }
+
+    #[test]
+    fn trusted_lan_runtime_advertises_one_stable_name_after_registration() {
+        let runtime = TrustedLanCompanionRuntime::new(4278)
+            .with_selected_interface("Ethernet", "192.168.0.42")
+            .with_advertised_hostname("Filament-Manager-A7C4.local.")
+            .with_enabled(true);
+
+        assert_eq!(runtime.base_url().as_deref(), None);
+        assert!(runtime.snapshot().shell_url.is_none());
+        runtime.mark_local_name_running();
+
+        let snapshot = runtime.snapshot();
+        assert_eq!(
+            snapshot.advertised_hostname.as_deref(),
+            Some("filament-manager-a7c4.local")
+        );
+        assert_eq!(
+            snapshot.direct_base_url.as_deref(),
+            Some("http://192.168.0.42:4278")
+        );
+        assert_eq!(
+            snapshot.base_url.as_deref(),
+            Some("http://filament-manager-a7c4.local:4278")
+        );
+        assert_eq!(
+            snapshot.shell_url.as_deref(),
+            Some("http://filament-manager-a7c4.local:4278/companion")
+        );
+        assert_eq!(
+            runtime.allowed_host_authorities(),
+            vec![
+                "192.168.0.42:4278".to_string(),
+                "filament-manager-a7c4.local:4278".to_string(),
+            ]
+        );
+        assert_eq!(
+            runtime.allowed_origins(),
+            vec!["http://filament-manager-a7c4.local:4278".to_string()]
+        );
     }
 
     #[test]

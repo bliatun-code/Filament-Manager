@@ -609,7 +609,7 @@ export const ptBRDictionary: DictionaryNode = {
     qrCode: "Código QR",
     qrCompanionLinkLabel: "Link do Companion",
     qrCompanionUnavailable:
-      "O link Companion não está disponível no momento. Inicie o Trusted-LAN companion no host ativo para construir um link direto do navegador.",
+      "Os links QR do Companion exigem o endereço local estável. Disponibilize-o no host ativo antes de criar uma etiqueta.",
     qrLabel: "QR",
     qrTarget: "Alvo QR",
     qrTargetCompanionHint:
@@ -1537,7 +1537,7 @@ export const ptBRDictionary: DictionaryNode = {
     librarySyncClientAuthPersistentHint:
       "Este cliente permanece emparelhado até que você remova o emparelhamento aqui ou no host.",
     librarySyncClientAuthRepairHint:
-      "Host ainda está acessível, mas este cliente desktop deve ser emparelhado novamente antes que as ações de sincronização protegidas possam continuar.",
+      "Se este cliente para desktop ainda usa um endereço IP numérico, remova o pareamento antigo e faça um novo pareamento usando um link fornecido pelo host.",
     librarySyncClientAuthTitle: "Emparelhamento de cliente Desktop",
     librarySyncClientAuthUnpaired: "Não pareado",
     librarySyncClientHint:
@@ -1860,6 +1860,15 @@ export const ptBRDictionary: DictionaryNode = {
     trustedLanServerControl: "Controle de servidor",
     trustedLanServerTitle: "Servidor de aplicativos da web",
     trustedLanShellUrl: "LAN URL",
+    trustedLanStableAddress: "Endereço local estável",
+    trustedLanDirectAddress: "Endereço direto atual",
+    trustedLanStableAddressUnavailable:
+      "Indisponível até que o nome local estável esteja ativo",
+    trustedLanDirectAddressHint:
+      "Endereço de diagnóstico para o IP selecionado no momento. Ele pode mudar se a rede não reservar um endereço para este computador.",
+    trustedLanLocalNameUnavailable: "Endereço local estável indisponível",
+    trustedLanLocalNameUnavailableHint:
+      "O aplicativo web está sendo executado no IP atual, mas o pareamento e os links QR permanentes permanecem desativados até que o endereço local estável esteja disponível.",
     trustedLanShowNetwork: "Mostrar rede",
     trustedLanShowRevoked: "Mostrar {count} revogado",
     trustedLanStartingInfo: "Iniciando o servidor de aplicativos web...",

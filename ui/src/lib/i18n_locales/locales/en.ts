@@ -287,7 +287,7 @@ export const enDictionary: DictionaryNode = {
       qrTargetCompanionHint:
         "This QR opens the browser companion directly as long as the target URL is still reachable.",
       qrCompanionUnavailable:
-        "Companion link is unavailable right now. Start the Trusted-LAN companion on the active host to build a direct browser link.",
+        "Companion QR links require the stable local address. Make it available on the active host before creating a label.",
       assignmentManagedOnPrinters:
         "Filament placement and slot assignment is managed on the Printers page.",
       assignAmsSlot: "Assign to printer slot",
@@ -1229,7 +1229,7 @@ export const enDictionary: DictionaryNode = {
       librarySyncClientAuthPersistentHint:
         "This client stays paired until you remove the pairing here or on the host.",
       librarySyncClientAuthRepairHint:
-        "Host is still reachable, but this desktop client must be paired again before protected sync actions can continue.",
+        "If this desktop client still uses a numeric IP address, remove the old pairing and pair it again using a new link from the host.",
       cachedReused: "Cached reused",
       detailFetches: "Detail fetches",
       librarySyncClearClientAuth: "Remove pairing",
@@ -1391,11 +1391,20 @@ export const enDictionary: DictionaryNode = {
       trustedLanPortHint:
         "Keep the port stable so pairing links stay predictable.",
       trustedLanShellUrl: "LAN URL",
+      trustedLanStableAddress: "Stable local address",
+      trustedLanDirectAddress: "Current direct address",
+      trustedLanStableAddressUnavailable:
+        "Unavailable until the stable local name is running",
       trustedLanUrlUnavailable: "Not available until trusted-LAN mode is enabled",
       trustedLanUrlHintEnabled:
-        "Use this exact URL for pairing on your trusted network.",
+        "Use this exact address for pairing and permanent QR links on your trusted network.",
       trustedLanUrlHintDisabled:
         "No LAN URL is exposed while trusted-LAN mode stays disabled.",
+      trustedLanDirectAddressHint:
+        "Diagnostic address for the currently selected IP. It can change when the network does not reserve an address for this computer.",
+      trustedLanLocalNameUnavailable: "Stable local address unavailable",
+      trustedLanLocalNameUnavailableHint:
+        "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
       trustedLanAuth: "Auth",
       trustedLanAuthPairing: "Per-browser pairing",
       trustedLanAuthHint:

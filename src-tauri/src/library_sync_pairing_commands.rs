@@ -1,6 +1,7 @@
 use crate::backend::filament_database::LibrarySyncSettingsRow;
 use crate::library_sync_command_support::{
-    library_sync_host_input, normalize_library_sync_host_input,
+    ensure_stable_local_library_sync_host, library_sync_host_input,
+    normalize_library_sync_host_input,
 };
 use crate::library_sync_host_client::{
     delete_library_sync_device_token, ensure_library_sync_host_matches,
@@ -21,6 +22,7 @@ pub(crate) fn pair_library_sync_host(
     let _credential_mutation = lock_secure_credential_mutation()?;
     let host_input = library_sync_host_input(&input.base_url, None);
     let (normalized_base_url, _) = normalize_library_sync_host_input(&host_input)?;
+    ensure_stable_local_library_sync_host(&normalized_base_url)?;
     ensure_pairing_target_is_current(&state, &normalized_base_url)?;
     let pairing_token = extract_library_sync_pairing_token(&input.pairing_token_or_url)
         .ok_or_else(|| "Pairing token or URL is required.".to_string())?;

@@ -1,5 +1,6 @@
 import type { Locale } from "./i18n";
 import { formatLocaleDateTime } from "../../../src-tauri/companion_browser/locale_format.js";
+import { isStableLocalCompanionBaseUrl } from "./companion_url";
 
 export function parsePositiveInt(raw: string, fallback: number): number {
   const parsed = Number.parseInt(raw, 10);
@@ -70,7 +71,16 @@ export function extractBaseUrlFromPairingInput(raw: string): string | null {
   }
   try {
     const parsed = new URL(trimmed);
-    if (!parsed.searchParams.get("pairing")) {
+    if (
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname.replace(/\/+$/, "") !== "/companion" ||
+      parsed.hash ||
+      !parsed.searchParams.get("pairing")
+    ) {
+      return null;
+    }
+    if (!isStableLocalCompanionBaseUrl(parsed.origin)) {
       return null;
     }
     return parsed.origin;

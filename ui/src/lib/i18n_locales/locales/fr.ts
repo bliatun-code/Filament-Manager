@@ -311,7 +311,7 @@ export const frDictionary: DictionaryNode = {
     qrTargetCompanionHint:
       "Ce QR ouvre directement Companion dans le navigateur tant que l’adresse cible reste accessible.",
     qrCompanionUnavailable:
-      "Le lien Companion est indisponible. Démarrez Companion Trusted-LAN sur l’hôte actif pour créer un lien direct.",
+      "Les liens QR Companion nécessitent l’adresse locale stable. Rendez-la disponible sur l’hôte actif avant de créer une étiquette.",
     assignmentManagedOnPrinters:
       "Le placement du filament et l’affectation aux emplacements se gèrent sur la page Imprimantes.",
     assignAmsSlot: "Affecter à un emplacement d’imprimante",
@@ -1333,7 +1333,7 @@ export const frDictionary: DictionaryNode = {
     librarySyncClientAuthPersistentHint:
       "Ce client reste associé jusqu’à la suppression de l’association ici ou sur l’hôte.",
     librarySyncClientAuthRepairHint:
-      "L’hôte reste accessible, mais ce client doit être associé de nouveau avant les actions protégées.",
+      "Si ce client de bureau utilise encore une adresse IP numérique, supprimez l’ancienne association, puis associez-le de nouveau avec un lien fourni par l’hôte.",
     librarySyncClearClientAuth: "Supprimer l’association",
     librarySyncRenewPairing: "Renouveler l’association",
     librarySyncRenewPairingInfo:
@@ -1487,9 +1487,18 @@ export const frDictionary: DictionaryNode = {
     trustedLanPort: "Port",
     trustedLanPortHint: "Conservez un port stable pour que les liens restent prévisibles.",
     trustedLanShellUrl: "URL LAN",
+    trustedLanStableAddress: "Adresse locale stable",
+    trustedLanDirectAddress: "Adresse directe actuelle",
+    trustedLanStableAddressUnavailable:
+      "Indisponible tant que le nom local stable n’est pas actif",
     trustedLanUrlUnavailable: "Indisponible tant que Trusted-LAN est désactivé",
-    trustedLanUrlHintEnabled: "Utilisez cette URL exacte pour l’association sur votre réseau sûr.",
+    trustedLanUrlHintEnabled: "Utilisez cette adresse exacte pour l’association et les liens QR permanents sur votre réseau sûr.",
     trustedLanUrlHintDisabled: "Aucune URL LAN n’est exposée lorsque le mode est désactivé.",
+    trustedLanDirectAddressHint:
+      "Adresse de diagnostic pour l’adresse IP actuellement sélectionnée. Elle peut changer si le réseau ne réserve pas d’adresse à cet ordinateur.",
+    trustedLanLocalNameUnavailable: "Adresse locale stable indisponible",
+    trustedLanLocalNameUnavailableHint:
+      "La web app fonctionne sur son adresse IP actuelle, mais l’association et les liens QR permanents restent désactivés jusqu’à ce que l’adresse locale stable soit disponible.",
     trustedLanAuth: "Authentification",
     trustedLanAuthPairing: "Association par navigateur",
     trustedLanAuthHint:

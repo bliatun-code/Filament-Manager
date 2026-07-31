@@ -19,6 +19,23 @@ The Tauri crate must not include backend files through cross-tree `#[path]`
 attributes. Add a backend module to `src/backend/mod.rs` and expose only the
 smallest API the adapter needs.
 
+## Companion Network Address
+
+On macOS and Windows, a Companion host advertises one stable `.local` address
+through mDNS on the selected LAN. Pairing links and QR labels use that stable
+address, while the exact current IP address remains available for listener
+diagnostics. A DHCP change may update the listener binding without changing the
+address shared with users.
+
+Stable-name resolution is limited to devices on the same LAN where mDNS traffic is allowed.
+Existing IP-based browser and desktop pairings are not rewritten automatically;
+they require one new pairing, and labels containing an old IP address must be
+reprinted.
+
+The stable name is a library identity, so only one active Companion host may
+publish it at a time. A copied backup on a second host fails closed on name
+collision rather than accepting a platform-generated rename.
+
 ## Incremental Module Maintenance
 
 Large modules are reduced along existing responsibility boundaries when their

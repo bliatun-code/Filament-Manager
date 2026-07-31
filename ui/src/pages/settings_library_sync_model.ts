@@ -1,4 +1,5 @@
 import type { LibrarySyncSettings } from "../lib/tauri_client";
+import { isStableLocalCompanionBaseUrl } from "../lib/companion_url";
 
 export type LibrarySyncMode = "STANDALONE" | "HOST" | "CLIENT";
 
@@ -140,6 +141,7 @@ export function buildLibrarySyncClientState(input: {
   const hostWritePaired = Boolean(input.clientAuthPaired);
   const pairingChecked = Boolean(input.pairingChecked);
   const pairingValid = input.pairingValid !== false;
+  const stableHostAddress = isStableLocalCompanionBaseUrl(input.hostBaseUrl);
 
   return {
     savedMode,
@@ -147,8 +149,10 @@ export function buildLibrarySyncClientState(input: {
     hostBaseUrl: input.hostBaseUrl ?? null,
     libraryId: input.libraryId ?? null,
     hostWritePaired,
-    hostNeedsRepair: hostWritePaired && pairingChecked && !pairingValid,
-    hostPairingValid: !hostWritePaired || !pairingChecked || pairingValid,
+    hostNeedsRepair:
+      hostWritePaired && (!stableHostAddress || (pairingChecked && !pairingValid)),
+    hostPairingValid:
+      !hostWritePaired || (stableHostAddress && (!pairingChecked || pairingValid)),
   };
 }
 

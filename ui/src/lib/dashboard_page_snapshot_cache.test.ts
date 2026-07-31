@@ -32,6 +32,7 @@ function populatedSnapshot(): DashboardPageSnapshot {
       listen_port: 4278,
       running: true,
       shell_reachable: true,
+      local_name_running: true,
     },
     dashboardSyncMode: "STANDALONE",
     goalMetrics: {
@@ -178,6 +179,7 @@ test("dashboard snapshot keeps polled companion status current", () => {
           listen_port: 4278,
           running: false,
           shell_reachable: false,
+          local_name_running: false,
         },
       },
       generation,

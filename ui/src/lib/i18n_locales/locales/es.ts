@@ -652,7 +652,7 @@ export const esDictionary: DictionaryNode = {
       "Los cambios actualizan la entrada del catálogo de filamentos compartidos para todos los rollos de esta familia de filamentos.",
     outgoingWeightPromptTitle: "Establecer el peso del rollo saliente",
     qrCompanionUnavailable:
-      "El enlace Companion no está disponible en este momento. Inicie el complemento Trusted-LAN en el host activo para crear un enlace directo al navegador.",
+      "Los enlaces QR de Companion requieren la dirección local estable. Haz que esté disponible en el host activo antes de crear una etiqueta.",
     qrTargetCompanionHint:
       "Este QR abre el navegador complementario directamente siempre que el objetivo URL aún sea accesible.",
     rfidAmsBambuBits: "Puntas AMS Bambu",
@@ -1290,7 +1290,7 @@ export const esDictionary: DictionaryNode = {
     librarySyncClientAuthPersistentHint:
       "Este cliente permanece vinculado hasta que elimines la vinculación aquí o en el host.",
     librarySyncClientAuthRepairHint:
-      "El host sigue disponible, pero este cliente debe volver a vincularse antes de continuar con las acciones protegidas de sincronización.",
+      "Si este cliente de escritorio todavía utiliza una dirección IP numérica, elimina la vinculación anterior y vuelve a vincularlo con un enlace nuevo del host.",
     cachedReused: "Caché reutilizada",
     detailFetches: "Consultas de detalle",
     librarySyncClearClientAuth: "Eliminar vinculación",
@@ -1453,6 +1453,15 @@ export const esDictionary: DictionaryNode = {
     trustedLanInterfaceHintEnabled:
       "Se vincula únicamente a una interfaz privada.",
     trustedLanShellUrl: "URL de la LAN",
+    trustedLanStableAddress: "Dirección local estable",
+    trustedLanDirectAddress: "Dirección directa actual",
+    trustedLanStableAddressUnavailable:
+      "No disponible hasta que el nombre local estable esté activo",
+    trustedLanDirectAddressHint:
+      "Dirección de diagnóstico para la IP seleccionada actualmente. Puede cambiar si la red no reserva una dirección para este equipo.",
+    trustedLanLocalNameUnavailable: "Dirección local estable no disponible",
+    trustedLanLocalNameUnavailableHint:
+      "La aplicación web funciona en su IP actual, pero la vinculación y los enlaces QR permanentes permanecen desactivados hasta que la dirección local estable esté disponible.",
     trustedLanUrlUnavailable:
       "No disponible hasta activar el modo de LAN de confianza",
     trustedLanUrlHintDisabled:

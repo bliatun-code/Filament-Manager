@@ -8,6 +8,7 @@ use crate::library_sync_models::SaveLibrarySyncSettingsInput;
 use crate::library_sync_runtime_auth::LibrarySyncRuntimeSession;
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
+use crate::trusted_lan_runtime_commands::reload_trusted_lan_runtime_after_library_change;
 use crate::with_inventory;
 use zeroize::Zeroizing;
 
@@ -48,6 +49,7 @@ fn save_library_sync_settings_inner(
 ) -> Result<LibrarySyncSettingsRow, String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
     let previous = with_inventory(state, |engine| engine.get_library_sync_settings())?;
+    let library_identity_changed = previous.library_id.trim() != input.library_id.trim();
     let target_mode_is_client = input.mode.trim().eq_ignore_ascii_case("CLIENT");
     let target_host = if target_mode_is_client {
         input
@@ -75,7 +77,10 @@ fn save_library_sync_settings_inner(
             engine.save_library_sync_settings(&settings_row_from_input(input))
         });
         return match saved {
-            Ok(saved) => settings_with_secure_pairing_state(state, saved),
+            Ok(saved) => {
+                reload_trusted_lan_after_library_identity_change(state, library_identity_changed)?;
+                settings_with_secure_pairing_state(state, saved)
+            }
             Err(error) => Err(with_library_sync_pairing_rollback(
                 error,
                 restore_library_sync_pairing(state, &pairing_snapshot),
@@ -91,10 +96,26 @@ fn save_library_sync_settings_inner(
     let saved = with_inventory(state, |engine| {
         engine.save_library_sync_settings(&settings_row_from_input(input))
     })?;
-    if stale_runtime {
-        state.library_sync_auth.clear()?;
-    }
+    let reload_result =
+        reload_trusted_lan_after_library_identity_change(state, library_identity_changed);
+    let runtime_result = if stale_runtime {
+        state.library_sync_auth.clear()
+    } else {
+        Ok(())
+    };
+    runtime_result?;
+    reload_result?;
     settings_with_secure_pairing_state(state, saved)
+}
+
+fn reload_trusted_lan_after_library_identity_change(
+    state: &AppState,
+    library_identity_changed: bool,
+) -> Result<(), String> {
+    if library_identity_changed {
+        reload_trusted_lan_runtime_after_library_change(state)?;
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -279,6 +300,7 @@ mod tests {
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
+    use crate::trusted_lan_runtime_commands::companion_local_hostname;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -390,6 +412,39 @@ mod tests {
                 .client_auth_paired
         );
 
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn changing_library_identity_reloads_the_stable_companion_hostname_without_restart() {
+        let state = test_state();
+        let old_hostname = "filament-manager-old-library.local";
+        state.companion.trusted_lan.apply_loaded_config(
+            true,
+            Some(("Old interface".to_string(), "192.168.1.42".to_string())),
+            TRUSTED_LAN_DEFAULT_PORT,
+            old_hostname,
+        );
+        let saved = save_library_sync_settings_inner(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "CLIENT".to_string(),
+                device_name: "Client".to_string(),
+                library_id: "replacement-library-id".to_string(),
+                host_base_url: Some("http://host.local:4278".to_string()),
+                host_device_name: Some("Host".to_string()),
+            },
+        )
+        .expect("save replacement library identity");
+
+        assert_eq!(saved.library_id, "replacement-library-id");
+        let runtime = state.companion.trusted_lan.snapshot();
+        let expected_hostname = companion_local_hostname("replacement-library-id");
+        assert_eq!(
+            runtime.advertised_hostname.as_deref(),
+            Some(expected_hostname.as_str())
+        );
+        assert_ne!(runtime.advertised_hostname.as_deref(), Some(old_hostname));
         let _ = std::fs::remove_file(&state.db_path);
     }
 

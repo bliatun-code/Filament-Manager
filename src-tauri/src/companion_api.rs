@@ -11,7 +11,8 @@ use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{cached_companion_browser_asset, COMPANION_BROWSER_HTML};
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::{
-    has_valid_csrf, header_string, require_allowed_host, require_allowed_origin, requires_csrf,
+    has_valid_csrf, header_string, require_allowed_host, require_allowed_origin,
+    require_stable_request_host, requires_csrf,
 };
 use crate::companion_models::*;
 use crate::companion_payload::{
@@ -25,9 +26,13 @@ use crate::companion_session::{
 };
 use crate::companion_state::CompanionApiState;
 use crate::credential_store::{CredentialKey, SecretValue};
+use crate::local_service_advertisement::{
+    LocalServiceAdvertisement, LocalServiceAdvertisementConfig,
+};
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::security::hash_secret;
 use crate::state::AppState;
+use crate::trusted_lan_interfaces::current_trusted_lan_interface_index;
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::http::{header::ORIGIN, HeaderMap, Request};
@@ -36,26 +41,45 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
+const COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS: u64 = 3;
 
 pub fn generate_pairing_token() -> String {
     crate::companion_session::generate_pairing_token()
 }
 
 pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String> {
+    let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    reconcile_trusted_lan_server_locked(&state).await
+}
+
+pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Result<(), String> {
+    if let Some(advertisement) = state
+        .companion
+        .trusted_lan
+        .take_local_service_advertisement()
+    {
+        let _ = tauri::async_runtime::spawn_blocking(move || drop(advertisement)).await;
+    }
+    state.companion.trusted_lan.mark_local_name_stopped();
+
     if let Some(handle) = state.companion.trusted_lan.take_server_handle() {
-        let join_handle = handle.shutdown();
-        let _ = join_handle.await;
+        let mut join_handle = handle.shutdown();
+        if tokio::time::timeout(
+            std::time::Duration::from_secs(COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS),
+            &mut join_handle,
+        )
+        .await
+        .is_err()
+        {
+            join_handle.abort();
+            let _ = join_handle.await;
+        }
     }
 
     let Some(bind_address) = state.companion.trusted_lan.bind_address() else {
         state.companion.trusted_lan.mark_stopped();
         return Ok(());
     };
-    if state.companion.trusted_lan.base_url().is_none() {
-        state.companion.trusted_lan.mark_stopped();
-        return Ok(());
-    }
-
     let listener = match tokio::net::TcpListener::bind(&bind_address).await {
         Ok(listener) => listener,
         Err(error) => {
@@ -85,7 +109,137 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
         .trusted_lan
         .install_server_handle(shutdown_tx, join_handle);
     state.companion.trusted_lan.mark_running();
+
+    if state.companion.trusted_lan.qa_mode() {
+        return Ok(());
+    }
+
+    if let Err(error) = start_local_service_advertisement(state).await {
+        state
+            .companion
+            .trusted_lan
+            .mark_local_name_failed(error.clone());
+        eprintln!("Companion stable local address is unavailable: {error}");
+    }
     Ok(())
+}
+
+pub(crate) async fn retry_trusted_lan_local_service_advertisement(
+    state: &AppState,
+) -> Result<bool, String> {
+    if !state.companion.trusted_lan.enabled()
+        || !state.companion.trusted_lan.running()
+        || state.companion.trusted_lan.qa_mode()
+    {
+        return Ok(false);
+    }
+    if state.companion.trusted_lan.local_name_running()
+        && state
+            .companion
+            .trusted_lan
+            .local_service_advertisement_health()
+            .is_ok()
+    {
+        return Ok(false);
+    }
+
+    let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    if !state.companion.trusted_lan.enabled()
+        || !state.companion.trusted_lan.running()
+        || state.companion.trusted_lan.qa_mode()
+    {
+        return Ok(false);
+    }
+    if state.companion.trusted_lan.local_name_running()
+        && state
+            .companion
+            .trusted_lan
+            .local_service_advertisement_health()
+            .is_ok()
+    {
+        return Ok(false);
+    }
+    if let Some(advertisement) = state
+        .companion
+        .trusted_lan
+        .take_local_service_advertisement()
+    {
+        let _ = tauri::async_runtime::spawn_blocking(move || drop(advertisement)).await;
+    }
+    state.companion.trusted_lan.mark_local_name_stopped();
+
+    match start_local_service_advertisement(state).await {
+        Ok(()) => Ok(true),
+        Err(error) => {
+            state
+                .companion
+                .trusted_lan
+                .mark_local_name_failed(error.clone());
+            Err(error)
+        }
+    }
+}
+
+async fn start_local_service_advertisement(state: &AppState) -> Result<(), String> {
+    let hostname = state
+        .companion
+        .trusted_lan
+        .advertised_hostname()
+        .ok_or_else(|| "Stable local hostname is not configured.".to_string())?;
+    let (interface_name, interface_address) = state
+        .companion
+        .trusted_lan
+        .selected_interface()
+        .ok_or_else(|| "Stable local address requires one selected LAN interface.".to_string())?;
+    let address = interface_address
+        .parse()
+        .map_err(|_| "Stable local address requires a valid private IPv4 address.".to_string())?;
+    let interface_index = current_trusted_lan_interface_index(&interface_name, &interface_address)
+        .ok_or_else(|| "The selected LAN interface is not currently available.".to_string())?;
+    let port = state.companion.trusted_lan.listen_port();
+    let instance_name = companion_service_instance_name(&hostname);
+    let config = LocalServiceAdvertisementConfig {
+        hostname,
+        instance_name,
+        address,
+        port,
+        interface_index,
+    };
+
+    let advertisement =
+        tauri::async_runtime::spawn_blocking(move || LocalServiceAdvertisement::register(config))
+            .await
+            .map_err(|_| "Stable local address registration did not complete.".to_string())?
+            .map_err(|error| error.to_string())?;
+
+    if advertisement.hostname()
+        != state
+            .companion
+            .trusted_lan
+            .advertised_hostname()
+            .as_deref()
+            .unwrap_or_default()
+    {
+        return Err(
+            "Stable local address registration returned an unexpected hostname.".to_string(),
+        );
+    }
+    state
+        .companion
+        .trusted_lan
+        .install_local_service_advertisement(advertisement);
+    state.companion.trusted_lan.mark_local_name_running();
+    Ok(())
+}
+
+fn companion_service_instance_name(hostname: &str) -> String {
+    let label = hostname
+        .trim()
+        .trim_end_matches('.')
+        .strip_suffix(".local")
+        .unwrap_or(hostname.trim());
+    let identity = label.strip_prefix("filament-manager-").unwrap_or(label);
+    format!("Filament Manager {identity}")
 }
 
 async fn run_companion_server(
@@ -1347,6 +1501,22 @@ pub(super) async fn require_companion_session(
         }
     }
 
+    next.run(request).await
+}
+
+pub(super) async fn require_companion_host(
+    State(state): State<CompanionApiState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
+    if let Err(error) = require_allowed_host(request.headers(), &state.runtime) {
+        return error.into_response();
+    }
+    if request.uri().path() != "/api/v1/health" {
+        if let Err(error) = require_stable_request_host(request.headers(), &state.runtime) {
+            return error.into_response();
+        }
+    }
     next.run(request).await
 }
 

@@ -44,10 +44,28 @@ test("isFullBackupValidationFormat accepts supported full backup markers", () =>
   assert.equal(isFullBackupValidationFormat("inventory"), false);
 });
 
-test("extractBaseUrlFromPairingInput accepts only pairing URLs", () => {
+test("extractBaseUrlFromPairingInput accepts only stable local pairing URLs", () => {
+  assert.equal(
+    extractBaseUrlFromPairingInput(
+      "http://filament-manager-0123456789abcdef01234567.local:4278/companion?pairing=abc",
+    ),
+    "http://filament-manager-0123456789abcdef01234567.local:4278",
+  );
   assert.equal(
     extractBaseUrlFromPairingInput("http://192.168.1.10:4278/companion?pairing=abc"),
-    "http://192.168.1.10:4278",
+    null,
+  );
+  assert.equal(
+    extractBaseUrlFromPairingInput(
+      "http://user:secret@filament-manager-a1b2.local:4278/companion?pairing=abc",
+    ),
+    null,
+  );
+  assert.equal(
+    extractBaseUrlFromPairingInput(
+      "http://filament-manager-a1b2.local:4278/not-companion?pairing=abc",
+    ),
+    null,
   );
   assert.equal(extractBaseUrlFromPairingInput("http://192.168.1.10:4278/companion"), null);
   assert.equal(extractBaseUrlFromPairingInput("not a url"), null);

@@ -46,6 +46,7 @@ const FORBIDDEN_TRUE_ENTITLEMENTS = [
   "com.apple.security.get-task-allow",
 ];
 const EXPECTED_PRIVACY_KEYS = ["NSCameraUsageDescription", "NSLocalNetworkUsageDescription"];
+const EXPECTED_BONJOUR_SERVICE = "_filament-manager._tcp";
 
 function commandText(command, args) {
   return [command, ...args].join(" ");
@@ -238,6 +239,19 @@ export function validateBundleExecutableEntry({ isFile, isSymbolicLink }) {
   }
 }
 
+export function validateBonjourServices(value) {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 1 ||
+    value[0] !== EXPECTED_BONJOUR_SERVICE
+  ) {
+    throw new Error(
+      `Expected Info.plist NSBonjourServices to contain exactly ${EXPECTED_BONJOUR_SERVICE}.`,
+    );
+  }
+  return value;
+}
+
 export function validateReleaseMetadata({
   entitlements,
   expectedAppVersion = DEFAULT_APP_VERSION,
@@ -283,6 +297,7 @@ export function validateReleaseMetadata({
       throw new Error(`Expected non-empty Info.plist privacy key ${privacyKey}.`);
     }
   }
+  validateBonjourServices(infoPlist?.NSBonjourServices);
   const executableName = validateBundleExecutableName(infoPlist?.CFBundleExecutable);
   return {
     appVersion: expectedAppVersion,

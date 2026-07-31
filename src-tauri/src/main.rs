@@ -56,6 +56,7 @@ mod library_sync_snapshot_commands;
 mod library_sync_spool_write_commands;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
+mod local_service_advertisement;
 mod optional_update;
 mod printer_active_commands;
 mod printer_bambu_live_commands;
@@ -79,6 +80,7 @@ mod trusted_lan_config_commands;
 mod trusted_lan_health;
 mod trusted_lan_interface_commands;
 mod trusted_lan_interfaces;
+mod trusted_lan_network_watcher;
 mod trusted_lan_pairing_commands;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
@@ -320,6 +322,12 @@ fn main() {
                 if let Err(error) = companion_api::reconcile_trusted_lan_server(lan_state).await {
                     eprintln!("Trusted-LAN companion failed: {error}");
                 }
+            });
+
+            let lan_network_state = app.state::<AppState>().inner().clone();
+            tauri::async_runtime::spawn(async move {
+                trusted_lan_network_watcher::run_trusted_lan_network_watcher(lan_network_state)
+                    .await;
             });
 
             let bambu_live_state = app.state::<AppState>().inner().clone();

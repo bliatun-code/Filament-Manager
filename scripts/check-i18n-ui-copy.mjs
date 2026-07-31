@@ -21,7 +21,7 @@ const allowedTechnicalCopy = new Set([
   "60 × 24 mm ·",
   "/ ID:",
   "#RRGGBB / gradient(...) / multi(...)",
-  "http://192.168.1.25:4278/companion?pairing=...",
+  "http://filament-manager-0123456789abcdef01234567.local:4278/companion?pairing=...",
 ]);
 
 function normalizedCopy(value) {

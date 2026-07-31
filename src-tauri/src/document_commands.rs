@@ -11,6 +11,7 @@ use crate::sqlite_recovery::{
     sanitize_app_recovery_snapshot_credentials, RecoveryReason, RecoverySnapshot,
 };
 use crate::state::AppState;
+use crate::trusted_lan_runtime_commands::reload_trusted_lan_runtime_after_library_change;
 use base64::Engine;
 use serde::Serialize;
 use std::fs::File;
@@ -214,26 +215,36 @@ fn finish_full_restore_and_purge_credentials<T>(
 
     match restore_result {
         Ok(value) => {
+            let mut first_error = None;
             let purge_result = retry_pending_credential_cleanup_under_gate(
                 Path::new(&state.db_path),
                 &state.credentials,
                 &state.library_sync_auth,
             );
             if let Err(error) = purge_result {
-                return Err(document_command_error(
+                first_error = Some(document_command_error(
                     "common.internal",
                     "Remove machine-local credentials after full restore",
                     error,
                 ));
             }
-            snapshot_sanitize_result.map_err(|error| {
-                document_command_error(
+            if let Err(error) = snapshot_sanitize_result {
+                let error = document_command_error(
                     "common.internal",
                     "Sanitize recovery snapshots after full restore",
                     error,
-                )
-            })?;
-            Ok(value)
+                );
+                first_error.get_or_insert(error);
+            }
+            if let Err(error) = reload_trusted_lan_runtime_after_library_change(state) {
+                let error = document_command_error(
+                    "common.internal",
+                    "Reload local network state after full restore",
+                    error,
+                );
+                first_error.get_or_insert(error);
+            }
+            first_error.map_or(Ok(value), Err)
         }
         Err(error) => {
             if let Err(cleanup_error) = clear_pending_credential_cleanup(Path::new(&state.db_path))
@@ -845,6 +856,14 @@ mod tests {
                 .list_bambu_live_integrations()
                 .map_err(|error| error.to_string())?
                 .is_empty());
+            let runtime = state.companion.trusted_lan.snapshot();
+            assert!(!runtime.enabled);
+            assert!(runtime
+                .advertised_hostname
+                .as_deref()
+                .is_some_and(
+                    |value| value.starts_with("filament-manager-") && value.ends_with(".local")
+                ));
             Ok(())
         })();
 
@@ -889,6 +908,12 @@ mod tests {
         );
         let (bambu_key, library_key) = seed_machine_local_credentials(&state);
         let result = (|| -> Result<(), String> {
+            state.companion.trusted_lan.apply_loaded_config(
+                true,
+                Some(("Old interface".to_string(), "192.168.1.42".to_string())),
+                TRUSTED_LAN_DEFAULT_PORT,
+                "filament-manager-old-runtime.local",
+            );
             import_full_backup_json_inner(&state, empty_full_backup())
                 .expect_err("injected credential deletion must fail restore cleanup");
 
@@ -899,6 +924,13 @@ mod tests {
                 .map_err(|error| error.to_string())?
                 .is_empty());
             drop(restored_db);
+
+            let runtime = state.companion.trusted_lan.snapshot();
+            assert!(!runtime.enabled);
+            assert_ne!(
+                runtime.advertised_hostname.as_deref(),
+                Some("filament-manager-old-runtime.local")
+            );
 
             assert!(retry_pending_credential_cleanup(
                 Path::new(&state.db_path),

@@ -479,10 +479,31 @@ pub(crate) fn reset_app_data_inner(state: &AppState) -> Result<(), String> {
         db.initialize_fresh_credential_store_profile()
             .map_err(inventory_error_to_command_string)
     })?;
-    state
-        .credentials
-        .switch_profile(&next_profile_id)
-        .map_err(|error| internal_command_error("Switch credential profile after reset", error))
+    drop(db);
+    finish_app_data_reset(state, || {
+        state
+            .credentials
+            .switch_profile(&next_profile_id)
+            .map_err(|error| internal_command_error("Switch credential profile after reset", error))
+    })
+}
+
+fn finish_app_data_reset(
+    state: &AppState,
+    switch_profile: impl FnOnce() -> Result<(), String>,
+) -> Result<(), String> {
+    let reload_result =
+        crate::trusted_lan_runtime_commands::reload_trusted_lan_runtime_after_library_change(state)
+            .map_err(|error| {
+                internal_command_error("Reload local network state after reset", error)
+            });
+    let profile_result = switch_profile();
+
+    match (profile_result, reload_result) {
+        (Err(error), _) => Err(error),
+        (Ok(()), Err(error)) => Err(error),
+        (Ok(()), Ok(())) => Ok(()),
+    }
 }
 
 #[cfg(test)]
@@ -539,8 +560,8 @@ pub(crate) fn reset_catalog_data(
 #[cfg(test)]
 mod tests {
     use super::{
-        persist_pending_credential_cleanup, reset_app_data_inner, reset_app_data_with,
-        retry_pending_credential_cleanup, StoredCredentialScopes,
+        finish_app_data_reset, persist_pending_credential_cleanup, reset_app_data_inner,
+        reset_app_data_with, retry_pending_credential_cleanup, StoredCredentialScopes,
     };
     use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
     use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
@@ -688,6 +709,14 @@ mod tests {
             .expect("read reset library settings")
             .host_base_url
             .is_none());
+        let runtime = state.companion.trusted_lan.snapshot();
+        assert!(!runtime.enabled);
+        assert!(runtime
+            .advertised_hostname
+            .as_deref()
+            .is_some_and(
+                |value| value.starts_with("filament-manager-") && value.ends_with(".local")
+            ));
         let reset_profile_id = db
             .get_or_create_credential_store_profile_id()
             .expect("reset credential profile");
@@ -714,6 +743,34 @@ mod tests {
             .credential_store_profile_migration_completed()
             .expect("reset profile marker"));
         drop(db);
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn post_commit_profile_failure_still_reloads_disabled_network_runtime() {
+        let state = test_state();
+        let old_hostname = "filament-manager-old-reset.local";
+        state.companion.trusted_lan.apply_loaded_config(
+            true,
+            Some(("Old interface".to_string(), "192.168.1.42".to_string())),
+            TRUSTED_LAN_DEFAULT_PORT,
+            old_hostname,
+        );
+        let db = FilamentDatabase::open(&state.db_path).expect("open reset database");
+        db.reset_app_state_data().expect("commit reset database");
+        db.initialize_fresh_credential_store_profile()
+            .expect("initialize reset profile");
+        drop(db);
+
+        finish_app_data_reset(
+            &state,
+            || Err("injected profile switch failure".to_string()),
+        )
+        .expect_err("profile switch must fail after committed reset");
+
+        let runtime = state.companion.trusted_lan.snapshot();
+        assert!(!runtime.enabled);
+        assert_ne!(runtime.advertised_hostname.as_deref(), Some(old_hostname));
         let _ = std::fs::remove_file(&state.db_path);
     }
 

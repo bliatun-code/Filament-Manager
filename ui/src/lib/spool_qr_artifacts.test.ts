@@ -15,13 +15,17 @@ function trustedLanStatus(
     selected_interface_name: "en0",
     selected_interface_address: "192.168.1.20",
     bind_address: "192.168.1.20",
-    base_url: "http://192.168.1.20:4278",
-    shell_url: "http://192.168.1.20:4278/companion",
+    advertised_hostname: "filament-manager-a1b2.local",
+    direct_base_url: "http://192.168.1.20:4278",
+    base_url: "http://filament-manager-a1b2.local:4278",
+    shell_url: "http://filament-manager-a1b2.local:4278/companion",
     listen_port: 4278,
     shell_reachable: true,
     health_error: null,
     running: true,
     last_error: null,
+    local_name_running: true,
+    local_name_error: null,
     api_version: "1",
     auth_mode: "pairing",
     ...overrides,
@@ -33,7 +37,7 @@ test("resolveSpoolQrCompanionShellUrl prefers the client host shell in client mo
   const shellUrl = await resolveSpoolQrCompanionShellUrl(
     {
       clientReadOnly: true,
-      clientHostBaseUrl: "http://192.168.1.50:4278",
+      clientHostBaseUrl: "http://filament-manager-a1b2.local:4278",
     },
     {
       loadTrustedLanStatus: async () => {
@@ -43,8 +47,17 @@ test("resolveSpoolQrCompanionShellUrl prefers the client host shell in client mo
     },
   );
 
-  assert.equal(shellUrl, "http://192.168.1.50:4278/companion");
+  assert.equal(shellUrl, "http://filament-manager-a1b2.local:4278/companion");
   assert.equal(trustedLanCalls, 0);
+});
+
+test("resolveSpoolQrCompanionShellUrl rejects an old numeric client host", async () => {
+  const shellUrl = await resolveSpoolQrCompanionShellUrl({
+    clientReadOnly: true,
+    clientHostBaseUrl: "http://192.168.1.50:4278",
+  });
+
+  assert.equal(shellUrl, null);
 });
 
 test("resolveSpoolQrCompanionShellUrl falls back to trusted LAN shell outside client mode", async () => {
@@ -58,7 +71,7 @@ test("resolveSpoolQrCompanionShellUrl falls back to trusted LAN shell outside cl
     },
   );
 
-  assert.equal(shellUrl, "http://192.168.1.20:4278/companion");
+  assert.equal(shellUrl, "http://filament-manager-a1b2.local:4278/companion");
 });
 
 test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is available", async () => {
@@ -76,11 +89,35 @@ test("buildSpoolQrArtifacts builds a companion QR artifact when a shell URL is a
   assert.equal(artifact.qrReference, "spool_1");
   assert.equal(
     artifact.qrPayload,
-    "http://192.168.1.20:4278/companion?spool_qr=v1%3Aspool_1",
+    "http://filament-manager-a1b2.local:4278/companion?spool_qr=v1%3Aspool_1",
   );
   assert.equal(artifact.qrDataUrl, `qr:${artifact.qrPayload}`);
   assert.equal(artifact.qrTarget, artifact.qrPayload);
-  assert.equal(artifact.companionShellUrl, "http://192.168.1.20:4278/companion");
+  assert.equal(
+    artifact.companionShellUrl,
+    "http://filament-manager-a1b2.local:4278/companion",
+  );
+});
+
+test("buildSpoolQrArtifacts rejects permanent QR links while the stable local name is down", async () => {
+  await assert.rejects(
+    () =>
+      buildSpoolQrArtifacts(
+        {
+          spoolId: "spool_1",
+          clientReadOnly: false,
+        },
+        {
+          loadTrustedLanStatus: async () =>
+            trustedLanStatus({
+              local_name_running: false,
+              local_name_error: "local name unavailable",
+            }),
+          buildQrDataUrl: async (payload) => `qr:${payload}`,
+        },
+      ),
+    /Companion QR link is unavailable/,
+  );
 });
 
 test("buildSpoolQrArtifacts rejects QR artifacts when companion status is unavailable", async () => {

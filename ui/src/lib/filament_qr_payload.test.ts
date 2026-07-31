@@ -7,6 +7,7 @@ import {
   decodeFilamentQrPayload,
   deriveCompanionShellUrl,
   encodeVersionedFilamentQrRef,
+  isStableLocalCompanionBaseUrl,
   parseFilamentQrPayload,
   resolvePreferredCompanionShellUrl,
 } from "./filament_qr_payload";
@@ -59,6 +60,19 @@ test("buildFilamentQrPayload returns only companion deep-link payloads", () => {
       target: "http://192.168.1.50:4278/companion?spool_qr=v1%3AQR-22",
     },
   );
+  for (const invalid of [
+    "ftp://host.local:4278/companion",
+    "http://user:secret@host.local:4278/companion",
+    "http://host.local:4278/not-companion",
+    "http://host.local:4278/companion?old=1",
+    "http://host.local:4278/companion#fragment",
+  ]) {
+    assert.throws(
+      () => buildFilamentQrPayload("QR-22", { companionShellUrl: invalid }),
+      /Companion QR link is invalid/,
+      invalid,
+    );
+  }
 });
 
 test("deriveCompanionShellUrl normalizes a host base URL to the companion shell", () => {
@@ -71,16 +85,40 @@ test("deriveCompanionShellUrl normalizes a host base URL to the companion shell"
     "http://192.168.1.50:4278/companion",
   );
   assert.equal(deriveCompanionShellUrl(""), null);
+  assert.equal(deriveCompanionShellUrl("ftp://host.local:4278"), null);
+  assert.equal(
+    deriveCompanionShellUrl("http://user:secret@host.local:4278"),
+    null,
+  );
+});
+
+test("stable companion addresses require a local hostname instead of a numeric IP", () => {
+  assert.equal(
+    isStableLocalCompanionBaseUrl(
+      "http://filament-manager-0123456789abcdef01234567.local:4278",
+    ),
+    true,
+  );
+  assert.equal(isStableLocalCompanionBaseUrl("http://192.168.1.50:4278"), false);
+  assert.equal(isStableLocalCompanionBaseUrl("https://host.example:4278"), false);
 });
 
 test("resolvePreferredCompanionShellUrl prefers the host companion link in client mode", () => {
   assert.equal(
     resolvePreferredCompanionShellUrl({
       clientReadOnly: true,
+      clientHostBaseUrl: "http://filament-manager-a1b2.local:4278",
+      trustedLanShellUrl: "http://127.0.0.1:4278/companion",
+    }),
+    "http://filament-manager-a1b2.local:4278/companion",
+  );
+  assert.equal(
+    resolvePreferredCompanionShellUrl({
+      clientReadOnly: true,
       clientHostBaseUrl: "http://192.168.1.50:4278",
       trustedLanShellUrl: "http://127.0.0.1:4278/companion",
     }),
-    "http://192.168.1.50:4278/companion",
+    null,
   );
   assert.equal(
     resolvePreferredCompanionShellUrl({

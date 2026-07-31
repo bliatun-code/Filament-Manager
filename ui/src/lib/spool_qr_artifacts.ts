@@ -31,6 +31,14 @@ async function loadTrustedLanShellUrl(
 ): Promise<string | null> {
   try {
     const trustedLanStatus = await loadTrustedLanStatus();
+    const usesDirectCanonicalAddress = Boolean(
+      trustedLanStatus.shell_url?.trim() &&
+        trustedLanStatus.base_url?.trim() &&
+        trustedLanStatus.base_url?.trim() === trustedLanStatus.direct_base_url?.trim(),
+    );
+    if (!trustedLanStatus.local_name_running && !usesDirectCanonicalAddress) {
+      return null;
+    }
     return trustedLanStatus.shell_url?.trim() || null;
   } catch {
     return null;

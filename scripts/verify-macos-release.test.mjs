@@ -7,6 +7,7 @@ import {
   normalizeMacosVersion,
   parseMacosDeploymentTargets,
   parseCodesignDetails,
+  validateBonjourServices,
   validateBundleExecutableEntry,
   validateBundleExecutableName,
   validateCodesignDetails,
@@ -217,6 +218,7 @@ test("macOS release verifier reads dotted entitlement names as literal keys", ()
         CFBundleShortVersionString: expectedAppVersion,
         CFBundleVersion: expectedAppVersion,
         LSMinimumSystemVersion: "11.0",
+        NSBonjourServices: ["_filament-manager._tcp"],
         NSCameraUsageDescription: "Scan filament labels.",
         NSLocalNetworkUsageDescription: "Connect to printers.",
       },
@@ -244,6 +246,47 @@ test("macOS release verifier rejects missing entitlements and privacy strings", 
       }),
     /device\.camera/,
   );
+
+  assert.throws(
+    () =>
+      validateReleaseMetadata({
+        entitlements: {
+          "com.apple.security.device.camera": true,
+          "com.apple.security.network.client": true,
+          "com.apple.security.network.server": true,
+        },
+        infoPlist: {
+          CFBundleExecutable: "bambu-filament-manager",
+          CFBundleIdentifier: "no.bliatun.filamentmanager",
+          CFBundleShortVersionString: expectedAppVersion,
+          CFBundleVersion: expectedAppVersion,
+          LSMinimumSystemVersion: "11.0",
+          NSCameraUsageDescription: "Scan filament labels.",
+          NSLocalNetworkUsageDescription: "Connect to printers.",
+        },
+      }),
+    /NSBonjourServices.*_filament-manager\._tcp/,
+  );
+});
+
+test("macOS release verifier requires the exact Companion Bonjour service declaration", () => {
+  assert.deepEqual(validateBonjourServices(["_filament-manager._tcp"]), [
+    "_filament-manager._tcp",
+  ]);
+
+  for (const invalidValue of [
+    undefined,
+    "_filament-manager._tcp",
+    [],
+    ["_filament-manager._tcp.local."],
+    ["_filament-manager._udp"],
+    ["_filament-manager._tcp", "_http._tcp"],
+  ]) {
+    assert.throws(
+      () => validateBonjourServices(invalidValue),
+      /NSBonjourServices.*_filament-manager\._tcp/,
+    );
+  }
 });
 
 test("macOS release verifier rejects debug and App Sandbox entitlements", () => {

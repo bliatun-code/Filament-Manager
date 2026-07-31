@@ -74,6 +74,30 @@ The webapp is a local companion interface served by the desktop app.
 
 The webapp is useful at the printer: check stock, inspect printer slots, loan out filament, return filament, add spools, and update weight.
 
+#### Stable Local Companion Address
+
+On macOS and Windows, the host advertises one stable `.local` Companion address
+through mDNS. New browser and desktop pairings and new QR labels use this
+address, so they continue to work if DHCP later gives the host a different IP
+address.
+
+The host and connecting device must be on the same local network, and that
+network must allow mDNS/Bonjour traffic. Guest networks and client isolation can
+prevent discovery. On Windows, allow Filament Manager on private networks if
+Windows Defender Firewall asks; do not enable public-network access. Settings
+still shows the host's exact numeric IP address as a
+diagnostic fallback, but that address can change and should not be used for new
+pairings or labels.
+
+After upgrading, a browser or desktop client paired through the old IP address
+must be paired once again with a new link. QR labels printed with the old IP
+address must be reprinted.
+
+Run only one active Companion host for a library. Starting a second host from a
+copy of the same portable backup creates the same stable name; the second host
+then refuses to publish pairing links or permanent QR links instead of silently
+renaming itself.
+
 Long inventory and loan lists are shown in manageable batches. When more
 matches remain, Companion shows the next batch size and a shown/total count;
 use **Show more** again to continue through the results.

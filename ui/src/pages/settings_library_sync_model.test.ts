@@ -123,6 +123,26 @@ test("buildLibrarySyncRoleOptions keeps role order and labels explicit", () => {
       { mode: "CLIENT", label: "Client" },
     ],
   );
+
+  assert.deepEqual(
+    buildLibrarySyncClientState({
+      mode: "CLIENT",
+      hostBaseUrl: "http://192.168.1.50:4278",
+      libraryId: "library-1",
+      clientAuthPaired: true,
+      pairingChecked: true,
+      pairingValid: true,
+    }),
+    {
+      savedMode: "CLIENT",
+      readOnly: true,
+      hostBaseUrl: "http://192.168.1.50:4278",
+      libraryId: "library-1",
+      hostWritePaired: true,
+      hostNeedsRepair: true,
+      hostPairingValid: false,
+    },
+  );
 });
 
 test("buildLibrarySyncTabLabels keeps library page chrome explicit", () => {

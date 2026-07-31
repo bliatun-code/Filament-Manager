@@ -32,7 +32,12 @@ export function SettingsLibraryWebappControl({
   t,
   onToggleTrustedLanEnabled,
 }: SettingsLibraryWebappControlProps) {
-  const webappRunning = Boolean(trustedLanStatus?.enabled && trustedLanStatus?.running);
+  const webappRunning = Boolean(
+    trustedLanStatus?.enabled &&
+      trustedLanStatus?.running &&
+      trustedLanStatus?.shell_reachable &&
+      trustedLanStatus?.local_name_running,
+  );
 
   return (
     <div className="space-y-2">
@@ -49,11 +54,11 @@ export function SettingsLibraryWebappControl({
         <div className="flex flex-wrap gap-2">
           <span
             className={settingsWebappStatusClass(
-              Boolean(trustedLanStatus?.enabled && trustedLanStatus?.running),
+              webappRunning,
             )}
           >
             <span className="settings-webapp-status-dot" aria-hidden="true" />
-            {trustedLanStatus?.enabled && trustedLanStatus?.running
+            {webappRunning
               ? t("settings.libraryWebappRunning", "Running")
               : trustedLanActionBusy
                 ? t("settings.trustedLanStatusStarting", "Starting...")

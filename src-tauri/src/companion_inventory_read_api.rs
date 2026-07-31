@@ -158,7 +158,7 @@ pub(super) async fn handle_spool_qr_image_svg(
                 .map_err(CompanionApiError::from)?
                 .ok_or_else(|| CompanionApiError::NotFound("Spool not found".to_string()))?;
             let reference = spool.spool.id.clone();
-            let payload = build_companion_spool_qr_payload(&state.runtime, &reference);
+            let payload = build_companion_spool_qr_payload(&state.runtime, &reference)?;
             let svg = build_qr_svg(&payload)?;
             Ok(string_response("image/svg+xml; charset=utf-8", svg))
         })

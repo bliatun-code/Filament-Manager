@@ -41,6 +41,19 @@ pub(crate) fn normalize_library_sync_base_url(value: &str) -> Result<String, Str
     Ok(normalized)
 }
 
+pub(crate) fn ensure_stable_local_library_sync_host(base_url: &str) -> Result<(), String> {
+    let parsed = url::Url::parse(base_url)
+        .map_err(|_| "Pairing requires the host's stable local Companion address.".to_string())?;
+    if parsed
+        .host_str()
+        .is_some_and(|hostname| hostname.to_ascii_lowercase().ends_with(".local"))
+    {
+        Ok(())
+    } else {
+        Err("Pairing requires the host's stable local Companion address.".to_string())
+    }
+}
+
 pub(crate) fn library_sync_host_input(
     base_url: &str,
     expected_library_id: Option<&str>,
@@ -89,7 +102,7 @@ pub(crate) fn save_library_sync_success(
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_library_sync_base_url;
+    use super::{ensure_stable_local_library_sync_host, normalize_library_sync_base_url};
 
     #[test]
     fn host_url_is_canonical_and_rejects_credential_leak_surfaces() {
@@ -111,6 +124,24 @@ mod tests {
             assert!(
                 normalize_library_sync_base_url(invalid).is_err(),
                 "{invalid} must be rejected"
+            );
+        }
+    }
+
+    #[test]
+    fn new_pairings_require_a_stable_local_hostname() {
+        assert!(ensure_stable_local_library_sync_host(
+            "http://filament-manager-0123456789abcdef01234567.local:4278"
+        )
+        .is_ok());
+        for invalid in [
+            "http://192.168.1.50:4278",
+            "http://filament-manager.local.evil:4278",
+            "http://[::1]:4278",
+        ] {
+            assert!(
+                ensure_stable_local_library_sync_host(invalid).is_err(),
+                "{invalid} must be rejected for new pairings"
             );
         }
     }

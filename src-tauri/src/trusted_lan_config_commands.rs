@@ -36,6 +36,8 @@ pub(crate) async fn update_trusted_lan_companion_config(
         }
     }
 
+    let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+
     let settings = TrustedLanSettingsRow {
         enabled: input.enabled,
         selected_interface_name: selected_interface.as_ref().map(|value| value.0.clone()),
@@ -51,6 +53,6 @@ pub(crate) async fn update_trusted_lan_companion_config(
         selected_interface,
         settings.listen_port,
     );
-    companion_api::reconcile_trusted_lan_server(state.inner().clone()).await?;
+    companion_api::reconcile_trusted_lan_server_locked(state.inner()).await?;
     Ok(state.companion.trusted_lan.snapshot())
 }

@@ -27,6 +27,9 @@ pub(crate) fn create_trusted_lan_pairing(
             "Trusted-LAN companion is not ready yet. Refresh status and try again.".to_string()
         }));
     }
+    let shell_url = status
+        .shell_url
+        .ok_or_else(|| "Trusted-LAN shell URL is not available.".to_string())?;
 
     let pairing_token = companion_api::generate_pairing_token();
     let pairing_token_hash = hash_secret(&pairing_token);
@@ -39,9 +42,6 @@ pub(crate) fn create_trusted_lan_pairing(
         Ok(())
     })?;
 
-    let shell_url = status
-        .shell_url
-        .ok_or_else(|| "Trusted-LAN shell URL is not available.".to_string())?;
     Ok(TrustedLanPairingLink {
         pairing_url: format!(
             "{}?pairing={}",

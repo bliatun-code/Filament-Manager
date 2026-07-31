@@ -17,6 +17,7 @@ import type {
   LibrarySyncSettings,
 } from "../lib/tauri_client";
 import type { Locale } from "../lib/i18n";
+import { isStableLocalCompanionBaseUrl } from "../lib/companion_url";
 import type { LibrarySyncVisibilityState } from "./settings_library_sync_model";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -95,6 +96,9 @@ export function SettingsLibraryClientPanel({
   onSaveDeviceName,
   onToggleAdvanced,
 }: SettingsLibraryClientPanelProps) {
+  const clientHostUsesStableAddress = isStableLocalCompanionBaseUrl(
+    settingsClientHostBaseUrl,
+  );
   return (
     <div className="space-y-4">
       <div className={settingsSurfacePanelClass}>
@@ -130,7 +134,7 @@ export function SettingsLibraryClientPanel({
                 value={librarySyncPairingDraft}
                 onChange={(event) => onPairingDraftChange(event.target.value)}
                 className={settingsTextInputClass}
-                placeholder="http://192.168.1.25:4278/companion?pairing=..."
+                placeholder="http://filament-manager-0123456789abcdef01234567.local:4278/companion?pairing=..."
                 disabled={!tauri || librarySyncBusy}
               />
             </label>
@@ -166,7 +170,7 @@ export function SettingsLibraryClientPanel({
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              {settingsClientHostNeedsRepair ? (
+              {settingsClientHostNeedsRepair && clientHostUsesStableAddress ? (
                 <button
                   type="button"
                   onClick={onRenewClientAuth}
@@ -199,7 +203,7 @@ export function SettingsLibraryClientPanel({
               {settingsClientHostNeedsRepair
                 ? t(
                     "settings.librarySyncClientAuthRepairHint",
-                    "Host is still reachable, but this desktop client must be paired again before protected sync actions can continue.",
+                    "If this desktop client still uses a numeric IP address, remove the old pairing and pair it again using a new link from the host.",
                   )
                 : t(
                     "settings.librarySyncClientAuthPersistentHint",

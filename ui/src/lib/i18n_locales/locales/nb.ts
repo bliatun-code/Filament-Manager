@@ -288,7 +288,7 @@ export const nbDictionary: DictionaryNode = {
       qrTargetCompanionHint:
         "Denne QR-koden åpner nettleserkompanjongen direkte så lenge mål-URL-en fortsatt er tilgjengelig.",
       qrCompanionUnavailable:
-        "Kompanjonglenke er ikke tilgjengelig akkurat nå. Start Trusted-LAN-kompanjongen på den aktive verten for å bygge en direkte nettleserlenke.",
+        "QR-lenker til Companion krever den stabile lokale adressen. Gjør den tilgjengelig på den aktive verten før du lager en etikett.",
       assignmentManagedOnPrinters:
         "Plassering av filament og sportildeling håndteres på Printere-siden.",
       assignAmsSlot: "Tildel til printer-spor",
@@ -1236,7 +1236,7 @@ export const nbDictionary: DictionaryNode = {
       librarySyncClientAuthPersistentHint:
         "Denne klienten forblir paret til du fjerner parringen her eller på verten.",
       librarySyncClientAuthRepairHint:
-        "Verten svarer fortsatt, men denne desktop-klienten må pares på nytt før beskyttede sync-handlinger kan fortsette.",
+        "Hvis denne desktop-klienten fortsatt bruker en numerisk IP-adresse, fjerner du den gamle parringen og parer på nytt med en ny lenke fra verten.",
       cachedReused: "Gjenbrukt fra cache",
       detailFetches: "Detaljkall",
       librarySyncClearClientAuth: "Fjern paring",
@@ -1401,11 +1401,20 @@ export const nbDictionary: DictionaryNode = {
       trustedLanPortHint:
         "Hold porten stabil slik at parringlenker forblir forutsigbare.",
       trustedLanShellUrl: "LAN-URL",
+      trustedLanStableAddress: "Stabil lokal adresse",
+      trustedLanDirectAddress: "Nåværende direkteadresse",
+      trustedLanStableAddressUnavailable:
+        "Utilgjengelig til det stabile lokalnavnet kjører",
       trustedLanUrlUnavailable: "Ikke tilgjengelig før trusted-LAN-modus er aktivert",
       trustedLanUrlHintEnabled:
-        "Bruk denne eksakte URL-en for parring på det betrodde nettverket ditt.",
+        "Bruk denne eksakte adressen til parring og permanente QR-lenker på det betrodde nettverket ditt.",
       trustedLanUrlHintDisabled:
         "Ingen LAN-URL eksponeres mens trusted-LAN-modus forblir deaktivert.",
+      trustedLanDirectAddressHint:
+        "Diagnostikkadresse for den valgte IP-adressen. Den kan endres når nettverket ikke reserverer en adresse for denne datamaskinen.",
+      trustedLanLocalNameUnavailable: "Stabil lokal adresse er utilgjengelig",
+      trustedLanLocalNameUnavailableHint:
+        "Webappen kjører på den nåværende IP-adressen, men parring og permanente QR-lenker er deaktivert til den stabile lokale adressen er tilgjengelig.",
       trustedLanAuth: "Autentisering",
       trustedLanAuthPairing: "Per-nettleser-parring",
       trustedLanAuthHint:

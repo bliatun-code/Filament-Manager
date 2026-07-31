@@ -27,6 +27,8 @@ function createTrustedLanStatus(
     selected_interface_name: null,
     selected_interface_address: null,
     bind_address: null,
+    advertised_hostname: null,
+    direct_base_url: null,
     base_url: null,
     shell_url: null,
     listen_port: 4278,
@@ -34,6 +36,8 @@ function createTrustedLanStatus(
     health_error: null,
     running: false,
     last_error: null,
+    local_name_running: false,
+    local_name_error: null,
     api_version: "v1",
     auth_mode: "pairing-session",
     ...overrides,
@@ -64,9 +68,14 @@ test("buildTrustedLanCompanionModel reports the scaffold as disabled by default"
     "Use a fixed port so pairing links and exact host/origin checks stay predictable.",
   );
   assert.equal(
-    model.shellUrlValue,
+    model.stableAddressValue,
     "Not available until trusted-LAN mode is enabled",
   );
+  assert.equal(
+    model.directAddressValue,
+    "Not available until trusted-LAN mode is enabled",
+  );
+  assert.equal(model.localNameWarning, null);
   assert.equal(model.authLabel, "Per-browser pairing");
   assert.equal(model.pairActionDisabled, true);
   assert.equal(model.configActionDisabled, false);
@@ -78,11 +87,14 @@ test("buildTrustedLanCompanionModel formats selected interface and URL details",
       enabled: true,
       running: true,
       shell_reachable: true,
+      local_name_running: true,
       selected_interface_name: "Wi-Fi",
       selected_interface_address: "192.168.1.50",
       bind_address: "192.168.1.50:4278",
-      base_url: "http://192.168.1.50:4278",
-      shell_url: "http://192.168.1.50:4278/companion",
+      advertised_hostname: "filament-manager-a1b2.local",
+      direct_base_url: "http://192.168.1.50:4278",
+      base_url: "http://filament-manager-a1b2.local:4278",
+      shell_url: "http://filament-manager-a1b2.local:4278/companion",
     }),
     statusLoading: false,
     actionBusy: false,
@@ -96,12 +108,16 @@ test("buildTrustedLanCompanionModel formats selected interface and URL details",
     model.statusHint,
     "Trusted-LAN companion is listening on the selected private interface.",
   );
-  assert.equal(model.interfaceValue, "Wi-Fi (192.168.1.50)");
+  assert.equal(model.interfaceValue, "Wi-Fi");
   assert.equal(model.interfaceHint, "192.168.1.50:4278");
-  assert.equal(model.shellUrlValue, "http://192.168.1.50:4278/companion");
   assert.equal(
-    model.shellUrlHint,
-    "This exact LAN URL will later be used for browser pairing on your trusted network.",
+    model.stableAddressValue,
+    "http://filament-manager-a1b2.local:4278/companion",
+  );
+  assert.equal(model.directAddressValue, "http://192.168.1.50:4278");
+  assert.equal(
+    model.stableAddressHint,
+    "Use this exact address for pairing and permanent QR links on your trusted network.",
   );
   assert.equal(model.pairActionDisabled, false);
 });
@@ -112,7 +128,8 @@ test("buildTrustedLanCompanionModel keeps the live status visible while refreshi
       enabled: true,
       running: true,
       shell_reachable: true,
-      shell_url: "http://192.168.1.50:4278/companion",
+      local_name_running: true,
+      shell_url: "http://filament-manager-a1b2.local:4278/companion",
     }),
     statusLoading: true,
     actionBusy: false,
@@ -123,7 +140,8 @@ test("buildTrustedLanCompanionModel keeps the live status visible while refreshi
       enabled: true,
       running: true,
       shell_reachable: true,
-      shell_url: "http://192.168.1.50:4278/companion",
+      local_name_running: true,
+      shell_url: "http://filament-manager-a1b2.local:4278/companion",
     }),
     statusLoading: false,
     actionBusy: true,
@@ -155,6 +173,42 @@ test("buildTrustedLanCompanionModel shows starting while enabled server health i
   assert.equal(model.statusTone, "warn");
   assert.equal(model.statusPillLabel, "Checking");
   assert.equal(model.statusLabel, "Starting...");
+});
+
+test("buildTrustedLanCompanionModel blocks pairing when the stable local name is unavailable", () => {
+  const model = buildTrustedLanCompanionModel({
+    trustedLanStatus: createTrustedLanStatus({
+      enabled: true,
+      running: true,
+      shell_reachable: true,
+      advertised_hostname: "filament-manager-a1b2.local",
+      direct_base_url: "http://192.168.1.50:4278",
+      local_name_running: false,
+      local_name_error: "The local name conflicts with another device.",
+    }),
+    statusLoading: false,
+    actionBusy: false,
+    t,
+  });
+
+  assert.equal(model.reachable, false);
+  assert.equal(model.statusTone, "warn");
+  assert.equal(model.statusPillLabel, "Check");
+  assert.equal(model.statusLabel, "Stable local address unavailable");
+  assert.equal(
+    model.statusHint,
+    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
+  );
+  assert.equal(
+    model.localNameWarning,
+    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
+  );
+  assert.equal(
+    model.stableAddressValue,
+    "Unavailable until the stable local name is running",
+  );
+  assert.equal(model.directAddressValue, "http://192.168.1.50:4278");
+  assert.equal(model.pairActionDisabled, true);
 });
 
 test("buildTrustedLanCompanionModel still shows loading when no status snapshot exists yet", () => {

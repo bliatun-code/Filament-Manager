@@ -80,19 +80,22 @@ fn normalize_hex_color(value: &str) -> Option<String> {
 pub(crate) fn build_companion_spool_qr_payload(
     runtime: &TrustedLanCompanionRuntime,
     reference: &str,
-) -> String {
+) -> Result<String, CompanionApiError> {
     let encoded_ref = encode_versioned_qr_ref(reference);
-    let shell_url = runtime.snapshot().shell_url.unwrap_or_default();
-    if shell_url.trim().is_empty() {
-        return encoded_ref;
-    }
-    match reqwest::Url::parse(shell_url.trim()) {
-        Ok(mut url) => {
-            url.query_pairs_mut().append_pair("spool_qr", &encoded_ref);
-            url.to_string()
-        }
-        Err(_) => encoded_ref,
-    }
+    let shell_url = runtime
+        .snapshot()
+        .shell_url
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| {
+            CompanionApiError::ServiceUnavailable(
+                "Stable Companion QR address is not available.".to_string(),
+            )
+        })?;
+    let mut url = reqwest::Url::parse(shell_url.trim()).map_err(|_| {
+        CompanionApiError::Internal("Stable Companion QR address is invalid.".to_string())
+    })?;
+    url.query_pairs_mut().append_pair("spool_qr", &encoded_ref);
+    Ok(url.to_string())
 }
 
 pub(crate) fn build_qr_svg(payload: &str) -> Result<String, CompanionApiError> {
@@ -290,6 +293,7 @@ fn weak_etag_matches(if_none_match: &str, current_etag: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::TrustedLanCompanionRuntime;
 
     #[test]
     fn normalizes_optional_swatch_colors() {
@@ -336,5 +340,24 @@ mod tests {
         assert!(weak_etag_matches("\"old\", W/\"current\"", "W/\"current\""));
         assert!(weak_etag_matches("*", "W/\"current\""));
         assert!(!weak_etag_matches("W/\"other\"", "W/\"current\""));
+    }
+
+    #[test]
+    fn spool_qr_requires_the_stable_address_when_one_is_configured() {
+        let runtime = TrustedLanCompanionRuntime::new(4278)
+            .with_selected_interface("Wi-Fi", "192.168.1.50")
+            .with_advertised_hostname("filament-manager-a7c4.local")
+            .with_enabled(true);
+
+        assert!(matches!(
+            build_companion_spool_qr_payload(&runtime, "spool-1"),
+            Err(CompanionApiError::ServiceUnavailable(_))
+        ));
+
+        runtime.mark_local_name_running();
+        assert_eq!(
+            build_companion_spool_qr_payload(&runtime, "spool-1").expect("stable QR URL"),
+            "http://filament-manager-a7c4.local:4278/companion?spool_qr=v1%3Aspool-1"
+        );
     }
 }

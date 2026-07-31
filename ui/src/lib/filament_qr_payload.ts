@@ -1,7 +1,36 @@
+import {
+  deriveCompanionShellUrl,
+  isStableLocalCompanionBaseUrl,
+} from "./companion_url";
+
+export {
+  deriveCompanionShellUrl,
+  isStableLocalCompanionBaseUrl,
+} from "./companion_url";
+
 const VERSIONED_PREFIX = /^v(\d+):(.*)$/i;
 
 function normalizeRef(value: string | null | undefined): string {
   return String(value ?? "").trim();
+}
+
+function parseCompanionShellUrl(value: string): URL | null {
+  try {
+    const url = new URL(value);
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.pathname.replace(/\/+$/, "") !== "/companion" ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return url;
+  } catch {
+    return null;
+  }
 }
 
 export type ParsedFilamentQrPayload = {
@@ -89,39 +118,16 @@ export function parseFilamentQrPayload(
   return direct;
 }
 
-export function deriveCompanionShellUrl(
-  baseUrl: string | null | undefined,
-): string | null {
-  const normalizedBaseUrl = normalizeRef(baseUrl);
-  if (!normalizedBaseUrl) {
-    return null;
-  }
-  try {
-    const url = new URL(normalizedBaseUrl);
-    const trimmedPath = url.pathname.replace(/\/+$/, "");
-    if (!trimmedPath || trimmedPath === "/") {
-      url.pathname = "/companion";
-    } else if (!trimmedPath.endsWith("/companion")) {
-      url.pathname = `${trimmedPath}/companion`;
-    }
-    url.search = "";
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
 export function resolvePreferredCompanionShellUrl(options?: {
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
   trustedLanShellUrl?: string | null;
 }): string | null {
   if (options?.clientReadOnly) {
-    const clientShellUrl = deriveCompanionShellUrl(options.clientHostBaseUrl);
-    if (clientShellUrl) {
-      return clientShellUrl;
-    }
+    const clientShellUrl = isStableLocalCompanionBaseUrl(options.clientHostBaseUrl)
+      ? deriveCompanionShellUrl(options.clientHostBaseUrl)
+      : null;
+    return clientShellUrl;
   }
   return normalizeRef(options?.trustedLanShellUrl) || null;
 }
@@ -138,17 +144,16 @@ export function buildFilamentQrPayload(
     throw new Error("Companion QR link is unavailable.");
   }
 
-  try {
-    const shellUrl = new URL(normalizedShellUrl);
-    shellUrl.searchParams.set("spool_qr", embeddedPayload);
-    const target = shellUrl.toString();
-    return {
-      payload: target,
-      target,
-    };
-  } catch {
+  const shellUrl = parseCompanionShellUrl(normalizedShellUrl);
+  if (!shellUrl) {
     throw new Error("Companion QR link is invalid.");
   }
+  shellUrl.searchParams.set("spool_qr", embeddedPayload);
+  const target = shellUrl.toString();
+  return {
+    payload: target,
+    target,
+  };
 }
 
 export function buildCompanionSpoolQrPayload(
