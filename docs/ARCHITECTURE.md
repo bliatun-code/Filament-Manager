@@ -25,13 +25,20 @@ On macOS and Windows, a Companion host advertises one stable `.local` address
 through mDNS on the selected LAN. Pairing links and QR labels use that stable
 address, while the exact current IP address remains available for listener
 diagnostics. A DHCP change may update the listener binding without changing the
-address shared with users.
+address shared with users. The canonical library-derived address uses the short
+`fm-xxxxxxxx.local` form, and the HTTP root redirects to `/companion` for manual
+entry.
 
 Successful service registration alone is not enough to enable stable links.
 Before the trusted-LAN runtime marks the name as available, it must resolve the
 exact library-derived hostname to the selected private IPv4 address. This
 prevents Windows from exposing pairing or QR links after a registration result
 that did not produce a usable hostname.
+
+The Windows responder enables only the selected private interface and IPv4
+loopback. Loopback is required for reliable same-host Windows name resolution,
+while excluding every other adapter prevents an explicit A record from being
+announced over an unselected interface on the same subnet.
 
 Stable-name resolution is limited to devices on the same LAN where mDNS traffic is allowed.
 Existing IP-based browser and desktop pairings are not rewritten automatically;

@@ -714,9 +714,7 @@ mod tests {
         assert!(runtime
             .advertised_hostname
             .as_deref()
-            .is_some_and(
-                |value| value.starts_with("filament-manager-") && value.ends_with(".local")
-            ));
+            .is_some_and(|value| value.starts_with("fm-") && value.ends_with(".local")));
         let reset_profile_id = db
             .get_or_create_credential_store_profile_id()
             .expect("reset credential profile");

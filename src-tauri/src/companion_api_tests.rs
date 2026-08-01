@@ -117,8 +117,8 @@ fn trusted_lan_runtime_for_address(address: &str) -> TrustedLanCompanionRuntime 
 #[test]
 fn companion_service_instance_name_is_unique_without_exposing_the_library_id() {
     assert_eq!(
-        companion_service_instance_name("filament-manager-0123456789abcdef01234567.local"),
-        "Filament Manager 0123456789abcdef01234567"
+        companion_service_instance_name("fm-7k3m9pwx.local"),
+        "Filament Manager 7k3m9pwx"
     );
 }
 
@@ -131,8 +131,8 @@ fn test_state(db_path: &Path) -> CompanionApiState {
 }
 
 fn stable_name_test_state(db_path: &Path) -> CompanionApiState {
-    let runtime = trusted_lan_runtime_for_address("127.0.0.1")
-        .with_advertised_hostname("filament-manager-0123456789abcdef01234567.local");
+    let runtime =
+        trusted_lan_runtime_for_address("127.0.0.1").with_advertised_hostname("fm-7k3m9pwx.local");
     runtime.mark_local_name_running();
     CompanionApiState::new(
         db_path.to_string_lossy().to_string(),
@@ -1001,14 +1001,31 @@ async fn stable_companion_name_is_required_outside_the_direct_health_probe() {
             .map_err(|error| error.to_string())?;
         assert_eq!(direct_shell.status(), StatusCode::FORBIDDEN);
 
+        let stable_root = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/")
+                    .header("host", "fm-7k3m9pwx.local:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(stable_root.status(), StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(
+            stable_root
+                .headers()
+                .get(axum::http::header::LOCATION)
+                .and_then(|value| value.to_str().ok()),
+            Some("/companion")
+        );
+
         let stable_shell = router
             .oneshot(
                 Request::builder()
                     .uri("/companion")
-                    .header(
-                        "host",
-                        "filament-manager-0123456789abcdef01234567.local:4278",
-                    )
+                    .header("host", "fm-7k3m9pwx.local:4278")
                     .body(Body::empty())
                     .map_err(|error| error.to_string())?,
             )
@@ -3756,6 +3773,27 @@ async fn companion_shell_route_serves_browser_ui() {
             .map_err(|error| error.to_string())?;
         assert_eq!(missing_host.status(), StatusCode::FORBIDDEN);
         assert_no_store(missing_host.headers());
+
+        let root_response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(root_response.status(), StatusCode::TEMPORARY_REDIRECT);
+        assert_eq!(
+            root_response
+                .headers()
+                .get(axum::http::header::LOCATION)
+                .and_then(|value| value.to_str().ok()),
+            Some("/companion")
+        );
+        assert_no_store(root_response.headers());
 
         let response = router
             .oneshot(

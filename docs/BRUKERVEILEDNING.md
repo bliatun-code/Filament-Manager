@@ -79,7 +79,9 @@ Webappen er nyttig for raske operasjoner ved printeren: sjekke lager, se printer
 På macOS og Windows annonserer verten én stabil `.local`-adresse for Companion
 via mDNS. Nye paringer av nettlesere og desktop-klienter og nye QR-etiketter
 bruker denne adressen, slik at de fortsetter å virke hvis DHCP senere gir verten
-en annen IP-adresse. Filament Manager aktiverer paring og permanente QR-lenker
+en annen IP-adresse. Det korte bibliotekbundne navnet ser ut som
+`fm-7k3m9pwx.local`. Du kan skrive `http://fm-7k3m9pwx.local:4278` uten
+`/companion`; verten videresender til webappen. Filament Manager aktiverer paring og permanente QR-lenker
 først når det stabile navnet kan løses til den valgte private LAN-adressen. Hvis
 registrering eller navneoppløsning feiler, kan webappen fortsatt være tilgjengelig
 på sin nåværende numeriske IP for diagnostikk, men appen presenterer ikke denne

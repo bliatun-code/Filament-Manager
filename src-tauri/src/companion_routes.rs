@@ -128,6 +128,7 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
         .with_state(state.clone());
 
     Router::new()
+        .route("/", get(handle_companion_root))
         .route("/companion", get(handle_companion_shell))
         .route("/companion/", get(handle_companion_shell))
         .route("/companion/{asset}", get(handle_companion_asset))

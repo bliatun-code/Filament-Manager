@@ -46,14 +46,31 @@ pub(crate) fn load_trusted_lan_runtime(
 
 pub(crate) fn companion_local_hostname(library_id: &str) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"filament-manager-companion-host-v1\0");
+    hasher.update(b"filament-manager-companion-host-v2\0");
     hasher.update(library_id.trim().as_bytes());
     let digest = hasher.finalize();
-    let suffix = digest[..12]
+    format!("fm-{}.local", short_hostname_token(&digest))
+}
+
+fn short_hostname_token(digest: &[u8]) -> String {
+    // Avoid characters that are easy to confuse when the address has to be typed on a device
+    // without a camera or clipboard. Eight base-30 characters retain over 39 bits of the digest;
+    // mDNS conflict detection still fails closed if two libraries ever choose the same label.
+    const ALPHABET: &[u8; 30] = b"23456789abcdefghjkmnpqrstvwxyz";
+    const TOKEN_LENGTH: usize = 8;
+    const TOKEN_SPACE: u64 = 656_100_000_000; // 30^8
+
+    let mut value = digest
         .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
-    format!("filament-manager-{suffix}.local")
+        .take(6)
+        .fold(0_u64, |value, byte| (value << 8) | u64::from(*byte))
+        % TOKEN_SPACE;
+    let mut token = [b'2'; TOKEN_LENGTH];
+    for character in token.iter_mut().rev() {
+        *character = ALPHABET[(value % ALPHABET.len() as u64) as usize];
+        value /= ALPHABET.len() as u64;
+    }
+    String::from_utf8(token.to_vec()).expect("hostname alphabet is ASCII")
 }
 
 pub(crate) fn reload_trusted_lan_runtime_after_library_change(
@@ -103,11 +120,15 @@ mod tests {
 
         assert_eq!(first, same);
         assert_ne!(first, other);
-        assert!(first.starts_with("filament-manager-"));
+        assert_eq!(first, "fm-zm7jz986.local");
+        assert!(first.starts_with("fm-"));
         assert!(first.ends_with(".local"));
+        assert_eq!(first.len(), "fm-23456789.local".len());
         assert!(!first.contains("library-one"));
-        assert!(first.chars().all(|character| character.is_ascii_lowercase()
-            || character.is_ascii_digit()
-            || matches!(character, '-' | '.')));
+        assert!(first
+            .trim_start_matches("fm-")
+            .trim_end_matches(".local")
+            .bytes()
+            .all(|character| b"23456789abcdefghjkmnpqrstvwxyz".contains(&character)));
     }
 }

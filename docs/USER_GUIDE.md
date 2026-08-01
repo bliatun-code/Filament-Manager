@@ -79,7 +79,9 @@ The webapp is useful at the printer: check stock, inspect printer slots, loan ou
 On macOS and Windows, the host advertises one stable `.local` Companion address
 through mDNS. New browser and desktop pairings and new QR labels use this
 address, so they continue to work if DHCP later gives the host a different IP
-address. Filament Manager enables pairing and permanent QR links only after the
+address. The short library-bound name looks like `fm-7k3m9pwx.local`. You can
+type `http://fm-7k3m9pwx.local:4278` without `/companion`; the host redirects to
+the webapp. Filament Manager enables pairing and permanent QR links only after the
 stable name resolves to the selected private LAN address. If registration or
 name resolution fails, the webapp can remain available on its current numeric
 IP for diagnostics, but the app does not present that temporary address as a

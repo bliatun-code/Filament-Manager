@@ -1,4 +1,7 @@
-use super::{AdvertisementError, ValidatedAdvertisementConfig, COMPANION_SERVICE_TYPE};
+use super::{
+    validate_windows_announcement, AdvertisementError, ValidatedAdvertisementConfig,
+    WindowsAnnouncementValidation, COMPANION_SERVICE_TYPE,
+};
 use mdns_sd::{DaemonEvent, Error as MdnsError, IfKind, Receiver, ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr};
@@ -115,10 +118,10 @@ impl Registration {
             }
         };
 
-        // The daemon starts with all interfaces enabled. Queue the restrictive selection before
-        // registration, and also put the same selection on ServiceInfo as defense in depth. The
-        // explicit address disables automatic address discovery, so only the selected LAN IPv4 is
-        // published as an A record.
+        // mdns-sd relies on loopback for reliable same-host discovery on Windows. Keep loopback
+        // alongside the explicitly selected LAN interface, but exclude every other adapter. The
+        // explicit service address below also disables automatic address discovery, so only the
+        // selected private IPv4 is published as an A record.
         if let Err(error) = configure_daemon(&daemon, config.interface_index()) {
             shutdown_daemon(&daemon);
             return Err(error);
@@ -191,6 +194,9 @@ fn configure_daemon(
         .map_err(map_mdns_error)?;
     daemon
         .disable_interface(IfKind::All)
+        .map_err(map_mdns_error)?;
+    daemon
+        .enable_interface(IfKind::LoopbackV4)
         .map_err(map_mdns_error)?;
     daemon
         .enable_interface(IfKind::IndexV4(interface_index))
@@ -267,16 +273,23 @@ fn monitor_worker(
 
         let failure = match event {
             DaemonEvent::Announce(instance_name, target) => {
-                if announcement_identity_matches(&expected_identity, &instance_name, &target) {
-                    state.mark_healthy();
-                    None
-                } else {
-                    Some(AdvertisementError::RegisteredIdentityChanged)
+                match validate_windows_announcement(&expected_identity, &instance_name, &target) {
+                    WindowsAnnouncementValidation::Verified => {
+                        state.mark_healthy();
+                        None
+                    }
+                    WindowsAnnouncementValidation::Pending => None,
+                    WindowsAnnouncementValidation::Rejected => {
+                        Some(AdvertisementError::RegisteredIdentityChanged)
+                    }
                 }
             }
             // mdns-sd resolves both host and service conflicts by renaming. A permanent QR must
             // never silently follow such a rename, so stop the responder immediately.
             DaemonEvent::NameChange(_) => Some(AdvertisementError::NameConflict),
+            DaemonEvent::IpDel(address) if address == IpAddr::V4(expected_identity.address()) => {
+                Some(AdvertisementError::RegistrationWorkerStopped)
+            }
             DaemonEvent::Error(error) => Some(map_mdns_error(error)),
             _ => None,
         };
@@ -287,17 +300,6 @@ fn monitor_worker(
             return;
         }
     }
-}
-
-fn announcement_identity_matches(
-    config: &ValidatedAdvertisementConfig,
-    instance_name: &str,
-    target: &str,
-) -> bool {
-    let Some((hostname, _interface_name)) = target.split_once(':') else {
-        return false;
-    };
-    config.windows_registration_identity_matches(instance_name, hostname)
 }
 
 fn map_mdns_error(error: MdnsError) -> AdvertisementError {
@@ -375,29 +377,131 @@ mod tests {
     }
 
     #[test]
-    fn announcement_accepts_only_the_exact_requested_identity() {
+    fn announcement_accepts_both_mdns_sd_payload_shapes() {
         let config = valid_config();
 
-        assert!(announcement_identity_matches(
-            &config,
-            "Filament Manager A7C4._filament-manager._tcp.local.",
-            "filament-manager-a7c4.local.:Ethernet"
-        ));
-        assert!(!announcement_identity_matches(
-            &config,
-            "Filament Manager A7C4 (2)._filament-manager._tcp.local.",
-            "filament-manager-a7c4.local.:Ethernet"
-        ));
-        assert!(!announcement_identity_matches(
-            &config,
-            "Filament Manager A7C4._filament-manager._tcp.local.",
-            "filament-manager-a7c4-2.local.:Ethernet"
-        ));
-        assert!(!announcement_identity_matches(
-            &config,
-            "Filament Manager A7C4._filament-manager._tcp.local.",
-            "missing-interface-separator"
-        ));
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[192.168.1.42]"
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[192.168.1.42, 192.168.1.43]"
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "filament-manager-a7c4.local.:Ethernet"
+            ),
+            WindowsAnnouncementValidation::Verified
+        );
+    }
+
+    #[test]
+    fn announcement_rejects_changed_identity_but_ignores_unknown_payload_shapes() {
+        let config = valid_config();
+
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4 (2)._filament-manager._tcp.local.",
+                "[192.168.1.42]"
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[192.168.1.99]"
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "filament-manager-a7c4-2.local.:Ethernet"
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "future-mdns-sd-payload"
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
+    }
+
+    #[test]
+    fn announcement_rejects_malformed_address_lists() {
+        let config = valid_config();
+
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[not-an-ip]"
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[]"
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+    }
+
+    #[test]
+    fn retransmission_announcement_requires_exact_requested_identity() {
+        let config = valid_config();
+
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "filament-manager-a7c4.local.:Ethernet"
+            ),
+            WindowsAnnouncementValidation::Verified
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4 (2)._filament-manager._tcp.local.",
+                "filament-manager-a7c4.local.:Ethernet"
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "filament-manager-a7c4-2.local.:Ethernet"
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &config,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "missing-interface-separator"
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
     }
 
     #[test]

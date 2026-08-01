@@ -134,7 +134,7 @@ export function SettingsLibraryClientPanel({
                 value={librarySyncPairingDraft}
                 onChange={(event) => onPairingDraftChange(event.target.value)}
                 className={settingsTextInputClass}
-                placeholder="http://filament-manager-0123456789abcdef01234567.local:4278/companion?pairing=..."
+                placeholder="http://fm-7k3m9pwx.local:4278/companion?pairing=..."
                 disabled={!tauri || librarySyncBusy}
               />
             </label>

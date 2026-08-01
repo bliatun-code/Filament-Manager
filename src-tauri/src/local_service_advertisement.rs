@@ -89,7 +89,7 @@ impl ValidatedAdvertisementConfig {
         &self.instance_name
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "windows", test))]
     pub(crate) fn address(&self) -> Ipv4Addr {
         self.address
     }
@@ -241,6 +241,60 @@ fn resolved_addresses_include_selected_ipv4(resolved: &[IpAddr], selected: Ipv4A
     resolved.contains(&IpAddr::V4(selected))
 }
 
+#[cfg(any(target_os = "windows", test))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum WindowsAnnouncementValidation {
+    Verified,
+    Pending,
+    Rejected,
+}
+
+#[cfg(any(target_os = "windows", test))]
+pub(crate) fn validate_windows_announcement(
+    config: &ValidatedAdvertisementConfig,
+    instance_name: &str,
+    target: &str,
+) -> WindowsAnnouncementValidation {
+    if !dns_name_matches(&config.service_instance_fqdn(), instance_name) {
+        return WindowsAnnouncementValidation::Rejected;
+    }
+
+    // mdns-sd emits two payload shapes. The first unsolicited response contains a
+    // debug-formatted list of the sending interface's addresses (for example `[192.168.1.42]`),
+    // while the post-probing announcement contains `hostname:interface`. The address list can
+    // reject an announcement sent from the wrong interface, but it cannot prove the final DNS
+    // identity after conflict probing; keep it pending until the canonical event arrives.
+    if let Some(addresses) = parse_windows_announced_addresses(target) {
+        // mdns-sd reports every IPv4 assigned to the interface that sent the packet, rather than
+        // the service's explicit A records. A selected adapter can legitimately have secondary
+        // addresses, so the selected address must be present but need not be the only entry.
+        return if addresses.contains(&IpAddr::V4(config.address())) {
+            WindowsAnnouncementValidation::Pending
+        } else {
+            WindowsAnnouncementValidation::Rejected
+        };
+    }
+    if let Some((hostname, _interface_name)) = target.split_once(':') {
+        return if config.windows_registration_identity_matches(instance_name, hostname) {
+            WindowsAnnouncementValidation::Verified
+        } else {
+            WindowsAnnouncementValidation::Rejected
+        };
+    }
+    WindowsAnnouncementValidation::Pending
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn parse_windows_announced_addresses(target: &str) -> Option<Vec<IpAddr>> {
+    let body = target.trim().strip_prefix('[')?.strip_suffix(']')?.trim();
+    if body.is_empty() {
+        return Some(Vec::new());
+    }
+    body.split(',')
+        .map(|value| value.trim().parse::<IpAddr>().ok())
+        .collect()
+}
+
 fn normalize_host_label(value: &str) -> Result<String, AdvertisementError> {
     let trimmed = value.trim().trim_end_matches('.');
     let lowercase = trimmed.to_ascii_lowercase();
@@ -325,6 +379,66 @@ mod tests {
             "Filament Manager A7C4._filament-manager._tcp.local..",
             "filament-manager-a7c4.local.",
         ));
+    }
+
+    #[test]
+    fn windows_announcement_validation_accepts_both_mdns_sd_payload_shapes() {
+        let validated = valid_config().validate().expect("valid config");
+
+        assert_eq!(
+            validate_windows_announcement(
+                &validated,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[192.168.1.42]",
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &validated,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[192.168.1.42, 192.168.1.43]",
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &validated,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "filament-manager-a7c4.local.:Ethernet",
+            ),
+            WindowsAnnouncementValidation::Verified
+        );
+    }
+
+    #[test]
+    fn windows_announcement_validation_fails_closed_for_changed_identity() {
+        let validated = valid_config().validate().expect("valid config");
+
+        assert_eq!(
+            validate_windows_announcement(
+                &validated,
+                "Filament Manager A7C4 (2)._filament-manager._tcp.local.",
+                "[192.168.1.42]",
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &validated,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "[192.168.1.99]",
+            ),
+            WindowsAnnouncementValidation::Rejected
+        );
+        assert_eq!(
+            validate_windows_announcement(
+                &validated,
+                "Filament Manager A7C4._filament-manager._tcp.local.",
+                "future-mdns-sd-payload",
+            ),
+            WindowsAnnouncementValidation::Pending
+        );
     }
 
     #[test]

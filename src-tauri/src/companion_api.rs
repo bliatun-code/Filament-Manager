@@ -238,8 +238,15 @@ fn companion_service_instance_name(hostname: &str) -> String {
         .trim_end_matches('.')
         .strip_suffix(".local")
         .unwrap_or(hostname.trim());
-    let identity = label.strip_prefix("filament-manager-").unwrap_or(label);
+    let identity = label
+        .strip_prefix("fm-")
+        .or_else(|| label.strip_prefix("filament-manager-"))
+        .unwrap_or(label);
     format!("Filament Manager {identity}")
+}
+
+pub(super) async fn handle_companion_root() -> axum::response::Redirect {
+    axum::response::Redirect::temporary("/companion")
 }
 
 async fn run_companion_server(

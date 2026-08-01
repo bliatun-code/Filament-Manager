@@ -861,9 +861,7 @@ mod tests {
             assert!(runtime
                 .advertised_hostname
                 .as_deref()
-                .is_some_and(
-                    |value| value.starts_with("filament-manager-") && value.ends_with(".local")
-                ));
+                .is_some_and(|value| value.starts_with("fm-") && value.ends_with(".local")));
             Ok(())
         })();
 

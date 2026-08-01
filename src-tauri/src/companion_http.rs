@@ -16,7 +16,7 @@ pub(crate) const COMPANION_QA_DELAY_HEADER: &str = "x-companion-qa-delay-ms";
 pub(crate) async fn apply_companion_cache_policy(request: Request<Body>, next: Next) -> Response {
     let path = request.uri().path();
     let is_dynamic_response =
-        path.starts_with("/api/v1") || matches!(path, "/companion" | "/companion/");
+        path.starts_with("/api/v1") || matches!(path, "/" | "/companion" | "/companion/");
     let mut response = next.run(request).await;
     let is_error = !response.status().is_success() && response.status() != StatusCode::NOT_MODIFIED;
     if is_dynamic_response || is_error {

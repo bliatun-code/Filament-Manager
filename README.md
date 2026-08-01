@@ -89,7 +89,9 @@ Release notes:
   reads and writes require an authenticated paired session.
 - On macOS and Windows, Companion advertises one stable `.local` address through
   mDNS. New browser and desktop pairings and new QR labels use this address, so
-  DHCP address changes do not break them. The app verifies that the stable name
+  DHCP address changes do not break them. The library-bound name uses the short,
+  typeable form `fm-xxxxxxxx.local`; opening its address without a path redirects
+  to Companion. The app verifies that the stable name
   resolves to the selected private LAN address before enabling pairing or
   permanent QR links, and only one active Host can publish a library's name.
   Devices must be on the same LAN with mDNS allowed. Existing IP-based clients
@@ -343,7 +345,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.22.1`
+- Current version: `0.22.2`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

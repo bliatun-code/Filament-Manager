@@ -12,7 +12,7 @@ import {
 } from "./verify-release-sbom.mjs";
 
 const EXPECTED_PACKAGE = "bambu-filament-manager";
-const EXPECTED_VERSION = "0.22.1";
+const EXPECTED_VERSION = "0.22.2";
 
 function validDocument() {
   return {
@@ -120,7 +120,7 @@ test("requires a non-empty, uniquely identified package inventory", () => {
 test("fails closed when the release package or version is absent", () => {
   const wrongVersion = validDocument();
   wrongVersion.packages[1].versionInfo = "0.21.1";
-  assert.throws(() => validate(wrongVersion), /expected version 0\.22\.1/);
+  assert.throws(() => validate(wrongVersion), /expected version 0\.22\.2/);
 
   const wrongPackage = validDocument();
   wrongPackage.packages[1].name = "another-package";
