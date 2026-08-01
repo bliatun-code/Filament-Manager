@@ -192,6 +192,25 @@ fn configure_daemon(
     daemon
         .set_service_name_len_max(SERVICE_NAME_LENGTH)
         .map_err(map_mdns_error)?;
+    configure_selected_interface_scope(daemon, interface_index)
+}
+
+/// Limits a short-lived hostname lookup to the same interfaces as the local responder.
+///
+/// The loopback interface remains enabled because `mdns-sd` relies on it for reliable
+/// same-host discovery on Windows. All other adapters, including Wi-Fi and VPNs, stay out of
+/// the lookup so a successful stable-name check always applies to the selected private LAN.
+pub(super) fn configure_hostname_resolution_daemon(
+    daemon: &ServiceDaemon,
+    config: &ValidatedAdvertisementConfig,
+) -> Result<(), AdvertisementError> {
+    configure_selected_interface_scope(daemon, config.interface_index())
+}
+
+fn configure_selected_interface_scope(
+    daemon: &ServiceDaemon,
+    interface_index: u32,
+) -> Result<(), AdvertisementError> {
     daemon
         .disable_interface(IfKind::All)
         .map_err(map_mdns_error)?;

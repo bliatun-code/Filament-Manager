@@ -249,12 +249,23 @@ fn verify_stable_hostname_resolution(
     config: &ValidatedAdvertisementConfig,
 ) -> Result<(), AdvertisementError> {
     let daemon = ServiceDaemon::new().map_err(|_| AdvertisementError::StableNameUnresolved)?;
-    let receiver = daemon
-        .resolve_hostname(
-            &config.fqdn(),
-            Some(STABLE_NAME_RESOLUTION_TIMEOUT.as_millis() as u64),
-        )
-        .map_err(|_| AdvertisementError::StableNameUnresolved)?;
+    if let Err(error) = platform::configure_hostname_resolution_daemon(&daemon, config) {
+        // `ServiceDaemon` owns a worker thread. It does not shut that thread down merely
+        // because the last Rust handle is dropped, so close it before returning from any
+        // setup failure.
+        let _ = daemon.shutdown();
+        return Err(error);
+    }
+    let receiver = match daemon.resolve_hostname(
+        &config.fqdn(),
+        Some(STABLE_NAME_RESOLUTION_TIMEOUT.as_millis() as u64),
+    ) {
+        Ok(receiver) => receiver,
+        Err(_) => {
+            let _ = daemon.shutdown();
+            return Err(AdvertisementError::StableNameUnresolved);
+        }
+    };
     let deadline = Instant::now() + STABLE_NAME_RESOLUTION_TIMEOUT;
     let mut resolved_an_address = false;
 
