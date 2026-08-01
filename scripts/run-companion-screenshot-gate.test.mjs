@@ -1106,6 +1106,98 @@ test("launched companion gate retains the DB when a stopped wrapper leaves a liv
   assert.deepEqual(cleanup, []);
 });
 
+test("launched companion gate waits through macOS EPERM until a zombie process group is reaped", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+  const signals = [];
+  let now = 0;
+  let groupProbes = 0;
+
+  const result = await runLaunchedCompanionScreenshotGate(
+    createLaunchedCompanionOptions({
+      child,
+      cleanupVisualQaDatabase: (path) => cleanup.push(path),
+      groupPollMs: 1,
+      groupTermGraceMs: 10,
+      nowFn: () => now,
+      processKillFn: (pid, signal) => {
+        signals.push({ pid, signal });
+        if (signal !== 0) {
+          return;
+        }
+        groupProbes += 1;
+        throw Object.assign(new Error(
+          groupProbes < 3 ? "zombie process group" : "process group missing",
+        ), {
+          code: groupProbes < 3 ? "EPERM" : "ESRCH",
+        });
+      },
+      waitFn: async (milliseconds) => {
+        now += milliseconds;
+      },
+      waitForCompanionServer: async (_baseUrl, options) => {
+        child.exitCode = 17;
+        child.emit("close", 17, null);
+        assert.equal(options.shouldAbort(), true);
+        return { ready: false };
+      },
+    }),
+  );
+
+  assert.match(result.errors[0], /exited early \(17\)/);
+  assert.equal(groupProbes, 3);
+  assert.equal(result.terminationConfirmed, true);
+  assert.equal(result.launchOwnershipUnresolved, false);
+  assert.equal(result.temporaryDatabaseRetained, false);
+  assert.ok(
+    signals.some(({ pid, signal }) => pid === -12345 && signal === "SIGTERM"),
+  );
+  assert.equal(
+    signals.some(({ pid, signal }) => pid === -12345 && signal === "SIGKILL"),
+    false,
+  );
+  assert.deepEqual(cleanup, [testVisualDatabasePath]);
+});
+
+test("launched companion gate fails closed when process-group probing returns an unknown error", async () => {
+  const child = createFakeChild();
+  const cleanup = [];
+
+  await assert.rejects(
+    runLaunchedCompanionScreenshotGate(
+      createLaunchedCompanionOptions({
+        child,
+        cleanupVisualQaDatabase: (path) => cleanup.push(path),
+        groupKillGraceMs: 0,
+        groupTermGraceMs: 0,
+        processKillFn: (_pid, signal) => {
+          if (signal === 0) {
+            throw Object.assign(new Error("unexpected process-group probe failure"), {
+              code: "EIO",
+            });
+          }
+        },
+        waitForCompanionServer: async (_baseUrl, options) => {
+          child.exitCode = 17;
+          child.emit("close", 17, null);
+          assert.equal(options.shouldAbort(), true);
+          return { ready: false };
+        },
+      }),
+    ),
+    (error) => {
+      assert.ok(error instanceof AggregateError);
+      assert.equal(error.launchOwnershipUnresolved, true);
+      assert.equal(error.temporaryDatabaseRetained, true);
+      assert.match(error.message, /groupStopped=false/);
+      assert.match(error.message, /wrapperStopped=true/);
+      return true;
+    },
+  );
+
+  assert.deepEqual(cleanup, []);
+});
+
 test("launched companion gate cleans the DB after a stopped wrapper process group disappears", async () => {
   const child = createFakeChild();
   const cleanup = [];

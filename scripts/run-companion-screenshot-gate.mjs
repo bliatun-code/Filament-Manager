@@ -142,7 +142,15 @@ function processGroupRunning(pid, killProcessFn) {
     killProcessFn(-pid, 0);
     return true;
   } catch (error) {
-    return error?.code === "ESRCH" ? false : null;
+    if (error?.code === "ESRCH") {
+      return false;
+    }
+    if (error?.code === "EPERM") {
+      // macOS can report EPERM while a terminated process group only contains
+      // an unreaped zombie. Keep polling until the reaper makes it ESRCH.
+      return true;
+    }
+    return null;
   }
 }
 
