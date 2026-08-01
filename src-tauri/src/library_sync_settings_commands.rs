@@ -55,6 +55,8 @@ fn save_library_sync_settings_inner(
         input
             .host_base_url
             .as_deref()
+            .map(str::trim)
+            .filter(|host| !host.is_empty())
             .map(normalize_library_sync_base_url)
             .transpose()?
     } else {
@@ -366,6 +368,57 @@ mod tests {
                 .expect("read paired settings")
                 .client_auth_paired
         );
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn standalone_can_switch_to_unpaired_client_before_host_pairing() {
+        let state = test_state();
+
+        let saved = save_library_sync_settings_inner(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "CLIENT".to_string(),
+                device_name: "Client".to_string(),
+                library_id: "library-id".to_string(),
+                host_base_url: Some("   ".to_string()),
+                host_device_name: None,
+            },
+        )
+        .expect("save unpaired client role");
+
+        assert_eq!(saved.mode, "CLIENT");
+        assert!(saved.host_base_url.is_none());
+        assert!(!saved.client_auth_paired);
+
+        let persisted = with_test_database(&state, |db| db.get_library_sync_settings());
+        assert_eq!(persisted.mode, "CLIENT");
+        assert!(persisted.host_base_url.is_none());
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn unpaired_client_still_rejects_a_nonempty_invalid_host() {
+        let state = test_state();
+
+        let error = save_library_sync_settings_inner(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "CLIENT".to_string(),
+                device_name: "Client".to_string(),
+                library_id: "library-id".to_string(),
+                host_base_url: Some("not-a-url".to_string()),
+                host_device_name: None,
+            },
+        )
+        .expect_err("invalid host must remain rejected");
+
+        assert!(error.contains("Host URL is invalid"));
+        let persisted = with_test_database(&state, |db| db.get_library_sync_settings());
+        assert_eq!(persisted.mode, "STANDALONE");
+        assert!(persisted.host_base_url.is_none());
 
         let _ = std::fs::remove_file(&state.db_path);
     }

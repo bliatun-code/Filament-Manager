@@ -163,12 +163,13 @@ export function buildLibrarySyncSaveSettingsInput(input: {
   hostBaseUrlDraft: string;
 }): LibrarySyncSettings {
   const clientMode = input.targetMode === "CLIENT";
+  const clientHostBaseUrl = input.hostBaseUrlDraft.trim() || null;
 
   return {
     mode: input.targetMode,
     device_name: input.deviceName,
     library_id: input.current.library_id,
-    host_base_url: clientMode ? input.hostBaseUrlDraft : null,
+    host_base_url: clientMode ? clientHostBaseUrl : null,
     host_device_name: clientMode ? input.current.host_device_name ?? null : null,
     client_auth_paired: clientMode ? input.current.client_auth_paired ?? false : false,
     client_auth_paired_at: clientMode ? input.current.client_auth_paired_at ?? null : null,

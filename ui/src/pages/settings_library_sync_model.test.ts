@@ -234,6 +234,37 @@ test("buildLibrarySyncSaveSettingsInput preserves client auth only for client mo
   );
 });
 
+test("buildLibrarySyncSaveSettingsInput keeps an unpaired client host empty", () => {
+  const current: LibrarySyncSettings = {
+    ...librarySettings(),
+    mode: "STANDALONE",
+    host_base_url: null,
+    host_device_name: null,
+    client_auth_paired: false,
+    client_auth_paired_at: null,
+    client_auth_expires_at: null,
+  };
+
+  assert.deepEqual(
+    buildLibrarySyncSaveSettingsInput({
+      current,
+      targetMode: "CLIENT",
+      deviceName: "Client Desk",
+      hostBaseUrlDraft: "   ",
+    }),
+    {
+      mode: "CLIENT",
+      device_name: "Client Desk",
+      library_id: "library-1",
+      host_base_url: null,
+      host_device_name: null,
+      client_auth_paired: false,
+      client_auth_paired_at: null,
+      client_auth_expires_at: null,
+    },
+  );
+});
+
 test("buildLibrarySyncPairingSettingsInput creates unpaired client handoff settings", () => {
   assert.deepEqual(
     buildLibrarySyncPairingSettingsInput({
