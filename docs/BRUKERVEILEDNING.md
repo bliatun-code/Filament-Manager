@@ -79,7 +79,11 @@ Webappen er nyttig for raske operasjoner ved printeren: sjekke lager, se printer
 På macOS og Windows annonserer verten én stabil `.local`-adresse for Companion
 via mDNS. Nye paringer av nettlesere og desktop-klienter og nye QR-etiketter
 bruker denne adressen, slik at de fortsetter å virke hvis DHCP senere gir verten
-en annen IP-adresse.
+en annen IP-adresse. Filament Manager aktiverer paring og permanente QR-lenker
+først når det stabile navnet kan løses til den valgte private LAN-adressen. Hvis
+registrering eller navneoppløsning feiler, kan webappen fortsatt være tilgjengelig
+på sin nåværende numeriske IP for diagnostikk, men appen presenterer ikke denne
+midlertidige adressen som en permanent lenke.
 
 Verten og enheten som kobler til, må være på samme lokale nettverk, og nettverket
 må tillate mDNS/Bonjour-trafikk. Gjestenettverk og klientisolasjon kan hindre
@@ -94,9 +98,24 @@ gamle IP-adressen, pares én gang på nytt med en ny lenke. QR-etiketter som ble
 skrevet ut med den gamle IP-adressen, må skrives ut på nytt.
 
 Kjør bare én aktiv Companion-vert for et bibliotek. Hvis en annen vert startes
-fra en kopi av den samme portable sikkerhetskopien, får den samme stabile navn;
-vert nummer to nekter da å publisere paringslenker og permanente QR-lenker i
-stedet for å endre navnet automatisk.
+fra en kopi av den samme portable sikkerhetskopien, får den det samme stabile
+navnet; vert nummer to nekter da å publisere paringslenker og permanente
+QR-lenker i stedet for å endre navnet automatisk.
+
+Hvis macOS viser at det stabile lokalnavnet allerede er i bruk, eller en eldre
+testversjon viser `local service registration failed (-65548)`, publiserer en
+annen enhet allerede bibliotekets stabile navn. På maskinen som ikke skal eie
+det delte biblioteket, bytter du rollen til **Klient** eller slår av webappen.
+La den tiltenkte bibliotekeieren være eneste **Vert**, og vent deretter opptil
+omtrent 30 sekunder på automatisk nytt forsøk, eller slå webappen av og på én
+gang.
+
+Hvis den stabile adressen fortsatt er utilgjengelig på Windows, kontrollerer du
+at den valgte tilkoblingen bruker nettverksprofilen **Privat**, at Filament
+Manager er tillatt gjennom Windows Defender-brannmuren på private nettverk, og
+at LAN-et tillater mDNS. Filament Manager kontrollerer at den nøyaktige
+`.local`-adressen løses til denne verten før paring eller QR-lenker aktiveres;
+en adresse som nettleseren ikke kan løse, regnes derfor ikke som klar.
 
 Lange lager- og utlånslister vises i håndterlige bolker. Når flere treff
 gjenstår, viser Companion størrelsen på neste bolk og vist/totalt; bruk **Vis

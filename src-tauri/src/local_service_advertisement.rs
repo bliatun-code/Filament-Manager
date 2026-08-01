@@ -4,7 +4,9 @@
 //! detection and Companion listener rebinding belong to the runtime that integrates it.
 
 use std::fmt;
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
+use std::thread;
+use std::time::{Duration, Instant};
 
 #[cfg(target_os = "macos")]
 #[path = "local_service_advertisement/macos.rs"]
@@ -20,6 +22,8 @@ mod platform;
 pub(crate) const COMPANION_SERVICE_TYPE: &str = "_filament-manager._tcp.local.";
 
 const LOCAL_SUFFIX: &str = ".local";
+const STABLE_NAME_RESOLUTION_TIMEOUT: Duration = Duration::from_secs(5);
+const STABLE_NAME_RESOLUTION_RETRY_DELAY: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct LocalServiceAdvertisementConfig {
@@ -128,6 +132,7 @@ impl LocalServiceAdvertisement {
     ) -> Result<Self, AdvertisementError> {
         let config = config.validate()?;
         let registration = platform::Registration::register(&config)?;
+        verify_stable_hostname_resolution(&config)?;
         Ok(Self {
             config,
             registration,
@@ -153,6 +158,9 @@ pub(crate) enum AdvertisementError {
     InvalidInterface,
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     UnsupportedPlatform,
+    NameConflict,
+    StableNameUnresolved,
+    StableNameResolvedToUnexpectedAddress,
     PlatformFailure(i64),
     #[cfg(target_os = "windows")]
     RegisteredIdentityChanged,
@@ -176,6 +184,15 @@ impl fmt::Display for AdvertisementError {
             Self::UnsupportedPlatform => {
                 formatter.write_str("local service advertisement is unsupported on this platform")
             }
+            Self::NameConflict => formatter.write_str(
+                "stable local name is already in use; another active Host may be advertising this library. Stop Companion on the other Host, then retry",
+            ),
+            Self::StableNameUnresolved => formatter.write_str(
+                "stable local name was registered but could not be resolved; check that mDNS is allowed on the selected private network, then retry",
+            ),
+            Self::StableNameResolvedToUnexpectedAddress => formatter.write_str(
+                "stable local name resolved to a different device; stop the other active Host for this library, then retry",
+            ),
             Self::PlatformFailure(code) => {
                 write!(formatter, "local service registration failed ({code})")
             }
@@ -193,6 +210,36 @@ impl fmt::Display for AdvertisementError {
 }
 
 impl std::error::Error for AdvertisementError {}
+
+fn verify_stable_hostname_resolution(
+    config: &ValidatedAdvertisementConfig,
+) -> Result<(), AdvertisementError> {
+    let deadline = Instant::now() + STABLE_NAME_RESOLUTION_TIMEOUT;
+    let mut resolved_an_address = false;
+
+    loop {
+        if let Ok(addresses) = (config.hostname(), config.port()).to_socket_addrs() {
+            let addresses = addresses.map(|socket| socket.ip()).collect::<Vec<_>>();
+            resolved_an_address |= !addresses.is_empty();
+            if resolved_addresses_include_selected_ipv4(&addresses, config.address) {
+                return Ok(());
+            }
+        }
+
+        if Instant::now() >= deadline {
+            return Err(if resolved_an_address {
+                AdvertisementError::StableNameResolvedToUnexpectedAddress
+            } else {
+                AdvertisementError::StableNameUnresolved
+            });
+        }
+        thread::sleep(STABLE_NAME_RESOLUTION_RETRY_DELAY);
+    }
+}
+
+fn resolved_addresses_include_selected_ipv4(resolved: &[IpAddr], selected: Ipv4Addr) -> bool {
+    resolved.contains(&IpAddr::V4(selected))
+}
 
 fn normalize_host_label(value: &str) -> Result<String, AdvertisementError> {
     let trimmed = value.trim().trim_end_matches('.');
@@ -347,6 +394,9 @@ mod tests {
             AdvertisementError::InvalidHostname,
             AdvertisementError::InvalidInstanceName,
             AdvertisementError::NonPrivateAddress,
+            AdvertisementError::NameConflict,
+            AdvertisementError::StableNameUnresolved,
+            AdvertisementError::StableNameResolvedToUnexpectedAddress,
             AdvertisementError::PlatformFailure(-65548),
         ];
         for value in values {
@@ -354,5 +404,32 @@ mod tests {
             assert!(!message.contains("192.168"));
             assert!(!message.contains("A7C4"));
         }
+    }
+
+    #[test]
+    fn name_conflict_error_explains_active_host_handoff() {
+        let message = AdvertisementError::NameConflict.to_string();
+
+        assert!(message.contains("another active Host"));
+        assert!(message.contains("this library"));
+        assert!(message.contains("Stop Companion"));
+        assert!(!message.contains("-65548"));
+    }
+
+    #[test]
+    fn stable_name_must_resolve_to_the_selected_ipv4_address() {
+        let selected = Ipv4Addr::new(192, 168, 1, 42);
+
+        assert!(resolved_addresses_include_selected_ipv4(
+            &[
+                IpAddr::V6("fe80::1".parse().expect("IPv6")),
+                IpAddr::V4(selected),
+            ],
+            selected,
+        ));
+        assert!(!resolved_addresses_include_selected_ipv4(
+            &[IpAddr::V4(Ipv4Addr::new(192, 168, 1, 99))],
+            selected,
+        ));
     }
 }

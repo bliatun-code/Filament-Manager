@@ -79,7 +79,11 @@ The webapp is useful at the printer: check stock, inspect printer slots, loan ou
 On macOS and Windows, the host advertises one stable `.local` Companion address
 through mDNS. New browser and desktop pairings and new QR labels use this
 address, so they continue to work if DHCP later gives the host a different IP
-address.
+address. Filament Manager enables pairing and permanent QR links only after the
+stable name resolves to the selected private LAN address. If registration or
+name resolution fails, the webapp can remain available on its current numeric
+IP for diagnostics, but the app does not present that temporary address as a
+permanent link.
 
 The host and connecting device must be on the same local network, and that
 network must allow mDNS/Bonjour traffic. Guest networks and client isolation can
@@ -97,6 +101,20 @@ Run only one active Companion host for a library. Starting a second host from a
 copy of the same portable backup creates the same stable name; the second host
 then refuses to publish pairing links or permanent QR links instead of silently
 renaming itself.
+
+If macOS says that the stable local name is already in use, or an older test
+build reports `local service registration failed (-65548)`, another device is
+already publishing that library's stable name. On the machine that should not
+own the shared library, change the role to **Client** or turn off its webapp.
+Leave the intended library owner as the only **Host**, then allow up to about 30
+seconds for the automatic retry, or turn its webapp off and on once.
+
+If the stable address remains unavailable on Windows, confirm that the selected
+connection uses the **Private** network profile, that Filament Manager is
+allowed through Windows Defender Firewall on private networks, and that the LAN
+allows mDNS. Filament Manager verifies that the exact `.local` address resolves
+to this host before it enables pairing or QR links; an address that a browser
+cannot resolve is therefore not considered ready.
 
 Long inventory and loan lists are shown in manageable batches. When more
 matches remain, Companion shows the next batch size and a shown/total count;

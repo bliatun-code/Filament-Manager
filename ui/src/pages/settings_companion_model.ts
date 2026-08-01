@@ -207,7 +207,10 @@ export function buildTrustedLanCompanionModel(
     "settings.trustedLanLocalNameUnavailableHint",
     "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
   );
-  const localNameWarning = localNameUnavailable ? localNameUnavailableHint : null;
+  const localNameError = trustedLanStatus?.local_name_error?.trim() ?? "";
+  const localNameWarning = localNameUnavailable
+    ? [localNameUnavailableHint, localNameError].filter(Boolean).join(" ")
+    : null;
   const statusHint =
     localNameWarning ??
     trustedLanStatus?.health_error ??

@@ -27,6 +27,12 @@ address, while the exact current IP address remains available for listener
 diagnostics. A DHCP change may update the listener binding without changing the
 address shared with users.
 
+Successful service registration alone is not enough to enable stable links.
+Before the trusted-LAN runtime marks the name as available, it must resolve the
+exact library-derived hostname to the selected private IPv4 address. This
+prevents Windows from exposing pairing or QR links after a registration result
+that did not produce a usable hostname.
+
 Stable-name resolution is limited to devices on the same LAN where mDNS traffic is allowed.
 Existing IP-based browser and desktop pairings are not rewritten automatically;
 they require one new pairing, and labels containing an old IP address must be
@@ -34,7 +40,9 @@ reprinted.
 
 The stable name is a library identity, so only one active Companion host may
 publish it at a time. A copied backup on a second host fails closed on name
-collision rather than accepting a platform-generated rename.
+collision rather than accepting a platform-generated rename. On macOS, DNS-SD
+error `-65548` is treated as this name-conflict condition and surfaced as an
+actionable Host handoff instead of a generic platform failure.
 
 ## Incremental Module Maintenance
 

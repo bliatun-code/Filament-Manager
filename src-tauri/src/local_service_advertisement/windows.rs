@@ -1,276 +1,426 @@
-use super::{AdvertisementError, ValidatedAdvertisementConfig};
-use std::ffi::c_void;
-use std::ptr;
+use super::{AdvertisementError, ValidatedAdvertisementConfig, COMPANION_SERVICE_TYPE};
+use mdns_sd::{DaemonEvent, Error as MdnsError, IfKind, Receiver, ServiceDaemon, ServiceInfo};
+use std::collections::HashMap;
+use std::net::{IpAddr, Ipv4Addr};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
+use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use windows_sys::Win32::Foundation::{GetLastError, DNS_REQUEST_PENDING, ERROR_SUCCESS};
-use windows_sys::Win32::NetworkManagement::Dns::{
-    DnsServiceConstructInstance, DnsServiceDeRegister, DnsServiceFreeInstance, DnsServiceRegister,
-    DnsServiceRegisterCancel, DNS_QUERY_REQUEST_VERSION1, DNS_SERVICE_CANCEL, DNS_SERVICE_INSTANCE,
-    DNS_SERVICE_REGISTER_REQUEST,
-};
 
-const COMPLETION_TIMEOUT: Duration = Duration::from_secs(5);
-const MAX_DNS_NAME_UTF16_UNITS: usize = 255;
+const REGISTRATION_TIMEOUT: Duration = Duration::from_secs(5);
+const MONITOR_POLL_INTERVAL: Duration = Duration::from_millis(100);
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
+const SERVICE_NAME_LENGTH: u8 = 16;
 
-#[derive(Default)]
-struct CompletionOutcome {
-    generation: u64,
-    status: u32,
-    identity_matches: bool,
+// mdns-sd errors do not carry an OS error code. Keep the public error free of the daemon's
+// message because those messages may contain local interface or service metadata.
+const MDNS_PLATFORM_ERROR: i64 = -70_001;
+const MDNS_COMMAND_QUEUE_FULL: i64 = -70_002;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum MonitorStatus {
+    Pending,
+    Healthy,
+    Failed(AdvertisementError),
 }
 
-#[derive(Clone, Copy)]
-struct CompletionResult {
-    status: u32,
-    identity_matches: bool,
-}
-
-struct CompletionState {
-    outcome: Mutex<CompletionOutcome>,
+struct MonitorState {
+    status: Mutex<MonitorStatus>,
     changed: Condvar,
-    expected_identity: ValidatedAdvertisementConfig,
 }
 
-impl CompletionState {
-    fn new(config: &ValidatedAdvertisementConfig) -> Self {
+impl Default for MonitorState {
+    fn default() -> Self {
         Self {
-            outcome: Mutex::new(CompletionOutcome::default()),
+            status: Mutex::new(MonitorStatus::Pending),
             changed: Condvar::new(),
-            expected_identity: config.clone(),
+        }
+    }
+}
+
+impl MonitorState {
+    fn mark_healthy(&self) {
+        if let Ok(mut status) = self.status.lock() {
+            if matches!(*status, MonitorStatus::Pending) {
+                *status = MonitorStatus::Healthy;
+                self.changed.notify_all();
+            }
         }
     }
 
-    fn complete(&self, status: u32, identity_matches: bool) {
-        if let Ok(mut outcome) = self.outcome.lock() {
-            outcome.generation = outcome.generation.saturating_add(1);
-            outcome.status = status;
-            outcome.identity_matches = identity_matches;
-            self.changed.notify_all();
+    fn fail(&self, error: AdvertisementError) {
+        if let Ok(mut status) = self.status.lock() {
+            if !matches!(*status, MonitorStatus::Failed(_)) {
+                *status = MonitorStatus::Failed(error);
+                self.changed.notify_all();
+            }
         }
     }
 
-    fn identity_matches(&self, instance_name: &str, hostname: &str) -> bool {
-        self.expected_identity
-            .windows_registration_identity_matches(instance_name, hostname)
-    }
-
-    fn wait_for_generation(&self, generation: u64) -> Result<CompletionResult, AdvertisementError> {
-        let outcome = self
-            .outcome
+    fn wait_until_registered(&self) -> Result<(), AdvertisementError> {
+        let status = self
+            .status
             .lock()
             .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
-        let (outcome, timeout) = self
+        let (status, timeout) = self
             .changed
-            .wait_timeout_while(outcome, COMPLETION_TIMEOUT, |outcome| {
-                outcome.generation < generation
+            .wait_timeout_while(status, REGISTRATION_TIMEOUT, |status| {
+                matches!(*status, MonitorStatus::Pending)
             })
             .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
-        if timeout.timed_out() && outcome.generation < generation {
-            return Err(AdvertisementError::RegistrationTimedOut);
+
+        match &*status {
+            MonitorStatus::Healthy => Ok(()),
+            MonitorStatus::Failed(error) => Err(error.clone()),
+            MonitorStatus::Pending if timeout.timed_out() => {
+                Err(AdvertisementError::RegistrationTimedOut)
+            }
+            MonitorStatus::Pending => Err(AdvertisementError::RegistrationWorkerStopped),
         }
-        Ok(CompletionResult {
-            status: outcome.status,
-            identity_matches: outcome.identity_matches,
-        })
     }
-}
 
-struct RegistrationInner {
-    request: DNS_SERVICE_REGISTER_REQUEST,
-    cancel: DNS_SERVICE_CANCEL,
-    instance: *mut DNS_SERVICE_INSTANCE,
-    completion: Arc<CompletionState>,
-}
-
-impl RegistrationInner {
-    fn free_instance(&mut self) {
-        if !self.instance.is_null() {
-            unsafe { DnsServiceFreeInstance(self.instance) };
-            self.instance = ptr::null_mut();
-            self.request.pServiceInstance = ptr::null_mut();
+    fn health(&self) -> Result<(), AdvertisementError> {
+        let status = self
+            .status
+            .lock()
+            .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
+        match &*status {
+            MonitorStatus::Healthy => Ok(()),
+            MonitorStatus::Failed(error) => Err(error.clone()),
+            MonitorStatus::Pending => Err(AdvertisementError::RegistrationWorkerStopped),
         }
     }
 }
-
-// The request is immutable while registered. Windows invokes the callback on a system thread;
-// callback mutation is confined to CompletionState's mutex.
-unsafe impl Send for RegistrationInner {}
 
 pub(super) struct Registration {
-    inner: Option<Box<RegistrationInner>>,
+    daemon: ServiceDaemon,
+    service_fullname: String,
+    state: Arc<MonitorState>,
+    stop_requested: Arc<AtomicBool>,
+    monitor_worker: Option<JoinHandle<()>>,
 }
 
 impl Registration {
     pub(super) fn register(
         config: &ValidatedAdvertisementConfig,
     ) -> Result<Self, AdvertisementError> {
-        let service_name = wide_string(config.service_instance_fqdn());
-        let hostname = wide_string(config.fqdn());
-        let address = config.windows_ip4_address_host_order();
-        let instance = unsafe {
-            DnsServiceConstructInstance(
-                service_name.as_ptr(),
-                hostname.as_ptr(),
-                &address,
-                ptr::null(),
-                config.port(),
-                0,
-                0,
-                0,
-                ptr::null(),
-                ptr::null(),
-            )
-        };
-        if instance.is_null() {
-            return Err(AdvertisementError::PlatformFailure(
-                unsafe { GetLastError() }.into(),
-            ));
-        }
-
-        let completion = Arc::new(CompletionState::new(config));
-        let mut inner = Box::new(RegistrationInner {
-            request: DNS_SERVICE_REGISTER_REQUEST {
-                Version: DNS_QUERY_REQUEST_VERSION1,
-                InterfaceIndex: config.interface_index(),
-                pServiceInstance: instance,
-                pRegisterCompletionCallback: Some(registration_callback),
-                pQueryContext: Arc::as_ptr(&completion).cast_mut().cast::<c_void>(),
-                hCredentials: ptr::null_mut(),
-                unicastEnabled: 0,
-            },
-            cancel: DNS_SERVICE_CANCEL::default(),
-            instance,
-            completion,
-        });
-
-        let result = unsafe { DnsServiceRegister(&inner.request, &mut inner.cancel) };
-        if result != DNS_REQUEST_PENDING as u32 {
-            inner.free_instance();
-            return Err(AdvertisementError::PlatformFailure(result.into()));
-        }
-
-        match inner.completion.wait_for_generation(1) {
-            Ok(result) if result.status == ERROR_SUCCESS && result.identity_matches => {
-                Ok(Self { inner: Some(inner) })
-            }
-            Ok(result) if result.status == ERROR_SUCCESS => {
-                deregister_and_release(inner);
-                Err(AdvertisementError::RegisteredIdentityChanged)
-            }
-            Ok(result) => {
-                inner.free_instance();
-                Err(AdvertisementError::PlatformFailure(result.status.into()))
-            }
+        let service = build_service_info(config)?;
+        let service_fullname = service.get_fullname().to_string();
+        let daemon = ServiceDaemon::new().map_err(map_mdns_error)?;
+        let monitor = match daemon.monitor() {
+            Ok(monitor) => monitor,
             Err(error) => {
-                let _ = unsafe { DnsServiceRegisterCancel(&inner.cancel) };
-                if inner.completion.wait_for_generation(1).is_ok() {
-                    inner.free_instance();
-                } else {
-                    // Preserve callback-owned pointers if Windows does not acknowledge a
-                    // cancellation. The process-scoped registration is reclaimed on exit.
-                    Box::leak(inner);
-                }
-                Err(error)
+                shutdown_daemon(&daemon);
+                return Err(map_mdns_error(error));
             }
+        };
+
+        // The daemon starts with all interfaces enabled. Queue the restrictive selection before
+        // registration, and also put the same selection on ServiceInfo as defense in depth. The
+        // explicit address disables automatic address discovery, so only the selected LAN IPv4 is
+        // published as an A record.
+        if let Err(error) = configure_daemon(&daemon, config.interface_index()) {
+            shutdown_daemon(&daemon);
+            return Err(error);
         }
+
+        let state = Arc::new(MonitorState::default());
+        let stop_requested = Arc::new(AtomicBool::new(false));
+        let monitor_worker = match spawn_monitor_worker(
+            monitor,
+            daemon.clone(),
+            config.clone(),
+            service_fullname.clone(),
+            Arc::clone(&state),
+            Arc::clone(&stop_requested),
+        ) {
+            Ok(worker) => worker,
+            Err(error) => {
+                shutdown_daemon(&daemon);
+                return Err(error);
+            }
+        };
+
+        if let Err(error) = daemon.register(service) {
+            stop_requested.store(true, Ordering::Release);
+            shutdown_daemon(&daemon);
+            join_monitor_worker(monitor_worker);
+            return Err(map_mdns_error(error));
+        }
+
+        if let Err(error) = state.wait_until_registered() {
+            stop_requested.store(true, Ordering::Release);
+            unregister_and_shutdown(&daemon, &service_fullname);
+            join_monitor_worker(monitor_worker);
+            return Err(error);
+        }
+
+        Ok(Self {
+            daemon,
+            service_fullname,
+            state,
+            stop_requested,
+            monitor_worker: Some(monitor_worker),
+        })
     }
 
     pub(super) fn health(&self) -> Result<(), AdvertisementError> {
-        let inner = self
-            .inner
-            .as_ref()
-            .ok_or(AdvertisementError::RegistrationWorkerStopped)?;
-        let outcome = inner
-            .completion
-            .outcome
-            .lock()
-            .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
-        if outcome.status == ERROR_SUCCESS && outcome.identity_matches {
-            Ok(())
-        } else if outcome.status == ERROR_SUCCESS {
-            Err(AdvertisementError::RegisteredIdentityChanged)
-        } else {
-            Err(AdvertisementError::PlatformFailure(outcome.status.into()))
-        }
+        self.state.health()
     }
 }
 
 impl Drop for Registration {
     fn drop(&mut self) {
-        let Some(inner) = self.inner.take() else {
-            return;
-        };
-        deregister_and_release(inner);
+        // Wake the monitor independently of the daemon command queue. `mdns-sd` can reject
+        // unregister/shutdown with `Again` when that queue is full; joining a worker blocked on
+        // `recv()` in that state would otherwise hang application shutdown indefinitely.
+        self.stop_requested.store(true, Ordering::Release);
+        unregister_and_shutdown(&self.daemon, &self.service_fullname);
+        if let Some(worker) = self.monitor_worker.take() {
+            join_monitor_worker(worker);
+        }
     }
 }
 
-fn deregister_and_release(mut inner: Box<RegistrationInner>) {
-    let deregister_result = unsafe { DnsServiceDeRegister(&inner.request, ptr::null_mut()) };
-    if deregister_result != DNS_REQUEST_PENDING as u32
-        || inner.completion.wait_for_generation(2).is_err()
-    {
-        // A failed or unacknowledged deregistration may still own the request/context pointers.
-        // The process-scoped registration is reclaimed by Windows when the app exits.
-        Box::leak(inner);
-        return;
-    }
-    inner.free_instance();
+fn configure_daemon(
+    daemon: &ServiceDaemon,
+    interface_index: u32,
+) -> Result<(), AdvertisementError> {
+    daemon
+        .set_service_name_len_max(SERVICE_NAME_LENGTH)
+        .map_err(map_mdns_error)?;
+    daemon
+        .disable_interface(IfKind::All)
+        .map_err(map_mdns_error)?;
+    daemon
+        .enable_interface(IfKind::IndexV4(interface_index))
+        .map_err(map_mdns_error)
 }
 
-fn wide_string(value: String) -> Vec<u16> {
-    value.encode_utf16().chain(std::iter::once(0)).collect()
+fn build_service_info(
+    config: &ValidatedAdvertisementConfig,
+) -> Result<ServiceInfo, AdvertisementError> {
+    let service_instance_fqdn = config.service_instance_fqdn();
+    let suffix = format!(".{COMPANION_SERVICE_TYPE}");
+    let instance_name = service_instance_fqdn
+        .strip_suffix(&suffix)
+        .ok_or(AdvertisementError::InvalidInstanceName)?;
+    let address = Ipv4Addr::from(config.windows_ip4_address_host_order());
+    let mut service = ServiceInfo::new(
+        COMPANION_SERVICE_TYPE,
+        instance_name,
+        &config.fqdn(),
+        IpAddr::V4(address),
+        config.port(),
+        None::<HashMap<String, String>>,
+    )
+    .map_err(map_mdns_error)?;
+    service.set_interfaces(vec![IfKind::IndexV4(config.interface_index())]);
+    Ok(service)
 }
 
-unsafe extern "system" fn registration_callback(
-    status: u32,
-    context: *const c_void,
-    instance: *const DNS_SERVICE_INSTANCE,
+fn spawn_monitor_worker(
+    monitor: Receiver<DaemonEvent>,
+    daemon: ServiceDaemon,
+    expected_identity: ValidatedAdvertisementConfig,
+    service_fullname: String,
+    state: Arc<MonitorState>,
+    stop_requested: Arc<AtomicBool>,
+) -> Result<JoinHandle<()>, AdvertisementError> {
+    thread::Builder::new()
+        .name("companion-mdns-monitor".to_string())
+        .spawn(move || {
+            monitor_worker(
+                monitor,
+                daemon,
+                expected_identity,
+                service_fullname,
+                state,
+                stop_requested,
+            )
+        })
+        .map_err(|_| AdvertisementError::RegistrationWorkerStopped)
+}
+
+fn monitor_worker(
+    monitor: Receiver<DaemonEvent>,
+    daemon: ServiceDaemon,
+    expected_identity: ValidatedAdvertisementConfig,
+    service_fullname: String,
+    state: Arc<MonitorState>,
+    stop_requested: Arc<AtomicBool>,
 ) {
-    if context.is_null() {
-        if !instance.is_null() {
-            unsafe { DnsServiceFreeInstance(instance) };
+    loop {
+        if stop_requested.load(Ordering::Acquire) {
+            return;
         }
-        return;
-    }
-    let completion_pointer = context.cast::<CompletionState>();
-    // The completion notification can wake the registration or deregistration waiter, which
-    // may then drop RegistrationInner and its Arc before this callback returns. Hold one callback-
-    // owned strong reference so the Rust reference remains valid through the function epilogue.
-    unsafe { Arc::increment_strong_count(completion_pointer) };
-    let completion = unsafe { Arc::from_raw(completion_pointer) };
-    let identity_matches = if instance.is_null() {
-        false
-    } else {
-        let instance = unsafe { &*instance };
-        match (
-            decode_wide_dns_name(instance.pszInstanceName),
-            decode_wide_dns_name(instance.pszHostName),
-        ) {
-            (Some(instance_name), Some(hostname)) => {
-                completion.identity_matches(&instance_name, &hostname)
+
+        let event = match monitor.recv_timeout(MONITOR_POLL_INTERVAL) {
+            Ok(event) => event,
+            Err(_) if stop_requested.load(Ordering::Acquire) => return,
+            Err(_) if monitor.is_disconnected() => {
+                state.fail(AdvertisementError::RegistrationWorkerStopped);
+                return;
             }
-            _ => false,
+            Err(_) => continue,
+        };
+
+        let failure = match event {
+            DaemonEvent::Announce(instance_name, target) => {
+                if announcement_identity_matches(&expected_identity, &instance_name, &target) {
+                    state.mark_healthy();
+                    None
+                } else {
+                    Some(AdvertisementError::RegisteredIdentityChanged)
+                }
+            }
+            // mdns-sd resolves both host and service conflicts by renaming. A permanent QR must
+            // never silently follow such a rename, so stop the responder immediately.
+            DaemonEvent::NameChange(_) => Some(AdvertisementError::NameConflict),
+            DaemonEvent::Error(error) => Some(map_mdns_error(error)),
+            _ => None,
+        };
+
+        if let Some(error) = failure {
+            state.fail(error);
+            unregister_and_shutdown(&daemon, &service_fullname);
+            return;
         }
-    };
-    if !instance.is_null() {
-        unsafe { DnsServiceFreeInstance(instance) };
     }
-    completion.complete(status, identity_matches);
 }
 
-fn decode_wide_dns_name(pointer: *const u16) -> Option<String> {
-    if pointer.is_null() {
-        return None;
-    }
-    let mut length = 0;
-    while length <= MAX_DNS_NAME_UTF16_UNITS {
-        let unit = unsafe { pointer.add(length).read() };
-        if unit == 0 {
-            let units = unsafe { std::slice::from_raw_parts(pointer, length) };
-            return String::from_utf16(units).ok();
+fn announcement_identity_matches(
+    config: &ValidatedAdvertisementConfig,
+    instance_name: &str,
+    target: &str,
+) -> bool {
+    let Some((hostname, _interface_name)) = target.split_once(':') else {
+        return false;
+    };
+    config.windows_registration_identity_matches(instance_name, hostname)
+}
+
+fn map_mdns_error(error: MdnsError) -> AdvertisementError {
+    match error {
+        MdnsError::Again => AdvertisementError::PlatformFailure(MDNS_COMMAND_QUEUE_FULL),
+        MdnsError::DaemonShutdown => AdvertisementError::RegistrationWorkerStopped,
+        MdnsError::Msg(_) | MdnsError::ParseIpAddr(_) => {
+            AdvertisementError::PlatformFailure(MDNS_PLATFORM_ERROR)
         }
-        length += 1;
+        _ => AdvertisementError::PlatformFailure(MDNS_PLATFORM_ERROR),
     }
-    None
+}
+
+fn unregister_and_shutdown(daemon: &ServiceDaemon, service_fullname: &str) {
+    if let Ok(receiver) = daemon.unregister(service_fullname) {
+        let _ = receiver.recv_timeout(SHUTDOWN_TIMEOUT);
+    }
+    shutdown_daemon(daemon);
+}
+
+fn shutdown_daemon(daemon: &ServiceDaemon) {
+    if let Ok(receiver) = daemon.shutdown() {
+        let _ = receiver.recv_timeout(SHUTDOWN_TIMEOUT);
+    }
+}
+
+fn join_monitor_worker(worker: JoinHandle<()>) {
+    let _ = worker.join();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::Ipv4Addr;
+
+    fn valid_config() -> ValidatedAdvertisementConfig {
+        super::super::LocalServiceAdvertisementConfig {
+            hostname: "filament-manager-a7c4.local".to_string(),
+            instance_name: "Filament Manager A7C4".to_string(),
+            address: Ipv4Addr::new(192, 168, 1, 42),
+            port: 4278,
+            interface_index: 7,
+        }
+        .validate()
+        .expect("valid advertisement config")
+    }
+
+    #[test]
+    fn service_info_preserves_the_requested_identity_and_ipv4() {
+        let service = build_service_info(&valid_config()).expect("service info");
+
+        assert_eq!(
+            service.get_fullname(),
+            "Filament Manager A7C4._filament-manager._tcp.local."
+        );
+        assert_eq!(service.get_hostname(), "filament-manager-a7c4.local.");
+        assert_eq!(service.get_port(), 4278);
+        assert_eq!(
+            service.get_addresses_v4(),
+            std::collections::HashSet::from([&Ipv4Addr::new(192, 168, 1, 42)])
+        );
+        assert!(!service.is_addr_auto());
+        assert!(service.requires_probe());
+    }
+
+    #[test]
+    fn daemon_limit_explicitly_allows_the_companion_service_label() {
+        let service_label = COMPANION_SERVICE_TYPE
+            .strip_prefix('_')
+            .and_then(|value| value.split_once('.'))
+            .map(|(label, _)| label)
+            .expect("service label");
+
+        assert_eq!(service_label.len(), usize::from(SERVICE_NAME_LENGTH));
+    }
+
+    #[test]
+    fn announcement_accepts_only_the_exact_requested_identity() {
+        let config = valid_config();
+
+        assert!(announcement_identity_matches(
+            &config,
+            "Filament Manager A7C4._filament-manager._tcp.local.",
+            "filament-manager-a7c4.local.:Ethernet"
+        ));
+        assert!(!announcement_identity_matches(
+            &config,
+            "Filament Manager A7C4 (2)._filament-manager._tcp.local.",
+            "filament-manager-a7c4.local.:Ethernet"
+        ));
+        assert!(!announcement_identity_matches(
+            &config,
+            "Filament Manager A7C4._filament-manager._tcp.local.",
+            "filament-manager-a7c4-2.local.:Ethernet"
+        ));
+        assert!(!announcement_identity_matches(
+            &config,
+            "Filament Manager A7C4._filament-manager._tcp.local.",
+            "missing-interface-separator"
+        ));
+    }
+
+    #[test]
+    fn monitor_health_keeps_the_first_failure() {
+        let state = MonitorState::default();
+        state.mark_healthy();
+        state.fail(AdvertisementError::NameConflict);
+        state.fail(AdvertisementError::RegisteredIdentityChanged);
+
+        assert_eq!(state.health(), Err(AdvertisementError::NameConflict));
+    }
+
+    #[test]
+    fn mdns_error_mapping_does_not_echo_daemon_metadata() {
+        let error = map_mdns_error(MdnsError::Msg(
+            "failed on 192.168.1.42 for Filament Manager A7C4".to_string(),
+        ));
+
+        assert_eq!(
+            error,
+            AdvertisementError::PlatformFailure(MDNS_PLATFORM_ERROR)
+        );
+        assert!(!error.to_string().contains("192.168.1.42"));
+        assert!(!error.to_string().contains("A7C4"));
+    }
 }

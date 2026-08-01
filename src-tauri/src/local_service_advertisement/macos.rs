@@ -12,6 +12,7 @@ type DnsServiceFlags = u32;
 type DnsServiceError = i32;
 
 const DNS_SERVICE_NO_ERROR: DnsServiceError = 0;
+const DNS_SERVICE_ERR_NAME_CONFLICT: DnsServiceError = -65548;
 const DNS_SERVICE_FLAGS_NO_AUTO_RENAME: DnsServiceFlags = 0x8;
 const DNS_SERVICE_FLAGS_UNIQUE: DnsServiceFlags = 0x20;
 const DNS_SERVICE_FLAGS_SHARE_CONNECTION: DnsServiceFlags = 0x4000;
@@ -133,7 +134,7 @@ impl CallbackState {
             })
             .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
         if let Some(error) = outcome.error {
-            return Err(AdvertisementError::PlatformFailure(error.into()));
+            return Err(advertisement_error(error));
         }
         if outcome.worker_stopped {
             return Err(AdvertisementError::RegistrationWorkerStopped);
@@ -150,7 +151,7 @@ impl CallbackState {
             .lock()
             .map_err(|_| AdvertisementError::RegistrationWorkerStopped)?;
         if let Some(error) = outcome.error {
-            return Err(AdvertisementError::PlatformFailure(error.into()));
+            return Err(advertisement_error(error));
         }
         if outcome.worker_stopped {
             return Err(AdvertisementError::RegistrationWorkerStopped);
@@ -174,9 +175,7 @@ impl Registration {
         let mut shared_ref: DnsServiceRef = ptr::null_mut();
         let connection_result = unsafe { DNSServiceCreateConnection(&mut shared_ref) };
         if connection_result != DNS_SERVICE_NO_ERROR || shared_ref.is_null() {
-            return Err(AdvertisementError::PlatformFailure(
-                connection_result.into(),
-            ));
+            return Err(advertisement_error(connection_result));
         }
 
         let registration_result = register_records(shared_ref, config, callback_context);
@@ -245,7 +244,7 @@ fn register_records(
         )
     };
     if record_result != DNS_SERVICE_NO_ERROR {
-        return Err(AdvertisementError::PlatformFailure(record_result.into()));
+        return Err(advertisement_error(record_result));
     }
 
     let mut service_ref = shared_ref;
@@ -266,7 +265,7 @@ fn register_records(
         )
     };
     if service_result != DNS_SERVICE_NO_ERROR {
-        return Err(AdvertisementError::PlatformFailure(service_result.into()));
+        return Err(advertisement_error(service_result));
     }
     Ok(())
 }
@@ -333,6 +332,14 @@ fn c_string(value: impl Into<Vec<u8>>) -> Result<CString, AdvertisementError> {
     CString::new(value).map_err(|_| AdvertisementError::InvalidHostname)
 }
 
+fn advertisement_error(error: DnsServiceError) -> AdvertisementError {
+    if error == DNS_SERVICE_ERR_NAME_CONFLICT {
+        AdvertisementError::NameConflict
+    } else {
+        AdvertisementError::PlatformFailure(error.into())
+    }
+}
+
 unsafe extern "C" fn address_record_callback(
     _service_ref: DnsServiceRef,
     _record_ref: DnsRecordRef,
@@ -361,4 +368,25 @@ fn complete_callback(context: *mut c_void, error: DnsServiceError) {
     }
     let callback_state = unsafe { &*context.cast::<CallbackState>() };
     callback_state.complete_registration(error);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_dns_sd_name_conflict_to_actionable_error() {
+        assert_eq!(
+            advertisement_error(DNS_SERVICE_ERR_NAME_CONFLICT),
+            AdvertisementError::NameConflict
+        );
+    }
+
+    #[test]
+    fn preserves_other_dns_sd_error_codes() {
+        assert_eq!(
+            advertisement_error(-65537),
+            AdvertisementError::PlatformFailure(-65537)
+        );
+    }
 }

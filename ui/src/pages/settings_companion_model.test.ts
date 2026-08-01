@@ -197,11 +197,11 @@ test("buildTrustedLanCompanionModel blocks pairing when the stable local name is
   assert.equal(model.statusLabel, "Stable local address unavailable");
   assert.equal(
     model.statusHint,
-    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
+    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available. The local name conflicts with another device.",
   );
   assert.equal(
     model.localNameWarning,
-    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available.",
+    "The web app is running on its current IP, but pairing and permanent QR links stay disabled until the stable local address is available. The local name conflicts with another device.",
   );
   assert.equal(
     model.stableAddressValue,

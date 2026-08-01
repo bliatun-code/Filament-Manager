@@ -89,10 +89,13 @@ Release notes:
   reads and writes require an authenticated paired session.
 - On macOS and Windows, Companion advertises one stable `.local` address through
   mDNS. New browser and desktop pairings and new QR labels use this address, so
-  DHCP address changes do not break them. Devices must be on the same LAN with
-  mDNS allowed. Existing IP-based clients must pair once again, and QR labels
-  printed with an old IP address must be reprinted; the exact numeric IP remains
-  available in settings as a diagnostic fallback.
+  DHCP address changes do not break them. The app verifies that the stable name
+  resolves to the selected private LAN address before enabling pairing or
+  permanent QR links, and only one active Host can publish a library's name.
+  Devices must be on the same LAN with mDNS allowed. Existing IP-based clients
+  must pair once again, and QR labels printed with an old IP address must be
+  reprinted; the exact numeric IP remains available in settings as a diagnostic
+  fallback.
 - Host/client library mode for sharing one desktop-owned library with other
   authenticated desktop installations.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
