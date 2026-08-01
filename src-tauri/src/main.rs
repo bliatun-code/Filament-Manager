@@ -10,6 +10,7 @@ mod bambu_live_persistence;
 mod bambu_live_sync;
 mod bambu_live_usage;
 mod bambu_mqtt;
+mod bambu_printer_discovery;
 mod bambu_thermal;
 mod catalog_commands;
 mod companion_api;
@@ -59,6 +60,7 @@ mod library_sync_wishlist_write_commands;
 mod local_service_advertisement;
 mod optional_update;
 mod printer_active_commands;
+mod printer_bambu_discovery_commands;
 mod printer_bambu_live_commands;
 mod printer_command_support;
 mod printer_create_commands;
@@ -361,6 +363,8 @@ fn main() {
             printer_bambu_live_commands::inspect_bambu_live_tls_identity,
             printer_bambu_live_commands::save_bambu_live_integration,
             printer_bambu_live_commands::delete_bambu_live_integration,
+            printer_bambu_discovery_commands::discover_bambu_live_printers,
+            printer_bambu_discovery_commands::recover_bambu_live_host,
             printer_danger_zone_commands::delete_printer,
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,

@@ -4,6 +4,7 @@ use serde_json::Value;
 use super::database_bambu_live_settings::{
     delete_bambu_live_integration as delete_bambu_live_integration_row,
     list_bambu_live_integrations as list_bambu_live_integration_rows,
+    recover_bambu_live_connection_if_current as recover_bambu_live_connection_if_current_row,
     save_bambu_live_integration as save_bambu_live_integration_row,
     update_bambu_live_observation_if_current as update_bambu_live_observation_if_current_row,
 };
@@ -88,6 +89,29 @@ impl FilamentDatabase {
             expected_config,
             observed_state,
             last_error,
+            observed_tls_identity,
+        )
+    }
+
+    /// Updates a previously trusted printer endpoint only while the connection
+    /// configuration that was checked on the network is still current.
+    ///
+    /// The caller is responsible for proving the new endpoint with the saved
+    /// serial and SPKI pin before calling this method. Keeping the conditional
+    /// write in SQLite prevents a slow discovery result from replacing a newer
+    /// user edit or credential replacement.
+    pub fn recover_bambu_live_connection_if_current(
+        &self,
+        printer_id: &str,
+        expected_config: &BambuLiveIntegrationRow,
+        recovered_host: &str,
+        observed_tls_identity: &BambuLiveTlsIdentityRow,
+    ) -> InventoryResult<bool> {
+        recover_bambu_live_connection_if_current_row(
+            self.connection(),
+            printer_id,
+            expected_config,
+            recovered_host,
             observed_tls_identity,
         )
     }

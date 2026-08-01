@@ -6,6 +6,7 @@ import type {
   MasterCatalogRow,
   PrinterOverviewRow,
   PrinterRow,
+  TrustedLanInterfaceOption,
 } from "../lib/tauri_client";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import { buildSettingsPrintersRouteProps } from "./settings_printers_route_props";
@@ -14,6 +15,7 @@ import {
   type SettingsPrinterMessageLabels,
 } from "./settings_printer_model";
 import { useSettingsBambuLiveToggleActions } from "./use_settings_bambu_live_toggle_actions";
+import { useSettingsBambuLiveDiscovery } from "./use_settings_bambu_live_discovery";
 import { useSettingsPrinterActions } from "./use_settings_printer_actions";
 import { useSettingsPrinterSectionState } from "./use_settings_printer_section_state";
 
@@ -36,6 +38,7 @@ type UseSettingsPrintersSectionInput = {
   settingsPrinterMessageLabels: () => SettingsPrinterMessageLabels;
   spoolRows: NormalizedSpoolWithMasterRow[];
   tauri: boolean;
+  trustedLanInterfaces: TrustedLanInterfaceOption[];
 };
 
 export function useSettingsPrintersSection({
@@ -57,9 +60,11 @@ export function useSettingsPrintersSection({
   settingsPrinterMessageLabels,
   spoolRows,
   tauri,
+  trustedLanInterfaces,
 }: UseSettingsPrintersSectionInput) {
   const printerEditorDiscardAppliedRef = useRef(false);
   const {
+    acceptRecoveredBambuLiveHost,
     cancelPrinterEdit,
     confirmDeletePrinterId,
     diagnosticCaptureActiveByPrinterId,
@@ -113,6 +118,36 @@ export function useSettingsPrintersSection({
     locale,
     printerOverview,
     printers,
+  });
+  const {
+    bambuDiscoveryCandidates,
+    bambuDiscoveryHasScanned,
+    bambuDiscoveryInterfaceAddress,
+    bambuDiscoveryScanning,
+    handleBambuDiscoveryInterfaceAddressChange,
+    handleFindBambuPrinters,
+    handleRecoverBambuLiveAddress,
+    handleUseDiscoveredBambuPrinter,
+  } = useSettingsBambuLiveDiscovery({
+    acceptRecoveredBambuLiveHost,
+    busy,
+    editBambuLivePrinterSerial,
+    editBambuLiveTlsTrustState,
+    editPrinterDirty,
+    editPrinterId,
+    interfaces: trustedLanInterfaces,
+    reloadSettings,
+    setBusy,
+    setEditBambuLiveHost,
+    setEditBambuLivePrinterSerial,
+    setEditBambuLiveTlsCertificateFingerprint,
+    setEditBambuLiveTlsSpkiFingerprint,
+    setEditBambuLiveTlsTrustAction,
+    setEditBambuLiveTlsTrustState,
+    setError,
+    setInfo,
+    settingsClientReadOnly,
+    tauri,
   });
   const visualQaScenario = resolveDesktopVisualQaScenario();
   const isDiagnosticsVisualQaScenario =
@@ -432,6 +467,10 @@ export function useSettingsPrintersSection({
     editBambuLiveTlsSpkiFingerprint,
     editBambuLiveTlsTrustAction,
     editBambuLiveTlsTrustState,
+    bambuDiscoveryCandidates,
+    bambuDiscoveryHasScanned,
+    bambuDiscoveryInterfaceAddress,
+    bambuDiscoveryScanning,
     editModelProfile,
     editPrinterDirty,
     editPrinterId,
@@ -446,6 +485,7 @@ export function useSettingsPrintersSection({
     sortedPrinters,
     spoolRows,
     tauri,
+    trustedLanInterfaces,
     onBambuLiveAccessCodeChange: setEditBambuLiveAccessCode,
     onBambuLiveAccessCodeActionChange: setEditBambuLiveAccessCodeAction,
     onBambuLiveEnabledChange: setEditBambuLiveEnabled,
@@ -465,6 +505,11 @@ export function useSettingsPrintersSection({
       setEditBambuLiveTlsTrustState("UNPAIRED");
     },
     onBambuLiveTlsTrustActionChange: setEditBambuLiveTlsTrustAction,
+    onBambuDiscoveryInterfaceAddressChange:
+      handleBambuDiscoveryInterfaceAddressChange,
+    onFindBambuPrinters: handleFindBambuPrinters,
+    onRecoverBambuLiveAddress: handleRecoverBambuLiveAddress,
+    onUseDiscoveredBambuPrinter: handleUseDiscoveredBambuPrinter,
     onCancelEditPrinter: handleCancelEditPrinter,
     onCopyError: setError,
     onCopySuccess: setInfo,

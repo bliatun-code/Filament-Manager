@@ -81,6 +81,10 @@ Release notes:
   temperature, and print-session usage accounting. Printer identity is approved
   locally before authentication; reusable secrets stay in macOS Keychain or
   Windows Credential Manager instead of SQLite.
+- Passive Bambu printer discovery can identify a local printer by its announced
+  serial number. It assists first-time Live setup and can safely recover a DHCP-
+  changed printer address only after the saved certificate serial and public-key
+  pin match again.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
   A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.

@@ -42,3 +42,21 @@ test("Bambu live writes require explicit credential and trust actions", () => {
   assert.match(clientSource, /tls_trust_action: input\.tls_trust_action/);
   assert.match(clientSource, /"inspect_bambu_live_tls_identity"/);
 });
+
+test("Bambu discovery and address recovery never expose or submit credentials", () => {
+  for (const typeName of [
+    "BambuPrinterDiscoveryCandidate",
+    "RecoverBambuLiveHostInput",
+    "BambuLiveHostRecovery",
+  ]) {
+    const value = typeBody(typeName);
+    assert.doesNotMatch(value, /access_code|credential|token|password/i);
+  }
+  assert.match(clientSource, /"discover_bambu_live_printers"/);
+  assert.match(clientSource, /"recover_bambu_live_host"/);
+  const recoveryCall = clientSource.match(
+    /export async function recoverBambuLiveHost\([\s\S]*?\n\}/,
+  )?.[0];
+  assert.ok(recoveryCall, "missing Bambu address recovery client call");
+  assert.doesNotMatch(recoveryCall, /access_code|credential|token|password/i);
+});

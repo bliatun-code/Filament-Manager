@@ -3,8 +3,10 @@ import { inlineStatusSignalClass } from "../lib/chip_styles";
 import type { PrinterModelProfile } from "../lib/printer_profiles";
 import type {
   BambuAccessCodeAction,
+  BambuPrinterDiscoveryCandidate,
   BambuTlsTrustAction,
   BambuTlsTrustState,
+  TrustedLanInterfaceOption,
 } from "../lib/tauri_client";
 import {
   multiMaterialSlotsInputLabel,
@@ -17,6 +19,7 @@ import {
 } from "../lib/settings_ui_classes";
 import { FeedbackBanner } from "./feedback_banner";
 import { SettingsBambuLiveSecurityControls } from "./settings_bambu_live_security_controls";
+import { SettingsBambuLiveDiscoveryControls } from "./settings_bambu_live_discovery_controls";
 import { settingsPrinterDomIdPrefix } from "./settings_bambu_live_dom_ids";
 
 type SettingsPrinterEditFormProps = {
@@ -30,6 +33,10 @@ type SettingsPrinterEditFormProps = {
   bambuLiveTlsSpkiFingerprint: string | null;
   bambuLiveTlsTrustAction: BambuTlsTrustAction;
   bambuLiveTlsTrustState: BambuTlsTrustState;
+  bambuDiscoveryCandidates: BambuPrinterDiscoveryCandidate[];
+  bambuDiscoveryHasScanned: boolean;
+  bambuDiscoveryInterfaceAddress: string;
+  bambuDiscoveryScanning: boolean;
   busy: boolean;
   dirty: boolean;
   model: string;
@@ -42,6 +49,7 @@ type SettingsPrinterEditFormProps = {
   tauri: boolean;
   t: (key: string, fallback?: string) => string;
   units: string;
+  trustedLanInterfaces: TrustedLanInterfaceOption[];
   onBambuLiveAccessCodeChange: (value: string) => void;
   onBambuLiveAccessCodeActionChange: (value: BambuAccessCodeAction) => void;
   onBambuLiveEnabledChange: (value: boolean) => void;
@@ -49,6 +57,10 @@ type SettingsPrinterEditFormProps = {
   onBambuLiveIdentityCheck: () => void;
   onBambuLivePrinterSerialChange: (value: string) => void;
   onBambuLiveTlsTrustActionChange: (value: BambuTlsTrustAction) => void;
+  onBambuDiscoveryInterfaceAddressChange: (value: string) => void;
+  onFindBambuPrinters: () => void;
+  onRecoverBambuLiveAddress: (candidate: BambuPrinterDiscoveryCandidate) => void;
+  onUseDiscoveredBambuPrinter: (candidate: BambuPrinterDiscoveryCandidate) => void;
   onCancel: () => void;
   onModelChange: (value: string) => void;
   onNameChange: (value: string) => void;
@@ -68,6 +80,10 @@ export function SettingsPrinterEditForm({
   bambuLiveTlsSpkiFingerprint,
   bambuLiveTlsTrustAction,
   bambuLiveTlsTrustState,
+  bambuDiscoveryCandidates,
+  bambuDiscoveryHasScanned,
+  bambuDiscoveryInterfaceAddress,
+  bambuDiscoveryScanning,
   busy,
   dirty,
   model,
@@ -80,6 +96,7 @@ export function SettingsPrinterEditForm({
   tauri,
   t,
   units,
+  trustedLanInterfaces,
   onBambuLiveAccessCodeChange,
   onBambuLiveAccessCodeActionChange,
   onBambuLiveEnabledChange,
@@ -87,6 +104,10 @@ export function SettingsPrinterEditForm({
   onBambuLiveIdentityCheck,
   onBambuLivePrinterSerialChange,
   onBambuLiveTlsTrustActionChange,
+  onBambuDiscoveryInterfaceAddressChange,
+  onFindBambuPrinters,
+  onRecoverBambuLiveAddress,
+  onUseDiscoveredBambuPrinter,
   onCancel,
   onModelChange,
   onNameChange,
@@ -301,6 +322,24 @@ export function SettingsPrinterEditForm({
                   />
                 </label>
               </div>
+              {!settingsClientReadOnly ? (
+                <SettingsBambuLiveDiscoveryControls
+                  candidates={bambuDiscoveryCandidates}
+                  dirty={dirty}
+                  disabled={liveConfigDisabled}
+                  hasScanned={bambuDiscoveryHasScanned}
+                  interfaceAddress={bambuDiscoveryInterfaceAddress}
+                  interfaces={trustedLanInterfaces}
+                  printerSerial={bambuLivePrinterSerial}
+                  scanning={bambuDiscoveryScanning}
+                  tlsTrustState={bambuLiveTlsTrustState}
+                  t={t}
+                  onFind={onFindBambuPrinters}
+                  onInterfaceAddressChange={onBambuDiscoveryInterfaceAddressChange}
+                  onRecoverSavedAddress={onRecoverBambuLiveAddress}
+                  onUseForSetup={onUseDiscoveredBambuPrinter}
+                />
+              ) : null}
               <SettingsBambuLiveSecurityControls
                 accessCode={bambuLiveAccessCode}
                 accessCodeAction={bambuLiveAccessCodeAction}

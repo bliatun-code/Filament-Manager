@@ -137,21 +137,29 @@ on an async worker thread.
 
 ## Bambu Live Boundaries
 
+Passive local discovery is a convenience path, not printer authentication. It
+uses an advertised address and serial only to help fill a setup form. A saved
+printer address may change only after the stored serial and SPKI pin verify the
+candidate over TLS; discovery itself never reads or sends an access code.
+
 The live-printer path is intentionally ordered:
 
-1. `bambu_tls_identity.rs` extracts the certificate identity and requires the
+1. `bambu_printer_discovery.rs` listens briefly for local Bambu announcements
+   on a user-selected private interface and treats all announcement metadata as
+   untrusted until the TLS identity check passes.
+2. `bambu_tls_identity.rs` extracts the certificate identity and requires the
    configured serial plus locally approved SPKI before authentication.
-2. `credential_store.rs` resolves reusable secrets through a machine-local
+3. `credential_store.rs` resolves reusable secrets through a machine-local
    profile backed by macOS Keychain or Windows Credential Manager.
-3. `bambu_live.rs` owns bounded polling and writes MQTT authentication only
+4. `bambu_live.rs` owns bounded polling and writes MQTT authentication only
    after the exact TLS connection passes the identity gate.
-4. `bambu_live_observation.rs` parses payloads and merges partial observations.
-5. `bambu_live_matching.rs` evaluates exact RFID and conservative metadata
+5. `bambu_live_observation.rs` parses payloads and merges partial observations.
+6. `bambu_live_matching.rs` evaluates exact RFID and conservative metadata
    candidates without writing inventory.
-6. `bambu_live_usage.rs` applies slot and weight/session rules after matching.
-7. `bambu_live_persistence.rs` stores the final observation and state-change
+7. `bambu_live_usage.rs` applies slot and weight/session rules after matching.
+8. `bambu_live_persistence.rs` stores the final observation and state-change
    events.
-8. `bambu_live_sync.rs` keeps the matching-before-usage orchestration explicit.
+9. `bambu_live_sync.rs` keeps the matching-before-usage orchestration explicit.
 
 Weak color or name hints must never outrank an exact RFID identity or a
 deliberate manual override. Persistence remains after enrichment so readers do

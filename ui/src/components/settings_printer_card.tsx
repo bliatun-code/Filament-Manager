@@ -15,11 +15,13 @@ import { useResolvedTheme } from "../lib/theme_mode";
 import type { SemanticChipTone } from "../lib/chip_styles";
 import type {
   BambuAccessCodeAction,
+  BambuPrinterDiscoveryCandidate,
   BambuLiveIntegrationSettings,
   BambuTlsTrustAction,
   BambuTlsTrustState,
   PrinterAmsSlotRow,
   PrinterRow,
+  TrustedLanInterfaceOption,
 } from "../lib/tauri_client";
 import type { SettingsBambuLiveDiagnosticsModel } from "../pages/settings_bambu_live_diagnostics_model";
 import { isBambuLabPrinter } from "../pages/settings_printer_model";
@@ -39,11 +41,16 @@ export type SettingsPrinterEditDraft = {
   bambuLiveTlsSpkiFingerprint: string | null;
   bambuLiveTlsTrustAction: BambuTlsTrustAction;
   bambuLiveTlsTrustState: BambuTlsTrustState;
+  bambuDiscoveryCandidates: BambuPrinterDiscoveryCandidate[];
+  bambuDiscoveryHasScanned: boolean;
+  bambuDiscoveryInterfaceAddress: string;
+  bambuDiscoveryScanning: boolean;
   model: string;
   modelProfile: PrinterModelProfile;
   name: string;
   slotsPerUnit: string;
   units: string;
+  trustedLanInterfaces: TrustedLanInterfaceOption[];
 };
 
 export type SettingsPrinterEditActions = {
@@ -54,6 +61,10 @@ export type SettingsPrinterEditActions = {
   onBambuLiveIdentityCheck: () => void;
   onBambuLivePrinterSerialChange: (value: string) => void;
   onBambuLiveTlsTrustActionChange: (value: BambuTlsTrustAction) => void;
+  onBambuDiscoveryInterfaceAddressChange: (value: string) => void;
+  onFindBambuPrinters: () => void;
+  onRecoverBambuLiveAddress: (candidate: BambuPrinterDiscoveryCandidate) => void;
+  onUseDiscoveredBambuPrinter: (candidate: BambuPrinterDiscoveryCandidate) => void;
   onCancel: () => void;
   onModelChange: (value: string) => void;
   onNameChange: (value: string) => void;
@@ -197,6 +208,10 @@ export function SettingsPrinterCard({
           bambuLiveTlsSpkiFingerprint={editDraft.bambuLiveTlsSpkiFingerprint}
           bambuLiveTlsTrustAction={editDraft.bambuLiveTlsTrustAction}
           bambuLiveTlsTrustState={editDraft.bambuLiveTlsTrustState}
+          bambuDiscoveryCandidates={editDraft.bambuDiscoveryCandidates}
+          bambuDiscoveryHasScanned={editDraft.bambuDiscoveryHasScanned}
+          bambuDiscoveryInterfaceAddress={editDraft.bambuDiscoveryInterfaceAddress}
+          bambuDiscoveryScanning={editDraft.bambuDiscoveryScanning}
           busy={busy}
           dirty={editDirty}
           model={editDraft.model}
@@ -208,6 +223,7 @@ export function SettingsPrinterCard({
           supportsBambuLive={isBambuLabPrinter(printer.model)}
           tauri={tauri}
           t={t}
+          trustedLanInterfaces={editDraft.trustedLanInterfaces}
           units={editDraft.units}
           onBambuLiveAccessCodeChange={editActions.onBambuLiveAccessCodeChange}
           onBambuLiveAccessCodeActionChange={
@@ -220,6 +236,12 @@ export function SettingsPrinterCard({
           onBambuLiveTlsTrustActionChange={
             editActions.onBambuLiveTlsTrustActionChange
           }
+          onBambuDiscoveryInterfaceAddressChange={
+            editActions.onBambuDiscoveryInterfaceAddressChange
+          }
+          onFindBambuPrinters={editActions.onFindBambuPrinters}
+          onRecoverBambuLiveAddress={editActions.onRecoverBambuLiveAddress}
+          onUseDiscoveredBambuPrinter={editActions.onUseDiscoveredBambuPrinter}
           onModelChange={(nextModel) => {
             editActions.onModelChange(nextModel);
             const exactProfile = findPrinterModelProfileExact(nextModel);

@@ -28,12 +28,12 @@ pub(crate) mod tls_identity;
 mod live_security;
 #[cfg(test)]
 pub(crate) use live_security::format_mqtt_connect_errors_for_platform;
-pub(crate) use live_security::probe_printer_tls_identity;
 use live_security::{
     format_mqtt_connect_errors, has_live_observation, identity_probe_tls_connector,
     is_mqtt_read_timeout, record_observed_tls_identity, run_after_trusted_identity,
-    trusted_pin_from_config, BambuLivePollError,
+    BambuLivePollError,
 };
+pub(crate) use live_security::{probe_printer_tls_identity, trusted_pin_from_config};
 
 pub async fn run_live_observer(state: AppState) {
     loop {

@@ -12,12 +12,14 @@ import { formatSettingsDateTime } from "../lib/settings_utils";
 import type { PrinterModelProfile } from "../lib/printer_profiles";
 import type {
   BambuAccessCodeAction,
+  BambuPrinterDiscoveryCandidate,
   BambuLiveIntegrationEntry,
   BambuTlsTrustAction,
   BambuTlsTrustState,
   MasterCatalogRow,
   PrinterAmsSlotRow,
   PrinterRow,
+  TrustedLanInterfaceOption,
 } from "../lib/tauri_client";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
@@ -53,6 +55,10 @@ export type SettingsPrintersTabProps = {
   editBambuLiveTlsSpkiFingerprint: string | null;
   editBambuLiveTlsTrustAction: BambuTlsTrustAction;
   editBambuLiveTlsTrustState: BambuTlsTrustState;
+  bambuDiscoveryCandidates: BambuPrinterDiscoveryCandidate[];
+  bambuDiscoveryHasScanned: boolean;
+  bambuDiscoveryInterfaceAddress: string;
+  bambuDiscoveryScanning: boolean;
   editModelProfile: PrinterModelProfile;
   editPrinterDirty: boolean;
   editPrinterId: string | null;
@@ -67,6 +73,7 @@ export type SettingsPrintersTabProps = {
   sortedPrinters: PrinterRow[];
   spoolRows: NormalizedSpoolWithMasterRow[];
   tauri: boolean;
+  trustedLanInterfaces: TrustedLanInterfaceOption[];
   onBambuLiveAccessCodeChange: (value: string) => void;
   onBambuLiveAccessCodeActionChange: (value: BambuAccessCodeAction) => void;
   onBambuLiveEnabledChange: (value: boolean) => void;
@@ -74,6 +81,10 @@ export type SettingsPrintersTabProps = {
   onBambuLiveIdentityCheck: () => void;
   onBambuLivePrinterSerialChange: (value: string) => void;
   onBambuLiveTlsTrustActionChange: (value: BambuTlsTrustAction) => void;
+  onBambuDiscoveryInterfaceAddressChange: (value: string) => void;
+  onFindBambuPrinters: () => void;
+  onRecoverBambuLiveAddress: (candidate: BambuPrinterDiscoveryCandidate) => void;
+  onUseDiscoveredBambuPrinter: (candidate: BambuPrinterDiscoveryCandidate) => void;
   onCancelEditPrinter: () => void;
   onCopyError: (message: string) => void;
   onCopySuccess: (message: string) => void;
@@ -112,6 +123,10 @@ export function SettingsPrintersTab({
   editBambuLiveTlsSpkiFingerprint,
   editBambuLiveTlsTrustAction,
   editBambuLiveTlsTrustState,
+  bambuDiscoveryCandidates,
+  bambuDiscoveryHasScanned,
+  bambuDiscoveryInterfaceAddress,
+  bambuDiscoveryScanning,
   editModelProfile,
   editPrinterDirty,
   editPrinterId,
@@ -126,6 +141,7 @@ export function SettingsPrintersTab({
   sortedPrinters,
   spoolRows,
   tauri,
+  trustedLanInterfaces,
   onBambuLiveAccessCodeChange,
   onBambuLiveAccessCodeActionChange,
   onBambuLiveEnabledChange,
@@ -133,6 +149,10 @@ export function SettingsPrintersTab({
   onBambuLiveIdentityCheck,
   onBambuLivePrinterSerialChange,
   onBambuLiveTlsTrustActionChange,
+  onBambuDiscoveryInterfaceAddressChange,
+  onFindBambuPrinters,
+  onRecoverBambuLiveAddress,
+  onUseDiscoveredBambuPrinter,
   onCancelEditPrinter,
   onCopyError,
   onCopySuccess,
@@ -161,11 +181,16 @@ export function SettingsPrintersTab({
     bambuLiveTlsSpkiFingerprint: editBambuLiveTlsSpkiFingerprint,
     bambuLiveTlsTrustAction: editBambuLiveTlsTrustAction,
     bambuLiveTlsTrustState: editBambuLiveTlsTrustState,
+    bambuDiscoveryCandidates,
+    bambuDiscoveryHasScanned,
+    bambuDiscoveryInterfaceAddress,
+    bambuDiscoveryScanning,
     model: editPrinterModel,
     modelProfile: editModelProfile,
     name: editPrinterName,
     slotsPerUnit: editSlotsPerUnit,
     units: editAmsUnits,
+    trustedLanInterfaces,
   };
 
   return (
@@ -210,6 +235,10 @@ export function SettingsPrintersTab({
             onBambuLiveIdentityCheck,
             onBambuLivePrinterSerialChange,
             onBambuLiveTlsTrustActionChange,
+            onBambuDiscoveryInterfaceAddressChange,
+            onFindBambuPrinters,
+            onRecoverBambuLiveAddress,
+            onUseDiscoveredBambuPrinter,
             onCancel: onCancelEditPrinter,
             onModelChange: onEditPrinterModelChange,
             onNameChange: onEditPrinterNameChange,

@@ -487,6 +487,7 @@ export default function SettingsPage({ initialTab = null }: SettingsPageProps) {
     settingsPrinterMessageLabels,
     spoolRows,
     tauri,
+    trustedLanInterfaces,
   });
 
   const {

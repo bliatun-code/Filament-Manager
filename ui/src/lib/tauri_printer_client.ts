@@ -187,6 +187,25 @@ export type BambuLiveTlsIdentityInspection = {
   spki_sha256: string;
 };
 
+export type BambuPrinterDiscoveryCandidate = {
+  host: string;
+  printer_serial: string;
+  model?: string | null;
+  name?: string | null;
+};
+
+export type RecoverBambuLiveHostInput = {
+  printer_id: string;
+  host: string;
+};
+
+export type BambuLiveHostRecovery = {
+  host: string;
+  printer_serial: string;
+  certificate_sha256: string;
+  spki_sha256: string;
+};
+
 export type AssignPrinterSlotInput = {
   printer_id: string;
   slot_id: string;
@@ -227,6 +246,16 @@ export async function inspectBambuLiveTlsIdentity(
     "inspect_bambu_live_tls_identity",
     { input },
   );
+}
+
+export async function discoverBambuLivePrinters(interfaceAddress: string) {
+  return invoke<BambuPrinterDiscoveryCandidate[]>("discover_bambu_live_printers", {
+    input: { interface_address: interfaceAddress },
+  });
+}
+
+export async function recoverBambuLiveHost(input: RecoverBambuLiveHostInput) {
+  return invoke<BambuLiveHostRecovery>("recover_bambu_live_host", { input });
 }
 
 export async function saveLibrarySyncHostBambuLiveIntegration(

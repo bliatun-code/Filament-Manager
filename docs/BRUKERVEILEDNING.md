@@ -580,13 +580,16 @@ Typisk oppsett:
 4. Lagre printeren.
 5. Åpne printerkortet igjen.
 6. Aktiver Live Bambu status.
-7. Fyll inn printerens IP/host.
+7. Fyll inn printerens IP/host og serienummer, eller velg **Finn Bambu-
+   printere** og velg det private LAN-grensesnittet som når printeren. Den korte
+   passive skanningen viser lokalt annonserte printernavn, serienumre og
+   adresser. Velg **Bruk til oppsett** for å fylle host og serienummer inn i det
+   ulagrede skjemaet.
 8. Fyll inn access code.
-9. Fyll inn printerens serienummer.
-10. Velg **Kontroller identitet**. Sammenlign observert serienummer og
+9. Velg **Kontroller identitet**. Sammenlign observert serienummer og
     fingeravtrykk før du velger **Godkjenn denne identiteten**.
-11. Lagre printeren.
-12. Åpne live-detaljer og kontroller at AMS-spor vises.
+10. Lagre printeren.
+11. Åpne live-detaljer og kontroller at AMS-spor vises.
 
 Live Bambu status er lokal og leser printerdata fra samme nettverk. Den bør konfigureres på host-maskinen når du bruker Vert/Klient-oppsett.
 
@@ -597,6 +600,27 @@ nøkkelfingeravtrykk samsvarer med den samme TLS-forbindelsen. En endret
 identitet stopper forbindelsen og krever eksplisitt ny paring. Access code
 lagres i macOS-nøkkelringen eller Windows Credential Manager, ikke i
 bibliotekdatabasen eller en flyttbar sikkerhetskopi.
+
+### Finn printeren etter at IP-adressen har endret seg
+
+Hvis ruteren gir en tidligere konfigurert printer en ny adresse, åpner du det
+lagrede kortet under **Innstillinger -> 3D-printere** og bruker **Finn Bambu-
+printere** på det private LAN-grensesnittet. Skanningen lytter etter lokale
+printerannonser i opptil ti sekunder og viser annonsert serienummer, slik at du
+kan skille ellers like printere fra hverandre.
+
+For en lagret printer uten andre ulagrede endringer er **Gjenopprett lagret
+adresse** bare tilgjengelig ved en kandidat med samme lagrede serienummer.
+Før ny adresse lagres, utfører programmet en TLS-identitetskontroll: både
+printersertifikatets serienummer og tidligere godkjent offentlig
+nøkkelfingeravtrykk må samsvare. Access code blir ikke sendt. Hvis en av
+identitetsverdiene har endret seg, skal adressen ikke gjenopprettes; kontroller
+printeren og gjennomfør vanlig eksplisitt ny paring i stedet.
+
+Oppdagelsen er et oppsetthjelpemiddel, ikke identitetsbevis. Den forutsetter at
+vert og printer er på samme valgte private LAN og at printeren er våken nok til
+å annonsere seg. Hvis ingen printer vises, kontroller valgt grensesnitt, lokal
+brannmur/nettverksisolering og prøv igjen før du legger inn adressen manuelt.
 
 ### Hva live-integrasjonen observerer
 

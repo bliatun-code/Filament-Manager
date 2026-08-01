@@ -7,6 +7,7 @@ use super::database_printer_models::{
     BambuLiveIntegrationEntryRow, BambuLiveIntegrationRow, BambuLiveObservedStateRow,
     BambuLiveTlsIdentityRow,
 };
+use super::database_printer_queries::printer_exists;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_revision::{bump_library_domain_revision, PRINTERS_REVISION_DOMAIN};
 use super::database_settings::{delete_setting, get_setting, set_setting};
@@ -107,6 +108,58 @@ pub(crate) fn update_bambu_live_observation_if_current(
             bump_library_domain_revision(&transaction, PRINTERS_REVISION_DOMAIN)?;
         }
     }
+    transaction.commit()?;
+    Ok(true)
+}
+
+pub(crate) fn recover_bambu_live_connection_if_current(
+    conn: &Connection,
+    printer_id: &str,
+    expected_config: &BambuLiveIntegrationRow,
+    recovered_host: &str,
+    observed_tls_identity: &BambuLiveTlsIdentityRow,
+) -> InventoryResult<bool> {
+    let normalized_printer_id = printer_id.trim();
+    let recovered_host = recovered_host.trim();
+    if normalized_printer_id.is_empty() || recovered_host.is_empty() {
+        return Err(InventoryError::Db(
+            "printer id and recovered host are required for Bambu live recovery".to_string(),
+        ));
+    }
+
+    // A scan and its credential-free TLS probe can take several seconds. Keep
+    // the same conditional binding check used by polling so a late result can
+    // never replace a newer printer edit, serial, pin, or credential pointer.
+    let transaction = Transaction::new_unchecked(conn, TransactionBehavior::Immediate)
+        .map_err(InventoryError::from)?;
+    if !printer_exists(&transaction, normalized_printer_id)? {
+        return Ok(false);
+    }
+    let setting_key = bambu_live_integration_setting_key(normalized_printer_id);
+    let current_payload = transaction
+        .query_row(
+            "SELECT value FROM settings WHERE key = ?1 LIMIT 1",
+            params![setting_key],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()?;
+    let Some(current_payload) = current_payload else {
+        return Ok(false);
+    };
+    let mut current = serde_json::from_str::<BambuLiveIntegrationRow>(&current_payload)
+        .map_err(|error| InventoryError::Db(error.to_string()))?;
+    if !same_poll_binding(expected_config, &current) {
+        return Ok(false);
+    }
+
+    current.host = Some(recovered_host.to_string());
+    current.last_error = None;
+    current.observed_state = None;
+    current.tls_identity = Some(merge_observed_tls_identity(
+        current.tls_identity.as_ref(),
+        observed_tls_identity,
+    ));
+    save_bambu_live_integration(&transaction, normalized_printer_id, &current)?;
     transaction.commit()?;
     Ok(true)
 }

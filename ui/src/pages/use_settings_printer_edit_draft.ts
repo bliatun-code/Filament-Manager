@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type {
   BambuAccessCodeAction,
+  BambuLiveHostRecovery,
   BambuLiveIntegrationEntry,
   BambuTlsTrustAction,
   BambuTlsTrustState,
@@ -163,7 +164,29 @@ export function useSettingsPrinterEditDraft() {
     editSlotsPerUnit,
   ]);
 
+  const acceptRecoveredBambuLiveHost = useCallback(
+    (recovery: BambuLiveHostRecovery) => {
+      const next = {
+        bambuLiveHost: recovery.host,
+        bambuLiveTlsCertificateFingerprint: recovery.certificate_sha256,
+        bambuLiveTlsSpkiFingerprint: recovery.spki_sha256,
+        bambuLiveTlsTrustAction: "KEEP" as const,
+        bambuLiveTlsTrustState: "TRUSTED" as const,
+      };
+      setEditPrinterBaseline((current) => (current ? { ...current, ...next } : current));
+      setEditBambuLiveHost(next.bambuLiveHost);
+      setEditBambuLiveTlsCertificateFingerprint(
+        next.bambuLiveTlsCertificateFingerprint,
+      );
+      setEditBambuLiveTlsSpkiFingerprint(next.bambuLiveTlsSpkiFingerprint);
+      setEditBambuLiveTlsTrustAction(next.bambuLiveTlsTrustAction);
+      setEditBambuLiveTlsTrustState(next.bambuLiveTlsTrustState);
+    },
+    [],
+  );
+
   return {
+    acceptRecoveredBambuLiveHost,
     cancelPrinterEdit,
     editAmsUnits,
     editBambuLiveAccessCode,

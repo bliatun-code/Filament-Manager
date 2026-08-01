@@ -21,6 +21,15 @@ function renderEditForm(
     trustAction?: "KEEP" | "TRUST_CURRENT" | "CLEAR";
     trustState?: "UNPAIRED" | "TRUSTED" | "CHANGED";
   } = {},
+  discovery: {
+    candidates?: Array<{
+      host: string;
+      name?: string | null;
+      model?: string | null;
+      printer_serial: string;
+    }>;
+    hasScanned?: boolean;
+  } = {},
 ) {
   return renderToStaticMarkup(
     <SettingsPrinterEditForm
@@ -42,6 +51,10 @@ function renderEditForm(
       }
       bambuLiveTlsTrustAction={security.trustAction ?? "KEEP"}
       bambuLiveTlsTrustState={security.trustState ?? "TRUSTED"}
+      bambuDiscoveryCandidates={discovery.candidates ?? []}
+      bambuDiscoveryHasScanned={discovery.hasScanned ?? false}
+      bambuDiscoveryInterfaceAddress="192.168.1.10"
+      bambuDiscoveryScanning={false}
       busy={false}
       dirty={dirty}
       model="Bambu Lab X1 Carbon"
@@ -53,6 +66,9 @@ function renderEditForm(
       supportsBambuLive
       tauri
       t={(_key, fallback = "") => fallback}
+      trustedLanInterfaces={[
+        { name: "Ethernet", address: "192.168.1.10", label: "Ethernet · 192.168.1.10" },
+      ]}
       units="1"
       onBambuLiveAccessCodeChange={() => {}}
       onBambuLiveAccessCodeActionChange={() => {}}
@@ -61,6 +77,10 @@ function renderEditForm(
       onBambuLiveIdentityCheck={() => {}}
       onBambuLivePrinterSerialChange={() => {}}
       onBambuLiveTlsTrustActionChange={() => {}}
+      onBambuDiscoveryInterfaceAddressChange={() => {}}
+      onFindBambuPrinters={() => {}}
+      onRecoverBambuLiveAddress={() => {}}
+      onUseDiscoveredBambuPrinter={() => {}}
       onCancel={() => {}}
       onModelChange={() => {}}
       onNameChange={() => {}}
@@ -127,6 +147,38 @@ test("printer edit fields reference existing help text", () => {
   assert.match(html, /Choose model, name and multi-material capacity/);
   assert.match(html, /Optional local read-only integration/);
   assert.match(html, /secure credential store/);
+});
+
+test("Bambu discovery keeps a labeled private-interface selector and gates recovery by identity", () => {
+  const matching = renderEditForm(false, {}, {
+    candidates: [
+      {
+        host: "192.168.1.44",
+        name: "Workshop printer",
+        model: "P1S",
+        printer_serial: "00M09",
+      },
+    ],
+  });
+  const differentPrinter = renderEditForm(false, {}, {
+    candidates: [
+      {
+        host: "192.168.1.45",
+        printer_serial: "OTHER",
+      },
+    ],
+  });
+  const clientMode = renderEditForm(false, { clientReadOnly: true });
+
+  assert.match(matching, /Find Bambu printer/);
+  assert.match(matching, /<label[^>]*for="settings-bambu-live-discovery-interface"/);
+  assert.match(matching, /Network interface \(IP\)/);
+  assert.match(matching, /No access code is sent/);
+  assert.match(matching, /Workshop printer/);
+  assert.match(matching, />Recover saved address<\/button>/);
+  assert.match(differentPrinter, /This is not the saved printer/);
+  assert.doesNotMatch(differentPrinter, />Recover saved address<\/button>/);
+  assert.doesNotMatch(clientMode, /Find Bambu printer/);
 });
 
 test("printer edit uses native required fields and keeps save after live configuration", () => {

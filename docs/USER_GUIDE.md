@@ -577,13 +577,16 @@ Typical setup:
 4. Save the printer.
 5. Open the printer card again.
 6. Enable Live Bambu status.
-7. Enter the printer IP/host.
+7. Either enter the printer IP/host and serial, or choose **Find Bambu
+   printers** and select the private LAN interface that reaches the printer.
+   The short passive scan shows locally announced printer names, serials, and
+   addresses. Choose **Use for setup** to fill the host and serial into the
+   unsaved form.
 8. Enter the access code.
-9. Enter the printer serial.
-10. Select **Check identity**. Compare the observed printer serial and
+9. Select **Check identity**. Compare the observed printer serial and
     fingerprint before selecting **Trust this identity**.
-11. Save the printer.
-12. Open live details and verify that AMS slots are visible.
+10. Save the printer.
+11. Open live details and verify that AMS slots are visible.
 
 Live Bambu status is local and reads printer data on the same network. It should be configured on the host machine when using a Host/Client setup.
 
@@ -594,6 +597,28 @@ fingerprint match the exact TLS connection. A changed identity stops the
 connection and requires explicit re-pairing. The access code is stored in
 macOS Keychain or Windows Credential Manager, not in the library database or
 portable backup.
+
+### Finding a Printer After Its IP Address Changes
+
+If a router assigns a new address to a previously configured printer, open its
+saved card in **Settings -> 3D printers** and use **Find Bambu printers** on the
+private LAN interface. The scan listens for local printer announcements for up
+to ten seconds and displays the announced serial number, so you can distinguish
+otherwise similar printers.
+
+For a saved printer with no other unsaved edits, **Recover saved address** is
+available only beside a candidate with the same saved serial. Recovery performs
+a TLS identity check before writing the new address: both the printer
+certificate serial and the previously trusted public-key fingerprint must
+match. It does not send the access code. If either identity value changed, do
+not recover the address; inspect the printer and complete the normal explicit
+re-pairing flow instead.
+
+Discovery is a setup aid, not proof of identity. It requires the host and
+printer to be on the same selected private LAN and the printer to be awake
+enough to announce itself. If no printer appears, check the selected interface,
+local firewall/network isolation, and try again before entering an address
+manually.
 
 ### What the Live Integration Observes
 
