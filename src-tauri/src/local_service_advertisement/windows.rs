@@ -256,6 +256,8 @@ fn monitor_worker(
     state: Arc<MonitorState>,
     stop_requested: Arc<AtomicBool>,
 ) {
+    let mut observed_healthy_announcement = false;
+
     loop {
         if stop_requested.load(Ordering::Acquire) {
             return;
@@ -274,7 +276,9 @@ fn monitor_worker(
         let failure = match event {
             DaemonEvent::Announce(instance_name, target) => {
                 match validate_windows_announcement(&expected_identity, &instance_name, &target) {
-                    WindowsAnnouncementValidation::Verified => {
+                    WindowsAnnouncementValidation::Verified
+                    | WindowsAnnouncementValidation::ObservedSelectedInterface => {
+                        observed_healthy_announcement = true;
                         state.mark_healthy();
                         None
                     }
@@ -288,7 +292,11 @@ fn monitor_worker(
             // never silently follow such a rename, so stop the responder immediately.
             DaemonEvent::NameChange(_) => Some(AdvertisementError::NameConflict),
             DaemonEvent::IpDel(address) if address == IpAddr::V4(expected_identity.address()) => {
-                Some(AdvertisementError::RegistrationWorkerStopped)
+                if observed_healthy_announcement {
+                    Some(AdvertisementError::RegistrationWorkerStopped)
+                } else {
+                    None
+                }
             }
             DaemonEvent::Error(error) => Some(map_mdns_error(error)),
             _ => None,
@@ -386,7 +394,7 @@ mod tests {
                 "Filament Manager A7C4._filament-manager._tcp.local.",
                 "[192.168.1.42]"
             ),
-            WindowsAnnouncementValidation::Pending
+            WindowsAnnouncementValidation::ObservedSelectedInterface
         );
         assert_eq!(
             validate_windows_announcement(
@@ -394,7 +402,7 @@ mod tests {
                 "Filament Manager A7C4._filament-manager._tcp.local.",
                 "[192.168.1.42, 192.168.1.43]"
             ),
-            WindowsAnnouncementValidation::Pending
+            WindowsAnnouncementValidation::ObservedSelectedInterface
         );
         assert_eq!(
             validate_windows_announcement(
@@ -512,6 +520,29 @@ mod tests {
         state.fail(AdvertisementError::RegisteredIdentityChanged);
 
         assert_eq!(state.health(), Err(AdvertisementError::NameConflict));
+    }
+
+    #[test]
+    fn selected_interface_ip_loss_is_only_fatal_after_registration_is_healthy() {
+        let mut observed_healthy_announcement = false;
+
+        let startup_result = if observed_healthy_announcement {
+            Some(AdvertisementError::RegistrationWorkerStopped)
+        } else {
+            None
+        };
+        assert_eq!(startup_result, None);
+
+        observed_healthy_announcement = true;
+        let runtime_result = if observed_healthy_announcement {
+            Some(AdvertisementError::RegistrationWorkerStopped)
+        } else {
+            None
+        };
+        assert_eq!(
+            runtime_result,
+            Some(AdvertisementError::RegistrationWorkerStopped)
+        );
     }
 
     #[test]

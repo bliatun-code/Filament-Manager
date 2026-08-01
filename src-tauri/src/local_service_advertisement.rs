@@ -3,8 +3,13 @@
 //! This module deliberately owns only the platform registration lifetime. Network-change
 //! detection and Companion listener rebinding belong to the runtime that integrates it.
 
+#[cfg(target_os = "windows")]
+use mdns_sd::{HostnameResolutionEvent, ServiceDaemon};
 use std::fmt;
-use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
+#[cfg(not(target_os = "windows"))]
+use std::net::ToSocketAddrs;
+use std::net::{IpAddr, Ipv4Addr};
+#[cfg(not(target_os = "windows"))]
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -23,6 +28,7 @@ pub(crate) const COMPANION_SERVICE_TYPE: &str = "_filament-manager._tcp.local.";
 
 const LOCAL_SUFFIX: &str = ".local";
 const STABLE_NAME_RESOLUTION_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(not(target_os = "windows"))]
 const STABLE_NAME_RESOLUTION_RETRY_DELAY: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -211,6 +217,7 @@ impl fmt::Display for AdvertisementError {
 
 impl std::error::Error for AdvertisementError {}
 
+#[cfg(not(target_os = "windows"))]
 fn verify_stable_hostname_resolution(
     config: &ValidatedAdvertisementConfig,
 ) -> Result<(), AdvertisementError> {
@@ -237,6 +244,55 @@ fn verify_stable_hostname_resolution(
     }
 }
 
+#[cfg(target_os = "windows")]
+fn verify_stable_hostname_resolution(
+    config: &ValidatedAdvertisementConfig,
+) -> Result<(), AdvertisementError> {
+    let daemon = ServiceDaemon::new().map_err(|_| AdvertisementError::StableNameUnresolved)?;
+    let receiver = daemon
+        .resolve_hostname(
+            &config.fqdn(),
+            Some(STABLE_NAME_RESOLUTION_TIMEOUT.as_millis() as u64),
+        )
+        .map_err(|_| AdvertisementError::StableNameUnresolved)?;
+    let deadline = Instant::now() + STABLE_NAME_RESOLUTION_TIMEOUT;
+    let mut resolved_an_address = false;
+
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        match receiver.recv_timeout(remaining) {
+            Ok(HostnameResolutionEvent::AddressesFound(_, addresses)) => {
+                let addresses = addresses
+                    .into_iter()
+                    .map(|address| address.to_ip_addr())
+                    .collect::<Vec<_>>();
+                resolved_an_address |= !addresses.is_empty();
+                if resolved_addresses_include_selected_ipv4(&addresses, config.address) {
+                    let _ = daemon.stop_resolve_hostname(&config.fqdn());
+                    let _ = daemon.shutdown();
+                    return Ok(());
+                }
+            }
+            Ok(HostnameResolutionEvent::SearchTimeout(_))
+            | Ok(HostnameResolutionEvent::SearchStopped(_)) => break,
+            Ok(_) => {}
+            Err(_) => break,
+        }
+
+        if Instant::now() >= deadline {
+            break;
+        }
+    }
+
+    let _ = daemon.stop_resolve_hostname(&config.fqdn());
+    let _ = daemon.shutdown();
+    Err(if resolved_an_address {
+        AdvertisementError::StableNameResolvedToUnexpectedAddress
+    } else {
+        AdvertisementError::StableNameUnresolved
+    })
+}
+
 fn resolved_addresses_include_selected_ipv4(resolved: &[IpAddr], selected: Ipv4Addr) -> bool {
     resolved.contains(&IpAddr::V4(selected))
 }
@@ -245,6 +301,7 @@ fn resolved_addresses_include_selected_ipv4(resolved: &[IpAddr], selected: Ipv4A
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum WindowsAnnouncementValidation {
     Verified,
+    ObservedSelectedInterface,
     Pending,
     Rejected,
 }
@@ -261,15 +318,15 @@ pub(crate) fn validate_windows_announcement(
 
     // mdns-sd emits two payload shapes. The first unsolicited response contains a
     // debug-formatted list of the sending interface's addresses (for example `[192.168.1.42]`),
-    // while the post-probing announcement contains `hostname:interface`. The address list can
-    // reject an announcement sent from the wrong interface, but it cannot prove the final DNS
-    // identity after conflict probing; keep it pending until the canonical event arrives.
+    // while the post-probing announcement contains `hostname:interface`. The address list is
+    // enough to prove the responder is alive on the selected adapter, while final hostname
+    // resolution is verified separately after registration completes.
     if let Some(addresses) = parse_windows_announced_addresses(target) {
         // mdns-sd reports every IPv4 assigned to the interface that sent the packet, rather than
         // the service's explicit A records. A selected adapter can legitimately have secondary
         // addresses, so the selected address must be present but need not be the only entry.
         return if addresses.contains(&IpAddr::V4(config.address())) {
-            WindowsAnnouncementValidation::Pending
+            WindowsAnnouncementValidation::ObservedSelectedInterface
         } else {
             WindowsAnnouncementValidation::Rejected
         };
@@ -391,7 +448,7 @@ mod tests {
                 "Filament Manager A7C4._filament-manager._tcp.local.",
                 "[192.168.1.42]",
             ),
-            WindowsAnnouncementValidation::Pending
+            WindowsAnnouncementValidation::ObservedSelectedInterface
         );
         assert_eq!(
             validate_windows_announcement(
@@ -399,7 +456,7 @@ mod tests {
                 "Filament Manager A7C4._filament-manager._tcp.local.",
                 "[192.168.1.42, 192.168.1.43]",
             ),
-            WindowsAnnouncementValidation::Pending
+            WindowsAnnouncementValidation::ObservedSelectedInterface
         );
         assert_eq!(
             validate_windows_announcement(
