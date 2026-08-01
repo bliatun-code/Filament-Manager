@@ -158,8 +158,18 @@ test("slow and interrupted hosts retain bounded validation and request timeouts"
   );
   assert.match(
     validation,
-    /\.timeout\(Duration::from_millis\(900\)\)/,
+    /send_library_sync_request\([\s\S]*Duration::from_millis\(900\)/,
     "host validation must remain bounded to 0.9 seconds",
+  );
+  assert.match(
+    hostClientSource,
+    /fn library_sync_http_client_builder[\s\S]*\.timeout\(timeout\)/,
+    "all host requests must apply their supplied timeout",
+  );
+  assert.match(
+    hostClientSource,
+    /const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis\(2500\)/,
+    "standard host requests must remain bounded to 2.5 seconds",
   );
 
   for (const [name, nextName] of [
@@ -173,10 +183,20 @@ test("slow and interrupted hosts retain bounded validation and request timeouts"
   ] as const) {
     assert.match(
       rustFunctionSource(hostClientSource, name, nextName),
-      /\.timeout\(Duration::from_millis\(2500\)\)/,
+      /send_library_sync_request\([\s\S]*LIBRARY_SYNC_REQUEST_TIMEOUT/,
       `${name} must remain bounded to 2.5 seconds`,
     );
   }
+
+  assert.match(
+    rustFunctionSource(
+      hostClientSource,
+      "post_library_sync_host_write_json",
+      "perform_library_sync_host_write",
+    ),
+    /send_library_sync_request\(base_url, timeout/,
+    "configured host writes must use the caller's bounded timeout",
+  );
 
   assert.match(
     rustFunctionSource(

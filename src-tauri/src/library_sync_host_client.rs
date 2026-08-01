@@ -7,7 +7,34 @@ use crate::with_inventory;
 use reqwest::header::{CONTENT_TYPE, HOST, ORIGIN, SET_COOKIE};
 use serde::{de::DeserializeOwned, Deserialize};
 use std::time::Duration;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    sync::{Mutex, OnceLock},
+    time::Instant,
+};
 use zeroize::{Zeroize, Zeroizing};
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use mdns_sd::{HostnameResolutionEvent, ServiceDaemon};
+
+const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+const MDNS_RETRY_TIMEOUT: Duration = Duration::from_secs(2);
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+const MDNS_RESOLUTION_CACHE_TTL: Duration = Duration::from_secs(5);
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[derive(Clone)]
+struct CachedMdnsResolution {
+    addresses: Vec<SocketAddr>,
+    expires_at: Instant,
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+static MDNS_RESOLUTION_CACHE: OnceLock<Mutex<HashMap<String, CachedMdnsResolution>>> =
+    OnceLock::new();
 
 #[derive(Deserialize)]
 struct LibrarySyncAuthenticatedSessionResponse {
@@ -71,20 +98,180 @@ pub(crate) fn extract_cookie_value_from_set_cookie(set_cookie: &str, name: &str)
     Some(cookie_value.trim().to_string())
 }
 
+fn library_sync_http_client_builder(timeout: Duration) -> reqwest::blocking::ClientBuilder {
+    // Companion endpoints are deliberately local-only. Never route a paired desktop request
+    // through a system or environment proxy: apart from being unnecessary, that can prevent a
+    // private `.local` name from reaching the selected LAN host.
+    reqwest::blocking::Client::builder()
+        .timeout(timeout)
+        .redirect(reqwest::redirect::Policy::none())
+        .no_proxy()
+}
+
+fn build_library_sync_http_client(
+    timeout: Duration,
+    operation: &str,
+) -> Result<reqwest::blocking::Client, String> {
+    library_sync_http_client_builder(timeout)
+        .build()
+        .map_err(|error| format!("Failed to prepare {operation} client: {error}"))
+}
+
+/// Sends one private-LAN request without using a proxy. On macOS and Windows, stable `.local`
+/// names use a small mDNS cache before the system resolver. Browser mDNS handling can become
+/// available before the general resolver used by Reqwest; the resolved TCP address is pinned
+/// while the URL, `Host`, and `Origin` stay on the stable local hostname.
+pub(crate) fn send_library_sync_request(
+    base_url: &str,
+    timeout: Duration,
+    operation: &str,
+    make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+) -> Result<reqwest::blocking::Response, String> {
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let _ = base_url;
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    if let Some(client) = build_mdns_local_client(base_url, timeout, operation)? {
+        if let Ok(response) = make_request(&client).send() {
+            return Ok(response);
+        }
+    }
+    let client = build_library_sync_http_client(timeout, operation)?;
+    make_request(&client)
+        .send()
+        .map_err(|error| format!("{operation} failed: {error}"))
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows", test))]
+fn stable_local_host_and_port(base_url: &str) -> Option<(String, u16)> {
+    let parsed = reqwest::Url::parse(base_url).ok()?;
+    let hostname = parsed
+        .host_str()?
+        .trim_end_matches('.')
+        .to_ascii_lowercase();
+    if !hostname.ends_with(".local") {
+        return None;
+    }
+    Some((hostname, parsed.port_or_known_default()?))
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn build_mdns_local_client(
+    base_url: &str,
+    timeout: Duration,
+    operation: &str,
+) -> Result<Option<reqwest::blocking::Client>, String> {
+    let Some((hostname, port)) = stable_local_host_and_port(base_url) else {
+        return Ok(None);
+    };
+    let Some(addresses) = resolve_stable_local_hostname_with_mdns(&hostname, port) else {
+        return Ok(None);
+    };
+    library_sync_http_client_builder(timeout)
+        .resolve_to_addrs(&hostname, &addresses)
+        .build()
+        .map(Some)
+        .map_err(|error| format!("Failed to prepare {operation} local-name retry client: {error}"))
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn resolve_stable_local_hostname_with_mdns(hostname: &str, port: u16) -> Option<Vec<SocketAddr>> {
+    let cache_key = format!("{hostname}:{port}");
+    if let Some(addresses) = cached_mdns_addresses(&cache_key) {
+        return Some(addresses);
+    }
+    let daemon = ServiceDaemon::new().ok()?;
+    let fqdn = format!("{hostname}.");
+    let receiver = match daemon.resolve_hostname(&fqdn, Some(MDNS_RETRY_TIMEOUT.as_millis() as u64))
+    {
+        Ok(receiver) => receiver,
+        Err(_) => {
+            let _ = daemon.shutdown();
+            return None;
+        }
+    };
+    let deadline = Instant::now() + MDNS_RETRY_TIMEOUT;
+    let mut resolved = Vec::new();
+
+    while Instant::now() < deadline {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        match receiver.recv_timeout(remaining) {
+            Ok(HostnameResolutionEvent::AddressesFound(found_hostname, addresses))
+                if found_hostname
+                    .trim_end_matches('.')
+                    .eq_ignore_ascii_case(hostname) =>
+            {
+                resolved.extend(addresses.into_iter().filter_map(|address| {
+                    match address.to_ip_addr() {
+                        // The Companion listener is deliberately bound to one selected private IPv4
+                        // interface. Do not use a link-local, public, or unrelated IPv6 response.
+                        IpAddr::V4(address) if address.is_private() => {
+                            Some(SocketAddr::new(IpAddr::V4(address), port))
+                        }
+                        _ => None,
+                    }
+                }));
+                if !resolved.is_empty() {
+                    break;
+                }
+            }
+            Ok(HostnameResolutionEvent::SearchTimeout(_))
+            | Ok(HostnameResolutionEvent::SearchStopped(_))
+            | Err(_) => break,
+            Ok(_) => {}
+        }
+    }
+
+    let _ = daemon.stop_resolve_hostname(&fqdn);
+    let _ = daemon.shutdown();
+    resolved.sort_unstable();
+    resolved.dedup();
+    if resolved.is_empty() {
+        None
+    } else {
+        cache_mdns_addresses(cache_key, resolved.clone());
+        Some(resolved)
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn cached_mdns_addresses(cache_key: &str) -> Option<Vec<SocketAddr>> {
+    let now = Instant::now();
+    let cache = MDNS_RESOLUTION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut cache = cache.lock().ok()?;
+    cache.retain(|_, entry| entry.expires_at > now);
+    cache.get(cache_key).map(|entry| entry.addresses.clone())
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn cache_mdns_addresses(cache_key: String, addresses: Vec<SocketAddr>) {
+    let now = Instant::now();
+    let cache = MDNS_RESOLUTION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Ok(mut cache) = cache.lock() {
+        cache.retain(|_, entry| entry.expires_at > now);
+        if cache.len() >= 32 {
+            cache.clear();
+        }
+        cache.insert(
+            cache_key,
+            CachedMdnsResolution {
+                addresses,
+                expires_at: now + MDNS_RESOLUTION_CACHE_TTL,
+            },
+        );
+    }
+}
+
 pub(crate) fn fetch_library_sync_host_json<T: DeserializeOwned>(
     base_url: &str,
     path: &str,
 ) -> Result<T, String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(2500))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| format!("Failed to prepare host request client: {error}"))?;
-
-    let response = client
-        .get(format!("{base_url}{path}"))
-        .send()
-        .map_err(|error| format!("Host request failed: {error}"))?;
+    let request_url = format!("{base_url}{path}");
+    let response = send_library_sync_request(
+        base_url,
+        LIBRARY_SYNC_REQUEST_TIMEOUT,
+        "Host request",
+        |client| client.get(&request_url),
+    )?;
 
     if !response.status().is_success() {
         return Err(format!("Host request returned {}.", response.status()));
@@ -102,20 +289,22 @@ pub(crate) fn pair_library_sync_host_session(
     base_url: &str,
     pairing_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(2500))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| format!("Failed to prepare host pairing client: {error}"))?;
     let host_header = library_sync_host_header_value(base_url)?;
-    let response = client
-        .post(format!("{base_url}/api/v1/auth/pair"))
-        .header(HOST, host_header)
-        .header(ORIGIN, base_url)
-        .header(CONTENT_TYPE, "application/json")
-        .body(serde_json::json!({ "pairing_token": pairing_token }).to_string())
-        .send()
-        .map_err(|error| format!("Host pairing request failed: {error}"))?;
+    let request_url = format!("{base_url}/api/v1/auth/pair");
+    let request_body = serde_json::json!({ "pairing_token": pairing_token }).to_string();
+    let response = send_library_sync_request(
+        base_url,
+        LIBRARY_SYNC_REQUEST_TIMEOUT,
+        "Host pairing request",
+        |client| {
+            client
+                .post(&request_url)
+                .header(HOST, host_header.as_str())
+                .header(ORIGIN, base_url)
+                .header(CONTENT_TYPE, "application/json")
+                .body(request_body.clone())
+        },
+    )?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -166,21 +355,22 @@ pub(crate) fn renew_library_sync_host_session(
     base_url: &str,
     device_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(2500))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| format!("Failed to prepare host session renewal client: {error}"))?;
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(None, Some(device_token))
         .ok_or_else(|| "Host session renewal requires a paired device token.".to_string())?;
-    let response = client
-        .post(format!("{base_url}/api/v1/auth/renew"))
-        .header(HOST, host_header)
-        .header(ORIGIN, base_url)
-        .header(reqwest::header::COOKIE, cookie_header)
-        .send()
-        .map_err(|error| format!("Host session renewal request failed: {error}"))?;
+    let request_url = format!("{base_url}/api/v1/auth/renew");
+    let response = send_library_sync_request(
+        base_url,
+        LIBRARY_SYNC_REQUEST_TIMEOUT,
+        "Host session renewal request",
+        |client| {
+            client
+                .post(&request_url)
+                .header(HOST, host_header.as_str())
+                .header(ORIGIN, base_url)
+                .header(reqwest::header::COOKIE, cookie_header.as_str())
+        },
+    )?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -439,11 +629,6 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     base_url: &str,
     path: &str,
 ) -> Result<T, String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(2500))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| format!("Failed to prepare host read client: {error}"))?;
     let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
 
     let execute = |session_id: &str,
@@ -452,13 +637,19 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
         let host_header = library_sync_host_header_value(base_url)?;
         let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
             .ok_or_else(|| "Desktop sync read is missing session cookies.".to_string())?;
-        client
-            .get(format!("{base_url}{path}"))
-            .header(HOST, host_header)
-            .header(ORIGIN, base_url)
-            .header(reqwest::header::COOKIE, cookie_header)
-            .send()
-            .map_err(|error| format!("Desktop sync read request failed: {error}"))
+        let request_url = format!("{base_url}{path}");
+        send_library_sync_request(
+            base_url,
+            LIBRARY_SYNC_REQUEST_TIMEOUT,
+            "Desktop sync read request",
+            |client| {
+                client
+                    .get(&request_url)
+                    .header(HOST, host_header.as_str())
+                    .header(ORIGIN, base_url)
+                    .header(reqwest::header::COOKIE, cookie_header.as_str())
+            },
+        )
     };
 
     let mut response = execute(
@@ -485,30 +676,30 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
 }
 
 pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
-    client: &reqwest::blocking::Client,
     base_url: &str,
     path: &str,
     session_id: &str,
     device_token: &str,
     csrf_token: &str,
     payload: &T,
+    timeout: Duration,
 ) -> Result<reqwest::blocking::Response, String> {
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
         .ok_or_else(|| "Desktop sync write is missing session cookies.".to_string())?;
-    client
-        .post(format!("{base_url}{path}"))
-        .header(HOST, host_header)
-        .header(ORIGIN, base_url)
-        .header(reqwest::header::COOKIE, cookie_header)
-        .header("x-csrf-token", csrf_token)
-        .header(CONTENT_TYPE, "application/json")
-        .body(
-            serde_json::to_string(payload)
-                .map_err(|error| format!("Failed to encode desktop sync write payload: {error}"))?,
-        )
-        .send()
-        .map_err(|error| format!("Desktop sync write request failed: {error}"))
+    let request_url = format!("{base_url}{path}");
+    let request_body = serde_json::to_string(payload)
+        .map_err(|error| format!("Failed to encode desktop sync write payload: {error}"))?;
+    send_library_sync_request(base_url, timeout, "Desktop sync write request", |client| {
+        client
+            .post(&request_url)
+            .header(HOST, host_header.as_str())
+            .header(ORIGIN, base_url)
+            .header(reqwest::header::COOKIE, cookie_header.as_str())
+            .header("x-csrf-token", csrf_token)
+            .header(CONTENT_TYPE, "application/json")
+            .body(request_body.clone())
+    })
 }
 
 pub(crate) fn perform_library_sync_host_write<T: serde::Serialize>(
@@ -551,34 +742,29 @@ pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
     payload: &T,
     timeout: Duration,
 ) -> Result<R, String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(timeout)
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| format!("Failed to prepare desktop sync write client: {error}"))?;
     let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
 
     let mut response = post_library_sync_host_write_json(
-        &client,
         base_url,
         path,
         &initial_auth_state.session_id,
         &initial_auth_state.device_token,
         &initial_auth_state.csrf_token,
         payload,
+        timeout,
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
         let renewed =
             renew_and_cache_library_sync_auth(state, base_url, &initial_auth_state.device_token)?;
         response = post_library_sync_host_write_json(
-            &client,
             base_url,
             path,
             &renewed.session_id,
             &renewed.device_token,
             &renewed.csrf_token,
             payload,
+            timeout,
         )?;
     }
 
@@ -649,8 +835,9 @@ mod tests {
     use super::{
         build_library_sync_cookie_header, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
-        load_library_sync_device_token, load_library_sync_device_token_optional,
-        renew_and_cache_library_sync_auth_with, store_library_sync_device_token,
+        library_sync_http_client_builder, load_library_sync_device_token,
+        load_library_sync_device_token_optional, renew_and_cache_library_sync_auth_with,
+        stable_local_host_and_port, store_library_sync_device_token,
         LibrarySyncAuthenticatedSessionState,
     };
     use crate::backend::filament_database::FilamentDatabase;
@@ -660,8 +847,13 @@ mod tests {
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
-    use std::sync::{mpsc, Arc, Barrier};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::{
+        io::{Read, Write},
+        net::{SocketAddr, TcpListener},
+        sync::{mpsc, Arc, Barrier},
+        thread,
+    };
 
     fn test_state() -> AppState {
         AppState {
@@ -722,6 +914,54 @@ mod tests {
             library_sync_host_header_value("http://[::1]:4278").unwrap(),
             "[::1]:4278"
         );
+    }
+
+    #[test]
+    fn stable_local_retry_keeps_the_hostname_and_uses_the_url_port() {
+        assert_eq!(
+            stable_local_host_and_port("HTTP://Filament-Manager-A1B2.Local:4278/"),
+            Some(("filament-manager-a1b2.local".to_string(), 4278)),
+        );
+        assert_eq!(
+            stable_local_host_and_port("https://host.local"),
+            Some(("host.local".to_string(), 443)),
+        );
+        assert_eq!(stable_local_host_and_port("http://192.168.1.50:4278"), None);
+        assert_eq!(stable_local_host_and_port("http://host.example:4278"), None);
+    }
+
+    #[test]
+    fn pinned_local_address_keeps_the_stable_request_hostname() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind local test host");
+        let port = listener.local_addr().expect("read local port").port();
+        let expected_host = format!("host: paired-host.local:{port}");
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept client request");
+            let mut request = [0_u8; 2048];
+            let read = stream.read(&mut request).expect("read client request");
+            let received = String::from_utf8_lossy(&request[..read]);
+            assert!(
+                received.to_ascii_lowercase().contains(&expected_host),
+                "{received}"
+            );
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+                .expect("write local response");
+        });
+
+        let client = library_sync_http_client_builder(Duration::from_secs(1))
+            .resolve_to_addrs(
+                "paired-host.local",
+                &[SocketAddr::from(([127, 0, 0, 1], port))],
+            )
+            .build()
+            .expect("build pinned client");
+        let response = client
+            .get(format!("http://paired-host.local:{port}/api/v1/health"))
+            .send()
+            .expect("complete pinned request");
+        assert!(response.status().is_success());
+        server.join().expect("join local test host");
     }
 
     #[test]

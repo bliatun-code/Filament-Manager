@@ -1,6 +1,7 @@
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_host_client::{
     load_library_sync_device_token_optional, renew_and_cache_library_sync_auth,
+    send_library_sync_request,
 };
 use crate::library_sync_models::{LibrarySyncHostValidationResult, ValidateLibrarySyncHostInput};
 use crate::state::AppState;
@@ -15,14 +16,13 @@ pub(crate) fn validate_library_sync_host(
 ) -> Result<LibrarySyncHostValidationResult, String> {
     let normalized_base_url = normalize_library_sync_base_url(&input.base_url)?;
 
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_millis(900))
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|error| format!("Failed to prepare host validation client: {error}"))?;
-
     let health_url = format!("{}/api/v1/health", normalized_base_url);
-    let response = match client.get(&health_url).send() {
+    let response = match send_library_sync_request(
+        &normalized_base_url,
+        Duration::from_millis(900),
+        "Host check",
+        |client| client.get(&health_url),
+    ) {
         Ok(response) => response,
         Err(error) => {
             let result = LibrarySyncHostValidationResult {
@@ -38,7 +38,7 @@ pub(crate) fn validate_library_sync_host(
                 library_id: None,
                 device_name: None,
                 sync_mode: None,
-                message: format!("Host check failed: {error}"),
+                message: error,
             };
             with_inventory(&state, |engine| {
                 engine.save_library_sync_validation_state(false, Some(&result.message), None)

@@ -54,6 +54,18 @@ test("library source changes invalidate the dashboard snapshot", () => {
   assert.match(pairingSource, /clearDashboardPageSnapshot\(\)/);
 });
 
+test("desktop pairing retains actionable host-validation feedback", () => {
+  const pairingSource = libraryActionsSource.slice(
+    libraryActionsSource.indexOf("const handlePairLibrarySyncHost"),
+    libraryActionsSource.indexOf("const handleClearLibrarySyncClientAuth"),
+  );
+
+  assert.match(
+    pairingSource,
+    /message: validation\.ok\s*\?\s*buildLibrarySyncPairingMessage\([\s\S]*?: validation\.message/,
+  );
+});
+
 test("full restores and app resets invalidate the dashboard snapshot", () => {
   assert.match(
     backupActionsSource,

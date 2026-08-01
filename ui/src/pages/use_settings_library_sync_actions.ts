@@ -352,10 +352,15 @@ export function useSettingsLibrarySyncActions({
           ...validation,
           ok: false,
           matches_library_id: false,
-          message: buildLibrarySyncPairingMessage(
-            "pairingInvalid",
-            librarySyncPairingMessageLabels(),
-          ),
+          // A failed host check is actionable network feedback (for example, a local-name
+          // resolver delay). Do not replace it with "invalid pairing link"; only the pairing
+          // request itself should receive that generic, token-safe message.
+          message: validation.ok
+            ? buildLibrarySyncPairingMessage(
+                "pairingInvalid",
+                librarySyncPairingMessageLabels(),
+              )
+            : validation.message,
         });
         setError(null);
       } else {
