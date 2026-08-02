@@ -45,6 +45,12 @@ Existing IP-based browser and desktop pairings are not rewritten automatically;
 they require one new pairing, and labels containing an old IP address must be
 reprinted.
 
+Desktop-client validation resolves a stable `.local` host through the same local
+mDNS service before creating its HTTP client. The request retains the stable URL
+and host header while its connection is pinned to the discovered private IPv4
+address, so client authentication remains host-bound without depending on
+ordinary DNS forwarding for `.local`.
+
 The stable name is a library identity, so only one active Companion host may
 publish it at a time. A copied backup on a second host fails closed on name
 collision rather than accepting a platform-generated rename. On macOS, DNS-SD

@@ -32,6 +32,19 @@ pub(crate) fn list_private_trusted_lan_interfaces() -> Vec<TrustedLanInterfaceOp
     interfaces
 }
 
+/// The desktop visual-QA harness must never surface the developer's actual
+/// private interface in a screenshot. Its Companion runtime is already bound
+/// to loopback, so present the matching synthetic option instead.
+pub(crate) fn visual_qa_trusted_lan_interface() -> TrustedLanInterfaceOption {
+    const ADDRESS: &str = "127.0.0.1";
+    const NAME: &str = "Visual QA";
+    TrustedLanInterfaceOption {
+        label: format!("{NAME} ({ADDRESS})"),
+        name: NAME.to_string(),
+        address: ADDRESS.to_string(),
+    }
+}
+
 pub(crate) fn normalize_trusted_lan_interface_selection(
     interface_name: Option<&str>,
     interface_address: Option<&str>,

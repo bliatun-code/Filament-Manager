@@ -95,6 +95,11 @@ viser fortsatt vertens eksakte numeriske IP-adresse som
 diagnostisk reserve, men den kan endres og bør ikke brukes til nye paringer eller
 etiketter.
 
+Desktop-klienter bruker det samme stabile lokalnavnet for den parede verten.
+Filament Manager løser `.local`-navnet gjennom den lokale mDNS-tjenesten før
+klienten kontakter verten, slik at desktop-paring ikke er avhengig av at ruteren
+videresender navnet gjennom vanlig DNS.
+
 Etter oppgradering må en nettleser eller desktop-klient som ble paret via den
 gamle IP-adressen, pares én gang på nytt med en ny lenke. QR-etiketter som ble
 skrevet ut med den gamle IP-adressen, må skrives ut på nytt.

@@ -1836,7 +1836,15 @@ export async function prepareVisualQaDatabase(options = {}) {
   }
 
   const sourceInspection = await inspectVisualQaDatabase(source.path);
-  const sourceAssessment = assessVisualQaDataset(sourceInspection, { ...options, profile });
+  // A non-live run is always copied before fixtures such as the loopback
+  // Trusted-LAN interface are applied. Validate the source's structural
+  // baseline first, then enforce the requested rich profile against that
+  // isolated, fully prepared copy. Live inspection has no such preparation
+  // step and must satisfy the requested profile immediately.
+  const sourceAssessment = assessVisualQaDataset(sourceInspection, {
+    ...options,
+    profile: live ? profile : VISUAL_QA_PROFILE_BASE,
+  });
   if (sourceAssessment.errors.length > 0) {
     throw new Error(
       formatVisualQaDatasetReport({

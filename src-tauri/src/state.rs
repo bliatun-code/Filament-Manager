@@ -436,10 +436,18 @@ impl TrustedLanCompanionRuntime {
         let advertised_hostname = config
             .as_ref()
             .and_then(|value| value.advertised_hostname.clone());
-        let local_name_running = status
+        let registered_local_name_running = status
             .as_ref()
             .map(|value| value.local_name_running)
             .unwrap_or(false);
+        // Visual QA keeps the listener on loopback and deliberately skips mDNS
+        // registration, but public screenshots still need to show the stable,
+        // library-bound `.local` address that a real host presents. Treat the
+        // configured synthetic hostname as display-ready only; health checks
+        // continue to use `direct_base_url` below and the runtime never tries
+        // to resolve or advertise this name.
+        let local_name_running = registered_local_name_running
+            || (self.qa_mode && enabled && advertised_hostname.is_some());
 
         let effective_interface_address = if self.qa_mode {
             Some(VISUAL_QA_LOOPBACK_ADDRESS.to_string())
@@ -460,7 +468,11 @@ impl TrustedLanCompanionRuntime {
         } else {
             None
         };
-        let base_url = if self.qa_mode || advertised_hostname.is_none() {
+        let base_url = if self.qa_mode && enabled && advertised_hostname.is_some() {
+            advertised_hostname
+                .as_ref()
+                .map(|hostname| format!("http://{hostname}:{listen_port}"))
+        } else if advertised_hostname.is_none() {
             direct_base_url.clone()
         } else if enabled && local_name_running {
             advertised_hostname
@@ -632,6 +644,7 @@ mod tests {
     fn visual_qa_runtime_binds_only_to_loopback() {
         let runtime = TrustedLanCompanionRuntime::new(4279)
             .with_selected_interface("Wi-Fi", "192.168.1.50")
+            .with_advertised_hostname("fm-qa7m4x2.local")
             .with_enabled(true)
             .with_qa_mode(true);
 
@@ -644,10 +657,14 @@ mod tests {
             Some("192.168.1.50")
         );
         assert_eq!(snapshot.bind_address.as_deref(), Some("127.0.0.1:4279"));
-        assert_eq!(snapshot.base_url.as_deref(), Some("http://127.0.0.1:4279"));
+        assert_eq!(
+            snapshot.base_url.as_deref(),
+            Some("http://fm-qa7m4x2.local:4279")
+        );
         assert_eq!(
             snapshot.shell_url.as_deref(),
-            Some("http://127.0.0.1:4279/companion"),
+            Some("http://fm-qa7m4x2.local:4279/companion"),
         );
+        assert!(snapshot.local_name_running);
     }
 }

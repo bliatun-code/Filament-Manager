@@ -20,7 +20,7 @@ export const VISUAL_QA_SCHEMA_MIGRATION_PATH = fileURLToPath(
   new URL("../src/database/migrations/003_library_domain_revisions.sql", import.meta.url),
 );
 export const VISUAL_QA_SEED_SHA256 =
-  "81832c22714d81c227ac53875b928b66d564e006d7f9e414fc2e6c4a95629970";
+  "895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0";
 
 const ALLOWED_VISUAL_QA_SEED_COLUMNS = new Map(
   Object.entries({
@@ -110,10 +110,15 @@ const ALLOWED_VISUAL_QA_SEED_COLUMNS = new Map(
 const SYNTHETIC_BAMBU_LIVE_SETTING_KEY =
   "bambu_live_integration:qa_printer_bambu";
 const SYNTHETIC_BAMBU_LIVE_SETTING_VALUE = JSON.stringify({
-  enabled: false,
+  // The rich desktop scenario must render a current telemetry card without
+  // ever connecting to a physical printer. There is deliberately no host,
+  // serial, or credential in this fixture, so the observer cannot make a
+  // network request; the future-dated snapshot only acts as deterministic
+  // visual evidence for the isolated QA database.
+  enabled: true,
   observed_state: {
     online: true,
-    last_seen_at: "2026-05-02T12:05:00Z",
+    last_seen_at: "2099-01-02T12:05:00Z",
     mqtt_connected: true,
     progress_percent: 64,
     remaining_minutes: 18,
@@ -135,7 +140,7 @@ const SYNTHETIC_BAMBU_LIVE_SETTING_VALUE = JSON.stringify({
         tray_weight_g: 1000,
         remaining_percent: 82,
         remaining_grams: 820,
-        last_identity_seen_at: "2026-05-02T12:05:00Z",
+        last_identity_seen_at: "2099-01-02T12:05:00Z",
       },
     ],
   },

@@ -95,6 +95,11 @@ still shows the host's exact numeric IP address as a
 diagnostic fallback, but that address can change and should not be used for new
 pairings or labels.
 
+Desktop clients use the same stable local name for their paired host. Filament
+Manager resolves that `.local` name through the local mDNS service before it
+contacts the host, so client pairing does not depend on a router forwarding the
+name through ordinary DNS.
+
 After upgrading, a browser or desktop client paired through the old IP address
 must be paired once again with a new link. QR labels printed with the old IP
 address must be reprinted.

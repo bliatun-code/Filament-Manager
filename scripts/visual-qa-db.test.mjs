@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, posix, resolve, win32 } from "node:path";
 import { test } from "node:test";
 import Database from "better-sqlite3";
+import { createVisualQaFixture } from "./create-visual-qa-fixture.mjs";
 import {
   APP_DB_PATH_ENV_VAR,
   DEFAULT_VISUAL_QA_DB_CANDIDATES,
@@ -709,6 +710,33 @@ test("prepareVisualQaDatabase leaves a successful generated copy for its caller"
       assert.equal(statSync(dirname(targetPath)).mode & 0o777, 0o700);
       assert.equal(statSync(targetPath).mode & 0o777, 0o600);
     }
+  } finally {
+    cleanupVisualQaDatabase(targetPath);
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("prepareVisualQaDatabase applies isolated fixtures before enforcing the rich profile", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-rich-fixture-"));
+  const sourcePath = join(dir, "sanitized-source.db");
+  let targetPath = null;
+
+  try {
+    createVisualQaFixture({ outputPath: sourcePath });
+
+    const result = await prepareVisualQaDatabase({
+      profile: "rich",
+      sourcePath,
+    });
+    targetPath = result.targetPath;
+
+    assert.equal(result.assessment.profile, VISUAL_QA_PROFILE_RICH);
+    assert.deepEqual(result.assessment.errors, []);
+    assert.ok(
+      result.fixtures.some(
+        (fixture) => fixture.fixture === VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
+      ),
+    );
   } finally {
     cleanupVisualQaDatabase(targetPath);
     rmSync(dir, { force: true, recursive: true });

@@ -461,7 +461,7 @@
       },
       {
         "key": "bambu_live_integration:qa_printer_bambu",
-        "value": "{\"enabled\":false,\"observed_state\":{\"online\":true,\"last_seen_at\":\"2026-05-02T12:05:00Z\",\"mqtt_connected\":true,\"progress_percent\":64,\"remaining_minutes\":18,\"gcode_state\":\"RUNNING\",\"active_ams_index\":0,\"active_tray_index\":0,\"nozzle_temp_c\":218,\"bed_temp_c\":55,\"ams_humidity_index\":2,\"ams_temperature_c\":27,\"trays\":[{\"ams_index\":0,\"tray_index\":0,\"loaded\":true,\"filament_type\":\"PLA\",\"filament_name\":\"PLA Basic\",\"color_hex\":\"#111827\",\"tray_weight_g\":1000,\"remaining_percent\":82,\"remaining_grams\":820,\"last_identity_seen_at\":\"2026-05-02T12:05:00Z\"}]}}"
+        "value": "{\"enabled\":true,\"observed_state\":{\"online\":true,\"last_seen_at\":\"2099-01-02T12:05:00Z\",\"mqtt_connected\":true,\"progress_percent\":64,\"remaining_minutes\":18,\"gcode_state\":\"RUNNING\",\"active_ams_index\":0,\"active_tray_index\":0,\"nozzle_temp_c\":218,\"bed_temp_c\":55,\"ams_humidity_index\":2,\"ams_temperature_c\":27,\"trays\":[{\"ams_index\":0,\"tray_index\":0,\"loaded\":true,\"filament_type\":\"PLA\",\"filament_name\":\"PLA Basic\",\"color_hex\":\"#111827\",\"tray_weight_g\":1000,\"remaining_percent\":82,\"remaining_grams\":820,\"last_identity_seen_at\":\"2099-01-02T12:05:00Z\"}]}}"
       }
     ]
   }

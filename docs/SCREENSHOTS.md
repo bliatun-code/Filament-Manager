@@ -10,9 +10,9 @@ running for Companion to work from a phone, tablet, or workshop browser.
 Most current captures were produced from the current UI in the English dark
 theme with the committed, production-shaped, sanitized QA fixture. Every
 desktop and Companion capture launches against a temporary database copy; no
-real inventory library is opened or modified. Except for the live printer
-overview described below, names, identifiers, QR targets, counts, swatches,
-loans, and printer assignments shown here are synthetic.
+real inventory library is opened or modified. Names, identifiers, QR targets,
+counts, swatches, loans, printer assignments, and live observations shown here
+are synthetic.
 
 The v0.22.0 refresh regenerated Dashboard, Add Filament, Program and update
 check, Bambu Live security setup, and Unsaved Printer Changes on 2026-07-29
@@ -21,15 +21,14 @@ from fixture seed SHA-256
 The v0.22.1 candidate refreshed the Program and update-notification capture on
 2026-07-30 from fixture seed SHA-256
 `02920bf05064bd1ff74d546e26d2f1ea4c5acd0454d951a9ea386662d9b69c19`.
-The security-setup capture adds only a reserved TEST-NET address and a
-synthetic printer serial; it contains no access code or trusted fingerprint.
-
-The public printer overview was captured from a private copy of a populated
-library after real Bambu telemetry arrived. Printer display names were replaced
-with `Atlas` and `Nova` in that copy before launch. The capture was reviewed to
-contain no LAN address, printer serial, access code, or certificate
-fingerprint. The live gate waits up to its bounded readiness timeout and fails
-without creating an image when fresh telemetry never arrives.
+The v0.23.0 refresh regenerates the General, Program and update notification,
+Library & web app network, Bambu discovery, and printer overview captures from
+fixture seed SHA-256
+`895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`.
+The Bambu security setup uses only a synthetic loopback test interface and no
+host, serial, access code, or trusted fingerprint. The printer overview uses
+fresh synthetic Bambu telemetry; its desktop gate waits for rendered telemetry
+and refuses to create an image when that readiness signal is absent.
 
 ## Quick Preview
 
@@ -42,6 +41,7 @@ without creating an image when fresh telemetry never arrives.
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
+  <a href="#stable-local-companion-address"><img src="screenshots/settings-library-network-thumb.jpg" alt="Stable local Companion address" width="150"></a>
   <a href="#program-and-update-notifications"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version, update notifications, and manual update check" width="150"></a>
   <a href="#bambu-live-security-setup"><img src="screenshots/settings-printer-editor-thumb.jpg" alt="Bambu Live security setup" width="150"></a>
   <a href="#inventory-label-sheet"><img src="screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet" width="150"></a>
@@ -159,7 +159,8 @@ Printer and multi-material slot state with current assignments, collapsed slot
 swatches/material labels, usage statistics, and manual/non-live printer
 coverage. Optional live observations, RFID matching, and candidate suggestions
 appear in the same workspace when Bambu Live is enabled. This capture includes
-fresh, connected Bambu telemetry from the private QA copy described above.
+fresh, connected Bambu telemetry from the sanitized rich QA fixture described
+above.
 
 ![Printer slot overview](screenshots/printers.jpg)
 
@@ -257,6 +258,20 @@ LAN Companion address.
 
 ![Settings library and web app](screenshots/settings-library.jpg)
 
+### Stable Local Companion Address
+
+The network details make the short library-bound `.local` address visible for
+new Companion and desktop-client pairings, while retaining the current numeric
+address only as diagnostics. The address remains usable after a DHCP change
+when the selected private network allows mDNS/Bonjour traffic.
+
+The isolated visual-QA capture uses a synthetic short `.local` name to show the
+same address form as a normal Host. Its loopback direct address and "Loopback
+QA" interface are test-only diagnostics; no real LAN address or mDNS service
+is exposed in the public image.
+
+![Stable local Companion address](screenshots/settings-library-network.jpg)
+
 ### Guided Library Role Change
 
 Changing between Standalone, Host, and Client opens a guided review. Nothing is
@@ -279,7 +294,8 @@ when live data never arrives.
 Live status keeps the access code in the operating system credential store and
 checks the printer certificate identity before credentials may be sent. A new
 or changed identity remains untrusted until the user explicitly reviews it.
-The example below uses a reserved documentation address and synthetic serial.
+The example below uses only the synthetic Visual QA interface and contains no
+host, serial, access code, or trusted identity.
 
 ![Bambu Live security setup](screenshots/settings-printer-editor.jpg)
 

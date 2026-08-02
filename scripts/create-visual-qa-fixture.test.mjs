@@ -143,11 +143,12 @@ test("sanitized visual QA seed generates a healthy deterministic database", () =
         )
         .get();
       const liveConfig = JSON.parse(liveSetting.value);
-      assert.equal(liveConfig.enabled, false);
+      assert.equal(liveConfig.enabled, true);
       assert.equal(Object.hasOwn(liveConfig, "host"), false);
       assert.equal(Object.hasOwn(liveConfig, "access_code"), false);
       assert.equal(Object.hasOwn(liveConfig, "printer_serial"), false);
       assert.equal(liveConfig.observed_state.mqtt_connected, true);
+      assert.equal(liveConfig.observed_state.last_seen_at, "2099-01-02T12:05:00Z");
       assert.equal(liveConfig.observed_state.active_ams_index, 0);
       assert.equal(liveConfig.observed_state.active_tray_index, 0);
       assert.deepEqual(liveConfig.observed_state.trays, [
@@ -161,7 +162,7 @@ test("sanitized visual QA seed generates a healthy deterministic database", () =
           tray_weight_g: 1000,
           remaining_percent: 82,
           remaining_grams: 820,
-          last_identity_seen_at: "2026-05-02T12:05:00Z",
+          last_identity_seen_at: "2099-01-02T12:05:00Z",
         },
       ]);
     } finally {
