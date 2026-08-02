@@ -3,6 +3,7 @@ import type { CompanionSpoolDetail, InventoryOverview, SpoolWithMasterRow } from
 import type { SpoolLoanDetailsRow } from "./tauri_loan_client";
 import type { PrinterOverviewRow, PrinterSettingsSnapshot } from "./tauri_printer_client";
 import type { WishlistItemRow } from "./tauri_wishlist_client";
+import type { FilamentConsumptionRow } from "./tauri_statistics_client";
 
 export type TrustedLanCompanionStatus = {
   enabled: boolean;
@@ -53,6 +54,7 @@ export type LibrarySyncSettings = {
   cached_spools?: LibrarySyncCachedSpoolList | null;
   cached_printers?: LibrarySyncCachedPrinterOverview | null;
   cached_loans?: LibrarySyncCachedLoanList | null;
+  cached_consumption?: LibrarySyncCachedFilamentConsumptionList | null;
   cached_wishlist?: LibrarySyncCachedWishlistList | null;
 };
 
@@ -107,6 +109,11 @@ export type LibrarySyncCachedPrinterOverview = {
 export type LibrarySyncCachedLoanList = {
   captured_at: string;
   rows: SpoolLoanDetailsRow[];
+};
+
+export type LibrarySyncCachedFilamentConsumptionList = {
+  captured_at: string;
+  rows: FilamentConsumptionRow[];
 };
 
 export type LibrarySyncCachedWishlistList = {

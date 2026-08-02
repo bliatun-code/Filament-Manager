@@ -3,7 +3,8 @@ pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateI
 pub use super::database_core::FilamentDatabase;
 pub use super::database_import::ImportDataStats;
 pub use super::database_library_sync_models::{
-    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
+    LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedSnapshotRow,
+    LibrarySyncSettingsRow,
 };
 pub use super::database_loan_models::{
     ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,

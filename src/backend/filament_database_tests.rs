@@ -7,7 +7,7 @@ use super::{
 use crate::backend::database_schema::{
     ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
 };
-use crate::backend::statistics::InventoryOverview;
+use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview};
 use serde_json::json;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -2657,6 +2657,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_consumption: None,
                 cached_wishlist: None,
             })
             .map_err(|error| error.to_string())?;
@@ -2668,6 +2669,30 @@ fn library_sync_settings_default_and_persist_cleanly() {
             Some("http://192.168.1.25:4278")
         );
         assert_eq!(saved.host_device_name.as_deref(), Some("Main Host"));
+
+        db.save_library_sync_cached_consumption(&[FilamentConsumptionRow {
+            printer_id: Some("printer-1".to_string()),
+            printer_name: Some("Main printer".to_string()),
+            material: "PLA".to_string(),
+            filament_name: "Basic".to_string(),
+            color_name: "Gray".to_string(),
+            hex_color: Some("#808080".to_string()),
+            vendor: "Bambu".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            used_grams: 250,
+            jobs: 2,
+        }])
+        .map_err(|error| error.to_string())?;
+        let cached = db
+            .get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        let cached_consumption = cached
+            .cached_consumption
+            .ok_or_else(|| "cached consumption was not persisted".to_string())?;
+        assert_eq!(cached_consumption.rows.len(), 1);
+        assert_eq!(cached_consumption.rows[0].material, "PLA");
+        assert_eq!(cached_consumption.rows[0].used_grams, 250);
 
         let host_saved = db
             .save_library_sync_settings(&LibrarySyncSettingsRow {
@@ -2710,6 +2735,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_consumption: None,
                 cached_wishlist: None,
             })
             .map_err(|error| error.to_string())?;
@@ -2724,6 +2750,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
         assert!(host_saved.cached_spools.is_none());
         assert!(host_saved.cached_printers.is_none());
         assert!(host_saved.cached_loans.is_none());
+        assert!(host_saved.cached_consumption.is_none());
         assert!(host_saved.cached_wishlist.is_none());
 
         Ok(())
@@ -2763,6 +2790,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
             cached_spools: None,
             cached_printers: None,
             cached_loans: None,
+            cached_consumption: None,
             cached_wishlist: None,
         })
         .map_err(|error| error.to_string())?;
@@ -2796,6 +2824,7 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
                 cached_spools: None,
                 cached_printers: None,
                 cached_loans: None,
+                cached_consumption: None,
                 cached_wishlist: None,
             })
             .map_err(|error| error.to_string())?;

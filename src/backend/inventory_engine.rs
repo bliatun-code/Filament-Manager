@@ -57,6 +57,7 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_printer_slot_live::derive_assign_printer_slot_live_context;
+use crate::backend::statistics::FilamentConsumptionRow;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -315,6 +316,13 @@ impl InventoryEngine {
         rows: &[SpoolLoanDetailsRow],
     ) -> InventoryResult<()> {
         self.db.save_library_sync_cached_loans(rows)
+    }
+
+    pub fn save_library_sync_cached_consumption(
+        &self,
+        rows: &[FilamentConsumptionRow],
+    ) -> InventoryResult<()> {
+        self.db.save_library_sync_cached_consumption(rows)
     }
 
     pub fn save_library_sync_cached_wishlist(

@@ -203,6 +203,7 @@ fn settings_row_from_input(input: SaveLibrarySyncSettingsInput) -> LibrarySyncSe
         cached_spools: None,
         cached_printers: None,
         cached_loans: None,
+        cached_consumption: None,
         cached_wishlist: None,
     }
 }
@@ -347,6 +348,7 @@ mod tests {
             cached_spools: None,
             cached_printers: None,
             cached_loans: None,
+            cached_consumption: None,
             cached_wishlist: None,
         }
     }

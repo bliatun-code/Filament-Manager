@@ -26,6 +26,7 @@ import {
 import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import type {
+  FilamentConsumptionRow,
   InventoryOverview,
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
@@ -126,6 +127,24 @@ function hostValidation(): LibrarySyncHostValidationResult {
     sync_mode: "HOST",
     message: "ok",
   };
+}
+
+function hostConsumption(): FilamentConsumptionRow[] {
+  return [
+    {
+      printer_id: "printer-1",
+      printer_name: "Performance printer",
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Gray",
+      hex_color: "#808080",
+      vendor: "Bambu",
+      ownership_type: "OWNED",
+      owner_name: null,
+      used_grams: 100,
+      jobs: 1,
+    },
+  ];
 }
 
 function largeSpoolFixtureRow(index: number): SpoolWithMasterRow {
@@ -253,6 +272,7 @@ for (const scenario of [
       spools: deferred<SpoolWithMasterRow[]>(),
       printers: deferred<PrinterOverviewRow[]>(),
       loans: deferred<SpoolLoanDetailsRow[]>(),
+      consumption: deferred<FilamentConsumptionRow[]>(),
       wishlist: deferred<WishlistItemRow[]>(),
     };
     const errors: unknown[] = [];
@@ -290,6 +310,10 @@ for (const scenario of [
           started.push("loans");
           return requests.loans.promise;
         },
+        fetchHostConsumption: () => {
+          started.push("consumption");
+          return requests.consumption.promise;
+        },
         fetchHostWishlist: () => {
           started.push("wishlist");
           return requests.wishlist.promise;
@@ -308,6 +332,7 @@ for (const scenario of [
     await flushPromiseContinuations();
 
     assert.deepEqual(started.sort(), [
+      "consumption",
       "loans",
       "printers",
       "snapshot",
@@ -323,7 +348,7 @@ for (const scenario of [
       const result = await resultPromise;
       assert.equal(result.syncSource, "client-cached");
       assert.equal(result.revisionPollComplete, false);
-      assert.equal(errors.length, 6);
+      assert.equal(errors.length, 7);
       return;
     }
 
@@ -331,6 +356,7 @@ for (const scenario of [
     requests.spools.resolve([]);
     requests.printers.resolve([]);
     requests.loans.resolve([]);
+    requests.consumption.resolve(hostConsumption());
     requests.wishlist.resolve([]);
     await flushPromiseContinuations();
     assert.equal(settled, false, "the deliberately slow request must still be pending");

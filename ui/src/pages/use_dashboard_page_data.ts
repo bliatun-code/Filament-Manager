@@ -49,9 +49,14 @@ const DASHBOARD_REVISION_DOMAINS = [
 ] as const;
 
 type DashboardRefreshOutcome = {
+  clientCacheRead: boolean;
   revisionPollComplete: boolean;
   revisionSource: LibraryRevisionSource | null;
   succeeded: boolean;
+};
+
+type DashboardRefreshOptions = {
+  clientCacheOnly?: boolean;
 };
 
 function createDefaultGoalMetrics(): DashboardGoalMetrics {
@@ -234,9 +239,13 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   );
 
   const performDashboardRefresh = useCallback(
-    async (cancelledRef?: { current: boolean }) => {
+    async (
+      cancelledRef?: { current: boolean },
+      options: DashboardRefreshOptions = {},
+    ) => {
       if (!tauri || refreshInFlightRef.current) {
         return {
+          clientCacheRead: false,
           revisionPollComplete: false,
           revisionSource: revisionSourceRef.current,
           succeeded: false,
@@ -249,6 +258,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       beginRefresh();
       try {
         const loaded = await loadDashboardData({
+          clientCacheOnly: options.clientCacheOnly,
           locale,
           previousClientHostNeedsRepair: clientHostNeedsRepair,
           t,
@@ -306,6 +316,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         );
         if (cancelledRef?.current || !cacheAccepted) {
           return {
+            clientCacheRead: false,
             revisionPollComplete: false,
             revisionSource: loaded.revisionSource,
             succeeded: false,
@@ -337,6 +348,8 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
           );
         }
         return {
+          clientCacheRead:
+            options.clientCacheOnly === true && loaded.syncMode === "CLIENT",
           revisionPollComplete: loaded.revisionPollComplete,
           revisionSource: loaded.revisionSource,
           succeeded: true,
@@ -349,6 +362,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
           );
         }
         return {
+          clientCacheRead: false,
           revisionPollComplete: false,
           revisionSource: revisionSourceRef.current,
           succeeded: false,
@@ -452,6 +466,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     let refreshRequested = false;
     let refreshTimeout: number | null = null;
     let initialRefreshPending = true;
+    let initialClientCacheAttempted = false;
     const nativeUnlisteners: Array<() => void> = [];
 
     const documentAllowsPolling = () => document.visibilityState !== "hidden";
@@ -482,9 +497,33 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       }
       clearRefreshTimeout();
       loading = true;
-      const succeeded = initialRefreshPending
-        ? await refreshDashboard(cancelledRef)
-        : await pollDashboard(cancelledRef);
+      const clientCacheOnly = initialRefreshPending && !initialClientCacheAttempted;
+      if (clientCacheOnly) {
+        initialClientCacheAttempted = true;
+      }
+      let succeeded: boolean;
+      let clientCacheRead = false;
+      if (initialRefreshPending) {
+        const outcome = await performDashboardRefresh(cancelledRef, {
+          clientCacheOnly,
+        });
+        succeeded = outcome.succeeded;
+        clientCacheRead = outcome.clientCacheRead;
+      } else {
+        succeeded = await pollDashboard(cancelledRef);
+      }
+      if (clientCacheRead) {
+        loading = false;
+        if (cancelledRef.current || !documentAllowsPolling()) {
+          return;
+        }
+        refreshRequested = false;
+        // The local client cache is available without network I/O. Render it first,
+        // then immediately revalidate the host in the next scheduler turn so an
+        // unreachable mDNS/HTTP request can never delay the first dashboard paint.
+        scheduleRefresh(0);
+        return;
+      }
       if (initialRefreshPending && succeeded) {
         initialRefreshPending = false;
       }
@@ -561,7 +600,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         unlisten();
       });
     };
-  }, [pollDashboard, refreshDashboard, tauri]);
+  }, [performDashboardRefresh, pollDashboard, tauri]);
 
   return {
     activity,

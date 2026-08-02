@@ -1,5 +1,6 @@
 import {
   fetchLibrarySyncLoans,
+  fetchLibrarySyncFilamentConsumption,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncWishlistItems,
@@ -12,6 +13,9 @@ import {
   topMaterials,
   validateLibrarySyncHost,
   type LibrarySyncSettings,
+  type FilamentConsumptionRow,
+  type InventoryOverview,
+  type MaterialUsageRow,
   type TrustedLanCompanionStatus,
   type WishlistItemRow,
 } from "./tauri_client";
@@ -58,6 +62,7 @@ type DashboardDataDependencies = {
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
   fetchHostLoans?: typeof fetchLibrarySyncLoans;
+  fetchHostConsumption?: typeof fetchLibrarySyncFilamentConsumption;
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   loadSpoolRows?: typeof loadAllSpoolRows;
   loadInventoryOverview?: typeof inventoryOverview;
@@ -89,6 +94,42 @@ function emptyInventoryOverview() {
   };
 }
 
+function materialUsageFromConsumption(
+  rows: FilamentConsumptionRow[] | null | undefined,
+): MaterialUsageRow[] {
+  const usedByMaterial = new Map<string, number>();
+  for (const row of rows ?? []) {
+    const material = row.material.trim();
+    const usedGrams = Math.max(0, row.used_grams);
+    if (!material || usedGrams <= 0) {
+      continue;
+    }
+    usedByMaterial.set(material, (usedByMaterial.get(material) ?? 0) + usedGrams);
+  }
+  return Array.from(usedByMaterial, ([material, used_grams]) => ({ material, used_grams }))
+    .sort(
+      (left, right) =>
+        right.used_grams - left.used_grams ||
+        left.material.localeCompare(right.material),
+    )
+    .slice(0, 12);
+}
+
+function preserveSnapshotConsumption(
+  overview: InventoryOverview | null,
+  snapshotOverview: InventoryOverview | null,
+): InventoryOverview | null {
+  if (!overview || !snapshotOverview) {
+    return overview ?? snapshotOverview;
+  }
+  return {
+    ...overview,
+    total_consumption_30d: snapshotOverview.total_consumption_30d,
+    owned_consumption_30d: snapshotOverview.owned_consumption_30d,
+    borrowed_in_consumption_30d: snapshotOverview.borrowed_in_consumption_30d,
+  };
+}
+
 export function hasInvalidClientPairingMessage(message?: string | null): boolean {
   const normalized = (message ?? "").trim().toLowerCase();
   return normalized.includes("desktop client pairing is no longer valid");
@@ -96,6 +137,7 @@ export function hasInvalidClientPairingMessage(message?: string | null): boolean
 
 export async function loadDashboardData(
   params: {
+    clientCacheOnly?: boolean;
     locale?: NumberDisplayLocale;
     previousClientHostNeedsRepair: boolean;
     t: TranslateFn;
@@ -109,6 +151,8 @@ export async function loadDashboardData(
   const fetchHostPrinterOverview =
     dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
   const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
+  const fetchHostConsumption =
+    dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
   const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
   const loadInventoryOverview = dependencies.loadInventoryOverview ?? inventoryOverview;
@@ -158,11 +202,13 @@ export async function loadDashboardData(
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
+  let clientConsumptionRows = syncSettings?.cached_consumption?.rows ?? null;
   let clientWishlistRows: WishlistItemRow[] = syncSettings?.cached_wishlist?.rows ?? [];
   let clientSnapshotLive = false;
   let clientSpoolsLive = false;
   let clientPrintersLive = false;
   let clientLoansLive = false;
+  let clientConsumptionLive = false;
   let clientWishlistLive = false;
   const clientHostTarget = clientMode
     ? resolveClientHostTarget({
@@ -171,13 +217,14 @@ export async function loadDashboardData(
       })
     : null;
 
-  if (clientHostTarget) {
+  if (clientHostTarget && !params.clientCacheOnly) {
     const [
       validationResult,
       snapshotResult,
       spoolsResult,
       printersResult,
       loansResult,
+      consumptionResult,
       wishlistResult,
     ] = await Promise.allSettled([
       validateHost(clientHostTarget.baseUrl, clientHostTarget.libraryId),
@@ -189,6 +236,7 @@ export async function loadDashboardData(
       }),
       fetchHostPrinterOverview(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       fetchHostLoans(clientHostTarget.baseUrl, clientHostTarget.libraryId, 2000),
+      fetchHostConsumption(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500, null),
       fetchHostWishlist(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500),
     ]);
 
@@ -231,18 +279,27 @@ export async function loadDashboardData(
     } else {
       onLoadError(loansResult.reason);
     }
+    if (consumptionResult.status === "fulfilled") {
+      clientConsumptionRows = consumptionResult.value;
+      clientConsumptionLive = true;
+    } else {
+      onLoadError(consumptionResult.reason);
+    }
     if (wishlistResult.status === "fulfilled") {
       clientWishlistRows = wishlistResult.value;
       clientWishlistLive = true;
     } else {
       onLoadError(wishlistResult.reason);
     }
+  } else if (clientHostTarget && params.clientCacheOnly) {
+    clientHostCompanionTone = "warn";
   }
 
   const hasClientCachedRows =
     (clientSpoolRows?.length ?? 0) > 0 ||
     (clientPrinterRows?.length ?? 0) > 0 ||
     (clientLoanRows?.length ?? 0) > 0 ||
+    (clientConsumptionRows?.length ?? 0) > 0 ||
     clientWishlistRows.length > 0;
   const normalizedClientSpoolRows =
     clientSpoolRows != null ? normalizeSpoolWithMasterRows(clientSpoolRows) : null;
@@ -250,7 +307,10 @@ export async function loadDashboardData(
     (normalizedClientSpoolRows?.length ?? 0) > 0
       ? deriveInventoryOverviewFromRows(normalizedClientSpoolRows ?? [], [])
       : null;
-  const clientOverview = clientRowsOverview ?? activeClientSnapshot?.inventory ?? null;
+  const clientOverview = preserveSnapshotConsumption(
+    clientRowsOverview,
+    activeClientSnapshot?.inventory ?? null,
+  );
   const clientRowsOverviewCapturedAt =
     clientRowsOverview && !clientHostTarget
       ? syncSettings?.cached_spools?.captured_at ?? null
@@ -275,6 +335,7 @@ export async function loadDashboardData(
       clientSpoolsLive ? null : syncSettings?.cached_spools?.captured_at,
       clientPrintersLive ? null : syncSettings?.cached_printers?.captured_at,
       clientLoansLive ? null : syncSettings?.cached_loans?.captured_at,
+      clientConsumptionLive ? null : syncSettings?.cached_consumption?.captured_at,
       clientWishlistLive ? null : syncSettings?.cached_wishlist?.captured_at,
       clientSnapshotLive ? null : activeClientSnapshot?.captured_at,
     );
@@ -283,6 +344,7 @@ export async function loadDashboardData(
       syncSettings?.cached_spools?.captured_at,
       syncSettings?.cached_printers?.captured_at,
       syncSettings?.cached_loans?.captured_at,
+      syncSettings?.cached_consumption?.captured_at,
       syncSettings?.cached_wishlist?.captured_at,
     );
     return {
@@ -292,7 +354,7 @@ export async function loadDashboardData(
         spoolRows: normalizedClientSpoolRows ?? [],
         loans: (clientLoanRows ?? []).map(normalizeLoanDetailsRow),
         wishlist: clientWishlistRows,
-        materialRows: null,
+        materialRows: materialUsageFromConsumption(clientConsumptionRows),
         locale: params.locale,
         t: params.t,
       }),

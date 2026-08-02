@@ -21,7 +21,7 @@ use mdns_sd::{HostnameResolutionEvent, ServiceDaemon};
 
 const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-const MDNS_RETRY_TIMEOUT: Duration = Duration::from_secs(2);
+const MDNS_RETRY_TIMEOUT: Duration = Duration::from_millis(750);
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 const MDNS_RESOLUTION_CACHE_TTL: Duration = Duration::from_secs(5);
 
@@ -130,15 +130,29 @@ pub(crate) fn send_library_sync_request(
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     let _ = base_url;
     #[cfg(any(target_os = "macos", target_os = "windows"))]
+    let request_started_at = Instant::now();
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     if let Some(client) = build_mdns_local_client(base_url, timeout, operation)? {
         if let Ok(response) = make_request(&client).send() {
             return Ok(response);
         }
     }
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    let timeout = remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
+        .ok_or_else(|| format!("{operation} timed out while resolving the local host."))?;
     let client = build_library_sync_http_client(timeout, operation)?;
     make_request(&client)
         .send()
         .map_err(|error| format!("{operation} failed: {error}"))
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows", test))]
+fn remaining_library_sync_request_timeout(
+    timeout: Duration,
+    elapsed: Duration,
+) -> Option<Duration> {
+    let remaining = timeout.saturating_sub(elapsed);
+    (!remaining.is_zero()).then_some(remaining)
 }
 
 #[cfg(any(target_os = "macos", target_os = "windows", test))]
@@ -163,10 +177,19 @@ fn build_mdns_local_client(
     let Some((hostname, port)) = stable_local_host_and_port(base_url) else {
         return Ok(None);
     };
-    let Some(addresses) = resolve_stable_local_hostname_with_mdns(&hostname, port) else {
+    let request_started_at = Instant::now();
+    let resolution_timeout = MDNS_RETRY_TIMEOUT.min(timeout);
+    let Some(addresses) =
+        resolve_stable_local_hostname_with_mdns(&hostname, port, resolution_timeout)
+    else {
         return Ok(None);
     };
-    library_sync_http_client_builder(timeout)
+    let Some(remaining_timeout) =
+        remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
+    else {
+        return Ok(None);
+    };
+    library_sync_http_client_builder(remaining_timeout)
         .resolve_to_addrs(&hostname, &addresses)
         .build()
         .map(Some)
@@ -174,22 +197,28 @@ fn build_mdns_local_client(
 }
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
-fn resolve_stable_local_hostname_with_mdns(hostname: &str, port: u16) -> Option<Vec<SocketAddr>> {
+fn resolve_stable_local_hostname_with_mdns(
+    hostname: &str,
+    port: u16,
+    timeout: Duration,
+) -> Option<Vec<SocketAddr>> {
+    if timeout.is_zero() {
+        return None;
+    }
     let cache_key = format!("{hostname}:{port}");
     if let Some(addresses) = cached_mdns_addresses(&cache_key) {
         return Some(addresses);
     }
     let daemon = ServiceDaemon::new().ok()?;
     let fqdn = format!("{hostname}.");
-    let receiver = match daemon.resolve_hostname(&fqdn, Some(MDNS_RETRY_TIMEOUT.as_millis() as u64))
-    {
+    let receiver = match daemon.resolve_hostname(&fqdn, Some(timeout.as_millis() as u64)) {
         Ok(receiver) => receiver,
         Err(_) => {
             let _ = daemon.shutdown();
             return None;
         }
     };
-    let deadline = Instant::now() + MDNS_RETRY_TIMEOUT;
+    let deadline = Instant::now() + timeout;
     let mut resolved = Vec::new();
 
     while Instant::now() < deadline {
@@ -836,9 +865,9 @@ mod tests {
         build_library_sync_cookie_header, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
         library_sync_http_client_builder, load_library_sync_device_token,
-        load_library_sync_device_token_optional, renew_and_cache_library_sync_auth_with,
-        stable_local_host_and_port, store_library_sync_device_token,
-        LibrarySyncAuthenticatedSessionState,
+        load_library_sync_device_token_optional, remaining_library_sync_request_timeout,
+        renew_and_cache_library_sync_auth_with, stable_local_host_and_port,
+        store_library_sync_device_token, LibrarySyncAuthenticatedSessionState,
     };
     use crate::backend::filament_database::FilamentDatabase;
     use crate::credential_store::CredentialStore;
@@ -928,6 +957,24 @@ mod tests {
         );
         assert_eq!(stable_local_host_and_port("http://192.168.1.50:4278"), None);
         assert_eq!(stable_local_host_and_port("http://host.example:4278"), None);
+    }
+
+    #[test]
+    fn local_name_retry_uses_one_total_request_budget() {
+        assert_eq!(
+            remaining_library_sync_request_timeout(
+                Duration::from_millis(2500),
+                Duration::from_millis(750),
+            ),
+            Some(Duration::from_millis(1750)),
+        );
+        assert_eq!(
+            remaining_library_sync_request_timeout(
+                Duration::from_millis(2500),
+                Duration::from_millis(2500),
+            ),
+            None,
+        );
     }
 
     #[test]

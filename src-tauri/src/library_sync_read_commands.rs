@@ -165,6 +165,9 @@ pub(crate) fn fetch_library_sync_filament_consumption(
             .as_str(),
     )?;
 
+    with_inventory(&state, |engine| {
+        engine.save_library_sync_cached_consumption(&rows)
+    })?;
     save_library_sync_success(
         &state,
         "Host filament consumption refreshed.",
