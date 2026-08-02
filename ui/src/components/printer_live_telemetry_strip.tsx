@@ -141,7 +141,7 @@ export function PrinterLiveTelemetryStrip({ telemetry }: PrinterLiveTelemetryStr
           <span className="ml-1 text-slate-500 dark:text-slate-400">
             {telemetry.humidity.toneLabel}
           </span>
-          <span className="ml-1.5 inline-flex items-center gap-0.5" aria-label={telemetry.humidity.label}>
+          <span aria-hidden="true" className="ml-1.5 inline-flex items-center gap-0.5">
             {telemetry.humidity.scale.map((step) => (
               <span
                 key={step.letter}
