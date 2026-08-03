@@ -28,6 +28,25 @@ test("CodeQL covers every supported repository language", () => {
   assert.match(workflow, /languages: \$\{\{ matrix\.language \}\}/);
   assert.match(workflow, /build-mode: none/);
   assert.match(workflow, /category: \$\{\{ matrix\.category \}\}/);
+
+  const initAction = workflow.match(
+    /github\/codeql-action\/init@([a-f0-9]{40}) # v(\d+\.\d+\.\d+)/,
+  );
+  const analyzeAction = workflow.match(
+    /github\/codeql-action\/analyze@([a-f0-9]{40}) # v(\d+\.\d+\.\d+)/,
+  );
+  assert.ok(initAction, "CodeQL init must use an immutable SHA pin.");
+  assert.ok(analyzeAction, "CodeQL analyze must use an immutable SHA pin.");
+  assert.equal(
+    initAction[1],
+    analyzeAction[1],
+    "CodeQL init and analyze must use the same action revision.",
+  );
+  assert.equal(
+    initAction[2],
+    analyzeAction[2],
+    "CodeQL init and analyze version comments must stay in sync.",
+  );
 });
 
 test("CodeQL remains public-only, least privilege and credential-less", () => {

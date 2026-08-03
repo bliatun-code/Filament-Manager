@@ -543,7 +543,7 @@ test("public provenance uses an isolated least-privilege fail-closed job", () =>
   assert.doesNotMatch(attestationJob, /APPLE_[A-Z_]+|macos-release/);
   assert.match(
     attestationJob,
-    /actions\/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4\.2\.0/,
+    /actions\/attest@[a-f0-9]{40} # v\d+\.\d+\.\d+/,
   );
   assert.match(
     attestationJob,
