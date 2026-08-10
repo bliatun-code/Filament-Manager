@@ -496,7 +496,7 @@ test("release SBOM generation is pinned, read-only and fail-closed", () => {
     /anchore\/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0\.24\.0/,
   );
   assert.match(sbomJob, /format: spdx-json/);
-  assert.match(sbomJob, /syft-version: v1\.42\.3/);
+  assert.match(sbomJob, /syft-version: v1\.51\.0/);
   assert.match(sbomJob, /dependency-snapshot: false/);
   assert.match(sbomJob, /upload-artifact: false/);
   assert.match(sbomJob, /upload-release-assets: false/);

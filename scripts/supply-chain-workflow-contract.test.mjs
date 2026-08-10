@@ -63,8 +63,23 @@ test("supply-chain workflow audits dependency pull requests and stays least priv
   assert.doesNotMatch(workflow, /continue-on-error/);
   assert.equal(
     workflow.split("persist-credentials: false").length - 1,
-    2,
+    3,
   );
+});
+
+test("SBOM smoke uses the same pinned fail-closed generator as release", () => {
+  assert.match(workflow, /^  sbom-smoke:\n    name: SBOM generation$/m);
+  assert.match(
+    workflow,
+    /anchore\/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0\.24\.0/,
+  );
+  assert.match(workflow, /syft-version: v1\.51\.0/);
+  assert.match(workflow, /dependency-snapshot: false/);
+  assert.match(workflow, /upload-artifact: false/);
+  assert.match(workflow, /upload-release-assets: false/);
+  assert.match(workflow, /node \.\/scripts\/verify-release-sbom\.mjs/);
+  assert.match(workflow, /--expected-package=bambu-filament-manager/);
+  assert.doesNotMatch(workflow, /continue-on-error/);
 });
 
 test("npm audit covers both lockfiles at a fail-closed severity threshold", () => {
