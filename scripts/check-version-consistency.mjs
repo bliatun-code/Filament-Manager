@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repoRoot = resolve(".");
@@ -29,6 +29,8 @@ function requireMatch(label, source, pattern) {
 
 const appVersion = readJson(appPackagePath).version;
 const releaseTag = `v${appVersion}`;
+const releaseNotesFilename = `RELEASE_NOTES_${releaseTag}.md`;
+const releaseNotesPath = resolve(repoRoot, releaseNotesFilename);
 const packageLock = readJson(packageLockPath);
 const cargoToml = readText(cargoTomlPath);
 const cargoLock = readText(cargoLockPath);
@@ -62,6 +64,23 @@ for (const [label, version] of versions) {
 for (const [label, version] of documentationVersions) {
   if (version !== appVersion) {
     mismatches.push(`${label} is ${version}, expected ${appVersion}`);
+  }
+}
+
+const expectedReleaseNotesLink = `- [${releaseTag}](${releaseNotesFilename})`;
+if (!readme.split(/\r?\n/).includes(expectedReleaseNotesLink)) {
+  mismatches.push(`README release notes link is missing, expected ${expectedReleaseNotesLink}`);
+}
+
+if (!existsSync(releaseNotesPath)) {
+  mismatches.push(`release notes file ${releaseNotesFilename} is missing`);
+} else {
+  const releaseNotesHeading = readText(releaseNotesPath).split(/\r?\n/, 1)[0];
+  const expectedReleaseNotesHeading = `# Filament Manager ${releaseTag}`;
+  if (releaseNotesHeading !== expectedReleaseNotesHeading) {
+    mismatches.push(
+      `release notes heading is ${releaseNotesHeading || "missing"}, expected ${expectedReleaseNotesHeading}`,
+    );
   }
 }
 
