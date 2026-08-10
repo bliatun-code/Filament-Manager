@@ -1,4 +1,7 @@
-use super::{is_live_print_running, merge_tray_payload, run_bounded_blocking_polls};
+use super::{
+    claim_auto_recovery_attempt, is_live_print_running, merge_tray_payload,
+    run_bounded_blocking_polls, AUTO_RECOVERY_COOLDOWN,
+};
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentDatabase, FilamentMasterSummary, ManualMasterInput,
     PrinterAmsSlotRow, PrinterOverviewRow, PrinterRow, PrinterUsageRow, SpoolRow,
@@ -16,9 +19,24 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 type LiveUsageSessionRow = (String, String, i64, Option<i64>, Option<String>);
+
+#[test]
+fn automatic_address_recovery_attempts_are_rate_limited_per_printer() {
+    let printer_id = "cooldown-test-printer";
+    let started = Instant::now();
+    assert!(claim_auto_recovery_attempt(printer_id, started));
+    assert!(!claim_auto_recovery_attempt(
+        printer_id,
+        started + AUTO_RECOVERY_COOLDOWN - Duration::from_millis(1),
+    ));
+    assert!(claim_auto_recovery_attempt(
+        printer_id,
+        started + AUTO_RECOVERY_COOLDOWN,
+    ));
+}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn live_observer_bounds_parallel_printer_polls_and_isolates_failures() {

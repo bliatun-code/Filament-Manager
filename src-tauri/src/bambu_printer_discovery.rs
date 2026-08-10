@@ -46,7 +46,23 @@ pub(crate) fn discover_bambu_printers(
         .set_read_timeout(Some(READ_TIMEOUT))
         .map_err(|error| format!("Could not prepare Bambu discovery: {error}"))?;
 
-    discover_bambu_printers_from_socket(&socket, network, DISCOVERY_WINDOW)
+    discover_bambu_printers_from_socket(&socket, &[network], DISCOVERY_WINDOW)
+}
+
+pub(crate) fn discover_bambu_printers_on_private_networks(
+) -> Result<Vec<BambuPrinterDiscoveryCandidate>, String> {
+    let networks = private_ipv4_networks()?;
+    if networks.is_empty() {
+        return Err(
+            "No currently available private IPv4 interface can be used for Bambu discovery."
+                .to_string(),
+        );
+    }
+    let socket = bind_bambu_discovery_socket()?;
+    socket
+        .set_read_timeout(Some(READ_TIMEOUT))
+        .map_err(|error| format!("Could not prepare Bambu discovery: {error}"))?;
+    discover_bambu_printers_from_socket(&socket, &networks, DISCOVERY_WINDOW)
 }
 
 fn selected_private_network(interface_address: &str) -> Result<PrivateIpv4Network, String> {
@@ -59,14 +75,22 @@ fn selected_private_network(interface_address: &str) -> Result<PrivateIpv4Networ
         );
     }
 
-    if_addrs::get_if_addrs()
+    private_ipv4_networks()?
+        .into_iter()
+        .find(|network| network.address == selected_address)
+        .ok_or_else(|| {
+            "The selected private network interface is no longer available. Refresh it and try again."
+                .to_string()
+        })
+}
+
+fn private_ipv4_networks() -> Result<Vec<PrivateIpv4Network>, String> {
+    Ok(if_addrs::get_if_addrs()
         .map_err(|error| format!("Could not read local network interfaces: {error}"))?
         .into_iter()
-        .find_map(|interface| match interface.addr {
+        .filter_map(|interface| match interface.addr {
             if_addrs::IfAddr::V4(address)
-                if !interface.is_loopback()
-                    && address.ip == selected_address
-                    && address.ip.is_private() =>
+                if !interface.is_loopback() && address.ip.is_private() =>
             {
                 Some(PrivateIpv4Network {
                     address: address.ip,
@@ -75,10 +99,7 @@ fn selected_private_network(interface_address: &str) -> Result<PrivateIpv4Networ
             }
             _ => None,
         })
-        .ok_or_else(|| {
-            "The selected private network interface is no longer available. Refresh it and try again."
-                .to_string()
-        })
+        .collect())
 }
 
 fn bind_bambu_discovery_socket() -> Result<UdpSocket, String> {
@@ -109,7 +130,7 @@ fn bind_bambu_discovery_socket() -> Result<UdpSocket, String> {
 
 fn discover_bambu_printers_from_socket(
     socket: &UdpSocket,
-    network: PrivateIpv4Network,
+    networks: &[PrivateIpv4Network],
     window: Duration,
 ) -> Result<Vec<BambuPrinterDiscoveryCandidate>, String> {
     let deadline = Instant::now() + window;
@@ -123,7 +144,7 @@ fn discover_bambu_printers_from_socket(
                     continue;
                 };
                 if let Some(candidate) =
-                    parse_bambu_discovery_packet(&buffer[..received], *remote.ip(), network)
+                    parse_bambu_discovery_packet(&buffer[..received], *remote.ip(), networks)
                 {
                     candidates.insert(
                         (candidate.printer_serial.clone(), candidate.host.clone()),
@@ -142,9 +163,13 @@ fn discover_bambu_printers_from_socket(
 fn parse_bambu_discovery_packet(
     packet: &[u8],
     remote_address: Ipv4Addr,
-    network: PrivateIpv4Network,
+    networks: &[PrivateIpv4Network],
 ) -> Option<BambuPrinterDiscoveryCandidate> {
-    if !remote_address.is_private() || !network.contains(remote_address) {
+    if !remote_address.is_private()
+        || !networks
+            .iter()
+            .any(|network| network.contains(remote_address))
+    {
         return None;
     }
     let text = std::str::from_utf8(packet).ok()?;
@@ -265,7 +290,7 @@ mod tests {
         );
 
         assert_eq!(
-            parse_bambu_discovery_packet(&input, Ipv4Addr::new(192, 168, 86, 22), NETWORK),
+            parse_bambu_discovery_packet(&input, Ipv4Addr::new(192, 168, 86, 22), &[NETWORK]),
             Some(BambuPrinterDiscoveryCandidate {
                 host: "192.168.86.22".to_string(),
                 printer_serial: "01P00A412500321".to_string(),
@@ -286,9 +311,32 @@ mod tests {
         );
 
         assert_eq!(
-            parse_bambu_discovery_packet(&input, Ipv4Addr::new(192, 168, 86, 22), NETWORK)
+            parse_bambu_discovery_packet(&input, Ipv4Addr::new(192, 168, 86, 22), &[NETWORK])
                 .map(|candidate| (candidate.host, candidate.printer_serial)),
             Some(("192.168.86.22".to_string(), "01P00A412500321".to_string()))
+        );
+    }
+
+    #[test]
+    fn accepts_a_printer_on_any_active_private_network() {
+        let input = packet(
+            "NOTIFY * HTTP/1.1",
+            &[
+                ("NT", "urn:bambulab-com:device:3dprinter:1"),
+                ("NTS", "ssdp:alive"),
+                ("USN", "SERIAL123"),
+            ],
+        );
+        let networks = [
+            NETWORK,
+            PrivateIpv4Network {
+                address: Ipv4Addr::new(10, 0, 0, 5),
+                netmask: Ipv4Addr::new(255, 255, 255, 0),
+            },
+        ];
+
+        assert!(
+            parse_bambu_discovery_packet(&input, Ipv4Addr::new(10, 0, 0, 44), &networks,).is_some()
         );
     }
 
@@ -303,7 +351,7 @@ mod tests {
             ],
         );
         assert!(
-            parse_bambu_discovery_packet(&valid, Ipv4Addr::new(192, 168, 87, 22), NETWORK,)
+            parse_bambu_discovery_packet(&valid, Ipv4Addr::new(192, 168, 87, 22), &[NETWORK],)
                 .is_none()
         );
 
@@ -315,10 +363,12 @@ mod tests {
                 ("USN", "01P00A412500321"),
             ],
         );
-        assert!(
-            parse_bambu_discovery_packet(&not_alive, Ipv4Addr::new(192, 168, 86, 22), NETWORK,)
-                .is_none()
-        );
+        assert!(parse_bambu_discovery_packet(
+            &not_alive,
+            Ipv4Addr::new(192, 168, 86, 22),
+            &[NETWORK],
+        )
+        .is_none());
     }
 
     #[test]
@@ -331,10 +381,12 @@ mod tests {
                 ("USN", "01P00A412500321"),
             ],
         );
-        assert!(
-            parse_bambu_discovery_packet(&non_bambu, Ipv4Addr::new(192, 168, 86, 22), NETWORK,)
-                .is_none()
-        );
+        assert!(parse_bambu_discovery_packet(
+            &non_bambu,
+            Ipv4Addr::new(192, 168, 86, 22),
+            &[NETWORK],
+        )
+        .is_none());
 
         let unsafe_serial = packet(
             "NOTIFY * HTTP/1.1",
@@ -347,7 +399,7 @@ mod tests {
         assert!(parse_bambu_discovery_packet(
             &unsafe_serial,
             Ipv4Addr::new(192, 168, 86, 22),
-            NETWORK,
+            &[NETWORK],
         )
         .is_none());
     }

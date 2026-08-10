@@ -2,9 +2,11 @@ use crate::backend::filament_database::BambuLiveTlsIdentityRow;
 use crate::bambu_live::tls_identity::{assess_trust, BambuTlsIdentity, BambuTlsTrustDecision};
 use crate::bambu_live::{probe_printer_tls_identity, trusted_pin_from_config};
 use crate::bambu_live_observation::now_iso_string;
-use crate::bambu_printer_discovery::{discover_bambu_printers, BambuPrinterDiscoveryCandidate};
+use crate::bambu_printer_discovery::{
+    discover_bambu_printers, discover_bambu_printers_on_private_networks,
+    BambuPrinterDiscoveryCandidate,
+};
 use crate::state::AppState;
-use crate::with_db;
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 
@@ -65,21 +67,30 @@ fn recover_bambu_live_host_with_probe(
     input: RecoverBambuLiveHostInput,
     probe: impl FnOnce(&str, &str) -> Result<BambuTlsIdentity, String>,
 ) -> Result<BambuLiveHostRecovery, String> {
+    recover_bambu_live_host_at_path(&state.db_path, input, probe)
+}
+
+fn recover_bambu_live_host_at_path(
+    db_path: &str,
+    input: RecoverBambuLiveHostInput,
+    probe: impl FnOnce(&str, &str) -> Result<BambuTlsIdentity, String>,
+) -> Result<BambuLiveHostRecovery, String> {
     let printer_id = input.printer_id.trim().to_string();
     if printer_id.is_empty() {
         return Err("Printer id is required for Bambu address recovery.".to_string());
     }
     let host = normalize_private_discovery_host(&input.host)?;
-    let expected_config = with_db(state, |db| {
-        Ok(db
-            .list_bambu_live_integrations()?
-            .into_iter()
-            .find(|entry| entry.printer_id == printer_id)
-            .map(|entry| entry.config))
-    })?
-    .ok_or_else(|| {
-        "This printer does not have a saved Bambu Live connection to recover.".to_string()
-    })?;
+    let db = crate::backend::filament_database::FilamentDatabase::open(db_path)
+        .map_err(|error| error.to_string())?;
+    let expected_config = db
+        .list_bambu_live_integrations()
+        .map_err(|error| error.to_string())?
+        .into_iter()
+        .find(|entry| entry.printer_id == printer_id)
+        .map(|entry| entry.config)
+        .ok_or_else(|| {
+            "This printer does not have a saved Bambu Live connection to recover.".to_string()
+        })?;
     let printer_serial = expected_config
         .printer_serial
         .as_deref()
@@ -118,14 +129,14 @@ fn recover_bambu_live_host_with_probe(
         }
     };
     let observed_tls_identity = observed_tls_identity_row(&observed);
-    let recovered = with_db(state, |db| {
-        db.recover_bambu_live_connection_if_current(
+    let recovered = db
+        .recover_bambu_live_connection_if_current(
             &printer_id,
             &expected_config,
             &host,
             &observed_tls_identity,
         )
-    })?;
+        .map_err(|error| error.to_string())?;
     if !recovered {
         return Err(
             "The saved Bambu Live connection changed while its new address was being checked. Review it and try again."
@@ -139,6 +150,44 @@ fn recover_bambu_live_host_with_probe(
         certificate_sha256: observed.certificate_sha256,
         spki_sha256: observed.spki_sha256,
     })
+}
+
+pub(crate) fn try_auto_recover_bambu_live_host(
+    db_path: &str,
+    printer_id: &str,
+    printer_serial: &str,
+) -> Result<Option<String>, String> {
+    let candidates = discover_bambu_printers_on_private_networks()?;
+    let matching_hosts = matching_discovery_hosts(candidates, printer_serial);
+
+    for host in matching_hosts {
+        let input = RecoverBambuLiveHostInput {
+            printer_id: printer_id.to_string(),
+            host: host.clone(),
+        };
+        match recover_bambu_live_host_at_path(db_path, input, probe_printer_tls_identity) {
+            Ok(_) => return Ok(Some(host)),
+            Err(error) => {
+                eprintln!("Ignored discovered Bambu address {host} for {printer_id}: {error}")
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn matching_discovery_hosts(
+    candidates: Vec<BambuPrinterDiscoveryCandidate>,
+    printer_serial: &str,
+) -> Vec<String> {
+    let expected_serial = printer_serial.trim().to_ascii_uppercase();
+    let mut matching_hosts = candidates
+        .into_iter()
+        .filter(|candidate| candidate.printer_serial == expected_serial)
+        .map(|candidate| candidate.host)
+        .collect::<Vec<_>>();
+    matching_hosts.sort();
+    matching_hosts.dedup();
+    matching_hosts
 }
 
 fn normalize_private_discovery_host(value: &str) -> Result<String, String> {
@@ -213,6 +262,36 @@ mod tests {
             spki_sha256: fingerprint_character.to_string().repeat(64),
             certificate_subject_serial: Some(serial.to_string()),
         }
+    }
+
+    #[test]
+    fn automatic_recovery_selects_only_the_saved_serial_and_deduplicates_hosts() {
+        let candidates = vec![
+            BambuPrinterDiscoveryCandidate {
+                host: "192.168.1.44".to_string(),
+                printer_serial: "SERIAL".to_string(),
+                model: None,
+                name: None,
+            },
+            BambuPrinterDiscoveryCandidate {
+                host: "192.168.1.44".to_string(),
+                printer_serial: "SERIAL".to_string(),
+                model: Some("P1S".to_string()),
+                name: Some("Printer".to_string()),
+            },
+            BambuPrinterDiscoveryCandidate {
+                host: "192.168.1.99".to_string(),
+                printer_serial: "OTHER".to_string(),
+                model: None,
+                name: None,
+            },
+        ];
+
+        assert_eq!(
+            matching_discovery_hosts(candidates, " serial "),
+            vec!["192.168.1.44"]
+        );
+        assert!(matching_discovery_hosts(Vec::new(), "SERIAL").is_empty());
     }
 
     fn trusted_config(host: &str) -> BambuLiveIntegrationRow {
