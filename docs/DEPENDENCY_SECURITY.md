@@ -1,11 +1,12 @@
 # Dependency Security And License Policy
 
-The scheduled supply-chain workflow checks the two npm lockfiles and the Cargo
-workspace every Tuesday at 04:27 UTC. It can also be started manually from
-GitHub Actions. The live advisory queries and `cargo deny` deliberately stay
-outside `npm run verify`: they depend on registry state or an extra audit tool,
-while `verify` must remain a repeatable source and build gate. The deterministic
-npm lockfile policy is also exercised by the ordinary script test suite.
+The supply-chain workflow checks the two npm lockfiles and the Cargo workspace
+for matching dependency pull requests, every Tuesday at 04:27 UTC, and when
+started manually from GitHub Actions. The live advisory queries and
+`cargo deny` deliberately stay outside `npm run verify`: they depend on registry
+state or an extra audit tool, while `verify` must remain a repeatable source and
+build gate. The deterministic npm lockfile policy is also exercised by the
+ordinary script test suite.
 
 The workflow has read-only repository permission, uses SHA-pinned GitHub
 Actions, and installs the Rust audit tools from exact versions with their own

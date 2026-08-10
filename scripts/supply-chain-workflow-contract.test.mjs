@@ -20,11 +20,38 @@ const cargoDenyPolicy = readFileSync(
   "utf8",
 );
 
-test("supply-chain workflow is scheduled, manually runnable and least privilege", () => {
+test("supply-chain workflow audits dependency pull requests and stays least privilege", () => {
   assert.match(workflow, /^name: Scheduled supply-chain audit$/m);
+  const pullRequestTrigger = workflow.match(
+    /^  pull_request:\n    branches:\n      - main\n    paths:\n(?:      - "[^"]+"\n)+/m,
+  )?.[0];
+  assert.ok(pullRequestTrigger, "dependency pull request trigger must be explicit");
+  for (const path of [
+    ".github/workflows/release-build.yml",
+    ".github/workflows/supply-chain.yml",
+    ".nvmrc",
+    "Cargo.lock",
+    "Cargo.toml",
+    "config/dependency-license-policy.json",
+    "deny.toml",
+    "package-lock.json",
+    "package.json",
+    "rust-toolchain.toml",
+    "scripts/check-npm-licenses.mjs",
+    "scripts/release-workflow-contract.test.mjs",
+    "scripts/supply-chain-workflow-contract.test.mjs",
+    "src-tauri/Cargo.toml",
+    "ui/package-lock.json",
+    "ui/package.json",
+  ]) {
+    assert.match(
+      pullRequestTrigger,
+      new RegExp(`      - "${path.replaceAll(".", "\\.")}"`),
+    );
+  }
   assert.match(workflow, /^  schedule:\n    - cron: "[^"]+"$/m);
   assert.match(workflow, /^  workflow_dispatch:$/m);
-  assert.doesNotMatch(workflow, /^  (?:push|pull_request):/m);
+  assert.doesNotMatch(workflow, /^  push:/m);
   assert.match(workflow, /^permissions:\n  contents: read$/m);
   assert.equal(
     [...workflow.matchAll(/^\s*permissions:/gm)].length,
