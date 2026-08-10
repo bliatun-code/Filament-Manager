@@ -52,6 +52,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.24.0](RELEASE_NOTES_v0.24.0.md)
 - [v0.23.0](RELEASE_NOTES_v0.23.0.md)
 - [v0.22.1](RELEASE_NOTES_v0.22.1.md)
 - [v0.22.0](RELEASE_NOTES_v0.22.0.md)
@@ -299,7 +300,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.23.0_universal.dmg \
+  /path/to/Filament\ Manager_0.24.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -351,7 +352,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.23.0`
+- Current version: `0.24.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
@@ -359,6 +360,7 @@ download and checksum flow.
   - `Cargo.lock`
   - `src-tauri/tauri.conf.json`
   - this README current version
+  - the matching versioned release notes file and README release-notes link
 
 The version guard is included in:
 
