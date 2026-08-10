@@ -49,6 +49,28 @@ export async function createManagedPrinter(
   await createLocalPrinter(input);
 }
 
+export async function createManagedPrinterWithBambuLive(
+  printer: CreatePrinterInput,
+  bambuLive: SaveBambuLiveIntegrationInput | null,
+  target: PrinterWriteTarget = {},
+  dependencies: PrinterWriteDependencies = {},
+): Promise<void> {
+  await createManagedPrinter(printer, target, dependencies);
+  if (!bambuLive) {
+    return;
+  }
+  try {
+    await saveManagedBambuLiveIntegration(bambuLive, target, dependencies);
+  } catch (error) {
+    try {
+      await deleteManagedPrinter(printer.id, target, dependencies);
+    } catch (cleanupError) {
+      console.error("Failed to roll back printer after Bambu Live setup failed", cleanupError);
+    }
+    throw error;
+  }
+}
+
 export async function deleteManagedPrinter(
   printerId: string,
   target: PrinterWriteTarget = {},
@@ -76,8 +98,7 @@ export async function saveManagedBambuLiveIntegration(
 ): Promise<void> {
   const saveHostBambuLiveIntegration =
     dependencies.saveHostBambuLiveIntegration ?? saveLibrarySyncHostBambuLiveIntegration;
-  const saveLocalBambuLiveIntegration =
-    dependencies.saveLocalBambuLiveIntegration ?? saveBambuLiveIntegration;
+  const saveLocalBambuLiveIntegration = dependencies.saveLocalBambuLiveIntegration ?? saveBambuLiveIntegration;
 
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(
@@ -98,8 +119,7 @@ export async function deleteManagedBambuLiveIntegration(
 ): Promise<void> {
   const deleteHostBambuLiveIntegration =
     dependencies.deleteHostBambuLiveIntegration ?? deleteLibrarySyncHostBambuLiveIntegration;
-  const deleteLocalBambuLiveIntegration =
-    dependencies.deleteLocalBambuLiveIntegration ?? deleteBambuLiveIntegration;
+  const deleteLocalBambuLiveIntegration = dependencies.deleteLocalBambuLiveIntegration ?? deleteBambuLiveIntegration;
 
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(
