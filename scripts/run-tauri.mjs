@@ -3,6 +3,17 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  FILAMENT_MANAGER_MACOS_DEV_SIGNING_IDENTITY_ENV,
+  MACOS_DEV_CARGO_RUNNER_COMMAND,
+  validateMacosDevSigningIdentity,
+} from "./macos-dev-code-sign-runner.mjs";
+
+export {
+  FILAMENT_MANAGER_MACOS_DEV_SIGNING_IDENTITY_ENV,
+  MACOS_DEV_CARGO_RUNNER_COMMAND,
+};
+
 const DEFAULT_REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 export const FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY_ENV =
@@ -10,6 +21,11 @@ export const FILAMENT_MANAGER_MACOS_SIGNING_IDENTITY_ENV =
 export const FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING_ENV =
   "FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING";
 export const TAURI_MACOS_SIGNING_IDENTITY_ENV = "APPLE_SIGNING_IDENTITY";
+
+export const MACOS_DEV_CARGO_RUNNER_ENV_VARS = [
+  "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER",
+  "CARGO_TARGET_X86_64_APPLE_DARWIN_RUNNER",
+];
 
 const APPLE_SIGNING_ENV_VARS = [
   "APPLE_CERTIFICATE",
@@ -163,6 +179,44 @@ export function withMacosSigningBuildEnvironment({
   };
 }
 
+export function withMacosDevSigningEnvironment({
+  args,
+  env = process.env,
+  platform = process.platform,
+  scriptsDirectory = fileURLToPath(new URL("./", import.meta.url)),
+} = {}) {
+  const configuredIdentity = envValue(env, FILAMENT_MANAGER_MACOS_DEV_SIGNING_IDENTITY_ENV);
+  if (platform !== "darwin" || args?.[0] !== "dev" || configuredIdentity === null) {
+    return env;
+  }
+  if (envFlag(env, "CI")) {
+    throw new Error("Stable macOS development signing is disabled in CI.");
+  }
+  validateMacosDevSigningIdentity(configuredIdentity);
+
+  for (const variable of MACOS_DEV_CARGO_RUNNER_ENV_VARS) {
+    if (envValue(env, variable) !== null) {
+      throw new Error(
+        `${FILAMENT_MANAGER_MACOS_DEV_SIGNING_IDENTITY_ENV} cannot override existing ${variable}.`,
+      );
+    }
+  }
+
+  const existingPath = typeof env.PATH === "string" && env.PATH.length > 0 ? env.PATH : null;
+  return {
+    ...env,
+    PATH: existingPath
+      ? `${scriptsDirectory}${path.delimiter}${existingPath}`
+      : scriptsDirectory,
+    ...Object.fromEntries(
+      MACOS_DEV_CARGO_RUNNER_ENV_VARS.map((variable) => [
+        variable,
+        MACOS_DEV_CARGO_RUNNER_COMMAND,
+      ]),
+    ),
+  };
+}
+
 export function runTauriCli({
   argv = process.argv.slice(2),
   cwd = DEFAULT_REPO_ROOT,
@@ -172,10 +226,18 @@ export function runTauriCli({
   const tauriCliPath = path.join(cwd, "node_modules", "@tauri-apps", "cli", "tauri.js");
   const tauriProjectDir = path.join(cwd, "src-tauri");
   const args = withMacosSigningConfig(argv, { env, platform });
-  const childEnv = withMacosSigningBuildEnvironment({ args, env, platform });
+  const signingBuildEnv = withMacosSigningBuildEnvironment({ args, env, platform });
+  const childEnv = withMacosDevSigningEnvironment({
+    args,
+    env: signingBuildEnv,
+    platform,
+  });
 
-  if (childEnv !== env) {
-    console.log(`Signed macOS bundle output: ${childEnv.CARGO_TARGET_DIR}`);
+  if (signingBuildEnv !== env) {
+    console.log(`Signed macOS bundle output: ${signingBuildEnv.CARGO_TARGET_DIR}`);
+  }
+  if (childEnv !== signingBuildEnv) {
+    console.log("Stable macOS development signing enabled.");
   }
 
   const child = spawn(process.execPath, [tauriCliPath, ...args], {

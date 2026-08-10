@@ -10,6 +10,11 @@ license as the project: GNU Affero General Public License v3.0 or later
 
 ## Development Setup
 
+The workspace supports Rust 1.88 and newer. A checked-in toolchain file selects
+the reviewed Rust 1.97.1 release, including Clippy and rustfmt, for normal local
+commands. Install it with `rustup` if your environment does not resolve it
+automatically.
+
 Install dependencies:
 
 ```bash
@@ -22,6 +27,45 @@ Run the desktop app:
 ```bash
 npm run tauri -- dev
 ```
+
+### Stable macOS Development Signing
+
+The normal macOS development executable is ad-hoc signed, so its code identity
+changes after a Rust rebuild. If the local library contains credentials in
+macOS Keychain, that can make Keychain ask for approval again after each
+rebuild.
+
+Maintainers can opt into stable signing for `tauri dev` with a local
+`Apple Development` or self-signed Code Signing identity installed in their
+login Keychain:
+
+```bash
+security find-identity -v -p codesigning
+export FILAMENT_MANAGER_MACOS_DEV_SIGNING_IDENTITY='Apple Development: Your Name (TEAMID)'
+npm run tauri -- dev
+```
+
+If `security find-identity` only lists a `Developer ID Application` identity,
+create a separate `Apple Development` certificate from Xcode's Accounts >
+Manage Certificates screen. An offline alternative is a self-signed Code
+Signing certificate in Keychain Access with the exact name
+`Filament Manager Development`. Never use the Developer ID release identity
+for local development; the wrapper rejects release, distribution, hash-only,
+and arbitrary identities.
+
+The identity name is not a private key and may be kept in a local shell
+profile, but do not commit certificates, private keys, Keychain files, or local
+environment files. The first access with a new development identity can still
+require one approval. Subsequent Rust rebuilds keep the same designated
+requirement and should not ask again.
+
+This opt-in signs only the `bambu-filament-manager` executable produced inside
+a Cargo target directory and uses the separate development identifier
+`no.bliatun.filamentmanager.dev`. It rejects the ad-hoc `-` identity, does not
+override an existing Cargo runner environment variable, is disabled in CI,
+and does not change release signing or credential storage. Do not work around
+Keychain prompts by allowing all applications, weakening global Keychain
+policy, or storing credentials in plaintext.
 
 Run the full verification suite:
 

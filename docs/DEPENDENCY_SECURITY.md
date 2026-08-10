@@ -1,11 +1,18 @@
 # Dependency Security And License Policy
 
-The scheduled supply-chain workflow checks the two npm lockfiles and the Cargo
-workspace every Tuesday at 04:27 UTC. It can also be started manually from
-GitHub Actions. The live advisory queries and `cargo deny` deliberately stay
-outside `npm run verify`: they depend on registry state or an extra audit tool,
-while `verify` must remain a repeatable source and build gate. The deterministic
-npm lockfile policy is also exercised by the ordinary script test suite.
+The supply-chain workflow checks the two npm lockfiles and the Cargo workspace
+for matching dependency pull requests, every Tuesday at 04:27 UTC, and when
+started manually from GitHub Actions. The live advisory queries and
+`cargo deny` deliberately stay outside `npm run verify`: they depend on registry
+state or an extra audit tool, while `verify` must remain a repeatable source and
+build gate. The deterministic npm lockfile policy is also exercised by the
+ordinary script test suite.
+
+The reviewed Rust release is pinned in `rust-toolchain.toml` and monitored by
+Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.88 as
+their minimum supported version; the ordinary release and smoke jobs use the
+exact pinned release. Rust-toolchain pull requests must update the explicit
+workflow toolchain values to match; the contract suite rejects partial bumps.
 
 The workflow has read-only repository permission, uses SHA-pinned GitHub
 Actions, and installs the Rust audit tools from exact versions with their own
@@ -46,8 +53,8 @@ exceptions.
 Install the same Rust tools used in CI:
 
 ```bash
-cargo install --locked cargo-audit --version 0.22.1
-cargo install --locked cargo-deny --version 0.19.4
+cargo install --locked cargo-audit --version 0.22.2
+cargo install --locked cargo-deny --version 0.20.2
 ```
 
 Run all live dependency checks:
@@ -63,6 +70,14 @@ npm run check:npm-licenses
 npm run audit:npm
 npm run audit:cargo
 npm run check:cargo-licenses
+```
+
+Verify the declared Rust lower bound separately when changing Rust or Cargo
+dependencies:
+
+```bash
+rustup toolchain install 1.88.0 --profile minimal
+cargo +1.88.0 check --workspace --all-targets --all-features --locked
 ```
 
 The npm and RustSec audits contact their public advisory services. A registry,

@@ -159,8 +159,9 @@ jobs:
             ui/package-lock.json
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
+          toolchain: 1.97.1
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Record build environment
@@ -495,7 +496,9 @@ jobs:
             ui/package-lock.json
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.97.1
 
       - name: Install root dependencies
         run: npm ci
@@ -657,7 +660,7 @@ jobs:
           path: .
           format: spdx-json
           output-file: ${{ steps['sbom-output'].outputs['sbom-path'] }}
-          syft-version: v1.42.3
+          syft-version: v1.51.0
           dependency-snapshot: false
           upload-artifact: false
           upload-release-assets: false
