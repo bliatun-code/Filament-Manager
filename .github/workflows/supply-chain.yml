@@ -53,13 +53,13 @@ jobs:
         uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
 
       - name: Install pinned cargo-audit
-        run: cargo install --locked cargo-audit --version 0.22.1
+        run: cargo install --locked cargo-audit --version 0.22.2
 
       - name: Audit Cargo lockfile
         run: cargo audit
 
       - name: Install pinned cargo-deny
-        run: cargo install --locked cargo-deny --version 0.19.4
+        run: cargo install --locked cargo-deny --version 0.20.2
 
       - name: Enforce Cargo dependency license policy
         run: cargo deny --all-features check licenses

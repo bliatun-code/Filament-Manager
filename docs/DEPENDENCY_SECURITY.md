@@ -46,8 +46,8 @@ exceptions.
 Install the same Rust tools used in CI:
 
 ```bash
-cargo install --locked cargo-audit --version 0.22.1
-cargo install --locked cargo-deny --version 0.19.4
+cargo install --locked cargo-audit --version 0.22.2
+cargo install --locked cargo-deny --version 0.20.2
 ```
 
 Run all live dependency checks:

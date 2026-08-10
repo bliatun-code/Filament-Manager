@@ -59,13 +59,13 @@ test("npm audit covers both lockfiles at a fail-closed severity threshold", () =
 test("Cargo audit and license tools are exact, locked and fail closed", () => {
   assert.match(
     workflow,
-    /cargo install --locked cargo-audit --version 0\.22\.1/,
+    /cargo install --locked cargo-audit --version 0\.22\.2/,
   );
   assert.match(workflow, /^        run: cargo audit$/m);
   assert.doesNotMatch(workflow, /cargo audit[^\n]*(?:--ignore|--stale)/);
   assert.match(
     workflow,
-    /cargo install --locked cargo-deny --version 0\.19\.4/,
+    /cargo install --locked cargo-deny --version 0\.20\.2/,
   );
   assert.match(workflow, /cargo deny --all-features check licenses/);
   assert.match(cargoDenyPolicy, /^include-dev = true$/m);
