@@ -295,6 +295,9 @@ export const daDKDictionary: DictionaryNode = {
     "noActiveSlotFilterMatch": "Ingen indlæste placeringer matcher det aktuelle ejerfilter."
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live kræver handling",
+    "bambuLiveAttentionBody": "{name} er ikke længere Live, før du har kontrolleret og godkendt printerens identitet.",
+    "openBambuLiveSettings": "Åbn Live-indstillinger",
     "onboardingInventoryBody": "Start med én spole, eller importér et eksisterende lager eller en sikkerhedskopi.",
     "onboardingInventoryTitle": "Tilføj eller importér lager",
     "onboardingPrinterBody": "Tilføj en understøttet printer. Bambu Live kan aktiveres, når det er tilgængeligt.",

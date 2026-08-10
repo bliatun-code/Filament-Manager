@@ -60,6 +60,7 @@ export default function App() {
     useState<InventoryNavigationIntent>(null);
   const [settingsInitialTab, setSettingsInitialTab] =
     useState<SettingsTabKey | null>(() => initialSettingsTabFromUrl());
+  const [settingsInitialPrinterId, setSettingsInitialPrinterId] = useState<string | null>(null);
   const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -175,6 +176,7 @@ export default function App() {
       setInventoryNavigationIntent(nextInventoryIntent);
       if (page !== "settings") {
         setSettingsInitialTab(null);
+        setSettingsInitialPrinterId(null);
       }
       setActivePage(page);
     });
@@ -184,6 +186,16 @@ export default function App() {
     startTransition(() => {
       setInventoryNavigationIntent(null);
       setSettingsInitialTab(tab);
+      setSettingsInitialPrinterId(null);
+      setActivePage("settings");
+    });
+  };
+
+  const openBambuLiveSettings = (printerId: string) => {
+    startTransition(() => {
+      setInventoryNavigationIntent(null);
+      setSettingsInitialTab("PRINTERS");
+      setSettingsInitialPrinterId(printerId);
       setActivePage("settings");
     });
   };
@@ -204,6 +216,7 @@ export default function App() {
               openSettingsTab("LIBRARY");
             }}
             onOpenMaintenanceSettings={() => openSettingsTab("MAINTENANCE")}
+            onOpenBambuLiveSettings={openBambuLiveSettings}
             onOpenPrinters={() => navigateToPage("printers")}
             onOpenLowStock={() => {
               navigateToPage("inventory", {
@@ -227,7 +240,12 @@ export default function App() {
       case "statistics":
         return <StatisticsPage />;
       case "settings":
-        return <SettingsPage initialTab={settingsInitialTab} />;
+        return (
+          <SettingsPage
+            initialPrinterId={settingsInitialPrinterId}
+            initialTab={settingsInitialTab}
+          />
+        );
       default:
         return (
           <InventoryPage

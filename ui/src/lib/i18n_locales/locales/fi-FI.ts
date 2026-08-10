@@ -295,6 +295,9 @@ export const fiFIDictionary: DictionaryNode = {
     "noActiveSlotFilterMatch": "Yksikään ladattu sijainti ei vastaa nykyisen omistajan suodatinta."
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live vaatii huomiota",
+    "bambuLiveAttentionBody": "{name} ei ole enää Live-tilassa, ennen kuin tarkistat ja hyväksyt tulostimen identiteetin.",
+    "openBambuLiveSettings": "Avaa Live-asetukset",
     "onboardingInventoryBody": "Aloita yhdellä kelalla tai tuo olemassa oleva varasto tai varmuuskopio.",
     "onboardingInventoryTitle": "Lisää tai tuo varasto",
     "onboardingPrinterBody": "Lisää mikä tahansa tuettu tulostin. Bambu Live voidaan ottaa käyttöön, kun se on saatavilla.",

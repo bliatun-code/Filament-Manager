@@ -71,6 +71,10 @@ export const enDictionary: DictionaryNode = {
       settings: "Settings",
     },
     dashboard: {
+      bambuLiveAttentionTitle: "Bambu Live needs attention",
+      bambuLiveAttentionBody:
+        "{name} is no longer Live until you review and trust the printer identity.",
+      openBambuLiveSettings: "Open Live settings",
       onboardingInventoryBody: "Start with one spool, or import an existing inventory or backup.",
       onboardingInventoryTitle: "Add or import inventory",
       onboardingPrinterBody:

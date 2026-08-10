@@ -129,6 +129,9 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "A Bambu Live beavatkozást igényel",
+    "bambuLiveAttentionBody": "A(z) {name} addig nem lesz Live állapotú, amíg nem ellenőrzi és hagyja jóvá a nyomtató identitását.",
+    "openBambuLiveSettings": "Live-beállítások megnyitása",
     "onboardingInventoryBody": "Kezdjen egy tekerccsel, vagy importáljon egy meglévő készletet vagy biztonsági mentést.",
     "onboardingInventoryTitle": "Készlet hozzáadása vagy importálása",
     "onboardingPrinterBody": "Adjon hozzá bármilyen támogatott nyomtatót. A Bambu Live bekapcsolható, ha elérhető.",

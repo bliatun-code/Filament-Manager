@@ -50,6 +50,9 @@ export const zhCNDictionary: DictionaryNode = {
     "unknown": "未知"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live 需要处理",
+    "bambuLiveAttentionBody": "在检查并信任打印机身份之前，{name} 将无法保持 Live 状态。",
+    "openBambuLiveSettings": "打开 Live 设置",
     "onboardingInventoryBody": "先添加一个线轴，或导入现有库存或备份。",
     "onboardingInventoryTitle": "添加或导入库存",
     "onboardingPrinterBody": "添加任意受支持的打印机。Bambu Live 可用时可以启用。",

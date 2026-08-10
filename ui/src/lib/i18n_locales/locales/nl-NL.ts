@@ -50,6 +50,9 @@ export const nlNLDictionary: DictionaryNode = {
     "unknown": "Onbekend"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live vereist aandacht",
+    "bambuLiveAttentionBody": "{name} is niet meer Live totdat je de printeridentiteit hebt gecontroleerd en goedgekeurd.",
+    "openBambuLiveSettings": "Live-instellingen openen",
     "onboardingInventoryBody": "Begin met één spoel of importeer een bestaande voorraad of back-up.",
     "onboardingInventoryTitle": "Voorraad toevoegen of importeren",
     "onboardingPrinterBody": "Voeg een ondersteunde printer toe. Bambu Live kan worden ingeschakeld wanneer beschikbaar.",

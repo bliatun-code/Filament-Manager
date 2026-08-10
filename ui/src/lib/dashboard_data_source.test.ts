@@ -12,6 +12,7 @@ import type {
   LibrarySyncRemoteSnapshot,
   LibrarySyncSettings,
   PrinterOverviewRow,
+  PrinterSettingsSnapshot,
   SpoolWithMasterRow,
   WishlistItemRow,
 } from "./tauri_client";
@@ -82,6 +83,15 @@ function printerOverviewRow(id: string): PrinterOverviewRow {
       last_job_at: null,
     },
     slots: [],
+  };
+}
+
+function printerSettingsSnapshot(): PrinterSettingsSnapshot {
+  return {
+    active_printer_id: null,
+    printers: [],
+    printer_models: [],
+    bambu_live_integrations: [],
   };
 }
 
@@ -184,6 +194,17 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
       loadSyncSettings: async () => syncSettings(),
       loadTrustedLanStatus: async () => null,
       loadInventoryOverview: async () => overview({ total_consumption_30d: 120 }),
+      loadPrinterSettings: async () => ({
+        active_printer_id: "printer-local",
+        printers: [printerOverviewRow("printer-local").printer],
+        printer_models: ["X1 Carbon"],
+        bambu_live_integrations: [
+          {
+            printer_id: "printer-local",
+            config: { enabled: true, tls_trust_state: "UNPAIRED" },
+          },
+        ],
+      }),
       listLocalPrinters: async () => [printerOverviewRow("printer-local")],
       loadSpoolRows: async (options) => {
         assert.equal(options.clientReadOnly, false);
@@ -208,6 +229,13 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
   assert.equal(result.setupDataAvailable, true);
   assert.deepEqual(result.revisionSource, { kind: "local" });
   assert.equal(result.revisionPollComplete, true);
+  assert.deepEqual(result.bambuLiveAttention, [
+    {
+      printerId: "printer-local",
+      printerName: "printer-local",
+      trustState: "UNPAIRED",
+    },
+  ]);
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
 });
 
@@ -224,6 +252,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
           client_auth_paired: true,
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async (baseUrl, libraryId) => {
         assert.equal(baseUrl, "http://host");
         assert.equal(libraryId, "library-1");
@@ -260,6 +289,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   );
 
   assert.equal(result.syncSource, "client-live");
+  assert.deepEqual(result.bambuLiveAttention, []);
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.clientHostDisplayName, "Live Host");
   assert.equal(result.clientHostPaired, true);
@@ -292,6 +322,7 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
           },
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => validation(),
       fetchHostSnapshot: async () => snapshot("Live Host", { captured_at: "snapshot-live" }),
       loadSpoolRows: async () => [],
@@ -331,6 +362,7 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
           cached_snapshot: cached,
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => {
         throw new Error("should not validate without a complete target");
       },
@@ -384,6 +416,7 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
           },
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => {
         throw new Error("should not validate without a complete target");
       },
@@ -452,6 +485,7 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
           },
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => {
         throw new Error("should not validate without a complete target");
       },
@@ -516,6 +550,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
           },
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: hostRead,
       fetchHostSnapshot: hostRead,
       loadSpoolRows: hostRead,
@@ -549,6 +584,7 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
           library_id: "library-1",
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => {
         throw new Error("should not validate without a complete target");
       },
@@ -607,6 +643,7 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
           },
         }),
       loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => validation(),
       fetchHostSnapshot: async () => {
         throw new Error("snapshot unavailable");

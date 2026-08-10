@@ -295,6 +295,9 @@ export const ruRUDictionary: DictionaryNode = {
     }
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live требует внимания",
+    "bambuLiveAttentionBody": "{name} не будет в режиме Live, пока вы не проверите и не подтвердите идентификатор принтера.",
+    "openBambuLiveSettings": "Открыть настройки Live",
     "onboardingInventoryBody": "Начните с одной катушки или импортируйте существующие запасы либо резервную копию.",
     "onboardingInventoryTitle": "Добавить или импортировать запасы",
     "onboardingPrinterBody": "Добавьте любой поддерживаемый принтер. Bambu Live можно включить, когда он доступен.",

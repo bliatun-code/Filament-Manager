@@ -72,6 +72,10 @@ export const frDictionary: DictionaryNode = {
     generic: "Générique",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "Bambu Live nécessite votre attention",
+    bambuLiveAttentionBody:
+      "{name} n’est plus en direct tant que vous n’avez pas vérifié et approuvé l’identité de l’imprimante.",
+    openBambuLiveSettings: "Ouvrir les réglages Live",
     onboardingInventoryBody:
       "Commencez par une bobine, ou importez un stock ou une sauvegarde existants.",
     onboardingInventoryTitle: "Ajouter ou importer le stock",

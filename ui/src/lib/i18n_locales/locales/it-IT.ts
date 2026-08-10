@@ -50,6 +50,10 @@ export const itITDictionary: DictionaryNode = {
     unknown: "Sconosciuto",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "Bambu Live richiede attenzione",
+    bambuLiveAttentionBody:
+      "{name} non sarà più Live finché non verifichi e approvi l’identità della stampante.",
+    openBambuLiveSettings: "Apri impostazioni Live",
     onboardingInventoryBody:
       "Inizia con una bobina oppure importa un inventario o un backup esistente.",
     onboardingInventoryTitle: "Aggiungi o importa l’inventario",

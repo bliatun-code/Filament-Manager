@@ -50,6 +50,9 @@ export const trTRDictionary: DictionaryNode = {
     "unknown": "Bilinmiyor"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live için işlem gerekiyor",
+    "bambuLiveAttentionBody": "Yazıcı kimliğini inceleyip onaylayana kadar {name} artık Live olmayacak.",
+    "openBambuLiveSettings": "Live ayarlarını aç",
     "onboardingInventoryBody": "Bir makara ile başlayın veya mevcut bir envanteri ya da yedeği içe aktarın.",
     "onboardingInventoryTitle": "Envanter ekleyin veya içe aktarın",
     "onboardingPrinterBody": "Desteklenen herhangi bir yazıcıyı ekleyin. Kullanılabilir olduğunda Bambu Live etkinleştirilebilir.",

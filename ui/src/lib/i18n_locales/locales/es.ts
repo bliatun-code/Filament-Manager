@@ -73,6 +73,10 @@ export const esDictionary: DictionaryNode = {
     settings: "Ajustes",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "Bambu Live requiere atención",
+    bambuLiveAttentionBody:
+      "{name} dejará de estar en Live hasta que revises y apruebes la identidad de la impresora.",
+    openBambuLiveSettings: "Abrir ajustes de Live",
     onboardingInventoryBody:
       "Empieza con una bobina o importa un inventario o una copia de seguridad existentes.",
     onboardingInventoryTitle: "Añadir o importar inventario",

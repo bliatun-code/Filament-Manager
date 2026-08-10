@@ -103,7 +103,7 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   assert.doesNotMatch(loader, /\b(?:sleep|delay|wait)\s*\(/i);
   assert.match(
     loader,
-    /const \[syncSettings, trustedLan\] = await Promise\.all\(\[/,
+    /const \[syncSettings, trustedLan, printerSettings\] = await Promise\.all\(\[/,
   );
   assert.match(
     loader,

@@ -50,6 +50,9 @@ export const koKRDictionary: DictionaryNode = {
     "unknown": "알려지지 않은"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live 확인이 필요합니다",
+    "bambuLiveAttentionBody": "프린터 ID를 검토하고 승인할 때까지 {name}의 Live 연결이 중지됩니다.",
+    "openBambuLiveSettings": "Live 설정 열기",
     "onboardingInventoryBody": "스풀 하나로 시작하거나 기존 재고 또는 백업을 가져오세요.",
     "onboardingInventoryTitle": "재고 추가 또는 가져오기",
     "onboardingPrinterBody": "지원되는 프린터를 추가하세요. 사용 가능한 경우 Bambu Live를 켤 수 있습니다.",

@@ -71,6 +71,10 @@ export const nbDictionary: DictionaryNode = {
       settings: "Innstillinger",
     },
     dashboard: {
+      bambuLiveAttentionTitle: "Bambu Live trenger oppfølging",
+      bambuLiveAttentionBody:
+        "{name} er ikke lenger Live før du kontrollerer og godkjenner printeridentiteten.",
+      openBambuLiveSettings: "Åpne Live-innstillinger",
       onboardingInventoryBody:
         "Start med én rull, eller importer et eksisterende lager eller en sikkerhetskopi.",
       onboardingInventoryTitle: "Legg til eller importer lager",

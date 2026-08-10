@@ -50,6 +50,9 @@ export const jaJPDictionary: DictionaryNode = {
     "unknown": "未知"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live の確認が必要です",
+    "bambuLiveAttentionBody": "プリンターの識別情報を確認して承認するまで、{name} は Live になりません。",
+    "openBambuLiveSettings": "Live 設定を開く",
     "onboardingInventoryBody": "まずスプールを1つ追加するか、既存の在庫またはバックアップをインポートします。",
     "onboardingInventoryTitle": "在庫を追加またはインポート",
     "onboardingPrinterBody": "対応プリンターを追加します。利用可能な場合は Bambu Live を有効にできます。",

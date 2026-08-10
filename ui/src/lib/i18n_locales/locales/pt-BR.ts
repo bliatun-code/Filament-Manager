@@ -50,6 +50,10 @@ export const ptBRDictionary: DictionaryNode = {
     unknown: "Desconhecido",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "O Bambu Live precisa de atenção",
+    bambuLiveAttentionBody:
+      "{name} não ficará mais Live até que você revise e aprove a identidade da impressora.",
+    openBambuLiveSettings: "Abrir configurações do Live",
     onboardingInventoryBody:
       "Comece com um carretel ou importe um inventário ou backup existente.",
     onboardingInventoryTitle: "Adicionar ou importar inventário",

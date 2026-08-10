@@ -50,6 +50,9 @@ export const plPLDictionary: DictionaryNode = {
     "unknown": "Nieznany"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live wymaga uwagi",
+    "bambuLiveAttentionBody": "{name} nie będzie w trybie Live, dopóki nie sprawdzisz i nie zatwierdzisz tożsamości drukarki.",
+    "openBambuLiveSettings": "Otwórz ustawienia Live",
     "onboardingInventoryBody": "Zacznij od jednej szpuli albo zaimportuj istniejący magazyn lub kopię zapasową.",
     "onboardingInventoryTitle": "Dodaj lub zaimportuj magazyn",
     "onboardingPrinterBody": "Dodaj dowolną obsługiwaną drukarkę. Bambu Live można włączyć, gdy jest dostępne.",

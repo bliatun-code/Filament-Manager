@@ -24,6 +24,7 @@ type UseSettingsPrintersSectionInput = {
   busy: boolean;
   catalogRows: MasterCatalogRow[];
   loading: boolean;
+  initialPrinterId?: string | null;
   locale: Locale;
   printerOverview: PrinterOverviewRow[];
   printers: PrinterRow[];
@@ -46,6 +47,7 @@ export function useSettingsPrintersSection({
   busy,
   catalogRows,
   loading,
+  initialPrinterId = null,
   locale,
   printerOverview,
   printers,
@@ -63,6 +65,7 @@ export function useSettingsPrintersSection({
   trustedLanInterfaces,
 }: UseSettingsPrintersSectionInput) {
   const printerEditorDiscardAppliedRef = useRef(false);
+  const initialPrinterEditAppliedRef = useRef<string | null>(null);
   const {
     acceptRecoveredBambuLiveHost,
     cancelPrinterEdit,
@@ -445,6 +448,44 @@ export function useSettingsPrintersSection({
     startPrinterEdit,
     tauri,
   });
+
+  useEffect(() => {
+    if (
+      !initialPrinterId ||
+      loading ||
+      initialPrinterEditAppliedRef.current === initialPrinterId
+    ) {
+      return;
+    }
+    const printer = sortedPrinters.find((candidate) => candidate.id === initialPrinterId);
+    if (!printer) {
+      return;
+    }
+
+    initialPrinterEditAppliedRef.current = initialPrinterId;
+    setExpandedBambuDetailsPrinterId(null);
+    handleStartEditPrinter(printer);
+  }, [
+    handleStartEditPrinter,
+    initialPrinterId,
+    loading,
+    setExpandedBambuDetailsPrinterId,
+    sortedPrinters,
+  ]);
+
+  useEffect(() => {
+    if (!initialPrinterId || editPrinterId !== initialPrinterId) {
+      return;
+    }
+    const timeoutIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(() => {
+        document
+          .querySelector("[data-desktop-visual-qa-target='settings-printer-editor']")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, delay),
+    );
+    return () => timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+  }, [editPrinterId, initialPrinterId]);
 
   const settingsPrintersRouteProps = buildSettingsPrintersRouteProps({
     bambuLiveIntegrations,

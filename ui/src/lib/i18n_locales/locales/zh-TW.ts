@@ -50,6 +50,9 @@ export const zhTWDictionary: DictionaryNode = {
     "unknown": "未知"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live 需要處理",
+    "bambuLiveAttentionBody": "在檢查並信任印表機身分之前，{name} 將無法保持 Live 狀態。",
+    "openBambuLiveSettings": "開啟 Live 設定",
     "onboardingInventoryBody": "先加入一個線軸，或匯入現有庫存或備份。",
     "onboardingInventoryTitle": "加入或匯入庫存",
     "onboardingPrinterBody": "加入任一受支援的印表機。Bambu Live 可用時可以啟用。",

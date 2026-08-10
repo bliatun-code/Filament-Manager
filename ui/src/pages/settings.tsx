@@ -23,10 +23,14 @@ import { useSettingsMessageGroups } from "./use_settings_message_groups";
 import { isLibrarySyncDeviceNameDirty } from "./settings_library_device_name";
 
 type SettingsPageProps = {
+  initialPrinterId?: string | null;
   initialTab?: SettingsTabKey | null;
 };
 
-export default function SettingsPage({ initialTab = null }: SettingsPageProps) {
+export default function SettingsPage({
+  initialPrinterId = null,
+  initialTab = null,
+}: SettingsPageProps) {
   const tauri = isTauri();
   const desktopVisualQaScenario = resolveDesktopVisualQaScenario();
   const desktopVisualQaScenarioRef = useRef(desktopVisualQaScenario);
@@ -473,6 +477,7 @@ export default function SettingsPage({ initialTab = null }: SettingsPageProps) {
     busy,
     catalogRows: catalogMasters,
     loading,
+    initialPrinterId,
     locale,
     printerOverview,
     printers,

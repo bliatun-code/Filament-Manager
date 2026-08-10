@@ -295,6 +295,9 @@ export const svSEDictionary: DictionaryNode = {
     "noActiveSlotFilterMatch": "Inga inlästa platser matchar det aktuella ägarfiltret."
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live kräver åtgärd",
+    "bambuLiveAttentionBody": "{name} är inte längre Live förrän du har granskat och godkänt skrivarens identitet.",
+    "openBambuLiveSettings": "Öppna Live-inställningar",
     "onboardingInventoryBody": "Börja med en spole eller importera ett befintligt lager eller en säkerhetskopia.",
     "onboardingInventoryTitle": "Lägg till eller importera lager",
     "onboardingPrinterBody": "Lägg till en skrivare som stöds. Bambu Live kan aktiveras när det är tillgängligt.",

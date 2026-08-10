@@ -6,9 +6,11 @@ import type {
 } from "./dashboard_model";
 import type { LibraryRevisionSource } from "./library_domain_revisions";
 import type { TrustedLanCompanionStatus } from "./tauri_client";
+import type { DashboardBambuLiveAttention } from "./dashboard_bambu_live_attention";
 
 export type DashboardPageSnapshot = {
   activity: ActivityItem[];
+  bambuLiveAttention?: DashboardBambuLiveAttention[];
   clientHostCompanionTone: "off" | "live" | "warn";
   clientHostDisplayName: string | null;
   clientHostNeedsRepair: boolean;
@@ -51,6 +53,7 @@ function cloneDashboardPageSnapshot(
   return {
     ...snapshot,
     activity: snapshot.activity.map((item) => ({ ...item })),
+    bambuLiveAttention: snapshot.bambuLiveAttention?.map((item) => ({ ...item })) ?? [],
     companionStatus: snapshot.companionStatus
       ? { ...snapshot.companionStatus }
       : null,

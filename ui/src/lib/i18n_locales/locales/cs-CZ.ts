@@ -50,6 +50,9 @@ export const csCZDictionary: DictionaryNode = {
     "unknown": "Neznámý"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live vyžaduje pozornost",
+    "bambuLiveAttentionBody": "{name} nebude v režimu Live, dokud nezkontrolujete a neschválíte identitu tiskárny.",
+    "openBambuLiveSettings": "Otevřít nastavení Live",
     "onboardingInventoryBody": "Začněte jednou cívkou nebo importujte existující inventář či zálohu.",
     "onboardingInventoryTitle": "Přidat nebo importovat inventář",
     "onboardingPrinterBody": "Přidejte libovolnou podporovanou tiskárnu. Bambu Live lze zapnout, když je k dispozici.",

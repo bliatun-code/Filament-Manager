@@ -5,6 +5,7 @@ import {
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncWishlistItems,
   getLibrarySyncSettings,
+  getPrinterSettings,
   getTrustedLanCompanionStatus,
   inventoryOverview,
   listActiveSpoolLoans,
@@ -16,9 +17,14 @@ import {
   type FilamentConsumptionRow,
   type InventoryOverview,
   type MaterialUsageRow,
+  type PrinterSettingsSnapshot,
   type TrustedLanCompanionStatus,
   type WishlistItemRow,
 } from "./tauri_client";
+import {
+  buildDashboardBambuLiveAttention,
+  type DashboardBambuLiveAttention,
+} from "./dashboard_bambu_live_attention";
 import {
   buildDashboardDerivedState,
   type DashboardDerivedState,
@@ -41,6 +47,7 @@ export type DashboardCompanionTone = "off" | "live" | "warn";
 export type DashboardSyncSource = "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
+  bambuLiveAttention: DashboardBambuLiveAttention[];
   derived: DashboardDerivedState;
   syncMode: string;
   trustedLan: TrustedLanCompanionStatus | null;
@@ -66,6 +73,7 @@ type DashboardDataDependencies = {
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   loadSpoolRows?: typeof loadAllSpoolRows;
   loadInventoryOverview?: typeof inventoryOverview;
+  loadPrinterSettings?: typeof getPrinterSettings;
   listLocalPrinters?: typeof listPrinterOverview;
   listLocalLoans?: typeof listActiveSpoolLoans;
   listLocalWishlist?: typeof listWishlistItems;
@@ -156,13 +164,14 @@ export async function loadDashboardData(
   const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
   const loadInventoryOverview = dependencies.loadInventoryOverview ?? inventoryOverview;
+  const loadPrinterSettings = dependencies.loadPrinterSettings ?? getPrinterSettings;
   const listLocalPrinters = dependencies.listLocalPrinters ?? listPrinterOverview;
   const listLocalLoans = dependencies.listLocalLoans ?? listActiveSpoolLoans;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
   const listLocalTopMaterials = dependencies.listLocalTopMaterials ?? topMaterials;
   const onLoadError = dependencies.onLoadError ?? console.error;
 
-  const [syncSettings, trustedLan] = await Promise.all([
+  const [syncSettings, trustedLan, printerSettings] = await Promise.all([
     loadSyncSettings().catch((error) => {
       onLoadError(error);
       return null;
@@ -170,6 +179,10 @@ export async function loadDashboardData(
     loadTrustedLanStatus().catch((error) => {
       onLoadError(error);
       return null;
+    }),
+    loadPrinterSettings().catch((error) => {
+      onLoadError(error);
+      return null as PrinterSettingsSnapshot | null;
     }),
   ]);
 
@@ -348,6 +361,7 @@ export async function loadDashboardData(
       syncSettings?.cached_wishlist?.captured_at,
     );
     return {
+      bambuLiveAttention: [],
       derived: buildDashboardDerivedState({
         overview: clientOverview ?? emptyInventoryOverview(),
         printers: clientPrinterRows ?? [],
@@ -388,6 +402,7 @@ export async function loadDashboardData(
   const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
 
   return {
+    bambuLiveAttention: buildDashboardBambuLiveAttention(printerSettings),
     derived: buildDashboardDerivedState({
       overview,
       printers,

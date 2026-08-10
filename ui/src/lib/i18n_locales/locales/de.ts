@@ -71,6 +71,10 @@ export const deDictionary: DictionaryNode = {
     generic: "Generisch",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "Bambu Live erfordert Aufmerksamkeit",
+    bambuLiveAttentionBody:
+      "{name} ist nicht mehr Live, bis du die Druckeridentität überprüfst und bestätigst.",
+    openBambuLiveSettings: "Live-Einstellungen öffnen",
     onboardingInventoryBody:
       "Starte mit einer Rolle oder importiere einen vorhandenen Bestand oder eine Sicherung.",
     onboardingInventoryTitle: "Bestand hinzufügen oder importieren",

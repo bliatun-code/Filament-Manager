@@ -50,6 +50,9 @@ export const ukUADictionary: DictionaryNode = {
     "unknown": "Невідомий"
   },
   "dashboard": {
+    "bambuLiveAttentionTitle": "Bambu Live потребує уваги",
+    "bambuLiveAttentionBody": "{name} не працюватиме в режимі Live, доки ви не перевірите й не підтвердите ідентифікатор принтера.",
+    "openBambuLiveSettings": "Відкрити налаштування Live",
     "onboardingInventoryBody": "Почніть з однієї котушки або імпортуйте наявні запаси чи резервну копію.",
     "onboardingInventoryTitle": "Додати або імпортувати запаси",
     "onboardingPrinterBody": "Додайте будь-який підтримуваний принтер. Bambu Live можна ввімкнути, коли він доступний.",
