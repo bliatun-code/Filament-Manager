@@ -949,6 +949,12 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
   assert.notEqual(windowsJobStart, -1, "Missing workflow section: windows-smoke:");
   const windowsJob = ciWorkflow.slice(windowsJobStart);
 
+  assert.equal(
+    ciWorkflow.split("persist-credentials: false").length - 1,
+    2,
+    "every smoke checkout must discard its GitHub credential",
+  );
+
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:data-backed/);
   assertStepOrder(macosJob, [
