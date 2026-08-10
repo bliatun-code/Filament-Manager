@@ -27,6 +27,7 @@ test("supply-chain workflow audits dependency pull requests and stays least priv
   )?.[0];
   assert.ok(pullRequestTrigger, "dependency pull request trigger must be explicit");
   for (const path of [
+    ".github/dependabot.yml",
     ".github/workflows/release-build.yml",
     ".github/workflows/supply-chain.yml",
     ".nvmrc",
@@ -39,6 +40,7 @@ test("supply-chain workflow audits dependency pull requests and stays least priv
     "rust-toolchain.toml",
     "scripts/check-npm-licenses.mjs",
     "scripts/release-workflow-contract.test.mjs",
+    "scripts/rust-toolchain-contract.test.mjs",
     "scripts/supply-chain-workflow-contract.test.mjs",
     "src-tauri/Cargo.toml",
     "ui/package-lock.json",

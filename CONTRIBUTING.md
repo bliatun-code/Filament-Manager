@@ -10,6 +10,11 @@ license as the project: GNU Affero General Public License v3.0 or later
 
 ## Development Setup
 
+The workspace supports Rust 1.88 and newer. A checked-in toolchain file selects
+the reviewed Rust 1.97.1 release, including Clippy and rustfmt, for normal local
+commands. Install it with `rustup` if your environment does not resolve it
+automatically.
+
 Install dependencies:
 
 ```bash

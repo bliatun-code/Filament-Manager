@@ -8,6 +8,12 @@ state or an extra audit tool, while `verify` must remain a repeatable source and
 build gate. The deterministic npm lockfile policy is also exercised by the
 ordinary script test suite.
 
+The reviewed Rust release is pinned in `rust-toolchain.toml` and monitored by
+Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.88 as
+their minimum supported version; the ordinary release and smoke jobs use the
+exact pinned release. Rust-toolchain pull requests must update the explicit
+workflow toolchain values to match; the contract suite rejects partial bumps.
+
 The workflow has read-only repository permission, uses SHA-pinned GitHub
 Actions, and installs the Rust audit tools from exact versions with their own
 lockfiles:
@@ -64,6 +70,14 @@ npm run check:npm-licenses
 npm run audit:npm
 npm run audit:cargo
 npm run check:cargo-licenses
+```
+
+Verify the declared Rust lower bound separately when changing Rust or Cargo
+dependencies:
+
+```bash
+rustup toolchain install 1.88.0 --profile minimal
+cargo +1.88.0 check --workspace --all-targets --all-features --locked
 ```
 
 The npm and RustSec audits contact their public advisory services. A registry,

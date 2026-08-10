@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - ".github/dependabot.yml"
       - ".github/workflows/release-build.yml"
       - ".github/workflows/supply-chain.yml"
       - ".nvmrc"
@@ -17,6 +18,7 @@ on:
       - "rust-toolchain.toml"
       - "scripts/check-npm-licenses.mjs"
       - "scripts/release-workflow-contract.test.mjs"
+      - "scripts/rust-toolchain-contract.test.mjs"
       - "scripts/supply-chain-workflow-contract.test.mjs"
       - "src-tauri/Cargo.toml"
       - "ui/package-lock.json"
@@ -70,7 +72,9 @@ jobs:
           persist-credentials: false
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.97.1
 
       - name: Install pinned cargo-audit
         run: cargo install --locked cargo-audit --version 0.22.2
