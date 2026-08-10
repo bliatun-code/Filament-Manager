@@ -25,6 +25,8 @@ export const enDictionary: DictionaryNode = {
       exportJson: "Export JSON",
       loadingPrinters: "Loading printers...",
       close: "Close",
+      back: "Back",
+      continue: "Continue",
       copied: "Copied",
       copyFailed: "Copy failed",
       unknown: "Unknown",
@@ -69,6 +71,10 @@ export const enDictionary: DictionaryNode = {
       settings: "Settings",
     },
     dashboard: {
+      bambuLiveAttentionTitle: "Bambu Live needs attention",
+      bambuLiveAttentionBody:
+        "{name} is no longer Live until you review and trust the printer identity.",
+      openBambuLiveSettings: "Open Live settings",
       onboardingInventoryBody: "Start with one spool, or import an existing inventory or backup.",
       onboardingInventoryTitle: "Add or import inventory",
       onboardingPrinterBody:
@@ -1549,6 +1555,12 @@ export const enDictionary: DictionaryNode = {
       columnsHint:
         "Choose model, name and multi-material capacity. EXT stays available automatically.",
       bambuLiveSection: "Live Bambu status",
+      bambuLiveTitle: "Bambu Live",
+      bambuLiveAddHint:
+        "Connect now to see live printer status, AMS slots, temperatures, and print usage. You can also skip this and configure it later.",
+      bambuLiveEnable: "Enable Bambu Live",
+      bambuLiveLocalOnly: "Connects directly to the printer on your local network.",
+      addPrinterWithLive: "Add printer with Live",
       bambuLiveHint:
         "Optional local read-only integration for observing printer and AMS status.",
       enableBambuLive: "Enable live status",

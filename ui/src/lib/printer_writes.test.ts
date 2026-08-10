@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createManagedPrinter,
+  createManagedPrinterWithBambuLive,
   deleteManagedBambuLiveIntegration,
   deleteManagedPrinter,
   saveManagedBambuLiveIntegration,
@@ -21,11 +22,19 @@ function printerInput(overrides: Partial<CreatePrinterInput> = {}): CreatePrinte
 }
 
 test("createManagedPrinter routes client writes to the host", async () => {
-  const calls: Array<{ baseUrl: string; libraryId: string; input: CreatePrinterInput }> = [];
+  const calls: Array<{
+    baseUrl: string;
+    libraryId: string;
+    input: CreatePrinterInput;
+  }> = [];
 
   await createManagedPrinter(
     printerInput(),
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
     {
       createHostPrinter: async (baseUrl, libraryId, input) => {
         calls.push({ baseUrl, libraryId, input });
@@ -42,21 +51,80 @@ test("createManagedPrinter writes locally outside client mode", async () => {
   const calls: CreatePrinterInput[] = [];
   const input = printerInput({ id: "local-printer" });
 
-  await createManagedPrinter(input, { clientReadOnly: false }, {
-    createLocalPrinter: async (localInput) => {
-      calls.push(localInput);
+  await createManagedPrinter(
+    input,
+    { clientReadOnly: false },
+    {
+      createLocalPrinter: async (localInput) => {
+        calls.push(localInput);
+      },
     },
-  });
+  );
 
   assert.deepEqual(calls, [input]);
 });
 
+test("createManagedPrinterWithBambuLive saves live setup after creating the printer", async () => {
+  const calls: string[] = [];
+  await createManagedPrinterWithBambuLive(
+    printerInput(),
+    bambuLiveInput(),
+    {},
+    {
+      createLocalPrinter: async () => {
+        calls.push("create");
+      },
+      saveLocalBambuLiveIntegration: async () => {
+        calls.push("live");
+      },
+      deleteLocalPrinter: async () => {
+        calls.push("delete");
+      },
+    },
+  );
+  assert.deepEqual(calls, ["create", "live"]);
+});
+
+test("createManagedPrinterWithBambuLive rolls back a printer when live setup fails", async () => {
+  const calls: string[] = [];
+  await assert.rejects(
+    () =>
+      createManagedPrinterWithBambuLive(
+        printerInput(),
+        bambuLiveInput(),
+        {},
+        {
+          createLocalPrinter: async () => {
+            calls.push("create");
+          },
+          saveLocalBambuLiveIntegration: async () => {
+            calls.push("live");
+            throw new Error("identity changed");
+          },
+          deleteLocalPrinter: async () => {
+            calls.push("delete");
+          },
+        },
+      ),
+    /identity changed/,
+  );
+  assert.deepEqual(calls, ["create", "live", "delete"]);
+});
+
 test("deleteManagedPrinter routes client writes to the host", async () => {
-  const calls: Array<{ baseUrl: string; libraryId: string; printerId: string }> = [];
+  const calls: Array<{
+    baseUrl: string;
+    libraryId: string;
+    printerId: string;
+  }> = [];
 
   await deleteManagedPrinter(
     "printer-1",
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
     {
       deleteHostPrinter: async (baseUrl, libraryId, printerId) => {
         calls.push({ baseUrl, libraryId, printerId });
@@ -64,33 +132,30 @@ test("deleteManagedPrinter routes client writes to the host", async () => {
     },
   );
 
-  assert.deepEqual(calls, [
-    { baseUrl: "http://host", libraryId: "library-1", printerId: "printer-1" },
-  ]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", printerId: "printer-1" }]);
 });
 
 test("deleteManagedPrinter writes locally outside client mode", async () => {
   const calls: string[] = [];
 
-  await deleteManagedPrinter("printer-1", { clientReadOnly: false }, {
-    deleteLocalPrinter: async (printerId) => {
-      calls.push(printerId);
+  await deleteManagedPrinter(
+    "printer-1",
+    { clientReadOnly: false },
+    {
+      deleteLocalPrinter: async (printerId) => {
+        calls.push(printerId);
+      },
     },
-  });
+  );
 
   assert.deepEqual(calls, ["printer-1"]);
 });
 
 test("printer host writes reject missing host details", async () => {
-  await assert.rejects(
-    () => createManagedPrinter(printerInput(), { clientReadOnly: true }),
-    /Host connection details/,
-  );
+  await assert.rejects(() => createManagedPrinter(printerInput(), { clientReadOnly: true }), /Host connection details/);
 });
 
-function bambuLiveInput(
-  overrides: Partial<SaveBambuLiveIntegrationInput> = {},
-): SaveBambuLiveIntegrationInput {
+function bambuLiveInput(overrides: Partial<SaveBambuLiveIntegrationInput> = {}): SaveBambuLiveIntegrationInput {
   return {
     printer_id: "printer-1",
     enabled: true,
@@ -113,7 +178,11 @@ test("saveManagedBambuLiveIntegration routes client writes to the host", async (
 
   await saveManagedBambuLiveIntegration(
     input,
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
     {
       saveHostBambuLiveIntegration: async (baseUrl, libraryId, hostInput) => {
         calls.push({ baseUrl, libraryId, input: hostInput });
@@ -128,21 +197,33 @@ test("saveManagedBambuLiveIntegration writes locally outside client mode", async
   const calls: SaveBambuLiveIntegrationInput[] = [];
   const input = bambuLiveInput({ printer_id: "local-printer" });
 
-  await saveManagedBambuLiveIntegration(input, { clientReadOnly: false }, {
-    saveLocalBambuLiveIntegration: async (localInput) => {
-      calls.push(localInput);
+  await saveManagedBambuLiveIntegration(
+    input,
+    { clientReadOnly: false },
+    {
+      saveLocalBambuLiveIntegration: async (localInput) => {
+        calls.push(localInput);
+      },
     },
-  });
+  );
 
   assert.deepEqual(calls, [input]);
 });
 
 test("deleteManagedBambuLiveIntegration routes client writes to the host", async () => {
-  const calls: Array<{ baseUrl: string; libraryId: string; printerId: string }> = [];
+  const calls: Array<{
+    baseUrl: string;
+    libraryId: string;
+    printerId: string;
+  }> = [];
 
   await deleteManagedBambuLiveIntegration(
     "printer-1",
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
     {
       deleteHostBambuLiveIntegration: async (baseUrl, libraryId, printerId) => {
         calls.push({ baseUrl, libraryId, printerId });
@@ -150,19 +231,21 @@ test("deleteManagedBambuLiveIntegration routes client writes to the host", async
     },
   );
 
-  assert.deepEqual(calls, [
-    { baseUrl: "http://host", libraryId: "library-1", printerId: "printer-1" },
-  ]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", printerId: "printer-1" }]);
 });
 
 test("deleteManagedBambuLiveIntegration writes locally outside client mode", async () => {
   const calls: string[] = [];
 
-  await deleteManagedBambuLiveIntegration("printer-1", { clientReadOnly: false }, {
-    deleteLocalBambuLiveIntegration: async (printerId) => {
-      calls.push(printerId);
+  await deleteManagedBambuLiveIntegration(
+    "printer-1",
+    { clientReadOnly: false },
+    {
+      deleteLocalBambuLiveIntegration: async (printerId) => {
+        calls.push(printerId);
+      },
     },
-  });
+  );
 
   assert.deepEqual(calls, ["printer-1"]);
 });

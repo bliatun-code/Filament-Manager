@@ -34,6 +34,7 @@ type DashboardPageProps = {
   onOpenCompanionSettings?: () => void;
   onOpenMaintenanceSettings?: () => void;
   onOpenPrinters?: () => void;
+  onOpenBambuLiveSettings?: (printerId: string) => void;
 };
 
 export default function DashboardPage({
@@ -43,10 +44,12 @@ export default function DashboardPage({
   onOpenCompanionSettings,
   onOpenMaintenanceSettings,
   onOpenPrinters,
+  onOpenBambuLiveSettings,
 }: DashboardPageProps) {
   const { t, locale } = useI18n();
   const {
     activity,
+    bambuLiveAttention,
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,
@@ -167,6 +170,35 @@ export default function DashboardPage({
           retryLabel={t("common.refresh", "Refresh")}
           retrying={refreshing}
         />
+      ) : null}
+
+      {bambuLiveAttention.length > 0 ? (
+        <div className="mt-5 space-y-2" role="status">
+          {bambuLiveAttention.map((attention) => (
+            <button
+              key={attention.printerId}
+              type="button"
+              onClick={() => onOpenBambuLiveSettings?.(attention.printerId)}
+              className="flex w-full items-center justify-between gap-4 rounded-xl border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-left shadow-sm transition hover:border-amber-400 hover:bg-amber-100/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-700/70 dark:bg-amber-950/35 dark:hover:border-amber-600 dark:hover:bg-amber-950/55 dark:focus-visible:ring-offset-slate-950"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-amber-950 dark:text-amber-100">
+                  {t("dashboard.bambuLiveAttentionTitle", "Bambu Live needs attention")}
+                </span>
+                <span className="mt-0.5 block text-sm text-amber-800 dark:text-amber-200/90">
+                  {t(
+                    "dashboard.bambuLiveAttentionBody",
+                    "{name} is no longer Live until you review and trust the printer identity.",
+                    { name: attention.printerName },
+                  )}
+                </span>
+              </span>
+              <span className="shrink-0 text-sm font-semibold text-amber-900 dark:text-amber-100">
+                {t("dashboard.openBambuLiveSettings", "Open Live settings")} →
+              </span>
+            </button>
+          ))}
+        </div>
       ) : null}
 
       {showOnboarding ? (

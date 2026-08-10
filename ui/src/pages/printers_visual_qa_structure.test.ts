@@ -7,6 +7,10 @@ const workflowSource = readFileSync(
   new URL("./use_add_printer_workflow.ts", import.meta.url),
   "utf8",
 );
+const addPrinterModalSource = readFileSync(
+  new URL("../components/add_printer_modal.tsx", import.meta.url),
+  "utf8",
+);
 
 test("printer page keeps its header action aligned until the compact card breakpoint", () => {
   assert.match(pageSource, /page-header min-\[900px\]:flex-row/);
@@ -39,6 +43,14 @@ test("add-printer visual QA initializes only local form state", () => {
   const regularOpenStart = workflowSource.indexOf("const openAddPrinterModal =", previewStart);
   const previewBlock = workflowSource.slice(previewStart, regularOpenStart);
   assert.doesNotMatch(previewBlock, /createManagedPrinter|handleAddPrinter|reloadData/);
+});
+
+test("Bambu printer onboarding exposes Live as an explicit optional second step", () => {
+  assert.match(addPrinterModalSource, /useState<"PRINTER" \| "LIVE">\("PRINTER"\)/);
+  assert.match(addPrinterModalSource, /data-testid="add-printer-bambu-live-step"/);
+  assert.match(addPrinterModalSource, /SettingsBambuLiveSecurityControls/);
+  assert.match(addPrinterModalSource, /newBambuLiveEnabled[\s\S]*onAddPrinter/);
+  assert.match(workflowSource, /createManagedPrinterWithBambuLive/);
 });
 
 test("slot-onboarding visual QA retries until the real modal opens", () => {

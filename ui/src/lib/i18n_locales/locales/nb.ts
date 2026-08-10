@@ -25,6 +25,8 @@ export const nbDictionary: DictionaryNode = {
       exportJson: "Eksporter JSON",
       loadingPrinters: "Laster printere...",
       close: "Lukk",
+      back: "Tilbake",
+      continue: "Fortsett",
       copied: "Kopiert",
       copyFailed: "Kopiering feilet",
       unknown: "Ukjent",
@@ -69,6 +71,10 @@ export const nbDictionary: DictionaryNode = {
       settings: "Innstillinger",
     },
     dashboard: {
+      bambuLiveAttentionTitle: "Bambu Live trenger oppfølging",
+      bambuLiveAttentionBody:
+        "{name} er ikke lenger Live før du kontrollerer og godkjenner printeridentiteten.",
+      openBambuLiveSettings: "Åpne Live-innstillinger",
       onboardingInventoryBody:
         "Start med én rull, eller importer et eksisterende lager eller en sikkerhetskopi.",
       onboardingInventoryTitle: "Legg til eller importer lager",
@@ -1560,6 +1566,12 @@ export const nbDictionary: DictionaryNode = {
       columnsHint:
         "Velg modell, navn og fler-materiale-kapasitet. EXT-spor er tilgjengelig automatisk.",
       bambuLiveSection: "Live Bambu-status",
+      bambuLiveTitle: "Bambu Live",
+      bambuLiveAddHint:
+        "Koble til nå for å se skriverstatus, AMS-plasser, temperaturer og utskriftsforbruk. Du kan også hoppe over dette og konfigurere det senere.",
+      bambuLiveEnable: "Aktiver Bambu Live",
+      bambuLiveLocalOnly: "Kobler direkte til skriveren på lokalnettet.",
+      addPrinterWithLive: "Legg til skriver med Live",
       bambuLiveHint:
         "Valgfri lokal, skrivebeskyttet integrasjon for å observere printer- og AMS-status.",
       enableBambuLive: "Aktiver live-status",

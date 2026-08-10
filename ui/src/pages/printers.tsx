@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  isTauri,
-  signalDesktopVisualQaReadiness,
-  type SpoolWithMasterRow,
-} from "../lib/tauri_client";
+import { isTauri, signalDesktopVisualQaReadiness, type SpoolWithMasterRow } from "../lib/tauri_client";
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
@@ -36,9 +32,7 @@ function isNonBambuSpool(row: SpoolWithMasterRow | null | undefined): boolean {
 function isColorfulNonBambuSpool(row: SpoolWithMasterRow | null | undefined): boolean {
   return (
     isNonBambuSpool(row) &&
-    !/\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(
-      row?.master.color_name ?? "",
-    )
+    !/\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(row?.master.color_name ?? "")
   );
 }
 
@@ -47,9 +41,7 @@ export default function PrintersPage() {
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
-  const [desktopVisualQaPrinterObservedAfterMs] = useState(
-    () => Date.now(),
-  );
+  const [desktopVisualQaPrinterObservedAfterMs] = useState(() => Date.now());
   const desktopVisualQaReadinessSignaledRef = useRef(false);
   const desktopVisualQaNeedsPrinterAction =
     desktopVisualQaScenario === "add-printer" ||
@@ -58,17 +50,12 @@ export default function PrintersPage() {
     desktopVisualQaScenario === "printer-rfid-override" ||
     desktopVisualQaScenario === "printer-slot-replacement" ||
     desktopVisualQaScenario === "printer-slot-clear";
-  const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(
-    () => !desktopVisualQaNeedsPrinterAction,
-  );
+  const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(() => !desktopVisualQaNeedsPrinterAction);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const resetPrinterInteractionStateRef = useRef<() => void>(() => {});
-  const handleInteractiveReload = useCallback(
-    () => resetPrinterInteractionStateRef.current(),
-    [],
-  );
+  const handleInteractiveReload = useCallback(() => resetPrinterInteractionStateRef.current(), []);
   const {
     clientReadOnly,
     clientHostWritePaired,
@@ -104,32 +91,16 @@ export default function PrintersPage() {
   const desktopVisualQaHasFreshPrinterTelemetry = useMemo(
     () =>
       desktopVisualQaScenario === "printer-board" &&
-      hasFreshPrinterLiveTelemetry(
-        bambuLiveIntegrations,
-        desktopVisualQaPrinterObservedAfterMs,
-        t,
-      ),
-    [
-      bambuLiveIntegrations,
-      desktopVisualQaPrinterObservedAfterMs,
-      desktopVisualQaScenario,
-      t,
-    ],
+      hasFreshPrinterLiveTelemetry(bambuLiveIntegrations, desktopVisualQaPrinterObservedAfterMs, t),
+    [bambuLiveIntegrations, desktopVisualQaPrinterObservedAfterMs, desktopVisualQaScenario, t],
   );
 
   useEffect(() => {
-    if (
-      !tauri ||
-      loading ||
-      !desktopVisualQaHasFreshPrinterTelemetry ||
-      desktopVisualQaReadinessSignaledRef.current
-    ) {
+    if (!tauri || loading || !desktopVisualQaHasFreshPrinterTelemetry || desktopVisualQaReadinessSignaledRef.current) {
       return;
     }
     desktopVisualQaReadinessSignaledRef.current = true;
-    void signalDesktopVisualQaReadiness(
-      DESKTOP_VISUAL_QA_PRINTER_LIVE_READINESS_TOKEN,
-    ).catch((signalError) => {
+    void signalDesktopVisualQaReadiness(DESKTOP_VISUAL_QA_PRINTER_LIVE_READINESS_TOKEN).catch((signalError) => {
       desktopVisualQaReadinessSignaledRef.current = false;
       console.error("Failed to signal desktop visual QA readiness.", signalError);
     });
@@ -166,14 +137,27 @@ export default function PrintersPage() {
     newSlotsPerUnit,
     selectedModelProfile,
     newPrinterCapacity,
+    newBambuLiveEnabled,
+    newBambuLiveHost,
+    newBambuLiveAccessCode,
+    newBambuLivePrinterSerial,
+    newBambuLiveTlsCertificateFingerprint,
+    newBambuLiveTlsSpkiFingerprint,
+    newBambuLiveTlsTrustAction,
     setNewPrinterName,
     setNewAmsUnits,
     setNewSlotsPerUnit,
+    setNewBambuLiveEnabled,
+    changeBambuLiveHost,
+    setNewBambuLiveAccessCode,
+    changeBambuLivePrinterSerial,
+    setNewBambuLiveTlsTrustAction,
     selectPrinterModel,
     closeAddPrinterModal,
     openAddPrinterModal,
     openAddPrinterModalForVisualQa,
     handleAddPrinter,
+    handleInspectBambuLiveIdentity,
   } = useAddPrinterWorkflow({
     busy,
     tauri,
@@ -243,37 +227,19 @@ export default function PrintersPage() {
   }, [resetPrinterInteractionState]);
 
   useEffect(() => {
-    if (
-      desktopVisualQaScenario !== "add-printer" ||
-      desktopVisualQaApplied ||
-      loading ||
-      !tauri
-    ) {
+    if (desktopVisualQaScenario !== "add-printer" || desktopVisualQaApplied || loading || !tauri) {
       return;
     }
     openAddPrinterModalForVisualQa();
     setDesktopVisualQaApplied(true);
-  }, [
-    desktopVisualQaApplied,
-    desktopVisualQaScenario,
-    loading,
-    openAddPrinterModalForVisualQa,
-    tauri,
-  ]);
+  }, [desktopVisualQaApplied, desktopVisualQaScenario, loading, openAddPrinterModalForVisualQa, tauri]);
 
   useEffect(() => {
-    if (
-      desktopVisualQaScenario !== "printer-slot-assignment" ||
-      desktopVisualQaApplied ||
-      loading ||
-      !tauri
-    ) {
+    if (desktopVisualQaScenario !== "printer-slot-assignment" || desktopVisualQaApplied || loading || !tauri) {
       return;
     }
     for (const printer of printers) {
-      const slot = printer.slots.find(
-        (candidate) => allowedSpoolsForSlot(candidate.spool_id).length > 0,
-      );
+      const slot = printer.slots.find((candidate) => allowedSpoolsForSlot(candidate.spool_id).length > 0);
       if (slot) {
         setOpenDropdownSlotId(slot.slot_id);
         setDesktopVisualQaApplied(true);
@@ -291,12 +257,7 @@ export default function PrintersPage() {
   ]);
 
   useEffect(() => {
-    if (
-      desktopVisualQaScenario !== "printer-slot-onboarding" ||
-      desktopVisualQaApplied ||
-      loading ||
-      !tauri
-    ) {
+    if (desktopVisualQaScenario !== "printer-slot-onboarding" || desktopVisualQaApplied || loading || !tauri) {
       return;
     }
     for (const printer of printers) {
@@ -323,15 +284,7 @@ export default function PrintersPage() {
           continue;
         }
         const [master] = displayState.liveCatalogMatch.candidates;
-        if (
-          master &&
-          createLiveBambuCatalogSpool(
-            printer,
-            slot,
-            displayState.effectiveLiveTray,
-            master,
-          )
-        ) {
+        if (master && createLiveBambuCatalogSpool(printer, slot, displayState.effectiveLiveTray, master)) {
           setDesktopVisualQaApplied(true);
           return;
         }
@@ -355,12 +308,7 @@ export default function PrintersPage() {
   ]);
 
   useEffect(() => {
-    if (
-      desktopVisualQaScenario !== "printer-rfid-override" ||
-      desktopVisualQaApplied ||
-      loading ||
-      !tauri
-    ) {
+    if (desktopVisualQaScenario !== "printer-rfid-override" || desktopVisualQaApplied || loading || !tauri) {
       return;
     }
     for (const printer of printers) {
@@ -404,12 +352,7 @@ export default function PrintersPage() {
   ]);
 
   useEffect(() => {
-    if (
-      desktopVisualQaScenario !== "printer-slot-replacement" ||
-      desktopVisualQaApplied ||
-      loading ||
-      !tauri
-    ) {
+    if (desktopVisualQaScenario !== "printer-slot-replacement" || desktopVisualQaApplied || loading || !tauri) {
       return;
     }
     for (const printer of printers) {
@@ -417,12 +360,9 @@ export default function PrintersPage() {
         if (!slot.spool_id) {
           continue;
         }
-        const replacements = allowedSpoolsForSlot(slot.spool_id).filter(
-          (row) => row.spool.id !== slot.spool_id,
-        );
+        const replacements = allowedSpoolsForSlot(slot.spool_id).filter((row) => row.spool.id !== slot.spool_id);
         const replacement =
-          replacements.find(isColorfulNonBambuSpool) ??
-          replacements.find(isNonBambuSpool) ?? replacements[0] ?? null;
+          replacements.find(isColorfulNonBambuSpool) ?? replacements.find(isNonBambuSpool) ?? replacements[0] ?? null;
         if (replacement) {
           openIncomingWeightDialog(printer.printer.id, slot, replacement);
           setDesktopVisualQaApplied(true);
@@ -441,20 +381,13 @@ export default function PrintersPage() {
   ]);
 
   useEffect(() => {
-    if (
-      desktopVisualQaScenario !== "printer-slot-clear" ||
-      desktopVisualQaApplied ||
-      loading ||
-      !tauri
-    ) {
+    if (desktopVisualQaScenario !== "printer-slot-clear" || desktopVisualQaApplied || loading || !tauri) {
       return;
     }
     for (const printer of printers) {
       const slotsWithSpools = printer.slots.filter((candidate) => candidate.spool_id);
       const slot =
-        slotsWithSpools.find((candidate) =>
-          isColorfulNonBambuSpool(findSpoolById(candidate.spool_id)),
-        ) ??
+        slotsWithSpools.find((candidate) => isColorfulNonBambuSpool(findSpoolById(candidate.spool_id))) ??
         slotsWithSpools.find((candidate) => isNonBambuSpool(findSpoolById(candidate.spool_id))) ??
         slotsWithSpools[0] ??
         null;
@@ -480,10 +413,7 @@ export default function PrintersPage() {
         <div className="page-header-copy">
           <h1 className="page-title">{t("nav.printers", "Printers")}</h1>
           <div className="page-subtitle max-w-2xl">
-            {t(
-              "printers.subtitle",
-              "Track printer slot placement and printer-linked material consumption.",
-            )}
+            {t("printers.subtitle", "Track printer slot placement and printer-linked material consumption.")}
           </div>
         </div>
         <div className="page-header-actions min-[900px]:w-auto min-[900px]:max-w-none min-[900px]:items-end">
@@ -527,18 +457,10 @@ export default function PrintersPage() {
 
       {clientReadOnly && clientPrinterSource !== "LIVE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostDeviceName
-            ? `${clientHostDeviceName}. `
-            : null}
+          {clientHostDeviceName ? `${clientHostDeviceName}. ` : null}
           {clientPrinterSource === "CACHED"
-            ? t(
-                "printers.clientReadOnlyCached",
-                "Host unavailable. Showing the last cached printer snapshot.",
-              )
-            : t(
-                "printers.clientReadOnlyOffline",
-                "Host unavailable and no cached printer snapshot is available yet.",
-              )}
+            ? t("printers.clientReadOnlyCached", "Host unavailable. Showing the last cached printer snapshot.")
+            : t("printers.clientReadOnlyOffline", "Host unavailable and no cached printer snapshot is available yet.")}
           {clientPrinterUpdatedAt
             ? ` ${t("printers.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientPrinterUpdatedAt, locale)}.`
             : null}
@@ -620,29 +542,16 @@ export default function PrintersPage() {
             slotCatalogOnboardingPrompt.slot.slot_id,
           )}
           currentLiveTray={
-            findLiveTrayForSlot(
-              slotCatalogOnboardingPrompt.printerId,
-              slotCatalogOnboardingPrompt.slot,
-            ).tray
+            findLiveTrayForSlot(slotCatalogOnboardingPrompt.printerId, slotCatalogOnboardingPrompt.slot).tray
           }
           locale={locale}
           prompt={slotCatalogOnboardingPrompt}
           onClose={() => setSlotCatalogOnboardingPrompt(null)}
-          onBorrowedFromContactChange={(value) =>
-            updateSlotCatalogOnboardingPrompt({ borrowedFromContact: value })
-          }
-          onBorrowedFromNameChange={(value) =>
-            updateSlotCatalogOnboardingPrompt({ borrowedFromName: value })
-          }
-          onBorrowedInNoteChange={(value) =>
-            updateSlotCatalogOnboardingPrompt({ borrowedInNote: value })
-          }
-          onInitialWeightChange={(value) =>
-            updateSlotCatalogOnboardingPrompt({ initialWeight: value })
-          }
-          onLocationChange={(value) =>
-            updateSlotCatalogOnboardingPrompt({ location: value })
-          }
+          onBorrowedFromContactChange={(value) => updateSlotCatalogOnboardingPrompt({ borrowedFromContact: value })}
+          onBorrowedFromNameChange={(value) => updateSlotCatalogOnboardingPrompt({ borrowedFromName: value })}
+          onBorrowedInNoteChange={(value) => updateSlotCatalogOnboardingPrompt({ borrowedInNote: value })}
+          onInitialWeightChange={(value) => updateSlotCatalogOnboardingPrompt({ initialWeight: value })}
+          onLocationChange={(value) => updateSlotCatalogOnboardingPrompt({ location: value })}
           onOwnershipTypeChange={setSlotCatalogOwnershipType}
           onSave={() => void handleCreateLiveBambuCatalogSpool()}
         />
@@ -660,11 +569,25 @@ export default function PrintersPage() {
           newSlotsPerUnit={newSlotsPerUnit}
           selectedModelProfile={selectedModelProfile}
           newPrinterCapacity={newPrinterCapacity}
+          bambuLiveAvailable={selectedModelProfile.systemKind === "AMS" && !clientReadOnly}
+          newBambuLiveEnabled={newBambuLiveEnabled}
+          newBambuLiveHost={newBambuLiveHost}
+          newBambuLiveAccessCode={newBambuLiveAccessCode}
+          newBambuLivePrinterSerial={newBambuLivePrinterSerial}
+          newBambuLiveTlsCertificateFingerprint={newBambuLiveTlsCertificateFingerprint}
+          newBambuLiveTlsSpkiFingerprint={newBambuLiveTlsSpkiFingerprint}
+          newBambuLiveTlsTrustAction={newBambuLiveTlsTrustAction}
           onClose={closeAddPrinterModal}
           onSelectPrinterModel={selectPrinterModel}
           onPrinterNameChange={setNewPrinterName}
           onAmsUnitsChange={setNewAmsUnits}
           onSlotsPerUnitChange={setNewSlotsPerUnit}
+          onBambuLiveEnabledChange={setNewBambuLiveEnabled}
+          onBambuLiveHostChange={changeBambuLiveHost}
+          onBambuLiveAccessCodeChange={setNewBambuLiveAccessCode}
+          onBambuLivePrinterSerialChange={changeBambuLivePrinterSerial}
+          onBambuLiveIdentityCheck={() => void handleInspectBambuLiveIdentity()}
+          onBambuLiveTlsTrustActionChange={setNewBambuLiveTlsTrustAction}
           onAddPrinter={() => void handleAddPrinter()}
         />
       ) : null}

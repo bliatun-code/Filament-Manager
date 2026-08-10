@@ -25,6 +25,8 @@ export const frDictionary: DictionaryNode = {
     exportJson: "Exporter en JSON",
     loadingPrinters: "Chargement des imprimantes…",
     close: "Fermer",
+    back: "Retour",
+    continue: "Continuer",
     copied: "Copié",
     copyFailed: "Échec de la copie",
     unknown: "Inconnu",
@@ -70,6 +72,10 @@ export const frDictionary: DictionaryNode = {
     generic: "Générique",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "Bambu Live nécessite votre attention",
+    bambuLiveAttentionBody:
+      "{name} n’est plus en direct tant que vous n’avez pas vérifié et approuvé l’identité de l’imprimante.",
+    openBambuLiveSettings: "Ouvrir les réglages Live",
     onboardingInventoryBody:
       "Commencez par une bobine, ou importez un stock ou une sauvegarde existants.",
     onboardingInventoryTitle: "Ajouter ou importer le stock",
@@ -1242,6 +1248,12 @@ export const frDictionary: DictionaryNode = {
     columnsHint:
       "Choisissez le modèle, le nom et la capacité multimatériaux. EXT reste disponible automatiquement.",
     bambuLiveSection: "État Bambu en direct",
+    bambuLiveTitle: "Bambu Live",
+    bambuLiveAddHint:
+      "Connectez-vous maintenant pour voir l’état de l’imprimante, les emplacements AMS, les températures et la consommation. Vous pouvez aussi ignorer cette étape et la configurer plus tard.",
+    bambuLiveEnable: "Activer Bambu Live",
+    bambuLiveLocalOnly: "Se connecte directement à l’imprimante sur votre réseau local.",
+    addPrinterWithLive: "Ajouter l’imprimante avec Live",
     bambuLiveHint:
       "Intégration locale facultative en lecture seule pour observer l’état de l’imprimante et de l’AMS.",
     enableBambuLive: "Activer l’état en direct",

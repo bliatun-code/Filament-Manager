@@ -21,6 +21,13 @@ function populatedSnapshot(): DashboardPageSnapshot {
         tone: "emerald",
       },
     ],
+    bambuLiveAttention: [
+      {
+        printerId: "printer-1",
+        printerName: "Workshop X1C",
+        trustState: "UNPAIRED",
+      },
+    ],
     clientHostCompanionTone: "live",
     clientHostDisplayName: "Workshop",
     clientHostNeedsRepair: false,
@@ -102,6 +109,7 @@ test("dashboard snapshot restores the complete last-good view for the same local
   assert.equal(restored?.ownershipOnHand.total, 6);
   assert.equal(restored?.health.score, 92);
   assert.equal(restored?.clientHostDisplayName, "Workshop");
+  assert.equal(restored?.bambuLiveAttention?.[0]?.printerId, "printer-1");
 });
 
 test("dashboard snapshot is locale-keyed and isolated from caller mutation", () => {

@@ -25,6 +25,8 @@ export const deDictionary: DictionaryNode = {
     exportJson: "JSON exportieren",
     loadingPrinters: "Drucker werden geladen...",
     close: "Schließen",
+    back: "Zurück",
+    continue: "Weiter",
     copied: "Kopiert",
     copyFailed: "Kopieren fehlgeschlagen",
     unknown: "Unbekannt",
@@ -69,6 +71,10 @@ export const deDictionary: DictionaryNode = {
     generic: "Generisch",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "Bambu Live erfordert Aufmerksamkeit",
+    bambuLiveAttentionBody:
+      "{name} ist nicht mehr Live, bis du die Druckeridentität überprüfst und bestätigst.",
+    openBambuLiveSettings: "Live-Einstellungen öffnen",
     onboardingInventoryBody:
       "Starte mit einer Rolle oder importiere einen vorhandenen Bestand oder eine Sicherung.",
     onboardingInventoryTitle: "Bestand hinzufügen oder importieren",
@@ -1686,6 +1692,12 @@ export const deDictionary: DictionaryNode = {
     columnsHint:
       "Modell, Name und Multimaterial-Kapazität auswählen. EXT bleibt automatisch verfügbar.",
     bambuLiveSection: "Bambu-Livestatus",
+    bambuLiveTitle: "Bambu Live",
+    bambuLiveAddHint:
+      "Jetzt verbinden, um Druckerstatus, AMS-Slots, Temperaturen und Druckverbrauch zu sehen. Du kannst diesen Schritt auch überspringen und später einrichten.",
+    bambuLiveEnable: "Bambu Live aktivieren",
+    bambuLiveLocalOnly: "Verbindet sich direkt mit dem Drucker im lokalen Netzwerk.",
+    addPrinterWithLive: "Drucker mit Live hinzufügen",
     bambuLiveHint:
       "Optionale lokale, schreibgeschützte Integration zur Anzeige des Drucker- und AMS-Status.",
     enableBambuLive: "Livestatus aktivieren",

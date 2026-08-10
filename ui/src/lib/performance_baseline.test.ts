@@ -33,6 +33,7 @@ import type {
   LibrarySyncSettings,
   MaterialUsageRow,
   PrinterOverviewRow,
+  PrinterSettingsSnapshot,
   SpoolLoanDetailsRow,
   SpoolWithMasterRow,
   TrustedLanCompanionStatus,
@@ -193,6 +194,7 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
   const loans = deferred<SpoolLoanDetailsRow[]>();
   const wishlist = deferred<WishlistItemRow[]>();
   const materials = deferred<MaterialUsageRow[]>();
+  const printerSettings = deferred<PrinterSettingsSnapshot>();
 
   const resultPromise = loadDashboardData(
     { previousClientHostNeedsRepair: false, t },
@@ -204,6 +206,10 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
       loadTrustedLanStatus: () => {
         bootstrapStarted.push("trusted-lan");
         return trustedLan.promise;
+      },
+      loadPrinterSettings: () => {
+        bootstrapStarted.push("printer-settings");
+        return printerSettings.promise;
       },
       loadInventoryOverview: () => {
         localStarted.push("overview");
@@ -232,11 +238,21 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
     },
   );
 
-  assert.deepEqual(bootstrapStarted.sort(), ["settings", "trusted-lan"]);
+  assert.deepEqual(bootstrapStarted.sort(), [
+    "printer-settings",
+    "settings",
+    "trusted-lan",
+  ]);
   assert.deepEqual(localStarted, []);
 
   sync.resolve(syncSettings());
   trustedLan.resolve(null);
+  printerSettings.resolve({
+    active_printer_id: null,
+    printers: [],
+    printer_models: [],
+    bambu_live_integrations: [],
+  });
   await flushPromiseContinuations();
 
   assert.deepEqual(localStarted.sort(), [
@@ -290,6 +306,12 @@ for (const scenario of [
             cached_snapshot: hostSnapshot(),
           }),
         loadTrustedLanStatus: async () => null,
+        loadPrinterSettings: async () => ({
+          active_printer_id: null,
+          printers: [],
+          printer_models: [],
+          bambu_live_integrations: [],
+        }),
         validateHost: () => {
           started.push("validation");
           return requests.validation.promise;

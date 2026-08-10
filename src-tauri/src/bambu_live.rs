@@ -11,15 +11,21 @@ use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
 };
 use crate::credential_store::{CredentialKey, CredentialStore};
+use crate::printer_bambu_discovery_commands::try_auto_recover_bambu_live_host;
 use crate::state::AppState;
+use std::collections::HashMap;
 use std::io::Write;
 use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
-use std::time::Duration;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 use zeroize::Zeroize;
 
 const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MAX_CONCURRENT_PRINTER_POLLS: usize = 3;
+const AUTO_RECOVERY_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+
+static AUTO_RECOVERY_ATTEMPTS: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
 
 #[path = "bambu_tls_identity.rs"]
 pub(crate) mod tls_identity;
@@ -157,6 +163,25 @@ fn poll_single_integration(
                 .map_err(|error| error.to_string())?
         }
         Err(error) => {
+            if error.observed_identity.is_none()
+                && trusted_pin.is_some()
+                && claim_auto_recovery_attempt(&entry.printer_id, Instant::now())
+            {
+                match try_auto_recover_bambu_live_host(db_path, &entry.printer_id, printer_serial) {
+                    Ok(Some(recovered_host)) => {
+                        eprintln!(
+                            "Automatically recovered Bambu printer {} at {recovered_host}",
+                            entry.printer_id
+                        );
+                        return Ok(());
+                    }
+                    Ok(None) => {}
+                    Err(recovery_error) => eprintln!(
+                        "Automatic Bambu address recovery failed for {}: {recovery_error}",
+                        entry.printer_id
+                    ),
+                }
+            }
             let observed_tls_identity = if let Some(tls_identity) = error.observed_identity.as_ref()
             {
                 record_observed_tls_identity(&mut entry, tls_identity);
@@ -191,6 +216,20 @@ fn poll_single_integration(
         Some(&observed),
     )?;
     Ok(())
+}
+
+fn claim_auto_recovery_attempt(printer_id: &str, now: Instant) -> bool {
+    let attempts = AUTO_RECOVERY_ATTEMPTS.get_or_init(|| Mutex::new(HashMap::new()));
+    let Ok(mut attempts) = attempts.lock() else {
+        return false;
+    };
+    if attempts.get(printer_id).is_some_and(|last_attempt| {
+        now.saturating_duration_since(*last_attempt) < AUTO_RECOVERY_COOLDOWN
+    }) {
+        return false;
+    }
+    attempts.insert(printer_id.to_string(), now);
+    true
 }
 
 fn observe_printer_state(

@@ -23,6 +23,8 @@ export const ptBRDictionary: DictionaryNode = {
     all: "Todos",
     cancel: "Cancelar",
     close: "Fechar",
+    back: "Voltar",
+    continue: "Continuar",
     copied: "Copiado",
     copyFailed: "Falha na cópia",
     daysAgo: "{count} dias atrás",
@@ -48,6 +50,10 @@ export const ptBRDictionary: DictionaryNode = {
     unknown: "Desconhecido",
   },
   dashboard: {
+    bambuLiveAttentionTitle: "O Bambu Live precisa de atenção",
+    bambuLiveAttentionBody:
+      "{name} não ficará mais Live até que você revise e aprove a identidade da impressora.",
+    openBambuLiveSettings: "Abrir configurações do Live",
     onboardingInventoryBody:
       "Comece com um carretel ou importe um inventário ou backup existente.",
     onboardingInventoryTitle: "Adicionar ou importar inventário",
@@ -1291,6 +1297,11 @@ export const ptBRDictionary: DictionaryNode = {
     bambuLiveRawPayloadCopied: "Dados brutos copiados.",
     bambuLiveSecondaryExternalSlotLabel: "slot externo secundário",
     bambuLiveSection: "Status Live Bambu",
+    bambuLiveTitle: "Bambu Live",
+    bambuLiveAddHint: "Conecte agora para ver o status da impressora, os slots AMS, as temperaturas e o consumo de impressão. Você também pode pular esta etapa e configurar depois.",
+    bambuLiveEnable: "Ativar Bambu Live",
+    bambuLiveLocalOnly: "Conecta diretamente à impressora na sua rede local.",
+    addPrinterWithLive: "Adicionar impressora com Live",
     bambuLiveSignalContinuous: "Telemetria contínua",
     bambuLiveSignalContinuousDesc:
       "Campos que parecem atualizações normais de status/telemetria durante a operação.",

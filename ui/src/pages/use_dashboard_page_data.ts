@@ -7,6 +7,7 @@ import {
   type DashboardStat,
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
+import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
 import {
   beginDashboardPageSnapshotRequest,
   readDashboardPageSnapshotGeneration,
@@ -186,6 +187,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const [activity, setActivity] = useState<ActivityItem[]>(
     () => initialSnapshot?.activity ?? createEmptyActivity(t),
   );
+  const [bambuLiveAttention, setBambuLiveAttention] = useState<
+    DashboardBambuLiveAttention[]
+  >(() => initialSnapshot?.bambuLiveAttention ?? []);
   const [usagePoints, setUsagePoints] = useState<number[]>(
     () => initialSnapshot?.usagePoints ?? [0, 0],
   );
@@ -295,6 +299,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         const cacheAccepted = writeDashboardPageSnapshot(
           {
             activity: loaded.derived.activity,
+            bambuLiveAttention: loaded.bambuLiveAttention,
             clientHostCompanionTone: loaded.clientHostCompanionTone,
             clientHostDisplayName: loaded.clientHostDisplayName,
             clientHostNeedsRepair: loaded.clientHostNeedsRepair,
@@ -326,6 +331,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         revisionSourceRef.current = loaded.revisionSource;
 
         setDashboardSyncMode(loaded.syncMode);
+        setBambuLiveAttention(loaded.bambuLiveAttention);
         setCompanionStatus(loaded.trustedLan);
         setClientHostCompanionTone(loaded.clientHostCompanionTone);
         setClientHostDisplayName(loaded.clientHostDisplayName);
@@ -604,6 +610,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
 
   return {
     activity,
+    bambuLiveAttention,
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,
