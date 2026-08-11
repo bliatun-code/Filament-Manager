@@ -43,20 +43,20 @@ impl Default for MonitorState {
 
 impl MonitorState {
     fn mark_healthy(&self) {
-        if let Ok(mut status) = self.status.lock() {
-            if matches!(*status, MonitorStatus::Pending) {
-                *status = MonitorStatus::Healthy;
-                self.changed.notify_all();
-            }
+        if let Ok(mut status) = self.status.lock()
+            && matches!(*status, MonitorStatus::Pending)
+        {
+            *status = MonitorStatus::Healthy;
+            self.changed.notify_all();
         }
     }
 
     fn fail(&self, error: AdvertisementError) {
-        if let Ok(mut status) = self.status.lock() {
-            if !matches!(*status, MonitorStatus::Failed(_)) {
-                *status = MonitorStatus::Failed(error);
-                self.changed.notify_all();
-            }
+        if let Ok(mut status) = self.status.lock()
+            && !matches!(*status, MonitorStatus::Failed(_))
+        {
+            *status = MonitorStatus::Failed(error);
+            self.changed.notify_all();
         }
     }
 
