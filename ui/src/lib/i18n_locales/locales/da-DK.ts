@@ -353,6 +353,8 @@ export const daDKDictionary: DictionaryNode = {
     "backup": "Backup",
     "consumption": "Filamentforbrug",
     "last30": "Sidste 30 dage",
+    "last12Months": "Seneste 12 måneder",
+    "annualUsageUnavailable": "Opdater værten for at vise 12 måneders historik.",
     "noUsageTrendYet": "Ingen brugstrend endnu",
     "noRecentActivity": "Ingen ny aktivitet endnu.",
     "clientSnapshotCardHint": "Denne enhed er tilsluttet som en klient. I øjeblikket viser den værtsoversigten og holder skrivetunge arbejdsgange på værten.",

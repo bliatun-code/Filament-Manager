@@ -126,6 +126,8 @@ export const plPLDictionary: DictionaryNode = {
     "inUse": "w użyciu",
     "inventoryHealth": "Stan zapasów",
     "last30": "Ostatnie 30 dni",
+    "last12Months": "Ostatnie 12 miesięcy",
+    "annualUsageUnavailable": "Zaktualizuj hosta, aby wyświetlić historię z 12 miesięcy.",
     "loaned": "pożyczony",
     "loanedTo": "Pożyczony",
     "lowest": "najniższy",

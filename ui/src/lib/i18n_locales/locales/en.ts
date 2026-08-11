@@ -137,6 +137,8 @@ export const enDictionary: DictionaryNode = {
       clientSnapshotHealthHint:
         "This client is showing the host summary only. Detailed inventory health stays on the host for now.",
       last30: "Last 30 days",
+      last12Months: "Last 12 months",
+      annualUsageUnavailable: "Update the host to show 12-month history.",
       consumption: "Filament Consumption",
       consumptionCaption: "Usage is aggregated from printer-linked print jobs.",
       noUsageTrendYet: "No usage trend yet",

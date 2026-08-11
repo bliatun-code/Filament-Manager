@@ -1,5 +1,7 @@
 import { useI18n } from "../lib/i18n";
+import type { DashboardUsageMonth } from "../lib/dashboard_model";
 import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
+import { formatGrams } from "../lib/weight_display";
 
 type StatCardProps = {
   title: string;
@@ -151,96 +153,157 @@ export function LowStockList({ items, onClick }: LowStockListProps) {
 type UsageChartProps = {
   title: string;
   value: string;
+  period: string;
   caption: string;
-  points: number[];
+  months: DashboardUsageMonth[];
+  unavailableMessage?: string | null;
   onClick?: () => void;
 };
 
-export function UsageChart({ title, value, caption, points, onClick }: UsageChartProps) {
-  const { t } = useI18n();
-  const normalizedPoints = points.length >= 2 ? points : [0, 0];
-  const minPoint = Math.min(...normalizedPoints);
-  const maxPoint = Math.max(...normalizedPoints);
-  const isEmptyTrend = normalizedPoints.every((point) => point === 0);
-  const chartWidth = 240;
-  const chartHeight = 80;
-  const padX = 8;
-  const padY = 8;
-  const usableWidth = chartWidth - padX * 2;
-  const usableHeight = chartHeight - padY * 2;
-  const span = maxPoint - minPoint;
-  const polyline = normalizedPoints
-    .map((point, index) => {
-      const x =
-        normalizedPoints.length <= 1
-          ? chartWidth / 2
-          : padX + (usableWidth * index) / (normalizedPoints.length - 1);
-      const y =
-        span <= 0
-          ? chartHeight / 2
-          : padY + usableHeight - ((point - minPoint) / span) * usableHeight;
-      return `${x},${y}`;
-    })
-    .join(" ");
+function usageMonthDate(month: string): Date | null {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);
+  if (!match) {
+    return null;
+  }
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1));
+}
+
+function formatUsageMonth(
+  month: string,
+  locale: string,
+  monthStyle: "long" | "short" | "narrow",
+  includeYear = false,
+): string {
+  const date = usageMonthDate(month);
+  if (!date) {
+    return month;
+  }
+  return new Intl.DateTimeFormat(locale, {
+    month: monthStyle,
+    timeZone: "UTC",
+    year: includeYear ? "numeric" : undefined,
+  }).format(date);
+}
+
+export function UsageChart({
+  title,
+  value,
+  period,
+  caption,
+  months,
+  unavailableMessage,
+  onClick,
+}: UsageChartProps) {
+  const { locale, t } = useI18n();
+  const maxUsage = Math.max(0, ...months.map((item) => item.usedGrams));
+  const isUnavailable = Boolean(unavailableMessage);
+  const isEmptyTrend = !isUnavailable && maxUsage === 0;
+  const chartLabel = `${title}. ${period}: ${value}`;
+  const header = (
+    <>
+      <span className="min-w-0 text-left">
+        <span className="section-eyebrow block">{title}</span>
+        <span className="mt-1 block text-xs font-medium text-slate-600 dark:text-slate-300">
+          {period}
+        </span>
+      </span>
+      <span className="shrink-0 text-right text-lg font-semibold leading-none text-slate-950 dark:text-slate-50">
+        {value}
+      </span>
+    </>
+  );
 
   return (
-    <div
-      className={`surface-card isolate transform-gpu ${
-        onClick ? "cursor-pointer transition hover:border-slate-400/45 dark:hover:border-slate-500" : ""
-      }`}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={
-        onClick
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onClick();
-              }
-            }
-          : undefined
-      }
-    >
-      <div className="relative z-10 flex min-h-7 items-center justify-between gap-4">
-        <div className="section-eyebrow min-w-0">{title}</div>
-        <div className="shrink-0 text-right text-lg font-semibold leading-none text-slate-950 dark:text-slate-50">
-          {value}
-        </div>
-      </div>
-      <div className="surface-subtle relative mt-4 h-32 w-full overflow-hidden p-2">
-        <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          preserveAspectRatio="none"
-          className="h-full w-full text-slate-800 dark:text-sky-300"
+    <div className="surface-card isolate transform-gpu">
+      {onClick ? (
+        <button
+          type="button"
+          aria-label={chartLabel}
+          className="relative z-10 flex min-h-7 w-full items-center justify-between gap-4 rounded-lg text-left outline-none transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-sky-400/70 focus-visible:ring-offset-4 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900"
+          onClick={onClick}
         >
-          <g className="text-slate-300/80 dark:text-slate-700/70">
-            {[20, 40, 60].map((lineY) => (
-              <line
-                key={lineY}
-                x1={padX}
-                x2={chartWidth - padX}
-                y1={lineY}
-                y2={lineY}
-                stroke="currentColor"
-                strokeWidth="1"
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
-          </g>
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeDasharray={isEmptyTrend ? "7 6" : undefined}
-            strokeOpacity={isEmptyTrend ? 0.55 : 1}
-            strokeWidth="3"
-            points={polyline}
-          />
-        </svg>
-        {isEmptyTrend ? (
+          {header}
+        </button>
+      ) : (
+        <div className="relative z-10 flex min-h-7 items-center justify-between gap-4">
+          {header}
+        </div>
+      )}
+      <div className="surface-subtle relative mt-4 h-40 w-full overflow-hidden px-2 pb-2 pt-3 sm:px-3">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-2 top-3 bottom-8 flex flex-col justify-between sm:inset-x-3"
+        >
+          {[0, 1, 2, 3].map((line) => (
+            <span
+              key={line}
+              className="block border-t border-slate-300/70 dark:border-slate-700/70"
+            />
+          ))}
+        </div>
+        <div
+          aria-label={`${title}, ${period}`}
+          className="relative grid h-full grid-cols-12 gap-1 sm:gap-2"
+          role="list"
+        >
+          {months.map((item) => {
+            const fullMonth = formatUsageMonth(item.month, locale, "long", true);
+            const formattedUsage = formatGrams(item.usedGrams, "zero", locale);
+            const itemLabel = `${fullMonth}: ${formattedUsage}`;
+            const heightPercent =
+              maxUsage > 0 && item.usedGrams > 0
+                ? (item.usedGrams / maxUsage) * 100
+                : 0;
+            return (
+              <div
+                key={item.month}
+                aria-label={itemLabel}
+                className="group relative flex min-w-0 flex-col rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-sky-400/80"
+                role="listitem"
+                tabIndex={0}
+                title={itemLabel}
+              >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-1/2 top-1 z-20 -translate-x-1/2 whitespace-nowrap rounded bg-slate-950/90 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus:opacity-100 dark:bg-white/92 dark:text-slate-950"
+                >
+                  {formattedUsage}
+                </span>
+                <div className="flex min-h-0 flex-1 items-end justify-center px-px">
+                  <span
+                    aria-hidden="true"
+                    className={`block w-full max-w-10 rounded-t-sm transition-colors ${
+                      item.usedGrams > 0
+                        ? "bg-sky-500/85 group-hover:bg-sky-600 dark:bg-sky-300/85 dark:group-hover:bg-sky-200"
+                        : "h-px bg-slate-400/55 dark:bg-slate-600/70"
+                    }`}
+                    style={
+                      item.usedGrams > 0
+                        ? { height: `${heightPercent}%`, minHeight: "1px" }
+                        : undefined
+                    }
+                  />
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="mt-1.5 truncate text-center text-[10px] font-medium leading-4 text-slate-600 dark:text-slate-300 sm:hidden"
+                >
+                  {formatUsageMonth(item.month, locale, "narrow")}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="mt-1.5 hidden truncate text-center text-[10px] font-medium leading-4 text-slate-600 dark:text-slate-300 sm:block"
+                >
+                  {formatUsageMonth(item.month, locale, "short")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {isUnavailable || isEmptyTrend ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="rounded-full border border-slate-300/80 bg-white/82 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm shadow-slate-300/20 backdrop-blur dark:border-slate-600/80 dark:bg-slate-950/72 dark:text-slate-200 dark:shadow-none">
-              {t("dashboard.noUsageTrendYet", "No usage trend yet")}
+              {unavailableMessage ?? t("dashboard.noUsageTrendYet", "No usage trend yet")}
             </div>
           </div>
         ) : null}

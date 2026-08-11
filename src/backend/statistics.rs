@@ -23,6 +23,18 @@ pub struct InventoryOverview {
     pub total_consumption_30d: i64,
     pub owned_consumption_30d: i64,
     pub borrowed_in_consumption_30d: i64,
+    #[serde(default)]
+    pub consumption_12m_available: bool,
+    #[serde(default)]
+    pub total_consumption_12m: i64,
+    #[serde(default)]
+    pub consumption_12m: Vec<MonthlyConsumptionPoint>,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct MonthlyConsumptionPoint {
+    pub month: String,
+    pub used_grams: i64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -300,6 +312,8 @@ fn inventory_overview_from_connection(
         [],
         |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
+    let consumption_12m = monthly_consumption_12m_from_connection(connection)?;
+    let total_consumption_12m = consumption_12m.iter().map(|point| point.used_grams).sum();
 
     Ok(InventoryOverview {
         total_spools,
@@ -314,12 +328,64 @@ fn inventory_overview_from_connection(
         total_consumption_30d,
         owned_consumption_30d,
         borrowed_in_consumption_30d,
+        consumption_12m_available: true,
+        total_consumption_12m,
+        consumption_12m,
     })
+}
+
+fn monthly_consumption_12m_from_connection(
+    connection: &Connection,
+) -> Result<Vec<MonthlyConsumptionPoint>, rusqlite::Error> {
+    let mut stmt = connection.prepare(
+        "WITH RECURSIVE months(month_start, month) AS (
+            SELECT date('now', 'localtime', 'start of month', '-11 months'),
+                   strftime('%Y-%m', date('now', 'localtime', 'start of month', '-11 months'))
+            UNION ALL
+            SELECT date(month_start, '+1 month'),
+                   strftime('%Y-%m', date(month_start, '+1 month'))
+            FROM months
+            WHERE month_start < date('now', 'localtime', 'start of month')
+         ),
+         usage_rows AS (
+            SELECT p.started_at AS used_at, p.material_used_g AS used_g
+            FROM print_jobs p
+            UNION ALL
+            SELECT COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
+                   us.used_g
+            FROM printer_live_usage_session_spools us
+            JOIN printer_live_usage_sessions u ON u.id = us.session_id
+            WHERE us.used_g > 0
+         ),
+         monthly_usage AS (
+            SELECT strftime('%Y-%m', datetime(used_at, 'localtime')) AS month,
+                   COALESCE(SUM(used_g), 0) AS used_grams
+            FROM usage_rows
+            WHERE datetime(used_at, 'localtime') >=
+                      datetime('now', 'localtime', 'start of month', '-11 months')
+              AND datetime(used_at, 'localtime') <
+                      datetime('now', 'localtime', 'start of month', '+1 month')
+            GROUP BY strftime('%Y-%m', datetime(used_at, 'localtime'))
+         )
+         SELECT months.month, COALESCE(monthly_usage.used_grams, 0)
+         FROM months
+         LEFT JOIN monthly_usage ON monthly_usage.month = months.month
+         ORDER BY months.month_start ASC",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(MonthlyConsumptionPoint {
+            month: row.get(0)?,
+            used_grams: row.get(1)?,
+        })
+    })?;
+
+    rows.collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::StatisticsEngine;
+    use super::{InventoryOverview, StatisticsEngine};
     use crate::backend::database_printer_usage_sessions::{
         LiveUsageDeltaInput, LiveUsageSessionInput,
     };
@@ -333,6 +399,29 @@ mod tests {
             .unwrap_or_default()
             .as_nanos();
         std::env::temp_dir().join(format!("filament-manager-stats-{test_name}-{nanos}.db"))
+    }
+
+    #[test]
+    fn inventory_overview_deserializes_legacy_payload_without_12_month_fields() {
+        let overview: InventoryOverview = serde_json::from_value(serde_json::json!({
+            "total_spools": 3,
+            "total_owned_spools": 2,
+            "total_borrowed_in_spools": 1,
+            "in_use": 1,
+            "owned_in_use": 1,
+            "borrowed_in_in_use": 0,
+            "low_stock": 1,
+            "owned_low_stock": 1,
+            "borrowed_in_low_stock": 0,
+            "total_consumption_30d": 75,
+            "owned_consumption_30d": 75,
+            "borrowed_in_consumption_30d": 0
+        }))
+        .expect("legacy inventory overview should deserialize");
+
+        assert_eq!(overview.total_consumption_12m, 0);
+        assert!(overview.consumption_12m.is_empty());
+        assert!(!overview.consumption_12m_available);
     }
 
     #[test]
@@ -531,6 +620,164 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "inventory_overview_splits_owned_and_borrowed_in_metrics test failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn inventory_overview_builds_chronological_12_month_consumption_with_zero_months() {
+        let db_path = temp_db_path("12-month-consumption");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff5544"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            db.insert_spool(&SpoolRow {
+                id: "owned_1".to_string(),
+                master_id,
+                qr_code: None,
+                rfid_tag: None,
+                rfid_observed_at: None,
+                status: "IN_USE".to_string(),
+                ownership_type: "OWNED".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                current_weight_g: Some(650),
+                remaining_g: Some(650),
+                spool_tare_weight_g: None,
+                location_id: None,
+                home_location_id: None,
+                purchase_date: None,
+                purchase_price: None,
+                batch_code: None,
+                last_used_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+            db.upsert_printer_with_ams("printer_1", "P1S", "P1S", 1, 4)
+                .map_err(|error| error.to_string())?;
+
+            db.insert_print_job("printer_1", "owned_1", Some("Current month"), 25, true)
+                .map_err(|error| error.to_string())?;
+            db.insert_print_job(
+                "printer_1",
+                "owned_1",
+                Some("First included month"),
+                100,
+                true,
+            )
+            .map_err(|error| error.to_string())?;
+            db.insert_print_job("printer_1", "owned_1", Some("Outside window"), 999, true)
+                .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute_batch(
+                    "UPDATE print_jobs
+                     SET started_at = datetime('now', 'localtime', 'start of month',
+                                               '+12 hours', 'utc')
+                     WHERE job_name = 'Current month';
+                     UPDATE print_jobs
+                     SET started_at = datetime('now', 'localtime', 'start of month',
+                                               '-11 months', '+12 hours', 'utc')
+                     WHERE job_name = 'First included month';
+                     UPDATE print_jobs
+                     SET started_at = datetime('now', 'localtime', 'start of month',
+                                               '-12 months', '+12 hours', 'utc')
+                     WHERE job_name = 'Outside window';",
+                )
+                .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "printer_1",
+                session_key: "subtask:middle-month",
+                job_name: Some("Middle live job"),
+                print_type: Some("cloud"),
+                spool_id: "owned_1",
+                used_grams: 40,
+                observed_at: Some("2026-05-17T20:30:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "UPDATE printer_live_usage_sessions
+                     SET finished_at = strftime(
+                                                '%Y-%m-%dT%H:%M:%SZ',
+                                                datetime('now', 'localtime', 'start of month',
+                                                         '-5 months', '+12 hours', 'utc')),
+                         last_seen_at = datetime('now'),
+                         status = 'COMPLETED',
+                         success = 1
+                     WHERE session_key = 'subtask:middle-month'",
+                    [],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let expected_first_month: String = db
+                .connection()
+                .query_row(
+                    "SELECT strftime('%Y-%m', date('now', 'localtime', 'start of month', '-11 months'))",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let expected_middle_month: String = db
+                .connection()
+                .query_row(
+                    "SELECT strftime('%Y-%m', date('now', 'localtime', 'start of month', '-5 months'))",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            let expected_current_month: String = db
+                .connection()
+                .query_row(
+                    "SELECT strftime('%Y-%m', date('now', 'localtime', 'start of month'))",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+
+            let overview = db.inventory_overview().map_err(|error| error.to_string())?;
+
+            assert_eq!(overview.consumption_12m.len(), 12);
+            assert!(overview.consumption_12m_available);
+            assert_eq!(overview.total_consumption_12m, 165);
+            assert_eq!(overview.consumption_12m[0].month, expected_first_month);
+            assert_eq!(overview.consumption_12m[0].used_grams, 100);
+            assert_eq!(overview.consumption_12m[6].month, expected_middle_month);
+            assert_eq!(overview.consumption_12m[6].used_grams, 40);
+            assert_eq!(overview.consumption_12m[11].month, expected_current_month);
+            assert_eq!(overview.consumption_12m[11].used_grams, 25);
+            assert_eq!(
+                overview
+                    .consumption_12m
+                    .iter()
+                    .filter(|point| point.used_grams == 0)
+                    .count(),
+                9
+            );
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "inventory_overview_builds_chronological_12_month_consumption_with_zero_months failed: {message}"
             );
         }
     }

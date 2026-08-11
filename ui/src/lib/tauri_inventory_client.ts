@@ -132,6 +132,15 @@ export type InventoryOverview = {
   total_consumption_30d: number;
   owned_consumption_30d: number;
   borrowed_in_consumption_30d: number;
+  /** False when a newer client is reading a snapshot produced by an older host. */
+  consumption_12m_available?: boolean;
+  /** Optional while clients can still connect to a pre-12-month-history host. */
+  total_consumption_12m?: number;
+  /** Calendar-month buckets in `YYYY-MM` form, oldest or newest order accepted. */
+  consumption_12m?: Array<{
+    month: string;
+    used_grams: number;
+  }>;
 };
 
 export type CompanionSpoolDetail = {

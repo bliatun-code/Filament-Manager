@@ -144,6 +144,8 @@ export const itITDictionary: DictionaryNode = {
     inUse: "in uso",
     inventoryHealth: "Stato dell'inventario",
     last30: "Ultimi 30 giorni",
+    last12Months: "Ultimi 12 mesi",
+    annualUsageUnavailable: "Aggiorna l'host per mostrare la cronologia degli ultimi 12 mesi.",
     loaned: "prestato",
     loanedTo: "Prestito a",
     lowest: "più basso",

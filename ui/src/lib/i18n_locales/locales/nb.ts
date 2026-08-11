@@ -138,6 +138,8 @@ export const nbDictionary: DictionaryNode = {
       clientSnapshotHealthHint:
         "Denne klienten viser foreløpig bare vertsoppsummeringen. Detaljert lagerhelse blir fortsatt håndtert på verten.",
       last30: "Siste 30 dager",
+      last12Months: "Siste 12 måneder",
+      annualUsageUnavailable: "Oppdater verten for å vise 12-månedershistorikk.",
       consumption: "Filamentforbruk",
       consumptionCaption: "Forbruket summeres fra printerknyttede printjobber.",
       noUsageTrendYet: "Ingen forbrukstrend ennå",

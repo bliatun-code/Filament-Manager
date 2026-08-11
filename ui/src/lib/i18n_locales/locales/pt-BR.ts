@@ -144,6 +144,8 @@ export const ptBRDictionary: DictionaryNode = {
     inUse: "em uso",
     inventoryHealth: "Integridade do inventário",
     last30: "Últimos 30 dias",
+    last12Months: "Últimos 12 meses",
+    annualUsageUnavailable: "Atualize o host para exibir o histórico de 12 meses.",
     loaned: "emprestado",
     loanedTo: "Emprestado para",
     lowest: "mais baixo",

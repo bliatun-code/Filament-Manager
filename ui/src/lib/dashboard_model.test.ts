@@ -4,6 +4,9 @@ import {
   buildDashboardBadges,
   buildDashboardCompanionPresentation,
   buildDashboardDerivedState,
+  dashboardCalendarMonthChanged,
+  dashboardCalendarMonthKey,
+  normalizeDashboardUsageMonths,
 } from "./dashboard_model";
 import { lookup } from "./i18n";
 import { nbDictionary } from "./i18n_locales/locales/nb";
@@ -36,6 +39,9 @@ function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview
     total_consumption_30d: 0,
     owned_consumption_30d: 0,
     borrowed_in_consumption_30d: 0,
+    consumption_12m_available: true,
+    total_consumption_12m: 0,
+    consumption_12m: [],
     ...overrides,
   };
 }
@@ -248,6 +254,91 @@ test("buildDashboardDerivedState localizes daily grams for Norwegian", () => {
     result.stats.find((stat) => stat.id === "monthlyUsage")?.trend,
     "78 g/dag",
   );
+});
+
+test("dashboard keeps the 30-day card separate from the chronological 12-month chart", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview({
+      total_consumption_30d: 0,
+      total_consumption_12m: 4_176,
+      consumption_12m: [
+        { month: "2025-10", used_grams: 80 },
+        { month: "2026-01", used_grams: 484 },
+        { month: "2026-06", used_grams: 590 },
+        { month: "2026-07", used_grams: 3_022 },
+      ],
+    }),
+    printers: [],
+    spoolRows: [],
+    loans: [],
+    wishlist: [],
+    now: new Date("2026-08-11T12:00:00Z"),
+    t,
+  });
+
+  assert.equal(
+    result.stats.find((stat) => stat.id === "monthlyUsage")?.value,
+    "0 g",
+  );
+  assert.equal(result.usageTotal12m, 4_176);
+  assert.equal(result.usageMonths.length, 12);
+  assert.deepEqual(result.usageMonths.slice(0, 3), [
+    { month: "2025-09", usedGrams: 0 },
+    { month: "2025-10", usedGrams: 80 },
+    { month: "2025-11", usedGrams: 0 },
+  ]);
+  assert.deepEqual(result.usageMonths.at(-1), {
+    month: "2026-08",
+    usedGrams: 0,
+  });
+});
+
+test("normalizeDashboardUsageMonths fills gaps and ignores malformed legacy buckets", () => {
+  const months = normalizeDashboardUsageMonths(
+    [
+      { month: "2026-08", used_grams: 120 },
+      { month: "2026-08", used_grams: 30 },
+      { month: "2026-07", used_grams: -50 },
+      { month: "2024-01", used_grams: 999 },
+      { month: "not-a-month", used_grams: 999 },
+      { month: "2026-06", used_grams: Number.NaN },
+    ],
+    new Date("2026-08-11T12:00:00Z"),
+  );
+
+  assert.equal(months.length, 12);
+  assert.deepEqual(months.slice(-3), [
+    { month: "2026-06", usedGrams: 0 },
+    { month: "2026-07", usedGrams: 0 },
+    { month: "2026-08", usedGrams: 150 },
+  ]);
+});
+
+test("dashboard derives the annual headline from the same normalized bars", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview({
+      total_consumption_12m: 9_999,
+      consumption_12m: [{ month: "2026-08", used_grams: 150 }],
+    }),
+    printers: [],
+    spoolRows: [],
+    loans: [],
+    wishlist: [],
+    now: new Date("2026-08-11T12:00:00Z"),
+    t,
+  });
+
+  assert.equal(result.usageTotal12m, 150);
+});
+
+test("dashboard calendar month detection rolls over at local midnight", () => {
+  const endOfJuly = new Date(2026, 6, 31, 23, 59, 59);
+  const startOfAugust = new Date(2026, 7, 1, 0, 0, 0);
+
+  assert.equal(dashboardCalendarMonthKey(endOfJuly), "2026-07");
+  assert.equal(dashboardCalendarMonthKey(startOfAugust), "2026-08");
+  assert.equal(dashboardCalendarMonthChanged("2026-07", startOfAugust), true);
+  assert.equal(dashboardCalendarMonthChanged("2026-08", startOfAugust), false);
 });
 
 test("buildDashboardDerivedState preserves unknown statuses outside on-hand counts", () => {

@@ -5,6 +5,10 @@ import {
   type DashboardGoalMetrics,
   type DashboardHealth,
   type DashboardStat,
+  type DashboardUsageMonth,
+  dashboardCalendarMonthChanged,
+  dashboardCalendarMonthKey,
+  normalizeDashboardUsageMonths,
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
 import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
@@ -165,6 +169,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const dashboardPageSnapshotGenerationRef = useRef(
     readDashboardPageSnapshotGeneration(),
   );
+  const usageCalendarMonthRef = useRef(dashboardCalendarMonthKey());
   const refreshInFlightRef = useRef(false);
   const revisionSourceRef = useRef<LibraryRevisionSource | null>(
     initialSnapshot?.revisionSource ?? null,
@@ -190,8 +195,17 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const [bambuLiveAttention, setBambuLiveAttention] = useState<
     DashboardBambuLiveAttention[]
   >(() => initialSnapshot?.bambuLiveAttention ?? []);
-  const [usagePoints, setUsagePoints] = useState<number[]>(
-    () => initialSnapshot?.usagePoints ?? [0, 0],
+  const [usageMonths, setUsageMonths] = useState<DashboardUsageMonth[]>(
+    () =>
+      initialSnapshot?.usageMonths?.length === 12
+        ? initialSnapshot.usageMonths
+        : normalizeDashboardUsageMonths(undefined),
+  );
+  const [usageTotal12m, setUsageTotal12m] = useState(
+    () => initialSnapshot?.usageTotal12m ?? 0,
+  );
+  const [usageAvailable, setUsageAvailable] = useState(
+    () => initialSnapshot?.usageAvailable ?? false,
   );
   const [ownershipLowStock, setOwnershipLowStock] = useState(
     () =>
@@ -315,7 +329,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             revisionSource: loaded.revisionSource,
             setupDataAvailable: loaded.setupDataAvailable,
             stats: loaded.derived.stats,
-            usagePoints: loaded.derived.usagePoints,
+            usageAvailable: loaded.derived.usageAvailable,
+            usageMonths: loaded.derived.usageMonths,
+            usageTotal12m: loaded.derived.usageTotal12m,
           },
           snapshotRequest,
         );
@@ -329,6 +345,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         }
 
         revisionSourceRef.current = loaded.revisionSource;
+        usageCalendarMonthRef.current = dashboardCalendarMonthKey();
 
         setDashboardSyncMode(loaded.syncMode);
         setBambuLiveAttention(loaded.bambuLiveAttention);
@@ -340,7 +357,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         setSetupDataAvailable(loaded.setupDataAvailable);
         setStats(loaded.derived.stats);
         setActivity(loaded.derived.activity);
-        setUsagePoints(loaded.derived.usagePoints);
+        setUsageAvailable(loaded.derived.usageAvailable);
+        setUsageMonths(loaded.derived.usageMonths);
+        setUsageTotal12m(loaded.derived.usageTotal12m);
         setOwnershipOnHand(loaded.derived.ownershipOnHand);
         setOwnershipLowStock(loaded.derived.ownershipLowStock);
         setGoalMetrics(loaded.derived.goalMetrics);
@@ -397,6 +416,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const pollDashboard = useCallback(
     async (cancelledRef?: { current: boolean }) => {
       const source = revisionSourceRef.current;
+      const calendarMonthChanged = dashboardCalendarMonthChanged(
+        usageCalendarMonthRef.current,
+      );
       const [trustedLanResult, revisionsResult] = await Promise.allSettled([
         getTrustedLanCompanionStatus(),
         fetchLibraryDomainRevisionsForSource(source),
@@ -436,7 +458,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         revisions,
         DASHBOARD_REVISION_DOMAINS,
       );
-      if (!observation.shouldReload) {
+      if (!observation.shouldReload && !calendarMonthChanged) {
         revisionTrackerRef.current = observation.tracker;
         return true;
       }
@@ -628,7 +650,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     refreshDashboard,
     refreshing,
     stats,
-    usagePoints,
+    usageMonths,
+    usageTotal12m,
+    usageAvailable,
     setupDataAvailable,
   };
 }

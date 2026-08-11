@@ -11,7 +11,6 @@ import { isActiveOutboundLoan } from "./loan_state";
 import { summarizeEffectivePrinterSlots } from "./printer_profiles";
 import type {
   InventoryOverview,
-  MaterialUsageRow,
   PrinterOverviewRow,
   WishlistItemRow,
 } from "./tauri_client";
@@ -65,10 +64,17 @@ export type DashboardHealth = {
   metrics: DashboardHealthMetric[];
 };
 
+export type DashboardUsageMonth = {
+  month: string;
+  usedGrams: number;
+};
+
 export type DashboardDerivedState = {
   stats: DashboardStat[];
   activity: ActivityItem[];
-  usagePoints: number[];
+  usageMonths: DashboardUsageMonth[];
+  usageTotal12m: number;
+  usageAvailable: boolean;
   ownershipLowStock: {
     owned: number;
     borrowedIn: number;
@@ -230,8 +236,8 @@ export function buildDashboardDerivedState(params: {
   spoolRows: NormalizedSpoolWithMasterRow[];
   loans: NormalizedLoanDetailsRow[];
   wishlist: WishlistItemRow[];
-  materialRows?: MaterialUsageRow[] | null;
   locale?: NumberDisplayLocale;
+  now?: Date;
   t: TranslateFn;
 }): DashboardDerivedState {
   const {
@@ -240,8 +246,8 @@ export function buildDashboardDerivedState(params: {
     spoolRows,
     loans,
     wishlist,
-    materialRows,
     locale = "en",
+    now = new Date(),
     t,
   } = params;
   const activeLoans = loans.filter(isActiveOutboundLoan);
@@ -363,17 +369,15 @@ export function buildDashboardDerivedState(params: {
     },
   ];
 
-  const usageFromMaterials = (materialRows ?? [])
-    .map((row) => Math.max(0, row.used_grams))
-    .filter((value) => value > 0)
-    .slice(0, 8)
-    .reverse();
-  const usagePoints =
-    usageFromMaterials.length >= 2
-      ? usageFromMaterials
-      : usageFromMaterials.length === 1
-        ? [0, usageFromMaterials[0]]
-        : [0, overview.total_consumption_30d];
+  const usageMonths = normalizeDashboardUsageMonths(overview.consumption_12m, now);
+  const usageAvailable = overview.consumption_12m_available === true;
+  // Keep the headline and bars on one source of truth. The backend also reports
+  // a total, but summing the normalized buckets prevents an older or partially
+  // upgraded cache from reintroducing a headline/chart mismatch.
+  const usageTotal12m = usageMonths.reduce(
+    (sum, item) => sum + item.usedGrams,
+    0,
+  );
 
   const activeSpoolRows = spoolRows.filter((row) => {
     return !isSpoolStatusEmptyOrLost(row.spool.normalized_status);
@@ -457,7 +461,9 @@ export function buildDashboardDerivedState(params: {
               tone: "slate",
             },
           ],
-    usagePoints,
+    usageMonths,
+    usageTotal12m,
+    usageAvailable,
     ownershipLowStock: {
       owned: ownedLowStockCount || overview.owned_low_stock,
       borrowedIn: borrowedInLowStockCount || overview.borrowed_in_low_stock,
@@ -471,4 +477,71 @@ export function buildDashboardDerivedState(params: {
     goalMetrics,
     health,
   };
+}
+
+const DASHBOARD_USAGE_MONTH_COUNT = 12;
+const YEAR_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+function usageMonthKey(year: number, monthIndex: number): string {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+}
+
+export function dashboardCalendarMonthKey(now = new Date()): string {
+  const validNow = Number.isFinite(now.getTime()) ? now : new Date();
+  return usageMonthKey(validNow.getFullYear(), validNow.getMonth());
+}
+
+export function dashboardCalendarMonthChanged(
+  lastLoadedMonth: string,
+  now = new Date(),
+): boolean {
+  return lastLoadedMonth !== dashboardCalendarMonthKey(now);
+}
+
+/**
+ * Builds a stable calendar-month series for the current month and the eleven
+ * preceding months. Missing, duplicate, invalid, and negative buckets from an
+ * older or partially upgraded host are handled without breaking the dashboard.
+ */
+export function normalizeDashboardUsageMonths(
+  rows: InventoryOverview["consumption_12m"],
+  now = new Date(),
+): DashboardUsageMonth[] {
+  const validNow = Number.isFinite(now.getTime()) ? now : new Date();
+  const currentMonth = new Date(validNow.getFullYear(), validNow.getMonth(), 1);
+  const expectedMonths = Array.from(
+    { length: DASHBOARD_USAGE_MONTH_COUNT },
+    (_, index) => {
+      const month = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth() - (DASHBOARD_USAGE_MONTH_COUNT - 1 - index),
+        1,
+      );
+      return usageMonthKey(month.getFullYear(), month.getMonth());
+    },
+  );
+  const expectedSet = new Set(expectedMonths);
+  const usedByMonth = new Map<string, number>();
+
+  for (const row of rows ?? []) {
+    const month = row?.month?.trim();
+    const usedGrams = row?.used_grams;
+    if (
+      !YEAR_MONTH_PATTERN.test(month ?? "") ||
+      !expectedSet.has(month ?? "") ||
+      typeof usedGrams !== "number" ||
+      !Number.isFinite(usedGrams)
+    ) {
+      continue;
+    }
+    usedByMonth.set(
+      month!,
+      (usedByMonth.get(month!) ?? 0) + Math.max(0, usedGrams),
+    );
+  }
+
+  return expectedMonths.map((month) => ({
+    month,
+    usedGrams: usedByMonth.get(month) ?? 0,
+  }));
 }

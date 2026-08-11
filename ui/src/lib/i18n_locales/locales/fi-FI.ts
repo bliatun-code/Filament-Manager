@@ -353,6 +353,8 @@ export const fiFIDictionary: DictionaryNode = {
     "backup": "Varmuuskopio",
     "consumption": "Filamentin kulutus",
     "last30": "Viimeiset 30 päivää",
+    "last12Months": "Viimeiset 12 kuukautta",
+    "annualUsageUnavailable": "Päivitä isäntä, jotta näet 12 kuukauden historian.",
     "noUsageTrendYet": "Ei vielä käyttötrendiä",
     "noRecentActivity": "Ei vielä uutta toimintaa.",
     "clientSnapshotCardHint": "Tämä laite on yhdistetty asiakkaana. Tällä hetkellä se näyttää isäntäyhteenvedon ja pitää raskaat kirjoitustyöt isännässä.",

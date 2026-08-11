@@ -126,6 +126,8 @@ export const csCZDictionary: DictionaryNode = {
     "inUse": "v provozu",
     "inventoryHealth": "Stav zásob",
     "last30": "Posledních 30 dní",
+    "last12Months": "Posledních 12 měsíců",
+    "annualUsageUnavailable": "Aktualizujte hostitele, aby se zobrazila historie za 12 měsíců.",
     "loaned": "zapůjčeno",
     "loanedTo": "Zapůjčeno do",
     "lowest": "nejnižší",

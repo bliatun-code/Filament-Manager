@@ -90,7 +90,13 @@ function populatedSnapshot(): DashboardPageSnapshot {
         value: "6",
       },
     ],
-    usagePoints: [120, 160, 140],
+    usageMonths: [
+      { month: "2026-06", usedGrams: 120 },
+      { month: "2026-07", usedGrams: 160 },
+      { month: "2026-08", usedGrams: 140 },
+    ],
+    usageAvailable: true,
+    usageTotal12m: 420,
   };
 }
 
@@ -105,11 +111,33 @@ test("dashboard snapshot restores the complete last-good view for the same local
   assert.equal(restored?.setupDataAvailable, true);
   assert.equal(restored?.stats[0]?.value, "6");
   assert.equal(restored?.activity[0]?.title, "Returned");
-  assert.deepEqual(restored?.usagePoints, [120, 160, 140]);
+  assert.deepEqual(restored?.usageMonths, [
+    { month: "2026-06", usedGrams: 120 },
+    { month: "2026-07", usedGrams: 160 },
+    { month: "2026-08", usedGrams: 140 },
+  ]);
+  assert.equal(restored?.usageAvailable, true);
+  assert.equal(restored?.usageTotal12m, 420);
   assert.equal(restored?.ownershipOnHand.total, 6);
   assert.equal(restored?.health.score, 92);
   assert.equal(restored?.clientHostDisplayName, "Workshop");
   assert.equal(restored?.bambuLiveAttention?.[0]?.printerId, "printer-1");
+});
+
+test("dashboard snapshot safely upgrades an older cached view without annual usage fields", () => {
+  clearDashboardPageSnapshot();
+  const legacySnapshot = populatedSnapshot() as DashboardPageSnapshot &
+    Record<string, unknown>;
+  delete legacySnapshot.usageMonths;
+  delete legacySnapshot.usageTotal12m;
+  delete legacySnapshot.usageAvailable;
+
+  writeDashboardPageSnapshot(legacySnapshot);
+
+  const restored = readDashboardPageSnapshot("en");
+  assert.deepEqual(restored?.usageMonths, []);
+  assert.equal(restored?.usageAvailable, false);
+  assert.equal(restored?.usageTotal12m, 0);
 });
 
 test("dashboard snapshot is locale-keyed and isolated from caller mutation", () => {

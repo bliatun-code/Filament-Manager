@@ -126,6 +126,8 @@ export const zhCNDictionary: DictionaryNode = {
     "inUse": "使用中",
     "inventoryHealth": "库存健康状况",
     "last30": "过去 30 天",
+    "last12Months": "过去 12 个月",
+    "annualUsageUnavailable": "更新主机以显示 12 个月的历史记录。",
     "loaned": "借出的",
     "loanedTo": "借给",
     "lowest": "最低",

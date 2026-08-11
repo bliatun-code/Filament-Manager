@@ -18,6 +18,10 @@ import type {
 } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
+const currentMonth = (() => {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+})();
 
 function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview {
   return {
@@ -33,6 +37,9 @@ function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview
     total_consumption_30d: 0,
     owned_consumption_30d: 0,
     borrowed_in_consumption_30d: 0,
+    consumption_12m_available: true,
+    total_consumption_12m: 0,
+    consumption_12m: [],
     ...overrides,
   };
 }
@@ -193,7 +200,12 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
     {
       loadSyncSettings: async () => syncSettings(),
       loadTrustedLanStatus: async () => null,
-      loadInventoryOverview: async () => overview({ total_consumption_30d: 120 }),
+      loadInventoryOverview: async () =>
+        overview({
+          total_consumption_30d: 120,
+          total_consumption_12m: 900,
+          consumption_12m: [{ month: currentMonth, used_grams: 900 }],
+        }),
       loadPrinterSettings: async () => ({
         active_printer_id: "printer-local",
         printers: [printerOverviewRow("printer-local").printer],
@@ -215,10 +227,6 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
         assert.equal(limit, 500);
         return [];
       },
-      listLocalTopMaterials: async (limit) => {
-        assert.equal(limit, 12);
-        return [];
-      },
     },
   );
 
@@ -229,6 +237,12 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
   assert.equal(result.setupDataAvailable, true);
   assert.deepEqual(result.revisionSource, { kind: "local" });
   assert.equal(result.revisionPollComplete, true);
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value,
+    "120 g",
+  );
+  assert.equal(result.derived.usageTotal12m, 900);
+  assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 900);
   assert.deepEqual(result.bambuLiveAttention, [
     {
       printerId: "printer-local",
@@ -261,7 +275,13 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
       fetchHostSnapshot: async (baseUrl, libraryId) => {
         assert.equal(baseUrl, "http://host");
         assert.equal(libraryId, "library-1");
-        return snapshot("Live Host", { inventory: overview({ total_consumption_30d: 250 }) });
+        return snapshot("Live Host", {
+          inventory: overview({
+            total_consumption_30d: 250,
+            total_consumption_12m: 1_250,
+            consumption_12m: [{ month: currentMonth, used_grams: 1_250 }],
+          }),
+        });
       },
       loadSpoolRows: async (options) => {
         assert.equal(options.clientReadOnly, true);
@@ -273,13 +293,6 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
       fetchHostLoans: async (_baseUrl, _libraryId, limit) => {
         assert.equal(limit, 2000);
         return [];
-      },
-      fetchHostConsumption: async (baseUrl, libraryId, limit, printerId) => {
-        assert.equal(baseUrl, "http://host");
-        assert.equal(libraryId, "library-1");
-        assert.equal(limit, 500);
-        assert.equal(printerId, null);
-        return [consumptionRow("PLA", 130), consumptionRow("PETG", 120)];
       },
       fetchHostWishlist: async (_baseUrl, _libraryId, limit) => {
         assert.equal(limit, 500);
@@ -303,7 +316,8 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   assert.equal(result.revisionPollComplete, true);
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
   assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
-  assert.deepEqual(result.derived.usagePoints, [120, 130]);
+  assert.equal(result.derived.usageTotal12m, 1_250);
+  assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
 });
 
 test("loadDashboardData marks partial client host reads as cached", async () => {
@@ -330,7 +344,6 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
         throw new Error("printers unavailable");
       },
       fetchHostLoans: async () => [],
-      fetchHostConsumption: async () => [],
       fetchHostWishlist: async () => [],
       onLoadError: (error) => {
         errors.push(error);
@@ -377,7 +390,6 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
       },
       listLocalLoans: async () => [],
       listLocalWishlist: async () => [],
-      listLocalTopMaterials: async () => [],
     },
   );
 
@@ -438,9 +450,6 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
       listLocalWishlist: async () => {
         throw new Error("local wishlist should not load in client mode");
       },
-      listLocalTopMaterials: async () => {
-        throw new Error("local materials should not load in client mode");
-      },
     },
   );
 
@@ -473,15 +482,13 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
               low_stock: 99,
               owned_low_stock: 99,
               total_consumption_30d: 250,
+              total_consumption_12m: 1_250,
+              consumption_12m: [{ month: currentMonth, used_grams: 1_250 }],
             }),
           }),
           cached_spools: {
             captured_at: "2026-04-01 08:30:00",
             rows: [spoolWithMasterRow("spool-cache")],
-          },
-          cached_consumption: {
-            captured_at: "2026-04-01 08:25:00",
-            rows: [consumptionRow("PLA", 130), consumptionRow("PETG", 120)],
           },
         }),
       loadTrustedLanStatus: async () => null,
@@ -507,9 +514,6 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
       listLocalWishlist: async () => {
         throw new Error("local wishlist should not load in client mode");
       },
-      listLocalTopMaterials: async () => {
-        throw new Error("local materials should not load in client mode");
-      },
     },
   );
 
@@ -518,7 +522,8 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
   assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
   assert.equal(result.derived.stats.find((stat) => stat.id === "lowStock")?.value, "0");
   assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
-  assert.deepEqual(result.derived.usagePoints, [120, 130]);
+  assert.equal(result.derived.usageTotal12m, 1_250);
+  assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
 });
 
 test("loadDashboardData renders paired-client cache without waiting for host reads", async () => {
@@ -538,15 +543,15 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
           client_auth_paired: true,
           cached_snapshot: snapshot("Cached Host", {
             captured_at: "2026-04-01 08:00:00",
-            inventory: overview({ total_consumption_30d: 250 }),
+            inventory: overview({
+              total_consumption_30d: 250,
+              total_consumption_12m: 1_250,
+              consumption_12m: [{ month: currentMonth, used_grams: 1_250 }],
+            }),
           }),
           cached_spools: {
             captured_at: "2026-04-01 08:30:00",
             rows: [spoolWithMasterRow("spool-cache")],
-          },
-          cached_consumption: {
-            captured_at: "2026-04-01 08:25:00",
-            rows: [consumptionRow("PLA", 130), consumptionRow("PETG", 120)],
           },
         }),
       loadTrustedLanStatus: async () => null,
@@ -556,13 +561,11 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
       loadSpoolRows: hostRead,
       fetchHostPrinterOverview: hostRead,
       fetchHostLoans: hostRead,
-      fetchHostConsumption: hostRead,
       fetchHostWishlist: hostRead,
       loadInventoryOverview: hostRead,
       listLocalPrinters: hostRead,
       listLocalLoans: hostRead,
       listLocalWishlist: hostRead,
-      listLocalTopMaterials: hostRead,
     },
   );
 
@@ -570,7 +573,8 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.clientHostCompanionTone, "warn");
   assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
-  assert.deepEqual(result.derived.usagePoints, [120, 130]);
+  assert.equal(result.derived.usageTotal12m, 1_250);
+  assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
 });
 
 test("loadDashboardData stays client-offline without cache instead of loading local data", async () => {
@@ -582,6 +586,10 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
           mode: "CLIENT",
           host_base_url: " ",
           library_id: "library-1",
+          cached_consumption: {
+            captured_at: "2026-04-01 08:25:00",
+            rows: [consumptionRow("PLA", 250)],
+          },
         }),
       loadTrustedLanStatus: async () => null,
       loadPrinterSettings: async () => printerSettingsSnapshot(),
@@ -606,9 +614,6 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
       listLocalWishlist: async () => {
         throw new Error("local wishlist should not load in client mode");
       },
-      listLocalTopMaterials: async () => {
-        throw new Error("local materials should not load in client mode");
-      },
     },
   );
 
@@ -618,6 +623,40 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
   assert.equal(result.capturedAt, null);
   assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "0");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "0");
+});
+
+test("loadDashboardData marks annual usage unavailable for an older host snapshot", async () => {
+  const result = await loadDashboardData(
+    { previousClientHostNeedsRepair: false, t },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+        }),
+      loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      validateHost: async () => validation(),
+      fetchHostSnapshot: async () =>
+        snapshot("Older Host", {
+          inventory: overview({
+            consumption_12m_available: false,
+            total_consumption_12m: 0,
+            consumption_12m: [],
+          }),
+        }),
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => [],
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+    },
+  );
+
+  assert.equal(result.syncSource, "client-live");
+  assert.equal(result.derived.usageAvailable, false);
+  assert.equal(result.derived.usageTotal12m, 0);
+  assert.equal(result.derived.usageMonths.length, 12);
 });
 
 test("loadDashboardData falls back to cached client snapshot when host snapshot fails", async () => {
@@ -653,7 +692,6 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
         throw new Error("printers unavailable");
       },
       fetchHostLoans: async () => [],
-      fetchHostConsumption: async () => [],
       fetchHostWishlist: async () => {
         throw new Error("wishlist unavailable");
       },

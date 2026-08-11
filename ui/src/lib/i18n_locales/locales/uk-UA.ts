@@ -126,6 +126,8 @@ export const ukUADictionary: DictionaryNode = {
     "inUse": "у використанні",
     "inventoryHealth": "Здоров'я запасів",
     "last30": "Останні 30 днів",
+    "last12Months": "Останні 12 місяців",
+    "annualUsageUnavailable": "Оновіть хост, щоб переглянути історію за 12 місяців.",
     "loaned": "позичений",
     "loanedTo": "Позичений до",
     "lowest": "найнижчий",

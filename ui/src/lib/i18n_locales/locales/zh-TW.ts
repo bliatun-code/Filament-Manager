@@ -126,6 +126,8 @@ export const zhTWDictionary: DictionaryNode = {
     "inUse": "使用中",
     "inventoryHealth": "庫存健康狀況",
     "last30": "過去 30 天",
+    "last12Months": "過去 12 個月",
+    "annualUsageUnavailable": "更新主機以顯示 12 個月的歷史記錄。",
     "loaned": "借出的",
     "loanedTo": "借給",
     "lowest": "最低",

@@ -38,6 +38,10 @@ test("dashboard caches successful navigation-away loads before honoring cancella
     dashboardHookSource,
     /const snapshotRequest = beginDashboardPageSnapshotRequest\([\s\S]*writeDashboardPageSnapshot\([\s\S]*snapshotRequest/,
   );
+  assert.match(
+    dashboardHookSource,
+    /calendarMonthChanged[\s\S]*!observation\.shouldReload && !calendarMonthChanged/,
+  );
 });
 
 test("library source changes invalidate the dashboard snapshot", () => {

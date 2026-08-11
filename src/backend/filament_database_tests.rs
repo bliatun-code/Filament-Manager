@@ -7,7 +7,9 @@ use super::{
 use crate::backend::database_schema::{
     ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
 };
-use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview};
+use crate::backend::statistics::{
+    FilamentConsumptionRow, InventoryOverview, MonthlyConsumptionPoint,
+};
 use serde_json::json;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -2725,6 +2727,12 @@ fn library_sync_settings_default_and_persist_cleanly() {
                         total_consumption_30d: 1200,
                         owned_consumption_30d: 900,
                         borrowed_in_consumption_30d: 300,
+                        consumption_12m_available: true,
+                        total_consumption_12m: 3600,
+                        consumption_12m: vec![MonthlyConsumptionPoint {
+                            month: "2026-04".to_string(),
+                            used_grams: 3600,
+                        }],
                     },
                     total_spools: 42,
                     in_use: 4,
