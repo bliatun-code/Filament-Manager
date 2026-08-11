@@ -6,8 +6,15 @@ const workflow = readFileSync(
   new URL("../.github/workflows/supply-chain.yml", import.meta.url),
   "utf8",
 );
+const dependabot = readFileSync(
+  new URL("../.github/dependabot.yml", import.meta.url),
+  "utf8",
+);
 const packageManifest = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+);
+const uiPackageManifest = JSON.parse(
+  readFileSync(new URL("../ui/package.json", import.meta.url), "utf8"),
 );
 const npmLicensePolicy = JSON.parse(
   readFileSync(
@@ -19,6 +26,94 @@ const cargoDenyPolicy = readFileSync(
   new URL("../deny.toml", import.meta.url),
   "utf8",
 );
+const dependencyNameKey =
+  String.raw`(?:"dependency-name"|'dependency-name'|dependency-name)\s*:`;
+const updateTypesKey =
+  String.raw`(?:"update-types"|'update-types'|update-types)\s*:`;
+const expectedDependabotIgnoreRules = [
+  {
+    dependency: "@types/node",
+    updateTypes: ["version-update:semver-major"],
+  },
+  {
+    dependency: "typescript",
+    updateTypes: ["version-update:semver-major"],
+  },
+];
+
+function unquoteYamlScalar(value) {
+  const quoted = value.match(/^(["'])(.*)\1$/);
+  return quoted ? quoted[2] : value;
+}
+
+function parseDependabotIgnoreRules(source) {
+  const lines = source.split("\n");
+  const dependencyNameKeyCount =
+    source.match(new RegExp(dependencyNameKey, "g"))?.length ?? 0;
+  const rules = [];
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const dependency = lines[lineIndex].match(
+      new RegExp(`^(\\s*)-\\s+${dependencyNameKey}\\s*(\\S(?:.*\\S)?)\\s*$`),
+    );
+    if (!dependency) {
+      continue;
+    }
+
+    const ruleIndent = dependency[1].length;
+    const updateTypes = [];
+    let foundUpdateTypes = false;
+
+    for (
+      let childIndex = lineIndex + 1;
+      childIndex < lines.length;
+      childIndex += 1
+    ) {
+      const childLine = lines[childIndex];
+      if (childLine.trim() === "") {
+        continue;
+      }
+
+      const childIndent = childLine.match(/^\s*/)[0].length;
+      if (childIndent <= ruleIndent) {
+        break;
+      }
+      if (new RegExp(`^\\s*${updateTypesKey}\\s*$`).test(childLine)) {
+        foundUpdateTypes = true;
+        continue;
+      }
+      if (foundUpdateTypes) {
+        const updateType = childLine.match(/^\s*-\s+(\S(?:.*\S)?)\s*$/);
+        if (updateType) {
+          updateTypes.push(unquoteYamlScalar(updateType[1]));
+        }
+      }
+    }
+
+    assert.ok(
+      foundUpdateTypes,
+      `Dependabot ignore for ${dependency[2]} must declare update-types`,
+    );
+    rules.push({
+      dependency: unquoteYamlScalar(dependency[2]),
+      updateTypes,
+    });
+  }
+
+  assert.equal(
+    rules.length,
+    dependencyNameKeyCount,
+    "every Dependabot dependency-name rule must use the reviewed block format",
+  );
+  return rules;
+}
+
+function assertDependabotIgnorePolicy(source) {
+  assert.deepEqual(
+    parseDependabotIgnoreRules(source),
+    expectedDependabotIgnoreRules,
+  );
+}
 
 test("supply-chain workflow audits dependency pull requests and stays least privilege", () => {
   assert.match(workflow, /^name: Scheduled supply-chain audit$/m);
@@ -98,6 +193,46 @@ test("npm audit covers both lockfiles at a fail-closed severity threshold", () =
     packageManifest.scripts["check:npm-licenses"],
     "node ./scripts/check-npm-licenses.mjs",
   );
+});
+
+test("Dependabot surfaces majors except for explicit UI compatibility holds", () => {
+  assertDependabotIgnorePolicy(dependabot);
+  assert.equal(uiPackageManifest.engines.node, ">=24 <25");
+  assert.match(uiPackageManifest.devDependencies["@types/node"], /^\^24\./);
+  assert.match(uiPackageManifest.devDependencies.typescript, /^\^6\./);
+});
+
+test("Dependabot ignore policy parser accepts either YAML quote style", () => {
+  const singleQuoted = dependabot
+    .replace('dependency-name: "@types/node"', "dependency-name: '@types/node'")
+    .replace(
+      '- "version-update:semver-major"',
+      "- 'version-update:semver-major'",
+    );
+
+  assert.deepEqual(
+    parseDependabotIgnoreRules(singleQuoted),
+    parseDependabotIgnoreRules(dependabot),
+  );
+});
+
+test("Dependabot ignore policy rejects alternate wildcard key syntax", () => {
+  for (const dependencyLine of [
+    '      - "dependency-name": "*"',
+    '      - dependency-name : "*"',
+  ]) {
+    const extraRule = [
+      dependencyLine,
+      '        "update-types" :',
+      "          - 'version-update:semver-major'",
+    ].join("\n");
+    const withWildcard = dependabot.replace(
+      "    groups:\n      ui-npm-patches:",
+      `${extraRule}\n    groups:\n      ui-npm-patches:`,
+    );
+
+    assert.throws(() => assertDependabotIgnorePolicy(withWildcard));
+  }
 });
 
 test("Cargo audit and license tools are exact, locked and fail closed", () => {

@@ -23,6 +23,15 @@ function rustSetupSteps(workflow) {
     .map((section) => section.split(/^      - name:/m)[0]);
 }
 
+function workflowJob(workflow, jobName) {
+  const marker = `  ${jobName}:\n`;
+  const start = workflow.indexOf(marker);
+  assert.notEqual(start, -1, `missing ${jobName} workflow job`);
+  const remainder = workflow.slice(start + marker.length);
+  const nextJob = remainder.search(/^  [a-zA-Z0-9_-]+:\n/m);
+  return remainder.slice(0, nextJob === -1 ? undefined : nextJob);
+}
+
 test("Cargo packages declare the supported Rust 1.88 lower bound", () => {
   for (const manifest of [rootManifest, tauriManifest]) {
     const packageSection = manifest
@@ -68,7 +77,7 @@ test("Dependabot monitors the pinned Rust toolchain", () => {
   assert.match(updateBlock, /^      interval: "weekly"$/m);
 });
 
-test("every Rust workflow setup installs the exact reviewed toolchain", () => {
+test("every reviewed Rust workflow setup installs the exact toolchain", () => {
   const setupSteps = workflows.flatMap(([name, workflow]) =>
     rustSetupSteps(workflow).map((step) => [name, step]),
   );
@@ -84,6 +93,33 @@ test("every Rust workflow setup installs the exact reviewed toolchain", () => {
       step,
       /^          toolchain: 1\.97\.1$/m,
       `${name} must install the reviewed Rust release explicitly`,
+    );
+  }
+});
+
+test("both required smoke jobs enforce the Rust 1.88 MSRV first", () => {
+  const ciWorkflow = workflows[0][1];
+  for (const jobName of ["macos-smoke", "windows-smoke"]) {
+    const job = workflowJob(ciWorkflow, jobName);
+    assert.equal(
+      (job.match(/^      - name: Setup Rust MSRV$/gm) ?? []).length,
+      1,
+      `${jobName} must install the MSRV exactly once`,
+    );
+    assert.match(
+      job,
+      /- name: Setup Rust MSRV\s+uses: dtolnay\/rust-toolchain@[0-9a-f]{40} # master\s+with:\s+toolchain: 1\.88\.0/,
+    );
+    assert.match(
+      job,
+      /- name: Check Rust MSRV\s+env:\s+CARGO_TARGET_DIR: \$\{\{ runner\.temp \}\}\/filament-manager-msrv-target\s+run: cargo \+1\.88\.0 check --workspace --all-targets --all-features --locked/,
+    );
+    const msrvSetupIndex = job.indexOf("- name: Setup Rust MSRV");
+    const msrvCheckIndex = job.indexOf("- name: Check Rust MSRV");
+    const reviewedSetupIndex = job.indexOf("- name: Setup Rust\n");
+    assert.ok(
+      msrvSetupIndex < msrvCheckIndex && msrvCheckIndex < reviewedSetupIndex,
+      `${jobName} must install and check the lower bound before selecting the reviewed toolchain`,
     );
   }
 });
