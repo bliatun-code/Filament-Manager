@@ -1,7 +1,6 @@
 import { execFile as execFileCallback, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -44,6 +43,9 @@ const VISUAL_QA_WINDOW_SIZE_ENV_VAR =
 const MACOS_WINDOW_INFO_HELPER_PATH = fileURLToPath(
   new URL("./macos-window-info.swift", import.meta.url),
 );
+const MACOS_SCREENCAPTURE_PATH = "/usr/sbin/screencapture";
+const MAX_MACOS_PROCESS_ID = 0x7fffffff;
+const MAX_CG_WINDOW_ID = 0xffffffff;
 export const DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN = 96;
 export const DESKTOP_DARK_THEME_MAX_LUMA_MEAN = 128;
 const DESKTOP_VISUAL_QA_SCENARIO_MANIFEST = JSON.parse(
@@ -661,7 +663,16 @@ export function parseDesktopWindowInfo(raw) {
   if (parts.length < 6 || !parts[0]) {
     return null;
   }
-  const [processName, title, xRaw, yRaw, widthRaw, heightRaw] = parts;
+  const [
+    processName,
+    title,
+    xRaw,
+    yRaw,
+    widthRaw,
+    heightRaw,
+    processIdRaw,
+    windowIdRaw,
+  ] = parts;
   const x = Number.parseInt(xRaw, 10);
   const y = Number.parseInt(yRaw, 10);
   const width = Number.parseInt(widthRaw, 10);
@@ -672,14 +683,38 @@ export function parseDesktopWindowInfo(raw) {
   if (width <= 0 || height <= 0) {
     return null;
   }
+  const processId = parseOptionalPositiveInteger(processIdRaw);
+  const windowId = parseOptionalPositiveInteger(windowIdRaw);
+  if (
+    (processId != null &&
+      (!Number.isSafeInteger(processId) ||
+        processId <= 0 ||
+        processId > MAX_MACOS_PROCESS_ID)) ||
+    (windowId != null &&
+      (!Number.isSafeInteger(windowId) ||
+        windowId <= 0 ||
+        windowId > MAX_CG_WINDOW_ID))
+  ) {
+    return null;
+  }
   return {
     height,
+    ...(processId == null ? {} : { processId }),
     processName,
     title,
     width,
+    ...(windowId == null ? {} : { windowId }),
     x,
     y,
   };
+}
+
+function parseOptionalPositiveInteger(raw) {
+  if (raw == null || raw === "") {
+    return null;
+  }
+  const serialized = String(raw);
+  return /^\d+$/.test(serialized) ? Number(serialized) : Number.NaN;
 }
 
 export function parseDesktopWindowList(raw) {
@@ -698,9 +733,28 @@ function normalizeDesktopWindowIdentity(value) {
 
 export function selectDesktopWindowForProcess(
   windows,
-  { processName, windowTitle },
+  {
+    processId,
+    processName,
+    requireExactIdentity = false,
+    windowId,
+    windowTitle,
+  },
 ) {
-  const processWindows = desktopWindowsForProcess(windows, processName);
+  let processWindows = desktopWindowsForProcess(windows, processName);
+  if (Number.isSafeInteger(Number(processId)) && Number(processId) > 0) {
+    processWindows = processWindows.filter(
+      (window) => Number(window?.processId) === Number(processId),
+    );
+  }
+  if (Number.isSafeInteger(Number(windowId)) && Number(windowId) > 0) {
+    processWindows = processWindows.filter(
+      (window) => Number(window?.windowId) === Number(windowId),
+    );
+  }
+  if (requireExactIdentity) {
+    processWindows = processWindows.filter(desktopWindowHasExactIdentity);
+  }
   if (processWindows.length === 0) {
     return null;
   }
@@ -715,6 +769,17 @@ export function selectDesktopWindowForProcess(
     ) ??
     processWindows.find((window) => String(window?.title ?? "").trim()) ??
     processWindows[0]
+  );
+}
+
+export function desktopWindowHasExactIdentity(windowInfo) {
+  return (
+    Number.isSafeInteger(windowInfo?.processId) &&
+    windowInfo.processId > 0 &&
+    windowInfo.processId <= MAX_MACOS_PROCESS_ID &&
+    Number.isSafeInteger(windowInfo?.windowId) &&
+    windowInfo.windowId > 0 &&
+    windowInfo.windowId <= MAX_CG_WINDOW_ID
   );
 }
 
@@ -768,45 +833,7 @@ export async function listDesktopWindows(options = {}) {
 }
 
 export async function findDesktopWindow(options = {}) {
-  const execFileFn = options.execFileFn ?? execFile;
-  const windowTitle = options.windowTitle ?? DEFAULT_WINDOW_TITLE;
-  const processName = options.processName ?? DEFAULT_PROCESS_NAME;
-  let appleScriptError = null;
-  try {
-    const { stdout } = await execFileWithTimeout(
-      execFileFn,
-      "osascript",
-      ["-e", buildDesktopWindowListScript()],
-      {
-        label: "Desktop window lookup",
-        timeoutMs:
-          options.windowCommandTimeoutMs ??
-          options.desktopCommandTimeoutMs ??
-          DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
-      },
-    );
-    const window = selectDesktopWindowForProcess(
-      parseDesktopWindowList(stdout),
-      { processName, windowTitle },
-    );
-    if (window) {
-      return { ...window, lookupSource: "applescript" };
-    }
-  } catch (error) {
-    appleScriptError = error;
-  }
-  try {
-    return await findDesktopWindowWithNativeHelper(options);
-  } catch (nativeError) {
-    if (appleScriptError) {
-      throw new AggregateError(
-        [appleScriptError, nativeError],
-        `Both macOS desktop window lookups failed: ${childProcessErrorDetail(appleScriptError)}; native fallback: ${childProcessErrorDetail(nativeError)}.`,
-        { cause: appleScriptError },
-      );
-    }
-    throw nativeError;
-  }
+  return await findDesktopWindowWithNativeHelper(options);
 }
 
 export function resolveMacosWindowInfoHelperLaunch(command, args = []) {
@@ -833,6 +860,11 @@ export async function listDesktopWindowsWithNativeHelper(options = {}) {
   return parseDesktopWindowList(stdout);
 }
 
+export async function listAllDesktopWindowsWithNativeHelper(options = {}) {
+  const { stdout } = await runMacosWindowInfoHelper("list-all", [], options);
+  return parseDesktopWindowList(stdout);
+}
+
 export async function findDesktopWindowWithNativeHelper(options = {}) {
   const { stdout } = await runMacosWindowInfoHelper(
     "list",
@@ -841,7 +873,10 @@ export async function findDesktopWindowWithNativeHelper(options = {}) {
   );
   const window = normalizeNativeDesktopWindowFrame(
     selectDesktopWindowForProcess(parseDesktopWindowList(stdout), {
+      processId: options.processId,
       processName: options.processName ?? DEFAULT_PROCESS_NAME,
+      requireExactIdentity: true,
+      windowId: options.windowId,
       windowTitle: options.windowTitle ?? DEFAULT_WINDOW_TITLE,
     }),
     options.windowSize,
@@ -927,7 +962,7 @@ export async function waitForDesktopWindow(options = {}) {
 }
 
 export async function activateDesktopWindow(windowInfo, options = {}) {
-  if (!windowInfo?.processName || options.activate === false) {
+  if (!windowInfo?.processName || options.activate !== true) {
     return;
   }
   const execFileFn = options.execFileFn ?? execFile;
@@ -1078,7 +1113,11 @@ export async function resizeDesktopWindow(
   const resizedWindow = await waitForDesktopWindow({
     ...options,
     findWindowFn: async (lookupOptions) => {
-      const nextWindow = await findWindowFn(lookupOptions);
+      const nextWindow = await findWindowFn({
+        ...lookupOptions,
+        processId: windowInfo.processId,
+        windowId: windowInfo.windowId,
+      });
       if (nextWindow) {
         latestWindow = nextWindow;
       }
@@ -1121,283 +1160,36 @@ function screenshotPath(outputDir, name = "desktop-window") {
   return resolve(outputDir, `${name}.png`);
 }
 
-function privateFullScreenScreenshotPath(outputDir) {
-  return resolve(
-    outputDir,
-    `.desktop-full-screen-${process.pid}-${randomUUID()}.png`,
-  );
-}
-
-function requiredSafeInteger(value, label, { positive = false } = {}) {
-  const normalized = Number(value);
-  if (
-    !Number.isSafeInteger(normalized) ||
-    (positive ? normalized <= 0 : normalized < 0)
-  ) {
-    throw new Error(
-      `Desktop full-screen crop requires ${label} to be a ` +
-        `${positive ? "positive " : "non-negative "}integer; found ${String(value)}.`,
-    );
-  }
-  return normalized;
-}
-
-function exactScaledInteger(value, scale, label) {
-  const scaled = value * scale;
-  const rounded = Math.round(scaled);
-  if (
-    !Number.isSafeInteger(rounded) ||
-    Math.abs(scaled - rounded) > Number.EPSILON * Math.max(1, Math.abs(scaled)) * 8
-  ) {
-    throw new Error(
-      `Desktop full-screen crop scale ${scale} does not map ${label} ` +
-        `${value} to an exact pixel coordinate.`,
-    );
-  }
-  return rounded;
-}
-
-export function desktopFullScreenCropGeometry(
-  windowInfo,
-  screenInfo,
-  screenshotPixels,
-) {
-  const screenX = requiredSafeInteger(screenInfo?.x, "display x");
-  const screenY = requiredSafeInteger(screenInfo?.y, "display y");
-  const screenWidth = requiredSafeInteger(
-    screenInfo?.width,
-    "display width",
-    { positive: true },
-  );
-  const screenHeight = requiredSafeInteger(
-    screenInfo?.height,
-    "display height",
-    { positive: true },
-  );
-  const pixelWidth = requiredSafeInteger(
-    screenshotPixels?.width,
-    "full-screen pixel width",
-    { positive: true },
-  );
-  const pixelHeight = requiredSafeInteger(
-    screenshotPixels?.height,
-    "full-screen pixel height",
-    { positive: true },
-  );
-  const windowX = requiredSafeInteger(windowInfo?.x, "window x");
-  const windowY = requiredSafeInteger(windowInfo?.y, "window y");
-  const windowWidth = requiredSafeInteger(
-    windowInfo?.width,
-    "window width",
-    { positive: true },
-  );
-  const windowHeight = requiredSafeInteger(
-    windowInfo?.height,
-    "window height",
-    { positive: true },
-  );
-
-  if (
-    !Number.isSafeInteger(pixelWidth * screenHeight) ||
-    !Number.isSafeInteger(pixelHeight * screenWidth) ||
-    pixelWidth * screenHeight !== pixelHeight * screenWidth
-  ) {
-    throw new Error(
-      `Desktop full-screen PNG ${pixelWidth}x${pixelHeight} has an ` +
-        `inconsistent screen scale for native main-screen bounds ` +
-        `${screenWidth}x${screenHeight}.`,
-    );
-  }
-
-  const scale = pixelWidth / screenWidth;
-  const x = exactScaledInteger(windowX - screenX, scale, "window x");
-  const y = exactScaledInteger(windowY - screenY, scale, "window y");
-  const width = exactScaledInteger(windowWidth, scale, "window width");
-  const height = exactScaledInteger(windowHeight, scale, "window height");
-  if (
-    x < 0 ||
-    y < 0 ||
-    x + width > pixelWidth ||
-    y + height > pixelHeight
-  ) {
-    throw new Error(
-      `Desktop full-screen crop ${x},${y},${width},${height} exceeds ` +
-        `the ${pixelWidth}x${pixelHeight} PNG.`,
-    );
-  }
-  return { height, scale, width, x, y };
-}
-
-function desktopCaptureFallbackError(regionError, fallbackError, cleanupError) {
-  const failures = [regionError, fallbackError, cleanupError].filter(Boolean);
-  const detail = [
-    `region capture: ${childProcessErrorDetail(regionError)}`,
-    fallbackError
-      ? `full-screen crop fallback: ${childProcessErrorDetail(fallbackError)}`
-      : null,
-    cleanupError
-      ? `private full-screen cleanup: ${childProcessErrorDetail(cleanupError)}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join("; ");
-  return new AggregateError(
-    failures,
-    `Desktop window screenshot capture failed (${detail}).`,
-    { cause: regionError },
-  );
-}
-
-async function captureDesktopWindowScreenshotFromFullScreen({
-  execFileFn,
-  outputPath,
-  options,
-  outputDir,
-  regionError,
-  screen,
-  windowInfo,
-}) {
-  const fullScreenPath = privateFullScreenScreenshotPath(outputDir);
-  const readFileFn = options.readFileFn ?? readFile;
-  const removeFileFn = options.removeFileFn ?? rm;
-  const measureScreenshotPixelsFn =
-    options.measureScreenshotPixelsFn ?? measureScreenshotPixels;
-  const commandTimeoutMs =
-    options.screenshotCommandTimeoutMs ??
-    options.desktopCommandTimeoutMs ??
-    8_000;
-  let result = null;
-  let fallbackError = null;
-  let cleanupError = null;
-
-  try {
-    await execFileWithTimeout(
-      execFileFn,
-      "screencapture",
-      ["-x", fullScreenPath],
-      {
-        label: "Desktop full-screen screenshot fallback",
-        timeoutMs: commandTimeoutMs,
-      },
-    );
-    await securePrivateQaArtifact(fullScreenPath, options);
-    const fullScreenBuffer = await readFileFn(fullScreenPath);
-    const fullScreenPixels = measureScreenshotPixelsFn(fullScreenBuffer);
-    const crop = desktopFullScreenCropGeometry(
-      windowInfo,
-      screen,
-      fullScreenPixels,
-    );
-    await execFileWithTimeout(
-      execFileFn,
-      "sips",
-      [
-        "-c",
-        String(crop.height),
-        String(crop.width),
-        "--cropOffset",
-        String(crop.y),
-        String(crop.x),
-        fullScreenPath,
-        "--out",
-        outputPath,
-      ],
-      {
-        label: "Desktop full-screen screenshot crop",
-        timeoutMs: commandTimeoutMs,
-      },
-    );
-    await securePrivateQaArtifact(outputPath, options);
-    result = {
-      buffer: await readFileFn(outputPath),
-      path: outputPath,
-    };
-  } catch (error) {
-    fallbackError = error;
-  } finally {
-    try {
-      await removeFileFn(fullScreenPath, { force: true });
-    } catch (error) {
-      cleanupError = error;
-    }
-  }
-
-  if (fallbackError || cleanupError) {
-    throw desktopCaptureFallbackError(
-      regionError,
-      fallbackError,
-      cleanupError,
-    );
-  }
-  return result;
-}
-
 export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
-  if (Number(windowInfo?.x) < 0 || Number(windowInfo?.y) < 0) {
-    throw new Error(
-      `Desktop window must be inside the primary capture area before capture (x=${windowInfo?.x}, y=${windowInfo?.y}).`,
-    );
-  }
-  const findPrimaryScreenFn =
-    options.findPrimaryScreenFn ?? findPrimaryDesktopScreen;
-  const screen = options.screenInfo ?? (await findPrimaryScreenFn(options));
-  const windowRight = Number(windowInfo.x) + Number(windowInfo.width);
-  const windowBottom = Number(windowInfo.y) + Number(windowInfo.height);
-  const screenRight = Number(screen.x) + Number(screen.width);
-  const screenBottom = Number(screen.y) + Number(screen.height);
   if (
-    Number(windowInfo.x) < Number(screen.x) ||
-    Number(windowInfo.y) < Number(screen.y) ||
-    windowRight >= screenRight ||
-    windowBottom >= screenBottom
+    windowInfo?.lookupSource !== "native" ||
+    !desktopWindowHasExactIdentity(windowInfo)
   ) {
     throw new Error(
-      `Desktop window capture rectangle must stay inside the primary display (window ${windowInfo.x},${windowInfo.y},${windowInfo.width},${windowInfo.height}; display ${screen.x},${screen.y},${screen.width},${screen.height}).`,
+      "Desktop visual QA refuses to capture without a verified positive processId and CGWindowID from the native macOS window helper lookup.",
     );
   }
   const execFileFn = options.execFileFn ?? execFile;
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
   await preparePrivateQaArtifactDirectory(outputDir, options);
   const path = screenshotPath(outputDir, options.name);
-  const region = [
-    windowInfo.x,
-    windowInfo.y,
-    Math.max(1, windowInfo.width),
-    Math.max(1, windowInfo.height),
-  ].join(",");
-  try {
-    await execFileWithTimeout(
-      execFileFn,
-      "screencapture",
-      ["-x", "-R", region, path],
-      {
-        label: "Desktop window screenshot capture",
-        timeoutMs:
-          options.screenshotCommandTimeoutMs ??
-          options.desktopCommandTimeoutMs ??
-          8_000,
-      },
-    );
-  } catch (regionError) {
-    const fallback = await captureDesktopWindowScreenshotFromFullScreen({
-      execFileFn,
-      options,
-      outputDir,
-      outputPath: path,
-      regionError,
-      screen,
-      windowInfo,
-    });
-    return {
-      ...fallback,
-      region,
-    };
-  }
+  await execFileWithTimeout(
+    execFileFn,
+    MACOS_SCREENCAPTURE_PATH,
+    ["-x", "-o", `-l${windowInfo.windowId}`, path],
+    {
+      label: "Exact desktop window screenshot capture",
+      timeoutMs:
+        options.screenshotCommandTimeoutMs ??
+        options.desktopCommandTimeoutMs ??
+        8_000,
+    },
+  );
   await securePrivateQaArtifact(path, options);
   return {
     buffer: await (options.readFileFn ?? readFile)(path),
     path,
-    region,
+    windowId: windowInfo.windowId,
   };
 }
 
@@ -1562,7 +1354,7 @@ export async function runDesktopScreenshotGate(options = {}) {
   }
   await activateDesktopWindow(window, options);
   const screenshot = await captureDesktopWindowScreenshot(window, {
-    execFileFn: options.execFileFn,
+    ...options,
     name: options.name,
     outputDir,
   });
@@ -1893,7 +1685,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   const platform = options.platform ?? process.platform;
   if (platform === "darwin") {
     const listPreexistingWindowsFn =
-      options.listPreexistingWindowsFn ?? listDesktopWindowsWithNativeHelper;
+      options.listPreexistingWindowsFn ?? listAllDesktopWindowsWithNativeHelper;
     const preexistingWindows = desktopWindowsForProcess(
       await listPreexistingWindowsFn(options),
       options.processName ?? DEFAULT_PROCESS_NAME,
