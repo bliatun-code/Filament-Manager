@@ -25,13 +25,13 @@ pub(crate) fn fetch_library_sync_snapshot(
         return Err("Host snapshot reported not ready.".to_string());
     }
 
-    if let Some(expected_library_id) = expected_library_id {
-        if parsed.library_id != expected_library_id {
-            return Err(format!(
-                "Host snapshot belongs to a different library ({}).",
-                parsed.library_id
-            ));
-        }
+    if let Some(expected_library_id) = expected_library_id
+        && parsed.library_id != expected_library_id
+    {
+        return Err(format!(
+            "Host snapshot belongs to a different library ({}).",
+            parsed.library_id
+        ));
     }
 
     let snapshot = LibrarySyncRemoteSnapshot {

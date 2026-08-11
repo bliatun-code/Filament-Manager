@@ -204,10 +204,10 @@ fn purge_stored_credentials_from_parts(
         }
     }
 
-    if let Err(error) = library_sync_auth.clear() {
-        if first_error.is_none() {
-            first_error = Some(error);
-        }
+    if let Err(error) = library_sync_auth.clear()
+        && first_error.is_none()
+    {
+        first_error = Some(error);
     }
 
     match first_error {
@@ -224,22 +224,21 @@ fn restore_deleted_credentials(
 ) -> Result<(), String> {
     let mut first_error = None;
     for (key, secret) in stored_credentials {
-        if let Err(error) = credentials.set(&key, &secret) {
-            if first_error.is_none() {
-                first_error = Some(format!("Could not restore a stored credential: {error}"));
-            }
+        if let Err(error) = credentials.set(&key, &secret)
+            && first_error.is_none()
+        {
+            first_error = Some(format!("Could not restore a stored credential: {error}"));
         }
     }
-    if let Some(session) = runtime_auth {
-        if let Err(error) = library_sync_auth.replace(
+    if let Some(session) = runtime_auth
+        && let Err(error) = library_sync_auth.replace(
             session.host_base_url.clone(),
             session.session_id.clone(),
             session.csrf_token.clone(),
-        ) {
-            if first_error.is_none() {
-                first_error = Some(error);
-            }
-        }
+        )
+        && first_error.is_none()
+    {
+        first_error = Some(error);
     }
     match first_error {
         Some(error) => Err(error),
@@ -422,10 +421,10 @@ fn read_pending_credential_cleanup(
         return Err("Pending credential cleanup manifest has an unknown format.".to_string());
     }
     manifest.scopes.validate_manifest()?;
-    if let Some(scope) = manifest.profile_scope_digest.as_deref() {
-        if scope.len() != 64 || !scope.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-            return Err("Pending credential cleanup profile scope is invalid.".to_string());
-        }
+    if let Some(scope) = manifest.profile_scope_digest.as_deref()
+        && (scope.len() != 64 || !scope.bytes().all(|byte| byte.is_ascii_hexdigit()))
+    {
+        return Err("Pending credential cleanup profile scope is invalid.".to_string());
     }
     Ok(Some(manifest))
 }

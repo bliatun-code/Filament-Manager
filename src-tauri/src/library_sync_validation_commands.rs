@@ -107,27 +107,28 @@ pub(crate) fn validate_library_sync_host(
     let mut pairing_checked = false;
     let mut pairing_valid = false;
 
-    if parsed.ok && matches_library_id {
-        if let Some(device_token) =
+    if parsed.ok
+        && matches_library_id
+        && let Some(device_token) =
             load_library_sync_device_token_optional(&state, &normalized_base_url)?
-        {
-            pairing_checked = true;
-            match renew_and_cache_library_sync_auth(&state, &normalized_base_url, &device_token) {
-                Ok(_) => {
-                    pairing_valid = true;
-                }
-                Err(error) => {
-                    message = if error.contains("401") {
-                        format!(
-                            "Host is reachable{}, but desktop client pairing is no longer valid.",
-                            parsed
-                                .device_name
-                                .as_deref()
-                                .map(|value| format!(" on {value}"))
-                                .unwrap_or_default()
-                        )
-                    } else {
-                        format!(
+    {
+        pairing_checked = true;
+        match renew_and_cache_library_sync_auth(&state, &normalized_base_url, &device_token) {
+            Ok(_) => {
+                pairing_valid = true;
+            }
+            Err(error) => {
+                message = if error.contains("401") {
+                    format!(
+                        "Host is reachable{}, but desktop client pairing is no longer valid.",
+                        parsed
+                            .device_name
+                            .as_deref()
+                            .map(|value| format!(" on {value}"))
+                            .unwrap_or_default()
+                    )
+                } else {
+                    format!(
                             "Host is reachable{}, but desktop client pairing could not be verified ({error}).",
                             parsed
                                 .device_name
@@ -135,8 +136,7 @@ pub(crate) fn validate_library_sync_host(
                                 .map(|value| format!(" on {value}"))
                                 .unwrap_or_default()
                         )
-                    };
-                }
+                };
             }
         }
     }

@@ -342,13 +342,12 @@ fn probe_collection(client: &Client, base_url: &str, handle: &str) -> bool {
         800,
         12_000,
         DETECT_RETRY_JITTER_MS,
-    ) {
-        if (200..300).contains(&status) {
-            if let Ok(parsed) = serde_json::from_str::<ShopifyProductsResponse>(&body) {
-                return parsed.products.is_some();
-            }
-            return false;
+    ) && (200..300).contains(&status)
+    {
+        if let Ok(parsed) = serde_json::from_str::<ShopifyProductsResponse>(&body) {
+            return parsed.products.is_some();
         }
+        return false;
     }
 
     let html_url = format!("{base_url}/collections/{handle}");
@@ -360,10 +359,9 @@ fn probe_collection(client: &Client, base_url: &str, handle: &str) -> bool {
         800,
         12_000,
         DETECT_RETRY_JITTER_MS,
-    ) {
-        if (200..300).contains(&status) {
-            return body.contains("productList");
-        }
+    ) && (200..300).contains(&status)
+    {
+        return body.contains("productList");
     }
 
     false
@@ -389,13 +387,13 @@ fn detect_store(client: &Client) -> Result<DetectStoreResult, String> {
     }
 
     for base_url in &base_urls {
-        if let Some(handle) = explicit_handle.as_deref() {
-            if probe_collection(client, base_url, handle) {
-                return Ok(DetectStoreResult {
-                    base_url: base_url.clone(),
-                    handle: handle.to_string(),
-                });
-            }
+        if let Some(handle) = explicit_handle.as_deref()
+            && probe_collection(client, base_url, handle)
+        {
+            return Ok(DetectStoreResult {
+                base_url: base_url.clone(),
+                handle: handle.to_string(),
+            });
         }
 
         if let Some(collections) = fetch_json_collections(client, base_url) {
@@ -563,10 +561,10 @@ fn official_key(value: &str) -> String {
 
 fn color_name_without_code(color_name: &str) -> &str {
     let trimmed = color_name.trim();
-    if trimmed.ends_with(')') {
-        if let Some((name, _code)) = trimmed.rsplit_once('(') {
-            return name.trim();
-        }
+    if trimmed.ends_with(')')
+        && let Some((name, _code)) = trimmed.rsplit_once('(')
+    {
+        return name.trim();
     }
     trimmed
 }
@@ -1074,24 +1072,24 @@ fn decode_js_string_literal(value: &str) -> String {
                     }
                     if end < chars.len() {
                         let hex: String = chars[i + 3..end].iter().collect();
-                        if let Ok(code) = u32::from_str_radix(&hex, 16) {
-                            if let Some(decoded) = char::from_u32(code) {
-                                out.push(decoded);
-                                i = end + 1;
-                                continue;
-                            }
+                        if let Ok(code) = u32::from_str_radix(&hex, 16)
+                            && let Some(decoded) = char::from_u32(code)
+                        {
+                            out.push(decoded);
+                            i = end + 1;
+                            continue;
                         }
                     }
                     out.push('u');
                     i += 2;
                 } else if i + 5 < chars.len() {
                     let hex: String = chars[i + 2..=i + 5].iter().collect();
-                    if let Ok(code) = u16::from_str_radix(&hex, 16) {
-                        if let Some(decoded) = char::from_u32(code as u32) {
-                            out.push(decoded);
-                            i += 6;
-                            continue;
-                        }
+                    if let Ok(code) = u16::from_str_radix(&hex, 16)
+                        && let Some(decoded) = char::from_u32(code as u32)
+                    {
+                        out.push(decoded);
+                        i += 6;
+                        continue;
                     }
                     out.push('u');
                     i += 2;
@@ -1255,21 +1253,20 @@ fn extract_color_options(decoded: &str) -> Vec<ColorOption> {
         };
         let obj_text = &decoded[start..=end];
 
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(obj_text) {
-            if let Some(color_name_raw) =
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(obj_text)
+            && let Some(color_name_raw) =
                 value.get("propertyValue").and_then(|entry| entry.as_str())
-            {
-                let color_name = color_name_raw.trim();
-                if color_name.is_empty() {
-                    index = end.saturating_add(1);
-                    continue;
-                }
-                let image_url = value
-                    .get("colorUrl")
-                    .and_then(|entry| entry.as_str())
-                    .map(|entry| entry.to_string());
-                options.insert(color_name.to_string(), image_url);
+        {
+            let color_name = color_name_raw.trim();
+            if color_name.is_empty() {
+                index = end.saturating_add(1);
+                continue;
             }
+            let image_url = value
+                .get("colorUrl")
+                .and_then(|entry| entry.as_str())
+                .map(|entry| entry.to_string());
+            options.insert(color_name.to_string(), image_url);
         }
 
         index = end.saturating_add(1);

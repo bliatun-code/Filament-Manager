@@ -78,12 +78,12 @@ pub(crate) fn extract_library_sync_pairing_token(raw: &str) -> Option<String> {
     if trimmed.is_empty() {
         return None;
     }
-    if let Ok(parsed) = reqwest::Url::parse(trimmed) {
-        if let Some((_, value)) = parsed.query_pairs().find(|(key, _)| key == "pairing") {
-            let token = value.trim().to_string();
-            if !token.is_empty() {
-                return Some(token);
-            }
+    if let Ok(parsed) = reqwest::Url::parse(trimmed)
+        && let Some((_, value)) = parsed.query_pairs().find(|(key, _)| key == "pairing")
+    {
+        let token = value.trim().to_string();
+        if !token.is_empty() {
+            return Some(token);
         }
     }
     Some(trimmed.to_string())
@@ -132,10 +132,10 @@ pub(crate) fn send_library_sync_request(
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     let request_started_at = Instant::now();
     #[cfg(any(target_os = "macos", target_os = "windows"))]
-    if let Some(client) = build_mdns_local_client(base_url, timeout, operation)? {
-        if let Ok(response) = make_request(&client).send() {
-            return Ok(response);
-        }
+    if let Some(client) = build_mdns_local_client(base_url, timeout, operation)?
+        && let Ok(response) = make_request(&client).send()
+    {
+        return Ok(response);
     }
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     let timeout = remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
@@ -555,14 +555,14 @@ fn current_or_renewed_library_sync_auth_under_gate(
     base_url: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
     let device_token = validated_library_sync_device_token(state, base_url, None)?;
-    if let Some(session) = state.library_sync_auth.current()? {
-        if session.host_base_url == base_url {
-            return Ok(LibrarySyncAuthenticatedSessionState {
-                csrf_token: session.csrf_token.clone(),
-                session_id: session.session_id.clone(),
-                device_token,
-            });
-        }
+    if let Some(session) = state.library_sync_auth.current()?
+        && session.host_base_url == base_url
+    {
+        return Ok(LibrarySyncAuthenticatedSessionState {
+            csrf_token: session.csrf_token.clone(),
+            session_id: session.session_id.clone(),
+            device_token,
+        });
     }
     renew_and_cache_library_sync_auth_under_gate(state, base_url, &device_token)
 }

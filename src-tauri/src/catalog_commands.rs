@@ -674,10 +674,9 @@ fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<
 
     if let Some(blocks) = extract_prefixed_line(output, "Anti-bot blocks:")
         .and_then(|value| value.parse::<i64>().ok())
+        && blocks > 0
     {
-        if blocks > 0 {
-            return Some("anti-bot/rate-limit responses detected".to_string());
-        }
+        return Some("anti-bot/rate-limit responses detected".to_string());
     }
 
     if lowered.contains("refresh quality: partial") {

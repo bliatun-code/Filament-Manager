@@ -40,12 +40,12 @@ pub(super) async fn handle_create_wishlist_item(
                 ));
             }
 
-            if let Some(quantity) = payload.quantity {
-                if quantity <= 0 {
-                    return Err(CompanionApiError::BadRequest(
-                        "quantity must be greater than zero".to_string(),
-                    ));
-                }
+            if let Some(quantity) = payload.quantity
+                && quantity <= 0
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "quantity must be greater than zero".to_string(),
+                ));
             }
 
             state

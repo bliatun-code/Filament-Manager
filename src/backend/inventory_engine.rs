@@ -562,18 +562,18 @@ impl InventoryEngine {
             };
             insert_spool_row(conn, &spool)?;
 
-            if let Some(location) = input.location.as_deref() {
-                if !location.trim().is_empty() {
-                    let location_id = ensure_location_row(conn, location)?;
-                    set_spool_location_row(conn, &spool_id, Some(&location_id))?;
-                    set_spool_home_location_row(conn, &spool_id, Some(&location_id))?;
-                    insert_json_history_event(
-                        conn,
-                        &spool_id,
-                        "LOCATION_UPDATED",
-                        json!({ "location": location_id }),
-                    )?;
-                }
+            if let Some(location) = input.location.as_deref()
+                && !location.trim().is_empty()
+            {
+                let location_id = ensure_location_row(conn, location)?;
+                set_spool_location_row(conn, &spool_id, Some(&location_id))?;
+                set_spool_home_location_row(conn, &spool_id, Some(&location_id))?;
+                insert_json_history_event(
+                    conn,
+                    &spool_id,
+                    "LOCATION_UPDATED",
+                    json!({ "location": location_id }),
+                )?;
             }
 
             insert_json_history_event(

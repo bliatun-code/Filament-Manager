@@ -909,13 +909,12 @@ pub(super) async fn handle_update_printer_slot_assignment(
             }
             if let (Some(current_spool_id), Some(next_spool_id)) =
                 (slot.spool_id.as_deref(), target_spool_id)
+                && current_spool_id != next_spool_id
             {
-                if current_spool_id != next_spool_id {
-                    return Err(CompanionApiError::BadRequest(
+                return Err(CompanionApiError::BadRequest(
                 "Slot must be cleared before assigning another spool from the browser companion"
                     .to_string(),
             ));
-                }
             }
             if let Some(next_spool_id) = target_spool_id {
                 let spool = state
@@ -1183,12 +1182,12 @@ pub(super) async fn handle_lend_spool(
                 ));
             }
 
-            if let Some(grams_out) = payload.grams_out {
-                if grams_out < 0 {
-                    return Err(CompanionApiError::BadRequest(
-                        "grams_out must be zero or greater".to_string(),
-                    ));
-                }
+            if let Some(grams_out) = payload.grams_out
+                && grams_out < 0
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "grams_out must be zero or greater".to_string(),
+                ));
             }
 
             let spool = state
@@ -1524,10 +1523,10 @@ pub(super) async fn require_companion_host(
     if let Err(error) = require_allowed_host(request.headers(), &state.runtime) {
         return error.into_response();
     }
-    if request.uri().path() != "/api/v1/health" {
-        if let Err(error) = require_stable_request_host(request.headers(), &state.runtime) {
-            return error.into_response();
-        }
+    if request.uri().path() != "/api/v1/health"
+        && let Err(error) = require_stable_request_host(request.headers(), &state.runtime)
+    {
+        return error.into_response();
     }
     next.run(request).await
 }

@@ -13,10 +13,10 @@ pub(crate) fn get_trusted_lan_companion_status(
 pub(crate) fn trusted_lan_server_status_snapshot(
     runtime: &TrustedLanCompanionRuntime,
 ) -> TrustedLanCompanionRuntimeSnapshot {
-    if runtime.local_name_running() {
-        if let Err(error) = runtime.local_service_advertisement_health() {
-            runtime.mark_local_name_failed(error.to_string());
-        }
+    if runtime.local_name_running()
+        && let Err(error) = runtime.local_service_advertisement_health()
+    {
+        runtime.mark_local_name_failed(error.to_string());
     }
     let mut snapshot = runtime.snapshot();
     if !snapshot.enabled || !snapshot.running {

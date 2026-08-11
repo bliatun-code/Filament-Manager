@@ -176,15 +176,15 @@ pub(super) fn parse_weight_grams(title: &str) -> Option<i64> {
         let clean = token
             .trim_matches(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '.'))
             .to_uppercase();
-        if let Some(value) = clean.strip_suffix("KG") {
-            if let Ok(number) = value.parse::<f64>() {
-                return Some((number * 1000.0).round() as i64);
-            }
+        if let Some(value) = clean.strip_suffix("KG")
+            && let Ok(number) = value.parse::<f64>()
+        {
+            return Some((number * 1000.0).round() as i64);
         }
-        if let Some(value) = clean.strip_suffix('G') {
-            if let Ok(number) = value.parse::<f64>() {
-                return Some(number.round() as i64);
-            }
+        if let Some(value) = clean.strip_suffix('G')
+            && let Ok(number) = value.parse::<f64>()
+        {
+            return Some(number.round() as i64);
         }
     }
     None

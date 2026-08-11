@@ -68,16 +68,17 @@ pub(crate) fn sync_observed_usage(
             && context.is_near_finish_tail_signal()
             && recent_completed_context
     });
-    if let Some(context) = usage_context.as_ref() {
-        if context.should_track_running_usage_session() && !stale_recent_completed_context {
-            db.touch_live_usage_session(LiveUsageSessionInput {
-                printer_id: &overview.printer.id,
-                session_key: &context.session_key,
-                job_name: context.job_name.as_deref(),
-                print_type: context.print_type.as_deref(),
-                observed_at: context.observed_at.as_deref(),
-            })?;
-        }
+    if let Some(context) = usage_context.as_ref()
+        && context.should_track_running_usage_session()
+        && !stale_recent_completed_context
+    {
+        db.touch_live_usage_session(LiveUsageSessionInput {
+            printer_id: &overview.printer.id,
+            session_key: &context.session_key,
+            job_name: context.job_name.as_deref(),
+            print_type: context.print_type.as_deref(),
+            observed_at: context.observed_at.as_deref(),
+        })?;
     }
     let slot_usage_context = match usage_context.as_ref() {
         Some(context) if context.finished_success.is_some() => {
@@ -89,15 +90,15 @@ pub(crate) fn sync_observed_usage(
         other => other,
     };
     auto_sync_live_slots(db, overview, observed, slot_usage_context)?;
-    if let Some(context) = usage_context.as_ref() {
-        if let Some(success) = context.finished_success {
-            db.finish_live_usage_session(
-                &overview.printer.id,
-                &context.session_key,
-                context.observed_at.as_deref(),
-                success,
-            )?;
-        }
+    if let Some(context) = usage_context.as_ref()
+        && let Some(success) = context.finished_success
+    {
+        db.finish_live_usage_session(
+            &overview.printer.id,
+            &context.session_key,
+            context.observed_at.as_deref(),
+            success,
+        )?;
     }
     Ok(())
 }
@@ -148,42 +149,42 @@ fn auto_sync_live_slots(
 
         if auto_clear_empty_signal || auto_clear_unknown_replacement || auto_clear_color_replacement
         {
-            if let Some(slot) = slot {
-                if slot.spool_id.is_some() {
-                    db.assign_spool_to_ams_slot(
-                        &overview.printer.id,
-                        &slot.slot_id,
-                        None,
-                        None,
-                        None,
-                        false,
-                    )?;
-                    db.insert_printer_live_event(
-                        &overview.printer.id,
-                        "LIVE_AUTO_SLOT_EMPTIED",
-                        &json!({
-                            "slot_id": slot.slot_id,
-                            "slot_index": slot.slot_index,
-                            "reason": if auto_clear_empty_signal {
-                                "empty_signal"
-                            } else if auto_clear_color_replacement {
-                                "color_replacement_without_rfid"
-                            } else {
-                                "unknown_rfid_replacement"
-                            },
-                            "observed_tray_uuid": tray.tray_uuid,
-                            "observed_color_hex": tray.color_hex,
-                            "observed_at": if auto_clear_empty_signal {
-                                tray.last_empty_seen_at.clone()
-                            } else {
-                                tray.last_identity_seen_at.clone()
-                            },
-                            "empty_observation_count": tray.empty_observation_count,
-                            "tray_exist_bits": observed.ams_exist_bits.as_deref(),
-                            "slot_present_from_exist_bits": slot_present_from_exist_bits,
-                        }),
-                    )?;
-                }
+            if let Some(slot) = slot
+                && slot.spool_id.is_some()
+            {
+                db.assign_spool_to_ams_slot(
+                    &overview.printer.id,
+                    &slot.slot_id,
+                    None,
+                    None,
+                    None,
+                    false,
+                )?;
+                db.insert_printer_live_event(
+                    &overview.printer.id,
+                    "LIVE_AUTO_SLOT_EMPTIED",
+                    &json!({
+                        "slot_id": slot.slot_id,
+                        "slot_index": slot.slot_index,
+                        "reason": if auto_clear_empty_signal {
+                            "empty_signal"
+                        } else if auto_clear_color_replacement {
+                            "color_replacement_without_rfid"
+                        } else {
+                            "unknown_rfid_replacement"
+                        },
+                        "observed_tray_uuid": tray.tray_uuid,
+                        "observed_color_hex": tray.color_hex,
+                        "observed_at": if auto_clear_empty_signal {
+                            tray.last_empty_seen_at.clone()
+                        } else {
+                            tray.last_identity_seen_at.clone()
+                        },
+                        "empty_observation_count": tray.empty_observation_count,
+                        "tray_exist_bits": observed.ams_exist_bits.as_deref(),
+                        "slot_present_from_exist_bits": slot_present_from_exist_bits,
+                    }),
+                )?;
             }
             continue;
         }
@@ -461,8 +462,8 @@ fn sync_live_weight(
                 &dedupe_key,
                 LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
             )?;
-            if let Some(context) = usage_context {
-                if let Some(correction) = db.correct_live_usage_for_observed_weight_increase(
+            if let Some(context) = usage_context
+                && let Some(correction) = db.correct_live_usage_for_observed_weight_increase(
                     LiveUsageObservedWeightCorrectionInput {
                         printer_id,
                         session_key: &context.session_key,
@@ -471,66 +472,66 @@ fn sync_live_weight(
                         observed_at: context.observed_at.as_deref(),
                         min_correction_grams: LIVE_WEIGHT_MIN_USAGE_CORRECTION_G,
                     },
-                )? {
-                    let next_status = live_weight_spool_status(remaining_grams, tray);
-                    db.update_spool_weight(spool_id, Some(remaining_grams), Some(remaining_grams))?;
-                    db.update_spool_status(spool_id, next_status)?;
-                    db.ensure_scale("bambu-ams", "Bambu AMS", "VIRTUAL")?;
-                    db.insert_weight_reading("bambu-ams", spool_id, remaining_grams, "BAMBU_AMS")?;
-                    db.insert_spool_history_event(
-                        spool_id,
-                        "WEIGHT_CORRECTED",
-                        &json!({
-                            "grams": remaining_grams,
-                            "previous_grams": current,
-                            "baseline_grams": correction.baseline_grams,
-                            "previous_used_grams": correction.previous_used_grams,
-                            "corrected_used_grams": correction.corrected_used_grams,
-                            "correction_grams": correction.correction_grams,
-                            "usage_session_id": correction.session_id.as_str(),
-                            "usage_session_key": context.session_key.as_str(),
-                            "remaining_percent": tray.remaining_percent,
-                            "tray_weight_g": tray.tray_weight_g,
-                            "source": "BAMBU_AMS",
-                            "printer_id": printer_id,
-                            "observed_at": tray.last_identity_seen_at,
-                        })
-                        .to_string(),
-                    )?;
-                    db.insert_printer_live_event(
-                        printer_id,
-                        "LIVE_AUTO_WEIGHT_CORRECTED",
-                        &json!({
-                            "spool_id": spool_id,
-                            "remaining_grams": remaining_grams,
-                            "previous_grams": current,
-                            "baseline_grams": correction.baseline_grams,
-                            "previous_used_grams": correction.previous_used_grams,
-                            "corrected_used_grams": correction.corrected_used_grams,
-                            "correction_grams": correction.correction_grams,
-                            "usage_session_id": correction.session_id.as_str(),
-                            "usage_session_key": context.session_key.as_str(),
-                            "job_name": context.job_name.as_deref(),
-                            "print_type": context.print_type.as_deref(),
-                            "progress_percent": context.progress_percent,
-                            "remaining_minutes": context.remaining_minutes,
-                            "finished_success": context.finished_success,
-                            "nozzle_temp_c": context.nozzle_temp_c,
-                            "nozzle_temp_fresh": context.nozzle_temp_fresh,
-                            "recent_print_capable_nozzle": context.recent_print_capable_nozzle,
-                            "progress_percent_fresh": context.progress_percent_fresh,
-                            "remaining_minutes_fresh": context.remaining_minutes_fresh,
-                            "thermal_state": context.thermal_state_name(),
-                            "tray_index": tray.tray_index,
-                            "tray_uuid": tray.tray_uuid.as_deref(),
-                            "match_status": tray.match_status.as_deref(),
-                            "matched_inventory_mode": tray.matched_inventory_mode.as_deref(),
-                            "remaining_percent": tray.remaining_percent,
-                            "tray_weight_g": tray.tray_weight_g,
-                            "observed_at": tray.last_identity_seen_at,
-                        }),
-                    )?;
-                }
+                )?
+            {
+                let next_status = live_weight_spool_status(remaining_grams, tray);
+                db.update_spool_weight(spool_id, Some(remaining_grams), Some(remaining_grams))?;
+                db.update_spool_status(spool_id, next_status)?;
+                db.ensure_scale("bambu-ams", "Bambu AMS", "VIRTUAL")?;
+                db.insert_weight_reading("bambu-ams", spool_id, remaining_grams, "BAMBU_AMS")?;
+                db.insert_spool_history_event(
+                    spool_id,
+                    "WEIGHT_CORRECTED",
+                    &json!({
+                        "grams": remaining_grams,
+                        "previous_grams": current,
+                        "baseline_grams": correction.baseline_grams,
+                        "previous_used_grams": correction.previous_used_grams,
+                        "corrected_used_grams": correction.corrected_used_grams,
+                        "correction_grams": correction.correction_grams,
+                        "usage_session_id": correction.session_id.as_str(),
+                        "usage_session_key": context.session_key.as_str(),
+                        "remaining_percent": tray.remaining_percent,
+                        "tray_weight_g": tray.tray_weight_g,
+                        "source": "BAMBU_AMS",
+                        "printer_id": printer_id,
+                        "observed_at": tray.last_identity_seen_at,
+                    })
+                    .to_string(),
+                )?;
+                db.insert_printer_live_event(
+                    printer_id,
+                    "LIVE_AUTO_WEIGHT_CORRECTED",
+                    &json!({
+                        "spool_id": spool_id,
+                        "remaining_grams": remaining_grams,
+                        "previous_grams": current,
+                        "baseline_grams": correction.baseline_grams,
+                        "previous_used_grams": correction.previous_used_grams,
+                        "corrected_used_grams": correction.corrected_used_grams,
+                        "correction_grams": correction.correction_grams,
+                        "usage_session_id": correction.session_id.as_str(),
+                        "usage_session_key": context.session_key.as_str(),
+                        "job_name": context.job_name.as_deref(),
+                        "print_type": context.print_type.as_deref(),
+                        "progress_percent": context.progress_percent,
+                        "remaining_minutes": context.remaining_minutes,
+                        "finished_success": context.finished_success,
+                        "nozzle_temp_c": context.nozzle_temp_c,
+                        "nozzle_temp_fresh": context.nozzle_temp_fresh,
+                        "recent_print_capable_nozzle": context.recent_print_capable_nozzle,
+                        "progress_percent_fresh": context.progress_percent_fresh,
+                        "remaining_minutes_fresh": context.remaining_minutes_fresh,
+                        "thermal_state": context.thermal_state_name(),
+                        "tray_index": tray.tray_index,
+                        "tray_uuid": tray.tray_uuid.as_deref(),
+                        "match_status": tray.match_status.as_deref(),
+                        "matched_inventory_mode": tray.matched_inventory_mode.as_deref(),
+                        "remaining_percent": tray.remaining_percent,
+                        "tray_weight_g": tray.tray_weight_g,
+                        "observed_at": tray.last_identity_seen_at,
+                    }),
+                )?;
             }
             return Ok(());
         }
@@ -576,53 +577,51 @@ fn sync_live_weight(
 
     if let (LiveWeightDecision::AcceptDecrease { used_grams }, Some(context)) =
         (&decision, usage_context)
+        && should_ignore_near_finish_small_decrease(db, printer_id, spool_id, *used_grams, context)?
     {
-        if should_ignore_near_finish_small_decrease(db, printer_id, spool_id, *used_grams, context)?
-        {
-            let dedupe_key = live_weight_near_finish_drop_dedupe_key(
-                spool_id,
-                &context.session_key,
-                tray.tray_index,
-                current,
-                remaining_grams,
-                *used_grams,
-            );
-            db.insert_printer_live_event_unless_recent_duplicate(
-                printer_id,
-                "LIVE_AUTO_WEIGHT_IGNORED",
-                &json!({
-                    "dedupe_key": dedupe_key.as_str(),
-                    "dedupe_window_seconds": LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
-                    "spool_id": spool_id,
-                    "reason": "near_finish_small_decrease",
-                    "current_grams": current,
-                    "remaining_grams": remaining_grams,
-                    "drop_grams": used_grams,
-                    "tray_index": tray.tray_index,
-                    "tray_uuid": tray.tray_uuid.as_deref(),
-                    "match_status": tray.match_status.as_deref(),
-                    "matched_inventory_mode": tray.matched_inventory_mode.as_deref(),
-                    "remaining_percent": tray.remaining_percent,
-                    "tray_weight_g": tray.tray_weight_g,
-                    "observed_at": tray.last_identity_seen_at,
-                    "usage_session_key": context.session_key.as_str(),
-                    "job_name": context.job_name.as_deref(),
-                    "print_type": context.print_type.as_deref(),
-                    "progress_percent": context.progress_percent,
-                    "remaining_minutes": context.remaining_minutes,
-                    "finished_success": context.finished_success,
-                    "nozzle_temp_c": context.nozzle_temp_c,
-                    "nozzle_temp_fresh": context.nozzle_temp_fresh,
-                    "recent_print_capable_nozzle": context.recent_print_capable_nozzle,
-                    "progress_percent_fresh": context.progress_percent_fresh,
-                    "remaining_minutes_fresh": context.remaining_minutes_fresh,
-                    "thermal_state": context.thermal_state_name(),
-                }),
-                &dedupe_key,
-                LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
-            )?;
-            return Ok(());
-        }
+        let dedupe_key = live_weight_near_finish_drop_dedupe_key(
+            spool_id,
+            &context.session_key,
+            tray.tray_index,
+            current,
+            remaining_grams,
+            *used_grams,
+        );
+        db.insert_printer_live_event_unless_recent_duplicate(
+            printer_id,
+            "LIVE_AUTO_WEIGHT_IGNORED",
+            &json!({
+                "dedupe_key": dedupe_key.as_str(),
+                "dedupe_window_seconds": LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
+                "spool_id": spool_id,
+                "reason": "near_finish_small_decrease",
+                "current_grams": current,
+                "remaining_grams": remaining_grams,
+                "drop_grams": used_grams,
+                "tray_index": tray.tray_index,
+                "tray_uuid": tray.tray_uuid.as_deref(),
+                "match_status": tray.match_status.as_deref(),
+                "matched_inventory_mode": tray.matched_inventory_mode.as_deref(),
+                "remaining_percent": tray.remaining_percent,
+                "tray_weight_g": tray.tray_weight_g,
+                "observed_at": tray.last_identity_seen_at,
+                "usage_session_key": context.session_key.as_str(),
+                "job_name": context.job_name.as_deref(),
+                "print_type": context.print_type.as_deref(),
+                "progress_percent": context.progress_percent,
+                "remaining_minutes": context.remaining_minutes,
+                "finished_success": context.finished_success,
+                "nozzle_temp_c": context.nozzle_temp_c,
+                "nozzle_temp_fresh": context.nozzle_temp_fresh,
+                "recent_print_capable_nozzle": context.recent_print_capable_nozzle,
+                "progress_percent_fresh": context.progress_percent_fresh,
+                "remaining_minutes_fresh": context.remaining_minutes_fresh,
+                "thermal_state": context.thermal_state_name(),
+            }),
+            &dedupe_key,
+            LIVE_WEIGHT_IGNORED_DEDUPE_WINDOW_SECS,
+        )?;
+        return Ok(());
     }
 
     let next_status = live_weight_spool_status(remaining_grams, tray);

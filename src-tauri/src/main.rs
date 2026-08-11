@@ -216,12 +216,11 @@ fn apply_macos_dock_icon(app: &tauri::AppHandle, icon_bytes: &'static [u8]) -> R
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            if let Ok(log_dir) = app.path().app_log_dir() {
-                if let Err(error) = app_error::operational_log::initialize_operational_log(&log_dir)
+            if let Ok(log_dir) = app.path().app_log_dir()
+                && let Err(error) = app_error::operational_log::initialize_operational_log(&log_dir)
                 {
                     eprintln!("Operational log unavailable: {error}");
                 }
-            }
             let db_path = app_storage::ensure_db(app).inspect_err(|_| {
                 let _ = app_error::operational_log::record_operational_event(
                     app_error::operational_log::OperationalLogLevel::Error,

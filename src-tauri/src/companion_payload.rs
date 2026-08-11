@@ -154,12 +154,12 @@ pub(crate) fn normalize_owned_manual_fields(
 pub(crate) fn validate_initial_weight(
     initial_weight_g: Option<i64>,
 ) -> Result<(), CompanionApiError> {
-    if let Some(initial_weight_g) = initial_weight_g {
-        if initial_weight_g < 0 {
-            return Err(CompanionApiError::BadRequest(
-                "initial_weight_g must be zero or greater".to_string(),
-            ));
-        }
+    if let Some(initial_weight_g) = initial_weight_g
+        && initial_weight_g < 0
+    {
+        return Err(CompanionApiError::BadRequest(
+            "initial_weight_g must be zero or greater".to_string(),
+        ));
     }
     Ok(())
 }

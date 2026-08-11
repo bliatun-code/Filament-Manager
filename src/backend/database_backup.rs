@@ -253,12 +253,12 @@ fn unrecognized_backup_row_error(table: &str, row_index: usize) -> InventoryErro
 pub(crate) fn ensure_full_backup_is_safe_to_import(
     parsed: &ParsedFullBackup,
 ) -> InventoryResult<()> {
-    if let Some(schema_version) = parsed.schema_version {
-        if schema_version > CURRENT_SCHEMA_VERSION {
-            return Err(InventoryError::Db(format!(
+    if let Some(schema_version) = parsed.schema_version
+        && schema_version > CURRENT_SCHEMA_VERSION
+    {
+        return Err(InventoryError::Db(format!(
                 "Backup schema version {schema_version} is newer than the supported schema version {CURRENT_SCHEMA_VERSION}"
             )));
-        }
     }
 
     let missing_required_tables: Vec<&str> = FULL_BACKUP_TABLES

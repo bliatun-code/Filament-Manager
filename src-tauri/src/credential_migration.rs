@@ -263,22 +263,22 @@ pub(crate) fn migrate_legacy_credentials(
         let previous_runtime_auth = runtime_auth.current()?;
         let installed_legacy_runtime =
             credential_matches_legacy && legacy_session_id.is_some() && legacy_csrf_token.is_some();
-        if installed_legacy_runtime {
-            if let Err(error) = runtime_auth.replace(
+        if installed_legacy_runtime
+            && let Err(error) = runtime_auth.replace(
                 &host_base_url,
                 legacy_session_id.as_deref().unwrap_or_default(),
                 legacy_csrf_token.as_deref().unwrap_or_default(),
-            ) {
-                return Err(rollback_library_migration_after_failure(
-                    credentials,
-                    &key,
-                    wrote_new_credential,
-                    runtime_auth,
-                    previous_runtime_auth,
-                    false,
-                    format!("Failed to preserve desktop client session in memory: {error}"),
-                ));
-            }
+            )
+        {
+            return Err(rollback_library_migration_after_failure(
+                credentials,
+                &key,
+                wrote_new_credential,
+                runtime_auth,
+                previous_runtime_auth,
+                false,
+                format!("Failed to preserve desktop client session in memory: {error}"),
+            ));
         }
 
         let trusted_expires_at = if credential_matches_legacy {
