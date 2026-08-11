@@ -839,7 +839,9 @@ impl CredentialBackend for InMemoryCredentialBackend {
             .values
             .lock()
             .map_err(|_| CredentialStoreError::LockPoisoned)?;
-        Ok(values.remove(key).is_some())
+        let removed = values.remove(key);
+        drop(values);
+        Ok(removed.is_some())
     }
 }
 

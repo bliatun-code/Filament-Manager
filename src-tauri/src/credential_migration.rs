@@ -81,7 +81,9 @@ pub(crate) fn migrate_legacy_credentials(
             Err(error) => return Err(error),
         };
         let legacy_vault_access_code = if existing_access_code.is_none() {
-            match read_stored_secret(credentials, &legacy_key, "legacy Bambu access code") {
+            let read_result =
+                read_stored_secret(credentials, &legacy_key, "legacy Bambu access code");
+            match read_result {
                 Ok(value) => value,
                 Err(error) if secure_compaction_completed && !had_legacy_access_code => {
                     eprintln!(
@@ -113,6 +115,8 @@ pub(crate) fn migrate_legacy_credentials(
         }
 
         let credential_is_configured = existing_access_code.is_some() || wrote_new_credential;
+        drop(legacy_vault_access_code);
+        drop(existing_access_code);
         let previous_config = entry.config.clone();
         entry.config.access_code = None;
         entry.config.access_code_configured = credential_is_configured;

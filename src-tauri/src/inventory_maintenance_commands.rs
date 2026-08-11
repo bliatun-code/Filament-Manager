@@ -538,8 +538,12 @@ fn reset_app_data_with_under_gate<Output>(
         };
     }
 
-    match reset_database() {
-        Ok(value) => Ok(value),
+    let reset_result = reset_database();
+    match reset_result {
+        Ok(value) => {
+            drop(rollback);
+            Ok(value)
+        }
         Err(error) => match rollback.restore(state) {
             Ok(()) => Err(error),
             Err(rollback_error) => Err(internal_command_error(

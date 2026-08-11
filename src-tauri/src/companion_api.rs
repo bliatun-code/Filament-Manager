@@ -48,8 +48,10 @@ pub fn generate_pairing_token() -> String {
 }
 
 pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String> {
-    let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
-    reconcile_trusted_lan_server_locked(&state).await
+    let reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    let result = reconcile_trusted_lan_server_locked(&state).await;
+    drop(reconcile_guard);
+    result
 }
 
 pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Result<(), String> {
@@ -143,7 +145,7 @@ pub(crate) async fn retry_trusted_lan_local_service_advertisement(
         return Ok(false);
     }
 
-    let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    let reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
     if !state.companion.trusted_lan.enabled()
         || !state.companion.trusted_lan.running()
         || state.companion.trusted_lan.qa_mode()
@@ -168,7 +170,7 @@ pub(crate) async fn retry_trusted_lan_local_service_advertisement(
     }
     state.companion.trusted_lan.mark_local_name_stopped();
 
-    match start_local_service_advertisement(state).await {
+    let result = match start_local_service_advertisement(state).await {
         Ok(()) => Ok(true),
         Err(error) => {
             state
@@ -177,7 +179,9 @@ pub(crate) async fn retry_trusted_lan_local_service_advertisement(
                 .mark_local_name_failed(error.clone());
             Err(error)
         }
-    }
+    };
+    drop(reconcile_guard);
+    result
 }
 
 async fn start_local_service_advertisement(state: &AppState) -> Result<(), String> {
@@ -1508,6 +1512,7 @@ pub(super) async fn require_companion_session(
         }
     }
 
+    drop(session);
     next.run(request).await
 }
 

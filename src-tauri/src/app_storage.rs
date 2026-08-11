@@ -141,13 +141,21 @@ fn finish_recovery_operation<T>(
 }
 
 pub(crate) fn app_db_path_override_from_env() -> Option<PathBuf> {
-    env_path(APP_DB_PATH_ENV_VAR).or_else(|| env_path(LEGACY_APP_DB_PATH_ENV_VAR))
+    app_db_path_override(
+        std::env::var_os(APP_DB_PATH_ENV_VAR),
+        std::env::var_os(LEGACY_APP_DB_PATH_ENV_VAR),
+    )
 }
 
-fn env_path(name: &str) -> Option<PathBuf> {
-    std::env::var_os(name)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
+pub(crate) fn app_db_path_override(
+    current: Option<OsString>,
+    legacy: Option<OsString>,
+) -> Option<PathBuf> {
+    env_path(current).or_else(|| env_path(legacy))
+}
+
+fn env_path(value: Option<OsString>) -> Option<PathBuf> {
+    value.filter(|value| !value.is_empty()).map(PathBuf::from)
 }
 
 fn resolve_app_storage_dir_for_app(app: &tauri::App) -> Result<AppStorageResolution, String> {

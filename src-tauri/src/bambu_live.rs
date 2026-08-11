@@ -107,19 +107,24 @@ where
             break;
         };
         let poll_task = poll.clone();
-        polls.spawn_blocking(move || poll_task(entry));
+        drop(polls.spawn_blocking(move || poll_task(entry)));
     }
 
     let mut errors = Vec::new();
-    while let Some(result) = polls.join_next().await {
+    loop {
+        let next_result = polls.join_next().await;
+        let Some(result) = next_result else {
+            break;
+        };
         match result {
             Ok(Ok(())) => {}
             Ok(Err(error)) => errors.push(error),
             Err(join_error) => errors.push(format!("poll task failed: {join_error}")),
         }
-        if let Some(entry) = pending.next() {
+        let next_entry = pending.next();
+        if let Some(entry) = next_entry {
             let poll_task = poll.clone();
-            polls.spawn_blocking(move || poll_task(entry));
+            drop(polls.spawn_blocking(move || poll_task(entry)));
         }
     }
     errors
