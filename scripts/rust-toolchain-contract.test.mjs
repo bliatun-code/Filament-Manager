@@ -8,6 +8,7 @@ const repoFile = (path) =>
 const rootManifest = repoFile("Cargo.toml");
 const tauriManifest = repoFile("src-tauri/Cargo.toml");
 const toolchain = repoFile("rust-toolchain.toml");
+const rustfmt = repoFile("rustfmt.toml");
 const dependabot = repoFile(".github/dependabot.yml");
 const workflows = [
   ["CI", repoFile(".github/workflows/ci.yml")],
@@ -29,6 +30,20 @@ test("Cargo packages declare the supported Rust 1.88 lower bound", () => {
       .split(/^\[(?!package\])/m)[0];
     assert.match(packageSection, /^rust-version = "1\.88"$/m);
   }
+});
+
+test("the Rust workspace uses edition 2024 with the MSRV-aware resolver", () => {
+  for (const manifest of [rootManifest, tauriManifest]) {
+    const packageSection = manifest
+      .slice(manifest.indexOf("[package]"))
+      .split(/^\[(?!package\])/m)[0];
+    assert.match(packageSection, /^edition = "2024"$/m);
+  }
+  assert.match(rootManifest, /^resolver = "3"$/m);
+});
+
+test("the edition migration keeps formatting changes isolated", () => {
+  assert.match(rustfmt, /^style_edition = "2021"$/m);
 });
 
 test("the repository selects one complete reviewed Rust toolchain", () => {

@@ -123,56 +123,54 @@ fn apply_tray_match_status_after_exact(
         return;
     }
 
-    if let Some(slot) = matching_slots.first() {
-        if slot.spool_id.is_some() {
-            let material_match = eq_ignore_case(
-                tray.filament_type.as_deref(),
-                slot.spool_material.as_deref(),
-            );
-            let name_match = live_name_matches(
-                tray.filament_name.as_deref(),
-                slot.spool_filament_name.as_deref(),
-            );
-            let color_match = live_color_matches_swatch(
-                tray.color_hex.as_deref(),
-                slot.spool_hex_color.as_deref(),
-            );
-            let score = [material_match, name_match, color_match]
-                .into_iter()
-                .filter(|value| *value)
-                .count();
-            if score >= 2 {
-                tray.matched_inventory_spool_id = slot.spool_id.clone();
-                tray.matched_inventory_mode = Some("configured_metadata".to_string());
-                if has_live_unknown_rfid {
-                    tray.match_status = Some("unknown_rfid".to_string());
-                    tray.match_note = Some(match_note_with_preset_signal(
-                        "AMS reported an RFID/AMS identity that is not registered in inventory."
-                            .to_string(),
-                        tray,
-                    ));
-                } else {
-                    tray.match_status = Some("clear_match".to_string());
-                    tray.match_note = None;
-                }
-                return;
-            }
-            tray.match_status = Some(
-                if has_live_unknown_rfid {
-                    "unknown_rfid"
-                } else {
-                    "no_clear_match"
-                }
-                .to_string(),
-            );
-            let note = if has_live_unknown_rfid {
-                "AMS reported an RFID/AMS identity that is not registered in inventory."
+    if let Some(slot) = matching_slots.first()
+        && slot.spool_id.is_some()
+    {
+        let material_match = eq_ignore_case(
+            tray.filament_type.as_deref(),
+            slot.spool_material.as_deref(),
+        );
+        let name_match = live_name_matches(
+            tray.filament_name.as_deref(),
+            slot.spool_filament_name.as_deref(),
+        );
+        let color_match =
+            live_color_matches_swatch(tray.color_hex.as_deref(), slot.spool_hex_color.as_deref());
+        let score = [material_match, name_match, color_match]
+            .into_iter()
+            .filter(|value| *value)
+            .count();
+        if score >= 2 {
+            tray.matched_inventory_spool_id = slot.spool_id.clone();
+            tray.matched_inventory_mode = Some("configured_metadata".to_string());
+            if has_live_unknown_rfid {
+                tray.match_status = Some("unknown_rfid".to_string());
+                tray.match_note = Some(match_note_with_preset_signal(
+                    "AMS reported an RFID/AMS identity that is not registered in inventory."
+                        .to_string(),
+                    tray,
+                ));
             } else {
-                "Last known RFID/AMS identity does not map cleanly to the currently configured spool."
-            };
-            tray.match_note = Some(match_note_with_preset_signal(note.to_string(), tray));
+                tray.match_status = Some("clear_match".to_string());
+                tray.match_note = None;
+            }
             return;
         }
+        tray.match_status = Some(
+            if has_live_unknown_rfid {
+                "unknown_rfid"
+            } else {
+                "no_clear_match"
+            }
+            .to_string(),
+        );
+        let note = if has_live_unknown_rfid {
+            "AMS reported an RFID/AMS identity that is not registered in inventory."
+        } else {
+            "Last known RFID/AMS identity does not map cleanly to the currently configured spool."
+        };
+        tray.match_note = Some(match_note_with_preset_signal(note.to_string(), tray));
+        return;
     }
 
     let candidates = find_inventory_candidates(tray, all_spools, has_live_unknown_rfid);

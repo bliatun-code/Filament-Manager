@@ -63,16 +63,15 @@ pub(super) fn derive_assign_printer_slot_live_context(
     let mut effective_override_tray_uuid = explicit_override_tray_uuid;
     let mut effective_override_color_hex = explicit_override_color_hex;
 
-    if effective_override_tray_uuid.is_none() || effective_override_color_hex.is_none() {
-        if let Some((derived_tray_uuid, derived_color_hex)) =
+    if (effective_override_tray_uuid.is_none() || effective_override_color_hex.is_none())
+        && let Some((derived_tray_uuid, derived_color_hex)) =
             resolve_live_unknown_override(db, &input.printer_id, slot.slot_index, &slot.ams_id)?
-        {
-            if effective_override_tray_uuid.is_none() {
-                effective_override_tray_uuid = Some(derived_tray_uuid);
-            }
-            if effective_override_color_hex.is_none() {
-                effective_override_color_hex = Some(derived_color_hex);
-            }
+    {
+        if effective_override_tray_uuid.is_none() {
+            effective_override_tray_uuid = Some(derived_tray_uuid);
+        }
+        if effective_override_color_hex.is_none() {
+            effective_override_color_hex = Some(derived_color_hex);
         }
     }
 

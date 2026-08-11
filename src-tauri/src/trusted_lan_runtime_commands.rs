@@ -17,17 +17,14 @@ pub(crate) fn load_trusted_lan_runtime(
     if let (Some(name), Some(address)) = (
         settings.selected_interface_name.as_deref(),
         settings.selected_interface_address.as_deref(),
-    ) {
-        if let Some((current_name, current_address)) =
-            current_trusted_lan_interface_selection(name, address)
-        {
-            if current_name != name.trim() || current_address != address.trim() {
-                settings.selected_interface_name = Some(current_name);
-                settings.selected_interface_address = Some(current_address);
-                db.save_trusted_lan_settings(&settings)
-                    .map_err(|error| error.to_string())?;
-            }
-        }
+    ) && let Some((current_name, current_address)) =
+        current_trusted_lan_interface_selection(name, address)
+        && (current_name != name.trim() || current_address != address.trim())
+    {
+        settings.selected_interface_name = Some(current_name);
+        settings.selected_interface_address = Some(current_address);
+        db.save_trusted_lan_settings(&settings)
+            .map_err(|error| error.to_string())?;
     }
     let runtime = TrustedLanCompanionRuntime::new(settings.listen_port)
         .with_enabled(settings.enabled)

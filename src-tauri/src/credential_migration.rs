@@ -81,7 +81,9 @@ pub(crate) fn migrate_legacy_credentials(
             Err(error) => return Err(error),
         };
         let legacy_vault_access_code = if existing_access_code.is_none() {
-            match read_stored_secret(credentials, &legacy_key, "legacy Bambu access code") {
+            let read_result =
+                read_stored_secret(credentials, &legacy_key, "legacy Bambu access code");
+            match read_result {
                 Ok(value) => value,
                 Err(error) if secure_compaction_completed && !had_legacy_access_code => {
                     eprintln!(
@@ -113,6 +115,8 @@ pub(crate) fn migrate_legacy_credentials(
         }
 
         let credential_is_configured = existing_access_code.is_some() || wrote_new_credential;
+        drop(legacy_vault_access_code);
+        drop(existing_access_code);
         let previous_config = entry.config.clone();
         entry.config.access_code = None;
         entry.config.access_code_configured = credential_is_configured;
@@ -259,22 +263,22 @@ pub(crate) fn migrate_legacy_credentials(
         let previous_runtime_auth = runtime_auth.current()?;
         let installed_legacy_runtime =
             credential_matches_legacy && legacy_session_id.is_some() && legacy_csrf_token.is_some();
-        if installed_legacy_runtime {
-            if let Err(error) = runtime_auth.replace(
+        if installed_legacy_runtime
+            && let Err(error) = runtime_auth.replace(
                 &host_base_url,
                 legacy_session_id.as_deref().unwrap_or_default(),
                 legacy_csrf_token.as_deref().unwrap_or_default(),
-            ) {
-                return Err(rollback_library_migration_after_failure(
-                    credentials,
-                    &key,
-                    wrote_new_credential,
-                    runtime_auth,
-                    previous_runtime_auth,
-                    false,
-                    format!("Failed to preserve desktop client session in memory: {error}"),
-                ));
-            }
+            )
+        {
+            return Err(rollback_library_migration_after_failure(
+                credentials,
+                &key,
+                wrote_new_credential,
+                runtime_auth,
+                previous_runtime_auth,
+                false,
+                format!("Failed to preserve desktop client session in memory: {error}"),
+            ));
         }
 
         let trusted_expires_at = if credential_matches_legacy {

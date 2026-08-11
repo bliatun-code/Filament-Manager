@@ -464,19 +464,14 @@ fn ensure_live_usage_session(
 
     let existing = find_active_live_usage_session(conn, &printer_id, &session_key)?;
     if let Some(existing) = existing {
-        if session_key != LIVE_USAGE_PROVISIONAL_SESSION_KEY {
-            if let Some(provisional) = find_active_live_usage_session(
+        if session_key != LIVE_USAGE_PROVISIONAL_SESSION_KEY
+            && let Some(provisional) = find_active_live_usage_session(
                 conn,
                 &printer_id,
                 LIVE_USAGE_PROVISIONAL_SESSION_KEY,
-            )? {
-                merge_active_live_usage_session(
-                    conn,
-                    &existing,
-                    &provisional,
-                    observed_at.as_deref(),
-                )?;
-            }
+            )?
+        {
+            merge_active_live_usage_session(conn, &existing, &provisional, observed_at.as_deref())?;
         }
         conn.execute(
             "UPDATE printer_live_usage_sessions
@@ -504,13 +499,13 @@ fn ensure_live_usage_session(
         return Ok(LiveUsageSessionRef { id: existing });
     }
 
-    if session_key != LIVE_USAGE_PROVISIONAL_SESSION_KEY {
-        if let Some(provisional) =
+    if session_key != LIVE_USAGE_PROVISIONAL_SESSION_KEY
+        && let Some(provisional) =
             find_active_live_usage_session(conn, &printer_id, LIVE_USAGE_PROVISIONAL_SESSION_KEY)?
-        {
-            let stored_session_key = next_live_usage_session_key(conn, &printer_id, &session_key)?;
-            conn.execute(
-                "UPDATE printer_live_usage_sessions
+    {
+        let stored_session_key = next_live_usage_session_key(conn, &printer_id, &session_key)?;
+        conn.execute(
+            "UPDATE printer_live_usage_sessions
                  SET session_key = ?2,
                      job_name = COALESCE(?3, job_name),
                      print_type = COALESCE(?4, print_type),
@@ -520,22 +515,21 @@ fn ensure_live_usage_session(
                         ELSE 'RUNNING'
                      END
                  WHERE id = ?1",
-                params![
-                    &provisional,
-                    stored_session_key,
-                    job_name.as_deref(),
-                    print_type.as_deref(),
-                    observed_at.as_deref()
-                ],
-            )?;
-            finish_other_active_live_usage_sessions(
-                conn,
-                &printer_id,
-                &session_key,
-                observed_at.as_deref(),
-            )?;
-            return Ok(LiveUsageSessionRef { id: provisional });
-        }
+            params![
+                &provisional,
+                stored_session_key,
+                job_name.as_deref(),
+                print_type.as_deref(),
+                observed_at.as_deref()
+            ],
+        )?;
+        finish_other_active_live_usage_sessions(
+            conn,
+            &printer_id,
+            &session_key,
+            observed_at.as_deref(),
+        )?;
+        return Ok(LiveUsageSessionRef { id: provisional });
     }
 
     let id = new_id();

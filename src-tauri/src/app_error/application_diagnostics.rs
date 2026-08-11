@@ -216,11 +216,14 @@ fn foreign_key_check_status(connection: &Connection) -> DiagnosticCheckStatus {
         Ok(rows) => rows,
         Err(_) => return DiagnosticCheckStatus::Unavailable,
     };
-    match rows.next() {
+    let status = match rows.next() {
         Ok(Some(_)) => DiagnosticCheckStatus::IssuesFound,
         Ok(None) => DiagnosticCheckStatus::Ok,
         Err(_) => DiagnosticCheckStatus::Unavailable,
-    }
+    };
+    drop(rows);
+    drop(statement);
+    status
 }
 
 fn journal_mode(connection: &Connection) -> Option<String> {

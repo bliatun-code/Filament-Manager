@@ -1,7 +1,7 @@
 [package]
 name = "filament-manager-core"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"
 publish = false
@@ -21,7 +21,7 @@ time = { workspace = true }
 [workspace]
 members = ["src-tauri"]
 default-members = [".", "src-tauri"]
-resolver = "2"
+resolver = "3"
 
 [workspace.dependencies]
 serde = { version = "1.0.229", features = ["derive"] }

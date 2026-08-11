@@ -76,17 +76,17 @@ pub(crate) fn log_state_changes(
 
     let previous_tray = previous.map(|state| (state.active_ams_index, state.active_tray_index));
     let next_tray = (next.active_ams_index, next.active_tray_index);
-    if previous_tray != Some(next_tray) {
-        if let Some(active_tray_index) = next.active_tray_index {
-            db.insert_printer_live_event(
-                printer_id,
-                "LIVE_ACTIVE_TRAY_CHANGED",
-                &json!({
-                    "active_ams_index": next.active_ams_index,
-                    "active_tray_index": active_tray_index,
-                }),
-            )?;
-        }
+    if previous_tray != Some(next_tray)
+        && let Some(active_tray_index) = next.active_tray_index
+    {
+        db.insert_printer_live_event(
+            printer_id,
+            "LIVE_ACTIVE_TRAY_CHANGED",
+            &json!({
+                "active_ams_index": next.active_ams_index,
+                "active_tray_index": active_tray_index,
+            }),
+        )?;
     }
 
     let previous_review_count = previous
@@ -128,10 +128,8 @@ fn live_print_event_payload(
         "bed_temp_c": state.bed_temp_c,
         "thermal_state": nozzle_thermal_state_name(state.nozzle_temp_c),
     });
-    if include_last_seen_at {
-        if let Value::Object(fields) = &mut payload {
-            fields.insert("last_seen_at".to_string(), json!(state.last_seen_at));
-        }
+    if include_last_seen_at && let Value::Object(fields) = &mut payload {
+        fields.insert("last_seen_at".to_string(), json!(state.last_seen_at));
     }
     payload
 }

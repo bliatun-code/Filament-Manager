@@ -30,10 +30,10 @@ pub(crate) async fn update_trusted_lan_companion_config(
         );
     }
 
-    if input.enabled {
-        if let Some((_, address)) = selected_interface.as_ref() {
-            ensure_private_trusted_lan_interface(address)?;
-        }
+    if input.enabled
+        && let Some((_, address)) = selected_interface.as_ref()
+    {
+        ensure_private_trusted_lan_interface(address)?;
     }
 
     let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;

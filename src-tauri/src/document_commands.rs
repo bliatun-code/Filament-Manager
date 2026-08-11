@@ -585,16 +585,16 @@ mod tests {
             .file_name()
             .and_then(|value| value.to_str())
             .unwrap_or_default();
-        if let Some(parent) = path.parent() {
-            if let Ok(entries) = std::fs::read_dir(parent) {
-                for entry in entries.flatten() {
-                    if entry
-                        .file_name()
-                        .to_string_lossy()
-                        .starts_with(&format!("{base_name}.recovery-"))
-                    {
-                        let _ = std::fs::remove_file(entry.path());
-                    }
+        if let Some(parent) = path.parent()
+            && let Ok(entries) = std::fs::read_dir(parent)
+        {
+            for entry in entries.flatten() {
+                if entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(&format!("{base_name}.recovery-"))
+                {
+                    let _ = std::fs::remove_file(entry.path());
                 }
             }
         }
