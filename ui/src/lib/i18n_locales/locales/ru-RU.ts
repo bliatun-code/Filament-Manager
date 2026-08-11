@@ -352,6 +352,8 @@ export const ruRUDictionary: DictionaryNode = {
     "clientSnapshotCapturedAt": "Снимок сделан",
     "clientSnapshotLibraryId": "Библиотека ID",
     "last30": "Последние 30 дней",
+    "last12Months": "Последние 12 месяцев",
+    "annualUsageUnavailable": "Обновите хост, чтобы увидеть историю за 12 месяцев.",
     "noUsageTrendYet": "Тенденции использования пока нет",
     "consumption": "Расход нити",
     "backup": "Резервное копирование",

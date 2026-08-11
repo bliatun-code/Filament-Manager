@@ -19,6 +19,7 @@ import {
 } from "../lib/dashboard_onboarding";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
+import { formatGrams } from "../lib/weight_display";
 import {
   InventoryHealthPanel,
   OwnershipSnapshotPanel,
@@ -67,7 +68,9 @@ export default function DashboardPage({
     refreshDashboard,
     refreshing,
     stats,
-    usagePoints,
+    usageAvailable,
+    usageMonths,
+    usageTotal12m,
     setupDataAvailable,
   } = useDashboardPageData(t, locale);
   const forceOnboardingVisible = useMemo(
@@ -109,7 +112,10 @@ export default function DashboardPage({
       : companionPresentation.tone === "warn"
         ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
         : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
-  const monthlyUsageValue = stats.find((stat) => stat.id === "monthlyUsage")?.value ?? "0 g";
+  const annualUsageValue = useMemo(
+    () => (usageAvailable ? formatGrams(usageTotal12m, "zero", locale) : "—"),
+    [locale, usageAvailable, usageTotal12m],
+  );
   const onboardingState = useMemo(
     () =>
       buildDashboardOnboardingState({
@@ -247,14 +253,22 @@ export default function DashboardPage({
 
       <div className="mt-8">
         <UsageChart
-          key={monthlyUsageValue}
           title={t("dashboard.consumption", "Filament Consumption")}
-          value={monthlyUsageValue}
+          value={annualUsageValue}
+          period={t("dashboard.last12Months", "Last 12 months")}
           caption={t(
             "dashboard.consumptionCaption",
             "Usage is aggregated from printer-linked print jobs.",
           )}
-          points={usagePoints}
+          months={usageMonths}
+          unavailableMessage={
+            usageAvailable
+              ? null
+              : t(
+                  "dashboard.annualUsageUnavailable",
+                  "Update the host to show 12-month history.",
+                )
+          }
           onClick={() => onNavigate?.("statistics")}
         />
       </div>

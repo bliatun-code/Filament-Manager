@@ -1,6 +1,5 @@
 import {
   fetchLibrarySyncLoans,
-  fetchLibrarySyncFilamentConsumption,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
   fetchLibrarySyncWishlistItems,
@@ -11,12 +10,9 @@ import {
   listActiveSpoolLoans,
   listPrinterOverview,
   listWishlistItems,
-  topMaterials,
   validateLibrarySyncHost,
   type LibrarySyncSettings,
-  type FilamentConsumptionRow,
   type InventoryOverview,
-  type MaterialUsageRow,
   type PrinterSettingsSnapshot,
   type TrustedLanCompanionStatus,
   type WishlistItemRow,
@@ -69,7 +65,6 @@ type DashboardDataDependencies = {
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
   fetchHostLoans?: typeof fetchLibrarySyncLoans;
-  fetchHostConsumption?: typeof fetchLibrarySyncFilamentConsumption;
   fetchHostWishlist?: typeof fetchLibrarySyncWishlistItems;
   loadSpoolRows?: typeof loadAllSpoolRows;
   loadInventoryOverview?: typeof inventoryOverview;
@@ -77,7 +72,6 @@ type DashboardDataDependencies = {
   listLocalPrinters?: typeof listPrinterOverview;
   listLocalLoans?: typeof listActiveSpoolLoans;
   listLocalWishlist?: typeof listWishlistItems;
-  listLocalTopMaterials?: typeof topMaterials;
   onLoadError?: (error: unknown) => void;
 };
 
@@ -99,28 +93,10 @@ function emptyInventoryOverview() {
     total_consumption_30d: 0,
     owned_consumption_30d: 0,
     borrowed_in_consumption_30d: 0,
+    consumption_12m_available: false,
+    total_consumption_12m: 0,
+    consumption_12m: [],
   };
-}
-
-function materialUsageFromConsumption(
-  rows: FilamentConsumptionRow[] | null | undefined,
-): MaterialUsageRow[] {
-  const usedByMaterial = new Map<string, number>();
-  for (const row of rows ?? []) {
-    const material = row.material.trim();
-    const usedGrams = Math.max(0, row.used_grams);
-    if (!material || usedGrams <= 0) {
-      continue;
-    }
-    usedByMaterial.set(material, (usedByMaterial.get(material) ?? 0) + usedGrams);
-  }
-  return Array.from(usedByMaterial, ([material, used_grams]) => ({ material, used_grams }))
-    .sort(
-      (left, right) =>
-        right.used_grams - left.used_grams ||
-        left.material.localeCompare(right.material),
-    )
-    .slice(0, 12);
 }
 
 function preserveSnapshotConsumption(
@@ -135,6 +111,13 @@ function preserveSnapshotConsumption(
     total_consumption_30d: snapshotOverview.total_consumption_30d,
     owned_consumption_30d: snapshotOverview.owned_consumption_30d,
     borrowed_in_consumption_30d: snapshotOverview.borrowed_in_consumption_30d,
+    consumption_12m_available:
+      snapshotOverview.consumption_12m_available === true,
+    total_consumption_12m:
+      snapshotOverview.total_consumption_12m ?? overview.total_consumption_12m,
+    consumption_12m:
+      snapshotOverview.consumption_12m?.map((row) => ({ ...row })) ??
+      overview.consumption_12m,
   };
 }
 
@@ -159,8 +142,6 @@ export async function loadDashboardData(
   const fetchHostPrinterOverview =
     dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
   const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
-  const fetchHostConsumption =
-    dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
   const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
   const loadInventoryOverview = dependencies.loadInventoryOverview ?? inventoryOverview;
@@ -168,7 +149,6 @@ export async function loadDashboardData(
   const listLocalPrinters = dependencies.listLocalPrinters ?? listPrinterOverview;
   const listLocalLoans = dependencies.listLocalLoans ?? listActiveSpoolLoans;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
-  const listLocalTopMaterials = dependencies.listLocalTopMaterials ?? topMaterials;
   const onLoadError = dependencies.onLoadError ?? console.error;
 
   const [syncSettings, trustedLan, printerSettings] = await Promise.all([
@@ -215,13 +195,11 @@ export async function loadDashboardData(
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
-  let clientConsumptionRows = syncSettings?.cached_consumption?.rows ?? null;
   let clientWishlistRows: WishlistItemRow[] = syncSettings?.cached_wishlist?.rows ?? [];
   let clientSnapshotLive = false;
   let clientSpoolsLive = false;
   let clientPrintersLive = false;
   let clientLoansLive = false;
-  let clientConsumptionLive = false;
   let clientWishlistLive = false;
   const clientHostTarget = clientMode
     ? resolveClientHostTarget({
@@ -237,7 +215,6 @@ export async function loadDashboardData(
       spoolsResult,
       printersResult,
       loansResult,
-      consumptionResult,
       wishlistResult,
     ] = await Promise.allSettled([
       validateHost(clientHostTarget.baseUrl, clientHostTarget.libraryId),
@@ -249,7 +226,6 @@ export async function loadDashboardData(
       }),
       fetchHostPrinterOverview(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       fetchHostLoans(clientHostTarget.baseUrl, clientHostTarget.libraryId, 2000),
-      fetchHostConsumption(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500, null),
       fetchHostWishlist(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500),
     ]);
 
@@ -292,12 +268,6 @@ export async function loadDashboardData(
     } else {
       onLoadError(loansResult.reason);
     }
-    if (consumptionResult.status === "fulfilled") {
-      clientConsumptionRows = consumptionResult.value;
-      clientConsumptionLive = true;
-    } else {
-      onLoadError(consumptionResult.reason);
-    }
     if (wishlistResult.status === "fulfilled") {
       clientWishlistRows = wishlistResult.value;
       clientWishlistLive = true;
@@ -312,7 +282,6 @@ export async function loadDashboardData(
     (clientSpoolRows?.length ?? 0) > 0 ||
     (clientPrinterRows?.length ?? 0) > 0 ||
     (clientLoanRows?.length ?? 0) > 0 ||
-    (clientConsumptionRows?.length ?? 0) > 0 ||
     clientWishlistRows.length > 0;
   const normalizedClientSpoolRows =
     clientSpoolRows != null ? normalizeSpoolWithMasterRows(clientSpoolRows) : null;
@@ -348,7 +317,6 @@ export async function loadDashboardData(
       clientSpoolsLive ? null : syncSettings?.cached_spools?.captured_at,
       clientPrintersLive ? null : syncSettings?.cached_printers?.captured_at,
       clientLoansLive ? null : syncSettings?.cached_loans?.captured_at,
-      clientConsumptionLive ? null : syncSettings?.cached_consumption?.captured_at,
       clientWishlistLive ? null : syncSettings?.cached_wishlist?.captured_at,
       clientSnapshotLive ? null : activeClientSnapshot?.captured_at,
     );
@@ -357,7 +325,6 @@ export async function loadDashboardData(
       syncSettings?.cached_spools?.captured_at,
       syncSettings?.cached_printers?.captured_at,
       syncSettings?.cached_loans?.captured_at,
-      syncSettings?.cached_consumption?.captured_at,
       syncSettings?.cached_wishlist?.captured_at,
     );
     return {
@@ -368,7 +335,6 @@ export async function loadDashboardData(
         spoolRows: normalizedClientSpoolRows ?? [],
         loans: (clientLoanRows ?? []).map(normalizeLoanDetailsRow),
         wishlist: clientWishlistRows,
-        materialRows: materialUsageFromConsumption(clientConsumptionRows),
         locale: params.locale,
         t: params.t,
       }),
@@ -387,7 +353,7 @@ export async function loadDashboardData(
     };
   }
 
-  const [overview, printers, spoolRowsRaw, loans, wishlist, materialRows] = await Promise.all([
+  const [overview, printers, spoolRowsRaw, loans, wishlist] = await Promise.all([
     loadInventoryOverview(),
     listLocalPrinters(),
     loadSpoolRows({
@@ -397,7 +363,6 @@ export async function loadDashboardData(
     }),
     listLocalLoans(),
     listLocalWishlist(500),
-    listLocalTopMaterials(12),
   ]);
   const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
 
@@ -409,7 +374,6 @@ export async function loadDashboardData(
       spoolRows,
       loans: loans.map(normalizeActiveLoanRow),
       wishlist,
-      materialRows,
       locale: params.locale,
       t: params.t,
     }),

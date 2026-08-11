@@ -114,6 +114,8 @@ export const deDictionary: DictionaryNode = {
     monthlyUsage: "Monatlicher Verbrauch",
     gramsPerDay: "{count} g/Tag",
     last30: "Letzte 30 Tage",
+    last12Months: "Letzte 12 Monate",
+    annualUsageUnavailable: "Aktualisiere den Host, um den 12-Monats-Verlauf anzuzeigen.",
     consumption: "Filamentverbrauch",
     noUsageTrendYet: "Noch kein Verbrauchstrend",
     backup: "Sicherung",

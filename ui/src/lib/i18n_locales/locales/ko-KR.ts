@@ -126,6 +126,8 @@ export const koKRDictionary: DictionaryNode = {
     "inUse": "사용 중",
     "inventoryHealth": "재고 상태",
     "last30": "지난 30일",
+    "last12Months": "지난 12개월",
+    "annualUsageUnavailable": "12개월 기록을 표시하려면 호스트를 업데이트하세요.",
     "loaned": "빌려준",
     "loanedTo": "대출 대상",
     "lowest": "최저",

@@ -126,6 +126,8 @@ export const jaJPDictionary: DictionaryNode = {
     "inUse": "使用中",
     "inventoryHealth": "在庫の健全性",
     "last30": "過去 30 日間",
+    "last12Months": "過去 12 か月",
+    "annualUsageUnavailable": "ホストを更新すると、過去 12 か月の履歴を表示できます。",
     "loaned": "貸し出された",
     "loanedTo": "貸与先",
     "lowest": "最低",

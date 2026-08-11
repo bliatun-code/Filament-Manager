@@ -136,6 +136,8 @@ export const frDictionary: DictionaryNode = {
     clientSnapshotHealthHint:
       "Ce client affiche uniquement le résumé de l’hôte. Le détail de l’état du stock reste pour le moment sur l’hôte.",
     last30: "30 derniers jours",
+    last12Months: "12 derniers mois",
+    annualUsageUnavailable: "Mettez à jour l’hôte pour afficher l’historique sur 12 mois.",
     consumption: "Consommation de filament",
     consumptionCaption: "La consommation est agrégée à partir des tâches liées aux imprimantes.",
     noUsageTrendYet: "Aucune tendance de consommation pour le moment",

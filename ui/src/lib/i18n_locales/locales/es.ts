@@ -180,6 +180,8 @@ export const esDictionary: DictionaryNode = {
     hostFallbackName: "anfitrión",
     inventoryHealth: "Estado del inventario",
     last30: "últimos 30 días",
+    last12Months: "Últimos 12 meses",
+    annualUsageUnavailable: "Actualiza el anfitrión para ver el historial de 12 meses.",
     loaned: "prestado",
     loanedTo: "Prestado a",
     lowStockShort: "stock bajo",

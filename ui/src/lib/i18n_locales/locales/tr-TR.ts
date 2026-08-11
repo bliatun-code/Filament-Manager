@@ -126,6 +126,8 @@ export const trTRDictionary: DictionaryNode = {
     "inUse": "kullanımda",
     "inventoryHealth": "Envanter Sağlığı",
     "last30": "Son 30 gün",
+    "last12Months": "Son 12 ay",
+    "annualUsageUnavailable": "12 aylık geçmişi göstermek için ana bilgisayarı güncelleyin.",
     "loaned": "ödünç verildi",
     "loanedTo": "ödünç verildi",
     "lowest": "en düşük",

@@ -180,6 +180,8 @@ export const huHUDictionary: DictionaryNode = {
     "clientSnapshotSynced": "Gazdagép pillanatképe",
     "ownershipSplitNote": "A fenti összesítések továbbra is az összes fizikai spoolt egyesítik, miközben a tulajdonjog-specifikus összegzési szabályok folyamatosan fejlődnek.",
     "last30": "Az elmúlt 30 nap",
+    "last12Months": "Az elmúlt 12 hónap",
+    "annualUsageUnavailable": "Frissítse a gazdagépet a 12 hónapos előzmények megjelenítéséhez.",
     "clientSnapshotCapturedAt": "Pillanatfelvétel készült",
     "clientSnapshotCardTitle": "Csak olvasható gazdagép előnézete",
     "clientSnapshotLibraryId": "Könyvtár ID",

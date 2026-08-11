@@ -111,8 +111,9 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   );
   assert.match(
     loader,
-    /const \[overview, printers, spoolRowsRaw, loans, wishlist, materialRows\] = await Promise\.all\(\[/,
+    /const \[overview, printers, spoolRowsRaw, loans, wishlist\] = await Promise\.all\(\[/,
   );
+  assert.doesNotMatch(loader, /fetchHostConsumption|listLocalTopMaterials/);
 });
 
 test("dashboard navigation restores its last-good view before background I/O", () => {

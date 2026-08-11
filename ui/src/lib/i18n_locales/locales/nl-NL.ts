@@ -126,6 +126,8 @@ export const nlNLDictionary: DictionaryNode = {
     "inUse": "in gebruik",
     "inventoryHealth": "Inventaris Gezondheid",
     "last30": "Laatste 30 dagen",
+    "last12Months": "Afgelopen 12 maanden",
+    "annualUsageUnavailable": "Werk de host bij om de geschiedenis van 12 maanden te bekijken.",
     "loaned": "uitgeleend",
     "loanedTo": "Uitgeleend aan",
     "lowest": "laagste",

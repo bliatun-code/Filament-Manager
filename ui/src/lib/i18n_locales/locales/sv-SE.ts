@@ -353,6 +353,8 @@ export const svSEDictionary: DictionaryNode = {
     "backup": "Säkerhetskopiering",
     "consumption": "Filamentförbrukning",
     "last30": "Senaste 30 dagarna",
+    "last12Months": "Senaste 12 månaderna",
+    "annualUsageUnavailable": "Uppdatera värden för att visa historik för 12 månader.",
     "noUsageTrendYet": "Ingen användningstrend ännu",
     "noRecentActivity": "Ingen ny aktivitet ännu.",
     "clientSnapshotCardHint": "Den här enheten är ansluten som en klient. För närvarande visar den värdsammanfattningen och behåller skrivtunga arbetsflöden på värden.",

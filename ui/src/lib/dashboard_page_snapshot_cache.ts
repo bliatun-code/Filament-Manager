@@ -3,6 +3,7 @@ import type {
   DashboardGoalMetrics,
   DashboardHealth,
   DashboardStat,
+  DashboardUsageMonth,
 } from "./dashboard_model";
 import type { LibraryRevisionSource } from "./library_domain_revisions";
 import type { TrustedLanCompanionStatus } from "./tauri_client";
@@ -34,7 +35,9 @@ export type DashboardPageSnapshot = {
   revisionSource: LibraryRevisionSource | null;
   setupDataAvailable: boolean;
   stats: DashboardStat[];
-  usagePoints: number[];
+  usageAvailable: boolean;
+  usageMonths: DashboardUsageMonth[];
+  usageTotal12m: number;
 };
 
 export type DashboardPageSnapshotRequest = {
@@ -68,7 +71,15 @@ function cloneDashboardPageSnapshot(
       ? { ...snapshot.revisionSource }
       : null,
     stats: snapshot.stats.map((stat) => ({ ...stat })),
-    usagePoints: [...snapshot.usagePoints],
+    usageAvailable: snapshot.usageAvailable === true,
+    usageMonths: Array.isArray(snapshot.usageMonths)
+      ? snapshot.usageMonths.map((item) => ({ ...item }))
+      : [],
+    usageTotal12m:
+      typeof snapshot.usageTotal12m === "number" &&
+      Number.isFinite(snapshot.usageTotal12m)
+        ? Math.max(0, snapshot.usageTotal12m)
+        : 0,
   };
 }
 
