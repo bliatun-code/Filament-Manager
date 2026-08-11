@@ -28,6 +28,21 @@ Run the desktop app:
 npm run tauri -- dev
 ```
 
+For realistic standalone testing without changing the installed app's saved
+Host or Client role, use the persistent isolated development database:
+
+```bash
+npm run dev:local
+```
+
+The first run copies an available local library or standalone recovery snapshot
+to `tmp/dev-local/filament-manager.db`, gives the copy separate library and
+credential identities, and removes pairing, Trusted LAN, and printer connection
+secrets. Later runs reuse that copy; they do not refresh it automatically. This
+is still a local development database containing copied inventory and history,
+not a public synthetic fixture. Never commit, publish, or attach it to an issue
+or pull request.
+
 ### Stable macOS Development Signing
 
 The normal macOS development executable is ad-hoc signed, so its code identity

@@ -17,14 +17,15 @@ open the larger screenshot, or open the full
 [screenshot tour](docs/SCREENSHOTS.md).
 
 <p align="center">
-  <a href="docs/screenshots/dashboard.jpg"><img src="docs/screenshots/dashboard-thumb.jpg" alt="Dashboard overview with inventory health and recent activity" width="220"></a>
+  <a href="docs/screenshots/dashboard.jpg"><img src="docs/screenshots/dashboard-thumb.jpg" alt="Dashboard overview with inventory health, recent activity, and an actionable Bambu Live trust warning" width="220"></a>
+  <a href="docs/screenshots/dashboard-consumption.jpg"><img src="docs/screenshots/dashboard-consumption-thumb.jpg" alt="Dashboard rolling twelve-month filament consumption chart" width="220"></a>
   <a href="docs/screenshots/inventory.jpg"><img src="docs/screenshots/inventory-thumb.jpg" alt="Inventory grid with filament spool cards" width="220"></a>
   <a href="docs/screenshots/add-filament.jpg"><img src="docs/screenshots/add-filament-thumb.jpg" alt="Add filament stock entry flow" width="220"></a>
   <a href="docs/screenshots/bambu-batch-add.jpg"><img src="docs/screenshots/bambu-batch-add-thumb.jpg" alt="Bambu batch add flow" width="220"></a>
   <a href="docs/screenshots/wishlist-queue.jpg"><img src="docs/screenshots/wishlist-queue-thumb.jpg" alt="Wishlist and order queue" width="220"></a>
   <a href="docs/screenshots/loan-out.jpg"><img src="docs/screenshots/loan-out-thumb.jpg" alt="Loan out roll flow" width="220"></a>
   <a href="docs/screenshots/printers.jpg"><img src="docs/screenshots/printers-thumb.jpg" alt="Printer AMS slot overview" width="220"></a>
-  <a href="docs/screenshots/add-printer.jpg"><img src="docs/screenshots/add-printer-thumb.jpg" alt="Add printer and multi-material setup" width="220"></a>
+  <a href="docs/screenshots/add-printer.jpg"><img src="docs/screenshots/add-printer-thumb.jpg" alt="Add printer flow with optional Bambu Live setup" width="220"></a>
   <a href="docs/screenshots/statistics.jpg"><img src="docs/screenshots/statistics-thumb.jpg" alt="Statistics page with printer and loan usage" width="220"></a>
   <a href="docs/screenshots/filament-details.jpg"><img src="docs/screenshots/filament-details-thumb.jpg" alt="Filament detail panel with weight, ownership and QR tools" width="220"></a>
   <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with physical size choices" width="220"></a>
@@ -79,15 +80,24 @@ Release notes:
   single-material printers.
 - Compact printer cards that keep assigned filament swatches and material names
   visible while detailed slots are collapsed.
+- Dashboard consumption keeps the **Last 30 days** card separate from a rolling
+  twelve-month chart based on local calendar months. The chart runs oldest to
+  newest, keeps zero-use months visible, and totals recorded printer-linked
+  jobs and Bambu Live usage from the same twelve buckets.
 - Optional Bambu Live integration for local AMS slot observations, RFID matching,
   estimated AMS weight, Bambu filament settings/status diagnostics, nozzle
   temperature, and print-session usage accounting. Printer identity is approved
   locally before authentication; reusable secrets stay in macOS Keychain or
   Windows Credential Manager instead of SQLite.
+- Supported Bambu models offer Bambu Live as an optional second step while the
+  printer is added. It can still be skipped and configured later. An enabled
+  integration without trusted TLS identity stays offline and shows a clickable
+  Dashboard warning that opens that printer's Live settings for review.
 - Passive Bambu printer discovery can identify a local printer by its announced
-  serial number. It assists first-time Live setup and can safely recover a DHCP-
-  changed printer address only after the saved certificate serial and public-key
-  pin match again.
+  serial number. It assists first-time Live setup and can automatically recover
+  a DHCP-changed printer address in the background only after the saved serial
+  and public-key pin match again. Recovery is credential-free and never sends
+  the access code; the same guarded recovery also remains available manually.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
   A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.
@@ -106,7 +116,9 @@ Release notes:
   reprinted; the exact numeric IP remains available in settings as a diagnostic
   fallback.
 - Host/client library mode for sharing one desktop-owned library with other
-  authenticated desktop installations.
+  authenticated desktop installations. A client Dashboard paints its last-good
+  cached view first, including cached consumption, then refreshes from the host
+  in the background.
 - Catalog refresh and maintenance for Bambu and eSUN filament data.
 - Portable full JSON backups that omit device-local credentials and pairing
   state. Backup v1 includes schema/app metadata while remaining compatible with

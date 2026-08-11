@@ -56,7 +56,10 @@ Release date: 2026-08-12
 
 ## Upgrade Notes
 
-- No manual database migration or settings change is required.
+- No manual database migration or settings change is required when upgrading
+  from v0.24. Installations upgrading from a version before TLS identity trust
+  was introduced must review and trust the Bambu Live printer identity; the
+  Dashboard shows a clickable action that opens the affected Live settings.
 - To see the new twelve-month chart on a desktop client, update both the host
   and the client. A v0.25 client connected to an older host reports that the
   host must be updated instead of displaying a false zero history. An older

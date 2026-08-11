@@ -126,6 +126,16 @@ transaction. Every query contributing to a response therefore observes the
 same database snapshot, even if another connection commits while the response
 is being assembled.
 
+The inventory-overview contract keeps rolling usage distinct from its existing
+30-day totals. Its twelve-month series contains the current local calendar
+month and the preceding eleven months, zero-filled and ordered oldest to
+newest, from printer-linked jobs and persisted Bambu Live usage sessions. The
+`consumption_12m_available` flag defaults to false when an older host omits the
+new fields, so a newer client can request an upgrade instead of treating absent
+history as zero. The UI derives the chart headline from the same normalized
+buckets it renders, and the client Dashboard snapshot cache carries both the
+series and its availability state.
+
 The Companion server treats SQLite, credential-store, catalog-network, and
 other blocking work as blocking operations:
 
@@ -143,10 +153,18 @@ on an async worker thread.
 
 ## Bambu Live Boundaries
 
-Passive local discovery is a convenience path, not printer authentication. It
-uses an advertised address and serial only to help fill a setup form. A saved
+Passive local discovery is a convenience path, not printer authentication. An
+untrusted advertised address and serial may fill a setup form, but a saved
 printer address may change only after the stored serial and SPKI pin verify the
-candidate over TLS; discovery itself never reads or sends an access code.
+candidate over TLS. Discovery and recovery never read or send an access code.
+
+When a trusted Live poll fails before any different TLS identity is observed,
+automatic address recovery may run on a per-printer cooldown. It discovers
+private-LAN candidates, considers only the saved serial, applies the same TLS
+pin proof as manual recovery, and uses a compare-and-swap database update so a
+concurrent settings edit cannot be overwritten. An untrusted or changed
+identity remains blocked for explicit user review; automatic recovery cannot
+turn discovery metadata into trust.
 
 The live-printer path is intentionally ordered:
 
