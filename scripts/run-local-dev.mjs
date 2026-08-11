@@ -15,6 +15,18 @@ export const LOCAL_DEV_DATABASE_SEGMENTS = [
   "dev-local",
   "filament-manager.db",
 ];
+export const LOCAL_DEV_REUSED_MESSAGE =
+  "Reusing the populated isolated local-only development database.";
+export const LOCAL_DEV_CREATED_MESSAGE =
+  "Created a populated isolated local-only development database snapshot.";
+export const LOCAL_DEV_START_FAILURE_MESSAGE =
+  "Unable to start local-only development mode. A setup or safety check failed; " +
+  "if a prior run was killed, confirm it is stopped before removing the ignored " +
+  "tmp/dev-local/.filament-manager-dev-local.lock file.";
+
+export function reportLocalDevStartFailure(logError = console.error) {
+  logError(LOCAL_DEV_START_FAILURE_MESSAGE);
+}
 
 export function resolveLocalDevDatabasePath(repoRoot = DEFAULT_REPO_ROOT) {
   return path.resolve(repoRoot, ...LOCAL_DEV_DATABASE_SEGMENTS);
@@ -86,10 +98,9 @@ export async function runLocalDev({
       targetPath,
     });
     if (preparation.reused) {
-      log(`Reusing populated local-only development database: ${preparation.targetPath}`);
+      log(LOCAL_DEV_REUSED_MESSAGE);
     } else {
-      log(`Created local-only development snapshot from: ${preparation.sourcePath}`);
-      log(`Writable development database: ${preparation.targetPath}`);
+      log(LOCAL_DEV_CREATED_MESSAGE);
     }
     const child = runTauri({
       argv: ["dev", ...argv],
@@ -109,8 +120,8 @@ export async function runLocalDev({
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     await runLocalDev();
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+  } catch {
+    reportLocalDevStartFailure();
     process.exitCode = 1;
   }
 }

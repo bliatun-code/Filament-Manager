@@ -6,7 +6,11 @@ import test from "node:test";
 import {
   buildLocalDevEnvironment,
   FILAMENT_MANAGER_DB_PATH_ENV,
+  LOCAL_DEV_CREATED_MESSAGE,
   resolveLocalDevDatabasePath,
+  LOCAL_DEV_REUSED_MESSAGE,
+  LOCAL_DEV_START_FAILURE_MESSAGE,
+  reportLocalDevStartFailure,
   runLocalDev,
 } from "./run-local-dev.mjs";
 
@@ -104,9 +108,10 @@ test("local dev prepares its populated copy before launching Tauri", async () =>
     },
   ]);
   assert.deepEqual(logs, [
-    "Created local-only development snapshot from: /private/standalone-recovery.sqlite",
-    `Writable development database: ${targetPath}`,
+    LOCAL_DEV_CREATED_MESSAGE,
   ]);
+  assert.equal(logs.join("\n").includes("/private/standalone-recovery.sqlite"), false);
+  assert.equal(logs.join("\n").includes(targetPath), false);
   assert.equal(releaseCount, 0);
   child.emit("exit", 0, null);
   assert.equal(releaseCount, 1);
@@ -127,8 +132,20 @@ test("local dev reports when it reuses an existing populated standalone copy", a
     runTauri: () => child,
   });
 
-  assert.deepEqual(logs, [`Reusing populated local-only development database: ${targetPath}`]);
+  assert.deepEqual(logs, [LOCAL_DEV_REUSED_MESSAGE]);
+  assert.equal(logs.join("\n").includes(targetPath), false);
   child.emit("exit", 0, null);
+});
+
+test("local dev CLI failure reporting never includes environment-derived details", () => {
+  const messages = [];
+  reportLocalDevStartFailure((message) => messages.push(message));
+
+  assert.deepEqual(messages, [LOCAL_DEV_START_FAILURE_MESSAGE]);
+  assert.equal(
+    messages.join("\n").includes("credential_profile_secret-or-private-database-path"),
+    false,
+  );
 });
 
 test("local dev releases its process lock when database preparation fails", async () => {
