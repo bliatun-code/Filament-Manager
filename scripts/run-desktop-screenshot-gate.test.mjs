@@ -3259,6 +3259,7 @@ test("desktop screenshot capture targets only the verified CGWindowID", async ()
       },
       mkdirFn: async () => {},
       outputDir: testOutputDir,
+      platform: "darwin",
       readFileFn: async () => expectedBuffer,
     },
   );
