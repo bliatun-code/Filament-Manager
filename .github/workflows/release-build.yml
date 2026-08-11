@@ -478,7 +478,7 @@ jobs:
     name: Build Windows MSI
     needs: validate-release
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'windows'
-    runs-on: windows-latest
+    runs-on: windows-2025
     timeout-minutes: 60
     steps:
       - name: Checkout

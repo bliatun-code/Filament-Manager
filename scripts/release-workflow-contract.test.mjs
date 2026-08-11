@@ -173,7 +173,7 @@ test("release workflow gates tag and manual installer builds", () => {
     windowsJob,
     /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'windows'/,
   );
-  assert.match(windowsJob, /runs-on: windows-latest/);
+  assert.match(windowsJob, /runs-on: windows-2025/);
   assert.match(
     windowsJob,
     /- name: Prepare MSI version override\s+env:\s+MSI_VERSION_CONFIG_PATH: \$\{\{ runner\.temp \}\}\/filament-manager-msi-version\.json\s+run: node \.\/scripts\/normalize-msi-version\.mjs --output "\$env:MSI_VERSION_CONFIG_PATH"/,
