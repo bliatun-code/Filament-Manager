@@ -10,9 +10,11 @@ ordinary script test suite.
 
 The reviewed Rust release is pinned in `rust-toolchain.toml` and monitored by
 Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.88 as
-their minimum supported version; the ordinary release and smoke jobs use the
-exact pinned release. Rust-toolchain pull requests must update the explicit
-workflow toolchain values to match; the contract suite rejects partial bumps.
+their minimum supported version. Both required smoke jobs compile the complete
+workspace with Rust 1.88 on their supported desktop platform before selecting
+the exact pinned release for ordinary verification. Rust-toolchain pull
+requests must update the explicit workflow toolchain values to match; the
+contract suite rejects partial bumps.
 
 The workflow has read-only repository permission, uses SHA-pinned GitHub
 Actions, and installs the Rust audit tools from exact versions with their own
@@ -72,8 +74,8 @@ npm run audit:cargo
 npm run check:cargo-licenses
 ```
 
-Verify the declared Rust lower bound separately when changing Rust or Cargo
-dependencies:
+Reproduce the declared Rust lower-bound check for the current host when changing
+Rust or Cargo dependencies:
 
 ```bash
 rustup toolchain install 1.88.0 --profile minimal

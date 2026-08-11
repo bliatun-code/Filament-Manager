@@ -35,6 +35,16 @@ jobs:
             package-lock.json
             ui/package-lock.json
 
+      - name: Setup Rust MSRV
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.88.0
+
+      - name: Check Rust MSRV
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
+        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
@@ -82,6 +92,16 @@ jobs:
 
       - name: Run static command portability contract
         run: npm run check:command-portability
+
+      - name: Setup Rust MSRV
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.88.0
+
+      - name: Check Rust MSRV
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
+        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
