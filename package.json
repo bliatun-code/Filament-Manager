@@ -10,6 +10,7 @@
   },
   "scripts": {
     "doctor": "node ./scripts/doctor.mjs",
+    "dev:local": "node ./scripts/run-local-dev.mjs",
     "cleanup:local": "node ./scripts/cleanup-local-artifacts.mjs",
     "check:version": "node ./scripts/check-version-consistency.mjs",
     "check:msi-version": "node ./scripts/normalize-msi-version.mjs --check",

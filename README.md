@@ -214,6 +214,20 @@ Run the desktop app in Tauri dev mode:
 npm run tauri -- dev
 ```
 
+Run it against a persistent, isolated local-only database without changing the
+saved role of the normally installed app:
+
+```bash
+npm run dev:local
+```
+
+The local-only database is stored at `tmp/dev-local/filament-manager.db`. On the
+first run, the command creates a sanitized, writable SQLite snapshot from the
+installed app's preserved local library or its latest standalone recovery
+snapshot. It removes client pairing, machine credentials, Trusted LAN state,
+and printer connection secrets from the copy. Later runs reuse the populated
+copy, while the ignored `tmp/` directory keeps it outside version control.
+
 Run the frontend alone:
 
 ```bash
