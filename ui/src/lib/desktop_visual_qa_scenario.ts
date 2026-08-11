@@ -1,14 +1,17 @@
 import { isSpoolStatusEmptyOrLost } from "./inventory_domain";
 import visualQaScenarioManifest from "./desktop_visual_qa_scenarios.json";
+import type { DashboardUsageMonth } from "./dashboard_model";
 import type { InventorySpool } from "./inventory_list_model";
 
 export const DESKTOP_VISUAL_QA_QUERY_KEY = "bfm_visual_qa";
 export const DESKTOP_VISUAL_QA_BORROWER_NAME = "Sample maker space";
-export const DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID = "visual_qa_spool_inbound_lagoon";
+export const DESKTOP_VISUAL_QA_INBOUND_SPOOL_ID =
+  "visual_qa_spool_inbound_lagoon";
 
 export type DesktopVisualQaScenario =
   | "dashboard-overview"
   | "dashboard-onboarding"
+  | "dashboard-consumption"
   | "inventory-overview"
   | "add-filament"
   | "wishlist-queue"
@@ -55,20 +58,16 @@ export type DesktopVisualQaScenario =
   | "statistics-borrower"
   | "statistics-loans";
 export type DesktopVisualQaInitialPage =
-  | "dashboard"
-  | "inventory"
-  | "loans"
-  | "printers"
-  | "settings"
-  | "statistics";
+  "dashboard" | "inventory" | "loans" | "printers" | "settings" | "statistics";
 export type DesktopVisualQaInitialSettingsTab =
-  | "GENERAL"
-  | "LIBRARY"
-  | "PRINTERS"
-  | "CATALOG"
-  | "MAINTENANCE";
-export type DesktopVisualQaScenarioCategory = "overview" | "modal" | "workflow" | "settings";
-export type DesktopVisualQaReadinessToken = "printer-live-telemetry";
+  "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
+export type DesktopVisualQaScenarioCategory =
+  "overview" | "modal" | "workflow" | "settings";
+export type DesktopVisualQaReadinessToken =
+  | "add-printer-live-step"
+  | "dashboard-bambu-live-attention"
+  | "dashboard-consumption"
+  | "printer-live-telemetry";
 export type DesktopVisualQaReadiness = {
   timeoutMs: number;
   token: DesktopVisualQaReadinessToken;
@@ -86,9 +85,38 @@ export type DesktopVisualQaScenarioDefinition = {
 const DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS =
   visualQaScenarioManifest.scenarios as DesktopVisualQaScenarioDefinition[];
 
-export const DESKTOP_VISUAL_QA_SCENARIOS = DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS.map(
-  (scenario) => scenario.id,
-) as DesktopVisualQaScenario[];
+export const DESKTOP_VISUAL_QA_SCENARIOS =
+  DESKTOP_VISUAL_QA_SCENARIO_DEFINITIONS.map(
+    (scenario) => scenario.id,
+  ) as DesktopVisualQaScenario[];
+
+const DESKTOP_VISUAL_QA_USAGE_GRAMS = [
+  0, 180, 0, 0, 720, 0, 1_440, 860, 0, 0, 320, 0,
+] as const;
+
+/**
+ * Keeps the screenshot-only annual chart representative as calendar time
+ * advances. Production dashboard data still comes from the backend; this
+ * series is used only when the explicit development visual-QA scenario runs.
+ */
+export function buildDesktopVisualQaUsageMonths(
+  now = new Date(),
+): DashboardUsageMonth[] {
+  const validNow = Number.isFinite(now.getTime()) ? now : new Date();
+  const currentMonth = new Date(validNow.getFullYear(), validNow.getMonth(), 1);
+  return DESKTOP_VISUAL_QA_USAGE_GRAMS.map((usedGrams, index) => {
+    const month = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth() -
+        (DESKTOP_VISUAL_QA_USAGE_GRAMS.length - 1 - index),
+      1,
+    );
+    return {
+      month: `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`,
+      usedGrams,
+    };
+  });
+}
 
 function isDevRuntime(): boolean {
   const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
@@ -96,7 +124,9 @@ function isDevRuntime(): boolean {
 }
 
 function normalizeScenarioToken(value: string | null | undefined): string {
-  return String(value ?? "").trim().toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 export function desktopVisualQaScenarioDefinition(
@@ -127,8 +157,12 @@ export function resolveDesktopVisualQaScenario(
     return null;
   }
   const params =
-    typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
-  return normalizeDesktopVisualQaScenario(params.get(DESKTOP_VISUAL_QA_QUERY_KEY));
+    typeof search === "string"
+      ? new URLSearchParams(search)
+      : (search ?? new URLSearchParams());
+  return normalizeDesktopVisualQaScenario(
+    params.get(DESKTOP_VISUAL_QA_QUERY_KEY),
+  );
 }
 
 export function isInventoryDesktopVisualQaScenario(
@@ -141,18 +175,25 @@ export function desktopVisualQaInitialPage(
   search: string | URLSearchParams | null | undefined,
 ): DesktopVisualQaInitialPage | null {
   const params =
-    typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
-  return desktopVisualQaScenarioDefinition(params.get(DESKTOP_VISUAL_QA_QUERY_KEY))?.page ?? null;
+    typeof search === "string"
+      ? new URLSearchParams(search)
+      : (search ?? new URLSearchParams());
+  return (
+    desktopVisualQaScenarioDefinition(params.get(DESKTOP_VISUAL_QA_QUERY_KEY))
+      ?.page ?? null
+  );
 }
 
 export function desktopVisualQaInitialSettingsTab(
   search: string | URLSearchParams | null | undefined,
 ): DesktopVisualQaInitialSettingsTab | null {
   const params =
-    typeof search === "string" ? new URLSearchParams(search) : search ?? new URLSearchParams();
+    typeof search === "string"
+      ? new URLSearchParams(search)
+      : (search ?? new URLSearchParams());
   return (
-    desktopVisualQaScenarioDefinition(params.get(DESKTOP_VISUAL_QA_QUERY_KEY))?.settingsTab ??
-    null
+    desktopVisualQaScenarioDefinition(params.get(DESKTOP_VISUAL_QA_QUERY_KEY))
+      ?.settingsTab ?? null
   );
 }
 
@@ -161,11 +202,17 @@ export function chooseDesktopVisualQaSpoolId(
   assignedSpoolIds: ReadonlySet<string>,
   scenario: DesktopVisualQaScenario,
 ): string | null {
-  const usableSpools = spools.filter((spool) => !isSpoolStatusEmptyOrLost(spool.status));
+  const usableSpools = spools.filter(
+    (spool) => !isSpoolStatusEmptyOrLost(spool.status),
+  );
   if (scenario === "rfid-capture") {
     return (
-      usableSpools.find((spool) => assignedSpoolIds.has(spool.id) && spool.rfidTag)?.id ??
-      usableSpools.find((spool) => assignedSpoolIds.has(spool.id) && isBambuSpool(spool))?.id ??
+      usableSpools.find(
+        (spool) => assignedSpoolIds.has(spool.id) && spool.rfidTag,
+      )?.id ??
+      usableSpools.find(
+        (spool) => assignedSpoolIds.has(spool.id) && isBambuSpool(spool),
+      )?.id ??
       usableSpools.find((spool) => assignedSpoolIds.has(spool.id))?.id ??
       usableSpools[0]?.id ??
       null
@@ -225,12 +272,16 @@ function isLabelRedundancyStressSpool(spool: InventorySpool): boolean {
   return (
     /^bambu(?:\s+lab)?$/i.test(spool.vendor.trim()) &&
     Boolean(material) &&
-    spool.colorName.toLocaleLowerCase().startsWith(`${material.toLocaleLowerCase()} `) &&
+    spool.colorName
+      .toLocaleLowerCase()
+      .startsWith(`${material.toLocaleLowerCase()} `) &&
     spool.colorName.length >= 20
   );
 }
 
-export function chooseDesktopVisualQaLoanSpool(spools: InventorySpool[]): InventorySpool | null {
+export function chooseDesktopVisualQaLoanSpool(
+  spools: InventorySpool[],
+): InventorySpool | null {
   const neutralMidtones = spools.filter(
     (spool) =>
       isNonBambuSpool(spool) &&
@@ -244,7 +295,8 @@ export function chooseDesktopVisualQaLoanSpool(spools: InventorySpool[]): Invent
       if (!brightest) {
         return spool;
       }
-      return swatchChannelAverage(spool.hexColor) > swatchChannelAverage(brightest.hexColor)
+      return swatchChannelAverage(spool.hexColor) >
+        swatchChannelAverage(brightest.hexColor)
         ? spool
         : brightest;
     }, null) ??
@@ -256,7 +308,9 @@ export function chooseDesktopVisualQaLoanSpool(spools: InventorySpool[]): Invent
 }
 
 function isNeutralColorName(value: string): boolean {
-  return /\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(value);
+  return /\b(black|white|gray|grey|silver|transparent|clear|natural)\b/i.test(
+    value,
+  );
 }
 
 function isBrightNeutralSpool(spool: InventorySpool): boolean {
@@ -283,7 +337,9 @@ function swatchChannelAverage(value: string | null | undefined): number {
   const channels = [0, 2, 4].map((offset) =>
     Number.parseInt(normalizedHex.slice(offset, offset + 2), 16),
   );
-  return channels.reduce((total, channel) => total + channel, 0) / channels.length;
+  return (
+    channels.reduce((total, channel) => total + channel, 0) / channels.length
+  );
 }
 
 function isBambuSpool(spool: InventorySpool): boolean {

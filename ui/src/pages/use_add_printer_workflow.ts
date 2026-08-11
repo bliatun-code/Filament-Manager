@@ -1,4 +1,10 @@
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { commandErrorText } from "../lib/error_text";
 import {
   buildCreatePrinterInput,
@@ -8,7 +14,10 @@ import {
 import { resolvePrinterModelProfile } from "../lib/printer_profiles";
 import { createManagedPrinterWithBambuLive } from "../lib/printer_writes";
 import { useI18n } from "../lib/i18n";
-import { inspectBambuLiveTlsIdentity, type BambuTlsTrustAction } from "../lib/tauri_client";
+import {
+  inspectBambuLiveTlsIdentity,
+  type BambuTlsTrustAction,
+} from "../lib/tauri_client";
 
 type UseAddPrinterWorkflowInput = {
   busy: boolean;
@@ -46,16 +55,24 @@ export function useAddPrinterWorkflow({
   const [newBambuLiveEnabled, setNewBambuLiveEnabled] = useState(false);
   const [newBambuLiveHost, setNewBambuLiveHost] = useState("");
   const [newBambuLiveAccessCode, setNewBambuLiveAccessCode] = useState("");
-  const [newBambuLivePrinterSerial, setNewBambuLivePrinterSerial] = useState("");
-  const [newBambuLiveTlsCertificateFingerprint, setNewBambuLiveTlsCertificateFingerprint] = useState<string | null>(
-    null,
-  );
-  const [newBambuLiveTlsSpkiFingerprint, setNewBambuLiveTlsSpkiFingerprint] = useState<string | null>(null);
-  const [newBambuLiveTlsTrustAction, setNewBambuLiveTlsTrustAction] = useState<BambuTlsTrustAction>("KEEP");
+  const [newBambuLivePrinterSerial, setNewBambuLivePrinterSerial] =
+    useState("");
+  const [
+    newBambuLiveTlsCertificateFingerprint,
+    setNewBambuLiveTlsCertificateFingerprint,
+  ] = useState<string | null>(null);
+  const [newBambuLiveTlsSpkiFingerprint, setNewBambuLiveTlsSpkiFingerprint] =
+    useState<string | null>(null);
+  const [newBambuLiveTlsTrustAction, setNewBambuLiveTlsTrustAction] =
+    useState<BambuTlsTrustAction>("KEEP");
 
-  const selectedModelProfile = useMemo(() => resolvePrinterModelProfile(newPrinterModel || ""), [newPrinterModel]);
+  const selectedModelProfile = useMemo(
+    () => resolvePrinterModelProfile(newPrinterModel || ""),
+    [newPrinterModel],
+  );
   const newPrinterCapacity = useMemo(
-    () => derivePrinterFormCapacity(newPrinterModel, newAmsUnits, newSlotsPerUnit),
+    () =>
+      derivePrinterFormCapacity(newPrinterModel, newAmsUnits, newSlotsPerUnit),
     [newAmsUnits, newPrinterModel, newSlotsPerUnit],
   );
 
@@ -99,16 +116,23 @@ export function useAddPrinterWorkflow({
     setShowAddPrinterModal(false);
   }, [busy]);
 
-  const openAddPrinterModalForVisualQa = useCallback(() => {
-    setNewPrinterModel("");
-    setNewPrinterName("");
-    setNewAmsUnits("0");
-    setNewSlotsPerUnit("4");
-    resetBambuLiveDraft();
-    setShowAddPrinterModal(true);
-    setError(null);
-    setInfo(null);
-  }, [resetBambuLiveDraft, setError, setInfo]);
+  const openAddPrinterModalForVisualQa = useCallback(
+    (options?: { showBambuLiveStep?: boolean }) => {
+      const showBambuLiveStep = options?.showBambuLiveStep === true;
+      const model = showBambuLiveStep ? "Bambu Lab P1S" : "";
+      const capacity = defaultPrinterFormCapacityForModel(model);
+      setNewPrinterModel(model);
+      setNewPrinterName(showBambuLiveStep ? "Atlas QA" : "");
+      setNewAmsUnits(capacity?.amsUnits ?? "0");
+      setNewSlotsPerUnit(capacity?.slotsPerUnit ?? "4");
+      resetBambuLiveDraft();
+      setNewBambuLiveEnabled(showBambuLiveStep);
+      setShowAddPrinterModal(true);
+      setError(null);
+      setInfo(null);
+    },
+    [resetBambuLiveDraft, setError, setInfo],
+  );
 
   const handleInspectBambuLiveIdentity = useCallback(async () => {
     const host = newBambuLiveHost.trim();
@@ -132,13 +156,26 @@ export function useAddPrinterWorkflow({
       setError(
         commandErrorText(
           inspectError,
-          t("settings.error.bambuLiveIdentityCheckFailed", "Could not verify the printer identity."),
+          t(
+            "settings.error.bambuLiveIdentityCheckFailed",
+            "Could not verify the printer identity.",
+          ),
         ),
       );
     } finally {
       setBusy(false);
     }
-  }, [busy, clientReadOnly, newBambuLiveHost, newBambuLivePrinterSerial, setBusy, setError, setInfo, tauri, t]);
+  }, [
+    busy,
+    clientReadOnly,
+    newBambuLiveHost,
+    newBambuLivePrinterSerial,
+    setBusy,
+    setError,
+    setInfo,
+    tauri,
+    t,
+  ]);
 
   const openAddPrinterModal = useCallback(() => {
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -148,7 +185,12 @@ export function useAddPrinterWorkflow({
       return;
     }
     openAddPrinterModalForVisualQa();
-  }, [canUseClientHostWrite, clientReadOnly, ensureLocalWriteAllowed, openAddPrinterModalForVisualQa]);
+  }, [
+    canUseClientHostWrite,
+    clientReadOnly,
+    ensureLocalWriteAllowed,
+    openAddPrinterModalForVisualQa,
+  ]);
 
   const handleAddPrinter = useCallback(async () => {
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -163,12 +205,19 @@ export function useAddPrinterWorkflow({
     const model = newPrinterModel.trim();
     const name = newPrinterName.trim();
     if (!model || !name) {
-      setError(t("settings.error.printerRequired", "Printer name and model are required."));
+      setError(
+        t(
+          "settings.error.printerRequired",
+          "Printer name and model are required.",
+        ),
+      );
       return;
     }
     if (
       newBambuLiveEnabled &&
-      (!newBambuLiveHost.trim() || !newBambuLiveAccessCode.trim() || !newBambuLivePrinterSerial.trim())
+      (!newBambuLiveHost.trim() ||
+        !newBambuLiveAccessCode.trim() ||
+        !newBambuLivePrinterSerial.trim())
     ) {
       setError(
         t(
@@ -185,7 +234,10 @@ export function useAddPrinterWorkflow({
         newBambuLiveTlsTrustAction !== "TRUST_CURRENT")
     ) {
       setError(
-        t("settings.error.bambuLiveTrustRequired", "Check and trust the printer identity before enabling Bambu Live."),
+        t(
+          "settings.error.bambuLiveTrustRequired",
+          "Check and trust the printer identity before enabling Bambu Live.",
+        ),
       );
       return;
     }
@@ -195,7 +247,13 @@ export function useAddPrinterWorkflow({
     setInfo(null);
     try {
       const printerId = `printer_${Date.now()}`;
-      const createInput = buildCreatePrinterInput(printerId, model, name, newAmsUnits, newSlotsPerUnit);
+      const createInput = buildCreatePrinterInput(
+        printerId,
+        model,
+        name,
+        newAmsUnits,
+        newSlotsPerUnit,
+      );
       await createManagedPrinterWithBambuLive(
         createInput,
         newBambuLiveEnabled
@@ -207,7 +265,8 @@ export function useAddPrinterWorkflow({
               access_code: newBambuLiveAccessCode.trim(),
               printer_serial: newBambuLivePrinterSerial.trim(),
               tls_trust_action: "TRUST_CURRENT",
-              expected_tls_certificate_sha256: newBambuLiveTlsCertificateFingerprint,
+              expected_tls_certificate_sha256:
+                newBambuLiveTlsCertificateFingerprint,
               expected_tls_spki_sha256: newBambuLiveTlsSpkiFingerprint,
             }
           : null,
@@ -218,7 +277,12 @@ export function useAddPrinterWorkflow({
       setInfo(`${t("settings.addedPrinter", "Added printer")} "${name}".`);
     } catch (createError) {
       console.error(createError);
-      setError(commandErrorText(createError, t("settings.error.addPrinter", "Failed to add printer.")));
+      setError(
+        commandErrorText(
+          createError,
+          t("settings.error.addPrinter", "Failed to add printer."),
+        ),
+      );
     } finally {
       setBusy(false);
     }

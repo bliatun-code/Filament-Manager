@@ -358,7 +358,7 @@ export const fiFIDictionary: DictionaryNode = {
     "noUsageTrendYet": "Ei vielä käyttötrendiä",
     "noRecentActivity": "Ei vielä uutta toimintaa.",
     "clientSnapshotCardHint": "Tämä laite on yhdistetty asiakkaana. Tällä hetkellä se näyttää isäntäyhteenvedon ja pitää raskaat kirjoitustyöt isännässä.",
-    "consumptionCaption": "Käyttö on koottu tulostimiin linkitetyistä tulostustöistä.",
+    "consumptionCaption": "Tallennetut tulostustyöt ja Bambu Live -istunnot.",
     "clientSnapshotHealthHint": "Tämä asiakas näyttää vain isäntäyhteenvedon. Yksityiskohtainen varaston kunto säilyy isännässä toistaiseksi.",
     "backupText": "Vie tason tilannekuvat JSON- tai CSV-tiedostoihin arkistointia varten.",
     "loaned": "lainata",

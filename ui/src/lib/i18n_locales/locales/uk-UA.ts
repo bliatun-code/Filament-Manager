@@ -115,7 +115,7 @@ export const ukUADictionary: DictionaryNode = {
     "configured": "налаштовано",
     "connectedToHost": "Підключено до",
     "consumption": "Витрата нитки",
-    "consumptionCaption": "Використання агрегується з пов’язаних із принтером завдань друку.",
+    "consumptionCaption": "Записані завдання друку та сеанси Bambu Live.",
     "gramsPerDay": "{count} г/добу",
     "healthBalanceHint": "Дивіться разом низькі запаси, кредити, замовлення та завантажені слоти.",
     "healthMonitor": "Монітор поповнення запасів",

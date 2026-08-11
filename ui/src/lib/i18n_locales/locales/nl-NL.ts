@@ -115,7 +115,7 @@ export const nlNLDictionary: DictionaryNode = {
     "configured": "geconfigureerd",
     "connectedToHost": "Verbonden met",
     "consumption": "Filamentverbruik",
-    "consumptionCaption": "Het gebruik wordt verzameld van printergekoppelde afdruktaken.",
+    "consumptionCaption": "Geregistreerde afdruktaken en Bambu Live-sessies.",
     "gramsPerDay": "{count} g/dag",
     "healthBalanceHint": "Bekijk samen lage voorraad, leningen, bestellingen en geladen slots.",
     "healthMonitor": "Controleer de voorraad",

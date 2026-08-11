@@ -115,7 +115,7 @@ export const csCZDictionary: DictionaryNode = {
     "configured": "nakonfigurováno",
     "connectedToHost": "Připojeno k",
     "consumption": "Spotřeba filamentu",
-    "consumptionCaption": "Využití je agregováno z tiskových úloh propojených s tiskárnou.",
+    "consumptionCaption": "Zaznamenané tiskové úlohy a relace Bambu Live.",
     "gramsPerDay": "{count} g/den",
     "healthBalanceHint": "Sledujte nízké zásoby, půjčky, objednávky a naložené slots společně.",
     "healthMonitor": "Sledujte doplnění zásob",

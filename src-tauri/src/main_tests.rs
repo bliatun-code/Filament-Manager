@@ -345,9 +345,13 @@ fn recovery_snapshot_count(app_dir: &Path, name_fragment: &str) -> Result<usize,
 
 #[test]
 #[cfg(debug_assertions)]
-fn visual_qa_scenario_normalizer_accepts_stateful_settings_scenarios() {
+fn visual_qa_scenario_normalizer_accepts_known_stateful_scenarios() {
     use super::normalize_visual_qa_scenario;
 
+    assert_eq!(
+        normalize_visual_qa_scenario("dashboard-usage"),
+        Some("dashboard-consumption")
+    );
     assert_eq!(
         normalize_visual_qa_scenario("trusted-lan-details"),
         Some("settings-library-network-details")
@@ -598,12 +602,24 @@ fn visual_qa_window_size_normalizer_accepts_bounded_outer_frames() {
 
 #[test]
 #[cfg(debug_assertions)]
-fn visual_qa_readiness_normalizer_accepts_only_live_printer_telemetry() {
+fn visual_qa_readiness_normalizer_accepts_only_known_tokens() {
     use super::normalize_desktop_visual_qa_readiness_token;
 
     assert_eq!(
         normalize_desktop_visual_qa_readiness_token(" printer-live-telemetry "),
         Some("printer-live-telemetry")
+    );
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token("add-printer-live-step"),
+        Some("add-printer-live-step")
+    );
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token("dashboard-bambu-live-attention"),
+        Some("dashboard-bambu-live-attention")
+    );
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token("dashboard-consumption"),
+        Some("dashboard-consumption")
     );
     assert_eq!(
         normalize_desktop_visual_qa_readiness_token("printer-board"),

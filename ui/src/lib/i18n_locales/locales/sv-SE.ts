@@ -358,7 +358,7 @@ export const svSEDictionary: DictionaryNode = {
     "noUsageTrendYet": "Ingen användningstrend ännu",
     "noRecentActivity": "Ingen ny aktivitet ännu.",
     "clientSnapshotCardHint": "Den här enheten är ansluten som en klient. För närvarande visar den värdsammanfattningen och behåller skrivtunga arbetsflöden på värden.",
-    "consumptionCaption": "Användningen sammanställs från skrivarlänkade utskriftsjobb.",
+    "consumptionCaption": "Registrerade utskriftsjobb och Bambu Live-sessioner.",
     "clientSnapshotHealthHint": "Den här klienten visar endast värdsammanfattningen. Detaljerad inventering hälsa stannar på värden för tillfället.",
     "backupText": "Exportera ögonblicksbilder av lager till JSON eller CSV för arkivering.",
     "loaned": "utlånade",

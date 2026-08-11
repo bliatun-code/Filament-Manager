@@ -4,7 +4,12 @@
       "id": "dashboard-overview",
       "aliases": ["dashboard"],
       "page": "dashboard",
-      "category": "overview"
+      "category": "overview",
+      "requiresDatabaseFixture": true,
+      "readiness": {
+        "token": "dashboard-bambu-live-attention",
+        "timeoutMs": 15000
+      }
     },
     {
       "id": "dashboard-onboarding",
@@ -12,6 +17,20 @@
       "page": "dashboard",
       "category": "workflow",
       "requiresDatabaseFixture": true
+    },
+    {
+      "id": "dashboard-consumption",
+      "aliases": [
+        "annual-consumption",
+        "dashboard-usage"
+      ],
+      "page": "dashboard",
+      "category": "overview",
+      "requiresDatabaseFixture": true,
+      "readiness": {
+        "token": "dashboard-consumption",
+        "timeoutMs": 15000
+      }
     },
     {
       "id": "inventory-overview",
@@ -114,7 +133,12 @@
       "id": "add-printer",
       "aliases": ["printer-add", "add-printer-modal"],
       "page": "printers",
-      "category": "modal"
+      "category": "modal",
+      "requiresDatabaseFixture": true,
+      "readiness": {
+        "token": "add-printer-live-step",
+        "timeoutMs": 15000
+      }
     },
     {
       "id": "printer-slot-assignment",

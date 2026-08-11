@@ -115,7 +115,7 @@ export const zhTWDictionary: DictionaryNode = {
     "configured": "已設定",
     "connectedToHost": "連接到",
     "consumption": "耗絲量",
-    "consumptionCaption": "使用情況是從印表機連結的列印作業中匯總的。",
+    "consumptionCaption": "已記錄的列印工作和 Bambu Live 工作階段。",
     "gramsPerDay": "{count} 克/天",
     "healthBalanceHint": "一起關注庫存不足、貸款、訂單和已滿的插槽。",
     "healthMonitor": "監控補貨",

@@ -147,7 +147,7 @@ export const deDictionary: DictionaryNode = {
     clientSnapshotCapturedAt: "Momentaufnahme erstellt",
     clientSnapshotHealthHint:
       "Dieser Client zeigt nur die Host-Zusammenfassung. Detaillierte Bestandsdaten bleiben auf dem Host.",
-    consumptionCaption: "Der Verbrauch wird aus druckerverknüpften Druckaufträgen zusammengefasst.",
+    consumptionCaption: "Erfasste Druckaufträge und Bambu-Live-Sitzungen.",
     backupText: "Bestandsmomentaufnahmen zur Archivierung als JSON oder CSV exportieren.",
     activityHint: "Offene Ausleihen und aktuelle Druckerverbräuche erscheinen hier zuerst.",
     activityEmptyHint: "Ausleihen, Druckaufträge und andere erfasste Aktivitäten erscheinen hier.",

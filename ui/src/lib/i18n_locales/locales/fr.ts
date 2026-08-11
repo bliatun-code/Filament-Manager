@@ -139,7 +139,7 @@ export const frDictionary: DictionaryNode = {
     last12Months: "12 derniers mois",
     annualUsageUnavailable: "Mettez à jour l’hôte pour afficher l’historique sur 12 mois.",
     consumption: "Consommation de filament",
-    consumptionCaption: "La consommation est agrégée à partir des tâches liées aux imprimantes.",
+    consumptionCaption: "Tâches d’impression et sessions Bambu Live enregistrées.",
     noUsageTrendYet: "Aucune tendance de consommation pour le moment",
     backup: "Sauvegarde",
     backupText: "Exportez des instantanés du stock en JSON ou CSV pour les archiver.",

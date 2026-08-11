@@ -190,7 +190,7 @@ export const huHUDictionary: DictionaryNode = {
     "backup": "Biztonsági mentés",
     "recentActivity": "Legutóbbi tevékenység",
     "consumption": "Izzószál fogyasztás",
-    "consumptionCaption": "A használatot a nyomtatóhoz kapcsolt nyomtatási feladatokból összesítjük.",
+    "consumptionCaption": "Rögzített nyomtatási feladatok és Bambu Live-munkamenetek.",
     "clientSnapshotCardHint": "Ez az eszköz kliensként csatlakozik. Egyelőre a gazdagép összefoglalóját jeleníti meg, és az írásigényes munkafolyamatokat a gazdagépen tartja.",
     "backupText": "Exportálja a leltár pillanatfelvételeit a JSON vagy CSV formátumba archiválás céljából.",
     "noRecentActivity": "Még nincs legutóbbi tevékenység.",

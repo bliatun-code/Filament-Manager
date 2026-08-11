@@ -131,8 +131,7 @@ export const ptBRDictionary: DictionaryNode = {
     configured: "configurado",
     connectedToHost: "Conectado a",
     consumption: "Consumo de Filamento",
-    consumptionCaption:
-      "O uso é agregado a partir de trabalhos de impressão vinculados à impressora.",
+    consumptionCaption: "Trabalhos de impressão e sessões do Bambu Live registrados.",
     gramsPerDay: "{count} g/dia",
     healthBalanceHint:
       "Observe estoque baixo, empréstimos, pedidos e slots carregados juntos.",

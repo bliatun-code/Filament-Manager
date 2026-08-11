@@ -115,7 +115,7 @@ export const zhCNDictionary: DictionaryNode = {
     "configured": "配置的",
     "connectedToHost": "连接到",
     "consumption": "耗丝量",
-    "consumptionCaption": "使用情况是从打印机链接的打印作业中汇总的。",
+    "consumptionCaption": "已记录的打印任务和 Bambu Live 会话。",
     "gramsPerDay": "{count} 克/天",
     "healthBalanceHint": "关注低库存，贷款，订单，并加载slots一起。",
     "healthMonitor": "监控补货",

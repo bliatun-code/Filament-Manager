@@ -2119,7 +2119,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     timeoutMs: 35_000,
     token: "printer-live-telemetry",
   });
-  assert.equal(desktopVisualQaScenarioReadiness("add-printer"), null);
+  assert.deepEqual(desktopVisualQaScenarioReadiness("add-printer"), {
+    timeoutMs: 15_000,
+    token: "add-printer-live-step",
+  });
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
 });
 
@@ -2377,7 +2380,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 47);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 48);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

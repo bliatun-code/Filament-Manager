@@ -37,6 +37,7 @@ type AddPrinterModalProps = {
   newBambuLiveTlsCertificateFingerprint: string | null;
   newBambuLiveTlsSpkiFingerprint: string | null;
   newBambuLiveTlsTrustAction: BambuTlsTrustAction;
+  initialStep?: "PRINTER" | "LIVE";
   onClose: () => void;
   onSelectPrinterModel: (model: string) => void;
   onPrinterNameChange: (name: string) => void;
@@ -70,6 +71,7 @@ export function AddPrinterModal({
   newBambuLiveTlsCertificateFingerprint,
   newBambuLiveTlsSpkiFingerprint,
   newBambuLiveTlsTrustAction,
+  initialStep = "PRINTER",
   onClose,
   onSelectPrinterModel,
   onPrinterNameChange,
@@ -84,17 +86,23 @@ export function AddPrinterModal({
   onAddPrinter,
 }: AddPrinterModalProps) {
   const { t } = useI18n();
-  const [step, setStep] = useState<"PRINTER" | "LIVE">("PRINTER");
+  const [step, setStep] = useState<"PRINTER" | "LIVE">(initialStep);
   useEffect(() => {
     if (!bambuLiveAvailable) {
       setStep("PRINTER");
       onBambuLiveEnabledChange(false);
     }
   }, [bambuLiveAvailable, onBambuLiveEnabledChange]);
-  const liveIdentityReady = Boolean(newBambuLiveTlsCertificateFingerprint && newBambuLiveTlsSpkiFingerprint);
+  const liveIdentityReady = Boolean(
+    newBambuLiveTlsCertificateFingerprint && newBambuLiveTlsSpkiFingerprint,
+  );
 
   return (
-    <AppModal closeOnBackdrop onBackdropClose={onClose} panelClassName={modalPanelClassName("lg", "p-0")}>
+    <AppModal
+      closeOnBackdrop
+      onBackdropClose={onClose}
+      panelClassName={modalPanelClassName("lg", "p-0")}
+    >
       <div>
         <ModalHeader
           eyebrow={t("nav.printers", "Printers")}
@@ -111,7 +119,9 @@ export function AddPrinterModal({
 
         <div className="space-y-4 px-6 py-6">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <span aria-current={step === "PRINTER" ? "step" : undefined}>1. {t("nav.printers", "Printer")}</span>
+            <span aria-current={step === "PRINTER" ? "step" : undefined}>
+              1. {t("nav.printers", "Printer")}
+            </span>
             {bambuLiveAvailable ? (
               <>
                 <span>→</span>
@@ -123,14 +133,18 @@ export function AddPrinterModal({
           </div>
           {step === "PRINTER" ? (
             <div className="surface-card space-y-4">
-              <ModalFormField label={t("settings.selectPrinterModel", "Select printer model")}>
+              <ModalFormField
+                label={t("settings.selectPrinterModel", "Select printer model")}
+              >
                 <select
                   value={newPrinterModel}
                   onChange={(event) => onSelectPrinterModel(event.target.value)}
                   className={modalFormInputClassName}
                   disabled={!tauri || busy || printerModels.length === 0}
                 >
-                  <option value="">{t("settings.selectPrinterModel", "Select printer model")}</option>
+                  <option value="">
+                    {t("settings.selectPrinterModel", "Select printer model")}
+                  </option>
                   {printerModels.map((model) => (
                     <option key={model} value={model}>
                       {model}
@@ -151,7 +165,9 @@ export function AddPrinterModal({
               </ModalFormField>
 
               <div className="grid grid-cols-2 gap-3">
-                <ModalFormField label={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}>
+                <ModalFormField
+                  label={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
+                >
                   <input
                     type="number"
                     min={0}
@@ -159,27 +175,45 @@ export function AddPrinterModal({
                     value={newAmsUnits}
                     onChange={(event) => onAmsUnitsChange(event.target.value)}
                     className={modalFormInputClassName}
-                    title={multiMaterialUnitsInputLabel(t, newPrinterModel || "")}
-                    disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
+                    title={multiMaterialUnitsInputLabel(
+                      t,
+                      newPrinterModel || "",
+                    )}
+                    disabled={
+                      !tauri || busy || selectedModelProfile.maxUnits === 0
+                    }
                   />
                 </ModalFormField>
-                <ModalFormField label={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}>
+                <ModalFormField
+                  label={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
+                >
                   <input
                     type="number"
                     min={1}
                     max={selectedModelProfile.maxSlotsPerUnit}
                     value={newSlotsPerUnit}
-                    onChange={(event) => onSlotsPerUnitChange(event.target.value)}
+                    onChange={(event) =>
+                      onSlotsPerUnitChange(event.target.value)
+                    }
                     className={modalFormInputClassName}
-                    title={multiMaterialSlotsInputLabel(t, newPrinterModel || "")}
-                    disabled={!tauri || busy || selectedModelProfile.maxUnits === 0}
+                    title={multiMaterialSlotsInputLabel(
+                      t,
+                      newPrinterModel || "",
+                    )}
+                    disabled={
+                      !tauri || busy || selectedModelProfile.maxUnits === 0
+                    }
                   />
                 </ModalFormField>
               </div>
 
               <div
                 className="surface-subtle flex items-center gap-3 p-3"
-                style={printerBrandSurfaceStyle(newPrinterModel || null, "compact", resolvedTheme)}
+                style={printerBrandSurfaceStyle(
+                  newPrinterModel || null,
+                  "compact",
+                  resolvedTheme,
+                )}
               >
                 <PrinterModelPreview
                   model={newPrinterModel || "Printer"}
@@ -187,12 +221,19 @@ export function AddPrinterModal({
                   compact
                 />
                 <div className="text-xs text-slate-600 dark:text-slate-300">
-                  {describePrinterCapability(t, newPrinterModel || "", newPrinterCapacity.hasMultiMaterial)}
+                  {describePrinterCapability(
+                    t,
+                    newPrinterModel || "",
+                    newPrinterCapacity.hasMultiMaterial,
+                  )}
                 </div>
               </div>
             </div>
           ) : (
-            <div className="surface-card space-y-4" data-testid="add-printer-bambu-live-step">
+            <div
+              className="surface-card space-y-4"
+              data-testid="add-printer-bambu-live-step"
+            >
               <div>
                 <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
                   {t("settings.bambuLiveTitle", "Bambu Live")}
@@ -208,7 +249,9 @@ export function AddPrinterModal({
                 <input
                   type="checkbox"
                   checked={newBambuLiveEnabled}
-                  onChange={(event) => onBambuLiveEnabledChange(event.target.checked)}
+                  onChange={(event) =>
+                    onBambuLiveEnabledChange(event.target.checked)
+                  }
                   disabled={busy}
                   className="mt-1"
                 />
@@ -217,28 +260,42 @@ export function AddPrinterModal({
                     {t("settings.bambuLiveEnable", "Enable Bambu Live")}
                   </span>
                   <span className="block text-xs leading-5 text-slate-600 dark:text-slate-300">
-                    {t("settings.bambuLiveLocalOnly", "Connects directly to the printer on your local network.")}
+                    {t(
+                      "settings.bambuLiveLocalOnly",
+                      "Connects directly to the printer on your local network.",
+                    )}
                   </span>
                 </span>
               </label>
               {newBambuLiveEnabled ? (
                 <>
                   <div className="grid gap-3 min-[720px]:grid-cols-2">
-                    <ModalFormField label={t("settings.bambuLiveHost", "Printer host / IP")}>
+                    <ModalFormField
+                      label={t("settings.bambuLiveHost", "Printer host / IP")}
+                    >
                       <input
                         type="text"
                         value={newBambuLiveHost}
-                        onChange={(event) => onBambuLiveHostChange(event.target.value)}
+                        onChange={(event) =>
+                          onBambuLiveHostChange(event.target.value)
+                        }
                         className={modalFormInputClassName}
                         disabled={busy}
                         required
                       />
                     </ModalFormField>
-                    <ModalFormField label={t("settings.bambuLivePrinterSerial", "Printer serial")}>
+                    <ModalFormField
+                      label={t(
+                        "settings.bambuLivePrinterSerial",
+                        "Printer serial",
+                      )}
+                    >
                       <input
                         type="text"
                         value={newBambuLivePrinterSerial}
-                        onChange={(event) => onBambuLivePrinterSerialChange(event.target.value)}
+                        onChange={(event) =>
+                          onBambuLivePrinterSerialChange(event.target.value)
+                        }
                         className={modalFormInputClassName}
                         disabled={busy}
                         required
@@ -249,15 +306,22 @@ export function AddPrinterModal({
                   </div>
                   <SettingsBambuLiveSecurityControls
                     accessCode={newBambuLiveAccessCode}
-                    accessCodeAction={newBambuLiveAccessCode.trim() ? "REPLACE" : "KEEP"}
+                    accessCodeAction={
+                      newBambuLiveAccessCode.trim() ? "REPLACE" : "KEEP"
+                    }
                     accessCodeConfigured={false}
                     accessCodeInputId="add-printer-bambu-live-access-code"
-                    canCheckIdentity={Boolean(newBambuLiveHost.trim() && newBambuLivePrinterSerial.trim())}
+                    canCheckIdentity={Boolean(
+                      newBambuLiveHost.trim() &&
+                      newBambuLivePrinterSerial.trim(),
+                    )}
                     disabled={busy}
                     liveEnabled
                     noteId="add-printer-bambu-live-note"
                     readOnlyHostManaged={false}
-                    tlsCertificateFingerprint={newBambuLiveTlsCertificateFingerprint}
+                    tlsCertificateFingerprint={
+                      newBambuLiveTlsCertificateFingerprint
+                    }
                     tlsIdentityReady={liveIdentityReady}
                     tlsTrustAction={newBambuLiveTlsTrustAction}
                     tlsTrustState="UNPAIRED"
@@ -267,7 +331,10 @@ export function AddPrinterModal({
                     onCheckIdentity={onBambuLiveIdentityCheck}
                     onTlsTrustActionChange={onBambuLiveTlsTrustActionChange}
                   />
-                  <p id="add-printer-bambu-live-note" className="text-xs text-slate-500 dark:text-slate-400">
+                  <p
+                    id="add-printer-bambu-live-note"
+                    className="text-xs text-slate-500 dark:text-slate-400"
+                  >
                     {t(
                       "settings.bambuLiveCredentialsNote",
                       "Access codes are stored in this operating system's secure credential store.",
@@ -284,12 +351,18 @@ export function AddPrinterModal({
               onClick={step === "LIVE" ? () => setStep("PRINTER") : onClose}
               disabled={busy}
             >
-              {step === "LIVE" ? t("common.back", "Back") : t("common.close", "Close")}
+              {step === "LIVE"
+                ? t("common.back", "Back")
+                : t("common.close", "Close")}
             </ModalActionButton>
             <ModalActionButton
               type="button"
               variant="solid"
-              onClick={step === "PRINTER" && bambuLiveAvailable ? () => setStep("LIVE") : onAddPrinter}
+              onClick={
+                step === "PRINTER" && bambuLiveAvailable
+                  ? () => setStep("LIVE")
+                  : onAddPrinter
+              }
               disabled={
                 !tauri ||
                 busy ||

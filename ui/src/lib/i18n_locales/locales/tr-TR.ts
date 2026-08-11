@@ -115,7 +115,7 @@ export const trTRDictionary: DictionaryNode = {
     "configured": "yapılandırılmış",
     "connectedToHost": "Şuraya bağlanıldı:",
     "consumption": "Filament Tüketimi",
-    "consumptionCaption": "Kullanım, yazıcı bağlantılı yazdırma işlerinden toplanır.",
+    "consumptionCaption": "Kaydedilen yazdırma işleri ve Bambu Live oturumları.",
     "gramsPerDay": "{count} gr/gün",
     "healthBalanceHint": "Düşük stokları, kredileri, siparişleri ve yüklü slotları bir arada izleyin.",
     "healthMonitor": "Stok yenilemeyi izleyin",

@@ -115,7 +115,7 @@ export const plPLDictionary: DictionaryNode = {
     "configured": "skonfigurowany",
     "connectedToHost": "Połączony z",
     "consumption": "Zużycie filamentu",
-    "consumptionCaption": "Użycie jest sumowane na podstawie zadań drukowania połączonych z drukarką.",
+    "consumptionCaption": "Zarejestrowane zadania drukowania i sesje Bambu Live.",
     "gramsPerDay": "{count} g/dzień",
     "healthBalanceHint": "Obserwuj razem niskie stany magazynowe, pożyczki, zamówienia i załadowane slots.",
     "healthMonitor": "Monitoruj uzupełnianie zapasów",
