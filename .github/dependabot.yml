@@ -20,10 +20,6 @@ updates:
       time: "05:15"
       timezone: "Europe/Oslo"
     open-pull-requests-limit: 5
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
     groups:
       root-npm-patches:
         update-types:
@@ -39,10 +35,10 @@ updates:
       timezone: "Europe/Oslo"
     open-pull-requests-limit: 5
     ignore:
-      - dependency-name: "@zxing/library"
+      - dependency-name: "@types/node"
         update-types:
-          - "version-update:semver-minor"
-      - dependency-name: "*"
+          - "version-update:semver-major"
+      - dependency-name: "typescript"
         update-types:
           - "version-update:semver-major"
     groups:
@@ -59,10 +55,6 @@ updates:
       time: "05:45"
       timezone: "Europe/Oslo"
     open-pull-requests-limit: 5
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
     groups:
       rust-patches:
         update-types:

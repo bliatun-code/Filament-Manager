@@ -16,6 +16,13 @@ the exact pinned release for ordinary verification. Rust-toolchain pull
 requests must update the explicit workflow toolchain values to match; the
 contract suite rejects partial bumps.
 
+Dependabot surfaces major npm and Cargo upgrades as focused pull requests
+instead of suppressing them with wildcard rules. The UI has two temporary,
+named compatibility holds: `@types/node` follows the application's Node 24
+runtime contract, and TypeScript remains on 6.x until the lint toolchain
+supports TypeScript 7. The contract suite requires these holds to stay explicit
+and tied to their manifest baselines.
+
 The workflow has read-only repository permission, uses SHA-pinned GitHub
 Actions, and installs the Rust audit tools from exact versions with their own
 lockfiles:
