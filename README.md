@@ -26,6 +26,7 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/loan-out.jpg"><img src="docs/screenshots/loan-out-thumb.jpg" alt="Loan out roll flow" width="220"></a>
   <a href="docs/screenshots/printers.jpg"><img src="docs/screenshots/printers-thumb.jpg" alt="Printer AMS slot overview" width="220"></a>
   <a href="docs/screenshots/add-printer.jpg"><img src="docs/screenshots/add-printer-thumb.jpg" alt="Add printer flow with optional Bambu Live setup" width="220"></a>
+  <a href="docs/screenshots/printer-ams-weight-estimate.jpg"><img src="docs/screenshots/printer-ams-weight-estimate-thumb.jpg" alt="Update weight with a fresh exact-RFID AMS estimate" width="220"></a>
   <a href="docs/screenshots/statistics.jpg"><img src="docs/screenshots/statistics-thumb.jpg" alt="Statistics page with printer and loan usage" width="220"></a>
   <a href="docs/screenshots/filament-details.jpg"><img src="docs/screenshots/filament-details-thumb.jpg" alt="Filament detail panel with weight, ownership and QR tools" width="220"></a>
   <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with physical size choices" width="220"></a>
@@ -53,6 +54,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.26.0](RELEASE_NOTES_v0.26.0.md)
 - [v0.25.0](RELEASE_NOTES_v0.25.0.md)
 - [v0.24.0](RELEASE_NOTES_v0.24.0.md)
 - [v0.23.0](RELEASE_NOTES_v0.23.0.md)
@@ -327,7 +329,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.25.0_universal.dmg \
+  /path/to/Filament\ Manager_0.26.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -379,7 +381,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.25.0`
+- Current version: `0.26.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

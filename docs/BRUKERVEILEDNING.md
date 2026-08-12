@@ -59,6 +59,13 @@ Klient betyr at desktop-appen kobler seg til en Vert.
 - Når verten ikke er tilgjengelig, kan klienten vise en lokal cache som lesbar fallback.
 - Oversikt viser den sist fungerende, bufrede vertsvisningen først, inkludert
   bufret forbruk, og oppdaterer deretter fra verten i bakgrunnen.
+- Én midlertidig oppdatering der alle kjernelesinger fra verten feiler, beholder
+  den sist fungerende visningen i stedet for å markere verten utilgjengelig med
+  én gang. Gjentatte feil viser fortsatt avbruddet, mens en autorisasjonsfeil ber
+  om reparasjon av paringen umiddelbart.
+- Vertslesinger, skrivinger, katalogoppdateringer og beskyttet arbeid mot
+  Keychain/Credential Manager kjører utenfor UI-kallestien, slik at appen kan
+  forbli responsiv mens et tregt LAN- eller nøkkelringkall fullføres.
 - Klientens lokale database er ikke hovedbiblioteket.
 
 Velg Klient når denne maskinen skal bruke et bibliotek som allerede eies av en annen desktop.
@@ -100,7 +107,13 @@ etiketter.
 Desktop-klienter bruker det samme stabile lokalnavnet for den parede verten.
 Filament Manager løser `.local`-navnet gjennom den lokale mDNS-tjenesten før
 klienten kontakter verten, slik at desktop-paring ikke er avhengig av at ruteren
-videresender navnet gjennom vanlig DNS.
+videresender navnet gjennom vanlig DNS. Samtidige lesinger deler oppslaget og
+gjenbruker den sist fungerende private ruten i opptil fem minutter. Hvis et
+periodisk oppslag feiler midlertidig, beholdes den kjente ruten kortvarig og mDNS
+prøves igjen etter omtrent 30 sekunder. En gjenfunnet adresse godtas bare når en
+legitimasjonsfri helsesjekk rapporterer den eksakte forventede
+bibliotek-ID-en; lesinger og skrivinger med legitimasjon spilles ikke automatisk
+av på nytt mot en nyoppløst adresse etter en transportfeil.
 
 Etter oppgradering må en nettleser eller desktop-klient som ble paret via den
 gamle IP-adressen, pares én gang på nytt med en ny lenke. QR-etiketter som ble
@@ -835,6 +848,12 @@ Katalogreparasjon gjenoppretter den innebygde seed-katalogen og fjerner bare ubr
 Leverandøraudit kontrollerer hva Bambu- eller eSUN-kilden rapporterer nå.
 Oppdatering av valgte materialer bruker katalogendringene du velger. Dermed kan
 du vurdere leverandørendringer før lokal katalogmetadata erstattes.
+
+I Klient-modus ber desktop-appen om opptil 5 000 katalograder fra Verten i
+stedet for å avkorte listen ved 1 000. Valgfritt serversøk sendes videre til
+både gjeldende og kompatible eldre vertsruter, samtidig som forespørselen er
+avgrenset. Dermed er den innebygde seed-katalogen og vanlige tillegg på verten
+tilgjengelige i flyten for å legge til filament.
 
 ## Data, historikk og sikkerhet
 

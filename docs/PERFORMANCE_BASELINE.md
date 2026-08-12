@@ -15,8 +15,9 @@ bundle sizes.
 | Cold startup | Every top-level page remains a lazy chunk. The production entry chunk stays at or below 300,000 bytes when the built-bundle contract runs. |
 | Page navigation | Navigation uses a React transition, each page chunk has a size budget, and a previously loaded dashboard restores its last-good snapshot before background I/O. |
 | Dashboard startup | Sync settings, Companion status, and printer settings start together. The five independent local dashboard reads then start together in a second dependency wave. |
-| Slow host | Validation, snapshot, spools, printers, loans, and wishlist all start in one host wave even while one request remains pending. Host validation remains bounded to 0.9 seconds and normal host reads/writes to 2.5 seconds. |
-| Interrupted host | The same six requests may all reject; the dashboard must still settle on the cached client view without falling back to unrelated local data. |
+| Slow host | Snapshot, spools, printers, loans, and wishlist all start in one authenticated host wave even while one request remains pending. Each normal host HTTP request remains bounded to 2.5 seconds; the separate explicit validation request remains bounded to 0.9 seconds. |
+| Interrupted host | The same five requests may all reject; the dashboard must still settle on the cached client view without falling back to unrelated local data, and one fully failed host-read wave receives a last-good grace period before the host is marked unavailable. |
+| Client blocking work | Desktop host reads, pairing, writes, and sync-settings operations delegate their complete network, credential-store, and database chains to an executor bounded to eight active and 32 admitted operations. Vendor catalog refresh may use its reviewed 180-second request budget, but it must remain off the UI invoke path. |
 | 10,000 spools | A real 10,000-row fixture passes through normalization, inventory mapping, options, filtering, grouping, bounded render-window selection, overview calculation, and dashboard derivation without truncation. |
 | Dashboard revisit | 250 repeated cached-snapshot clones remain independent of the number of source spools. A revisit paints the snapshot first, then starts normal background refresh I/O. |
 

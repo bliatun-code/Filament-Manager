@@ -35,9 +35,9 @@ The Bambu security setup uses only a synthetic loopback test interface and no
 host, serial, access code, or trusted fingerprint. The printer overview uses
 fresh synthetic Bambu telemetry; its desktop gate waits for rendered telemetry
 and refuses to create an image when that readiness signal is absent.
-The AMS weight-estimate capture added on 2026-08-12 uses a separate,
-time-relative sanitized fixture and is captured only after the estimate card
-has rendered from a fresh exact-RFID observation.
+The v0.26.0 refresh added the AMS weight-estimate capture on 2026-08-12. It uses
+a separate, time-relative sanitized fixture and is captured only after the
+estimate card has rendered from a fresh exact-RFID observation.
 
 ## Quick Preview
 

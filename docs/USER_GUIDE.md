@@ -59,6 +59,13 @@ Client means the desktop app connects to another Host.
 - When the host is unavailable, the client can show a local read-only cache.
 - Dashboard paints its last-good cached host view first, including cached
   consumption, and then refreshes from the host in the background.
+- One transient refresh in which all core host reads fail keeps that last-good
+  view instead of immediately marking the host unavailable. Repeated failures
+  still surface the outage, while an authorization failure asks for pairing
+  repair immediately.
+- Host reads, writes, catalog refreshes, and protected credential-store work run
+  outside the UI invoke path, so the app can remain responsive while a slow LAN
+  or Keychain/Credential Manager operation completes.
 - The client's local database is not the primary library.
 
 Use Client when this machine should use a library owned by another desktop.
@@ -100,7 +107,13 @@ pairings or labels.
 Desktop clients use the same stable local name for their paired host. Filament
 Manager resolves that `.local` name through the local mDNS service before it
 contacts the host, so client pairing does not depend on a router forwarding the
-name through ordinary DNS.
+name through ordinary DNS. Concurrent reads share that lookup and reuse the
+last working private route for up to five minutes. If periodic discovery has a
+transient failure, the client retains the known route briefly and tries mDNS
+again after about 30 seconds. A recovered address is trusted only after a
+credential-free health response reports the exact expected library ID;
+credential-bearing reads and writes are not automatically replayed onto a newly
+resolved address after a transport failure.
 
 After upgrading, a browser or desktop client paired through the old IP address
 must be paired once again with a new link. QR labels printed with the old IP
@@ -829,6 +842,12 @@ Vendor audit checks what the upstream Bambu or eSUN source currently reports.
 Updating selected materials applies chosen catalog changes deliberately. This
 separation lets you review a vendor change before replacing local catalog
 metadata.
+
+In Client mode, the desktop app requests up to 5,000 catalog rows from the Host
+instead of truncating the list at 1,000. Optional server-side search is forwarded
+to both current and compatible older host routes, while the request remains
+bounded. This keeps the bundled seed and normal host additions available in the
+Add Filament flow.
 
 ## Data, History, and Safety
 
