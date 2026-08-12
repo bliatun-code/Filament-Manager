@@ -27,7 +27,6 @@ import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import type {
   InventoryOverview,
-  LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
   LibrarySyncSettings,
   PrinterOverviewRow,
@@ -113,21 +112,6 @@ function hostSnapshot(): LibrarySyncRemoteSnapshot {
     low_stock: 0,
     active_loans: 0,
     printers: 0,
-  };
-}
-
-function hostValidation(): LibrarySyncHostValidationResult {
-  return {
-    base_url: "http://performance-host",
-    reachable: true,
-    ok: true,
-    matches_library_id: true,
-    pairing_checked: true,
-    pairing_valid: true,
-    library_id: "performance-library",
-    device_name: "Performance host",
-    sync_mode: "HOST",
-    message: "ok",
   };
 }
 
@@ -259,7 +243,6 @@ for (const scenario of [
   test(`dashboard client keeps one concurrent host wave for ${scenario.description}`, async () => {
     const started: string[] = [];
     const requests = {
-      validation: deferred<LibrarySyncHostValidationResult>(),
       snapshot: deferred<LibrarySyncRemoteSnapshot>(),
       spools: deferred<SpoolWithMasterRow[]>(),
       printers: deferred<PrinterOverviewRow[]>(),
@@ -287,10 +270,6 @@ for (const scenario of [
           printer_models: [],
           bambu_live_integrations: [],
         }),
-        validateHost: () => {
-          started.push("validation");
-          return requests.validation.promise;
-        },
         fetchHostSnapshot: () => {
           started.push("snapshot");
           return requests.snapshot.promise;
@@ -329,7 +308,6 @@ for (const scenario of [
       "printers",
       "snapshot",
       "spools",
-      "validation",
       "wishlist",
     ]);
 
@@ -340,11 +318,10 @@ for (const scenario of [
       const result = await resultPromise;
       assert.equal(result.syncSource, "client-cached");
       assert.equal(result.revisionPollComplete, false);
-      assert.equal(errors.length, 6);
+      assert.equal(errors.length, 5);
       return;
     }
 
-    requests.validation.resolve(hostValidation());
     requests.spools.resolve([]);
     requests.printers.resolve([]);
     requests.loans.resolve([]);

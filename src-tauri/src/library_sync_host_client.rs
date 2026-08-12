@@ -1,40 +1,70 @@
 use crate::credential_store::{CredentialKey, SecretValue};
 use crate::library_sync_command_support::normalize_library_sync_base_url;
+use crate::library_sync_runtime_auth::LibrarySyncRenewalFailureKind;
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::trusted_lan_health::CompanionHealthCheckResponse;
 use crate::with_inventory;
-use reqwest::header::{CONTENT_TYPE, HOST, ORIGIN, SET_COOKIE};
+use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, HOST, ORIGIN, SET_COOKIE};
 use serde::{de::DeserializeOwned, Deserialize};
-use std::time::Duration;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
-    sync::{Mutex, OnceLock},
-    time::Instant,
+    panic::{catch_unwind, AssertUnwindSafe},
+    sync::{Arc, Condvar, Mutex, OnceLock},
+    time::{Duration, Instant},
 };
 use zeroize::{Zeroize, Zeroizing};
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 use mdns_sd::{HostnameResolutionEvent, ServiceDaemon};
 
 const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 const MDNS_RETRY_TIMEOUT: Duration = Duration::from_millis(750);
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-const MDNS_RESOLUTION_CACHE_TTL: Duration = Duration::from_secs(5);
+const LIBRARY_SYNC_CONNECT_TIMEOUT: Duration = Duration::from_millis(500);
+const MDNS_ROUTE_FRESH_TTL: Duration = Duration::from_secs(5 * 60);
+const MDNS_HOST_CACHE_LIMIT: usize = 32;
+const SHARED_RENEWAL_FAILED_ERROR: &str =
+    "Desktop client session renewal failed. Please try again.";
+const SHARED_RENEWAL_UNAUTHORIZED_ERROR: &str =
+    "Desktop client session renewal returned 401. Pairing is no longer valid.";
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[derive(Clone)]
-struct CachedMdnsResolution {
-    addresses: Vec<SocketAddr>,
-    expires_at: Instant,
+struct ResolvedMdnsRoute {
+    generation: u64,
+    client: reqwest::blocking::Client,
+    resolved_at: Instant,
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-static MDNS_RESOLUTION_CACHE: OnceLock<Mutex<HashMap<String, CachedMdnsResolution>>> =
+struct MdnsRouteLease {
+    slot: Arc<MdnsHostSlot>,
+    route: ResolvedMdnsRoute,
+}
+
+#[derive(Default)]
+struct MdnsHostState {
+    route: Option<ResolvedMdnsRoute>,
+    resolving: bool,
+    active_attempt: u64,
+    last_failure: Option<(u64, String)>,
+    invalidated_generation: u64,
+    next_generation: u64,
+}
+
+#[derive(Default)]
+struct MdnsHostSlot {
+    state: Mutex<MdnsHostState>,
+    resolution_completed: Condvar,
+}
+
+#[derive(Default)]
+struct MdnsTransport {
+    hosts: Mutex<HashMap<String, Arc<MdnsHostSlot>>>,
+}
+
+static LIBRARY_SYNC_HTTP_CLIENT: OnceLock<Result<reqwest::blocking::Client, String>> =
     OnceLock::new();
+static LIBRARY_SYNC_MDNS_DAEMON: OnceLock<Mutex<Option<ServiceDaemon>>> = OnceLock::new();
+static LIBRARY_SYNC_MDNS_TRANSPORT: OnceLock<MdnsTransport> = OnceLock::new();
 
 #[derive(Deserialize)]
 struct LibrarySyncAuthenticatedSessionResponse {
@@ -98,55 +128,61 @@ pub(crate) fn extract_cookie_value_from_set_cookie(set_cookie: &str, name: &str)
     Some(cookie_value.trim().to_string())
 }
 
-fn library_sync_http_client_builder(timeout: Duration) -> reqwest::blocking::ClientBuilder {
+fn library_sync_http_client_builder() -> reqwest::blocking::ClientBuilder {
     // Companion endpoints are deliberately local-only. Never route a paired desktop request
     // through a system or environment proxy: apart from being unnecessary, that can prevent a
     // private `.local` name from reaching the selected LAN host.
     reqwest::blocking::Client::builder()
-        .timeout(timeout)
+        .connect_timeout(LIBRARY_SYNC_CONNECT_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
 }
 
-fn build_library_sync_http_client(
-    timeout: Duration,
+fn shared_library_sync_http_client(
     operation: &str,
-) -> Result<reqwest::blocking::Client, String> {
-    library_sync_http_client_builder(timeout)
-        .build()
+) -> Result<&'static reqwest::blocking::Client, String> {
+    LIBRARY_SYNC_HTTP_CLIENT
+        .get_or_init(|| {
+            library_sync_http_client_builder()
+                .build()
+                .map_err(|error| error.to_string())
+        })
+        .as_ref()
         .map_err(|error| format!("Failed to prepare {operation} client: {error}"))
 }
 
-/// Sends one private-LAN request without using a proxy. On macOS and Windows, stable `.local`
-/// names use a small mDNS cache before the system resolver. Browser mDNS handling can become
-/// available before the general resolver used by Reqwest; the resolved TCP address is pinned
-/// while the URL, `Host`, and `Origin` stay on the stable local hostname.
+/// Sends one private-LAN request without using a proxy. Stable `.local` names never enter the
+/// system resolver: a shared mDNS daemon resolves them to private IPv4 addresses and each route
+/// pins those addresses while the URL, `Host`, TLS name, and `Origin` stay on the stable hostname.
+/// The last working route is periodically revalidated and invalidated after transport failures.
 pub(crate) fn send_library_sync_request(
     base_url: &str,
     timeout: Duration,
     operation: &str,
     make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
 ) -> Result<reqwest::blocking::Response, String> {
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    let _ = base_url;
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
     let request_started_at = Instant::now();
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
-    if let Some(client) = build_mdns_local_client(base_url, timeout, operation)?
-        && let Ok(response) = make_request(&client).send()
-    {
-        return Ok(response);
+    if let Some((hostname, port)) = stable_local_host_and_port(base_url) {
+        return send_mdns_local_request_with(
+            mdns_transport(),
+            &hostname,
+            port,
+            timeout,
+            operation,
+            resolve_stable_local_hostname_with_mdns,
+            make_request,
+        );
     }
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
+
     let timeout = remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
-        .ok_or_else(|| format!("{operation} timed out while resolving the local host."))?;
-    let client = build_library_sync_http_client(timeout, operation)?;
-    make_request(&client)
+        .ok_or_else(|| format!("{operation} timed out before it could start."))?;
+    let client = shared_library_sync_http_client(operation)?;
+    make_request(client)
+        .timeout(timeout)
         .send()
         .map_err(|error| format!("{operation} failed: {error}"))
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", test))]
 fn remaining_library_sync_request_timeout(
     timeout: Duration,
     elapsed: Duration,
@@ -155,7 +191,6 @@ fn remaining_library_sync_request_timeout(
     (!remaining.is_zero()).then_some(remaining)
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", test))]
 fn stable_local_host_and_port(base_url: &str) -> Option<(String, u16)> {
     let parsed = reqwest::Url::parse(base_url).ok()?;
     let hostname = parsed
@@ -168,55 +203,157 @@ fn stable_local_host_and_port(base_url: &str) -> Option<(String, u16)> {
     Some((hostname, parsed.port_or_known_default()?))
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn build_mdns_local_client(
-    base_url: &str,
-    timeout: Duration,
-    operation: &str,
-) -> Result<Option<reqwest::blocking::Client>, String> {
-    let Some((hostname, port)) = stable_local_host_and_port(base_url) else {
-        return Ok(None);
-    };
-    let request_started_at = Instant::now();
-    let resolution_timeout = MDNS_RETRY_TIMEOUT.min(timeout);
-    let Some(addresses) =
-        resolve_stable_local_hostname_with_mdns(&hostname, port, resolution_timeout)
-    else {
-        return Ok(None);
-    };
-    let Some(remaining_timeout) =
-        remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
-    else {
-        return Ok(None);
-    };
-    library_sync_http_client_builder(remaining_timeout)
-        .resolve_to_addrs(&hostname, &addresses)
-        .build()
-        .map(Some)
-        .map_err(|error| format!("Failed to prepare {operation} local-name retry client: {error}"))
+fn mdns_transport() -> &'static MdnsTransport {
+    LIBRARY_SYNC_MDNS_TRANSPORT.get_or_init(MdnsTransport::default)
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+fn send_mdns_local_request_with<Resolve, MakeRequest>(
+    transport: &MdnsTransport,
+    hostname: &str,
+    port: u16,
+    timeout: Duration,
+    operation: &str,
+    resolve: Resolve,
+    make_request: MakeRequest,
+) -> Result<reqwest::blocking::Response, String>
+where
+    Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    MakeRequest: Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+{
+    let request_started_at = Instant::now();
+    let resolution_timeout = MDNS_RETRY_TIMEOUT.min(timeout);
+    let initial =
+        transport.current_route_with(hostname, port, resolution_timeout, operation, &resolve)?;
+    let remaining_timeout =
+        remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
+            .ok_or_else(|| format!("{operation} timed out while resolving the local host."))?;
+
+    let initial_request = make_request(&initial.route.client)
+        .timeout(remaining_timeout)
+        .build()
+        .map_err(|error| format!("Failed to prepare {operation}: {error}"))?;
+    let retry_safe_method = matches!(
+        *initial_request.method(),
+        reqwest::Method::GET | reqwest::Method::HEAD
+    );
+    let carries_credentials = initial_request.headers().contains_key(COOKIE)
+        || initial_request.headers().contains_key(AUTHORIZATION);
+    let retry_safe = retry_safe_method && !carries_credentials;
+    let first_error = match initial.route.client.execute(initial_request) {
+        Ok(response) => return Ok(response),
+        // Reqwest 0.13 does not reliably classify all lower-level connection failures as
+        // `is_connect()` (a refused pinned address can surface as a request timeout). Retrying
+        // after any error before a response is safe only for unauthenticated idempotent reads. A
+        // write may have reached the server before its response path failed, and an authenticated
+        // read must re-run the host identity preflight before cookies reach a newly resolved IP.
+        // In both cases, invalidate the route for the next separate call without replaying here.
+        Err(error) => error,
+    };
+
+    if !retry_safe {
+        initial
+            .slot
+            .invalidate_without_resolution(initial.route.generation);
+        return Err(format!("{operation} failed: {first_error}"));
+    }
+
+    // A read transport error can mean that a once-good DHCP address moved. Invalidate only the
+    // generation that actually failed; if another request already refreshed it, join that result
+    // instead of discarding the newer route.
+    let refresh_timeout =
+        remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
+            .unwrap_or_default()
+            .min(MDNS_RETRY_TIMEOUT);
+    let refreshed = transport
+        .refresh_route_with(
+            &initial,
+            hostname,
+            port,
+            refresh_timeout,
+            operation,
+            &resolve,
+        )
+        .map_err(|resolution_error| {
+            format!(
+                "{operation} failed to connect to the cached local address ({first_error}); \
+                 refreshing the mDNS address also failed: {resolution_error}"
+            )
+        })?;
+
+    let remaining_timeout =
+        remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
+            .ok_or_else(|| format!("{operation} timed out after refreshing the local host."))?;
+    match make_request(&refreshed.route.client)
+        .timeout(remaining_timeout)
+        .send()
+    {
+        Ok(response) => Ok(response),
+        Err(error) => {
+            refreshed
+                .slot
+                .invalidate_without_resolution(refreshed.route.generation);
+            Err(format!(
+                "{operation} failed after refreshing the local host address: {error}"
+            ))
+        }
+    }
+}
+
 fn resolve_stable_local_hostname_with_mdns(
     hostname: &str,
     port: u16,
     timeout: Duration,
-) -> Option<Vec<SocketAddr>> {
+) -> Result<Vec<SocketAddr>, String> {
     if timeout.is_zero() {
-        return None;
+        return Err(format!(
+            "mDNS resolution for {hostname} had no request time remaining."
+        ));
     }
-    let cache_key = format!("{hostname}:{port}");
-    if let Some(addresses) = cached_mdns_addresses(&cache_key) {
-        return Some(addresses);
-    }
-    let daemon = ServiceDaemon::new().ok()?;
     let fqdn = format!("{hostname}.");
-    let receiver = match daemon.resolve_hostname(&fqdn, Some(timeout.as_millis() as u64)) {
-        Ok(receiver) => receiver,
-        Err(_) => {
-            let _ = daemon.shutdown();
-            return None;
+    let timeout_millis = timeout.as_millis().clamp(1, u64::MAX as u128) as u64;
+    let (daemon, receiver) = {
+        let daemon_slot = LIBRARY_SYNC_MDNS_DAEMON.get_or_init(|| Mutex::new(None));
+        let mut daemon_slot = match daemon_slot.lock() {
+            Ok(daemon_slot) => daemon_slot,
+            Err(poisoned) => {
+                // A panic while creating or addressing the daemon must not make all future LAN
+                // lookups fail until process restart. Discard the uncertain handle and recreate.
+                let mut daemon_slot = poisoned.into_inner();
+                *daemon_slot = None;
+                daemon_slot
+            }
+        };
+        let mut lookup = None;
+        for _ in 0..2 {
+            if daemon_slot.is_none() {
+                *daemon_slot = Some(ServiceDaemon::new().map_err(|error| {
+                    format!("Failed to start the shared mDNS resolver: {error}")
+                })?);
+            }
+            let daemon = daemon_slot
+                .as_ref()
+                .expect("mDNS daemon was initialized")
+                .clone();
+            match daemon.resolve_hostname(&fqdn, Some(timeout_millis)) {
+                Ok(receiver) => {
+                    lookup = Some((daemon, receiver));
+                    break;
+                }
+                Err(mdns_sd::Error::DaemonShutdown) => {
+                    // A daemon handle cannot recover after its worker exits. Remove it while
+                    // holding the shared slot lock so exactly one replacement is created.
+                    *daemon_slot = None;
+                }
+                Err(error) => {
+                    return Err(format!(
+                        "mDNS lookup for {hostname} could not start: {error}"
+                    ));
+                }
+            }
         }
+        lookup.ok_or_else(|| {
+            format!("mDNS lookup for {hostname} could not start after restarting the resolver.")
+        })?
     };
     let deadline = Instant::now() + timeout;
     let mut resolved = Vec::new();
@@ -251,43 +388,283 @@ fn resolve_stable_local_hostname_with_mdns(
     }
 
     let _ = daemon.stop_resolve_hostname(&fqdn);
-    let _ = daemon.shutdown();
     resolved.sort_unstable();
     resolved.dedup();
     if resolved.is_empty() {
-        None
+        Err(format!(
+            "mDNS did not return a private IPv4 address for {hostname}."
+        ))
     } else {
-        cache_mdns_addresses(cache_key, resolved.clone());
-        Some(resolved)
+        Ok(resolved)
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn cached_mdns_addresses(cache_key: &str) -> Option<Vec<SocketAddr>> {
-    let now = Instant::now();
-    let cache = MDNS_RESOLUTION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let mut cache = cache.lock().ok()?;
-    cache.retain(|_, entry| entry.expires_at > now);
-    cache.get(cache_key).map(|entry| entry.addresses.clone())
-}
+impl MdnsTransport {
+    fn current_route_with<Resolve>(
+        &self,
+        hostname: &str,
+        port: u16,
+        timeout: Duration,
+        operation: &str,
+        resolve: &Resolve,
+    ) -> Result<MdnsRouteLease, String>
+    where
+        Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    {
+        let slot = self.slot(hostname)?;
+        let route = slot.current_route_with(hostname, port, timeout, operation, resolve)?;
+        Ok(MdnsRouteLease { slot, route })
+    }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-fn cache_mdns_addresses(cache_key: String, addresses: Vec<SocketAddr>) {
-    let now = Instant::now();
-    let cache = MDNS_RESOLUTION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Ok(mut cache) = cache.lock() {
-        cache.retain(|_, entry| entry.expires_at > now);
-        if cache.len() >= 32 {
-            cache.clear();
+    fn refresh_route_with<Resolve>(
+        &self,
+        failed: &MdnsRouteLease,
+        hostname: &str,
+        port: u16,
+        timeout: Duration,
+        operation: &str,
+        resolve: &Resolve,
+    ) -> Result<MdnsRouteLease, String>
+    where
+        Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    {
+        let route = failed.slot.refresh_after_failure_with(
+            failed.route.generation,
+            hostname,
+            port,
+            timeout,
+            operation,
+            resolve,
+        )?;
+        Ok(MdnsRouteLease {
+            slot: Arc::clone(&failed.slot),
+            route,
+        })
+    }
+
+    fn slot(&self, hostname: &str) -> Result<Arc<MdnsHostSlot>, String> {
+        let mut hosts = self
+            .hosts
+            .lock()
+            .map_err(|_| "The local-host route cache is unavailable.".to_string())?;
+        if let Some(slot) = hosts.get(hostname) {
+            return Ok(Arc::clone(slot));
         }
-        cache.insert(
-            cache_key,
-            CachedMdnsResolution {
-                addresses,
-                expires_at: now + MDNS_RESOLUTION_CACHE_TTL,
-            },
-        );
+        if hosts.len() >= MDNS_HOST_CACHE_LIMIT {
+            let evictable = hosts.iter().find_map(|(cached_hostname, slot)| {
+                (Arc::strong_count(slot) == 1 && slot.is_inactive())
+                    .then(|| cached_hostname.clone())
+            });
+            if let Some(evictable) = evictable {
+                hosts.remove(&evictable);
+            }
+        }
+        if hosts.len() >= MDNS_HOST_CACHE_LIMIT {
+            return Err(
+                "The local-host route cache is temporarily busy. Please try again.".to_string(),
+            );
+        }
+        let slot = Arc::new(MdnsHostSlot::default());
+        hosts.insert(hostname.to_string(), Arc::clone(&slot));
+        Ok(slot)
     }
+}
+
+impl MdnsHostSlot {
+    fn is_inactive(&self) -> bool {
+        self.state
+            .lock()
+            .map(|state| !state.resolving)
+            .unwrap_or(false)
+    }
+
+    fn current_route_with<Resolve>(
+        &self,
+        hostname: &str,
+        port: u16,
+        timeout: Duration,
+        _operation: &str,
+        resolve: &Resolve,
+    ) -> Result<ResolvedMdnsRoute, String>
+    where
+        Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    {
+        let attempt = {
+            let mut state = self.lock_state()?;
+            if let Some(route) = state.route.as_ref()
+                && route.resolved_at.elapsed() < MDNS_ROUTE_FRESH_TTL
+            {
+                return Ok(route.clone());
+            }
+            if state.resolving {
+                let active_attempt = state.active_attempt;
+                return self.wait_for_attempt(state, active_attempt, timeout);
+            }
+            start_resolution_attempt(&mut state)
+        };
+        self.perform_resolution(attempt, hostname, port, timeout, true, resolve)
+    }
+
+    fn refresh_after_failure_with<Resolve>(
+        &self,
+        failed_generation: u64,
+        hostname: &str,
+        port: u16,
+        timeout: Duration,
+        _operation: &str,
+        resolve: &Resolve,
+    ) -> Result<ResolvedMdnsRoute, String>
+    where
+        Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    {
+        let attempt = {
+            let mut state = self.lock_state()?;
+            if state.resolving {
+                let active_attempt = state.active_attempt;
+                return self.wait_for_attempt(state, active_attempt, timeout);
+            }
+            if let Some(route) = state.route.as_ref() {
+                if route.generation != failed_generation {
+                    return Ok(route.clone());
+                }
+            } else if state.invalidated_generation >= failed_generation {
+                return Err(state
+                    .last_failure
+                    .as_ref()
+                    .map(|(_, error)| error.clone())
+                    .unwrap_or_else(|| {
+                        "The failed local-host route was already invalidated.".to_string()
+                    }));
+            }
+
+            state.route = None;
+            state.invalidated_generation = state.invalidated_generation.max(failed_generation);
+            start_resolution_attempt(&mut state)
+        };
+        self.perform_resolution(attempt, hostname, port, timeout, false, resolve)
+    }
+
+    fn perform_resolution<Resolve>(
+        &self,
+        attempt: u64,
+        hostname: &str,
+        port: u16,
+        timeout: Duration,
+        retain_previous_on_failure: bool,
+        resolve: &Resolve,
+    ) -> Result<ResolvedMdnsRoute, String>
+    where
+        Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    {
+        let outcome = catch_unwind(AssertUnwindSafe(|| {
+            resolve(hostname, port, timeout).and_then(|mut addresses| {
+                addresses.sort_unstable();
+                addresses.dedup();
+                if addresses.is_empty() {
+                    return Err(format!("mDNS returned no usable addresses for {hostname}."));
+                }
+                let client = library_sync_http_client_builder()
+                    .resolve_to_addrs(hostname, &addresses)
+                    .build()
+                    .map_err(|error| format!("Failed to prepare pinned local client: {error}"))?;
+                Ok(client)
+            })
+        }))
+        .unwrap_or_else(|_| Err("The shared local-host resolver failed unexpectedly.".to_string()));
+
+        let mut state = self.lock_state()?;
+        state.resolving = false;
+        let result = match outcome {
+            Ok(client) => {
+                state.next_generation = state.next_generation.saturating_add(1).max(1);
+                let route = ResolvedMdnsRoute {
+                    generation: state.next_generation,
+                    client,
+                    resolved_at: Instant::now(),
+                };
+                state.route = Some(route.clone());
+                state.last_failure = None;
+                Ok(route)
+            }
+            Err(error) => {
+                state.last_failure = Some((attempt, error.clone()));
+                if retain_previous_on_failure && let Some(route) = state.route.as_mut() {
+                    // Keep the last-known-good route when multicast discovery has a transient
+                    // miss, but back off the next refresh attempt instead of stalling every read.
+                    route.resolved_at = Instant::now();
+                    Ok(route.clone())
+                } else {
+                    state.route = None;
+                    Err(error)
+                }
+            }
+        };
+        self.resolution_completed.notify_all();
+        result
+    }
+
+    fn wait_for_attempt(
+        &self,
+        mut state: std::sync::MutexGuard<'_, MdnsHostState>,
+        attempt: u64,
+        timeout: Duration,
+    ) -> Result<ResolvedMdnsRoute, String> {
+        let deadline = Instant::now() + timeout;
+        while state.resolving && state.active_attempt == attempt {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return state.route.as_ref().cloned().ok_or_else(|| {
+                    "Timed out waiting for shared local-host resolution.".to_string()
+                });
+            }
+            let (next_state, wait_result) = self
+                .resolution_completed
+                .wait_timeout(state, remaining)
+                .map_err(|_| {
+                    "The local-host resolver coordination state is unavailable.".to_string()
+                })?;
+            state = next_state;
+            if wait_result.timed_out() && state.resolving && state.active_attempt == attempt {
+                return state.route.as_ref().cloned().ok_or_else(|| {
+                    "Timed out waiting for shared local-host resolution.".to_string()
+                });
+            }
+        }
+        if let Some(route) = state.route.as_ref() {
+            return Ok(route.clone());
+        }
+        if let Some((failed_attempt, error)) = state.last_failure.as_ref()
+            && *failed_attempt == attempt
+        {
+            return Err(error.clone());
+        }
+        Err("The shared local-host resolution completed without a route.".to_string())
+    }
+
+    fn invalidate_without_resolution(&self, failed_generation: u64) {
+        if let Ok(mut state) = self.state.lock()
+            && state
+                .route
+                .as_ref()
+                .is_some_and(|route| route.generation == failed_generation)
+        {
+            state.route = None;
+            state.invalidated_generation = state.invalidated_generation.max(failed_generation);
+            self.resolution_completed.notify_all();
+        }
+    }
+
+    fn lock_state(&self) -> Result<std::sync::MutexGuard<'_, MdnsHostState>, String> {
+        self.state
+            .lock()
+            .map_err(|_| "The local-host resolver state is unavailable.".to_string())
+    }
+}
+
+fn start_resolution_attempt(state: &mut MdnsHostState) -> u64 {
+    state.active_attempt = state.active_attempt.saturating_add(1).max(1);
+    state.resolving = true;
+    state.active_attempt
 }
 
 pub(crate) fn fetch_library_sync_host_json<T: DeserializeOwned>(
@@ -546,25 +923,35 @@ fn current_or_renewed_library_sync_auth(
     state: &AppState,
     base_url: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    let _credential_mutation = lock_secure_credential_mutation()?;
-    current_or_renewed_library_sync_auth_under_gate(state, base_url)
+    current_or_renewed_library_sync_auth_with(state, base_url, renew_library_sync_host_session)
 }
 
-fn current_or_renewed_library_sync_auth_under_gate(
+fn current_or_renewed_library_sync_auth_with(
     state: &AppState,
     base_url: &str,
+    renew: impl FnOnce(&str, &str) -> Result<LibrarySyncAuthenticatedSessionState, String>,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    let device_token = validated_library_sync_device_token(state, base_url, None)?;
+    let _credential_mutation = lock_secure_credential_mutation()?;
+    current_or_renewed_library_sync_auth_under_gate_with(state, base_url, renew)
+}
+
+fn current_or_renewed_library_sync_auth_under_gate_with(
+    state: &AppState,
+    base_url: &str,
+    renew: impl FnOnce(&str, &str) -> Result<LibrarySyncAuthenticatedSessionState, String>,
+) -> Result<LibrarySyncAuthenticatedSessionState, String> {
     if let Some(session) = state.library_sync_auth.current()?
         && session.host_base_url == base_url
+        && let Some(device_token) = session.device_token.as_ref()
     {
         return Ok(LibrarySyncAuthenticatedSessionState {
             csrf_token: session.csrf_token.clone(),
             session_id: session.session_id.clone(),
-            device_token,
+            device_token: device_token.clone(),
         });
     }
-    renew_and_cache_library_sync_auth_under_gate(state, base_url, &device_token)
+    let device_token = validated_library_sync_device_token(state, base_url, None)?;
+    renew_with_failure_cooldown_under_gate_with(state, base_url, &device_token, renew)
 }
 
 pub(crate) fn renew_and_cache_library_sync_auth(
@@ -589,20 +976,103 @@ fn renew_and_cache_library_sync_auth_with(
     let _credential_mutation = lock_secure_credential_mutation()?;
     let current_device_token =
         validated_library_sync_device_token(state, base_url, Some(device_token))?;
-    renew_and_cache_library_sync_auth_under_gate_with(state, base_url, &current_device_token, renew)
+    renew_with_failure_cooldown_under_gate_with(state, base_url, &current_device_token, renew)
 }
 
-fn renew_and_cache_library_sync_auth_under_gate(
+fn renew_or_reuse_library_sync_auth(
+    state: &AppState,
+    base_url: &str,
+    failed_session_id: &str,
+    expected_device_token: &str,
+) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    renew_or_reuse_library_sync_auth_with(
+        state,
+        base_url,
+        failed_session_id,
+        expected_device_token,
+        renew_library_sync_host_session,
+    )
+}
+
+fn renew_or_reuse_library_sync_auth_with(
+    state: &AppState,
+    base_url: &str,
+    failed_session_id: &str,
+    expected_device_token: &str,
+    renew: impl FnOnce(&str, &str) -> Result<LibrarySyncAuthenticatedSessionState, String>,
+) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    let _credential_mutation = lock_secure_credential_mutation()?;
+    if let Some(kind) = state
+        .library_sync_auth
+        .recent_renewal_failure(base_url, expected_device_token)
+    {
+        return Err(shared_renewal_error(kind));
+    }
+    let current_device_token =
+        validated_library_sync_device_token(state, base_url, Some(expected_device_token))?;
+
+    // A dashboard wave can receive several 401 responses for the same expired session. The first
+    // waiter renews it while holding the credential gate; later waiters reuse that newer runtime
+    // session instead of serially rotating it again. Matching the durable device token preserves
+    // the pairing/host/reset invariant while the gate is held.
+    if let Some(session) = state.library_sync_auth.current()?
+        && session.host_base_url == base_url
+        && session.session_id != failed_session_id
+        && session.device_token.as_deref() == Some(current_device_token.as_str())
+    {
+        return Ok(LibrarySyncAuthenticatedSessionState {
+            csrf_token: session.csrf_token.clone(),
+            session_id: session.session_id.clone(),
+            device_token: current_device_token,
+        });
+    }
+
+    renew_with_failure_cooldown_under_gate_with(state, base_url, &current_device_token, renew)
+}
+
+fn renew_with_failure_cooldown_under_gate_with(
     state: &AppState,
     base_url: &str,
     device_token: &str,
+    renew: impl FnOnce(&str, &str) -> Result<LibrarySyncAuthenticatedSessionState, String>,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
-    renew_and_cache_library_sync_auth_under_gate_with(
-        state,
-        base_url,
-        device_token,
-        renew_library_sync_host_session,
-    )
+    if let Some(kind) = state
+        .library_sync_auth
+        .recent_renewal_failure(base_url, device_token)
+    {
+        return Err(shared_renewal_error(kind));
+    }
+
+    match renew_and_cache_library_sync_auth_under_gate_with(state, base_url, device_token, renew) {
+        Ok(renewed) => {
+            state.library_sync_auth.clear_renewal_failure();
+            Ok(renewed)
+        }
+        Err(error) => {
+            let kind = if error.starts_with("Host session renewal request returned 401 ") {
+                LibrarySyncRenewalFailureKind::Unauthorized
+            } else {
+                LibrarySyncRenewalFailureKind::Transient
+            };
+            state
+                .library_sync_auth
+                .record_renewal_failure(base_url, device_token, kind);
+            Err(shared_renewal_error(kind))
+        }
+    }
+}
+
+fn shared_renewal_error(kind: LibrarySyncRenewalFailureKind) -> String {
+    match kind {
+        LibrarySyncRenewalFailureKind::Unauthorized => {
+            SHARED_RENEWAL_UNAUTHORIZED_ERROR.to_string()
+        }
+        LibrarySyncRenewalFailureKind::Transient => SHARED_RENEWAL_FAILED_ERROR.to_string(),
+    }
+}
+
+pub(crate) fn is_library_sync_pairing_unauthorized_error(error: &str) -> bool {
+    error == SHARED_RENEWAL_UNAUTHORIZED_ERROR
 }
 
 fn renew_and_cache_library_sync_auth_under_gate_with(
@@ -618,10 +1088,11 @@ fn renew_and_cache_library_sync_auth_under_gate_with(
             return Err(error);
         }
     };
-    state.library_sync_auth.replace(
+    state.library_sync_auth.replace_authenticated(
         base_url,
         renewed.session_id.clone(),
         renewed.csrf_token.clone(),
+        renewed.device_token.clone(),
     )?;
     Ok(renewed)
 }
@@ -654,7 +1125,7 @@ fn validated_library_sync_device_token(
 }
 
 pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
-    state: &tauri::State<'_, AppState>,
+    state: &AppState,
     base_url: &str,
     path: &str,
 ) -> Result<T, String> {
@@ -687,8 +1158,12 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-        let renewed =
-            renew_and_cache_library_sync_auth(state, base_url, &initial_auth_state.device_token)?;
+        let renewed = renew_or_reuse_library_sync_auth(
+            state,
+            base_url,
+            &initial_auth_state.session_id,
+            &initial_auth_state.device_token,
+        )?;
         response = execute(&renewed.session_id, &renewed.device_token)?;
     }
 
@@ -784,8 +1259,12 @@ pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-        let renewed =
-            renew_and_cache_library_sync_auth(state, base_url, &initial_auth_state.device_token)?;
+        let renewed = renew_or_reuse_library_sync_auth(
+            state,
+            base_url,
+            &initial_auth_state.session_id,
+            &initial_auth_state.device_token,
+        )?;
         response = post_library_sync_host_write_json(
             base_url,
             path,
@@ -862,12 +1341,15 @@ pub(crate) fn build_library_sync_cookie_header(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_library_sync_cookie_header, extract_cookie_value_from_set_cookie,
+        build_library_sync_cookie_header, current_or_renewed_library_sync_auth,
+        current_or_renewed_library_sync_auth_with, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
         library_sync_http_client_builder, load_library_sync_device_token,
         load_library_sync_device_token_optional, remaining_library_sync_request_timeout,
-        renew_and_cache_library_sync_auth_with, stable_local_host_and_port,
-        store_library_sync_device_token, LibrarySyncAuthenticatedSessionState,
+        renew_and_cache_library_sync_auth_with, renew_or_reuse_library_sync_auth_with,
+        send_mdns_local_request_with, stable_local_host_and_port, store_library_sync_device_token,
+        LibrarySyncAuthenticatedSessionState, MdnsTransport, MDNS_HOST_CACHE_LIMIT,
+        MDNS_ROUTE_FRESH_TTL, SHARED_RENEWAL_FAILED_ERROR, SHARED_RENEWAL_UNAUTHORIZED_ERROR,
     };
     use crate::backend::filament_database::FilamentDatabase;
     use crate::credential_store::CredentialStore;
@@ -876,11 +1358,15 @@ mod tests {
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use reqwest::header::{COOKIE, HOST, ORIGIN};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
     use std::{
         io::{Read, Write},
         net::{SocketAddr, TcpListener},
-        sync::{mpsc, Arc, Barrier},
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            mpsc, Arc, Barrier,
+        },
         thread,
     };
 
@@ -927,6 +1413,15 @@ mod tests {
                 .expect("scope credential store"),
             library_sync_auth: LibrarySyncRuntimeAuth::new(),
         }
+    }
+
+    fn expire_cached_route(transport: &MdnsTransport, hostname: &str) {
+        let hosts = transport.hosts.lock().expect("lock route cache");
+        let slot = hosts.get(hostname).expect("cached hostname");
+        let mut state = slot.state.lock().expect("lock cached route");
+        state.route.as_mut().expect("cached route").resolved_at = Instant::now()
+            .checked_sub(MDNS_ROUTE_FRESH_TTL + Duration::from_secs(1))
+            .expect("expired route timestamp");
     }
 
     #[test]
@@ -996,7 +1491,7 @@ mod tests {
                 .expect("write local response");
         });
 
-        let client = library_sync_http_client_builder(Duration::from_secs(1))
+        let client = library_sync_http_client_builder()
             .resolve_to_addrs(
                 "paired-host.local",
                 &[SocketAddr::from(([127, 0, 0, 1], port))],
@@ -1005,10 +1500,582 @@ mod tests {
             .expect("build pinned client");
         let response = client
             .get(format!("http://paired-host.local:{port}/api/v1/health"))
+            .timeout(Duration::from_secs(1))
             .send()
             .expect("complete pinned request");
         assert!(response.status().is_success());
         server.join().expect("join local test host");
+    }
+
+    #[test]
+    fn concurrent_cold_local_requests_share_one_resolution() {
+        const WORKERS: usize = 12;
+        let transport = Arc::new(MdnsTransport::default());
+        let start = Arc::new(Barrier::new(WORKERS + 1));
+        let resolver_release = Arc::new(Barrier::new(2));
+        let resolver_calls = Arc::new(AtomicUsize::new(0));
+        let mut workers = Vec::new();
+
+        for _ in 0..WORKERS {
+            let transport = Arc::clone(&transport);
+            let start = Arc::clone(&start);
+            let resolver_release = Arc::clone(&resolver_release);
+            let resolver_calls = Arc::clone(&resolver_calls);
+            workers.push(thread::spawn(move || {
+                start.wait();
+                let resolve = |hostname: &str, port: u16, timeout: Duration| {
+                    assert_eq!(hostname, "cold-host.local");
+                    assert_eq!(port, 4278);
+                    assert_eq!(timeout, Duration::from_millis(500));
+                    resolver_calls.fetch_add(1, Ordering::SeqCst);
+                    resolver_release.wait();
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))])
+                };
+                transport
+                    .current_route_with(
+                        "cold-host.local",
+                        4278,
+                        Duration::from_millis(500),
+                        "Concurrent cold lookup",
+                        &resolve,
+                    )
+                    .expect("resolve shared cold route")
+                    .route
+                    .generation
+            }));
+        }
+
+        start.wait();
+        resolver_release.wait();
+        let generations = workers
+            .into_iter()
+            .map(|worker| worker.join().expect("join cold lookup worker"))
+            .collect::<Vec<_>>();
+
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 1);
+        assert!(generations.iter().all(|generation| *generation == 1));
+    }
+
+    #[test]
+    fn local_route_is_shared_per_hostname_and_honors_each_url_port() {
+        let first_listener = TcpListener::bind("127.0.0.1:0").expect("bind first host port");
+        let first_port = first_listener.local_addr().expect("read first port").port();
+        let second_listener = TcpListener::bind("127.0.0.1:0").expect("bind second host port");
+        let second_port = second_listener
+            .local_addr()
+            .expect("read second port")
+            .port();
+        assert_ne!(first_port, second_port);
+        drop(first_listener);
+        let expected_host = format!("host: multi-port.local:{second_port}");
+        let server = thread::spawn(move || {
+            let (mut stream, _) = second_listener
+                .accept()
+                .expect("accept second-port request");
+            let mut request = [0_u8; 2048];
+            let read = stream.read(&mut request).expect("read second-port request");
+            let received = String::from_utf8_lossy(&request[..read]).to_ascii_lowercase();
+            assert!(received.contains(&expected_host), "{received}");
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+                .expect("write second-port response");
+        });
+
+        let transport = MdnsTransport::default();
+        let resolver_calls = AtomicUsize::new(0);
+        let resolve = |hostname: &str, requested_port: u16, _timeout: Duration| {
+            assert_eq!(hostname, "multi-port.local");
+            resolver_calls.fetch_add(1, Ordering::SeqCst);
+            Ok(vec![SocketAddr::from(([127, 0, 0, 1], requested_port))])
+        };
+        let first_route = transport
+            .current_route_with(
+                "multi-port.local",
+                first_port,
+                Duration::from_millis(500),
+                "Resolve first port",
+                &resolve,
+            )
+            .expect("resolve first-port route");
+        let second_route = transport
+            .current_route_with(
+                "multi-port.local",
+                second_port,
+                Duration::from_millis(500),
+                "Reuse route for second port",
+                &resolve,
+            )
+            .expect("reuse route for second port");
+
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 1);
+        assert_eq!(first_route.route.generation, second_route.route.generation);
+        let response = second_route
+            .route
+            .client
+            .get(format!(
+                "http://multi-port.local:{second_port}/api/v1/health"
+            ))
+            .timeout(Duration::from_secs(1))
+            .send()
+            .expect("request URL port overrides resolved socket port");
+        assert!(response.status().is_success());
+        server.join().expect("join second-port host");
+    }
+
+    #[test]
+    fn expired_route_is_revalidated_even_when_the_previous_address_still_responds() {
+        let transport = MdnsTransport::default();
+        let resolver_calls = AtomicUsize::new(0);
+        let resolve = |_: &str, port: u16, _: Duration| {
+            let address_suffix = resolver_calls.fetch_add(1, Ordering::SeqCst) + 1;
+            Ok(vec![SocketAddr::from((
+                [
+                    127,
+                    0,
+                    0,
+                    u8::try_from(address_suffix).expect("test address suffix"),
+                ],
+                port,
+            ))])
+        };
+        let initial = transport
+            .current_route_with(
+                "aged-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Seed aged route",
+                &resolve,
+            )
+            .expect("seed route");
+        expire_cached_route(&transport, "aged-host.local");
+
+        let refreshed = transport
+            .current_route_with(
+                "aged-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Refresh aged route",
+                &resolve,
+            )
+            .expect("refresh aged route");
+
+        assert_eq!(initial.route.generation, 1);
+        assert_eq!(refreshed.route.generation, 2);
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn failed_periodic_revalidation_keeps_last_known_good_route_with_backoff() {
+        let transport = MdnsTransport::default();
+        let initial = transport
+            .current_route_with(
+                "lkg-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Seed last-known-good route",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+            )
+            .expect("seed route");
+        expire_cached_route(&transport, "lkg-host.local");
+        let refresh_calls = AtomicUsize::new(0);
+
+        let fallback = transport
+            .current_route_with(
+                "lkg-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Refresh last-known-good route",
+                &|_, _, _| {
+                    refresh_calls.fetch_add(1, Ordering::SeqCst);
+                    Err("simulated multicast miss".to_string())
+                },
+            )
+            .expect("retain last-known-good route");
+        let warm_fallback = transport
+            .current_route_with(
+                "lkg-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Reuse last-known-good route",
+                &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                    panic!("failed refresh must be backed off")
+                },
+            )
+            .expect("reuse last-known-good route");
+
+        assert_eq!(fallback.route.generation, initial.route.generation);
+        assert_eq!(warm_fallback.route.generation, initial.route.generation);
+        assert_eq!(refresh_calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn resolver_panic_releases_waiters_and_allows_a_later_refresh() {
+        let transport = MdnsTransport::default();
+        transport
+            .current_route_with(
+                "panic-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Seed panic route",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+            )
+            .expect("seed route");
+        expire_cached_route(&transport, "panic-host.local");
+
+        let fallback = transport
+            .current_route_with(
+                "panic-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Panicking route refresh",
+                &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                    panic!("simulated resolver panic")
+                },
+            )
+            .expect("panic keeps last-known-good route");
+        assert_eq!(fallback.route.generation, 1);
+        expire_cached_route(&transport, "panic-host.local");
+
+        let recovered = transport
+            .current_route_with(
+                "panic-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Recovered route refresh",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 2], port))]),
+            )
+            .expect("refresh after resolver panic");
+        assert_eq!(recovered.route.generation, 2);
+    }
+
+    #[test]
+    fn route_waiter_obeys_its_own_resolution_deadline() {
+        let transport = Arc::new(MdnsTransport::default());
+        let (started_tx, started_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let owner_transport = Arc::clone(&transport);
+        let owner = thread::spawn(move || {
+            owner_transport.current_route_with(
+                "slow-owner.local",
+                4278,
+                Duration::from_secs(1),
+                "Slow owner route",
+                &|_, port, _| {
+                    started_tx.send(()).expect("signal resolver owner");
+                    release_rx.recv().expect("release resolver owner");
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))])
+                },
+            )
+        });
+        started_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("resolver owner started");
+
+        let wait_started = Instant::now();
+        let error = match transport.current_route_with(
+            "slow-owner.local",
+            4278,
+            Duration::from_millis(30),
+            "Bounded route waiter",
+            &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                panic!("waiter must not resolve independently")
+            },
+        ) {
+            Ok(_) => panic!("cold waiter must respect its deadline"),
+            Err(error) => error,
+        };
+        assert!(error.contains("Timed out"), "{error}");
+        assert!(wait_started.elapsed() < Duration::from_millis(250));
+
+        release_tx.send(()).expect("release resolver owner");
+        owner
+            .join()
+            .expect("join resolver owner")
+            .expect("owner completes route");
+    }
+
+    #[test]
+    fn hostname_route_cache_stays_bounded() {
+        let transport = MdnsTransport::default();
+        for index in 0..(MDNS_HOST_CACHE_LIMIT + 8) {
+            let hostname = format!("cache-{index}.local");
+            let slot = transport.slot(&hostname).expect("allocate bounded slot");
+            drop(slot);
+            assert!(
+                transport.hosts.lock().expect("read route cache").len() <= MDNS_HOST_CACHE_LIMIT
+            );
+        }
+        assert_eq!(
+            transport
+                .hosts
+                .lock()
+                .expect("read final route cache")
+                .len(),
+            MDNS_HOST_CACHE_LIMIT
+        );
+    }
+
+    #[test]
+    fn concurrent_stale_route_failures_share_one_refresh() {
+        const WORKERS: usize = 10;
+        let transport = Arc::new(MdnsTransport::default());
+        let resolver_calls = Arc::new(AtomicUsize::new(0));
+        let seed_resolver_calls = Arc::clone(&resolver_calls);
+        let seed = transport
+            .current_route_with(
+                "refresh-host.local",
+                4278,
+                Duration::from_millis(500),
+                "Seed shared stale route",
+                &move |_, port, _| {
+                    seed_resolver_calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))])
+                },
+            )
+            .expect("seed shared stale route");
+        assert_eq!(seed.route.generation, 1);
+
+        let start = Arc::new(Barrier::new(WORKERS + 1));
+        let routes_loaded = Arc::new(Barrier::new(WORKERS + 1));
+        let resolver_release = Arc::new(Barrier::new(2));
+        let (refresh_started_tx, refresh_started_rx) = mpsc::channel();
+        let mut workers = Vec::new();
+        for _ in 0..WORKERS {
+            let transport = Arc::clone(&transport);
+            let start = Arc::clone(&start);
+            let routes_loaded = Arc::clone(&routes_loaded);
+            let resolver_release = Arc::clone(&resolver_release);
+            let refresh_started = refresh_started_tx.clone();
+            let resolver_calls = Arc::clone(&resolver_calls);
+            workers.push(thread::spawn(move || {
+                start.wait();
+                let failed = transport
+                    .current_route_with(
+                        "refresh-host.local",
+                        4278,
+                        Duration::from_millis(500),
+                        "Read shared stale route",
+                        &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                            panic!("stale route should already be cached")
+                        },
+                    )
+                    .expect("read shared stale route");
+                routes_loaded.wait();
+                transport
+                    .refresh_route_with(
+                        &failed,
+                        "refresh-host.local",
+                        4278,
+                        Duration::from_millis(500),
+                        "Refresh stale route",
+                        &move |_, port, _| {
+                            let call = resolver_calls.fetch_add(1, Ordering::SeqCst);
+                            assert_eq!(call, 1, "only one worker may perform the refresh");
+                            refresh_started.send(()).expect("signal refresh owner");
+                            resolver_release.wait();
+                            Ok(vec![SocketAddr::from(([127, 0, 0, 2], port))])
+                        },
+                    )
+                    .expect("join shared route refresh")
+                    .route
+                    .generation
+            }));
+        }
+
+        start.wait();
+        routes_loaded.wait();
+        refresh_started_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("shared refresh started");
+        resolver_release.wait();
+        let generations = workers
+            .into_iter()
+            .map(|worker| worker.join().expect("join refresh worker"))
+            .collect::<Vec<_>>();
+
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 2);
+        assert!(generations.iter().all(|generation| *generation == 2));
+    }
+
+    #[test]
+    fn stale_cached_address_is_refreshed_once_and_retried_on_connect_failure() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind refreshed local host");
+        let port = listener.local_addr().expect("read refreshed port").port();
+        let base_url = format!("http://retry-host.local:{port}");
+        let request_url = format!("{base_url}/api/v1/health");
+        let expected_host = format!("host: retry-host.local:{port}");
+        let expected_origin = format!("origin: {base_url}");
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept retried request");
+            let mut request = [0_u8; 2048];
+            let read = stream.read(&mut request).expect("read retried request");
+            let received = String::from_utf8_lossy(&request[..read]).to_ascii_lowercase();
+            assert!(received.contains(&expected_host), "{received}");
+            assert!(received.contains(&expected_origin), "{received}");
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok")
+                .expect("write retried response");
+        });
+
+        let transport = MdnsTransport::default();
+        let resolver_calls = AtomicUsize::new(0);
+        let resolve = |hostname: &str, requested_port: u16, _timeout: Duration| {
+            assert_eq!(hostname, "retry-host.local");
+            assert_eq!(requested_port, port);
+            let call = resolver_calls.fetch_add(1, Ordering::SeqCst);
+            let address = if call == 0 {
+                SocketAddr::from(([192, 0, 2, 1], requested_port))
+            } else {
+                SocketAddr::from(([127, 0, 0, 1], requested_port))
+            };
+            Ok(vec![address])
+        };
+
+        let stale = transport
+            .current_route_with(
+                "retry-host.local",
+                port,
+                Duration::from_millis(500),
+                "Seed stale route",
+                &resolve,
+            )
+            .expect("seed stale route");
+        assert_eq!(stale.route.generation, 1);
+
+        let response = send_mdns_local_request_with(
+            &transport,
+            "retry-host.local",
+            port,
+            Duration::from_secs(2),
+            "Stale route request",
+            resolve,
+            |client| {
+                client
+                    .get(&request_url)
+                    .header(HOST, format!("retry-host.local:{port}"))
+                    .header(ORIGIN, &base_url)
+            },
+        )
+        .expect("refresh stale route and retry");
+
+        assert!(response.status().is_success());
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 2);
+        let cached = transport
+            .current_route_with(
+                "retry-host.local",
+                port,
+                Duration::from_millis(500),
+                "Read refreshed route",
+                &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                    panic!("refreshed route should stay cached")
+                },
+            )
+            .expect("reuse refreshed route");
+        assert_eq!(cached.route.generation, 2);
+        server.join().expect("join refreshed local host");
+    }
+
+    #[test]
+    fn failed_post_invalidates_the_route_without_replaying_the_request() {
+        let transport = MdnsTransport::default();
+        let resolver_calls = AtomicUsize::new(0);
+        let request_builds = AtomicUsize::new(0);
+        let resolve = |hostname: &str, requested_port: u16, _timeout: Duration| {
+            assert_eq!(hostname, "write-host.local");
+            resolver_calls.fetch_add(1, Ordering::SeqCst);
+            Ok(vec![SocketAddr::from(([192, 0, 2, 1], requested_port))])
+        };
+        transport
+            .current_route_with(
+                "write-host.local",
+                4278,
+                Duration::from_millis(500),
+                "Seed failed write route",
+                &resolve,
+            )
+            .expect("seed failed write route");
+
+        let request_url = "http://write-host.local:4278/api/v1/snapshot";
+        let result = send_mdns_local_request_with(
+            &transport,
+            "write-host.local",
+            4278,
+            Duration::from_millis(900),
+            "Failed write",
+            resolve,
+            |client| {
+                request_builds.fetch_add(1, Ordering::SeqCst);
+                client.post(request_url).body("write-once")
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(request_builds.load(Ordering::SeqCst), 1);
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 1);
+
+        let refreshed = transport
+            .current_route_with(
+                "write-host.local",
+                4278,
+                Duration::from_millis(500),
+                "Resolve after failed write",
+                &resolve,
+            )
+            .expect("failed write invalidates route for the next call");
+        assert_eq!(refreshed.route.generation, 2);
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn failed_authenticated_get_requires_a_new_identity_preflight_before_replay() {
+        let transport = MdnsTransport::default();
+        let resolver_calls = AtomicUsize::new(0);
+        let request_builds = AtomicUsize::new(0);
+        let resolve = |hostname: &str, requested_port: u16, _timeout: Duration| {
+            assert_eq!(hostname, "protected-host.local");
+            resolver_calls.fetch_add(1, Ordering::SeqCst);
+            Ok(vec![SocketAddr::from(([192, 0, 2, 1], requested_port))])
+        };
+        transport
+            .current_route_with(
+                "protected-host.local",
+                4278,
+                Duration::from_millis(500),
+                "Seed protected route",
+                &resolve,
+            )
+            .expect("seed protected route");
+
+        let result = send_mdns_local_request_with(
+            &transport,
+            "protected-host.local",
+            4278,
+            Duration::from_millis(900),
+            "Failed protected read",
+            resolve,
+            |client| {
+                request_builds.fetch_add(1, Ordering::SeqCst);
+                client
+                    .get("http://protected-host.local:4278/api/v1/library/snapshot")
+                    .header(COOKIE, "bfm_companion_session=secret-session")
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(request_builds.load(Ordering::SeqCst), 1);
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 1);
+
+        let refreshed = transport
+            .current_route_with(
+                "protected-host.local",
+                4278,
+                Duration::from_millis(500),
+                "Identity preflight after failed protected read",
+                &resolve,
+            )
+            .expect("protected read invalidates route for the next preflight");
+        assert_eq!(refreshed.route.generation, 2);
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 2);
     }
 
     #[test]
@@ -1075,6 +2142,246 @@ mod tests {
                 .is_err(),
             "production credential lookups must reject embedded credentials"
         );
+    }
+
+    #[test]
+    fn warm_runtime_auth_does_not_require_another_credential_store_read() {
+        let host = "http://host.local:4278";
+        let state = credential_test_state(host);
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "session-id", "csrf-token", "runtime-device-token")
+            .expect("save warm runtime auth");
+
+        // No device token exists in the credential store. A successful read therefore proves
+        // the warm path stayed entirely in the zeroized runtime session instead of reopening
+        // Keychain or Credential Manager.
+        let auth = current_or_renewed_library_sync_auth(&state, host)
+            .expect("read warm runtime authentication");
+        assert_eq!(auth.session_id, "session-id");
+        assert_eq!(auth.csrf_token, "csrf-token");
+        assert_eq!(auth.device_token, "runtime-device-token");
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn concurrent_unauthorized_wave_renews_the_failed_session_once() {
+        const REQUEST_COUNT: usize = 8;
+        let host = "http://host.local:4278";
+        let state = credential_test_state(host);
+        store_library_sync_device_token(&state, host, "device-token").expect("store device token");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "failed-session", "failed-csrf", "device-token")
+            .expect("seed failed runtime session");
+
+        let start = Arc::new(Barrier::new(REQUEST_COUNT + 1));
+        let renewal_count = Arc::new(AtomicUsize::new(0));
+        let mut requests = Vec::with_capacity(REQUEST_COUNT);
+        for _ in 0..REQUEST_COUNT {
+            let request_state = state.clone();
+            let request_start = Arc::clone(&start);
+            let request_renewal_count = Arc::clone(&renewal_count);
+            requests.push(thread::spawn(move || {
+                request_start.wait();
+                renew_or_reuse_library_sync_auth_with(
+                    &request_state,
+                    host,
+                    "failed-session",
+                    "device-token",
+                    move |base_url, device_token| {
+                        request_renewal_count.fetch_add(1, Ordering::SeqCst);
+                        assert_eq!(base_url, host);
+                        assert_eq!(device_token, "device-token");
+                        Ok(LibrarySyncAuthenticatedSessionState {
+                            csrf_token: "renewed-csrf".to_string(),
+                            session_id: "renewed-session".to_string(),
+                            device_token: device_token.to_string(),
+                        })
+                    },
+                )
+            }));
+        }
+
+        start.wait();
+        for request in requests {
+            let auth = request
+                .join()
+                .expect("join unauthorized request")
+                .expect("reuse renewed authentication");
+            assert_eq!(auth.session_id, "renewed-session");
+            assert_eq!(auth.csrf_token, "renewed-csrf");
+            assert_eq!(auth.device_token, "device-token");
+        }
+        assert_eq!(renewal_count.load(Ordering::SeqCst), 1);
+        let runtime = state
+            .library_sync_auth
+            .current()
+            .expect("read renewed runtime auth")
+            .expect("renewed runtime auth");
+        assert_eq!(runtime.session_id, "renewed-session");
+        assert_eq!(runtime.device_token.as_deref(), Some("device-token"));
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn failed_unauthorized_wave_attempts_one_renewal_and_allows_a_later_retry() {
+        const REQUEST_COUNT: usize = 8;
+        let host = "http://host.local:4278";
+        let state = credential_test_state(host);
+        store_library_sync_device_token(&state, host, "device-token").expect("store device token");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "failed-session", "failed-csrf", "device-token")
+            .expect("seed failed runtime session");
+
+        let start = Arc::new(Barrier::new(REQUEST_COUNT + 1));
+        let renewal_count = Arc::new(AtomicUsize::new(0));
+        let mut requests = Vec::with_capacity(REQUEST_COUNT);
+        for _ in 0..REQUEST_COUNT {
+            let request_state = state.clone();
+            let request_start = Arc::clone(&start);
+            let request_renewal_count = Arc::clone(&renewal_count);
+            requests.push(thread::spawn(move || {
+                request_start.wait();
+                renew_or_reuse_library_sync_auth_with(
+                    &request_state,
+                    host,
+                    "failed-session",
+                    "device-token",
+                    move |_, _| {
+                        request_renewal_count.fetch_add(1, Ordering::SeqCst);
+                        thread::sleep(Duration::from_millis(100));
+                        Err("sensitive renewal transport detail".to_string())
+                    },
+                )
+            }));
+        }
+
+        start.wait();
+        for request in requests {
+            let error = match request.join().expect("join failed unauthorized request") {
+                Ok(_) => panic!("failed renewal wave must fail"),
+                Err(error) => error,
+            };
+            assert_eq!(error, SHARED_RENEWAL_FAILED_ERROR);
+            assert!(!error.contains("sensitive"));
+        }
+        assert_eq!(renewal_count.load(Ordering::SeqCst), 1);
+        assert!(state
+            .library_sync_auth
+            .current()
+            .expect("read cleared runtime auth")
+            .is_none());
+
+        // A slower dashboard command may reach the cold path after the first 401 request has
+        // already cleared runtime auth. It must share the same short failure cooldown instead of
+        // starting another network renewal in the same wave.
+        let cold_renewal_count = Arc::clone(&renewal_count);
+        let cold_error =
+            match current_or_renewed_library_sync_auth_with(&state, host, move |_, _| {
+                cold_renewal_count.fetch_add(1, Ordering::SeqCst);
+                Err("late cold renewal should not run".to_string())
+            }) {
+                Ok(_) => panic!("late cold request must share the failed wave"),
+                Err(error) => error,
+            };
+        assert_eq!(cold_error, SHARED_RENEWAL_FAILED_ERROR);
+        assert_eq!(renewal_count.load(Ordering::SeqCst), 1);
+
+        thread::sleep(Duration::from_millis(1_050));
+        let retry_renewal_count = Arc::clone(&renewal_count);
+        let renewed = current_or_renewed_library_sync_auth_with(
+            &state,
+            host,
+            move |base_url, device_token| {
+                retry_renewal_count.fetch_add(1, Ordering::SeqCst);
+                assert_eq!(base_url, host);
+                assert_eq!(device_token, "device-token");
+                Ok(LibrarySyncAuthenticatedSessionState {
+                    csrf_token: "retry-csrf".to_string(),
+                    session_id: "retry-session".to_string(),
+                    device_token: device_token.to_string(),
+                })
+            },
+        )
+        .expect("retry after cooldown");
+        assert_eq!(renewed.session_id, "retry-session");
+        assert_eq!(renewal_count.load(Ordering::SeqCst), 2);
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn unauthorized_renewal_cooldown_preserves_pairing_repair_classification() {
+        let host = "http://host.local:4278";
+        let state = credential_test_state(host);
+        store_library_sync_device_token(&state, host, "device-token").expect("store device token");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "failed-session", "failed-csrf", "device-token")
+            .expect("seed failed runtime session");
+
+        let first_error = match renew_or_reuse_library_sync_auth_with(
+            &state,
+            host,
+            "failed-session",
+            "device-token",
+            |_, _| {
+                Err(
+                    "Host session renewal request returned 401 Unauthorized. sensitive detail"
+                        .to_string(),
+                )
+            },
+        ) {
+            Ok(_) => panic!("revoked pairing must fail renewal"),
+            Err(error) => error,
+        };
+        assert_eq!(first_error, SHARED_RENEWAL_UNAUTHORIZED_ERROR);
+        assert!(first_error.contains("401"));
+        assert!(!first_error.contains("sensitive"));
+
+        let cold_error = match current_or_renewed_library_sync_auth_with(&state, host, |_, _| {
+            panic!("cooldown must suppress a late cold renewal")
+        }) {
+            Ok(_) => panic!("revoked pairing cooldown must remain failed"),
+            Err(error) => error,
+        };
+        assert_eq!(cold_error, SHARED_RENEWAL_UNAUTHORIZED_ERROR);
+        assert!(cold_error.contains("401"));
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn transport_url_digits_do_not_misclassify_renewal_as_unauthorized() {
+        let host = "http://host401.local:4010";
+        let state = credential_test_state(host);
+        store_library_sync_device_token(&state, host, "device-token").expect("store device token");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "failed-session", "failed-csrf", "device-token")
+            .expect("seed failed runtime session");
+
+        let error = match renew_or_reuse_library_sync_auth_with(
+            &state,
+            host,
+            "failed-session",
+            "device-token",
+            |_, _| {
+                Err("Host session renewal request failed while connecting to http://host401.local:4010/api/v1/auth/renew"
+                    .to_string())
+            },
+        ) {
+            Ok(_) => panic!("transport failure must fail renewal"),
+            Err(error) => error,
+        };
+        assert_eq!(error, SHARED_RENEWAL_FAILED_ERROR);
+        assert!(!error.contains("401"));
+
+        let _ = std::fs::remove_file(&state.db_path);
     }
 
     #[test]

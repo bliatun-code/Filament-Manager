@@ -10,7 +10,7 @@ import {
   listActiveSpoolLoans,
   listPrinterOverview,
   listWishlistItems,
-  validateLibrarySyncHost,
+  type validateLibrarySyncHost,
   type LibrarySyncSettings,
   type InventoryOverview,
   type PrinterSettingsSnapshot,
@@ -35,11 +35,18 @@ import {
   resolveLibraryRevisionSource,
   type LibraryRevisionSource,
 } from "./library_domain_revisions";
+import {
+  createDashboardHostConnectionState,
+  observeDashboardHostConnection,
+  type DashboardHostConnectionObservation,
+  type DashboardHostConnectionState,
+  type DashboardHostConnectionTone,
+} from "./dashboard_host_connection";
 import type { NumberDisplayLocale } from "./number_display";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
-export type DashboardCompanionTone = "off" | "live" | "warn";
+export type DashboardCompanionTone = DashboardHostConnectionTone;
 export type DashboardSyncSource = "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
@@ -47,6 +54,8 @@ export type DashboardDataLoadResult = {
   derived: DashboardDerivedState;
   syncMode: string;
   trustedLan: TrustedLanCompanionStatus | null;
+  clientHostConnectionObservation: DashboardHostConnectionObservation;
+  clientHostConnectionState: DashboardHostConnectionState;
   clientHostCompanionTone: DashboardCompanionTone;
   clientHostDisplayName: string | null;
   clientHostNeedsRepair: boolean;
@@ -126,10 +135,36 @@ export function hasInvalidClientPairingMessage(message?: string | null): boolean
   return normalized.includes("desktop client pairing is no longer valid");
 }
 
+function hasImmediateClientPairingRepairError(error: unknown): boolean {
+  if (error && typeof error === "object") {
+    if (
+      "status" in error &&
+      Number((error as { status?: unknown }).status) === 401
+    ) {
+      return true;
+    }
+    if ("message" in error) {
+      return hasImmediateClientPairingRepairError(
+        (error as { message?: unknown }).message,
+      );
+    }
+  }
+  const message = String(error ?? "").trim().toLowerCase();
+  return (
+    hasInvalidClientPairingMessage(message) ||
+    /(?:returned|status(?: code)?(?: is)?|response:)\s+401\b/.test(message) ||
+    /\b401\s+unauthorized\b/.test(message) ||
+    message.includes("unauthorized") ||
+    (message.includes("pairing") &&
+      (message.includes("invalid") || message.includes("expired")))
+  );
+}
+
 export async function loadDashboardData(
   params: {
     clientCacheOnly?: boolean;
     locale?: NumberDisplayLocale;
+    previousClientHostConnectionState?: DashboardHostConnectionState;
     previousClientHostNeedsRepair: boolean;
     t: TranslateFn;
   },
@@ -137,7 +172,6 @@ export async function loadDashboardData(
 ): Promise<DashboardDataLoadResult> {
   const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
   const loadTrustedLanStatus = dependencies.loadTrustedLanStatus ?? getTrustedLanCompanionStatus;
-  const validateHost = dependencies.validateHost ?? validateLibrarySyncHost;
   const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
   const fetchHostPrinterOverview =
     dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
@@ -181,13 +215,10 @@ export async function loadDashboardData(
   let clientHostNeedsRepair =
     clientMode && (params.previousClientHostNeedsRepair || persistedPairingNeedsRepair);
   let clientHostDisplayName = syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null;
-  let clientHostCompanionTone: DashboardCompanionTone = "off";
+  let clientHostConnectionObservation: DashboardHostConnectionObservation =
+    clientMode ? "checking" : "unconfigured";
 
-  if (clientMode) {
-    if (syncSettings?.host_base_url && clientHostNeedsRepair) {
-      clientHostCompanionTone = "warn";
-    }
-  } else {
+  if (!clientMode) {
     clientHostNeedsRepair = false;
   }
 
@@ -209,15 +240,8 @@ export async function loadDashboardData(
     : null;
 
   if (clientHostTarget && !params.clientCacheOnly) {
-    const [
-      validationResult,
-      snapshotResult,
-      spoolsResult,
-      printersResult,
-      loansResult,
-      wishlistResult,
-    ] = await Promise.allSettled([
-      validateHost(clientHostTarget.baseUrl, clientHostTarget.libraryId),
+    const [snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult] =
+      await Promise.allSettled([
       fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       loadSpoolRows({
         clientReadOnly: true,
@@ -229,25 +253,13 @@ export async function loadDashboardData(
       fetchHostWishlist(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500),
     ]);
 
-    if (validationResult.status === "fulfilled") {
-      const validation = validationResult.value;
-      clientHostNeedsRepair = validation.pairing_checked && !validation.pairing_valid;
-      if (validation.device_name) {
-        clientHostDisplayName = validation.device_name;
-      }
-    } else {
-      onLoadError(validationResult.reason);
-    }
-
     if (snapshotResult.status === "fulfilled") {
       activeClientSnapshot = snapshotResult.value;
       clientSnapshotLive = true;
-      clientHostCompanionTone = clientHostNeedsRepair ? "warn" : "live";
       clientHostDisplayName =
         snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null;
     } else {
       onLoadError(snapshotResult.reason);
-      clientHostCompanionTone = syncSettings?.host_base_url ? "warn" : "off";
     }
 
     if (spoolsResult.status === "fulfilled") {
@@ -274,9 +286,50 @@ export async function loadDashboardData(
     } else {
       onLoadError(wishlistResult.reason);
     }
-  } else if (clientHostTarget && params.clientCacheOnly) {
-    clientHostCompanionTone = "warn";
+
+    const rejectedHostErrors = [
+      snapshotResult,
+      spoolsResult,
+      printersResult,
+      loansResult,
+      wishlistResult,
+    ].flatMap((result) =>
+      result.status === "rejected" ? [result.reason] : [],
+    );
+    const anyCoreHostReadSucceeded = [
+      snapshotResult,
+      spoolsResult,
+      printersResult,
+      loansResult,
+      wishlistResult,
+    ].some((result) => result.status === "fulfilled");
+    const pairingRepairRequired = rejectedHostErrors.some(
+      hasImmediateClientPairingRepairError,
+    );
+    if (pairingRepairRequired) {
+      clientHostNeedsRepair = true;
+    } else if (anyCoreHostReadSucceeded) {
+      // Every core endpoint is authenticated. Any successful response therefore proves that
+      // the current pairing works, even when an older validation message was persisted.
+      clientHostNeedsRepair = false;
+    }
+    clientHostConnectionObservation = clientHostNeedsRepair
+      ? "repair"
+      : anyCoreHostReadSucceeded
+        ? "succeeded"
+        : "failed";
+  } else if (clientHostNeedsRepair) {
+    clientHostConnectionObservation = "repair";
+  } else if (!clientHostTarget) {
+    clientHostConnectionObservation = "unconfigured";
   }
+
+  const clientHostConnectionState = observeDashboardHostConnection(
+    params.previousClientHostConnectionState ??
+      createDashboardHostConnectionState(),
+    clientHostConnectionObservation,
+  );
+  const clientHostCompanionTone = clientHostConnectionState.tone;
 
   const hasClientCachedRows =
     (clientSpoolRows?.length ?? 0) > 0 ||
@@ -340,6 +393,8 @@ export async function loadDashboardData(
       }),
       syncMode,
       trustedLan,
+      clientHostConnectionObservation,
+      clientHostConnectionState,
       clientHostCompanionTone,
       clientHostDisplayName,
       clientHostNeedsRepair,
@@ -379,6 +434,8 @@ export async function loadDashboardData(
     }),
     syncMode,
     trustedLan,
+    clientHostConnectionObservation,
+    clientHostConnectionState,
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,

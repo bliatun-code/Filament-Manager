@@ -33,6 +33,26 @@ test("dashboard polling pauses hidden timers and backs off failed refreshes", ()
   assert.doesNotMatch(dashboardSource, /window\.setInterval/);
 });
 
+test("dashboard coalesces concurrent browser, visibility, and native focus refreshes", () => {
+  assert.doesNotMatch(dashboardSource, /refreshRequested/);
+  assert.match(
+    dashboardSource,
+    /DASHBOARD_FOCUS_DEDUPE_WINDOW_MS = 250/,
+  );
+  assert.match(
+    dashboardSource,
+    /let lastFocusRefreshAt = Number\.NEGATIVE_INFINITY/,
+  );
+  assert.match(
+    dashboardSource,
+    /const requestFocusRefresh = \(\) => \{\s*if \(!documentAllowsPolling\(\)\) \{\s*return;\s*\}[\s\S]*loading \|\|[\s\S]*now - lastFocusRefreshAt < DASHBOARD_FOCUS_DEDUPE_WINDOW_MS/,
+  );
+  assert.match(
+    dashboardSource,
+    /if \(payload\) \{\s*requestFocusRefresh\(\);/,
+  );
+});
+
 test("trusted-LAN polling reports failures to the bounded scheduler", () => {
   assert.match(trustedLanSource, /failureMaxDelayMs: 30_000/);
   assert.match(trustedLanSource, /runImmediately: true/);
@@ -59,4 +79,32 @@ test("revision outages retain bounded periodic full-refresh fallbacks", () => {
 
   assert.match(dashboardSource, /await performDashboardRefresh\(cancelledRef\)/);
   assert.doesNotMatch(dashboardSource, /status !== "unavailable"/);
+});
+
+test("one dashboard revision miss defers rather than doubling full refresh work", () => {
+  assert.match(dashboardSource, /missedPolls >= 2/);
+  assert.match(dashboardSource, /hostFailureConfirmationDue/);
+  assert.match(
+    dashboardSource,
+    /DASHBOARD_REVISION_FALLBACK_INTERVAL_MS = 30_000/,
+  );
+  assert.match(
+    dashboardSource,
+    /if \(fallbackRefreshDue\) \{\s*await performDashboardRefresh\(cancelledRef\);/,
+  );
+});
+
+test("an authenticated host revision poll closes a previous failure grace window", () => {
+  assert.match(
+    dashboardSource,
+    /if \(source\.kind === "host"\) \{[\s\S]*createDashboardHostConnectionState\("live"\)[\s\S]*clientHostNeedsRepair: false,[\s\S]*clientHostPaired: true/,
+  );
+  assert.match(
+    dashboardSource,
+    /previousClientHostNeedsRepair:\s*clientHostNeedsRepairRef\.current/,
+  );
+  assert.match(
+    dashboardSource,
+    /clientHostNeedsRepairRef\.current = false/,
+  );
 });

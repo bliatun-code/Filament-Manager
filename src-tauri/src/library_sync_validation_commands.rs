@@ -1,7 +1,8 @@
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_host_client::{
-    load_library_sync_device_token_optional, renew_and_cache_library_sync_auth,
-    send_library_sync_request,
+    is_library_sync_pairing_unauthorized_error, load_library_sync_device_token_optional,
+    renew_and_cache_library_sync_auth, send_library_sync_request,
 };
 use crate::library_sync_models::{LibrarySyncHostValidationResult, ValidateLibrarySyncHostInput};
 use crate::state::AppState;
@@ -10,8 +11,16 @@ use crate::with_inventory;
 use std::time::Duration;
 
 #[tauri::command]
-pub(crate) fn validate_library_sync_host(
+pub(crate) async fn validate_library_sync_host(
     state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<LibrarySyncHostValidationResult, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || validate_library_sync_host_blocking(&state, input)).await
+}
+
+fn validate_library_sync_host_blocking(
+    state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncHostValidationResult, String> {
     let normalized_base_url = normalize_library_sync_base_url(&input.base_url)?;
@@ -40,7 +49,7 @@ pub(crate) fn validate_library_sync_host(
                 sync_mode: None,
                 message: error,
             };
-            with_inventory(&state, |engine| {
+            with_inventory(state, |engine| {
                 engine.save_library_sync_validation_state(false, Some(&result.message), None)
             })?;
             return Ok(result);
@@ -63,7 +72,7 @@ pub(crate) fn validate_library_sync_host(
             sync_mode: None,
             message: format!("Host check returned {}.", response.status()),
         };
-        with_inventory(&state, |engine| {
+        with_inventory(state, |engine| {
             engine.save_library_sync_validation_state(true, Some(&result.message), None)
         })?;
         return Ok(result);
@@ -110,15 +119,15 @@ pub(crate) fn validate_library_sync_host(
     if parsed.ok
         && matches_library_id
         && let Some(device_token) =
-            load_library_sync_device_token_optional(&state, &normalized_base_url)?
+            load_library_sync_device_token_optional(state, &normalized_base_url)?
     {
         pairing_checked = true;
-        match renew_and_cache_library_sync_auth(&state, &normalized_base_url, &device_token) {
+        match renew_and_cache_library_sync_auth(state, &normalized_base_url, &device_token) {
             Ok(_) => {
                 pairing_valid = true;
             }
             Err(error) => {
-                message = if error.contains("401") {
+                message = if is_library_sync_pairing_unauthorized_error(&error) {
                     format!(
                         "Host is reachable{}, but desktop client pairing is no longer valid.",
                         parsed
@@ -156,7 +165,7 @@ pub(crate) fn validate_library_sync_host(
         sync_mode: parsed.sync_mode,
         message,
     };
-    with_inventory(&state, |engine| {
+    with_inventory(state, |engine| {
         engine.save_library_sync_validation_state(
             result.reachable,
             Some(&result.message),
