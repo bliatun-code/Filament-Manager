@@ -36,7 +36,7 @@ test("loadCatalogMasters uses host catalog in client mode", async () => {
     },
   );
 
-  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", limit: 1000 }]);
+  assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", limit: 5000 }]);
   assert.deepEqual(rows.map((row) => row.id), ["host-bambu"]);
 });
 

@@ -29,7 +29,7 @@ export async function loadCatalogMasters(
 ): Promise<MasterCatalogRow[]> {
   const fetchHostCatalog = dependencies.fetchHostCatalog ?? fetchLibrarySyncCatalogMasters;
   const listLocalCatalog = dependencies.listLocalCatalog ?? listMasterCatalog;
-  const { clientReadOnly = false, limit = 1000, search } = options;
+  const { clientReadOnly = false, limit = 5000, search } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
 
   if (hostTarget) {
