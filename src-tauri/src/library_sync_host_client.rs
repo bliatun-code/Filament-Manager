@@ -22,6 +22,7 @@ const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
 const MDNS_RETRY_TIMEOUT: Duration = Duration::from_millis(750);
 const LIBRARY_SYNC_CONNECT_TIMEOUT: Duration = Duration::from_millis(500);
 const MDNS_ROUTE_FRESH_TTL: Duration = Duration::from_secs(5 * 60);
+const MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF: Duration = Duration::from_secs(30);
 const MDNS_HOST_CACHE_LIMIT: usize = 32;
 const SHARED_RENEWAL_FAILED_ERROR: &str =
     "Desktop client session renewal failed. Please try again.";
@@ -32,12 +33,22 @@ const SHARED_RENEWAL_UNAUTHORIZED_ERROR: &str =
 struct ResolvedMdnsRoute {
     generation: u64,
     client: reqwest::blocking::Client,
-    resolved_at: Instant,
+    fresh_until: Instant,
 }
 
 struct MdnsRouteLease {
     slot: Arc<MdnsHostSlot>,
     route: ResolvedMdnsRoute,
+}
+
+struct MdnsFallbackCandidate {
+    slot: Arc<MdnsHostSlot>,
+    route: ResolvedMdnsRoute,
+}
+
+struct LibrarySyncRequestOutcome {
+    response: reqwest::blocking::Response,
+    fallback_candidate: Option<MdnsFallbackCandidate>,
 }
 
 #[derive(Default)]
@@ -161,14 +172,31 @@ pub(crate) fn send_library_sync_request(
     operation: &str,
     make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
 ) -> Result<reqwest::blocking::Response, String> {
+    send_library_sync_request_with_fallback_candidate(
+        base_url,
+        timeout,
+        operation,
+        false,
+        make_request,
+    )
+    .map(|outcome| outcome.response)
+}
+
+fn send_library_sync_request_with_fallback_candidate(
+    base_url: &str,
+    timeout: Duration,
+    operation: &str,
+    allow_identity_fallback: bool,
+    make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+) -> Result<LibrarySyncRequestOutcome, String> {
     let request_started_at = Instant::now();
     if let Some((hostname, port)) = stable_local_host_and_port(base_url) {
-        return send_mdns_local_request_with(
+        return send_mdns_local_request_with_fallback_candidate(
             mdns_transport(),
-            &hostname,
-            port,
+            (&hostname, port),
             timeout,
             operation,
+            allow_identity_fallback,
             resolve_stable_local_hostname_with_mdns,
             make_request,
         );
@@ -177,10 +205,14 @@ pub(crate) fn send_library_sync_request(
     let timeout = remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
         .ok_or_else(|| format!("{operation} timed out before it could start."))?;
     let client = shared_library_sync_http_client(operation)?;
-    make_request(client)
+    let response = make_request(client)
         .timeout(timeout)
         .send()
-        .map_err(|error| format!("{operation} failed: {error}"))
+        .map_err(|error| format!("{operation} failed: {error}"))?;
+    Ok(LibrarySyncRequestOutcome {
+        response,
+        fallback_candidate: None,
+    })
 }
 
 fn remaining_library_sync_request_timeout(
@@ -207,6 +239,7 @@ fn mdns_transport() -> &'static MdnsTransport {
     LIBRARY_SYNC_MDNS_TRANSPORT.get_or_init(MdnsTransport::default)
 }
 
+#[cfg(test)]
 fn send_mdns_local_request_with<Resolve, MakeRequest>(
     transport: &MdnsTransport,
     hostname: &str,
@@ -220,6 +253,32 @@ where
     Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
     MakeRequest: Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
 {
+    send_mdns_local_request_with_fallback_candidate(
+        transport,
+        (hostname, port),
+        timeout,
+        operation,
+        false,
+        resolve,
+        make_request,
+    )
+    .map(|outcome| outcome.response)
+}
+
+fn send_mdns_local_request_with_fallback_candidate<Resolve, MakeRequest>(
+    transport: &MdnsTransport,
+    host: (&str, u16),
+    timeout: Duration,
+    operation: &str,
+    allow_identity_fallback: bool,
+    resolve: Resolve,
+    make_request: MakeRequest,
+) -> Result<LibrarySyncRequestOutcome, String>
+where
+    Resolve: Fn(&str, u16, Duration) -> Result<Vec<SocketAddr>, String>,
+    MakeRequest: Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+{
+    let (hostname, port) = host;
     let request_started_at = Instant::now();
     let resolution_timeout = MDNS_RETRY_TIMEOUT.min(timeout);
     let initial =
@@ -239,8 +298,15 @@ where
     let carries_credentials = initial_request.headers().contains_key(COOKIE)
         || initial_request.headers().contains_key(AUTHORIZATION);
     let retry_safe = retry_safe_method && !carries_credentials;
+    let retry_safe_identity_preflight =
+        allow_identity_fallback && retry_safe && initial_request.url().path() == "/api/v1/health";
     let first_error = match initial.route.client.execute(initial_request) {
-        Ok(response) => return Ok(response),
+        Ok(response) => {
+            return Ok(LibrarySyncRequestOutcome {
+                response,
+                fallback_candidate: None,
+            });
+        }
         // Reqwest 0.13 does not reliably classify all lower-level connection failures as
         // `is_connect()` (a refused pinned address can surface as a request timeout). Retrying
         // after any error before a response is safe only for unauthenticated idempotent reads. A
@@ -264,21 +330,59 @@ where
         remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
             .unwrap_or_default()
             .min(MDNS_RETRY_TIMEOUT);
-    let refreshed = transport
-        .refresh_route_with(
-            &initial,
-            hostname,
-            port,
-            refresh_timeout,
-            operation,
-            &resolve,
-        )
-        .map_err(|resolution_error| {
-            format!(
+    let refreshed = match transport.refresh_route_with(
+        &initial,
+        hostname,
+        port,
+        refresh_timeout,
+        operation,
+        &resolve,
+    ) {
+        Ok(refreshed) => refreshed,
+        Err(resolution_error) if retry_safe_identity_preflight => {
+            // A single connection error can be transient even while the pinned address remains
+            // valid. If multicast discovery is also unavailable, retry only the credential-free
+            // health preflight once against that exact previous route. A response lets the caller
+            // verify the library identity before any later authenticated operation. Writes and
+            // authenticated reads never enter this branch.
+            let remaining_timeout = remaining_library_sync_request_timeout(
+                timeout,
+                request_started_at.elapsed(),
+            )
+            .ok_or_else(|| {
+                format!("{operation} timed out after the cached address and mDNS refresh failed.")
+            })?;
+            let fallback_request = make_request(&initial.route.client)
+                .timeout(remaining_timeout)
+                .build()
+                .map_err(|error| format!("Failed to prepare {operation} fallback: {error}"))?;
+            match initial.route.client.execute(fallback_request) {
+                Ok(response) => {
+                    return Ok(LibrarySyncRequestOutcome {
+                        response,
+                        fallback_candidate: Some(MdnsFallbackCandidate {
+                            slot: Arc::clone(&initial.slot),
+                            route: initial.route.clone(),
+                        }),
+                    });
+                }
+                Err(fallback_error) => {
+                    return Err(format!(
+                        "{operation} failed to connect to the cached local address ({first_error}); \
+                         refreshing the mDNS address also failed ({resolution_error}); retrying the \
+                         credential-free health check on the cached address failed too: \
+                         {fallback_error}"
+                    ));
+                }
+            }
+        }
+        Err(resolution_error) => {
+            return Err(format!(
                 "{operation} failed to connect to the cached local address ({first_error}); \
                  refreshing the mDNS address also failed: {resolution_error}"
-            )
-        })?;
+            ));
+        }
+    };
 
     let remaining_timeout =
         remaining_library_sync_request_timeout(timeout, request_started_at.elapsed())
@@ -287,7 +391,10 @@ where
         .timeout(remaining_timeout)
         .send()
     {
-        Ok(response) => Ok(response),
+        Ok(response) => Ok(LibrarySyncRequestOutcome {
+            response,
+            fallback_candidate: None,
+        }),
         Err(error) => {
             refreshed
                 .slot
@@ -492,7 +599,7 @@ impl MdnsHostSlot {
         let attempt = {
             let mut state = self.lock_state()?;
             if let Some(route) = state.route.as_ref()
-                && route.resolved_at.elapsed() < MDNS_ROUTE_FRESH_TTL
+                && Instant::now() < route.fresh_until
             {
                 return Ok(route.clone());
             }
@@ -580,7 +687,7 @@ impl MdnsHostSlot {
                 let route = ResolvedMdnsRoute {
                     generation: state.next_generation,
                     client,
-                    resolved_at: Instant::now(),
+                    fresh_until: Instant::now() + MDNS_ROUTE_FRESH_TTL,
                 };
                 state.route = Some(route.clone());
                 state.last_failure = None;
@@ -590,8 +697,9 @@ impl MdnsHostSlot {
                 state.last_failure = Some((attempt, error.clone()));
                 if retain_previous_on_failure && let Some(route) = state.route.as_mut() {
                     // Keep the last-known-good route when multicast discovery has a transient
-                    // miss, but back off the next refresh attempt instead of stalling every read.
-                    route.resolved_at = Instant::now();
+                    // miss, but retry discovery much sooner than a successfully resolved route.
+                    // The cached address can still serve requests during this short backoff.
+                    route.fresh_until = Instant::now() + MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF;
                     Ok(route.clone())
                 } else {
                     state.route = None;
@@ -654,10 +762,45 @@ impl MdnsHostSlot {
         }
     }
 
+    fn confirm_fallback_route(&self, route: &ResolvedMdnsRoute) -> bool {
+        let Ok(mut state) = self.state.lock() else {
+            return false;
+        };
+        if state
+            .route
+            .as_ref()
+            .is_some_and(|current| current.generation == route.generation)
+        {
+            return true;
+        }
+        if state.route.is_some() || state.resolving || state.next_generation != route.generation {
+            return false;
+        }
+        let mut retained = route.clone();
+        retained.fresh_until = Instant::now() + MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF;
+        state.route = Some(retained);
+        self.resolution_completed.notify_all();
+        true
+    }
+
     fn lock_state(&self) -> Result<std::sync::MutexGuard<'_, MdnsHostState>, String> {
         self.state
             .lock()
             .map_err(|_| "The local-host resolver state is unavailable.".to_string())
+    }
+}
+
+impl MdnsFallbackCandidate {
+    fn confirm(self) -> Result<(), String> {
+        if self.slot.confirm_fallback_route(&self.route) {
+            Ok(())
+        } else {
+            Err(
+                "The local-host route changed before its verified identity could be accepted. \
+                 Please retry."
+                    .to_string(),
+            )
+        }
     }
 }
 
@@ -1292,26 +1435,84 @@ pub(crate) fn ensure_library_sync_host_matches(
     base_url: &str,
     expected_library_id: Option<&str>,
 ) -> Result<CompanionHealthCheckResponse, String> {
-    let parsed: CompanionHealthCheckResponse =
-        fetch_library_sync_host_json(base_url, "/api/v1/health")?;
+    let (parsed, fallback_candidate) = if expected_library_id.is_some() {
+        let request_url = format!("{base_url}/api/v1/health");
+        let outcome = send_library_sync_request_with_fallback_candidate(
+            base_url,
+            LIBRARY_SYNC_REQUEST_TIMEOUT,
+            "Host request",
+            true,
+            |client| client.get(&request_url),
+        )?;
+        let LibrarySyncRequestOutcome {
+            response,
+            fallback_candidate,
+        } = outcome;
+        let status = response.status();
+        let response_text = if status.is_success() {
+            response
+                .text()
+                .map_err(|error| format!("Host response body could not be read: {error}"))?
+        } else {
+            String::new()
+        };
+        parse_library_sync_health_response(status, &response_text, fallback_candidate)?
+    } else {
+        let parsed = fetch_library_sync_host_json(base_url, "/api/v1/health")?;
+        (parsed, None)
+    };
 
+    verify_and_confirm_library_sync_host_identity(parsed, expected_library_id, fallback_candidate)
+}
+
+fn parse_library_sync_health_response(
+    status: reqwest::StatusCode,
+    response_text: &str,
+    fallback_candidate: Option<MdnsFallbackCandidate>,
+) -> Result<(CompanionHealthCheckResponse, Option<MdnsFallbackCandidate>), String> {
+    if !status.is_success() {
+        return Err(format!("Host request returned {status}."));
+    }
+    let parsed = serde_json::from_str(response_text)
+        .map_err(|error| format!("Host returned invalid JSON: {error}"))?;
+    Ok((parsed, fallback_candidate))
+}
+
+fn verify_and_confirm_library_sync_host_identity(
+    parsed: CompanionHealthCheckResponse,
+    expected_library_id: Option<&str>,
+    fallback_candidate: Option<MdnsFallbackCandidate>,
+) -> Result<CompanionHealthCheckResponse, String> {
     if !parsed.ok {
         return Err("Host reported not ready.".to_string());
     }
 
-    if let Some(expected_library_id) = expected_library_id {
-        let remote_library_id = parsed
-            .library_id
-            .as_deref()
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| "Host health response did not include a library ID.".to_string())?;
+    match expected_library_id {
+        Some(expected_library_id) => {
+            let remote_library_id = parsed
+                .library_id
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or_else(|| "Host health response did not include a library ID.".to_string())?;
 
-        if remote_library_id != expected_library_id {
-            return Err(format!(
-                "Connected to a different library ({}).",
-                remote_library_id
-            ));
+            if remote_library_id != expected_library_id {
+                return Err(format!(
+                    "Connected to a different library ({}).",
+                    remote_library_id
+                ));
+            }
+            if let Some(fallback_candidate) = fallback_candidate {
+                fallback_candidate.confirm()?;
+            }
         }
+        None if fallback_candidate.is_some() => {
+            return Err(
+                "A retained local-host route requires an expected library ID before it can be \
+                 accepted."
+                    .to_string(),
+            );
+        }
+        None => {}
     }
 
     Ok(parsed)
@@ -1345,11 +1546,14 @@ mod tests {
         current_or_renewed_library_sync_auth_with, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
         library_sync_http_client_builder, load_library_sync_device_token,
-        load_library_sync_device_token_optional, remaining_library_sync_request_timeout,
-        renew_and_cache_library_sync_auth_with, renew_or_reuse_library_sync_auth_with,
-        send_mdns_local_request_with, stable_local_host_and_port, store_library_sync_device_token,
+        load_library_sync_device_token_optional, parse_library_sync_health_response,
+        remaining_library_sync_request_timeout, renew_and_cache_library_sync_auth_with,
+        renew_or_reuse_library_sync_auth_with, send_mdns_local_request_with,
+        send_mdns_local_request_with_fallback_candidate, stable_local_host_and_port,
+        store_library_sync_device_token, verify_and_confirm_library_sync_host_identity,
         LibrarySyncAuthenticatedSessionState, MdnsTransport, MDNS_HOST_CACHE_LIMIT,
-        MDNS_ROUTE_FRESH_TTL, SHARED_RENEWAL_FAILED_ERROR, SHARED_RENEWAL_UNAUTHORIZED_ERROR,
+        MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF, MDNS_ROUTE_FRESH_TTL,
+        SHARED_RENEWAL_FAILED_ERROR, SHARED_RENEWAL_UNAUTHORIZED_ERROR,
     };
     use crate::backend::filament_database::FilamentDatabase;
     use crate::credential_store::CredentialStore;
@@ -1358,6 +1562,7 @@ mod tests {
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
+    use crate::trusted_lan_health::CompanionHealthCheckResponse;
     use reqwest::header::{COOKIE, HOST, ORIGIN};
     use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
     use std::{
@@ -1419,9 +1624,21 @@ mod tests {
         let hosts = transport.hosts.lock().expect("lock route cache");
         let slot = hosts.get(hostname).expect("cached hostname");
         let mut state = slot.state.lock().expect("lock cached route");
-        state.route.as_mut().expect("cached route").resolved_at = Instant::now()
-            .checked_sub(MDNS_ROUTE_FRESH_TTL + Duration::from_secs(1))
-            .expect("expired route timestamp");
+        state.route.as_mut().expect("cached route").fresh_until = Instant::now()
+            .checked_sub(Duration::from_secs(1))
+            .expect("expired route deadline");
+    }
+
+    fn test_health(library_id: Option<&str>, ok: bool) -> CompanionHealthCheckResponse {
+        CompanionHealthCheckResponse {
+            ok,
+            api_version: "v1".to_string(),
+            auth_mode: "pairing".to_string(),
+            access_mode: Some("LAN".to_string()),
+            library_id: library_id.map(str::to_string),
+            device_name: Some("Test Host".to_string()),
+            sync_mode: Some("HOST".to_string()),
+        }
     }
 
     #[test]
@@ -1557,6 +1774,126 @@ mod tests {
     }
 
     #[test]
+    fn cold_resolution_failure_is_not_negative_cached() {
+        let transport = MdnsTransport::default();
+        let resolver_calls = AtomicUsize::new(0);
+
+        let first_error = transport
+            .current_route_with(
+                "cold-retry.local",
+                4278,
+                Duration::from_millis(100),
+                "Fail cold lookup",
+                &|_, _, _| {
+                    resolver_calls.fetch_add(1, Ordering::SeqCst);
+                    Err("simulated cold multicast miss".to_string())
+                },
+            )
+            .err()
+            .expect("cold lookup must fail");
+        assert_eq!(first_error, "simulated cold multicast miss");
+
+        let recovered = transport
+            .current_route_with(
+                "cold-retry.local",
+                4278,
+                Duration::from_millis(100),
+                "Retry cold lookup",
+                &|_, port, _| {
+                    resolver_calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))])
+                },
+            )
+            .expect("a separate request retries cold resolution immediately");
+
+        assert_eq!(recovered.route.generation, 1);
+        assert_eq!(resolver_calls.load(Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn concurrent_cold_failure_wave_shares_error_and_a_later_request_retries() {
+        const WAITERS: usize = 6;
+        let transport = Arc::new(MdnsTransport::default());
+        let (owner_started_tx, owner_started_rx) = mpsc::channel();
+        let (release_owner_tx, release_owner_rx) = mpsc::channel();
+        let owner_transport = Arc::clone(&transport);
+        let owner = thread::spawn(move || {
+            owner_transport.current_route_with(
+                "cold-wave.local",
+                4278,
+                Duration::from_secs(1),
+                "Fail shared cold lookup",
+                &|_, _, _| {
+                    owner_started_tx.send(()).expect("signal cold owner");
+                    release_owner_rx.recv().expect("release cold owner");
+                    Err("simulated shared cold failure".to_string())
+                },
+            )
+        });
+        owner_started_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("cold resolver owner started");
+
+        let slot = transport.slot("cold-wave.local").expect("read cold slot");
+        let (waiter_ready_tx, waiter_ready_rx) = mpsc::channel();
+        let mut waiters = Vec::new();
+        for _ in 0..WAITERS {
+            let slot = Arc::clone(&slot);
+            let waiter_ready_tx = waiter_ready_tx.clone();
+            waiters.push(thread::spawn(move || {
+                let state = slot.lock_state().expect("lock resolving cold slot");
+                assert!(state.resolving);
+                let attempt = state.active_attempt;
+                waiter_ready_tx
+                    .send(attempt)
+                    .expect("signal waiting cold request");
+                slot.wait_for_attempt(state, attempt, Duration::from_secs(1))
+            }));
+        }
+        drop(waiter_ready_tx);
+        for _ in 0..WAITERS {
+            assert_eq!(
+                waiter_ready_rx
+                    .recv_timeout(Duration::from_secs(1))
+                    .expect("cold request joined shared attempt"),
+                1
+            );
+        }
+
+        release_owner_tx.send(()).expect("release cold resolver");
+        let owner_error = owner
+            .join()
+            .expect("join cold resolver owner")
+            .err()
+            .expect("cold owner must fail");
+        assert_eq!(owner_error, "simulated shared cold failure");
+        for waiter in waiters {
+            let waiter_error = waiter
+                .join()
+                .expect("join cold waiter")
+                .err()
+                .expect("cold waiter must share failure");
+            assert_eq!(waiter_error, "simulated shared cold failure");
+        }
+
+        let later_resolver_calls = AtomicUsize::new(0);
+        let recovered = transport
+            .current_route_with(
+                "cold-wave.local",
+                4278,
+                Duration::from_millis(100),
+                "Recover after shared cold failure",
+                &|_, port, _| {
+                    later_resolver_calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))])
+                },
+            )
+            .expect("later cold request must start a new resolution");
+        assert_eq!(recovered.route.generation, 1);
+        assert_eq!(later_resolver_calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
     fn local_route_is_shared_per_hostname_and_honors_each_url_port() {
         let first_listener = TcpListener::bind("127.0.0.1:0").expect("bind first host port");
         let first_port = first_listener.local_addr().expect("read first port").port();
@@ -1665,7 +2002,7 @@ mod tests {
     }
 
     #[test]
-    fn failed_periodic_revalidation_keeps_last_known_good_route_with_backoff() {
+    fn failed_periodic_revalidation_uses_short_lkg_backoff_then_retries() {
         let transport = MdnsTransport::default();
         let initial = transport
             .current_route_with(
@@ -1703,9 +2040,35 @@ mod tests {
             )
             .expect("reuse last-known-good route");
 
+        let retained_backoff = fallback
+            .route
+            .fresh_until
+            .saturating_duration_since(Instant::now());
+        assert!(
+            MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF < MDNS_ROUTE_FRESH_TTL,
+            "a failed refresh must not inherit the successful-route TTL"
+        );
+        assert!(!retained_backoff.is_zero());
+        assert!(retained_backoff <= MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF);
         assert_eq!(fallback.route.generation, initial.route.generation);
         assert_eq!(warm_fallback.route.generation, initial.route.generation);
         assert_eq!(refresh_calls.load(Ordering::SeqCst), 1);
+
+        expire_cached_route(&transport, "lkg-host.local");
+        let recovered = transport
+            .current_route_with(
+                "lkg-host.local",
+                4278,
+                Duration::from_millis(100),
+                "Recover retained last-known-good route",
+                &|_, port, _| {
+                    refresh_calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 2], port))])
+                },
+            )
+            .expect("retry discovery after retained-route backoff");
+        assert_eq!(recovered.route.generation, 2);
+        assert_eq!(refresh_calls.load(Ordering::SeqCst), 2);
     }
 
     #[test]
@@ -1973,6 +2336,395 @@ mod tests {
             .expect("reuse refreshed route");
         assert_eq!(cached.route.generation, 2);
         server.join().expect("join refreshed local host");
+    }
+
+    #[test]
+    fn transient_lkg_transport_failure_retries_only_the_identity_preflight() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind retained host port");
+        let port = listener
+            .local_addr()
+            .expect("read retained host port")
+            .port();
+        let expected_host = format!("host: retained-health.local:{port}");
+        let server = thread::spawn(move || {
+            let (mut first_stream, _) = listener.accept().expect("accept first health request");
+            let mut first_request = [0_u8; 2048];
+            let first_read = first_stream
+                .read(&mut first_request)
+                .expect("read first health request");
+            let first_received =
+                String::from_utf8_lossy(&first_request[..first_read]).to_ascii_lowercase();
+            assert!(first_received.contains(&expected_host), "{first_received}");
+            first_stream
+                .write_all(b"not-an-http-response")
+                .expect("write malformed first response");
+            drop(first_stream);
+
+            let (mut retry_stream, _) = listener.accept().expect("accept retried health request");
+            let mut retry_request = [0_u8; 2048];
+            let retry_read = retry_stream
+                .read(&mut retry_request)
+                .expect("read retried health request");
+            let retry_received =
+                String::from_utf8_lossy(&retry_request[..retry_read]).to_ascii_lowercase();
+            assert!(retry_received.contains(&expected_host), "{retry_received}");
+            retry_stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
+                )
+                .expect("write recovered health response");
+        });
+
+        let transport = MdnsTransport::default();
+        transport
+            .current_route_with(
+                "retained-health.local",
+                port,
+                Duration::from_millis(100),
+                "Seed retained health route",
+                &|_, requested_port, _| {
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], requested_port))])
+                },
+            )
+            .expect("seed retained health route");
+        expire_cached_route(&transport, "retained-health.local");
+
+        let failed_resolver_calls = AtomicUsize::new(0);
+        let request_builds = AtomicUsize::new(0);
+        let request_url = format!("http://retained-health.local:{port}/api/v1/health");
+        let outcome = send_mdns_local_request_with_fallback_candidate(
+            &transport,
+            ("retained-health.local", port),
+            Duration::from_secs(2),
+            "Transient retained health request",
+            true,
+            |_, _, _| {
+                failed_resolver_calls.fetch_add(1, Ordering::SeqCst);
+                Err("simulated multicast outage".to_string())
+            },
+            |client| {
+                request_builds.fetch_add(1, Ordering::SeqCst);
+                client.get(&request_url)
+            },
+        )
+        .expect("credential-free health preflight retries the retained address once");
+        assert!(outcome.response.status().is_success());
+        assert_eq!(failed_resolver_calls.load(Ordering::SeqCst), 2);
+        assert_eq!(request_builds.load(Ordering::SeqCst), 2);
+
+        let candidate = outcome
+            .fallback_candidate
+            .expect("health fallback stays unconfirmed until identity validation");
+        assert!(
+            transport
+                .hosts
+                .lock()
+                .expect("read unconfirmed route cache")
+                .get("retained-health.local")
+                .expect("read unconfirmed route slot")
+                .state
+                .lock()
+                .expect("read unconfirmed route state")
+                .route
+                .is_none(),
+            "a mere HTTP response must not retain the fallback route"
+        );
+        candidate.confirm().expect("confirm matching host identity");
+
+        let retained = transport
+            .current_route_with(
+                "retained-health.local",
+                port,
+                Duration::from_millis(100),
+                "Reuse recovered health route",
+                &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                    panic!("successful health fallback uses the short retained-route backoff")
+                },
+            )
+            .expect("reuse recovered health route");
+        assert_eq!(retained.route.generation, 1);
+        assert!(
+            retained
+                .route
+                .fresh_until
+                .saturating_duration_since(Instant::now())
+                <= MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF
+        );
+        server.join().expect("join retained health host");
+    }
+
+    #[test]
+    fn identity_fallback_cannot_replace_a_concurrently_refreshed_route() {
+        let transport = MdnsTransport::default();
+        let initial = transport
+            .current_route_with(
+                "fallback-race.local",
+                4278,
+                Duration::from_millis(100),
+                "Seed fallback race route",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+            )
+            .expect("seed fallback race route");
+        let refreshed = transport
+            .refresh_route_with(
+                &initial,
+                "fallback-race.local",
+                4278,
+                Duration::from_millis(100),
+                "Refresh fallback race route",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 2], port))]),
+            )
+            .expect("install newer route");
+
+        assert_eq!(refreshed.route.generation, 2);
+        assert!(!initial.slot.confirm_fallback_route(&initial.route));
+        let current = transport
+            .current_route_with(
+                "fallback-race.local",
+                4278,
+                Duration::from_millis(100),
+                "Read fallback race route",
+                &|_, _, _| -> Result<Vec<SocketAddr>, String> {
+                    panic!("newer route must remain cached")
+                },
+            )
+            .expect("read newer route");
+        assert_eq!(current.route.generation, 2);
+    }
+
+    #[test]
+    fn fallback_candidate_is_retained_only_after_matching_expected_library_identity() {
+        let transport = MdnsTransport::default();
+        let initial = transport
+            .current_route_with(
+                "confirm-identity.local",
+                4278,
+                Duration::from_millis(100),
+                "Seed identity confirmation route",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+            )
+            .expect("seed identity confirmation route");
+        initial
+            .slot
+            .invalidate_without_resolution(initial.route.generation);
+        let candidate = super::MdnsFallbackCandidate {
+            slot: Arc::clone(&initial.slot),
+            route: initial.route.clone(),
+        };
+
+        let parsed = verify_and_confirm_library_sync_host_identity(
+            test_health(Some("library-a"), true),
+            Some("library-a"),
+            Some(candidate),
+        )
+        .expect("matching expected identity confirms fallback route");
+        assert_eq!(parsed.library_id.as_deref(), Some("library-a"));
+        let retained = initial.slot.state.lock().expect("read retained route");
+        assert_eq!(
+            retained.route.as_ref().map(|route| route.generation),
+            Some(initial.route.generation)
+        );
+    }
+
+    #[test]
+    fn wrong_library_or_not_ready_health_never_retain_fallback_candidate() {
+        for (name, health, expected_error) in [
+            (
+                "wrong-library",
+                test_health(Some("library-b"), true),
+                "Connected to a different library",
+            ),
+            (
+                "not-ready",
+                test_health(Some("library-a"), false),
+                "Host reported not ready",
+            ),
+        ] {
+            let transport = MdnsTransport::default();
+            let hostname = format!("{name}.local");
+            let initial = transport
+                .current_route_with(
+                    &hostname,
+                    4278,
+                    Duration::from_millis(100),
+                    "Seed rejected identity route",
+                    &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+                )
+                .expect("seed rejected identity route");
+            initial
+                .slot
+                .invalidate_without_resolution(initial.route.generation);
+            let candidate = super::MdnsFallbackCandidate {
+                slot: Arc::clone(&initial.slot),
+                route: initial.route.clone(),
+            };
+
+            let error = verify_and_confirm_library_sync_host_identity(
+                health,
+                Some("library-a"),
+                Some(candidate),
+            )
+            .err()
+            .expect("unverified identity must reject fallback route");
+            assert!(error.contains(expected_error), "{error}");
+            assert!(initial
+                .slot
+                .state
+                .lock()
+                .expect("read rejected identity route")
+                .route
+                .is_none());
+        }
+    }
+
+    #[test]
+    fn missing_expected_library_identity_never_retain_fallback_candidate() {
+        let transport = MdnsTransport::default();
+        let initial = transport
+            .current_route_with(
+                "pairing-fallback.local",
+                4278,
+                Duration::from_millis(100),
+                "Seed pairing fallback route",
+                &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+            )
+            .expect("seed pairing fallback route");
+        initial
+            .slot
+            .invalidate_without_resolution(initial.route.generation);
+        let candidate = super::MdnsFallbackCandidate {
+            slot: Arc::clone(&initial.slot),
+            route: initial.route.clone(),
+        };
+
+        let error = verify_and_confirm_library_sync_host_identity(
+            test_health(Some("library-a"), true),
+            None,
+            Some(candidate),
+        )
+        .err()
+        .expect("pairing without expected identity must reject fallback route");
+        assert!(error.contains("requires an expected library ID"), "{error}");
+        assert!(initial
+            .slot
+            .state
+            .lock()
+            .expect("read pairing fallback route")
+            .route
+            .is_none());
+    }
+
+    #[test]
+    fn invalid_status_or_json_never_retain_fallback_candidate() {
+        for (name, status, body, expected_error) in [
+            (
+                "http-error",
+                reqwest::StatusCode::SERVICE_UNAVAILABLE,
+                "{}",
+                "Host request returned 503",
+            ),
+            (
+                "invalid-json",
+                reqwest::StatusCode::OK,
+                "not-json",
+                "Host returned invalid JSON",
+            ),
+        ] {
+            let transport = MdnsTransport::default();
+            let hostname = format!("{name}.local");
+            let initial = transport
+                .current_route_with(
+                    &hostname,
+                    4278,
+                    Duration::from_millis(100),
+                    "Seed malformed health route",
+                    &|_, port, _| Ok(vec![SocketAddr::from(([127, 0, 0, 1], port))]),
+                )
+                .expect("seed malformed health route");
+            initial
+                .slot
+                .invalidate_without_resolution(initial.route.generation);
+            let candidate = super::MdnsFallbackCandidate {
+                slot: Arc::clone(&initial.slot),
+                route: initial.route.clone(),
+            };
+
+            let error = parse_library_sync_health_response(status, body, Some(candidate))
+                .err()
+                .expect("invalid health response must reject candidate");
+            assert!(error.contains(expected_error), "{error}");
+            assert!(initial
+                .slot
+                .state
+                .lock()
+                .expect("read malformed health route")
+                .route
+                .is_none());
+        }
+    }
+
+    #[test]
+    fn failed_lkg_transport_fallback_clears_route_and_next_request_resolves_immediately() {
+        let closed_listener = TcpListener::bind("127.0.0.1:0").expect("bind closed host port");
+        let port = closed_listener
+            .local_addr()
+            .expect("read closed host port")
+            .port();
+        drop(closed_listener);
+
+        let transport = MdnsTransport::default();
+        transport
+            .current_route_with(
+                "failed-lkg.local",
+                port,
+                Duration::from_millis(100),
+                "Seed failed last-known-good route",
+                &|_, requested_port, _| {
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 1], requested_port))])
+                },
+            )
+            .expect("seed last-known-good route");
+        expire_cached_route(&transport, "failed-lkg.local");
+
+        let failed_resolver_calls = AtomicUsize::new(0);
+        let request_builds = AtomicUsize::new(0);
+        let request_url = format!("http://failed-lkg.local:{port}/api/v1/health");
+        let error = send_mdns_local_request_with_fallback_candidate(
+            &transport,
+            ("failed-lkg.local", port),
+            Duration::from_millis(900),
+            "Failed retained route request",
+            true,
+            |_, _, _| {
+                failed_resolver_calls.fetch_add(1, Ordering::SeqCst);
+                Err("simulated multicast outage".to_string())
+            },
+            |client| {
+                request_builds.fetch_add(1, Ordering::SeqCst);
+                client.get(&request_url)
+            },
+        )
+        .err()
+        .expect("retained route transport must fail");
+        assert!(error.contains("simulated multicast outage"), "{error}");
+        assert_eq!(failed_resolver_calls.load(Ordering::SeqCst), 2);
+        assert_eq!(request_builds.load(Ordering::SeqCst), 2);
+
+        let recovery_resolver_calls = AtomicUsize::new(0);
+        let recovered = transport
+            .current_route_with(
+                "failed-lkg.local",
+                port,
+                Duration::from_millis(100),
+                "Resolve after failed retained route",
+                &|_, requested_port, _| {
+                    recovery_resolver_calls.fetch_add(1, Ordering::SeqCst);
+                    Ok(vec![SocketAddr::from(([127, 0, 0, 2], requested_port))])
+                },
+            )
+            .expect("transport failure must leave no retained backoff route");
+        assert_eq!(recovered.route.generation, 2);
+        assert_eq!(recovery_resolver_calls.load(Ordering::SeqCst), 1);
     }
 
     #[test]
