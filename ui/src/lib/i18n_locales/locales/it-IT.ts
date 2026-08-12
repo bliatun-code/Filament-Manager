@@ -131,8 +131,7 @@ export const itITDictionary: DictionaryNode = {
     configured: "configurate",
     connectedToHost: "Connesso a",
     consumption: "Consumo di filamenti",
-    consumptionCaption:
-      "L'utilizzo viene aggregato dai processi di stampa collegati alla stampante.",
+    consumptionCaption: "Processi di stampa e sessioni Bambu Live registrati.",
     gramsPerDay: "{count} g/giorno",
     healthBalanceHint:
       "Guarda insieme le scorte in esaurimento, i prestiti, gli ordini e il slots caricato.",

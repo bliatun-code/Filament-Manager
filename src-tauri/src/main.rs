@@ -151,6 +151,9 @@ fn get_app_version(app: tauri::AppHandle) -> Result<String, String> {
 #[cfg(debug_assertions)]
 fn normalize_desktop_visual_qa_readiness_token(value: &str) -> Option<&'static str> {
     match value.trim() {
+        "add-printer-live-step" => Some("add-printer-live-step"),
+        "dashboard-bambu-live-attention" => Some("dashboard-bambu-live-attention"),
+        "dashboard-consumption" => Some("dashboard-consumption"),
         "printer-live-telemetry" => Some("printer-live-telemetry"),
         _ => None,
     }
@@ -466,6 +469,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
     match value.trim().to_ascii_lowercase().as_str() {
         "dashboard-overview" | "dashboard" => Some("dashboard-overview"),
         "dashboard-onboarding" | "onboarding" | "getting-started" => Some("dashboard-onboarding"),
+        "dashboard-consumption" | "annual-consumption" | "dashboard-usage" => {
+            Some("dashboard-consumption")
+        }
         "inventory-overview" | "inventory" => Some("inventory-overview"),
         "add-filament" | "inventory-add" => Some("add-filament"),
         "wishlist-queue" | "inventory-wishlist" | "wishlist-orders" | "order-queue" => {

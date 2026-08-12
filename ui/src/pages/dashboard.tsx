@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityTimeline,
   BadgePanel,
@@ -17,8 +17,16 @@ import {
   dismissDashboardOnboarding,
   readDashboardOnboardingDismissed,
 } from "../lib/dashboard_onboarding";
-import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
+import {
+  buildDesktopVisualQaUsageMonths,
+  resolveDesktopVisualQaScenario,
+} from "../lib/desktop_visual_qa_scenario";
+import {
+  DESKTOP_VISUAL_QA_DASHBOARD_ATTENTION_READINESS_TOKEN,
+  DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN,
+} from "../lib/desktop_visual_qa_readiness";
 import { useI18n } from "../lib/i18n";
+import { isTauri, signalDesktopVisualQaReadiness } from "../lib/tauri_client";
 import { formatGrams } from "../lib/weight_display";
 import {
   InventoryHealthPanel,
@@ -73,10 +81,92 @@ export default function DashboardPage({
     usageTotal12m,
     setupDataAvailable,
   } = useDashboardPageData(t, locale);
-  const forceOnboardingVisible = useMemo(
-    () => resolveDesktopVisualQaScenario() === "dashboard-onboarding",
+  const tauri = isTauri();
+  const desktopVisualQaScenario = useMemo(
+    () => resolveDesktopVisualQaScenario(),
     [],
   );
+  const desktopVisualQaUsageMonths = useMemo(
+    () =>
+      desktopVisualQaScenario === "dashboard-consumption"
+        ? buildDesktopVisualQaUsageMonths()
+        : null,
+    [desktopVisualQaScenario],
+  );
+  const displayedUsageMonths = desktopVisualQaUsageMonths ?? usageMonths;
+  const displayedUsageAvailable =
+    desktopVisualQaUsageMonths != null || usageAvailable;
+  const displayedUsageTotal12m = desktopVisualQaUsageMonths
+    ? desktopVisualQaUsageMonths.reduce(
+        (total, month) => total + month.usedGrams,
+        0,
+      )
+    : usageTotal12m;
+  const forceOnboardingVisible =
+    desktopVisualQaScenario === "dashboard-onboarding";
+  const consumptionPanelRef = useRef<HTMLDivElement>(null);
+  const consumptionPanelPositionedRef = useRef(false);
+  const dashboardAttentionReadinessSignaledRef = useRef(false);
+  const dashboardConsumptionReadinessSignaledRef = useRef(false);
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "dashboard-overview" ||
+      loading ||
+      !tauri ||
+      bambuLiveAttention.length === 0 ||
+      dashboardAttentionReadinessSignaledRef.current
+    ) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      dashboardAttentionReadinessSignaledRef.current = true;
+      void signalDesktopVisualQaReadiness(
+        DESKTOP_VISUAL_QA_DASHBOARD_ATTENTION_READINESS_TOKEN,
+      ).catch((signalError) => {
+        dashboardAttentionReadinessSignaledRef.current = false;
+        console.error(
+          "Failed to signal desktop dashboard attention readiness.",
+          signalError,
+        );
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [bambuLiveAttention.length, desktopVisualQaScenario, loading, tauri]);
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "dashboard-consumption" ||
+      loading ||
+      !tauri ||
+      displayedUsageTotal12m <= 0 ||
+      consumptionPanelPositionedRef.current ||
+      dashboardConsumptionReadinessSignaledRef.current
+    ) {
+      return;
+    }
+    let paintFrame: number | null = null;
+    const positionFrame = window.requestAnimationFrame(() => {
+      consumptionPanelRef.current?.scrollIntoView({ block: "center" });
+      consumptionPanelPositionedRef.current = true;
+      paintFrame = window.requestAnimationFrame(() => {
+        dashboardConsumptionReadinessSignaledRef.current = true;
+        void signalDesktopVisualQaReadiness(
+          DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN,
+        ).catch((signalError) => {
+          dashboardConsumptionReadinessSignaledRef.current = false;
+          console.error(
+            "Failed to signal desktop dashboard consumption readiness.",
+            signalError,
+          );
+        });
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(positionFrame);
+      if (paintFrame != null) {
+        window.cancelAnimationFrame(paintFrame);
+      }
+    };
+  }, [desktopVisualQaScenario, displayedUsageTotal12m, loading, tauri]);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() =>
     forceOnboardingVisible ? false : readDashboardOnboardingDismissed(),
   );
@@ -113,8 +203,11 @@ export default function DashboardPage({
         ? "bg-amber-400 shadow-[0_0_0_5px_rgba(251,191,36,0.14)]"
         : "bg-slate-400 shadow-[0_0_0_5px_rgba(148,163,184,0.12)]";
   const annualUsageValue = useMemo(
-    () => (usageAvailable ? formatGrams(usageTotal12m, "zero", locale) : "—"),
-    [locale, usageAvailable, usageTotal12m],
+    () =>
+      displayedUsageAvailable
+        ? formatGrams(displayedUsageTotal12m, "zero", locale)
+        : "—",
+    [displayedUsageAvailable, displayedUsageTotal12m, locale],
   );
   const onboardingState = useMemo(
     () =>
@@ -156,7 +249,10 @@ export default function DashboardPage({
             onClick={() => onOpenCompanionSettings?.()}
             className="gap-2"
             responsive={false}
-            title={t("dashboard.openCompanionSettings", "Open companion settings")}
+            title={t(
+              "dashboard.openCompanionSettings",
+              "Open companion settings",
+            )}
             variant="soft"
           >
             <span className={`h-2.5 w-2.5 rounded-full ${companionDotClass}`} />
@@ -179,7 +275,11 @@ export default function DashboardPage({
       ) : null}
 
       {bambuLiveAttention.length > 0 ? (
-        <div className="mt-5 space-y-2" role="status">
+        <div
+          className="mt-5 space-y-2"
+          data-testid="dashboard-bambu-live-attention"
+          role="status"
+        >
           {bambuLiveAttention.map((attention) => (
             <button
               key={attention.printerId}
@@ -189,7 +289,10 @@ export default function DashboardPage({
             >
               <span className="min-w-0">
                 <span className="block text-sm font-semibold text-amber-950 dark:text-amber-100">
-                  {t("dashboard.bambuLiveAttentionTitle", "Bambu Live needs attention")}
+                  {t(
+                    "dashboard.bambuLiveAttentionTitle",
+                    "Bambu Live needs attention",
+                  )}
                 </span>
                 <span className="mt-0.5 block text-sm text-amber-800 dark:text-amber-200/90">
                   {t(
@@ -251,18 +354,22 @@ export default function DashboardPage({
         t={t}
       />
 
-      <div className="mt-8">
+      <div
+        ref={consumptionPanelRef}
+        className="mt-8"
+        data-testid="dashboard-consumption-panel"
+      >
         <UsageChart
           title={t("dashboard.consumption", "Filament Consumption")}
           value={annualUsageValue}
           period={t("dashboard.last12Months", "Last 12 months")}
           caption={t(
             "dashboard.consumptionCaption",
-            "Usage is aggregated from printer-linked print jobs.",
+            "Recorded printer jobs and Bambu Live sessions.",
           )}
-          months={usageMonths}
+          months={displayedUsageMonths}
           unavailableMessage={
-            usageAvailable
+            displayedUsageAvailable
               ? null
               : t(
                   "dashboard.annualUsageUnavailable",

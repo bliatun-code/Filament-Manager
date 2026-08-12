@@ -141,7 +141,7 @@ export const nbDictionary: DictionaryNode = {
       last12Months: "Siste 12 måneder",
       annualUsageUnavailable: "Oppdater verten for å vise 12-månedershistorikk.",
       consumption: "Filamentforbruk",
-      consumptionCaption: "Forbruket summeres fra printerknyttede printjobber.",
+      consumptionCaption: "Registrerte printerjobber og Bambu Live-økter.",
       noUsageTrendYet: "Ingen forbrukstrend ennå",
       backup: "Sikkerhetskopi",
       backupText: "Eksporter lagersnapshots til JSON eller CSV.",

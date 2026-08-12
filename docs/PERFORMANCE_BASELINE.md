@@ -14,7 +14,7 @@ bundle sizes.
 | --- | --- |
 | Cold startup | Every top-level page remains a lazy chunk. The production entry chunk stays at or below 300,000 bytes when the built-bundle contract runs. |
 | Page navigation | Navigation uses a React transition, each page chunk has a size budget, and a previously loaded dashboard restores its last-good snapshot before background I/O. |
-| Dashboard startup | Sync settings and Companion status start together. The six independent local dashboard reads then start together in a second dependency wave. |
+| Dashboard startup | Sync settings, Companion status, and printer settings start together. The five independent local dashboard reads then start together in a second dependency wave. |
 | Slow host | Validation, snapshot, spools, printers, loans, and wishlist all start in one host wave even while one request remains pending. Host validation remains bounded to 0.9 seconds and normal host reads/writes to 2.5 seconds. |
 | Interrupted host | The same six requests may all reject; the dashboard must still settle on the cached client view without falling back to unrelated local data. |
 | 10,000 spools | A real 10,000-row fixture passes through normalization, inventory mapping, options, filtering, grouping, bounded render-window selection, overview calculation, and dashboard derivation without truncation. |

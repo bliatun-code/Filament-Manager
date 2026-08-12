@@ -21,10 +21,16 @@ from fixture seed SHA-256
 The v0.22.1 candidate refreshed the Program and update-notification capture on
 2026-07-30 from fixture seed SHA-256
 `02920bf05064bd1ff74d546e26d2f1ea4c5acd0454d951a9ea386662d9b69c19`.
-The v0.23.0 refresh regenerates the General, Program and update notification,
+The v0.23.0 refresh regenerated the General, Program and update notification,
 Library & web app network, Bambu discovery, and printer overview captures from
 fixture seed SHA-256
 `895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`.
+The v0.25.0 refresh regenerated Dashboard and Add Printer and added the
+twelve-month Dashboard consumption capture on 2026-08-12. Surrounding app
+data comes from the same sanitized fixture seed SHA-256
+`895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`;
+the chart itself uses an explicitly synthetic, time-relative visual-QA series
+so its twelve-month window stays representative as the calendar advances.
 The Bambu security setup uses only a synthetic loopback test interface and no
 host, serial, access code, or trusted fingerprint. The printer overview uses
 fresh synthetic Bambu telemetry; its desktop gate waits for rendered telemetry
@@ -34,12 +40,14 @@ and refuses to create an image when that readiness signal is absent.
 
 <p align="center">
   <a href="#dashboard"><img src="screenshots/dashboard-thumb.jpg" alt="Dashboard" width="150"></a>
+  <a href="#twelve-month-consumption"><img src="screenshots/dashboard-consumption-thumb.jpg" alt="Twelve-month filament consumption" width="150"></a>
   <a href="#inventory"><img src="screenshots/inventory-thumb.jpg" alt="Inventory" width="150"></a>
   <a href="#individual-filament-label"><img src="screenshots/filament-label-thumb.jpg" alt="Individual filament label" width="150"></a>
   <a href="#add-filament"><img src="screenshots/add-filament-thumb.jpg" alt="Add filament" width="150"></a>
   <a href="#wishlist-and-orders"><img src="screenshots/wishlist-queue-thumb.jpg" alt="Wishlist and orders" width="150"></a>
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
+  <a href="#add-printer"><img src="screenshots/add-printer-thumb.jpg" alt="Add printer with optional Bambu Live" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
   <a href="#stable-local-companion-address"><img src="screenshots/settings-library-network-thumb.jpg" alt="Stable local Companion address" width="150"></a>
   <a href="#program-and-update-notifications"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version, update notifications, and manual update check" width="150"></a>
@@ -58,8 +66,22 @@ Inventory health, printer activity, low-stock signals, recent activity, and
 library/webapp status in one overview. A dismissible, data-backed setup
 checklist guides a new or upgraded installation through inventory, optional
 printer/browser access, and the first full backup without blocking normal use.
+An enabled Bambu Live integration without trusted TLS identity produces a
+clickable warning here; it opens the affected printer's Live editor directly
+so an upgrade or changed identity does not fail silently behind Settings.
 
 ![Dashboard overview](screenshots/dashboard.jpg)
+
+### Twelve-Month Consumption
+
+The consumption chart shows the current local calendar month and the preceding
+eleven months from oldest to newest. Zero-use months remain visible, the
+current month is partial, and the headline total is calculated from the same
+twelve buckets. This view is separate from the Dashboard's **Last 30 days**
+card and summarizes recorded printer-linked print jobs and Bambu Live usage
+sessions rather than all-time inventory changes.
+
+![Dashboard twelve-month filament consumption](screenshots/dashboard-consumption.jpg)
 
 ### Inventory
 
@@ -166,8 +188,12 @@ above.
 
 ### Add Printer
 
-Printer setup chooses model, name, and multi-material capacity before optional
-local Bambu Live credentials are configured.
+Printer setup first chooses model, name, and multi-material capacity. Supported
+Bambu models then offer a second, optional Bambu Live step in the same flow.
+Live can be skipped for later setup; when enabled, the printer host, serial,
+access code, and explicit TLS identity review are required before the printer
+is created with Live. The public capture is driven by the sanitized fixture and
+contains no printer address, access code, serial, or trusted fingerprint.
 
 ![Add printer](screenshots/add-printer.jpg)
 

@@ -140,7 +140,7 @@ export const enDictionary: DictionaryNode = {
       last12Months: "Last 12 months",
       annualUsageUnavailable: "Update the host to show 12-month history.",
       consumption: "Filament Consumption",
-      consumptionCaption: "Usage is aggregated from printer-linked print jobs.",
+      consumptionCaption: "Recorded printer jobs and Bambu Live sessions.",
       noUsageTrendYet: "No usage trend yet",
       backup: "Backup",
       backupText: "Export inventory snapshots to JSON or CSV for archival.",

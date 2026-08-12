@@ -358,7 +358,7 @@ export const daDKDictionary: DictionaryNode = {
     "noUsageTrendYet": "Ingen brugstrend endnu",
     "noRecentActivity": "Ingen ny aktivitet endnu.",
     "clientSnapshotCardHint": "Denne enhed er tilsluttet som en klient. I øjeblikket viser den værtsoversigten og holder skrivetunge arbejdsgange på værten.",
-    "consumptionCaption": "Anvendelsen kompileres fra printer-linkede udskriftsjob.",
+    "consumptionCaption": "Registrerede udskriftsjob og Bambu Live-sessioner.",
     "clientSnapshotHealthHint": "Denne klient viser kun værtsoversigten. Detaljeret opgørelsessundhed forbliver hos værten indtil videre.",
     "backupText": "Eksporter lagsnapshots til JSON eller CSV til arkivering.",
     "loaned": "udlånt",

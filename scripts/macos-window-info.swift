@@ -11,6 +11,7 @@ func serializedField(_ value: String) -> String {
 
 struct WindowRow {
     let processId: pid_t
+    let windowId: CGWindowID
     let processName: String
     let title: String
     let x: Int
@@ -27,6 +28,7 @@ struct WindowRow {
             String(width),
             String(height),
             String(processId),
+            String(windowId),
         ]
             .map(serializedField)
             .joined(separator: "\t")
@@ -74,12 +76,13 @@ func mainScreenRow() -> ScreenRow {
     )
 }
 
-func windowRows() -> [WindowRow] {
+func windowRows(onscreenOnly: Bool) -> [WindowRow] {
     let rawRows = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID)
         as? [[String: Any]] ?? []
     return rawRows.compactMap { raw in
         guard
             let processId = raw[kCGWindowOwnerPID as String] as? pid_t,
+            let windowIdNumber = raw[kCGWindowNumber as String] as? NSNumber,
             let processName = raw[kCGWindowOwnerName as String] as? String,
             let bounds = raw[kCGWindowBounds as String] as? [String: Any],
             let x = bounds["X"] as? Double,
@@ -88,12 +91,15 @@ func windowRows() -> [WindowRow] {
             let height = bounds["Height"] as? Double,
             width > 0,
             height > 0,
+            windowIdNumber.uint32Value > 0,
+            (!onscreenOnly || (raw[kCGWindowIsOnscreen as String] as? Bool) == true),
             (raw[kCGWindowLayer as String] as? Int ?? 0) == 0
         else {
             return nil
         }
         return WindowRow(
             processId: processId,
+            windowId: CGWindowID(windowIdNumber.uint32Value),
             processName: processName,
             title: raw[kCGWindowName as String] as? String ?? "",
             x: Int(x.rounded()),
@@ -128,13 +134,17 @@ func runningApplicationRows() -> [RunningApplicationRow] {
 let arguments = Array(CommandLine.arguments.dropFirst())
 guard let command = arguments.first else {
     FileHandle.standardError.write(
-        Data("Expected list, running-apps, or main-screen.\n".utf8)
+        Data("Expected list, list-all, running-apps, or main-screen.\n".utf8)
     )
     exit(2)
 }
 switch command {
 case "list":
-    for row in windowRows() {
+    for row in windowRows(onscreenOnly: true) {
+        print(row.serialized)
+    }
+case "list-all":
+    for row in windowRows(onscreenOnly: false) {
         print(row.serialized)
     }
 case "running-apps":

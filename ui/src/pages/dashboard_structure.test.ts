@@ -2,10 +2,19 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const source = readFileSync(new URL("./dashboard.tsx", import.meta.url), "utf8");
+const source = readFileSync(
+  new URL("./dashboard.tsx", import.meta.url),
+  "utf8",
+);
 const appSource = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
-const inventorySource = readFileSync(new URL("./inventory.tsx", import.meta.url), "utf8");
-const settingsSource = readFileSync(new URL("./settings.tsx", import.meta.url), "utf8");
+const inventorySource = readFileSync(
+  new URL("./inventory.tsx", import.meta.url),
+  "utf8",
+);
+const settingsSource = readFileSync(
+  new URL("./settings.tsx", import.meta.url),
+  "utf8",
+);
 const settingsPrintersSource = readFileSync(
   new URL("./use_settings_printers_section.ts", import.meta.url),
   "utf8",
@@ -45,4 +54,27 @@ test("Bambu Live attention opens the affected printer in Settings", () => {
   );
   assert.match(settingsPrintersSource, /handleStartEditPrinter\(printer\)/);
   assert.match(settingsPrintersSource, /settings-printer-editor/);
+});
+
+test("annual consumption visual QA scrolls the real populated panel into view", () => {
+  assert.match(source, /desktopVisualQaScenario !== "dashboard-consumption"/);
+  assert.match(source, /buildDesktopVisualQaUsageMonths\(\)/);
+  assert.match(source, /displayedUsageTotal12m <= 0/);
+  assert.match(
+    source,
+    /consumptionPanelRef\.current\?\.scrollIntoView\(\{ block: "center" \}\)/,
+  );
+  assert.match(
+    source,
+    /DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN/,
+  );
+  assert.match(source, /signalDesktopVisualQaReadiness/);
+  assert.match(source, /data-testid="dashboard-consumption-panel"/);
+});
+
+test("dashboard overview visual QA waits for the rendered Bambu Live attention action", () => {
+  assert.match(source, /desktopVisualQaScenario !== "dashboard-overview"/);
+  assert.match(source, /bambuLiveAttention\.length === 0/);
+  assert.match(source, /DESKTOP_VISUAL_QA_DASHBOARD_ATTENTION_READINESS_TOKEN/);
+  assert.match(source, /data-testid="dashboard-bambu-live-attention"/);
 });

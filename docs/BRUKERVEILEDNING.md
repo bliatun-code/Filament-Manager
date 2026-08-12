@@ -57,6 +57,8 @@ Klient betyr at desktop-appen kobler seg til en Vert.
 - Klienten leser bibliotek, lager, utlån, printere og ønskeliste fra verten gjennom en autentisert desktop-paring.
 - Når verten er tilgjengelig og klienten er paret, kan klienten utføre støttede endringer mot verten.
 - Når verten ikke er tilgjengelig, kan klienten vise en lokal cache som lesbar fallback.
+- Oversikt viser den sist fungerende, bufrede vertsvisningen først, inkludert
+  bufret forbruk, og oppdaterer deretter fra verten i bakgrunnen.
 - Klientens lokale database er ikke hovedbiblioteket.
 
 Velg Klient når denne maskinen skal bruke et bibliotek som allerede eies av en annen desktop.
@@ -139,7 +141,8 @@ Den viser blant annet:
 - totalt antall filamenter
 - aktive printere
 - lav beholdning
-- forbruk siste periode
+- et eget kort for forbruk de siste 30 dagene
+- en rullerende forbruksgraf for tolv måneder
 - eierskapsoversikt
 - nylig aktivitet
 - lagerhelse
@@ -159,6 +162,27 @@ fremdriften teller bare de obligatoriske stegene. Statusen hentes fra
 biblioteket og denne enhetens historikk for validerte sikkerhetskopier. En
 midlertidig nettverks- eller vertsfeil vises derfor ikke som om hele oppsettet
 mangler.
+
+Kortet **Månedlig forbruk** måler nøyaktig de siste 30 dagene og viser
+gjennomsnittlig antall gram per dag. Den større grafen **Filamentforbruk** er en
+annen visning: Den dekker inneværende lokale kalendermåned og de elleve
+foregående kalendermånedene, sortert fra eldst til nyest. Måneder uten
+registrert forbruk vises fortsatt som null. Totalen over grafen er summen av de
+samme tolv månedene, og inneværende måned er ufullstendig frem til månedsslutt.
+
+Begge visningene bruker registrerte printerknyttede printjobber og Bambu
+Live-forbruksøkter. Tolvmånedersgrafen er ikke en total for all tid, og
+filamentbruk uten en registrert jobb eller Live-økt kan ikke rekonstrueres. En
+klient beholder den sist fungerende bufrede grafen mens den oppdaterer. Oppdater
+både vert og klient for å få den nye grafen: En oppdatert klient mot en eldre
+vert ber om at verten oppdateres i stedet for å vise manglende historikk som
+null, mens en eldre klient beholder den gamle visualiseringen til klienten
+oppdateres.
+
+Når en aktiv Bambu Live-integrasjon ennå ikke har godkjent TLS-identiteten,
+eller observert identitet har endret seg, viser Oversikt **Bambu Live trenger
+oppfølging**. Velg **Åpne Live-innstillinger** for å åpne akkurat denne
+printeren under **Innstillinger -> 3D-printere** og kontrollere identiteten.
 
 ### Lager
 
@@ -573,28 +597,34 @@ RFID bør registreres én gang per fysisk rull når du har sikker observasjon. H
 
 Bambu Live er en valgfri lokal integrasjon for Bambu-printere med AMS.
 
-Viktig: En live-printer må først legges inn som vanlig printer. Etter at printeren finnes i programmet, må Live Bambu status konfigureres på printerkortet i Innstillinger -> 3D-printere.
+For støttede Bambu-modeller kan Live settes opp som et valgfritt andre steg
+mens printeren legges til fra Printere-siden. Du kan hoppe over steget og
+konfigurere eller endre Live senere på printerkortet under **Innstillinger ->
+3D-printere**.
 
 ### Konfigurasjon
 
 Typisk oppsett:
 
-1. Gå til Innstillinger -> 3D-printere.
-2. Legg til printer med riktig Bambu-modell.
-3. Velg AMS-oppsett, for eksempel 1 AMS x 4 spor.
-4. Lagre printeren.
-5. Åpne printerkortet igjen.
-6. Aktiver Live Bambu status.
-7. Fyll inn printerens IP/host og serienummer, eller velg **Finn Bambu-
-   printere** og velg det private LAN-grensesnittet som når printeren. Den korte
-   passive skanningen viser lokalt annonserte printernavn, serienumre og
-   adresser. Velg **Bruk til oppsett** for å fylle host og serienummer inn i det
-   ulagrede skjemaet.
-8. Fyll inn access code.
-9. Velg **Kontroller identitet**. Sammenlign observert serienummer og
-    fingeravtrykk før du velger **Godkjenn denne identiteten**.
-10. Lagre printeren.
-11. Åpne live-detaljer og kontroller at AMS-spor vises.
+1. Åpne **Printere** og velg **Legg til printer**.
+2. Velg riktig Bambu-modell, navn og AMS-kapasitet, for eksempel 1 AMS x 4
+   spor, og velg deretter **Fortsett**.
+3. Aktiver Live-status i det valgfrie steget **Bambu Live**. Hvis du vil hoppe
+   over Live, lar du funksjonen være deaktivert og legger til printeren som
+   vanlig.
+4. Fyll inn printerens IP/host, serienummer og tilgangskode.
+5. Velg **Kontroller identitet**. Sammenlign observert serienummer og
+   fingeravtrykk før du velger **Godkjenn denne identiteten**.
+6. Velg **Legg til skriver med Live**, åpne deretter live-detaljene og
+   kontroller at AMS-spor vises.
+
+Hvis du ikke kjenner host eller serienummer, legger du først til printeren uten
+Live og åpner deretter kortet under **Innstillinger -> 3D-printere**. Aktiver
+Live og velg **Finn Bambu-printere** på det private LAN-grensesnittet som når
+printeren. Den korte passive skanningen viser lokalt annonserte printernavn,
+serienumre og adresser. Velg **Bruk til oppsett** for å fylle host og
+serienummer inn i det ulagrede skjemaet, og fullfør samme identitetskontroll før
+du lagrer.
 
 Live Bambu status er lokal og leser printerdata fra samme nettverk. Den bør konfigureres på host-maskinen når du bruker Vert/Klient-oppsett.
 
@@ -606,13 +636,37 @@ identitet stopper forbindelsen og krever eksplisitt ny paring. Access code
 lagres i macOS-nøkkelringen eller Windows Credential Manager, ikke i
 bibliotekdatabasen eller en flyttbar sikkerhetskopi.
 
+### Godkjenning kreves etter oppgradering
+
+En aktiv integrasjon som ble opprettet før godkjenning av TLS-identitet ble
+innført, har ingen lagret godkjenning. Etter oppgradering forblir den offline
+til printeridentiteten er kontrollert; programmet sender ikke tilgangskoden
+først. Oversikt viser **Bambu Live trenger oppfølging** for hver berørt printer.
+Velg meldingen for å åpne akkurat denne printerens Live-editor under
+**Innstillinger -> 3D-printere**, kjør **Kontroller identitet**, sammenlign
+serienummer og fingeravtrykk med printeren du forventer, godkjenn identiteten
+eksplisitt og lagre.
+
+Den samme handlingen vises på Oversikt hvis en tidligere godkjent identitet
+endres. Ikke godkjenn et uventet serienummer eller offentlig
+nøkkelfingeravtrykk bare for å få Live-status tilbake; kontroller printeren og
+nettverket først.
+
 ### Finn printeren etter at IP-adressen har endret seg
 
-Hvis ruteren gir en tidligere konfigurert printer en ny adresse, åpner du det
-lagrede kortet under **Innstillinger -> 3D-printere** og bruker **Finn Bambu-
-printere** på det private LAN-grensesnittet. Skanningen lytter etter lokale
-printerannonser i opptil ti sekunder og viser annonsert serienummer, slik at du
-kan skille ellers like printere fra hverandre.
+Hvis ruteren gir en tidligere konfigurert og godkjent printer en ny adresse,
+kan Live-observatøren gjenopprette den automatisk etter at den gamle
+tilkoblingen feiler uten å presentere en annen TLS-identitet. Gjenoppretting i
+bakgrunnen er frekvensbegrenset per printer, skanner private LAN-grensesnitt og
+vurderer bare annonser med det lagrede serienummeret. Før en ny adresse lagres,
+må både serienummeret og den tidligere godkjente offentlige nøkkelen (SPKI)
+samsvare over TLS. Tilgangskoden blir aldri lest eller sendt.
+
+Hvis automatisk gjenoppretting ikke finner og verifiserer printeren, åpner du
+det lagrede kortet under **Innstillinger -> 3D-printere** og bruker **Finn
+Bambu-printere** på det private LAN-grensesnittet. Skanningen lytter etter
+lokale printerannonser i opptil ti sekunder og viser annonsert serienummer, slik
+at du kan skille ellers like printere fra hverandre.
 
 For en lagret printer uten andre ulagrede endringer er **Gjenopprett lagret
 adresse** bare tilgjengelig ved en kandidat med samme lagrede serienummer.
@@ -862,7 +916,8 @@ For flere enheter:
 For best automatikk:
 
 - Legg inn printere med riktig AMS-oppsett.
-- Aktiver Live Bambu status etter at printeren er opprettet.
+- Konfigurer det valgfrie Bambu Live-steget mens du legger til en støttet
+  printer, eller aktiver det senere fra printerkortet i Innstillinger.
 - Registrer RFID på ruller som brukes i AMS.
 - Hold lagerførte ruller oppdatert med realistisk startvekt.
 - Bruk manuell vektkorrigering når fysisk kontroll viser at AMS-estimatet har drevet.

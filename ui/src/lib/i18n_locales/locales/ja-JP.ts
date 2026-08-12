@@ -115,7 +115,7 @@ export const jaJPDictionary: DictionaryNode = {
     "configured": "設定済み",
     "connectedToHost": "に接続されています",
     "consumption": "フィラメントの消費量",
-    "consumptionCaption": "使用量は、プリンターにリンクされた印刷ジョブから集計されます。",
+    "consumptionCaption": "記録された印刷ジョブとBambu Liveセッション。",
     "gramsPerDay": "{count} g/日",
     "healthBalanceHint": "在庫不足、ローン、注文、ロードされた slots を一緒に監視します。",
     "healthMonitor": "モニター再入荷",

@@ -168,8 +168,7 @@ export const esDictionary: DictionaryNode = {
     configured: "configuradas",
     connectedToHost: "Conectado a",
     consumption: "Consumo de filamento",
-    consumptionCaption:
-      "El uso se agrega a partir de trabajos de impresión vinculados a impresoras.",
+    consumptionCaption: "Trabajos de impresión y sesiones de Bambu Live registrados.",
     gramsPerDay: "{count} g/día",
     healthBalanceHint:
       "Observe juntos las existencias bajas, los préstamos, los pedidos y las máquinas tragamonedas cargadas.",

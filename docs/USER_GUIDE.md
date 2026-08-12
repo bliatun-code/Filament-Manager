@@ -57,6 +57,8 @@ Client means the desktop app connects to another Host.
 - The client reads inventory, loans, printers, wishlist items, and settings from the host through its authenticated desktop pairing.
 - When the host is reachable and the client is paired, supported writes are performed against the host.
 - When the host is unavailable, the client can show a local read-only cache.
+- Dashboard paints its last-good cached host view first, including cached
+  consumption, and then refreshes from the host in the background.
 - The client's local database is not the primary library.
 
 Use Client when this machine should use a library owned by another desktop.
@@ -138,7 +140,8 @@ It shows, among other things:
 - total filament count
 - active printers
 - low-stock count
-- recent usage
+- a separate last-30-days usage card
+- a rolling twelve-month consumption chart
 - ownership summary
 - recent activity
 - inventory health
@@ -157,6 +160,26 @@ Completed items move into one collapsed summary, and progress counts only the
 required steps. Completion is derived from the current library and this
 device's validated backup history; temporary host or network failures do not
 turn an unavailable library into a list of missing setup steps.
+
+The **Monthly Usage** card measures the exact preceding 30 days and shows its
+average grams per day. The larger **Filament Consumption** chart is a different
+view: it covers the current local calendar month and the preceding eleven
+calendar months, ordered oldest to newest. Months without recorded consumption
+remain visible as zero bars. The total above the chart is the sum of those same
+twelve buckets, and the current month is partial until it ends.
+
+Both views use recorded printer-linked print jobs and Bambu Live usage sessions.
+The twelve-month chart is not an all-time total, and filament used without a
+recorded job or Live session cannot be reconstructed. A client reuses its
+last-good cached chart while it refreshes. Update both host and client for the
+new chart: a current client connected to an older host asks for a host update
+instead of presenting missing history as zero, while an older client keeps its
+older visualization until the client is updated.
+
+When an enabled Bambu Live integration has not yet trusted its TLS identity, or
+the observed identity has changed, Dashboard shows **Bambu Live needs
+attention**. Select **Open Live settings** to open that exact printer in
+**Settings -> 3D printers** and review its identity.
 
 ### Inventory
 
@@ -570,28 +593,32 @@ RFID should be registered once per physical spool when you have a confident obse
 
 Bambu Live is an optional local integration for Bambu printers with AMS.
 
-Important: a live printer must first be added as a normal printer. After the printer exists in the app, Live Bambu status must be configured on the printer card in Settings -> 3D printers.
+For supported Bambu models, Live setup is available as an optional second step
+while the printer is added from the Printers page. You can skip the step and
+configure or change Live later on the printer card in **Settings -> 3D
+printers**.
 
 ### Configuration
 
 Typical setup:
 
-1. Go to Settings -> 3D printers.
-2. Add a printer with the correct Bambu model.
-3. Choose the AMS setup, for example 1 AMS x 4 slots.
-4. Save the printer.
-5. Open the printer card again.
-6. Enable Live Bambu status.
-7. Either enter the printer IP/host and serial, or choose **Find Bambu
-   printers** and select the private LAN interface that reaches the printer.
-   The short passive scan shows locally announced printer names, serials, and
-   addresses. Choose **Use for setup** to fill the host and serial into the
-   unsaved form.
-8. Enter the access code.
-9. Select **Check identity**. Compare the observed printer serial and
-    fingerprint before selecting **Trust this identity**.
-10. Save the printer.
-11. Open live details and verify that AMS slots are visible.
+1. Open **Printers** and select **Add printer**.
+2. Choose the correct Bambu model, name, and AMS capacity, for example 1 AMS x
+   4 slots, then select **Continue**.
+3. In the optional **Bambu Live** step, enable Live status. To skip Live, leave
+   it disabled and add the printer normally.
+4. Enter the printer IP/host, serial, and access code.
+5. Select **Check identity**. Compare the observed printer serial and
+   fingerprint before selecting **Trust this identity**.
+6. Select **Add printer with Live**, then open live details and verify that AMS
+   slots are visible.
+
+If you do not know the host or serial, add the printer without Live, then open
+its card in **Settings -> 3D printers**. Enable Live and choose **Find Bambu
+printers** on the private LAN interface that reaches the printer. The short
+passive scan shows locally announced printer names, serials, and addresses.
+Choose **Use for setup** to fill the host and serial into the unsaved form,
+then complete the same identity review before saving.
 
 Live Bambu status is local and reads printer data on the same network. It should be configured on the host machine when using a Host/Client setup.
 
@@ -603,12 +630,34 @@ connection and requires explicit re-pairing. The access code is stored in
 macOS Keychain or Windows Credential Manager, not in the library database or
 portable backup.
 
+### Trust Required After Upgrading
+
+An enabled integration created before TLS identity approval was introduced has
+no saved trust decision. After upgrading, it remains offline until the printer
+identity has been reviewed; the app does not send its access code first.
+Dashboard shows **Bambu Live needs attention** for each affected printer.
+Select the message to open that exact printer's Live editor in **Settings -> 3D
+printers**, run **Check identity**, compare the serial and fingerprint with the
+printer you expect, explicitly trust the identity, and save.
+
+The same Dashboard action appears when an already trusted identity changes. Do
+not approve an unexpected serial or public-key fingerprint merely to restore
+Live status; inspect the printer and network first.
+
 ### Finding a Printer After Its IP Address Changes
 
-If a router assigns a new address to a previously configured printer, open its
-saved card in **Settings -> 3D printers** and use **Find Bambu printers** on the
-private LAN interface. The scan listens for local printer announcements for up
-to ten seconds and displays the announced serial number, so you can distinguish
+If a router assigns a new address to a previously configured and trusted
+printer, the Live observer can recover it automatically after the old
+connection fails without presenting a different TLS identity. Background
+recovery is rate-limited per printer, scans private LAN interfaces, and
+considers only announcements with the saved serial. Before storing a new
+address, it requires that serial and the previously trusted public-key (SPKI)
+pin to match over TLS. It never reads or sends the access code.
+
+If automatic recovery cannot find and verify the printer, open its saved card
+in **Settings -> 3D printers** and use **Find Bambu printers** on the private
+LAN interface. The scan listens for local printer announcements for up to ten
+seconds and displays the announced serial number, so you can distinguish
 otherwise similar printers.
 
 For a saved printer with no other unsaved edits, **Recover saved address** is
@@ -855,7 +904,8 @@ For several devices:
 For the best automation:
 
 - Add printers with the correct AMS setup.
-- Enable Live Bambu status after the printer has been created.
+- Configure the optional Bambu Live step while adding a supported printer, or
+  enable it later from the printer card in Settings.
 - Register RFID on spools used in AMS.
 - Keep inventory spools updated with realistic starting weight.
 - Use manual weight correction when a physical check shows that the AMS estimate has drifted.

@@ -24,8 +24,8 @@ import {
   DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
   DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS,
   desktopScreenshotScale,
-  desktopFullScreenCropGeometry,
   desktopScreenshotNameForScenario,
+  desktopWindowHasExactIdentity,
   desktopWindowsForProcess,
   desktopWindowMatchesRequestedSize,
   desktopWindowMatchesRequestedPosition,
@@ -47,6 +47,7 @@ import {
   normalizeDesktopVisualQaWindowSize,
   normalizeNativeDesktopWindowFrame,
   normalizeVisualQaLocale,
+  listAllDesktopWindowsWithNativeHelper,
   parseDesktopVisualQaScenarios,
   parseDesktopScreenInfo,
   parseDesktopWindowList,
@@ -119,9 +120,12 @@ function createMetric(overrides = {}) {
     },
     window: {
       height: 900,
+      lookupSource: "native",
+      processId: 12345,
       processName: "Filament Manager",
       title: "Filament Manager",
       width: 1300,
+      windowId: 67890,
       x: 20,
       y: 40,
       ...overrides.window,
@@ -1350,13 +1354,15 @@ test("desktop screenshot gate parses macOS window lookup output", () => {
   assert.equal(DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS, 60_000);
   assert.deepEqual(
     parseDesktopWindowInfo(
-      "Filament Manager\tFilament Manager\t20\t40\t1300\t900\n",
+      "Filament Manager\tFilament Manager\t20\t40\t1300\t900\t12345\t67890\n",
     ),
     {
       height: 900,
+      processId: 12345,
       processName: "Filament Manager",
       title: "Filament Manager",
       width: 1300,
+      windowId: 67890,
       x: 20,
       y: 40,
     },
@@ -1379,6 +1385,32 @@ test("desktop screenshot gate parses macOS window lookup output", () => {
     parseDesktopWindowInfo("Filament Manager\tTitle\t0\t0\t0\t900"),
     null,
   );
+  assert.equal(
+    parseDesktopWindowInfo(
+      "Filament Manager\tTitle\t0\t0\t900\t700\t12345\t0",
+    ),
+    null,
+  );
+  assert.equal(
+    parseDesktopWindowInfo(
+      "Filament Manager\tTitle\t0\t0\t900\t700\t12345\t202private",
+    ),
+    null,
+  );
+  assert.equal(
+    desktopWindowHasExactIdentity(
+      parseDesktopWindowInfo(
+        "Filament Manager\tTitle\t0\t0\t900\t700\t12345\t67890",
+      ),
+    ),
+    true,
+  );
+  assert.equal(
+    desktopWindowHasExactIdentity(
+      parseDesktopWindowInfo("Filament Manager\tTitle\t0\t0\t900\t700"),
+    ),
+    false,
+  );
 });
 
 test("desktop screenshot gate parses visible window diagnostics", async () => {
@@ -1396,8 +1428,8 @@ test("desktop screenshot gate parses visible window diagnostics", async () => {
       calls.push({ args, command, options });
       return {
         stdout:
-          "Unrelated Settings App\tFilament Manager\t1\t2\t1400\t900\n" +
-          "bambu-filament-manager\t库存\t12\t42\t882\t882\n",
+          "Unrelated Settings App\tFilament Manager\t1\t2\t1400\t900\t11\t101\n" +
+          "bambu-filament-manager\t库存\t12\t42\t882\t882\t42\t202\n",
       };
     },
     processName: "bambu-filament-manager",
@@ -1405,6 +1437,8 @@ test("desktop screenshot gate parses visible window diagnostics", async () => {
     windowTitle: "Filament Manager",
   });
   assert.equal(nativeWindow?.title, "库存");
+  assert.equal(nativeWindow?.processId, 42);
+  assert.equal(nativeWindow?.windowId, 202);
   assert.deepEqual(
     { height: nativeWindow?.height, width: nativeWindow?.width, x: nativeWindow?.x },
     { height: 900, width: 900, x: 3 },
@@ -1414,6 +1448,19 @@ test("desktop screenshot gate parses visible window diagnostics", async () => {
   assert.equal(calls[0]?.options.shell, false);
   assert.equal(calls[0]?.options.timeout, 60_000);
   assert.equal(resolveMacosWindowInfoHelperLaunch("list").shell, false);
+  const allWindowCalls = [];
+  const allWindows = await listAllDesktopWindowsWithNativeHelper({
+    nativeWindowExecFileFn: async (command, args, options) => {
+      allWindowCalls.push({ args, command, options });
+      return {
+        stdout:
+          "bambu-filament-manager\tHidden\t12\t42\t882\t882\t42\t203\n",
+      };
+    },
+  });
+  assert.equal(allWindows[0]?.windowId, 203);
+  assert.equal(allWindowCalls[0]?.command, "swift");
+  assert.deepEqual(allWindowCalls[0]?.args.slice(-1), ["list-all"]);
   assert.deepEqual(
     normalizeNativeDesktopWindowFrame(
       {
@@ -1484,6 +1531,48 @@ test("desktop screenshot gate parses visible window diagnostics", async () => {
     "库存",
   );
   assert.deepEqual(
+    selectDesktopWindowForProcess(
+      [
+        {
+          processId: 41,
+          processName: "bambu-filament-manager",
+          title: "Dashboard",
+          windowId: 201,
+        },
+        {
+          processId: 42,
+          processName: "bambu-filament-manager",
+          title: "Dashboard",
+          windowId: 202,
+        },
+      ],
+      {
+        processId: 42,
+        processName: "bambu-filament-manager",
+        requireExactIdentity: true,
+        windowId: 202,
+        windowTitle: "Dashboard",
+      },
+    ),
+    {
+      processId: 42,
+      processName: "bambu-filament-manager",
+      title: "Dashboard",
+      windowId: 202,
+    },
+  );
+  assert.equal(
+    selectDesktopWindowForProcess(
+      [{ processName: "bambu-filament-manager", title: "Dashboard" }],
+      {
+        processName: "bambu-filament-manager",
+        requireExactIdentity: true,
+        windowTitle: "Dashboard",
+      },
+    ),
+    null,
+  );
+  assert.deepEqual(
     desktopWindowsForProcess(
       [
         { processName: "Other App", title: "Inventory" },
@@ -1518,15 +1607,15 @@ test("native screen helper returns primary display bounds", async () => {
   assert.equal(calls[0]?.options.shell, false);
 });
 
-test("desktop screenshot gate ignores a foreign AppleScript title match", async () => {
+test("desktop screenshot gate uses native identities and ignores a foreign title match", async () => {
   const calls = [];
   const window = await findDesktopWindow({
-    execFileFn: async (command, args, options) => {
+    nativeWindowExecFileFn: async (command, args, options) => {
       calls.push({ args, command, options });
       return {
         stdout:
-          "Unrelated Settings App\tSettings\t1\t2\t1400\t900\n" +
-          "bambu-filament-manager\t库存\t12\t42\t882\t882\n",
+          "Unrelated Settings App\tSettings\t1\t2\t1400\t900\t11\t101\n" +
+          "bambu-filament-manager\t库存\t12\t42\t882\t882\t42\t202\n",
       };
     },
     processName: "bambu-filament-manager",
@@ -1535,28 +1624,41 @@ test("desktop screenshot gate ignores a foreign AppleScript title match", async 
 
   assert.equal(window?.processName, "bambu-filament-manager");
   assert.equal(window?.title, "库存");
+  assert.equal(window?.processId, 42);
+  assert.equal(window?.windowId, 202);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0]?.command, "osascript");
-  assert.match(calls[0]?.args[1], /set windowRows to/);
-  assert.equal(window?.lookupSource, "applescript");
+  assert.equal(calls[0]?.command, "swift");
+  assert.deepEqual(calls[0]?.args.slice(-1), ["list"]);
+  assert.equal(window?.lookupSource, "native");
 });
 
-test("native lookup still requires Accessibility for safe activation", async () => {
+test("native lookup needs Accessibility only when activation is explicitly requested", async () => {
   const accessibilityError = new Error("Not authorized to send Apple events");
   const window = await findDesktopWindow({
     execFileFn: async () => {
       throw accessibilityError;
     },
     nativeWindowExecFileFn: async () => ({
-      stdout: "bambu-filament-manager\t库存\t12\t42\t882\t882\n",
+      stdout:
+        "bambu-filament-manager\t库存\t12\t42\t882\t882\t42\t202\n",
     }),
     processName: "bambu-filament-manager",
     windowTitle: "Inventory",
   });
 
   assert.equal(window?.lookupSource, "native");
+  let activationCalls = 0;
+  await activateDesktopWindow(window, {
+    execFileFn: async () => {
+      activationCalls += 1;
+      throw accessibilityError;
+    },
+    waitAfterActivateMs: 0,
+  });
+  assert.equal(activationCalls, 0);
   await assert.rejects(
     activateDesktopWindow(window, {
+      activate: true,
       execFileFn: async () => {
         throw accessibilityError;
       },
@@ -2017,7 +2119,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     timeoutMs: 35_000,
     token: "printer-live-telemetry",
   });
-  assert.equal(desktopVisualQaScenarioReadiness("add-printer"), null);
+  assert.deepEqual(desktopVisualQaScenarioReadiness("add-printer"), {
+    timeoutMs: 15_000,
+    token: "add-printer-live-step",
+  });
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
 });
 
@@ -2275,7 +2380,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 47);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 48);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",
@@ -3106,227 +3211,104 @@ test("desktop screenshot gate validates the requested size against the captured 
   );
 });
 
-test("desktop screenshot capture refuses off-primary coordinates", async () => {
-  let execCalls = 0;
-  await assert.rejects(
-    captureDesktopWindowScreenshot(
-      createMetric({ window: { x: -1440, y: -900 } }).window,
-      {
+test("desktop screenshot capture fails closed before side effects without a native window identity", async () => {
+  for (const window of [
+    { ...createMetric().window, lookupSource: undefined },
+    { ...createMetric().window, lookupSource: "applescript" },
+    { ...createMetric().window, processId: undefined },
+    { ...createMetric().window, processId: 0 },
+    { ...createMetric().window, windowId: undefined },
+    { ...createMetric().window, windowId: 0 },
+    { ...createMetric().window, windowId: "67890" },
+    { ...createMetric().window, windowId: 0x1_0000_0000 },
+    { ...createMetric().window, windowId: Number.MAX_SAFE_INTEGER + 1 },
+  ]) {
+    let execCalls = 0;
+    let mkdirCalls = 0;
+    await assert.rejects(
+      captureDesktopWindowScreenshot(window, {
         execFileFn: async () => {
           execCalls += 1;
           return { stdout: "" };
         },
-        outputDir: testOutputDir,
-      },
-    ),
-    /must be inside the primary capture area.*x=-1440, y=-900/,
-  );
-  assert.equal(execCalls, 0);
-});
-
-test("desktop screenshot capture refuses a rectangle touching the display edge", async () => {
-  let execCalls = 0;
-  await assert.rejects(
-    captureDesktopWindowScreenshot(
-      {
-        ...createMetric().window,
-        height: 800,
-        width: 1200,
-        x: 0,
-        y: 307,
-      },
-      {
-        execFileFn: async () => {
-          execCalls += 1;
-          return { stdout: "" };
+        mkdirFn: async () => {
+          mkdirCalls += 1;
         },
         outputDir: testOutputDir,
-        screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
-      },
-    ),
-    /must stay inside the primary display.*window 0,307,1200,800/,
-  );
-  assert.equal(execCalls, 0);
+      }),
+      /refuses to capture without a verified positive processId and CGWindowID from the native macOS window helper lookup/,
+    );
+    assert.equal(execCalls, 0);
+    assert.equal(mkdirCalls, 0);
+  }
 });
 
-test("desktop screenshot capture falls back to an exact private full-screen crop", async () => {
+test("desktop screenshot capture targets only the verified CGWindowID", async () => {
   const calls = [];
-  const removed = [];
   const secured = [];
-  const regionError = new Error("region capture failed on macOS beta");
-  const croppedBuffer = Buffer.from("cropped-window");
-  const fullScreenBuffer = Buffer.from("private-full-screen");
-  let fullScreenPath = null;
-
+  const expectedBuffer = Buffer.from("exact-window");
   const result = await captureDesktopWindowScreenshot(
+    { ...createMetric().window, x: -1440, y: -900 },
     {
-      ...createMetric().window,
-      height: 700,
-      width: 900,
-      x: 24,
-      y: 24,
-    },
-    {
-      chmodFn: async (artifactPath) => {
-        secured.push(artifactPath);
+      chmodFn: async (artifactPath, mode) => {
+        secured.push({ artifactPath, mode });
       },
-      execFileFn: async (command, args) => {
-        calls.push({ args, command });
-        if (calls.length === 1) {
-          throw regionError;
-        }
-        if (command === "screencapture") {
-          fullScreenPath = args[1];
-        }
+      execFileFn: async (command, args, options) => {
+        calls.push({ args, command, options });
         return { stderr: "", stdout: "" };
-      },
-      measureScreenshotPixelsFn: (buffer) => {
-        assert.equal(buffer, fullScreenBuffer);
-        return { height: 2214, width: 3420 };
       },
       mkdirFn: async () => {},
       outputDir: testOutputDir,
       platform: "darwin",
-      readFileFn: async (artifactPath) =>
-        artifactPath === fullScreenPath ? fullScreenBuffer : croppedBuffer,
-      removeFileFn: async (artifactPath, options) => {
-        removed.push({ artifactPath, options });
-      },
-      screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
+      readFileFn: async () => expectedBuffer,
     },
   );
 
-  assert.equal(result.buffer, croppedBuffer);
-  assert.equal(result.region, "24,24,900,700");
-  assert.equal(calls.length, 3);
-  assert.deepEqual(calls[0], {
-    args: ["-x", "-R", "24,24,900,700", result.path],
-    command: "screencapture",
-  });
-  assert.equal(calls[1].command, "screencapture");
-  assert.deepEqual(calls[1].args, ["-x", fullScreenPath]);
-  assert.equal(path.dirname(fullScreenPath), path.resolve(testOutputDir));
-  assert.match(path.basename(fullScreenPath), /^\.desktop-full-screen-/);
-  assert.deepEqual(calls[2], {
-    args: [
-      "-c",
-      "1400",
-      "1800",
-      "--cropOffset",
-      "48",
-      "48",
-      fullScreenPath,
-      "--out",
-      result.path,
-    ],
-    command: "sips",
-  });
-  assert.deepEqual(removed, [
-    { artifactPath: fullScreenPath, options: { force: true } },
+  assert.equal(result.buffer, expectedBuffer);
+  assert.equal(result.windowId, 67890);
+  assert.deepEqual(calls, [
+    {
+      args: ["-x", "-o", "-l67890", result.path],
+      command: "/usr/sbin/screencapture",
+      options: { shell: false, timeout: 8_000 },
+    },
   ]);
-  assert.ok(secured.includes(fullScreenPath));
-  assert.ok(secured.includes(result.path));
+  assert.equal(calls[0].args.filter((arg) => arg.startsWith("-l")).length, 1);
+  assert.ok(calls[0].args.every((arg) => !String(arg).startsWith("-R")));
+  assert.ok(
+    secured.some(
+      ({ artifactPath, mode }) => artifactPath === result.path && mode === 0o600,
+    ),
+  );
 });
 
-test("desktop full-screen crop rejects an inconsistent native screen scale", async () => {
-  assert.deepEqual(
-    desktopFullScreenCropGeometry(
-      { height: 700, width: 900, x: 24, y: 24 },
-      { height: 1107, width: 1710, x: 0, y: 0 },
-      { height: 2214, width: 3420 },
-    ),
-    { height: 1400, scale: 2, width: 1800, x: 48, y: 48 },
-  );
-
-  const regionError = new Error("native region capture failed");
-  const removed = [];
-  let fullScreenPath = null;
-  await assert.rejects(
-    captureDesktopWindowScreenshot(
-      { height: 700, width: 900, x: 24, y: 24 },
-      {
-        chmodFn: async () => {},
-        execFileFn: async (command, args) => {
-          if (command === "screencapture" && args.includes("-R")) {
-            throw regionError;
-          }
-          if (command === "screencapture") {
-            fullScreenPath = args[1];
-          }
-          return { stderr: "", stdout: "" };
-        },
-        measureScreenshotPixelsFn: () => ({
-          height: 2213,
-          width: 3420,
-        }),
-        mkdirFn: async () => {},
-        outputDir: testOutputDir,
-        readFileFn: async () => Buffer.from("full-screen"),
-        removeFileFn: async (artifactPath) => {
-          removed.push(artifactPath);
-        },
-        screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
-      },
-    ),
-    (error) => {
-      assert.ok(error instanceof AggregateError);
-      assert.equal(error.cause, regionError);
-      assert.equal(error.errors[0], regionError);
-      assert.match(error.errors[1]?.message, /inconsistent screen scale/);
-      assert.match(error.message, /native region capture failed/);
-      assert.match(error.message, /inconsistent screen scale/);
-      return true;
-    },
-  );
-  assert.deepEqual(removed, [fullScreenPath]);
-});
-
-test("desktop full-screen fallback deletes its private source after crop failure", async () => {
-  const regionError = new Error("region capture unavailable");
-  const cropError = new Error("sips crop failed");
-  const removed = [];
-  let fullScreenPath = null;
+test("desktop screenshot capture never retries with a region or full screen", async () => {
+  const captureError = new Error("CGWindow capture denied");
+  const calls = [];
 
   await assert.rejects(
-    captureDesktopWindowScreenshot(
-      { height: 700, width: 900, x: 24, y: 24 },
-      {
-        chmodFn: async () => {},
-        execFileFn: async (command, args) => {
-          if (command === "screencapture" && args.includes("-R")) {
-            throw regionError;
-          }
-          if (command === "screencapture") {
-            fullScreenPath = args[1];
-            return { stderr: "", stdout: "" };
-          }
-          throw cropError;
-        },
-        measureScreenshotPixelsFn: () => ({
-          height: 2214,
-          width: 3420,
-        }),
-        mkdirFn: async () => {},
-        outputDir: testOutputDir,
-        readFileFn: async () => Buffer.from("full-screen"),
-        removeFileFn: async (artifactPath, options) => {
-          removed.push({ artifactPath, options });
-        },
-        screenInfo: { height: 1107, width: 1710, x: 0, y: 0 },
+    captureDesktopWindowScreenshot(createMetric().window, {
+      chmodFn: async () => {},
+      execFileFn: async (command, args) => {
+        calls.push({ args, command });
+        throw captureError;
       },
-    ),
-    (error) => {
-      assert.ok(error instanceof AggregateError);
-      assert.equal(error.cause, regionError);
-      assert.deepEqual(error.errors, [regionError, cropError]);
-      assert.match(error.message, /region capture unavailable/);
-      assert.match(error.message, /sips crop failed/);
-      return true;
-    },
+      mkdirFn: async () => {},
+      outputDir: testOutputDir,
+    }),
+    (error) => error === captureError,
   );
 
-  assert.deepEqual(removed, [
-    { artifactPath: fullScreenPath, options: { force: true } },
+  assert.deepEqual(calls, [
+    {
+      args: [
+        "-x",
+        "-o",
+        "-l67890",
+        path.resolve(testOutputDir, "desktop-window.png"),
+      ],
+      command: "/usr/sbin/screencapture",
+    },
   ]);
 });
 

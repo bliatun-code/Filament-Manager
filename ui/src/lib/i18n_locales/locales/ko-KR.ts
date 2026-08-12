@@ -115,7 +115,7 @@ export const koKRDictionary: DictionaryNode = {
     "configured": "설정됨",
     "connectedToHost": "연결됨",
     "consumption": "필라멘트 소비",
-    "consumptionCaption": "사용량은 프린터에 연결된 인쇄 작업에서 집계됩니다.",
+    "consumptionCaption": "기록된 인쇄 작업 및 Bambu Live 세션.",
     "gramsPerDay": "{count} g/일",
     "healthBalanceHint": "낮은 재고, 대출, 주문, 로드된 슬롯을 함께 살펴보세요.",
     "healthMonitor": "재입고 모니터링",
