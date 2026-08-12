@@ -389,7 +389,7 @@ function slotLiveTrayFallback(
     color_hex: slot.live_color_hex ?? null,
     tray_weight_g: slot.live_tray_weight_g ?? null,
     remaining_percent: slot.live_remaining_percent ?? null,
-    remaining_grams: null,
+    remaining_grams: slot.live_remaining_grams ?? null,
     observed_rfid_tag: slot.live_observed_rfid_tag ?? null,
     tray_uuid: slot.live_tray_uuid ?? null,
     chip_id: slot.live_chip_id ?? null,

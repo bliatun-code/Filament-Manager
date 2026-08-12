@@ -742,6 +742,13 @@ Examples:
 - low temperatures below the extrusion threshold prevent false usage after job end
 - tail measurements after a recently completed job can attach to the right session only inside safe limits
 
+If a large jump is rejected, the stored weight is left unchanged. For a loaded
+Bambu roll with a fresh, unique RFID match, open **Update weight** to compare
+the stored value with the current AMS estimate. The dialog shows the estimated
+filament weight, spool tare, and corresponding total roll weight. Choosing
+**Use AMS estimate** records an explicit weight correction; it does not create
+a synthetic print job or assign the whole difference to today's usage.
+
 A useful rule of thumb in the app is that a nozzle below 180 C means the printer can no longer extrude. A stable temperature above normal print temperature is a strong signal that a job is actually running.
 
 ### Job Registration
@@ -770,6 +777,11 @@ Manual weight updates are useful when:
 - you want to correct against a physical check
 
 A manual update can affect the spool's remaining weight and usage statistics when it is connected to the correct printer/slot context.
+
+The AMS action is deliberately narrower than a manual weigh-in. It is available
+only for fresh telemetry from the loaded slot, an exact RFID match, and the same
+inventory spool. AMS percentages remain estimates; use a physical scale and the
+measured-weight field whenever an exact weight matters.
 
 ## Printer Slots and Assignment
 

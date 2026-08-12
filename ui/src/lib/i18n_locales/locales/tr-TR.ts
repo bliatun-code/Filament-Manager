@@ -759,7 +759,8 @@ export const trTRDictionary: DictionaryNode = {
       "recordUsage": "Yazdırma kullanımı kaydedilemedi.",
       "selectCandidateBeforeRfid": "Yuvada ilk önce bu ruloyu seçin, böylece giden rulo ağırlığı RFID kaydedilmeden önce işlenir.",
       "selectRollBeforeWeight": "Ağırlığı güncellemeden önce bir hedef atış seçin.",
-      "updateSlot": "Yazıcı yuvası güncellenemedi."
+      "updateSlot": "Yazıcı yuvası güncellenemedi.",
+      "amsWeightEstimateChanged": "AMS tahmini veya tam rulo eşleşmesi değişti. Ağırlığı güncelle ekranını yeniden açıp tekrar deneyin."
     },
     "extSlot": "EXT Yuvası",
     "failed": "Başarısız",
@@ -767,6 +768,10 @@ export const trTRDictionary: DictionaryNode = {
     "hideSlots": "Yuvaları gizle",
     "incomingWeight": "Gelen tartım (g, isteğe bağlı)",
     "incomingWeightPromptLabel": "Ölçülen ağırlık (g)",
+    "amsWeightEstimateHint": "AMS bu tahmini tam RFID eşleşmesi olan rulo için bildiriyor. Bu bir tahmindir, terazi ölçümü değildir.",
+    "amsCalculatedTotal": "Makara dahil hesaplanan toplam",
+    "useAmsWeightEstimate": "AMS tahminini kullan",
+    "amsWeightAccepted": "Ağırlık mevcut AMS tahminiyle güncellendi.",
     "incomingWeightPromptTitle": "Gelen rulo ağırlığını ayarlayın",
     "jobOptional": "İşin adı (isteğe bağlı)",
     "jobs": "İşler",

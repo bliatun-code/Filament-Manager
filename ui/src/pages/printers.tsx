@@ -17,6 +17,7 @@ import { formatDateTime } from "../lib/printer_live_display";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import {
   DESKTOP_VISUAL_QA_ADD_PRINTER_READINESS_TOKEN,
+  DESKTOP_VISUAL_QA_PRINTER_AMS_WEIGHT_ESTIMATE_READINESS_TOKEN,
   DESKTOP_VISUAL_QA_PRINTER_LIVE_READINESS_TOKEN,
   hasFreshPrinterLiveTelemetry,
 } from "../lib/desktop_visual_qa_readiness";
@@ -60,6 +61,7 @@ export default function PrintersPage() {
     desktopVisualQaScenario === "printer-slot-assignment" ||
     desktopVisualQaScenario === "printer-slot-onboarding" ||
     desktopVisualQaScenario === "printer-rfid-override" ||
+    desktopVisualQaScenario === "printer-ams-weight-estimate" ||
     desktopVisualQaScenario === "printer-slot-replacement" ||
     desktopVisualQaScenario === "printer-slot-clear";
   const [desktopVisualQaApplied, setDesktopVisualQaApplied] = useState(
@@ -216,6 +218,7 @@ export default function PrintersPage() {
   });
 
   const {
+    acceptIncomingAmsWeightEstimate,
     allowedSpoolsForSlot,
     cancelIncomingWeightDialog,
     confirmIncomingWeightDialog,
@@ -227,6 +230,7 @@ export default function PrintersPage() {
     handleCreateLiveBambuCatalogSpool,
     incomingWeightPrompt,
     incomingWeightValue,
+    liveAmsWeightAvailable,
     openDropdownSlotId,
     openEmptySlotWeightDialog,
     openIncomingWeightDialog,
@@ -477,6 +481,83 @@ export default function PrintersPage() {
 
   useEffect(() => {
     if (
+      desktopVisualQaScenario !== "printer-ams-weight-estimate" ||
+      desktopVisualQaApplied ||
+      loading ||
+      !tauri
+    ) {
+      return;
+    }
+    for (const printer of printers) {
+      for (const slot of printer.slots) {
+        const row = findSpoolById(slot.spool_id);
+        const { tray } = findLiveTrayForSlot(printer.printer.id, slot);
+        if (
+          !row ||
+          !tray?.loaded ||
+          tray.match_status !== "clear_match" ||
+          tray.matched_inventory_mode !== "exact_rfid" ||
+          tray.matched_inventory_spool_id !== row.spool.id
+        ) {
+          continue;
+        }
+        openIncomingWeightDialog(printer.printer.id, slot, row);
+        setDesktopVisualQaApplied(true);
+        return;
+      }
+    }
+  }, [
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    findLiveTrayForSlot,
+    findSpoolById,
+    loading,
+    openIncomingWeightDialog,
+    printers,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "printer-ams-weight-estimate" ||
+      loading ||
+      !tauri ||
+      !desktopVisualQaApplied ||
+      !incomingWeightPrompt?.amsWeightEstimate ||
+      desktopVisualQaReadinessSignaledRef.current
+    ) {
+      return;
+    }
+    const frame = window.requestAnimationFrame(() => {
+      if (
+        !document.querySelector(
+          '[data-testid="printer-ams-weight-estimate"]',
+        )
+      ) {
+        return;
+      }
+      desktopVisualQaReadinessSignaledRef.current = true;
+      void signalDesktopVisualQaReadiness(
+        DESKTOP_VISUAL_QA_PRINTER_AMS_WEIGHT_ESTIMATE_READINESS_TOKEN,
+      ).catch((signalError) => {
+        desktopVisualQaReadinessSignaledRef.current = false;
+        console.error(
+          "Failed to signal desktop AMS weight estimate readiness.",
+          signalError,
+        );
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    desktopVisualQaApplied,
+    desktopVisualQaScenario,
+    incomingWeightPrompt,
+    loading,
+    tauri,
+  ]);
+
+  useEffect(() => {
+    if (
       desktopVisualQaScenario !== "printer-slot-replacement" ||
       desktopVisualQaApplied ||
       loading ||
@@ -676,6 +757,7 @@ export default function PrintersPage() {
 
       {incomingWeightPrompt ? (
         <IncomingWeightModal
+          amsEstimateAvailable={liveAmsWeightAvailable}
           busy={busy}
           prompt={incomingWeightPrompt}
           incomingWeightValue={incomingWeightValue}
@@ -683,6 +765,7 @@ export default function PrintersPage() {
           onIncomingWeightChange={setIncomingWeightValue}
           onOutgoingWeightChange={setOutgoingWeightValue}
           onCancel={cancelIncomingWeightDialog}
+          onAcceptAmsEstimate={() => void acceptIncomingAmsWeightEstimate()}
           onSave={() => void confirmIncomingWeightDialog()}
         />
       ) : null}

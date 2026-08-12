@@ -1038,6 +1038,11 @@ export const enDictionary: DictionaryNode = {
       incomingWeightPromptTitle: "Set incoming roll weight",
       outgoingWeightPromptTitle: "Set outgoing roll weight",
       incomingWeightPromptLabel: "Measured weight (g)",
+      amsWeightEstimateHint:
+        "AMS reports this estimate for the exact RFID-matched roll. It is an estimate, not a scale measurement.",
+      amsCalculatedTotal: "Calculated total incl. spool",
+      useAmsWeightEstimate: "Use AMS estimate",
+      amsWeightAccepted: "Weight updated from the current AMS estimate.",
       updateWeight: "Update weight",
       applyRollChange: "Apply roll change",
       noPendingChanges: "No pending slot changes.",
@@ -1047,6 +1052,8 @@ export const enDictionary: DictionaryNode = {
       error: {
         load: "Failed to load printer overview.",
         updateSlot: "Failed to update printer slot.",
+        amsWeightEstimateChanged:
+          "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
         outgoingWeightRequired: "Enter outgoing spool weight before swapping rolls.",
         selectRollBeforeWeight: "Select a target roll before updating weight.",
         invalidUsage: "Usage grams must be greater than zero.",

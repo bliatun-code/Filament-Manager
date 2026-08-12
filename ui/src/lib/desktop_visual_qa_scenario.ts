@@ -31,6 +31,7 @@ export type DesktopVisualQaScenario =
   | "printer-slot-assignment"
   | "printer-slot-onboarding"
   | "printer-rfid-override"
+  | "printer-ams-weight-estimate"
   | "printer-slot-replacement"
   | "printer-slot-clear"
   | "settings-general"
@@ -67,6 +68,7 @@ export type DesktopVisualQaReadinessToken =
   | "add-printer-live-step"
   | "dashboard-bambu-live-attention"
   | "dashboard-consumption"
+  | "printer-ams-weight-estimate"
   | "printer-live-telemetry";
 export type DesktopVisualQaReadiness = {
   timeoutMs: number;

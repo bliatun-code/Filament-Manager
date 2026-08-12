@@ -35,6 +35,9 @@ The Bambu security setup uses only a synthetic loopback test interface and no
 host, serial, access code, or trusted fingerprint. The printer overview uses
 fresh synthetic Bambu telemetry; its desktop gate waits for rendered telemetry
 and refuses to create an image when that readiness signal is absent.
+The AMS weight-estimate capture added on 2026-08-12 uses a separate,
+time-relative sanitized fixture and is captured only after the estimate card
+has rendered from a fresh exact-RFID observation.
 
 ## Quick Preview
 
@@ -48,6 +51,7 @@ and refuses to create an image when that readiness signal is absent.
   <a href="#loan-out"><img src="screenshots/loan-out-thumb.jpg" alt="Loan out" width="150"></a>
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#add-printer"><img src="screenshots/add-printer-thumb.jpg" alt="Add printer with optional Bambu Live" width="150"></a>
+  <a href="#use-an-ams-weight-estimate"><img src="screenshots/printer-ams-weight-estimate-thumb.jpg" alt="Use an AMS weight estimate" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
   <a href="#stable-local-companion-address"><img src="screenshots/settings-library-network-thumb.jpg" alt="Stable local Companion address" width="150"></a>
   <a href="#program-and-update-notifications"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version, update notifications, and manual update check" width="150"></a>
@@ -213,6 +217,17 @@ When the AMS reports a Bambu roll that is not yet in inventory, catalog
 onboarding can create the spool and save the observed RFID in one guarded flow.
 
 ![AMS catalog onboarding](screenshots/printer-slot-onboarding.jpg)
+
+### Use An AMS Weight Estimate
+
+For a freshly observed Bambu roll with an exact RFID inventory match, **Update
+weight** shows the AMS percentage and estimated net filament alongside the
+empty-spool tare and calculated total. **Use AMS estimate** explicitly rebases
+the inventory weight without recording synthetic print usage. This public
+capture uses a sanitized fixture with a 1,000 g inventory
+weight and a fresh 30% estimate on a 1,000 g AMS spool basis.
+
+![Use an AMS weight estimate](screenshots/printer-ams-weight-estimate.jpg)
 
 ### Slot Replacement Weight
 

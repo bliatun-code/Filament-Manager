@@ -749,6 +749,13 @@ Eksempler:
 - lave temperaturer under ekstruderbar grense brukes for å hindre falske forbruk etter jobbslutt
 - tail-målinger etter en nylig fullført jobb kan knyttes til riktig session bare innenfor trygge rammer
 
+Når et stort sprang avvises, står den lagrede vekten urørt. For en lastet
+Bambu-rull med fersk og entydig RFID-match kan du åpne **Oppdater vekt** for å
+sammenligne lagerverdien med AMS-estimatet. Dialogen viser estimert
+filamentvekt, tara for tomspolen og tilhørende totalvekt. **Bruk AMS-estimat**
+registrerer en eksplisitt vektkorrigering; den oppretter ikke en kunstig
+printjobb eller fører hele forskjellen som dagens forbruk.
+
 En nyttig tommelfingerregel i programmet er at nozzle under 180 grader betyr at printeren ikke lenger kan ekstrudere. Stabil temperatur over normal printtemperatur er et sterkt signal om at en jobb faktisk kjører.
 
 ### Jobbregistrering
@@ -777,6 +784,11 @@ Manuelle vektoppdateringer er nyttige når:
 - du vil korrigere en fysisk kontrollmåling
 
 Manuell oppdatering kan påvirke rullens gjenværende vekt og forbruksstatistikk når den er knyttet til riktig printer/spor.
+
+AMS-handlingen er med vilje snevrere enn en manuell innveiing. Den er bare
+tilgjengelig for ferske live-data fra det lastede sporet, en eksakt RFID-match
+og samme lagerrull. AMS-prosenten er fortsatt et estimat; bruk fysisk vekt og
+feltet for målt vekt når nøyaktig vekt er viktig.
 
 ## Printerspor og tildeling
 

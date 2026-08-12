@@ -405,6 +405,10 @@ fn visual_qa_scenario_normalizer_accepts_known_stateful_scenarios() {
         Some("printer-overview")
     );
     assert_eq!(
+        normalize_visual_qa_scenario("ams-weight-estimate"),
+        Some("printer-ams-weight-estimate")
+    );
+    assert_eq!(
         normalize_visual_qa_scenario("roll-history"),
         Some("selected-roll-history")
     );
@@ -620,6 +624,10 @@ fn visual_qa_readiness_normalizer_accepts_only_known_tokens() {
     assert_eq!(
         normalize_desktop_visual_qa_readiness_token("dashboard-consumption"),
         Some("dashboard-consumption")
+    );
+    assert_eq!(
+        normalize_desktop_visual_qa_readiness_token("printer-ams-weight-estimate"),
+        Some("printer-ams-weight-estimate")
     );
     assert_eq!(
         normalize_desktop_visual_qa_readiness_token("printer-board"),

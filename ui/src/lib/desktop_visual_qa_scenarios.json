@@ -161,6 +161,17 @@
       "requiresDatabaseFixture": true
     },
     {
+      "id": "printer-ams-weight-estimate",
+      "aliases": ["ams-weight-estimate", "printer-weight-estimate"],
+      "page": "printers",
+      "category": "modal",
+      "requiresDatabaseFixture": true,
+      "readiness": {
+        "token": "printer-ams-weight-estimate",
+        "timeoutMs": 15000
+      }
+    },
+    {
       "id": "printer-slot-replacement",
       "aliases": ["printer-slot-swap", "slot-replacement", "slot-swap"],
       "page": "printers",

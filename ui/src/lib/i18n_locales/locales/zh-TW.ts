@@ -759,7 +759,8 @@ export const zhTWDictionary: DictionaryNode = {
       "recordUsage": "無法記錄列印使用情況。",
       "selectCandidateBeforeRfid": "首先在插槽中選擇此卷，以便在保存 RFID 之前處理任何傳出的捲重量。",
       "selectRollBeforeWeight": "在更新重量之前選擇目標卷。",
-      "updateSlot": "無法更新印表機插槽。"
+      "updateSlot": "無法更新印表機插槽。",
+      "amsWeightEstimateChanged": "AMS 估算值或料卷精確配對已變更。請重新開啟「更新重量」後再試。"
     },
     "extSlot": "外部插槽",
     "failed": "失敗",
@@ -767,6 +768,10 @@ export const zhTWDictionary: DictionaryNode = {
     "hideSlots": "隱藏槽位",
     "incomingWeight": "進貨稱重（g，可選）",
     "incomingWeightPromptLabel": "實測重量（公克）",
+    "amsWeightEstimateHint": "AMS 針對 RFID 完全相符的料卷回報此估算值。這是估算值，不是電子秤測量值。",
+    "amsCalculatedTotal": "含空料盤的估算總重量",
+    "useAmsWeightEstimate": "使用 AMS 估算值",
+    "amsWeightAccepted": "已使用目前的 AMS 估算值更新重量。",
     "incomingWeightPromptTitle": "設定進卷重量",
     "jobOptional": "職位名稱（可選）",
     "jobs": "作業",

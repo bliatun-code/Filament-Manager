@@ -759,7 +759,8 @@ export const zhCNDictionary: DictionaryNode = {
       "recordUsage": "无法记录打印使用情况。",
       "selectCandidateBeforeRfid": "首先在 slot 中选择此卷，以便在保存 RFID 之前处理任何传出的卷重量。",
       "selectRollBeforeWeight": "在更新重量之前选择目标卷。",
-      "updateSlot": "无法更新打印机 slot。"
+      "updateSlot": "无法更新打印机 slot。",
+      "amsWeightEstimateChanged": "AMS 估算值或料卷精确匹配已发生变化。请重新打开“更新重量”后再试。"
     },
     "extSlot": "分机 Slot",
     "failed": "失败",
@@ -767,6 +768,10 @@ export const zhCNDictionary: DictionaryNode = {
     "hideSlots": "隐藏料槽",
     "incomingWeight": "进货称重（g，可选）",
     "incomingWeightPromptLabel": "实测重量（克）",
+    "amsWeightEstimateHint": "AMS 针对 RFID 完全匹配的料卷报告此估算值。这是估算值，并非电子秤测量值。",
+    "amsCalculatedTotal": "含空盘的估算总重量",
+    "useAmsWeightEstimate": "使用 AMS 估算值",
+    "amsWeightAccepted": "已使用当前 AMS 估算值更新重量。",
     "incomingWeightPromptTitle": "设置进卷重量",
     "jobOptional": "职位名称（可选）",
     "jobs": "任务",

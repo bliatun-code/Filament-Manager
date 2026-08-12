@@ -525,6 +525,10 @@ export const huHUDictionary: DictionaryNode = {
     "logUse": "Naplóhasználat",
     "applyRollChange": "Alkalmazza a tekercscserét",
     "incomingWeightPromptLabel": "Mért tömeg (g)",
+    "amsWeightEstimateHint": "Az AMS ezt a becslést a pontos RFID-egyezésű tekercshez jelenti. Ez becslés, nem mérlegen mért érték.",
+    "amsCalculatedTotal": "Számított össztömeg orsóval",
+    "useAmsWeightEstimate": "AMS-becslés használata",
+    "amsWeightAccepted": "A tömeg frissült az aktuális AMS-becslés alapján.",
     "noPendingChanges": "Nincsenek függőben lévő helyváltoztatások.",
     "updateWeight": "Frissítse a súlyt",
     "slotUpdated": "Nyomtatónyílás frissítve.",
@@ -532,6 +536,7 @@ export const huHUDictionary: DictionaryNode = {
     "error": {
       "load": "Nem sikerült betölteni a nyomtató áttekintését.",
       "updateSlot": "Nem sikerült frissíteni a nyomtatónyílást.",
+      "amsWeightEstimateChanged": "Az AMS-becslés vagy a pontos tekercsegyezés megváltozott. Nyissa meg újra a Tömeg frissítése műveletet, és próbálja újra.",
       "recordUsage": "Nem sikerült rögzíteni a nyomtatási használatot.",
       "liveRfidChangedBeforeSave": "Az élő AMS identitás a mentés előtt megváltozott. Nyissa meg újra a slot műveletet, és erősítse meg az aktuális dobást.",
       "invalidUsage": "A használati grammoknak nullánál nagyobbnak kell lenniük.",

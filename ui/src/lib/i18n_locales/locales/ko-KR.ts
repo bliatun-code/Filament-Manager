@@ -759,7 +759,8 @@ export const koKRDictionary: DictionaryNode = {
       "recordUsage": "인쇄 사용량을 기록하지 못했습니다.",
       "selectCandidateBeforeRfid": "슬롯에서 먼저 이 롤을 선택하면 나가는 롤 무게가 RFID를 저장하기 전에 처리됩니다.",
       "selectRollBeforeWeight": "무게를 업데이트하기 전에 목표 롤을 선택하십시오.",
-      "updateSlot": "프린터 슬롯을 업데이트하지 못했습니다."
+      "updateSlot": "프린터 슬롯을 업데이트하지 못했습니다.",
+      "amsWeightEstimateChanged": "AMS 추정값 또는 정확한 롤 일치가 변경되었습니다. 무게 업데이트를 다시 열고 재시도하세요."
     },
     "extSlot": "EXT 슬롯",
     "failed": "실패",
@@ -767,6 +768,10 @@ export const koKRDictionary: DictionaryNode = {
     "hideSlots": "슬롯 숨기기",
     "incomingWeight": "들어오는 체중 측정(g, 선택 사항)",
     "incomingWeightPromptLabel": "측정된 무게(g)",
+    "amsWeightEstimateHint": "AMS가 RFID와 정확히 일치하는 롤에 대해 보고한 추정값입니다. 저울로 측정한 값은 아닙니다.",
+    "amsCalculatedTotal": "스풀 포함 계산 총중량",
+    "useAmsWeightEstimate": "AMS 추정값 사용",
+    "amsWeightAccepted": "현재 AMS 추정값으로 무게를 업데이트했습니다.",
     "incomingWeightPromptTitle": "들어오는 롤 무게 설정",
     "jobOptional": "작업 이름(선택사항)",
     "jobs": "작업",

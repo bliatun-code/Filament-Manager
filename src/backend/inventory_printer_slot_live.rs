@@ -157,6 +157,7 @@ mod tests {
             tray_weight_g: Some(1000),
             remaining_percent: Some(80),
             remaining_grams: Some(800),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: None,
             chip_id: None,

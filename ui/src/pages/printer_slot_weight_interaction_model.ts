@@ -7,6 +7,7 @@ import {
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
 import type {
+  BambuLiveObservedTray,
   PrinterAmsSlotRow,
   SpoolWithMasterRow,
 } from "../lib/tauri_client";
@@ -56,8 +57,10 @@ export function prepareIncomingWeightDialog(
   slot: PrinterAmsSlotRow,
   row: SpoolWithMasterRow,
   resolveSpoolTareWeightById: ResolveSpoolTareWeightById,
+  liveTray?: BambuLiveObservedTray | null,
+  nowMs = Date.now(),
 ): PreparedSlotWeightDialog {
-  const prompt = buildIncomingWeightPrompt(printerId, slot, row);
+  const prompt = buildIncomingWeightPrompt(printerId, slot, row, liveTray, nowMs);
   return {
     prompt,
     incomingWeightValue: buildMeasuredTotalWeightDraft(

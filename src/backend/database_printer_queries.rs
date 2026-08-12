@@ -203,6 +203,8 @@ fn build_printer_overview(
             live_color_hex: None,
             live_tray_weight_g: None,
             live_remaining_percent: None,
+            live_remaining_grams: None,
+            live_weight_seen_at: None,
             live_last_identity_seen_at: None,
             live_match_status: None,
             live_match_note: None,

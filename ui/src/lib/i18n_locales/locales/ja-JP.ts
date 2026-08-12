@@ -759,7 +759,8 @@ export const jaJPDictionary: DictionaryNode = {
       "recordUsage": "印刷使用量の記録に失敗しました。",
       "selectCandidateBeforeRfid": "最初に slot でこのロールを選択し、RFID を保存する前に送信ロール重量が処理されるようにします。",
       "selectRollBeforeWeight": "重量を更新する前に対象のロールを選択してください。",
-      "updateSlot": "プリンター slot の更新に失敗しました。"
+      "updateSlot": "プリンター slot の更新に失敗しました。",
+      "amsWeightEstimateChanged": "AMS 推定値またはロールの完全一致が変わりました。「重量を更新」を開き直して再試行してください。"
     },
     "extSlot": "内線 Slot",
     "failed": "失敗",
@@ -767,6 +768,10 @@ export const jaJPDictionary: DictionaryNode = {
     "hideSlots": "スロットを非表示",
     "incomingWeight": "受信計量 (g、オプション)",
     "incomingWeightPromptLabel": "実測重量(g)",
+    "amsWeightEstimateHint": "AMS が RFID と完全一致するロールについて報告した推定値です。はかりによる実測値ではありません。",
+    "amsCalculatedTotal": "スプール込みの推定総重量",
+    "useAmsWeightEstimate": "AMS 推定値を使用",
+    "amsWeightAccepted": "現在の AMS 推定値で重量を更新しました。",
     "incomingWeightPromptTitle": "受信ロール重量を設定する",
     "jobOptional": "ジョブ名 (オプション)",
     "jobs": "ジョブ",

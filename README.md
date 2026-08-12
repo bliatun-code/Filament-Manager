@@ -576,6 +576,10 @@ smooth transition rolls.
   maps in the UI.
 - Bambu AMS weight is treated as an estimate, not as a physical scale reading;
   live usage accounting is intentionally conservative.
+- When a fresh, exact RFID-matched AMS estimate is too far from stored weight
+  for automatic sync, the printer slot weight dialog can offer an explicit
+  correction. Accepting that estimate updates remaining filament without
+  inventing a print job for usage that happened while the app was away.
 - Bambu Studio filament settings signals such as `tray_info_idx` and
   `tray_id_name` are diagnostic material/profile hints, not physical spool
   identity. Saved RFID/tray UUID data remains the strong identity signal for

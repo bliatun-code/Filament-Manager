@@ -100,6 +100,10 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
             "/printers/{printer_id}/spools/{spool_id}/usage",
             post(handle_record_print_usage),
         )
+        .route(
+            "/printers/{printer_id}/slots/{slot_id}/spools/{spool_id}/bambu-live-weight-estimate/accept",
+            post(handle_accept_bambu_live_weight_estimate),
+        )
         .route("/spools/{spool_id}", get(handle_get_spool_detail))
         .route("/spools/{spool_id}/lend", post(handle_lend_spool))
         .route(

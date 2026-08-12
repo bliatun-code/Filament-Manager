@@ -1010,11 +1010,18 @@ export const deDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Gewicht der eingehenden Rolle festlegen",
     outgoingWeightPromptTitle: "Gewicht der ausgehenden Rolle festlegen",
     incomingWeightPromptLabel: "Gemessenes Gewicht (g)",
+    amsWeightEstimateHint:
+      "AMS meldet diese Schätzung für die Rolle mit exakter RFID-Übereinstimmung. Es ist eine Schätzung, keine Waagenmessung.",
+    amsCalculatedTotal: "Berechnetes Gesamtgewicht inkl. Spule",
+    useAmsWeightEstimate: "AMS-Schätzung übernehmen",
+    amsWeightAccepted: "Gewicht anhand der aktuellen AMS-Schätzung aktualisiert.",
     noPendingChanges: "Keine ausstehenden Platzänderungen.",
     usageRecorded: "Druckverbrauch erfasst.",
     error: {
       load: "Druckerübersicht konnte nicht geladen werden.",
       updateSlot: "Druckerplatz konnte nicht aktualisiert werden.",
+      amsWeightEstimateChanged:
+        "Die AMS-Schätzung oder die exakte Rollenzuordnung hat sich geändert. Öffne Gewicht aktualisieren erneut und versuche es noch einmal.",
       outgoingWeightRequired: "Gib vor dem Rollenwechsel das ausgehende Rollengewicht ein.",
       selectRollBeforeWeight: "Wähle vor der Gewichtsänderung eine Zielrolle.",
       invalidUsage: "Der Verbrauch muss größer als null Gramm sein.",

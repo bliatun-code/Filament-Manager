@@ -7,11 +7,12 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::{
-    AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-    CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, LendSpoolInput, PurgeSpoolInput,
-    ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
-    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
+    CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
+    InventoryEngine, LendSpoolInput, PurgeSpoolInput, ReceiveWishlistItemInput,
+    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
+    UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
@@ -318,6 +319,13 @@ impl CompanionService {
         self.with_inventory(|engine| engine.record_print_usage(input))
     }
 
+    pub fn accept_bambu_live_weight_estimate(
+        &self,
+        input: AcceptBambuLiveWeightEstimateInput,
+    ) -> InventoryResult<()> {
+        self.with_inventory(|engine| engine.accept_bambu_live_weight_estimate(input))
+    }
+
     pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.create_printer(input))
     }
@@ -435,6 +443,8 @@ fn apply_live_tray_to_slot(
     slot.live_color_hex = tray.and_then(|value| value.color_hex.clone());
     slot.live_tray_weight_g = tray.and_then(|value| value.tray_weight_g);
     slot.live_remaining_percent = tray.and_then(|value| value.remaining_percent);
+    slot.live_remaining_grams = tray.and_then(|value| value.remaining_grams);
+    slot.live_weight_seen_at = tray.and_then(|value| value.last_weight_seen_at.clone());
     slot.live_last_identity_seen_at = tray.and_then(|value| value.last_identity_seen_at.clone());
     slot.live_match_status = tray.and_then(|value| value.match_status.clone());
     slot.live_match_note = tray.and_then(|value| value.match_note.clone());

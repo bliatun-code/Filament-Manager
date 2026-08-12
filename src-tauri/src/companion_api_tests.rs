@@ -6,6 +6,7 @@ use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabas
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
 };
+use crate::bambu_live_observation::{default_offline_state, merge_tray_payload};
 use crate::companion_http::COMPANION_CSRF_HEADER;
 use crate::companion_payload::{build_companion_spool_qr_payload, build_qr_svg};
 use crate::companion_routes::build_router;
@@ -104,6 +105,68 @@ fn seed_db(db_path: &Path) -> Result<(), String> {
             slots_per_ams: Some(1),
         })
         .map_err(|error| error.to_string())
+}
+
+fn seed_acceptable_ams_weight(db_path: &Path) -> Result<String, String> {
+    let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
+    db.update_spool_rfid_tag("spool_1", Some("companion-ams-rfid"), None)
+        .map_err(|error| error.to_string())?;
+    db.assign_spool_to_ams_slot(
+        "printer_1",
+        "printer_1_ams_1_slot_1",
+        Some("spool_1"),
+        None,
+        None,
+        false,
+    )
+    .map_err(|error| error.to_string())?;
+    let observed_at: String = db
+        .connection()
+        .query_row(
+            "SELECT strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+1 second')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    let mut tray = merge_tray_payload(
+        None,
+        Some(0),
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tray_uuid": "companion-ams-rfid",
+            "tag_uid": "companion-ams-rfid",
+            "tray_weight": "1000",
+            "remain": 30
+        }),
+        &observed_at,
+        Some(true),
+    );
+    tray.matched_inventory_spool_id = Some("spool_1".to_string());
+    tray.matched_inventory_mode = Some("exact_rfid".to_string());
+    tray.match_status = Some("clear_match".to_string());
+    let mut observed = default_offline_state();
+    observed.online = true;
+    observed.mqtt_connected = true;
+    observed.last_seen_at = Some(observed_at.clone());
+    observed.trays = vec![tray];
+    db.save_bambu_live_integration(
+        "printer_1",
+        &BambuLiveIntegrationRow {
+            enabled: true,
+            host: Some("192.168.1.10".to_string()),
+            access_code: None,
+            access_code_configured: true,
+            access_code_binding_id: Some("companion-test-binding".to_string()),
+            access_code_stale_binding_ids: Vec::new(),
+            printer_serial: Some("COMPANION-AMS-SERIAL".to_string()),
+            last_error: None,
+            tls_identity: None,
+            observed_state: Some(observed),
+        },
+    )
+    .map_err(|error| error.to_string())?;
+    Ok(observed_at)
 }
 
 fn trusted_lan_runtime_for_address(address: &str) -> TrustedLanCompanionRuntime {
@@ -801,6 +864,93 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_pairs_session_and_requires_csrf_for_writes failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_accepts_current_ams_weight_only_through_protected_write_route() {
+    let db_path = temp_db_path("accepted-ams-weight-route");
+    let result = async {
+        seed_db(&db_path)?;
+        let observed_at = seed_acceptable_ams_weight(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let path = "/api/v1/printers/printer_1/slots/printer_1_ams_1_slot_1/spools/spool_1/bambu-live-weight-estimate/accept";
+        let body = serde_json::json!({
+            "expected_weight_seen_at": observed_at,
+            "expected_remaining_grams": 300,
+            "expected_current_grams": 1000,
+        })
+        .to_string();
+
+        let unauthorized = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(path)
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .body(Body::from(body.clone()))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(unauthorized.status(), StatusCode::UNAUTHORIZED);
+
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+        let missing_csrf = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(path)
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::from(body.clone()))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(missing_csrf.status(), StatusCode::FORBIDDEN);
+
+        let accepted = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(path)
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, csrf_token)
+                    .body(Body::from(body))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(accepted.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let spool = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected accepted spool".to_string())?;
+        assert_eq!(spool.current_weight_g, Some(300));
+        assert_eq!(spool.remaining_g, Some(300));
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_accepts_current_ams_weight_only_through_protected_write_route failed: {message}");
     }
 }
 

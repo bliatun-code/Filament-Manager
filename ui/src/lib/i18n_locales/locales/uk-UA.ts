@@ -759,7 +759,8 @@ export const ukUADictionary: DictionaryNode = {
       "recordUsage": "Не вдалося записати використання друку.",
       "selectCandidateBeforeRfid": "Спочатку виберіть цей рулон у слоті, щоб будь-яка вихідна вага рулону була оброблена перед збереженням RFID.",
       "selectRollBeforeWeight": "Виберіть цільовий кидок перед оновленням ваги.",
-      "updateSlot": "Не вдалося оновити слот принтера."
+      "updateSlot": "Не вдалося оновити слот принтера.",
+      "amsWeightEstimateChanged": "Оцінка AMS або точний збіг котушки змінилися. Знову відкрийте Оновити вагу та повторіть спробу."
     },
     "extSlot": "Слот EXT",
     "failed": "Не вдалося",
@@ -767,6 +768,10 @@ export const ukUADictionary: DictionaryNode = {
     "hideSlots": "Сховати слоти",
     "incomingWeight": "Вхідне зважування (г, необов'язково)",
     "incomingWeightPromptLabel": "Виміряна вага (г)",
+    "amsWeightEstimateHint": "AMS повідомляє цю оцінку для котушки з точним збігом RFID. Це оцінка, а не вимірювання на вагах.",
+    "amsCalculatedTotal": "Розрахована загальна вага з котушкою",
+    "useAmsWeightEstimate": "Використати оцінку AMS",
+    "amsWeightAccepted": "Вагу оновлено за поточною оцінкою AMS.",
     "incomingWeightPromptTitle": "Встановити вагу вхідного рулону",
     "jobOptional": "Назва посади (необов'язково)",
     "jobs": "Завдання",

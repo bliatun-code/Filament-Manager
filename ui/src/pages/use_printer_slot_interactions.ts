@@ -1,6 +1,14 @@
 import {
+  buildAcceptableAmsWeightEstimate,
+  canOfferAmsWeightEstimateFromSource,
+  isCurrentAmsWeightEstimate,
+  sameAmsWeightEstimate,
+} from "../lib/printer_ams_weight_estimate";
+import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -34,6 +42,7 @@ import {
 import {
   writePreparedMeasuredWeightUpdate,
   writePreparedPrinterSlotAssignment,
+  writeAcceptedBambuLiveWeightEstimate,
   writePrinterSlotAssignment,
   writeSpoolMeasuredWeight,
 } from "../lib/printer_slot_writes";
@@ -114,10 +123,21 @@ export function usePrinterSlotInteractions({
     useState<IncomingWeightPrompt | null>(null);
   const [incomingWeightValue, setIncomingWeightValue] = useState("");
   const [outgoingWeightValue, setOutgoingWeightValue] = useState("");
+  const [amsWeightClockMs, setAmsWeightClockMs] = useState(() => Date.now());
   const [rfidOverridePrompt, setRfidOverridePrompt] =
     useState<SlotRfidOverridePrompt | null>(null);
   const [slotCatalogOnboardingPrompt, setSlotCatalogOnboardingPrompt] =
     useState<SlotCatalogOnboardingPrompt | null>(null);
+  const amsWeightAcceptInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!incomingWeightPrompt?.amsWeightEstimate) {
+      return;
+    }
+    setAmsWeightClockMs(Date.now());
+    const timer = window.setInterval(() => setAmsWeightClockMs(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [incomingWeightPrompt]);
 
   const resetPrinterInteractionState = useCallback(() => {
     setSlotDrafts({});
@@ -213,6 +233,42 @@ export function usePrinterSlotInteractions({
     [spoolsById],
   );
 
+  const currentIncomingAmsWeightEstimate = useMemo(() => {
+    const expected = incomingWeightPrompt?.amsWeightEstimate ?? null;
+    if (!incomingWeightPrompt || !expected) {
+      return null;
+    }
+    const printer = printers.find(
+      (item) => item.printer.id === incomingWeightPrompt.printerId,
+    );
+    const slot = printer?.slots.find(
+      (item) => item.slot_id === incomingWeightPrompt.slotId,
+    );
+    const row = findSpoolById(incomingWeightPrompt.targetSpoolId);
+    const liveConfig = bambuLiveIntegrations[incomingWeightPrompt.printerId];
+    const tray = printer && slot ? findLiveTrayForSlot(printer.printer.id, slot).tray : null;
+    return isCurrentAmsWeightEstimate(
+      expected,
+      clientPrinterSource,
+      liveConfig,
+      slot,
+      row,
+      tray,
+      amsWeightClockMs,
+    )
+      ? expected
+      : null;
+  }, [
+    amsWeightClockMs,
+    bambuLiveIntegrations,
+    clientPrinterSource,
+    findLiveTrayForSlot,
+    findSpoolById,
+    incomingWeightPrompt,
+    printers,
+  ]);
+  const liveAmsWeightAvailable = currentIncomingAmsWeightEstimate != null;
+
   const openRfidOverrideDialog = useCallback(
     (
       printer: PrinterOverviewRow,
@@ -240,17 +296,25 @@ export function usePrinterSlotInteractions({
 
   const openIncomingWeightDialog = useCallback(
     (printerId: string, slot: PrinterAmsSlotRow, row: SpoolWithMasterRow) => {
+      const { liveConfig, tray } = findLiveTrayForSlot(printerId, slot);
+      const liveTray = canOfferAmsWeightEstimateFromSource(
+        clientPrinterSource,
+        liveConfig,
+      )
+        ? tray
+        : null;
       const prepared = prepareIncomingWeightDialog(
         printerId,
         slot,
         row,
         resolveSpoolTareWeightById,
+        liveTray,
       );
       setIncomingWeightPrompt(prepared.prompt);
       setIncomingWeightValue(prepared.incomingWeightValue);
       setOutgoingWeightValue(prepared.outgoingWeightValue);
     },
-    [resolveSpoolTareWeightById],
+    [clientPrinterSource, findLiveTrayForSlot, resolveSpoolTareWeightById],
   );
 
   const openEmptySlotWeightDialog = useCallback(
@@ -517,6 +581,114 @@ export function usePrinterSlotInteractions({
     outgoingWeightValue,
     printers,
     setError,
+    t,
+  ]);
+
+  const acceptIncomingAmsWeightEstimate = useCallback(async () => {
+    const expected = incomingWeightPrompt?.amsWeightEstimate ?? null;
+    if (
+      !incomingWeightPrompt ||
+      !expected ||
+      !tauri ||
+      busy ||
+      amsWeightAcceptInFlightRef.current
+    ) {
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+
+    const printer = printers.find(
+      (item) => item.printer.id === incomingWeightPrompt.printerId,
+    );
+    const slot = printer?.slots.find(
+      (item) => item.slot_id === incomingWeightPrompt.slotId,
+    );
+    const row = findSpoolById(incomingWeightPrompt.targetSpoolId);
+    const currentTray =
+      liveAmsWeightAvailable && printer && slot
+        ? findLiveTrayForSlot(printer.printer.id, slot).tray
+        : null;
+    const current =
+      slot && row
+        ? buildAcceptableAmsWeightEstimate(slot, row, currentTray)
+        : null;
+    if (!printer || !slot || !row || !sameAmsWeightEstimate(expected, current)) {
+      setError(
+        t(
+          "printers.error.amsWeightEstimateChanged",
+          "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
+        ),
+      );
+      return;
+    }
+
+    amsWeightAcceptInFlightRef.current = true;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await writeAcceptedBambuLiveWeightEstimate(
+        {
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+        },
+        {
+          printer_id: printer.printer.id,
+          slot_id: slot.slot_id,
+          spool_id: row.spool.id,
+          expected_weight_seen_at: expected.weightSeenAt,
+          expected_remaining_grams: expected.remainingGrams,
+          expected_current_grams: expected.expectedCurrentGrams,
+        },
+      );
+      await reloadData();
+      setIncomingWeightPrompt(null);
+      setIncomingWeightValue("");
+      setOutgoingWeightValue("");
+      setInfo(
+        t(
+          "printers.amsWeightAccepted",
+          "Weight updated from the current AMS estimate.",
+        ),
+      );
+    } catch (acceptError) {
+      console.error(acceptError);
+      setError(
+        printerCommandErrorText(
+          acceptError,
+          t(
+            "printers.error.amsWeightEstimateChanged",
+            "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
+          ),
+        ),
+      );
+    } finally {
+      amsWeightAcceptInFlightRef.current = false;
+      setBusy(false);
+    }
+  }, [
+    busy,
+    canUseClientHostWrite,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    ensureLocalWriteAllowed,
+    findLiveTrayForSlot,
+    findSpoolById,
+    incomingWeightPrompt,
+    liveAmsWeightAvailable,
+    printers,
+    reloadData,
+    setBusy,
+    setError,
+    setInfo,
+    tauri,
     t,
   ]);
 
@@ -1037,6 +1209,8 @@ export function usePrinterSlotInteractions({
 
   return {
     allowedSpoolsForSlot,
+    acceptIncomingAmsWeightEstimate,
+    liveAmsWeightAvailable,
     cancelIncomingWeightDialog,
     confirmIncomingWeightDialog,
     findAllowedSpoolForSlot,

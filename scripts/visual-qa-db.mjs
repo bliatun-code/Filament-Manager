@@ -25,6 +25,8 @@ export const VISUAL_QA_PROFILE_BASE = "base";
 export const VISUAL_QA_PROFILE_RICH = "rich";
 export const VISUAL_QA_FIXTURE_PRINTER_SLOT_ONBOARDING = "printer-slot-onboarding";
 export const VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE = "printer-rfid-override";
+export const VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE =
+  "printer-ams-weight-estimate";
 export const VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES =
   "settings-catalog-missing-swatches";
 export const VISUAL_QA_FIXTURE_WISHLIST_QUEUE = "wishlist-queue";
@@ -341,6 +343,10 @@ export function normalizeVisualQaDatabaseFixtureScenario(scenario) {
     case "slot-rfid-override":
     case "printer-slot-rfid-override":
       return VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE;
+    case "printer-ams-weight-estimate":
+    case "ams-weight-estimate":
+    case "printer-weight-estimate":
+      return VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE;
     case "settings-catalog-swatch-review":
     case "settings-catalog-missing-swatches":
     case "catalog-swatch-review":
@@ -1060,6 +1066,154 @@ async function applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options =
   }
 }
 
+function chooseAmsWeightEstimateFixtureSpool(db, preferredSpoolId) {
+  return db
+    .prepare(
+      `SELECT fs.id AS spool_id,
+              m.id AS master_id,
+              m.vendor,
+              m.material,
+              m.filament_name,
+              m.color_name,
+              m.hex_color
+       FROM filament_spools fs
+       JOIN filament_master_list m ON m.id = fs.master_id
+       WHERE fs.deleted_at IS NULL
+         AND lower(m.vendor) LIKE '%bambu%'
+         AND upper(trim(fs.status)) NOT IN ('EMPTY', 'LOST', 'MISSING', 'DELETED', 'BORROWED', 'LOANED_OUT')
+       ORDER BY
+         CASE WHEN fs.id = ? THEN 0 ELSE 1 END,
+         lower(m.material),
+         lower(m.filament_name),
+         lower(m.color_name),
+         fs.id
+       LIMIT 1`,
+    )
+    .get(preferredSpoolId ?? "");
+}
+
+async function applyPrinterAmsWeightEstimateFixtureWithBetterSqlite(dbPath, options = {}) {
+  const module = await import("better-sqlite3");
+  const Database = module.default ?? module;
+  const db = new Database(dbPath);
+  try {
+    const target = findSlotOnboardingFixtureTarget(db);
+    if (!target) {
+      throw new Error("No loaded Bambu Live AMS tray was found for AMS weight-estimate QA.");
+    }
+    const spool = chooseAmsWeightEstimateFixtureSpool(db, target.slot.spool_id);
+    if (!spool) {
+      throw new Error("No available Bambu spool was found for AMS weight-estimate QA.");
+    }
+
+    const spoolColumns = sqliteTableColumns(db, "filament_spools");
+    ensureSqliteColumns(
+      spoolColumns,
+      "filament_spools",
+      [
+        "id",
+        "status",
+        "initial_weight_g",
+        "current_weight_g",
+        "remaining_g",
+        "spool_tare_weight_g",
+        "rfid_tag",
+        "rfid_observed_at",
+        "deleted_at",
+        "updated_at",
+      ],
+      "AMS weight-estimate visual QA fixture",
+    );
+
+    const now = (options.now ?? new Date()).toISOString();
+    const fixtureRfid = `VISUALQA-WEIGHT-${target.slot.slot_id}`;
+    const nextTray = {
+      ...target.tray,
+      loaded: true,
+      filament_type: spool.material,
+      filament_name: spool.filament_name,
+      color_hex: spool.hex_color || target.tray.color_hex || "#111827",
+      tray_weight_g: 1000,
+      remaining_percent: 30,
+      remaining_grams: 300,
+      last_weight_seen_at: now,
+      observed_rfid_tag: fixtureRfid,
+      tray_uuid: fixtureRfid,
+      chip_id: fixtureRfid,
+      tray_id_name: `${spool.filament_name} (${spool.color_name})`,
+      last_identity_seen_at: now,
+      matched_inventory_spool_id: spool.spool_id,
+      matched_inventory_mode: "exact_rfid",
+      match_status: "clear_match",
+      match_note: "Visual QA fixture: fresh exact RFID AMS weight estimate.",
+    };
+    const nextConfig = structuredClone(target.config);
+    nextConfig.enabled = true;
+    nextConfig.observed_state = nextConfig.observed_state ?? {};
+    nextConfig.observed_state.online = true;
+    nextConfig.observed_state.mqtt_connected = true;
+    nextConfig.observed_state.last_seen_at = now;
+    nextConfig.observed_state.active_ams_index = nextTray.ams_index ?? null;
+    nextConfig.observed_state.active_tray_index = nextTray.tray_index;
+    nextConfig.observed_state.trays = [...(nextConfig.observed_state.trays ?? [])];
+    nextConfig.observed_state.trays[target.trayArrayIndex] = nextTray;
+
+    const transaction = db.transaction(() => {
+      db.prepare(
+        `UPDATE ams_slots
+         SET spool_id = NULL
+         WHERE spool_id = ? AND id <> ?`,
+      ).run(spool.spool_id, target.slot.slot_id);
+      db.prepare(
+        `UPDATE ams_slots
+         SET spool_id = ?,
+             rfid_override_tray_uuid = NULL,
+             rfid_override_color_hex = NULL,
+             live_cache_cleared_at = NULL,
+             last_seen_at = ?
+         WHERE id = ?`,
+      ).run(spool.spool_id, now, target.slot.slot_id);
+      db.prepare(
+        `UPDATE filament_spools
+         SET status = 'ASSIGNED',
+             initial_weight_g = 1000,
+             current_weight_g = 1000,
+             remaining_g = 1000,
+             spool_tare_weight_g = 250,
+             rfid_tag = ?,
+             rfid_observed_at = ?,
+             deleted_at = NULL,
+             updated_at = ?
+         WHERE id = ?`,
+      ).run(fixtureRfid, now, now, spool.spool_id);
+      db.prepare("UPDATE settings SET value = ? WHERE key = ?").run(
+        JSON.stringify(nextConfig),
+        target.settingKey,
+      );
+    });
+    transaction();
+
+    return {
+      fixture: VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE,
+      printerId: target.printerId,
+      slotId: target.slot.slot_id,
+      spoolId: spool.spool_id,
+      masterId: spool.master_id,
+      material: spool.material,
+      filamentName: spool.filament_name,
+      colorName: spool.color_name,
+      rfid: fixtureRfid,
+      inventoryRemainingGrams: 1000,
+      amsRemainingPercent: 30,
+      amsRemainingGrams: 300,
+      trayWeightG: 1000,
+      weightSeenAt: now,
+    };
+  } finally {
+    db.close();
+  }
+}
+
 export function chooseBalancedCatalogSwatchFixtureRows(candidates, limit = 8) {
   const safeLimit = Math.max(0, Number.parseInt(String(limit), 10) || 0);
   if (safeLimit === 0) {
@@ -1580,6 +1734,9 @@ export async function applyVisualQaDatabaseFixture(dbPath, scenario, options = {
   if (fixture === VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE) {
     return applyPrinterRfidOverrideFixtureWithBetterSqlite(dbPath, options);
   }
+  if (fixture === VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE) {
+    return applyPrinterAmsWeightEstimateFixtureWithBetterSqlite(dbPath, options);
+  }
   if (fixture === VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES) {
     return applySettingsCatalogMissingSwatchesFixtureWithBetterSqlite(dbPath);
   }
@@ -1731,6 +1888,10 @@ export function formatVisualQaDatasetReport({
       } else if (fixture.fixture === VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE) {
         lines.push(
           `  - ${fixture.fixture}: ${fixture.slotId} -> ${fixture.material} ${fixture.filamentName} ${fixture.colorName}`,
+        );
+      } else if (fixture.fixture === VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE) {
+        lines.push(
+          `  - ${fixture.fixture}: ${fixture.slotId} -> ${fixture.spoolId}, ${fixture.inventoryRemainingGrams}g inventory, ${fixture.amsRemainingPercent}%/${fixture.amsRemainingGrams}g AMS`,
         );
       } else if (fixture.fixture === VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE) {
         const previous = fixture.previousInterfaceAddress

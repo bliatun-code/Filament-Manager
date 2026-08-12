@@ -112,6 +112,8 @@ fn make_slot() -> PrinterAmsSlotRow {
         live_color_hex: None,
         live_tray_weight_g: None,
         live_remaining_percent: None,
+        live_remaining_grams: None,
+        live_weight_seen_at: None,
         live_last_identity_seen_at: None,
         live_match_status: None,
         live_match_note: None,
@@ -143,6 +145,7 @@ fn make_tray() -> BambuLiveObservedTrayRow {
         tray_weight_g: Some(1000),
         remaining_percent: Some(80),
         remaining_grams: Some(800),
+        last_weight_seen_at: None,
         observed_rfid_tag: Some("legacy".to_string()),
         tray_uuid: Some("tray-uuid-unknown".to_string()),
         chip_id: Some("chip".to_string()),
@@ -2407,6 +2410,7 @@ fn enrich_with_match_status_records_live_usage_session_for_sane_decrease() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(95),
             remaining_grams: Some(950),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -2450,6 +2454,150 @@ fn enrich_with_match_status_records_live_usage_session_for_sane_decrease() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("enrich_with_match_status_records_live_usage_session_for_sane_decrease failed: {message}");
+    }
+}
+
+#[test]
+fn live_weight_sync_rolls_back_all_usage_and_weight_writes_on_late_event_failure() {
+    let db_path = temp_db_path("usage-sync-late-event-rollback");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Basic",
+                color_name: "Black",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "spool_1".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("tray-rfid-1".to_string()),
+            rfid_observed_at: None,
+            status: "ASSIGNED".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(1000),
+            remaining_g: Some(1000),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+        db.assign_spool_to_ams_slot(
+            "printer_1",
+            "printer_1_ams_1_slot_1",
+            Some("spool_1"),
+            None,
+            None,
+            false,
+        )
+        .map_err(|error| error.to_string())?;
+        db.connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_live_auto_weight_sync
+                 BEFORE INSERT ON printer_live_events
+                 WHEN NEW.event_type = 'LIVE_AUTO_WEIGHT_SYNC'
+                 BEGIN
+                   SELECT RAISE(FAIL, 'forced late live sync failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.gcode_state = Some("RUNNING".to_string());
+        observed.print_type = Some("cloud".to_string());
+        observed.subtask_id = Some("rollback-session".to_string());
+        observed.subtask_name = Some("Atomic rollback".to_string());
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Basic".to_string()),
+            color_hex: Some("#111111".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(95),
+            remaining_grams: Some(950),
+            last_weight_seen_at: Some(observed_at.clone()),
+            observed_rfid_tag: None,
+            tray_uuid: Some("tray-rfid-1".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            nozzle_temp_min_c: None,
+            nozzle_temp_max_c: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        let error = crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .expect_err("late live event failure should abort weight synchronization");
+        assert!(error.to_string().contains("forced late live sync failure"));
+
+        let spool = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .expect("spool should remain present");
+        assert_eq!(spool.current_weight_g, Some(1000));
+        assert_eq!(spool.remaining_g, Some(1000));
+        let counts: (i64, i64, i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT
+                   (SELECT COUNT(*) FROM weight_readings WHERE spool_id = 'spool_1'),
+                   (SELECT COUNT(*) FROM spool_history_events
+                    WHERE spool_id = 'spool_1' AND event_type = 'WEIGHT_UPDATED'),
+                   (SELECT COUNT(*) FROM printer_live_usage_session_spools
+                    WHERE spool_id = 'spool_1'),
+                   (SELECT COUNT(*) FROM printer_live_events
+                    WHERE event_type = 'LIVE_AUTO_WEIGHT_SYNC')",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(counts, (0, 0, 0, 0));
+        let session_total: i64 = db
+            .connection()
+            .query_row(
+                "SELECT total_used_g FROM printer_live_usage_sessions
+                 WHERE session_key = 'subtask:rollback-session'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(session_total, 0);
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("live_weight_sync_rolls_back_all_usage_and_weight_writes_on_late_event_failure failed: {message}");
     }
 }
 
@@ -2524,6 +2672,7 @@ fn enrich_with_match_status_keeps_live_loaded_zero_gram_roll_assigned() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(0),
             remaining_grams: Some(0),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -2640,6 +2789,7 @@ fn enrich_with_match_status_keeps_present_bit_slot_assigned_on_empty_payload() {
             tray_weight_g: None,
             remaining_percent: None,
             remaining_grams: None,
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: None,
             chip_id: None,
@@ -2748,6 +2898,7 @@ fn enrich_with_match_status_does_not_apply_global_exist_bits_to_indexed_ams_tray
             tray_weight_g: None,
             remaining_percent: None,
             remaining_grams: None,
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: None,
             chip_id: None,
@@ -2869,6 +3020,7 @@ fn enrich_with_match_status_recovers_loaded_zero_rebound_from_same_live_roll() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(2),
             remaining_grams: Some(20),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -3009,6 +3161,7 @@ fn enrich_with_match_status_blocks_usage_accounting_when_nozzle_is_below_extrusi
             tray_weight_g: Some(1000),
             remaining_percent: Some(90),
             remaining_grams: Some(900),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-3".to_string()),
             chip_id: None,
@@ -3160,6 +3313,7 @@ fn enrich_with_match_status_records_recent_hot_cold_nozzle_ams_lag() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(93),
             remaining_grams: Some(930),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-3".to_string()),
             chip_id: None,
@@ -3304,6 +3458,7 @@ fn enrich_with_match_status_ignores_stale_anonymous_progress_for_usage_context()
             tray_weight_g: Some(1000),
             remaining_percent: Some(93),
             remaining_grams: Some(930),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-3".to_string()),
             chip_id: None,
@@ -3449,6 +3604,7 @@ fn enrich_with_match_status_accepts_long_job_drop_when_cold_nozzle_signal_is_sta
             tray_weight_g: Some(1000),
             remaining_percent: Some(32),
             remaining_grams: Some(320),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -3621,6 +3777,7 @@ fn enrich_with_match_status_rejects_large_failed_job_ams_drop() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(61),
             remaining_grams: Some(610),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -4249,6 +4406,7 @@ fn enrich_with_match_status_corrects_live_usage_when_ams_rebounds() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(84),
             remaining_grams: Some(840),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -4394,6 +4552,7 @@ fn enrich_with_match_status_keeps_stale_finish_job_running_and_preserves_usage_r
             tray_weight_g: Some(1000),
             remaining_percent: Some(97),
             remaining_grams: Some(970),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-2".to_string()),
             chip_id: None,
@@ -4590,6 +4749,7 @@ fn enrich_with_match_status_does_not_attach_stale_finished_job_to_weight_sync() 
             tray_weight_g: Some(1000),
             remaining_percent: Some(96),
             remaining_grams: Some(960),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-3".to_string()),
             chip_id: None,
@@ -4731,6 +4891,7 @@ fn enrich_with_match_status_preserves_long_print_usage_across_late_rebounds_and_
                 tray_weight_g: Some(1000),
                 remaining_percent: Some(remaining_grams / 10),
                 remaining_grams: Some(remaining_grams),
+                last_weight_seen_at: None,
                 observed_rfid_tag: None,
                 tray_uuid: Some("tray-rfid-1".to_string()),
                 chip_id: None,
@@ -5261,6 +5422,7 @@ fn enrich_with_match_status_rebases_pre_usage_ams_rebound_before_counting_drop()
                 tray_weight_g: Some(1000),
                 remaining_percent: Some(remaining_grams / 10),
                 remaining_grams: Some(remaining_grams),
+                last_weight_seen_at: None,
                 observed_rfid_tag: None,
                 tray_uuid: Some("tray-rfid-1".to_string()),
                 chip_id: None,
@@ -5430,6 +5592,7 @@ fn enrich_with_match_status_promotes_unknown_print_session_and_corrects_late_reb
                 tray_weight_g: Some(1000),
                 remaining_percent: Some(remaining_grams / 10),
                 remaining_grams: Some(remaining_grams),
+                last_weight_seen_at: None,
                 observed_rfid_tag: None,
                 tray_uuid: Some("tray-rfid-1".to_string()),
                 chip_id: None,
@@ -5604,6 +5767,7 @@ fn live_weight_sync_logs_recorded_usage_decision_for_warmup_delta() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(95),
             remaining_grams: Some(950),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -5731,6 +5895,7 @@ fn live_weight_sync_records_small_initial_running_delta() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(45),
             remaining_grams: Some(450),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -5886,6 +6051,7 @@ fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_sessio
             tray_weight_g: Some(1000),
             remaining_percent: Some(32),
             remaining_grams: Some(320),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -6047,6 +6213,7 @@ fn enrich_with_match_status_ignores_stale_near_finish_tail_after_completed_sessi
             tray_weight_g: Some(1000),
             remaining_percent: Some(24),
             remaining_grams: Some(240),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -6191,6 +6358,7 @@ fn repeated_live_weight_increases_are_deduped_in_live_events() {
             tray_weight_g: Some(1000),
             remaining_percent: Some(96),
             remaining_grams: Some(960),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -6341,6 +6509,7 @@ fn enrich_with_match_status_ignores_small_near_finish_ams_drop_after_established
             tray_weight_g: Some(1000),
             remaining_percent: Some(47),
             remaining_grams: Some(470),
+            last_weight_seen_at: None,
             observed_rfid_tag: None,
             tray_uuid: Some("tray-rfid-1".to_string()),
             chip_id: None,
@@ -6448,6 +6617,210 @@ fn merge_tray_payload_derives_remaining_grams_from_tray_weight() {
     assert_eq!(merged.tray_weight_g, Some(250));
     assert_eq!(merged.remaining_percent, Some(33));
     assert_eq!(merged.remaining_grams, Some(83));
+    assert_eq!(
+        merged.last_weight_seen_at.as_deref(),
+        Some("2026-04-16T14:05:00Z")
+    );
+}
+
+#[test]
+fn merge_tray_payload_refreshes_weight_time_for_new_remain_with_known_tray_weight() {
+    let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({ "id": 0, "remain": 25 }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_weight_g, Some(1000));
+    assert_eq!(merged.remaining_percent, Some(25));
+    assert_eq!(merged.remaining_grams, Some(250));
+    assert_eq!(
+        merged.last_weight_seen_at.as_deref(),
+        Some("2026-04-16T14:05:00Z")
+    );
+}
+
+#[test]
+fn merge_tray_payload_does_not_refresh_weight_time_without_new_valid_remain() {
+    let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({ "id": 0, "tray_weight": "900" }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_weight_g, Some(900));
+    assert_eq!(merged.remaining_grams, Some(800));
+    assert_eq!(
+        merged.last_weight_seen_at.as_deref(),
+        Some("2026-04-16T14:00:00Z")
+    );
+}
+
+#[test]
+fn merge_tray_payload_drops_carried_weight_when_roll_identity_changes() {
+    let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tray_uuid": "replacement-roll",
+            "tag_uid": "replacement-roll",
+            "tray_type": "PLA",
+            "tray_sub_brands": "Basic",
+            "tray_color": "00FF00FF"
+        }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_uuid.as_deref(), Some("replacement-roll"));
+    assert_eq!(merged.tray_weight_g, None);
+    assert_eq!(merged.remaining_percent, None);
+    assert_eq!(merged.remaining_grams, None);
+    assert_eq!(merged.last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_payload_prioritizes_changed_uuid_over_shared_tag_when_resetting_weight() {
+    let mut previous = make_tray();
+    previous.tray_uuid = Some("roll-a".to_string());
+    previous.observed_rfid_tag = Some("shared-tag".to_string());
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tray_uuid": "roll-c",
+            "tag_uid": "shared-tag",
+            "remain": 25
+        }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_uuid.as_deref(), Some("roll-c"));
+    assert_eq!(merged.tray_weight_g, None);
+    assert_eq!(merged.remaining_percent, Some(25));
+    assert_eq!(merged.remaining_grams, None);
+    assert_eq!(merged.last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_payload_treats_new_uuid_as_identity_change_from_legacy_tag() {
+    let mut previous = make_tray();
+    previous.tray_uuid = None;
+    previous.observed_rfid_tag = Some("shared-tag".to_string());
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tray_uuid": "replacement-roll",
+            "tag_uid": "shared-tag",
+            "remain": 25
+        }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_uuid.as_deref(), Some("replacement-roll"));
+    assert_eq!(merged.tray_weight_g, None);
+    assert_eq!(merged.remaining_percent, Some(25));
+    assert_eq!(merged.remaining_grams, None);
+    assert_eq!(merged.last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_payload_treats_new_tag_as_identity_change_from_legacy_uuid() {
+    let mut previous = make_tray();
+    previous.tray_uuid = Some("roll-a".to_string());
+    previous.observed_rfid_tag = None;
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tag_uid": "roll-b"
+        }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_uuid, None);
+    assert_eq!(merged.observed_rfid_tag.as_deref(), Some("roll-b"));
+    assert_eq!(merged.tray_weight_g, None);
+    assert_eq!(merged.remaining_percent, None);
+    assert_eq!(merged.remaining_grams, None);
+    assert_eq!(merged.last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_payload_drops_anonymous_weight_when_first_strong_identity_arrives() {
+    let mut previous = make_tray();
+    previous.tray_uuid = None;
+    previous.observed_rfid_tag = None;
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tray_uuid": "first-strong-roll",
+            "tag_uid": "first-strong-roll"
+        }),
+        "2026-04-16T14:05:00Z",
+        Some(true),
+    );
+
+    assert_eq!(merged.tray_uuid.as_deref(), Some("first-strong-roll"));
+    assert_eq!(merged.tray_weight_g, None);
+    assert_eq!(merged.remaining_percent, None);
+    assert_eq!(merged.remaining_grams, None);
+    assert_eq!(merged.last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_payload_exist_bits_empty_clears_weight_even_if_payload_contains_stale_values() {
+    let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let merged = merge_tray_payload(
+        Some(&previous),
+        None,
+        0,
+        &serde_json::json!({
+            "id": 0,
+            "tray_weight": "1000",
+            "remain": 80
+        }),
+        "2026-04-16T14:05:00Z",
+        Some(false),
+    );
+
+    assert!(!merged.loaded);
+    assert_eq!(merged.tray_weight_g, None);
+    assert_eq!(merged.remaining_percent, None);
+    assert_eq!(merged.remaining_grams, None);
+    assert_eq!(merged.last_weight_seen_at, None);
 }
 
 #[test]
@@ -6565,6 +6938,7 @@ fn merge_tray_snapshots_carries_identity_and_preset_for_partial_loaded_update() 
 #[test]
 fn merge_tray_snapshots_does_not_carry_identity_when_loaded_metadata_changes() {
     let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
     previous.tray_info_idx = Some("GFSA00_04".to_string());
     previous.tray_id_name = Some("Bambu PLA Basic @BBL P1S 0.4 nozzle".to_string());
 
@@ -6576,6 +6950,10 @@ fn merge_tray_snapshots_does_not_carry_identity_when_loaded_metadata_changes() {
     next.tray_info_idx = None;
     next.tray_id_name = None;
     next.last_identity_seen_at = None;
+    next.tray_weight_g = None;
+    next.remaining_percent = None;
+    next.remaining_grams = None;
+    next.last_weight_seen_at = None;
 
     let merged = super::merge_tray_snapshots(&[previous], &[next]);
 
@@ -6587,13 +6965,138 @@ fn merge_tray_snapshots_does_not_carry_identity_when_loaded_metadata_changes() {
     assert!(merged[0].tray_info_idx.is_none());
     assert!(merged[0].tray_id_name.is_none());
     assert!(merged[0].last_identity_seen_at.is_none());
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_snapshots_does_not_carry_weight_when_metadata_changes_with_same_identity() {
+    let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+
+    let mut next = make_tray();
+    next.filament_name = Some("eSUN PLA+".to_string());
+    next.tray_weight_g = None;
+    next.remaining_percent = None;
+    next.remaining_grams = None;
+    next.last_weight_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged[0].tray_uuid.as_deref(), Some("tray-uuid-unknown"));
+    assert_eq!(merged[0].observed_rfid_tag.as_deref(), Some("legacy"));
+    assert_eq!(merged[0].filament_name.as_deref(), Some("eSUN PLA+"));
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_snapshots_does_not_carry_weight_across_persisted_identity_replacement() {
+    let mut previous = make_tray();
+    previous.tray_uuid = Some("roll-a".to_string());
+    previous.observed_rfid_tag = Some("shared-tag".to_string());
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let mut next = make_tray();
+    next.tray_uuid = Some("roll-c".to_string());
+    next.observed_rfid_tag = Some("shared-tag".to_string());
+    next.tray_weight_g = None;
+    next.remaining_percent = None;
+    next.remaining_grams = None;
+    next.last_weight_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged[0].tray_uuid.as_deref(), Some("roll-c"));
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_snapshots_treats_new_uuid_as_identity_change_from_legacy_tag() {
+    let mut previous = make_tray();
+    previous.tray_uuid = None;
+    previous.observed_rfid_tag = Some("shared-tag".to_string());
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let mut next = make_tray();
+    next.tray_uuid = Some("replacement-roll".to_string());
+    next.observed_rfid_tag = Some("shared-tag".to_string());
+    next.tray_weight_g = None;
+    next.remaining_percent = None;
+    next.remaining_grams = None;
+    next.last_weight_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged[0].tray_uuid.as_deref(), Some("replacement-roll"));
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_snapshots_treats_new_tag_as_identity_change_from_legacy_uuid() {
+    let mut previous = make_tray();
+    previous.tray_uuid = Some("roll-a".to_string());
+    previous.observed_rfid_tag = None;
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let mut next = make_tray();
+    next.tray_uuid = None;
+    next.observed_rfid_tag = Some("roll-b".to_string());
+    next.tray_weight_g = None;
+    next.remaining_percent = None;
+    next.remaining_grams = None;
+    next.last_weight_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged[0].tray_uuid, None);
+    assert_eq!(merged[0].observed_rfid_tag.as_deref(), Some("roll-b"));
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
+}
+
+#[test]
+fn merge_tray_snapshots_drops_anonymous_weight_when_first_strong_identity_arrives() {
+    let mut previous = make_tray();
+    previous.tray_uuid = None;
+    previous.observed_rfid_tag = None;
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
+    let mut next = make_tray();
+    next.tray_uuid = Some("first-strong-roll".to_string());
+    next.observed_rfid_tag = Some("first-strong-roll".to_string());
+    next.tray_weight_g = None;
+    next.remaining_percent = None;
+    next.remaining_grams = None;
+    next.last_weight_seen_at = None;
+
+    let merged = super::merge_tray_snapshots(&[previous], &[next]);
+
+    assert_eq!(merged[0].tray_uuid.as_deref(), Some("first-strong-roll"));
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
 }
 
 #[test]
 fn merge_tray_snapshots_allows_empty_update_to_clear_loaded_state() {
-    let previous = make_tray();
+    let mut previous = make_tray();
+    previous.last_weight_seen_at = Some("2026-04-16T14:00:00Z".to_string());
     let next = BambuLiveObservedTrayRow {
         loaded: false,
+        tray_weight_g: None,
+        remaining_percent: None,
+        remaining_grams: None,
+        last_weight_seen_at: None,
         observed_rfid_tag: None,
         tray_uuid: None,
         chip_id: None,
@@ -6616,4 +7119,8 @@ fn merge_tray_snapshots_allows_empty_update_to_clear_loaded_state() {
     assert_eq!(merged.len(), 1);
     assert!(!merged[0].loaded);
     assert!(merged[0].tray_uuid.is_none());
+    assert_eq!(merged[0].tray_weight_g, None);
+    assert_eq!(merged[0].remaining_percent, None);
+    assert_eq!(merged[0].remaining_grams, None);
+    assert_eq!(merged[0].last_weight_seen_at, None);
 }

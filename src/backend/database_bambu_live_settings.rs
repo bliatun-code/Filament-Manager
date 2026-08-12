@@ -229,6 +229,7 @@ fn bambu_live_revision_view(config: &BambuLiveIntegrationRow) -> BambuLiveIntegr
         observed.last_seen_at = None;
         observed.raw_payload_json = None;
         for tray in &mut observed.trays {
+            tray.last_weight_seen_at = None;
             tray.last_identity_seen_at = None;
             tray.last_empty_seen_at = None;
             tray.empty_observation_count = tray

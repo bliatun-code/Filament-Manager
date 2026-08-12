@@ -520,6 +520,10 @@ export const fiFIDictionary: DictionaryNode = {
     "liveRfidRegisteredAndAssigned": "RFID tallennettiin ja ehdotettu rulla määritettiin tähän paikkaan.",
     "slotOnboardingLiveIdentityChanged": "Live-AMS-identiteetti muutettiin ennen tallennusta. Avaa luukku uudelleen ja vahvista nykyinen rulla.",
     "incomingWeightPromptLabel": "Mitattu paino (g)",
+    "amsWeightEstimateHint": "AMS ilmoittaa tämän arvion rullalle, jolla on tarkka RFID-osuma. Kyse on arviosta, ei vaakamittauksesta.",
+    "amsCalculatedTotal": "Laskettu kokonaispaino keloineen",
+    "useAmsWeightEstimate": "Käytä AMS-arviota",
+    "amsWeightAccepted": "Paino päivitettiin nykyisen AMS-arvion perusteella.",
     "updateWeight": "Päivitä paino",
     "incomingWeightPromptTitle": "Aseta saapuvan rullan paino",
     "liveCatalogCreatedAndAssigned": "{label} lisättiin, RFID tallennettiin ja rulla määrättiin tähän paikkaan.",
@@ -539,6 +543,7 @@ export const fiFIDictionary: DictionaryNode = {
       "load": "Tulostimen yleiskatsauksen lataaminen epäonnistui.",
       "selectRollBeforeWeight": "Valitse tavoiterulla ennen painon päivittämistä.",
       "updateSlot": "Tulostimen sijainnin päivittäminen epäonnistui.",
+      "amsWeightEstimateChanged": "AMS-arvio tai tarkka rullaosuma muuttui. Avaa Päivitä paino uudelleen ja yritä uudestaan.",
       "invalidUsage": "Käyttögramman on oltava suurempi kuin nolla.",
       "selectCandidateBeforeRfid": "Valitse tämä rulla urassa ensin, jotta kaikki lähtevät rullan painot käsitellään ennen RFID:n tallentamista.",
       "createFromCatalogRequiresEmptySlot": "Tyhjennä tai vaihda nykyinen rulla normaalin luukkuvirran kautta ennen uuden luettelorullan luomista tähän."
