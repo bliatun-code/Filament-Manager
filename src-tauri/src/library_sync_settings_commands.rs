@@ -1,4 +1,5 @@
 use crate::backend::filament_database::LibrarySyncSettingsRow;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_host_client::{
     delete_library_sync_device_token, load_library_sync_device_token_bytes_optional,
@@ -24,26 +25,28 @@ enum LibrarySyncDeviceTokenSnapshot {
 }
 
 #[tauri::command]
-pub(crate) fn get_library_sync_settings(
+pub(crate) async fn get_library_sync_settings(
     state: tauri::State<'_, AppState>,
 ) -> Result<LibrarySyncSettingsRow, String> {
-    get_library_sync_settings_inner(&state)
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || get_library_sync_settings_blocking(&state)).await
 }
 
-#[tauri::command]
-pub(crate) fn save_library_sync_settings(
-    state: tauri::State<'_, AppState>,
-    input: SaveLibrarySyncSettingsInput,
-) -> Result<LibrarySyncSettingsRow, String> {
-    save_library_sync_settings_inner(&state, input)
-}
-
-fn get_library_sync_settings_inner(state: &AppState) -> Result<LibrarySyncSettingsRow, String> {
+fn get_library_sync_settings_blocking(state: &AppState) -> Result<LibrarySyncSettingsRow, String> {
     let settings = with_inventory(state, |engine| engine.get_library_sync_settings())?;
     settings_with_secure_pairing_state(state, settings)
 }
 
-fn save_library_sync_settings_inner(
+#[tauri::command]
+pub(crate) async fn save_library_sync_settings(
+    state: tauri::State<'_, AppState>,
+    input: SaveLibrarySyncSettingsInput,
+) -> Result<LibrarySyncSettingsRow, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || save_library_sync_settings_blocking(&state, input)).await
+}
+
+fn save_library_sync_settings_blocking(
     state: &AppState,
     mut input: SaveLibrarySyncSettingsInput,
 ) -> Result<LibrarySyncSettingsRow, String> {
@@ -121,13 +124,14 @@ fn reload_trusted_lan_after_library_identity_change(
 }
 
 #[tauri::command]
-pub(crate) fn clear_library_sync_client_auth(
+pub(crate) async fn clear_library_sync_client_auth(
     state: tauri::State<'_, AppState>,
 ) -> Result<LibrarySyncSettingsRow, String> {
-    clear_library_sync_client_auth_inner(&state)
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || clear_library_sync_client_auth_blocking(&state)).await
 }
 
-fn clear_library_sync_client_auth_inner(
+fn clear_library_sync_client_auth_blocking(
     state: &AppState,
 ) -> Result<LibrarySyncSettingsRow, String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
@@ -291,8 +295,8 @@ fn with_library_sync_pairing_rollback(error: String, rollback: Result<(), String
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_library_sync_client_auth_inner, get_library_sync_settings_inner,
-        restore_library_sync_pairing, save_library_sync_settings_inner,
+        clear_library_sync_client_auth_blocking, get_library_sync_settings_blocking,
+        restore_library_sync_pairing, save_library_sync_settings_blocking,
         settings_with_secure_pairing_state, LibrarySyncDeviceTokenSnapshot,
         LibrarySyncPairingSnapshot,
     };
@@ -383,7 +387,7 @@ mod tests {
     fn standalone_can_switch_to_unpaired_client_before_host_pairing() {
         let state = test_state();
 
-        let saved = save_library_sync_settings_inner(
+        let saved = save_library_sync_settings_blocking(
             &state,
             SaveLibrarySyncSettingsInput {
                 mode: "CLIENT".to_string(),
@@ -410,7 +414,7 @@ mod tests {
     fn unpaired_client_still_rejects_a_nonempty_invalid_host() {
         let state = test_state();
 
-        let error = save_library_sync_settings_inner(
+        let error = save_library_sync_settings_blocking(
             &state,
             SaveLibrarySyncSettingsInput {
                 mode: "CLIENT".to_string(),
@@ -444,7 +448,7 @@ mod tests {
             .replace(old_host, "session", "csrf")
             .expect("save runtime session");
 
-        let saved = save_library_sync_settings_inner(
+        let saved = save_library_sync_settings_blocking(
             &state,
             SaveLibrarySyncSettingsInput {
                 mode: "CLIENT".to_string(),
@@ -467,7 +471,7 @@ mod tests {
             .expect("read runtime")
             .is_none());
         assert!(
-            !get_library_sync_settings_inner(&state)
+            !get_library_sync_settings_blocking(&state)
                 .expect("read settings")
                 .client_auth_paired
         );
@@ -485,7 +489,7 @@ mod tests {
             TRUSTED_LAN_DEFAULT_PORT,
             old_hostname,
         );
-        let saved = save_library_sync_settings_inner(
+        let saved = save_library_sync_settings_blocking(
             &state,
             SaveLibrarySyncSettingsInput {
                 mode: "CLIENT".to_string(),
@@ -534,7 +538,7 @@ mod tests {
                 .replace_authenticated(old_host, "session", "csrf", "device-token")
                 .expect("save runtime session");
 
-            save_library_sync_settings_inner(
+            save_library_sync_settings_blocking(
                 &state,
                 SaveLibrarySyncSettingsInput {
                     mode: mode.to_string(),
@@ -593,7 +597,7 @@ mod tests {
             .expect("save runtime session");
 
         let cleared =
-            clear_library_sync_client_auth_inner(&state).expect("clear secure client pairing");
+            clear_library_sync_client_auth_blocking(&state).expect("clear secure client pairing");
 
         assert!(!cleared.client_auth_paired);
         assert!(cleared.client_auth_paired_at.is_none());
@@ -632,7 +636,7 @@ mod tests {
             .replace_authenticated(host, "session", "csrf", "device-token")
             .expect("save runtime session");
 
-        clear_library_sync_client_auth_inner(&state)
+        clear_library_sync_client_auth_blocking(&state)
             .expect_err("forced database failure must fail clear");
 
         assert_eq!(
@@ -700,12 +704,12 @@ mod tests {
         store_library_sync_device_token_bytes(&state, host, &[0xff, 0xfe])
             .expect("store corrupt token fixture");
 
-        let settings =
-            get_library_sync_settings_inner(&state).expect("settings remain available for repair");
+        let settings = get_library_sync_settings_blocking(&state)
+            .expect("settings remain available for repair");
         assert!(settings.client_auth_paired);
         assert!(load_library_sync_device_token_optional(&state, host).is_err());
 
-        let cleared = clear_library_sync_client_auth_inner(&state)
+        let cleared = clear_library_sync_client_auth_blocking(&state)
             .expect("explicit clear removes corrupt credential");
         assert!(!cleared.client_auth_paired);
         assert!(load_library_sync_device_token_bytes_optional(&state, host)

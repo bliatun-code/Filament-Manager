@@ -252,7 +252,7 @@ mod tests {
     }
 
     #[test]
-    fn network_command_wrappers_use_the_bounded_executor() {
+    fn library_sync_command_wrappers_use_the_bounded_executor() {
         fn assert_async_blocking_wrapper(source: &str, command: &str) {
             let async_marker = format!("pub(crate) async fn {command}");
             let blocking_marker = format!("\nfn {command}_blocking(");
@@ -322,6 +322,15 @@ mod tests {
             include_str!("library_sync_pairing_commands.rs"),
             "pair_library_sync_host",
         );
+
+        let settings_commands = include_str!("library_sync_settings_commands.rs");
+        for command in [
+            "get_library_sync_settings",
+            "save_library_sync_settings",
+            "clear_library_sync_client_auth",
+        ] {
+            assert_async_blocking_wrapper(settings_commands, command);
+        }
 
         for (source, commands) in [
             (
