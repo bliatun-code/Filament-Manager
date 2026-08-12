@@ -107,8 +107,9 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   );
   assert.match(
     loader,
-    /\] = await Promise\.allSettled\(\[\s*validateHost\(/,
+    /\] =\s*await Promise\.allSettled\(\[\s*fetchHostSnapshot\(/,
   );
+  assert.doesNotMatch(loader, /\bvalidateHost\(/);
   assert.match(
     loader,
     /const \[overview, printers, spoolRowsRaw, loans, wishlist\] = await Promise\.all\(\[/,
@@ -134,6 +135,18 @@ test("dashboard navigation restores its last-good view before background I/O", (
   assert.match(
     dashboardHookSource,
     /\(\) => initialSnapshot\?\.stats \?\? createDefaultStats\(t, locale\)/,
+  );
+  assert.match(
+    dashboardHookSource,
+    /previousClientHostConnectionState:\s*clientHostConnectionStateRef\.current/,
+  );
+  assert.match(
+    dashboardHookSource,
+    /clientHostConnectionObservation === "checking"[\s\S]*settings\.librarySyncRefreshingSnapshot/,
+  );
+  assert.match(
+    dashboardHookSource,
+    /isDashboardHostFailureInGrace\([\s\S]*completeRefresh\(\);[\s\S]*succeeded: false/,
   );
 });
 

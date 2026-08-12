@@ -360,6 +360,80 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
   assert.equal(errors.length, 1);
 });
 
+test("loadDashboardData relies on core reads instead of a separate pairing validation", async () => {
+  let validationCalls = 0;
+  const result = await loadDashboardData(
+    {
+      previousClientHostConnectionState: {
+        consecutiveCoreFailures: 0,
+        tone: "live",
+      },
+      previousClientHostNeedsRepair: false,
+      t,
+    },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+          client_auth_paired: true,
+        }),
+      loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      validateHost: async () => {
+        validationCalls += 1;
+        throw new Error("dashboard must not amplify refreshes with a separate validation");
+      },
+      fetchHostSnapshot: async () => snapshot("Live Host"),
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => [],
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+    },
+  );
+
+  assert.equal(result.clientHostConnectionObservation, "succeeded");
+  assert.equal(result.clientHostNeedsRepair, false);
+  assert.equal(result.clientHostCompanionTone, "live");
+  assert.equal(validationCalls, 0);
+});
+
+test("a successful authenticated core read clears a stale persisted repair state", async () => {
+  const result = await loadDashboardData(
+    {
+      previousClientHostConnectionState: {
+        consecutiveCoreFailures: 2,
+        tone: "warn",
+      },
+      previousClientHostNeedsRepair: true,
+      t,
+    },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+          client_auth_paired: true,
+          last_validation_message:
+            "Desktop client pairing is no longer valid.",
+        }),
+      loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      fetchHostSnapshot: async () => snapshot("Live Host"),
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => [],
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+    },
+  );
+
+  assert.equal(result.clientHostConnectionObservation, "succeeded");
+  assert.equal(result.clientHostNeedsRepair, false);
+  assert.equal(result.clientHostCompanionTone, "live");
+});
+
 test("loadDashboardData skips host calls for incomplete client targets and uses cache", async () => {
   const cached = snapshot("Cached Host", {
     captured_at: "2026-04-01 09:00:00",
@@ -533,7 +607,15 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
     throw new Error("host reads must not start while seeding the client cache");
   };
   const result = await loadDashboardData(
-    { clientCacheOnly: true, previousClientHostNeedsRepair: false, t },
+    {
+      clientCacheOnly: true,
+      previousClientHostConnectionState: {
+        consecutiveCoreFailures: 0,
+        tone: "live",
+      },
+      previousClientHostNeedsRepair: false,
+      t,
+    },
     {
       loadSyncSettings: async () =>
         syncSettings({
@@ -571,7 +653,8 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
 
   assert.equal(hostCalls, 0);
   assert.equal(result.syncSource, "client-cached");
-  assert.equal(result.clientHostCompanionTone, "warn");
+  assert.equal(result.clientHostConnectionObservation, "checking");
+  assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
   assert.equal(result.derived.usageTotal12m, 1_250);
   assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
@@ -702,8 +785,9 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
   );
 
   assert.equal(result.syncSource, "client-cached");
-  assert.equal(result.clientHostCompanionTone, "warn");
-  assert.equal(result.clientHostDisplayName, "Host");
+  assert.equal(result.clientHostConnectionObservation, "succeeded");
+  assert.equal(result.clientHostCompanionTone, "live");
+  assert.equal(result.clientHostDisplayName, "Cached Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
   assert.equal(
@@ -711,4 +795,156 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
     "1",
   );
   assert.equal(errors.length, 3);
+});
+
+test("loadDashboardData warns only after consecutive core host failures and resets on success", async () => {
+  const clientSettings = syncSettings({
+    mode: "CLIENT",
+    host_base_url: "http://host",
+    library_id: "library-1",
+    client_auth_paired: true,
+    cached_snapshot: snapshot("Cached Host"),
+  });
+  const failedRead = async () => {
+    throw new Error("host unavailable");
+  };
+  const failedDependencies = {
+    loadSyncSettings: async () => clientSettings,
+    loadTrustedLanStatus: async () => null,
+    loadPrinterSettings: async () => printerSettingsSnapshot(),
+    validateHost: failedRead,
+    fetchHostSnapshot: failedRead,
+    loadSpoolRows: failedRead,
+    fetchHostPrinterOverview: failedRead,
+    fetchHostLoans: failedRead,
+    fetchHostWishlist: failedRead,
+    onLoadError: () => {},
+  };
+
+  const firstFailure = await loadDashboardData(
+    {
+      previousClientHostConnectionState: {
+        consecutiveCoreFailures: 0,
+        tone: "live",
+      },
+      previousClientHostNeedsRepair: false,
+      t,
+    },
+    failedDependencies,
+  );
+  assert.equal(firstFailure.clientHostConnectionObservation, "failed");
+  assert.equal(firstFailure.clientHostConnectionState.consecutiveCoreFailures, 1);
+  assert.equal(firstFailure.clientHostCompanionTone, "live");
+
+  const secondFailure = await loadDashboardData(
+    {
+      previousClientHostConnectionState:
+        firstFailure.clientHostConnectionState,
+      previousClientHostNeedsRepair: false,
+      t,
+    },
+    failedDependencies,
+  );
+  assert.equal(secondFailure.clientHostConnectionState.consecutiveCoreFailures, 2);
+  assert.equal(secondFailure.clientHostCompanionTone, "warn");
+
+  const recovered = await loadDashboardData(
+    {
+      previousClientHostConnectionState:
+        secondFailure.clientHostConnectionState,
+      previousClientHostNeedsRepair: false,
+      t,
+    },
+    {
+      ...failedDependencies,
+      validateHost: async () => validation(),
+      fetchHostSnapshot: async () => snapshot("Live Host"),
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => [],
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+    },
+  );
+  assert.equal(recovered.clientHostConnectionObservation, "succeeded");
+  assert.deepEqual(recovered.clientHostConnectionState, {
+    consecutiveCoreFailures: 0,
+    tone: "live",
+  });
+});
+
+test("loadDashboardData treats a 401 as an immediate pairing repair", async () => {
+  const result = await loadDashboardData(
+    {
+      previousClientHostConnectionState: {
+        consecutiveCoreFailures: 0,
+        tone: "live",
+      },
+      previousClientHostNeedsRepair: false,
+      t,
+    },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-1",
+          client_auth_paired: true,
+        }),
+      loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      validateHost: async () => validation(),
+      fetchHostSnapshot: async () => {
+        throw new Error("HTTP 401 Unauthorized");
+      },
+      loadSpoolRows: async () => [],
+      fetchHostPrinterOverview: async () => [],
+      fetchHostLoans: async () => [],
+      fetchHostWishlist: async () => [],
+      onLoadError: () => {},
+    },
+  );
+
+  assert.equal(result.clientHostConnectionObservation, "repair");
+  assert.equal(result.clientHostNeedsRepair, true);
+  assert.equal(result.clientHostCompanionTone, "warn");
+});
+
+test("loadDashboardData does not treat 401 digits in a transport URL as pairing repair", async () => {
+  const failedRead = async () => {
+    throw new Error(
+      "request failed for http://host401.local:4010/api/v1/library/snapshot",
+    );
+  };
+  const result = await loadDashboardData(
+    {
+      previousClientHostConnectionState: {
+        consecutiveCoreFailures: 0,
+        tone: "live",
+      },
+      previousClientHostNeedsRepair: false,
+      t,
+    },
+    {
+      loadSyncSettings: async () =>
+        syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host401.local:4010",
+          library_id: "library-1",
+          client_auth_paired: true,
+        }),
+      loadTrustedLanStatus: async () => null,
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      validateHost: async () => validation(),
+      fetchHostSnapshot: failedRead,
+      loadSpoolRows: failedRead,
+      fetchHostPrinterOverview: failedRead,
+      fetchHostLoans: failedRead,
+      fetchHostWishlist: failedRead,
+      onLoadError: () => {},
+    },
+  );
+
+  assert.equal(result.clientHostConnectionObservation, "failed");
+  assert.equal(result.clientHostNeedsRepair, false);
+  assert.equal(result.clientHostCompanionTone, "live");
 });

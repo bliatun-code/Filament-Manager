@@ -13,6 +13,10 @@ import {
 import { loadDashboardData } from "../lib/dashboard_data_source";
 import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
 import {
+  createDashboardHostConnectionState,
+  isDashboardHostFailureInGrace,
+} from "../lib/dashboard_host_connection";
+import {
   beginDashboardPageSnapshotRequest,
   readDashboardPageSnapshotGeneration,
   readDashboardPageSnapshot,
@@ -44,6 +48,8 @@ type TranslateFn = (key: string, fallback: string) => string;
 const DASHBOARD_REFRESH_INTERVAL_MS = 4_000;
 const DASHBOARD_RETRY_INITIAL_DELAY_MS = 1_000;
 const DASHBOARD_RETRY_MAX_DELAY_MS = 30_000;
+const DASHBOARD_REVISION_FALLBACK_INTERVAL_MS = 30_000;
+const DASHBOARD_FOCUS_DEDUPE_WINDOW_MS = 250;
 const DASHBOARD_REVISION_DOMAINS = [
   LIBRARY_REVISION_DOMAINS.inventory,
   LIBRARY_REVISION_DOMAINS.catalog,
@@ -171,10 +177,27 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   );
   const usageCalendarMonthRef = useRef(dashboardCalendarMonthKey());
   const refreshInFlightRef = useRef(false);
+  const clientHostConnectionStateRef = useRef(
+    createDashboardHostConnectionState(
+      initialSnapshot?.clientHostCompanionTone ?? "off",
+    ),
+  );
+  const clientHostNeedsRepairRef = useRef(
+    initialSnapshot?.clientHostNeedsRepair ?? false,
+  );
   const revisionSourceRef = useRef<LibraryRevisionSource | null>(
     initialSnapshot?.revisionSource ?? null,
   );
   const revisionTrackerRef = useRef(createLibraryRevisionTracker());
+  const revisionFallbackRef = useRef<{
+    lastRefreshAt: number | null;
+    missedPolls: number;
+    sourceKey: string | null;
+  }>({
+    lastRefreshAt: null,
+    missedPolls: 0,
+    sourceKey: null,
+  });
   const {
     beginRefresh,
     completeRefresh,
@@ -278,12 +301,45 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         const loaded = await loadDashboardData({
           clientCacheOnly: options.clientCacheOnly,
           locale,
-          previousClientHostNeedsRepair: clientHostNeedsRepair,
+          previousClientHostConnectionState:
+            clientHostConnectionStateRef.current,
+          previousClientHostNeedsRepair: clientHostNeedsRepairRef.current,
           t,
         });
 
+        if (!cancelledRef?.current) {
+          clientHostConnectionStateRef.current =
+            loaded.clientHostConnectionState;
+          clientHostNeedsRepairRef.current = loaded.clientHostNeedsRepair;
+        }
+        if (
+          !cancelledRef?.current &&
+          isDashboardHostFailureInGrace(
+            loaded.clientHostConnectionState,
+            loaded.clientHostConnectionObservation,
+          )
+        ) {
+          // Keep the last-good dashboard and connection tone through one short
+          // resolver/HTTP miss. The scheduler immediately retries with backoff.
+          completeRefresh();
+          return {
+            clientCacheRead: false,
+            revisionPollComplete: false,
+            revisionSource: loaded.revisionSource,
+            succeeded: false,
+          } satisfies DashboardRefreshOutcome;
+        }
+
         let nextLastSyncLabel: string;
-        if (loaded.syncSource !== "local") {
+        if (
+          loaded.clientHostConnectionObservation === "checking" &&
+          loaded.clientHostCompanionTone === "off"
+        ) {
+          nextLastSyncLabel = t(
+            "settings.librarySyncRefreshingSnapshot",
+            "Refreshing snapshot...",
+          );
+        } else if (loaded.syncSource !== "local") {
           const capturedAt = parseDateTime(loaded.capturedAt);
           const sourceLabel = t(
             loaded.syncSource === "client-live"
@@ -372,12 +428,17 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             loaded.revisionSource,
           );
         }
+        const clientHostRefreshFailed =
+          loaded.syncMode === "CLIENT" &&
+          options.clientCacheOnly !== true &&
+          (loaded.clientHostConnectionObservation === "failed" ||
+            loaded.clientHostConnectionObservation === "repair");
         return {
           clientCacheRead:
             options.clientCacheOnly === true && loaded.syncMode === "CLIENT",
           revisionPollComplete: loaded.revisionPollComplete,
           revisionSource: loaded.revisionSource,
-          succeeded: true,
+          succeeded: !clientHostRefreshFailed,
         } satisfies DashboardRefreshOutcome;
       } catch (loadError) {
         console.error(loadError);
@@ -398,7 +459,6 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     },
     [
       beginRefresh,
-      clientHostNeedsRepair,
       completeRefresh,
       failRefresh,
       locale,
@@ -440,15 +500,70 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       const revisions =
         revisionsResult.status === "fulfilled" ? revisionsResult.value : null;
       if (!source || !revisions) {
+        const sourceKey = libraryRevisionSourceKey(source);
+        const previousFallback = revisionFallbackRef.current;
+        const missedPolls =
+          previousFallback.sourceKey === sourceKey
+            ? previousFallback.missedPolls + 1
+            : 1;
+        const now = performance.now();
+        const hostFailureConfirmationDue =
+          clientHostConnectionStateRef.current.consecutiveCoreFailures > 0 &&
+          clientHostConnectionStateRef.current.tone !== "warn";
+        const fallbackRefreshDue =
+          missedPolls >= 2 &&
+          (hostFailureConfirmationDue ||
+            previousFallback.sourceKey !== sourceKey ||
+            previousFallback.lastRefreshAt === null ||
+            now - previousFallback.lastRefreshAt >=
+              DASHBOARD_REVISION_FALLBACK_INTERVAL_MS);
+        revisionFallbackRef.current = {
+          lastRefreshAt: fallbackRefreshDue
+            ? now
+            : previousFallback.sourceKey === sourceKey
+              ? previousFallback.lastRefreshAt
+              : null,
+          missedPolls,
+          sourceKey,
+        };
         revisionTrackerRef.current = markLibraryRevisionUnavailable(
           revisionTrackerRef.current,
           source,
         );
-        // The scheduler backs repeated failures off to 30 seconds. Keep doing a
-        // full fallback read at that bounded cadence so older hosts without the
-        // revision endpoint never leave an otherwise healthy client frozen.
-        await performDashboardRefresh(cancelledRef);
+        // A single revision miss can recover without doing a full read twice.
+        // Persistent misses retain one bounded fallback for older hosts.
+        if (fallbackRefreshDue) {
+          await performDashboardRefresh(cancelledRef);
+        }
         return false;
+      }
+
+      revisionFallbackRef.current = {
+        lastRefreshAt: null,
+        missedPolls: 0,
+        sourceKey: libraryRevisionSourceKey(source),
+      };
+      if (source.kind === "host") {
+        // The revision endpoint is authenticated. A successful poll therefore proves that the
+        // host recovered, and must close a one-failure grace window even when revisions did not
+        // change (otherwise a later unrelated miss would be counted as consecutive).
+        clientHostConnectionStateRef.current =
+          createDashboardHostConnectionState("live");
+        clientHostNeedsRepairRef.current = false;
+        const cacheAccepted = updateDashboardPageSnapshot(
+          locale,
+          {
+            clientHostCompanionTone: "live",
+            clientHostNeedsRepair: false,
+            clientHostPaired: true,
+          },
+          dashboardPageSnapshotGenerationRef.current,
+        );
+        if (cacheAccepted) {
+          setClientHostCompanionTone("live");
+          setClientHostNeedsRepair(false);
+          setClientHostPaired(true);
+        }
       }
 
       const previousTracker = revisionTrackerRef.current;
@@ -490,8 +605,8 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
 
     const cancelledRef = { current: false };
     let consecutiveFailures = 0;
+    let lastFocusRefreshAt = Number.NEGATIVE_INFINITY;
     let loading = false;
-    let refreshRequested = false;
     let refreshTimeout: number | null = null;
     let initialRefreshPending = true;
     let initialClientCacheAttempted = false;
@@ -520,7 +635,6 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         return;
       }
       if (loading) {
-        refreshRequested = true;
         return;
       }
       clearRefreshTimeout();
@@ -545,7 +659,6 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         if (cancelledRef.current || !documentAllowsPolling()) {
           return;
         }
-        refreshRequested = false;
         // The local client cache is available without network I/O. Render it first,
         // then immediately revalidate the host in the next scheduler turn so an
         // unreachable mDNS/HTTP request can never delay the first dashboard paint.
@@ -557,11 +670,6 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       }
       loading = false;
       if (cancelledRef.current || !documentAllowsPolling()) {
-        return;
-      }
-      if (refreshRequested) {
-        refreshRequested = false;
-        scheduleRefresh(0);
         return;
       }
       if (succeeded) {
@@ -579,8 +687,22 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       );
     };
 
-    const handleFocus = () => {
+    const requestFocusRefresh = () => {
+      if (!documentAllowsPolling()) {
+        return;
+      }
+      const now = performance.now();
+      if (
+        loading ||
+        now - lastFocusRefreshAt < DASHBOARD_FOCUS_DEDUPE_WINDOW_MS
+      ) {
+        return;
+      }
+      lastFocusRefreshAt = now;
       void runRefresh();
+    };
+    const handleFocus = () => {
+      requestFocusRefresh();
     };
     const handleVisibilityChange = () => {
       if (!documentAllowsPolling()) {
@@ -588,7 +710,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         return;
       }
       consecutiveFailures = 0;
-      void runRefresh();
+      requestFocusRefresh();
     };
 
     void (async () => {
@@ -600,7 +722,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         const appWindow = getCurrentWindow();
         const unlistenFocusChanged = await appWindow.onFocusChanged(({ payload }) => {
           if (payload) {
-            void runRefresh();
+            requestFocusRefresh();
           }
         });
         if (cancelledRef.current) {
