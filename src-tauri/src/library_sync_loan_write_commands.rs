@@ -1,3 +1,4 @@
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_loan_cache, refresh_library_sync_spool_cache,
 };
@@ -10,8 +11,16 @@ use crate::library_sync_models::{LibrarySyncLendSpoolInput, LibrarySyncReturnLoa
 use crate::state::AppState;
 
 #[tauri::command]
-pub(crate) fn return_library_sync_host_loan(
+pub(crate) async fn return_library_sync_host_loan(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncReturnLoanInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || return_library_sync_host_loan_blocking(&state, input)).await
+}
+
+fn return_library_sync_host_loan_blocking(
+    state: &AppState,
     input: LibrarySyncReturnLoanInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -28,7 +37,7 @@ pub(crate) fn return_library_sync_host_loan(
     };
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &path,
         &serde_json::json!({
@@ -37,15 +46,23 @@ pub(crate) fn return_library_sync_host_loan(
         }),
     )?;
 
-    refresh_library_sync_loan_cache(&state, &normalized_base_url);
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host loan updated.", None)?;
+    refresh_library_sync_loan_cache(state, &normalized_base_url);
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host loan updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn lend_library_sync_host_spool(
+pub(crate) async fn lend_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncLendSpoolInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || lend_library_sync_host_spool_blocking(&state, input)).await
+}
+
+fn lend_library_sync_host_spool_blocking(
+    state: &AppState,
     input: LibrarySyncLendSpoolInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -61,7 +78,7 @@ pub(crate) fn lend_library_sync_host_spool(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/lend"),
         &serde_json::json!({
@@ -71,9 +88,9 @@ pub(crate) fn lend_library_sync_host_spool(
         }),
     )?;
 
-    refresh_library_sync_loan_cache(&state, &normalized_base_url);
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host loan-out write completed.", None)?;
+    refresh_library_sync_loan_cache(state, &normalized_base_url);
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host loan-out write completed.", None)?;
 
     Ok(())
 }

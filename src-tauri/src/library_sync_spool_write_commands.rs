@@ -1,4 +1,5 @@
 use crate::backend::inventory_domain::OwnershipType;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
@@ -15,8 +16,17 @@ use crate::library_sync_models::{
 use crate::state::AppState;
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_spool_weight(
+pub(crate) async fn update_library_sync_host_spool_weight(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncWeightWriteInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || update_library_sync_host_spool_weight_blocking(&state, input))
+        .await
+}
+
+fn update_library_sync_host_spool_weight_blocking(
+    state: &AppState,
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -28,20 +38,31 @@ pub(crate) fn update_library_sync_host_spool_weight(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/weight"),
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool weight updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool weight updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_spool_tare_weight(
+pub(crate) async fn update_library_sync_host_spool_tare_weight(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncWeightWriteInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        update_library_sync_host_spool_tare_weight_blocking(&state, input)
+    })
+    .await
+}
+
+fn update_library_sync_host_spool_tare_weight_blocking(
+    state: &AppState,
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -53,20 +74,31 @@ pub(crate) fn update_library_sync_host_spool_tare_weight(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/tare-weight"),
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool tare weight updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool tare weight updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_spool_details(
+pub(crate) async fn update_library_sync_host_spool_details(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateSpoolDetailsInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        update_library_sync_host_spool_details_blocking(&state, input)
+    })
+    .await
+}
+
+fn update_library_sync_host_spool_details_blocking(
+    state: &AppState,
     input: LibrarySyncUpdateSpoolDetailsInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -97,20 +129,31 @@ pub(crate) fn update_library_sync_host_spool_details(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/details"),
         &serde_json::Value::Object(payload),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool details updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool details updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_spool_ownership(
+pub(crate) async fn update_library_sync_host_spool_ownership(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateSpoolOwnershipInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        update_library_sync_host_spool_ownership_blocking(&state, input)
+    })
+    .await
+}
+
+fn update_library_sync_host_spool_ownership_blocking(
+    state: &AppState,
     input: LibrarySyncUpdateSpoolOwnershipInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -122,7 +165,7 @@ pub(crate) fn update_library_sync_host_spool_ownership(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/ownership"),
         &serde_json::json!({
@@ -133,14 +176,25 @@ pub(crate) fn update_library_sync_host_spool_ownership(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool ownership updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool ownership updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_spool_rfid_tag(
+pub(crate) async fn update_library_sync_host_spool_rfid_tag(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateSpoolRfidTagInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        update_library_sync_host_spool_rfid_tag_blocking(&state, input)
+    })
+    .await
+}
+
+fn update_library_sync_host_spool_rfid_tag_blocking(
+    state: &AppState,
     input: LibrarySyncUpdateSpoolRfidTagInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -152,7 +206,7 @@ pub(crate) fn update_library_sync_host_spool_rfid_tag(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/rfid"),
         &serde_json::json!({
@@ -161,14 +215,22 @@ pub(crate) fn update_library_sync_host_spool_rfid_tag(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool RFID updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool RFID updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn create_library_sync_host_spool(
+pub(crate) async fn create_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncCreateSpoolInput,
+) -> Result<String, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || create_library_sync_host_spool_blocking(&state, input)).await
+}
+
+fn create_library_sync_host_spool_blocking(
+    state: &AppState,
     input: LibrarySyncCreateSpoolInput,
 ) -> Result<String, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -181,7 +243,7 @@ pub(crate) fn create_library_sync_host_spool(
     );
 
     let response: LibrarySyncCreateSpoolResponse = perform_library_sync_host_write_and_parse(
-        &state,
+        state,
         &normalized_base_url,
         path,
         &serde_json::json!({
@@ -202,8 +264,8 @@ pub(crate) fn create_library_sync_host_spool(
         return Err(response.message);
     }
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, &response.message, None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, &response.message, None)?;
 
     Ok(response.spool_id)
 }
