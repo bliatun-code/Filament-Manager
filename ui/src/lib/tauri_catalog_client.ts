@@ -162,7 +162,7 @@ export async function updateLibrarySyncHostMasterCatalogEntry(
 export async function fetchLibrarySyncCatalogMasters(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
-  limit = 1000,
+  limit = 5000,
   search?: string | null,
 ) {
   return invoke<MasterCatalogRow[]>("fetch_library_sync_catalog_masters", {

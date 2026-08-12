@@ -19,6 +19,12 @@ use crate::printer_settings_commands::PrinterSettingsSnapshot;
 use crate::state::AppState;
 use crate::with_inventory;
 
+const LIBRARY_SYNC_READ_NOT_FOUND_ERROR: &str = "Desktop sync read request returned 404 Not Found.";
+
+fn is_library_sync_read_not_found(error: &str) -> bool {
+    error == LIBRARY_SYNC_READ_NOT_FOUND_ERROR
+}
+
 #[tauri::command]
 pub(crate) async fn fetch_library_sync_spool_detail(
     state: tauri::State<'_, AppState>,
@@ -247,20 +253,32 @@ fn fetch_library_sync_catalog_masters_blocking(
     let (normalized_base_url, _) = prepare_library_sync_host_checked(&host_input)?;
 
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
-    let _search = input.search;
-    match get_library_sync_host_json_authenticated(
-        state,
-        &normalized_base_url,
-        &format!("/api/v1/library/catalog/masters?limit={limit}"),
-    ) {
+    let primary_path = library_sync_catalog_masters_path(
+        "/api/v1/library/catalog/masters",
+        limit,
+        input.search.as_deref(),
+    );
+    let fallback_path = library_sync_catalog_masters_path(
+        "/api/v1/catalog/masters",
+        limit,
+        input.search.as_deref(),
+    );
+    match get_library_sync_host_json_authenticated(state, &normalized_base_url, &primary_path) {
         Ok(rows) => Ok(rows),
-        Err(error) if error.contains("404") => get_library_sync_host_json_authenticated(
-            state,
-            &normalized_base_url,
-            &format!("/api/v1/catalog/masters?limit={limit}"),
-        ),
+        Err(error) if is_library_sync_read_not_found(&error) => {
+            get_library_sync_host_json_authenticated(state, &normalized_base_url, &fallback_path)
+        }
         Err(error) => Err(error),
     }
+}
+
+fn library_sync_catalog_masters_path(base_path: &str, limit: i64, search: Option<&str>) -> String {
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query.append_pair("limit", &limit.to_string());
+    if let Some(search) = search {
+        query.append_pair("search", search);
+    }
+    format!("{base_path}?{}", query.finish())
 }
 
 #[tauri::command]
@@ -294,7 +312,7 @@ fn fetch_library_sync_wishlist_items_blocking(
             })?;
             Ok(rows)
         }
-        Err(error) if error.contains("404") => {
+        Err(error) if is_library_sync_read_not_found(&error) => {
             let rows: Vec<WishlistItemRow> = get_library_sync_host_json_authenticated(
                 state,
                 &normalized_base_url,
@@ -331,4 +349,66 @@ fn fetch_library_sync_full_backup_json_blocking(
     )?;
     save_library_sync_success(state, "Host full backup exported.", None)?;
     Ok(payload)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_library_sync_read_not_found, library_sync_catalog_masters_path};
+
+    #[test]
+    fn read_not_found_classification_accepts_exact_http_status_error() {
+        assert!(is_library_sync_read_not_found(
+            "Desktop sync read request returned 404 Not Found."
+        ));
+    }
+
+    #[test]
+    fn read_not_found_classification_rejects_transport_and_hostname_text() {
+        assert!(!is_library_sync_read_not_found(
+            "Desktop sync read request failed to connect to filament-404.local."
+        ));
+        assert!(!is_library_sync_read_not_found(
+            "Desktop sync read request failed for http://192.168.1.20:404."
+        ));
+    }
+
+    #[test]
+    fn catalog_master_path_omits_absent_search() {
+        assert_eq!(
+            library_sync_catalog_masters_path("/api/v1/library/catalog/masters", 5_000, None,),
+            "/api/v1/library/catalog/masters?limit=5000"
+        );
+    }
+
+    #[test]
+    fn catalog_master_path_encodes_spaces_for_fallback_route() {
+        assert_eq!(
+            library_sync_catalog_masters_path("/api/v1/catalog/masters", 5_000, Some("PLA Basic"),),
+            "/api/v1/catalog/masters?limit=5000&search=PLA+Basic"
+        );
+    }
+
+    #[test]
+    fn catalog_master_path_encodes_query_delimiters() {
+        assert_eq!(
+            library_sync_catalog_masters_path(
+                "/api/v1/library/catalog/masters",
+                250,
+                Some("PLA & PETG"),
+            ),
+            "/api/v1/library/catalog/masters?limit=250&search=PLA+%26+PETG"
+        );
+    }
+
+    #[test]
+    fn catalog_master_path_encodes_unicode() {
+        assert_eq!(
+            library_sync_catalog_masters_path(
+                "/api/v1/library/catalog/masters",
+                5_000,
+                Some("blå"),
+            ),
+            "/api/v1/library/catalog/masters?limit=5000&search=bl%C3%A5"
+        );
+    }
 }
