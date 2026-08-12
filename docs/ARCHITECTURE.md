@@ -45,11 +45,27 @@ Existing IP-based browser and desktop pairings are not rewritten automatically;
 they require one new pairing, and labels containing an old IP address must be
 reprinted.
 
-Desktop-client validation resolves a stable `.local` host through the same local
-mDNS service before creating its HTTP client. The request retains the stable URL
-and host header while its connection is pinned to the discovered private IPv4
-address, so client authentication remains host-bound without depending on
-ordinary DNS forwarding for `.local`.
+Desktop clients reuse pooled, proxy-free HTTP clients. Stable `.local` hosts
+resolve through a shared mDNS daemon with one single-flight route slot per
+hostname. Each resolved route keeps its own reusable pinned client. Requests
+retain the stable URL, host header, TLS name, and origin while their connections
+are pinned to a discovered private IPv4 address, so client authentication
+remains host-bound without depending on ordinary DNS forwarding for `.local`.
+
+A successfully resolved route remains fresh for five minutes. Periodic
+revalidation keeps a last-known-good route through a transient multicast failure
+but retries discovery after 30 seconds. If the cached address itself has a
+transport failure while discovery is unavailable, only a credential-free health
+request may try that exact previous pin again. The route is promoted only after a
+ready response reports the exact expected library ID. Authenticated reads and
+writes are never transparently replayed onto a newly resolved address after a
+transport failure.
+
+The desktop runtime caches a host-matched authenticated session and a zeroizing
+copy of its device token after successful renewal. Concurrent failures collapse
+to one renewal attempt; credential changes, authorization failures, reset, and
+rollback paths still invalidate or restore the complete runtime state under the
+credential-mutation gate.
 
 The stable name is a library identity, so only one active Companion host may
 publish it at a time. A copied backup on a second host fails closed on name
@@ -151,6 +167,15 @@ headers or transform an already-loaded value directly, but it must not open
 SQLite, contact a remote host, or access an operating-system credential store
 on an async worker thread.
 
+Desktop client commands follow the same principle through a separate bounded
+blocking executor. It admits at most 32 operations and runs at most eight at a
+time. Host reads, pairing, supported writes, cache refreshes, and library-sync
+settings clone the owned application state and move the complete synchronous
+network, credential-store, and database chain behind that boundary. A wrapper
+must not acquire the credential-mutation gate or perform part of a write before
+delegation. Bambu and eSUN catalog refreshes deliberately retain a longer
+reviewed network budget, but they do not run on the UI invoke path.
+
 ## Bambu Live Boundaries
 
 Passive local discovery is a convenience path, not printer authentication. An
@@ -188,6 +213,24 @@ The live-printer path is intentionally ordered:
 Weak color or name hints must never outrank an exact RFID identity or a
 deliberate manual override. Persistence remains after enrichment so readers do
 not observe a partially processed state.
+
+Large AMS weight discontinuities are rejected by automatic sync. Explicit
+acceptance is narrower than a manual scale reading: the authoritative engine
+requires an online, MQTT-connected and settled observation, fresh identity and
+weight evidence newer than any manual cache clear, the assigned loaded slot,
+and one unique exact RFID match. It re-derives the estimate and compares the
+expected stored weight inside a `BEGIN IMMEDIATE` transaction, then writes only
+the corrected spool weight and assigned status, the reviewed virtual AMS scale,
+a weight reading, and correction history. It must not create a print job or
+live-usage session for an interval the app did not observe.
+
+Automatic live-weight sync starts its own immediate transaction before reading
+the spool and holds it through classification and all related writes. This
+serializes it against explicit acceptance and prevents a stale background
+decision from overwriting the correction. Observation merging also starts a new
+weight-evidence generation when the effective UUID/RFID identity, loaded state,
+or identity-bearing spool metadata changes; an earlier roll's percentage or
+weight timestamp must never carry into a new exact match.
 
 ## Verification
 
