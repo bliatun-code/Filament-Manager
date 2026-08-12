@@ -4,6 +4,7 @@ use crate::backend::filament_database::{
     WishlistItemRow,
 };
 use crate::backend::statistics::FilamentConsumptionRow;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_checked, prepare_library_sync_host_read,
     save_library_sync_success,
@@ -19,8 +20,16 @@ use crate::state::AppState;
 use crate::with_inventory;
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_spool_detail(
+pub(crate) async fn fetch_library_sync_spool_detail(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncSpoolDetailInput,
+) -> Result<CompanionSpoolDetail, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_spool_detail_blocking(&state, input)).await
+}
+
+fn fetch_library_sync_spool_detail_blocking(
+    state: &AppState,
     input: LibrarySyncSpoolDetailInput,
 ) -> Result<CompanionSpoolDetail, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -35,21 +44,29 @@ pub(crate) fn fetch_library_sync_spool_detail(
     let usage_limit = input.usage_limit.unwrap_or(500).clamp(1, 1_000);
 
     let detail: CompanionSpoolDetail = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         &format!(
             "/api/v1/spools/{spool_id}?history_limit={history_limit}&usage_limit={usage_limit}"
         ),
     )?;
 
-    save_library_sync_success(&state, "Host spool detail refreshed.", None)?;
+    save_library_sync_success(state, "Host spool detail refreshed.", None)?;
 
     Ok(detail)
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_spools(
+pub(crate) async fn fetch_library_sync_spools(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncSpoolListInput,
+) -> Result<Vec<SpoolWithMasterRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_spools_blocking(&state, input)).await
+}
+
+fn fetch_library_sync_spools_blocking(
+    state: &AppState,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolWithMasterRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -57,13 +74,13 @@ pub(crate) fn fetch_library_sync_spools(
     let limit = input.limit.unwrap_or(1000).clamp(1, 2_500);
     let offset = input.offset.unwrap_or(0).max(0);
     let rows: Vec<SpoolWithMasterRow> = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         format!("/api/v1/library/spools?limit={limit}&offset={offset}").as_str(),
     )?;
 
     save_library_sync_success(
-        &state,
+        state,
         "Host spool list refreshed.",
         health.device_name.as_deref(),
     )?;
@@ -72,22 +89,31 @@ pub(crate) fn fetch_library_sync_spools(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_printer_overview(
+pub(crate) async fn fetch_library_sync_printer_overview(
     state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<Vec<PrinterOverviewRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_printer_overview_blocking(&state, input))
+        .await
+}
+
+fn fetch_library_sync_printer_overview_blocking(
+    state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<Vec<PrinterOverviewRow>, String> {
     let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
     let rows: Vec<PrinterOverviewRow> = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/library/printers",
     )?;
 
-    with_inventory(&state, |engine| {
+    with_inventory(state, |engine| {
         engine.save_library_sync_cached_printers(&rows)
     })?;
     save_library_sync_success(
-        &state,
+        state,
         "Host printer overview refreshed.",
         health.device_name.as_deref(),
     )?;
@@ -96,19 +122,28 @@ pub(crate) fn fetch_library_sync_printer_overview(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_printer_settings(
+pub(crate) async fn fetch_library_sync_printer_settings(
     state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<PrinterSettingsSnapshot, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_printer_settings_blocking(&state, input))
+        .await
+}
+
+fn fetch_library_sync_printer_settings_blocking(
+    state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<PrinterSettingsSnapshot, String> {
     let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
     let snapshot: PrinterSettingsSnapshot = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/library/printer-settings",
     )?;
 
     save_library_sync_success(
-        &state,
+        state,
         "Host printer settings refreshed.",
         health.device_name.as_deref(),
     )?;
@@ -117,24 +152,30 @@ pub(crate) fn fetch_library_sync_printer_settings(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_loans(
+pub(crate) async fn fetch_library_sync_loans(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncSpoolListInput,
+) -> Result<Vec<SpoolLoanDetailsRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_loans_blocking(&state, input)).await
+}
+
+fn fetch_library_sync_loans_blocking(
+    state: &AppState,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolLoanDetailsRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let limit = input.limit.unwrap_or(2000).clamp(1, 2_500);
     let rows: Vec<SpoolLoanDetailsRow> = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         format!("/api/v1/library/loans?include_returned=true&direction=ALL&limit={limit}").as_str(),
     )?;
 
-    with_inventory(&state, |engine| {
-        engine.save_library_sync_cached_loans(&rows)
-    })?;
+    with_inventory(state, |engine| engine.save_library_sync_cached_loans(&rows))?;
     save_library_sync_success(
-        &state,
+        state,
         "Host loan list refreshed.",
         health.device_name.as_deref(),
     )?;
@@ -143,8 +184,19 @@ pub(crate) fn fetch_library_sync_loans(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_filament_consumption(
+pub(crate) async fn fetch_library_sync_filament_consumption(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncFilamentConsumptionInput,
+) -> Result<Vec<FilamentConsumptionRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        fetch_library_sync_filament_consumption_blocking(&state, input)
+    })
+    .await
+}
+
+fn fetch_library_sync_filament_consumption_blocking(
+    state: &AppState,
     input: LibrarySyncFilamentConsumptionInput,
 ) -> Result<Vec<FilamentConsumptionRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -159,17 +211,17 @@ pub(crate) fn fetch_library_sync_filament_consumption(
         .map(|value| format!("&printer_id={value}"))
         .unwrap_or_default();
     let rows: Vec<FilamentConsumptionRow> = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         format!("/api/v1/library/statistics/filament-consumption?limit={limit}{printer_query}")
             .as_str(),
     )?;
 
-    with_inventory(&state, |engine| {
+    with_inventory(state, |engine| {
         engine.save_library_sync_cached_consumption(&rows)
     })?;
     save_library_sync_success(
-        &state,
+        state,
         "Host filament consumption refreshed.",
         health.device_name.as_deref(),
     )?;
@@ -178,8 +230,17 @@ pub(crate) fn fetch_library_sync_filament_consumption(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_catalog_masters(
+pub(crate) async fn fetch_library_sync_catalog_masters(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncCatalogListInput,
+) -> Result<Vec<FilamentMasterCatalogRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_catalog_masters_blocking(&state, input))
+        .await
+}
+
+fn fetch_library_sync_catalog_masters_blocking(
+    state: &AppState,
     input: LibrarySyncCatalogListInput,
 ) -> Result<Vec<FilamentMasterCatalogRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -188,13 +249,13 @@ pub(crate) fn fetch_library_sync_catalog_masters(
     let limit = input.limit.unwrap_or(1_000).clamp(1, 5_000);
     let _search = input.search;
     match get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/library/catalog/masters?limit={limit}"),
     ) {
         Ok(rows) => Ok(rows),
         Err(error) if error.contains("404") => get_library_sync_host_json_authenticated(
-            &state,
+            state,
             &normalized_base_url,
             &format!("/api/v1/catalog/masters?limit={limit}"),
         ),
@@ -203,8 +264,17 @@ pub(crate) fn fetch_library_sync_catalog_masters(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_wishlist_items(
+pub(crate) async fn fetch_library_sync_wishlist_items(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncWishlistListInput,
+) -> Result<Vec<WishlistItemRow>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_wishlist_items_blocking(&state, input))
+        .await
+}
+
+fn fetch_library_sync_wishlist_items_blocking(
+    state: &AppState,
     input: LibrarySyncWishlistListInput,
 ) -> Result<Vec<WishlistItemRow>, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -213,24 +283,24 @@ pub(crate) fn fetch_library_sync_wishlist_items(
     let limit = input.limit.unwrap_or(500).clamp(1, 2_500);
     let primary_rows: Result<Vec<WishlistItemRow>, String> =
         get_library_sync_host_json_authenticated(
-            &state,
+            state,
             &normalized_base_url,
             &format!("/api/v1/library/wishlist?limit={limit}"),
         );
     match primary_rows {
         Ok(rows) => {
-            with_inventory(&state, |engine| {
+            with_inventory(state, |engine| {
                 engine.save_library_sync_cached_wishlist(&rows)
             })?;
             Ok(rows)
         }
         Err(error) if error.contains("404") => {
             let rows: Vec<WishlistItemRow> = get_library_sync_host_json_authenticated(
-                &state,
+                state,
                 &normalized_base_url,
                 &format!("/api/v1/wishlist?limit={limit}"),
             )?;
-            with_inventory(&state, |engine| {
+            with_inventory(state, |engine| {
                 engine.save_library_sync_cached_wishlist(&rows)
             })?;
             Ok(rows)
@@ -240,16 +310,25 @@ pub(crate) fn fetch_library_sync_wishlist_items(
 }
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_full_backup_json(
+pub(crate) async fn fetch_library_sync_full_backup_json(
     state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<LibrarySyncFullBackupResponse, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_full_backup_json_blocking(&state, input))
+        .await
+}
+
+fn fetch_library_sync_full_backup_json_blocking(
+    state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncFullBackupResponse, String> {
     let (normalized_base_url, _) = prepare_library_sync_host_checked(&input)?;
     let payload: LibrarySyncFullBackupResponse = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/backup/full",
     )?;
-    save_library_sync_success(&state, "Host full backup exported.", None)?;
+    save_library_sync_success(state, "Host full backup exported.", None)?;
     Ok(payload)
 }

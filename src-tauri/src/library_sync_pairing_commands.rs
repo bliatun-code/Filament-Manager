@@ -80,10 +80,11 @@ fn persist_library_sync_pairing_under_gate(
             ),
         ));
     }
-    if let Err(error) = state.library_sync_auth.replace(
+    if let Err(error) = state.library_sync_auth.replace_authenticated(
         normalized_base_url,
         std::mem::take(&mut auth_state.session_id),
         std::mem::take(&mut auth_state.csrf_token),
+        std::mem::take(&mut auth_state.device_token),
     ) {
         return Err(with_pairing_rollback(
             error,
@@ -157,13 +158,16 @@ fn restore_library_sync_pairing_state(
         None => delete_library_sync_device_token(state, normalized_base_url).map(|_| ()),
     };
 
-    let runtime_result = match previous_runtime_auth {
-        Some(auth) => state.library_sync_auth.replace(
-            auth.host_base_url.clone(),
-            auth.session_id.clone(),
-            auth.csrf_token.clone(),
-        ),
-        None => state.library_sync_auth.clear(),
+    // Never re-enable a reusable in-memory token unless its durable credential was restored.
+    // Otherwise a failed Keychain/Credential Manager rollback would remain authenticated until
+    // process exit even though the platform credential state is unknown.
+    let runtime_result = if credential_result.is_ok() {
+        match previous_runtime_auth {
+            Some(auth) => state.library_sync_auth.restore(auth),
+            None => state.library_sync_auth.clear(),
+        }
+    } else {
+        state.library_sync_auth.clear()
     };
 
     match (credential_result, runtime_result) {
@@ -187,7 +191,7 @@ fn with_pairing_rollback(error: String, rollback: Result<(), String>) -> String 
 
 #[cfg(test)]
 mod tests {
-    use super::persist_library_sync_pairing;
+    use super::{persist_library_sync_pairing, restore_library_sync_pairing_state};
     use crate::backend::filament_database::FilamentDatabase;
     use crate::credential_store::CredentialStore;
     use crate::library_sync_host_client::{
@@ -272,6 +276,39 @@ mod tests {
     }
 
     #[test]
+    fn failed_credential_rollback_does_not_restore_runtime_device_token() {
+        let state = test_state();
+        let host = "http://host.local:4278";
+        let previous_auth = LibrarySyncRuntimeAuth::new();
+        previous_auth
+            .replace_authenticated(host, "previous-session", "previous-csrf", "previous-device")
+            .expect("build previous runtime auth");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "new-session", "new-csrf", "new-device")
+            .expect("seed replacement runtime auth");
+
+        let error = restore_library_sync_pairing_state(
+            &state,
+            host,
+            // An empty secret is rejected by the credential store and deterministically exercises
+            // the credential-rollback failure path without depending on a platform backend.
+            Some(&[]),
+            previous_auth.current().expect("snapshot previous auth"),
+        )
+        .expect_err("credential rollback must fail");
+
+        assert!(error.contains("credential"));
+        assert!(state
+            .library_sync_auth
+            .current()
+            .expect("read fail-closed runtime auth")
+            .is_none());
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
     fn pairing_can_replace_a_corrupt_device_token() {
         let state = test_state();
         let host = "http://host.local:4278";
@@ -328,7 +365,12 @@ mod tests {
             .expect("store previous token");
         state
             .library_sync_auth
-            .replace(host, "previous-session", "previous-csrf")
+            .replace_authenticated(
+                host,
+                "previous-session",
+                "previous-csrf",
+                "previous-device-token",
+            )
             .expect("store previous runtime");
 
         persist_library_sync_pairing(
@@ -356,6 +398,10 @@ mod tests {
             .expect("restored runtime");
         assert_eq!(runtime.host_base_url, host);
         assert_eq!(runtime.session_id, "previous-session");
+        assert_eq!(
+            runtime.device_token.as_deref(),
+            Some("previous-device-token")
+        );
         assert_eq!(runtime.csrf_token, "previous-csrf");
 
         let _ = std::fs::remove_file(&state.db_path);

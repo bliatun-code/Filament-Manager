@@ -258,13 +258,15 @@ fn restore_library_sync_pairing(
         ),
         (None, _) => Ok(()),
     };
-    let runtime_result = match previous.runtime_auth.as_ref() {
-        Some(runtime) => state.library_sync_auth.replace(
-            runtime.host_base_url.clone(),
-            runtime.session_id.clone(),
-            runtime.csrf_token.clone(),
-        ),
-        None => state.library_sync_auth.clear(),
+    // A runtime device token is safe to restore only when its platform credential rollback is
+    // complete. If durable state is uncertain, leave authentication cleared for explicit repair.
+    let runtime_result = if credential_result.is_ok() {
+        match previous.runtime_auth.as_ref() {
+            Some(runtime) => state.library_sync_auth.restore(runtime.clone()),
+            None => state.library_sync_auth.clear(),
+        }
+    } else {
+        state.library_sync_auth.clear()
     };
 
     match (credential_result, runtime_result) {
@@ -290,7 +292,9 @@ fn with_library_sync_pairing_rollback(error: String, rollback: Result<(), String
 mod tests {
     use super::{
         clear_library_sync_client_auth_inner, get_library_sync_settings_inner,
-        save_library_sync_settings_inner, settings_with_secure_pairing_state,
+        restore_library_sync_pairing, save_library_sync_settings_inner,
+        settings_with_secure_pairing_state, LibrarySyncDeviceTokenSnapshot,
+        LibrarySyncPairingSnapshot,
     };
     use crate::backend::filament_database::{FilamentDatabase, LibrarySyncSettingsRow};
     use crate::credential_store::CredentialStore;
@@ -306,6 +310,7 @@ mod tests {
     use crate::trusted_lan_runtime_commands::companion_local_hostname;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+    use zeroize::Zeroizing;
 
     static NEXT_TEST_DATABASE: AtomicU64 = AtomicU64::new(1);
 
@@ -526,7 +531,7 @@ mod tests {
             store_library_sync_device_token(&state, old_host, "device-token").expect("store token");
             state
                 .library_sync_auth
-                .replace(old_host, "session", "csrf")
+                .replace_authenticated(old_host, "session", "csrf", "device-token")
                 .expect("save runtime session");
 
             save_library_sync_settings_inner(
@@ -556,6 +561,11 @@ mod tests {
             assert_eq!(runtime.host_base_url, old_host, "{case_name}");
             assert_eq!(runtime.session_id, "session", "{case_name}");
             assert_eq!(runtime.csrf_token, "csrf", "{case_name}");
+            assert_eq!(
+                runtime.device_token.as_deref(),
+                Some("device-token"),
+                "{case_name}"
+            );
 
             let persisted = with_test_database(&state, |db| db.get_library_sync_settings());
             assert_eq!(persisted.mode, "CLIENT", "{case_name}");
@@ -579,7 +589,7 @@ mod tests {
         store_library_sync_device_token(&state, host, "device-token").expect("store token");
         state
             .library_sync_auth
-            .replace(host, "session", "csrf")
+            .replace_authenticated(host, "session", "csrf", "device-token")
             .expect("save runtime session");
 
         let cleared =
@@ -619,7 +629,7 @@ mod tests {
         store_library_sync_device_token(&state, host, "device-token").expect("store token");
         state
             .library_sync_auth
-            .replace(host, "session", "csrf")
+            .replace_authenticated(host, "session", "csrf", "device-token")
             .expect("save runtime session");
 
         clear_library_sync_client_auth_inner(&state)
@@ -639,8 +649,42 @@ mod tests {
         assert_eq!(runtime.host_base_url, host);
         assert_eq!(runtime.session_id, "session");
         assert_eq!(runtime.csrf_token, "csrf");
+        assert_eq!(runtime.device_token.as_deref(), Some("device-token"));
         let persisted = with_test_database(&state, |db| db.get_library_sync_settings());
         assert!(persisted.client_auth_paired);
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn failed_credential_restore_keeps_runtime_device_token_cleared() {
+        let state = test_state();
+        let host = "http://host.local:4278";
+        let previous_auth = LibrarySyncRuntimeAuth::new();
+        previous_auth
+            .replace_authenticated(host, "previous-session", "previous-csrf", "previous-device")
+            .expect("build previous runtime auth");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "new-session", "new-csrf", "new-device")
+            .expect("seed replacement runtime auth");
+        let snapshot = LibrarySyncPairingSnapshot {
+            host_base_url: Some(host.to_string()),
+            device_token: LibrarySyncDeviceTokenSnapshot::Readable(Some(
+                Zeroizing::new(Vec::new()),
+            )),
+            runtime_auth: previous_auth.current().expect("snapshot previous auth"),
+        };
+
+        let error = restore_library_sync_pairing(&state, &snapshot)
+            .expect_err("empty durable credential must fail restoration");
+
+        assert!(error.contains("credential"));
+        assert!(state
+            .library_sync_auth
+            .current()
+            .expect("read fail-closed runtime auth")
+            .is_none());
 
         let _ = std::fs::remove_file(&state.db_path);
     }

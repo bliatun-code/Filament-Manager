@@ -264,10 +264,11 @@ pub(crate) fn migrate_legacy_credentials(
         let installed_legacy_runtime =
             credential_matches_legacy && legacy_session_id.is_some() && legacy_csrf_token.is_some();
         if installed_legacy_runtime
-            && let Err(error) = runtime_auth.replace(
+            && let Err(error) = runtime_auth.replace_authenticated(
                 &host_base_url,
                 legacy_session_id.as_deref().unwrap_or_default(),
                 legacy_csrf_token.as_deref().unwrap_or_default(),
+                device_token,
             )
         {
             return Err(rollback_library_migration_after_failure(
@@ -498,11 +499,25 @@ fn rollback_new_credential_after_failure(
     label: &str,
     primary_error: String,
 ) -> String {
+    match rollback_new_credential(credentials, key, wrote_new_credential, label) {
+        Ok(()) => primary_error,
+        Err(rollback_error) => {
+            format!("{primary_error} Credential rollback also failed: {rollback_error}.")
+        }
+    }
+}
+
+fn rollback_new_credential(
+    credentials: &CredentialStore,
+    key: &CredentialKey,
+    wrote_new_credential: bool,
+    label: &str,
+) -> Result<(), String> {
     if !wrote_new_credential {
-        return primary_error;
+        return Ok(());
     }
 
-    let rollback = credentials
+    credentials
         .delete(key)
         .map_err(|error| format!("could not remove the newly-created {label}: {error}"))
         .and_then(|deleted| {
@@ -516,13 +531,7 @@ fn rollback_new_credential_after_failure(
                 Ok(Some(_)) => Err(format!("the newly-created {label} remained after rollback")),
                 Err(error) => Err(format!("could not verify {label} rollback: {error}")),
             }
-        });
-    match rollback {
-        Ok(()) => primary_error,
-        Err(rollback_error) => {
-            format!("{primary_error} Credential rollback also failed: {rollback_error}.")
-        }
-    }
+        })
 }
 
 fn rollback_library_migration_after_failure(
@@ -535,28 +544,37 @@ fn rollback_library_migration_after_failure(
     primary_error: String,
 ) -> String {
     let mut error = primary_error;
-    if runtime_changed {
-        let restore_result = match previous_runtime_auth {
-            Some(previous) => runtime_auth.replace(
-                previous.host_base_url.clone(),
-                previous.session_id.clone(),
-                previous.csrf_token.clone(),
-            ),
-            None => runtime_auth.clear(),
-        };
-        if let Err(restore_error) = restore_result {
-            error.push_str(&format!(
-                " Runtime authentication rollback also failed: {restore_error}."
-            ));
-        }
-    }
-    rollback_new_credential_after_failure(
+    let credential_rollback = rollback_new_credential(
         credentials,
         key,
         wrote_new_credential,
         "desktop client device token",
-        error,
-    )
+    );
+    if let Err(rollback_error) = credential_rollback.as_ref() {
+        error.push_str(&format!(
+            " Credential rollback also failed: {rollback_error}."
+        ));
+    }
+
+    // If secure-storage rollback is incomplete, never reactivate a reusable device token in the
+    // volatile session. Even a runtime that was not changed by this attempt must be cleared because
+    // the durable credential state for this host is now unknown.
+    let runtime_result = if credential_rollback.is_err() {
+        runtime_auth.clear()
+    } else if runtime_changed {
+        match previous_runtime_auth {
+            Some(previous) => runtime_auth.restore(previous),
+            None => runtime_auth.clear(),
+        }
+    } else {
+        Ok(())
+    };
+    if let Err(runtime_error) = runtime_result {
+        error.push_str(&format!(
+            " Runtime authentication rollback also failed: {runtime_error}."
+        ));
+    }
+    error
 }
 
 #[cfg(test)]
@@ -724,6 +742,7 @@ mod tests {
             assert_eq!(session.host_base_url, "http://host.local:4278");
             assert_eq!(session.session_id, "legacy-session");
             assert_eq!(session.csrf_token, "legacy-csrf");
+            assert_eq!(session.device_token.as_deref(), Some("legacy-device-token"));
 
             let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
             assert!(db
@@ -1375,5 +1394,48 @@ mod tests {
         if let Err(error) = result {
             panic!("Library migration rollback failed: {error}");
         }
+    }
+
+    #[test]
+    fn failed_library_credential_rollback_clears_runtime_device_token() {
+        let credentials = CredentialStore::in_memory_with_delete_failures(1);
+        let key = library_sync_device_token_key("http://host.local:4278")
+            .expect("library credential key");
+        credentials
+            .set(
+                &key,
+                &SecretValue::from_utf8("new-device-token".to_string()),
+            )
+            .expect("seed migrated credential");
+
+        let runtime_auth = LibrarySyncRuntimeAuth::new();
+        runtime_auth
+            .replace("http://host.local:4278", "legacy-session", "legacy-csrf")
+            .expect("seed migration runtime auth");
+        let previous_auth = LibrarySyncRuntimeAuth::new();
+        previous_auth
+            .replace_authenticated(
+                "http://host.local:4278",
+                "previous-session",
+                "previous-csrf",
+                "previous-device-token",
+            )
+            .expect("build previous runtime auth");
+
+        let error = rollback_library_migration_after_failure(
+            &credentials,
+            &key,
+            true,
+            &runtime_auth,
+            previous_auth.current().expect("snapshot previous auth"),
+            true,
+            "forced migration failure".to_string(),
+        );
+
+        assert!(error.contains("Credential rollback also failed"));
+        assert!(runtime_auth
+            .current()
+            .expect("read fail-closed runtime auth")
+            .is_none());
     }
 }

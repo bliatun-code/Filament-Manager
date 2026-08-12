@@ -41,6 +41,7 @@ mod inventory_stats_commands;
 mod inventory_update_commands;
 mod inventory_wishlist_commands;
 mod library_revision_commands;
+mod library_sync_blocking_executor;
 mod library_sync_cache_commands;
 mod library_sync_cache_refresh;
 mod library_sync_command_support;

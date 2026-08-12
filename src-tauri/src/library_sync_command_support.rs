@@ -91,7 +91,7 @@ pub(crate) fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
 }
 
 pub(crate) fn save_library_sync_success(
-    state: &tauri::State<'_, AppState>,
+    state: &AppState,
     message: &str,
     device_name: Option<&str>,
 ) -> Result<(), String> {

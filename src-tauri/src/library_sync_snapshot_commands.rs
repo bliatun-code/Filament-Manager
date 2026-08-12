@@ -1,4 +1,5 @@
 use crate::backend::database_library_sync_models::LibrarySyncCachedSnapshotRow;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     prepare_library_sync_host_checked, save_library_sync_success,
 };
@@ -10,13 +11,21 @@ use crate::state::AppState;
 use crate::with_inventory;
 
 #[tauri::command]
-pub(crate) fn fetch_library_sync_snapshot(
+pub(crate) async fn fetch_library_sync_snapshot(
     state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<LibrarySyncRemoteSnapshot, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_snapshot_blocking(&state, input)).await
+}
+
+fn fetch_library_sync_snapshot_blocking(
+    state: &AppState,
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncRemoteSnapshot, String> {
     let (normalized_base_url, expected_library_id) = prepare_library_sync_host_checked(&input)?;
     let parsed: LibrarySyncSnapshotResponse = get_library_sync_host_json_authenticated(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/library/snapshot",
     )?;
@@ -47,7 +56,7 @@ pub(crate) fn fetch_library_sync_snapshot(
         printers: parsed.printers,
     };
 
-    with_inventory(&state, |engine| {
+    with_inventory(state, |engine| {
         engine.save_library_sync_cached_snapshot(&LibrarySyncCachedSnapshotRow {
             captured_at: snapshot.captured_at.clone(),
             library_id: snapshot.library_id.clone(),
@@ -63,7 +72,7 @@ pub(crate) fn fetch_library_sync_snapshot(
         Ok(())
     })?;
     save_library_sync_success(
-        &state,
+        state,
         "Host snapshot refreshed.",
         Some(&snapshot.device_name),
     )?;

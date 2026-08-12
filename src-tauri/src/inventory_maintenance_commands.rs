@@ -110,6 +110,7 @@ struct PendingCredentialCleanupManifest {
 pub(crate) struct CredentialDeletionRollback {
     credentials: Vec<(CredentialKey, SecretValue)>,
     runtime_auth: Option<LibrarySyncRuntimeSession>,
+    includes_runtime_auth: bool,
 }
 
 impl CredentialDeletionRollback {
@@ -136,6 +137,7 @@ impl CredentialDeletionRollback {
         Ok(Self {
             credentials,
             runtime_auth,
+            includes_runtime_auth: include_runtime_auth,
         })
     }
 
@@ -145,6 +147,7 @@ impl CredentialDeletionRollback {
             &state.library_sync_auth,
             self.credentials,
             self.runtime_auth,
+            self.includes_runtime_auth,
         )
     }
 }
@@ -221,6 +224,7 @@ fn restore_deleted_credentials(
     library_sync_auth: &LibrarySyncRuntimeAuth,
     stored_credentials: Vec<(CredentialKey, SecretValue)>,
     runtime_auth: Option<LibrarySyncRuntimeSession>,
+    includes_runtime_auth: bool,
 ) -> Result<(), String> {
     let mut first_error = None;
     for (key, secret) in stored_credentials {
@@ -230,15 +234,26 @@ fn restore_deleted_credentials(
             first_error = Some(format!("Could not restore a stored credential: {error}"));
         }
     }
-    if let Some(session) = runtime_auth
-        && let Err(error) = library_sync_auth.replace(
-            session.host_base_url.clone(),
-            session.session_id.clone(),
-            session.csrf_token.clone(),
-        )
-        && first_error.is_none()
-    {
-        first_error = Some(error);
+
+    // Restoring a runtime device token after any durable credential failed to restore would turn
+    // a partial Keychain rollback into a process-lifetime authentication bypass. Fail closed.
+    let runtime_result = if !includes_runtime_auth {
+        Ok(())
+    } else if first_error.is_none() {
+        match runtime_auth {
+            Some(session) => library_sync_auth.restore(session),
+            None => library_sync_auth.clear(),
+        }
+    } else {
+        library_sync_auth.clear()
+    };
+    if let Err(runtime_error) = runtime_result {
+        first_error = Some(match first_error {
+            Some(credential_error) => format!(
+                "{credential_error} Runtime authentication also could not be cleared: {runtime_error}"
+            ),
+            None => runtime_error,
+        });
     }
     match first_error {
         Some(error) => Err(error),
@@ -564,7 +579,8 @@ pub(crate) fn reset_catalog_data(
 mod tests {
     use super::{
         finish_app_data_reset, persist_pending_credential_cleanup, reset_app_data_inner,
-        reset_app_data_with, retry_pending_credential_cleanup, StoredCredentialScopes,
+        reset_app_data_with, restore_deleted_credentials, retry_pending_credential_cleanup,
+        StoredCredentialScopes,
     };
     use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
     use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
@@ -745,6 +761,82 @@ mod tests {
             .expect("reset profile marker"));
         drop(db);
         let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn partial_credential_rollback_cannot_restore_runtime_device_token() {
+        let credentials = CredentialStore::in_memory();
+        let runtime_auth = LibrarySyncRuntimeAuth::new();
+        runtime_auth
+            .replace_authenticated(
+                "http://host.local:4278",
+                "new-session",
+                "new-csrf",
+                "new-device",
+            )
+            .expect("seed replacement runtime auth");
+        let previous_auth = LibrarySyncRuntimeAuth::new();
+        previous_auth
+            .replace_authenticated(
+                "http://host.local:4278",
+                "previous-session",
+                "previous-csrf",
+                "previous-device",
+            )
+            .expect("build previous runtime auth");
+        let key = CredentialKey::library_sync_client_device_token("http://host.local:4278")
+            .expect("credential key");
+
+        let error = restore_deleted_credentials(
+            &credentials,
+            &runtime_auth,
+            vec![(key, SecretValue::from_bytes(Vec::new()))],
+            previous_auth.current().expect("snapshot previous auth"),
+            true,
+        )
+        .expect_err("empty credential must fail restoration");
+
+        assert!(error.contains("credential"));
+        assert!(runtime_auth
+            .current()
+            .expect("read fail-closed runtime auth")
+            .is_none());
+    }
+
+    #[test]
+    fn printer_only_rollback_does_not_clear_unrelated_library_runtime_auth() {
+        let credentials = CredentialStore::in_memory();
+        let runtime_auth = LibrarySyncRuntimeAuth::new();
+        runtime_auth
+            .replace_authenticated(
+                "http://host.local:4278",
+                "library-session",
+                "library-csrf",
+                "library-device",
+            )
+            .expect("seed unrelated library runtime auth");
+        let printer_key =
+            CredentialKey::bambu_access_code("printer-1", "11111111111111111111111111111111")
+                .expect("printer credential key");
+
+        restore_deleted_credentials(
+            &credentials,
+            &runtime_auth,
+            vec![(
+                printer_key,
+                SecretValue::from_utf8("printer-access-code".to_string()),
+            )],
+            None,
+            false,
+        )
+        .expect("restore printer-only credential");
+
+        let runtime = runtime_auth
+            .current()
+            .expect("read library runtime auth")
+            .expect("unrelated library runtime auth remains");
+        assert_eq!(runtime.session_id, "library-session");
+        assert_eq!(runtime.device_token.as_deref(), Some("library-device"));
     }
 
     #[test]
