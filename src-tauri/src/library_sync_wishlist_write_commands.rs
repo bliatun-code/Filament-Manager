@@ -1,4 +1,5 @@
 use crate::backend::filament_database::WishlistReceiptResult;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_spool_cache, refresh_library_sync_wishlist_cache,
 };
@@ -16,15 +17,26 @@ use crate::library_sync_models::{
 use crate::state::AppState;
 
 #[tauri::command]
-pub(crate) fn create_library_sync_host_wishlist_item(
+pub(crate) async fn create_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncCreateWishlistItemInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        create_library_sync_host_wishlist_item_blocking(&state, input)
+    })
+    .await
+}
+
+fn create_library_sync_host_wishlist_item_blocking(
+    state: &AppState,
     input: LibrarySyncCreateWishlistItemInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/wishlist",
         &serde_json::json!({
@@ -38,14 +50,25 @@ pub(crate) fn create_library_sync_host_wishlist_item(
         }),
     )?;
 
-    refresh_library_sync_wishlist_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host wishlist item created.", None)?;
+    refresh_library_sync_wishlist_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host wishlist item created.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_wishlist_item_status(
+pub(crate) async fn update_library_sync_host_wishlist_item_status(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateWishlistStatusInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        update_library_sync_host_wishlist_item_status_blocking(&state, input)
+    })
+    .await
+}
+
+fn update_library_sync_host_wishlist_item_status_blocking(
+    state: &AppState,
     input: LibrarySyncUpdateWishlistStatusInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -57,20 +80,31 @@ pub(crate) fn update_library_sync_host_wishlist_item_status(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/wishlist/{item_id}/status"),
         &serde_json::json!({ "status": input.status.trim() }),
     )?;
 
-    refresh_library_sync_wishlist_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host wishlist item updated.", None)?;
+    refresh_library_sync_wishlist_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host wishlist item updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn receive_library_sync_host_wishlist_item(
+pub(crate) async fn receive_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncReceiveWishlistItemInput,
+) -> Result<WishlistReceiptResult, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        receive_library_sync_host_wishlist_item_blocking(&state, input)
+    })
+    .await
+}
+
+fn receive_library_sync_host_wishlist_item_blocking(
+    state: &AppState,
     input: LibrarySyncReceiveWishlistItemInput,
 ) -> Result<WishlistReceiptResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -81,20 +115,31 @@ pub(crate) fn receive_library_sync_host_wishlist_item(
     }
 
     let result = perform_library_sync_host_write_and_parse(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/wishlist/{item_id}/receive"),
         &serde_json::json!({ "quantity": input.quantity }),
     )?;
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    refresh_library_sync_wishlist_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host wishlist receipt saved.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    refresh_library_sync_wishlist_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host wishlist receipt saved.", None)?;
     Ok(result)
 }
 
 #[tauri::command]
-pub(crate) fn delete_library_sync_host_wishlist_item(
+pub(crate) async fn delete_library_sync_host_wishlist_item(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeleteWishlistItemInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        delete_library_sync_host_wishlist_item_blocking(&state, input)
+    })
+    .await
+}
+
+fn delete_library_sync_host_wishlist_item_blocking(
+    state: &AppState,
     input: LibrarySyncDeleteWishlistItemInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -106,13 +151,13 @@ pub(crate) fn delete_library_sync_host_wishlist_item(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/wishlist/{item_id}/delete"),
         &serde_json::json!({}),
     )?;
 
-    refresh_library_sync_wishlist_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host wishlist item deleted.", None)?;
+    refresh_library_sync_wishlist_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host wishlist item deleted.", None)?;
     Ok(())
 }

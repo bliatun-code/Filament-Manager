@@ -1207,7 +1207,7 @@ pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
 }
 
 pub(crate) fn perform_library_sync_host_write<T: serde::Serialize>(
-    state: &tauri::State<'_, AppState>,
+    state: &AppState,
     base_url: &str,
     path: &str,
     payload: &T,
@@ -1222,7 +1222,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
     T: serde::Serialize,
     R: DeserializeOwned,
 >(
-    state: &tauri::State<'_, AppState>,
+    state: &AppState,
     base_url: &str,
     path: &str,
     payload: &T,
@@ -1240,7 +1240,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
     T: serde::Serialize,
     R: DeserializeOwned,
 >(
-    state: &tauri::State<'_, AppState>,
+    state: &AppState,
     base_url: &str,
     path: &str,
     payload: &T,

@@ -1,4 +1,5 @@
 use crate::backend::filament_database::LibrarySyncSettingsRow;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     ensure_stable_local_library_sync_host, library_sync_host_input,
     normalize_library_sync_host_input,
@@ -15,24 +16,32 @@ use crate::state::AppState;
 use crate::with_inventory;
 
 #[tauri::command]
-pub(crate) fn pair_library_sync_host(
+pub(crate) async fn pair_library_sync_host(
     state: tauri::State<'_, AppState>,
+    input: PairLibrarySyncHostInput,
+) -> Result<LibrarySyncSettingsRow, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || pair_library_sync_host_blocking(&state, input)).await
+}
+
+fn pair_library_sync_host_blocking(
+    state: &AppState,
     input: PairLibrarySyncHostInput,
 ) -> Result<LibrarySyncSettingsRow, String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
     let host_input = library_sync_host_input(&input.base_url, None);
     let (normalized_base_url, _) = normalize_library_sync_host_input(&host_input)?;
     ensure_stable_local_library_sync_host(&normalized_base_url)?;
-    ensure_pairing_target_is_current(&state, &normalized_base_url)?;
+    ensure_pairing_target_is_current(state, &normalized_base_url)?;
     let pairing_token = extract_library_sync_pairing_token(&input.pairing_token_or_url)
         .ok_or_else(|| "Pairing token or URL is required.".to_string())?;
 
     let auth_state = pair_library_sync_host_session(&normalized_base_url, &pairing_token)?;
     let health = ensure_library_sync_host_matches(&normalized_base_url, None)?;
-    ensure_pairing_target_is_current(&state, &normalized_base_url)?;
+    ensure_pairing_target_is_current(state, &normalized_base_url)?;
 
     persist_library_sync_pairing_under_gate(
-        &state,
+        state,
         &normalized_base_url,
         auth_state,
         health.device_name.as_deref(),

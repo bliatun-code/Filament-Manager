@@ -5,7 +5,7 @@ use crate::library_sync_host_client::get_library_sync_host_json_authenticated;
 use crate::state::AppState;
 use crate::with_inventory;
 
-pub(crate) fn refresh_library_sync_spool_cache(state: &tauri::State<'_, AppState>, base_url: &str) {
+pub(crate) fn refresh_library_sync_spool_cache(state: &AppState, base_url: &str) {
     const PAGE_SIZE: usize = 2_500;
     const MAX_PAGES: usize = 200;
 
@@ -37,10 +37,7 @@ pub(crate) fn refresh_library_sync_spool_cache(state: &tauri::State<'_, AppState
     }
 }
 
-pub(crate) fn refresh_library_sync_printer_cache(
-    state: &tauri::State<'_, AppState>,
-    base_url: &str,
-) {
+pub(crate) fn refresh_library_sync_printer_cache(state: &AppState, base_url: &str) {
     let rows: Result<Vec<PrinterOverviewRow>, String> =
         get_library_sync_host_json_authenticated(state, base_url, "/api/v1/library/printers");
     if let Ok(rows) = rows {
@@ -50,7 +47,7 @@ pub(crate) fn refresh_library_sync_printer_cache(
     }
 }
 
-pub(crate) fn refresh_library_sync_loan_cache(state: &tauri::State<'_, AppState>, base_url: &str) {
+pub(crate) fn refresh_library_sync_loan_cache(state: &AppState, base_url: &str) {
     let rows: Result<Vec<SpoolLoanDetailsRow>, String> = get_library_sync_host_json_authenticated(
         state,
         base_url,
@@ -61,10 +58,7 @@ pub(crate) fn refresh_library_sync_loan_cache(state: &tauri::State<'_, AppState>
     }
 }
 
-pub(crate) fn refresh_library_sync_wishlist_cache(
-    state: &tauri::State<'_, AppState>,
-    base_url: &str,
-) {
+pub(crate) fn refresh_library_sync_wishlist_cache(state: &AppState, base_url: &str) {
     let rows: Result<Vec<WishlistItemRow>, String> = get_library_sync_host_json_authenticated(
         state,
         base_url,

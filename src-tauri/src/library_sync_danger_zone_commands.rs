@@ -1,3 +1,4 @@
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_loan_cache, refresh_library_sync_spool_cache,
 };
@@ -10,8 +11,16 @@ use crate::library_sync_models::*;
 use crate::state::AppState;
 
 #[tauri::command]
-pub(crate) fn delete_library_sync_host_spool(
+pub(crate) async fn delete_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeleteSpoolInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || delete_library_sync_host_spool_blocking(&state, input)).await
+}
+
+fn delete_library_sync_host_spool_blocking(
+    state: &AppState,
     input: LibrarySyncDeleteSpoolInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -23,7 +32,7 @@ pub(crate) fn delete_library_sync_host_spool(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/delete"),
         &serde_json::json!({
@@ -31,15 +40,23 @@ pub(crate) fn delete_library_sync_host_spool(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    refresh_library_sync_loan_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool removed.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    refresh_library_sync_loan_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool removed.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn purge_library_sync_host_spool(
+pub(crate) async fn purge_library_sync_host_spool(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeleteSpoolInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || purge_library_sync_host_spool_blocking(&state, input)).await
+}
+
+fn purge_library_sync_host_spool_blocking(
+    state: &AppState,
     input: LibrarySyncDeleteSpoolInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -51,7 +68,7 @@ pub(crate) fn purge_library_sync_host_spool(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/purge"),
         &serde_json::json!({
@@ -59,8 +76,8 @@ pub(crate) fn purge_library_sync_host_spool(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    refresh_library_sync_loan_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host spool purged.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    refresh_library_sync_loan_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host spool purged.", None)?;
     Ok(())
 }

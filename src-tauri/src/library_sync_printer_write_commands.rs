@@ -1,4 +1,5 @@
 use crate::catalog_commands::CatalogRefreshResult;
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_printer_cache, refresh_library_sync_spool_cache,
 };
@@ -19,8 +20,17 @@ use crate::state::AppState;
 use std::time::Duration;
 
 #[tauri::command]
-pub(crate) fn assign_library_sync_host_printer_slot(
+pub(crate) async fn assign_library_sync_host_printer_slot(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncAssignPrinterSlotInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || assign_library_sync_host_printer_slot_blocking(&state, input))
+        .await
+}
+
+fn assign_library_sync_host_printer_slot_blocking(
+    state: &AppState,
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -33,7 +43,7 @@ pub(crate) fn assign_library_sync_host_printer_slot(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/slots/{slot_id}/assignment"),
         &serde_json::json!({
@@ -44,15 +54,24 @@ pub(crate) fn assign_library_sync_host_printer_slot(
         }),
     )?;
 
-    refresh_library_sync_printer_cache(&state, &normalized_base_url);
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host printer slot updated.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url);
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host printer slot updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn record_library_sync_host_print_usage(
+pub(crate) async fn record_library_sync_host_print_usage(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncRecordPrintUsageInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || record_library_sync_host_print_usage_blocking(&state, input))
+        .await
+}
+
+fn record_library_sync_host_print_usage_blocking(
+    state: &AppState,
     input: LibrarySyncRecordPrintUsageInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -68,7 +87,7 @@ pub(crate) fn record_library_sync_host_print_usage(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/spools/{spool_id}/usage"),
         &serde_json::json!({
@@ -78,15 +97,24 @@ pub(crate) fn record_library_sync_host_print_usage(
         }),
     )?;
 
-    refresh_library_sync_printer_cache(&state, &normalized_base_url);
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host print usage recorded.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url);
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host print usage recorded.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn create_library_sync_host_printer(
+pub(crate) async fn create_library_sync_host_printer(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncCreatePrinterInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || create_library_sync_host_printer_blocking(&state, input))
+        .await
+}
+
+fn create_library_sync_host_printer_blocking(
+    state: &AppState,
     input: LibrarySyncCreatePrinterInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -100,7 +128,7 @@ pub(crate) fn create_library_sync_host_printer(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/printers",
         &serde_json::json!({
@@ -112,14 +140,25 @@ pub(crate) fn create_library_sync_host_printer(
         }),
     )?;
 
-    refresh_library_sync_printer_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host printer saved.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host printer saved.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn update_library_sync_host_master_catalog_entry(
+pub(crate) async fn update_library_sync_host_master_catalog_entry(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncUpdateMasterCatalogEntryInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        update_library_sync_host_master_catalog_entry_blocking(&state, input)
+    })
+    .await
+}
+
+fn update_library_sync_host_master_catalog_entry_blocking(
+    state: &AppState,
     input: LibrarySyncUpdateMasterCatalogEntryInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -138,7 +177,7 @@ pub(crate) fn update_library_sync_host_master_catalog_entry(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/catalog/masters/{master_id}/details"),
         &serde_json::json!({
@@ -152,13 +191,24 @@ pub(crate) fn update_library_sync_host_master_catalog_entry(
         }),
     )?;
 
-    save_library_sync_success(&state, "Host catalog entry updated.", None)?;
+    save_library_sync_success(state, "Host catalog entry updated.", None)?;
     Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn refresh_library_sync_host_vendor_catalog(
+pub(crate) async fn refresh_library_sync_host_vendor_catalog(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncRefreshCatalogInput,
+) -> Result<CatalogRefreshResult, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        refresh_library_sync_host_vendor_catalog_blocking(&state, input)
+    })
+    .await
+}
+
+fn refresh_library_sync_host_vendor_catalog_blocking(
+    state: &AppState,
     input: LibrarySyncRefreshCatalogInput,
 ) -> Result<CatalogRefreshResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -170,7 +220,7 @@ pub(crate) fn refresh_library_sync_host_vendor_catalog(
     }
 
     let summary = perform_library_sync_host_write_and_parse_with_timeout(
-        &state,
+        state,
         &normalized_base_url,
         "/api/v1/catalog/refresh",
         &serde_json::json!({
@@ -180,7 +230,7 @@ pub(crate) fn refresh_library_sync_host_vendor_catalog(
         Duration::from_secs(180),
     )?;
 
-    save_library_sync_success(&state, "Host catalog refreshed.", None)?;
+    save_library_sync_success(state, "Host catalog refreshed.", None)?;
     Ok(summary)
 }
 
@@ -201,8 +251,17 @@ pub(crate) fn delete_library_sync_host_bambu_live_integration(
 }
 
 #[tauri::command]
-pub(crate) fn delete_library_sync_host_printer(
+pub(crate) async fn delete_library_sync_host_printer(
     state: tauri::State<'_, AppState>,
+    input: LibrarySyncDeletePrinterInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || delete_library_sync_host_printer_blocking(&state, input))
+        .await
+}
+
+fn delete_library_sync_host_printer_blocking(
+    state: &AppState,
     input: LibrarySyncDeletePrinterInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
@@ -214,14 +273,14 @@ pub(crate) fn delete_library_sync_host_printer(
     }
 
     perform_library_sync_host_write(
-        &state,
+        state,
         &normalized_base_url,
         &format!("/api/v1/printers/{printer_id}/delete"),
         &serde_json::json!({}),
     )?;
 
-    refresh_library_sync_printer_cache(&state, &normalized_base_url);
-    refresh_library_sync_spool_cache(&state, &normalized_base_url);
-    save_library_sync_success(&state, "Host printer deleted.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url);
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host printer deleted.", None)?;
     Ok(())
 }

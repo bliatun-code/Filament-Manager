@@ -273,7 +273,15 @@ mod tests {
             );
             assert!(
                 !wrapper.contains("get_library_sync_host_json_authenticated")
-                    && !wrapper.contains("with_inventory("),
+                    && !wrapper.contains("perform_library_sync_host_write")
+                    && !wrapper.contains("prepare_library_sync_host")
+                    && !wrapper.contains("refresh_library_sync_spool_cache(")
+                    && !wrapper.contains("refresh_library_sync_printer_cache(")
+                    && !wrapper.contains("refresh_library_sync_loan_cache(")
+                    && !wrapper.contains("refresh_library_sync_wishlist_cache(")
+                    && !wrapper.contains("save_library_sync_success")
+                    && !wrapper.contains("with_inventory(")
+                    && !wrapper.contains("lock_secure_credential_mutation"),
                 "{command} must keep network and database work inside its blocking function"
             );
         }
@@ -308,6 +316,63 @@ mod tests {
             "fetch_library_sync_full_backup_json",
         ] {
             assert_async_blocking_wrapper(read_commands, command);
+        }
+
+        assert_async_blocking_wrapper(
+            include_str!("library_sync_pairing_commands.rs"),
+            "pair_library_sync_host",
+        );
+
+        for (source, commands) in [
+            (
+                include_str!("library_sync_spool_write_commands.rs"),
+                &[
+                    "update_library_sync_host_spool_weight",
+                    "update_library_sync_host_spool_tare_weight",
+                    "update_library_sync_host_spool_details",
+                    "update_library_sync_host_spool_ownership",
+                    "update_library_sync_host_spool_rfid_tag",
+                    "create_library_sync_host_spool",
+                ][..],
+            ),
+            (
+                include_str!("library_sync_printer_write_commands.rs"),
+                &[
+                    "assign_library_sync_host_printer_slot",
+                    "record_library_sync_host_print_usage",
+                    "create_library_sync_host_printer",
+                    "update_library_sync_host_master_catalog_entry",
+                    "refresh_library_sync_host_vendor_catalog",
+                    "delete_library_sync_host_printer",
+                ][..],
+            ),
+            (
+                include_str!("library_sync_loan_write_commands.rs"),
+                &[
+                    "return_library_sync_host_loan",
+                    "lend_library_sync_host_spool",
+                ][..],
+            ),
+            (
+                include_str!("library_sync_wishlist_write_commands.rs"),
+                &[
+                    "create_library_sync_host_wishlist_item",
+                    "update_library_sync_host_wishlist_item_status",
+                    "receive_library_sync_host_wishlist_item",
+                    "delete_library_sync_host_wishlist_item",
+                ][..],
+            ),
+            (
+                include_str!("library_sync_danger_zone_commands.rs"),
+                &[
+                    "delete_library_sync_host_spool",
+                    "purge_library_sync_host_spool",
+                ][..],
+            ),
+        ] {
+            for command in commands {
+                assert_async_blocking_wrapper(source, command);
+            }
         }
 
         let revisions = include_str!("library_revision_commands.rs");
