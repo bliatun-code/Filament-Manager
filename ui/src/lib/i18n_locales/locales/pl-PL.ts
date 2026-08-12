@@ -759,7 +759,8 @@ export const plPLDictionary: DictionaryNode = {
       "recordUsage": "Nie udało się zarejestrować wykorzystania drukowania.",
       "selectCandidateBeforeRfid": "Najpierw wybierz tę rolkę w slot, aby cała wychodząca waga rolki została obsłużona przed zapisaniem RFID.",
       "selectRollBeforeWeight": "Wybierz rolkę docelową przed aktualizacją wagi.",
-      "updateSlot": "Nie udało się zaktualizować drukarki slot."
+      "updateSlot": "Nie udało się zaktualizować drukarki slot.",
+      "amsWeightEstimateChanged": "Szacunek AMS lub dokładne dopasowanie rolki uległo zmianie. Otwórz ponownie Aktualizuj wagę i spróbuj jeszcze raz."
     },
     "extSlot": "ZEWN Slot",
     "failed": "Nieudane",
@@ -767,6 +768,10 @@ export const plPLDictionary: DictionaryNode = {
     "hideSlots": "Ukryj gniazda",
     "incomingWeight": "Ważenie przychodzące (g, opcjonalnie)",
     "incomingWeightPromptLabel": "Zmierzona waga (g)",
+    "amsWeightEstimateHint": "AMS zgłasza tę wartość dla rolki z dokładnym dopasowaniem RFID. Jest to szacunek, a nie pomiar z wagi.",
+    "amsCalculatedTotal": "Obliczona masa całkowita ze szpulą",
+    "useAmsWeightEstimate": "Użyj szacunku AMS",
+    "amsWeightAccepted": "Masa została zaktualizowana na podstawie bieżącego szacunku AMS.",
     "incomingWeightPromptTitle": "Ustaw wagę przychodzącej rolki",
     "jobOptional": "Nazwa stanowiska (opcjonalnie)",
     "jobs": "Zadania",

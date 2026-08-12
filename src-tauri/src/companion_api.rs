@@ -1,9 +1,9 @@
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_engine::{
-    CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput, DeleteSpoolInput, LendSpoolInput,
-    PurgeSpoolInput, RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
-    WeightSource,
+    AcceptBambuLiveWeightEstimateInput, CreateManualSpoolInput, CreatePrinterInput,
+    CreateSpoolInput, DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput,
+    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput,
+    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, WeightSource,
 };
 use crate::catalog_commands::CatalogRefreshResult;
 #[cfg(test)]
@@ -994,6 +994,33 @@ pub(super) async fn handle_record_print_usage(
             Ok(Json(WriteResponse {
                 ok: true,
                 message: "Print usage recorded".to_string(),
+            }))
+        })
+        .await
+}
+
+pub(super) async fn handle_accept_bambu_live_weight_estimate(
+    State(state): State<CompanionApiState>,
+    Path((printer_id, slot_id, spool_id)): Path<(String, String, String)>,
+    Json(payload): Json<AcceptBambuLiveWeightEstimateRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    state
+        .run_blocking("Bambu live weight estimate acceptance", move |state| {
+            state
+                .service
+                .accept_bambu_live_weight_estimate(AcceptBambuLiveWeightEstimateInput {
+                    printer_id,
+                    slot_id,
+                    spool_id,
+                    expected_weight_seen_at: payload.expected_weight_seen_at,
+                    expected_remaining_grams: payload.expected_remaining_grams,
+                    expected_current_grams: payload.expected_current_grams,
+                })
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: "AMS weight estimate accepted".to_string(),
             }))
         })
         .await

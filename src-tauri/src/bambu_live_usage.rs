@@ -363,6 +363,28 @@ fn sync_live_weight(
     tray: &BambuLiveObservedTrayRow,
     usage_context: Option<&LivePrintUsageContext>,
 ) -> Result<(), InventoryError> {
+    // Keep the read/classify/write sequence indivisible from an explicit AMS
+    // acceptance so a poll classified from the old weight cannot overwrite it.
+    db.with_write_transaction(|db| {
+        sync_live_weight_in_transaction(
+            db,
+            printer_id,
+            spool_id,
+            remaining_grams,
+            tray,
+            usage_context,
+        )
+    })
+}
+
+fn sync_live_weight_in_transaction(
+    db: &FilamentDatabase,
+    printer_id: &str,
+    spool_id: &str,
+    remaining_grams: i64,
+    tray: &BambuLiveObservedTrayRow,
+    usage_context: Option<&LivePrintUsageContext>,
+) -> Result<(), InventoryError> {
     let Some(spool) = db.get_spool_by_id(spool_id)? else {
         return Ok(());
     };

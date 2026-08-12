@@ -1044,6 +1044,11 @@ export const nbDictionary: DictionaryNode = {
       incomingWeightPromptTitle: "Sett innkommende rullvekt",
       outgoingWeightPromptTitle: "Sett utgående rullvekt",
       incomingWeightPromptLabel: "Målt vekt (g)",
+      amsWeightEstimateHint:
+        "AMS rapporterer dette estimatet for rullen med eksakt RFID-treff. Dette er et estimat, ikke en måling fra vekt.",
+      amsCalculatedTotal: "Beregnet total inkl. rull",
+      useAmsWeightEstimate: "Bruk AMS-estimat",
+      amsWeightAccepted: "Vekten ble oppdatert fra gjeldende AMS-estimat.",
       updateWeight: "Oppdater vekt",
       applyRollChange: "Bruk rullbytte",
       noPendingChanges: "Ingen ventende sporendringer.",
@@ -1053,6 +1058,8 @@ export const nbDictionary: DictionaryNode = {
       error: {
         load: "Kunne ikke laste printeroversikt.",
         updateSlot: "Kunne ikke oppdatere printer-spor.",
+        amsWeightEstimateChanged:
+          "AMS-estimatet eller det eksakte rulltreffet ble endret. Åpne Oppdater vekt på nytt og prøv igjen.",
         outgoingWeightRequired: "Oppgi utgående rullvekt før rullbytte.",
         selectRollBeforeWeight: "Velg en målrull før du oppdaterer vekt.",
         invalidUsage: "Forbruk i gram må være større enn null.",

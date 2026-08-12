@@ -2,11 +2,72 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  writeAcceptedBambuLiveWeightEstimate,
   writePreparedMeasuredWeightUpdate,
   writePreparedPrinterSlotAssignment,
   writePrinterSlotAssignment,
 } from "./printer_slot_writes";
 import type { AssignPrinterSlotInput } from "./tauri_client";
+
+const amsWeightInput = {
+  printer_id: "printer-1",
+  slot_id: "ams_0_0",
+  spool_id: "spool-1",
+  expected_weight_seen_at: "2026-08-12T08:00:00Z",
+  expected_remaining_grams: 280,
+  expected_current_grams: 1000,
+};
+
+test("accepted AMS estimates use the dedicated local command without print usage", async () => {
+  const accepted: typeof amsWeightInput[] = [];
+  let recordedUsage = false;
+
+  await writeAcceptedBambuLiveWeightEstimate(
+    { clientReadOnly: false, clientHostBaseUrl: null, clientLibraryId: null },
+    amsWeightInput,
+    {
+      acceptLocalAmsWeightEstimate: async (input) => {
+        accepted.push(input);
+      },
+      recordLocalPrintUsage: async () => {
+        recordedUsage = true;
+      },
+    },
+  );
+
+  assert.deepEqual(accepted, [amsWeightInput]);
+  assert.equal(recordedUsage, false);
+});
+
+test("accepted AMS estimates route client writes to the dedicated host command", async () => {
+  const accepted: Array<{
+    baseUrl: string;
+    libraryId: string;
+    input: typeof amsWeightInput;
+  }> = [];
+
+  await writeAcceptedBambuLiveWeightEstimate(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
+    amsWeightInput,
+    {
+      acceptHostAmsWeightEstimate: async (baseUrl, libraryId, input) => {
+        accepted.push({ baseUrl, libraryId: libraryId ?? "", input });
+      },
+    },
+  );
+
+  assert.deepEqual(accepted, [
+    {
+      baseUrl: "http://host",
+      libraryId: "library-1",
+      input: amsWeightInput,
+    },
+  ]);
+});
 
 function assignInput(overrides: Partial<AssignPrinterSlotInput> = {}): AssignPrinterSlotInput {
   return {

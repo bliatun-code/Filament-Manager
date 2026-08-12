@@ -759,7 +759,8 @@ export const csCZDictionary: DictionaryNode = {
       "recordUsage": "Nepodařilo se zaznamenat využití tisku.",
       "selectCandidateBeforeRfid": "Nejprve vyberte tuto roli v slot, aby se před uložením RFID zpracovala jakákoli hmotnost odcházející role.",
       "selectRollBeforeWeight": "Před aktualizací hmotnosti vyberte cílovou roli.",
-      "updateSlot": "Aktualizace tiskárny slot se nezdařila."
+      "updateSlot": "Aktualizace tiskárny slot se nezdařila.",
+      "amsWeightEstimateChanged": "Odhad AMS nebo přesná shoda cívky se změnila. Znovu otevřete Aktualizovat hmotnost a akci zopakujte."
     },
     "extSlot": "EXT Slot",
     "failed": "Neúspěšné",
@@ -767,6 +768,10 @@ export const csCZDictionary: DictionaryNode = {
     "hideSlots": "Skrýt sloty",
     "incomingWeight": "Příchozí vážení (g, volitelné)",
     "incomingWeightPromptLabel": "Naměřená hmotnost (g)",
+    "amsWeightEstimateHint": "AMS hlásí tento odhad pro cívku s přesnou shodou RFID. Jde o odhad, nikoli měření na váze.",
+    "amsCalculatedTotal": "Vypočtená celková hmotnost včetně cívky",
+    "useAmsWeightEstimate": "Použít odhad AMS",
+    "amsWeightAccepted": "Hmotnost byla aktualizována podle aktuálního odhadu AMS.",
     "incomingWeightPromptTitle": "Nastavte hmotnost příchozí role",
     "jobOptional": "Název úlohy (volitelné)",
     "jobs": "Úlohy",

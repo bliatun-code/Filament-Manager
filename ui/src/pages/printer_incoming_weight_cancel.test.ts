@@ -159,6 +159,7 @@ test("same-roll preparation does not create an outgoing weight draft", () => {
 
   assert.equal(prepared.prompt.requiresIncomingWeight, true);
   assert.equal(prepared.prompt.requiresOutgoingWeight, false);
+  assert.equal(prepared.prompt.updatesCurrentRollWeight, true);
   assert.equal(prepared.incomingWeightValue, "700");
   assert.equal(prepared.outgoingWeightValue, "");
 });

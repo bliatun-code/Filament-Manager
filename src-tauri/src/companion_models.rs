@@ -85,6 +85,13 @@ pub(crate) struct RecordPrintUsageRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct AcceptBambuLiveWeightEstimateRequest {
+    pub(crate) expected_weight_seen_at: String,
+    pub(crate) expected_remaining_grams: i64,
+    pub(crate) expected_current_grams: Option<i64>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct CreateSpoolLoanRequest {
     pub(crate) borrower_name: String,
     pub(crate) grams_out: Option<i64>,

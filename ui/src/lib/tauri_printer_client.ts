@@ -46,6 +46,8 @@ export type PrinterAmsSlotRow = {
   live_color_hex?: string | null;
   live_tray_weight_g?: number | null;
   live_remaining_percent?: number | null;
+  live_remaining_grams?: number | null;
+  live_weight_seen_at?: string | null;
   live_last_identity_seen_at?: string | null;
   live_match_status?: string | null;
   live_match_note?: string | null;
@@ -81,6 +83,7 @@ export type BambuLiveObservedTray = {
   tray_weight_g?: number | null;
   remaining_percent?: number | null;
   remaining_grams?: number | null;
+  last_weight_seen_at?: string | null;
   observed_rfid_tag?: string | null;
   tray_uuid?: string | null;
   chip_id?: string | null;
@@ -223,12 +226,41 @@ export type RecordPrintUsageInput = {
   success?: boolean | null;
 };
 
+export type AcceptBambuLiveWeightEstimateInput = {
+  printer_id: string;
+  slot_id: string;
+  spool_id: string;
+  expected_weight_seen_at: string;
+  expected_remaining_grams: number;
+  expected_current_grams: number | null;
+};
+
 export async function getPrinterSettings() {
   return invoke<PrinterSettingsSnapshot>("get_printer_settings");
 }
 
 export async function listPrinterOverview() {
   return invoke<PrinterOverviewRow[]>("list_printer_overview");
+}
+
+export async function acceptBambuLiveWeightEstimate(
+  input: AcceptBambuLiveWeightEstimateInput,
+) {
+  return invoke<void>("accept_bambu_live_weight_estimate", { input });
+}
+
+export async function acceptLibrarySyncHostBambuLiveWeightEstimate(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: AcceptBambuLiveWeightEstimateInput,
+) {
+  return invoke<void>("accept_library_sync_host_bambu_live_weight_estimate", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      ...input,
+    },
+  });
 }
 
 export async function createPrinter(input: CreatePrinterInput) {

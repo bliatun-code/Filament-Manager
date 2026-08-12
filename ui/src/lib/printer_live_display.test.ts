@@ -244,6 +244,31 @@ test("findLiveTrayForSlot rebuilds host slot snapshots with observed tag uid", (
   assert.equal(isUnknownLiveRfid(rebuiltTray), true);
 });
 
+test("findLiveTrayForSlot preserves AMS remaining grams from a live host overview", () => {
+  const internalSlot = slot({
+    live_loaded: true,
+    live_tray_uuid: "RFID-1",
+    live_tray_weight_g: 1000,
+    live_remaining_percent: 28,
+    live_remaining_grams: 280,
+    live_match_status: "clear_match",
+    live_matched_inventory_mode: "exact_rfid",
+    live_matched_inventory_spool_id: "spool-1",
+  });
+
+  const { tray: rebuiltTray } = findLiveTrayForSlot(
+    "printer-1",
+    internalSlot,
+    {},
+    true,
+    "LIVE",
+  );
+
+  assert.equal(rebuiltTray?.remaining_grams, 280);
+  assert.equal(rebuiltTray?.remaining_percent, 28);
+  assert.equal(rebuiltTray?.tray_weight_g, 1000);
+});
+
 test("findLiveTrayForSlot maps indexed internal trays to their AMS unit", () => {
   const ams1Slot = slot({ ams_id: "printer_ams_1", slot_index: 1 });
   const ams2Slot = slot({ ams_id: "printer_ams_2", slot_index: 1 });

@@ -1,8 +1,9 @@
 use super::{
-    AssignPrinterSlotInput, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
-    CreateWishlistItemInput, DeleteSpoolInput, InventoryEngine, ReceiveWishlistItemInput,
-    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
+    CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
+    InventoryEngine, ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
+    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
+    UpdateSpoolRfidTagInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -1455,6 +1456,7 @@ fn assert_assign_printer_slot_derives_unknown_live_rfid_override(
                             tray_weight_g: Some(1000),
                             remaining_percent: Some(82),
                             remaining_grams: Some(820),
+                            last_weight_seen_at: None,
                             observed_rfid_tag: observed_rfid_tag.map(str::to_string),
                             tray_uuid: tray_uuid.map(str::to_string),
                             chip_id: None,
@@ -2357,4 +2359,598 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
     if let Err(message) = result {
         panic!("receive_wishlist_item_rolls_back_spools_and_quantity_together failed: {message}");
     }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_is_atomic_net_weight_correction_and_idempotent() {
+    let db_path = temp_db_path("accept-bambu-live-weight");
+    let result = (|| -> Result<(), String> {
+        let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+
+        engine
+            .accept_bambu_live_weight_estimate(input.clone())
+            .map_err(|error| error.to_string())?;
+        let spool = engine
+            .db
+            .get_spool_by_id("ams_weight_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected accepted spool".to_string())?;
+        assert_eq!(spool.current_weight_g, Some(300));
+        assert_eq!(spool.remaining_g, Some(300));
+        assert_eq!(spool.status, "ASSIGNED");
+
+        let (reading_count, correction_count, print_count, live_session_count, live_spool_count): (
+            i64,
+            i64,
+            i64,
+            i64,
+            i64,
+        ) = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT
+                    (SELECT COUNT(*) FROM weight_readings
+                     WHERE spool_id = 'ams_weight_spool' AND source = 'BAMBU_AMS_ACCEPTED'),
+                    (SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = 'ams_weight_spool' AND event_type = 'WEIGHT_CORRECTED'),
+                    (SELECT COUNT(*) FROM print_jobs WHERE spool_id = 'ams_weight_spool'),
+                    (SELECT COUNT(*) FROM printer_live_usage_sessions
+                     WHERE printer_id = 'ams_weight_printer'),
+                    (SELECT COUNT(*) FROM printer_live_usage_session_spools
+                     WHERE spool_id = 'ams_weight_spool')",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            (
+                reading_count,
+                correction_count,
+                print_count,
+                live_session_count,
+                live_spool_count,
+            ),
+            (1, 1, 0, 0, 0)
+        );
+
+        let payload_json: String = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT payload_json FROM spool_history_events
+                 WHERE spool_id = 'ams_weight_spool' AND event_type = 'WEIGHT_CORRECTED'
+                 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let payload: serde_json::Value =
+            serde_json::from_str(&payload_json).map_err(|error| error.to_string())?;
+        assert_eq!(payload["source"], "BAMBU_AMS_ACCEPTED");
+        assert_eq!(payload["printer_id"], "ams_weight_printer");
+        assert_eq!(payload["slot_id"], "ams_weight_printer_ams_1_slot_1");
+        assert_eq!(payload["remaining_percent"], 30);
+        assert_eq!(payload["tray_weight_g"], 1000);
+
+        engine
+            .accept_bambu_live_weight_estimate(input)
+            .map_err(|error| error.to_string())?;
+        let counts_after_retry: (i64, i64) = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT
+                    (SELECT COUNT(*) FROM weight_readings
+                     WHERE spool_id = 'ams_weight_spool' AND source = 'BAMBU_AMS_ACCEPTED'),
+                    (SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = 'ams_weight_spool' AND event_type = 'WEIGHT_CORRECTED')",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(counts_after_retry, (1, 1));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("accept_bambu_live_weight_estimate_is_atomic_net_weight_correction_and_idempotent failed: {message}");
+    }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_rejects_changed_stored_weight_without_side_effects() {
+    let db_path = temp_db_path("reject-changed-bambu-live-weight");
+    let result = (|| -> Result<(), String> {
+        let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET current_weight_g = 900, remaining_g = 900
+                 WHERE id = 'ams_weight_spool'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .accept_bambu_live_weight_estimate(input)
+            .expect_err("changed stored weight must fail closed");
+        assert_eq!(
+            error.to_string(),
+            "The stored spool weight changed. Refresh printer data and try again."
+        );
+        let (weight, readings, corrections): (Option<i64>, i64, i64) = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT remaining_g,
+                    (SELECT COUNT(*) FROM weight_readings
+                     WHERE spool_id = 'ams_weight_spool' AND source = 'BAMBU_AMS_ACCEPTED'),
+                    (SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = 'ams_weight_spool' AND event_type = 'WEIGHT_CORRECTED')
+                 FROM filament_spools WHERE id = 'ams_weight_spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!((weight, readings, corrections), (Some(900), 0, 0));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("accept_bambu_live_weight_estimate_rejects_changed_stored_weight_without_side_effects failed: {message}");
+    }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_rolls_back_weight_and_reading_when_history_fails() {
+    let db_path = temp_db_path("rollback-bambu-live-weight");
+    let result = (|| -> Result<(), String> {
+        let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_accepted_ams_weight_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'WEIGHT_CORRECTED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced AMS weight history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .accept_bambu_live_weight_estimate(input)
+            .expect_err("history failure must abort the whole acceptance");
+        assert!(error
+            .to_string()
+            .contains("forced AMS weight history failure"));
+        let (current, remaining, readings, corrections, scale_count): (
+            Option<i64>,
+            Option<i64>,
+            i64,
+            i64,
+            i64,
+        ) = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT current_weight_g, remaining_g,
+                    (SELECT COUNT(*) FROM weight_readings
+                     WHERE spool_id = 'ams_weight_spool' AND source = 'BAMBU_AMS_ACCEPTED'),
+                    (SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = 'ams_weight_spool' AND event_type = 'WEIGHT_CORRECTED'),
+                    (SELECT COUNT(*) FROM scales WHERE id = 'bambu-ams')
+                 FROM filament_spools WHERE id = 'ams_weight_spool'",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            (current, remaining, readings, corrections, scale_count),
+            (Some(1000), Some(1000), 0, 0, 0)
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("accept_bambu_live_weight_estimate_rolls_back_weight_and_reading_when_history_fails failed: {message}");
+    }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_rejects_changed_live_snapshot() {
+    let db_path = temp_db_path("reject-changed-live-ams-weight");
+    let result = (|| -> Result<(), String> {
+        let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+        let mut integration = engine
+            .db
+            .list_bambu_live_integrations()
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .find(|entry| entry.printer_id == "ams_weight_printer")
+            .ok_or_else(|| "expected Bambu live integration".to_string())?
+            .config;
+        let tray = integration
+            .observed_state
+            .as_mut()
+            .and_then(|state| state.trays.first_mut())
+            .ok_or_else(|| "expected live tray".to_string())?;
+        tray.remaining_percent = Some(25);
+        tray.remaining_grams = Some(250);
+        engine
+            .db
+            .save_bambu_live_integration("ams_weight_printer", &integration)
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .accept_bambu_live_weight_estimate(input)
+            .expect_err("changed live weight must fail closed");
+        assert!(error.to_string().contains("AMS weight estimate changed"));
+        assert_no_accepted_ams_weight_side_effects(&engine, Some(1000))?;
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("accept_bambu_live_weight_estimate_rejects_changed_live_snapshot failed: {message}");
+    }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_rejects_non_unique_rfid_and_busy_reader() {
+    for (test_name, make_invalid) in [("duplicate-rfid", true), ("reading-busy", false)] {
+        let db_path = temp_db_path(test_name);
+        let result = (|| -> Result<(), String> {
+            let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+            if make_invalid {
+                engine
+                    .create_manual_spool(CreateManualSpoolInput {
+                        id: "duplicate_rfid_spool".to_string(),
+                        material: "PETG".to_string(),
+                        filament_name: "Duplicate RFID".to_string(),
+                        color_name: "Black".to_string(),
+                        hex_color: Some("#000000".to_string()),
+                        product_url: None,
+                        vendor: Some("Bambu Lab".to_string()),
+                        default_weight_g: Some(1000),
+                        qr_code: None,
+                        status: Some("IN_STOCK".to_string()),
+                        ownership_type: Some("OWNED".to_string()),
+                        owner_name: None,
+                        owner_contact: None,
+                        ownership_note: None,
+                        initial_weight_g: Some(1000),
+                        location: None,
+                    })
+                    .map_err(|error| error.to_string())?;
+                engine
+                    .update_spool_rfid_tag(UpdateSpoolRfidTagInput {
+                        spool_id: "duplicate_rfid_spool".to_string(),
+                        rfid_tag: Some("rfid-ams-weight".to_string()),
+                        rfid_observed_at: None,
+                    })
+                    .map_err(|error| error.to_string())?;
+            } else {
+                let mut integration = engine
+                    .db
+                    .list_bambu_live_integrations()
+                    .map_err(|error| error.to_string())?
+                    .into_iter()
+                    .find(|entry| entry.printer_id == "ams_weight_printer")
+                    .ok_or_else(|| "expected Bambu live integration".to_string())?
+                    .config;
+                integration
+                    .observed_state
+                    .as_mut()
+                    .ok_or_else(|| "expected observed state".to_string())?
+                    .ams_reading_bits = Some("1".to_string());
+                engine
+                    .db
+                    .save_bambu_live_integration("ams_weight_printer", &integration)
+                    .map_err(|error| error.to_string())?;
+            }
+
+            engine
+                .accept_bambu_live_weight_estimate(input)
+                .expect_err("unsafe live identity state must fail closed");
+            assert_no_accepted_ams_weight_side_effects(&engine, Some(1000))?;
+            Ok(())
+        })();
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("{test_name} failed: {message}");
+        }
+    }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_rejects_stale_or_rebased_identity_snapshot() {
+    for scenario in ["stale-identity", "manual-clear"] {
+        let db_path = temp_db_path(scenario);
+        let result = (|| -> Result<(), String> {
+            let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+            let mut integration = engine
+                .db
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .find(|entry| entry.printer_id == "ams_weight_printer")
+                .ok_or_else(|| "expected Bambu live integration".to_string())?
+                .config;
+            let tray = integration
+                .observed_state
+                .as_mut()
+                .and_then(|state| state.trays.first_mut())
+                .ok_or_else(|| "expected live tray".to_string())?;
+            match scenario {
+                "stale-identity" => {
+                    tray.last_identity_seen_at = Some("2020-01-01T00:00:00Z".to_string());
+                }
+                "manual-clear" => {
+                    engine
+                        .db
+                        .connection()
+                        .execute(
+                            "UPDATE ams_slots
+                             SET live_cache_cleared_at = datetime('now', '+1 second')
+                             WHERE id = 'ams_weight_printer_ams_1_slot_1'",
+                            [],
+                        )
+                        .map_err(|error| error.to_string())?;
+                }
+                _ => unreachable!(),
+            }
+            engine
+                .db
+                .save_bambu_live_integration("ams_weight_printer", &integration)
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .accept_bambu_live_weight_estimate(input)
+                .expect_err("identity freshness binding must fail closed");
+            assert_no_accepted_ams_weight_side_effects(&engine, Some(1000))?;
+            Ok(())
+        })();
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("{scenario} failed: {message}");
+        }
+    }
+}
+
+#[test]
+fn accept_bambu_live_weight_estimate_rejects_offline_or_disconnected_state() {
+    for scenario in ["offline", "mqtt-disconnected"] {
+        let db_path = temp_db_path(scenario);
+        let result = (|| -> Result<(), String> {
+            let (engine, input) = setup_acceptable_bambu_live_weight(&db_path)?;
+            let mut integration = engine
+                .db
+                .list_bambu_live_integrations()
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .find(|entry| entry.printer_id == "ams_weight_printer")
+                .ok_or_else(|| "expected Bambu live integration".to_string())?
+                .config;
+            let observed = integration
+                .observed_state
+                .as_mut()
+                .ok_or_else(|| "expected observed state".to_string())?;
+            if scenario == "offline" {
+                observed.online = false;
+            } else {
+                observed.mqtt_connected = false;
+            }
+            engine
+                .db
+                .save_bambu_live_integration("ams_weight_printer", &integration)
+                .map_err(|error| error.to_string())?;
+
+            engine
+                .accept_bambu_live_weight_estimate(input)
+                .expect_err("offline live state must fail closed");
+            assert_no_accepted_ams_weight_side_effects(&engine, Some(1000))?;
+            Ok(())
+        })();
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("{scenario} failed: {message}");
+        }
+    }
+}
+
+fn assert_no_accepted_ams_weight_side_effects(
+    engine: &InventoryEngine,
+    expected_remaining: Option<i64>,
+) -> Result<(), String> {
+    let (remaining, readings, corrections): (Option<i64>, i64, i64) = engine
+        .db
+        .connection()
+        .query_row(
+            "SELECT remaining_g,
+                (SELECT COUNT(*) FROM weight_readings
+                 WHERE spool_id = 'ams_weight_spool' AND source = 'BAMBU_AMS_ACCEPTED'),
+                (SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'ams_weight_spool' AND event_type = 'WEIGHT_CORRECTED')
+             FROM filament_spools WHERE id = 'ams_weight_spool'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .map_err(|error| error.to_string())?;
+    if (remaining, readings, corrections) != (expected_remaining, 0, 0) {
+        return Err(format!(
+            "unexpected AMS acceptance side effects: {remaining:?}, {readings}, {corrections}"
+        ));
+    }
+    Ok(())
+}
+
+fn setup_acceptable_bambu_live_weight(
+    db_path: &std::path::Path,
+) -> Result<(InventoryEngine, AcceptBambuLiveWeightEstimateInput), String> {
+    let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
+    db.apply_schema().map_err(|error| error.to_string())?;
+    let engine = InventoryEngine::new(db);
+    engine
+        .create_printer(CreatePrinterInput {
+            id: "ams_weight_printer".to_string(),
+            model: "P1S".to_string(),
+            name: "AMS weight printer".to_string(),
+            ams_units: Some(1),
+            slots_per_ams: Some(1),
+        })
+        .map_err(|error| error.to_string())?;
+    engine
+        .create_manual_spool(CreateManualSpoolInput {
+            id: "ams_weight_spool".to_string(),
+            material: "PLA".to_string(),
+            filament_name: "Basic".to_string(),
+            color_name: "Green".to_string(),
+            hex_color: Some("#00FF00".to_string()),
+            product_url: None,
+            vendor: Some("Bambu Lab".to_string()),
+            default_weight_g: Some(1000),
+            qr_code: None,
+            status: Some("IN_STOCK".to_string()),
+            ownership_type: Some("OWNED".to_string()),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            location: None,
+        })
+        .map_err(|error| error.to_string())?;
+    engine
+        .update_spool_rfid_tag(UpdateSpoolRfidTagInput {
+            spool_id: "ams_weight_spool".to_string(),
+            rfid_tag: Some("rfid-ams-weight".to_string()),
+            rfid_observed_at: None,
+        })
+        .map_err(|error| error.to_string())?;
+    engine
+        .assign_printer_slot(AssignPrinterSlotInput {
+            printer_id: "ams_weight_printer".to_string(),
+            slot_id: "ams_weight_printer_ams_1_slot_1".to_string(),
+            spool_id: Some("ams_weight_spool".to_string()),
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: Some(false),
+        })
+        .map_err(|error| error.to_string())?;
+    let observed_at: String = engine
+        .db
+        .connection()
+        .query_row(
+            "SELECT strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '+1 second')",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| error.to_string())?;
+    engine
+        .db
+        .save_bambu_live_integration(
+            "ams_weight_printer",
+            &BambuLiveIntegrationRow {
+                enabled: true,
+                host: Some("192.168.1.10".to_string()),
+                access_code: None,
+                access_code_configured: true,
+                access_code_binding_id: Some("test-binding".to_string()),
+                access_code_stale_binding_ids: Vec::new(),
+                printer_serial: Some("SERIAL-AMS-WEIGHT".to_string()),
+                last_error: None,
+                tls_identity: None,
+                observed_state: Some(BambuLiveObservedStateRow {
+                    online: true,
+                    last_seen_at: Some(observed_at.clone()),
+                    mqtt_connected: true,
+                    progress_percent: None,
+                    remaining_minutes: None,
+                    prepare_percent: None,
+                    print_stage: None,
+                    print_error_code: None,
+                    job_state_code: None,
+                    gcode_state: None,
+                    print_type: None,
+                    subtask_id: None,
+                    subtask_name: None,
+                    active_ams_index: None,
+                    active_tray_index: None,
+                    nozzle_temp_c: None,
+                    bed_temp_c: None,
+                    ams_humidity_index: None,
+                    ams_temperature_c: None,
+                    ams_reading_bits: None,
+                    ams_exist_bits: Some("1".to_string()),
+                    ams_read_done_bits: Some("1".to_string()),
+                    ams_bambu_bits: Some("1".to_string()),
+                    ams_status_code: None,
+                    ams_status_main: None,
+                    ams_status_sub: None,
+                    raw_status_note: None,
+                    raw_payload_json: None,
+                    trays: vec![BambuLiveObservedTrayRow {
+                        ams_index: Some(0),
+                        tray_index: 0,
+                        loaded: true,
+                        filament_type: Some("PLA".to_string()),
+                        filament_name: Some("Basic".to_string()),
+                        color_hex: Some("#00FF00".to_string()),
+                        tray_weight_g: Some(1000),
+                        remaining_percent: Some(30),
+                        remaining_grams: Some(300),
+                        last_weight_seen_at: Some(observed_at.clone()),
+                        observed_rfid_tag: Some("rfid-ams-weight".to_string()),
+                        tray_uuid: Some("rfid-ams-weight".to_string()),
+                        chip_id: None,
+                        tray_info_idx: None,
+                        tray_id_name: None,
+                        nozzle_temp_min_c: None,
+                        nozzle_temp_max_c: None,
+                        last_identity_seen_at: Some(observed_at.clone()),
+                        last_empty_seen_at: None,
+                        empty_observation_count: Some(0),
+                        matched_inventory_spool_id: Some("ams_weight_spool".to_string()),
+                        matched_inventory_mode: Some("exact_rfid".to_string()),
+                        match_status: Some("clear_match".to_string()),
+                        match_note: None,
+                    }],
+                }),
+            },
+        )
+        .map_err(|error| error.to_string())?;
+
+    Ok((
+        engine,
+        AcceptBambuLiveWeightEstimateInput {
+            printer_id: "ams_weight_printer".to_string(),
+            slot_id: "ams_weight_printer_ams_1_slot_1".to_string(),
+            spool_id: "ams_weight_spool".to_string(),
+            expected_weight_seen_at: observed_at,
+            expected_remaining_grams: 300,
+            expected_current_grams: Some(1000),
+        },
+    ))
 }

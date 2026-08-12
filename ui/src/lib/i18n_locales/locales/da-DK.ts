@@ -520,6 +520,10 @@ export const daDKDictionary: DictionaryNode = {
     "liveRfidRegisteredAndAssigned": "RFID blev gemt, og det foreslåede kast blev tildelt denne plads.",
     "slotOnboardingLiveIdentityChanged": "Den live AMS-identitet blev ændret før gemt. Åbn døren igen og bekræft den aktuelle rulle.",
     "incomingWeightPromptLabel": "Målt vægt (g)",
+    "amsWeightEstimateHint": "AMS rapporterer dette estimat for rullen med et nøjagtigt RFID-match. Det er et estimat, ikke en vægtmåling.",
+    "amsCalculatedTotal": "Beregnet totalvægt inklusive spole",
+    "useAmsWeightEstimate": "Brug AMS-estimat",
+    "amsWeightAccepted": "Vægten blev opdateret fra det aktuelle AMS-estimat.",
     "updateWeight": "Opdater vægt",
     "incomingWeightPromptTitle": "Indstil indgående rullevægt",
     "liveCatalogCreatedAndAssigned": "{label} blev tilføjet, RFID blev gemt, og rullen blev tildelt denne plads.",
@@ -539,6 +543,7 @@ export const daDKDictionary: DictionaryNode = {
       "load": "Kunne ikke indlæse printeroversigt.",
       "selectRollBeforeWeight": "Vælg en målrulle, før du opdaterer vægten.",
       "updateSlot": "Kunne ikke opdatere printerens placering.",
+      "amsWeightEstimateChanged": "AMS-estimatet eller det nøjagtige rullematch blev ændret. Åbn Opdater vægt igen, og prøv igen.",
       "invalidUsage": "Usagegram skal være større end nul.",
       "selectCandidateBeforeRfid": "Vælg først denne rulle i spalten, så enhver udgående rullevægt håndteres, før du gemmer RFID.",
       "createFromCatalogRequiresEmptySlot": "Ryd eller udskift den aktuelle rulle gennem det normale lugeflow, før du opretter en ny katalogrulle her."

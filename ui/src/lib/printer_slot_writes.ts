@@ -1,4 +1,6 @@
 import {
+  acceptBambuLiveWeightEstimate,
+  acceptLibrarySyncHostBambuLiveWeightEstimate,
   assignLibrarySyncHostPrinterSlot,
   assignPrinterSlot,
   recordLibrarySyncHostPrintUsage,
@@ -6,6 +8,7 @@ import {
   updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
   type AssignPrinterSlotInput,
+  type AcceptBambuLiveWeightEstimateInput,
 } from "./tauri_client";
 import type {
   PreparedMeasuredWeightUpdate,
@@ -20,6 +23,8 @@ export type PrinterSlotWriteTarget = {
 };
 
 type PrinterSlotWriteDependencies = {
+  acceptHostAmsWeightEstimate?: typeof acceptLibrarySyncHostBambuLiveWeightEstimate;
+  acceptLocalAmsWeightEstimate?: typeof acceptBambuLiveWeightEstimate;
   assignHostPrinterSlot?: typeof assignLibrarySyncHostPrinterSlot;
   assignLocalPrinterSlot?: typeof assignPrinterSlot;
   recordHostPrintUsage?: typeof recordLibrarySyncHostPrintUsage;
@@ -27,6 +32,27 @@ type PrinterSlotWriteDependencies = {
   updateHostSpoolWeight?: typeof updateLibrarySyncHostSpoolWeight;
   updateLocalSpoolWeight?: typeof updateSpoolWeight;
 };
+
+export async function writeAcceptedBambuLiveWeightEstimate(
+  target: PrinterSlotWriteTarget,
+  input: AcceptBambuLiveWeightEstimateInput,
+  dependencies: PrinterSlotWriteDependencies = {},
+) {
+  const acceptHost =
+    dependencies.acceptHostAmsWeightEstimate ?? acceptLibrarySyncHostBambuLiveWeightEstimate;
+  const acceptLocal = dependencies.acceptLocalAmsWeightEstimate ?? acceptBambuLiveWeightEstimate;
+
+  if (target.clientReadOnly) {
+    const hostTarget = requireClientHostWriteTarget(
+      target,
+      "Host connection details are missing for this printer action.",
+    );
+    await acceptHost(hostTarget.baseUrl, hostTarget.libraryId, input);
+    return;
+  }
+
+  await acceptLocal(input);
+}
 
 export async function writePrinterSlotAssignment(
   target: PrinterSlotWriteTarget,

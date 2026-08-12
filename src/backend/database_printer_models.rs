@@ -50,6 +50,8 @@ pub struct PrinterAmsSlotRow {
     pub live_color_hex: Option<String>,
     pub live_tray_weight_g: Option<i64>,
     pub live_remaining_percent: Option<i64>,
+    pub live_remaining_grams: Option<i64>,
+    pub live_weight_seen_at: Option<String>,
     pub live_last_identity_seen_at: Option<String>,
     pub live_match_status: Option<String>,
     pub live_match_note: Option<String>,
@@ -88,6 +90,8 @@ pub struct BambuLiveObservedTrayRow {
     pub tray_weight_g: Option<i64>,
     pub remaining_percent: Option<i64>,
     pub remaining_grams: Option<i64>,
+    #[serde(default)]
+    pub last_weight_seen_at: Option<String>,
     pub observed_rfid_tag: Option<String>,
     pub tray_uuid: Option<String>,
     pub chip_id: Option<String>,

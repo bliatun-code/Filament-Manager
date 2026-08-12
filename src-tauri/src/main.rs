@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
 mod app_error;
 mod app_services;
 mod app_storage;
@@ -155,6 +154,7 @@ fn normalize_desktop_visual_qa_readiness_token(value: &str) -> Option<&'static s
         "add-printer-live-step" => Some("add-printer-live-step"),
         "dashboard-bambu-live-attention" => Some("dashboard-bambu-live-attention"),
         "dashboard-consumption" => Some("dashboard-consumption"),
+        "printer-ams-weight-estimate" => Some("printer-ams-weight-estimate"),
         "printer-live-telemetry" => Some("printer-live-telemetry"),
         _ => None,
     }
@@ -418,10 +418,12 @@ fn main() {
             library_sync_spool_write_commands::update_library_sync_host_spool_rfid_tag,
             library_sync_printer_write_commands::assign_library_sync_host_printer_slot,
             library_sync_printer_write_commands::record_library_sync_host_print_usage,
+            library_sync_printer_write_commands::accept_library_sync_host_bambu_live_weight_estimate,
             library_sync_loan_write_commands::return_library_sync_host_loan,
             library_sync_loan_write_commands::lend_library_sync_host_spool,
             printer_slot_write_commands::assign_printer_slot,
             printer_usage_commands::record_print_usage,
+            printer_usage_commands::accept_bambu_live_weight_estimate,
             inventory_update_commands::update_spool_weight,
             inventory_update_commands::update_spool_tare_weight,
             inventory_update_commands::update_spool_status,
@@ -510,6 +512,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         | "rfid-override"
         | "slot-rfid-override"
         | "printer-slot-rfid-override" => Some("printer-rfid-override"),
+        "printer-ams-weight-estimate" | "ams-weight-estimate" | "printer-weight-estimate" => {
+            Some("printer-ams-weight-estimate")
+        }
         "printer-slot-replacement" | "printer-slot-swap" | "slot-replacement" | "slot-swap" => {
             Some("printer-slot-replacement")
         }

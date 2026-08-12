@@ -1892,7 +1892,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
         result = stoppedLaunchResult("desktop readiness wait");
       } else if (!readinessReached) {
         throw new Error(
-          `Desktop visual QA scenario ${options.scenario} did not signal required readiness token ${requiredReadiness.token} within ${options.readinessTimeoutMs ?? requiredReadiness.timeoutMs}ms. Live printer telemetry was not available, so no screenshot was captured.`,
+          `Desktop visual QA scenario ${options.scenario} did not signal required readiness token ${requiredReadiness.token} within ${options.readinessTimeoutMs ?? requiredReadiness.timeoutMs}ms. The required rendered state was not available, so no screenshot was captured.`,
         );
       }
     }

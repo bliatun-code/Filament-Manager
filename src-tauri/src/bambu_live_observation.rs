@@ -264,8 +264,14 @@ pub(crate) fn merge_tray_snapshots(
                     next.filament_name.as_deref(),
                     next.color_hex.as_deref(),
                 );
+            let identity_replaced = observed_identity_changed(
+                previous,
+                next.tray_uuid.as_deref(),
+                next.observed_rfid_tag.as_deref(),
+            );
             let should_carry_previous_identity =
-                same_loaded_metadata || carry_forward_observed_identity;
+                !identity_replaced && (same_loaded_metadata || carry_forward_observed_identity);
+            let can_carry_previous_weight = !identity_replaced && same_loaded_metadata;
             BambuLiveObservedTrayRow {
                 ams_index: next.ams_index,
                 tray_index: next.tray_index,
@@ -282,9 +288,26 @@ pub(crate) fn merge_tray_snapshots(
                     .color_hex
                     .clone()
                     .or_else(|| previous.color_hex.clone()),
-                tray_weight_g: next.tray_weight_g.or(previous.tray_weight_g),
-                remaining_percent: next.remaining_percent.or(previous.remaining_percent),
-                remaining_grams: next.remaining_grams.or(previous.remaining_grams),
+                tray_weight_g: next.tray_weight_g.or_else(|| {
+                    can_carry_previous_weight
+                        .then_some(previous.tray_weight_g)
+                        .flatten()
+                }),
+                remaining_percent: next.remaining_percent.or_else(|| {
+                    can_carry_previous_weight
+                        .then_some(previous.remaining_percent)
+                        .flatten()
+                }),
+                remaining_grams: next.remaining_grams.or_else(|| {
+                    can_carry_previous_weight
+                        .then_some(previous.remaining_grams)
+                        .flatten()
+                }),
+                last_weight_seen_at: next.last_weight_seen_at.clone().or_else(|| {
+                    can_carry_previous_weight
+                        .then(|| previous.last_weight_seen_at.clone())
+                        .flatten()
+                }),
                 observed_rfid_tag: next.observed_rfid_tag.clone().or_else(|| {
                     should_carry_previous_identity
                         .then(|| previous.observed_rfid_tag.clone())
@@ -787,7 +810,18 @@ pub(crate) fn merge_tray_payload(
             filament_name.as_deref(),
             color_hex.as_deref(),
         );
-    let should_reset_observed_identity = empty_observation || metadata_replacement_signal;
+    let identity_replacement_signal = previous.is_some_and(|previous| {
+        observed_identity_changed(previous, tray_uuid.as_deref(), observed_rfid_tag.as_deref())
+    });
+    let should_reset_observed_identity =
+        empty_observation || metadata_replacement_signal || identity_replacement_signal;
+    let should_reset_weight = should_reset_observed_identity;
+    let prior_tray_weight_g = (!should_reset_weight)
+        .then(|| previous.and_then(|value| value.tray_weight_g))
+        .flatten();
+    let fresh_remaining_grams = remaining_percent
+        .zip(tray_weight_g.or(prior_tray_weight_g))
+        .and_then(|(percent, tray_weight_g)| percent_to_grams(percent, tray_weight_g));
 
     let previous_loaded = previous.map(|value| value.loaded).unwrap_or(false);
     let loaded = if empty_observation {
@@ -825,23 +859,35 @@ pub(crate) fn merge_tray_payload(
         },
         tray_weight_g: if empty_by_exist_bits {
             None
-        } else if empty_observation {
+        } else if should_reset_weight {
             tray_weight_g
+        } else if empty_observation {
+            None
         } else {
             tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g))
         },
         remaining_percent: if empty_by_exist_bits {
             None
+        } else if should_reset_weight {
+            remaining_percent
         } else {
             remaining_percent.or_else(|| previous.and_then(|value| value.remaining_percent))
         },
         remaining_grams: if empty_by_exist_bits {
             None
+        } else if should_reset_weight {
+            fresh_remaining_grams
         } else {
-            remaining_percent
-                .zip(tray_weight_g.or_else(|| previous.and_then(|value| value.tray_weight_g)))
-                .and_then(|(percent, tray_weight_g)| percent_to_grams(percent, tray_weight_g))
-                .or_else(|| previous.and_then(|value| value.remaining_grams))
+            fresh_remaining_grams.or_else(|| previous.and_then(|value| value.remaining_grams))
+        },
+        last_weight_seen_at: if empty_by_exist_bits {
+            None
+        } else if fresh_remaining_grams.is_some() {
+            Some(observed_at.to_string())
+        } else if should_reset_weight {
+            None
+        } else {
+            previous.and_then(|value| value.last_weight_seen_at.clone())
         },
         observed_rfid_tag: if empty_by_exist_bits {
             None
@@ -951,6 +997,38 @@ fn substantive_tray_metadata_changed(
         || substantive_value_changed(color_hex, previous.color_hex.as_deref())
 }
 
+fn observed_identity_changed(
+    previous: &BambuLiveObservedTrayRow,
+    tray_uuid: Option<&str>,
+    observed_rfid_tag: Option<&str>,
+) -> bool {
+    let next_uuid = tray_uuid.map(str::trim).filter(|value| !value.is_empty());
+    let previous_uuid = previous
+        .tray_uuid
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let next_tag = observed_rfid_tag
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let previous_tag = previous
+        .observed_rfid_tag
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    if let Some(next_uuid) = next_uuid {
+        return previous_uuid
+            .or(previous_tag)
+            .is_none_or(|previous_identity| !previous_identity.eq_ignore_ascii_case(next_uuid));
+    }
+    if let Some(next_tag) = next_tag {
+        return previous_tag
+            .or(previous_uuid)
+            .is_none_or(|previous_identity| !previous_identity.eq_ignore_ascii_case(next_tag));
+    }
+    false
+}
+
 fn substantive_value_changed(next: Option<&str>, previous: Option<&str>) -> bool {
     let Some(next) = next.map(str::trim).filter(|value| !value.is_empty()) else {
         return false;
@@ -991,7 +1069,7 @@ fn normalize_remaining_percent(value: Option<i64>) -> Option<i64> {
 
 fn normalize_tray_weight(value: Option<i64>) -> Option<i64> {
     let value = value?;
-    if value <= 0 {
+    if !(1..=100_000).contains(&value) {
         return None;
     }
     Some(value)
@@ -1006,10 +1084,13 @@ fn normalize_nozzle_setting_temp(value: Option<f64>) -> Option<f64> {
 }
 
 fn percent_to_grams(value: i64, tray_weight_g: i64) -> Option<i64> {
-    if !(0..=100).contains(&value) || tray_weight_g <= 0 {
+    if !(0..=100).contains(&value) || !(1..=100_000).contains(&tray_weight_g) {
         return None;
     }
-    Some(((tray_weight_g * value) + 50) / 100)
+    tray_weight_g
+        .checked_mul(value)?
+        .checked_add(50)
+        .map(|grams| grams / 100)
 }
 
 fn as_i64(value: Option<&Value>) -> Option<i64> {

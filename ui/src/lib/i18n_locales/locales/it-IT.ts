@@ -935,6 +935,8 @@ export const itITDictionary: DictionaryNode = {
       selectRollBeforeWeight:
         "Selezionare una bobina target prima di aggiornare il peso.",
       updateSlot: "Impossibile aggiornare la stampante slot.",
+      amsWeightEstimateChanged:
+        "La stima AMS o la corrispondenza esatta della bobina è cambiata. Riapri Aggiorna peso e riprova.",
     },
     extSlot: "EST Slot",
     failed: "Falliti",
@@ -942,6 +944,11 @@ export const itITDictionary: DictionaryNode = {
     hideSlots: "Nascondi slot",
     incomingWeight: "Pesata in entrata (g, opzionale)",
     incomingWeightPromptLabel: "Peso misurato (g)",
+    amsWeightEstimateHint:
+      "AMS riporta questa stima per la bobina con corrispondenza RFID esatta. È una stima, non una misurazione su bilancia.",
+    amsCalculatedTotal: "Totale calcolato con bobina",
+    useAmsWeightEstimate: "Usa stima AMS",
+    amsWeightAccepted: "Peso aggiornato dalla stima AMS corrente.",
     incomingWeightPromptTitle: "Imposta il peso della bobina in entrata",
     jobOptional: "Nome del lavoro (facoltativo)",
     jobs: "Lavori",

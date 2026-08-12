@@ -41,7 +41,7 @@ export function SaveOnlyModal({
       closeOnBackdrop={Boolean(activeCancelHandler)}
       onBackdropClose={activeCancelHandler}
       zIndex={zIndex}
-      panelClassName="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200/90 bg-white/95 p-0 shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90 dark:shadow-black/38"
+      panelClassName="max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-slate-200/90 bg-white/95 p-0 shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90 dark:shadow-black/38"
     >
       <>
         <div className="border-b border-slate-200/80 bg-slate-50/95 px-5 py-4 dark:border-slate-700/80 dark:bg-slate-950/90">

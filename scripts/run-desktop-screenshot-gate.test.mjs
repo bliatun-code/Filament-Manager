@@ -977,6 +977,49 @@ test("launched printer-board capture fails closed when live telemetry never arri
   assert.deepEqual(cleanup, [testVisualDatabasePath]);
 });
 
+test("launched AMS weight-estimate capture waits for its rendered-card token", async () => {
+  const child = createFakeChild();
+  const clock = createFakeClock();
+  let captureCalls = 0;
+
+  const result = await runLaunchedDesktopScreenshotGate({
+    allowNonDarwin: true,
+    captureDelayMs: 0,
+    cleanupVisualQaDatabase: () => {},
+    findWindowFn: async () =>
+      createMetric({ window: { title: "Printers" } }).window,
+    platform: "win32",
+    postTerminateDelayMs: 0,
+    prepareVisualQaDatabase: async () => ({
+      live: false,
+      targetPath: testVisualDatabasePath,
+    }),
+    readinessNowFn: clock.now,
+    readinessPollMs: 10,
+    readinessWaitFn: async (intervalMs) => {
+      await clock.wait(intervalMs);
+      child.stderr.write(
+        "FILAMENT_MANAGER_VISUAL_QA_READY:printer-ams-weight-estimate\n",
+      );
+    },
+    runDesktopScreenshotGateFn: async (options) => {
+      captureCalls += 1;
+      return {
+        errors: [],
+        metric: { window: options.window },
+        outputDir: testOutputDir,
+      };
+    },
+    scenario: "printer-ams-weight-estimate",
+    spawnFn: () => child,
+    terminateChildFn: async () => true,
+  });
+
+  assert.equal(result.errors.length, 0);
+  assert.equal(clock.now(), 10);
+  assert.equal(captureCalls, 1);
+});
+
 test("launched desktop gate preserves capture failures across finalization", async () => {
   const cases = [
     {
@@ -1771,6 +1814,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     "printer-rfid-override",
   );
   assert.equal(
+    normalizeDesktopVisualQaScenario("ams-weight-estimate"),
+    "printer-ams-weight-estimate",
+  );
+  assert.equal(
     normalizeDesktopVisualQaScenario("slot-swap"),
     "printer-slot-replacement",
   );
@@ -2123,6 +2170,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     timeoutMs: 15_000,
     token: "add-printer-live-step",
   });
+  assert.deepEqual(desktopVisualQaScenarioReadiness("ams-weight-estimate"), {
+    timeoutMs: 15_000,
+    token: "printer-ams-weight-estimate",
+  });
   assert.equal(desktopVisualQaScenarioDefinition("unknown"), null);
 });
 
@@ -2141,6 +2192,10 @@ test("desktop screenshot gate marks DB-fixture visual states", () => {
   );
   assert.equal(
     desktopVisualQaScenarioRequiresDatabaseFixture("rfid-override"),
+    true,
+  );
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("ams-weight-estimate"),
     true,
   );
   assert.equal(
@@ -2380,7 +2435,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 48);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 49);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

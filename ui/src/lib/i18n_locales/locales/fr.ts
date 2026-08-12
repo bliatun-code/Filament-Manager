@@ -1037,12 +1037,19 @@ export const frDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Définir le poids de la bobine entrante",
     outgoingWeightPromptTitle: "Définir le poids de la bobine sortante",
     incomingWeightPromptLabel: "Poids mesuré (g)",
+    amsWeightEstimateHint:
+      "L’AMS fournit cette estimation pour la bobine correspondant exactement au RFID. Il s’agit d’une estimation, pas d’une mesure sur balance.",
+    amsCalculatedTotal: "Total calculé avec la bobine",
+    useAmsWeightEstimate: "Utiliser l’estimation AMS",
+    amsWeightAccepted: "Poids mis à jour depuis l’estimation AMS actuelle.",
     noPendingChanges: "Aucune modification d’emplacement en attente.",
     slotUpdated: "Emplacement d’imprimante mis à jour.",
     usageRecorded: "Consommation d’impression enregistrée.",
     error: {
       load: "Échec du chargement des imprimantes.",
       updateSlot: "Échec de la mise à jour de l’emplacement.",
+      amsWeightEstimateChanged:
+        "L’estimation AMS ou la correspondance exacte de la bobine a changé. Rouvrez Mettre à jour le poids et réessayez.",
       outgoingWeightRequired: "Saisissez le poids de la bobine sortante avant le remplacement.",
       selectRollBeforeWeight: "Sélectionnez une bobine cible avant de mettre à jour le poids.",
       invalidUsage: "La consommation doit être supérieure à zéro.",

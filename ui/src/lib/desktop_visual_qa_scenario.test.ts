@@ -62,6 +62,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "printer-slot-assignment",
     "printer-slot-onboarding",
     "printer-rfid-override",
+    "printer-ams-weight-estimate",
     "printer-slot-replacement",
     "printer-slot-clear",
     "settings-general",
@@ -156,6 +157,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(
     normalizeDesktopVisualQaScenario("rfid-override"),
     "printer-rfid-override",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("ams-weight-estimate"),
+    "printer-ams-weight-estimate",
   );
   assert.equal(
     normalizeDesktopVisualQaScenario("slot-swap"),
@@ -337,6 +342,13 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
       token: "add-printer-live-step",
     },
   );
+  assert.deepEqual(
+    desktopVisualQaScenarioDefinition("ams-weight-estimate")?.readiness,
+    {
+      timeoutMs: 15_000,
+      token: "printer-ams-weight-estimate",
+    },
+  );
   assert.equal(
     desktopVisualQaScenarioDefinition("order-queue")?.requiresDatabaseFixture,
     true,
@@ -508,6 +520,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   );
   assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=printer-rfid-override"),
+    "printers",
+  );
+  assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=printer-ams-weight-estimate"),
     "printers",
   );
   assert.equal(

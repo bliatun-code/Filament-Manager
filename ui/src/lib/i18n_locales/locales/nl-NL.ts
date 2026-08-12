@@ -759,7 +759,8 @@ export const nlNLDictionary: DictionaryNode = {
       "recordUsage": "Kan het printgebruik niet registreren.",
       "selectCandidateBeforeRfid": "Selecteer deze rol eerst in de slot, zodat het uitgaande rolgewicht wordt afgehandeld voordat RFID wordt opgeslagen.",
       "selectRollBeforeWeight": "Selecteer een doelrol voordat u het gewicht bijwerkt.",
-      "updateSlot": "Kan printer slot niet updaten."
+      "updateSlot": "Kan printer slot niet updaten.",
+      "amsWeightEstimateChanged": "De AMS-schatting of exacte rolmatch is gewijzigd. Open Gewicht bijwerken opnieuw en probeer het nogmaals."
     },
     "extSlot": "EXT Slot",
     "failed": "Mislukt",
@@ -767,6 +768,10 @@ export const nlNLDictionary: DictionaryNode = {
     "hideSlots": "Slots verbergen",
     "incomingWeight": "Inkomende weging (g, optioneel)",
     "incomingWeightPromptLabel": "Gemeten gewicht (g)",
+    "amsWeightEstimateHint": "AMS meldt deze schatting voor de rol met een exacte RFID-match. Dit is een schatting, geen weegschaalmeting.",
+    "amsCalculatedTotal": "Berekend totaal inclusief spoel",
+    "useAmsWeightEstimate": "AMS-schatting gebruiken",
+    "amsWeightAccepted": "Gewicht bijgewerkt met de huidige AMS-schatting.",
     "incomingWeightPromptTitle": "Stel het binnenkomende rolgewicht in",
     "jobOptional": "Taaknaam (optioneel)",
     "jobs": "Taken",

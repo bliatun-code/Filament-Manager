@@ -99,3 +99,30 @@ test("slot-onboarding visual QA retries until the real modal opens", () => {
     /master &&[\s\S]*createLiveBambuCatalogSpool\([\s\S]*\)[\s\S]*\{[\s\S]*setDesktopVisualQaApplied\(true\)/,
   );
 });
+
+test("AMS weight-estimate visual QA opens the real weight dialog and waits for its card", () => {
+  assert.match(
+    pageSource,
+    /desktopVisualQaScenario !== "printer-ams-weight-estimate"/,
+  );
+  assert.match(
+    pageSource,
+    /tray\.matched_inventory_mode !== "exact_rfid"/,
+  );
+  assert.match(
+    pageSource,
+    /openIncomingWeightDialog\(printer\.printer\.id, slot, row\)/,
+  );
+  assert.match(
+    pageSource,
+    /incomingWeightPrompt\?\.amsWeightEstimate/,
+  );
+  assert.match(
+    pageSource,
+    /data-testid="printer-ams-weight-estimate"/,
+  );
+  assert.match(
+    pageSource,
+    /DESKTOP_VISUAL_QA_PRINTER_AMS_WEIGHT_ESTIMATE_READINESS_TOKEN/,
+  );
+});

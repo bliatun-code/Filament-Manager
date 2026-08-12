@@ -12,6 +12,8 @@ export const DESKTOP_VISUAL_QA_DASHBOARD_ATTENTION_READINESS_TOKEN =
   "dashboard-bambu-live-attention" as const;
 export const DESKTOP_VISUAL_QA_DASHBOARD_CONSUMPTION_READINESS_TOKEN =
   "dashboard-consumption" as const;
+export const DESKTOP_VISUAL_QA_PRINTER_AMS_WEIGHT_ESTIMATE_READINESS_TOKEN =
+  "printer-ams-weight-estimate" as const;
 
 export function hasFreshPrinterLiveTelemetry(
   integrations: Record<string, BambuLiveIntegrationEntry["config"]>,

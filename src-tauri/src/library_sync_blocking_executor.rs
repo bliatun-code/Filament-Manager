@@ -349,6 +349,7 @@ mod tests {
                 &[
                     "assign_library_sync_host_printer_slot",
                     "record_library_sync_host_print_usage",
+                    "accept_library_sync_host_bambu_live_weight_estimate",
                     "create_library_sync_host_printer",
                     "update_library_sync_host_master_catalog_entry",
                     "refresh_library_sync_host_vendor_catalog",

@@ -520,6 +520,10 @@ export const svSEDictionary: DictionaryNode = {
     "liveRfidRegisteredAndAssigned": "RFID sparades och det föreslagna kastet tilldelades denna lucka.",
     "slotOnboardingLiveIdentityChanged": "Den levande AMS-identiteten ändrades innan du sparade. Öppna luckan igen och bekräfta den aktuella rullen.",
     "incomingWeightPromptLabel": "Uppmätt vikt (g)",
+    "amsWeightEstimateHint": "AMS rapporterar denna uppskattning för rullen med exakt RFID-träff. Det är en uppskattning, inte en vågmätning.",
+    "amsCalculatedTotal": "Beräknad totalvikt inklusive spole",
+    "useAmsWeightEstimate": "Använd AMS-uppskattning",
+    "amsWeightAccepted": "Vikten uppdaterades från den aktuella AMS-uppskattningen.",
     "updateWeight": "Uppdatera vikt",
     "incomingWeightPromptTitle": "Ställ in inkommande rullevikt",
     "liveCatalogCreatedAndAssigned": "{label} lades till, RFID sparades och rullen tilldelades denna lucka.",
@@ -539,6 +543,7 @@ export const svSEDictionary: DictionaryNode = {
       "load": "Det gick inte att läsa in skrivaröversikten.",
       "selectRollBeforeWeight": "Välj en målrulle innan du uppdaterar vikten.",
       "updateSlot": "Det gick inte att uppdatera skrivarplatsen.",
+      "amsWeightEstimateChanged": "AMS-uppskattningen eller den exakta rullträffen ändrades. Öppna Uppdatera vikt igen och försök på nytt.",
       "invalidUsage": "Användningsgram måste vara större än noll.",
       "selectCandidateBeforeRfid": "Välj den här rullen i spåret först, så att eventuell utgående rullevikt hanteras innan du sparar RFID.",
       "createFromCatalogRequiresEmptySlot": "Rensa eller byt den aktuella rullen genom det normala luckflödet innan du skapar en ny katalogrulle här."

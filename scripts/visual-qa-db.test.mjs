@@ -19,6 +19,7 @@ import {
   APP_DB_PATH_ENV_VAR,
   DEFAULT_VISUAL_QA_DB_CANDIDATES,
   VISUAL_QA_FIXTURE_LOAN_DIALOGS,
+  VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE,
   VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
   VISUAL_QA_FIXTURE_SETTINGS_CATALOG_MISSING_SWATCHES,
   VISUAL_QA_FIXTURE_TRUSTED_LAN_INTERFACE,
@@ -139,6 +140,10 @@ test("normalizeVisualQaDatabaseFixtureScenario accepts slot onboarding aliases",
   assert.equal(
     normalizeVisualQaDatabaseFixtureScenario("rfid-override"),
     VISUAL_QA_FIXTURE_PRINTER_RFID_OVERRIDE,
+  );
+  assert.equal(
+    normalizeVisualQaDatabaseFixtureScenario("ams-weight-estimate"),
+    VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE,
   );
   assert.equal(
     normalizeVisualQaDatabaseFixtureScenario("missing-swatches"),
@@ -1073,6 +1078,90 @@ test("applyVisualQaDatabaseFixture creates a printer RFID override state on copi
       assert.equal(tray.tray_uuid, slot.rfid_override_tray_uuid);
       assert.equal(tray.color_hex, slot.rfid_override_color_hex);
       assert.equal(tray.last_identity_seen_at, "2026-07-01T12:00:00.000Z");
+    } finally {
+      updatedDb.close();
+    }
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("applyVisualQaDatabaseFixture creates a fresh exact-RFID AMS weight estimate on the sanitized fixture", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "visual-qa-ams-weight-estimate-"));
+  try {
+    const dbPath = join(dir, "fixture.db");
+    createVisualQaFixture({ outputPath: dbPath });
+    const now = new Date("2026-08-12T12:00:00Z");
+
+    const fixture = await applyVisualQaDatabaseFixture(
+      dbPath,
+      "printer-ams-weight-estimate",
+      { now },
+    );
+    assert.equal(
+      fixture?.fixture,
+      VISUAL_QA_FIXTURE_PRINTER_AMS_WEIGHT_ESTIMATE,
+    );
+    assert.equal(fixture?.spoolId, "spool_demo_100001");
+    assert.equal(fixture?.inventoryRemainingGrams, 1000);
+    assert.equal(fixture?.amsRemainingPercent, 30);
+    assert.equal(fixture?.amsRemainingGrams, 300);
+    assert.equal(fixture?.trayWeightG, 1000);
+    assert.equal(fixture?.weightSeenAt, "2026-08-12T12:00:00.000Z");
+
+    const updatedDb = new Database(dbPath, { readonly: true });
+    try {
+      const slot = updatedDb
+        .prepare(
+          `SELECT spool_id, rfid_override_tray_uuid, rfid_override_color_hex,
+                  live_cache_cleared_at, last_seen_at
+           FROM ams_slots
+           WHERE id = ?`,
+        )
+        .get(fixture.slotId);
+      assert.equal(slot.spool_id, fixture.spoolId);
+      assert.equal(slot.rfid_override_tray_uuid, null);
+      assert.equal(slot.rfid_override_color_hex, null);
+      assert.equal(slot.live_cache_cleared_at, null);
+      assert.equal(slot.last_seen_at, fixture.weightSeenAt);
+
+      const spool = updatedDb
+        .prepare(
+          `SELECT status, initial_weight_g, current_weight_g, remaining_g,
+                  spool_tare_weight_g, rfid_tag, rfid_observed_at
+           FROM filament_spools
+           WHERE id = ?`,
+        )
+        .get(fixture.spoolId);
+      assert.equal(spool.status, "ASSIGNED");
+      assert.equal(spool.initial_weight_g, 1000);
+      assert.equal(spool.current_weight_g, 1000);
+      assert.equal(spool.remaining_g, 1000);
+      assert.equal(spool.spool_tare_weight_g, 250);
+      assert.equal(spool.rfid_tag, fixture.rfid);
+      assert.equal(spool.rfid_observed_at, fixture.weightSeenAt);
+
+      const config = JSON.parse(
+        updatedDb
+          .prepare("SELECT value FROM settings WHERE key = ?")
+          .get(`bambu_live_integration:${fixture.printerId}`).value,
+      );
+      const tray = config.observed_state.trays.find(
+        (candidate) => candidate.matched_inventory_spool_id === fixture.spoolId,
+      );
+      assert.equal(config.enabled, true);
+      assert.equal(config.observed_state.online, true);
+      assert.equal(config.observed_state.mqtt_connected, true);
+      assert.equal(config.observed_state.last_seen_at, fixture.weightSeenAt);
+      assert.equal(tray.loaded, true);
+      assert.equal(tray.tray_weight_g, 1000);
+      assert.equal(tray.remaining_percent, 30);
+      assert.equal(tray.remaining_grams, 300);
+      assert.equal(tray.last_weight_seen_at, fixture.weightSeenAt);
+      assert.equal(tray.observed_rfid_tag, fixture.rfid);
+      assert.equal(tray.match_status, "clear_match");
+      assert.equal(tray.matched_inventory_mode, "exact_rfid");
+      assert.equal(tray.matched_inventory_spool_id, fixture.spoolId);
     } finally {
       updatedDb.close();
     }

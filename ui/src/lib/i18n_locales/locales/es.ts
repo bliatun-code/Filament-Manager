@@ -1065,6 +1065,11 @@ export const esDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Definir peso de la bobina entrante",
     outgoingWeightPromptTitle: "Definir peso de la bobina saliente",
     incomingWeightPromptLabel: "Peso medido (g)",
+    amsWeightEstimateHint:
+      "AMS informa esta estimación para la bobina con coincidencia RFID exacta. Es una estimación, no una medición de báscula.",
+    amsCalculatedTotal: "Total calculado con bobina",
+    useAmsWeightEstimate: "Usar estimación de AMS",
+    amsWeightAccepted: "Peso actualizado con la estimación actual de AMS.",
     updateWeight: "Actualizar peso",
     applyRollChange: "Aplicar cambio de bobina",
     noPendingChanges: "No hay cambios de ranura pendientes.",
@@ -1074,6 +1079,8 @@ export const esDictionary: DictionaryNode = {
     error: {
       load: "No se pudo cargar la vista de impresoras.",
       updateSlot: "No se pudo actualizar la ranura.",
+      amsWeightEstimateChanged:
+        "La estimación de AMS o la coincidencia exacta de la bobina cambió. Vuelve a abrir Actualizar peso e inténtalo de nuevo.",
       outgoingWeightRequired:
         "Introduce el peso de salida antes de sustituir la bobina.",
       selectRollBeforeWeight:

@@ -11,10 +11,11 @@ use crate::library_sync_host_client::{
     perform_library_sync_host_write, perform_library_sync_host_write_and_parse_with_timeout,
 };
 use crate::library_sync_models::{
-    LibrarySyncAssignPrinterSlotInput, LibrarySyncCreatePrinterInput,
-    LibrarySyncDeleteBambuLiveIntegrationInput, LibrarySyncDeletePrinterInput,
-    LibrarySyncRecordPrintUsageInput, LibrarySyncRefreshCatalogInput,
-    LibrarySyncSaveBambuLiveIntegrationInput, LibrarySyncUpdateMasterCatalogEntryInput,
+    LibrarySyncAcceptBambuLiveWeightEstimateInput, LibrarySyncAssignPrinterSlotInput,
+    LibrarySyncCreatePrinterInput, LibrarySyncDeleteBambuLiveIntegrationInput,
+    LibrarySyncDeletePrinterInput, LibrarySyncRecordPrintUsageInput,
+    LibrarySyncRefreshCatalogInput, LibrarySyncSaveBambuLiveIntegrationInput,
+    LibrarySyncUpdateMasterCatalogEntryInput,
 };
 use crate::state::AppState;
 use std::time::Duration;
@@ -101,6 +102,80 @@ fn record_library_sync_host_print_usage_blocking(
     refresh_library_sync_spool_cache(state, &normalized_base_url);
     save_library_sync_success(state, "Host print usage recorded.", None)?;
     Ok(())
+}
+
+#[tauri::command]
+pub(crate) async fn accept_library_sync_host_bambu_live_weight_estimate(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncAcceptBambuLiveWeightEstimateInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        accept_library_sync_host_bambu_live_weight_estimate_blocking(&state, input)
+    })
+    .await
+}
+
+fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
+    state: &AppState,
+    input: LibrarySyncAcceptBambuLiveWeightEstimateInput,
+) -> Result<(), String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let printer_id = input.printer_id.trim();
+    let slot_id = input.slot_id.trim();
+    let spool_id = input.spool_id.trim();
+    let expected_weight_seen_at = input.expected_weight_seen_at.trim();
+    if printer_id.is_empty()
+        || slot_id.is_empty()
+        || spool_id.is_empty()
+        || expected_weight_seen_at.is_empty()
+    {
+        return Err("Printer id, slot id, spool id and weight timestamp are required.".to_string());
+    }
+    if input.expected_remaining_grams < 0
+        || input.expected_current_grams.is_some_and(|grams| grams < 0)
+    {
+        return Err("Weight snapshot values must not be negative.".to_string());
+    }
+
+    perform_library_sync_host_write(
+        state,
+        &normalized_base_url,
+        &bambu_live_weight_estimate_accept_path(printer_id, slot_id, spool_id),
+        &bambu_live_weight_estimate_accept_payload(
+            expected_weight_seen_at,
+            input.expected_remaining_grams,
+            input.expected_current_grams,
+        ),
+    )?;
+
+    refresh_library_sync_printer_cache(state, &normalized_base_url);
+    refresh_library_sync_spool_cache(state, &normalized_base_url);
+    save_library_sync_success(state, "Host AMS weight estimate accepted.", None)?;
+    Ok(())
+}
+
+fn bambu_live_weight_estimate_accept_path(
+    printer_id: &str,
+    slot_id: &str,
+    spool_id: &str,
+) -> String {
+    format!(
+        "/api/v1/printers/{printer_id}/slots/{slot_id}/spools/{spool_id}/bambu-live-weight-estimate/accept"
+    )
+}
+
+fn bambu_live_weight_estimate_accept_payload(
+    expected_weight_seen_at: &str,
+    expected_remaining_grams: i64,
+    expected_current_grams: Option<i64>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "expected_weight_seen_at": expected_weight_seen_at,
+        "expected_remaining_grams": expected_remaining_grams,
+        "expected_current_grams": expected_current_grams,
+    })
 }
 
 #[tauri::command]
@@ -283,4 +358,27 @@ fn delete_library_sync_host_printer_blocking(
     refresh_library_sync_spool_cache(state, &normalized_base_url);
     save_library_sync_success(state, "Host printer deleted.", None)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        bambu_live_weight_estimate_accept_path, bambu_live_weight_estimate_accept_payload,
+    };
+
+    #[test]
+    fn accepted_ams_weight_host_request_uses_companion_path_and_optimistic_snapshot_payload() {
+        assert_eq!(
+            bambu_live_weight_estimate_accept_path("printer_1", "slot_1", "spool_1"),
+            "/api/v1/printers/printer_1/slots/slot_1/spools/spool_1/bambu-live-weight-estimate/accept"
+        );
+        assert_eq!(
+            bambu_live_weight_estimate_accept_payload("2026-08-12T12:00:00Z", 300, Some(1000),),
+            serde_json::json!({
+                "expected_weight_seen_at": "2026-08-12T12:00:00Z",
+                "expected_remaining_grams": 300,
+                "expected_current_grams": 1000,
+            })
+        );
+    }
 }

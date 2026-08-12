@@ -23,6 +23,10 @@ import {
 import { isUnknownLiveRfid, liveTrayIdentity } from "./printer_live_display";
 import { resolveSpoolTareWeight } from "./spool_weight";
 import { parsePositiveWeight } from "./weight_display";
+import {
+  buildAcceptableAmsWeightEstimate,
+  type AcceptableAmsWeightEstimate,
+} from "./printer_ams_weight_estimate";
 
 type PrinterSlotNormalizedSpoolRow = SpoolWithMasterRow["spool"] & {
   normalized_status: SpoolStatus | null;
@@ -45,9 +49,11 @@ export type IncomingWeightPrompt = {
   targetHexColor?: string | null;
   requiresOutgoingWeight: boolean;
   requiresIncomingWeight: boolean;
+  updatesCurrentRollWeight?: boolean;
   currentMaterial?: string | null;
   currentFilamentName?: string | null;
   currentColorName?: string | null;
+  amsWeightEstimate?: AcceptableAmsWeightEstimate | null;
 };
 
 export type SlotRfidOverridePrompt = {
@@ -305,6 +311,8 @@ export function buildIncomingWeightPrompt(
   printerId: string,
   slot: PrinterAmsSlotRow,
   row: SpoolWithMasterRow,
+  liveTray?: BambuLiveObservedTray | null,
+  nowMs = Date.now(),
 ): IncomingWeightPrompt {
   return {
     printerId,
@@ -316,9 +324,11 @@ export function buildIncomingWeightPrompt(
     targetHexColor: row.master.hex_color,
     requiresOutgoingWeight: Boolean(slot.spool_id && slot.spool_id !== row.spool.id),
     requiresIncomingWeight: true,
+    updatesCurrentRollWeight: slot.spool_id === row.spool.id,
     currentMaterial: slot.spool_material,
     currentFilamentName: slot.spool_filament_name,
     currentColorName: slot.spool_color_name,
+    amsWeightEstimate: buildAcceptableAmsWeightEstimate(slot, row, liveTray, nowMs),
   };
 }
 

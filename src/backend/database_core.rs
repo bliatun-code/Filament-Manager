@@ -51,6 +51,22 @@ impl FilamentDatabase {
         Ok(output)
     }
 
+    /// Runs one facade-level write sequence in an immediate SQLite transaction.
+    ///
+    /// This is intended for cross-crate orchestration that must keep an initial
+    /// read, its decision, and all resulting writes atomic while continuing to
+    /// use the public database facade. Operations passed here must not start a
+    /// nested transaction.
+    pub fn with_write_transaction<T>(
+        &self,
+        operation: impl FnOnce(&Self) -> InventoryResult<T>,
+    ) -> InventoryResult<T> {
+        let transaction = Transaction::new_unchecked(&self.conn, TransactionBehavior::Immediate)?;
+        let output = operation(self)?;
+        transaction.commit()?;
+        Ok(output)
+    }
+
     /// Runs related reads against one deferred SQLite snapshot.
     ///
     /// The callback receives the regular database facade so existing read
