@@ -27,6 +27,7 @@ mod companion_wishlist_write_api;
 mod credential_migration;
 mod credential_profile_migration;
 mod credential_store;
+mod desktop_lifecycle;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
@@ -218,7 +219,7 @@ fn apply_macos_dock_icon(app: &tauri::AppHandle, icon_bytes: &'static [u8]) -> R
 }
 
 fn main() {
-    tauri::Builder::default()
+    desktop_lifecycle::configure_builder(tauri::Builder::default())
         .setup(|app| {
             if let Ok(log_dir) = app.path().app_log_dir()
                 && let Err(error) = app_error::operational_log::initialize_operational_log(&log_dir)
@@ -315,6 +316,7 @@ fn main() {
                 library_sync_auth,
             };
             app.manage(state.clone());
+            desktop_lifecycle::initialize(app).map_err(std::io::Error::other)?;
 
             #[cfg(debug_assertions)]
             apply_visual_qa_window_size(app.handle())?;
@@ -322,23 +324,7 @@ fn main() {
             #[cfg(debug_assertions)]
             apply_visual_qa_scenario_url(app)?;
 
-            let lan_state = app.state::<AppState>().inner().clone();
-            tauri::async_runtime::spawn(async move {
-                if let Err(error) = companion_api::reconcile_trusted_lan_server(lan_state).await {
-                    eprintln!("Trusted-LAN companion failed: {error}");
-                }
-            });
-
-            let lan_network_state = app.state::<AppState>().inner().clone();
-            tauri::async_runtime::spawn(async move {
-                trusted_lan_network_watcher::run_trusted_lan_network_watcher(lan_network_state)
-                    .await;
-            });
-
-            let bambu_live_state = app.state::<AppState>().inner().clone();
-            tauri::async_runtime::spawn(async move {
-                bambu_live::run_live_observer(bambu_live_state).await;
-            });
+            desktop_lifecycle::start_background_tasks(app).map_err(std::io::Error::other)?;
 
             Ok(())
         })
@@ -372,6 +358,10 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
+            desktop_lifecycle::get_desktop_lifecycle_settings,
+            desktop_lifecycle::set_continue_in_background,
+            desktop_lifecycle::set_launch_at_login,
+            desktop_lifecycle::set_desktop_tray_menu_labels,
             signal_desktop_visual_qa_readiness,
             prepare_desktop_visual_qa_window,
             app_error::application_diagnostics::get_application_diagnostics,
@@ -463,8 +453,9 @@ fn main() {
             external_url_commands::open_external_url,
             release_update_commands::check_for_app_update,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(desktop_lifecycle::handle_run_event);
 }
 
 #[cfg(debug_assertions)]

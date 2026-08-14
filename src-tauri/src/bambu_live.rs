@@ -24,7 +24,6 @@ const BAMBU_MQTT_PORT: u16 = 8883;
 const OBSERVER_INTERVAL_SECS: u64 = 20;
 const MAX_CONCURRENT_PRINTER_POLLS: usize = 3;
 const AUTO_RECOVERY_COOLDOWN: Duration = Duration::from_secs(5 * 60);
-
 static AUTO_RECOVERY_ATTEMPTS: OnceLock<Mutex<HashMap<String, Instant>>> = OnceLock::new();
 
 #[path = "bambu_tls_identity.rs"]
@@ -41,16 +40,32 @@ use live_security::{
 };
 pub(crate) use live_security::{probe_printer_tls_identity, trusted_pin_from_config};
 
-pub async fn run_live_observer(state: AppState) {
+pub async fn run_live_observer(state: AppState, mut shutdown: tokio::sync::watch::Receiver<bool>) {
     loop {
-        if let Err(error) = poll_enabled_integrations(&state).await {
+        if *shutdown.borrow() {
+            return;
+        }
+        if let Err(error) = poll_enabled_integrations(&state, &shutdown).await {
             eprintln!("Bambu live observer error: {error}");
         }
-        tokio::time::sleep(Duration::from_secs(OBSERVER_INTERVAL_SECS)).await;
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(OBSERVER_INTERVAL_SECS)) => {}
+            changed = shutdown.changed() => {
+                if changed.is_err() || *shutdown.borrow() {
+                    return;
+                }
+            }
+        }
     }
 }
 
-async fn poll_enabled_integrations(state: &AppState) -> Result<(), String> {
+async fn poll_enabled_integrations(
+    state: &AppState,
+    shutdown: &tokio::sync::watch::Receiver<bool>,
+) -> Result<(), String> {
+    if *shutdown.borrow() {
+        return Ok(());
+    }
     let load_path = state.db_path.clone();
     let (credential_profile_id, integrations) = tauri::async_runtime::spawn_blocking(move || {
         let db = FilamentDatabase::open(&load_path).map_err(|error| error.to_string())?;
@@ -77,10 +92,12 @@ async fn poll_enabled_integrations(state: &AppState) -> Result<(), String> {
         .credentials
         .scoped_to_profile_id(&credential_profile_id)
         .map_err(|error| error.to_string())?;
+    let poll_shutdown = shutdown.clone();
     let errors = run_bounded_blocking_polls(
         enabled_integrations,
         MAX_CONCURRENT_PRINTER_POLLS,
-        move |entry| poll_single_integration(&poll_path, &poll_credentials, entry),
+        shutdown.clone(),
+        move |entry| poll_single_integration(&poll_path, &poll_credentials, &poll_shutdown, entry),
     )
     .await;
     for error in errors {
@@ -92,6 +109,7 @@ async fn poll_enabled_integrations(state: &AppState) -> Result<(), String> {
 async fn run_bounded_blocking_polls<T, F>(
     entries: Vec<T>,
     concurrency_limit: usize,
+    shutdown: tokio::sync::watch::Receiver<bool>,
     poll: F,
 ) -> Vec<String>
 where
@@ -103,6 +121,9 @@ where
     let concurrency_limit = concurrency_limit.max(1);
 
     for _ in 0..concurrency_limit {
+        if *shutdown.borrow() {
+            break;
+        }
         let Some(entry) = pending.next() else {
             break;
         };
@@ -121,7 +142,11 @@ where
             Ok(Err(error)) => errors.push(error),
             Err(join_error) => errors.push(format!("poll task failed: {join_error}")),
         }
-        let next_entry = pending.next();
+        let next_entry = if *shutdown.borrow() {
+            None
+        } else {
+            pending.next()
+        };
         if let Some(entry) = next_entry {
             let poll_task = poll.clone();
             drop(polls.spawn_blocking(move || poll_task(entry)));
@@ -133,8 +158,12 @@ where
 fn poll_single_integration(
     db_path: &str,
     credentials: &CredentialStore,
+    shutdown: &tokio::sync::watch::Receiver<bool>,
     mut entry: BambuLiveIntegrationEntryRow,
 ) -> Result<(), String> {
+    if *shutdown.borrow() {
+        return Ok(());
+    }
     let host = entry
         .config
         .host
@@ -170,6 +199,7 @@ fn poll_single_integration(
         Err(error) => {
             if error.observed_identity.is_none()
                 && trusted_pin.is_some()
+                && !*shutdown.borrow()
                 && claim_auto_recovery_attempt(&entry.printer_id, Instant::now())
             {
                 match try_auto_recover_bambu_live_host(db_path, &entry.printer_id, printer_serial) {

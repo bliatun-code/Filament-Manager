@@ -1221,6 +1221,27 @@ export const frDictionary: DictionaryNode = {
     auto: "Automatique (système)",
     autoHint: "Le mode automatique suit la préférence claire/sombre du système.",
     program: "Programme",
+    backgroundOperation: "Fonctionnement en arrière-plan",
+    backgroundOperationHint:
+      "Gardez Companion, l’accès à l’hôte et le suivi de consommation Bambu disponibles lorsque la fenêtre principale est fermée.",
+    backgroundOperationLoading: "Chargement des réglages d’arrière-plan…",
+    backgroundOperationSaving: "Enregistrement des réglages d’arrière-plan…",
+    backgroundTrayUnavailable:
+      "L’icône de la barre des menus ou de la zone de notification n’est pas disponible pendant cette session. Fermer la fenêtre entraînera l’arrêt du programme.",
+    backgroundTrayOpen: "Ouvrir Filament Manager",
+    backgroundTrayQuit: "Quitter Filament Manager",
+    continueInBackground: "Continuer l’exécution lorsque je ferme la fenêtre",
+    continueInBackgroundHint:
+      "La fenêtre est masquée dans la barre des menus ou la zone de notification. Ouvrez son menu lorsque vous souhaitez arrêter le programme.",
+    launchAtLogin: "Démarrer en arrière-plan à l’ouverture de session",
+    launchAtLoginHint:
+      "Démarre masqué pour ce compte utilisateur. Si l’icône de la barre des menus ou de la zone de notification n’est pas disponible, la fenêtre s’ouvre à la place.",
+    backgroundMoveToApplicationsError:
+      "Déplacez Filament Manager dans le dossier Applications avant d’activer le lancement à l’ouverture de session.",
+    backgroundOperationLoadError: "Les réglages d’arrière-plan n’ont pas pu être chargés.",
+    backgroundOperationUpdateError:
+      "Les réglages d’arrière-plan n’ont pas pu être mis à jour.",
+    backgroundOperationRetry: "Réessayer",
     version: "Version",
     license: "Licence",
     sourceCode: "Code source",

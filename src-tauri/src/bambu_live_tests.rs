@@ -1,6 +1,6 @@
 use super::{
     claim_auto_recovery_attempt, is_live_print_running, merge_tray_payload,
-    run_bounded_blocking_polls, AUTO_RECOVERY_COOLDOWN,
+    run_bounded_blocking_polls, run_live_observer, AUTO_RECOVERY_COOLDOWN,
 };
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentDatabase, FilamentMasterSummary, ManualMasterInput,
@@ -13,12 +13,17 @@ use crate::bambu_live_sync::{
     should_auto_clear_live_unknown_replacement, slot_override_matches_live_unknown,
     tray_exist_bits_slot_present, LiveWeightDecision,
 };
+use crate::credential_store::CredentialStore;
+use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+use crate::state::{
+    AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
+};
 use serde_json::Value;
 use std::io::Cursor;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 type LiveUsageSessionRow = (String, String, i64, Option<i64>, Option<String>);
@@ -43,7 +48,8 @@ async fn live_observer_bounds_parallel_printer_polls_and_isolates_failures() {
     let active = Arc::new(AtomicUsize::new(0));
     let completed = Arc::new(AtomicUsize::new(0));
     let max_active = Arc::new(AtomicUsize::new(0));
-    let errors = run_bounded_blocking_polls((0..8).collect(), 3, {
+    let (_shutdown_tx, shutdown) = tokio::sync::watch::channel(false);
+    let errors = run_bounded_blocking_polls((0..8).collect(), 3, shutdown, {
         let active = Arc::clone(&active);
         let completed = Arc::clone(&completed);
         let max_active = Arc::clone(&max_active);
@@ -65,6 +71,75 @@ async fn live_observer_bounds_parallel_printer_polls_and_isolates_failures() {
     assert_eq!(completed.load(Ordering::SeqCst), 8);
     assert!((2..=3).contains(&max_active.load(Ordering::SeqCst)));
     assert_eq!(errors, vec!["printer 4 offline"]);
+}
+
+#[tokio::test]
+async fn live_observer_returns_promptly_when_shutdown_is_already_requested() {
+    let missing_database = temp_db_path("pre-cancelled-observer").join("database.sqlite");
+    let state = AppState {
+        db_path: missing_database.to_string_lossy().to_string(),
+        companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+            TRUSTED_LAN_DEFAULT_PORT,
+        )),
+        credentials: CredentialStore::in_memory(),
+        library_sync_auth: LibrarySyncRuntimeAuth::new(),
+    };
+    let (_shutdown_tx, shutdown) = tokio::sync::watch::channel(true);
+
+    tokio::time::timeout(Duration::from_secs(1), run_live_observer(state, shutdown))
+        .await
+        .expect("a pre-cancelled observer should return before accessing the database");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cancelled_bounded_poll_does_not_schedule_the_next_entry() {
+    let (shutdown_tx, shutdown) = tokio::sync::watch::channel(false);
+    let (started_tx, mut started_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (release_first_poll_tx, release_first_poll_rx) = mpsc::channel();
+    let release_first_poll_rx = Arc::new(Mutex::new(release_first_poll_rx));
+
+    let poll_runner = tokio::spawn(run_bounded_blocking_polls(vec![0, 1], 1, shutdown, {
+        let release_first_poll_rx = Arc::clone(&release_first_poll_rx);
+        move |index| {
+            started_tx
+                .send(index)
+                .expect("poll start receiver should remain available");
+            if index == 0 {
+                release_first_poll_rx
+                    .lock()
+                    .expect("release receiver lock should be available")
+                    .recv_timeout(Duration::from_secs(2))
+                    .expect("the test should release the first poll");
+            }
+            Ok(())
+        }
+    }));
+
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(1), started_rx.recv())
+            .await
+            .expect("the first poll should start"),
+        Some(0)
+    );
+    shutdown_tx
+        .send(true)
+        .expect("bounded poll should still hold the shutdown receiver");
+    release_first_poll_tx
+        .send(())
+        .expect("the first poll should still be waiting for release");
+
+    let errors = tokio::time::timeout(Duration::from_secs(1), poll_runner)
+        .await
+        .expect("the bounded poll should drain its active job promptly")
+        .expect("the bounded poll task should not panic");
+    assert!(errors.is_empty());
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(1), started_rx.recv())
+            .await
+            .expect("the poll-start channel should close after the runner exits"),
+        None,
+        "the second entry must remain pending after cancellation"
+    );
 }
 
 fn temp_db_path(test_name: &str) -> PathBuf {

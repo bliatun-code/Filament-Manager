@@ -1702,6 +1702,28 @@ export const ptBRDictionary: DictionaryNode = {
     printerUnsavedChanges: "Alterações não salvas",
     productTour: "Tour do produto",
     program: "Programa",
+    backgroundOperation: "Operação em segundo plano",
+    backgroundOperationHint:
+      "Mantenha o Companion, o acesso ao host e o monitoramento de uso da Bambu disponíveis quando a janela principal for fechada.",
+    backgroundOperationLoading: "Carregando configurações de segundo plano…",
+    backgroundOperationSaving: "Salvando configurações de segundo plano…",
+    backgroundTrayUnavailable:
+      "O ícone da barra de menus ou da bandeja do sistema não está disponível nesta sessão. Fechar a janela encerrará o programa.",
+    backgroundTrayOpen: "Abrir Filament Manager",
+    backgroundTrayQuit: "Sair do Filament Manager",
+    continueInBackground: "Continuar em execução ao fechar a janela",
+    continueInBackgroundHint:
+      "A janela fica oculta na barra de menus ou na bandeja do sistema. Abra o menu do ícone quando quiser encerrar o programa.",
+    launchAtLogin: "Iniciar em segundo plano ao fazer login",
+    launchAtLoginHint:
+      "Inicia oculto para esta conta de usuário. Se o ícone da barra de menus ou da bandeja do sistema não estiver disponível, a janela será aberta.",
+    backgroundMoveToApplicationsError:
+      "Mova o Filament Manager para Aplicativos antes de ativar a inicialização ao fazer login.",
+    backgroundOperationLoadError:
+      "Não foi possível carregar as configurações de segundo plano.",
+    backgroundOperationUpdateError:
+      "Não foi possível atualizar as configurações de segundo plano.",
+    backgroundOperationRetry: "Tentar novamente",
     reactivated: "reativado",
     reconfigure: "Reconfigurar",
     refreshCurrentVendor: "Atualizar catálogo de fornecedores atual",

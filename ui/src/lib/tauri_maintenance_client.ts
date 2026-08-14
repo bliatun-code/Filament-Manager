@@ -44,6 +44,12 @@ export type AppUpdateStatus =
 
 export type AppUpdateChannel = "DISABLED" | "PUBLIC_METADATA";
 
+export type DesktopLifecycleSettings = {
+  continue_in_background: boolean;
+  launch_at_login: boolean;
+  tray_available: boolean;
+};
+
 export type AppUpdateCheckResult = {
   current_version: string;
   latest_version: string | null;
@@ -55,6 +61,22 @@ export type AppUpdateCheckResult = {
 
 export async function getAppVersion() {
   return invoke<string>("get_app_version");
+}
+
+export async function getDesktopLifecycleSettings() {
+  return invoke<DesktopLifecycleSettings>("get_desktop_lifecycle_settings");
+}
+
+export async function setContinueInBackground(enabled: boolean) {
+  return invoke<DesktopLifecycleSettings>("set_continue_in_background", { enabled });
+}
+
+export async function setLaunchAtLogin(enabled: boolean) {
+  return invoke<DesktopLifecycleSettings>("set_launch_at_login", { enabled });
+}
+
+export async function setDesktopTrayMenuLabels(openLabel: string, quitLabel: string) {
+  return invoke<void>("set_desktop_tray_menu_labels", { openLabel, quitLabel });
 }
 
 export async function getApplicationDiagnostics() {

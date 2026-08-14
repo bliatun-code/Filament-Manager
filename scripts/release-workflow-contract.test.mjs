@@ -693,7 +693,7 @@ test("Windows Authenticode verifier requires publisher, code-signing EKU and tim
   assert.doesNotMatch(releaseWorkflow, /verify-windows-authenticode\.ps1/);
 });
 
-test("Windows MSI smoke exercises install, UI readiness, data retention and uninstall", () => {
+test("Windows MSI smoke exercises install, desktop lifecycle, data retention and uninstall", () => {
   assert.equal(existsSync("scripts/smoke-windows-msi.ps1"), true);
   assert.equal(existsSync("scripts/verify-windows-app-database.mjs"), true);
 
@@ -746,6 +746,140 @@ test("Windows MSI smoke exercises install, UI readiness, data retention and unin
   assert.match(windowsMsiSmoke, /verify-windows-app-database\.mjs/);
   assert.match(windowsMsiSmoke, /\$appProcess\.CloseMainWindow\(\)/);
   assert.match(windowsMsiSmoke, /\$appProcess\.WaitForExit\(15000\)/);
+  assert.equal(
+    countOccurrences(windowsMsiSmoke, "$appProcess.CloseMainWindow()"),
+    2,
+  );
+  assert.match(windowsMsiSmoke, /desktop-lifecycle\.json/);
+  assert.match(windowsMsiSmoke, /continue_in_background/);
+  assert.match(
+    windowsMsiSmoke,
+    /\[IO\.File\]::WriteAllText\([\s\S]*?\[Text\.UTF8Encoding\]::new\(\$false\)/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Start-Process[\s\S]*?-ArgumentList "--background"[\s\S]*?-PassThru/,
+  );
+  assert.match(windowsMsiSmoke, /function Wait-ForHiddenRunningProcess/);
+  assert.match(windowsMsiSmoke, /\$Process\.HasExited/);
+  assert.match(
+    windowsMsiSmoke,
+    /\$lastWindowHandle = \$Process\.MainWindowHandle/,
+  );
+  assert.match(windowsMsiSmoke, /\$lastWindowHandle -eq 0/);
+  assert.match(windowsMsiSmoke, /-StableCheckCount 6/);
+  assert.match(
+    windowsMsiSmoke,
+    /\$secondaryProcess = Start-Process[\s\S]*?\$secondaryProcess\.WaitForExit\(15000\)/,
+  );
+  assert.match(windowsMsiSmoke, /\$restoredWindowReady/);
+  assert.match(windowsMsiSmoke, /\$matchingProcesses\.Count -ne 1/);
+  assert.match(
+    windowsMsiSmoke,
+    /\$matchingProcesses\[0\]\.Id -ne \$backgroundPrimaryProcessId/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Stop-Process -Id \$backgroundPrimaryProcessId -Force/,
+  );
+  assert.match(windowsMsiSmoke, /function Test-RegistryValue/);
+  assert.match(windowsMsiSmoke, /GetValueNames\(\)/);
+  assert.match(
+    windowsMsiSmoke,
+    /HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run/,
+  );
+  assert.match(windowsMsiSmoke, /no\.bliatun\.filamentmanager/);
+  assert.match(windowsMsiSmoke, /Filament Manager/);
+  assert.match(windowsMsiSmoke, /PropertyType = "String"/);
+  assert.match(windowsMsiSmoke, /PropertyType = "Binary"/);
+  assert.match(windowsMsiSmoke, /Autostart smoke precondition failed/);
+  assert.match(windowsMsiSmoke, /New-ItemProperty/);
+  assert.match(windowsMsiSmoke, /Remove-ItemProperty/);
+  assert.match(
+    windowsMsiSmoke,
+    /Uninstall left app-owned autostart registry value/,
+  );
+
+  const autostartTargets = readSection(
+    windowsMsiSmoke,
+    "$autostartRegistryTargets = @(",
+    "$transcriptStarted = $false",
+  );
+  assert.equal(countOccurrences(autostartTargets, "[PSCustomObject]@{"), 4);
+  assert.equal(countOccurrences(autostartTargets, "Path = $runRegistryPath"), 2);
+  assert.equal(
+    countOccurrences(autostartTargets, "Path = $startupApprovedRegistryPath"),
+    2,
+  );
+  assert.equal(
+    countOccurrences(autostartTargets, "Name = $stableAutostartValueName"),
+    2,
+  );
+  assert.equal(
+    countOccurrences(autostartTargets, "Name = $legacyAutostartValueName"),
+    2,
+  );
+  assert.equal(countOccurrences(autostartTargets, 'PropertyType = "String"'), 2);
+  assert.equal(countOccurrences(autostartTargets, 'PropertyType = "Binary"'), 2);
+
+  const defaultCloseIndex = windowsMsiSmoke.indexOf(
+    'throw "The app did not accept a normal main-window close request."',
+  );
+  const preferencesWriteIndex = windowsMsiSmoke.indexOf(
+    "[IO.File]::WriteAllText(",
+    defaultCloseIndex,
+  );
+  const backgroundLaunchIndex = windowsMsiSmoke.indexOf(
+    '-ArgumentList "--background"',
+    preferencesWriteIndex,
+  );
+  const secondaryLaunchIndex = windowsMsiSmoke.indexOf(
+    "$secondaryProcess = Start-Process",
+    backgroundLaunchIndex,
+  );
+  const closeToTrayIndex = windowsMsiSmoke.indexOf(
+    "$appProcess.CloseMainWindow()",
+    secondaryLaunchIndex,
+  );
+  const registrySeedIndex = windowsMsiSmoke.indexOf(
+    "New-ItemProperty",
+    closeToTrayIndex,
+  );
+  const realUninstallIndex = windowsMsiSmoke.indexOf(
+    'Invoke-MsiExec -Action "/x" -Target $productCode -LogPath $uninstallLogPath',
+  );
+  const registryRemovalAssertionIndex = windowsMsiSmoke.indexOf(
+    "Uninstall left app-owned autostart registry value",
+    realUninstallIndex,
+  );
+  const registrySeedSection = windowsMsiSmoke.slice(
+    registrySeedIndex,
+    realUninstallIndex,
+  );
+  assert.doesNotMatch(registrySeedSection, /-Force/);
+  assert.match(
+    windowsMsiSmoke,
+    /foreach \(\$registryTarget in \$seededAutostartRegistryTargets\)[\s\S]*?Remove-ItemProperty/,
+  );
+  const lifecycleOrder = [
+    defaultCloseIndex,
+    preferencesWriteIndex,
+    backgroundLaunchIndex,
+    secondaryLaunchIndex,
+    closeToTrayIndex,
+    registrySeedIndex,
+    realUninstallIndex,
+    registryRemovalAssertionIndex,
+  ];
+  assert.equal(lifecycleOrder.every((position) => position >= 0), true);
+  assert.deepEqual(
+    lifecycleOrder,
+    [...lifecycleOrder].sort((left, right) => left - right),
+  );
   assert.match(windowsMsiSmoke, /Get-FileHash[\s\S]*-Algorithm SHA256/);
   assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/x"/);
   assert.match(windowsMsiSmoke, /Uninstall left Windows Installer product state/);
@@ -840,6 +974,69 @@ test("Windows MSI remains a limited per-user package", () => {
   assert.match(
     windowsWixTemplate,
     /<Package[\s\S]*?\bInstallScope="perUser"[\s\S]*?\bInstallPrivileges="limited"[\s\S]*?\/>/,
+  );
+});
+
+test("Windows MSI removes app-owned autostart values only on a real uninstall", () => {
+  const uninstallOnlyCondition =
+    '<![CDATA[REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]>';
+  const runKey = String.raw`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`;
+  const startupApprovedKey =
+    String.raw`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`;
+  const cleanupActions = [
+    {
+      before: "RemoveStableStartupApproved",
+      id: "RemoveStableRunAutostart",
+      key: runKey,
+      valueName: "no.bliatun.filamentmanager",
+    },
+    {
+      before: "RemoveLegacyRunAutostart",
+      id: "RemoveStableStartupApproved",
+      key: startupApprovedKey,
+      valueName: "no.bliatun.filamentmanager",
+    },
+    {
+      before: "RemoveLegacyStartupApproved",
+      id: "RemoveLegacyRunAutostart",
+      key: runKey,
+      valueName: "Filament Manager",
+    },
+    {
+      before: "InstallFinalize",
+      id: "RemoveLegacyStartupApproved",
+      key: startupApprovedKey,
+      valueName: "Filament Manager",
+    },
+  ];
+
+  for (const { before, id, key, valueName } of cleanupActions) {
+    const definition = readSection(
+      windowsWixTemplate,
+      `<CustomAction Id="${id}"`,
+      "/>",
+    );
+    const schedule = readSection(
+      windowsWixTemplate,
+      `<Custom Action="${id}"`,
+      "</Custom>",
+    );
+    const expectedCommand =
+      `ExeCommand='&quot;[SystemFolder]reg.exe&quot; DELETE ` +
+      `&quot;${key}&quot; /v &quot;${valueName}&quot; /f'`;
+
+    assert.match(definition, /\bDirectory="TARGETDIR"/);
+    assert.equal(definition.includes(expectedCommand), true);
+    assert.match(definition, /\bExecute="commit"/);
+    assert.match(definition, /\bImpersonate="yes"/);
+    assert.match(definition, /\bReturn="ignore"/);
+    assert.match(schedule, new RegExp(`\\bBefore="${before}"`));
+    assert.equal(schedule.includes(uninstallOnlyCondition), true);
+  }
+
+  assert.equal(
+    countOccurrences(windowsWixTemplate, uninstallOnlyCondition),
+    cleanupActions.length,
   );
 });
 

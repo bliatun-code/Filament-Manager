@@ -283,6 +283,58 @@ function Invoke-DatabaseVerification {
     }
 }
 
+function Test-RegistryValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return $false
+    }
+
+    $registryKey = Get-Item -LiteralPath $Path
+    try {
+        return @($registryKey.GetValueNames()) -contains $Name
+    }
+    finally {
+        $registryKey.Close()
+    }
+}
+
+function Wait-ForHiddenRunningProcess {
+    param(
+        [Parameter(Mandatory = $true)][Diagnostics.Process]$Process,
+        [Parameter(Mandatory = $true)][ValidateRange(1, 300)][int]$TimeoutSeconds,
+        [Parameter(Mandatory = $true)][ValidateRange(1, 100)][int]$StableCheckCount,
+        [Parameter(Mandatory = $true)][string]$Description
+    )
+
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $consecutiveHiddenChecks = 0
+    $lastWindowHandle = [IntPtr]::Zero
+    while ([DateTime]::UtcNow -lt $deadline) {
+        Start-Sleep -Milliseconds 500
+        $Process.Refresh()
+        if ($Process.HasExited) {
+            throw "$Description exited unexpectedly with exit code $($Process.ExitCode)."
+        }
+
+        $lastWindowHandle = $Process.MainWindowHandle
+        if ($lastWindowHandle -eq 0) {
+            $consecutiveHiddenChecks++
+            if ($consecutiveHiddenChecks -ge $StableCheckCount) {
+                return
+            }
+        }
+        else {
+            $consecutiveHiddenChecks = 0
+        }
+    }
+
+    throw "$Description did not remain running without a visible main window within $TimeoutSeconds seconds (last handle=$lastWindowHandle)."
+}
+
 $resolvedMsiPath = (Resolve-Path -LiteralPath $MsiPath).Path
 $msiFile = Get-Item -LiteralPath $resolvedMsiPath
 if ($msiFile.Length -le 0) {
@@ -324,6 +376,10 @@ $uninstallLogPath = Join-Path $resolvedLogDirectory "msi-uninstall.log"
 $cleanupLogPath = Join-Path $resolvedLogDirectory "msi-cleanup.log"
 $appStdoutPath = Join-Path $resolvedLogDirectory "app-stdout.log"
 $appStderrPath = Join-Path $resolvedLogDirectory "app-stderr.log"
+$backgroundAppStdoutPath = Join-Path $resolvedLogDirectory "app-background-stdout.log"
+$backgroundAppStderrPath = Join-Path $resolvedLogDirectory "app-background-stderr.log"
+$secondaryAppStdoutPath = Join-Path $resolvedLogDirectory "app-secondary-stdout.log"
+$secondaryAppStderrPath = Join-Path $resolvedLogDirectory "app-secondary-stderr.log"
 $summaryPath = Join-Path $resolvedLogDirectory "smoke-summary.txt"
 $desktopDirectory = [Environment]::GetFolderPath([Environment+SpecialFolder]::DesktopDirectory)
 $programsDirectory = [Environment]::GetFolderPath([Environment+SpecialFolder]::Programs)
@@ -333,13 +389,53 @@ if ([string]::IsNullOrWhiteSpace($desktopDirectory) -or [string]::IsNullOrWhiteS
 $desktopShortcutPath = Join-Path $desktopDirectory "$ExpectedProductName.lnk"
 $startMenuProductDirectory = Join-Path $programsDirectory $ExpectedProductName
 $startMenuShortcutPath = Join-Path $startMenuProductDirectory "$ExpectedProductName.lnk"
+$desktopLifecyclePreferencesPath = Join-Path $resolvedAppDataDirectory "desktop-lifecycle.json"
+$runRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+$startupApprovedRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"
+$stableAutostartValueName = "no.bliatun.filamentmanager"
+$legacyAutostartValueName = "Filament Manager"
+$runSmokeValue = '"C:\filament-manager-smoke\missing.exe" --background'
+$startupApprovedSmokeValue = [byte[]]@(
+    0x02, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+)
+$autostartRegistryTargets = @(
+    [PSCustomObject]@{
+        Path = $runRegistryPath
+        Name = $stableAutostartValueName
+        PropertyType = "String"
+        Value = $runSmokeValue
+    },
+    [PSCustomObject]@{
+        Path = $startupApprovedRegistryPath
+        Name = $stableAutostartValueName
+        PropertyType = "Binary"
+        Value = $startupApprovedSmokeValue
+    },
+    [PSCustomObject]@{
+        Path = $runRegistryPath
+        Name = $legacyAutostartValueName
+        PropertyType = "String"
+        Value = $runSmokeValue
+    },
+    [PSCustomObject]@{
+        Path = $startupApprovedRegistryPath
+        Name = $legacyAutostartValueName
+        PropertyType = "Binary"
+        Value = $startupApprovedSmokeValue
+    }
+)
 
 $transcriptStarted = $false
 $installationAttempted = $false
 $uninstallSucceeded = $false
 $canRemoveSmokeAppData = $false
 $appProcess = $null
+$secondaryProcess = $null
 $productCode = $null
+$createdAutostartRegistryKeys = @()
+$seededAutostartRegistryTargets = @()
 
 try {
     Start-Transcript -LiteralPath $transcriptPath -Force | Out-Null
@@ -366,6 +462,12 @@ try {
     $existingProcesses = @(Get-Process -Name $executableBaseName -ErrorAction SilentlyContinue)
     if ($existingProcesses.Count -ne 0) {
         throw "Clean-install precondition failed; $ExpectedExecutableName is already running."
+    }
+
+    foreach ($registryTarget in $autostartRegistryTargets) {
+        if (Test-RegistryValue -Path $registryTarget.Path -Name $registryTarget.Name) {
+            throw "Autostart smoke precondition failed; registry value '$($registryTarget.Name)' already exists at '$($registryTarget.Path)'."
+        }
     }
 
     $msiIdentity = Get-MsiIdentity -Path $resolvedMsiPath
@@ -470,6 +572,115 @@ try {
     }
     $appProcess = $null
 
+    if (Test-Path -LiteralPath $desktopLifecyclePreferencesPath) {
+        throw "Default lifecycle smoke unexpectedly created a desktop lifecycle preferences file: $desktopLifecyclePreferencesPath"
+    }
+    $desktopLifecyclePreferencesJson = "{`"continue_in_background`":true}$([Environment]::NewLine)"
+    [IO.File]::WriteAllText(
+        $desktopLifecyclePreferencesPath,
+        $desktopLifecyclePreferencesJson,
+        [Text.UTF8Encoding]::new($false)
+    )
+
+    $appProcess = Start-Process `
+        -FilePath $installedExecutablePath `
+        -ArgumentList "--background" `
+        -WorkingDirectory $resolvedInstallDirectory `
+        -RedirectStandardOutput $backgroundAppStdoutPath `
+        -RedirectStandardError $backgroundAppStderrPath `
+        -PassThru
+    $backgroundPrimaryProcessId = $appProcess.Id
+
+    Wait-ForHiddenRunningProcess `
+        -Process $appProcess `
+        -TimeoutSeconds $LaunchTimeoutSeconds `
+        -StableCheckCount 6 `
+        -Description "Background launch"
+
+    $secondaryProcess = Start-Process `
+        -FilePath $installedExecutablePath `
+        -WorkingDirectory $resolvedInstallDirectory `
+        -RedirectStandardOutput $secondaryAppStdoutPath `
+        -RedirectStandardError $secondaryAppStderrPath `
+        -PassThru
+    if (-not $secondaryProcess.WaitForExit(15000)) {
+        throw "The normal secondary instance did not exit within 15 seconds."
+    }
+    if ($secondaryProcess.ExitCode -ne 0) {
+        throw "The normal secondary instance exited with code $($secondaryProcess.ExitCode)."
+    }
+    $secondaryProcess = $null
+
+    $restoreDeadline = [DateTime]::UtcNow.AddSeconds($LaunchTimeoutSeconds)
+    $restoredWindowReady = $false
+    while ([DateTime]::UtcNow -lt $restoreDeadline) {
+        Start-Sleep -Milliseconds 500
+        $appProcess.Refresh()
+        if ($appProcess.HasExited) {
+            throw "The background primary process exited while the secondary instance requested its window."
+        }
+
+        $observedTitle = $appProcess.MainWindowTitle
+        $titleMatches = $ExpectedWindowTitles -contains $observedTitle
+        $restoredWindowReady = `
+            $appProcess.MainWindowHandle -ne 0 -and `
+            $appProcess.Responding -and `
+            $titleMatches
+        if ($restoredWindowReady) {
+            break
+        }
+    }
+    if (-not $restoredWindowReady) {
+        throw "The normal secondary instance did not restore the primary window within $LaunchTimeoutSeconds seconds (primaryPid=$backgroundPrimaryProcessId, title='$observedTitle')."
+    }
+
+    $matchingProcesses = @(Get-Process -Name $executableBaseName -ErrorAction SilentlyContinue)
+    if ($matchingProcesses.Count -ne 1) {
+        throw "Expected one app process after the secondary instance exited, but found $($matchingProcesses.Count)."
+    }
+    if ($matchingProcesses[0].Id -ne $backgroundPrimaryProcessId) {
+        throw "The restored window belongs to PID $($matchingProcesses[0].Id), not the original background primary PID $backgroundPrimaryProcessId."
+    }
+
+    if (-not $appProcess.CloseMainWindow()) {
+        throw "The background-enabled app did not accept a main-window close request."
+    }
+    Wait-ForHiddenRunningProcess `
+        -Process $appProcess `
+        -TimeoutSeconds 15 `
+        -StableCheckCount 6 `
+        -Description "Close-to-tray primary process"
+    $samePrimaryAfterClose = Get-Process -Id $backgroundPrimaryProcessId -ErrorAction Stop
+    if ($samePrimaryAfterClose.Id -ne $appProcess.Id) {
+        throw "Close-to-tray did not retain the original primary process."
+    }
+
+    Stop-Process -Id $backgroundPrimaryProcessId -Force -ErrorAction Stop
+    if (-not $appProcess.WaitForExit(15000)) {
+        throw "The background primary process did not stop during test cleanup."
+    }
+    $appProcess = $null
+
+    foreach ($registryTarget in $autostartRegistryTargets) {
+        if (Test-RegistryValue -Path $registryTarget.Path -Name $registryTarget.Name) {
+            throw "Autostart smoke precondition failed immediately before seeding; registry value '$($registryTarget.Name)' now exists at '$($registryTarget.Path)'."
+        }
+    }
+    foreach ($registryPath in @($runRegistryPath, $startupApprovedRegistryPath)) {
+        if (-not (Test-Path -LiteralPath $registryPath -PathType Container)) {
+            New-Item -Path $registryPath -Force | Out-Null
+            $createdAutostartRegistryKeys += $registryPath
+        }
+    }
+    foreach ($registryTarget in $autostartRegistryTargets) {
+        New-ItemProperty `
+            -LiteralPath $registryTarget.Path `
+            -Name $registryTarget.Name `
+            -PropertyType $registryTarget.PropertyType `
+            -Value $registryTarget.Value | Out-Null
+        $seededAutostartRegistryTargets += $registryTarget
+    }
+
     $databaseHashBeforeUninstall = (Get-FileHash -LiteralPath $databasePath -Algorithm SHA256).Hash
     Invoke-MsiExec -Action "/x" -Target $productCode -LogPath $uninstallLogPath
     $uninstallSucceeded = $true
@@ -496,6 +707,11 @@ try {
     if (Test-UserPathContainsDirectory -Directory $resolvedInstallDirectory) {
         throw "Uninstall left the install directory in the user PATH."
     }
+    foreach ($registryTarget in $autostartRegistryTargets) {
+        if (Test-RegistryValue -Path $registryTarget.Path -Name $registryTarget.Name) {
+            throw "Uninstall left app-owned autostart registry value '$($registryTarget.Name)' behind at '$($registryTarget.Path)'."
+        }
+    }
     if (-not (Test-Path -LiteralPath $databasePath -PathType Leaf)) {
         throw "Uninstall removed the user database instead of retaining it: $databasePath"
     }
@@ -518,6 +734,11 @@ try {
         "Observed window title: $observedTitle",
         "Database: $databasePath",
         "Database SHA-256 retained: $($databaseHashAfterUninstall.ToLowerInvariant())",
+        "Default close exited cleanly: yes",
+        "Background launch stayed hidden: yes",
+        "Single-instance window restore retained PID: $backgroundPrimaryProcessId",
+        "Close-to-tray kept the primary process alive: yes",
+        "Stable and legacy autostart registry values removed: yes",
         "Windows Installer current-user registration removed: yes",
         "Desktop and Start Menu shortcuts removed: yes",
         "User PATH entry removed: yes",
@@ -525,20 +746,24 @@ try {
         "Result: PASS"
     ) -join [Environment]::NewLine
     [IO.File]::WriteAllText($summaryPath, "$summary$([Environment]::NewLine)")
-    Write-Host "Windows MSI clean install, launch, database, retention and uninstall smoke passed."
+    Write-Host "Windows MSI clean install, desktop lifecycle, database, retention and uninstall smoke passed."
 }
 finally {
     $applicationStoppedForCleanup = $true
-    if ($null -ne $appProcess) {
+    foreach ($processToStop in @($secondaryProcess, $appProcess)) {
+        if ($null -eq $processToStop) {
+            continue
+        }
+
         try {
-            if (-not $appProcess.HasExited) {
-                Stop-Process -Id $appProcess.Id -Force -ErrorAction Stop
-                $appProcess.WaitForExit()
+            if (-not $processToStop.HasExited) {
+                Stop-Process -Id $processToStop.Id -Force -ErrorAction Stop
+                $processToStop.WaitForExit()
             }
         }
         catch {
             $applicationStoppedForCleanup = $false
-            Write-Warning "Failed to stop the app during smoke cleanup: $($_.Exception.Message)"
+            Write-Warning "Failed to stop app process $($processToStop.Id) during smoke cleanup: $($_.Exception.Message)"
         }
     }
 
@@ -553,6 +778,45 @@ finally {
         }
         catch {
             Write-Warning "Failed to uninstall the app during smoke cleanup: $($_.Exception.Message)"
+        }
+    }
+
+    foreach ($registryTarget in $seededAutostartRegistryTargets) {
+        try {
+            if (Test-RegistryValue -Path $registryTarget.Path -Name $registryTarget.Name) {
+                Remove-ItemProperty `
+                    -LiteralPath $registryTarget.Path `
+                    -Name $registryTarget.Name `
+                    -Force `
+                    -ErrorAction Stop
+            }
+        }
+        catch {
+            Write-Warning "Failed to remove smoke-owned registry value '$($registryTarget.Name)' from '$($registryTarget.Path)': $($_.Exception.Message)"
+        }
+    }
+
+    foreach ($registryPath in $createdAutostartRegistryKeys) {
+        try {
+            if (-not (Test-Path -LiteralPath $registryPath -PathType Container)) {
+                continue
+            }
+
+            $registryKey = Get-Item -LiteralPath $registryPath
+            try {
+                $registryKeyIsEmpty = `
+                    @($registryKey.GetValueNames()).Count -eq 0 -and `
+                    @($registryKey.GetSubKeyNames()).Count -eq 0
+            }
+            finally {
+                $registryKey.Close()
+            }
+            if ($registryKeyIsEmpty) {
+                Remove-Item -LiteralPath $registryPath -Force -ErrorAction Stop
+            }
+        }
+        catch {
+            Write-Warning "Failed to remove an empty smoke-created registry key '$registryPath': $($_.Exception.Message)"
         }
     }
 

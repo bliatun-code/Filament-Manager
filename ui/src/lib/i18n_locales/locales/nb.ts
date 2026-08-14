@@ -1210,6 +1210,28 @@ export const nbDictionary: DictionaryNode = {
       tabSwatch: "Swatch-kvalitet",
       tabMaintenance: "Programvedlikehold",
       program: "Program",
+      backgroundOperation: "Bakgrunnskjøring",
+      backgroundOperationHint:
+        "Hold Companion, vertstilgang og Bambu-forbruksovervåkning tilgjengelig når hovedvinduet lukkes.",
+      backgroundOperationLoading: "Laster inn innstillinger for bakgrunnskjøring…",
+      backgroundOperationSaving: "Lagrer innstillinger for bakgrunnskjøring…",
+      backgroundTrayUnavailable:
+        "Ikonet i menylinjen eller systemstatusfeltet er utilgjengelig i denne økten. Når vinduet lukkes, avsluttes programmet.",
+      backgroundTrayOpen: "Åpne Filament Manager",
+      backgroundTrayQuit: "Avslutt Filament Manager",
+      continueInBackground: "Fortsett å kjøre når jeg lukker vinduet",
+      continueInBackgroundHint:
+        "Vinduet skjules i menylinjen eller systemstatusfeltet. Åpne menyen der når du vil avslutte programmet.",
+      launchAtLogin: "Start i bakgrunnen når jeg logger inn",
+      launchAtLoginHint:
+        "Starter skjult for denne brukerkontoen. Hvis ikonet i menylinjen eller systemstatusfeltet er utilgjengelig, åpnes vinduet i stedet.",
+      backgroundMoveToApplicationsError:
+        "Flytt Filament Manager til Programmer før du aktiverer oppstart ved innlogging.",
+      backgroundOperationLoadError:
+        "Innstillingene for bakgrunnskjøring kunne ikke lastes inn.",
+      backgroundOperationUpdateError:
+        "Innstillingene for bakgrunnskjøring kunne ikke oppdateres.",
+      backgroundOperationRetry: "Prøv igjen",
       version: "Versjon",
       license: "Lisens",
       licenseHelp:

@@ -2,6 +2,7 @@ use crate::credential_store::CredentialStore;
 use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
 use crate::local_service_advertisement::{AdvertisementError, LocalServiceAdvertisement};
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use tauri::async_runtime::JoinHandle;
 use tokio::sync::{oneshot, OwnedMutexGuard};
@@ -31,6 +32,7 @@ pub struct TrustedLanCompanionRuntime {
     server: Arc<RwLock<Option<TrustedLanCompanionServerHandle>>>,
     local_service_advertisement: Arc<Mutex<Option<LocalServiceAdvertisement>>>,
     reconcile_gate: Arc<tokio::sync::Mutex<()>>,
+    shutting_down: Arc<AtomicBool>,
     qa_mode: bool,
 }
 
@@ -106,6 +108,7 @@ impl TrustedLanCompanionRuntime {
             server: Arc::new(RwLock::new(None)),
             local_service_advertisement: Arc::new(Mutex::new(None)),
             reconcile_gate: Arc::new(tokio::sync::Mutex::new(())),
+            shutting_down: Arc::new(AtomicBool::new(false)),
             qa_mode: companion_visual_qa_enabled(),
         }
     }
@@ -115,6 +118,14 @@ impl TrustedLanCompanionRuntime {
             config.enabled = enabled;
         }
         self
+    }
+
+    pub(crate) fn mark_shutdown_started(&self) {
+        self.shutting_down.store(true, Ordering::Release);
+    }
+
+    pub(crate) fn shutting_down(&self) -> bool {
+        self.shutting_down.load(Ordering::Acquire)
     }
 
     pub fn with_selected_interface(
