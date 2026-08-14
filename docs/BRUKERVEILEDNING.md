@@ -346,6 +346,7 @@ Generelt:
 
 - programversjon
 - automatiske oppdateringsvarsler og beholdt manuell oppdateringssjekk
+- valgfri bakgrunnskjøring ved lukking og oppstart ved innlogging
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
@@ -359,6 +360,41 @@ community-oversettelsene kan foreslås via det egne
 [skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
 ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
+
+De to valgene under **Innstillinger → Generelt → Bakgrunnskjøring** aktiveres
+hver for seg. Aktiver **Fortsett å kjøre når jeg lukker vinduet** for å skjule
+hovedvinduet bak Filament Manager-ikonet i menylinjen på macOS eller
+systemstatusfeltet i Windows i stedet for å stoppe programmet. Dette gjelder
+bare når ikonet er tilgjengelig; ellers avsluttes programmet som normalt når
+vinduet lukkes.
+
+Mens vinduet er skjult, forblir Rust-bakgrunnsoppgavene for Companion,
+vertstilgang og Bambu-forbruksovervåkning aktive så lenge brukerøkten er aktiv og
+maskinen er våken. Venstreklikk på ikonet eller velg **Åpne Filament Manager**
+fra menyen for å hente frem vinduet. Velg **Avslutt Filament Manager** for å
+stoppe prosessen; menytekstene følger valgt grensesnittspråk. Starter du
+Filament Manager på vanlig måte, hentes også den eksisterende instansen frem og
+får fokus i stedet for at en ny database-/serverprosess åpnes.
+
+Aktiver **Start i bakgrunnen når jeg logger inn** for å starte programmet skjult
+for den aktive brukerkontoen. Hvis ikonet i menylinjen eller systemstatusfeltet
+er utilgjengelig ved oppstart, åpnes hovedvinduet i stedet, slik at prosessen ikke
+blir utilgjengelig. På macOS må programmet flyttes ut av det nedlastede diskbildet
+før valget aktiveres. Installasjon i **Programmer** gir innloggingsoppføringen en
+stabil filsti; valget kan ikke aktiveres mens programmet kjører fra et diskbilde
+eller en midlertidig App Translocation-sti. Operativsystemets egne innloggings-
+eller oppstartsinnstillinger kan fortsatt deaktivere oppføringen uavhengig av
+programmet.
+
+Ingen av valgene installerer en operativsystemtjeneste. Programmet kjører ikke
+videre etter utlogging, avslåing eller mens maskinen sover. En desktop
+konfigurert som Klient er utformet for å pause frontend-timerne for oppdatering
+fra verten mens vinduet er skjult og starte dem igjen når vinduet hentes frem;
+Rust-bakgrunnsoppgavene beskrevet over forblir aktive. På macOS bruker
+avslutning fra programmenyen eller statusmenyen den koordinerte
+avslutningsflyten. Operativsystemets opprinnelige avslutningsveier, som
+**Avslutt** fra Dock-menyen, og tvungen avslutning er best-effort og kan hoppe
+over denne oppryddingen.
 
 Release-versjoner med en konfigurert offentlig metadatakanal kan sjekke
 automatisk når **Sjekk automatisk** er aktivert. Sjekken skjer etter en kort

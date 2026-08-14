@@ -84,3 +84,39 @@ test("buildSettingsLocaleSelectionMessage names every target before the desktop 
     );
   }
 });
+
+test("background lifecycle settings are localized for all 21 selectable locales", async () => {
+  const keys = [
+    "backgroundOperation",
+    "backgroundOperationHint",
+    "backgroundOperationLoading",
+    "backgroundOperationSaving",
+    "backgroundTrayUnavailable",
+    "backgroundTrayOpen",
+    "backgroundTrayQuit",
+    "continueInBackground",
+    "continueInBackgroundHint",
+    "launchAtLogin",
+    "launchAtLoginHint",
+    "backgroundMoveToApplicationsError",
+    "backgroundOperationLoadError",
+    "backgroundOperationUpdateError",
+    "backgroundOperationRetry",
+  ] as const;
+  const english = await loadLocaleDictionary("en");
+
+  assert.equal(SELECTABLE_LOCALES.length, 21);
+  for (const definition of SELECTABLE_LOCALES) {
+    const locale = definition.id as Locale;
+    const dictionary = await loadLocaleDictionary(locale);
+    for (const key of keys) {
+      const path = `settings.${key}`;
+      const value = lookup(dictionary, path);
+      assert.equal(typeof value, "string", `${locale}: ${path}`);
+      assert.notEqual(value?.trim(), "", `${locale}: ${path}`);
+      if (locale !== "en") {
+        assert.notEqual(value, lookup(english, path), `${locale}: ${path}`);
+      }
+    }
+  }
+});

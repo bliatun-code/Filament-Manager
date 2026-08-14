@@ -27,3 +27,10 @@ test("Settings visual QA uses the requested tab without reading or writing user 
   );
   assert.match(settingsActiveTabSource, /deterministic: !persistenceEnabled/);
 });
+
+test("the native tray menu follows the selected interface language", () => {
+  assert.match(appSource, /setDesktopTrayMenuLabels\(/);
+  assert.match(appSource, /settings\.backgroundTrayOpen/);
+  assert.match(appSource, /settings\.backgroundTrayQuit/);
+  assert.match(appSource, /\[locale, t\]/);
+});

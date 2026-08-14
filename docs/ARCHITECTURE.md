@@ -19,6 +19,43 @@ The Tauri crate must not include backend files through cross-tree `#[path]`
 attributes. Add a backend module to `src/backend/mod.rs` and expose only the
 smallest API the adapter needs.
 
+## Desktop Background Lifecycle
+
+`src-tauri/src/desktop_lifecycle.rs` owns the macOS menu-bar and Windows system-
+tray lifecycle. The main window starts hidden and is shown after setup during a
+normal launch; the autostart-only `--background` argument deliberately leaves
+it hidden. A machine-local preference controls whether a user close request
+hides the window or exits the process. Tray **Quit**, the macOS application-menu
+**Quit**, and a failed hide always take the real exit path. The webview sends
+the selected interface language's Open/Quit labels to the native tray menu (and
+the custom macOS application-menu Quit item) after startup and whenever the
+locale changes.
+
+The real exit path has three phases: running, stopping, and exit allowed. The
+first exit request is prevented while a single coordinator signals the LAN
+watcher and Bambu Live observer, stops scheduling new blocking polls, and joins
+or aborts the owned async tasks within fixed deadlines. It then shuts down the
+Companion HTTP listener and local-service advertisement under the reconciliation
+gate before allowing the final process exit. This prevents a network watcher or
+late startup reconciliation from rebinding Companion during shutdown. A sync
+printer poll already executing on a blocking thread remains best-effort and is
+bounded by its network timeouts. Native operating-system termination paths such
+as macOS Dock Quit, forced quit, logout, shutdown, or process kill can still
+bypass asynchronous cleanup; committed SQLite transactions remain durable and
+the OS closes process sockets.
+
+Single-instance handling restores and focuses the existing main window. This
+prevents a hidden second process from competing for SQLite, the Companion port,
+or the stable mDNS name. Companion reconciliation, the LAN watcher, and Bambu
+Live observation are Rust-owned process tasks and continue while the webview is
+hidden. Frontend client-refresh timers use document visibility and are designed
+to pause while the native window is hidden; continuous hidden Client
+synchronization would require a separate Rust-owned scheduler.
+
+Background mode is a user-session process, not an operating-system service. It
+does not survive sign-out or shutdown and does not run while the machine is
+asleep.
+
 ## Companion Network Address
 
 On macOS and Windows, a Companion host advertises one stable `.local` address

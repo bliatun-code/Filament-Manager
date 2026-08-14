@@ -1262,6 +1262,28 @@ export const esDictionary: DictionaryNode = {
     tabSwatch: "Calidad de muestras",
     tabMaintenance: "Mantenimiento del programa",
     program: "Programa",
+    backgroundOperation: "Funcionamiento en segundo plano",
+    backgroundOperationHint:
+      "Mantén disponibles Companion, el acceso al host y la supervisión del uso de Bambu cuando se cierre la ventana principal.",
+    backgroundOperationLoading: "Cargando los ajustes de segundo plano…",
+    backgroundOperationSaving: "Guardando los ajustes de segundo plano…",
+    backgroundTrayUnavailable:
+      "El icono de la barra de menús o de la bandeja del sistema no está disponible en esta sesión. Al cerrar la ventana se cerrará el programa.",
+    backgroundTrayOpen: "Abrir Filament Manager",
+    backgroundTrayQuit: "Salir de Filament Manager",
+    continueInBackground: "Seguir ejecutándose al cerrar la ventana",
+    continueInBackgroundHint:
+      "La ventana se oculta en la barra de menús o la bandeja del sistema. Abre el menú del icono cuando quieras cerrar el programa.",
+    launchAtLogin: "Iniciar en segundo plano al iniciar sesión",
+    launchAtLoginHint:
+      "Se inicia oculto para esta cuenta de usuario. Si el icono de la barra de menús o de la bandeja del sistema no está disponible, se abre la ventana en su lugar.",
+    backgroundMoveToApplicationsError:
+      "Mueve Filament Manager a Aplicaciones antes de activar su inicio al iniciar sesión.",
+    backgroundOperationLoadError:
+      "No se pudieron cargar los ajustes de segundo plano.",
+    backgroundOperationUpdateError:
+      "No se pudieron actualizar los ajustes de segundo plano.",
+    backgroundOperationRetry: "Reintentar",
     version: "Versión",
     license: "Licencia",
     licenseHelp:

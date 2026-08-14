@@ -1203,6 +1203,26 @@ export const enDictionary: DictionaryNode = {
       tabSwatch: "Swatch quality",
       tabMaintenance: "Program maintenance",
       program: "Program",
+      backgroundOperation: "Background operation",
+      backgroundOperationHint:
+        "Keep Companion, host access and Bambu usage monitoring available when the main window is closed.",
+      backgroundOperationLoading: "Loading background settings…",
+      backgroundOperationSaving: "Saving background settings…",
+      backgroundTrayUnavailable:
+        "The menu bar or system tray icon is unavailable in this session. Closing the window will quit the program.",
+      backgroundTrayOpen: "Open Filament Manager",
+      backgroundTrayQuit: "Quit Filament Manager",
+      continueInBackground: "Continue running when I close the window",
+      continueInBackgroundHint:
+        "The window is hidden in the menu bar or system tray. Open its menu when you want to stop the program.",
+      launchAtLogin: "Start in the background when I sign in",
+      launchAtLoginHint:
+        "Starts hidden for this user account. If the menu bar or system tray icon is unavailable, the window opens instead.",
+      backgroundMoveToApplicationsError:
+        "Move Filament Manager to Applications before enabling launch at login.",
+      backgroundOperationLoadError: "The background settings could not be loaded.",
+      backgroundOperationUpdateError: "The background settings could not be updated.",
+      backgroundOperationRetry: "Retry",
       version: "Version",
       license: "License",
       licenseHelp:

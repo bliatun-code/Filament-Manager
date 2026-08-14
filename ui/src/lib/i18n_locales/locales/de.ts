@@ -1184,6 +1184,27 @@ export const deDictionary: DictionaryNode = {
     auto: "Automatisch (System)",
     autoHint: "Automatisch folgt der Hell-/Dunkel-Einstellung des Systems.",
     program: "Programm",
+    backgroundOperation: "Hintergrundbetrieb",
+    backgroundOperationHint:
+      "Companion, Hostzugriff und die Bambu-Verbrauchsüberwachung bleiben verfügbar, wenn das Hauptfenster geschlossen wird.",
+    backgroundOperationLoading: "Hintergrundeinstellungen werden geladen…",
+    backgroundOperationSaving: "Hintergrundeinstellungen werden gespeichert…",
+    backgroundTrayUnavailable:
+      "Das Symbol in der Menüleiste oder im Infobereich ist in dieser Sitzung nicht verfügbar. Beim Schließen des Fensters wird das Programm beendet.",
+    backgroundTrayOpen: "Filament Manager öffnen",
+    backgroundTrayQuit: "Filament Manager beenden",
+    continueInBackground: "Beim Schließen des Fensters weiter ausführen",
+    continueInBackgroundHint:
+      "Das Fenster wird in der Menüleiste oder im Infobereich ausgeblendet. Öffne dort das Menü, um das Programm zu beenden.",
+    launchAtLogin: "Bei der Anmeldung im Hintergrund starten",
+    launchAtLoginHint:
+      "Startet für dieses Benutzerkonto ausgeblendet. Wenn das Symbol in der Menüleiste oder im Infobereich nicht verfügbar ist, wird stattdessen das Fenster geöffnet.",
+    backgroundMoveToApplicationsError:
+      "Verschieben Sie Filament Manager in den Ordner „Programme“, bevor Sie den Start bei der Anmeldung aktivieren.",
+    backgroundOperationLoadError: "Die Hintergrundeinstellungen konnten nicht geladen werden.",
+    backgroundOperationUpdateError:
+      "Die Hintergrundeinstellungen konnten nicht aktualisiert werden.",
+    backgroundOperationRetry: "Erneut versuchen",
     version: "Version",
     license: "Lizenz",
     licenseHelp:

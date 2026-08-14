@@ -1717,6 +1717,30 @@ export const itITDictionary: DictionaryNode = {
     printerUnsavedChanges: "Modifiche non salvate",
     productTour: "Visita del prodotto",
     program: "Programma",
+    backgroundOperation: "Funzionamento in background",
+    backgroundOperationHint:
+      "Mantieni disponibili Companion, l'accesso all'host e il monitoraggio dell'utilizzo di Bambu quando la finestra principale viene chiusa.",
+    backgroundOperationLoading:
+      "Caricamento delle impostazioni per il funzionamento in background…",
+    backgroundOperationSaving:
+      "Salvataggio delle impostazioni per il funzionamento in background…",
+    backgroundTrayUnavailable:
+      "L'icona della barra dei menu o dell'area di notifica non è disponibile in questa sessione. La chiusura della finestra terminerà il programma.",
+    backgroundTrayOpen: "Apri Filament Manager",
+    backgroundTrayQuit: "Esci da Filament Manager",
+    continueInBackground: "Continua l'esecuzione quando chiudo la finestra",
+    continueInBackgroundHint:
+      "La finestra viene nascosta nella barra dei menu o nell'area di notifica. Apri il menu dell'icona quando vuoi terminare il programma.",
+    launchAtLogin: "Avvia in background quando accedo",
+    launchAtLoginHint:
+      "Si avvia nascosto per questo account utente. Se l'icona della barra dei menu o dell'area di notifica non è disponibile, viene aperta la finestra.",
+    backgroundMoveToApplicationsError:
+      "Sposta Filament Manager in Applicazioni prima di abilitare l'avvio all'accesso.",
+    backgroundOperationLoadError:
+      "Non è stato possibile caricare le impostazioni per il funzionamento in background.",
+    backgroundOperationUpdateError:
+      "Non è stato possibile aggiornare le impostazioni per il funzionamento in background.",
+    backgroundOperationRetry: "Riprova",
     reactivated: "riattivato",
     reconfigure: "Riconfigurare",
     refreshCurrentVendor: "Aggiorna il catalogo del fornitore corrente",

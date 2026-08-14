@@ -34,6 +34,19 @@ test("update-check visual QA reveals the real automatic and manual update contro
   assert.match(generalTabSource, /updateCheck\.checkManually\(\)/);
 });
 
+test("general settings visual QA waits for and reveals background controls", () => {
+  assert.match(source, /desktopVisualQaScenarioRef\.current !== "settings-general"/);
+  assert.match(source, /desktopLifecycle\.loading/);
+  assert.match(source, /!desktopLifecycle\.settings/);
+  assert.match(source, /getElementById\("settings-background-operation"\)/);
+  assert.match(
+    source,
+    /target\.scrollIntoView\(\{ behavior: "auto", block: "center" \}\)/,
+  );
+  assert.match(source, /new ResizeObserver\(revealBackgroundOperation\)/);
+  assert.match(generalTabSource, /id="settings-background-operation"/);
+});
+
 test("inventory label sheet visual QA opens the real data-backed modal", () => {
   assert.match(source, /desktopVisualQaScenario === "settings-inventory-label-sheet"/);
   assert.match(labelSheetModalSource, /id="settings-inventory-label-sheet-builder"/);

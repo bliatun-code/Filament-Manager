@@ -20,6 +20,7 @@ import { useSettingsMaintenanceSection } from "./use_settings_maintenance_sectio
 import { useSettingsPrintersSection } from "./use_settings_printers_section";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsMessageGroups } from "./use_settings_message_groups";
+import { useDesktopLifecycleSettings } from "./use_desktop_lifecycle_settings";
 import { isLibrarySyncDeviceNameDirty } from "./settings_library_device_name";
 
 type SettingsPageProps = {
@@ -58,6 +59,7 @@ export default function SettingsPage({
     tauri,
     t,
   });
+  const desktopLifecycle = useDesktopLifecycleSettings({ tauri });
 
   useEffect(() => {
     if (
@@ -95,6 +97,52 @@ export default function SettingsPage({
       }
     };
   }, [activeTab]);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenarioRef.current !== "settings-general" ||
+      activeTab !== "GENERAL" ||
+      desktopLifecycle.loading ||
+      !desktopLifecycle.settings
+    ) {
+      return;
+    }
+
+    const target = document.getElementById("settings-background-operation");
+    if (!target) {
+      return;
+    }
+    let scheduledFrameId: number | null = null;
+    const revealBackgroundOperation = () => {
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+      scheduledFrameId = window.requestAnimationFrame(() => {
+        scheduledFrameId = null;
+        target.scrollIntoView({ behavior: "auto", block: "center" });
+      });
+    };
+
+    revealBackgroundOperation();
+    const timerIds = [150, 450, 900].map((delay) =>
+      window.setTimeout(revealBackgroundOperation, delay),
+    );
+    window.addEventListener("resize", revealBackgroundOperation);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(revealBackgroundOperation);
+    resizeObserver?.observe(target);
+
+    return () => {
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+      window.removeEventListener("resize", revealBackgroundOperation);
+      resizeObserver?.disconnect();
+      if (scheduledFrameId !== null) {
+        window.cancelAnimationFrame(scheduledFrameId);
+      }
+    };
+  }, [activeTab, desktopLifecycle.loading, desktopLifecycle.settings]);
   const libraryRuntime = useSettingsLibraryRuntime({
     locale,
     tauri,
@@ -556,13 +604,21 @@ export default function SettingsPage({
   const settingsGeneralRouteProps = buildSettingsGeneralRouteProps({
     appVersion,
     busy,
+    desktopLifecycleLoadError: desktopLifecycle.loadError,
+    desktopLifecycleLoading: desktopLifecycle.loading,
+    desktopLifecycleSettings: desktopLifecycle.settings,
+    desktopLifecycleUpdateError: desktopLifecycle.updateError,
+    desktopLifecycleUpdating: desktopLifecycle.updating,
     locale,
     inventoryLabelSheetModalProps,
     tauri,
     themeMode,
     t,
     onLocaleSelection: handleLocaleSelection,
+    onContinueInBackground: desktopLifecycle.handleContinueInBackground,
+    onLaunchAtLogin: desktopLifecycle.handleLaunchAtLogin,
     onOpenInventoryLabelSheet: handleOpenInventoryLabelSheet,
+    onRetryDesktopLifecycleLoad: desktopLifecycle.handleRetryLoad,
     onThemeSelection: handleThemeSelection,
   });
   const {

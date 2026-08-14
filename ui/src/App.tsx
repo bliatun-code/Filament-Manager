@@ -17,6 +17,7 @@ import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import {
   isTauri,
   openExternalUrl,
+  setDesktopTrayMenuLabels,
   setDockIconTheme,
   setWindowTitle,
 } from "./lib/tauri_client";
@@ -48,7 +49,7 @@ function initialSettingsTabFromUrl(): SettingsTabKey | null {
 }
 
 export default function App() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const appUpdate = useAppUpdateContext();
   const [activePage, setActivePage] = useState<PageKey>(() => initialPageFromUrl());
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() =>
@@ -141,6 +142,18 @@ export default function App() {
       void syncDockIcon();
     });
   }, []);
+
+  useEffect(() => {
+    if (!isTauri()) {
+      return;
+    }
+    void setDesktopTrayMenuLabels(
+      t("settings.backgroundTrayOpen", "Open Filament Manager"),
+      t("settings.backgroundTrayQuit", "Quit Filament Manager"),
+    ).catch((error) => {
+      console.error("Failed to localize the desktop tray menu.", error);
+    });
+  }, [locale, t]);
 
   const pages = useMemo(
     () =>
