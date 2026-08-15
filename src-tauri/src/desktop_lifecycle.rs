@@ -1035,10 +1035,10 @@ mod tests {
     #[test]
     fn windows_autostart_quotes_executable_paths() {
         let executable =
-            Path::new(r"C:\Users\Bjorn Liatun\AppData\Local\Filament Manager\filament-manager.exe");
+            Path::new(r"C:\Users\Example\AppData\Local\Filament Manager\filament-manager.exe");
         assert_eq!(
             windows_autostart_command(executable),
-            r#""C:\Users\Bjorn Liatun\AppData\Local\Filament Manager\filament-manager.exe" --background"#
+            r#""C:\Users\Example\AppData\Local\Filament Manager\filament-manager.exe" --background"#
         );
     }
 
