@@ -12,55 +12,11 @@ const BROWSER_ENTRY = fileURLToPath(
 const QR_PAYLOAD =
   "http://filament-manager-0123456789abcdef01234567.local:4278/companion?spool_qr=v1%3Aspool_1775592053186";
 
-function customLabelBrowserEntrySource(): string {
-  return `
-    export async function renderDecodeCustomLabel(payload, dimensions) {
-      const qrDataUrl = await buildFilamentLabelQrDataUrl(payload);
-      const labelPngDataUrl = await buildFilamentLabelPngDataUrl(
-        {
-          vendor: "Éléments Génériques et partenaires",
-          material: "PLA-CF",
-          filamentName: "Précision renforcée très longue série spéciale",
-          colorName: "Brûlé d’été violet extrêmement détaillé (40402)",
-          reference: "spool_1780069566047",
-          qrDataUrl,
-        },
-        dimensions,
-      );
-      const image = await loadImage(labelPngDataUrl);
-      const canvas = document.createElement("canvas");
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext("2d");
-      if (!context) {
-        throw new Error("Canvas 2D is unavailable.");
-      }
-      context.drawImage(image, 0, 0);
-      return {
-        decodedPayload: new BrowserQRCodeReader().decodeFromCanvas(canvas).getText(),
-        labelHeight: image.naturalHeight,
-        labelWidth: image.naturalWidth,
-        pngByteLength: atob(labelPngDataUrl.slice(labelPngDataUrl.indexOf(",") + 1)).length,
-      };
-    }
-  `;
-}
-
 async function buildBrowserHarnessDocument(): Promise<string> {
   const buildResult = await build({
     root: UI_ROOT,
     configFile: false,
     logLevel: "error",
-    plugins: [
-      {
-        name: "filament-label-browser-test-extensions",
-        transform(source, id) {
-          return id.split("?", 1)[0] === BROWSER_ENTRY
-            ? `${source}\n${customLabelBrowserEntrySource()}`
-            : null;
-        },
-      },
-    ],
     build: {
       emptyOutDir: false,
       minify: false,

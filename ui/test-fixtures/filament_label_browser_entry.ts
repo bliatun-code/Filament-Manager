@@ -87,3 +87,42 @@ export async function renderDecodeAndEmbedPtouchLabel(payload: string): Promise<
     pngSignature: Array.from(pngBytes.slice(0, 8)),
   };
 }
+
+export async function renderDecodeCustomLabel(
+  payload: string,
+  dimensions: { widthMm: number; heightMm: number },
+): Promise<{
+  decodedPayload: string;
+  labelHeight: number;
+  labelWidth: number;
+  pngByteLength: number;
+}> {
+  const qrDataUrl = await buildFilamentLabelQrDataUrl(payload);
+  const labelPngDataUrl = await buildFilamentLabelPngDataUrl(
+    {
+      vendor: "Éléments Génériques et partenaires",
+      material: "PLA-CF",
+      filamentName: "Précision renforcée très longue série spéciale",
+      colorName: "Brûlé d’été violet extrêmement détaillé (40402)",
+      reference: "spool_1780069566047",
+      qrDataUrl,
+    },
+    dimensions,
+  );
+  const image = await loadImage(labelPngDataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Canvas 2D is unavailable.");
+  }
+  context.drawImage(image, 0, 0);
+
+  return {
+    decodedPayload: new BrowserQRCodeReader().decodeFromCanvas(canvas).getText(),
+    labelHeight: image.naturalHeight,
+    labelWidth: image.naturalWidth,
+    pngByteLength: dataUrlBytes(labelPngDataUrl).length,
+  };
+}
