@@ -51,6 +51,189 @@ if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
     throw "The Windows MSI smoke test must run on Windows."
 }
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class FilamentManagerWindowInspector
+{
+    private const int GwlExStyle = -20;
+    private const long WsExToolWindow = 0x00000080L;
+    private const long WsExLayered = 0x00080000L;
+    private const long WsExNoActivate = 0x08000000L;
+    private const int DwmwaCloaked = 14;
+    private const uint WmClose = 0x0010;
+
+    private delegate bool EnumWindowsProc(IntPtr windowHandle, IntPtr parameter);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    public sealed class WindowInfo
+    {
+        public IntPtr Handle { get; set; }
+        public uint ProcessId { get; set; }
+        public string Title { get; set; }
+        public string ClassName { get; set; }
+        public bool IsVisible { get; set; }
+        public bool IsToolWindow { get; set; }
+        public bool IsLayered { get; set; }
+        public bool IsNoActivate { get; set; }
+        public bool IsCloaked { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+        public long ExtendedStyle { get; set; }
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr parameter);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out uint processId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetWindowTextLengthW(IntPtr windowHandle);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetWindowTextW(
+        IntPtr windowHandle,
+        StringBuilder text,
+        int maximumCharacters
+    );
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int GetClassNameW(
+        IntPtr windowHandle,
+        StringBuilder className,
+        int maximumCharacters
+    );
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr windowHandle);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr64(IntPtr windowHandle, int index);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static extern IntPtr GetWindowLongPtr32(IntPtr windowHandle, int index);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool GetWindowRect(IntPtr windowHandle, out Rect rectangle);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(
+        IntPtr windowHandle,
+        int attribute,
+        out int value,
+        int valueSize
+    );
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool PostMessageW(
+        IntPtr windowHandle,
+        uint message,
+        IntPtr wordParameter,
+        IntPtr longParameter
+    );
+
+    public static WindowInfo[] GetWindowsForProcess(int processId)
+    {
+        List<WindowInfo> windows = new List<WindowInfo>();
+        EnumWindowsProc callback = delegate(IntPtr windowHandle, IntPtr parameter)
+        {
+            uint windowProcessId;
+            GetWindowThreadProcessId(windowHandle, out windowProcessId);
+            if (windowProcessId != (uint)processId)
+            {
+                return true;
+            }
+
+            long extendedStyle = GetWindowLongPtr(windowHandle, GwlExStyle).ToInt64();
+            Rect rectangle;
+            int width = 0;
+            int height = 0;
+            if (GetWindowRect(windowHandle, out rectangle))
+            {
+                width = Math.Max(0, rectangle.Right - rectangle.Left);
+                height = Math.Max(0, rectangle.Bottom - rectangle.Top);
+            }
+
+            int cloaked = 0;
+            bool isCloaked = DwmGetWindowAttribute(
+                windowHandle,
+                DwmwaCloaked,
+                out cloaked,
+                Marshal.SizeOf(typeof(int))
+            ) == 0 && cloaked != 0;
+
+            windows.Add(new WindowInfo
+            {
+                Handle = windowHandle,
+                ProcessId = windowProcessId,
+                Title = ReadWindowTitle(windowHandle),
+                ClassName = ReadWindowClassName(windowHandle),
+                IsVisible = IsWindowVisible(windowHandle),
+                IsToolWindow = (extendedStyle & WsExToolWindow) != 0,
+                IsLayered = (extendedStyle & WsExLayered) != 0,
+                IsNoActivate = (extendedStyle & WsExNoActivate) != 0,
+                IsCloaked = isCloaked,
+                Width = width,
+                Height = height,
+                ExtendedStyle = extendedStyle
+            });
+            return true;
+        };
+
+        if (!EnumWindows(callback, IntPtr.Zero))
+        {
+            throw new InvalidOperationException(
+                "EnumWindows failed with Win32 error " + Marshal.GetLastWin32Error() + "."
+            );
+        }
+        return windows.ToArray();
+    }
+
+    public static bool RequestClose(IntPtr windowHandle)
+    {
+        return PostMessageW(windowHandle, WmClose, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private static IntPtr GetWindowLongPtr(IntPtr windowHandle, int index)
+    {
+        return IntPtr.Size == 8
+            ? GetWindowLongPtr64(windowHandle, index)
+            : GetWindowLongPtr32(windowHandle, index);
+    }
+
+    private static string ReadWindowTitle(IntPtr windowHandle)
+    {
+        int length = GetWindowTextLengthW(windowHandle);
+        if (length <= 0)
+        {
+            return string.Empty;
+        }
+        StringBuilder title = new StringBuilder(length + 1);
+        GetWindowTextW(windowHandle, title, title.Capacity);
+        return title.ToString();
+    }
+
+    private static string ReadWindowClassName(IntPtr windowHandle)
+    {
+        StringBuilder className = new StringBuilder(256);
+        GetClassNameW(windowHandle, className, className.Capacity);
+        return className.ToString();
+    }
+}
+'@
+
 function Release-ComObject {
     param([AllowNull()][object]$ComObject)
 
@@ -302,6 +485,67 @@ function Test-RegistryValue {
     }
 }
 
+function Get-ProcessWindowSnapshot {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+
+    return @([FilamentManagerWindowInspector]::GetWindowsForProcess($ProcessId))
+}
+
+function Get-VisibleUserFacingWindows {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+
+    return @(
+        Get-ProcessWindowSnapshot -ProcessId $ProcessId |
+            Where-Object {
+                $_.IsVisible -and
+                -not $_.IsToolWindow -and
+                -not $_.IsCloaked -and
+                $_.Width -gt 0 -and
+                $_.Height -gt 0
+            }
+    )
+}
+
+function Get-VisibleExpectedAppWindows {
+    param(
+        [Parameter(Mandatory = $true)][int]$ProcessId,
+        [Parameter(Mandatory = $true)][string[]]$ExpectedTitles
+    )
+
+    return @(
+        Get-VisibleUserFacingWindows -ProcessId $ProcessId |
+            Where-Object { $ExpectedTitles -contains $_.Title }
+    )
+}
+
+function Format-ProcessWindowSnapshot {
+    param([Parameter(Mandatory = $true)][int]$ProcessId)
+
+    $windows = @(Get-ProcessWindowSnapshot -ProcessId $ProcessId)
+    if ($windows.Count -eq 0) {
+        return "<none>"
+    }
+    $windowDescriptions = @(
+        $windows | ForEach-Object {
+            $handle = "0x$($_.Handle.ToInt64().ToString('X'))"
+            "$handle title='$($_.Title)' class='$($_.ClassName)' visible=$($_.IsVisible) tool=$($_.IsToolWindow) layered=$($_.IsLayered) noActivate=$($_.IsNoActivate) cloaked=$($_.IsCloaked) size=$($_.Width)x$($_.Height) exStyle=0x$($_.ExtendedStyle.ToString('X'))"
+        }
+    )
+    return $windowDescriptions -join "; "
+}
+
+function Request-AppWindowClose {
+    param(
+        [Parameter(Mandatory = $true)][object]$Window,
+        [Parameter(Mandatory = $true)][string]$Description
+    )
+
+    if (-not [FilamentManagerWindowInspector]::RequestClose($Window.Handle)) {
+        $win32Error = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        throw "$Description did not accept WM_CLOSE (handle=$($Window.Handle), Win32 error=$win32Error)."
+    }
+}
+
 function Wait-ForHiddenRunningProcess {
     param(
         [Parameter(Mandatory = $true)][Diagnostics.Process]$Process,
@@ -312,7 +556,7 @@ function Wait-ForHiddenRunningProcess {
 
     $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
     $consecutiveHiddenChecks = 0
-    $lastWindowHandle = [IntPtr]::Zero
+    $lastWindowSnapshot = "<not inspected>"
     while ([DateTime]::UtcNow -lt $deadline) {
         Start-Sleep -Milliseconds 500
         $Process.Refresh()
@@ -320,8 +564,10 @@ function Wait-ForHiddenRunningProcess {
             throw "$Description exited unexpectedly with exit code $($Process.ExitCode)."
         }
 
-        $lastWindowHandle = $Process.MainWindowHandle
-        if ($lastWindowHandle -eq 0) {
+        $visibleAppWindows = @(
+            Get-VisibleUserFacingWindows -ProcessId $Process.Id
+        )
+        if ($visibleAppWindows.Count -eq 0) {
             $consecutiveHiddenChecks++
             if ($consecutiveHiddenChecks -ge $StableCheckCount) {
                 return
@@ -330,9 +576,10 @@ function Wait-ForHiddenRunningProcess {
         else {
             $consecutiveHiddenChecks = 0
         }
+        $lastWindowSnapshot = Format-ProcessWindowSnapshot -ProcessId $Process.Id
     }
 
-    throw "$Description did not remain running without a visible main window within $TimeoutSeconds seconds (last handle=$lastWindowHandle)."
+    throw "$Description did not remain running without a visible app window within $TimeoutSeconds seconds. Last top-level windows: $lastWindowSnapshot"
 }
 
 $resolvedMsiPath = (Resolve-Path -LiteralPath $MsiPath).Path
@@ -539,7 +786,8 @@ try {
     $launchDeadline = [DateTime]::UtcNow.AddSeconds($LaunchTimeoutSeconds)
     $windowReady = $false
     $databaseReady = $false
-    $observedTitle = ""
+    $appWindow = $null
+    $observedWindowTitle = ""
     while ([DateTime]::UtcNow -lt $launchDeadline) {
         Start-Sleep -Milliseconds 500
         $appProcess.Refresh()
@@ -547,23 +795,34 @@ try {
             throw "Installed app exited before becoming ready with exit code $($appProcess.ExitCode)."
         }
 
-        $observedTitle = $appProcess.MainWindowTitle
-        $titleMatches = $ExpectedWindowTitles -contains $observedTitle
-        $windowReady = $appProcess.MainWindowHandle -ne 0 -and $appProcess.Responding -and $titleMatches
+        $visibleAppWindows = @(
+            Get-VisibleExpectedAppWindows `
+                -ProcessId $appProcess.Id `
+                -ExpectedTitles $ExpectedWindowTitles
+        )
+        $windowReady = $visibleAppWindows.Count -gt 0
+        if ($windowReady) {
+            $appWindow = $visibleAppWindows[0]
+            $observedWindowTitle = $appWindow.Title
+        }
+        else {
+            $appWindow = $null
+        }
         $databaseReady = Test-Path -LiteralPath $databasePath -PathType Leaf
         if ($windowReady -and $databaseReady) {
             break
         }
     }
     if (-not $windowReady -or -not $databaseReady) {
-        throw "App did not become ready within $LaunchTimeoutSeconds seconds (title='$observedTitle', windowReady=$windowReady, databaseReady=$databaseReady)."
+        $windowSnapshot = Format-ProcessWindowSnapshot -ProcessId $appProcess.Id
+        throw "App did not become ready within $LaunchTimeoutSeconds seconds (windowReady=$windowReady, databaseReady=$databaseReady, top-level windows=$windowSnapshot)."
     }
 
     Invoke-DatabaseVerification -DatabasePath $databasePath
 
-    if (-not $appProcess.CloseMainWindow()) {
-        throw "The app did not accept a normal main-window close request."
-    }
+    Request-AppWindowClose `
+        -Window $appWindow `
+        -Description "The app's normal main window"
     if (-not $appProcess.WaitForExit(15000)) {
         throw "The app did not exit within 15 seconds after a normal close request."
     }
@@ -590,6 +849,16 @@ try {
         -RedirectStandardError $backgroundAppStderrPath `
         -PassThru
     $backgroundPrimaryProcessId = $appProcess.Id
+    $backgroundProcessInfo = Get-CimInstance `
+        -ClassName Win32_Process `
+        -Filter "ProcessId = $backgroundPrimaryProcessId"
+    if ($null -eq $backgroundProcessInfo) {
+        throw "Could not inspect the background process command line."
+    }
+    $backgroundCommandLine = [string]$backgroundProcessInfo.CommandLine
+    if (-not [Regex]::IsMatch($backgroundCommandLine, '(?i)(?:^|\s)--background(?:\s|$)')) {
+        throw "Background process command line does not contain the exact --background argument: $backgroundCommandLine"
+    }
 
     Wait-ForHiddenRunningProcess `
         -Process $appProcess `
@@ -613,6 +882,7 @@ try {
 
     $restoreDeadline = [DateTime]::UtcNow.AddSeconds($LaunchTimeoutSeconds)
     $restoredWindowReady = $false
+    $restoredAppWindow = $null
     while ([DateTime]::UtcNow -lt $restoreDeadline) {
         Start-Sleep -Milliseconds 500
         $appProcess.Refresh()
@@ -620,18 +890,20 @@ try {
             throw "The background primary process exited while the secondary instance requested its window."
         }
 
-        $observedTitle = $appProcess.MainWindowTitle
-        $titleMatches = $ExpectedWindowTitles -contains $observedTitle
-        $restoredWindowReady = `
-            $appProcess.MainWindowHandle -ne 0 -and `
-            $appProcess.Responding -and `
-            $titleMatches
-        if ($restoredWindowReady) {
+        $visibleAppWindows = @(
+            Get-VisibleExpectedAppWindows `
+                -ProcessId $appProcess.Id `
+                -ExpectedTitles $ExpectedWindowTitles
+        )
+        if ($visibleAppWindows.Count -gt 0) {
+            $restoredAppWindow = $visibleAppWindows[0]
+            $restoredWindowReady = $true
             break
         }
     }
     if (-not $restoredWindowReady) {
-        throw "The normal secondary instance did not restore the primary window within $LaunchTimeoutSeconds seconds (primaryPid=$backgroundPrimaryProcessId, title='$observedTitle')."
+        $windowSnapshot = Format-ProcessWindowSnapshot -ProcessId $backgroundPrimaryProcessId
+        throw "The normal secondary instance did not restore the primary window within $LaunchTimeoutSeconds seconds (primaryPid=$backgroundPrimaryProcessId, top-level windows=$windowSnapshot)."
     }
 
     $matchingProcesses = @(Get-Process -Name $executableBaseName -ErrorAction SilentlyContinue)
@@ -642,9 +914,9 @@ try {
         throw "The restored window belongs to PID $($matchingProcesses[0].Id), not the original background primary PID $backgroundPrimaryProcessId."
     }
 
-    if (-not $appProcess.CloseMainWindow()) {
-        throw "The background-enabled app did not accept a main-window close request."
-    }
+    Request-AppWindowClose `
+        -Window $restoredAppWindow `
+        -Description "The background-enabled app's restored main window"
     Wait-ForHiddenRunningProcess `
         -Process $appProcess `
         -TimeoutSeconds 15 `
@@ -731,7 +1003,7 @@ try {
         "Product: $($msiIdentity.ProductName)",
         "ProductCode: $productCode",
         "Executable: $installedExecutablePath",
-        "Observed window title: $observedTitle",
+        "Observed window title: $observedWindowTitle",
         "Database: $databasePath",
         "Database SHA-256 retained: $($databaseHashAfterUninstall.ToLowerInvariant())",
         "Default close exited cleanly: yes",

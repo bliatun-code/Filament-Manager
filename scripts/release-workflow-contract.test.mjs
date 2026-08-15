@@ -741,15 +741,28 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
   assert.match(windowsMsiSmoke, /Install did not create the expected Start Menu shortcut/);
   assert.match(windowsMsiSmoke, /Install did not add the install directory to the user PATH/);
   assert.match(windowsMsiSmoke, /Start-Process[\s\S]*-FilePath \$installedExecutablePath/);
-  assert.match(windowsMsiSmoke, /\$appProcess\.MainWindowHandle -ne 0/);
-  assert.match(windowsMsiSmoke, /\$appProcess\.Responding/);
+  assert.match(windowsMsiSmoke, /Add-Type -TypeDefinition/);
+  assert.match(windowsMsiSmoke, /EnumWindows/);
+  assert.match(windowsMsiSmoke, /GetWindowThreadProcessId/);
+  assert.match(windowsMsiSmoke, /IsWindowVisible/);
+  assert.match(windowsMsiSmoke, /GetWindowRect/);
+  assert.match(windowsMsiSmoke, /DwmGetWindowAttribute/);
+  assert.match(windowsMsiSmoke, /WsExToolWindow/);
+  assert.match(windowsMsiSmoke, /-not \$_\.IsToolWindow/);
+  assert.match(windowsMsiSmoke, /-not \$_\.IsCloaked/);
+  assert.match(windowsMsiSmoke, /\$_\.Width -gt 0/);
+  assert.match(windowsMsiSmoke, /\$ExpectedTitles -contains \$_\.Title/);
   assert.match(windowsMsiSmoke, /verify-windows-app-database\.mjs/);
-  assert.match(windowsMsiSmoke, /\$appProcess\.CloseMainWindow\(\)/);
+  assert.match(windowsMsiSmoke, /PostMessageW/);
+  assert.match(windowsMsiSmoke, /WmClose = 0x0010/);
+  assert.match(windowsMsiSmoke, /function Request-AppWindowClose/);
   assert.match(windowsMsiSmoke, /\$appProcess\.WaitForExit\(15000\)/);
   assert.equal(
-    countOccurrences(windowsMsiSmoke, "$appProcess.CloseMainWindow()"),
+    countOccurrences(windowsMsiSmoke, "Request-AppWindowClose `"),
     2,
   );
+  assert.doesNotMatch(windowsMsiSmoke, /\.MainWindowHandle/);
+  assert.doesNotMatch(windowsMsiSmoke, /\.CloseMainWindow\(\)/);
   assert.match(windowsMsiSmoke, /desktop-lifecycle\.json/);
   assert.match(windowsMsiSmoke, /continue_in_background/);
   assert.match(
@@ -762,12 +775,25 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
   );
   assert.match(windowsMsiSmoke, /function Wait-ForHiddenRunningProcess/);
   assert.match(windowsMsiSmoke, /\$Process\.HasExited/);
+  assert.match(windowsMsiSmoke, /Get-VisibleUserFacingWindows/);
+  assert.match(windowsMsiSmoke, /Get-VisibleExpectedAppWindows/);
+  assert.match(windowsMsiSmoke, /Format-ProcessWindowSnapshot/);
+  assert.match(windowsMsiSmoke, /\$visibleAppWindows\.Count -eq 0/);
+  const hiddenWindowWait = readSection(
+    windowsMsiSmoke,
+    "function Wait-ForHiddenRunningProcess",
+    "$resolvedMsiPath =",
+  );
+  assert.match(hiddenWindowWait, /Get-VisibleUserFacingWindows/);
+  assert.doesNotMatch(hiddenWindowWait, /ExpectedTitles/);
+  assert.doesNotMatch(hiddenWindowWait, /Get-VisibleExpectedAppWindows/);
   assert.match(
     windowsMsiSmoke,
-    /\$lastWindowHandle = \$Process\.MainWindowHandle/,
+    /Get-CimInstance[\s\S]*?Win32_Process[\s\S]*?--background/,
   );
-  assert.match(windowsMsiSmoke, /\$lastWindowHandle -eq 0/);
   assert.match(windowsMsiSmoke, /-StableCheckCount 6/);
+  assert.match(windowsMsiSmoke, /Observed window title: \$observedWindowTitle/);
+  assert.doesNotMatch(windowsMsiSmoke, /\$observedTitle/);
   assert.match(
     windowsMsiSmoke,
     /\$secondaryProcess = Start-Process[\s\S]*?\$secondaryProcess\.WaitForExit\(15000\)/,
@@ -827,7 +853,7 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
   assert.equal(countOccurrences(autostartTargets, 'PropertyType = "Binary"'), 2);
 
   const defaultCloseIndex = windowsMsiSmoke.indexOf(
-    'throw "The app did not accept a normal main-window close request."',
+    '-Description "The app\'s normal main window"',
   );
   const preferencesWriteIndex = windowsMsiSmoke.indexOf(
     "[IO.File]::WriteAllText(",
@@ -842,7 +868,7 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
     backgroundLaunchIndex,
   );
   const closeToTrayIndex = windowsMsiSmoke.indexOf(
-    "$appProcess.CloseMainWindow()",
+    '-Description "The background-enabled app\'s restored main window"',
     secondaryLaunchIndex,
   );
   const registrySeedIndex = windowsMsiSmoke.indexOf(
