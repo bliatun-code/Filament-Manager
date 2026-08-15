@@ -835,11 +835,17 @@ export const fiFIDictionary: DictionaryNode = {
     "markedFound": "Vieritys palautettu varastoon.",
     "refilledAuto": "Rulla aktivoitu uudelleen uudesta mitatusta painosta.",
     "labelBuilderTitle": "Luo tarrakuva",
+    "labelCustomHeight": "Korkeus",
+    "labelCustomSizeHint": "Vaaka · leveys 45–150 mm · korkeus 24–80 mm · 0,5 mm:n askelin.",
+    "labelCustomSizeRangeError": "Leveyden on oltava 45–150 mm ja korkeuden 24–80 mm, 0,5 mm:n askelin.",
+    "labelCustomSizeShapeError": "Käytä vaaka-asettelua: leveyden on oltava vähintään 20 mm korkeutta suurempi ja vähintään 1,6 kertaa korkeus.",
+    "labelCustomWidth": "Leveys",
     "returnToInventory": "Palaa varastoon",
     "labelPreview": "Tunnisteen esikatselu",
     "labelRendering": "Renderöidään tunnistetta...",
     "labelProfile": {
       "compact": "Kompakti",
+      "custom": "Mukautettu",
       "standard": "Vakio",
       "expanded": "Laajennettu",
       "ptouch-24": "P-Touch 24 mm"

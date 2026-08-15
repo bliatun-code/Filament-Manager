@@ -494,6 +494,14 @@ export const esDictionary: DictionaryNode = {
     labelBuilderTitle: "Crear imagen de etiqueta",
     labelBuilderSubtitle:
       "Elige el tamaño físico, revisa la vista previa y guarda un PNG listo para imprimir.",
+    labelCustomWidth: "Ancho",
+    labelCustomHeight: "Alto",
+    labelCustomSizeHint:
+      "Horizontal · ancho 45–150 mm · alto 24–80 mm · incrementos de 0,5 mm.",
+    labelCustomSizeRangeError:
+      "El ancho debe ser de 45–150 mm y el alto de 24–80 mm, en incrementos de 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Usa formato horizontal: el ancho debe superar al alto en al menos 20 mm y medir como mínimo 1,6 veces el alto.",
     labelSize: "Tamaño de etiqueta",
     labelPreview: "Vista previa de la etiqueta",
     labelRendering: "Generando etiqueta...",
@@ -773,6 +781,7 @@ export const esDictionary: DictionaryNode = {
     },
     labelProfile: {
       compact: "Compacto",
+      custom: "Personalizado",
       expanded: "Expandido",
       "ptouch-24": "P-Touch 24 mm",
       standard: "Estándar",

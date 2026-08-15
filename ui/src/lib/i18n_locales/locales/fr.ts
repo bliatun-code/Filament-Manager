@@ -255,6 +255,14 @@ export const frDictionary: DictionaryNode = {
     labelBuilderTitle: "Créer une image d’étiquette",
     labelBuilderSubtitle:
       "Choisissez la taille physique, vérifiez l’aperçu et enregistrez un PNG prêt à imprimer.",
+    labelCustomWidth: "Largeur",
+    labelCustomHeight: "Hauteur",
+    labelCustomSizeHint:
+      "Paysage · largeur 45–150 mm · hauteur 24–80 mm · pas de 0,5 mm.",
+    labelCustomSizeRangeError:
+      "La largeur doit être comprise entre 45 et 150 mm et la hauteur entre 24 et 80 mm, par pas de 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Utilisez le format paysage : la largeur doit dépasser la hauteur d’au moins 20 mm et mesurer au moins 1,6 fois la hauteur.",
     labelSize: "Taille de l’étiquette",
     rfidButton: "RFID",
     clientReadOnlyBanner:
@@ -540,6 +548,7 @@ export const frDictionary: DictionaryNode = {
       compact: "Compacte",
       standard: "Standard",
       expanded: "Étendue",
+      custom: "Personnalisée",
     },
     labelPreview: "Aperçu de l’étiquette",
     labelRendering: "Création de l’étiquette…",

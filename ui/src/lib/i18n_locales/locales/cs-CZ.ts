@@ -407,11 +407,17 @@ export const csCZDictionary: DictionaryNode = {
     "keepUnassignedOption": "Ne slot (nepřiřazeno)",
     "labelBuilderSubtitle": "Vyberte fyzickou velikost, zkontrolujte náhled a uložte PNG připravený k tisku.",
     "labelBuilderTitle": "Vytvořte obrázek štítku",
+    "labelCustomHeight": "Výška",
+    "labelCustomSizeHint": "Na šířku · šířka 45–150 mm · výška 24–80 mm · krok 0,5 mm.",
+    "labelCustomSizeRangeError": "Šířka musí být 45–150 mm a výška 24–80 mm, v krocích po 0,5 mm.",
+    "labelCustomSizeShapeError": "Použijte orientaci na šířku: šířka musí být alespoň o 20 mm větší než výška a zároveň alespoň 1,6násobkem výšky.",
+    "labelCustomWidth": "Šířka",
     "labelImageHint": "PNG se vykresluje s rozlišením 300 DPI pro předvídatelnou fyzickou velikost.",
     "labelPreview": "Náhled štítku",
     "labelPreviewUnavailable": "Náhled štítku není k dispozici",
     "labelProfile": {
       "compact": "Kompaktní",
+      "custom": "Vlastní",
       "expanded": "Rozšířený",
       "ptouch-24": "P-Touch 24 mm",
       "standard": "Norma"

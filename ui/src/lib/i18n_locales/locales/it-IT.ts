@@ -507,12 +507,21 @@ export const itITDictionary: DictionaryNode = {
     labelBuilderSubtitle:
       "Scegli una dimensione fisica, controlla l'anteprima e salva un PNG pronto per la stampa.",
     labelBuilderTitle: "Crea l'immagine dell'etichetta",
+    labelCustomWidth: "Larghezza",
+    labelCustomHeight: "Altezza",
+    labelCustomSizeHint:
+      "Orizzontale · larghezza 45–150 mm · altezza 24–80 mm · incrementi di 0,5 mm.",
+    labelCustomSizeRangeError:
+      "La larghezza deve essere compresa tra 45 e 150 mm e l'altezza tra 24 e 80 mm, con incrementi di 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Usa il formato orizzontale: la larghezza deve superare l'altezza di almeno 20 mm ed essere almeno 1,6 volte l'altezza.",
     labelImageHint:
       "Il PNG viene visualizzato a 300 DPI per un dimensionamento fisico prevedibile.",
     labelPreview: "Anteprima dell'etichetta",
     labelPreviewUnavailable: "Anteprima dell'etichetta non disponibile",
     labelProfile: {
       compact: "Compatto",
+      custom: "Personalizzata",
       expanded: "Espanso",
       "ptouch-24": "P-Touch 24 mm",
       standard: "Standard",

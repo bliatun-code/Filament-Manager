@@ -407,11 +407,17 @@ export const nlNLDictionary: DictionaryNode = {
     "keepUnassignedOption": "Geen slot (niet toegewezen behouden)",
     "labelBuilderSubtitle": "Kies een fysiek formaat, bekijk het voorbeeld en sla een afdrukklaar PNG-bestand op.",
     "labelBuilderTitle": "Maak een labelafbeelding",
+    "labelCustomHeight": "Hoogte",
+    "labelCustomSizeHint": "Liggend · breedte 45–150 mm · hoogte 24–80 mm · stappen van 0,5 mm.",
+    "labelCustomSizeRangeError": "De breedte moet 45–150 mm en de hoogte 24–80 mm zijn, in stappen van 0,5 mm.",
+    "labelCustomSizeShapeError": "Gebruik liggend formaat: de breedte moet minstens 20 mm groter zijn dan de hoogte en minstens 1,6 keer de hoogte bedragen.",
+    "labelCustomWidth": "Breedte",
     "labelImageHint": "De PNG wordt weergegeven met 300 DPI voor voorspelbare fysieke afmetingen.",
     "labelPreview": "Labelvoorbeeld",
     "labelPreviewUnavailable": "Labelvoorbeeld niet beschikbaar",
     "labelProfile": {
       "compact": "Compact",
+      "custom": "Aangepast",
       "expanded": "Uitgebreid",
       "ptouch-24": "P Touch 24 mm",
       "standard": "Standaard"

@@ -528,12 +528,21 @@ export const nbDictionary: DictionaryNode = {
       labelBuilderTitle: "Lag etikettbilde",
       labelBuilderSubtitle:
         "Velg fysisk størrelse, kontroller forhåndsvisningen og lagre en utskriftsklar PNG.",
+      labelCustomWidth: "Bredde",
+      labelCustomHeight: "Høyde",
+      labelCustomSizeHint:
+        "Liggende · bredde 45–150 mm · høyde 24–80 mm · trinn på 0,5 mm.",
+      labelCustomSizeRangeError:
+        "Bredden må være 45–150 mm og høyden 24–80 mm, i trinn på 0,5 mm.",
+      labelCustomSizeShapeError:
+        "Bruk liggende format: Bredden må være minst 20 mm større enn høyden og minst 1,6 × høyden.",
       labelSize: "Etikettstørrelse",
       labelProfile: {
         "ptouch-24": "P-Touch 24 mm",
         compact: "Kompakt",
         standard: "Standard",
         expanded: "Utvidet",
+        custom: "Egendefinert",
       },
       labelPreview: "Forhåndsvisning av etikett",
       labelRendering: "Genererer etikett...",

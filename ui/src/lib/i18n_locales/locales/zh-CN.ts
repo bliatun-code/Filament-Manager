@@ -407,11 +407,17 @@ export const zhCNDictionary: DictionaryNode = {
     "keepUnassignedOption": "无 slot（保持未分配）",
     "labelBuilderSubtitle": "选择物理尺寸，检查预览，然后保存可打印的 PNG。",
     "labelBuilderTitle": "创建标签图像",
+    "labelCustomHeight": "高度",
+    "labelCustomSizeHint": "横向 · 宽度 45–150 毫米 · 高度 24–80 毫米 · 以 0.5 毫米为步长",
+    "labelCustomSizeRangeError": "宽度必须为 45–150 毫米，高度必须为 24–80 毫米，并以 0.5 毫米为步长。",
+    "labelCustomSizeShapeError": "请使用横向格式：宽度必须比高度至少多 20 毫米，且至少为高度的 1.6 倍。",
+    "labelCustomWidth": "宽度",
     "labelImageHint": "PNG 以 300 DPI 渲染，以实现可预测的物理尺寸。",
     "labelPreview": "标签预览",
     "labelPreviewUnavailable": "标签预览不可用",
     "labelProfile": {
       "compact": "袖珍的",
+      "custom": "自定义",
       "expanded": "扩展",
       "ptouch-24": "P-Touch 24 毫米",
       "standard": "标准"

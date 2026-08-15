@@ -45,6 +45,45 @@
     },
     {
       "surface": "desktop",
+      "key": "inventory.labelProfile.custom",
+      "meaning": "Size-profile option that lets the user enter physical label dimensions; it does not customize the label content.",
+      "screenshot": "docs/screenshots/filament-label.jpg",
+      "maxCharacters": 24
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomWidth",
+      "meaning": "Field label for the physical width of one custom filament label, entered in millimetres.",
+      "screenshot": "docs/screenshots/filament-label.jpg",
+      "maxCharacters": 16
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomHeight",
+      "meaning": "Field label for the physical height of one custom filament label, entered in millimetres.",
+      "screenshot": "docs/screenshots/filament-label.jpg",
+      "maxCharacters": 16
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomSizeHint",
+      "meaning": "Compact guidance identifying the required landscape format, supported width and height ranges, and 0.5 mm input increment for a custom label.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomSizeRangeError",
+      "meaning": "Validation error when a custom dimension is not finite, falls outside the supported range, or does not use a 0.5 mm increment.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomSizeShapeError",
+      "meaning": "Validation error enforcing a landscape label whose width is at least 20 mm greater than its height and at least 1.6 times its height.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "inventory.statusEmpty",
       "meaning": "The physical spool has no usable filament remaining; it is not an empty printer slot.",
       "screenshot": "docs/screenshots/filament-details.jpg"

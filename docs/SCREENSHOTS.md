@@ -131,10 +131,11 @@ links, RFID, live AMS sighting, and lost-status handling.
 ### Individual Filament Label
 
 The label builder previews a selected roll at its physical size before saving a
-print-ready 300-DPI PNG to Downloads. P-Touch 24 mm, Compact, Standard, and
-Expanded profiles share the same clear QR and filament identity layout, while
-the panel points to the inventory label-sheet builder when several rolls need
-labels at once.
+print-ready 300-DPI PNG to Downloads. P-Touch 24 mm, Compact, Standard, Expanded,
+and validated custom landscape sizes share the same clear QR and filament
+identity layout. The most recent custom dimensions are remembered locally, while
+the panel points to the fixed 60 × 24 mm inventory label-sheet builder when
+several rolls need labels at once.
 
 ![Individual filament label builder](screenshots/filament-label.jpg)
 

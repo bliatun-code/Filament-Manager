@@ -834,6 +834,11 @@ export const huHUDictionary: DictionaryNode = {
     "printQr": "Hozzon létre QR címkét",
     "returnToInventory": "Vissza a leltárhoz",
     "labelBuilderTitle": "Címkekép létrehozása",
+    "labelCustomHeight": "Magasság",
+    "labelCustomSizeHint": "Fekvő · szélesség 45–150 mm · magasság 24–80 mm · 0,5 mm-es lépések.",
+    "labelCustomSizeRangeError": "A szélességnek 45–150 mm, a magasságnak 24–80 mm között kell lennie, 0,5 mm-es lépésekben.",
+    "labelCustomSizeShapeError": "Használjon fekvő formátumot: a szélességnek legalább 20 mm-rel nagyobbnak és legalább a magasság 1,6-szorosának kell lennie.",
+    "labelCustomWidth": "Szélesség",
     "markedFound": "A tekercs visszaállítva raktáron.",
     "refilled": "A tekercs újra aktiválva és használatra kész.",
     "refilledAuto": "A tekercs újraaktiválva az új mért súlytól.",
@@ -841,6 +846,7 @@ export const huHUDictionary: DictionaryNode = {
     "labelProfile": {
       "expanded": "Kiterjesztett",
       "compact": "Kompakt",
+      "custom": "Egyéni",
       "standard": "Standard",
       "ptouch-24": "P-Touch 24 mm"
     },

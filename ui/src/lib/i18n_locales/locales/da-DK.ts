@@ -835,11 +835,17 @@ export const daDKDictionary: DictionaryNode = {
     "markedFound": "Rul gendannet til lager.",
     "refilledAuto": "Rulle genaktiveret fra ny målt vægt.",
     "labelBuilderTitle": "Opret etiketbillede",
+    "labelCustomHeight": "Højde",
+    "labelCustomSizeHint": "Liggende · bredde 45–150 mm · højde 24–80 mm · trin på 0,5 mm.",
+    "labelCustomSizeRangeError": "Bredden skal være 45–150 mm, og højden 24–80 mm, i trin på 0,5 mm.",
+    "labelCustomSizeShapeError": "Brug liggende format: Bredden skal være mindst 20 mm større end højden og mindst 1,6 gange højden.",
+    "labelCustomWidth": "Bredde",
     "returnToInventory": "Vend tilbage til inventar",
     "labelPreview": "Forhåndsvisning af etiket",
     "labelRendering": "Gengiver etiket...",
     "labelProfile": {
       "compact": "Kompakt",
+      "custom": "Brugerdefineret",
       "standard": "Standard",
       "expanded": "Udvidet",
       "ptouch-24": "P-Touch 24 mm"

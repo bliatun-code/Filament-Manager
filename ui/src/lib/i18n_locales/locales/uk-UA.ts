@@ -407,11 +407,17 @@ export const ukUADictionary: DictionaryNode = {
     "keepUnassignedOption": "Немає слота (залишити непризначеним)",
     "labelBuilderSubtitle": "Виберіть фізичний розмір, перевірте попередній перегляд і збережіть готовий для друку PNG.",
     "labelBuilderTitle": "Створити зображення етикетки",
+    "labelCustomHeight": "Висота",
+    "labelCustomSizeHint": "Альбомний формат · ширина 45–150 мм · висота 24–80 мм · крок 0,5 мм.",
+    "labelCustomSizeRangeError": "Ширина має бути 45–150 мм, а висота — 24–80 мм, із кроком 0,5 мм.",
+    "labelCustomSizeShapeError": "Використовуйте альбомний формат: ширина має бути щонайменше на 20 мм більшою за висоту та не меншою за висоту, помножену на 1,6.",
+    "labelCustomWidth": "Ширина",
     "labelImageHint": "PNG відтворюється з роздільною здатністю 300 точок на дюйм для передбачуваного фізичного розміру.",
     "labelPreview": "Попередній перегляд мітки",
     "labelPreviewUnavailable": "Попередній перегляд мітки недоступний",
     "labelProfile": {
       "compact": "Компактний",
+      "custom": "Власний",
       "expanded": "Розширений",
       "ptouch-24": "P-Touch 24 мм",
       "standard": "Стандартний"

@@ -407,11 +407,17 @@ export const jaJPDictionary: DictionaryNode = {
     "keepUnassignedOption": "いいえ slot (未割り当てのままにする)",
     "labelBuilderSubtitle": "物理サイズを選択し、プレビューを確認して、印刷可能な PNG を保存します。",
     "labelBuilderTitle": "ラベル画像の作成",
+    "labelCustomHeight": "高さ",
+    "labelCustomSizeHint": "横長・幅 45～150 mm・高さ 24～80 mm・0.5 mm 刻み",
+    "labelCustomSizeRangeError": "幅は 45～150 mm、高さは 24～80 mm の範囲で、0.5 mm 刻みにしてください。",
+    "labelCustomSizeShapeError": "横長にしてください。幅は高さより 20 mm 以上大きく、かつ高さの 1.6 倍以上である必要があります。",
+    "labelCustomWidth": "幅",
     "labelImageHint": "PNG は、予測可能な物理サイズを実現するために 300 DPI でレンダリングされます。",
     "labelPreview": "ラベルのプレビュー",
     "labelPreviewUnavailable": "ラベルのプレビューは使用できません",
     "labelProfile": {
       "compact": "コンパクト",
+      "custom": "カスタム",
       "expanded": "拡張された",
       "ptouch-24": "ピータッチ 24mm",
       "standard": "標準"

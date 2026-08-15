@@ -502,12 +502,21 @@ export const ptBRDictionary: DictionaryNode = {
     labelBuilderSubtitle:
       "Escolha um tamanho físico, verifique a visualização e salve um PNG pronto para impressão.",
     labelBuilderTitle: "Criar imagem de etiqueta",
+    labelCustomWidth: "Largura",
+    labelCustomHeight: "Altura",
+    labelCustomSizeHint:
+      "Paisagem · largura 45–150 mm · altura 24–80 mm · incrementos de 0,5 mm.",
+    labelCustomSizeRangeError:
+      "A largura deve ser de 45–150 mm e a altura de 24–80 mm, em incrementos de 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Use o formato paisagem: a largura deve ser pelo menos 20 mm maior que a altura e pelo menos 1,6 vezes a altura.",
     labelImageHint:
       "O PNG é renderizado a 300 DPI para um dimensionamento físico previsível.",
     labelPreview: "Pré-visualização da etiqueta",
     labelPreviewUnavailable: "Visualização do rótulo indisponível",
     labelProfile: {
       compact: "Compactar",
+      custom: "Personalizado",
       expanded: "Expandido",
       "ptouch-24": "P Touch 24 mm",
       standard: "Padrão",

@@ -217,15 +217,22 @@ Slik lager du en etikett for én rull:
 
 1. Åpne detaljene for rullen i Lager og finn QR-panelet.
 2. Velg **Lag QR-etikett**.
-3. Velg P-Touch 24 mm, Kompakt, Standard eller Utvidet, og kontroller
+3. Velg P-Touch 24 mm, Kompakt, Standard, Utvidet eller **Egendefinert**.
+4. For en egendefinert etikett angir du bredde og høyde og kontrollerer
    forhåndsvisningen.
-4. Velg **Lagre PNG i Nedlastinger** for å lagre det utskriftsklare bildet med
+5. Velg **Lagre PNG i Nedlastinger** for å lagre det utskriftsklare bildet med
    300 DPI.
 
 P-Touch-profilen bruker et liggende arbeidsområde på 60 × 24 mm med QR-kode i
-nesten full høyde og stor, lesbar identitetstekst. For flere tilgjengelige ruller
-samtidig bruker du i stedet **Innstillinger → Generelt → Lag etikettark for
-lageret**.
+nesten full høyde og stor, lesbar identitetstekst. Egendefinerte etiketter støtter
+bredde fra 45 til 150 mm og høyde fra 24 til 80 mm i trinn på 0,5 mm. De må være
+liggende: Bredden må være minst 20 mm større enn høyden og minst 1,6 ganger
+høyden. Valgt størrelse og de sist gyldige egendefinerte målene huskes lokalt på
+denne enheten, slik at de brukes igjen for andre ruller og i senere økter.
+
+For flere tilgjengelige ruller samtidig bruker du i stedet **Innstillinger →
+Generelt → Lag etikettark for lageret**. Etikettark for lageret bruker alltid
+60 × 24 mm og påvirkes ikke av de lagrede egendefinerte målene.
 
 Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
 antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
@@ -420,8 +427,10 @@ Slik lager du etikettark for rullene som er på lager:
 4. Velg **Lagre PDF i Nedlastinger**.
 
 Hver side rommer opptil 30 etiketter med samme lesbare oppsett på 60 × 24 mm som
-P-Touch QR-etiketten. For én rull, eller for en annen etikettstørrelse, åpner du
-QR-panelet for rullen under **Lager** og velger **Lag QR-etikett**.
+P-Touch QR-etiketten. Dette batchoppsettet er fast og bruker ikke den
+egendefinerte størrelsen som er lagret i byggeren for enkeltetiketter. For én
+rull, eller for en annen etikettstørrelse, åpner du QR-panelet for rullen under
+**Lager** og velger **Lag QR-etikett**.
 
 Bibliotek og webapp:
 
