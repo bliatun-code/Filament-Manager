@@ -775,7 +775,7 @@ export const csCZDictionary: DictionaryNode = {
     "incomingWeightPromptTitle": "Nastavte hmotnost příchozí role",
     "jobOptional": "Název úlohy (volitelné)",
     "jobs": "Úlohy",
-    "lastKnownLive": "Poslední známý živě",
+    "lastKnownLive": "Poslední aktualizace v reálném čase",
     "liveCandidateCount": "Skladové role {count} odpovídají živému signálu materiálu/barvy.",
     "liveCandidateCurrent": "proud",
     "liveCandidateCurrentMatches": "Aktuální přiřazení odpovídá živému signálu materiálu/barvy.",

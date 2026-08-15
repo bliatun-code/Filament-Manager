@@ -775,7 +775,7 @@ export const trTRDictionary: DictionaryNode = {
     "incomingWeightPromptTitle": "Gelen rulo ağırlığını ayarlayın",
     "jobOptional": "İşin adı (isteğe bağlı)",
     "jobs": "İşler",
-    "lastKnownLive": "Son bilinen canlı",
+    "lastKnownLive": "Son gerçek zamanlı güncelleme",
     "liveCandidateCount": "{count} envanter ruloları canlı malzeme/renk sinyaliyle eşleşiyor.",
     "liveCandidateCurrent": "akım",
     "liveCandidateCurrentMatches": "Mevcut atama canlı malzeme/renk sinyaliyle eşleşiyor.",

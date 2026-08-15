@@ -775,7 +775,7 @@ export const nlNLDictionary: DictionaryNode = {
     "incomingWeightPromptTitle": "Stel het binnenkomende rolgewicht in",
     "jobOptional": "Taaknaam (optioneel)",
     "jobs": "Taken",
-    "lastKnownLive": "Laatst bekende live",
+    "lastKnownLive": "Laatste realtime-update",
     "liveCandidateCount": "{count}-inventarisrollen komen overeen met het live materiaal-/kleursignaal.",
     "liveCandidateCurrent": "huidig",
     "liveCandidateCurrentMatches": "De huidige toewijzing komt overeen met het live materiaal/kleursignaal.",

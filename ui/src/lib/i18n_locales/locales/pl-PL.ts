@@ -775,7 +775,7 @@ export const plPLDictionary: DictionaryNode = {
     "incomingWeightPromptTitle": "Ustaw wagę przychodzącej rolki",
     "jobOptional": "Nazwa stanowiska (opcjonalnie)",
     "jobs": "Zadania",
-    "lastKnownLive": "Ostatni znany na żywo",
+    "lastKnownLive": "Ostatnia aktualizacja w czasie rzeczywistym",
     "liveCandidateCount": "Rolki inwentarza {count} odpowiadają aktualnemu sygnałowi materiału/koloru.",
     "liveCandidateCurrent": "aktualny",
     "liveCandidateCurrentMatches": "Bieżące przypisanie odpowiada aktualnemu sygnałowi materiału/koloru.",

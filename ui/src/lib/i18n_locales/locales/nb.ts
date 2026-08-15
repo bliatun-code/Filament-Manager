@@ -969,7 +969,7 @@ export const nbDictionary: DictionaryNode = {
       manualAssignment: "Manuell",
       unknownLiveRfid: "RFID er ikke registrert",
       rfidOverridden: "RFID overstyrt",
-      lastKnownLive: "Sist kjente live",
+      lastKnownLive: "Siste sanntidsoppdatering",
       waitingForLiveIdentity:
         "Viser sist lagrede sportildeling til sterkere live-identitet kommer inn.",
       unknownLiveRfidHint:

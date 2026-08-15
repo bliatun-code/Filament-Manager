@@ -5,7 +5,7 @@ use crate::library_sync_cache_refresh::{
 };
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
-    trimmed_non_empty,
+    save_library_sync_success_without_message, trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
     perform_library_sync_host_write, perform_library_sync_host_write_and_parse_with_timeout,
@@ -152,7 +152,7 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
 
     refresh_library_sync_printer_cache(state, &normalized_base_url);
     refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host AMS weight estimate accepted.", None)?;
+    save_library_sync_success_without_message(state, None)?;
     Ok(())
 }
 

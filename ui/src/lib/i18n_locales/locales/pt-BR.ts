@@ -945,7 +945,7 @@ export const ptBRDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Definir peso da bobina de entrada",
     jobOptional: "Nome do trabalho (opcional)",
     jobs: "Trabalhos",
-    lastKnownLive: "Último conhecido ao vivo",
+    lastKnownLive: "Última atualização em tempo real",
     liveCandidateCount:
       "As bobinas de estoque {count} correspondem ao material ativo/sinal de cor.",
     liveCandidateCurrent: "atual",

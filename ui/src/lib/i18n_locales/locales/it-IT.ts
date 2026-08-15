@@ -952,7 +952,7 @@ export const itITDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Imposta il peso della bobina in entrata",
     jobOptional: "Nome del lavoro (facoltativo)",
     jobs: "Lavori",
-    lastKnownLive: "Ultimo conosciuto dal vivo",
+    lastKnownLive: "Ultimo aggiornamento in tempo reale",
     liveCandidateCount:
       "Le bobine di inventario {count} corrispondono al segnale materiale/colore in tempo reale.",
     liveCandidateCurrent: "attuale",

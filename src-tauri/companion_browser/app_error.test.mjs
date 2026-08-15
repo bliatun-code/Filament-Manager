@@ -37,3 +37,20 @@ test("unknown and legacy errors use the localized operation fallback", () => {
     "Try again.",
   );
 });
+
+test("changed AMS estimates use the localized stable-code message", () => {
+  const translated = localizedAppError(
+    { code: "bambu_live.weight_estimate_changed" },
+    (key, fallback) =>
+      key === "errors.amsWeightEstimateChanged"
+        ? "AMS-estimatet eller det eksakte rulltreffet ble endret."
+        : fallback,
+    "Kunne ikke oppdatere vekten.",
+  );
+
+  assert.equal(
+    translated,
+    "AMS-estimatet eller det eksakte rulltreffet ble endret.",
+  );
+  assert.doesNotMatch(translated, /bambu_live\.weight_estimate_changed/);
+});

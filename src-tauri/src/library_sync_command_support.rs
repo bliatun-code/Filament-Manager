@@ -100,6 +100,15 @@ pub(crate) fn save_library_sync_success(
     })
 }
 
+pub(crate) fn save_library_sync_success_without_message(
+    state: &AppState,
+    device_name: Option<&str>,
+) -> Result<(), String> {
+    with_inventory(state, |engine| {
+        engine.save_library_sync_validation_state(true, None, device_name)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{ensure_stable_local_library_sync_host, normalize_library_sync_base_url};

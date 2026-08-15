@@ -477,7 +477,7 @@ export const svSEDictionary: DictionaryNode = {
     "rfidOverriddenHint": "Denna plats tilldelas manuellt medan samma oregistrerade RFID-identitet fortfarande är aktiv.",
     "liveCandidateSummary": "{count, plural, one {# lagerrulle matchar material- och färgsignalen.} other {# lagerrullar matchar material- och färgsignalen.}}",
     "unknownLiveRfidHint": "AMS rapporterade en RFID/AMS identitet som inte är registrerad i inventering.",
-    "lastKnownLive": "Senast kända live",
+    "lastKnownLive": "Senaste realtidsuppdatering",
     "rfidOverridden": "RFID åsidosatt",
     "liveRfid": "Live RFID",
     "liveCatalogRequiresRfid": "vänta på RFID",

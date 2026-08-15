@@ -26,6 +26,10 @@ const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "The Downloads folder is unavailable.",
   ],
   "export.write_failed": ["errors.exportWriteFailed", "The export could not be saved."],
+  "bambu_live.weight_estimate_changed": [
+    "errors.amsWeightEstimateChanged",
+    "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
+  ],
 });
 
 function parseJsonObject(value) {

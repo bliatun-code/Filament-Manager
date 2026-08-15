@@ -965,7 +965,7 @@ export const frDictionary: DictionaryNode = {
     manualAssignment: "Manuel",
     unknownLiveRfid: "RFID non enregistrée",
     rfidOverridden: "RFID remplacée manuellement",
-    lastKnownLive: "Dernier état en direct connu",
+    lastKnownLive: "Dernière mise à jour en temps réel",
     waitingForLiveIdentity:
       "Affichage de la dernière affectation enregistrée jusqu’à la réception d’une identité plus fiable.",
     unknownLiveRfidHint:

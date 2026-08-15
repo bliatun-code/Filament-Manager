@@ -142,7 +142,11 @@ export function formatInventoryHistoryEventDetails(
       );
     }
     if (source) {
-      details.push(source.replace(/_/g, " "));
+      details.push(
+        source === "BAMBU_AMS_ACCEPTED"
+          ? t("settings.bambuLiveAmsWeightEstimate", "AMS estimate")
+          : source.replace(/_/g, " "),
+      );
     }
     if (event.event_type === "WEIGHT_CORRECTED" && correctionGrams != null) {
       details.push(

@@ -477,7 +477,7 @@ export const fiFIDictionary: DictionaryNode = {
     "rfidOverriddenHint": "Tämä paikka on määritetty manuaalisesti, kun sama rekisteröimätön RFID-identiteetti on edelleen aktiivinen.",
     "liveCandidateSummary": "{count, plural, one {# varastorulla vastaa materiaali- ja värisignaalia.} other {# varastorullaa vastaa materiaali- ja värisignaalia.}}",
     "unknownLiveRfidHint": "AMS ilmoitti RFID/AMS-tunnuksen, jota ei ole tallennettu varastoon.",
-    "lastKnownLive": "Viimeisin tunnettu livenä",
+    "lastKnownLive": "Viimeisin reaaliaikainen päivitys",
     "rfidOverridden": "RFID ohitettu",
     "liveRfid": "Live RFID",
     "liveCatalogRequiresRfid": "odota RFID",

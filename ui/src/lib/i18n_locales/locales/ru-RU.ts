@@ -474,7 +474,7 @@ export const ruRUDictionary: DictionaryNode = {
     "liveTelemetryNozzle": "Сопло",
     "unknownLiveRfid": "RFID не зарегистрирован",
     "waitingForLiveIdentity": "Отображается последнее сохраненное назначение слота до тех пор, пока не появится более действующая идентичность.",
-    "lastKnownLive": "Последний известный живой",
+    "lastKnownLive": "Последнее обновление в реальном времени",
     "liveRfid": "В прямом эфире RFID",
     "rfidOverridden": "RFID переопределен",
     "liveCandidateCurrentMatches": "Текущее назначение соответствует реальному материалу/цветовому сигналу.",
