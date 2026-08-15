@@ -52,6 +52,37 @@
         <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1"/>
         <CustomAction Id="LaunchApplication" Impersonate="yes" FileKey="Path" ExeCommand="[LAUNCHAPPARGS]" Return="asyncNoWait" />
 
+        <!--
+          Launch-at-login is created by the running app, outside Windows Installer.
+          Commit actions remove only the app-owned values after a successful real
+          uninstall. Their execute-sequence conditions deliberately skip the
+          implicit uninstall performed by MajorUpgrade.
+        -->
+        <CustomAction Id="RemoveStableRunAutostart"
+                      Directory="TARGETDIR"
+                      ExeCommand='&quot;[SystemFolder]reg.exe&quot; DELETE &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v &quot;no.bliatun.filamentmanager&quot; /f'
+                      Execute="commit"
+                      Impersonate="yes"
+                      Return="ignore" />
+        <CustomAction Id="RemoveStableStartupApproved"
+                      Directory="TARGETDIR"
+                      ExeCommand='&quot;[SystemFolder]reg.exe&quot; DELETE &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run&quot; /v &quot;no.bliatun.filamentmanager&quot; /f'
+                      Execute="commit"
+                      Impersonate="yes"
+                      Return="ignore" />
+        <CustomAction Id="RemoveLegacyRunAutostart"
+                      Directory="TARGETDIR"
+                      ExeCommand='&quot;[SystemFolder]reg.exe&quot; DELETE &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v &quot;Filament Manager&quot; /f'
+                      Execute="commit"
+                      Impersonate="yes"
+                      Return="ignore" />
+        <CustomAction Id="RemoveLegacyStartupApproved"
+                      Directory="TARGETDIR"
+                      ExeCommand='&quot;[SystemFolder]reg.exe&quot; DELETE &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run&quot; /v &quot;Filament Manager&quot; /f'
+                      Execute="commit"
+                      Impersonate="yes"
+                      Return="ignore" />
+
         <UI>
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
             <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
@@ -187,6 +218,10 @@
         </InstallExecuteSequence>
 
         <InstallExecuteSequence>
+          <Custom Action="RemoveStableRunAutostart" Before="RemoveStableStartupApproved"><![CDATA[REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]></Custom>
+          <Custom Action="RemoveStableStartupApproved" Before="RemoveLegacyRunAutostart"><![CDATA[REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]></Custom>
+          <Custom Action="RemoveLegacyRunAutostart" Before="RemoveLegacyStartupApproved"><![CDATA[REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]></Custom>
+          <Custom Action="RemoveLegacyStartupApproved" Before="InstallFinalize"><![CDATA[REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]></Custom>
           <Custom Action="LaunchApplication" After="InstallFinalize">AUTOLAUNCHAPP AND NOT Installed</Custom>
         </InstallExecuteSequence>
 

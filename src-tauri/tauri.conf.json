@@ -7,7 +7,7 @@
     "frontendDist": "../ui/dist"
   },
   "productName": "Filament Manager",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "identifier": "no.bliatun.filamentmanager",
   "app": {
     "windows": [
@@ -15,7 +15,8 @@
         "label": "main",
         "title": "Filament Manager",
         "width": 1200,
-        "height": 800
+        "height": 800,
+        "visible": false
       }
     ]
   },

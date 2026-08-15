@@ -95,3 +95,57 @@ test(
     }
   },
 );
+
+test(
+  "minimum and maximum custom PNGs keep the long production URL ZXing-decodable",
+  { timeout: 30_000 },
+  async () => {
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      await page.setContent(await buildBrowserHarnessDocument(), {
+        waitUntil: "load",
+      });
+      const evidence = await page.evaluate(async ({ payload }) => {
+        const fixture = (
+          window as typeof window & {
+            FilamentLabelBrowserFixture: {
+              renderDecodeCustomLabel: (
+                value: string,
+                dimensions: { widthMm: number; heightMm: number },
+              ) => Promise<unknown>;
+            };
+          }
+        ).FilamentLabelBrowserFixture;
+        return Promise.all([
+          fixture.renderDecodeCustomLabel(payload, { widthMm: 45, heightMm: 24 }),
+          fixture.renderDecodeCustomLabel(payload, { widthMm: 150, heightMm: 80 }),
+        ]);
+      }, { payload: QR_PAYLOAD });
+
+      assert.deepEqual(evidence, [
+        {
+          decodedPayload: QR_PAYLOAD,
+          labelHeight: 283,
+          labelWidth: 531,
+          pngByteLength: (evidence as Array<{ pngByteLength: number }>)[0]
+            ?.pngByteLength,
+        },
+        {
+          decodedPayload: QR_PAYLOAD,
+          labelHeight: 945,
+          labelWidth: 1772,
+          pngByteLength: (evidence as Array<{ pngByteLength: number }>)[1]
+            ?.pngByteLength,
+        },
+      ]);
+      assert.ok(
+        (evidence as Array<{ pngByteLength: number }>).every(
+          ({ pngByteLength }) => pngByteLength > 1_000,
+        ),
+      );
+    } finally {
+      await browser.close();
+    }
+  },
+);

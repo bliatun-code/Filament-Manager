@@ -1,9 +1,10 @@
 import QRCode from "qrcode";
 import { formatSpoolReference } from "./display_format";
 import {
+  FILAMENT_LABEL_DPI,
   filamentLabelPixelSize,
-  filamentLabelProfile,
-  type FilamentLabelProfileId,
+  resolveFilamentLabelSize,
+  type FilamentLabelSizeInput,
 } from "./filament_label_profiles";
 
 type QrEncoder = {
@@ -24,7 +25,8 @@ type FilamentLabelCanvasDependencies = {
   loadImage?: (dataUrl: string) => Promise<CanvasImageSource>;
 };
 
-const LABEL_DPI = 300;
+const QR_QUIET_ZONE_MODULES = 4;
+const QR_SOURCE_MODULE_SCALE = 12;
 
 function defaultCanvas(): HTMLCanvasElement {
   return document.createElement("canvas");
@@ -127,13 +129,78 @@ function fittedCanvasFontSize(input: {
   return size;
 }
 
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function canvasImageDimension(
+  image: CanvasImageSource,
+  candidates: readonly string[],
+): number | null {
+  const record = image as unknown as Record<string, unknown>;
+  for (const candidate of candidates) {
+    const value = record[candidate];
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function crispQrDrawSize(image: CanvasImageSource, maximumSize: number): number {
+  const sourceWidth = canvasImageDimension(image, ["naturalWidth", "videoWidth", "width"]);
+  const sourceHeight = canvasImageDimension(image, ["naturalHeight", "videoHeight", "height"]);
+  if (!sourceWidth || !sourceHeight || Math.abs(sourceWidth - sourceHeight) > 0.01) {
+    return maximumSize;
+  }
+
+  const moduleGridSize = sourceWidth / QR_SOURCE_MODULE_SCALE;
+  if (
+    Math.abs(moduleGridSize - Math.round(moduleGridSize)) > 0.01 ||
+    moduleGridSize < QR_QUIET_ZONE_MODULES * 2 + 21
+  ) {
+    return maximumSize;
+  }
+
+  const targetModuleScale = Math.floor(maximumSize / Math.round(moduleGridSize));
+  return targetModuleScale > 0
+    ? Math.round(moduleGridSize) * targetModuleScale
+    : maximumSize;
+}
+
+type LabelTextLine = {
+  gapBefore: number;
+  size: number;
+  text: string;
+  weight: number;
+};
+
+function verticallyFitTextLines(
+  lines: LabelTextLine[],
+  maximumHeight: number,
+): LabelTextLine[] {
+  const totalHeight = lines.reduce(
+    (height, line) => height + line.gapBefore + line.size,
+    0,
+  );
+  if (totalHeight <= maximumHeight) {
+    return lines;
+  }
+  const scale = maximumHeight / totalHeight;
+  return lines.map((line) => ({
+    ...line,
+    gapBefore: Math.max(0, Math.floor(line.gapBefore * scale)),
+    size: Math.max(1, Math.floor(line.size * scale)),
+  }));
+}
+
 export async function buildFilamentLabelPngDataUrl(
   input: FilamentLabelImageInput,
-  profileId: FilamentLabelProfileId,
+  sizeInput: FilamentLabelSizeInput,
   dependencies: FilamentLabelCanvasDependencies = {},
 ): Promise<string> {
-  const profile = filamentLabelProfile(profileId);
-  const size = filamentLabelPixelSize(profileId);
+  const labelSize = resolveFilamentLabelSize(sizeInput);
+  const size = filamentLabelPixelSize(labelSize);
   const canvas = (dependencies.createCanvas ?? defaultCanvas)();
   canvas.width = size.width;
   canvas.height = size.height;
@@ -145,29 +212,51 @@ export async function buildFilamentLabelPngDataUrl(
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, size.width, size.height);
 
-  const pxPerMm = LABEL_DPI / 25.4;
+  const pxPerMm = FILAMENT_LABEL_DPI / 25.4;
   const outerPadding = Math.max(8, Math.round(0.8 * pxPerMm));
-  const qrSize = size.height - outerPadding * 2;
+  const qrColumnSize = size.height - outerPadding * 2;
   const qrImage = await (dependencies.loadImage ?? loadCanvasImage)(input.qrDataUrl);
+  const qrSize = crispQrDrawSize(qrImage, qrColumnSize);
+  const qrInset = Math.floor((qrColumnSize - qrSize) / 2);
   context.imageSmoothingEnabled = false;
-  context.drawImage(qrImage, outerPadding, outerPadding, qrSize, qrSize);
+  context.drawImage(
+    qrImage,
+    outerPadding + qrInset,
+    outerPadding + qrInset,
+    qrSize,
+    qrSize,
+  );
 
-  const textLeft = outerPadding + qrSize + Math.round(1.6 * pxPerMm);
+  const textLeft = outerPadding + qrColumnSize + Math.round(0.8 * pxPerMm);
   const textWidth = size.width - textLeft - outerPadding;
   const text = buildFilamentLabelTextLines(input);
-  const lineGap = Math.round(0.8 * pxPerMm);
-  const titlePx = Math.max(30, Math.round((profile.heightMm >= 30 ? 4.1 : 3.5) * pxPerMm));
-  const identityPreferredPx = Math.max(
-    24,
-    Math.round((profile.heightMm >= 30 ? 3.1 : 2.65) * pxPerMm),
+  const availableTextHeight = size.height - outerPadding * 2;
+  const identityCount = text.identityLines.length;
+  const lineGap = Math.max(
+    4,
+    Math.round(clamp(labelSize.heightMm * 0.018, 0.45, 1.4) * pxPerMm),
   );
-  const detailPx = Math.max(21, Math.round((profile.heightMm >= 30 ? 2.8 : 2.4) * pxPerMm));
+  const weightedLineCount = 1.25 + identityCount + 0.9 + 0.9;
+  const gapBudget = lineGap * (identityCount + 3.6);
+  const adaptiveBasePx = Math.max(
+    1,
+    (availableTextHeight - gapBudget) / weightedLineCount,
+  );
+  const titlePx = Math.round(
+    clamp((adaptiveBasePx * 1.25) / pxPerMm, 3.5, 10) * pxPerMm,
+  );
+  const identityPreferredPx = Math.round(
+    clamp(adaptiveBasePx / pxPerMm, 2.65, 8) * pxPerMm,
+  );
+  const detailPx = Math.round(
+    clamp((adaptiveBasePx * 0.9) / pxPerMm, 2.4, 7) * pxPerMm,
+  );
   const vendorPx = fittedCanvasFontSize({
     context,
     text: text.vendor,
     maxWidth: textWidth,
     preferredSize: titlePx,
-    minimumSize: detailPx,
+    minimumSize: Math.max(Math.round(2.4 * pxPerMm), Math.round(titlePx * 0.55)),
     weight: 800,
   });
   const identityLines = text.identityLines.map((identity) => ({
@@ -177,26 +266,54 @@ export async function buildFilamentLabelPngDataUrl(
       text: identity,
       maxWidth: textWidth,
       preferredSize: identityPreferredPx,
-      minimumSize: Math.max(20, detailPx - 4),
+      minimumSize: Math.max(Math.round(2.1 * pxPerMm), Math.round(identityPreferredPx * 0.55)),
       weight: 600,
     }),
     weight: 600,
   }));
-  const lines = [
+  const detailMinimumPx = Math.max(
+    Math.round(2 * pxPerMm),
+    Math.round(detailPx * 0.55),
+  );
+  const materialPx = fittedCanvasFontSize({
+    context,
+    text: text.material,
+    maxWidth: textWidth,
+    preferredSize: detailPx,
+    minimumSize: detailMinimumPx,
+    weight: 600,
+  });
+  const referencePx = fittedCanvasFontSize({
+    context,
+    text: text.reference,
+    maxWidth: textWidth,
+    preferredSize: detailPx,
+    minimumSize: detailMinimumPx,
+    weight: 700,
+  });
+  const lines = verticallyFitTextLines([
     { text: text.vendor, size: vendorPx, weight: 800, gapBefore: 0 },
-    ...identityLines.map((line) => ({ ...line, gapBefore: 0 })),
-    { text: text.material, size: detailPx, weight: 600, gapBefore: 0 },
-    { text: text.reference, size: detailPx, weight: 700, gapBefore: lineGap },
-  ];
-  let baseline = outerPadding + vendorPx;
+    ...identityLines.map((line) => ({ ...line, gapBefore: lineGap })),
+    { text: text.material, size: materialPx, weight: 600, gapBefore: lineGap },
+    {
+      text: text.reference,
+      size: referencePx,
+      weight: 700,
+      gapBefore: Math.round(lineGap * 1.6),
+    },
+  ], availableTextHeight);
+  const textBlockHeight = lines.reduce(
+    (height, line) => height + line.gapBefore + line.size,
+    0,
+  );
+  let baseline = outerPadding + Math.max(0, Math.floor((availableTextHeight - textBlockHeight) / 2));
 
   context.fillStyle = "#000000";
   context.textBaseline = "alphabetic";
   for (const line of lines) {
-    baseline += line.gapBefore;
+    baseline += line.gapBefore + line.size;
     context.font = `${line.weight} ${line.size}px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     context.fillText(fitCanvasText(context, line.text, textWidth), textLeft, baseline);
-    baseline += line.size + lineGap;
   }
 
   return canvas.toDataURL("image/png");
@@ -212,11 +329,11 @@ export async function buildFilamentLabelQrDataUrl(
   }
   return qrEncoder.toDataURL(normalized, {
     errorCorrectionLevel: "H",
-    margin: 2,
-    width: 512,
+    margin: QR_QUIET_ZONE_MODULES,
+    scale: QR_SOURCE_MODULE_SCALE,
     color: {
-      dark: "#0f172a",
-      light: "#ffffffff",
+      dark: "#000000",
+      light: "#ffffff",
     },
   });
 }

@@ -502,12 +502,21 @@ export const ptBRDictionary: DictionaryNode = {
     labelBuilderSubtitle:
       "Escolha um tamanho físico, verifique a visualização e salve um PNG pronto para impressão.",
     labelBuilderTitle: "Criar imagem de etiqueta",
+    labelCustomWidth: "Largura",
+    labelCustomHeight: "Altura",
+    labelCustomSizeHint:
+      "Paisagem · largura 45–150 mm · altura 24–80 mm · incrementos de 0,5 mm.",
+    labelCustomSizeRangeError:
+      "A largura deve ser de 45–150 mm e a altura de 24–80 mm, em incrementos de 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Use o formato paisagem: a largura deve ser pelo menos 20 mm maior que a altura e pelo menos 1,6 vezes a altura.",
     labelImageHint:
       "O PNG é renderizado a 300 DPI para um dimensionamento físico previsível.",
     labelPreview: "Pré-visualização da etiqueta",
     labelPreviewUnavailable: "Visualização do rótulo indisponível",
     labelProfile: {
       compact: "Compactar",
+      custom: "Personalizado",
       expanded: "Expandido",
       "ptouch-24": "P Touch 24 mm",
       standard: "Padrão",
@@ -945,7 +954,7 @@ export const ptBRDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Definir peso da bobina de entrada",
     jobOptional: "Nome do trabalho (opcional)",
     jobs: "Trabalhos",
-    lastKnownLive: "Último conhecido ao vivo",
+    lastKnownLive: "Última atualização em tempo real",
     liveCandidateCount:
       "As bobinas de estoque {count} correspondem ao material ativo/sinal de cor.",
     liveCandidateCurrent: "atual",
@@ -1702,6 +1711,30 @@ export const ptBRDictionary: DictionaryNode = {
     printerUnsavedChanges: "Alterações não salvas",
     productTour: "Tour do produto",
     program: "Programa",
+    backgroundOperation: "Operação em segundo plano",
+    backgroundOperationHint:
+      "Mantenha o Companion, o acesso ao host e o monitoramento de uso da Bambu disponíveis quando a janela principal for fechada.",
+    backgroundOperationLoading: "Carregando configurações de segundo plano…",
+    backgroundOperationSaving: "Salvando configurações de segundo plano…",
+    backgroundTrayUnavailable:
+      "O ícone da barra de menus ou da bandeja do sistema não está disponível nesta sessão. Fechar a janela encerrará o programa.",
+    backgroundLaunchUnavailable:
+      "A inicialização ao fazer login não está disponível nesta sessão. Isso não afeta a configuração separada para continuar em execução ao fechar a janela.",
+    backgroundTrayOpen: "Abrir Filament Manager",
+    backgroundTrayQuit: "Sair do Filament Manager",
+    continueInBackground: "Continuar em execução ao fechar a janela",
+    continueInBackgroundHint:
+      "A janela fica oculta na barra de menus ou na bandeja do sistema. Abra o menu do ícone quando quiser encerrar o programa.",
+    launchAtLogin: "Iniciar em segundo plano ao fazer login",
+    launchAtLoginHint:
+      "Inicia oculto para esta conta de usuário. Se o ícone da barra de menus ou da bandeja do sistema não estiver disponível, a janela será aberta.",
+    backgroundMoveToApplicationsError:
+      "Mova o Filament Manager para Aplicativos antes de ativar a inicialização ao fazer login.",
+    backgroundOperationLoadError:
+      "Não foi possível carregar as configurações de segundo plano.",
+    backgroundOperationUpdateError:
+      "Não foi possível atualizar as configurações de segundo plano.",
+    backgroundOperationRetry: "Tentar novamente",
     reactivated: "reativado",
     reconfigure: "Reconfigurar",
     refreshCurrentVendor: "Atualizar catálogo de fornecedores atual",

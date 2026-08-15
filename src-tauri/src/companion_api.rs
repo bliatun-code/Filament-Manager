@@ -42,6 +42,7 @@ use axum::Json;
 
 pub const COMPANION_DEFAULT_PORT: u16 = 4278;
 const COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS: u64 = 3;
+const LOCAL_SERVICE_SHUTDOWN_TIMEOUT_SECONDS: u64 = 5;
 
 pub fn generate_pairing_token() -> String {
     crate::companion_session::generate_pairing_token()
@@ -55,27 +56,11 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
 }
 
 pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Result<(), String> {
-    if let Some(advertisement) = state
-        .companion
-        .trusted_lan
-        .take_local_service_advertisement()
-    {
-        let _ = tauri::async_runtime::spawn_blocking(move || drop(advertisement)).await;
-    }
-    state.companion.trusted_lan.mark_local_name_stopped();
+    stop_trusted_lan_server_locked(state, false).await;
 
-    if let Some(handle) = state.companion.trusted_lan.take_server_handle() {
-        let mut join_handle = handle.shutdown();
-        if tokio::time::timeout(
-            std::time::Duration::from_secs(COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS),
-            &mut join_handle,
-        )
-        .await
-        .is_err()
-        {
-            join_handle.abort();
-            let _ = join_handle.await;
-        }
+    if state.companion.trusted_lan.shutting_down() {
+        state.companion.trusted_lan.mark_stopped();
+        return Ok(());
     }
 
     let Some(bind_address) = state.companion.trusted_lan.bind_address() else {
@@ -124,6 +109,57 @@ pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Res
         eprintln!("Companion stable local address is unavailable: {error}");
     }
     Ok(())
+}
+
+pub(crate) async fn shutdown_trusted_lan_server(state: &AppState) {
+    state.companion.trusted_lan.mark_shutdown_started();
+    let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    stop_trusted_lan_server_locked(state, true).await;
+    state.companion.trusted_lan.mark_stopped();
+}
+
+async fn stop_trusted_lan_server_locked(state: &AppState, bounded_for_app_shutdown: bool) {
+    let advertisement_drop = state
+        .companion
+        .trusted_lan
+        .take_local_service_advertisement()
+        .map(|advertisement| tauri::async_runtime::spawn_blocking(move || drop(advertisement)));
+    state.companion.trusted_lan.mark_local_name_stopped();
+
+    if let Some(handle) = state.companion.trusted_lan.take_server_handle() {
+        let mut join_handle = handle.shutdown();
+        if tokio::time::timeout(
+            std::time::Duration::from_secs(COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS),
+            &mut join_handle,
+        )
+        .await
+        .is_err()
+        {
+            join_handle.abort();
+            let _ = join_handle.await;
+        }
+    }
+
+    if let Some(mut advertisement_drop) = advertisement_drop {
+        if bounded_for_app_shutdown {
+            // Tokio cannot cancel spawn_blocking once Drop has started. Give the Windows backend
+            // enough time for unregister, daemon shutdown, and its monitor-thread join instead of
+            // calling abort and falsely treating the native teardown as cancelled.
+            if tokio::time::timeout(
+                std::time::Duration::from_secs(LOCAL_SERVICE_SHUTDOWN_TIMEOUT_SECONDS),
+                &mut advertisement_drop,
+            )
+            .await
+            .is_err()
+            {
+                eprintln!(
+                    "Companion local-service shutdown timed out; application exit will continue."
+                );
+            }
+        } else {
+            let _ = advertisement_drop.await;
+        }
+    }
 }
 
 pub(crate) async fn retry_trusted_lan_local_service_advertisement(

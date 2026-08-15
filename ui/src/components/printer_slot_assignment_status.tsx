@@ -84,7 +84,7 @@ export function PrinterSlotAssignmentStatus({
   } = displayState;
   const effectiveLiveIdentity = liveTrayIdentity(effectiveLiveTray);
   const liveObservationText = liveObservedAtLabel
-    ? `${t("printers.lastKnownLive", "Last known live")}: ${liveObservedAtLabel}${
+    ? `${t("printers.lastKnownLive", "Last live update")}: ${liveObservedAtLabel}${
         liveObservedAge ? ` · ${liveObservedAge}` : ""
       }`
     : null;

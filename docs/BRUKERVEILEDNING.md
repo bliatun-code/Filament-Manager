@@ -230,15 +230,22 @@ Slik lager du en etikett for én rull:
 
 1. Åpne detaljene for rullen i Lager og finn QR-panelet.
 2. Velg **Lag QR-etikett**.
-3. Velg P-Touch 24 mm, Kompakt, Standard eller Utvidet, og kontroller
+3. Velg P-Touch 24 mm, Kompakt, Standard, Utvidet eller **Egendefinert**.
+4. For en egendefinert etikett angir du bredde og høyde og kontrollerer
    forhåndsvisningen.
-4. Velg **Lagre PNG i Nedlastinger** for å lagre det utskriftsklare bildet med
+5. Velg **Lagre PNG i Nedlastinger** for å lagre det utskriftsklare bildet med
    300 DPI.
 
 P-Touch-profilen bruker et liggende arbeidsområde på 60 × 24 mm med QR-kode i
-nesten full høyde og stor, lesbar identitetstekst. For flere tilgjengelige ruller
-samtidig bruker du i stedet **Innstillinger → Generelt → Lag etikettark for
-lageret**.
+nesten full høyde og stor, lesbar identitetstekst. Egendefinerte etiketter støtter
+bredde fra 45 til 150 mm og høyde fra 24 til 80 mm i trinn på 0,5 mm. De må være
+liggende: Bredden må være minst 20 mm større enn høyden og minst 1,6 ganger
+høyden. Valgt størrelse og de sist gyldige egendefinerte målene huskes lokalt på
+denne enheten, slik at de brukes igjen for andre ruller og i senere økter.
+
+For flere tilgjengelige ruller samtidig bruker du i stedet **Innstillinger →
+Generelt → Lag etikettark for lageret**. Etikettark for lageret bruker alltid
+60 × 24 mm og påvirkes ikke av de lagrede egendefinerte målene.
 
 Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
 antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
@@ -359,6 +366,7 @@ Generelt:
 
 - programversjon
 - automatiske oppdateringsvarsler og beholdt manuell oppdateringssjekk
+- valgfri bakgrunnskjøring ved lukking og oppstart ved innlogging
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
@@ -372,6 +380,41 @@ community-oversettelsene kan foreslås via det egne
 [skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
 ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
+
+De to valgene under **Innstillinger → Generelt → Bakgrunnskjøring** aktiveres
+hver for seg. Aktiver **Fortsett å kjøre når jeg lukker vinduet** for å skjule
+hovedvinduet bak Filament Manager-ikonet i menylinjen på macOS eller
+systemstatusfeltet i Windows i stedet for å stoppe programmet. Dette gjelder
+bare når ikonet er tilgjengelig; ellers avsluttes programmet som normalt når
+vinduet lukkes.
+
+Mens vinduet er skjult, forblir Rust-bakgrunnsoppgavene for Companion,
+vertstilgang og Bambu-forbruksovervåkning aktive så lenge brukerøkten er aktiv og
+maskinen er våken. Venstreklikk på ikonet eller velg **Åpne Filament Manager**
+fra menyen for å hente frem vinduet. Velg **Avslutt Filament Manager** for å
+stoppe prosessen; menytekstene følger valgt grensesnittspråk. Starter du
+Filament Manager på vanlig måte, hentes også den eksisterende instansen frem og
+får fokus i stedet for at en ny database-/serverprosess åpnes.
+
+Aktiver **Start i bakgrunnen når jeg logger inn** for å starte programmet skjult
+for den aktive brukerkontoen. Hvis ikonet i menylinjen eller systemstatusfeltet
+er utilgjengelig ved oppstart, åpnes hovedvinduet i stedet, slik at prosessen ikke
+blir utilgjengelig. På macOS må programmet flyttes ut av det nedlastede diskbildet
+før valget aktiveres. Installasjon i **Programmer** gir innloggingsoppføringen en
+stabil filsti; valget kan ikke aktiveres mens programmet kjører fra et diskbilde
+eller en midlertidig App Translocation-sti. Operativsystemets egne innloggings-
+eller oppstartsinnstillinger kan fortsatt deaktivere oppføringen uavhengig av
+programmet.
+
+Ingen av valgene installerer en operativsystemtjeneste. Programmet kjører ikke
+videre etter utlogging, avslåing eller mens maskinen sover. En desktop
+konfigurert som Klient er utformet for å pause frontend-timerne for oppdatering
+fra verten mens vinduet er skjult og starte dem igjen når vinduet hentes frem;
+Rust-bakgrunnsoppgavene beskrevet over forblir aktive. På macOS bruker
+avslutning fra programmenyen eller statusmenyen den koordinerte
+avslutningsflyten. Operativsystemets opprinnelige avslutningsveier, som
+**Avslutt** fra Dock-menyen, og tvungen avslutning er best-effort og kan hoppe
+over denne oppryddingen.
 
 Release-versjoner med en konfigurert offentlig metadatakanal kan sjekke
 automatisk når **Sjekk automatisk** er aktivert. Sjekken skjer etter en kort
@@ -397,8 +440,10 @@ Slik lager du etikettark for rullene som er på lager:
 4. Velg **Lagre PDF i Nedlastinger**.
 
 Hver side rommer opptil 30 etiketter med samme lesbare oppsett på 60 × 24 mm som
-P-Touch QR-etiketten. For én rull, eller for en annen etikettstørrelse, åpner du
-QR-panelet for rullen under **Lager** og velger **Lag QR-etikett**.
+P-Touch QR-etiketten. Dette batchoppsettet er fast og bruker ikke den
+egendefinerte størrelsen som er lagret i byggeren for enkeltetiketter. For én
+rull, eller for en annen etikettstørrelse, åpner du QR-panelet for rullen under
+**Lager** og velger **Lag QR-etikett**.
 
 Bibliotek og webapp:
 

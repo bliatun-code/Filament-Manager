@@ -4,7 +4,10 @@ import type { useI18n } from "./i18n";
 import type { InventorySpool } from "./inventory_list_model";
 import type { RfidCaptureSummary } from "./inventory_rfid_capture";
 import { updateInventorySpoolRfidTag } from "./spool_writes";
-import type { FilamentLabelProfileId } from "./filament_label_profiles";
+import {
+  filamentLabelSizeFilenameSuffix,
+  type FilamentLabelSize,
+} from "./filament_label_profiles";
 import { exportLabelPng, type BambuLiveIntegrationSettings } from "./tauri_client";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
@@ -64,7 +67,7 @@ export function useInventorySpoolDetailUtilityActions({
   t,
 }: InventorySpoolDetailUtilityActionsInput) {
   const handlePrintLabel = useCallback(async (
-    profileId: FilamentLabelProfileId,
+    labelSize: FilamentLabelSize,
     pngDataUrl: string,
   ) => {
     if (!tauriAvailable || !selectedSpool) {
@@ -74,7 +77,7 @@ export function useInventorySpoolDetailUtilityActions({
       const reference = selectedSpool.id.replace(/^spool_/, "").slice(-6) || "spool";
       const exportedPath = await exportLabelPng(
         pngDataUrl,
-        `filament-label-${reference}-${profileId}`,
+        `filament-label-${reference}-${filamentLabelSizeFilenameSuffix(labelSize)}`,
       );
       setInfoMessage(
         t("inventory.labelSaved", "Label PNG saved to Downloads.").replace(

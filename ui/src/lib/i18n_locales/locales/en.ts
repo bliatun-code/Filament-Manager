@@ -523,12 +523,21 @@ export const enDictionary: DictionaryNode = {
       labelBuilderTitle: "Create label image",
       labelBuilderSubtitle:
         "Choose a physical size, check the preview, and save a print-ready PNG.",
+      labelCustomWidth: "Width",
+      labelCustomHeight: "Height",
+      labelCustomSizeHint:
+        "Landscape · width 45–150 mm · height 24–80 mm · 0.5 mm steps.",
+      labelCustomSizeRangeError:
+        "Width must be 45–150 mm and height 24–80 mm, in 0.5 mm steps.",
+      labelCustomSizeShapeError:
+        "Use landscape format: width must be at least 20 mm greater than height and at least 1.6 × the height.",
       labelSize: "Label size",
       labelProfile: {
         "ptouch-24": "P-Touch 24 mm",
         compact: "Compact",
         standard: "Standard",
         expanded: "Expanded",
+        custom: "Custom",
       },
       labelPreview: "Label preview",
       labelRendering: "Rendering label...",
@@ -963,7 +972,7 @@ export const enDictionary: DictionaryNode = {
       manualAssignment: "Manual",
       unknownLiveRfid: "RFID is not registered",
       rfidOverridden: "RFID overridden",
-      lastKnownLive: "Last known live",
+      lastKnownLive: "Last live update",
       waitingForLiveIdentity:
         "Showing the last saved slot assignment until stronger live identity arrives.",
       unknownLiveRfidHint:
@@ -1203,6 +1212,28 @@ export const enDictionary: DictionaryNode = {
       tabSwatch: "Swatch quality",
       tabMaintenance: "Program maintenance",
       program: "Program",
+      backgroundOperation: "Background operation",
+      backgroundOperationHint:
+        "Keep Companion, host access and Bambu usage monitoring available when the main window is closed.",
+      backgroundOperationLoading: "Loading background settings…",
+      backgroundOperationSaving: "Saving background settings…",
+      backgroundLaunchUnavailable:
+        "Launch at login is unavailable in this session. This does not affect the separate close-to-tray setting.",
+      backgroundTrayUnavailable:
+        "The menu bar or system tray icon is unavailable in this session. Closing the window will quit the program.",
+      backgroundTrayOpen: "Open Filament Manager",
+      backgroundTrayQuit: "Quit Filament Manager",
+      continueInBackground: "Continue running when I close the window",
+      continueInBackgroundHint:
+        "The window is hidden in the menu bar or system tray. Open its menu when you want to stop the program.",
+      launchAtLogin: "Start in the background when I sign in",
+      launchAtLoginHint:
+        "Starts hidden for this user account. If the menu bar or system tray icon is unavailable, the window opens instead.",
+      backgroundMoveToApplicationsError:
+        "Move Filament Manager to Applications before enabling launch at login.",
+      backgroundOperationLoadError: "The background settings could not be loaded.",
+      backgroundOperationUpdateError: "The background settings could not be updated.",
+      backgroundOperationRetry: "Retry",
       version: "Version",
       license: "License",
       licenseHelp:

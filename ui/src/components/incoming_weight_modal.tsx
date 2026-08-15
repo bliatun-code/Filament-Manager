@@ -86,7 +86,7 @@ export function IncomingWeightModal({
               <dd className="font-semibold">
                 {formatGrams(amsEstimate.calculatedTotalWeightG, "dash", locale)}
               </dd>
-              <dt>{t("printers.lastKnownLive", "Last known live")}</dt>
+              <dt>{t("printers.lastKnownLive", "Last live update")}</dt>
               <dd className="font-medium">{formatDateTime(amsEstimate.weightSeenAt, locale)}</dd>
             </dl>
             <button

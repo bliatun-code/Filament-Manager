@@ -15,6 +15,7 @@ import {
   buildLibrarySyncVisibilityState,
   normalizeLibrarySyncMode,
   shouldShowLibraryWebappDetails,
+  visibleLibrarySyncValidationMessage,
 } from "./settings_library_sync_model";
 import type { LibrarySyncSettings } from "../lib/tauri_client";
 
@@ -108,6 +109,20 @@ test("buildLibrarySyncErrorMessage returns stable operation fallback copy", () =
     labels.deviceNameSaveFailed,
   );
   assert.equal(buildLibrarySyncErrorMessage("snapshotFailed", labels), labels.snapshotFailed);
+});
+
+test("transient AMS success copy is not rendered as a persisted host validation message", () => {
+  assert.equal(
+    visibleLibrarySyncValidationMessage("Host AMS weight estimate accepted."),
+    null,
+  );
+  assert.equal(visibleLibrarySyncValidationMessage("AMS weight estimate accepted"), null);
+  assert.equal(
+    visibleLibrarySyncValidationMessage("  Host check passed.  "),
+    "Host check passed.",
+  );
+  assert.equal(visibleLibrarySyncValidationMessage("   "), null);
+  assert.equal(visibleLibrarySyncValidationMessage(null), null);
 });
 
 test("buildLibrarySyncRoleOptions keeps role order and labels explicit", () => {

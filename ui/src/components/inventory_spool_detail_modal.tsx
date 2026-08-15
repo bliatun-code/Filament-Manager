@@ -27,7 +27,7 @@ import {
 import { RollUsageChart } from "./roll_usage_chart";
 import { WeightInput } from "./weight_input";
 import { useI18n } from "../lib/i18n";
-import type { FilamentLabelProfileId } from "../lib/filament_label_profiles";
+import type { FilamentLabelSize } from "../lib/filament_label_profiles";
 import type {
   InventorySemanticTone,
   InventorySpool,
@@ -42,6 +42,7 @@ type InventorySpoolDetailModalProps = {
   colorName: string;
   confirmDelete: boolean;
   confirmPurge: boolean;
+  deterministicLabelPreferences?: boolean;
   displayTitle: string;
   error: string | null;
   filamentName: string;
@@ -74,7 +75,7 @@ type InventorySpoolDetailModalProps = {
   onClose: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
-  onPrintLabel: (profileId: FilamentLabelProfileId, pngDataUrl: string) => Promise<void>;
+  onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<void>;
   onPurge: () => void;
   onRefill: () => void;
   onSaveLocation: () => void;
@@ -116,6 +117,7 @@ export function InventorySpoolDetailModal({
   colorName,
   confirmDelete,
   confirmPurge,
+  deterministicLabelPreferences = false,
   displayTitle,
   error,
   filamentName,
@@ -240,6 +242,7 @@ export function InventorySpoolDetailModal({
                 <InventorySpoolQrRfidPanel
                   companionAvailable={qrCompanionAvailable}
                   dataUrl={qrDataUrl}
+                  deterministicLabelPreferences={deterministicLabelPreferences}
                   loading={qrLoading}
                   initialLabelPanelOpen={initialLabelPanelOpen}
                   onPrintLabel={onPrintLabel}

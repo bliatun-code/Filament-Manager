@@ -500,6 +500,12 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
       appVersion: PERFORMANCE_APP_VERSION,
       catalogRows,
       consumptionRows,
+      desktopLifecycleSettings: {
+        continue_in_background: false,
+        launch_at_login: false,
+        launch_at_login_available: true,
+        tray_available: true,
+      },
       evidence: {
         dashboard: String(dashboardOnHandSpoolCount(spoolRows)),
         inventory:
@@ -573,6 +579,18 @@ export function resolveUiBrowserPerformanceInvoke(
   payload = {},
 ) {
   switch (command) {
+    case "get_desktop_lifecycle_settings":
+      return fixture.desktopLifecycleSettings;
+    case "set_continue_in_background":
+      return {
+        ...fixture.desktopLifecycleSettings,
+        continue_in_background: Boolean(payload.enabled),
+      };
+    case "set_launch_at_login":
+      return {
+        ...fixture.desktopLifecycleSettings,
+        launch_at_login: Boolean(payload.enabled),
+      };
     case "get_library_sync_settings":
       return fixture.librarySyncSettings;
     case "get_trusted_lan_companion_status":
@@ -664,6 +682,7 @@ export function resolveUiBrowserPerformanceInvoke(
       return [];
     case "set_window_title":
     case "set_dock_icon_theme":
+    case "set_desktop_tray_menu_labels":
     case "prepare_desktop_visual_qa_window":
     case "signal_desktop_visual_qa_readiness":
       return null;

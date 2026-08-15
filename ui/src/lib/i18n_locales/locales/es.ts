@@ -494,6 +494,14 @@ export const esDictionary: DictionaryNode = {
     labelBuilderTitle: "Crear imagen de etiqueta",
     labelBuilderSubtitle:
       "Elige el tamaño físico, revisa la vista previa y guarda un PNG listo para imprimir.",
+    labelCustomWidth: "Ancho",
+    labelCustomHeight: "Alto",
+    labelCustomSizeHint:
+      "Horizontal · ancho 45–150 mm · alto 24–80 mm · incrementos de 0,5 mm.",
+    labelCustomSizeRangeError:
+      "El ancho debe ser de 45–150 mm y el alto de 24–80 mm, en incrementos de 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Usa formato horizontal: el ancho debe superar al alto en al menos 20 mm y medir como mínimo 1,6 veces el alto.",
     labelSize: "Tamaño de etiqueta",
     labelPreview: "Vista previa de la etiqueta",
     labelRendering: "Generando etiqueta...",
@@ -773,6 +781,7 @@ export const esDictionary: DictionaryNode = {
     },
     labelProfile: {
       compact: "Compacto",
+      custom: "Personalizado",
       expanded: "Expandido",
       "ptouch-24": "P-Touch 24 mm",
       standard: "Estándar",
@@ -993,7 +1002,7 @@ export const esDictionary: DictionaryNode = {
     manualAssignment: "Manual",
     unknownLiveRfid: "RFID no registrada",
     rfidOverridden: "RFID sustituida manualmente",
-    lastKnownLive: "Último estado en directo conocido",
+    lastKnownLive: "Última actualización en tiempo real",
     waitingForLiveIdentity:
       "Se muestra la última asignación guardada hasta recibir una identidad más fiable.",
     unknownLiveRfidHint:
@@ -1262,6 +1271,30 @@ export const esDictionary: DictionaryNode = {
     tabSwatch: "Calidad de muestras",
     tabMaintenance: "Mantenimiento del programa",
     program: "Programa",
+    backgroundOperation: "Funcionamiento en segundo plano",
+    backgroundOperationHint:
+      "Mantén disponibles Companion, el acceso al host y la supervisión del uso de Bambu cuando se cierre la ventana principal.",
+    backgroundOperationLoading: "Cargando los ajustes de segundo plano…",
+    backgroundOperationSaving: "Guardando los ajustes de segundo plano…",
+    backgroundTrayUnavailable:
+      "El icono de la barra de menús o de la bandeja del sistema no está disponible en esta sesión. Al cerrar la ventana se cerrará el programa.",
+    backgroundLaunchUnavailable:
+      "El inicio automático al acceder a la cuenta no está disponible en esta sesión. Esto no afecta al ajuste independiente para seguir ejecutándose al cerrar la ventana.",
+    backgroundTrayOpen: "Abrir Filament Manager",
+    backgroundTrayQuit: "Salir de Filament Manager",
+    continueInBackground: "Seguir ejecutándose al cerrar la ventana",
+    continueInBackgroundHint:
+      "La ventana se oculta en la barra de menús o la bandeja del sistema. Abre el menú del icono cuando quieras cerrar el programa.",
+    launchAtLogin: "Iniciar en segundo plano al iniciar sesión",
+    launchAtLoginHint:
+      "Se inicia oculto para esta cuenta de usuario. Si el icono de la barra de menús o de la bandeja del sistema no está disponible, se abre la ventana en su lugar.",
+    backgroundMoveToApplicationsError:
+      "Mueve Filament Manager a Aplicaciones antes de activar su inicio al iniciar sesión.",
+    backgroundOperationLoadError:
+      "No se pudieron cargar los ajustes de segundo plano.",
+    backgroundOperationUpdateError:
+      "No se pudieron actualizar los ajustes de segundo plano.",
+    backgroundOperationRetry: "Reintentar",
     version: "Versión",
     license: "Licencia",
     licenseHelp:

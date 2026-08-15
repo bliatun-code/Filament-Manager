@@ -464,6 +464,14 @@ export const deDictionary: DictionaryNode = {
     labelBuilderTitle: "Etikettenbild erstellen",
     labelBuilderSubtitle:
       "Physische Größe auswählen, Vorschau prüfen und druckfertige PNG-Datei speichern.",
+    labelCustomWidth: "Breite",
+    labelCustomHeight: "Höhe",
+    labelCustomSizeHint:
+      "Querformat · Breite 45–150 mm · Höhe 24–80 mm · Schritte von 0,5 mm.",
+    labelCustomSizeRangeError:
+      "Die Breite muss 45–150 mm und die Höhe 24–80 mm betragen, jeweils in Schritten von 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Querformat verwenden: Die Breite muss mindestens 20 mm größer als die Höhe und mindestens das 1,6-Fache der Höhe sein.",
     labelSize: "Etikettengröße",
     clientReadOnlyBanner:
       "Dieses Gerät ist als Client verknüpft. Bestandsänderungen bleiben vorerst auf dem Host.",
@@ -716,6 +724,7 @@ export const deDictionary: DictionaryNode = {
       compact: "Kompakt",
       standard: "Standard",
       expanded: "Erweitert",
+      custom: "Benutzerdefiniert",
     },
   },
   wishlist: {
@@ -943,7 +952,7 @@ export const deDictionary: DictionaryNode = {
     liveCatalogRequiresRfid: "auf RFID warten",
     unknownLiveRfid: "RFID ist nicht registriert",
     rfidOverridden: "RFID manuell überschrieben",
-    lastKnownLive: "Letzter Live-Stand",
+    lastKnownLive: "Letzte Echtzeit-Aktualisierung",
     waitingForLiveIdentity:
       "Die zuletzt gespeicherte Platzzuweisung wird angezeigt, bis eine verlässlichere Live-Identität vorliegt.",
     unknownLiveRfidHint:
@@ -1184,6 +1193,29 @@ export const deDictionary: DictionaryNode = {
     auto: "Automatisch (System)",
     autoHint: "Automatisch folgt der Hell-/Dunkel-Einstellung des Systems.",
     program: "Programm",
+    backgroundOperation: "Hintergrundbetrieb",
+    backgroundOperationHint:
+      "Companion, Hostzugriff und die Bambu-Verbrauchsüberwachung bleiben verfügbar, wenn das Hauptfenster geschlossen wird.",
+    backgroundOperationLoading: "Hintergrundeinstellungen werden geladen…",
+    backgroundOperationSaving: "Hintergrundeinstellungen werden gespeichert…",
+    backgroundTrayUnavailable:
+      "Das Symbol in der Menüleiste oder im Infobereich ist in dieser Sitzung nicht verfügbar. Beim Schließen des Fensters wird das Programm beendet.",
+    backgroundLaunchUnavailable:
+      "Der Start bei der Anmeldung ist in dieser Sitzung nicht verfügbar. Dies wirkt sich nicht auf die separate Einstellung zum Weiterlaufen beim Schließen des Fensters aus.",
+    backgroundTrayOpen: "Filament Manager öffnen",
+    backgroundTrayQuit: "Filament Manager beenden",
+    continueInBackground: "Beim Schließen des Fensters weiter ausführen",
+    continueInBackgroundHint:
+      "Das Fenster wird in der Menüleiste oder im Infobereich ausgeblendet. Öffne dort das Menü, um das Programm zu beenden.",
+    launchAtLogin: "Bei der Anmeldung im Hintergrund starten",
+    launchAtLoginHint:
+      "Startet für dieses Benutzerkonto ausgeblendet. Wenn das Symbol in der Menüleiste oder im Infobereich nicht verfügbar ist, wird stattdessen das Fenster geöffnet.",
+    backgroundMoveToApplicationsError:
+      "Verschieben Sie Filament Manager in den Ordner „Programme“, bevor Sie den Start bei der Anmeldung aktivieren.",
+    backgroundOperationLoadError: "Die Hintergrundeinstellungen konnten nicht geladen werden.",
+    backgroundOperationUpdateError:
+      "Die Hintergrundeinstellungen konnten nicht aktualisiert werden.",
+    backgroundOperationRetry: "Erneut versuchen",
     version: "Version",
     license: "Lizenz",
     licenseHelp:

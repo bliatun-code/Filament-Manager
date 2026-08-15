@@ -528,12 +528,21 @@ export const nbDictionary: DictionaryNode = {
       labelBuilderTitle: "Lag etikettbilde",
       labelBuilderSubtitle:
         "Velg fysisk størrelse, kontroller forhåndsvisningen og lagre en utskriftsklar PNG.",
+      labelCustomWidth: "Bredde",
+      labelCustomHeight: "Høyde",
+      labelCustomSizeHint:
+        "Liggende · bredde 45–150 mm · høyde 24–80 mm · trinn på 0,5 mm.",
+      labelCustomSizeRangeError:
+        "Bredden må være 45–150 mm og høyden 24–80 mm, i trinn på 0,5 mm.",
+      labelCustomSizeShapeError:
+        "Bruk liggende format: Bredden må være minst 20 mm større enn høyden og minst 1,6 × høyden.",
       labelSize: "Etikettstørrelse",
       labelProfile: {
         "ptouch-24": "P-Touch 24 mm",
         compact: "Kompakt",
         standard: "Standard",
         expanded: "Utvidet",
+        custom: "Egendefinert",
       },
       labelPreview: "Forhåndsvisning av etikett",
       labelRendering: "Genererer etikett...",
@@ -969,7 +978,7 @@ export const nbDictionary: DictionaryNode = {
       manualAssignment: "Manuell",
       unknownLiveRfid: "RFID er ikke registrert",
       rfidOverridden: "RFID overstyrt",
-      lastKnownLive: "Sist kjente live",
+      lastKnownLive: "Siste sanntidsoppdatering",
       waitingForLiveIdentity:
         "Viser sist lagrede sportildeling til sterkere live-identitet kommer inn.",
       unknownLiveRfidHint:
@@ -1210,6 +1219,30 @@ export const nbDictionary: DictionaryNode = {
       tabSwatch: "Swatch-kvalitet",
       tabMaintenance: "Programvedlikehold",
       program: "Program",
+      backgroundOperation: "Bakgrunnskjøring",
+      backgroundOperationHint:
+        "Hold Companion, vertstilgang og Bambu-forbruksovervåkning tilgjengelig når hovedvinduet lukkes.",
+      backgroundOperationLoading: "Laster inn innstillinger for bakgrunnskjøring…",
+      backgroundOperationSaving: "Lagrer innstillinger for bakgrunnskjøring…",
+      backgroundTrayUnavailable:
+        "Ikonet i menylinjen eller systemstatusfeltet er utilgjengelig i denne økten. Når vinduet lukkes, avsluttes programmet.",
+      backgroundLaunchUnavailable:
+        "Oppstart ved innlogging er ikke tilgjengelig i denne økten. Dette påvirker ikke den separate innstillingen for å fortsette å kjøre når vinduet lukkes.",
+      backgroundTrayOpen: "Åpne Filament Manager",
+      backgroundTrayQuit: "Avslutt Filament Manager",
+      continueInBackground: "Fortsett å kjøre når jeg lukker vinduet",
+      continueInBackgroundHint:
+        "Vinduet skjules i menylinjen eller systemstatusfeltet. Åpne menyen der når du vil avslutte programmet.",
+      launchAtLogin: "Start i bakgrunnen når jeg logger inn",
+      launchAtLoginHint:
+        "Starter skjult for denne brukerkontoen. Hvis ikonet i menylinjen eller systemstatusfeltet er utilgjengelig, åpnes vinduet i stedet.",
+      backgroundMoveToApplicationsError:
+        "Flytt Filament Manager til Programmer før du aktiverer oppstart ved innlogging.",
+      backgroundOperationLoadError:
+        "Innstillingene for bakgrunnskjøring kunne ikke lastes inn.",
+      backgroundOperationUpdateError:
+        "Innstillingene for bakgrunnskjøring kunne ikke oppdateres.",
+      backgroundOperationRetry: "Prøv igjen",
       version: "Versjon",
       license: "Lisens",
       licenseHelp:

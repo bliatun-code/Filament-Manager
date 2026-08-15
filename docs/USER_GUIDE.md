@@ -228,12 +228,20 @@ To create a label for one spool:
 
 1. Open the spool details in Inventory and find the QR panel.
 2. Choose **Create QR label**.
-3. Select P-Touch 24 mm, Compact, Standard, or Expanded, then check the preview.
-4. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
+3. Select P-Touch 24 mm, Compact, Standard, Expanded, or **Custom**.
+4. For a custom label, enter its width and height, then check the preview.
+5. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
 
 The P-Touch profile uses a 60 × 24 mm landscape canvas with a nearly full-height
-QR and large identifying text. For several on-hand spools at once, use **Settings
-→ General → Create inventory label sheet** instead.
+QR and large identifying text. Custom labels support widths from 45 to 150 mm and
+heights from 24 to 80 mm in 0.5 mm steps. They must remain landscape: the width
+must be at least 20 mm greater than the height and at least 1.6 times the height.
+The selected size and most recent valid custom dimensions are remembered locally
+on this device, so they are reused for other spools and in later app sessions.
+
+For several on-hand spools at once, use **Settings → General → Create inventory
+label sheet** instead. Inventory label sheets remain fixed at 60 × 24 mm and do
+not use the saved custom dimensions.
 
 The Wishlist and orders panel has its own status filters and search field. It
 shows the number of matching rows, lets you move purchases between Wishlist, On
@@ -355,6 +363,7 @@ General:
 
 - app version
 - automatic update notifications and a retained manual update check
+- optional close-to-tray background operation and launch at login
 - theme: Auto, Light, Dark
 - language, selected from one compact list
 - inventory QR label sheets
@@ -368,6 +377,38 @@ Corrections to community translations can be proposed through the dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set stays fixed while the existing
 non-English catalogs receive community and native-language review.
+
+The two controls under **Settings → General → Background operation** are
+separate opt-in settings. Enable **Continue running when I close the window**
+to hide the main window behind the Filament Manager icon in the macOS menu bar
+or Windows system tray instead of stopping the app. This only applies when that
+icon is available; otherwise closing the window quits the app normally.
+
+While the window is hidden, the Rust background tasks for Companion, host
+access and Bambu usage monitoring remain active as long as the user session is
+active and the computer is awake. Left-click the icon or choose **Open Filament
+Manager** from its menu to restore the window. Choose **Quit Filament Manager**
+to stop the process; these menu labels follow the selected interface language.
+Starting Filament Manager normally also restores and focuses the existing
+instance instead of opening a second database/server process.
+
+Enable **Start in the background when I sign in** to start the app hidden for
+the current user account. If the menu bar or system tray icon is unavailable at
+startup, the main window opens instead so the process is not left inaccessible.
+On macOS, move the app out of the downloaded disk image before enabling this
+setting. Installing it in **Applications** gives the login entry a stable path;
+an app running from a disk image or a temporary App Translocation path cannot
+enable the setting. The operating system's login-item or startup-app controls
+can still disable an entry independently.
+
+Neither setting installs an operating-system service. The app does not continue
+after sign-out, shutdown or while the computer is asleep. A desktop configured
+as a Client is designed to pause its frontend host-refresh timers while hidden
+and resume them when the window is restored; the Rust background tasks
+described above remain active. On macOS, quitting from the application menu or
+tray menu enters the coordinated shutdown path. Native operating-system
+termination paths, such as **Quit** from the Dock menu, and forced termination
+are best-effort and may bypass that cleanup.
 
 Release builds with a configured public metadata channel can check
 automatically when **Check automatically** is enabled. The check runs after a
@@ -393,8 +434,9 @@ To create label sheets for the on-hand inventory:
 4. Choose **Save PDF to Downloads**.
 
 Each page holds up to 30 labels in the same readable 60 × 24 mm layout as the
-P-Touch QR label. For one spool, or for a different label size, open its QR panel
-under **Inventory** and choose **Create QR label**.
+P-Touch QR label. This batch layout is fixed and does not use the custom size
+saved by the individual label builder. For one spool, or for a different label
+size, open its QR panel under **Inventory** and choose **Create QR label**.
 
 Library and webapp:
 

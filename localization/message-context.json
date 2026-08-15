@@ -9,6 +9,87 @@
     },
     {
       "surface": "desktop",
+      "key": "settings.backgroundOperation",
+      "meaning": "Heading for keeping the desktop process active after its main window is hidden; this is not an operating-system service.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.continueInBackground",
+      "meaning": "Opt-in checkbox that changes a normal window close into hiding the window while the process continues.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.launchAtLogin",
+      "meaning": "Opt-in checkbox that starts the app hidden when the current operating-system user signs in.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.backgroundTrayOpen",
+      "meaning": "Native menu-bar or system-tray command that restores and focuses the Filament Manager window.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.backgroundTrayQuit",
+      "meaning": "Native menu-bar or system-tray command that fully stops Filament Manager; distinguish it from merely closing or hiding the window.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.backgroundLaunchUnavailable",
+      "meaning": "Warning shown when the operating system's launch-at-login or autostart state cannot be read for the current session; the separate close-to-tray preference remains available and independent.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.backgroundMoveToApplicationsError",
+      "meaning": "macOS guidance shown when launch at login cannot use an app running from a disk image or App Translocation path; Applications is the localized system Applications folder name.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelProfile.custom",
+      "meaning": "Size-profile option that lets the user enter physical label dimensions; it does not customize the label content.",
+      "screenshot": "docs/screenshots/filament-label.jpg",
+      "maxCharacters": 24
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomWidth",
+      "meaning": "Field label for the physical width of one custom filament label, entered in millimetres.",
+      "screenshot": "docs/screenshots/filament-label.jpg",
+      "maxCharacters": 16
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomHeight",
+      "meaning": "Field label for the physical height of one custom filament label, entered in millimetres.",
+      "screenshot": "docs/screenshots/filament-label.jpg",
+      "maxCharacters": 16
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomSizeHint",
+      "meaning": "Compact guidance identifying the required landscape format, supported width and height ranges, and 0.5 mm input increment for a custom label.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomSizeRangeError",
+      "meaning": "Validation error when a custom dimension is not finite, falls outside the supported range, or does not use a 0.5 mm increment.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.labelCustomSizeShapeError",
+      "meaning": "Validation error enforcing a landscape label whose width is at least 20 mm greater than its height and at least 1.6 times its height.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "inventory.statusEmpty",
       "meaning": "The physical spool has no usable filament remaining; it is not an empty printer slot.",
       "screenshot": "docs/screenshots/filament-details.jpg"
@@ -80,6 +161,54 @@
     },
     {
       "surface": "desktop",
+      "key": "printers.lastKnownLive",
+      "meaning": "Label for the timestamp of the latest live telemetry update from the printer; live means real-time data, not a broadcast or a living object.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.amsWeightEstimateHint",
+      "meaning": "Explains that the displayed remaining-filament value comes from the AMS for the exact RFID-matched roll and is an estimate, not a physical scale measurement.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.amsCalculatedTotal",
+      "meaning": "Total physical roll weight calculated as estimated remaining filament plus the empty-spool tare weight.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.useAmsWeightEstimate",
+      "meaning": "Button that explicitly updates the matched inventory roll from the currently displayed AMS estimate; it does not merely refresh telemetry.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.amsWeightAccepted",
+      "meaning": "Success confirmation that the inventory roll weight was updated from the current AMS estimate.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.error.amsWeightEstimateChanged",
+      "meaning": "Error shown when the AMS estimate or exact RFID roll match changed before acceptance; the user must reopen the weight dialog and retry.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.bambuLiveAmsWeightBasis",
+      "meaning": "AMS-reported nominal filament weight that represents 100% and is used as the basis for calculating remaining grams; it excludes empty-spool tare weight.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.bambuLiveAmsWeightEstimate",
+      "meaning": "Estimated remaining filament reported by the AMS for a matched roll; this is not a price estimate or a physical scale measurement.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.companionTitle",
       "meaning": "Filament Manager's trusted-LAN browser interface. Companion is a product feature name, not a person.",
       "screenshot": "docs/screenshots/settings-library.jpg"
@@ -137,6 +266,18 @@
       "meaning": "Usage/history source recorded from radio-frequency spool identity. Keep the acronym RFID.",
       "screenshot": "docs/screenshots/companion-phone-detail.jpg",
       "maxCharacters": 8
+    },
+    {
+      "surface": "companion",
+      "key": "detail.usageSourceAmsEstimate",
+      "meaning": "Weight-history source shown after the user accepts an estimate from Bambu Lab's Automatic Material System. Keep the acronym AMS and do not imply a physical scale measurement.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.amsWeightEstimateChanged",
+      "meaning": "Error shown when the AMS estimate or exact RFID roll match changed before acceptance; the user must reopen the weight dialog and retry.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
     },
     {
       "surface": "companion",

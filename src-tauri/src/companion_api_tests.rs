@@ -1,5 +1,6 @@
 use super::{
-    companion_browser_assets, companion_service_instance_name, hash_secret, CompanionApiState,
+    companion_browser_assets, companion_service_instance_name, hash_secret,
+    shutdown_trusted_lan_server, CompanionApiState,
 };
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
@@ -12,7 +13,8 @@ use crate::companion_payload::{build_companion_spool_qr_payload, build_qr_svg};
 use crate::companion_routes::build_router;
 use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
 use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
-use crate::state::TrustedLanCompanionRuntime;
+use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+use crate::state::{AppState, CompanionRuntimeState, TrustedLanCompanionRuntime};
 use axum::body::{to_bytes, Body};
 use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
 use flate2::read::GzDecoder;
@@ -175,6 +177,34 @@ fn trusted_lan_runtime_for_address(address: &str) -> TrustedLanCompanionRuntime 
         .with_enabled(true);
     runtime.mark_running();
     runtime
+}
+
+#[tokio::test]
+async fn trusted_lan_shutdown_signals_and_removes_the_server_handle() {
+    let runtime = trusted_lan_runtime_for_address("127.0.0.1");
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+    let (observed_tx, observed_rx) = tokio::sync::oneshot::channel();
+    let server_task = tauri::async_runtime::spawn(async move {
+        let _ = shutdown_rx.await;
+        let _ = observed_tx.send(());
+    });
+    runtime.install_server_handle(shutdown_tx, server_task);
+    let state = AppState {
+        db_path: "unused-shutdown-test.db".to_string(),
+        companion: CompanionRuntimeState::new(runtime),
+        credentials: CredentialStore::in_memory(),
+        library_sync_auth: LibrarySyncRuntimeAuth::new(),
+    };
+
+    shutdown_trusted_lan_server(&state).await;
+
+    tokio::time::timeout(std::time::Duration::from_secs(1), observed_rx)
+        .await
+        .expect("the server should observe shutdown promptly")
+        .expect("the shutdown observation channel should stay open");
+    assert!(state.companion.trusted_lan.shutting_down());
+    assert!(!state.companion.trusted_lan.snapshot().running);
+    assert!(state.companion.trusted_lan.take_server_handle().is_none());
 }
 
 #[test]

@@ -7,12 +7,31 @@ use std::time::Duration;
 const TRUSTED_LAN_NETWORK_REFRESH_SECONDS: u64 = 5;
 const TRUSTED_LAN_LOCAL_NAME_RETRY_TICKS: u8 = 6;
 
-pub(crate) async fn run_trusted_lan_network_watcher(state: AppState) {
+pub(crate) async fn run_trusted_lan_network_watcher(
+    state: AppState,
+    mut shutdown: tokio::sync::watch::Receiver<bool>,
+) {
     let mut local_name_retry_tick = 0_u8;
     loop {
-        tokio::time::sleep(Duration::from_secs(TRUSTED_LAN_NETWORK_REFRESH_SECONDS)).await;
+        if *shutdown.borrow() {
+            return;
+        }
+        tokio::select! {
+            _ = tokio::time::sleep(Duration::from_secs(TRUSTED_LAN_NETWORK_REFRESH_SECONDS)) => {}
+            changed = shutdown.changed() => {
+                if changed.is_err() || *shutdown.borrow() {
+                    return;
+                }
+            }
+        }
+        if *shutdown.borrow() {
+            return;
+        }
         if let Err(error) = refresh_trusted_lan_binding_once(&state).await {
             eprintln!("Trusted-LAN network refresh failed: {error}");
+        }
+        if *shutdown.borrow() {
+            return;
         }
         local_name_retry_tick = local_name_retry_tick.saturating_add(1);
         if local_name_retry_tick >= TRUSTED_LAN_LOCAL_NAME_RETRY_TICKS {

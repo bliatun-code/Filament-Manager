@@ -18,6 +18,7 @@ import {
 } from "../lib/app_update_check";
 import { useAppUpdateContext } from "../lib/app_update_context";
 import { openExternalUrl } from "../lib/tauri_maintenance_client";
+import type { DesktopLifecycleSettings } from "../lib/tauri_maintenance_client";
 import {
   chipButtonClass,
   settingsActionButtonClass,
@@ -35,26 +36,42 @@ type TranslateFn = (key: string, fallback: string, params?: MessageParams) => st
 export type SettingsGeneralTabProps = {
   appVersion: string | null;
   busy: boolean;
+  desktopLifecycleLoadError: string | null;
+  desktopLifecycleLoading: boolean;
+  desktopLifecycleSettings: DesktopLifecycleSettings | null;
+  desktopLifecycleUpdateError: string | null;
+  desktopLifecycleUpdating: boolean;
   locale: Locale;
   inventoryLabelSheetModalProps: SettingsInventoryLabelSheetModalProps;
   tauri: boolean;
   themeMode: ThemeMode;
   t: TranslateFn;
   onLocaleSelection: (locale: Locale) => void;
+  onContinueInBackground: (enabled: boolean) => Promise<void> | void;
+  onLaunchAtLogin: (enabled: boolean) => Promise<void> | void;
   onOpenInventoryLabelSheet: () => void;
+  onRetryDesktopLifecycleLoad: () => void;
   onThemeSelection: (mode: ThemeMode) => void;
 };
 
 export function SettingsGeneralTab({
   appVersion,
   busy,
+  desktopLifecycleLoadError,
+  desktopLifecycleLoading,
+  desktopLifecycleSettings,
+  desktopLifecycleUpdateError,
+  desktopLifecycleUpdating,
   inventoryLabelSheetModalProps,
   locale,
   tauri,
   themeMode,
   t,
   onLocaleSelection,
+  onContinueInBackground,
+  onLaunchAtLogin,
   onOpenInventoryLabelSheet,
+  onRetryDesktopLifecycleLoad,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
   const updateCheck = useAppUpdateContext();
@@ -126,6 +143,163 @@ export function SettingsGeneralTab({
           </label>
         </div>
       </SettingsSurfaceCard>
+
+      {tauri ? (
+        <SettingsSurfaceCard
+          className="space-y-4"
+          eyebrow={t("settings.backgroundOperation", "Background operation")}
+          description={t(
+            "settings.backgroundOperationHint",
+            "Keep Companion, host access and Bambu usage monitoring available when the main window is closed.",
+          )}
+        >
+          <div
+            id="settings-background-operation"
+            className="space-y-3"
+            aria-busy={desktopLifecycleLoading || desktopLifecycleUpdating}
+          >
+            {desktopLifecycleLoading ? (
+              <p
+                className="text-xs leading-5 text-slate-600 dark:text-slate-300"
+                role="status"
+                aria-live="polite"
+              >
+                {t("settings.backgroundOperationLoading", "Loading background settings…")}
+              </p>
+            ) : null}
+
+            {desktopLifecycleSettings ? (
+              <div className="grid gap-2">
+                {!desktopLifecycleSettings.tray_available ? (
+                  <p
+                    id="settings-background-tray-unavailable"
+                    className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
+                    role="status"
+                  >
+                    {t(
+                      "settings.backgroundTrayUnavailable",
+                      "The menu bar or system tray icon is unavailable in this session. Closing the window will quit the program.",
+                    )}
+                  </p>
+                ) : null}
+                {!desktopLifecycleSettings.launch_at_login_available ? (
+                  <p
+                    id="settings-background-launch-unavailable"
+                    className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
+                    role="status"
+                  >
+                    {t(
+                      "settings.backgroundLaunchUnavailable",
+                      "Launch at login is unavailable in this session. This does not affect the separate close-to-tray setting.",
+                    )}
+                  </p>
+                ) : null}
+                <label className="surface-subtle flex items-start gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <input
+                    className="mt-0.5"
+                    type="checkbox"
+                    checked={desktopLifecycleSettings.continue_in_background}
+                    onChange={(event) => void onContinueInBackground(event.target.checked)}
+                    disabled={
+                      busy ||
+                      desktopLifecycleLoading ||
+                      desktopLifecycleUpdating ||
+                      !desktopLifecycleSettings.tray_available
+                    }
+                    aria-describedby={
+                      desktopLifecycleSettings.tray_available
+                        ? undefined
+                        : "settings-background-tray-unavailable"
+                    }
+                  />
+                  <span>
+                    {t(
+                      "settings.continueInBackground",
+                      "Continue running when I close the window",
+                    )}
+                    <span className="mt-1 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
+                      {t(
+                        "settings.continueInBackgroundHint",
+                        "The window is hidden in the menu bar or system tray. Open its menu when you want to stop the program.",
+                      )}
+                    </span>
+                  </span>
+                </label>
+                <label className="surface-subtle flex items-start gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                  <input
+                    className="mt-0.5"
+                    type="checkbox"
+                    checked={desktopLifecycleSettings.launch_at_login}
+                    onChange={(event) => void onLaunchAtLogin(event.target.checked)}
+                    disabled={
+                      busy ||
+                      desktopLifecycleLoading ||
+                      desktopLifecycleUpdating ||
+                      !desktopLifecycleSettings.launch_at_login_available
+                    }
+                    aria-describedby={
+                      desktopLifecycleSettings.launch_at_login_available
+                        ? undefined
+                        : "settings-background-launch-unavailable"
+                    }
+                  />
+                  <span>
+                    {t("settings.launchAtLogin", "Start in the background when I sign in")}
+                    <span className="mt-1 block text-xs font-normal leading-5 text-slate-500 dark:text-slate-400">
+                      {t(
+                        "settings.launchAtLoginHint",
+                        "Starts hidden for this user account. If the menu bar or system tray icon is unavailable, the window opens instead.",
+                      )}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            ) : null}
+
+            {desktopLifecycleUpdating ? (
+              <p
+                className="text-xs leading-5 text-slate-600 dark:text-slate-300"
+                role="status"
+                aria-live="polite"
+              >
+                {t("settings.backgroundOperationSaving", "Saving background settings…")}
+              </p>
+            ) : null}
+
+            {desktopLifecycleLoadError ? (
+              <div className="space-y-2">
+                <p className="text-xs leading-5 text-rose-700 dark:text-rose-300" role="alert">
+                  {t(
+                    "settings.backgroundOperationLoadError",
+                    "The background settings could not be loaded.",
+                  )}
+                </p>
+                <button
+                  type="button"
+                  className={settingsActionButtonClass()}
+                  onClick={onRetryDesktopLifecycleLoad}
+                  disabled={desktopLifecycleLoading}
+                >
+                  {t("settings.backgroundOperationRetry", "Retry")}
+                </button>
+              </div>
+            ) : null}
+
+            {desktopLifecycleUpdateError ? (
+              <p className="text-xs leading-5 text-rose-700 dark:text-rose-300" role="alert">
+                {t(
+                  desktopLifecycleUpdateError === "APP_LOCATION_UNSTABLE"
+                    ? "settings.backgroundMoveToApplicationsError"
+                    : "settings.backgroundOperationUpdateError",
+                  desktopLifecycleUpdateError === "APP_LOCATION_UNSTABLE"
+                    ? "Move Filament Manager to Applications before enabling launch at login."
+                    : "The background settings could not be updated.",
+                )}
+              </p>
+            ) : null}
+          </div>
+        </SettingsSurfaceCard>
+      ) : null}
 
       <SettingsSurfaceCard className="space-y-4" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">

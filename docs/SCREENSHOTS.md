@@ -31,6 +31,9 @@ data comes from the same sanitized fixture seed SHA-256
 `895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`;
 the chart itself uses an explicitly synthetic, time-relative visual-QA series
 so its twelve-month window stays representative as the calendar advances.
+The General settings capture was refreshed on 2026-08-15 to show the new
+background-operation and launch-at-login controls, using the same sanitized
+fixture seed SHA-256.
 The Bambu security setup uses only a synthetic loopback test interface and no
 host, serial, access code, or trusted fingerprint. The printer overview uses
 fresh synthetic Bambu telemetry; its desktop gate waits for rendered telemetry
@@ -38,6 +41,11 @@ and refuses to create an image when that readiness signal is absent.
 The v0.26.0 refresh added the AMS weight-estimate capture on 2026-08-12. It uses
 a separate, time-relative sanitized fixture and is captured only after the
 estimate card has rendered from a fresh exact-RFID observation.
+The v0.27.0 refresh regenerated General settings, the AMS weight-estimate
+dialog, the individual custom-label preview, and the fixed inventory label
+sheet on 2026-08-15. The settings capture isolates desktop lifecycle state from
+the real user profile; the label captures use deterministic synthetic data and
+cover both the new custom-size UI and the shared QR renderer.
 
 ## Quick Preview
 
@@ -52,7 +60,7 @@ estimate card has rendered from a fresh exact-RFID observation.
   <a href="#printers"><img src="screenshots/printers-thumb.jpg" alt="Printers" width="150"></a>
   <a href="#add-printer"><img src="screenshots/add-printer-thumb.jpg" alt="Add printer with optional Bambu Live" width="150"></a>
   <a href="#use-an-ams-weight-estimate"><img src="screenshots/printer-ams-weight-estimate-thumb.jpg" alt="Use an AMS weight estimate" width="150"></a>
-  <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings" width="150"></a>
+  <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings background operation" width="150"></a>
   <a href="#stable-local-companion-address"><img src="screenshots/settings-library-network-thumb.jpg" alt="Stable local Companion address" width="150"></a>
   <a href="#program-and-update-notifications"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version, update notifications, and manual update check" width="150"></a>
   <a href="#bambu-live-security-setup"><img src="screenshots/settings-printer-editor-thumb.jpg" alt="Bambu Live security setup" width="150"></a>
@@ -128,10 +136,11 @@ links, RFID, live AMS sighting, and lost-status handling.
 ### Individual Filament Label
 
 The label builder previews a selected roll at its physical size before saving a
-print-ready 300-DPI PNG to Downloads. P-Touch 24 mm, Compact, Standard, and
-Expanded profiles share the same clear QR and filament identity layout, while
-the panel points to the inventory label-sheet builder when several rolls need
-labels at once.
+print-ready 300-DPI PNG to Downloads. P-Touch 24 mm, Compact, Standard, Expanded,
+and validated custom landscape sizes share the same clear QR and filament
+identity layout. The most recent custom dimensions are remembered locally, while
+the panel points to the fixed 60 × 24 mm inventory label-sheet builder when
+several rolls need labels at once.
 
 ![Individual filament label builder](screenshots/filament-label.jpg)
 
@@ -262,10 +271,11 @@ material consumed outside printer sessions.
 
 ### General
 
-Appearance controls and a compact selector for the 21 published interface
-languages.
+Appearance and language controls, plus the separate opt-in settings for
+continuing in the menu bar or system tray after the window closes and starting
+hidden when the current user signs in.
 
-![Settings general](screenshots/settings-general.jpg)
+![Settings General tab with background-operation controls](screenshots/settings-general.jpg)
 
 ### Program And Update Notifications
 

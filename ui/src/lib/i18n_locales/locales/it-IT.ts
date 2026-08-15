@@ -507,12 +507,21 @@ export const itITDictionary: DictionaryNode = {
     labelBuilderSubtitle:
       "Scegli una dimensione fisica, controlla l'anteprima e salva un PNG pronto per la stampa.",
     labelBuilderTitle: "Crea l'immagine dell'etichetta",
+    labelCustomWidth: "Larghezza",
+    labelCustomHeight: "Altezza",
+    labelCustomSizeHint:
+      "Orizzontale · larghezza 45–150 mm · altezza 24–80 mm · incrementi di 0,5 mm.",
+    labelCustomSizeRangeError:
+      "La larghezza deve essere compresa tra 45 e 150 mm e l'altezza tra 24 e 80 mm, con incrementi di 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Usa il formato orizzontale: la larghezza deve superare l'altezza di almeno 20 mm ed essere almeno 1,6 volte l'altezza.",
     labelImageHint:
       "Il PNG viene visualizzato a 300 DPI per un dimensionamento fisico prevedibile.",
     labelPreview: "Anteprima dell'etichetta",
     labelPreviewUnavailable: "Anteprima dell'etichetta non disponibile",
     labelProfile: {
       compact: "Compatto",
+      custom: "Personalizzata",
       expanded: "Espanso",
       "ptouch-24": "P-Touch 24 mm",
       standard: "Standard",
@@ -952,7 +961,7 @@ export const itITDictionary: DictionaryNode = {
     incomingWeightPromptTitle: "Imposta il peso della bobina in entrata",
     jobOptional: "Nome del lavoro (facoltativo)",
     jobs: "Lavori",
-    lastKnownLive: "Ultimo conosciuto dal vivo",
+    lastKnownLive: "Ultimo aggiornamento in tempo reale",
     liveCandidateCount:
       "Le bobine di inventario {count} corrispondono al segnale materiale/colore in tempo reale.",
     liveCandidateCurrent: "attuale",
@@ -1717,6 +1726,32 @@ export const itITDictionary: DictionaryNode = {
     printerUnsavedChanges: "Modifiche non salvate",
     productTour: "Visita del prodotto",
     program: "Programma",
+    backgroundOperation: "Funzionamento in background",
+    backgroundOperationHint:
+      "Mantieni disponibili Companion, l'accesso all'host e il monitoraggio dell'utilizzo di Bambu quando la finestra principale viene chiusa.",
+    backgroundOperationLoading:
+      "Caricamento delle impostazioni per il funzionamento in background…",
+    backgroundOperationSaving:
+      "Salvataggio delle impostazioni per il funzionamento in background…",
+    backgroundTrayUnavailable:
+      "L'icona della barra dei menu o dell'area di notifica non è disponibile in questa sessione. La chiusura della finestra terminerà il programma.",
+    backgroundLaunchUnavailable:
+      "L'avvio all'accesso non è disponibile in questa sessione. Questo non influisce sull'impostazione separata che mantiene il programma in esecuzione alla chiusura della finestra.",
+    backgroundTrayOpen: "Apri Filament Manager",
+    backgroundTrayQuit: "Esci da Filament Manager",
+    continueInBackground: "Continua l'esecuzione quando chiudo la finestra",
+    continueInBackgroundHint:
+      "La finestra viene nascosta nella barra dei menu o nell'area di notifica. Apri il menu dell'icona quando vuoi terminare il programma.",
+    launchAtLogin: "Avvia in background quando accedo",
+    launchAtLoginHint:
+      "Si avvia nascosto per questo account utente. Se l'icona della barra dei menu o dell'area di notifica non è disponibile, viene aperta la finestra.",
+    backgroundMoveToApplicationsError:
+      "Sposta Filament Manager in Applicazioni prima di abilitare l'avvio all'accesso.",
+    backgroundOperationLoadError:
+      "Non è stato possibile caricare le impostazioni per il funzionamento in background.",
+    backgroundOperationUpdateError:
+      "Non è stato possibile aggiornare le impostazioni per il funzionamento in background.",
+    backgroundOperationRetry: "Riprova",
     reactivated: "riattivato",
     reconfigure: "Riconfigurare",
     refreshCurrentVendor: "Aggiorna il catalogo del fornitore corrente",

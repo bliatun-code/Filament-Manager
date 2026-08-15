@@ -302,3 +302,21 @@ test("detail content localizes loan history and usage source labels in norwegian
   assert.doesNotMatch(html, /LOAN_RETURN/);
   assert.doesNotMatch(html, /loaned out/);
 });
+
+test("detail content localizes accepted AMS weight sources in norwegian", () => {
+  const html = renderBody({
+    locale: "nb",
+    selectedDetail: createSelectedDetail({
+      usage: [
+        {
+          grams: 843,
+          source: "BAMBU_AMS_ACCEPTED",
+          captured_at: "2026-08-15T10:00:00Z",
+        },
+      ],
+    }),
+  });
+
+  assert.match(html, /AMS-estimat/);
+  assert.doesNotMatch(html, /BAMBU_AMS_ACCEPTED|BAMBU AMS ACCEPTED/);
+});
