@@ -10,6 +10,7 @@ const source = readFileSync(
 test("selected spool utility actions export the rendered label PNG", () => {
   assert.match(source, /exportLabelPng/);
   assert.match(source, /filament-label-/);
+  assert.match(source, /filamentLabelSizeFilenameSuffix/);
   assert.doesNotMatch(source, /printLabelHtml/);
   assert.doesNotMatch(source, /buildFilamentLabelHtml/);
 });

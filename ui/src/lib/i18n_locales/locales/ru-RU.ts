@@ -833,6 +833,11 @@ export const ruRUDictionary: DictionaryNode = {
     "printQr": "Создать метку QR",
     "refill": "Пополнить/реактивировать рулон",
     "labelBuilderTitle": "Создать изображение этикетки",
+    "labelCustomHeight": "Высота",
+    "labelCustomSizeHint": "Альбомная ориентация · ширина 45–150 мм · высота 24–80 мм · шаг 0,5 мм.",
+    "labelCustomSizeRangeError": "Ширина должна быть 45–150 мм, а высота — 24–80 мм, с шагом 0,5 мм.",
+    "labelCustomSizeShapeError": "Используйте альбомную ориентацию: ширина должна быть как минимум на 20 мм больше высоты и не меньше высоты, умноженной на 1,6.",
+    "labelCustomWidth": "Ширина",
     "refilled": "Ролл реактивирован и готов к использованию.",
     "refilledAuto": "Ролик повторно активирован с учетом нового измеренного веса.",
     "homeLocationHintWhileAssigned": "Текущее размещение управляется на странице Принтеры. Исходное местоположение — это место, куда катушка возвращается, когда она больше не загружена.",
@@ -843,6 +848,7 @@ export const ruRUDictionary: DictionaryNode = {
     "labelSize": "Размер этикетки",
     "labelProfile": {
       "compact": "Компактный",
+      "custom": "Пользовательский",
       "standard": "Стандартный",
       "expanded": "Расширенный",
       "ptouch-24": "P-Touch 24 mm"

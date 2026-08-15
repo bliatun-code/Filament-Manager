@@ -523,12 +523,21 @@ export const enDictionary: DictionaryNode = {
       labelBuilderTitle: "Create label image",
       labelBuilderSubtitle:
         "Choose a physical size, check the preview, and save a print-ready PNG.",
+      labelCustomWidth: "Width",
+      labelCustomHeight: "Height",
+      labelCustomSizeHint:
+        "Landscape · width 45–150 mm · height 24–80 mm · 0.5 mm steps.",
+      labelCustomSizeRangeError:
+        "Width must be 45–150 mm and height 24–80 mm, in 0.5 mm steps.",
+      labelCustomSizeShapeError:
+        "Use landscape format: width must be at least 20 mm greater than height and at least 1.6 × the height.",
       labelSize: "Label size",
       labelProfile: {
         "ptouch-24": "P-Touch 24 mm",
         compact: "Compact",
         standard: "Standard",
         expanded: "Expanded",
+        custom: "Custom",
       },
       labelPreview: "Label preview",
       labelRendering: "Rendering label...",

@@ -407,11 +407,17 @@ export const plPLDictionary: DictionaryNode = {
     "keepUnassignedOption": "Nie slot (pozostaw nieprzypisane)",
     "labelBuilderSubtitle": "Wybierz rozmiar fizyczny, sprawdź podgląd i zapisz plik PNG gotowy do druku.",
     "labelBuilderTitle": "Utwórz obraz etykiety",
+    "labelCustomHeight": "Wysokość",
+    "labelCustomSizeHint": "Poziomo · szerokość 45–150 mm · wysokość 24–80 mm · krok 0,5 mm.",
+    "labelCustomSizeRangeError": "Szerokość musi wynosić 45–150 mm, a wysokość 24–80 mm, z krokiem 0,5 mm.",
+    "labelCustomSizeShapeError": "Użyj układu poziomego: szerokość musi być co najmniej o 20 mm większa od wysokości i stanowić co najmniej 1,6-krotność wysokości.",
+    "labelCustomWidth": "Szerokość",
     "labelImageHint": "PNG jest renderowany w rozdzielczości 300 DPI, aby zapewnić przewidywalny rozmiar fizyczny.",
     "labelPreview": "Podgląd etykiety",
     "labelPreviewUnavailable": "Podgląd etykiety niedostępny",
     "labelProfile": {
       "compact": "Kompaktowy",
+      "custom": "Niestandardowy",
       "expanded": "Rozszerzony",
       "ptouch-24": "P-Touch 24 mm",
       "standard": "Standard"

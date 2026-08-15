@@ -407,11 +407,17 @@ export const zhTWDictionary: DictionaryNode = {
     "keepUnassignedOption": "無插槽（保持未分配）",
     "labelBuilderSubtitle": "選擇實體尺寸，檢查預覽，然後儲存可列印的 PNG。",
     "labelBuilderTitle": "建立標籤圖像",
+    "labelCustomHeight": "高度",
+    "labelCustomSizeHint": "橫向 · 寬度 45–150 毫米 · 高度 24–80 毫米 · 以 0.5 毫米為步長",
+    "labelCustomSizeRangeError": "寬度必須為 45–150 毫米，高度必須為 24–80 毫米，並以 0.5 毫米為步長。",
+    "labelCustomSizeShapeError": "請使用橫向格式：寬度必須比高度至少多 20 毫米，且至少為高度的 1.6 倍。",
+    "labelCustomWidth": "寬度",
     "labelImageHint": "PNG 以 300 DPI 渲染，以實現可預測的物理尺寸。",
     "labelPreview": "標籤預覽",
     "labelPreviewUnavailable": "標籤預覽不可用",
     "labelProfile": {
       "compact": "袖珍的",
+      "custom": "自訂",
       "expanded": "擴充",
       "ptouch-24": "P-Touch 24 毫米",
       "standard": "標準"

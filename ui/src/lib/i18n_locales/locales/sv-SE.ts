@@ -835,11 +835,17 @@ export const svSEDictionary: DictionaryNode = {
     "markedFound": "Rulla återställd till i lager.",
     "refilledAuto": "Rulla återaktiverad från ny uppmätt vikt.",
     "labelBuilderTitle": "Skapa etikettbild",
+    "labelCustomHeight": "Höjd",
+    "labelCustomSizeHint": "Liggande · bredd 45–150 mm · höjd 24–80 mm · steg om 0,5 mm.",
+    "labelCustomSizeRangeError": "Bredden måste vara 45–150 mm och höjden 24–80 mm, i steg om 0,5 mm.",
+    "labelCustomSizeShapeError": "Använd liggande format: Bredden måste vara minst 20 mm större än höjden och minst 1,6 gånger höjden.",
+    "labelCustomWidth": "Bredd",
     "returnToInventory": "Återgå till inventering",
     "labelPreview": "Etikettförhandsgranskning",
     "labelRendering": "Återger etikett...",
     "labelProfile": {
       "compact": "Kompakt",
+      "custom": "Anpassad",
       "standard": "Standard",
       "expanded": "Utökad",
       "ptouch-24": "P-Touch 24 mm"

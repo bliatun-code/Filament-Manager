@@ -407,11 +407,17 @@ export const trTRDictionary: DictionaryNode = {
     "keepUnassignedOption": "Slot yok (atanmamış halde tut)",
     "labelBuilderSubtitle": "Fiziksel bir boyut seçin, önizlemeyi kontrol edin ve baskıya hazır bir PNG kaydedin.",
     "labelBuilderTitle": "Etiket resmi oluştur",
+    "labelCustomHeight": "Yükseklik",
+    "labelCustomSizeHint": "Yatay · genişlik 45–150 mm · yükseklik 24–80 mm · 0,5 mm'lik adımlar.",
+    "labelCustomSizeRangeError": "Genişlik 45–150 mm, yükseklik 24–80 mm aralığında ve 0,5 mm'lik adımlarla olmalıdır.",
+    "labelCustomSizeShapeError": "Yatay biçim kullanın: Genişlik, yükseklikten en az 20 mm fazla ve yüksekliğin en az 1,6 katı olmalıdır.",
+    "labelCustomWidth": "Genişlik",
     "labelImageHint": "PNG, öngörülebilir fiziksel boyutlandırma için 300 DPI'da oluşturulur.",
     "labelPreview": "Etiket önizlemesi",
     "labelPreviewUnavailable": "Etiket önizlemesi kullanılamıyor",
     "labelProfile": {
       "compact": "Kompakt",
+      "custom": "Özel",
       "expanded": "Genişletilmiş",
       "ptouch-24": "P-Dokunmatik 24 mm",
       "standard": "Standart"

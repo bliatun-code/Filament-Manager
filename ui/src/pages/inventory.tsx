@@ -894,6 +894,7 @@ export default function InventoryPage({
         colorName={editMasterColorName}
         confirmDelete={confirmDelete}
         confirmPurge={confirmPurge}
+        deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
         displayTitle={selectedSpoolDisplayTitle}
         error={error}
         filamentName={editMasterFilamentName}

@@ -407,11 +407,17 @@ export const koKRDictionary: DictionaryNode = {
     "keepUnassignedOption": "슬롯 없음(할당되지 않은 상태로 유지)",
     "labelBuilderSubtitle": "실제 크기를 선택하고 미리보기를 확인한 후 인쇄 가능한 PNG를 저장하세요.",
     "labelBuilderTitle": "라벨 이미지 생성",
+    "labelCustomHeight": "높이",
+    "labelCustomSizeHint": "가로 · 너비 45~150mm · 높이 24~80mm · 0.5mm 단위",
+    "labelCustomSizeRangeError": "너비는 45~150mm, 높이는 24~80mm 범위에서 0.5mm 단위여야 합니다.",
+    "labelCustomSizeShapeError": "가로 형식을 사용하세요. 너비는 높이보다 최소 20mm 커야 하며 높이의 1.6배 이상이어야 합니다.",
+    "labelCustomWidth": "너비",
     "labelImageHint": "PNG는 예측 가능한 물리적 크기 조정을 위해 300DPI로 렌더링됩니다.",
     "labelPreview": "라벨 미리보기",
     "labelPreviewUnavailable": "라벨 미리보기를 사용할 수 없습니다.",
     "labelProfile": {
       "compact": "콤팩트",
+      "custom": "사용자 지정",
       "expanded": "퍼지는",
       "ptouch-24": "P-터치 24mm",
       "standard": "기준"

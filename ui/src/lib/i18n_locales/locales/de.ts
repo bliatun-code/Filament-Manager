@@ -464,6 +464,14 @@ export const deDictionary: DictionaryNode = {
     labelBuilderTitle: "Etikettenbild erstellen",
     labelBuilderSubtitle:
       "Physische Größe auswählen, Vorschau prüfen und druckfertige PNG-Datei speichern.",
+    labelCustomWidth: "Breite",
+    labelCustomHeight: "Höhe",
+    labelCustomSizeHint:
+      "Querformat · Breite 45–150 mm · Höhe 24–80 mm · Schritte von 0,5 mm.",
+    labelCustomSizeRangeError:
+      "Die Breite muss 45–150 mm und die Höhe 24–80 mm betragen, jeweils in Schritten von 0,5 mm.",
+    labelCustomSizeShapeError:
+      "Querformat verwenden: Die Breite muss mindestens 20 mm größer als die Höhe und mindestens das 1,6-Fache der Höhe sein.",
     labelSize: "Etikettengröße",
     clientReadOnlyBanner:
       "Dieses Gerät ist als Client verknüpft. Bestandsänderungen bleiben vorerst auf dem Host.",
@@ -716,6 +724,7 @@ export const deDictionary: DictionaryNode = {
       compact: "Kompakt",
       standard: "Standard",
       expanded: "Erweitert",
+      custom: "Benutzerdefiniert",
     },
   },
   wishlist: {

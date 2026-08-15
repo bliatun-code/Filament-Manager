@@ -228,12 +228,20 @@ To create a label for one spool:
 
 1. Open the spool details in Inventory and find the QR panel.
 2. Choose **Create QR label**.
-3. Select P-Touch 24 mm, Compact, Standard, or Expanded, then check the preview.
-4. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
+3. Select P-Touch 24 mm, Compact, Standard, Expanded, or **Custom**.
+4. For a custom label, enter its width and height, then check the preview.
+5. Choose **Save PNG to Downloads** to save the print-ready 300-DPI image.
 
 The P-Touch profile uses a 60 × 24 mm landscape canvas with a nearly full-height
-QR and large identifying text. For several on-hand spools at once, use **Settings
-→ General → Create inventory label sheet** instead.
+QR and large identifying text. Custom labels support widths from 45 to 150 mm and
+heights from 24 to 80 mm in 0.5 mm steps. They must remain landscape: the width
+must be at least 20 mm greater than the height and at least 1.6 times the height.
+The selected size and most recent valid custom dimensions are remembered locally
+on this device, so they are reused for other spools and in later app sessions.
+
+For several on-hand spools at once, use **Settings → General → Create inventory
+label sheet** instead. Inventory label sheets remain fixed at 60 × 24 mm and do
+not use the saved custom dimensions.
 
 The Wishlist and orders panel has its own status filters and search field. It
 shows the number of matching rows, lets you move purchases between Wishlist, On
@@ -426,8 +434,9 @@ To create label sheets for the on-hand inventory:
 4. Choose **Save PDF to Downloads**.
 
 Each page holds up to 30 labels in the same readable 60 × 24 mm layout as the
-P-Touch QR label. For one spool, or for a different label size, open its QR panel
-under **Inventory** and choose **Create QR label**.
+P-Touch QR label. This batch layout is fixed and does not use the custom size
+saved by the individual label builder. For one spool, or for a different label
+size, open its QR panel under **Inventory** and choose **Create QR label**.
 
 Library and webapp:
 
