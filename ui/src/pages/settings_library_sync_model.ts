@@ -90,6 +90,11 @@ export type LibrarySyncErrorMessageKey =
 
 export type LibrarySyncErrorMessageLabels = Record<LibrarySyncErrorMessageKey, string>;
 
+const LEGACY_TRANSIENT_LIBRARY_SYNC_SUCCESS_MESSAGES = new Set([
+  "Host AMS weight estimate accepted.",
+  "AMS weight estimate accepted",
+]);
+
 export function normalizeLibrarySyncMode(mode: string | null | undefined): LibrarySyncMode {
   return mode === "HOST" || mode === "CLIENT" ? mode : "STANDALONE";
 }
@@ -113,6 +118,16 @@ export function buildLibrarySyncErrorMessage(
   labels: LibrarySyncErrorMessageLabels,
 ): string {
   return labels[key];
+}
+
+export function visibleLibrarySyncValidationMessage(
+  message: string | null | undefined,
+): string | null {
+  const normalized = message?.trim();
+  if (!normalized || LEGACY_TRANSIENT_LIBRARY_SYNC_SUCCESS_MESSAGES.has(normalized)) {
+    return null;
+  }
+  return normalized;
 }
 
 export function buildLibrarySyncRoleOptions(

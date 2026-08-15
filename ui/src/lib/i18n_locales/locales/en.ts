@@ -963,7 +963,7 @@ export const enDictionary: DictionaryNode = {
       manualAssignment: "Manual",
       unknownLiveRfid: "RFID is not registered",
       rfidOverridden: "RFID overridden",
-      lastKnownLive: "Last known live",
+      lastKnownLive: "Last live update",
       waitingForLiveIdentity:
         "Showing the last saved slot assignment until stronger live identity arrives.",
       unknownLiveRfidHint:

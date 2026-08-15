@@ -477,7 +477,7 @@ export const daDKDictionary: DictionaryNode = {
     "rfidOverriddenHint": "Denne plads tildeles manuelt, mens den samme uregistrerede RFID-identitet stadig er aktiv.",
     "liveCandidateSummary": "{count, plural, one {# lagerrulle matcher materiale- og farvesignalet.} other {# lagerruller matcher materiale- og farvesignalet.}}",
     "unknownLiveRfidHint": "AMS rapporterede en RFID/AMS-identitet, der ikke er registreret i beholdningen.",
-    "lastKnownLive": "Sidst kendt live",
+    "lastKnownLive": "Seneste opdatering i realtid",
     "rfidOverridden": "RFID tilsidesat",
     "liveRfid": "Live RFID",
     "liveCatalogRequiresRfid": "vent på RFID",

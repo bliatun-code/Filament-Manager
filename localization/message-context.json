@@ -116,6 +116,54 @@
     },
     {
       "surface": "desktop",
+      "key": "printers.lastKnownLive",
+      "meaning": "Label for the timestamp of the latest live telemetry update from the printer; live means real-time data, not a broadcast or a living object.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.amsWeightEstimateHint",
+      "meaning": "Explains that the displayed remaining-filament value comes from the AMS for the exact RFID-matched roll and is an estimate, not a physical scale measurement.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.amsCalculatedTotal",
+      "meaning": "Total physical roll weight calculated as estimated remaining filament plus the empty-spool tare weight.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.useAmsWeightEstimate",
+      "meaning": "Button that explicitly updates the matched inventory roll from the currently displayed AMS estimate; it does not merely refresh telemetry.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.amsWeightAccepted",
+      "meaning": "Success confirmation that the inventory roll weight was updated from the current AMS estimate.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "printers.error.amsWeightEstimateChanged",
+      "meaning": "Error shown when the AMS estimate or exact RFID roll match changed before acceptance; the user must reopen the weight dialog and retry.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.bambuLiveAmsWeightBasis",
+      "meaning": "AMS-reported nominal filament weight that represents 100% and is used as the basis for calculating remaining grams; it excludes empty-spool tare weight.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.bambuLiveAmsWeightEstimate",
+      "meaning": "Estimated remaining filament reported by the AMS for a matched roll; this is not a price estimate or a physical scale measurement.",
+      "screenshot": "docs/screenshots/printer-ams-weight-estimate.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.companionTitle",
       "meaning": "Filament Manager's trusted-LAN browser interface. Companion is a product feature name, not a person.",
       "screenshot": "docs/screenshots/settings-library.jpg"
@@ -173,6 +221,18 @@
       "meaning": "Usage/history source recorded from radio-frequency spool identity. Keep the acronym RFID.",
       "screenshot": "docs/screenshots/companion-phone-detail.jpg",
       "maxCharacters": 8
+    },
+    {
+      "surface": "companion",
+      "key": "detail.usageSourceAmsEstimate",
+      "meaning": "Weight-history source shown after the user accepts an estimate from Bambu Lab's Automatic Material System. Keep the acronym AMS and do not imply a physical scale measurement.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.amsWeightEstimateChanged",
+      "meaning": "Error shown when the AMS estimate or exact RFID roll match changed before acceptance; the user must reopen the weight dialog and retry.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
     },
     {
       "surface": "companion",

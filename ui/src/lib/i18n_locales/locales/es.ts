@@ -993,7 +993,7 @@ export const esDictionary: DictionaryNode = {
     manualAssignment: "Manual",
     unknownLiveRfid: "RFID no registrada",
     rfidOverridden: "RFID sustituida manualmente",
-    lastKnownLive: "Último estado en directo conocido",
+    lastKnownLive: "Última actualización en tiempo real",
     waitingForLiveIdentity:
       "Se muestra la última asignación guardada hasta recibir una identidad más fiable.",
     unknownLiveRfidHint:

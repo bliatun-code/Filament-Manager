@@ -431,6 +431,7 @@ function formatUsageSourceLabel(value, locale = "en") {
     printer: "detail.usageSourcePrinter",
     printer_slot: "detail.usageSourcePrinter",
     ams: "detail.usageSourcePrinter",
+    bambu_ams_accepted: "detail.usageSourceAmsEstimate",
     loan_return: "detail.usageSourceLoanReturn",
     loan_returned: "detail.usageSourceLoanReturn",
     loan_out: "detail.usageSourceLoanOut",

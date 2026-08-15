@@ -943,7 +943,7 @@ export const deDictionary: DictionaryNode = {
     liveCatalogRequiresRfid: "auf RFID warten",
     unknownLiveRfid: "RFID ist nicht registriert",
     rfidOverridden: "RFID manuell überschrieben",
-    lastKnownLive: "Letzter Live-Stand",
+    lastKnownLive: "Letzte Echtzeit-Aktualisierung",
     waitingForLiveIdentity:
       "Die zuletzt gespeicherte Platzzuweisung wird angezeigt, bis eine verlässlichere Live-Identität vorliegt.",
     unknownLiveRfidHint:

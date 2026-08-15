@@ -366,7 +366,7 @@ export const koKRDictionary: DictionaryNode = {
       "updateMetadata": "롤 메타데이터를 업데이트하지 못했습니다.",
       "updateOwnership": "롤 소유권을 업데이트하지 못했습니다.",
       "updateTareWeight": "빈 스풀 무게를 업데이트하지 못했습니다.",
-      "updateWeight": "체중을 업데이트하지 못했습니다."
+      "updateWeight": "무게를 업데이트하지 못했습니다."
     },
     "field": "필드",
     "fields": "전지",
@@ -775,7 +775,7 @@ export const koKRDictionary: DictionaryNode = {
     "incomingWeightPromptTitle": "들어오는 롤 무게 설정",
     "jobOptional": "작업 이름(선택사항)",
     "jobs": "작업",
-    "lastKnownLive": "마지막으로 알려진 라이브",
+    "lastKnownLive": "마지막 실시간 업데이트",
     "liveCandidateCount": "{count} 재고 롤은 실시간 재료/색상 신호와 일치합니다.",
     "liveCandidateCurrent": "현재의",
     "liveCandidateCurrentMatches": "현재 할당은 실시간 재질/색상 신호와 일치합니다.",
@@ -865,7 +865,7 @@ export const koKRDictionary: DictionaryNode = {
     "toolhead": "툴헤드",
     "unknownLiveRfid": "RFID가 등록되지 않았습니다",
     "unknownLiveRfidHint": "AMS가 인벤토리에 등록되지 않은 RFID/AMS ID를 보고했습니다.",
-    "updateWeight": "체중 업데이트",
+    "updateWeight": "무게 업데이트",
     "usageRecorded": "인쇄 사용량이 기록되었습니다.",
     "used": "사용량",
     "waitingForLiveIdentity": "더 강력한 라이브 ID가 도착할 때까지 마지막으로 저장된 슬롯 할당을 표시합니다.",

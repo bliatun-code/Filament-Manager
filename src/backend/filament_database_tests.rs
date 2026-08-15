@@ -274,6 +274,37 @@ fn library_sync_validation_state_rolls_back_all_settings_on_late_failure() {
     }
 }
 
+#[test]
+fn successful_host_action_can_clear_transient_validation_copy() {
+    let db_path = temp_db_path("library-sync-clear-transient-validation-copy");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.save_library_sync_validation_state(
+            false,
+            Some("Host AMS weight estimate accepted."),
+            None,
+        )
+        .map_err(|error| error.to_string())?;
+        db.save_library_sync_validation_state(true, None, None)
+            .map_err(|error| error.to_string())?;
+
+        let settings = db
+            .get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        assert!(settings.last_checked_at.is_some());
+        assert!(settings.last_reachable_at.is_some());
+        assert_eq!(settings.last_validation_message, None);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("successful_host_action_can_clear_transient_validation_copy failed: {message}");
+    }
+}
+
 fn empty_current_full_backup() -> serde_json::Value {
     let tables = FULL_BACKUP_TABLES
         .iter()

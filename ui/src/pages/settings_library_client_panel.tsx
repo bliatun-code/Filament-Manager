@@ -18,7 +18,10 @@ import type {
 } from "../lib/tauri_client";
 import type { Locale } from "../lib/i18n";
 import { isStableLocalCompanionBaseUrl } from "../lib/companion_url";
-import type { LibrarySyncVisibilityState } from "./settings_library_sync_model";
+import {
+  visibleLibrarySyncValidationMessage,
+  type LibrarySyncVisibilityState,
+} from "./settings_library_sync_model";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -98,6 +101,9 @@ export function SettingsLibraryClientPanel({
 }: SettingsLibraryClientPanelProps) {
   const clientHostUsesStableAddress = isStableLocalCompanionBaseUrl(
     settingsClientHostBaseUrl,
+  );
+  const lastValidationMessage = visibleLibrarySyncValidationMessage(
+    librarySyncSettings?.last_validation_message,
   );
   return (
     <div className="space-y-4">
@@ -306,9 +312,9 @@ export function SettingsLibraryClientPanel({
                 </div>
               ) : null}
 
-              {librarySyncSettings?.last_validation_message ? (
+              {lastValidationMessage ? (
                 <div className="surface-subtle mt-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300">
-                  {librarySyncSettings.last_validation_message}
+                  {lastValidationMessage}
                 </div>
               ) : null}
             </div>
