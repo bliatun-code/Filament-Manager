@@ -29,7 +29,7 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/printer-ams-weight-estimate.jpg"><img src="docs/screenshots/printer-ams-weight-estimate-thumb.jpg" alt="Update weight with a fresh exact-RFID AMS estimate" width="220"></a>
   <a href="docs/screenshots/statistics.jpg"><img src="docs/screenshots/statistics-thumb.jpg" alt="Statistics page with printer and loan usage" width="220"></a>
   <a href="docs/screenshots/filament-details.jpg"><img src="docs/screenshots/filament-details-thumb.jpg" alt="Filament detail panel with weight, ownership and QR tools" width="220"></a>
-  <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with physical size choices" width="220"></a>
+  <a href="docs/screenshots/filament-label.jpg"><img src="docs/screenshots/filament-label-thumb.jpg" alt="Individual filament QR label preview with custom physical dimensions" width="220"></a>
   <a href="docs/screenshots/inventory-label-sheet.jpg"><img src="docs/screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet preview with A4 and US Letter choices" width="220"></a>
   <a href="docs/screenshots/filament-history.jpg"><img src="docs/screenshots/filament-history-thumb.jpg" alt="Filament roll history timeline" width="220"></a>
   <a href="docs/screenshots/settings-general.jpg"><img src="docs/screenshots/settings-general-thumb.jpg" alt="Settings with language and background-operation controls" width="220"></a>
@@ -54,6 +54,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.27.0](RELEASE_NOTES_v0.27.0.md)
 - [v0.26.0](RELEASE_NOTES_v0.26.0.md)
 - [v0.25.0](RELEASE_NOTES_v0.25.0.md)
 - [v0.24.0](RELEASE_NOTES_v0.24.0.md)
@@ -101,11 +102,18 @@ Release notes:
   and public-key pin match again. Recovery is credential-free and never sends
   the access code; the same guarded recovery also remains available manually.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
-- Print-ready QR labels for individual rolls as 300-DPI PNG files, plus matching
-  A4 or US Letter inventory label sheets as PDF files, all saved to Downloads.
+- Print-ready QR labels for individual rolls as 300-DPI PNG files, including
+  validated custom landscape dimensions remembered on the device. Matching A4
+  or US Letter inventory label sheets remain fixed at 60 × 24 mm and are saved
+  as PDF files, all through the Downloads workflow.
 - Local companion/webapp for paired phones, tablets, and workshop browsers;
   long inventory and loan lists use incremental result controls, and library
   reads and writes require an authenticated paired session.
+- Optional desktop background operation on macOS and Windows can hide a close
+  request to the menu bar or system tray and start the app hidden when the
+  current user signs in. Companion, Host/LAN reconciliation, mDNS, and Bambu
+  Live usage monitoring continue while the window is hidden; Open/Quit restore
+  or stop the single running instance through localized native menus.
 - On macOS and Windows, Companion advertises one stable `.local` address through
   mDNS. New browser and desktop pairings and new QR labels use this address, so
   DHCP address changes do not break them. The library-bound name uses the short,
@@ -329,7 +337,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.26.0_universal.dmg \
+  /path/to/Filament\ Manager_0.27.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -381,7 +389,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.26.0`
+- Current version: `0.27.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

@@ -1378,6 +1378,7 @@ export const trTRDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Arka plan ayarları yükleniyor…",
     "backgroundOperationSaving": "Arka plan ayarları kaydediliyor…",
     "backgroundTrayUnavailable": "Menü çubuğu veya sistem tepsisi simgesi bu oturumda kullanılamıyor. Pencere kapatıldığında programdan çıkılır.",
+    "backgroundLaunchUnavailable": "Oturum açıldığında başlatma bu oturumda kullanılamıyor. Bu durum, pencere kapatıldığında arka planda çalışmaya devam etmeye yönelik ayrı ayarı etkilemez.",
     "backgroundTrayOpen": "Filament Manager'ı aç",
     "backgroundTrayQuit": "Filament Manager'dan çık",
     "continueInBackground": "Pencereyi kapattığımda çalışmaya devam et",

@@ -1079,6 +1079,7 @@ export const svSEDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Läser in inställningar för bakgrundskörning…",
     "backgroundOperationSaving": "Sparar inställningar för bakgrundskörning…",
     "backgroundTrayUnavailable": "Ikonen i menyraden eller meddelandefältet är inte tillgänglig under den här sessionen. Om fönstret stängs avslutas programmet.",
+    "backgroundLaunchUnavailable": "Start vid inloggning är inte tillgängligt under den här sessionen. Detta påverkar inte den separata inställningen för att fortsätta i bakgrunden när fönstret stängs.",
     "backgroundTrayOpen": "Öppna Filament Manager",
     "backgroundTrayQuit": "Avsluta Filament Manager",
     "continueInBackground": "Fortsätt köra när jag stänger fönstret",

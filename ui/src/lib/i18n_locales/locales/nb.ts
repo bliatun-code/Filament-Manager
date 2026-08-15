@@ -1226,6 +1226,8 @@ export const nbDictionary: DictionaryNode = {
       backgroundOperationSaving: "Lagrer innstillinger for bakgrunnskjøring…",
       backgroundTrayUnavailable:
         "Ikonet i menylinjen eller systemstatusfeltet er utilgjengelig i denne økten. Når vinduet lukkes, avsluttes programmet.",
+      backgroundLaunchUnavailable:
+        "Oppstart ved innlogging er ikke tilgjengelig i denne økten. Dette påvirker ikke den separate innstillingen for å fortsette å kjøre når vinduet lukkes.",
       backgroundTrayOpen: "Åpne Filament Manager",
       backgroundTrayQuit: "Avslutt Filament Manager",
       continueInBackground: "Fortsett å kjøre når jeg lukker vinduet",

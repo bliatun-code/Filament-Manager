@@ -1278,6 +1278,8 @@ export const esDictionary: DictionaryNode = {
     backgroundOperationSaving: "Guardando los ajustes de segundo plano…",
     backgroundTrayUnavailable:
       "El icono de la barra de menús o de la bandeja del sistema no está disponible en esta sesión. Al cerrar la ventana se cerrará el programa.",
+    backgroundLaunchUnavailable:
+      "El inicio automático al acceder a la cuenta no está disponible en esta sesión. Esto no afecta al ajuste independiente para seguir ejecutándose al cerrar la ventana.",
     backgroundTrayOpen: "Abrir Filament Manager",
     backgroundTrayQuit: "Salir de Filament Manager",
     continueInBackground: "Seguir ejecutándose al cerrar la ventana",

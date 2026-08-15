@@ -41,6 +41,11 @@ and refuses to create an image when that readiness signal is absent.
 The v0.26.0 refresh added the AMS weight-estimate capture on 2026-08-12. It uses
 a separate, time-relative sanitized fixture and is captured only after the
 estimate card has rendered from a fresh exact-RFID observation.
+The v0.27.0 refresh regenerated General settings, the AMS weight-estimate
+dialog, the individual custom-label preview, and the fixed inventory label
+sheet on 2026-08-15. The settings capture isolates desktop lifecycle state from
+the real user profile; the label captures use deterministic synthetic data and
+cover both the new custom-size UI and the shared QR renderer.
 
 ## Quick Preview
 

@@ -1200,6 +1200,8 @@ export const deDictionary: DictionaryNode = {
     backgroundOperationSaving: "Hintergrundeinstellungen werden gespeichert…",
     backgroundTrayUnavailable:
       "Das Symbol in der Menüleiste oder im Infobereich ist in dieser Sitzung nicht verfügbar. Beim Schließen des Fensters wird das Programm beendet.",
+    backgroundLaunchUnavailable:
+      "Der Start bei der Anmeldung ist in dieser Sitzung nicht verfügbar. Dies wirkt sich nicht auf die separate Einstellung zum Weiterlaufen beim Schließen des Fensters aus.",
     backgroundTrayOpen: "Filament Manager öffnen",
     backgroundTrayQuit: "Filament Manager beenden",
     continueInBackground: "Beim Schließen des Fensters weiter ausführen",

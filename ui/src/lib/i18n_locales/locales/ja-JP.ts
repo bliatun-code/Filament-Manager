@@ -1378,6 +1378,7 @@ export const jaJPDictionary: DictionaryNode = {
     "backgroundOperationLoading": "バックグラウンド設定を読み込んでいます…",
     "backgroundOperationSaving": "バックグラウンド設定を保存しています…",
     "backgroundTrayUnavailable": "このセッションでは、メニューバーまたはシステムトレイのアイコンを利用できません。ウィンドウを閉じると、プログラムを終了します。",
+    "backgroundLaunchUnavailable": "このセッションでは、ログイン時の起動を利用できません。個別の「ウィンドウを閉じても実行を続ける」設定には影響しません。",
     "backgroundTrayOpen": "Filament Manager を開く",
     "backgroundTrayQuit": "Filament Manager を終了",
     "continueInBackground": "ウィンドウを閉じても実行を続ける",

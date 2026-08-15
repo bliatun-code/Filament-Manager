@@ -1378,6 +1378,7 @@ export const zhCNDictionary: DictionaryNode = {
     "backgroundOperationLoading": "正在加载后台运行设置…",
     "backgroundOperationSaving": "正在保存后台运行设置…",
     "backgroundTrayUnavailable": "此会话中无法使用菜单栏或系统托盘图标。关闭窗口将退出程序。",
+    "backgroundLaunchUnavailable": "此会话中无法使用登录时启动功能。这不会影响单独的“关闭窗口后继续运行”设置。",
     "backgroundTrayOpen": "打开 Filament Manager",
     "backgroundTrayQuit": "退出 Filament Manager",
     "continueInBackground": "关闭窗口后继续运行",

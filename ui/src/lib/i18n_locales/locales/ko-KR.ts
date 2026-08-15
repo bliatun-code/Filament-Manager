@@ -1378,6 +1378,7 @@ export const koKRDictionary: DictionaryNode = {
     "backgroundOperationLoading": "백그라운드 설정을 불러오는 중…",
     "backgroundOperationSaving": "백그라운드 설정을 저장하는 중…",
     "backgroundTrayUnavailable": "이 세션에서는 메뉴 막대 또는 시스템 트레이 아이콘을 사용할 수 없습니다. 창을 닫으면 프로그램이 종료됩니다.",
+    "backgroundLaunchUnavailable": "이 세션에서는 로그인 시 실행 기능을 사용할 수 없습니다. 별도의 ‘창을 닫아도 계속 실행’ 설정에는 영향을 주지 않습니다.",
     "backgroundTrayOpen": "Filament Manager 열기",
     "backgroundTrayQuit": "Filament Manager 종료",
     "continueInBackground": "창을 닫아도 계속 실행",

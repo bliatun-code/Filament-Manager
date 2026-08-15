@@ -1078,6 +1078,7 @@ export const huHUDictionary: DictionaryNode = {
     "backgroundOperationLoading": "A háttérben futás beállításainak betöltése…",
     "backgroundOperationSaving": "A háttérben futás beállításainak mentése…",
     "backgroundTrayUnavailable": "A menüsáv vagy a rendszertálca ikonja nem érhető el ebben a munkamenetben. Az ablak bezárásakor a program is kilép.",
+    "backgroundLaunchUnavailable": "A bejelentkezéskori indítás nem érhető el ebben a munkamenetben. Ez nem érinti az ablak bezárása utáni háttérben futás külön beállítását.",
     "backgroundTrayOpen": "A Filament Manager megnyitása",
     "backgroundTrayQuit": "Kilépés a Filament Managerből",
     "continueInBackground": "Fusson tovább az ablak bezárása után",

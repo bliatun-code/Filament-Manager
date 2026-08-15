@@ -47,6 +47,7 @@ export type AppUpdateChannel = "DISABLED" | "PUBLIC_METADATA";
 export type DesktopLifecycleSettings = {
   continue_in_background: boolean;
   launch_at_login: boolean;
+  launch_at_login_available: boolean;
   tray_available: boolean;
 };
 

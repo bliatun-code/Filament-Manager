@@ -1735,6 +1735,8 @@ export const itITDictionary: DictionaryNode = {
       "Salvataggio delle impostazioni per il funzionamento in background…",
     backgroundTrayUnavailable:
       "L'icona della barra dei menu o dell'area di notifica non è disponibile in questa sessione. La chiusura della finestra terminerà il programma.",
+    backgroundLaunchUnavailable:
+      "L'avvio all'accesso non è disponibile in questa sessione. Questo non influisce sull'impostazione separata che mantiene il programma in esecuzione alla chiusura della finestra.",
     backgroundTrayOpen: "Apri Filament Manager",
     backgroundTrayQuit: "Esci da Filament Manager",
     continueInBackground: "Continua l'esecuzione quando chiudo la finestra",

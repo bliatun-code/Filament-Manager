@@ -1079,6 +1079,7 @@ export const fiFIDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Ladataan taustatoimintojen asetuksia…",
     "backgroundOperationSaving": "Tallennetaan taustatoimintojen asetuksia…",
     "backgroundTrayUnavailable": "Valikkorivin tai ilmaisinalueen kuvake ei ole käytettävissä tässä istunnossa. Ikkunan sulkeminen lopettaa ohjelman.",
+    "backgroundLaunchUnavailable": "Käynnistys sisäänkirjautumisen yhteydessä ei ole käytettävissä tässä istunnossa. Tämä ei vaikuta erilliseen asetukseen, jolla ohjelma jatkaa toimintaansa taustalla ikkunan sulkemisen jälkeen.",
     "backgroundTrayOpen": "Avaa Filament Manager",
     "backgroundTrayQuit": "Lopeta Filament Manager",
     "continueInBackground": "Jatka toimintaa, kun suljen ikkunan",

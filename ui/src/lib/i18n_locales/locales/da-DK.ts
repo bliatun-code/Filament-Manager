@@ -1079,6 +1079,7 @@ export const daDKDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Indlæser indstillinger for baggrundskørsel…",
     "backgroundOperationSaving": "Gemmer indstillinger for baggrundskørsel…",
     "backgroundTrayUnavailable": "Ikonet på menulinjen eller i meddelelsesområdet er ikke tilgængeligt i denne session. Når vinduet lukkes, afsluttes programmet.",
+    "backgroundLaunchUnavailable": "Start ved login er ikke tilgængelig i denne session. Dette påvirker ikke den separate indstilling for at fortsætte i baggrunden, når vinduet lukkes.",
     "backgroundTrayOpen": "Åbn Filament Manager",
     "backgroundTrayQuit": "Afslut Filament Manager",
     "continueInBackground": "Fortsæt med at køre, når jeg lukker vinduet",

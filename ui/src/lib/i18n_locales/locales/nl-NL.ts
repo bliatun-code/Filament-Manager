@@ -1378,6 +1378,7 @@ export const nlNLDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Achtergrondinstellingen laden…",
     "backgroundOperationSaving": "Achtergrondinstellingen opslaan…",
     "backgroundTrayUnavailable": "Het pictogram in de menubalk of het systeemvak is niet beschikbaar in deze sessie. Als je het venster sluit, wordt het programma afgesloten.",
+    "backgroundLaunchUnavailable": "Starten bij aanmelden is in deze sessie niet beschikbaar. Dit heeft geen invloed op de afzonderlijke instelling om bij het sluiten op de achtergrond actief te blijven.",
     "backgroundTrayOpen": "Filament Manager openen",
     "backgroundTrayQuit": "Filament Manager afsluiten",
     "continueInBackground": "Op de achtergrond actief blijven wanneer ik het venster sluit",

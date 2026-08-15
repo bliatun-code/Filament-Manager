@@ -1378,6 +1378,7 @@ export const csCZDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Načítání nastavení běhu na pozadí…",
     "backgroundOperationSaving": "Ukládání nastavení běhu na pozadí…",
     "backgroundTrayUnavailable": "Ikona na řádku nabídek nebo v oznamovací oblasti není v této relaci dostupná. Zavřením okna se program ukončí.",
+    "backgroundLaunchUnavailable": "Spouštění po přihlášení není v této relaci dostupné. Samostatné nastavení pro pokračování na pozadí po zavření tím není ovlivněno.",
     "backgroundTrayOpen": "Otevřít Filament Manager",
     "backgroundTrayQuit": "Ukončit Filament Manager",
     "continueInBackground": "Pokračovat v běhu po zavření okna",

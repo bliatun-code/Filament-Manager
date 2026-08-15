@@ -1217,6 +1217,8 @@ export const enDictionary: DictionaryNode = {
         "Keep Companion, host access and Bambu usage monitoring available when the main window is closed.",
       backgroundOperationLoading: "Loading background settings…",
       backgroundOperationSaving: "Saving background settings…",
+      backgroundLaunchUnavailable:
+        "Launch at login is unavailable in this session. This does not affect the separate close-to-tray setting.",
       backgroundTrayUnavailable:
         "The menu bar or system tray icon is unavailable in this session. Closing the window will quit the program.",
       backgroundTrayOpen: "Open Filament Manager",

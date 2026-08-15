@@ -39,6 +39,12 @@
     },
     {
       "surface": "desktop",
+      "key": "settings.backgroundLaunchUnavailable",
+      "meaning": "Warning shown when the operating system's launch-at-login or autostart state cannot be read for the current session; the separate close-to-tray preference remains available and independent.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.backgroundMoveToApplicationsError",
       "meaning": "macOS guidance shown when launch at login cannot use an app running from a disk image or App Translocation path; Applications is the localized system Applications folder name.",
       "screenshot": "docs/screenshots/settings-general.jpg"

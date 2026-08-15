@@ -1378,6 +1378,7 @@ export const ukUADictionary: DictionaryNode = {
     "backgroundOperationLoading": "Завантаження налаштувань фонового режиму…",
     "backgroundOperationSaving": "Збереження налаштувань фонового режиму…",
     "backgroundTrayUnavailable": "Піктограма в рядку меню або області сповіщень недоступна в цьому сеансі. Після закриття вікна програма завершить роботу.",
+    "backgroundLaunchUnavailable": "Запуск після входу недоступний у цьому сеансі. Це не впливає на окреме налаштування «Продовжувати роботу після закриття вікна».",
     "backgroundTrayOpen": "Відкрити Filament Manager",
     "backgroundTrayQuit": "Завершити роботу Filament Manager",
     "continueInBackground": "Продовжувати роботу після закриття вікна",

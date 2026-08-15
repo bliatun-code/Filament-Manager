@@ -1378,6 +1378,7 @@ export const zhTWDictionary: DictionaryNode = {
     "backgroundOperationLoading": "正在載入背景執行設定…",
     "backgroundOperationSaving": "正在儲存背景執行設定…",
     "backgroundTrayUnavailable": "此工作階段無法使用選單列或系統匣圖示。關閉視窗將結束程式。",
+    "backgroundLaunchUnavailable": "此工作階段無法使用登入時啟動功能。這不會影響獨立的「關閉視窗後繼續執行」設定。",
     "backgroundTrayOpen": "開啟 Filament Manager",
     "backgroundTrayQuit": "結束 Filament Manager",
     "continueInBackground": "關閉視窗後繼續執行",

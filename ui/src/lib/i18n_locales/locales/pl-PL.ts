@@ -1378,6 +1378,7 @@ export const plPLDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Wczytywanie ustawień działania w tle…",
     "backgroundOperationSaving": "Zapisywanie ustawień działania w tle…",
     "backgroundTrayUnavailable": "Ikona na pasku menu lub w zasobniku systemowym jest niedostępna w tej sesji. Zamknięcie okna spowoduje zakończenie programu.",
+    "backgroundLaunchUnavailable": "Uruchamianie po zalogowaniu jest niedostępne w tej sesji. Nie ma to wpływu na osobne ustawienie kontynuowania działania po zamknięciu okna.",
     "backgroundTrayOpen": "Otwórz Filament Manager",
     "backgroundTrayQuit": "Zakończ Filament Manager",
     "continueInBackground": "Kontynuuj działanie po zamknięciu okna",

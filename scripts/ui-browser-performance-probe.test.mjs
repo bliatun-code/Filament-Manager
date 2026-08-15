@@ -16,6 +16,12 @@ function fixture() {
       { printer_id: "printer-a", material: "PLA", used_grams: 10 },
       { printer_id: "printer-b", material: "PETG", used_grams: 20 },
     ],
+    desktopLifecycleSettings: {
+      continue_in_background: false,
+      launch_at_login: false,
+      launch_at_login_available: true,
+      tray_available: true,
+    },
     librarySyncSettings: { mode: "STANDALONE" },
     loanRows: [
       {
@@ -95,6 +101,39 @@ test("browser performance page order covers the primary data-heavy transitions a
 
 test("browser performance invoke adapter serves bounded data-backed pages", () => {
   const data = fixture();
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(
+      data,
+      "get_desktop_lifecycle_settings",
+    ),
+    data.desktopLifecycleSettings,
+  );
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "set_continue_in_background", {
+      enabled: true,
+    }),
+    {
+      ...data.desktopLifecycleSettings,
+      continue_in_background: true,
+    },
+  );
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "set_launch_at_login", {
+      enabled: true,
+    }),
+    {
+      ...data.desktopLifecycleSettings,
+      launch_at_login: true,
+    },
+  );
+  assert.equal(
+    resolveUiBrowserPerformanceInvoke(
+      data,
+      "set_desktop_tray_menu_labels",
+      { openLabel: "Open", quitLabel: "Quit" },
+    ),
+    null,
+  );
   assert.deepEqual(
     resolveUiBrowserPerformanceInvoke(data, "list_spools", {
       limit: 1,

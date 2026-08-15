@@ -182,6 +182,18 @@ export function SettingsGeneralTab({
                     )}
                   </p>
                 ) : null}
+                {!desktopLifecycleSettings.launch_at_login_available ? (
+                  <p
+                    id="settings-background-launch-unavailable"
+                    className="rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100"
+                    role="status"
+                  >
+                    {t(
+                      "settings.backgroundLaunchUnavailable",
+                      "Launch at login is unavailable in this session. This does not affect the separate close-to-tray setting.",
+                    )}
+                  </p>
+                ) : null}
                 <label className="surface-subtle flex items-start gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                   <input
                     className="mt-0.5"
@@ -219,7 +231,17 @@ export function SettingsGeneralTab({
                     type="checkbox"
                     checked={desktopLifecycleSettings.launch_at_login}
                     onChange={(event) => void onLaunchAtLogin(event.target.checked)}
-                    disabled={busy || desktopLifecycleLoading || desktopLifecycleUpdating}
+                    disabled={
+                      busy ||
+                      desktopLifecycleLoading ||
+                      desktopLifecycleUpdating ||
+                      !desktopLifecycleSettings.launch_at_login_available
+                    }
+                    aria-describedby={
+                      desktopLifecycleSettings.launch_at_login_available
+                        ? undefined
+                        : "settings-background-launch-unavailable"
+                    }
                   />
                   <span>
                     {t("settings.launchAtLogin", "Start in the background when I sign in")}

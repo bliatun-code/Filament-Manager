@@ -91,6 +91,7 @@ test("background lifecycle settings are localized for all 21 selectable locales"
     "backgroundOperationHint",
     "backgroundOperationLoading",
     "backgroundOperationSaving",
+    "backgroundLaunchUnavailable",
     "backgroundTrayUnavailable",
     "backgroundTrayOpen",
     "backgroundTrayQuit",

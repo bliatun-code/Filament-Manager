@@ -50,6 +50,7 @@ const defaultDesktopLifecycle: DesktopLifecycleRenderProps = {
   desktopLifecycleSettings: {
     continue_in_background: false,
     launch_at_login: false,
+    launch_at_login_available: true,
     tray_available: true,
   },
   desktopLifecycleUpdateError: null,
@@ -219,6 +220,7 @@ test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", (
     desktopLifecycleSettings: {
       continue_in_background: false,
       launch_at_login: false,
+      launch_at_login_available: true,
       tray_available: false,
     },
   });
@@ -236,6 +238,32 @@ test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", (
     /aria-describedby="settings-background-tray-unavailable"/,
   );
   assert.doesNotMatch(checkboxes[1] ?? "", /disabled=""/);
+});
+
+test("SettingsGeneralTab isolates unavailable launch-at-login state", () => {
+  const html = renderGeneralTab("en", false, {
+    desktopLifecycleSettings: {
+      continue_in_background: true,
+      launch_at_login: false,
+      launch_at_login_available: false,
+      tray_available: true,
+    },
+  });
+  const backgroundStart = html.indexOf('id="settings-background-operation"');
+  const backgroundEnd = html.indexOf("Program", backgroundStart);
+  const backgroundHtml = html.slice(backgroundStart, backgroundEnd);
+  const checkboxes = backgroundHtml.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? [];
+
+  assert.match(backgroundHtml, /Launch at login is unavailable in this session/);
+  assert.match(backgroundHtml, /does not affect the separate close-to-tray setting/);
+  assert.equal(checkboxes.length, 2);
+  assert.doesNotMatch(checkboxes[0] ?? "", /disabled=""/);
+  assert.match(checkboxes[0] ?? "", /checked=""/);
+  assert.match(checkboxes[1] ?? "", /disabled=""/);
+  assert.match(
+    checkboxes[1] ?? "",
+    /aria-describedby="settings-background-launch-unavailable"/,
+  );
 });
 
 test("SettingsGeneralTab opens a paper-aware inventory label sheet preview", () => {

@@ -1237,6 +1237,8 @@ export const frDictionary: DictionaryNode = {
     backgroundOperationSaving: "Enregistrement des réglages d’arrière-plan…",
     backgroundTrayUnavailable:
       "L’icône de la barre des menus ou de la zone de notification n’est pas disponible pendant cette session. Fermer la fenêtre entraînera l’arrêt du programme.",
+    backgroundLaunchUnavailable:
+      "Le démarrage à l’ouverture de session n’est pas disponible pendant cette session. Cela n’affecte pas le réglage distinct permettant de continuer l’exécution après la fermeture de la fenêtre.",
     backgroundTrayOpen: "Ouvrir Filament Manager",
     backgroundTrayQuit: "Quitter Filament Manager",
     continueInBackground: "Continuer l’exécution lorsque je ferme la fenêtre",

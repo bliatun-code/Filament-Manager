@@ -43,6 +43,7 @@ struct PersistedDesktopPreferences {
 pub struct DesktopLifecycleSettings {
     continue_in_background: bool,
     launch_at_login: bool,
+    launch_at_login_available: bool,
     tray_available: bool,
 }
 
@@ -622,26 +623,30 @@ fn visual_qa_value_enabled(value: Option<&str>) -> bool {
 
 fn settings_with_launch_status(
     state: &DesktopLifecycleState,
-    launch_at_login: bool,
+    launch_at_login: Option<bool>,
 ) -> DesktopLifecycleSettings {
     DesktopLifecycleSettings {
         continue_in_background: !state.visual_qa
             && state.continue_in_background.load(Ordering::Acquire),
-        launch_at_login: !state.visual_qa && launch_at_login,
+        launch_at_login: !state.visual_qa && launch_at_login.unwrap_or(false),
+        launch_at_login_available: launch_at_login.is_some(),
         tray_available: state.tray_available.load(Ordering::Acquire),
     }
 }
 
-fn current_settings(
-    app: &AppHandle,
-    state: &DesktopLifecycleState,
-) -> Result<DesktopLifecycleSettings, String> {
+fn current_settings(app: &AppHandle, state: &DesktopLifecycleState) -> DesktopLifecycleSettings {
     let launch_at_login = if state.visual_qa {
-        false
+        Some(false)
     } else {
-        launch_at_login_enabled(app)?
+        match launch_at_login_enabled(app) {
+            Ok(enabled) => Some(enabled),
+            Err(error) => {
+                eprintln!("Launch-at-login status is unavailable: {error}");
+                None
+            }
+        }
     };
-    Ok(settings_with_launch_status(state, launch_at_login))
+    settings_with_launch_status(state, launch_at_login)
 }
 
 #[tauri::command]
@@ -649,7 +654,7 @@ pub fn get_desktop_lifecycle_settings(
     app: AppHandle,
     state: State<'_, DesktopLifecycleState>,
 ) -> Result<DesktopLifecycleSettings, String> {
-    current_settings(&app, state.inner())
+    Ok(current_settings(&app, state.inner()))
 }
 
 #[tauri::command]
@@ -659,12 +664,11 @@ pub fn set_continue_in_background(
     enabled: bool,
 ) -> Result<DesktopLifecycleSettings, String> {
     if state.visual_qa {
-        return Ok(settings_with_launch_status(state.inner(), false));
+        return Ok(settings_with_launch_status(state.inner(), Some(false)));
     }
     state.ensure_background_mode_available(enabled)?;
-    let launch_at_login = launch_at_login_enabled(&app)?;
     state.set_continue_in_background(enabled)?;
-    Ok(settings_with_launch_status(state.inner(), launch_at_login))
+    Ok(current_settings(&app, state.inner()))
 }
 
 #[tauri::command]
@@ -674,10 +678,10 @@ pub fn set_launch_at_login(
     enabled: bool,
 ) -> Result<DesktopLifecycleSettings, String> {
     if state.visual_qa {
-        return Ok(settings_with_launch_status(state.inner(), false));
+        return Ok(settings_with_launch_status(state.inner(), Some(false)));
     }
     update_launch_at_login(&app, enabled)?;
-    Ok(settings_with_launch_status(state.inner(), enabled))
+    Ok(settings_with_launch_status(state.inner(), Some(enabled)))
 }
 
 #[tauri::command]
@@ -957,10 +961,11 @@ mod tests {
         let state = DesktopLifecycleState::load(path.clone(), true);
         state.tray_available.store(true, Ordering::Release);
         assert_eq!(
-            settings_with_launch_status(&state, true),
+            settings_with_launch_status(&state, Some(true)),
             DesktopLifecycleSettings {
                 continue_in_background: false,
                 launch_at_login: false,
+                launch_at_login_available: true,
                 tray_available: true,
             }
         );
@@ -973,6 +978,28 @@ mod tests {
             original
         );
         fs::remove_dir_all(test_directory).expect("test directory should be removed");
+    }
+
+    #[test]
+    fn unavailable_launch_status_keeps_close_to_tray_settings_readable() {
+        let test_directory = std::env::temp_dir().join(format!(
+            "filament-manager-launch-status-unavailable-{}-{:?}",
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let state = DesktopLifecycleState::load(test_directory.join(PREFERENCES_FILE_NAME), false);
+        state.continue_in_background.store(true, Ordering::Release);
+        state.tray_available.store(true, Ordering::Release);
+
+        assert_eq!(
+            settings_with_launch_status(&state, None),
+            DesktopLifecycleSettings {
+                continue_in_background: true,
+                launch_at_login: false,
+                launch_at_login_available: false,
+                tray_available: true,
+            }
+        );
     }
 
     #[test]

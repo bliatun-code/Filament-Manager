@@ -1718,6 +1718,8 @@ export const ptBRDictionary: DictionaryNode = {
     backgroundOperationSaving: "Salvando configurações de segundo plano…",
     backgroundTrayUnavailable:
       "O ícone da barra de menus ou da bandeja do sistema não está disponível nesta sessão. Fechar a janela encerrará o programa.",
+    backgroundLaunchUnavailable:
+      "A inicialização ao fazer login não está disponível nesta sessão. Isso não afeta a configuração separada para continuar em execução ao fechar a janela.",
     backgroundTrayOpen: "Abrir Filament Manager",
     backgroundTrayQuit: "Sair do Filament Manager",
     continueInBackground: "Continuar em execução ao fechar a janela",

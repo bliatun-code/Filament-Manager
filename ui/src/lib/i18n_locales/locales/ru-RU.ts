@@ -1079,6 +1079,7 @@ export const ruRUDictionary: DictionaryNode = {
     "backgroundOperationLoading": "Загрузка настроек фонового режима…",
     "backgroundOperationSaving": "Сохранение настроек фонового режима…",
     "backgroundTrayUnavailable": "Значок в строке меню или области уведомлений недоступен в этом сеансе. При закрытии окна программа завершит работу.",
+    "backgroundLaunchUnavailable": "Запуск при входе в систему недоступен в этом сеансе. Это не влияет на отдельную настройку «Продолжать работу после закрытия окна».",
     "backgroundTrayOpen": "Открыть Filament Manager",
     "backgroundTrayQuit": "Выйти из Filament Manager",
     "continueInBackground": "Продолжать работу после закрытия окна",
