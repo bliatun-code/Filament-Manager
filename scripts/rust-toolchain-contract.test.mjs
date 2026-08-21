@@ -81,7 +81,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
   const setupSteps = workflows.flatMap(([name, workflow]) =>
     rustSetupSteps(workflow).map((step) => [name, step]),
   );
-  assert.equal(setupSteps.length, 6);
+  assert.equal(setupSteps.length, 7);
 
   for (const [name, step] of setupSteps) {
     assert.match(
