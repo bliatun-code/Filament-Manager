@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityTimeline,
   BadgePanel,
@@ -6,12 +6,20 @@ import {
   UsageChart,
 } from "../components/dashboard_widgets";
 import { DashboardOnboardingChecklist } from "../components/dashboard_onboarding_checklist";
+import { DashboardActionPanel } from "../components/dashboard_action_panel";
 import { PageHeaderButton } from "../components/page_header_button";
 import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import {
   buildDashboardBadges,
   buildDashboardCompanionPresentation,
 } from "../lib/dashboard_model";
+import { commandErrorText } from "../lib/error_text";
+import {
+  createDashboardLowStockPurchaseCoordinator,
+  DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED,
+  DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
+} from "../lib/dashboard_low_stock_purchase";
+import type { DashboardLowStockAction } from "../lib/dashboard_action_model";
 import {
   buildDashboardOnboardingState,
   dismissDashboardOnboarding,
@@ -44,6 +52,10 @@ type DashboardPageProps = {
   onOpenMaintenanceSettings?: () => void;
   onOpenPrinters?: () => void;
   onOpenBambuLiveSettings?: (printerId: string) => void;
+  onOpenPurchases?: (
+    status: "WISHLIST" | "ON_ORDER",
+    notice?: "CREATED" | "REUSED",
+  ) => void;
 };
 
 export default function DashboardPage({
@@ -54,11 +66,12 @@ export default function DashboardPage({
   onOpenMaintenanceSettings,
   onOpenPrinters,
   onOpenBambuLiveSettings,
+  onOpenPurchases,
 }: DashboardPageProps) {
   const { t, locale } = useI18n();
   const {
     activity,
-    bambuLiveAttention,
+    actionItems,
     clientHostCompanionTone,
     clientHostDisplayName,
     clientHostNeedsRepair,
@@ -104,6 +117,9 @@ export default function DashboardPage({
     : usageTotal12m;
   const forceOnboardingVisible =
     desktopVisualQaScenario === "dashboard-onboarding";
+  const hasBambuLiveAction = actionItems.some(
+    (item) => item.kind === "BAMBU_TRUST",
+  );
   const consumptionPanelRef = useRef<HTMLDivElement>(null);
   const consumptionPanelPositionedRef = useRef(false);
   const dashboardAttentionReadinessSignaledRef = useRef(false);
@@ -113,7 +129,7 @@ export default function DashboardPage({
       desktopVisualQaScenario !== "dashboard-overview" ||
       loading ||
       !tauri ||
-      bambuLiveAttention.length === 0 ||
+      !hasBambuLiveAction ||
       dashboardAttentionReadinessSignaledRef.current
     ) {
       return;
@@ -131,7 +147,7 @@ export default function DashboardPage({
       });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [bambuLiveAttention.length, desktopVisualQaScenario, loading, tauri]);
+  }, [desktopVisualQaScenario, hasBambuLiveAction, loading, tauri]);
   useEffect(() => {
     if (
       desktopVisualQaScenario !== "dashboard-consumption" ||
@@ -231,6 +247,73 @@ export default function DashboardPage({
   );
   const showOnboarding =
     setupDataAvailable && (forceOnboardingVisible || !onboardingDismissed);
+  const lowStockPurchaseCoordinator = useMemo(
+    () => createDashboardLowStockPurchaseCoordinator(),
+    [],
+  );
+  const [actionBusyIds, setActionBusyIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const handleQueueLowStock = useCallback(
+    async (item: DashboardLowStockAction) => {
+      setActionBusyIds((current) => new Set(current).add(item.id));
+      setActionError(null);
+      setActionMessage(null);
+      try {
+        const result = await lowStockPurchaseCoordinator.enqueue(item.candidate);
+        if (result.kind === "CREATED") {
+          await refreshDashboard();
+          setActionMessage(
+            t(
+              "dashboard.actionPurchaseAdded",
+              "Added to the wishlist. Opening Purchases.",
+            ),
+          );
+        } else {
+          setActionMessage(
+            t(
+              "dashboard.actionPurchaseReused",
+              "An open purchase already exists. Reusing it and opening Purchases.",
+            ),
+          );
+        }
+        onOpenPurchases?.(result.status, result.kind);
+      } catch (purchaseError) {
+        console.error(purchaseError);
+        const configurationMessage =
+          purchaseError instanceof Error &&
+          purchaseError.message === DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED
+            ? t(
+                "inventory.clientWriteRequiresPairing",
+                "Pair this desktop client with the host before running protected sync actions.",
+              )
+            : purchaseError instanceof Error &&
+                purchaseError.message === DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED
+              ? t(
+                  "inventory.clientHostUnavailable",
+                  "Host connection details are missing for this client device.",
+                )
+              : null;
+        setActionError(
+          configurationMessage ??
+            commandErrorText(
+              purchaseError,
+              t("wishlist.error.add", "Failed to add wishlist item."),
+              t,
+            ),
+        );
+      } finally {
+        setActionBusyIds((current) => {
+          const next = new Set(current);
+          next.delete(item.id);
+          return next;
+        });
+      }
+    },
+    [lowStockPurchaseCoordinator, onOpenPurchases, refreshDashboard, t],
+  );
 
   return (
     <div className="page-shell">
@@ -274,41 +357,17 @@ export default function DashboardPage({
         />
       ) : null}
 
-      {bambuLiveAttention.length > 0 ? (
-        <div
-          className="mt-5 space-y-2"
-          data-testid="dashboard-bambu-live-attention"
-          role="status"
-        >
-          {bambuLiveAttention.map((attention) => (
-            <button
-              key={attention.printerId}
-              type="button"
-              onClick={() => onOpenBambuLiveSettings?.(attention.printerId)}
-              className="flex w-full items-center justify-between gap-4 rounded-xl border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-left shadow-sm transition hover:border-amber-400 hover:bg-amber-100/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-amber-700/70 dark:bg-amber-950/35 dark:hover:border-amber-600 dark:hover:bg-amber-950/55 dark:focus-visible:ring-offset-slate-950"
-            >
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-amber-950 dark:text-amber-100">
-                  {t(
-                    "dashboard.bambuLiveAttentionTitle",
-                    "Bambu Live needs attention",
-                  )}
-                </span>
-                <span className="mt-0.5 block text-sm text-amber-800 dark:text-amber-200/90">
-                  {t(
-                    "dashboard.bambuLiveAttentionBody",
-                    "{name} is no longer Live until you review and trust the printer identity.",
-                    { name: attention.printerName },
-                  )}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm font-semibold text-amber-900 dark:text-amber-100">
-                {t("dashboard.openBambuLiveSettings", "Open Live settings")} →
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <DashboardActionPanel
+        busyIds={actionBusyIds}
+        error={actionError}
+        items={actionItems}
+        message={actionMessage}
+        onOpenBambuLiveSettings={onOpenBambuLiveSettings}
+        onOpenLoans={() => onNavigate?.("loans")}
+        onOpenLowStock={onOpenLowStock}
+        onOpenPurchases={onOpenPurchases}
+        onQueueLowStock={(item) => void handleQueueLowStock(item)}
+      />
 
       {showOnboarding ? (
         <DashboardOnboardingChecklist

@@ -245,9 +245,36 @@ export default function InventoryPage({
     } else if (navigationIntent.kind === "ADD_SPOOL") {
       setActiveWorkspaceView("STOCK");
       openAddModal();
+    } else if (navigationIntent.kind === "PURCHASES") {
+      resetPurchaseQueue(navigationIntent.status);
+      openPurchaseQueue();
+      if (navigationIntent.notice === "CREATED") {
+        setInfoMessage(
+          t(
+            "dashboard.actionPurchaseAdded",
+            "Added to the wishlist. Opening Purchases.",
+          ),
+        );
+      } else if (navigationIntent.notice === "REUSED") {
+        setInfoMessage(
+          t(
+            "dashboard.actionPurchaseReused",
+            "An open purchase already exists. Reusing it and opening Purchases.",
+          ),
+        );
+      }
     }
     onConsumeNavigationIntent?.();
-  }, [navigationIntent, onConsumeNavigationIntent, openAddModal, showLowStockList]);
+  }, [
+    navigationIntent,
+    onConsumeNavigationIntent,
+    openAddModal,
+    openPurchaseQueue,
+    resetPurchaseQueue,
+    setInfoMessage,
+    showLowStockList,
+    t,
+  ]);
 
   useInventoryDetailVisualFixture({
     completeDataLoad,

@@ -260,6 +260,14 @@ export default function App() {
                 seq: Date.now(),
               });
             }}
+            onOpenPurchases={(status, notice) => {
+              navigateToPage("inventory", {
+                kind: "PURCHASES",
+                notice,
+                seq: Date.now(),
+                status,
+              });
+            }}
           />
         );
       case "inventory":

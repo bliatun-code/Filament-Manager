@@ -22,11 +22,16 @@ import {
   type DashboardBambuLiveAttention,
 } from "./dashboard_bambu_live_attention";
 import {
+  buildDashboardActionItems,
+  type DashboardActionItem,
+} from "./dashboard_action_model";
+import {
   buildDashboardDerivedState,
   type DashboardDerivedState,
 } from "./dashboard_model";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
 import { normalizeActiveLoanRow, normalizeLoanDetailsRow } from "./loan_row_normalization";
+import { localCalendarDate } from "./loan_due_state";
 import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { loadAllSpoolRows } from "./spool_data_source";
 import { resolveClientHostTarget } from "./host_write_target";
@@ -50,6 +55,7 @@ export type DashboardCompanionTone = DashboardHostConnectionTone;
 export type DashboardSyncSource = "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
+  actionItems: DashboardActionItem[];
   bambuLiveAttention: DashboardBambuLiveAttention[];
   derived: DashboardDerivedState;
   syncMode: string;
@@ -164,9 +170,11 @@ export async function loadDashboardData(
   params: {
     clientCacheOnly?: boolean;
     locale?: NumberDisplayLocale;
+    now?: Date;
     previousClientHostConnectionState?: DashboardHostConnectionState;
     previousClientHostNeedsRepair: boolean;
     t: TranslateFn;
+    today?: string;
   },
   dependencies: DashboardDataDependencies = {},
 ): Promise<DashboardDataLoadResult> {
@@ -184,6 +192,8 @@ export async function loadDashboardData(
   const listLocalLoans = dependencies.listLocalLoans ?? listActiveSpoolLoans;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
   const onLoadError = dependencies.onLoadError ?? console.error;
+  const actionNow = params.now ?? new Date();
+  const actionToday = params.today ?? localCalendarDate(actionNow);
 
   const [syncSettings, trustedLan, printerSettings] = await Promise.all([
     loadSyncSettings().catch((error) => {
@@ -380,13 +390,22 @@ export async function loadDashboardData(
       syncSettings?.cached_loans?.captured_at,
       syncSettings?.cached_wishlist?.captured_at,
     );
+    const normalizedClientLoans = (clientLoanRows ?? []).map(normalizeLoanDetailsRow);
     return {
+      actionItems: buildDashboardActionItems({
+        bambuLiveAttention: [],
+        loans: normalizedClientLoans,
+        now: actionNow,
+        spoolRows: normalizedClientSpoolRows ?? [],
+        today: actionToday,
+        wishlist: clientWishlistRows,
+      }),
       bambuLiveAttention: [],
       derived: buildDashboardDerivedState({
         overview: clientOverview ?? emptyInventoryOverview(),
         printers: clientPrinterRows ?? [],
         spoolRows: normalizedClientSpoolRows ?? [],
-        loans: (clientLoanRows ?? []).map(normalizeLoanDetailsRow),
+        loans: normalizedClientLoans,
         wishlist: clientWishlistRows,
         locale: params.locale,
         t: params.t,
@@ -420,14 +439,24 @@ export async function loadDashboardData(
     listLocalWishlist(500),
   ]);
   const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
+  const normalizedLoans = loans.map(normalizeActiveLoanRow);
+  const bambuLiveAttention = buildDashboardBambuLiveAttention(printerSettings);
 
   return {
-    bambuLiveAttention: buildDashboardBambuLiveAttention(printerSettings),
+    actionItems: buildDashboardActionItems({
+      bambuLiveAttention,
+      loans: normalizedLoans,
+      now: actionNow,
+      spoolRows,
+      today: actionToday,
+      wishlist,
+    }),
+    bambuLiveAttention,
     derived: buildDashboardDerivedState({
       overview,
       printers,
       spoolRows,
-      loans: loans.map(normalizeActiveLoanRow),
+      loans: normalizedLoans,
       wishlist,
       locale: params.locale,
       t: params.t,

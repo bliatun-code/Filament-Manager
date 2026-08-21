@@ -29,6 +29,12 @@ export type InventoryNavigationIntent =
       kind: "ADD_SPOOL";
       seq: number;
     }
+  | {
+      kind: "PURCHASES";
+      notice?: "CREATED" | "REUSED";
+      seq: number;
+      status: "WISHLIST" | "ON_ORDER";
+    }
   | null;
 
 export function resolveInitialPageFromSearch(

@@ -21,6 +21,16 @@ function populatedSnapshot(): DashboardPageSnapshot {
         tone: "emerald",
       },
     ],
+    actionItems: [
+      {
+        age: { basis: "DETECTED_NOW", elapsedDays: null, value: null },
+        id: "bambu-trust:printer-1",
+        kind: "BAMBU_TRUST",
+        printerId: "printer-1",
+        printerName: "Workshop X1C",
+        trustState: "UNPAIRED",
+      },
+    ],
     bambuLiveAttention: [
       {
         printerId: "printer-1",
@@ -121,6 +131,7 @@ test("dashboard snapshot restores the complete last-good view for the same local
   assert.equal(restored?.ownershipOnHand.total, 6);
   assert.equal(restored?.health.score, 92);
   assert.equal(restored?.clientHostDisplayName, "Workshop");
+  assert.equal(restored?.actionItems?.[0]?.id, "bambu-trust:printer-1");
   assert.equal(restored?.bambuLiveAttention?.[0]?.printerId, "printer-1");
 });
 
@@ -131,6 +142,7 @@ test("dashboard snapshot safely upgrades an older cached view without annual usa
   delete legacySnapshot.usageMonths;
   delete legacySnapshot.usageTotal12m;
   delete legacySnapshot.usageAvailable;
+  delete legacySnapshot.actionItems;
 
   writeDashboardPageSnapshot(legacySnapshot);
 
@@ -138,6 +150,7 @@ test("dashboard snapshot safely upgrades an older cached view without annual usa
   assert.deepEqual(restored?.usageMonths, []);
   assert.equal(restored?.usageAvailable, false);
   assert.equal(restored?.usageTotal12m, 0);
+  assert.deepEqual(restored?.actionItems, []);
 });
 
 test("dashboard snapshot is locale-keyed and isolated from caller mutation", () => {

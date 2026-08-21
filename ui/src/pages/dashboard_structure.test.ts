@@ -6,9 +6,17 @@ const source = readFileSync(
   new URL("./dashboard.tsx", import.meta.url),
   "utf8",
 );
+const actionPanelSource = readFileSync(
+  new URL("../components/dashboard_action_panel.tsx", import.meta.url),
+  "utf8",
+);
 const appSource = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
 const inventorySource = readFileSync(
   new URL("./inventory.tsx", import.meta.url),
+  "utf8",
+);
+const dashboardDataHookSource = readFileSync(
+  new URL("./use_dashboard_page_data.ts", import.meta.url),
   "utf8",
 );
 const settingsSource = readFileSync(
@@ -43,8 +51,11 @@ test("empty dashboard action opens the real add-spool workflow", () => {
 });
 
 test("Bambu Live attention opens the affected printer in Settings", () => {
-  assert.match(source, /bambuLiveAttention\.map/);
-  assert.match(source, /onOpenBambuLiveSettings\?\.\(attention\.printerId\)/);
+  assert.match(source, /<DashboardActionPanel/);
+  assert.match(
+    actionPanelSource,
+    /onOpenBambuLiveSettings\?\.\(item\.printerId\)/,
+  );
   assert.match(appSource, /setSettingsInitialTab\("PRINTERS"\)/);
   assert.match(appSource, /setSettingsInitialPrinterId\(printerId\)/);
   assert.match(settingsSource, /initialPrinterId/);
@@ -74,7 +85,23 @@ test("annual consumption visual QA scrolls the real populated panel into view", 
 
 test("dashboard overview visual QA waits for the rendered Bambu Live attention action", () => {
   assert.match(source, /desktopVisualQaScenario !== "dashboard-overview"/);
-  assert.match(source, /bambuLiveAttention\.length === 0/);
+  assert.match(source, /item\.kind === "BAMBU_TRUST"/);
+  assert.match(source, /!hasBambuLiveAction/);
   assert.match(source, /DESKTOP_VISUAL_QA_DASHBOARD_ATTENTION_READINESS_TOKEN/);
-  assert.match(source, /data-testid="dashboard-bambu-live-attention"/);
+  assert.match(actionPanelSource, /data-testid="dashboard-action-required"/);
+});
+
+test("dashboard purchase actions use an explicit guard-preserving inventory intent", () => {
+  assert.match(source, /onOpenPurchases=\{onOpenPurchases\}/);
+  assert.match(appSource, /kind: "PURCHASES"/);
+  assert.match(inventorySource, /navigationIntent\.kind === "PURCHASES"/);
+  assert.match(inventorySource, /resetPurchaseQueue\(navigationIntent\.status\)/);
+  assert.match(inventorySource, /openPurchaseQueue\(\)/);
+  assert.match(inventorySource, /navigationIntent\.notice === "REUSED"/);
+  assert.match(inventorySource, /dashboard\.actionPurchaseReused/);
+  assert.match(source, /await refreshDashboard\(\)/);
+  assert.match(
+    dashboardDataHookSource,
+    /LIBRARY_REVISION_DOMAINS\.wishlist/,
+  );
 });

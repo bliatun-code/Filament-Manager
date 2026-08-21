@@ -12,6 +12,7 @@ import {
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
 import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
+import type { DashboardActionItem } from "../lib/dashboard_action_model";
 import {
   createDashboardHostConnectionState,
   isDashboardHostFailureInGrace,
@@ -215,6 +216,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const [activity, setActivity] = useState<ActivityItem[]>(
     () => initialSnapshot?.activity ?? createEmptyActivity(t),
   );
+  const [actionItems, setActionItems] = useState<DashboardActionItem[]>(
+    () => initialSnapshot?.actionItems ?? [],
+  );
   const [bambuLiveAttention, setBambuLiveAttention] = useState<
     DashboardBambuLiveAttention[]
   >(() => initialSnapshot?.bambuLiveAttention ?? []);
@@ -369,6 +373,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         const cacheAccepted = writeDashboardPageSnapshot(
           {
             activity: loaded.derived.activity,
+            actionItems: loaded.actionItems,
             bambuLiveAttention: loaded.bambuLiveAttention,
             clientHostCompanionTone: loaded.clientHostCompanionTone,
             clientHostDisplayName: loaded.clientHostDisplayName,
@@ -404,6 +409,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         usageCalendarMonthRef.current = dashboardCalendarMonthKey();
 
         setDashboardSyncMode(loaded.syncMode);
+        setActionItems(loaded.actionItems);
         setBambuLiveAttention(loaded.bambuLiveAttention);
         setCompanionStatus(loaded.trustedLan);
         setClientHostCompanionTone(loaded.clientHostCompanionTone);
@@ -754,6 +760,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
 
   return {
     activity,
+    actionItems,
     bambuLiveAttention,
     clientHostCompanionTone,
     clientHostDisplayName,

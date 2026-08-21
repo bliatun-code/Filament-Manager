@@ -6,6 +6,7 @@ import {
   loadDashboardData,
 } from "./dashboard_data_source";
 import type {
+  ActiveSpoolLoanRow,
   FilamentConsumptionRow,
   InventoryOverview,
   LibrarySyncHostValidationResult,
@@ -152,6 +153,38 @@ function wishlistItem(id: string, overrides: Partial<WishlistItemRow> = {}): Wis
   };
 }
 
+function activeLoan(
+  id: string,
+  expectedReturnAt: string,
+): ActiveSpoolLoanRow {
+  return {
+    color_name: "Gray",
+    filament_name: "Basic",
+    loan: {
+      borrower_name: "Ada",
+      consumed_grams: null,
+      counterparty_contact: "ada@example.test",
+      counterparty_name: "Ada",
+      counterparty_note: null,
+      expected_return_at: expectedReturnAt,
+      grams_out: 500,
+      id,
+      lent_at: "2026-08-01 10:00:00",
+      lent_note: null,
+      loan_direction: "OUTBOUND",
+      loan_status: "ACTIVE",
+      return_note: null,
+      returned_at: null,
+      returned_grams: null,
+      spool_id: `spool-${id}`,
+    },
+    material: "PLA",
+    spool_remaining_g: 500,
+    spool_status: "BORROWED",
+    vendor: "Bambu",
+  };
+}
+
 function consumptionRow(
   material: string,
   usedGrams: number,
@@ -250,7 +283,71 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
       trustState: "UNPAIRED",
     },
   ]);
+  assert.deepEqual(result.actionItems.map((item) => item.kind), ["BAMBU_TRUST"]);
   assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+});
+
+test("loadDashboardData builds action items from the same local dashboard snapshot", async () => {
+  const result = await loadDashboardData(
+    {
+      now: new Date("2026-08-21T12:00:00.000Z"),
+      previousClientHostNeedsRepair: false,
+      t,
+      today: "2026-08-21",
+    },
+    {
+      listLocalLoans: async () => [activeLoan("overdue", "2026-08-18")],
+      listLocalPrinters: async () => [],
+      listLocalWishlist: async () => [
+        wishlistItem("order", {
+          status: "ON_ORDER",
+          updated_at: "2026-08-20 12:00:00",
+        }),
+      ],
+      loadInventoryOverview: async () => overview(),
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      loadSpoolRows: async () => [
+        spoolWithMasterRow("low-a", { current_weight_g: 120, remaining_g: 120 }),
+        spoolWithMasterRow("low-b", { current_weight_g: 80, remaining_g: 80 }),
+      ],
+      loadSyncSettings: async () => syncSettings(),
+      loadTrustedLanStatus: async () => null,
+    },
+  );
+
+  assert.deepEqual(result.actionItems.map((item) => item.kind), [
+    "OVERDUE_LOAN",
+    "ON_ORDER",
+  ]);
+  assert.equal(
+    result.actionItems.some((item) => item.kind === "LOW_STOCK"),
+    false,
+  );
+});
+
+test("loadDashboardData keeps unresolved low stock actionable until a purchase is open", async () => {
+  const result = await loadDashboardData(
+    {
+      now: new Date("2026-08-21T12:00:00.000Z"),
+      previousClientHostNeedsRepair: false,
+      t,
+      today: "2026-08-21",
+    },
+    {
+      listLocalLoans: async () => [],
+      listLocalPrinters: async () => [],
+      listLocalWishlist: async () => [],
+      loadInventoryOverview: async () => overview(),
+      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      loadSpoolRows: async () => [
+        spoolWithMasterRow("low-a", { current_weight_g: 90, remaining_g: 90 }),
+      ],
+      loadSyncSettings: async () => syncSettings(),
+      loadTrustedLanStatus: async () => null,
+    },
+  );
+
+  assert.deepEqual(result.actionItems.map((item) => item.kind), ["LOW_STOCK"]);
 });
 
 test("loadDashboardData prefers live host data for paired clients", async () => {
@@ -302,6 +399,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   );
 
   assert.equal(result.syncSource, "client-live");
+  assert.deepEqual(result.actionItems, []);
   assert.deepEqual(result.bambuLiveAttention, []);
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.clientHostDisplayName, "Live Host");
