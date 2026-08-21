@@ -55,6 +55,15 @@ const defaultDesktopLifecycle: DesktopLifecycleRenderProps = {
   desktopLifecycleUpdating: false,
 };
 
+const defaultLowStock: SettingsGeneralTabProps["lowStock"] = {
+  busy: false,
+  materialOptions: [],
+  policy: null,
+  policyValid: true,
+  readOnly: false,
+  onSave: () => {},
+};
+
 function renderGeneralTab(
   locale: Locale = "en",
   desktopLifecycleOverrides: Partial<DesktopLifecycleRenderProps> = {},
@@ -75,6 +84,7 @@ function renderGeneralTab(
           busy: false,
           ...desktopLifecycle,
           locale,
+          lowStock: defaultLowStock,
           tauri: true,
           themeMode: "dark",
           t: i18nValue(locale).t,
@@ -88,6 +98,13 @@ function renderGeneralTab(
     ),
   );
 }
+
+test("SettingsGeneralTab supports a valid empty low-stock material catalog", () => {
+  const html = renderGeneralTab();
+
+  assert.match(html, /Low-stock thresholds/);
+  assert.match(html, /Default threshold/);
+});
 
 test("SettingsGeneralTab exposes license and source links", () => {
   const html = renderGeneralTab();
@@ -124,19 +141,21 @@ test("SettingsGeneralTab exposes license and source links", () => {
 
 test("SettingsGeneralTab exposes selected theme and language choices", () => {
   const html = renderGeneralTab();
+  const languageSelect =
+    html.match(/<select[^>]*aria-label="Language"[^>]*>[\s\S]*?<\/select>/)?.[0] ?? "";
 
   assert.match(html, /role="group" aria-label="Appearance"/);
-  assert.match(html, /<select[^>]*aria-label="Language"/);
+  assert.match(languageSelect, /<select[^>]*aria-label="Language"/);
   assert.ok(html.indexOf("Appearance") < html.indexOf("Program"));
   assert.ok(html.indexOf("Language") < html.indexOf("Program"));
   assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 1);
   assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 2);
-  assert.match(html, /<option value="de">Deutsch<\/option>/);
-  assert.match(html, /<option value="fr">Français<\/option>/);
-  assert.match(html, /<option value="es">Español<\/option>/);
-  assert.match(html, /<option value="fi-FI">Suomi<\/option>/);
-  assert.equal((html.match(/<option /g) ?? []).length, 21);
-  assert.doesNotMatch(html, /Pseudo \(QA\)/);
+  assert.match(languageSelect, /<option value="de">Deutsch<\/option>/);
+  assert.match(languageSelect, /<option value="fr">Français<\/option>/);
+  assert.match(languageSelect, /<option value="es">Español<\/option>/);
+  assert.match(languageSelect, /<option value="fi-FI">Suomi<\/option>/);
+  assert.equal((languageSelect.match(/<option /g) ?? []).length, 21);
+  assert.doesNotMatch(languageSelect, /Pseudo \(QA\)/);
 });
 
 test("SettingsGeneralTab localizes license controls in Norwegian", () => {
