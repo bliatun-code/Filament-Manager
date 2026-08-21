@@ -11,7 +11,6 @@ import {
   updateLibrarySyncHostSpoolRfidTag,
   updateLibrarySyncHostSpoolTareWeight,
   updateLibrarySyncHostSpoolWeight,
-  updateSpoolDetails,
   updateSpoolOwnership,
   updateSpoolRfidTag,
   updateSpoolStatus,
@@ -25,6 +24,7 @@ import {
   type UpdateSpoolOwnershipInput,
   type UpdateSpoolRfidTagInput,
 } from "./tauri_client";
+import { updateActiveLibrarySpoolDetails } from "./tauri_active_library_gateway_client";
 import { requireClientHostWriteTarget } from "./host_write_target";
 
 export type SpoolWriteTarget = {
@@ -37,9 +37,9 @@ type SpoolWriteDependencies = {
   createHostSpool?: typeof createLibrarySyncHostSpool;
   createLocalSpool?: typeof createSpool;
   createLocalManualSpool?: typeof createManualSpool;
+  updateActiveLibrarySpoolDetails?: typeof updateActiveLibrarySpoolDetails;
   updateHostSpoolDetails?: typeof updateLibrarySyncHostSpoolDetails;
   updateHostSpoolOwnership?: typeof updateLibrarySyncHostSpoolOwnership;
-  updateLocalSpoolDetails?: typeof updateSpoolDetails;
   updateLocalSpoolOwnership?: typeof updateSpoolOwnership;
   updateLocalSpoolStatus?: typeof updateSpoolStatus;
   deleteHostSpool?: typeof deleteLibrarySyncHostSpool;
@@ -97,17 +97,11 @@ export async function updateInventorySpoolDetails(
   target: SpoolWriteTarget = {},
   dependencies: SpoolWriteDependencies = {},
 ): Promise<void> {
-  const updateHostSpoolDetails =
-    dependencies.updateHostSpoolDetails ?? updateLibrarySyncHostSpoolDetails;
-  const updateLocalSpoolDetails = dependencies.updateLocalSpoolDetails ?? updateSpoolDetails;
-
-  if (target.clientReadOnly) {
-    const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
-    await updateHostSpoolDetails(hostTarget.baseUrl, hostTarget.libraryId, input);
-    return;
-  }
-
-  await updateLocalSpoolDetails(input);
+  // Retained for source compatibility while Rust owns active-library target selection.
+  void target;
+  const updateDetails =
+    dependencies.updateActiveLibrarySpoolDetails ?? updateActiveLibrarySpoolDetails;
+  await updateDetails(input);
 }
 
 export async function updateInventorySpoolOwnership(

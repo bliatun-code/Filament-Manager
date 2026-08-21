@@ -1,8 +1,10 @@
+use crate::active_library_gateway::ActiveLibraryGateway;
 use crate::backend::inventory_engine::{
     UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
     UpdateSpoolRfidTagInput, WeightSource,
 };
 use crate::inventory_command_support::{companion_service, inventory_error_to_string};
+use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::state::AppState;
 use crate::with_inventory;
 
@@ -53,6 +55,16 @@ pub(crate) fn update_spool_details(
     companion_service(&state)
         .update_spool_details(input)
         .map_err(inventory_error_to_string)
+}
+
+#[tauri::command]
+pub(crate) async fn update_active_library_spool_details(
+    state: tauri::State<'_, AppState>,
+    input: UpdateSpoolDetailsInput,
+) -> Result<(), String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || ActiveLibraryGateway::new(&state).update_spool_details(input))
+        .await
 }
 
 #[tauri::command]

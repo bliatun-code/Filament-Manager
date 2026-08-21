@@ -1,4 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod active_library_gateway;
 mod app_error;
 mod app_services;
 mod app_storage;
@@ -423,6 +424,7 @@ fn main() {
             inventory_update_commands::update_spool_tare_weight,
             inventory_update_commands::update_spool_status,
             inventory_update_commands::update_spool_details,
+            inventory_update_commands::update_active_library_spool_details,
             inventory_update_commands::update_spool_ownership,
             inventory_update_commands::update_spool_rfid_tag,
             inventory_update_commands::update_master_catalog_entry,
