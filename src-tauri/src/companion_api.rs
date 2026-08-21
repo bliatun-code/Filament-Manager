@@ -3,7 +3,8 @@ use crate::backend::inventory_engine::{
     AcceptBambuLiveWeightEstimateInput, CreateManualSpoolInput, CreatePrinterInput,
     CreateSpoolInput, DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput,
     ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput,
-    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, WeightSource,
+    UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput,
+    WeightSource,
 };
 use crate::catalog_commands::CatalogRefreshResult;
 #[cfg(test)]
@@ -864,6 +865,8 @@ pub(super) async fn handle_create_borrowed_in_spool(
                             status: "IN_STOCK".to_string(),
                             location: location.clone(),
                             home_location: Some(location.clone()),
+                            spool_tare_weight_g: None,
+                            ownership: None,
                         })
                         .map_err(CompanionApiError::from)?;
                 }
@@ -1155,73 +1158,112 @@ pub(super) async fn handle_update_spool_details(
     state
         .run_blocking("spool details update", move |state| {
             let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
 
-    let status = payload.status.trim().to_ascii_uppercase();
-    if !matches!(status.as_str(), "IN_STOCK" | "EMPTY" | "LOST") {
-        return Err(CompanionApiError::BadRequest(
-            "Browser status/location edits are limited to IN_STOCK, EMPTY, or LOST".to_string(),
-        ));
-    }
+            let status = payload.status.trim().to_ascii_uppercase();
+            if payload.spool_tare_weight_g.is_some_and(|grams| grams < 0) {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_tare_weight_g must be zero or greater".to_string(),
+                ));
+            }
+            let ownership = payload
+                .ownership
+                .map(|ownership| {
+                    let ownership_type = ownership.ownership_type.trim().to_ascii_uppercase();
+                    if !matches!(ownership_type.as_str(), "OWNED" | "BORROWED_IN") {
+                        return Err(CompanionApiError::BadRequest(
+                            "ownership_type must be OWNED or BORROWED_IN".to_string(),
+                        ));
+                    }
+                    let owner_name = normalize_optional_text(ownership.owner_name.as_deref());
+                    if ownership_type == "BORROWED_IN" && owner_name.is_none() {
+                        return Err(CompanionApiError::BadRequest(
+                            "borrowed-in spools require an owner/counterparty name".to_string(),
+                        ));
+                    }
+                    Ok(UpdateSpoolDetailsOwnershipInput {
+                        ownership_type,
+                        owner_name,
+                        owner_contact: normalize_optional_text(ownership.owner_contact.as_deref()),
+                        ownership_note: normalize_optional_text(ownership.ownership_note.as_deref()),
+                    })
+                })
+                .transpose()?;
 
-    let spool = state
-        .service
-        .get_spool(spool_id)
-        .map_err(CompanionApiError::from)?
-        .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    let current_status = SpoolStatus::from_raw(Some(&spool.spool.status));
-    if current_status == SpoolStatus::Borrowed {
-        return Err(CompanionApiError::BadRequest(
-            "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
-                .to_string(),
-        ));
-    }
-    let requested_location = match payload.location.as_update() {
-        Some(value) => normalize_optional_text(value.map(String::as_str)),
-        None => spool.spool.location_id.clone(),
-    };
-    let requested_home_location = payload
-        .home_location
-        .as_update()
-        .map(|value| normalize_optional_text(value.map(String::as_str)));
-    let editing_home_location_only = payload.home_location.is_set()
-        && requested_location == spool.spool.location_id
-        && status == current_status.as_str();
-    if (current_status.is_assigned() || state.spool_assigned_to_printer(spool_id)?)
-        && !editing_home_location_only
-    {
-        return Err(CompanionApiError::BadRequest(
-            "Loaded spools use printer-slot actions instead of manual status/location edits"
-                .to_string(),
-        ));
-    }
-    if state
-        .service
-        .list_active_spool_loans()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .any(|row| row.loan.spool_id == spool_id)
-    {
-        return Err(CompanionApiError::BadRequest(
-            "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
-                .to_string(),
-        ));
-    }
+            let spool = state
+                .service
+                .get_spool(spool_id)
+                .map_err(CompanionApiError::from)?
+                .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
+            let current_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+            if current_status == SpoolStatus::Borrowed {
+                return Err(CompanionApiError::BadRequest(
+                    "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
+                        .to_string(),
+                ));
+            }
+            let requested_location = match payload.location.as_update() {
+                Some(value) => normalize_optional_text(value.map(String::as_str)),
+                None => spool.spool.location_id.clone(),
+            };
+            let requested_home_location = payload
+                .home_location
+                .as_update()
+                .map(|value| normalize_optional_text(value.map(String::as_str)));
+            let editing_nonplacement_details = requested_location == spool.spool.location_id
+                && status == current_status.as_str()
+                && (payload.home_location.is_set()
+                    || payload.spool_tare_weight_g.is_some()
+                    || ownership.is_some());
+            if (current_status.is_assigned() || state.spool_assigned_to_printer(spool_id)?)
+                && !editing_nonplacement_details
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Loaded spools use printer-slot actions instead of manual status/location edits"
+                        .to_string(),
+                ));
+            }
+            if !matches!(status.as_str(), "IN_STOCK" | "EMPTY" | "LOST")
+                && !editing_nonplacement_details
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Browser status/location edits are limited to IN_STOCK, EMPTY, or LOST"
+                        .to_string(),
+                ));
+            }
+            if state
+                .service
+                .list_active_spool_loans()
+                .map_err(CompanionApiError::from)?
+                .into_iter()
+                .any(|row| {
+                    row.loan.spool_id == spool_id
+                        && LoanDirection::from_raw(Some(&row.loan.loan_direction))
+                            == LoanDirection::Outbound
+                })
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
+                        .to_string(),
+                ));
+            }
 
-    state
-        .service
-        .update_spool_details(UpdateSpoolDetailsInput {
-            spool_id: spool_id.to_string(),
-            qr_code: spool.spool.qr_code.clone(),
-            status,
-            location: requested_location,
-            home_location: requested_home_location,
-        })
-        .map_err(CompanionApiError::from)?;
+            state
+                .service
+                .update_spool_details(UpdateSpoolDetailsInput {
+                    spool_id: spool_id.to_string(),
+                    qr_code: spool.spool.qr_code.clone(),
+                    status,
+                    location: requested_location,
+                    home_location: requested_home_location,
+                    spool_tare_weight_g: payload.spool_tare_weight_g,
+                    ownership,
+                })
+                .map_err(CompanionApiError::from)?;
 
             Ok(Json(WriteResponse {
                 ok: true,

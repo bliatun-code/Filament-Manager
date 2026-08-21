@@ -127,6 +127,20 @@ fn update_library_sync_host_spool_details_blocking(
             serde_json::json!(trimmed_non_empty(value.map(String::as_str))),
         );
     }
+    if let Some(grams) = input.spool_tare_weight_g {
+        payload.insert("spool_tare_weight_g".to_string(), serde_json::json!(grams));
+    }
+    if let Some(ownership) = input.ownership {
+        payload.insert(
+            "ownership".to_string(),
+            serde_json::json!({
+                "ownership_type": ownership.ownership_type,
+                "owner_name": trimmed_non_empty(ownership.owner_name.as_deref()),
+                "owner_contact": trimmed_non_empty(ownership.owner_contact.as_deref()),
+                "ownership_note": trimmed_non_empty(ownership.ownership_note.as_deref()),
+            }),
+        );
+    }
 
     perform_library_sync_host_write(
         state,

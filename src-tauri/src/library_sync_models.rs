@@ -73,6 +73,14 @@ pub(crate) struct LibrarySyncWeightWriteInput {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct LibrarySyncUpdateSpoolDetailsOwnershipInput {
+    pub(crate) ownership_type: String,
+    pub(crate) owner_name: Option<String>,
+    pub(crate) owner_contact: Option<String>,
+    pub(crate) ownership_note: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
@@ -83,6 +91,8 @@ pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) location: OptionalUpdate<String>,
     #[serde(default)]
     pub(crate) home_location: OptionalUpdate<String>,
+    pub(crate) spool_tare_weight_g: Option<i64>,
+    pub(crate) ownership: Option<LibrarySyncUpdateSpoolDetailsOwnershipInput>,
 }
 
 #[derive(Deserialize)]

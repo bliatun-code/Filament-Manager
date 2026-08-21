@@ -546,6 +546,8 @@ fn companion_service_updates_spool_details() {
                 status: "LOST".to_string(),
                 location: Some("Archive Bin".to_string()),
                 home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
             })
             .map_err(|error| error.to_string())?;
 

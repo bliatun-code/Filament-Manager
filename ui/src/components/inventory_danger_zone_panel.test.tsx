@@ -8,6 +8,7 @@ import {
   InventoryDangerZonePanelView,
   type InventoryDangerZonePanelViewProps,
 } from "./inventory_danger_zone_panel";
+import { requestInventoryDetailDiscard } from "../lib/use_inventory_unsaved_changes_guard";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -15,11 +16,6 @@ const source = readFileSync(
   new URL("./inventory_danger_zone_panel.tsx", import.meta.url),
   "utf8",
 );
-const inventoryPageSource = readFileSync(
-  new URL("../pages/inventory.tsx", import.meta.url),
-  "utf8",
-);
-
 const fallbackT: InventoryDangerZonePanelViewProps["t"] = (_key, fallback = "") => fallback;
 
 function viewProps(
@@ -225,18 +221,39 @@ test("closing the disclosure cancels local and parent confirmations", () => {
     currentTarget: { open: false },
   });
   assert.equal(cancelCount, 1);
+});
 
-  assert.match(
-    inventoryPageSource,
-    /const cancelDangerZoneConfirmation = useCallback\(\(\) => \{\s*setConfirmDelete\(false\);\s*setConfirmPurge\(false\);/,
-  );
-  assert.match(
-    inventoryPageSource,
-    /onCancelDangerZoneConfirmation=\{cancelDangerZoneConfirmation\}/,
-  );
-  assert.match(
-    inventoryPageSource,
-    /const closeSelectedSpoolDetailModal = useCallback\(\(\) => \{\s*cancelDangerZoneConfirmation\(\);\s*closeRollModal\(\);/,
-  );
-  assert.match(inventoryPageSource, /onClose=\{closeSelectedSpoolDetailModal\}/);
+test("unsaved detail guard preserves danger state until discard is accepted", () => {
+  let discardCount = 0;
+  let promptCount = 0;
+
+  const blocked = requestInventoryDetailDiscard({
+    confirmDiscard: () => {
+      promptCount += 1;
+      return false;
+    },
+    hasUnsavedChanges: true,
+    message: "Discard unsaved roll changes?",
+    onDiscard: () => {
+      discardCount += 1;
+    },
+  });
+  assert.equal(blocked, false);
+  assert.equal(promptCount, 1);
+  assert.equal(discardCount, 0);
+
+  const accepted = requestInventoryDetailDiscard({
+    confirmDiscard: () => {
+      promptCount += 1;
+      return true;
+    },
+    hasUnsavedChanges: true,
+    message: "Discard unsaved roll changes?",
+    onDiscard: () => {
+      discardCount += 1;
+    },
+  });
+  assert.equal(accepted, true);
+  assert.equal(promptCount, 2);
+  assert.equal(discardCount, 1);
 });

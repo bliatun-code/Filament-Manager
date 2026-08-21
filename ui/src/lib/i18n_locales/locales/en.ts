@@ -281,6 +281,19 @@ export const enDictionary: DictionaryNode = {
       noMatch: "No spools match current filters.",
       noMatchHint: "Try adjusting search, status, material or ownership filters.",
       selectedRoll: "Selected roll",
+      selectedRollActions: "Selected roll actions",
+      nextStep: "Next step",
+      loanOutAction: "Loan out",
+      loadInPrinter: "Load in printer",
+      loadInPrinterHint:
+        "The selected roll is ready. Choose only the printer slot; no new roll search is needed.",
+      noAvailablePrinterSlots: "No empty printer slots are available.",
+      loadedInPrinter: "Roll loaded in printer slot.",
+      printLabelAction: "Print label",
+      unsavedChanges: "You have unsaved changes.",
+      allChangesSaved: "All changes are saved.",
+      discardUnsavedChanges: "Discard unsaved roll changes? Your edits will be lost.",
+      rollChangesSaved: "Roll changes saved.",
       updatingRoll: "Updating selected roll...",
       currentStatus: "Current status",
       material: "Material",
@@ -547,6 +560,8 @@ export const enDictionary: DictionaryNode = {
       labelImageHint: "The PNG is rendered at 300 DPI for predictable physical sizing.",
       labelSheetHint:
         "Need labels for several rolls? Create an inventory label sheet under Settings → General.",
+      labelSheetInventoryHint:
+        "Need labels for several rolls? Create an inventory label sheet from the Inventory header.",
       labelSaving: "Saving PNG...",
       labelSaveDownloads: "Save PNG to Downloads",
       labelSaved: "Label PNG saved to Downloads.",
@@ -714,6 +729,9 @@ export const enDictionary: DictionaryNode = {
         outgoingWeightRequiredForUnassign:
           "Enter outgoing roll weight before removing this roll from slot.",
         saveRollChanges: "Failed to save roll changes.",
+        loadInPrinter: "This roll cannot be loaded in a printer slot.",
+        loadInPrinterStale:
+          "The selected printer slot is no longer available. Refresh and choose another slot.",
         saveRfid: "Failed to save RFID tag.",
         assignFirst: "Assign roll to a printer slot first.",
         recordUsage: "Failed to record printer usage.",

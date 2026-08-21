@@ -2,8 +2,8 @@ use super::{
     AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
     CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
     InventoryEngine, ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
-    UpdateSpoolRfidTagInput, UpdateWishlistStatusInput, WeightSource,
+    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput,
+    UpdateSpoolOwnershipInput, UpdateSpoolRfidTagInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -1767,6 +1767,8 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
                 status: "IN_STOCK".to_string(),
                 location: None,
                 home_location: Some(Some("Shelf D".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1832,6 +1834,8 @@ fn update_spool_details_keeps_active_inbound_location_while_updating_home_locati
                 status: borrowed_before.status.clone(),
                 location: None,
                 home_location: Some(Some("Owner Shelf".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1921,6 +1925,8 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
                 status: assigned_before.status.clone(),
                 location: assigned_before.location_id.clone(),
                 home_location: Some(Some("Shelf F".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1943,6 +1949,112 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
         panic!(
             "update_spool_details_keeps_printer_location_while_updating_home_location failed: {message}"
         );
+    }
+}
+
+#[test]
+fn update_spool_details_saves_common_fields_atomically() {
+    let db_path = temp_db_path("save-common-spool-details-atomically");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "spool_common_1".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "White".to_string(),
+                hex_color: Some("#FFFFFF".to_string()),
+                product_url: None,
+                vendor: Some("Bambu Lab".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("qr-common-1".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let before_failed = engine
+            .db
+            .get_spool_by_id("spool_common_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool before failed common save".to_string())?;
+
+        let failed = engine.update_spool_details(UpdateSpoolDetailsInput {
+            spool_id: "spool_common_1".to_string(),
+            qr_code: Some("qr-common-1".to_string()),
+            status: "IN_STOCK".to_string(),
+            location: Some("Shelf A".to_string()),
+            home_location: Some(Some("Shelf B".to_string())),
+            spool_tare_weight_g: Some(275),
+            ownership: Some(UpdateSpoolDetailsOwnershipInput {
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+            }),
+        });
+        assert!(failed.is_err());
+
+        let after_failed = engine
+            .db
+            .get_spool_by_id("spool_common_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after failed common save".to_string())?;
+        assert_eq!(after_failed.home_location_id.as_deref(), Some("Shelf A"));
+        assert_eq!(after_failed.location_id.as_deref(), Some("Shelf A"));
+        assert_eq!(
+            after_failed.spool_tare_weight_g,
+            before_failed.spool_tare_weight_g
+        );
+        assert_eq!(after_failed.ownership_type, "OWNED");
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "spool_common_1".to_string(),
+                qr_code: Some("qr-common-1".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: Some("Shelf A".to_string()),
+                home_location: Some(Some("Shelf B".to_string())),
+                spool_tare_weight_g: Some(275),
+                ownership: Some(UpdateSpoolDetailsOwnershipInput {
+                    ownership_type: "BORROWED_IN".to_string(),
+                    owner_name: Some("Ada".to_string()),
+                    owner_contact: Some("ada@example.test".to_string()),
+                    ownership_note: Some("Return next month".to_string()),
+                }),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let saved = engine
+            .db
+            .get_spool_by_id("spool_common_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after common save".to_string())?;
+        assert_eq!(saved.home_location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(saved.location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(saved.spool_tare_weight_g, Some(275));
+        assert_eq!(saved.ownership_type, "BORROWED_IN");
+        assert_eq!(saved.owner_name.as_deref(), Some("Ada"));
+        let active = engine
+            .list_spool_loans_for_direction(20, false, Some("INBOUND"))
+            .map_err(|error| error.to_string())?;
+        assert!(active.iter().any(|row| {
+            row.loan.spool_id == "spool_common_1" && row.loan.loan_direction == "INBOUND"
+        }));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("update_spool_details_saves_common_fields_atomically failed: {message}");
     }
 }
 

@@ -6,7 +6,6 @@ import type {
   CatalogResetStats,
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
-  TrustedLanCompanionStatus,
 } from "../lib/tauri_client";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import type {
@@ -19,17 +18,11 @@ import type {
   SettingsCatalogResetMessageLabels,
   SettingsMaintenanceResetMessageLabels,
 } from "./settings_maintenance_model";
-import type {
-  SettingsInventoryPrintLabels,
-  SettingsInventoryPrintMessageLabels,
-} from "./settings_inventory_print_model";
-import type { SettingsInventoryLabelSheetModalProps } from "../components/settings_inventory_label_sheet_modal";
 import { buildSettingsMaintenanceRouteProps } from "./settings_maintenance_route_props";
 import type { LibrarySyncMode } from "./settings_library_sync_model";
 import { useSettingsBackupExportActions } from "./use_settings_backup_export_actions";
 import { useSettingsBackupFileActions } from "./use_settings_backup_file_actions";
 import { useSettingsBackupFileControls } from "./use_settings_backup_file_controls";
-import { useSettingsInventoryPrintAction } from "./use_settings_inventory_print_action";
 import { useSettingsInventoryRowsLoader } from "./use_settings_inventory_rows_loader";
 import { useSettingsMaintenanceActions } from "./use_settings_maintenance_actions";
 import { useSettingsApplicationDiagnostics } from "./use_settings_application_diagnostics";
@@ -47,7 +40,6 @@ type UseSettingsMaintenanceSectionInput = {
   clearBackupValidation: () => void;
   lastBackupValidation: BackupValidationStats | null;
   lastCatalogReset: CatalogResetStats | null;
-  initialInventoryLabelSheetOpen?: boolean;
   librarySyncModeDraft: LibrarySyncMode;
   locale: Locale;
   missingSwatchCount: number;
@@ -78,12 +70,9 @@ type UseSettingsMaintenanceSectionInput = {
   settingsInventoryRows: NormalizedSpoolWithMasterRow[];
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
-  settingsInventoryOverviewPrintMessageLabels: () => SettingsInventoryPrintMessageLabels;
-  settingsInventoryPrintLabels: () => SettingsInventoryPrintLabels;
   settingsMaintenanceResetMessageLabels: () => SettingsMaintenanceResetMessageLabels;
   tauri: boolean;
   t: TranslateFn;
-  trustedLanStatus: TrustedLanCompanionStatus | null;
 };
 
 export function useSettingsMaintenanceSection({
@@ -96,7 +85,6 @@ export function useSettingsMaintenanceSection({
   clearBackupValidation,
   lastBackupValidation,
   lastCatalogReset,
-  initialInventoryLabelSheetOpen = false,
   librarySyncModeDraft,
   locale,
   missingSwatchCount,
@@ -124,12 +112,9 @@ export function useSettingsMaintenanceSection({
   settingsInventoryRows,
   settingsImportMessageLabels,
   settingsInventoryExportMessageLabels,
-  settingsInventoryOverviewPrintMessageLabels,
-  settingsInventoryPrintLabels,
   settingsMaintenanceResetMessageLabels,
   tauri,
   t,
-  trustedLanStatus,
 }: UseSettingsMaintenanceSectionInput) {
   const {
     diagnostics: applicationDiagnostics,
@@ -209,24 +194,6 @@ export function useSettingsMaintenanceSection({
     t,
   });
 
-  const {
-    handleOpenInventoryLabelSheet,
-    inventoryLabelSheetModalProps,
-  } = useSettingsInventoryPrintAction({
-    busy,
-    initialOpen: initialInventoryLabelSheetOpen,
-    loadSettingsInventoryRows,
-    locale,
-    setError,
-    setInfo,
-    settingsClientHostBaseUrl,
-    settingsClientReadOnly,
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryPrintLabels,
-    tauri,
-    trustedLanStatus,
-  });
-
   const { handleImportDataFile, handleValidateBackupFile } = useSettingsBackupFileActions({
     busy,
     clearBackupValidation,
@@ -296,8 +263,6 @@ export function useSettingsMaintenanceSection({
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
-    handleOpenInventoryLabelSheet,
-    inventoryLabelSheetModalProps: inventoryLabelSheetModalProps satisfies SettingsInventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   };
 }

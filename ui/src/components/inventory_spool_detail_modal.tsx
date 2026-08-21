@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { AppModal } from "./app_modal";
 import {
   inventoryDetailEyebrowClassName,
   inventoryDetailPanelClassName,
+  inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
@@ -12,7 +14,8 @@ import {
 } from "./inventory_modal_chrome";
 import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
 import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
-import { ModalNotice } from "./modal_chrome";
+import { InventorySpoolDetailContextActions } from "./inventory_spool_detail_context_actions";
+import { ModalFooter, ModalNotice } from "./modal_chrome";
 import {
   InventorySpoolDetailHeader,
   InventorySpoolIdentityPanel,
@@ -36,6 +39,7 @@ import type {
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "../lib/tauri_client";
+import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
 
 type InventorySpoolDetailModalProps = {
   assignedSlot: InventorySpoolDetailAssignedSlot | null;
@@ -51,6 +55,8 @@ type InventorySpoolDetailModalProps = {
   hasHiddenHistoryRows: boolean;
   hexColor: string;
   historyLoading: boolean;
+  hasCommonChanges: boolean;
+  hasUnsavedChanges: boolean;
   initialLabelPanelOpen?: boolean;
   rfidBindingMeta: { className: string; hint: string; label: string };
   infoMessage: string | null;
@@ -75,13 +81,13 @@ type InventorySpoolDetailModalProps = {
   onClose: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
+  onLoadInPrinter: () => void;
+  onLoanOut: () => void;
   onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<void>;
   onPurge: () => void;
   onRefill: () => void;
-  onSaveLocation: () => void;
+  onSaveCommonDetails: () => void;
   onSaveMasterMetadata: () => void;
-  onSaveOwnership: () => void;
-  onSaveTareWeight: () => void;
   onStartRfidCapture: () => void;
   onSubmitWeight: (grams: number) => void;
   onToggleEditUnlocked: () => void;
@@ -100,6 +106,8 @@ type InventorySpoolDetailModalProps = {
   qrTarget: string | null;
   resolvedTheme: ResolvedTheme;
   runtimeAvailable: boolean;
+  canLoadInPrinter: boolean;
+  canLoanOut: boolean;
   showRollHistory: boolean;
   spool: InventorySpool | null;
   statusLabel: string;
@@ -126,6 +134,8 @@ export function InventorySpoolDetailModal({
   hasHiddenHistoryRows,
   hexColor,
   historyLoading,
+  hasCommonChanges,
+  hasUnsavedChanges,
   initialLabelPanelOpen = false,
   rfidBindingMeta,
   infoMessage,
@@ -150,13 +160,13 @@ export function InventorySpoolDetailModal({
   onClose,
   onDelete,
   onMarkEmpty,
+  onLoadInPrinter,
+  onLoanOut,
   onPrintLabel,
   onPurge,
   onRefill,
-  onSaveLocation,
+  onSaveCommonDetails,
   onSaveMasterMetadata,
-  onSaveOwnership,
-  onSaveTareWeight,
   onStartRfidCapture,
   onSubmitWeight,
   onToggleEditUnlocked,
@@ -175,6 +185,8 @@ export function InventorySpoolDetailModal({
   qrTarget,
   resolvedTheme,
   runtimeAvailable,
+  canLoadInPrinter,
+  canLoanOut,
   showRollHistory,
   spool,
   statusLabel,
@@ -187,6 +199,7 @@ export function InventorySpoolDetailModal({
   visibleHistoryRows,
 }: InventorySpoolDetailModalProps) {
   const { t } = useI18n();
+  const [labelPanelRequestId, setLabelPanelRequestId] = useState(0);
 
   if (!open || !spool) {
     return null;
@@ -210,6 +223,17 @@ export function InventorySpoolDetailModal({
           spool={spool}
           statusLabel={statusLabel}
           statusTone={statusTone}
+        />
+
+        <InventorySpoolDetailContextActions
+          loadDisabled={!runtimeAvailable || manageBusy || !canLoadInPrinter}
+          loanDisabled={!runtimeAvailable || manageBusy || !canLoanOut}
+          onLoadInPrinter={onLoadInPrinter}
+          onLoanOut={onLoanOut}
+          onPrintLabel={() => setLabelPanelRequestId((current) => current + 1)}
+          printDisabled={
+            !runtimeAvailable || manageBusy || !qrCompanionAvailable || !qrDataUrl
+          }
         />
 
         <div
@@ -245,6 +269,7 @@ export function InventorySpoolDetailModal({
                   deterministicLabelPreferences={deterministicLabelPreferences}
                   loading={qrLoading}
                   initialLabelPanelOpen={initialLabelPanelOpen}
+                  labelPanelRequestId={labelPanelRequestId}
                   onPrintLabel={onPrintLabel}
                   onStartRfidCapture={onStartRfidCapture}
                   resolvedTheme={resolvedTheme}
@@ -287,8 +312,9 @@ export function InventorySpoolDetailModal({
               <InventorySpoolTarePanel
                 disabled={!runtimeAvailable || manageBusy}
                 onChange={onChangeTare}
-                onSave={onSaveTareWeight}
+                onSave={onSaveCommonDetails}
                 resolvedTheme={resolvedTheme}
+                showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 value={tareDraft}
               />
@@ -297,8 +323,9 @@ export function InventorySpoolDetailModal({
                 assignedToPrinter={Boolean(assignedSlot)}
                 disabled={!runtimeAvailable || manageBusy}
                 onChange={onChangeLocation}
-                onSave={onSaveLocation}
+                onSave={onSaveCommonDetails}
                 resolvedTheme={resolvedTheme}
+                showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 value={locationDraft}
               />
@@ -311,9 +338,10 @@ export function InventorySpoolDetailModal({
                 onChangeName={onChangeOwnerName}
                 onChangeNote={onChangeOwnershipNote}
                 onChangeType={onChangeOwnershipType}
-                onSave={onSaveOwnership}
+                onSave={onSaveCommonDetails}
                 ownerNameValue={ownerNameDraft}
                 resolvedTheme={resolvedTheme}
+                showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 typeValue={ownershipTypeDraft}
               />
@@ -368,6 +396,34 @@ export function InventorySpoolDetailModal({
             </div>
           </div>
         </div>
+
+        <ModalFooter className="flex flex-wrap items-center justify-between gap-3 bg-white/95 px-4 py-3 dark:bg-slate-900/95 sm:px-5">
+          <div className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
+            {hasUnsavedChanges
+              ? t("inventory.unsavedChanges", "You have unsaved changes.")
+              : t("inventory.allChangesSaved", "All changes are saved.")}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className={joinClassNames(appSoftButtonClassName, "px-4 py-2 text-sm")}
+              disabled={manageBusy}
+              onClick={onClose}
+            >
+              {t("common.cancel", "Cancel")}
+            </button>
+            <button
+              type="button"
+              className={inventoryDetailSaveButtonClassName}
+              disabled={!runtimeAvailable || manageBusy || !hasCommonChanges}
+              onClick={onSaveCommonDetails}
+            >
+              {manageBusy
+                ? t("inventory.updatingRoll", "Updating selected roll...")
+                : t("inventory.saveRollChanges", "Save roll changes")}
+            </button>
+          </div>
+        </ModalFooter>
       </>
     </AppModal>
   );

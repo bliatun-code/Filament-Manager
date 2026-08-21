@@ -368,7 +368,11 @@ test("desktop visual QA scenario manifest describes routing and fixture states",
   );
   assert.equal(
     desktopVisualQaScenarioDefinition("inventory-label-sheet")?.settingsTab,
-    "GENERAL",
+    undefined,
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("inventory-label-sheet")?.page,
+    "inventory",
   );
   assert.equal(
     desktopVisualQaScenarioDefinition("library-role-change")?.settingsTab,
@@ -544,7 +548,7 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
   );
   assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-inventory-label-sheet"),
-    "settings",
+    "inventory",
   );
   assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-library"),
@@ -664,7 +668,7 @@ test("desktop visual QA settings scenarios resolve to the intended tab", () => {
     desktopVisualQaInitialSettingsTab(
       "?bfm_visual_qa=settings-inventory-label-sheet",
     ),
-    "GENERAL",
+    null,
   );
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-library"),

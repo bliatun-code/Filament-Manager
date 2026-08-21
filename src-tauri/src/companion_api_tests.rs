@@ -3828,7 +3828,9 @@ async fn companion_api_updates_spool_status_and_location() {
                     .header("origin", "http://127.0.0.1:4278")
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
-                    .body(Body::from(r#"{"status":"LOST","location":"Archive Bin"}"#))
+                    .body(Body::from(
+                        r#"{"status":"LOST","location":"Archive Bin","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"}}"#,
+                    ))
                     .map_err(|error| error.to_string())?,
             )
             .await
@@ -3863,6 +3865,9 @@ async fn companion_api_updates_spool_status_and_location() {
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"status\":\"LOST\""));
         assert!(detail_text.contains("\"location_id\":\"Archive Bin\""));
+        assert!(detail_text.contains("\"home_location_id\":\"Shelf C\""));
+        assert!(detail_text.contains("\"spool_tare_weight_g\":245"));
+        assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
         assert!(detail_text.contains("\"qr_code\":\"qr-1\""));
         assert!(detail_text.contains("\"event_type\":\"DETAILS_UPDATED\""));
 
@@ -4043,7 +4048,7 @@ async fn companion_api_clears_location_when_status_update_sends_null_location() 
 }
 
 #[tokio::test]
-async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
+async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loaded_spools() {
     let db_path = temp_db_path("spool-details-reject-loaded");
     let result = async {
         seed_db(&db_path)?;
@@ -4095,6 +4100,48 @@ async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
             .map_err(|error| error.to_string())?;
         assert_eq!(assign.status(), StatusCode::OK);
 
+        let common_update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"ASSIGNED","home_location":"Shelf C","spool_tare_weight_g":247,"ownership":{"ownership_type":"OWNED"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(common_update.status(), StatusCode::OK);
+
+        let detail = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(detail.status(), StatusCode::OK);
+        let detail_body = to_bytes(detail.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let detail_text =
+            String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
+        assert!(detail_text.contains("\"status\":\"ASSIGNED\""));
+        assert!(detail_text.contains("\"home_location_id\":\"Shelf C\""));
+        assert!(detail_text.contains("\"spool_tare_weight_g\":247"));
+
         let update = router
             .clone()
             .oneshot(
@@ -4128,7 +4175,7 @@ async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!(
-            "companion_api_rejects_status_and_location_edits_for_loaded_spools failed: {message}"
+            "companion_api_allows_common_details_but_rejects_placement_edits_for_loaded_spools failed: {message}"
         );
     }
 }

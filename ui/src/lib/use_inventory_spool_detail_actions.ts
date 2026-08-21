@@ -4,6 +4,7 @@ import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
 import { isBorrowedInOwnership } from "./inventory_domain";
 import type { InventorySpool, OwnershipType } from "./inventory_list_model";
+import { parseInventorySpoolCommonDetailsDraft } from "./inventory_spool_detail_draft_model";
 import {
   canRefillSpoolStatus,
   nextLostToggleStatus,
@@ -49,6 +50,8 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   editMasterVendor: string;
   ensureLocalWriteAllowed: () => boolean;
   manageBusy: boolean;
+  markCommonDetailsSaved: () => void;
+  markMasterMetadataSaved: () => void;
   masterEditUnlocked: boolean;
   selectedSpool: InventorySpool | null;
   selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
@@ -108,6 +111,8 @@ export function useInventorySpoolDetailActions({
   editMasterVendor,
   ensureLocalWriteAllowed,
   manageBusy,
+  markCommonDetailsSaved,
+  markMasterMetadataSaved,
   masterEditUnlocked,
   reloadActiveLoans,
   reloadCatalog,
@@ -209,6 +214,7 @@ export function useInventorySpoolDetailActions({
       await reloadActiveLoans();
       await reloadPrinterOverview();
       await reloadSpoolDetail(selectedSpool.id);
+      markMasterMetadataSaved();
       setMasterEditUnlocked(false);
     } catch (updateError) {
       console.error(updateError);
@@ -216,6 +222,106 @@ export function useInventorySpoolDetailActions({
         commandErrorText(
           updateError,
           t("inventory.error.updateMetadata", "Failed to update roll metadata."),
+        ),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleSaveSpoolCommonDetails() {
+    if (!tauriAvailable || !selectedSpool || manageBusy) {
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+
+    const parsed = parseInventorySpoolCommonDetailsDraft({
+      homeLocation: selectedSpoolLocationDraft,
+      ownershipType: selectedSpoolOwnershipDraft,
+      ownerName: selectedSpoolOwnerNameDraft,
+      ownerContact: selectedSpoolOwnerContactDraft,
+      ownershipNote: selectedSpoolOwnershipNoteDraft,
+      tareWeight: selectedSpoolTareDraft,
+    });
+    if (!parsed.ok) {
+      setError(
+        parsed.error === "borrowed-owner-required"
+          ? t(
+              "inventory.error.ownerNameRequired",
+              "Borrowed-in rolls need an owner or counterparty name.",
+            )
+          : t("inventory.error.invalidWeight", "Weight value is invalid."),
+      );
+      return;
+    }
+
+    setConfirmDelete(false);
+    setConfirmPurge(false);
+    setManageBusy(true);
+    setError(null);
+    try {
+      const homeLocationChanged =
+        (selectedSpool.homeLocation ?? "").trim() !==
+        (parsed.value.homeLocation ?? "");
+      const tareWeightChanged =
+        parsed.value.tareWeightGrams !== selectedSpoolResolvedTare;
+      const ownershipChanged =
+        selectedSpool.ownershipType !== parsed.value.ownershipType ||
+        (isBorrowedInOwnership(parsed.value.ownershipType) &&
+          ((selectedSpool.ownerName ?? "").trim() !== parsed.value.ownerName ||
+            (selectedSpool.ownerContact ?? "").trim() !==
+              (parsed.value.ownerContact ?? "") ||
+            (selectedSpool.ownershipNote ?? "").trim() !==
+              (parsed.value.ownershipNote ?? "")));
+      await updateInventorySpoolDetails(
+        {
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: selectedSpool.status,
+          location: selectedSpool.location ?? null,
+          // An empty string deliberately means "clear" for the local Tauri command.
+          // Serde cannot otherwise distinguish JSON null from an omitted nested Option.
+          ...(homeLocationChanged
+            ? { home_location: parsed.value.homeLocation ?? "" }
+            : {}),
+          ...(tareWeightChanged
+            ? { spool_tare_weight_g: parsed.value.tareWeightGrams }
+            : {}),
+          ...(ownershipChanged
+            ? {
+                ownership: {
+                  ownership_type: parsed.value.ownershipType,
+                  owner_name: parsed.value.ownerName,
+                  owner_contact: parsed.value.ownerContact,
+                  ownership_note: parsed.value.ownershipNote,
+                },
+              }
+            : {}),
+        },
+        hostWriteTarget,
+      );
+      markCommonDetailsSaved();
+      await reloadInventorySurfaces();
+      await reloadSpoolDetail(selectedSpool.id);
+      if (!isBorrowedInOwnership(parsed.value.ownershipType)) {
+        setSelectedSpoolOwnerNameDraft("");
+        setSelectedSpoolOwnerContactDraft("");
+        setSelectedSpoolOwnershipNoteDraft("");
+      }
+      setSelectedSpoolTareDraft(String(parsed.value.tareWeightGrams));
+      setInfoMessage(t("inventory.rollChangesSaved", "Roll changes saved."));
+    } catch (updateError) {
+      console.error(updateError);
+      setError(
+        commandErrorText(
+          updateError,
+          t("inventory.error.saveRollChanges", "Failed to save roll changes."),
+          t,
         ),
       );
     } finally {
@@ -682,6 +788,7 @@ export function useInventorySpoolDetailActions({
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
+    handleSaveSpoolCommonDetails,
     handleSaveSpoolOwnership,
     handleSaveSpoolLocation,
     handleSaveSpoolTareWeight,

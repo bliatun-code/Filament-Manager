@@ -34,6 +34,10 @@ const inventorySelectedDetailStateSource = readFileSync(
   new URL("../lib/use_inventory_selected_spool_detail_state.ts", import.meta.url),
   "utf8",
 );
+const inventoryLabelSheetActionSource = readFileSync(
+  new URL("../lib/use_inventory_label_sheet_action.ts", import.meta.url),
+  "utf8",
+);
 const inventoryFiltersSource = readFileSync(
   new URL("../lib/use_inventory_filters.ts", import.meta.url),
   "utf8",
@@ -56,6 +60,15 @@ test("inventory header actions stay inside the page header", () => {
   assert.ok(
     headerIndex < headerActionsIndex && headerActionsIndex < filterPanelIndex,
     "header actions must render in the header before the separate filter panel",
+  );
+});
+
+test("inventory label sheets preserve lazy QR and label rendering chunks", () => {
+  assert.match(inventoryLabelSheetActionSource, /import\("\.\/spool_qr_artifacts"\)/);
+  assert.match(inventoryLabelSheetActionSource, /import\("\.\/filament_label_print"\)/);
+  assert.doesNotMatch(
+    inventoryLabelSheetActionSource,
+    /import \{ resolveSpoolQrCompanionShellUrl \} from "\.\/spool_qr_artifacts"/,
   );
 });
 
@@ -159,7 +172,7 @@ test("inventory loaders preserve last-good state on transient failures", () => {
   assert.doesNotMatch(inventoryPageDataSource, /setHistoryRows\(\[\]\)/);
   assert.doesNotMatch(inventoryPageDataSource, /setUsagePoints\(\[\]\)/);
   assert.doesNotMatch(inventoryCatalogReloadSource, /setMasters\(\[\]\)/);
-  assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current !== selectedSpool\.id/);
+  assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current === selectedSpool\.id/);
   assert.match(inventoryPageSource, /error=\{error\}/);
   assert.match(inventoryPageSource, /loadError=\{loadError\}/);
 });

@@ -207,6 +207,7 @@ export function LoanOutModal({
       onBackdropClose={busy ? undefined : onClose}
       overlayClassName={inventoryModalOverlayClassName}
       panelClassName={inventoryWideModalPanelClassName}
+      zIndex={70}
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <ModalHeader

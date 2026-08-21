@@ -174,6 +174,39 @@ test("updateInventorySpoolDetails routes detail writes to the host", async () =>
   ]);
 });
 
+test("updateInventorySpoolDetails keeps the atomic common-detail payload intact", async () => {
+  const input = spoolDetailsInput({
+    home_location: "",
+    spool_tare_weight_g: 241,
+    ownership: {
+      ownership_type: "BORROWED_IN",
+      owner_name: "Nora",
+      owner_contact: "nora@example.com",
+      ownership_note: "Return next week",
+    },
+  });
+  const hostCalls: UpdateSpoolDetailsInput[] = [];
+  const localCalls: UpdateSpoolDetailsInput[] = [];
+
+  await updateInventorySpoolDetails(
+    input,
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      updateHostSpoolDetails: async (_baseUrl, _libraryId, hostInput) => {
+        hostCalls.push(hostInput);
+      },
+    },
+  );
+  await updateInventorySpoolDetails(input, { clientReadOnly: false }, {
+    updateLocalSpoolDetails: async (localInput) => {
+      localCalls.push(localInput);
+    },
+  });
+
+  assert.deepEqual(hostCalls, [input]);
+  assert.deepEqual(localCalls, [input]);
+});
+
 test("updateInventorySpoolStatus uses the narrow local status command outside client mode", async () => {
   const calls: Array<{ spoolId: string; status: string }> = [];
 

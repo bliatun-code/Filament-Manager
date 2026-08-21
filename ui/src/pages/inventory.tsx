@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
+import { InventoryLoadSpoolModal } from "../components/inventory_load_spool_modal";
 import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventorySpoolDetailModal } from "../components/inventory_spool_detail_modal";
+import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useI18n } from "../lib/i18n";
@@ -24,6 +26,8 @@ import { useInventoryFeedbackTimeout } from "../lib/use_inventory_feedback_timeo
 import { useInventoryFilters } from "../lib/use_inventory_filters";
 import { useInventoryHistoryFormatters } from "../lib/use_inventory_history_formatters";
 import { useInventoryLoanTrackingModal } from "../lib/use_inventory_loan_tracking_modal";
+import { useInventoryLabelSheetAction } from "../lib/use_inventory_label_sheet_action";
+import { useInventoryLoadSpoolAction } from "../lib/use_inventory_load_spool_action";
 import { useInventoryPageData } from "../lib/use_inventory_page_data";
 import { useInventoryPrinterSlots } from "../lib/use_inventory_printer_slots";
 import { useInventoryRfidCaptureRefresh } from "../lib/use_inventory_rfid_capture_refresh";
@@ -37,16 +41,22 @@ import { useInventorySpoolDetailUtilityActions } from "../lib/use_inventory_spoo
 import { useInventorySpoolQrArtifacts } from "../lib/use_inventory_spool_qr_artifacts";
 import { useInventorySpoolSelection } from "../lib/use_inventory_spool_selection";
 import { useInventoryWriteGuards } from "../lib/use_inventory_write_guards";
+import {
+  useInventoryUnsavedChangesGuard,
+  type InventoryNavigationGuard,
+} from "../lib/use_inventory_unsaved_changes_guard";
 import { isTauri } from "../lib/tauri_client";
 
 type InventoryPageProps = {
   navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
+  onNavigationGuardChange?: (guard: InventoryNavigationGuard | null) => void;
 };
 
 export default function InventoryPage({
   navigationIntent = null,
   onConsumeNavigationIntent,
+  onNavigationGuardChange,
 }: InventoryPageProps) {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
@@ -272,12 +282,17 @@ export default function InventoryPage({
   const {
     confirmDelete,
     confirmPurge,
+    commonDetailsDirty,
     editMasterColorName,
     editMasterFilamentName,
     editMasterHexColor,
     editMasterMaterial,
     editMasterVendor,
+    markCommonDetailsSaved,
+    markMasterMetadataSaved,
     masterEditUnlocked,
+    masterMetadataDirty,
+    resetDetailDrafts,
     selectedSpoolLocationDraft,
     selectedSpoolOwnerContactDraft,
     selectedSpoolOwnerNameDraft,
@@ -323,10 +338,23 @@ export default function InventoryPage({
     setConfirmPurge(false);
   }, [setConfirmDelete, setConfirmPurge]);
 
-  const closeSelectedSpoolDetailModal = useCallback(() => {
+  const discardSelectedSpoolDetail = useCallback(() => {
+    resetDetailDrafts();
     cancelDangerZoneConfirmation();
     closeRollModal();
-  }, [cancelDangerZoneConfirmation, closeRollModal]);
+  }, [cancelDangerZoneConfirmation, closeRollModal, resetDetailDrafts]);
+
+  const hasUnsavedDetailChanges = commonDetailsDirty || masterMetadataDirty;
+  const closeSelectedSpoolDetailModal = useInventoryUnsavedChangesGuard({
+    active: showRollModal,
+    hasUnsavedChanges: hasUnsavedDetailChanges,
+    message: t(
+      "inventory.discardUnsavedChanges",
+      "Discard unsaved roll changes? Your edits will be lost.",
+    ),
+    onDiscard: discardSelectedSpoolDetail,
+    onNavigationGuardChange,
+  });
 
   const {
     companionShellUrl: selectedSpoolQrCompanionShellUrl,
@@ -424,6 +452,13 @@ export default function InventoryPage({
   });
 
   const selectRollForManage = useCallback((spoolId: string) => {
+    if (
+      showRollModal &&
+      selectedSpoolId !== spoolId &&
+      !closeSelectedSpoolDetailModal()
+    ) {
+      return;
+    }
     setActiveWorkspaceView("STOCK");
     if (clientReadOnly && !clientHostWritePaired) {
       setInfoMessage(
@@ -441,8 +476,11 @@ export default function InventoryPage({
   }, [
     clientHostWritePaired,
     clientReadOnly,
+    closeSelectedSpoolDetailModal,
     openRollModal,
+    selectedSpoolId,
     setShowRollHistory,
+    showRollModal,
     switchToManageMode,
     t,
   ]);
@@ -467,8 +505,66 @@ export default function InventoryPage({
     t,
   });
 
+  const canLoanSelectedSpool = Boolean(
+    selectedSpool && loanTrackingCandidates.some((candidate) => candidate.id === selectedSpool.id),
+  );
+  const {
+    availableSlots: availableLoadSlots,
+    canLoadSelectedSpool,
+    closeLoadSpoolModal,
+    confirmLoadSpool,
+    openLoadSpoolModal,
+    showLoadSpoolModal,
+  } = useInventoryLoadSpoolAction({
+    assignedSlot: selectedSpoolAssignedSlot,
+    canUseClientHostWrite,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    ensureLocalWriteAllowed,
+    manageBusy,
+    printerSlots: printerSlotOptions,
+    reloadPrinterOverview,
+    reloadSpoolDetail,
+    reloadSpools,
+    selectedSpool,
+    setError,
+    setInfoMessage,
+    setManageBusy,
+    tauriAvailable: tauri,
+    t,
+  });
+  const {
+    modalProps: inventoryLabelSheetModalProps,
+    openLabelSheet: openInventoryLabelSheet,
+  } = useInventoryLabelSheetAction({
+    busy: manageBusy,
+    clientHostBaseUrl,
+    clientReadOnly,
+    locale,
+    setError,
+    setInfoMessage,
+    spools,
+    tauriAvailable: tauri,
+    t,
+  });
+  const inventoryLabelSheetVisualQaOpenedRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "settings-inventory-label-sheet" ||
+      inventoryLabelSheetVisualQaOpenedRef.current ||
+      !tauri ||
+      loading
+    ) {
+      return;
+    }
+    inventoryLabelSheetVisualQaOpenedRef.current = true;
+    void openInventoryLabelSheet();
+  }, [desktopVisualQaScenario, loading, openInventoryLabelSheet, tauri]);
+
   useInventoryRollModalEscape({
-    closeRollModal,
+    closeRollModal: closeSelectedSpoolDetailModal,
     showRollModal,
   });
 
@@ -500,9 +596,7 @@ export default function InventoryPage({
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
-    handleSaveSpoolOwnership,
-    handleSaveSpoolLocation,
-    handleSaveSpoolTareWeight,
+    handleSaveSpoolCommonDetails,
     handleToggleLostStatus,
     handleWeightSubmit,
   } = useInventorySpoolDetailActions({
@@ -520,6 +614,8 @@ export default function InventoryPage({
     editMasterVendor,
     ensureLocalWriteAllowed,
     manageBusy,
+    markCommonDetailsSaved,
+    markMasterMetadataSaved,
     masterEditUnlocked,
     reloadActiveLoans,
     reloadCatalog,
@@ -908,8 +1004,22 @@ export default function InventoryPage({
         onLoanCreated={handleLoanCreated}
       />
 
+      <InventoryLoadSpoolModal
+        busy={manageBusy}
+        onClose={closeLoadSpoolModal}
+        onConfirm={(slotId) => void confirmLoadSpool(slotId)}
+        open={showLoadSpoolModal}
+        slotLabelById={slotLabelById}
+        slots={availableLoadSlots}
+        spool={selectedSpool}
+      />
+
+      <InventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
+
       <InventorySpoolDetailModal
         assignedSlot={selectedSpoolAssignedSlot}
+        canLoadInPrinter={canLoadSelectedSpool}
+        canLoanOut={canLoanSelectedSpool}
         colorName={editMasterColorName}
         confirmDelete={confirmDelete}
         confirmPurge={confirmPurge}
@@ -919,7 +1029,9 @@ export default function InventoryPage({
         filamentName={editMasterFilamentName}
         formatHistoryEventDetails={formatHistoryEventDetails}
         formatHistoryEventType={formatHistoryEventType}
+        hasCommonChanges={commonDetailsDirty}
         hasHiddenHistoryRows={hasHiddenHistoryRows}
+        hasUnsavedChanges={hasUnsavedDetailChanges}
         hexColor={editMasterHexColor}
         historyLoading={historyLoading}
         initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
@@ -944,14 +1056,14 @@ export default function InventoryPage({
         onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
         onClose={closeSelectedSpoolDetailModal}
         onDelete={handleDeleteSelected}
+        onLoadInPrinter={openLoadSpoolModal}
+        onLoanOut={() => openLoanTrackingModal(selectedSpool)}
         onMarkEmpty={handleMarkEmpty}
         onPrintLabel={handlePrintLabel}
         onPurge={handlePurgeSelected}
         onRefill={handleRefillSpool}
-        onSaveLocation={handleSaveSpoolLocation}
+        onSaveCommonDetails={handleSaveSpoolCommonDetails}
         onSaveMasterMetadata={handleSaveMasterMetadata}
-        onSaveOwnership={handleSaveSpoolOwnership}
-        onSaveTareWeight={handleSaveSpoolTareWeight}
         onStartRfidCapture={handleStartRfidCapture}
         onSubmitWeight={handleWeightSubmit}
         onToggleEditUnlocked={toggleMasterEditUnlocked}
@@ -1054,8 +1166,10 @@ export default function InventoryPage({
         onRetryLoadError={refreshInventoryPage}
         purchaseQueueProps={purchaseQueueProps}
         headerActionsProps={{
+          labelSheetDisabled: !tauri || manageBusy || loading,
           lowStockOnly,
           onAddSpool: () => openAddModal(),
+          onCreateLabelSheet: () => void openInventoryLabelSheet(),
           onLoanOutRoll: openLoanTrackingModal,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,

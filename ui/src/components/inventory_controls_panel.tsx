@@ -44,11 +44,13 @@ function InventoryAdvancedFilterRow({
 type InventoryHeaderActionsProps = {
   lowStockOnly: boolean;
   onAddSpool: () => void;
+  onCreateLabelSheet: () => void;
   onLoanOutRoll: () => void;
   onLowStockOnlyChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: StatusFilter) => void;
   primaryActionsDisabled: boolean;
+  labelSheetDisabled: boolean;
   search: string;
   showStockFilters: boolean;
   statusFilter: StatusFilter;
@@ -104,11 +106,13 @@ function ownershipLabel(ownership: OwnershipFilter, t: ReturnType<typeof useI18n
 export function InventoryHeaderActions({
   lowStockOnly,
   onAddSpool,
+  onCreateLabelSheet,
   onLoanOutRoll,
   onLowStockOnlyChange,
   onSearchChange,
   onStatusFilterChange,
   primaryActionsDisabled,
+  labelSheetDisabled,
   search,
   showStockFilters,
   statusFilter,
@@ -130,6 +134,12 @@ export function InventoryHeaderActions({
           disabled={primaryActionsDisabled}
         >
           {t("inventory.loanOutRoll", "Loan out roll")}
+        </PageHeaderButton>
+        <PageHeaderButton
+          onClick={onCreateLabelSheet}
+          disabled={labelSheetDisabled}
+        >
+          {t("settings.inventoryOverviewPrintAction", "Create inventory label sheet")}
         </PageHeaderButton>
       </div>
       {showStockFilters ? (

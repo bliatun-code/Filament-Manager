@@ -93,6 +93,13 @@ export type UpdateSpoolDetailsInput = {
   status: string;
   location?: string | null;
   home_location?: string | null;
+  spool_tare_weight_g?: number;
+  ownership?: {
+    ownership_type: "OWNED" | "BORROWED_IN" | string;
+    owner_name?: string | null;
+    owner_contact?: string | null;
+    ownership_note?: string | null;
+  };
 };
 
 export type UpdateSpoolRfidTagInput = {
@@ -266,6 +273,12 @@ export async function updateLibrarySyncHostSpoolDetails(
   }
   if (input.home_location !== undefined) {
     payload.home_location = input.home_location;
+  }
+  if (input.spool_tare_weight_g !== undefined) {
+    payload.spool_tare_weight_g = input.spool_tare_weight_g;
+  }
+  if (input.ownership !== undefined) {
+    payload.ownership = input.ownership;
   }
 
   return invoke<void>("update_library_sync_host_spool_details", {

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const source = readFileSync(new URL("./settings.tsx", import.meta.url), "utf8");
+const inventorySource = readFileSync(new URL("./inventory.tsx", import.meta.url), "utf8");
 const printersSectionSource = readFileSync(
   new URL("./use_settings_printers_section.ts", import.meta.url),
   "utf8",
@@ -47,9 +48,14 @@ test("general settings visual QA waits for and reveals background controls", () 
   assert.match(generalTabSource, /id="settings-background-operation"/);
 });
 
-test("inventory label sheet visual QA opens the real data-backed modal", () => {
-  assert.match(source, /desktopVisualQaScenario === "settings-inventory-label-sheet"/);
-  assert.match(labelSheetModalSource, /id="settings-inventory-label-sheet-builder"/);
+test("inventory label sheet visual QA opens the real data-backed modal from Inventory", () => {
+  assert.match(
+    inventorySource,
+    /desktopVisualQaScenario !== "settings-inventory-label-sheet"/,
+  );
+  assert.match(inventorySource, /void openInventoryLabelSheet\(\)/);
+  assert.doesNotMatch(source, /inventoryLabelSheetModalProps/);
+  assert.match(labelSheetModalSource, /id="inventory-label-sheet-builder"/);
   assert.match(labelSheetModalSource, /visibleItems\.map/);
 });
 

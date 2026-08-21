@@ -251,8 +251,6 @@ export default function SettingsPage({
     settingsCatalogResetMessageLabels,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     settingsPrinterMessageLabels,
     settingsSwatchBulkMessageLabels,
@@ -428,8 +426,6 @@ export default function SettingsPage({
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
-    handleOpenInventoryLabelSheet,
-    inventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   } = useSettingsMaintenanceSection({
     applicationDiagnosticsEnabled: activeTab === "MAINTENANCE",
@@ -441,8 +437,6 @@ export default function SettingsPage({
     clearBackupValidation,
     lastBackupValidation,
     lastCatalogReset,
-    initialInventoryLabelSheetOpen:
-      desktopVisualQaScenario === "settings-inventory-label-sheet",
     librarySyncModeDraft,
     locale,
     missingSwatchCount,
@@ -470,12 +464,9 @@ export default function SettingsPage({
     settingsInventoryRows: spoolRows,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     tauri,
     t,
-    trustedLanStatus,
   });
 
   useEffect(() => {
@@ -610,14 +601,12 @@ export default function SettingsPage({
     desktopLifecycleUpdateError: desktopLifecycle.updateError,
     desktopLifecycleUpdating: desktopLifecycle.updating,
     locale,
-    inventoryLabelSheetModalProps,
     tauri,
     themeMode,
     t,
     onLocaleSelection: handleLocaleSelection,
     onContinueInBackground: desktopLifecycle.handleContinueInBackground,
     onLaunchAtLogin: desktopLifecycle.handleLaunchAtLogin,
-    onOpenInventoryLabelSheet: handleOpenInventoryLabelSheet,
     onRetryDesktopLifecycleLoad: desktopLifecycle.handleRetryLoad,
     onThemeSelection: handleThemeSelection,
   });

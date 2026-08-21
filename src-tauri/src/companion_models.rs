@@ -195,6 +195,8 @@ pub(crate) struct UpdateSpoolDetailsRequest {
     pub(crate) location: OptionalUpdate<String>,
     #[serde(default)]
     pub(crate) home_location: OptionalUpdate<String>,
+    pub(crate) spool_tare_weight_g: Option<i64>,
+    pub(crate) ownership: Option<UpdateSpoolOwnershipRequest>,
 }
 
 #[derive(Deserialize)]

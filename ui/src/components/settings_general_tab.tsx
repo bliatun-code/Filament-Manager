@@ -26,10 +26,6 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { SettingsSurfaceCard } from "./settings_ui";
-import {
-  SettingsInventoryLabelSheetModal,
-  type SettingsInventoryLabelSheetModalProps,
-} from "./settings_inventory_label_sheet_modal";
 
 type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
@@ -42,14 +38,12 @@ export type SettingsGeneralTabProps = {
   desktopLifecycleUpdateError: string | null;
   desktopLifecycleUpdating: boolean;
   locale: Locale;
-  inventoryLabelSheetModalProps: SettingsInventoryLabelSheetModalProps;
   tauri: boolean;
   themeMode: ThemeMode;
   t: TranslateFn;
   onLocaleSelection: (locale: Locale) => void;
   onContinueInBackground: (enabled: boolean) => Promise<void> | void;
   onLaunchAtLogin: (enabled: boolean) => Promise<void> | void;
-  onOpenInventoryLabelSheet: () => void;
   onRetryDesktopLifecycleLoad: () => void;
   onThemeSelection: (mode: ThemeMode) => void;
 };
@@ -62,7 +56,6 @@ export function SettingsGeneralTab({
   desktopLifecycleSettings,
   desktopLifecycleUpdateError,
   desktopLifecycleUpdating,
-  inventoryLabelSheetModalProps,
   locale,
   tauri,
   themeMode,
@@ -70,7 +63,6 @@ export function SettingsGeneralTab({
   onLocaleSelection,
   onContinueInBackground,
   onLaunchAtLogin,
-  onOpenInventoryLabelSheet,
   onRetryDesktopLifecycleLoad,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
@@ -449,31 +441,6 @@ export function SettingsGeneralTab({
         </div>
       </SettingsSurfaceCard>
 
-      <SettingsSurfaceCard
-        className="space-y-4"
-        eyebrow={t("settings.inventoryOverviewPrint", "Inventory label sheets")}
-        description={t(
-          "settings.inventoryOverviewPrintHint",
-          "Create QR label sheets for every on-hand roll, using the same readable 60 × 24 mm layout as individual labels.",
-        )}
-      >
-        <button
-          type="button"
-          onClick={onOpenInventoryLabelSheet}
-          className={settingsActionButtonClass("accent")}
-          disabled={!tauri || busy}
-        >
-          {t("settings.inventoryOverviewPrintAction", "Create inventory label sheet")}
-        </button>
-        <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          {t(
-            "settings.inventoryOverviewSingleLabelHint",
-            "Need just one label? Open the roll in Inventory and choose Create QR label.",
-          )}
-        </div>
-      </SettingsSurfaceCard>
-
-      <SettingsInventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
     </>
   );
 }

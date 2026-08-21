@@ -21,8 +21,6 @@ const norwegianMessages: Record<string, string> = {
   "settings.viewNotices": "Notiser",
   "settings.help": "Hjelp",
   "settings.userManual": "Brukermanual",
-  "settings.inventoryOverviewSingleLabelHint":
-    "Trenger du bare én etikett? Åpne rullen i Lager og velg Lag QR-etikett.",
 };
 
 function i18nValue(locale: Locale = "en"): I18nContextValue {
@@ -59,7 +57,6 @@ const defaultDesktopLifecycle: DesktopLifecycleRenderProps = {
 
 function renderGeneralTab(
   locale: Locale = "en",
-  labelSheetOpen = false,
   desktopLifecycleOverrides: Partial<DesktopLifecycleRenderProps> = {},
 ) {
   const desktopLifecycle = {
@@ -77,22 +74,6 @@ function renderGeneralTab(
           appVersion: "0.16.0",
           busy: false,
           ...desktopLifecycle,
-          inventoryLabelSheetModalProps: {
-            items: labelSheetOpen
-              ? [
-                  {
-                    reference: "spool-1",
-                    pngDataUrl:
-                      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7aSykAAAAASUVORK5CYII=",
-                  },
-                ]
-              : [],
-            loading: false,
-            onClose: () => {},
-            onSave: () => {},
-            open: labelSheetOpen,
-            saving: false,
-          },
           locale,
           tauri: true,
           themeMode: "dark",
@@ -100,7 +81,6 @@ function renderGeneralTab(
           onLocaleSelection: () => {},
           onContinueInBackground: () => {},
           onLaunchAtLogin: () => {},
-          onOpenInventoryLabelSheet: () => {},
           onRetryDesktopLifecycleLoad: () => {},
           onThemeSelection: () => {},
         }),
@@ -130,7 +110,7 @@ test("SettingsGeneralTab exposes license and source links", () => {
   assert.match(html, /Starts hidden for this user account/);
   assert.doesNotMatch(html, /Use Quit there/);
   assert.doesNotMatch(html, /Starts minimized/);
-  assert.match(html, /Need just one label\?/);
+  assert.doesNotMatch(html, /Create inventory label sheet/);
   assert.match(
     html,
     /class="[^"]*border-slate-200[^"]*bg-white[^"]*text-slate-700[^"]*"[^>]*>Product tour/,
@@ -168,13 +148,13 @@ test("SettingsGeneralTab localizes license controls in Norwegian", () => {
   assert.match(html, /Notiser/);
   assert.match(html, /Hjelp/);
   assert.match(html, /Brukermanual/);
-  assert.match(html, /Trenger du bare én etikett\?/);
+  assert.doesNotMatch(html, /Lag etikettark/);
   assert.match(html, /Åpne menyen der når du vil avslutte programmet/);
   assert.match(html, /Starter skjult for denne brukerkontoen/);
 });
 
 test("SettingsGeneralTab exposes accessible lifecycle loading and load recovery", () => {
-  const loadingHtml = renderGeneralTab("en", false, {
+  const loadingHtml = renderGeneralTab("en", {
     desktopLifecycleLoading: true,
     desktopLifecycleSettings: null,
   });
@@ -184,7 +164,7 @@ test("SettingsGeneralTab exposes accessible lifecycle loading and load recovery"
   assert.match(loadingHtml, /Loading background settings…/);
   assert.doesNotMatch(loadingHtml, /Continue running when I close the window/);
 
-  const errorHtml = renderGeneralTab("en", false, {
+  const errorHtml = renderGeneralTab("en", {
     desktopLifecycleLoadError: "native state unavailable",
     desktopLifecycleSettings: null,
   });
@@ -196,7 +176,7 @@ test("SettingsGeneralTab exposes accessible lifecycle loading and load recovery"
 });
 
 test("SettingsGeneralTab reports update errors separately from load errors", () => {
-  const html = renderGeneralTab("en", false, {
+  const html = renderGeneralTab("en", {
     desktopLifecycleUpdateError: "permission denied",
   });
 
@@ -205,7 +185,7 @@ test("SettingsGeneralTab reports update errors separately from load errors", () 
   assert.doesNotMatch(html, /could not be loaded/);
   assert.doesNotMatch(html, />Retry<\/button>/);
 
-  const applicationPathHtml = renderGeneralTab("en", false, {
+  const applicationPathHtml = renderGeneralTab("en", {
     desktopLifecycleUpdateError: "APP_LOCATION_UNSTABLE",
   });
   assert.match(
@@ -216,7 +196,7 @@ test("SettingsGeneralTab reports update errors separately from load errors", () 
 });
 
 test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", () => {
-  const html = renderGeneralTab("en", false, {
+  const html = renderGeneralTab("en", {
     desktopLifecycleSettings: {
       continue_in_background: false,
       launch_at_login: false,
@@ -241,7 +221,7 @@ test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", (
 });
 
 test("SettingsGeneralTab isolates unavailable launch-at-login state", () => {
-  const html = renderGeneralTab("en", false, {
+  const html = renderGeneralTab("en", {
     desktopLifecycleSettings: {
       continue_in_background: true,
       launch_at_login: false,
@@ -266,17 +246,9 @@ test("SettingsGeneralTab isolates unavailable launch-at-login state", () => {
   );
 });
 
-test("SettingsGeneralTab opens a paper-aware inventory label sheet preview", () => {
-  const html = renderGeneralTab("en", true);
+test("SettingsGeneralTab no longer owns the inventory label sheet workflow", () => {
+  const html = renderGeneralTab("en");
 
-  assert.match(html, /Create inventory label sheet/);
-  assert.match(html, /Sheet preview/);
-  assert.match(html, /A4/);
-  assert.match(html, /US Letter/);
-  assert.match(html, /60 × 24 mm/);
-  assert.match(html, /30 labels per page/);
-  assert.match(html, /Need just one label\?/);
-  assert.match(html, /Open the roll in Inventory/);
-  assert.match(html, /Save PDF to Downloads/);
-  assert.match(html, /data:image\/png;base64/);
+  assert.doesNotMatch(html, /Create inventory label sheet/);
+  assert.doesNotMatch(html, /Sheet preview/);
 });

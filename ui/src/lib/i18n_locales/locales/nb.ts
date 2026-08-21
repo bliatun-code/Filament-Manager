@@ -282,6 +282,19 @@ export const nbDictionary: DictionaryNode = {
       noMatch: "Ingen filamenter matcher valgte filtre.",
       noMatchHint: "Prøv å justere søk, status, materiale eller eierskapsfilter.",
       selectedRoll: "Valgt filament",
+      selectedRollActions: "Handlinger for valgt filament",
+      nextStep: "Neste steg",
+      loanOutAction: "Lån ut",
+      loadInPrinter: "Last i skriver",
+      loadInPrinterHint:
+        "Det valgte filamentet er klart. Velg bare printersport; du trenger ikke søke etter filamentet på nytt.",
+      noAvailablePrinterSlots: "Ingen tomme printersport er tilgjengelige.",
+      loadedInPrinter: "Filamentet er lastet i printersportet.",
+      printLabelAction: "Skriv etikett",
+      unsavedChanges: "Du har ulagrede endringer.",
+      allChangesSaved: "Alle endringer er lagret.",
+      discardUnsavedChanges: "Forkaste ulagrede filamentendringer? Endringene går tapt.",
+      rollChangesSaved: "Filamentendringene er lagret.",
       updatingRoll: "Oppdaterer valgt filament...",
       currentStatus: "Nåværende status",
       material: "Materiale",
@@ -525,6 +538,8 @@ export const nbDictionary: DictionaryNode = {
       refilledAuto: "Rullen ble reaktivert fra ny målt vekt.",
       returnToInventory: "Returner til lager",
       printQr: "Lag QR-etikett",
+      labelSheetInventoryHint:
+        "Trenger du etiketter til flere filamenter? Lag et etikettark fra toppen av Lager-siden.",
       labelBuilderTitle: "Lag etikettbilde",
       labelBuilderSubtitle:
         "Velg fysisk størrelse, kontroller forhåndsvisningen og lagre en utskriftsklar PNG.",
@@ -719,6 +734,9 @@ export const nbDictionary: DictionaryNode = {
         outgoingWeightRequiredForUnassign:
           "Oppgi utgående rullvekt før du tar denne rullen ut av sporet.",
         saveRollChanges: "Kunne ikke lagre rullendringer.",
+        loadInPrinter: "Dette filamentet kan ikke lastes i et printersport.",
+        loadInPrinterStale:
+          "Det valgte printersportet er ikke lenger tilgjengelig. Oppdater og velg et annet spor.",
         saveRfid: "Kunne ikke lagre RFID-identiteten.",
         assignFirst: "Tildel rullen til printer-spor først.",
         recordUsage: "Kunne ikke registrere printerforbruk.",
