@@ -59,11 +59,13 @@ function renderPanel(options: {
   return renderToStaticMarkup(
     <I18nContext.Provider value={i18nValue}>
       <WishlistQueuePanel
+        addPurchaseDisabled={false}
         busy={false}
         catalogMasterById={new Map()}
         confirmWishlistRemoveId={options.confirmId ?? null}
         items={items}
         loading={false}
+        onAddPurchase={() => {}}
         onCancelDeleteItem={() => {}}
         onDeleteItem={() => {}}
         onFilterChange={() => {}}
@@ -98,6 +100,7 @@ test("wishlist queue renders local search, result count, and named status groups
   assert.match(html, /<input[^>]*type="number"[^>]*min="1"[^>]*max="3"/);
   assert.match(html, /aria-label="Qty"/);
   assert.match(html, />Stock roll now<\/button>/);
+  assert.match(html, />Add to wishlist \/ order<\/button>/);
   assert.match(html, /aria-pressed="false" disabled=""[^>]*><span>Received<\/span>/);
 });
 

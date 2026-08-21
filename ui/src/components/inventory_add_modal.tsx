@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { AppModal } from "./app_modal";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
@@ -9,7 +9,6 @@ import {
 } from "./inventory_modal_chrome";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { ModalBody, ModalHeader, ModalHeaderActionButton, ModalNotice } from "./modal_chrome";
-import { WishlistQueuePanel } from "./wishlist_queue_panel";
 import { useI18n } from "../lib/i18n";
 import type {
   BambuFilamentCodeBatch,
@@ -21,17 +20,13 @@ import {
 } from "../lib/inventory_create_model";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
-import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
-import type {
-  WishlistQueueSummary,
-  WishlistStatus,
-  WishlistStatusFilter,
-} from "../lib/wishlist_data_source";
+import type { MasterCatalogRow } from "../lib/tauri_client";
+
+export type InventoryEntryPurpose = "STOCK" | "PURCHASE";
 
 export type InventoryAddModalProps = {
   actionStyle?: CSSProperties;
   activeCatalogMasters: MasterCatalogRow[];
-  autoFocusWishlistQueue?: boolean;
   autoOpenBambuBatch?: boolean;
   bambuBatchInput: string;
   bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
@@ -39,10 +34,8 @@ export type InventoryAddModalProps = {
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
-  busy: boolean;
   catalogMasterById: Map<string, MasterCatalogRow>;
   catalogQuery: string;
-  confirmWishlistRemoveId: string | null;
   createMode: InventoryCreateMode;
   disabledBambuBatchCreate: boolean;
   disabledCreate: boolean;
@@ -64,12 +57,10 @@ export type InventoryAddModalProps = {
   onBambuBatchInputChange: (value: string) => void;
   onBambuBatchRowSelectionChange: (rowKey: string, masterId: string | null) => void;
   onCatalogQueryChange: (value: string) => void;
-  onCancelWishlistRemove: () => void;
   onClose: () => void;
   onCreateBambuCodeBatch: () => void;
   onCreateModeChange: (value: InventoryCreateMode) => void;
   onCreateSpool: () => void;
-  onDeleteWishlistItem: (itemId: string) => void;
   onInitialWeightChange: (value: string) => void;
   onLocationChange: (value: string) => void;
   onManualColorNameChange: (value: string) => void;
@@ -78,31 +69,20 @@ export type InventoryAddModalProps = {
   onManualMaterialChange: (value: string) => void;
   onManualVendorChange: (value: string) => void;
   onOwnershipTypeChange: (value: OwnershipType) => void;
-  onRequestWishlistRemove: (itemId: string) => void;
   onSelectCatalogMaster: (master: MasterCatalogRow) => void;
-  onStockWishlistItem: (item: WishlistItemRow, quantity: number) => void;
   onUseManualFromCatalog: () => void;
-  onWishlistFilterChange: (filter: WishlistStatusFilter) => void;
-  onWishlistQueryChange: (query: string) => void;
-  onWishlistStatusChange: (itemId: string, status: WishlistStatus) => void;
   open: boolean;
   ownershipType: OwnershipType;
   panelStyle?: CSSProperties;
+  purpose: InventoryEntryPurpose;
   resolvedTheme: ResolvedTheme;
   selectedCatalogMasterId: string | null;
   tauriAvailable: boolean;
-  visibleWishlistItems: WishlistItemRow[];
-  wishlistItems: WishlistItemRow[];
-  wishlistLoading: boolean;
-  wishlistQuery: string;
-  wishlistSummary: WishlistQueueSummary;
-  wishlistValue: WishlistStatusFilter;
 };
 
 export function InventoryAddModal({
   actionStyle,
   activeCatalogMasters,
-  autoFocusWishlistQueue = false,
   autoOpenBambuBatch = false,
   bambuBatchInput,
   bambuBatchCreateState,
@@ -110,10 +90,8 @@ export function InventoryAddModal({
   borrowedFromContact,
   borrowedFromName,
   borrowedInNote,
-  busy,
   catalogMasterById,
   catalogQuery,
-  confirmWishlistRemoveId,
   createMode,
   disabledBambuBatchCreate,
   disabledCreate,
@@ -135,12 +113,10 @@ export function InventoryAddModal({
   onBambuBatchInputChange,
   onBambuBatchRowSelectionChange,
   onCatalogQueryChange,
-  onCancelWishlistRemove,
   onClose,
   onCreateBambuCodeBatch,
   onCreateModeChange,
   onCreateSpool,
-  onDeleteWishlistItem,
   onInitialWeightChange,
   onLocationChange,
   onManualColorNameChange,
@@ -149,30 +125,19 @@ export function InventoryAddModal({
   onManualMaterialChange,
   onManualVendorChange,
   onOwnershipTypeChange,
-  onRequestWishlistRemove,
   onSelectCatalogMaster,
-  onStockWishlistItem,
   onUseManualFromCatalog,
-  onWishlistFilterChange,
-  onWishlistQueryChange,
-  onWishlistStatusChange,
   open,
   ownershipType,
   panelStyle,
+  purpose,
   resolvedTheme,
   selectedCatalogMasterId,
   tauriAvailable,
-  visibleWishlistItems,
-  wishlistItems,
-  wishlistLoading,
-  wishlistQuery,
-  wishlistSummary,
-  wishlistValue,
 }: InventoryAddModalProps) {
   const { t } = useI18n();
   const [bambuBatchModalOpen, setBambuBatchModalOpen] = useState(false);
   const [autoOpenedBambuBatch, setAutoOpenedBambuBatch] = useState(false);
-  const wishlistQueueRef = useRef<HTMLDivElement | null>(null);
   const selectedCatalogMaster = selectedCatalogMasterId
     ? (catalogMasterById.get(selectedCatalogMasterId) ?? null)
     : null;
@@ -208,64 +173,6 @@ export function InventoryAddModal({
     setAutoOpenedBambuBatch(true);
   }, [autoOpenBambuBatch, autoOpenedBambuBatch, open, openBambuBatchModal]);
 
-  useEffect(() => {
-    if (!open || !autoFocusWishlistQueue || wishlistLoading) {
-      return;
-    }
-    const target = wishlistQueueRef.current;
-    const scrollContainer = target?.closest<HTMLElement>("[data-inventory-add-scroll]");
-    if (!target || !scrollContainer) {
-      return;
-    }
-
-    let scheduledFrameId: number | null = null;
-    const revealWishlistQueue = () => {
-      if (scheduledFrameId !== null) {
-        window.cancelAnimationFrame(scheduledFrameId);
-      }
-      scheduledFrameId = window.requestAnimationFrame(() => {
-        scheduledFrameId = null;
-        const targetOffset =
-          scrollContainer.scrollTop +
-          target.getBoundingClientRect().top -
-          scrollContainer.getBoundingClientRect().top;
-        scrollContainer.scrollTo({
-          behavior: "auto",
-          top: Math.max(0, targetOffset),
-        });
-        target.querySelector<HTMLInputElement>('input[type="search"]')?.focus({
-          preventScroll: true,
-        });
-      });
-    };
-
-    revealWishlistQueue();
-    const timerIds = [150, 450, 900].map((delay) =>
-      window.setTimeout(revealWishlistQueue, delay),
-    );
-    window.addEventListener("resize", revealWishlistQueue);
-    const resizeObserver =
-      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(revealWishlistQueue);
-    resizeObserver?.observe(scrollContainer);
-    resizeObserver?.observe(target);
-
-    return () => {
-      timerIds.forEach((timerId) => window.clearTimeout(timerId));
-      window.removeEventListener("resize", revealWishlistQueue);
-      resizeObserver?.disconnect();
-      if (scheduledFrameId !== null) {
-        window.cancelAnimationFrame(scheduledFrameId);
-      }
-    };
-  }, [
-    activeCatalogMasters.length,
-    autoFocusWishlistQueue,
-    open,
-    visibleWishlistItems.length,
-    wishlistItems.length,
-    wishlistLoading,
-  ]);
-
   if (!open) {
     return null;
   }
@@ -279,17 +186,32 @@ export function InventoryAddModal({
     >
       <>
         <ModalHeader
-          eyebrow={t("inventory.stockEntry", "Stock entry")}
-          title={t("inventory.addFilament", "Add filament")}
-          subtitle={t(
-            "inventory.addFilamentSubtitle",
-            "Add directly to stock, or keep the wishlist → on order → stock workflow.",
-          )}
+          eyebrow={
+            purpose === "PURCHASE"
+              ? t("inventory.wishlistWorkflow", "Wishlist workflow")
+              : t("inventory.stockEntry", "Stock entry")
+          }
+          title={
+            purpose === "PURCHASE"
+              ? t("inventory.addToWishlist", "Add to wishlist / order")
+              : t("inventory.addFilament", "Add filament")
+          }
+          subtitle={
+            purpose === "PURCHASE"
+              ? t(
+                  "inventory.wishlistQueueHelp",
+                  "Keep planned purchases here, move them to on order, then stock them when they arrive.",
+                )
+              : t(
+                  "inventory.stockEntryHelp",
+                  "Choose a vendor flow, pick a filament, then confirm stock details below.",
+                )
+          }
           closeLabel={t("common.close", "Close")}
           onClose={onClose}
           className="sticky top-0 z-10 bg-white/88 backdrop-blur-xl dark:bg-slate-950/88"
           aside={
-            <>
+            purpose === "STOCK" ? (
               <ModalHeaderActionButton
                 onClick={openBambuBatchModal}
                 aria-label={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
@@ -302,7 +224,7 @@ export function InventoryAddModal({
                   {t("inventory.bambuBatchHeaderActionShort", "Batch")}
                 </span>
               </ModalHeaderActionButton>
-            </>
+            ) : null
           }
         />
 
@@ -326,7 +248,7 @@ export function InventoryAddModal({
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
-                autoFocusCatalogSearch={!autoFocusWishlistQueue}
+                autoFocusCatalogSearch
                 catalogQuery={catalogQuery}
                 createMode={createMode}
                 isCatalogCreateMode={isCatalogCreateMode}
@@ -370,32 +292,10 @@ export function InventoryAddModal({
                 onOwnershipTypeChange={onOwnershipTypeChange}
                 ownershipType={ownershipType}
                 panelStyle={panelStyle}
+                purpose={purpose}
                 selectionSummary={selectionSummary}
                 tauriAvailable={tauriAvailable}
               />
-
-              <div ref={wishlistQueueRef}>
-                <WishlistQueuePanel
-                  busy={busy}
-                  catalogMasterById={catalogMasterById}
-                  confirmWishlistRemoveId={confirmWishlistRemoveId}
-                  items={wishlistItems}
-                  loading={wishlistLoading}
-                  onCancelDeleteItem={onCancelWishlistRemove}
-                  onDeleteItem={onDeleteWishlistItem}
-                  onFilterChange={onWishlistFilterChange}
-                  onQueryChange={onWishlistQueryChange}
-                  onRequestDeleteItem={onRequestWishlistRemove}
-                  onStatusChange={onWishlistStatusChange}
-                  onStockItem={onStockWishlistItem}
-                  query={wishlistQuery}
-                  resolvedTheme={resolvedTheme}
-                  summary={wishlistSummary}
-                  tauriAvailable={tauriAvailable}
-                  value={wishlistValue}
-                  visibleItems={visibleWishlistItems}
-                />
-              </div>
             </div>
           </div>
         </ModalBody>

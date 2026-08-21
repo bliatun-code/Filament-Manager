@@ -50,6 +50,7 @@ type InventoryHeaderActionsProps = {
   onStatusFilterChange: (value: StatusFilter) => void;
   primaryActionsDisabled: boolean;
   search: string;
+  showStockFilters: boolean;
   statusFilter: StatusFilter;
 };
 
@@ -109,6 +110,7 @@ export function InventoryHeaderActions({
   onStatusFilterChange,
   primaryActionsDisabled,
   search,
+  showStockFilters,
   statusFilter,
 }: InventoryHeaderActionsProps) {
   const { t } = useI18n();
@@ -130,50 +132,55 @@ export function InventoryHeaderActions({
           {t("inventory.loanOutRoll", "Loan out roll")}
         </PageHeaderButton>
       </div>
-      <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
-        <input
-          type="search"
-          aria-label={t(
-            "inventory.searchPlaceholder",
-            "Search by material, color, location or QR",
-          )}
-          placeholder={t(
-            "inventory.searchPlaceholder",
-            "Search by material, color, location or QR",
-          )}
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          className="page-header-search"
-        />
-        <div className="page-header-filter-surface">
-          <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
-              {t("inventory.status", "Status")}
-            </div>
-            <div className="flex flex-wrap gap-1.5 min-[920px]:justify-end">
-              <button
-                type="button"
-                aria-pressed={lowStockOnly}
-                onClick={() => onLowStockOnlyChange(!lowStockOnly)}
-                className={neutralChipClass(lowStockOnly, "px-3.5 py-2 text-xs")}
-              >
-                {t("inventory.lowStockOnly", "Low stock (<200 g)")}
-              </button>
-              {statuses.map((status) => (
+      {showStockFilters ? (
+        <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
+          <input
+            type="search"
+            aria-label={t(
+              "inventory.searchPlaceholder",
+              "Search by material, color, location or QR",
+            )}
+            placeholder={t(
+              "inventory.searchPlaceholder",
+              "Search by material, color, location or QR",
+            )}
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            className="page-header-search"
+          />
+          <div className="page-header-filter-surface">
+            <div className="flex flex-col gap-2 min-[920px]:flex-row min-[920px]:items-center">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400 min-[920px]:w-20">
+                {t("inventory.status", "Status")}
+              </div>
+              <div className="flex flex-wrap gap-1.5 min-[920px]:justify-end">
                 <button
-                  key={status}
                   type="button"
-                  aria-pressed={statusFilter === status}
-                  onClick={() => onStatusFilterChange(status)}
-                  className={neutralChipClass(statusFilter === status, "px-3.5 py-2 text-xs")}
+                  aria-pressed={lowStockOnly}
+                  onClick={() => onLowStockOnlyChange(!lowStockOnly)}
+                  className={neutralChipClass(lowStockOnly, "px-3.5 py-2 text-xs")}
                 >
-                  {statusLabel(status, t)}
+                  {t("inventory.lowStockOnly", "Low stock (<200 g)")}
                 </button>
-              ))}
+                {statuses.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    aria-pressed={statusFilter === status}
+                    onClick={() => onStatusFilterChange(status)}
+                    className={neutralChipClass(
+                      statusFilter === status,
+                      "px-3.5 py-2 text-xs",
+                    )}
+                  >
+                    {statusLabel(status, t)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -32,5 +32,7 @@ test("WishlistQueuePanel requests removal before invoking delete and offers inli
   assert.match(source, /onClick=\{onCancelDeleteItem\}/);
   assert.match(source, /role="alert"/);
   assert.match(source, /groupAriaLabel=\{t\("wishlist\.itemStatusGroup"/);
-  assert.match(source, /max-h-\[28rem\][^"]*overflow-y-auto[^"]*lg:max-h-\[32rem\]/);
+  assert.match(source, /onClick=\{onAddPurchase\}/);
+  assert.match(source, /addPurchaseDisabled/);
+  assert.doesNotMatch(source, /max-h-\[28rem\]/);
 });

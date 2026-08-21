@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import type { InventoryAddModalProps } from "../components/inventory_add_modal";
+import type {
+  InventoryAddModalProps,
+  InventoryEntryPurpose,
+} from "../components/inventory_add_modal";
+import type { WishlistQueuePanelProps } from "../components/wishlist_queue_panel";
 import { buildBambuFilamentCodeBatchCreateState } from "./bambu_filament_code_batch";
 import { isBorrowedInOwnership } from "./inventory_domain";
 import { isInventoryCreateDisabled } from "./inventory_create_model";
@@ -20,7 +24,7 @@ import type { MasterCatalogRow, WishlistItemRow } from "./tauri_client";
 type SidePanelMode = "MANAGE" | "ADD";
 
 type OpenAddModalOptions = {
-  wishlistFilter?: WishlistStatusFilter;
+  purpose?: InventoryEntryPurpose;
 };
 
 type InventoryAddWorkflowInput = {
@@ -32,6 +36,8 @@ type InventoryAddWorkflowInput = {
   error: string | null;
   infoMessage: string | null;
   librarySyncReady: boolean;
+  onOpenPurchaseQueue: () => void;
+  purchaseActionsDisabled: boolean;
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
   resolvedTheme: ResolvedTheme;
@@ -54,6 +60,8 @@ export function useInventoryAddWorkflow({
   error,
   infoMessage,
   librarySyncReady,
+  onOpenPurchaseQueue,
+  purchaseActionsDisabled,
   reloadSpools,
   reloadWishlist,
   resolvedTheme,
@@ -70,6 +78,7 @@ export function useInventoryAddWorkflow({
   const [masters, setMasters] = useState<MasterCatalogRow[]>([]);
   const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("MANAGE");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [entryPurpose, setEntryPurpose] = useState<InventoryEntryPurpose>("STOCK");
 
   const {
     activeCatalogMasters,
@@ -174,6 +183,14 @@ export function useInventoryAddWorkflow({
     [masters],
   );
 
+  const finishPurchaseEntry = useCallback(() => {
+    setShowAddModal(false);
+    setSidePanelMode("MANAGE");
+    resetBorrowedInDraft();
+    resetWishlistQueue("WISHLIST");
+    onOpenPurchaseQueue();
+  }, [onOpenPurchaseQueue, resetBorrowedInDraft, resetWishlistQueue]);
+
   const {
     currentCreateDraft,
     handleAddCurrentToWishlist,
@@ -203,6 +220,7 @@ export function useInventoryAddWorkflow({
     newInitialWeight,
     newLocation,
     newOwnershipType,
+    onWishlistItemCreated: finishPurchaseEntry,
     reloadCatalog,
     reloadSpools,
     reloadWishlist,
@@ -228,8 +246,8 @@ export function useInventoryAddWorkflow({
     } else if (!ensureLocalWriteAllowed()) {
       return;
     }
+    setEntryPurpose(options.purpose ?? "STOCK");
     setSidePanelMode("ADD");
-    resetWishlistQueue(options.wishlistFilter);
     resetBorrowedInDraft();
     setShowAddModal(true);
   }, [
@@ -237,8 +255,11 @@ export function useInventoryAddWorkflow({
     clientReadOnly,
     ensureLocalWriteAllowed,
     resetBorrowedInDraft,
-    resetWishlistQueue,
   ]);
+
+  const openPurchaseModal = useCallback(() => {
+    openAddModal({ purpose: "PURCHASE" });
+  }, [openAddModal]);
 
   const closeAddModal = useCallback(() => {
     setShowAddModal(false);
@@ -287,10 +308,8 @@ export function useInventoryAddWorkflow({
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,
-    busy,
     catalogMasterById,
     catalogQuery,
-    confirmWishlistRemoveId,
     createMode,
     disabledBambuBatchCreate: bambuBatchCreateState.disabled,
     disabledCreate: disableCreate,
@@ -312,12 +331,10 @@ export function useInventoryAddWorkflow({
     onBambuBatchInputChange: setBambuBatchInput,
     onBambuBatchRowSelectionChange: setBambuBatchRowSelection,
     onCatalogQueryChange: handleCatalogQueryChange,
-    onCancelWishlistRemove: cancelWishlistRemove,
     onClose: closeAddModal,
     onCreateBambuCodeBatch: handleCreateBambuCodeBatch,
     onCreateModeChange: setCreateMode,
     onCreateSpool: handleCreateSpool,
-    onDeleteWishlistItem: handleDeleteWishlistItem,
     onInitialWeightChange: setNewInitialWeight,
     onLocationChange: setNewLocation,
     onManualColorNameChange: setManualColorName,
@@ -326,32 +343,47 @@ export function useInventoryAddWorkflow({
     onManualMaterialChange: setManualMaterial,
     onManualVendorChange: setManualVendor,
     onOwnershipTypeChange: setNewOwnershipType,
-    onRequestWishlistRemove: requestWishlistRemove,
     onSelectCatalogMaster: selectCatalogMaster,
-    onStockWishlistItem: handleStockFromWishlist,
     onUseManualFromCatalog: useManualFromCatalog,
-    onWishlistFilterChange: handleWishlistFilterChange,
-    onWishlistQueryChange: handleWishlistQueryChange,
-    onWishlistStatusChange: handleWishlistStatus,
     open: addModalActive,
     ownershipType: newOwnershipType,
     panelStyle: currentCreatePanelStyle,
+    purpose: entryPurpose,
     resolvedTheme,
     selectedCatalogMasterId: selectedCatalogMaster?.id ?? null,
     tauriAvailable,
-    visibleWishlistItems,
-    wishlistItems,
-    wishlistLoading,
-    wishlistQuery: wishlistQueueQuery,
-    wishlistSummary: wishlistQueueSummary,
-    wishlistValue: wishlistQueueFilter,
+  };
+
+  const purchaseQueueProps: WishlistQueuePanelProps = {
+    addPurchaseDisabled: !tauriAvailable || purchaseActionsDisabled || busy,
+    busy,
+    catalogMasterById,
+    confirmWishlistRemoveId,
+    items: wishlistItems,
+    loading: wishlistLoading,
+    onAddPurchase: openPurchaseModal,
+    onCancelDeleteItem: cancelWishlistRemove,
+    onDeleteItem: handleDeleteWishlistItem,
+    onFilterChange: handleWishlistFilterChange,
+    onQueryChange: handleWishlistQueryChange,
+    onRequestDeleteItem: requestWishlistRemove,
+    onStatusChange: handleWishlistStatus,
+    onStockItem: handleStockFromWishlist,
+    query: wishlistQueueQuery,
+    resolvedTheme,
+    summary: wishlistQueueSummary,
+    tauriAvailable,
+    value: wishlistQueueFilter,
+    visibleItems: visibleWishlistItems,
   };
 
   return {
     addModalActive,
     modalProps,
     openAddModal,
+    purchaseQueueProps,
     reloadCatalog,
+    resetPurchaseQueue: resetWishlistQueue,
     setMasters,
     switchToManageMode,
   };

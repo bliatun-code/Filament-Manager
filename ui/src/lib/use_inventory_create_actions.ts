@@ -47,6 +47,7 @@ type InventoryCreateActionsInput = {
   newInitialWeight: string;
   newLocation: string;
   newOwnershipType: OwnershipType;
+  onWishlistItemCreated: () => void;
   reloadCatalog: () => Promise<void>;
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
@@ -85,6 +86,7 @@ export function useInventoryCreateActions({
   newInitialWeight,
   newLocation,
   newOwnershipType,
+  onWishlistItemCreated,
   reloadCatalog,
   reloadSpools,
   reloadWishlist,
@@ -333,6 +335,15 @@ export function useInventoryCreateActions({
         hostWriteTarget,
       );
       await reloadWishlist();
+      setInfoMessage(
+        `${t("inventory.wishlistOrders", "Wishlist & orders")}: ${formatInventoryDisplayTitle(
+          currentCreateDraft.material,
+          currentCreateDraft.filament_name,
+          currentCreateDraft.color_name,
+        )}`,
+      );
+      resetAfterCreatedSpool();
+      onWishlistItemCreated();
     } catch (wishlistError) {
       console.error(wishlistError);
       setError(t("wishlist.error.add", "Failed to add wishlist item."));

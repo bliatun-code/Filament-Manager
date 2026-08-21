@@ -10,6 +10,10 @@ const inventoryControlsSource = readFileSync(
   "ui/src/components/inventory_controls_panel.tsx",
   "utf8",
 );
+const inventoryAddModalSource = readFileSync(
+  "ui/src/components/inventory_add_modal.tsx",
+  "utf8",
+);
 const inventoryPageSource = readFileSync(
   new URL("./inventory.tsx", import.meta.url),
   "utf8",
@@ -71,6 +75,16 @@ test("inventory filters do not own header search and primary actions", () => {
   assert.doesNotMatch(filterPanelSource, /page-header-actions/);
   assert.doesNotMatch(filterPanelSource, /page-header-search/);
   assert.doesNotMatch(filterPanelSource, /PageHeaderButton/);
+});
+
+test("inventory exposes purchases as a page view and keeps queue management out of add spool", () => {
+  assert.match(inventoryPageWorkspaceSource, /<InventoryWorkspaceNavigation/);
+  assert.match(inventoryPageWorkspaceSource, /activeView === "STOCK"/);
+  assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel \{\.\.\.purchaseQueueProps\} \/>/);
+  assert.match(inventoryPageWorkspaceSource, /id="inventory-purchases-panel"/);
+  assert.match(inventoryPageSource, /setActiveWorkspaceView\("PURCHASES"\)/);
+  assert.match(inventoryPageSource, /resetPurchaseQueue\("ON_ORDER"\)/);
+  assert.doesNotMatch(inventoryAddModalSource, /WishlistQueuePanel/);
 });
 
 test("inventory search and filter controls expose accessible names and state", () => {

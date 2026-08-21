@@ -2,6 +2,7 @@ import { useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
+import { PageHeaderButton } from "./page_header_button";
 import { useI18n } from "../lib/i18n";
 import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
@@ -17,13 +18,15 @@ import {
   type WishlistStatusFilter,
 } from "../lib/wishlist_data_source";
 
-type WishlistQueuePanelProps = {
+export type WishlistQueuePanelProps = {
+  addPurchaseDisabled: boolean;
   busy: boolean;
   catalogMasterById: Map<string, MasterCatalogRow>;
   confirmWishlistRemoveId: string | null;
   items: WishlistItemRow[];
   loading: boolean;
   onCancelDeleteItem: () => void;
+  onAddPurchase: () => void;
   onDeleteItem: (itemId: string) => void;
   onFilterChange: (filter: WishlistStatusFilter) => void;
   onQueryChange: (query: string) => void;
@@ -62,12 +65,14 @@ function wishlistQueueActionButtonClassName(tone: WishlistQueueActionTone): stri
 }
 
 export function WishlistQueuePanel({
+  addPurchaseDisabled,
   busy,
   catalogMasterById,
   confirmWishlistRemoveId,
   items,
   loading,
   onCancelDeleteItem,
+  onAddPurchase,
   onDeleteItem,
   onFilterChange,
   onQueryChange,
@@ -92,7 +97,7 @@ export function WishlistQueuePanel({
   return (
     <div className="surface-card space-y-4">
       <div className="surface-subtle p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
               {t("inventory.wishlistOrders", "Wishlist & orders")}
@@ -104,6 +109,15 @@ export function WishlistQueuePanel({
               )}
             </div>
           </div>
+          <PageHeaderButton
+            className="w-full shrink-0 sm:w-auto"
+            onClick={onAddPurchase}
+            responsive={false}
+            variant="primary"
+            disabled={addPurchaseDisabled}
+          >
+            {t("inventory.addToWishlist", "Add to wishlist / order")}
+          </PageHeaderButton>
         </div>
         <SegmentedChoiceRow
           className="mt-4"
@@ -173,7 +187,7 @@ export function WishlistQueuePanel({
         </div>
       ) : null}
 
-      <div className="max-h-[28rem] space-y-2 overflow-y-auto overscroll-contain pr-1 lg:max-h-[32rem]">
+      <div className="space-y-2">
         {visibleItems.map((item) => {
           const itemHex = wishlistItemHex(item, catalogMasterById);
           const itemStatus = normalizeWishlistStatus(item.status);

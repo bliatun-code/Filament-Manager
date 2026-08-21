@@ -20,9 +20,21 @@ test("wishlist removal cancellation clears confirmation and its global message",
   assert.match(cancelBlock, /setConfirmWishlistRemoveId\(null\)/);
   assert.match(cancelBlock, /setInfoMessage\(null\)/);
 
-  assert.match(workflowSource, /onCancelWishlistRemove: cancelWishlistRemove/);
-  assert.match(workflowSource, /onRequestWishlistRemove: requestWishlistRemove/);
-  assert.match(workflowSource, /onWishlistQueryChange: handleWishlistQueryChange/);
+  assert.match(workflowSource, /onCancelDeleteItem: cancelWishlistRemove/);
+  assert.match(workflowSource, /onRequestDeleteItem: requestWishlistRemove/);
+  assert.match(workflowSource, /onQueryChange: handleWishlistQueryChange/);
+});
+
+test("purchase entry closes registration UI and reveals the visible queue after creation", () => {
+  assert.match(workflowSource, /setEntryPurpose\(options\.purpose \?\? "STOCK"\)/);
+  assert.match(workflowSource, /openAddModal\(\{ purpose: "PURCHASE" \}\)/);
+  assert.match(workflowSource, /onAddPurchase: openPurchaseModal/);
+  assert.match(workflowSource, /onWishlistItemCreated: finishPurchaseEntry/);
+  assert.match(
+    workflowSource,
+    /finishPurchaseEntry[\s\S]*resetWishlistQueue\("WISHLIST"\)[\s\S]*onOpenPurchaseQueue\(\)/,
+  );
+  assert.match(actionsSource, /await reloadWishlist\(\)[\s\S]*onWishlistItemCreated\(\)/);
 });
 
 test("wishlist delete action stays guarded until the matching item is confirmed", () => {

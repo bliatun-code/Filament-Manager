@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
+import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
 import { InventorySpoolDetailModal } from "../components/inventory_spool_detail_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
@@ -56,6 +57,8 @@ export default function InventoryPage({
   );
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [error, setError] = useState<string | null>(null);
+  const [activeWorkspaceView, setActiveWorkspaceView] =
+    useState<InventoryWorkspaceView>("STOCK");
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
   >({});
@@ -156,6 +159,10 @@ export default function InventoryPage({
   const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
   const [rfidCaptureLoading, setRfidCaptureLoading] = useState(false);
 
+  const openPurchaseQueue = useCallback(() => {
+    setActiveWorkspaceView("PURCHASES");
+  }, []);
+
   const { canUseClientHostWrite, ensureLocalWriteAllowed } = useInventoryWriteGuards({
     clientHostBaseUrl,
     clientHostWritePaired,
@@ -170,7 +177,9 @@ export default function InventoryPage({
     addModalActive,
     modalProps: addModalProps,
     openAddModal,
+    purchaseQueueProps,
     reloadCatalog,
+    resetPurchaseQueue,
     setMasters,
     switchToManageMode,
   } = useInventoryAddWorkflow({
@@ -182,6 +191,8 @@ export default function InventoryPage({
     error,
     infoMessage,
     librarySyncReady,
+    onOpenPurchaseQueue: openPurchaseQueue,
+    purchaseActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
     reloadSpools,
     reloadWishlist,
     resolvedTheme,
@@ -197,7 +208,6 @@ export default function InventoryPage({
   const { onBambuBatchInputChange, onCatalogQueryChange, onCreateModeChange } = addModalProps;
   const inventoryAddModalProps = {
     ...addModalProps,
-    autoFocusWishlistQueue: desktopVisualQaScenario === "wishlist-queue",
     autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
   };
 
@@ -220,8 +230,10 @@ export default function InventoryPage({
       return;
     }
     if (navigationIntent.kind === "LOW_STOCK") {
+      setActiveWorkspaceView("STOCK");
       showLowStockList();
     } else if (navigationIntent.kind === "ADD_SPOOL") {
+      setActiveWorkspaceView("STOCK");
       openAddModal();
     }
     onConsumeNavigationIntent?.();
@@ -412,6 +424,7 @@ export default function InventoryPage({
   });
 
   const selectRollForManage = useCallback((spoolId: string) => {
+    setActiveWorkspaceView("STOCK");
     if (clientReadOnly && !clientHostWritePaired) {
       setInfoMessage(
         t(
@@ -602,9 +615,15 @@ export default function InventoryPage({
       return;
     }
 
+    if (desktopVisualQaScenario === "wishlist-queue") {
+      resetPurchaseQueue("ON_ORDER");
+      openPurchaseQueue();
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
     if (
       desktopVisualQaScenario === "add-filament" ||
-      desktopVisualQaScenario === "wishlist-queue" ||
       desktopVisualQaScenario === "bambu-batch-add"
     ) {
       if (desktopVisualQaScenario === "bambu-batch-add") {
@@ -612,9 +631,7 @@ export default function InventoryPage({
       } else if (desktopVisualQaScenario === "add-filament") {
         onCreateModeChange("esun");
       }
-      openAddModal({
-        wishlistFilter: desktopVisualQaScenario === "wishlist-queue" ? "ON_ORDER" : undefined,
-      });
+      openAddModal();
       setDesktopVisualQaStage(
         desktopVisualQaScenario === "add-filament" ? "add-esun-opened" : "done",
       );
@@ -657,7 +674,9 @@ export default function InventoryPage({
     onBambuBatchInputChange,
     onCreateModeChange,
     openAddModal,
+    openPurchaseQueue,
     openLoanTrackingModal,
+    resetPurchaseQueue,
     selectRollForManage,
     spools,
   ]);
@@ -993,6 +1012,7 @@ export default function InventoryPage({
       />
 
       <InventoryPageWorkspace
+        activeView={activeWorkspaceView}
         addModalActive={addModalActive}
         addModalProps={inventoryAddModalProps}
         clientHostDeviceName={clientHostDeviceName}
@@ -1030,7 +1050,9 @@ export default function InventoryPage({
         loadError={loadError}
         loadErrorRetryDisabled={!tauri || loading || manageBusy}
         loadErrorRetrying={refreshing}
+        onActiveViewChange={setActiveWorkspaceView}
         onRetryLoadError={refreshInventoryPage}
+        purchaseQueueProps={purchaseQueueProps}
         headerActionsProps={{
           lowStockOnly,
           onAddSpool: () => openAddModal(),
@@ -1040,10 +1062,13 @@ export default function InventoryPage({
           onStatusFilterChange: setStatusFilter,
           primaryActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
           search,
+          showStockFilters: activeWorkspaceView === "STOCK",
           statusFilter,
         }}
         infoMessage={infoMessage}
         showRollModal={showRollModal}
+        totalInventoryCount={spools.length}
+        totalPurchaseCount={wishlistItems.length}
       />
     </div>
   );
