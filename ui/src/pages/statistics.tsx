@@ -9,6 +9,7 @@ import {
 } from "../lib/desktop_visual_qa_scenario";
 import { useI18n } from "../lib/i18n";
 import { formatDisplayInteger, formatDisplayPercent } from "../lib/number_display";
+import { buildConsumptionForecast } from "../lib/statistics_forecast_model";
 import {
   buildActiveSlotRows,
   countActiveSlotOwnerships,
@@ -61,6 +62,7 @@ import {
   StatisticsBorrowerUsageModal,
   StatisticsConsumptionModal,
 } from "./statistics_usage_modals";
+import { StatisticsForecastPanel } from "./statistics_forecast_panel";
 import { useStatisticsPageData } from "./use_statistics_page_data";
 
 function loanPartyName(row: NormalizedLoanDetailsRow): string {
@@ -170,6 +172,20 @@ export default function StatisticsPage() {
     }
     return overview;
   }, [overview, overviewConsumptionRows, spoolRows]);
+  const consumptionForecast = useMemo(
+    () =>
+      buildConsumptionForecast({
+        asOfDate:
+          clientStatisticsUpdatedAt?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ??
+          new Date().toISOString().slice(0, 10),
+        ownedConsumption30d:
+          overview?.owned_consumption_30d ??
+          ownershipOverview?.owned_consumption_30d ??
+          0,
+        spools: spoolRows,
+      }),
+    [clientStatisticsUpdatedAt, overview, ownershipOverview, spoolRows],
+  );
   const openConsumptionModal = useCallback(
     async (printer?: PrinterOverviewRow) => {
       if (!tauri) {
@@ -486,6 +502,12 @@ export default function StatisticsPage() {
       <StatisticsOwnershipSnapshotPanel
         locale={locale}
         ownershipOverview={ownershipOverview}
+        t={t}
+      />
+
+      <StatisticsForecastPanel
+        forecast={consumptionForecast}
+        locale={locale}
         t={t}
       />
 
