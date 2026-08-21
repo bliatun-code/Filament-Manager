@@ -34,9 +34,9 @@ De viktigste resultatmålene er:
 | Prioritet | Arbeid | Status | Start | Ferdigkriterium |
 | --- | --- | --- | --- | --- |
 | P0 | Samle regelen for lav beholdning i én domenedefinisjon og rette tellingen slik at Dashboard ikke begrenser totalen til de fem viste elementene. Avklar også om 200 g er lav eller sunn beholdning. | Ferdig | 2026-08-21 | Grensene 0, 1, 199, 200 og 201 g samt mer enn fem lave spoler er dekket av automatiske tester, og alle flater viser samme resultat. |
-| P0 | Legge oppgradering fra forrige støttede release inn som obligatorisk CI- og release-gate. | Pågår | 2026-08-21 | En representativ v0.27-database oppgraderes, åpnes og gjenopprettes automatisk uten tap eller endring av forretningsdata. |
-| P1 | Styrke Companion med CSP, sikkerhetsheadere, body-grense, request-timeout og rate limiting. | Ikke startet | – | Sikkerhetskontroller er testet, dokumentert og kjører i CI. |
-| P1 | Beholde og tydeliggjøre eksisterende porter for ytelse, backup, tilgjengelighet og lokalisering. | Ikke startet | – | Alle porter har navngitt eier, dokumentert terskel og gir blokkerende CI-feil ved regresjon. |
+| P0 | Legge oppgradering fra forrige støttede release inn som obligatorisk CI- og release-gate. | Ferdig | 2026-08-21 | En representativ v0.27-database oppgraderes, åpnes og gjenopprettes automatisk uten tap eller endring av forretningsdata. |
+| P1 | Styrke Companion med CSP, sikkerhetsheadere, body-grense, request-timeout og rate limiting. | Ferdig | 2026-08-21 | Sikkerhetskontroller er testet, dokumentert og kjører i CI. |
+| P1 | Beholde og tydeliggjøre eksisterende porter for ytelse, backup, tilgjengelighet og lokalisering. | Ferdig | 2026-08-21 | Alle porter har navngitt eier, dokumentert terskel og gir blokkerende CI-feil ved regresjon. |
 
 ### Faseport 0
 
@@ -48,7 +48,7 @@ Fasen er ferdig når lav-beholdning gir samme resultat overalt, oppgradering fra
 
 | Prioritet | Arbeid | Status | Ferdigkriterium |
 | --- | --- | --- | --- |
-| P0 | Gjøre Innkjøp til en synlig visning under Inventory og skille registrering fra innkjøpskø. | Ikke startet | Innkjøpskøen nås med ett klikk fra Inventory, og Add spool-dialogen inneholder ikke skjult køadministrasjon. |
+| P0 | Gjøre Innkjøp til en synlig visning under Inventory og skille registrering fra innkjøpskø. | Ferdig | Innkjøpskøen nås med ett klikk fra Inventory, og Add spool-dialogen inneholder ikke skjult køadministrasjon. |
 | P0 | Legge kontekstuelle handlinger på spoledetaljen: Lån ut, Last i skriver og Skriv etikett. | Ikke startet | Valgt spole er forhåndsutfylt, og brukeren trenger ikke søke opp samme spole igjen mellom steg. |
 | P1 | Flytte etikettark fra Settings til Inventory. | Ikke startet | Etikettark er tilgjengelig der spolene velges, uten tap av eksisterende funksjonalitet. |
 | P0 | Samle vanlige detaljendringer i én lagre-handling og varsle om ulagrede endringer. | Ikke startet | Lukking, navigasjon og avbryt beskytter ulagrede data; lagring er atomisk og gir tydelig tilbakemelding. |
@@ -119,11 +119,11 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Utvid databasegaten fra den syntetiske schema-1-fixturen til en sanitert fixture fra den forrige støttede releasen.
-2. Kjør den samme oppgraderingskontrollen mot pakkede DMG- og MSI-artifakter.
-3. Start Companion-sikkerhetssporet med CSP, sikkerhetsheadere og eksplisitt body-grense.
-4. Dokumenter eiere og terskler for eksisterende ytelses-, backup-, tilgjengelighets- og lokaliseringsporter.
-5. Forbered fase 1 ved å kartlegge dagens Inventory-, Innkjøp- og spoledetaljflyter med faste brukertester.
+1. Fullfør kontekstuelle handlinger og atomisk lagring i spoledetaljen.
+2. Flytt etikettark til Inventory og bevar eksisterende utskriftsflyt.
+3. Rett `All`-filteret og skill tomt lager fra null filtrerte treff.
+4. Etabler den autoritative, append-only migrasjonsrekken i det parallelle tekniske sporet.
+5. Forbered lokasjonsobjekter og konfigurerbar lav-beholdningsgrense for fase 2.
 
 ## Fremdriftslogg
 
@@ -131,6 +131,9 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 - Lav-beholdningsregelen er samlet i domenefunksjoner for UI og en delt konstant i Rust. 200 g er eksplisitt lav beholdning, 0 g er ikke lav beholdning, og sunn beholdning starter ved 201 g.
 - Dashboard teller nå alle lave spoler, men viser fortsatt maksimalt fem eksempler. Regresjonstester dekker 0, 1, 199, 200 og 201 g samt seks lave spoler.
-- En første obligatorisk databaseoppgraderingsgate er lagt i `macOS Smoke`: en SHA-låst og sanitert schema-1-fixture åpnes av appen, migreres til gjeldende skjema og kontrolleres for databevaring gjennom to appstarter.
-- Gjenstående før databasearbeidet kan markeres ferdig er en representativ fixture fra forrige støttede release og kjøring mot de pakkede DMG-/MSI-artifaktene.
+- En obligatorisk databaseoppgraderingsgate migrerer en SHA-låst og sanitert schema-1-fixture til gjeldende skjema og kontrollerer databevaring gjennom to appstarter.
+- En separat SHA-pinnet v0.27-fixture verifiseres mot installert binær fra både DMG og MSI i release-workflowen. v0.27 og gjeldende release bruker begge schema 2, så dette er en same-schema kompatibilitets- og databevaringsgate; schema-1-smoken dekker den reelle 1→2-migreringen.
+- Companion har nå CSP og øvrige sikkerhetsheadere, 64 KiB body-grense, 30 sekunders request-timeout og begrenset per-peer rate limiting, med strengere grense for paring og fornyelse.
+- Ytelse, backup/oppgradering, tilgjengelighet og lokalisering har dokumenterte blokkerende terskler, navngitt eier og en kontraktstest som verifiserer CI-koblingen.
+- Innkjøpskøen er flyttet til en egen ett-klikk-visning under Inventory. Lagerregistrering og kjøpsplanlegging har separate opprettingsflyter, mens statusendring, mottak og sletting er bevart.
 - Hele `npm run verify` passerer etter rebase på oppdatert `origin/main`, inkludert 1 150 UI-tester, 480 desktop-Rust-tester, 144 core-Rust-tester og Clippy i både dev- og releaseprofil. Oppgraderingssmoken passerer separat fra schema 1 til 2 gjennom to appstarter.
