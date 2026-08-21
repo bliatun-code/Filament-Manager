@@ -19,6 +19,18 @@ The Tauri crate must not include backend files through cross-tree `#[path]`
 attributes. Add a backend module to `src/backend/mod.rs` and expose only the
 smallest API the adapter needs.
 
+## Presentation Layers
+
+The React desktop UI and the browser Companion remain separate presentation
+layers. They share Rust-owned business authority and generated wire contracts,
+while their Tauri and same-origin HTTP adapters, navigation, state, and rendering
+remain surface-specific. Pure models are shared only when their inputs, outputs,
+and behavior are genuinely identical and adapter-free.
+
+The measured alternatives, bundle and overlap baselines, security constraints,
+and concrete re-evaluation triggers are recorded in
+[`ADR_REACT_COMPANION_CONSOLIDATION.md`](ADR_REACT_COMPANION_CONSOLIDATION.md).
+
 ## Desktop Background Lifecycle
 
 `src-tauri/src/desktop_lifecycle.rs` owns the macOS menu-bar and Windows system-

@@ -103,7 +103,7 @@ Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer u
 | Generere TypeScript- og Companion-kontrakter fra én Rust-kilde. | Ferdig | Status, eierskap og valgte DTO-er genereres i CI; håndredigert duplisering for den valgte flyten er fjernet. |
 | Gjøre migrasjoner append-only med én autoritativ migrasjonsrekke. | Ferdig | CI avviser endring eller omnummerering av publiserte migrasjoner og verifiserer både tom installasjon og oppgradering. |
 | Flytte kritiske tester fra kildekodelesing til reell atferd. | Ferdig | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
-| Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ikke startet | En dokumentert beslutning tas på grunnlag av målt vedlikeholdskostnad, bundlepåvirkning og migrasjonsrisiko. |
+| Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ferdig | [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) beholder separate presentasjonslag og fastsetter målte terskler for ny vurdering av en dedikert React-Companion. |
 
 ## Avgrensning
 
@@ -122,8 +122,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 1. Gjør lokasjoner til stabile objekter og legg til sporbare massehandlinger.
 2. Bygg Dashboard-visningen Krever handling og koble lav beholdning til innkjøpskøen.
 3. Fullfør mottaksmetadata, lagerverdi og materialkostnad med sporbarhet.
-4. Dokumenter konsolideringsbeslutningen på grunnlag av den ferdige gatewayen og kontraktgeneratoren.
-5. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
+4. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
 
 ## Fremdriftslogg
 
@@ -149,3 +148,4 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Brukertestprotokollen har en deterministisk `npm run qa:usability:analyze`-kommando som avviser færre enn fem deltakere, under 90 % uhjulpet fullføring eller under 30 % median tidsforbedring.
 - En Rust-basert `ActiveLibraryGateway` velger nå autoritativt mellom lokal database og paret Host for den atomiske spole-detaljflyten. Ufullstendig klientoppsett og Host-/legitimasjonsfeil stopper uten lokal fallback, mens eksisterende Tauri-kommandoer er beholdt som kompatibilitetslag.
 - Status, eierskap, låneretning, lånestatus og lavlager-DTO-er har nå én faktisk Rust-kilde. Deterministiske TypeScript- og Companion-artefakter inneholder konstanter og validatorer, og både lokal kontraktsgate og CI avviser manglende eller utdaterte genererte filer.
+- React-desktop og browser-Companion beholder separate presentasjonslag. [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) dokumenterer HEAD-målte bundle-, overlapps-, avhengighets- og testbaselines og konkrete terskler for å prøve en dedikert React-Companion på nytt.
