@@ -88,6 +88,30 @@ test("macOS installed DMG smoke defaults to the release signature policy", () =>
   assert.equal(options.expectedTeamId, "ABCDE12345");
   assert.equal(options.launchTimeoutMs, 120_000);
   assert.equal(options.signaturePolicy, "release");
+  assert.equal(options.upgradeFixturePath, null);
+  assert.equal(options.upgradeSourceRelease, null);
+});
+
+test("macOS installed DMG smoke requires complete previous-release fixture identity", () => {
+  assert.throws(
+    () =>
+      validateMacosDmgSmokeOptions({
+        dmgPath: "candidate.dmg",
+        expectedTeamId: "ABCDE12345",
+        logDirectory: "logs",
+        upgradeFixturePath: "v0.27.0.db",
+      }),
+    /fixture path and source release must be provided together/,
+  );
+  const options = validateMacosDmgSmokeOptions({
+    dmgPath: "candidate.dmg",
+    expectedTeamId: "ABCDE12345",
+    logDirectory: "logs",
+    upgradeFixturePath: "v0.27.0.db",
+    upgradeSourceRelease: "v0.27.0",
+  });
+  assert.equal(options.upgradeFixturePath, path.resolve("v0.27.0.db"));
+  assert.equal(options.upgradeSourceRelease, "v0.27.0");
 });
 
 test("macOS installed DMG smoke requires the expected release Team ID", () => {

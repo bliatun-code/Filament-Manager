@@ -40,6 +40,12 @@ param(
     [string]$ExpectedPublisherSubject = "",
 
     [Parameter(Mandatory = $false)]
+    [string]$UpgradeFixturePath = "",
+
+    [Parameter(Mandatory = $false)]
+    [string]$UpgradeSourceRelease = "",
+
+    [Parameter(Mandatory = $false)]
     [ValidateRange(10, 300)]
     [int]$LaunchTimeoutSeconds = 60
 )
@@ -600,6 +606,19 @@ if ([IO.Path]::GetFileName($ExpectedDatabaseName) -ne $ExpectedDatabaseName) {
 if (@($ExpectedWindowTitles | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count -eq 0) {
     throw "At least one non-empty expected window title is required."
 }
+if (
+    [string]::IsNullOrWhiteSpace($UpgradeFixturePath) -ne
+    [string]::IsNullOrWhiteSpace($UpgradeSourceRelease)
+) {
+    throw "UpgradeFixturePath and UpgradeSourceRelease must be provided together."
+}
+$resolvedUpgradeFixturePath = ""
+if (-not [string]::IsNullOrWhiteSpace($UpgradeFixturePath)) {
+    $resolvedUpgradeFixturePath = (Resolve-Path -LiteralPath $UpgradeFixturePath).Path
+    if (-not (Test-Path -LiteralPath $resolvedUpgradeFixturePath -PathType Leaf)) {
+        throw "Previous-release upgrade fixture is not a file: $resolvedUpgradeFixturePath"
+    }
+}
 
 $resolvedInstallDirectory = Resolve-SafeLocalAppDataChild `
     -Path $ExpectedInstallDirectory `
@@ -681,6 +700,7 @@ $canRemoveSmokeAppData = $false
 $appProcess = $null
 $secondaryProcess = $null
 $productCode = $null
+$previousReleaseDatabaseGateSummary = "not requested"
 $createdAutostartRegistryKeys = @()
 $seededAutostartRegistryTargets = @()
 
@@ -773,6 +793,30 @@ try {
         & (Join-Path $PSScriptRoot "verify-windows-authenticode.ps1") `
             -FilePath $installedExecutablePath `
             -ExpectedPublisherSubject $ExpectedPublisherSubject
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($resolvedUpgradeFixturePath)) {
+        $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction Stop |
+            Select-Object -First 1
+        $databaseUpgradeSmoke = Join-Path $PSScriptRoot "smoke-release-database-upgrade.mjs"
+        $databaseUpgradeLogDirectory = Join-Path $resolvedLogDirectory "database-compatibility"
+        $upgradeSmokeArguments = @(
+            $databaseUpgradeSmoke,
+            "--database=$resolvedUpgradeFixturePath",
+            "--executable=$installedExecutablePath",
+            "--log-dir=$databaseUpgradeLogDirectory",
+            "--launch-timeout-ms=$($LaunchTimeoutSeconds * 1000)",
+            "--database-readiness-only",
+            "--allow-current-schema",
+            "--source-release=$UpgradeSourceRelease"
+        )
+        $upgradeSmokeOutput = & $nodeCommand.Source @upgradeSmokeArguments 2>&1
+        $upgradeSmokeExitCode = $LASTEXITCODE
+        $upgradeSmokeOutput | ForEach-Object { Write-Host $_ }
+        if ($upgradeSmokeExitCode -ne 0) {
+            throw "Installed MSI database compatibility smoke failed with exit code $upgradeSmokeExitCode."
+        }
+        $previousReleaseDatabaseGateSummary = "$UpgradeSourceRelease, two installed-binary launches"
     }
 
     $appProcess = Start-Process `
@@ -1015,6 +1059,7 @@ try {
         "Desktop and Start Menu shortcuts removed: yes",
         "User PATH entry removed: yes",
         "Signature policy: $SignaturePolicy",
+        "Previous-release database gate: $previousReleaseDatabaseGateSummary",
         "Result: PASS"
     ) -join [Environment]::NewLine
     [IO.File]::WriteAllText($summaryPath, "$summary$([Environment]::NewLine)")

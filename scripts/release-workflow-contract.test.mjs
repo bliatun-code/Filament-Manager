@@ -7,6 +7,14 @@ const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
 const macosDmgSmoke = readFileSync("scripts/smoke-macos-dmg.mjs", "utf8");
+const releaseDatabaseUpgradeSmoke = readFileSync(
+  "scripts/smoke-release-database-upgrade.mjs",
+  "utf8",
+);
+const previousReleaseFixturePreparer = readFileSync(
+  "scripts/prepare-previous-release-upgrade-fixture.mjs",
+  "utf8",
+);
 const macosWindowHelper = readFileSync(
   "scripts/macos-window-info.swift",
   "utf8",
@@ -49,7 +57,7 @@ test("release workflow gates tag and manual installer builds", () => {
   const validationJob = readSection(
     releaseWorkflow,
     "  validate-release:",
-    "  build-macos-dmg:",
+    "  prepare-previous-release-fixture:",
   );
   const macosJob = readSection(
     releaseWorkflow,
@@ -163,12 +171,18 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.doesNotMatch(updateMetadataGate, /workflow_dispatch|SELECTED_PLATFORM/);
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
-  assert.match(macosJob, /needs: validate-release/);
+  assert.match(
+    macosJob,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
+  );
   assert.match(
     macosJob,
     /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'macos'/,
   );
-  assert.match(windowsJob, /needs: validate-release/);
+  assert.match(
+    windowsJob,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
+  );
   assert.match(
     windowsJob,
     /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'windows'/,
@@ -1250,6 +1264,124 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
     "Prepare sanitized historical database fixture",
     "Exercise database upgrade and restart",
     "Upload database upgrade smoke logs",
+  ]);
+});
+
+test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
+  const fixtureJob = readSection(
+    releaseWorkflow,
+    "  prepare-previous-release-fixture:",
+    "  build-macos-dmg:",
+  );
+  const macosJob = readSection(
+    releaseWorkflow,
+    "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const windowsJob = readSection(
+    releaseWorkflow,
+    "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+
+  assert.equal(
+    packageManifest.scripts["qa:release:previous-fixture"],
+    "node ./scripts/prepare-previous-release-upgrade-fixture.mjs",
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /PREVIOUS_RELEASE_VERSION = "0\.27\.0"/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /PREVIOUS_RELEASE_SCHEMA_VERSION = 2/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /PREVIOUS_RELEASE_COMMIT =\s*\n\s*"4a1c57a10255c26f70f749fc33ff5ae25e23b1ce"/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /requiresSchemaMigration:[\s\S]*?source\.schemaVersion < expectedCurrentSchemaVersion/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /"same-schema-compatibility"/,
+  );
+
+  assert.match(fixtureJob, /name: Prepare v0\.27 database fixture/);
+  assert.match(fixtureJob, /needs: validate-release/);
+  assert.match(
+    fixtureJob,
+    /ref: 4a1c57a10255c26f70f749fc33ff5ae25e23b1ce/,
+  );
+  assert.match(fixtureJob, /path: previous-release-v0\.27\.0/);
+  assert.match(fixtureJob, /npm --prefix \.\/previous-release-v0\.27\.0 ci/);
+  assert.match(
+    fixtureJob,
+    /npm run qa:release:previous-fixture --[\s\S]*?--source=previous-release-v0\.27\.0[\s\S]*?--database="\$database_path"[\s\S]*?--manifest="\$manifest_path"/,
+  );
+  assert.match(
+    fixtureJob,
+    /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
+  );
+  assert.match(
+    fixtureJob,
+    /name: filament-manager-v0\.27\.0-database-fixture-\$\{\{ github\.run_id \}\}[\s\S]*?if-no-files-found: error[\s\S]*?retention-days: 1/,
+  );
+
+  for (const job of [macosJob, windowsJob]) {
+    assert.match(
+      job,
+      /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
+    );
+    assert.match(job, /- name: Download sanitized v0\.27 fixture/);
+    assert.match(job, /- name: Verify downloaded v0\.27 fixture/);
+    assert.match(
+      job,
+      /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
+    );
+  }
+
+  assert.match(
+    macosJob,
+    /- name: Exercise installed signed application on Apple Silicon[\s\S]*?--upgrade-fixture="\$PREVIOUS_RELEASE_FIXTURE_DIR\/filament-manager-v0\.27\.0\.db"[\s\S]*?--upgrade-source-release=v0\.27\.0/,
+  );
+  assert.match(macosDmgSmoke, /smokeReleaseDatabaseUpgrade/);
+  assert.match(macosDmgSmoke, /allowCurrentSchema: true/);
+  assert.match(macosDmgSmoke, /requireVisibleWindow: false/);
+
+  assert.match(
+    windowsJob,
+    /-UpgradeFixturePath \(Join-Path \$env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0\.27\.0\.db"\)/,
+  );
+  assert.match(windowsJob, /-UpgradeSourceRelease "v0\.27\.0"/);
+  assert.match(windowsMsiSmoke, /\[string\]\$UpgradeFixturePath = ""/);
+  assert.match(windowsMsiSmoke, /\[string\]\$UpgradeSourceRelease = ""/);
+  assert.match(
+    windowsMsiSmoke,
+    /smoke-release-database-upgrade\.mjs[\s\S]*?--database-readiness-only[\s\S]*?--allow-current-schema[\s\S]*?--source-release=\$UpgradeSourceRelease/,
+  );
+  assert.match(
+    releaseDatabaseUpgradeSmoke,
+    /if \(before\.schemaVersion === expectedSchemaVersion && !allowCurrentSchema\)/,
+  );
+  assert.match(
+    releaseDatabaseUpgradeSmoke,
+    /same-schema compatibility from \$\{sourceRelease\}/,
+  );
+
+  assertStepOrder(macosJob, [
+    "Download sanitized v0.27 fixture",
+    "Verify downloaded v0.27 fixture",
+    "Build signed and notarized DMG",
+    "Exercise installed signed application on Apple Silicon",
+  ]);
+  assertStepOrder(windowsJob, [
+    "Download sanitized v0.27 fixture",
+    "Verify downloaded v0.27 fixture",
+    "Build MSI bundle",
+    "Exercise release MSI installation from downloaded artifact",
   ]);
 });
 

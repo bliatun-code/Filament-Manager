@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
 
+import { smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
 import {
   parseCodesignDetails,
   validateCodesignDetails,
@@ -101,6 +102,8 @@ export function validateMacosDmgSmokeOptions({
   launchTimeoutMs = DEFAULT_LAUNCH_TIMEOUT_MS,
   logDirectory,
   signaturePolicy = DEFAULT_SIGNATURE_POLICY,
+  upgradeFixturePath = null,
+  upgradeSourceRelease = null,
 }) {
   if (typeof dmgPath !== "string" || dmgPath.trim().length === 0) {
     throw new Error("A macOS DMG path is required.");
@@ -135,12 +138,30 @@ export function validateMacosDmgSmokeOptions({
       "An expected Apple Team ID cannot be used with the local ad-hoc signature policy.",
     );
   }
+  const normalizedUpgradeFixturePath =
+    typeof upgradeFixturePath === "string" ? upgradeFixturePath.trim() : "";
+  const normalizedUpgradeSourceRelease =
+    typeof upgradeSourceRelease === "string"
+      ? upgradeSourceRelease.trim()
+      : "";
+  if (
+    Boolean(normalizedUpgradeFixturePath) !==
+    Boolean(normalizedUpgradeSourceRelease)
+  ) {
+    throw new Error(
+      "The upgrade fixture path and source release must be provided together.",
+    );
+  }
   return {
     dmgPath: path.resolve(dmgPath),
     expectedTeamId: normalizedExpectedTeamId || null,
     launchTimeoutMs,
     logDirectory: path.resolve(logDirectory),
     signaturePolicy,
+    upgradeFixturePath: normalizedUpgradeFixturePath
+      ? path.resolve(normalizedUpgradeFixturePath)
+      : null,
+    upgradeSourceRelease: normalizedUpgradeSourceRelease || null,
   };
 }
 
@@ -863,6 +884,8 @@ export async function smokeMacosDmg(options) {
     launchTimeoutMs,
     logDirectory,
     signaturePolicy,
+    upgradeFixturePath,
+    upgradeSourceRelease,
   } = validateMacosDmgSmokeOptions(options);
   if (!existsSync(dmgPath) || statSync(dmgPath).size <= 0) {
     throw new Error(`DMG is missing or empty: ${dmgPath}`);
@@ -968,6 +991,18 @@ export async function smokeMacosDmg(options) {
     }
 
     const executablePath = readBundleExecutable(installedAppPath);
+    let databaseCompatibilityResult = null;
+    if (upgradeFixturePath) {
+      databaseCompatibilityResult = await smokeReleaseDatabaseUpgrade({
+        allowCurrentSchema: true,
+        databasePath: upgradeFixturePath,
+        executablePath,
+        launchTimeoutMs,
+        logDirectory: path.join(logDirectory, "database-compatibility"),
+        requireVisibleWindow: false,
+        sourceRelease: upgradeSourceRelease,
+      });
+    }
     const bundlePaths = canonicalPathCandidates(installedAppPath);
     const executablePaths = canonicalPathCandidates(executablePath);
     const expectedProcessName = runCommand("plutil", [
@@ -1126,6 +1161,15 @@ export async function smokeMacosDmg(options) {
 
     result = {
       appName: path.basename(installedAppPath),
+      databaseCompatibility: databaseCompatibilityResult
+        ? {
+            fromSchema: databaseCompatibilityResult.before.schemaVersion,
+            gateMode: databaseCompatibilityResult.gateMode,
+            launches: databaseCompatibilityResult.launchCount,
+            sourceRelease: databaseCompatibilityResult.sourceRelease,
+            toSchema: databaseCompatibilityResult.after.schemaVersion,
+          }
+        : null,
       processId: applicationProcess.processId,
       schemaVersion: databaseResult.schemaVersion,
       signaturePolicy,
@@ -1269,6 +1313,14 @@ export async function smokeMacosDmg(options) {
       `Process ID: ${result.processId}`,
       `Database schema: ${result.schemaVersion}`,
       `Database tables: ${result.tableCount}`,
+      `Previous-release database gate: ${
+        result.databaseCompatibility
+          ? `${result.databaseCompatibility.sourceRelease}, ` +
+            `${result.databaseCompatibility.fromSchema} -> ` +
+            `${result.databaseCompatibility.toSchema}, ` +
+            `${result.databaseCompatibility.launches} launches`
+          : "not requested"
+      }`,
       `Window: ${result.windowTitle || "(untitled)"} ${result.windowWidth}x${result.windowHeight}`,
       "",
     ].join("\n"),
@@ -1283,6 +1335,8 @@ function cliOptions(argv) {
     "--launch-timeout-ms=",
     "--log-dir=",
     "--signature-policy=",
+    "--upgrade-fixture=",
+    "--upgrade-source-release=",
   ];
   if (
     dmgPaths.length !== 1 ||
@@ -1296,7 +1350,9 @@ function cliOptions(argv) {
       "Usage: node scripts/smoke-macos-dmg.mjs <path-to-dmg> " +
         "--log-dir=<directory> [--expected-team-id=<team-id>] " +
         "[--launch-timeout-ms=90000] " +
-        "[--signature-policy=release|local-adhoc]",
+        "[--signature-policy=release|local-adhoc] " +
+        "[--upgrade-fixture=<sanitized-db> " +
+        "--upgrade-source-release=v0.27.0]",
     );
   }
   const expectedTeamId = argv
@@ -1311,6 +1367,12 @@ function cliOptions(argv) {
   const signaturePolicy = argv
     .find((argument) => argument.startsWith("--signature-policy="))
     ?.slice("--signature-policy=".length);
+  const upgradeFixturePath = argv
+    .find((argument) => argument.startsWith("--upgrade-fixture="))
+    ?.slice("--upgrade-fixture=".length);
+  const upgradeSourceRelease = argv
+    .find((argument) => argument.startsWith("--upgrade-source-release="))
+    ?.slice("--upgrade-source-release=".length);
   return {
     dmgPath: dmgPaths[0],
     expectedTeamId,
@@ -1320,6 +1382,8 @@ function cliOptions(argv) {
         : Number.parseInt(timeoutValue, 10),
     logDirectory,
     signaturePolicy,
+    upgradeFixturePath,
+    upgradeSourceRelease,
   };
 }
 

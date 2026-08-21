@@ -118,6 +118,28 @@ test("release database upgrade smoke normalizes accepted paths", () => {
   assert.equal(options.launchCount, 3);
   assert.equal(options.launchTimeoutMs, 120_000);
   assert.equal(options.requireVisibleWindow, true);
+  assert.equal(options.allowCurrentSchema, false);
+  assert.equal(options.sourceRelease, null);
+  assert.throws(
+    () =>
+      validateReleaseDatabaseUpgradeSmokeOptions({
+        allowCurrentSchema: true,
+        databasePath: "fixture.db",
+        executablePath: "candidate",
+        logDirectory: "logs",
+      }),
+    /source release is required/,
+  );
+  const compatibilityOptions = validateReleaseDatabaseUpgradeSmokeOptions({
+    allowCurrentSchema: true,
+    databasePath: "fixture.db",
+    executablePath: "candidate",
+    logDirectory: "logs",
+    requireVisibleWindow: false,
+    sourceRelease: "v0.27.0",
+  });
+  assert.equal(compatibilityOptions.allowCurrentSchema, true);
+  assert.equal(compatibilityOptions.sourceRelease, "v0.27.0");
 });
 
 test("release database upgrade CLI parses integers without partial coercion", () => {
@@ -138,8 +160,12 @@ test("release database upgrade CLI parses integers without partial coercion", ()
   const databaseReadinessOptions = parseReleaseDatabaseUpgradeSmokeCliOptions([
     ...requiredArguments,
     "--database-readiness-only",
+    "--allow-current-schema",
+    "--source-release=v0.27.0",
   ]);
   assert.equal(databaseReadinessOptions.requireVisibleWindow, false);
+  assert.equal(databaseReadinessOptions.allowCurrentSchema, true);
+  assert.equal(databaseReadinessOptions.sourceRelease, "v0.27.0");
   assert.throws(
     () =>
       parseReleaseDatabaseUpgradeSmokeCliOptions([
@@ -182,6 +208,12 @@ test(
 
 test("release database upgrade smoke is explicit about its macOS window probe", () => {
   assert.doesNotThrow(() => assertReleaseUpgradeSmokePlatform("darwin"));
+  assert.doesNotThrow(() =>
+    assertReleaseUpgradeSmokePlatform("win32", { requireVisibleWindow: false }),
+  );
+  assert.doesNotThrow(() =>
+    assertReleaseUpgradeSmokePlatform("linux", { requireVisibleWindow: false }),
+  );
   assert.throws(
     () => assertReleaseUpgradeSmokePlatform("win32"),
     /requires macOS window inspection/,
