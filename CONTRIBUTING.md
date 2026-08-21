@@ -109,6 +109,11 @@ npm run test:rust
 npm run check:contracts
 ```
 
+The blocking performance, backup/upgrade, accessibility, and localization
+thresholds—and the maintainer accountable for each—are listed in
+[the quality-gate contract](docs/QUALITY_GATES.md). Update that contract and its
+executable test in the same change whenever a gate or threshold changes.
+
 ## Local Build And QA Cleanup
 
 Cargo profiles and local visual-QA output can grow substantially over time.
