@@ -84,7 +84,7 @@ Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater dele
 | --- | --- | --- | --- |
 | P1 | Registrere pris, kjøpsdato, batch og leverandørreferanse ved mottak. | Ferdig | Feltene valideres, kan redigeres og eksporteres, og eldre data håndteres uten tvungen utfylling. |
 | P1 | Legge til periodene 30 dager, 90 dager, 12 måneder og egendefinert intervall i Statistics. | Ferdig | Alle nøkkeltall bruker valgt periode konsekvent og har tester for tids- og datogrenser. |
-| P1 | Vise lagerverdi og materialkostnad per periode med sporbarhet tilbake til spolen. | Ikke startet | Summer kan spores til underliggende spoler og transaksjoner, med tydelig valuta- og manglende-datahåndtering. |
+| P1 | Vise lagerverdi og materialkostnad per periode med sporbarhet tilbake til spolen. | Ferdig | Summer kan spores til underliggende spoler og transaksjoner, med tydelig valuta- og manglende-datahåndtering. |
 | P2 | Lage en enkel, deterministisk forbruksprognose med synlig datagrunnlag. | Ferdig | Samme input gir samme prognose, antakelser vises, og funksjonen bestiller aldri automatisk. |
 | P0 | Authenticode-signere Windows MSI og programfil før bredere distribusjon. | Ikke startet | Installer og binær validerer korrekt signatur i støttede Windows-miljøer. |
 | P0 | Kjøre muterende pakket desktop-E2E på macOS og Windows. | Pågår | Testen oppretter en spole, endrer vekt, låner ut, returnerer, tilordner printerspor, restarter og validerer backup i den pakkede appen. |
@@ -119,8 +119,8 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Legg til sporbar lagerverdi og materialkostnad uten å summere på tvers av valutaer.
-2. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
+1. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
+2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 4-artifakter for macOS og Windows.
 
 ## Fremdriftslogg
 
@@ -151,3 +151,4 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Status, eierskap, låneretning, lånestatus og lavlager-DTO-er har nå én faktisk Rust-kilde. Deterministiske TypeScript- og Companion-artefakter inneholder konstanter og validatorer, og både lokal kontraktsgate og CI avviser manglende eller utdaterte genererte filer.
 - React-desktop og browser-Companion beholder separate presentasjonslag. [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) dokumenterer HEAD-målte bundle-, overlapps-, avhengighets- og testbaselines og konkrete terskler for å prøve en dedikert React-Companion på nytt.
 - Mottak fra innkjøpskøen kan registrere pris med valuta, kjøpsdato, batch og leverandørreferanse per spole. Metadata kan senere endres eller tømmes atomisk i desktop, Client og Companion, skrives til historikken og rundtrippes gjennom CSV, JSON og full backup; eldre data uten valuta eller med historiske legacy-verdier bevares uten tvungen utfylling.
+- Statistics beregner nå lagerverdi som et nåbilde og materialkostnad for valgt periode fra registrert innkjøpspris, vekt og valuta. Rust er autoritativ kilde; summer holdes adskilt per valuta og mellom eid og innlånt, mens rad- og vektdekning forklarer manglende data. Sporingen er deterministisk begrenset til 2 000 rader, men summer og dekning inkluderer alle rader i samme deferred SQLite-snapshot. En eldre Host gir en eksplisitt oppgraderingsmelding uten lokal reserveberegning.

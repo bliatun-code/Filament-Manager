@@ -368,6 +368,26 @@ Den dekker blant annet:
 
 Forbruk bygges fra manuelle vektoppdateringer og automatiske live-observasjoner når reglene for live-forbruk er oppfylt.
 
+Området **Verdi og kostnad** viser to beslektede, men bevisst adskilte tall:
+
+- **Lagerverdi** er et nåbilde av aktive spoler. For hver spole brukes
+  `gjenværende vekt × innkjøpspris ÷ startvekt`.
+- **Materialkostnad** gjelder valgt rapporteringsperiode. For hver manuelle eller
+  automatiske forbruksrad brukes `brukt vekt × innkjøpspris ÷ startvekt`.
+
+Summer holdes alltid adskilt etter innkjøpsvaluta og mellom eid og innlånt
+beholdning. Filament Manager konverterer ikke valutaer og lager ikke en
+misvisende totalsum på tvers av dem. Rader uten tilstrekkelig pris- eller
+vektgrunnlag behandles ikke som null: dekningspanelet viser hvor mange rader og
+gram som kunne verdsettes, og hvilke felt som mangler eller er ugyldige.
+
+Åpne sporingen for å følge en sum tilbake til spolen og, for materialkostnad,
+forbruks- og printerreferansen. Av hensyn til responsivitet returnerer sporingen
+maksimalt 2 000 deterministisk sorterte rader, som grensesnittet viser i mindre
+bolker. Summer og dekning inkluderer likevel alle aktuelle rader. Når en Client
+er koblet til en Host fra før denne rapporten ble innført, ber den om
+Host-oppgradering i stedet for å anslå verdier lokalt.
+
 ### Innstillinger
 
 Innstillinger er delt i flere områder.

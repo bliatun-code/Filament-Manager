@@ -1,6 +1,6 @@
 use std::{fmt, path::Path};
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Transaction, TransactionBehavior};
 use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 
@@ -10,6 +10,12 @@ use super::low_stock_policy::LowStockPolicy;
 use super::spool_defaults::{
     SPOOL_OWNERSHIP_SELECT_SQL, SPOOL_OWNERSHIP_SELECT_SQL_S, SPOOL_STATUS_ASSIGNED_PREDICATE_SQL,
     SPOOL_STATUS_ON_HAND_PREDICATE_SQL,
+};
+use super::statistics_value_cost::value_cost_report_from_connection;
+pub use super::statistics_value_cost::{
+    StatisticsCurrencyOwnershipAmount, StatisticsInventoryValueTraceRow,
+    StatisticsMaterialCostTraceRow, StatisticsMonetarySummary, StatisticsValueCostCoverage,
+    StatisticsValueCostMissingReasonCount, StatisticsValueCostReport,
 };
 use super::{database_result::InventoryResult, filament_database::FilamentDatabase};
 
@@ -93,6 +99,9 @@ pub struct StatisticsPeriodReport {
     pub failed_jobs: i64,
     pub printer_usage: Vec<StatisticsPeriodPrinterUsageRow>,
     pub filament_consumption: Vec<FilamentConsumptionRow>,
+    /// Absent when deserializing reports from a Host predating value/cost reporting.
+    #[serde(default)]
+    pub value_cost: Option<StatisticsValueCostReport>,
 }
 
 #[derive(Debug)]
@@ -119,9 +128,9 @@ impl From<rusqlite::Error> for StatisticsPeriodError {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct ValidatedStatisticsPeriod {
-    start_unix_seconds: i64,
-    end_unix_seconds: i64,
+pub(super) struct ValidatedStatisticsPeriod {
+    pub(super) start_unix_seconds: i64,
+    pub(super) end_unix_seconds: i64,
 }
 
 fn validate_statistics_period(
@@ -214,14 +223,39 @@ impl StatisticsEngine {
         limit: i64,
         printer_id: Option<&str>,
     ) -> Result<Vec<FilamentConsumptionRow>, rusqlite::Error> {
-        self.filament_consumption_with_bounds(limit, printer_id, None)
+        Self::filament_consumption_with_bounds(&self.conn, limit, printer_id, None)
     }
 
     pub fn period_report(
         &self,
         period: &StatisticsPeriod,
     ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
+        self.period_report_with_hook(period, || Ok(()))
+    }
+
+    fn period_report_with_hook(
+        &self,
+        period: &StatisticsPeriod,
+        after_snapshot_started: impl FnOnce() -> Result<(), StatisticsPeriodError>,
+    ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
         let bounds = validate_statistics_period(period)?;
+        let transaction = Transaction::new_unchecked(&self.conn, TransactionBehavior::Deferred)?;
+        let report = Self::period_report_from_connection(
+            &transaction,
+            period,
+            bounds,
+            after_snapshot_started,
+        )?;
+        transaction.commit()?;
+        Ok(report)
+    }
+
+    fn period_report_from_connection(
+        connection: &Connection,
+        period: &StatisticsPeriod,
+        bounds: ValidatedStatisticsPeriod,
+        after_snapshot_started: impl FnOnce() -> Result<(), StatisticsPeriodError>,
+    ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
         let (
             total_used_g,
             owned_used_g,
@@ -229,7 +263,7 @@ impl StatisticsEngine {
             total_jobs,
             successful_jobs,
             failed_jobs,
-        ): (i64, i64, i64, i64, i64, i64) = self.conn.query_row(
+        ): (i64, i64, i64, i64, i64, i64) = connection.query_row(
             &format!(
                 "WITH usage_rows AS (
                     SELECT 'manual:' || p.id AS usage_job_id,
@@ -251,15 +285,15 @@ impl StatisticsEngine {
                     WHERE us.used_g > 0
                  )
                  SELECT
-                    COALESCE(SUM(u.used_g), 0) AS total_used_g,
-                    COALESCE(SUM(CASE
+                    CAST(COALESCE(SUM(u.used_g), 0) AS INTEGER) AS total_used_g,
+                    CAST(COALESCE(SUM(CASE
                         WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'OWNED' OR s.id IS NULL
                         THEN u.used_g ELSE 0
-                    END), 0) AS owned_used_g,
-                    COALESCE(SUM(CASE
+                    END), 0) AS INTEGER) AS owned_used_g,
+                    CAST(COALESCE(SUM(CASE
                         WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
                         THEN u.used_g ELSE 0
-                    END), 0) AS borrowed_in_used_g,
+                    END), 0) AS INTEGER) AS borrowed_in_used_g,
                     COUNT(DISTINCT u.usage_job_id) AS total_jobs,
                     COUNT(DISTINCT CASE WHEN u.success = 1 THEN u.usage_job_id END)
                         AS successful_jobs,
@@ -282,8 +316,9 @@ impl StatisticsEngine {
                 ))
             },
         )?;
+        after_snapshot_started()?;
 
-        let mut printer_stmt = self.conn.prepare(
+        let mut printer_stmt = connection.prepare(
             "WITH usage_rows AS (
                 SELECT 'manual:' || p.id AS usage_job_id,
                        p.printer_id,
@@ -308,7 +343,7 @@ impl StatisticsEngine {
                     AS successful_jobs,
                 COUNT(DISTINCT CASE WHEN u.success = 0 THEN u.usage_job_id END)
                     AS failed_jobs,
-                COALESCE(SUM(u.used_g), 0) AS total_used_g,
+                CAST(COALESCE(SUM(u.used_g), 0) AS INTEGER) AS total_used_g,
                 MAX(datetime(u.used_at)) AS last_job_at
              FROM printers pr
              LEFT JOIN usage_rows u
@@ -334,7 +369,8 @@ impl StatisticsEngine {
             )?
             .collect::<Result<Vec<_>, _>>()?;
         let filament_consumption =
-            self.filament_consumption_with_bounds(2_000, None, Some(bounds))?;
+            Self::filament_consumption_with_bounds(connection, 2_000, None, Some(bounds))?;
+        let value_cost = Some(value_cost_report_from_connection(connection, bounds)?);
 
         Ok(StatisticsPeriodReport {
             period: StatisticsPeriod {
@@ -349,16 +385,17 @@ impl StatisticsEngine {
             failed_jobs,
             printer_usage,
             filament_consumption,
+            value_cost,
         })
     }
 
     fn filament_consumption_with_bounds(
-        &self,
+        connection: &Connection,
         limit: i64,
         printer_id: Option<&str>,
         period: Option<ValidatedStatisticsPeriod>,
     ) -> Result<Vec<FilamentConsumptionRow>, rusqlite::Error> {
-        let mut stmt = self.conn.prepare(&format!(
+        let mut stmt = connection.prepare(&format!(
             "WITH usage_rows AS (
                 SELECT 'manual:' || p.id AS usage_job_id,
                        p.printer_id,
@@ -390,7 +427,7 @@ impl StatisticsEngine {
                     THEN COALESCE(NULLIF(s.owner_name, ''), '')
                     ELSE ''
                 END, '') AS owner_name,
-                COALESCE(SUM(u.used_g), 0) AS used_grams,
+                CAST(COALESCE(SUM(u.used_g), 0) AS INTEGER) AS used_grams,
                 COUNT(DISTINCT u.usage_job_id) AS jobs
              FROM usage_rows u
              LEFT JOIN printers pr ON pr.id = u.printer_id
@@ -658,7 +695,10 @@ fn monthly_consumption_12m_from_connection(
 
 #[cfg(test)]
 mod tests {
-    use super::{InventoryOverview, StatisticsEngine, StatisticsPeriod, StatisticsPeriodError};
+    use super::{
+        InventoryOverview, StatisticsEngine, StatisticsPeriod, StatisticsPeriodError,
+        StatisticsPeriodReport,
+    };
     use crate::backend::database_printer_usage_sessions::{
         LiveUsageDeltaInput, LiveUsageSessionInput,
     };
@@ -701,6 +741,104 @@ mod tests {
         assert!(!overview.consumption_12m_available);
         assert_eq!(overview.low_stock_policy.default_threshold_g, 200);
         assert!(overview.low_stock_policy.material_overrides.is_empty());
+    }
+
+    #[test]
+    fn period_report_deserializes_legacy_payload_without_value_cost() {
+        let report: StatisticsPeriodReport = serde_json::from_value(serde_json::json!({
+            "period": {
+                "start_at_utc": "2026-08-01T00:00:00Z",
+                "end_at_utc": "2026-08-02T00:00:00Z"
+            },
+            "total_used_g": 0,
+            "owned_used_g": 0,
+            "borrowed_in_used_g": 0,
+            "total_jobs": 0,
+            "successful_jobs": 0,
+            "failed_jobs": 0,
+            "printer_usage": [],
+            "filament_consumption": []
+        }))
+        .expect("legacy period report should deserialize");
+
+        assert_eq!(report.value_cost, None);
+    }
+
+    #[test]
+    fn period_report_reads_all_breakdowns_from_one_deferred_snapshot() {
+        let db_path = temp_db_path("period-coherent-snapshot");
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            db.connection()
+                .execute_batch("PRAGMA journal_mode = WAL;")
+                .map_err(|error| error.to_string())?;
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Black",
+                    hex_color: Some("#000000"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "INSERT INTO filament_spools (
+                        id, master_id, status, ownership_type, initial_weight_g, remaining_g,
+                        purchase_price, purchase_currency
+                     ) VALUES ('snapshot-spool', ?1, 'IN_STOCK', 'OWNED', 1000, 1000, 100, 'NOK')",
+                    params![master_id],
+                )
+                .map_err(|error| error.to_string())?;
+            drop(db);
+
+            let writer = rusqlite::Connection::open(&db_path).map_err(|error| error.to_string())?;
+            writer
+                .busy_timeout(std::time::Duration::from_secs(5))
+                .map_err(|error| error.to_string())?;
+            let stats = StatisticsEngine::open(&db_path).map_err(|error| error.to_string())?;
+            let period = StatisticsPeriod {
+                start_at_utc: "2026-08-01T00:00:00Z".to_string(),
+                end_at_utc: "2026-08-02T00:00:00Z".to_string(),
+            };
+            let report = stats
+                .period_report_with_hook(&period, || {
+                    writer.execute(
+                        "UPDATE filament_spools SET purchase_price = 200 WHERE id = 'snapshot-spool'",
+                        [],
+                    )?;
+                    Ok(())
+                })
+                .map_err(|error| error.to_string())?;
+
+            let snapshot_amount = report
+                .value_cost
+                .as_ref()
+                .and_then(|value_cost| value_cost.inventory_value.totals.first())
+                .map(|total| total.amount)
+                .ok_or_else(|| "missing snapshot inventory total".to_string())?;
+            assert_eq!(snapshot_amount, 100.0);
+
+            let fresh_report = stats
+                .period_report(&period)
+                .map_err(|error| error.to_string())?;
+            let fresh_amount = fresh_report
+                .value_cost
+                .as_ref()
+                .and_then(|value_cost| value_cost.inventory_value.totals.first())
+                .map(|total| total.amount)
+                .ok_or_else(|| "missing fresh inventory total".to_string())?;
+            assert_eq!(fresh_amount, 200.0);
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("period report coherent snapshot test failed: {message}");
+        }
     }
 
     #[test]

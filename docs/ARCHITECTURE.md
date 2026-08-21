@@ -191,6 +191,16 @@ transaction. Every query contributing to a response therefore observes the
 same database snapshot, even if another connection commits while the response
 is being assembled.
 
+The statistics value/cost report is calculated only in Rust from recorded
+weights, purchase price, and purchase currency. Inventory value uses the
+current active-spool snapshot, while material cost uses the report's half-open
+UTC period. Amounts remain partitioned by currency and ownership; missing or
+invalid input contributes to explicit row and weight coverage instead of a
+zero value. Trace payloads are deterministically capped at 2,000 rows, but the
+totals and coverage stream every matching row inside the same read transaction.
+The additive nullable report field lets a newer Client expose an older Host as
+unavailable without introducing a divergent local calculation.
+
 The inventory-overview contract keeps rolling usage distinct from its existing
 30-day totals. Its twelve-month series contains the current local calendar
 month and the preceding eleven months, zero-filled and ordered oldest to

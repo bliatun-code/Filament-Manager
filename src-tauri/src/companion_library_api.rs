@@ -9,7 +9,7 @@ use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
     INVENTORY_BULK_MUTATION_CAPABILITY, LOAN_METADATA_CAPABILITY,
-    PURCHASE_RECEIPT_METADATA_CAPABILITY,
+    PURCHASE_RECEIPT_METADATA_CAPABILITY, STATISTICS_VALUE_COST_REPORT_CAPABILITY,
 };
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
@@ -35,6 +35,7 @@ pub(super) async fn handle_health(
                     LOAN_METADATA_CAPABILITY,
                     INVENTORY_BULK_MUTATION_CAPABILITY,
                     PURCHASE_RECEIPT_METADATA_CAPABILITY,
+                    STATISTICS_VALUE_COST_REPORT_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
                 access_mode: "trusted-lan",

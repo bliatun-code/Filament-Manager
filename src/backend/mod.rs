@@ -102,6 +102,7 @@ pub mod purchase_receipt_metadata;
 pub mod shared_contracts;
 pub mod spool_defaults;
 pub mod statistics;
+pub mod statistics_value_cost;
 pub mod vendor_lookup;
 mod vendor_lookup_cache;
 mod vendor_lookup_material_scope;

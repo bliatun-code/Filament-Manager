@@ -364,6 +364,27 @@ It includes:
 
 Usage is built from manual weight updates and automatic live observations when the live-usage rules are satisfied.
 
+The **Value & cost** section shows two related, but deliberately separate,
+figures:
+
+- **Inventory value** is a current snapshot of active spools. For each spool it
+  uses `remaining weight × purchase price ÷ initial weight`.
+- **Material cost** covers the selected reporting period. For each manual or
+  live usage row it uses `used weight × purchase price ÷ initial weight`.
+
+Totals are always kept separate by purchase currency and by owned versus
+borrowed-in stock. Filament Manager does not convert currencies or combine them
+into a misleading grand total. Rows without enough purchase or weight data are
+not treated as zero: the coverage panel shows how many rows and grams could be
+valued and lists the missing or invalid fields.
+
+Open a trace to follow a total back to its spool and, for material cost, its
+usage and printer reference. For responsiveness, a trace returns at most 2,000
+deterministically ordered rows and the interface reveals them in smaller
+batches. The monetary totals and coverage still include every applicable row.
+When a Client is connected to a Host version that predates this report, it asks
+for a Host upgrade instead of estimating values locally.
+
 ### Settings
 
 Settings is split into several areas.

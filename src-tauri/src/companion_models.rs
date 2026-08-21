@@ -232,6 +232,7 @@ pub(crate) struct CompanionHealthResponse {
 pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-return";
 pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-mutations";
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
+pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

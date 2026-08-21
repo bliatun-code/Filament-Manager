@@ -34,6 +34,81 @@ export type StatisticsPeriodPrinterUsageRow = {
   last_job_at?: string | null;
 };
 
+export type StatisticsValueCostOwnershipType = "OWNED" | "BORROWED_IN";
+
+export type StatisticsCurrencyOwnershipAmount = {
+  currency: string;
+  ownership_type: StatisticsValueCostOwnershipType;
+  amount: number;
+};
+
+export type StatisticsValueCostMissingReason = {
+  reason: string;
+  rows: number;
+  grams: number;
+};
+
+export type StatisticsValueCostCoverage = {
+  total_rows: number;
+  valued_rows: number;
+  unvalued_rows: number;
+  covered_grams: number;
+  uncovered_grams: number;
+  missing_reasons: StatisticsValueCostMissingReason[];
+  trace_total_rows: number;
+  trace_returned_rows: number;
+  trace_truncated: boolean;
+};
+
+export type StatisticsMonetarySummary = {
+  totals: StatisticsCurrencyOwnershipAmount[];
+  coverage: StatisticsValueCostCoverage;
+};
+
+export type StatisticsInventoryValueTraceRow = {
+  spool_id: string;
+  material: string;
+  filament_name: string;
+  color_name: string;
+  vendor: string;
+  status: string;
+  ownership_type: StatisticsValueCostOwnershipType;
+  remaining_g?: number | null;
+  initial_weight_g?: number | null;
+  purchase_price?: number | null;
+  purchase_currency?: string | null;
+  amount?: number | null;
+  missing_reasons: string[];
+};
+
+export type StatisticsMaterialCostTraceRow = {
+  usage_id: string;
+  source: "MANUAL" | "LIVE";
+  spool_id?: string | null;
+  printer_id?: string | null;
+  job_name?: string | null;
+  status: string;
+  used_at: string;
+  material: string;
+  filament_name: string;
+  color_name: string;
+  vendor: string;
+  ownership_type?: StatisticsValueCostOwnershipType | null;
+  used_g?: number | null;
+  initial_weight_g?: number | null;
+  purchase_price?: number | null;
+  purchase_currency?: string | null;
+  amount?: number | null;
+  missing_reasons: string[];
+};
+
+export type StatisticsValueCostReport = {
+  inventory_value: StatisticsMonetarySummary;
+  material_cost: StatisticsMonetarySummary;
+  inventory_trace: StatisticsInventoryValueTraceRow[];
+  material_cost_trace: StatisticsMaterialCostTraceRow[];
+};
+
 export type StatisticsPeriodReport = {
   period: StatisticsPeriod;
   total_used_g: number;
@@ -44,6 +119,8 @@ export type StatisticsPeriodReport = {
   failed_jobs: number;
   printer_usage: StatisticsPeriodPrinterUsageRow[];
   filament_consumption: FilamentConsumptionRow[];
+  /** Missing when connected to a Host version that predates value/cost reporting. */
+  value_cost?: StatisticsValueCostReport | null;
 };
 
 export async function topMaterials(limit = 12) {

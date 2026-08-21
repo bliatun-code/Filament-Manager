@@ -1442,6 +1442,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("purchase-receipt-metadata") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("statistics-value-cost-report") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -1684,6 +1690,14 @@ async fn companion_api_statistics_period_report_validates_and_echoes_half_open_c
         );
         assert_eq!(report["total_used_g"], 0);
         assert_eq!(report["printer_usage"].as_array().map(Vec::len), Some(1));
+        let value_cost = report
+            .get("value_cost")
+            .expect("a modern Host must include the value/cost report");
+        assert!(value_cost.is_object());
+        assert!(value_cost["inventory_value"]["coverage"]["missing_reasons"].is_array());
+        assert!(value_cost["material_cost"]["coverage"]["missing_reasons"].is_array());
+        assert!(value_cost["inventory_trace"].is_array());
+        assert!(value_cost["material_cost_trace"].is_array());
 
         let reversed = router
             .oneshot(

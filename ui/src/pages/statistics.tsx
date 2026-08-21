@@ -72,6 +72,7 @@ import {
 } from "./statistics_usage_modals";
 import { StatisticsForecastPanel } from "./statistics_forecast_panel";
 import { StatisticsPeriodPicker } from "./statistics_period_picker";
+import { StatisticsValueCostPanel } from "./statistics_value_cost_panel";
 import { useStatisticsPageData } from "./use_statistics_page_data";
 
 function loanPartyName(row: NormalizedLoanDetailsRow): string {
@@ -559,6 +560,19 @@ export default function StatisticsPage() {
         ownershipOverview={ownershipOverview}
         periodDataAvailable={periodReport != null}
         periodLabel={periodRangeLabel}
+        t={t}
+      />
+
+      <StatisticsValueCostPanel
+        hostUpgradeRequired={
+          clientReadOnly &&
+          (periodStatus === "LEGACY_HOST" ||
+            (periodReport != null && periodReport.value_cost == null))
+        }
+        loading={loading}
+        locale={locale}
+        periodLabel={periodRangeLabel}
+        report={periodReport?.value_cost ?? null}
         t={t}
       />
 

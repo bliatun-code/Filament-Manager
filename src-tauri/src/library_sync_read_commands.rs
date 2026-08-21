@@ -256,6 +256,9 @@ fn fetch_library_sync_statistics_period_report_blocking(
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
     let path = library_sync_statistics_period_path(&input.period);
+    // The period report predates value/cost reporting, so this read must not be
+    // capability-gated. Serde maps a legacy Host's missing `value_cost` field to
+    // `None`, preserving the rest of the report without a fabricated fallback.
     let report = match get_library_sync_host_json_authenticated(state, &normalized_base_url, &path)
     {
         Ok(report) => Some(report),
@@ -401,8 +404,9 @@ fn fetch_library_sync_full_backup_json_blocking(
 mod tests {
     use super::{
         is_library_sync_read_not_found, library_sync_catalog_masters_path,
-        library_sync_statistics_period_path, StatisticsPeriod,
+        library_sync_statistics_period_path, StatisticsPeriod, StatisticsPeriodReport,
     };
+    use serde_json::json;
 
     #[test]
     fn read_not_found_classification_accepts_exact_http_status_error() {
@@ -430,6 +434,155 @@ mod tests {
             }),
             "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-09-01T00%3A00%3A00Z"
         );
+    }
+
+    #[test]
+    fn legacy_host_period_report_without_value_cost_remains_available() {
+        let report: StatisticsPeriodReport = serde_json::from_value(json!({
+            "period": {
+                "start_at_utc": "2026-08-01T00:00:00Z",
+                "end_at_utc": "2026-09-01T00:00:00Z"
+            },
+            "total_used_g": 125,
+            "owned_used_g": 100,
+            "borrowed_in_used_g": 25,
+            "total_jobs": 2,
+            "successful_jobs": 1,
+            "failed_jobs": 1,
+            "printer_usage": [],
+            "filament_consumption": []
+        }))
+        .expect("a legacy Host period report must remain parseable");
+
+        assert!(report.value_cost.is_none());
+        assert!(serde_json::to_value(report)
+            .expect("the legacy report must remain forwardable")
+            .get("value_cost")
+            .is_some_and(serde_json::Value::is_null));
+    }
+
+    #[test]
+    fn modern_host_period_report_preserves_value_cost_coverage_and_trace() {
+        let value_cost = json!({
+            "inventory_value": {
+                "totals": [
+                    {
+                        "currency": "NOK",
+                        "ownership_type": "OWNED",
+                        "amount": 314.25
+                    }
+                ],
+                "coverage": {
+                    "total_rows": 2,
+                    "valued_rows": 1,
+                    "unvalued_rows": 1,
+                    "covered_grams": 750,
+                    "uncovered_grams": 250,
+                    "missing_reasons": [
+                        { "reason": "purchase_price_missing", "rows": 1, "grams": 250 }
+                    ],
+                    "trace_total_rows": 2,
+                    "trace_returned_rows": 2,
+                    "trace_truncated": false
+                }
+            },
+            "material_cost": {
+                "totals": [
+                    {
+                        "currency": "EUR",
+                        "ownership_type": "BORROWED_IN",
+                        "amount": 7.5
+                    }
+                ],
+                "coverage": {
+                    "total_rows": 1,
+                    "valued_rows": 1,
+                    "unvalued_rows": 0,
+                    "covered_grams": 150,
+                    "uncovered_grams": 0,
+                    "missing_reasons": [],
+                    "trace_total_rows": 1,
+                    "trace_returned_rows": 1,
+                    "trace_truncated": false
+                }
+            },
+            "inventory_trace": [
+                {
+                    "spool_id": "spool-owned",
+                    "material": "PLA",
+                    "filament_name": "Basic",
+                    "color_name": "Blue",
+                    "vendor": "Example",
+                    "status": "IN_STOCK",
+                    "ownership_type": "OWNED",
+                    "remaining_g": 750,
+                    "initial_weight_g": 1000,
+                    "purchase_price": 419.0,
+                    "purchase_currency": "NOK",
+                    "amount": 314.25,
+                    "missing_reasons": []
+                },
+                {
+                    "spool_id": "spool-missing-price",
+                    "material": "PETG",
+                    "filament_name": "Matte",
+                    "color_name": "Black",
+                    "vendor": "Example",
+                    "status": "ASSIGNED",
+                    "ownership_type": "OWNED",
+                    "remaining_g": 250,
+                    "initial_weight_g": 1000,
+                    "purchase_price": null,
+                    "purchase_currency": null,
+                    "amount": null,
+                    "missing_reasons": ["purchase_price_missing"]
+                }
+            ],
+            "material_cost_trace": [
+                {
+                    "usage_id": "manual:job-1",
+                    "source": "MANUAL",
+                    "spool_id": "spool-borrowed",
+                    "printer_id": "printer-1",
+                    "job_name": "Bracket",
+                    "status": "FAILED",
+                    "used_at": "2026-08-15 12:30:00",
+                    "material": "PETG",
+                    "filament_name": "Strong",
+                    "color_name": "Orange",
+                    "vendor": "Example",
+                    "ownership_type": "BORROWED_IN",
+                    "used_g": 150,
+                    "initial_weight_g": 1000,
+                    "purchase_price": 50.0,
+                    "purchase_currency": "EUR",
+                    "amount": 7.5,
+                    "missing_reasons": []
+                }
+            ]
+        });
+        let payload = json!({
+            "period": {
+                "start_at_utc": "2026-08-01T00:00:00Z",
+                "end_at_utc": "2026-09-01T00:00:00Z"
+            },
+            "total_used_g": 150,
+            "owned_used_g": 0,
+            "borrowed_in_used_g": 150,
+            "total_jobs": 1,
+            "successful_jobs": 0,
+            "failed_jobs": 1,
+            "printer_usage": [],
+            "filament_consumption": [],
+            "value_cost": value_cost.clone()
+        });
+
+        let report: StatisticsPeriodReport = serde_json::from_value(payload)
+            .expect("a modern Host value/cost report must be parseable");
+        let forwarded = serde_json::to_value(report)
+            .expect("the Client transport report must remain serializable");
+
+        assert_eq!(forwarded["value_cost"], value_cost);
     }
 
     #[test]
