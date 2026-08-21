@@ -1,6 +1,6 @@
 use crate::backend::filament_database::{
-    LibraryDomainRevisions, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
-    WishlistItemRow,
+    LibraryDomainRevisions, LowStockPolicy, PrinterOverviewRow, SpoolLoanDetailsRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{InventoryOverview, StatisticsPeriod};
 use crate::optional_update::OptionalUpdate;
@@ -13,6 +13,8 @@ pub(crate) struct SaveLibrarySyncSettingsInput {
     pub(crate) library_id: String,
     pub(crate) host_base_url: Option<String>,
     pub(crate) host_device_name: Option<String>,
+    #[serde(default)]
+    pub(crate) low_stock_policy: Option<LowStockPolicy>,
 }
 
 #[derive(Deserialize)]

@@ -69,6 +69,7 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
       { default_weight: 900 },
     ),
   );
+  row.low_stock_threshold_g = 325;
   row.spool.status = "IN_STOCK";
   const mapped = mapSpoolRowToInventorySpool(row);
 
@@ -80,6 +81,8 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
   assert.equal(mapped.ownerName, "Ada");
   assert.equal(mapped.location, "Shelf A");
   assert.equal(mapped.rfidTag, "rfid-1");
+  assert.equal(mapped.lowStockThresholdGrams, 325);
+  assert.equal(mapped.lowStockThresholdLegacyFallback, false);
 });
 
 test("mapSpoolRowToInventorySpool falls back to master weight and then 1000g", () => {
@@ -95,6 +98,9 @@ test("mapSpoolRowToInventorySpool falls back to master weight and then 1000g", (
     ).initialWeightGrams,
     1000,
   );
+  const legacy = mapSpoolRowToInventorySpool(spoolRow("legacy-host-spool"));
+  assert.equal(legacy.lowStockThresholdGrams, 200);
+  assert.equal(legacy.lowStockThresholdLegacyFallback, true);
 });
 
 test("loadInventorySpools reports live client rows with cached snapshot timestamp", async () => {

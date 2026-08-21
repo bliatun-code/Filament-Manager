@@ -50,7 +50,11 @@ pub(crate) fn map_spool_with_master_row(
         default_weight: row.get(26)?,
         vendor: row.get(27)?,
     };
-    Ok(SpoolWithMasterRow { spool, master })
+    Ok(SpoolWithMasterRow {
+        spool,
+        master,
+        low_stock_threshold_g: None,
+    })
 }
 
 pub(crate) fn map_trusted_lan_paired_browser_row(

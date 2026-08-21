@@ -79,7 +79,11 @@ fn save_library_sync_settings_blocking(
             ));
         }
         let saved = with_inventory(state, |engine| {
-            engine.save_library_sync_settings(&settings_row_from_input(input))
+            engine.save_library_sync_settings(&settings_row_from_input(
+                input,
+                previous.low_stock_policy.clone(),
+                previous.low_stock_policy_valid,
+            ))
         });
         return match saved {
             Ok(saved) => {
@@ -99,7 +103,11 @@ fn save_library_sync_settings_blocking(
         .is_some_and(|runtime| Some(runtime.host_base_url.as_str()) != target_host.as_deref());
 
     let saved = with_inventory(state, |engine| {
-        engine.save_library_sync_settings(&settings_row_from_input(input))
+        engine.save_library_sync_settings(&settings_row_from_input(
+            input,
+            previous.low_stock_policy.clone(),
+            previous.low_stock_policy_valid,
+        ))
     })?;
     let reload_result =
         reload_trusted_lan_after_library_identity_change(state, library_identity_changed);
@@ -190,7 +198,15 @@ fn normalized_optional_host(value: Option<&str>) -> Option<String> {
         .map(str::to_string)
 }
 
-fn settings_row_from_input(input: SaveLibrarySyncSettingsInput) -> LibrarySyncSettingsRow {
+fn settings_row_from_input(
+    input: SaveLibrarySyncSettingsInput,
+    previous_low_stock_policy: crate::backend::filament_database::LowStockPolicy,
+    previous_low_stock_policy_valid: bool,
+) -> LibrarySyncSettingsRow {
+    let (low_stock_policy, low_stock_policy_valid) = match input.low_stock_policy {
+        Some(policy) => (policy, true),
+        None => (previous_low_stock_policy, previous_low_stock_policy_valid),
+    };
     LibrarySyncSettingsRow {
         mode: input.mode,
         device_name: input.device_name,
@@ -203,6 +219,8 @@ fn settings_row_from_input(input: SaveLibrarySyncSettingsInput) -> LibrarySyncSe
         last_checked_at: None,
         last_reachable_at: None,
         last_validation_message: None,
+        low_stock_policy,
+        low_stock_policy_valid,
         cached_snapshot: None,
         cached_spools: None,
         cached_printers: None,
@@ -300,7 +318,9 @@ mod tests {
         settings_with_secure_pairing_state, LibrarySyncDeviceTokenSnapshot,
         LibrarySyncPairingSnapshot,
     };
-    use crate::backend::filament_database::{FilamentDatabase, LibrarySyncSettingsRow};
+    use crate::backend::filament_database::{
+        FilamentDatabase, LibrarySyncSettingsRow, LowStockMaterialOverride, LowStockPolicy,
+    };
     use crate::credential_store::CredentialStore;
     use crate::library_sync_host_client::{
         load_library_sync_device_token_bytes_optional, load_library_sync_device_token_optional,
@@ -353,6 +373,8 @@ mod tests {
             last_checked_at: None,
             last_reachable_at: None,
             last_validation_message: None,
+            low_stock_policy: Default::default(),
+            low_stock_policy_valid: true,
             cached_snapshot: None,
             cached_spools: None,
             cached_printers: None,
@@ -395,6 +417,7 @@ mod tests {
                 library_id: "library-id".to_string(),
                 host_base_url: Some("   ".to_string()),
                 host_device_name: None,
+                low_stock_policy: None,
             },
         )
         .expect("save unpaired client role");
@@ -411,6 +434,43 @@ mod tests {
     }
 
     #[test]
+    fn explicit_policy_save_repairs_corrupt_policy_without_silent_fallback() {
+        let state = test_state();
+        with_test_database(&state, |db| {
+            db.set_setting("low_stock_policy_json", "not-json")
+        });
+
+        let damaged = get_library_sync_settings_blocking(&state)
+            .expect("settings remain available for policy repair");
+        assert!(!damaged.low_stock_policy_valid);
+
+        let repaired = save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: damaged.mode,
+                device_name: damaged.device_name,
+                library_id: damaged.library_id,
+                host_base_url: damaged.host_base_url,
+                host_device_name: damaged.host_device_name,
+                low_stock_policy: Some(LowStockPolicy {
+                    default_threshold_g: 260,
+                    material_overrides: vec![LowStockMaterialOverride {
+                        material_key: String::new(),
+                        material: " PLA ".to_string(),
+                        threshold_g: 310,
+                    }],
+                }),
+            },
+        )
+        .expect("explicit valid policy should repair damaged setting");
+
+        assert!(repaired.low_stock_policy_valid);
+        assert_eq!(repaired.low_stock_policy.default_threshold_g, 260);
+        assert_eq!(repaired.low_stock_policy.threshold_for_material("pla"), 310);
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
     fn unpaired_client_still_rejects_a_nonempty_invalid_host() {
         let state = test_state();
 
@@ -422,6 +482,7 @@ mod tests {
                 library_id: "library-id".to_string(),
                 host_base_url: Some("not-a-url".to_string()),
                 host_device_name: None,
+                low_stock_policy: None,
             },
         )
         .expect_err("invalid host must remain rejected");
@@ -456,6 +517,7 @@ mod tests {
                 library_id: "library-id".to_string(),
                 host_base_url: Some(format!("{new_host}/")),
                 host_device_name: None,
+                low_stock_policy: None,
             },
         )
         .expect("change host");
@@ -497,6 +559,7 @@ mod tests {
                 library_id: "replacement-library-id".to_string(),
                 host_base_url: Some("http://host.local:4278".to_string()),
                 host_device_name: Some("Host".to_string()),
+                low_stock_policy: None,
             },
         )
         .expect("save replacement library identity");
@@ -546,6 +609,7 @@ mod tests {
                     library_id: "library-id".to_string(),
                     host_base_url: target_host.map(str::to_string),
                     host_device_name: None,
+                    low_stock_policy: None,
                 },
             )
             .expect_err(case_name);

@@ -4,6 +4,7 @@ use super::database_loan_models::SpoolLoanDetailsRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_spool_models::SpoolWithMasterRow;
 use super::database_wishlist_models::WishlistItemRow;
+use super::low_stock_policy::LowStockPolicy;
 use super::statistics::{FilamentConsumptionRow, InventoryOverview};
 
 pub(crate) type LibrarySyncClientAuthState = (String, String, String, Option<String>);
@@ -21,6 +22,8 @@ pub struct LibrarySyncSettingsRow {
     pub last_checked_at: Option<String>,
     pub last_reachable_at: Option<String>,
     pub last_validation_message: Option<String>,
+    pub low_stock_policy: LowStockPolicy,
+    pub low_stock_policy_valid: bool,
     pub cached_snapshot: Option<LibrarySyncCachedSnapshotRow>,
     pub cached_spools: Option<LibrarySyncCachedSpoolListRow>,
     pub cached_printers: Option<LibrarySyncCachedPrinterOverviewRow>,

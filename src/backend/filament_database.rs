@@ -28,6 +28,7 @@ pub use super::database_wishlist_models::{WishlistItemRow, WishlistReceiptResult
 pub use super::filament_master_models::FilamentMasterCatalogRow;
 #[cfg(any(test, feature = "test-support"))]
 pub use super::filament_master_models::FilamentMasterSummary;
+pub use super::low_stock_policy::{LowStockMaterialOverride, LowStockPolicy};
 #[cfg(test)]
 #[path = "filament_database_architecture_tests.rs"]
 mod architecture_tests;

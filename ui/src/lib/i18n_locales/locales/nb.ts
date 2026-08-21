@@ -121,6 +121,9 @@ export const nbDictionary: DictionaryNode = {
       lowStock: "Lav beholdning",
       below20: "Under 20%",
       below200: "Under 200g",
+      atOrBelowThreshold: "På eller under {count} g",
+      materialLowStockThresholds: "Grenser per materiale",
+      legacyLowStockFallback: "200 g reserveverdi for eldre vert",
       lowest: "lavest",
       noAlerts: "Ingen varsler",
       monthlyUsage: "Månedlig forbruk",
@@ -263,6 +266,7 @@ export const nbDictionary: DictionaryNode = {
       ownershipUpdated: "Eierskap for filamentet er oppdatert.",
       reference: "Referanse",
       lowStockOnly: "Lav beholdning (1-200 g)",
+      lowStockFilter: "Lav beholdning",
       lowStockActiveBadge: "Lav beholdning aktiv",
       unassigned: "Ikke tildelt",
       workspace: "Arbeidsområde",
@@ -1220,6 +1224,34 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     settings: {
+      lowStockThresholds: "Grenser for lav beholdning",
+      lowStockThresholdsHint:
+        "Angi én standard for biblioteket, og overstyr bare materialer som trenger et annet innkjøpspunkt.",
+      lowStockThresholdsReadOnly:
+        "Administrer disse bibliotekgrensene i skrivebordsappen på verten.",
+      lowStockPolicyRepair:
+        "Den lagrede policyen for lav beholdning er skadet. Lager og statistikk er utilgjengelig til du lagrer en gyldig erstatning her; 200 g nedenfor er bare et reparasjonsutkast.",
+      lowStockDefaultThreshold: "Standardgrense",
+      lowStockMaterialOverrides: "Overstyringer per materiale",
+      lowStockMaterialInheritance:
+        "Materialer uten overstyring arver bibliotekets standardgrense.",
+      lowStockOverridesDefault: "Overstyrer standarden",
+      lowStockThresholdGrams: "Grense (g)",
+      lowStockUseDefault: "Bruk standard",
+      lowStockAllMaterialsInherit:
+        "Alle materialer arver standardgrensen nå.",
+      lowStockMaterial: "Materiale",
+      lowStockChooseMaterial: "Velg materiale",
+      lowStockNewOverrideThreshold: "Ny materialgrense",
+      lowStockSetOverride: "Angi overstyring",
+      lowStockSelectedMaterialInheritance:
+        "Uten en overstyring arver dette materialet {count} g.",
+      lowStockThresholdValidation:
+        "Oppgi et heltall fra 1 til 100000 g.",
+      lowStockSaving: "Lagrer grenser …",
+      lowStockSave: "Lagre grenser",
+      lowStockSaved: "Grenser for lav beholdning er lagret.",
+      lowStockSaveError: "Kunne ikke lagre grensene for lav beholdning.",
       "bambuDiscoveryTitle": "Finn Bambu-printer",
       "bambuDiscoveryHint": "Lytt kort etter lokale Bambu-printerannonseringer. Ingen tilgangskode sendes.",
       "bambuDiscoveryFind": "Finn Bambu-printere",

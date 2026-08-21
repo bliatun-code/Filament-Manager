@@ -1806,11 +1806,20 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
     let db_path = temp_db_path("trusted-lan-library-snapshot");
     let result = async {
         seed_db(&db_path)?;
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.set_setting(
+            "low_stock_policy_json",
+            r#"{"default_threshold_g":225,"material_overrides":[{"material_key":"ignored","material":" pla ","threshold_g":300}]}"#,
+        )
+        .map_err(|error| error.to_string())?;
+        db.update_spool_weight("spool_1", Some(300), Some(300))
+            .map_err(|error| error.to_string())?;
         let router = build_router(test_state(&db_path));
         let AuthenticatedTestSession { session_cookie, .. } =
             pair_test_session(&router, &db_path).await?;
 
         let snapshot_response = router
+            .clone()
             .oneshot(
                 Request::builder()
                     .uri("/api/v1/library/snapshot")
@@ -1877,9 +1886,51 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
                 .get("inventory")
                 .and_then(|value| value.get("low_stock"))
                 .and_then(|value| value.as_i64()),
-            Some(0)
+            Some(1)
+        );
+        assert_eq!(
+            snapshot_json
+                .get("inventory")
+                .and_then(|value| value.get("low_stock_policy"))
+                .and_then(|value| value.get("default_threshold_g"))
+                .and_then(|value| value.as_i64()),
+            Some(225)
+        );
+        assert_eq!(
+            snapshot_json
+                .get("inventory")
+                .and_then(|value| value.get("low_stock_policy"))
+                .and_then(|value| value.get("material_overrides"))
+                .and_then(|value| value.get(0))
+                .and_then(|value| value.get("material_key"))
+                .and_then(|value| value.as_str()),
+            Some("PLA")
         );
 
+        let inventory_response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools?limit=10&offset=0")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(inventory_response.status(), StatusCode::OK);
+        let inventory_body = to_bytes(inventory_response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let inventory_json: serde_json::Value =
+            serde_json::from_slice(&inventory_body).map_err(|error| error.to_string())?;
+        assert!(inventory_json
+            .as_array()
+            .is_some_and(|rows| rows.iter().all(|row| {
+                row.get("low_stock_threshold_g")
+                    .and_then(|value| value.as_i64())
+                    == Some(300)
+            })));
         Ok::<(), String>(())
     }
     .await;

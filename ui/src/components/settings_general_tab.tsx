@@ -26,6 +26,10 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { SettingsSurfaceCard } from "./settings_ui";
+import {
+  SettingsLowStockPanel,
+  type SettingsLowStockPanelProps,
+} from "./settings_low_stock_panel";
 
 type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
@@ -41,6 +45,7 @@ export type SettingsGeneralTabProps = {
   tauri: boolean;
   themeMode: ThemeMode;
   t: TranslateFn;
+  lowStock: Omit<SettingsLowStockPanelProps, "t">;
   onLocaleSelection: (locale: Locale) => void;
   onContinueInBackground: (enabled: boolean) => Promise<void> | void;
   onLaunchAtLogin: (enabled: boolean) => Promise<void> | void;
@@ -60,6 +65,7 @@ export function SettingsGeneralTab({
   tauri,
   themeMode,
   t,
+  lowStock,
   onLocaleSelection,
   onContinueInBackground,
   onLaunchAtLogin,
@@ -79,6 +85,7 @@ export function SettingsGeneralTab({
 
   return (
     <>
+      <SettingsLowStockPanel {...lowStock} t={t} />
       <SettingsSurfaceCard
         className="space-y-4"
         eyebrow={t("settings.appearance", "Appearance")}

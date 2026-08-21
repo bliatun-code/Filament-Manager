@@ -14,6 +14,7 @@ import {
   type LoanDirection,
   type OwnershipType,
 } from "./inventory_domain";
+import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 export { toSwatchColor } from "./color_utils";
 export {
   isBorrowedInOwnership,
@@ -308,11 +309,12 @@ export function deriveInventoryOverviewFromRows(
       }
     }
 
+    const lowStockThreshold = resolveSpoolLowStockThreshold(row).thresholdGrams;
     if (
       remaining != null &&
       Number.isFinite(remaining) &&
       remaining > 0 &&
-      remaining <= 200 &&
+      remaining <= lowStockThreshold &&
       isOnHand
     ) {
       lowStock += 1;

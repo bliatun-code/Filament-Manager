@@ -184,7 +184,7 @@ test("inventory spool status predicates centralize list visibility and low-stock
 
   assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 90 })), true);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "ASSIGNED", remainingGrams: 90 })), true);
-  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "BORROWED", remainingGrams: 90 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "BORROWED", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "EMPTY", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "LOST", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 0 })), false);
@@ -252,7 +252,7 @@ test("search, status and low-stock filters compose without widening results", ()
       ...defaultFilterOptions,
       lowStockOnly: true,
     }).map((row) => row.id),
-    ["ocean-low", "assigned-low", "borrowed-low"],
+    ["ocean-low", "assigned-low"],
   );
   assert.deepEqual(
     filterInventorySpools(rows, {
@@ -270,7 +270,7 @@ test("search, status and low-stock filters compose without widening results", ()
       search: "ada lovelace",
       statusFilter: "BORROWED",
     }).map((row) => row.id),
-    ["borrowed-low"],
+    [],
   );
   assert.deepEqual(
     filterInventorySpools(rows, {
@@ -279,6 +279,72 @@ test("search, status and low-stock filters compose without widening results", ()
       statusFilter: "EMPTY",
     }),
     [],
+  );
+});
+
+test("low-stock search and status filters use each material-effective threshold", () => {
+  const rows = [
+    spool({
+      id: "pla-below",
+      material: "PLA",
+      colorName: "Blue",
+      remainingGrams: 299,
+      lowStockThresholdGrams: 300,
+    }),
+    spool({
+      id: "pla-boundary",
+      material: "PLA",
+      colorName: "Blue",
+      remainingGrams: 300,
+      lowStockThresholdGrams: 300,
+      status: "ASSIGNED",
+    }),
+    spool({
+      id: "pla-above",
+      material: "PLA",
+      colorName: "Blue",
+      remainingGrams: 301,
+      lowStockThresholdGrams: 300,
+    }),
+    spool({
+      id: "petg-boundary",
+      material: "PETG",
+      colorName: "Clear",
+      remainingGrams: 150,
+      lowStockThresholdGrams: 150,
+    }),
+    spool({
+      id: "petg-above",
+      material: "PETG",
+      colorName: "Clear",
+      remainingGrams: 151,
+      lowStockThresholdGrams: 150,
+    }),
+  ];
+
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+    }).map((row) => row.id),
+    ["pla-below", "pla-boundary", "petg-boundary"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      search: "blue",
+      statusFilter: "ASSIGNED",
+    }).map((row) => row.id),
+    ["pla-boundary"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      materialFilter: "PETG",
+    }).map((row) => row.id),
+    ["petg-boundary"],
   );
 });
 

@@ -114,7 +114,7 @@ export function isSpoolLowStock(
 ): boolean {
   const remaining = resolveSpoolStockGrams(input);
   return (
-    !isSpoolStatusEmptyOrLost(input.status) &&
+    isSpoolStatusOnHand(input.status) &&
     remaining > 0 &&
     remaining <= Math.max(0, thresholdGrams)
   );

@@ -83,6 +83,10 @@ test("inventory domain centralizes low-stock boundaries and weight precedence", 
   assert.equal(isSpoolStockHealthy(stock(201)), true);
   assert.equal(isSpoolLowStock({ ...stock(90), status: "EMPTY" }), false);
   assert.equal(isSpoolLowStock({ ...stock(90), status: "LOST" }), false);
+  assert.equal(isSpoolLowStock({ ...stock(90), status: "BORROWED" }), false);
+  assert.equal(isSpoolLowStock(stock(299), 300), true);
+  assert.equal(isSpoolLowStock(stock(300), 300), true);
+  assert.equal(isSpoolLowStock(stock(301), 300), false);
   assert.equal(
     resolveSpoolStockGrams({
       remainingGrams: null,

@@ -120,6 +120,9 @@ export const enDictionary: DictionaryNode = {
       lowStock: "Low Stock",
       below20: "Below 20%",
       below200: "Below 200g",
+      atOrBelowThreshold: "At or below {count} g",
+      materialLowStockThresholds: "Thresholds by material",
+      legacyLowStockFallback: "200 g fallback for older Host",
       lowest: "lowest",
       noAlerts: "No alerts",
       monthlyUsage: "Monthly Usage",
@@ -262,6 +265,7 @@ export const enDictionary: DictionaryNode = {
       ownershipUpdated: "Roll ownership updated.",
       reference: "Reference",
       lowStockOnly: "Low stock (1-200 g)",
+      lowStockFilter: "Low stock",
       lowStockActiveBadge: "Low stock filter active",
       unassigned: "Unassigned",
       workspace: "Workspace",
@@ -1214,6 +1218,34 @@ export const enDictionary: DictionaryNode = {
       },
     },
     settings: {
+      lowStockThresholds: "Low-stock thresholds",
+      lowStockThresholdsHint:
+        "Set one default for the library and override it only for materials that need a different restock point.",
+      lowStockThresholdsReadOnly:
+        "Manage these library-wide thresholds on the Host desktop app.",
+      lowStockPolicyRepair:
+        "The saved low-stock policy is damaged. Inventory and statistics stay unavailable until you save a valid replacement here; the 200 g value below is only a repair draft.",
+      lowStockDefaultThreshold: "Default threshold",
+      lowStockMaterialOverrides: "Material overrides",
+      lowStockMaterialInheritance:
+        "Materials without an override inherit the library default.",
+      lowStockOverridesDefault: "Overrides the default",
+      lowStockThresholdGrams: "Threshold (g)",
+      lowStockUseDefault: "Use default",
+      lowStockAllMaterialsInherit:
+        "All materials currently inherit the default threshold.",
+      lowStockMaterial: "Material",
+      lowStockChooseMaterial: "Choose material",
+      lowStockNewOverrideThreshold: "New override threshold",
+      lowStockSetOverride: "Set override",
+      lowStockSelectedMaterialInheritance:
+        "Without an override, this material inherits {count} g.",
+      lowStockThresholdValidation:
+        "Enter a whole number from 1 to 100000 g.",
+      lowStockSaving: "Saving thresholds…",
+      lowStockSave: "Save thresholds",
+      lowStockSaved: "Low-stock thresholds saved.",
+      lowStockSaveError: "Failed to save low-stock thresholds.",
       "bambuDiscoveryTitle": "Find Bambu printer",
       "bambuDiscoveryHint": "Listen briefly for local Bambu printer announcements. No access code is sent.",
       "bambuDiscoveryFind": "Find Bambu printers",

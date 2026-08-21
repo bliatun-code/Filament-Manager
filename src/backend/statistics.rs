@@ -4,7 +4,9 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 
-use super::inventory_domain::LOW_STOCK_THRESHOLD_G;
+use super::database_low_stock_policy::load_low_stock_policy;
+use super::inventory_domain::{OwnershipType, SpoolStatus};
+use super::low_stock_policy::LowStockPolicy;
 use super::spool_defaults::{
     SPOOL_OWNERSHIP_SELECT_SQL, SPOOL_OWNERSHIP_SELECT_SQL_S, SPOOL_STATUS_ASSIGNED_PREDICATE_SQL,
     SPOOL_STATUS_ON_HAND_PREDICATE_SQL,
@@ -22,6 +24,8 @@ pub struct InventoryOverview {
     pub low_stock: i64,
     pub owned_low_stock: i64,
     pub borrowed_in_low_stock: i64,
+    #[serde(default)]
+    pub low_stock_policy: LowStockPolicy,
     pub total_consumption_30d: i64,
     pub owned_consumption_30d: i64,
     pub borrowed_in_consumption_30d: i64,
@@ -456,16 +460,13 @@ fn inventory_overview_from_connection(
     connection: &Connection,
 ) -> Result<InventoryOverview, rusqlite::Error> {
     let (
-            total_spools,
-            total_owned_spools,
-            total_borrowed_in_spools,
-            in_use,
-            owned_in_use,
-            borrowed_in_in_use,
-            low_stock,
-            owned_low_stock,
-            borrowed_in_low_stock,
-        ): (i64, i64, i64, i64, i64, i64, i64, i64, i64) = connection.query_row(
+        total_spools,
+        total_owned_spools,
+        total_borrowed_in_spools,
+        in_use,
+        owned_in_use,
+        borrowed_in_in_use,
+    ): (i64, i64, i64, i64, i64, i64) = connection.query_row(
             &format!(
                 "SELECT
                 COUNT(*) AS total_spools,
@@ -489,34 +490,11 @@ fn inventory_overview_from_connection(
                     WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL}
                      AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
                     THEN 1 ELSE 0
-                END), 0) AS borrowed_in_in_use,
-                COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL
-                     AND remaining_g > 0
-                     AND remaining_g <= ?1
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                    THEN 1 ELSE 0
-                END), 0) AS low_stock,
-                COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL
-                     AND remaining_g > 0
-                     AND remaining_g <= ?1
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
-                    THEN 1 ELSE 0
-                END), 0) AS owned_low_stock,
-                COALESCE(SUM(CASE
-                    WHEN remaining_g IS NOT NULL
-                     AND remaining_g > 0
-                     AND remaining_g <= ?1
-                     AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
-                     AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
-                    THEN 1 ELSE 0
-                END), 0) AS borrowed_in_low_stock
+                END), 0) AS borrowed_in_in_use
              FROM filament_spools
              WHERE deleted_at IS NULL"
             ),
-            params![LOW_STOCK_THRESHOLD_G],
+            [],
             |row| {
                 Ok((
                     row.get(0)?,
@@ -525,12 +503,12 @@ fn inventory_overview_from_connection(
                     row.get(3)?,
                     row.get(4)?,
                     row.get(5)?,
-                    row.get(6)?,
-                    row.get(7)?,
-                    row.get(8)?,
                 ))
             },
         )?;
+    let low_stock_policy = load_low_stock_policy(connection)?;
+    let (low_stock, owned_low_stock, borrowed_in_low_stock) =
+        low_stock_counts_from_connection(connection, &low_stock_policy)?;
     let (total_consumption_30d, owned_consumption_30d, borrowed_in_consumption_30d): (
         i64,
         i64,
@@ -579,6 +557,7 @@ fn inventory_overview_from_connection(
         low_stock,
         owned_low_stock,
         borrowed_in_low_stock,
+        low_stock_policy,
         total_consumption_30d,
         owned_consumption_30d,
         borrowed_in_consumption_30d,
@@ -586,6 +565,46 @@ fn inventory_overview_from_connection(
         total_consumption_12m,
         consumption_12m,
     })
+}
+
+fn low_stock_counts_from_connection(
+    connection: &Connection,
+    policy: &LowStockPolicy,
+) -> Result<(i64, i64, i64), rusqlite::Error> {
+    let mut statement = connection.prepare(
+        "SELECT s.remaining_g, s.status, s.ownership_type, m.material
+         FROM filament_spools s
+         JOIN filament_master_list m ON m.id = s.master_id
+         WHERE s.deleted_at IS NULL",
+    )?;
+    let rows = statement.query_map([], |row| {
+        Ok((
+            row.get::<_, Option<i64>>(0)?,
+            row.get::<_, Option<String>>(1)?,
+            row.get::<_, Option<String>>(2)?,
+            row.get::<_, String>(3)?,
+        ))
+    })?;
+
+    let mut total = 0;
+    let mut owned = 0;
+    let mut borrowed_in = 0;
+    for row in rows {
+        let (remaining_g, status, ownership, material) = row?;
+        let status = SpoolStatus::from_raw(status.as_deref());
+        let on_hand = matches!(status, SpoolStatus::InStock | SpoolStatus::Assigned);
+        let remaining_g = remaining_g.unwrap_or_default();
+        if !on_hand || remaining_g <= 0 || remaining_g > policy.threshold_for_material(&material) {
+            continue;
+        }
+        total += 1;
+        if OwnershipType::from_raw(ownership.as_deref()).is_borrowed_in() {
+            borrowed_in += 1;
+        } else {
+            owned += 1;
+        }
+    }
+    Ok((total, owned, borrowed_in))
 }
 
 fn monthly_consumption_12m_from_connection(
@@ -643,7 +662,9 @@ mod tests {
     use crate::backend::database_printer_usage_sessions::{
         LiveUsageDeltaInput, LiveUsageSessionInput,
     };
-    use crate::backend::filament_database::{FilamentDatabase, ManualMasterInput, SpoolRow};
+    use crate::backend::filament_database::{
+        FilamentDatabase, LowStockMaterialOverride, LowStockPolicy, ManualMasterInput, SpoolRow,
+    };
     use crate::backend::inventory_domain::LOW_STOCK_THRESHOLD_G;
     use rusqlite::params;
     use std::path::PathBuf;
@@ -678,6 +699,8 @@ mod tests {
         assert_eq!(overview.total_consumption_12m, 0);
         assert!(overview.consumption_12m.is_empty());
         assert!(!overview.consumption_12m_available);
+        assert_eq!(overview.low_stock_policy.default_threshold_g, 200);
+        assert!(overview.low_stock_policy.material_overrides.is_empty());
     }
 
     #[test]
@@ -953,6 +976,131 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "inventory_overview_applies_low_stock_boundaries_without_truncating_count failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn inventory_overview_and_spool_rows_share_material_thresholds_and_reset_to_default() {
+        let db_path = temp_db_path("material-low-stock-thresholds");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let pla_master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Black",
+                    hex_color: None,
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+            let petg_master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PETG",
+                    filament_name: "Basic",
+                    color_name: "Clear",
+                    hex_color: None,
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            let mut settings = db
+                .get_library_sync_settings()
+                .map_err(|error| error.to_string())?;
+            settings.low_stock_policy = LowStockPolicy {
+                default_threshold_g: 250,
+                material_overrides: vec![LowStockMaterialOverride {
+                    material_key: "ignored".to_string(),
+                    material: "  pLa  ".to_string(),
+                    threshold_g: 300,
+                }],
+            };
+            db.save_library_sync_settings(&settings)
+                .map_err(|error| error.to_string())?;
+
+            for (id, master_id, ownership, remaining_g) in [
+                ("pla_below", &pla_master_id, "OWNED", 299),
+                ("pla_boundary", &pla_master_id, "BORROWED_IN", 300),
+                ("pla_above", &pla_master_id, "OWNED", 301),
+                ("petg_below", &petg_master_id, "OWNED", 249),
+                ("petg_boundary", &petg_master_id, "BORROWED_IN", 250),
+                ("petg_above", &petg_master_id, "BORROWED_IN", 251),
+            ] {
+                db.connection()
+                    .execute(
+                        "INSERT INTO filament_spools (
+                            id, master_id, status, ownership_type,
+                            initial_weight_g, current_weight_g, remaining_g
+                         ) VALUES (?1, ?2, 'IN_STOCK', ?3, 1000, ?4, ?4)",
+                        params![id, master_id, ownership, remaining_g],
+                    )
+                    .map_err(|error| error.to_string())?;
+            }
+
+            let overview = db.inventory_overview().map_err(|error| error.to_string())?;
+            assert_eq!(overview.low_stock, 4);
+            assert_eq!(overview.owned_low_stock, 2);
+            assert_eq!(overview.borrowed_in_low_stock, 2);
+            assert_eq!(overview.low_stock_policy.default_threshold_g, 250);
+            assert_eq!(
+                overview.low_stock_policy.material_overrides[0].material,
+                "pLa"
+            );
+            assert_eq!(
+                overview.low_stock_policy.material_overrides[0].material_key,
+                "PLA"
+            );
+
+            let rows = db
+                .list_all_spools_with_master()
+                .map_err(|error| error.to_string())?;
+            for row in &rows {
+                let expected = if row.master.material.eq_ignore_ascii_case("PLA") {
+                    300
+                } else {
+                    250
+                };
+                assert_eq!(
+                    row.low_stock_threshold_g,
+                    Some(expected),
+                    "{}",
+                    row.spool.id
+                );
+            }
+
+            let mut reset_settings = db
+                .get_library_sync_settings()
+                .map_err(|error| error.to_string())?;
+            reset_settings.low_stock_policy.material_overrides.clear();
+            db.save_library_sync_settings(&reset_settings)
+                .map_err(|error| error.to_string())?;
+            let reset_overview = db.inventory_overview().map_err(|error| error.to_string())?;
+            assert_eq!(reset_overview.low_stock, 2);
+            assert_eq!(reset_overview.owned_low_stock, 1);
+            assert_eq!(reset_overview.borrowed_in_low_stock, 1);
+            assert!(reset_overview
+                .low_stock_policy
+                .material_overrides
+                .is_empty());
+            assert!(db
+                .list_all_spools_with_master()
+                .map_err(|error| error.to_string())?
+                .iter()
+                .all(|row| row.low_stock_threshold_g == Some(250)));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "inventory_overview_and_spool_rows_share_material_thresholds_and_reset_to_default failed: {message}"
             );
         }
     }

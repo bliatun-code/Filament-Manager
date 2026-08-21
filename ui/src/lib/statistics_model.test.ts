@@ -24,10 +24,12 @@ function spoolRow({
   status,
   ownershipType = "OWNED",
   remainingGrams,
+  thresholdGrams,
 }: {
   status: string;
   ownershipType?: string | null;
   remainingGrams?: number | null;
+  thresholdGrams?: number | null;
 }): NormalizedSpoolWithMasterRow {
   return normalizeSpoolWithMasterRow({
     spool: {
@@ -35,6 +37,7 @@ function spoolRow({
       ownership_type: ownershipType,
       remaining_g: remainingGrams,
     },
+    low_stock_threshold_g: thresholdGrams,
   } as SpoolWithMasterRow);
 }
 
@@ -120,6 +123,39 @@ test("deriveInventoryOverviewFromRows separates owned and borrowed stock health"
   assert.equal(overview.total_consumption_30d, 200);
   assert.equal(overview.owned_consumption_30d, 120);
   assert.equal(overview.borrowed_in_consumption_30d, 80);
+});
+
+test("derived statistics apply effective thresholds at minus one, boundary and plus one", () => {
+  const overview = deriveInventoryOverviewFromRows(
+    [
+      spoolRow({ status: "IN_STOCK", remainingGrams: 299, thresholdGrams: 300 }),
+      spoolRow({ status: "IN_STOCK", remainingGrams: 300, thresholdGrams: 300 }),
+      spoolRow({ status: "IN_STOCK", remainingGrams: 301, thresholdGrams: 300 }),
+      spoolRow({
+        status: "ASSIGNED",
+        ownershipType: "BORROWED_IN",
+        remainingGrams: 149,
+        thresholdGrams: 150,
+      }),
+      spoolRow({
+        status: "ASSIGNED",
+        ownershipType: "BORROWED_IN",
+        remainingGrams: 150,
+        thresholdGrams: 150,
+      }),
+      spoolRow({
+        status: "ASSIGNED",
+        ownershipType: "BORROWED_IN",
+        remainingGrams: 151,
+        thresholdGrams: 150,
+      }),
+    ],
+    [],
+  );
+
+  assert.equal(overview.low_stock, 4);
+  assert.equal(overview.owned_low_stock, 2);
+  assert.equal(overview.borrowed_in_low_stock, 2);
 });
 
 test("consumption filters build stable options and apply search, ownership and sort", () => {

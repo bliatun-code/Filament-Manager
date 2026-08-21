@@ -21,6 +21,7 @@ import {
   type NumberDisplayLocale,
 } from "./number_display";
 import { formatGrams } from "./weight_display";
+import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 
 type TranslateFn = (key: string, fallback: string) => string;
 
@@ -277,14 +278,25 @@ export function buildDashboardDerivedState(params: {
   const onHandInUse = onHandRows.filter((row) =>
     isSpoolStatusAssigned(row.spool.normalized_status),
   ).length;
-  const lowStockCandidates = spoolRows.filter((row) =>
-    isSpoolLowStock({
-      status: row.spool.normalized_status,
-      remainingGrams: row.spool.remaining_g,
-      currentWeightGrams: row.spool.current_weight_g,
-      initialWeightGrams: row.spool.initial_weight_g,
-    }),
+  const thresholdResolutions = onHandRows.map(resolveSpoolLowStockThreshold);
+  const thresholdValues = new Set(
+    thresholdResolutions.map((resolution) => resolution.thresholdGrams),
   );
+  const usesLegacyThresholdFallback = thresholdResolutions.some(
+    (resolution) => resolution.legacyFallback,
+  ) || (onHandRows.length === 0 && overview.low_stock_policy == null);
+  const lowStockCandidates = spoolRows.filter((row) => {
+    const threshold = resolveSpoolLowStockThreshold(row);
+    return isSpoolLowStock(
+      {
+        status: row.spool.normalized_status,
+        remainingGrams: row.spool.remaining_g,
+        currentWeightGrams: row.spool.current_weight_g,
+        initialWeightGrams: row.spool.initial_weight_g,
+      },
+      threshold.thresholdGrams,
+    );
+  });
   const lowStockRows = [...lowStockCandidates]
     .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
     .slice(0, 5)
@@ -301,6 +313,19 @@ export function buildDashboardDerivedState(params: {
   const borrowedInLowStockCount = lowStockCandidates.filter((row) =>
     isBorrowedInOwnership(row.spool.ownership_type),
   ).length;
+  const fallbackThreshold = overview.low_stock_policy?.default_threshold_g ?? 200;
+  const onlyThreshold = thresholdValues.values().next().value ?? fallbackThreshold;
+  const lowStockSubtitle = usesLegacyThresholdFallback
+    ? t(
+        "dashboard.legacyLowStockFallback",
+        "200 g fallback for older Host",
+      )
+    : thresholdValues.size <= 1
+      ? t("dashboard.atOrBelowThreshold", "At or below {count} g").replace(
+          "{count}",
+          formatDisplayInteger(onlyThreshold, locale),
+        )
+      : t("dashboard.materialLowStockThresholds", "Thresholds by material");
 
   const activity: ActivityItem[] = [
     ...activeLoans.slice(0, 3).map((loan) => ({
@@ -341,7 +366,7 @@ export function buildDashboardDerivedState(params: {
       id: "lowStock",
       title: t("dashboard.lowStock", "Low Stock"),
       value: formatDisplayInteger(lowStockCount, locale),
-      subtitle: t("dashboard.below200", "Below 200g"),
+      subtitle: lowStockSubtitle,
       trend: lowStockRows.length > 0 ? `${lowStockRows[0].remaining} ${t("dashboard.lowest", "lowest")}` : t("dashboard.noAlerts", "No alerts"),
       accent: "rose",
     },
@@ -381,14 +406,18 @@ export function buildDashboardDerivedState(params: {
     loadedSlots: effectiveSlotTotals.loadedSlots,
   };
 
-  const healthySpools = onHandRows.filter((row) =>
-    isSpoolStockHealthy({
-      status: row.spool.normalized_status,
-      remainingGrams: row.spool.remaining_g,
-      currentWeightGrams: row.spool.current_weight_g,
-      initialWeightGrams: row.spool.initial_weight_g,
-    }),
-  ).length;
+  const healthySpools = onHandRows.filter((row) => {
+    const threshold = resolveSpoolLowStockThreshold(row);
+    return isSpoolStockHealthy(
+      {
+        status: row.spool.normalized_status,
+        remainingGrams: row.spool.remaining_g,
+        currentWeightGrams: row.spool.current_weight_g,
+        initialWeightGrams: row.spool.initial_weight_g,
+      },
+      threshold.thresholdGrams,
+    );
+  }).length;
   const healthScore =
     onHandTotal === 0
       ? null
@@ -458,13 +487,15 @@ export function buildDashboardDerivedState(params: {
     usageTotal12m,
     usageAvailable,
     ownershipLowStock: {
-      owned: ownedLowStockCount || overview.owned_low_stock,
-      borrowedIn: borrowedInLowStockCount || overview.borrowed_in_low_stock,
+      owned: spoolRows.length > 0 ? ownedLowStockCount : overview.owned_low_stock,
+      borrowedIn:
+        spoolRows.length > 0 ? borrowedInLowStockCount : overview.borrowed_in_low_stock,
     },
     ownershipOnHand: {
-      total: onHandTotal || overview.total_spools,
-      owned: onHandOwned || overview.total_owned_spools,
-      borrowedIn: onHandBorrowedIn || overview.total_borrowed_in_spools,
+      total: spoolRows.length > 0 ? onHandTotal : overview.total_spools,
+      owned: spoolRows.length > 0 ? onHandOwned : overview.total_owned_spools,
+      borrowedIn:
+        spoolRows.length > 0 ? onHandBorrowedIn : overview.total_borrowed_in_spools,
       inUse: onHandInUse,
     },
     goalMetrics,

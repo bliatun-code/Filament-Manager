@@ -1,7 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
-import { isTauri } from "../lib/tauri_client";
+import {
+  isTauri,
+  saveLibrarySyncSettings,
+  type LowStockPolicy,
+} from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryRouteBundle } from "./settings_library_route_bundle";
@@ -511,6 +515,59 @@ export default function SettingsPage({
     };
   }, [applicationDiagnosticsStatus]);
 
+  const lowStockMaterialOptions = useMemo(() => {
+    const materials = new Map<string, string>();
+    for (const material of [
+      ...catalogMasters.map((row) => row.material),
+      ...spoolRows.map((row) => row.master.material),
+    ]) {
+      const display = material.trim().replace(/\s+/gu, " ");
+      const key = display.toUpperCase();
+      if (key && !materials.has(key)) {
+        materials.set(key, display);
+      }
+    }
+    return Array.from(materials.values()).sort((left, right) =>
+      left.localeCompare(right),
+    );
+  }, [catalogMasters, spoolRows]);
+
+  const handleSaveLowStockPolicy = useCallback(
+    async (policy: LowStockPolicy) => {
+      if (!tauri || !librarySyncSettings || librarySyncSettings.mode === "CLIENT") {
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      try {
+        const saved = await saveLibrarySyncSettings({
+          ...librarySyncSettings,
+          low_stock_policy: policy,
+        });
+        setLibrarySyncSettings(saved);
+        setInfo(t("settings.lowStockSaved", "Low-stock thresholds saved."));
+      } catch (saveError) {
+        console.error(saveError);
+        setError(
+          t(
+            "settings.lowStockSaveError",
+            "Failed to save low-stock thresholds.",
+          ),
+        );
+      } finally {
+        setBusy(false);
+      }
+    }, [
+      librarySyncSettings,
+      setBusy,
+      setError,
+      setInfo,
+      setLibrarySyncSettings,
+      t,
+      tauri,
+    ],
+  );
+
   const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,
     busy,
@@ -604,6 +661,19 @@ export default function SettingsPage({
     tauri,
     themeMode,
     t,
+    lowStock: {
+      busy: busy || librarySyncBusy || loading,
+      materialOptions: lowStockMaterialOptions,
+      policy:
+        librarySyncSettings?.mode === "CLIENT"
+          ? librarySyncSnapshot?.inventory.low_stock_policy
+          : librarySyncSettings?.low_stock_policy,
+      policyValid:
+        librarySyncSettings?.mode === "CLIENT" ||
+        librarySyncSettings?.low_stock_policy_valid !== false,
+      readOnly: !tauri || librarySyncSettings?.mode === "CLIENT",
+      onSave: handleSaveLowStockPolicy,
+    },
     onLocaleSelection: handleLocaleSelection,
     onContinueInBackground: desktopLifecycle.handleContinueInBackground,
     onLaunchAtLogin: desktopLifecycle.handleLaunchAtLogin,

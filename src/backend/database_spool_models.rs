@@ -31,6 +31,10 @@ pub struct SpoolRow {
 pub struct SpoolWithMasterRow {
     pub spool: SpoolRow,
     pub master: FilamentMasterSummary,
+    /// `None` is accepted only for payloads cached or fetched from a pre-policy Host.
+    /// New local and Host reads always populate the material-effective threshold.
+    #[serde(default)]
+    pub low_stock_threshold_g: Option<i64>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -47,4 +51,50 @@ pub struct SpoolUsagePointRow {
     pub captured_at: String,
     pub grams: i64,
     pub source: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SpoolWithMasterRow;
+
+    #[test]
+    fn legacy_host_spool_payload_without_threshold_remains_readable() {
+        let row: SpoolWithMasterRow = serde_json::from_value(serde_json::json!({
+            "spool": {
+                "id": "legacy-spool",
+                "master_id": "master-1",
+                "qr_code": null,
+                "rfid_tag": null,
+                "rfid_observed_at": null,
+                "status": "IN_STOCK",
+                "ownership_type": "OWNED",
+                "owner_name": null,
+                "owner_contact": null,
+                "ownership_note": null,
+                "initial_weight_g": 1000,
+                "current_weight_g": 200,
+                "remaining_g": 200,
+                "spool_tare_weight_g": null,
+                "location_id": null,
+                "home_location_id": null,
+                "purchase_date": null,
+                "purchase_price": null,
+                "batch_code": null,
+                "last_used_at": null
+            },
+            "master": {
+                "id": "master-1",
+                "material": "PLA",
+                "filament_name": "Basic",
+                "color_name": "Black",
+                "hex_color": "#000000",
+                "product_url": null,
+                "default_weight": 1000,
+                "vendor": "Generic"
+            }
+        }))
+        .expect("legacy Host row should deserialize");
+
+        assert_eq!(row.low_stock_threshold_g, None);
+    }
 }

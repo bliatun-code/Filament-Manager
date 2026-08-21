@@ -1,8 +1,8 @@
 use super::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveTlsIdentityRow, FilamentDatabase,
-    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, ManualMasterInput,
-    MasterCatalogUpdateInput, SpoolRow, TrustedLanSettingsRow, FULL_BACKUP_TABLES,
-    RESET_APP_STATE_TABLES,
+    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow, LowStockMaterialOverride, LowStockPolicy,
+    ManualMasterInput, MasterCatalogUpdateInput, SpoolRow, TrustedLanSettingsRow,
+    FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
 };
 use crate::backend::database_schema::{
     ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
@@ -2686,6 +2686,8 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 last_checked_at: None,
                 last_reachable_at: None,
                 last_validation_message: None,
+                low_stock_policy: Default::default(),
+                low_stock_policy_valid: true,
                 cached_snapshot: None,
                 cached_spools: None,
                 cached_printers: None,
@@ -2740,6 +2742,8 @@ fn library_sync_settings_default_and_persist_cleanly() {
                 last_checked_at: Some("should clear".to_string()),
                 last_reachable_at: Some("should clear".to_string()),
                 last_validation_message: Some("should clear".to_string()),
+                low_stock_policy: Default::default(),
+                low_stock_policy_valid: true,
                 cached_snapshot: Some(LibrarySyncCachedSnapshotRow {
                     captured_at: "2026-04-09 10:00:00".to_string(),
                     library_id: saved.library_id.clone(),
@@ -2755,6 +2759,7 @@ fn library_sync_settings_default_and_persist_cleanly() {
                         low_stock: 3,
                         owned_low_stock: 2,
                         borrowed_in_low_stock: 1,
+                        low_stock_policy: Default::default(),
                         total_consumption_30d: 1200,
                         owned_consumption_30d: 900,
                         borrowed_in_consumption_30d: 300,
@@ -2802,6 +2807,64 @@ fn library_sync_settings_default_and_persist_cleanly() {
 }
 
 #[test]
+fn corrupt_low_stock_policy_fails_inventory_closed_but_settings_can_repair_it() {
+    let db_path = temp_db_path("low-stock-policy-recovery");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.set_setting("low_stock_policy_json", "{damaged")
+            .map_err(|error| error.to_string())?;
+
+        let mut settings = db
+            .get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        assert!(!settings.low_stock_policy_valid);
+        assert_eq!(settings.low_stock_policy.default_threshold_g, 200);
+        assert!(db.inventory_overview().is_err());
+        assert!(db.list_all_spools_with_master().is_err());
+
+        db.save_library_sync_settings(&settings)
+            .map_err(|error| error.to_string())?;
+        let still_damaged = db
+            .get_library_sync_settings()
+            .map_err(|error| error.to_string())?;
+        assert!(!still_damaged.low_stock_policy_valid);
+        assert!(db.inventory_overview().is_err());
+
+        settings.low_stock_policy = LowStockPolicy {
+            default_threshold_g: 275,
+            material_overrides: vec![LowStockMaterialOverride {
+                material_key: String::new(),
+                material: "PETG".to_string(),
+                threshold_g: 325,
+            }],
+        };
+        settings.low_stock_policy_valid = true;
+        let repaired = db
+            .save_library_sync_settings(&settings)
+            .map_err(|error| error.to_string())?;
+        assert!(repaired.low_stock_policy_valid);
+        assert_eq!(repaired.low_stock_policy.threshold_for_material("PLA"), 275);
+        assert_eq!(
+            repaired.low_stock_policy.threshold_for_material("petg"),
+            325
+        );
+        assert!(db.inventory_overview().is_ok());
+        assert!(db.list_all_spools_with_master().is_ok());
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "corrupt_low_stock_policy_fails_inventory_closed_but_settings_can_repair_it failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn library_sync_client_auth_clears_when_client_host_changes() {
     let db_path = temp_db_path("library-sync-auth-host-change");
 
@@ -2825,6 +2888,8 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
             last_checked_at: None,
             last_reachable_at: None,
             last_validation_message: None,
+            low_stock_policy: Default::default(),
+            low_stock_policy_valid: true,
             cached_snapshot: None,
             cached_spools: None,
             cached_printers: None,
@@ -2859,6 +2924,8 @@ fn library_sync_client_auth_clears_when_client_host_changes() {
                 last_checked_at: None,
                 last_reachable_at: None,
                 last_validation_message: None,
+                low_stock_policy: Default::default(),
+                low_stock_policy_valid: true,
                 cached_snapshot: None,
                 cached_spools: None,
                 cached_printers: None,

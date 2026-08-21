@@ -170,7 +170,7 @@ export function InventoryHeaderActions({
                   onClick={() => onLowStockOnlyChange(!lowStockOnly)}
                   className={neutralChipClass(lowStockOnly, "px-3.5 py-2 text-xs")}
                 >
-                  {t("inventory.lowStockOnly", "Low stock (<200 g)")}
+                  {t("inventory.lowStockFilter", "Low stock")}
                 </button>
                 {statuses.map((status) => (
                   <button

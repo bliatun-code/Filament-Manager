@@ -21,6 +21,7 @@ import {
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
 } from "./spool_row_normalization";
+import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 
 export type InventorySnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 
@@ -75,6 +76,7 @@ function mapSpoolRowsToInventorySpools(rows: SpoolWithMasterRow[]): InventorySpo
 
 export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventorySpool {
   const normalizedRow = normalizeInventorySpoolRow(row);
+  const lowStockThreshold = resolveSpoolLowStockThreshold(normalizedRow);
   const fallbackInitial =
     Number.isFinite(normalizedRow.master.default_weight) && normalizedRow.master.default_weight > 0
       ? normalizedRow.master.default_weight
@@ -92,6 +94,8 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
       normalizedRow.spool.initial_weight_g && normalizedRow.spool.initial_weight_g > 0
         ? normalizedRow.spool.initial_weight_g
         : fallbackInitial,
+    lowStockThresholdGrams: lowStockThreshold.thresholdGrams,
+    lowStockThresholdLegacyFallback: lowStockThreshold.legacyFallback,
     status: normalizedRow.spool.normalized_status ?? "IN_STOCK",
     ownershipType: normalizedRow.spool.ownership_type,
     ownerName: normalizedRow.spool.owner_name ?? null,

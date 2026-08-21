@@ -7,6 +7,7 @@ use super::database_library_sync_models::{
     LibrarySyncCachedPrinterOverviewRow, LibrarySyncCachedSnapshotRow,
     LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow, LibrarySyncSettingsRow,
 };
+use super::database_low_stock_policy::{load_low_stock_policy, save_low_stock_policy};
 use super::database_result::InventoryResult;
 use super::database_settings::{delete_setting, get_setting, set_setting};
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
@@ -32,6 +33,11 @@ pub(crate) fn get_library_sync_settings(
     let last_checked_at = trimmed_setting(conn, "library_sync_last_checked_at")?;
     let last_reachable_at = trimmed_setting(conn, "library_sync_last_reachable_at")?;
     let last_validation_message = trimmed_setting(conn, "library_sync_last_validation_message")?;
+    let (low_stock_policy, low_stock_policy_valid) = match load_low_stock_policy(conn) {
+        Ok(policy) => (policy, true),
+        Err(rusqlite::Error::FromSqlConversionFailure(_, _, _)) => (Default::default(), false),
+        Err(error) => return Err(error.into()),
+    };
     let cached_snapshot =
         cached_setting::<LibrarySyncCachedSnapshotRow>(conn, "library_sync_cached_snapshot_json")?;
     let cached_spools =
@@ -63,6 +69,8 @@ pub(crate) fn get_library_sync_settings(
         last_checked_at,
         last_reachable_at,
         last_validation_message,
+        low_stock_policy,
+        low_stock_policy_valid,
         cached_snapshot,
         cached_spools,
         cached_printers,
@@ -87,6 +95,22 @@ pub(crate) fn save_library_sync_settings(
     conn: &Connection,
     settings: &LibrarySyncSettingsRow,
 ) -> InventoryResult<LibrarySyncSettingsRow> {
+    let low_stock_policy = if settings.low_stock_policy_valid {
+        Some(
+            settings
+                .low_stock_policy
+                .clone()
+                .normalized()
+                .map_err(
+                    |error| super::database_result::InventoryError::InvalidOperation {
+                        code: "low_stock_policy.invalid",
+                        message: error.to_string(),
+                    },
+                )?,
+        )
+    } else {
+        None
+    };
     let mode = normalize_library_sync_mode(Some(settings.mode.as_str()));
     let device_name = settings
         .device_name
@@ -132,6 +156,9 @@ pub(crate) fn save_library_sync_settings(
     set_setting(conn, "library_sync_mode", &mode)?;
     set_setting(conn, "library_sync_device_name", &safe_device_name)?;
     set_setting(conn, "library_sync_library_id", &safe_library_id)?;
+    if let Some(low_stock_policy) = low_stock_policy {
+        save_low_stock_policy(conn, low_stock_policy)?;
+    }
 
     if mode == "CLIENT" {
         let host_changed = previous_host_base_url != host_base_url;

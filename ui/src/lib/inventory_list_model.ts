@@ -34,6 +34,8 @@ export type InventorySpool = {
   colorName: string;
   hexColor?: string | null;
   initialWeightGrams: number;
+  lowStockThresholdGrams?: number;
+  lowStockThresholdLegacyFallback?: boolean;
   status: SpoolStatus;
   ownershipType: OwnershipType;
   ownerName?: string | null;
@@ -244,13 +246,19 @@ export function isInventorySpoolVisibleForStatusFilter(
 }
 
 export function isInventorySpoolLowStockCandidate(
-  spool: Pick<InventorySpool, "initialWeightGrams" | "remainingGrams" | "status">,
+  spool: Pick<
+    InventorySpool,
+    "initialWeightGrams" | "lowStockThresholdGrams" | "remainingGrams" | "status"
+  >,
 ): boolean {
-  return isSpoolLowStock({
-    status: normalizeStatus(spool.status),
-    remainingGrams: spool.remainingGrams,
-    initialWeightGrams: spool.initialWeightGrams,
-  });
+  return isSpoolLowStock(
+    {
+      status: normalizeStatus(spool.status),
+      remainingGrams: spool.remainingGrams,
+      initialWeightGrams: spool.initialWeightGrams,
+    },
+    spool.lowStockThresholdGrams,
+  );
 }
 
 export function isInventorySpoolLoanTrackingCandidate(

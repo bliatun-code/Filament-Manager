@@ -49,6 +49,7 @@ function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview
 function spoolRow(
   id: string,
   overrides: Partial<SpoolWithMasterRow["spool"]> = {},
+  lowStockThresholdGrams?: number | null,
 ): NormalizedSpoolWithMasterRow {
   return normalizeSpoolWithMasterRow({
     spool: {
@@ -70,6 +71,7 @@ function spoolRow(
       default_weight: 1000,
       vendor: "Bambu",
     },
+    low_stock_threshold_g: lowStockThresholdGrams,
   });
 }
 
@@ -236,6 +238,60 @@ test("dashboard counts every low-stock spool and keeps the 200g boundary unhealt
   assert.equal(result.health.score, 13);
 });
 
+test("dashboard uses mixed material thresholds for counts, health and subtitle", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [
+      spoolRow("pla-below", { remaining_g: 299 }, 300),
+      spoolRow("pla-boundary", { remaining_g: 300 }, 300),
+      spoolRow("pla-above", { remaining_g: 301 }, 300),
+      spoolRow(
+        "petg-below",
+        { remaining_g: 149, ownership_type: "BORROWED_IN" },
+        150,
+      ),
+      spoolRow(
+        "petg-boundary",
+        { remaining_g: 150, ownership_type: "BORROWED_IN" },
+        150,
+      ),
+      spoolRow(
+        "petg-above",
+        { remaining_g: 151, ownership_type: "BORROWED_IN" },
+        150,
+      ),
+    ],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  const lowStock = result.stats.find((stat) => stat.id === "lowStock");
+  assert.equal(lowStock?.value, "4");
+  assert.equal(lowStock?.subtitle, "Thresholds by material");
+  assert.deepEqual(result.ownershipLowStock, { owned: 2, borrowedIn: 2 });
+  assert.equal(result.health.score, 33);
+});
+
+test("dashboard labels and applies the explicit older-Host 200 g fallback", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [
+      spoolRow("legacy-boundary", { remaining_g: 200 }),
+      spoolRow("legacy-above", { remaining_g: 201 }),
+    ],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  const lowStock = result.stats.find((stat) => stat.id === "lowStock");
+  assert.equal(lowStock?.value, "1");
+  assert.equal(lowStock?.subtitle, "200 g fallback for older Host");
+});
+
 test("buildDashboardDerivedState reports insufficient data for an empty library", () => {
   const result = buildDashboardDerivedState({
     overview: overview(),
@@ -391,7 +447,7 @@ test("buildDashboardDerivedState preserves unknown statuses outside on-hand coun
 
   assert.equal(result.ownershipOnHand.total, 1);
   assert.equal(result.ownershipOnHand.borrowedIn, 1);
-  assert.equal(result.ownershipLowStock.owned, 1);
+  assert.equal(result.ownershipLowStock.owned, 0);
 });
 
 test("buildDashboardDerivedState normalizes legacy loan tokens before active counts", () => {

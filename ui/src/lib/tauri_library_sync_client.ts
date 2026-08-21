@@ -1,5 +1,10 @@
 import { invoke } from "./tauri_invoke";
-import type { CompanionSpoolDetail, InventoryOverview, SpoolWithMasterRow } from "./tauri_inventory_client";
+import type {
+  CompanionSpoolDetail,
+  InventoryOverview,
+  LowStockPolicy,
+  SpoolWithMasterRow,
+} from "./tauri_inventory_client";
 import type { SpoolLoanDetailsRow } from "./tauri_loan_client";
 import type { PrinterOverviewRow, PrinterSettingsSnapshot } from "./tauri_printer_client";
 import type { WishlistItemRow } from "./tauri_wishlist_client";
@@ -50,6 +55,10 @@ export type LibrarySyncSettings = {
   last_checked_at?: string | null;
   last_reachable_at?: string | null;
   last_validation_message?: string | null;
+  /** New desktop builds always provide this; missing values use the 200 g legacy default. */
+  low_stock_policy?: LowStockPolicy;
+  /** False means the persisted policy is corrupt and Settings must repair it explicitly. */
+  low_stock_policy_valid?: boolean;
   cached_snapshot?: LibrarySyncRemoteSnapshot | null;
   cached_spools?: LibrarySyncCachedSpoolList | null;
   cached_printers?: LibrarySyncCachedPrinterOverview | null;

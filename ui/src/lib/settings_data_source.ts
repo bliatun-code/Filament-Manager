@@ -166,12 +166,20 @@ export async function loadSettingsPageData(
       clientReadOnly: false,
       limit: 5000,
     });
-    spoolRows = await loadSpoolRows(
-      {
-        clientReadOnly: false,
-      },
-      1000,
-    );
+    spoolRows =
+      syncSettings.low_stock_policy_valid === false
+        ? await loadSpoolRows(
+            {
+              clientReadOnly: false,
+            },
+            1000,
+          ).catch(() => [])
+        : await loadSpoolRows(
+            {
+              clientReadOnly: false,
+            },
+            1000,
+          );
     overviewRows = await listLocalPrinterOverview();
   }
 

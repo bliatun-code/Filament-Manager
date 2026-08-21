@@ -292,6 +292,7 @@ fn make_inventory_spool(id: &str, rfid_tag: Option<&str>) -> SpoolWithMasterRow 
             default_weight: 1000,
             vendor: "Generic".to_string(),
         },
+        low_stock_threshold_g: Some(200),
     }
 }
 

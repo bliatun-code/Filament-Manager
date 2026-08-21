@@ -197,6 +197,29 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
   assert.equal(result.revisionPollComplete, true);
 });
 
+test("settings remain loadable for explicit recovery when the local low-stock policy is corrupt", async () => {
+  const result = await loadSettingsPageData({
+    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadCatalogRows: async () => hostCatalogRows,
+    loadSyncSettings: async () =>
+      syncSettings({
+        low_stock_policy: {
+          default_threshold_g: 200,
+          material_overrides: [],
+        },
+        low_stock_policy_valid: false,
+      }),
+    loadSpoolRows: async () => {
+      throw new Error("corrupt low-stock policy");
+    },
+    listLocalPrinterOverview: async () => [printerOverviewRow("printer-local")],
+  });
+
+  assert.equal(result.syncSettings.low_stock_policy_valid, false);
+  assert.deepEqual(result.catalogRows, hostCatalogRows);
+  assert.deepEqual(result.spoolRows, []);
+});
+
 test("loadSettingsPageData prefers host overview, settings, and spools for clients", async () => {
   const result = await loadSettingsPageData({
     loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
