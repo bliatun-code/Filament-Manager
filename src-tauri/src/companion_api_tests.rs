@@ -8,20 +8,24 @@ use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
 };
 use crate::bambu_live_observation::{default_offline_state, merge_tray_payload};
-use crate::companion_http::COMPANION_CSRF_HEADER;
+use crate::companion_http::{
+    CompanionHttpSecurityConfig, COMPANION_CSRF_HEADER, COMPANION_REQUEST_BODY_LIMIT_BYTES,
+};
 use crate::companion_payload::{build_companion_spool_qr_payload, build_qr_svg};
-use crate::companion_routes::build_router;
+use crate::companion_routes::{build_router, build_router_for_test};
 use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
 use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
 use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
 use crate::state::{AppState, CompanionRuntimeState, TrustedLanCompanionRuntime};
 use axum::body::{to_bytes, Body};
+use axum::extract::ConnectInfo;
 use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::io::Read;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 
 fn temp_db_path(test_name: &str) -> PathBuf {
@@ -298,6 +302,52 @@ fn assert_no_store(headers: &HeaderMap) {
     );
 }
 
+fn assert_security_headers(headers: &HeaderMap) {
+    let csp = headers
+        .get(axum::http::header::CONTENT_SECURITY_POLICY)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert!(csp.contains("default-src 'self'"), "unexpected CSP: {csp}");
+    assert!(csp.contains("script-src 'self'"), "unexpected CSP: {csp}");
+    assert!(
+        !csp.contains("script-src 'self' 'unsafe-inline'"),
+        "inline scripts must remain blocked: {csp}"
+    );
+    assert!(
+        csp.contains("style-src 'self' 'unsafe-inline'"),
+        "dynamic swatch styles must remain supported: {csp}"
+    );
+    assert!(
+        csp.contains("frame-ancestors 'none'"),
+        "unexpected CSP: {csp}"
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::X_CONTENT_TYPE_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::X_FRAME_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("DENY")
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::REFERRER_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some("no-referrer")
+    );
+    assert_eq!(
+        headers
+            .get("cross-origin-resource-policy")
+            .and_then(|value| value.to_str().ok()),
+        Some("same-origin")
+    );
+    assert!(headers.get("permissions-policy").is_some());
+}
+
 struct AuthenticatedTestSession {
     session_cookie: String,
     csrf_token: String,
@@ -469,6 +519,219 @@ fn extract_wishlist_item_id(body_text: &str, filament_name: &str) -> Result<Stri
         .and_then(|value| value.as_str())
         .map(|value| value.to_string())
         .ok_or_else(|| "missing wishlist item id".to_string())
+}
+
+#[tokio::test]
+async fn companion_http_applies_security_headers_to_successes_and_errors() {
+    let db_path = temp_db_path("security-headers");
+    let router = build_router(test_state(&db_path));
+
+    let shell = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/companion")
+                .header("host", "127.0.0.1:4278")
+                .body(Body::empty())
+                .expect("build shell request"),
+        )
+        .await
+        .expect("serve companion shell");
+    assert_eq!(shell.status(), StatusCode::OK);
+    assert_security_headers(shell.headers());
+
+    let rejected_host = router
+        .oneshot(
+            Request::builder()
+                .uri("/companion")
+                .header("host", "attacker.invalid:4278")
+                .body(Body::empty())
+                .expect("build rejected host request"),
+        )
+        .await
+        .expect("reject companion host");
+    assert_eq!(rejected_host.status(), StatusCode::FORBIDDEN);
+    assert_security_headers(rejected_host.headers());
+    assert_no_store(rejected_host.headers());
+}
+
+#[tokio::test]
+async fn companion_http_rejects_request_bodies_above_the_explicit_limit() {
+    let db_path = temp_db_path("body-limit");
+    let router = build_router(test_state(&db_path));
+    let oversized_body = vec![b' '; COMPANION_REQUEST_BODY_LIMIT_BYTES + 1];
+
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/pair")
+                .header("content-type", "application/json")
+                .header("host", "127.0.0.1:4278")
+                .header("origin", "http://127.0.0.1:4278")
+                .body(Body::from(oversized_body))
+                .expect("build oversized request"),
+        )
+        .await
+        .expect("reject oversized request");
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_security_headers(response.headers());
+    assert_no_store(response.headers());
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body-limit response");
+    assert!(String::from_utf8_lossy(&body).contains("\"code\":\"common.invalid_request\""));
+}
+
+#[tokio::test]
+async fn companion_http_rate_limits_each_tcp_peer_independently() {
+    let db_path = temp_db_path("rate-limit");
+    let security_config = CompanionHttpSecurityConfig::for_test(
+        COMPANION_REQUEST_BODY_LIMIT_BYTES,
+        Duration::from_secs(1),
+        Duration::from_secs(60),
+        2,
+        10,
+    );
+    let router = build_router_for_test(test_state(&db_path), security_config);
+    let first_peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)), 51000);
+    let second_peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 11)), 51001);
+
+    for expected_status in [
+        StatusCode::OK,
+        StatusCode::OK,
+        StatusCode::TOO_MANY_REQUESTS,
+    ] {
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion")
+                    .header("host", "127.0.0.1:4278")
+                    .extension(ConnectInfo(first_peer))
+                    .body(Body::empty())
+                    .expect("build rate-limit request"),
+            )
+            .await
+            .expect("serve rate-limit request");
+        assert_eq!(response.status(), expected_status);
+        if expected_status == StatusCode::TOO_MANY_REQUESTS {
+            assert!(response
+                .headers()
+                .get(axum::http::header::RETRY_AFTER)
+                .is_some());
+            assert_security_headers(response.headers());
+            assert_no_store(response.headers());
+        }
+    }
+
+    let other_peer = router
+        .oneshot(
+            Request::builder()
+                .uri("/companion")
+                .header("host", "127.0.0.1:4278")
+                .extension(ConnectInfo(second_peer))
+                .body(Body::empty())
+                .expect("build second-peer request"),
+        )
+        .await
+        .expect("serve second-peer request");
+    assert_eq!(other_peer.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn companion_http_applies_a_stricter_limit_to_authentication_attempts() {
+    let db_path = temp_db_path("auth-rate-limit");
+    let security_config = CompanionHttpSecurityConfig::for_test(
+        COMPANION_REQUEST_BODY_LIMIT_BYTES,
+        Duration::from_secs(1),
+        Duration::from_secs(60),
+        10,
+        1,
+    );
+    let router = build_router_for_test(test_state(&db_path), security_config);
+    let peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 12)), 51002);
+
+    let first_attempt = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/pair")
+                .header("content-type", "application/json")
+                .header("host", "127.0.0.1:4278")
+                .header("origin", "http://127.0.0.1:4278")
+                .extension(ConnectInfo(peer))
+                .body(Body::from(r#"{"pairing_token":""}"#))
+                .expect("build first auth request"),
+        )
+        .await
+        .expect("serve first auth request");
+    assert_eq!(first_attempt.status(), StatusCode::BAD_REQUEST);
+
+    let limited_attempt = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/pair")
+                .header("content-type", "application/json")
+                .header("host", "127.0.0.1:4278")
+                .header("origin", "http://127.0.0.1:4278")
+                .extension(ConnectInfo(peer))
+                .body(Body::from(r#"{"pairing_token":""}"#))
+                .expect("build limited auth request"),
+        )
+        .await
+        .expect("rate limit auth request");
+    assert_eq!(limited_attempt.status(), StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
+async fn companion_http_times_out_slow_requests_with_the_api_error_contract() {
+    let db_path = temp_db_path("request-timeout");
+    let result = async {
+        seed_db(&db_path)?;
+        let state = qa_test_state(&db_path);
+        let pairing_router = build_router(state.clone());
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&pairing_router, &db_path).await?;
+        let security_config = CompanionHttpSecurityConfig::for_test(
+            COMPANION_REQUEST_BODY_LIMIT_BYTES,
+            Duration::from_millis(10),
+            Duration::from_secs(60),
+            100,
+            10,
+        );
+        let timeout_router = build_router_for_test(state, security_config);
+
+        let response = timeout_router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1?history_limit=4&usage_limit=4")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header("x-companion-qa-delay-ms", "40")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+        assert_security_headers(response.headers());
+        assert_no_store(response.headers());
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        assert!(String::from_utf8_lossy(&body).contains("\"code\":\"common.unavailable\""));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_http_times_out_slow_requests_with_the_api_error_contract: {message}");
+    }
 }
 
 #[tokio::test]

@@ -8,9 +8,12 @@ use serde::Serialize;
 pub(crate) enum CompanionApiError {
     BadRequest(String),
     CodedBadRequest(&'static str),
+    PayloadTooLarge,
     Unauthorized(String),
     Forbidden(String),
     NotFound(String),
+    RateLimited(u64),
+    RequestTimeout,
     ServiceUnavailable(String),
     Internal(String),
 }
@@ -38,7 +41,7 @@ impl From<InventoryError> for CompanionApiError {
 
 impl IntoResponse for CompanionApiError {
     fn into_response(self) -> Response {
-        let (status, code, message, diagnostic_id) = match self {
+        let (status, code, message, diagnostic_id, retry_after_seconds) = match self {
             CompanionApiError::BadRequest(detail) => {
                 let code = match detail.as_str() {
                     "Loaded spools use printer-slot actions instead of manual status/location edits" => {
@@ -57,12 +60,21 @@ impl IntoResponse for CompanionApiError {
                     code,
                     "The request could not be completed.".to_string(),
                     None,
+                    None,
                 )
             }
             CompanionApiError::CodedBadRequest(code) => (
                 StatusCode::BAD_REQUEST,
                 code,
                 "The request could not be completed.".to_string(),
+                None,
+                None,
+            ),
+            CompanionApiError::PayloadTooLarge => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "common.invalid_request",
+                "The request could not be completed.".to_string(),
+                None,
                 None,
             ),
             CompanionApiError::Unauthorized(detail) => {
@@ -71,6 +83,7 @@ impl IntoResponse for CompanionApiError {
                     StatusCode::UNAUTHORIZED,
                     "common.unauthorized",
                     "Authentication is required.".to_string(),
+                    None,
                     None,
                 )
             }
@@ -81,6 +94,7 @@ impl IntoResponse for CompanionApiError {
                     "common.forbidden",
                     "This action is not allowed.".to_string(),
                     None,
+                    None,
                 )
             }
             CompanionApiError::NotFound(detail) => {
@@ -90,14 +104,30 @@ impl IntoResponse for CompanionApiError {
                     "common.not_found",
                     "The requested record was not found.".to_string(),
                     None,
+                    None,
                 )
             }
+            CompanionApiError::RateLimited(retry_after_seconds) => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "common.unavailable",
+                "The service is temporarily unavailable.".to_string(),
+                None,
+                Some(retry_after_seconds),
+            ),
+            CompanionApiError::RequestTimeout => (
+                StatusCode::REQUEST_TIMEOUT,
+                "common.unavailable",
+                "The service is temporarily unavailable.".to_string(),
+                None,
+                None,
+            ),
             CompanionApiError::ServiceUnavailable(detail) => {
                 drop(detail);
                 (
                     StatusCode::SERVICE_UNAVAILABLE,
                     "common.unavailable",
                     "The service is temporarily unavailable.".to_string(),
+                    None,
                     None,
                 )
             }
@@ -119,10 +149,11 @@ impl IntoResponse for CompanionApiError {
                     "common.internal",
                     "An internal error occurred.".to_string(),
                     Some(diagnostic_id),
+                    None,
                 )
             }
         };
-        (
+        let mut response = (
             status,
             Json(ErrorResponse {
                 ok: false,
@@ -132,6 +163,14 @@ impl IntoResponse for CompanionApiError {
                 diagnostic_id,
             }),
         )
-            .into_response()
+            .into_response();
+        if let Some(retry_after_seconds) = retry_after_seconds
+            && let Ok(value) = axum::http::HeaderValue::from_str(&retry_after_seconds.to_string())
+        {
+            response
+                .headers_mut()
+                .insert(axum::http::header::RETRY_AFTER, value);
+        }
+        response
     }
 }

@@ -297,13 +297,20 @@ async fn run_companion_server(
     let runtime = state.runtime.clone();
     let router = crate::companion_routes::build_router(state);
     let result = if let Some(shutdown_rx) = shutdown_rx {
-        axum::serve(listener, router)
-            .with_graceful_shutdown(async move {
-                let _ = shutdown_rx.await;
-            })
-            .await
+        axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .with_graceful_shutdown(async move {
+            let _ = shutdown_rx.await;
+        })
+        .await
     } else {
-        axum::serve(listener, router).await
+        axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .await
     };
 
     result.map_err(|error| {

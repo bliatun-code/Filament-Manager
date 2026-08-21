@@ -1,5 +1,9 @@
 use crate::companion_api::*;
-use crate::companion_http::apply_companion_cache_policy;
+use crate::companion_http::{
+    apply_companion_cache_policy, apply_companion_security_headers, enforce_companion_body_limit,
+    enforce_companion_rate_limit, enforce_companion_request_timeout, CompanionHttpSecurity,
+    CompanionHttpSecurityConfig,
+};
 use crate::companion_inventory_read_api::{
     handle_find_spool_by_qr, handle_get_spool_detail, handle_list_active_spool_loans,
     handle_list_catalog_masters, handle_list_printer_overview, handle_list_spool_loans,
@@ -16,7 +20,23 @@ use axum::routing::{get, post};
 use axum::Router;
 
 pub(super) fn build_router(state: CompanionApiState) -> Router {
+    build_router_with_security_config(state, CompanionHttpSecurityConfig::production())
+}
+
+#[cfg(test)]
+pub(super) fn build_router_for_test(
+    state: CompanionApiState,
+    security_config: CompanionHttpSecurityConfig,
+) -> Router {
+    build_router_with_security_config(state, security_config)
+}
+
+fn build_router_with_security_config(
+    state: CompanionApiState,
+    security_config: CompanionHttpSecurityConfig,
+) -> Router {
     let host_validation_state = state.clone();
+    let http_security = CompanionHttpSecurity::new(security_config);
     let protected = Router::new()
         .route("/library/revisions", get(handle_library_domain_revisions))
         .route("/library/snapshot", get(handle_library_snapshot))
@@ -145,8 +165,21 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
         .with_state(state)
         .nest("/api/v1", protected)
         .layer(middleware::from_fn_with_state(
+            http_security.clone(),
+            enforce_companion_body_limit,
+        ))
+        .layer(middleware::from_fn_with_state(
             host_validation_state,
             require_companion_host,
         ))
+        .layer(middleware::from_fn_with_state(
+            http_security.clone(),
+            enforce_companion_rate_limit,
+        ))
+        .layer(middleware::from_fn_with_state(
+            http_security,
+            enforce_companion_request_timeout,
+        ))
         .layer(middleware::from_fn(apply_companion_cache_policy))
+        .layer(middleware::from_fn(apply_companion_security_headers))
 }
