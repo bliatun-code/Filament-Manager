@@ -938,7 +938,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          required_checks=("macOS Smoke" "Windows Smoke")
+          required_checks=("Database Migration Integrity" "macOS Smoke" "Windows Smoke")
 
           for check_name in "${required_checks[@]}"; do
             check_runs="$(

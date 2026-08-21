@@ -88,6 +88,6 @@ test("required platform jobs keep every documented gate blocking", () => {
   );
   assert.match(
     publishJob,
-    /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
   );
 });

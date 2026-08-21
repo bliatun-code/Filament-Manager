@@ -2,8 +2,9 @@
 
 This document is the release contract for Filament Manager's performance,
 backup and upgrade, accessibility, and localization gates. A gate is blocking
-when a failure makes either `macOS Smoke` or `Windows Smoke` fail; the release
-workflow requires both checks before publishing artifacts.
+when a failure makes `Database Migration Integrity`, `macOS Smoke`, or
+`Windows Smoke` fail; the release workflow requires all three checks before
+publishing artifacts.
 
 The named owner is accountable for the threshold and for reviewing any proposed
 exception. Contributors may implement fixes in every area, but a threshold must
@@ -12,7 +13,7 @@ not be weakened merely to make a change pass.
 | Gate | Named owner | Blocking threshold | Local command | Required CI path |
 | --- | --- | --- | --- | --- |
 | Performance | `@bliatun-code` (performance gate owner) | The deterministic 10,000-spool, concurrency, timeout, render-window, lazy-loading, and bundle contracts pass with zero failures. Production JavaScript chunks remain within the committed byte budgets in [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md). | `npm run test:performance:bundle` and `npm run test:performance` | `npm run verify` on macOS and Windows |
-| Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. | `cargo test` and `npm run smoke:release:database-upgrade -- ...` | `npm run verify`, plus the database-upgrade/package smoke in required platform jobs |
+| Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, and `npm run smoke:release:database-upgrade -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade/package smoke in required platform jobs |
 | Accessibility | `@bliatun-code` (accessibility gate owner) | All six data-backed main pages have zero axe violations for WCAG 2.0 A/AA, 2.1 A/AA, and 2.2 AA and emit zero browser errors. The shared modal passes keyboard focus, Escape/focus return, and 200% zoom without page-level horizontal overflow. | `npm run test:a11y:app-modal` and `npm run test:a11y:data-backed` | `npm run verify` on macOS and Windows |
 | Localization | `@bliatun-code` (localization gate owner) | Published catalogs keep 100% key and placeholder coverage, zero unknown literal keys, and at least 95% translation signal. A locale described as maintained also needs a named native reviewer and a reviewed fingerprint matching the current English source. | `npm run check:i18n-readiness` and `npm run check:contracts` | `npm run verify` on macOS and Windows |
 
@@ -42,9 +43,18 @@ current schema, and compares row identities and preserved values before and
 after both launches.
 
 A fixture used in CI must be synthetic or explicitly sanitized, content-locked,
-owner-only on disk, and rejected if it is not older than the current schema.
-Raw user databases, credentials, printer addresses, pairing state, and other
-private values must never become CI artifacts.
+and owner-only on disk. A structural migration fixture must use an older schema
+than the current application. A pinned previous-release fixture may use the
+same schema when its stated purpose is packaged installer compatibility and
+data-preservation verification rather than exercising a schema transition. Raw
+user databases, credentials, printer addresses, pairing state, and other private
+values must never become CI artifacts.
+
+The append-only manifest and procedure are documented in
+[DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md). The dedicated integrity job
+compares published migration SQL, the frozen schema baseline, and its legacy
+normalization source set to the pinned release before exercising clean and
+historical database paths through the Rust runner.
 
 ## Accessibility authority
 
@@ -72,10 +82,12 @@ candidate, but it cannot be labelled maintained.
 tests, both browser accessibility gates, the complete UI suite, deterministic
 performance checks, localization contracts, Rust tests, formatting, and Clippy
 in development and release profiles. Both required platform jobs execute this
-command. Release publication separately verifies the successful `macOS Smoke`
-and `Windows Smoke` check runs for the exact commit.
+command. Release publication separately verifies the successful
+`Database Migration Integrity`, `macOS Smoke`, and `Windows Smoke` check runs
+for the exact commit.
 
 The executable contract in `scripts/quality-gates-contract.test.mjs` fails if a
 required command is removed from `npm run smoke`, a platform stops running
-`npm run verify`, release publication stops requiring both platform checks, or
-the documented ownership and core thresholds disappear.
+`npm run verify`, release publication stops requiring the migration-integrity
+and both platform checks, or the documented ownership and core thresholds
+disappear.

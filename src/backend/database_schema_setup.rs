@@ -20,8 +20,24 @@ use super::database_spool_schema::{
 };
 use super::database_trusted_lan_schema::ensure_trusted_lan_schema;
 
-const LIBRARY_DOMAIN_REVISIONS_V2_SQL: &str =
-    include_str!("../database/migrations/003_library_domain_revisions.sql");
+const BASELINE_SCHEMA_VERSION: i64 = 1;
+
+#[derive(Clone, Copy)]
+struct StructuralMigration {
+    from_version: i64,
+    name: &'static str,
+    sql: &'static str,
+    to_version: i64,
+}
+
+// This is the authoritative runtime order for versioned schema migrations.
+// Published rows are append-only; see docs/DATABASE_MIGRATIONS.md.
+const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[StructuralMigration {
+    from_version: 1,
+    name: "003_library_domain_revisions.sql",
+    sql: include_str!("../database/migrations/003_library_domain_revisions.sql"),
+    to_version: 2,
+}];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
     let schema_version = ensure_supported_schema_version(conn)?;
@@ -40,22 +56,71 @@ fn migrate_structural_schema(
     schema_sql: &str,
     schema_version: i64,
 ) -> InventoryResult<()> {
+    validate_structural_migration_sequence()?;
     if schema_version == CURRENT_SCHEMA_VERSION {
         return Ok(());
     }
-    if !matches!(schema_version, 0 | 1) {
+    if schema_version != 0 && schema_version < BASELINE_SCHEMA_VERSION {
         return Err(InventoryError::Db(format!(
             "No database migration path from schema version {schema_version} to {CURRENT_SCHEMA_VERSION}"
         )));
     }
 
     let transaction = conn.unchecked_transaction()?;
+    let mut migrated_version = schema_version;
     if schema_version == 0 {
         apply_structural_baseline(&transaction, schema_sql)?;
+        migrated_version = BASELINE_SCHEMA_VERSION;
+        set_schema_version(&transaction, migrated_version)?;
     }
-    transaction.execute_batch(LIBRARY_DOMAIN_REVISIONS_V2_SQL)?;
-    transaction.execute_batch(&format!("PRAGMA user_version = {CURRENT_SCHEMA_VERSION};"))?;
+    for migration in STRUCTURAL_MIGRATIONS {
+        if migration.to_version <= migrated_version {
+            continue;
+        }
+        if migration.from_version != migrated_version {
+            return Err(InventoryError::Db(format!(
+                "No database migration path from schema version {migrated_version} to {} before {}",
+                migration.to_version, migration.name
+            )));
+        }
+        transaction.execute_batch(migration.sql)?;
+        migrated_version = migration.to_version;
+        set_schema_version(&transaction, migrated_version)?;
+    }
+    if migrated_version != CURRENT_SCHEMA_VERSION {
+        return Err(InventoryError::Db(format!(
+            "No database migration path from schema version {migrated_version} to {CURRENT_SCHEMA_VERSION}"
+        )));
+    }
     transaction.commit()?;
+    Ok(())
+}
+
+fn set_schema_version(conn: &Connection, version: i64) -> InventoryResult<()> {
+    conn.execute_batch(&format!("PRAGMA user_version = {version};"))?;
+    Ok(())
+}
+
+fn validate_structural_migration_sequence() -> InventoryResult<()> {
+    let mut expected_from_version = BASELINE_SCHEMA_VERSION;
+    for migration in STRUCTURAL_MIGRATIONS {
+        if migration.from_version != expected_from_version
+            || migration.to_version != migration.from_version + 1
+            || migration.name.trim().is_empty()
+            || migration.sql.trim().is_empty()
+        {
+            return Err(InventoryError::Db(format!(
+                "Invalid structural migration sequence at {} ({} -> {})",
+                migration.name, migration.from_version, migration.to_version
+            )));
+        }
+        expected_from_version = migration.to_version;
+    }
+    if expected_from_version != CURRENT_SCHEMA_VERSION {
+        return Err(InventoryError::Db(format!(
+            "Structural migration sequence ends at schema version {expected_from_version}, expected {CURRENT_SCHEMA_VERSION}"
+        )));
+    }
     Ok(())
 }
 
@@ -77,7 +142,10 @@ fn apply_structural_baseline(conn: &Connection, schema_sql: &str) -> InventoryRe
 
 #[cfg(test)]
 mod tests {
-    use super::apply_schema_migrations;
+    use super::{
+        apply_schema_migrations, validate_structural_migration_sequence, BASELINE_SCHEMA_VERSION,
+        STRUCTURAL_MIGRATIONS,
+    };
     use crate::backend::database_schema::{
         database_schema_version, table_has_column, CURRENT_SCHEMA_VERSION,
     };
@@ -86,6 +154,17 @@ mod tests {
     const CURRENT_SCHEMA_SQL: &str = include_str!("../database/schema.sql");
     const LEGACY_INIT_SQL: &str = include_str!("../database/migrations/001_init.sql");
     const LEGACY_SYNC_QUEUE_SQL: &str = include_str!("../database/migrations/002_sync_queue.sql");
+
+    #[test]
+    fn structural_migration_registry_is_contiguous_and_current() {
+        validate_structural_migration_sequence().expect("validate migration registry");
+        assert_eq!(BASELINE_SCHEMA_VERSION, 1);
+        let first = STRUCTURAL_MIGRATIONS.first().expect("first migration");
+        let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
+        assert_eq!(first.name, "003_library_domain_revisions.sql");
+        assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
+        assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
+    }
 
     #[test]
     fn new_database_is_versioned_and_structural_schema_is_not_replayed() {

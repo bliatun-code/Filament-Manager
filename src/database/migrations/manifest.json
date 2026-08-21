@@ -1,0 +1,85 @@
+{
+  "formatVersion": 1,
+  "policy": "append-only",
+  "baselineSchemaVersion": 1,
+  "baseline": {
+    "file": "schema.sql",
+    "sha256": "0d4e28c83c7fcce7b4b57af537c7b5ad340d2ae1cd0f87900c2e629bef2db2b0",
+    "legacyEntrypoint": {
+      "file": "src/backend/database_schema_setup.rs",
+      "function": "apply_structural_baseline",
+      "sha256": "3fc3da4397467fb8c17a1a9adb5611e6875cd673c561596e2f7020965cbfb17a"
+    },
+    "normalizationSources": [
+      {
+        "file": "src/backend/database_borrowed_schema.rs",
+        "functions": [
+          "ensure_borrowed_in_schema"
+        ],
+        "sha256": "942b07445905fca6726e754b898ed152a1d13fda5a53e47b12cb6521ae457624"
+      },
+      {
+        "file": "src/backend/database_catalog_schema.rs",
+        "functions": [
+          "ensure_catalog_lifecycle_columns",
+          "ensure_catalog_seed_columns"
+        ],
+        "sha256": "5c8bb5f3870f0337808c37e140b300ccfbb44723c783ef47eafd653577fa649d"
+      },
+      {
+        "file": "src/backend/database_printer_schema.rs",
+        "functions": [
+          "ensure_printer_external_slot_schema",
+          "ensure_printer_slot_rfid_override_schema",
+          "ensure_printer_slot_live_cache_schema"
+        ],
+        "sha256": "02378f603c77863bc805f454660d9f7e3c82166a3e9d1696f8a1fc69d32eedb5"
+      },
+      {
+        "file": "src/backend/database_spool_schema.rs",
+        "functions": [
+          "ensure_spool_lifecycle_schema",
+          "ensure_spool_weight_schema",
+          "ensure_spool_identity_schema",
+          "ensure_spool_home_location_schema"
+        ],
+        "sha256": "ec44117b6a4900b6d0a03228bca0e73125a2032525f916af1ec27b18f0e4d87f"
+      },
+      {
+        "file": "src/backend/database_trusted_lan_schema.rs",
+        "functions": [
+          "ensure_trusted_lan_schema"
+        ],
+        "sha256": "5a4695ad644dc58ffa69698ff08bd38e7b343a24e0968c6bc062e87e5d1963d9"
+      }
+    ]
+  },
+  "currentSchemaVersion": 2,
+  "publishedThroughSequence": 3,
+  "publishedReference": {
+    "ref": "v0.27.0",
+    "commit": "4a1c57a10255c26f70f749fc33ff5ae25e23b1ce"
+  },
+  "migrations": [
+    {
+      "sequence": 1,
+      "file": "001_init.sql",
+      "sha256": "c659d80313fffc08fbde353b65ace36bd3d7d9ba6ddfa7fbcc9e281521b1bf55",
+      "role": "legacy-unversioned-fixture"
+    },
+    {
+      "sequence": 2,
+      "file": "002_sync_queue.sql",
+      "sha256": "e1beb3d35c4977a26de4041889bfcaa05952f6c48694521c751805c14a23e9d3",
+      "role": "legacy-unversioned-fixture"
+    },
+    {
+      "sequence": 3,
+      "file": "003_library_domain_revisions.sql",
+      "sha256": "e5e0674e7a8ee6f0a186498340dce2e42ca3babc60bdc90c10b5da88a468423e",
+      "role": "schema-migration",
+      "fromSchemaVersion": 1,
+      "toSchemaVersion": 2
+    }
+  ]
+}

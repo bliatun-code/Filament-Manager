@@ -348,7 +348,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
-    /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
   );
   assert.equal(
     countOccurrences(requiredChecksStep, "GH_TOKEN: ${{ github.token }}"),
@@ -1180,6 +1180,53 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   );
 });
 
+test("CI rejects published migration rewrites and exercises both database paths", () => {
+  const migrationJob = readSection(
+    ciWorkflow,
+    "  migration-integrity:",
+    "  macos-smoke:",
+  );
+  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
+  const requiredChecksStep = readSection(
+    publishJob,
+    "      - name: Require successful CI checks",
+    "      - name: Checkout release notes",
+  );
+
+  assert.equal(
+    packageManifest.scripts["check:database-migrations"],
+    "node ./scripts/check-database-migrations.mjs",
+  );
+  assert.match(migrationJob, /name: Database Migration Integrity/);
+  assert.match(migrationJob, /runs-on: ubuntu-latest/);
+  assert.match(migrationJob, /fetch-depth: 0/);
+  assert.match(migrationJob, /persist-credentials: false/);
+  assert.match(
+    migrationJob,
+    /npm run check:database-migrations -- --verify-published-reference/,
+  );
+  assert.match(
+    migrationJob,
+    /node --test \.\/scripts\/check-database-migrations\.test\.mjs/,
+  );
+  assert.match(
+    migrationJob,
+    /cargo test --locked --lib database_schema_setup::tests/,
+  );
+  assertStepOrder(migrationJob, [
+    "Checkout full migration history",
+    "Setup Node",
+    "Reject changes to published migrations",
+    "Test migration manifest behavior",
+    "Setup Rust",
+    "Test clean install and historical upgrades",
+  ]);
+  assert.match(
+    requiredChecksStep,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
+  );
+});
+
 test("CI executes real browser accessibility and sanitized Companion workflows", () => {
   const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
   const windowsJobStart = ciWorkflow.indexOf("  windows-smoke:");
@@ -1188,8 +1235,8 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
 
   assert.equal(
     ciWorkflow.split("persist-credentials: false").length - 1,
-    2,
-    "every smoke checkout must discard its GitHub credential",
+    3,
+    "every CI checkout must discard its GitHub credential",
   );
 
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
@@ -1255,7 +1302,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
   );
   assert.match(
     requiredChecksStep,
-    /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
   );
   assertStepOrder(macosJob, [
     "Run full verification",

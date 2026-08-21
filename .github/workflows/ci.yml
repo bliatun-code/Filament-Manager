@@ -16,6 +16,36 @@ permissions:
   contents: read
 
 jobs:
+  migration-integrity:
+    name: Database Migration Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full migration history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Reject changes to published migrations
+        run: npm run check:database-migrations -- --verify-published-reference
+
+      - name: Test migration manifest behavior
+        run: node --test ./scripts/check-database-migrations.test.mjs
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.97.1
+
+      - name: Test clean install and historical upgrades
+        run: cargo test --locked --lib database_schema_setup::tests
+
   macos-smoke:
     name: macOS Smoke
     runs-on: macos-latest
