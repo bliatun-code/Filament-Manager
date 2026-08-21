@@ -1277,12 +1277,19 @@ fn companion_service_lends_spool() {
             .lend_spool(LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: Some("alice@example.test".to_string()),
                 grams_out: Some(720),
                 note: Some("Prototype batch".to_string()),
+                expected_return_at: Some("2026-09-05".to_string()),
             })
             .map_err(|error| error.to_string())?;
         assert_eq!(loan.borrower_name, "Alice");
         assert_eq!(loan.grams_out, 720);
+        assert_eq!(
+            loan.counterparty_contact.as_deref(),
+            Some("alice@example.test")
+        );
+        assert_eq!(loan.expected_return_at.as_deref(), Some("2026-09-05"));
 
         let detail = service
             .get_spool_detail("spool_1", Some(20), Some(50))
@@ -1293,7 +1300,15 @@ fn companion_service_lends_spool() {
             detail.spool.spool.location_id.as_deref(),
             Some("Loaned to: Alice")
         );
-        assert!(detail.active_loan.is_some());
+        let active_loan = detail.active_loan.as_ref().expect("active loan details");
+        assert_eq!(
+            active_loan.loan.counterparty_contact.as_deref(),
+            Some("alice@example.test")
+        );
+        assert_eq!(
+            active_loan.loan.expected_return_at.as_deref(),
+            Some("2026-09-05")
+        );
         assert!(detail
             .history
             .iter()
@@ -1343,8 +1358,10 @@ fn companion_service_returns_outbound_loan() {
             .lend_spool(LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(720),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1414,8 +1431,10 @@ fn companion_service_lists_outbound_loan_history() {
             .lend_spool(LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(700),
                 note: Some("Prototype loan".to_string()),
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
 

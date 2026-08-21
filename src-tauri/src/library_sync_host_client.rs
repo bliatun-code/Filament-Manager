@@ -1633,6 +1633,7 @@ mod tests {
         CompanionHealthCheckResponse {
             ok,
             api_version: "v1".to_string(),
+            capabilities: Vec::new(),
             auth_mode: "pairing".to_string(),
             access_mode: Some("LAN".to_string()),
             library_id: library_id.map(str::to_string),

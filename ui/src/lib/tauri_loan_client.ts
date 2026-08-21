@@ -3,8 +3,10 @@ import { invoke } from "./tauri_invoke";
 export type LendSpoolInput = {
   spool_id: string;
   borrower_name: string;
+  counterparty_contact?: string | null;
   grams_out?: number | null;
   note?: string | null;
+  expected_return_at?: string | null;
 };
 
 export type ReturnSpoolLoanInput = {
@@ -101,8 +103,10 @@ export async function lendLibrarySyncHostSpool(
       expected_library_id: expectedLibraryId ?? null,
       spool_id: input.spool_id,
       borrower_name: input.borrower_name,
+      counterparty_contact: input.counterparty_contact ?? null,
       grams_out: input.grams_out,
       note: input.note ?? null,
+      expected_return_at: input.expected_return_at ?? null,
     },
   });
 }

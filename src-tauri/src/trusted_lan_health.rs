@@ -5,6 +5,8 @@ use std::time::Duration;
 pub(crate) struct CompanionHealthCheckResponse {
     pub(crate) ok: bool,
     pub(crate) api_version: String,
+    #[serde(default)]
+    pub(crate) capabilities: Vec<String>,
     pub(crate) auth_mode: String,
     pub(crate) access_mode: Option<String>,
     pub(crate) library_id: Option<String>,
@@ -62,4 +64,19 @@ pub(crate) fn verify_companion_health_url(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CompanionHealthCheckResponse;
+
+    #[test]
+    fn legacy_health_without_capabilities_remains_parseable() {
+        let parsed: CompanionHealthCheckResponse = serde_json::from_str(
+            r#"{"ok":true,"api_version":"v1","auth_mode":"pairing","access_mode":"trusted-lan","library_id":"library-1","device_name":"Old Host","sync_mode":"HOST"}"#,
+        )
+        .expect("legacy health payload");
+
+        assert!(parsed.capabilities.is_empty());
+    }
 }

@@ -94,8 +94,10 @@ pub(crate) struct AcceptBambuLiveWeightEstimateRequest {
 #[derive(Deserialize)]
 pub(crate) struct CreateSpoolLoanRequest {
     pub(crate) borrower_name: String,
+    pub(crate) counterparty_contact: Option<String>,
     pub(crate) grams_out: Option<i64>,
     pub(crate) note: Option<String>,
+    pub(crate) expected_return_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -214,12 +216,15 @@ pub(crate) struct PairSessionRequest {
 pub(crate) struct CompanionHealthResponse {
     pub(crate) ok: bool,
     pub(crate) api_version: &'static str,
+    pub(crate) capabilities: &'static [&'static str],
     pub(crate) auth_mode: String,
     pub(crate) access_mode: &'static str,
     pub(crate) library_id: String,
     pub(crate) device_name: String,
     pub(crate) sync_mode: String,
 }
+
+pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-return";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

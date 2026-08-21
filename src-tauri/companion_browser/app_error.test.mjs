@@ -54,3 +54,16 @@ test("changed AMS estimates use the localized stable-code message", () => {
   );
   assert.doesNotMatch(translated, /bambu_live\.weight_estimate_changed/);
 });
+
+test("legacy Host capability failures use a clear localized message", () => {
+  const translated = localizedAppError(
+    { code: "loans.host_metadata_unsupported" },
+    (key, fallback) =>
+      key === "errors.loanMetadataUnsupported"
+        ? "Oppdater verten før utlånsdetaljene lagres."
+        : fallback,
+    "Kunne ikke låne ut rullen.",
+  );
+
+  assert.equal(translated, "Oppdater verten før utlånsdetaljene lagres.");
+});

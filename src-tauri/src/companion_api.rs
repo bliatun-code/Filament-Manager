@@ -1329,6 +1329,17 @@ pub(super) async fn handle_lend_spool(
                 .lend_spool(LendSpoolInput {
                     spool_id: spool_id.to_string(),
                     borrower_name: borrower_name.to_string(),
+                    counterparty_contact: payload
+                        .counterparty_contact
+                        .as_deref()
+                        .map(str::trim)
+                        .and_then(|value| {
+                            if value.is_empty() {
+                                None
+                            } else {
+                                Some(value.to_string())
+                            }
+                        }),
                     grams_out: payload.grams_out,
                     note: payload.note.as_deref().map(str::trim).and_then(|value| {
                         if value.is_empty() {
@@ -1337,6 +1348,17 @@ pub(super) async fn handle_lend_spool(
                             Some(value.to_string())
                         }
                     }),
+                    expected_return_at: payload
+                        .expected_return_at
+                        .as_deref()
+                        .map(str::trim)
+                        .and_then(|value| {
+                            if value.is_empty() {
+                                None
+                            } else {
+                                Some(value.to_string())
+                            }
+                        }),
                 })
                 .map_err(CompanionApiError::from)?;
 

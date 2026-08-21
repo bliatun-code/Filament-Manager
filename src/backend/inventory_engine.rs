@@ -256,8 +256,10 @@ pub struct AcceptBambuLiveWeightEstimateInput {
 pub struct LendSpoolInput {
     pub spool_id: String,
     pub borrower_name: String,
+    pub counterparty_contact: Option<String>,
     pub grams_out: Option<i64>,
     pub note: Option<String>,
+    pub expected_return_at: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -1666,8 +1668,10 @@ impl InventoryEngine {
                 conn,
                 &input.spool_id,
                 &input.borrower_name,
+                input.counterparty_contact.as_deref(),
                 grams_out,
                 input.note.as_deref(),
+                input.expected_return_at.as_deref(),
             )?;
             insert_json_history_event(
                 conn,
@@ -1678,8 +1682,10 @@ impl InventoryEngine {
                     "loan_direction": loan.loan_direction,
                     "borrower_name": loan.borrower_name,
                     "counterparty_name": loan.counterparty_name,
+                    "counterparty_contact": loan.counterparty_contact,
                     "grams_out": loan.grams_out,
                     "note": loan.lent_note,
+                    "expected_return_at": loan.expected_return_at,
                 }),
             )?;
             Ok(loan)

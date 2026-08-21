@@ -166,8 +166,10 @@ pub(crate) struct LibrarySyncLendSpoolInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) spool_id: String,
     pub(crate) borrower_name: String,
+    pub(crate) counterparty_contact: Option<String>,
     pub(crate) grams_out: i64,
     pub(crate) note: Option<String>,
+    pub(crate) expected_return_at: Option<String>,
 }
 
 #[derive(Deserialize)]

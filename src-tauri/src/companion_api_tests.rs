@@ -953,6 +953,35 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             .map_err(|error| error.to_string())?;
         assert_eq!(clear_slot.status(), StatusCode::OK);
 
+        let invalid_lend_date = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/lend")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"borrower_name":"Alice","grams_out":690,"expected_return_at":"2026-02-29"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(invalid_lend_date.status(), StatusCode::BAD_REQUEST);
+        let invalid_lend_date_body = to_bytes(invalid_lend_date.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let invalid_lend_date_json: serde_json::Value =
+            serde_json::from_slice(&invalid_lend_date_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            invalid_lend_date_json.get("code").and_then(|value| value.as_str()),
+            Some("loans.expected_return_invalid")
+        );
+
         let lend_spool = router
             .clone()
             .oneshot(
@@ -965,7 +994,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
                     .body(Body::from(
-                        r#"{"borrower_name":"Alice","grams_out":690,"note":"Prototype batch"}"#,
+                        r#"{"borrower_name":"Alice","counterparty_contact":"alice@example.test","grams_out":690,"note":"Prototype batch","expected_return_at":"2026-09-05"}"#,
                     ))
                     .map_err(|error| error.to_string())?,
             )
@@ -979,7 +1008,9 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
         let lend_text = String::from_utf8(lend_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(lend_text.contains("\"message\":\"Spool loan created\""));
         assert!(lend_text.contains("\"borrower_name\":\"Alice\""));
+        assert!(lend_text.contains("\"counterparty_contact\":\"alice@example.test\""));
         assert!(lend_text.contains("\"grams_out\":690"));
+        assert!(lend_text.contains("\"expected_return_at\":\"2026-09-05\""));
         let loan_id = extract_loan_id(&lend_text)?;
 
         let active_loans_after_lend = router
@@ -1005,6 +1036,10 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             extract_active_loan_ids(&active_loans_after_lend_text)?,
             vec![loan_id.clone()]
         );
+        assert!(active_loans_after_lend_text
+            .contains("\"counterparty_contact\":\"alice@example.test\""));
+        assert!(active_loans_after_lend_text
+            .contains("\"expected_return_at\":\"2026-09-05\""));
 
         let history_after_lend = router
             .clone()
@@ -1028,6 +1063,10 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             extract_loan_statuses(&history_after_lend_text)?,
             vec!["ACTIVE".to_string()]
         );
+        assert!(history_after_lend_text
+            .contains("\"counterparty_contact\":\"alice@example.test\""));
+        assert!(history_after_lend_text
+            .contains("\"expected_return_at\":\"2026-09-05\""));
 
         let borrowed_detail = router
             .clone()
@@ -1385,6 +1424,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .get("device_name")
             .and_then(|value| value.as_str())
             .is_some());
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("loan-contact-and-expected-return") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -3450,8 +3495,10 @@ async fn companion_api_rejects_spool_delete_with_active_loan() {
             .lend_spool(LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(800),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
 

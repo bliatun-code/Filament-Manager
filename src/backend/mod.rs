@@ -88,6 +88,7 @@ pub mod inventory_engine;
 mod inventory_printer_slot_live;
 pub mod library_sync_defaults;
 pub mod loan_defaults;
+pub mod loan_expected_return;
 pub mod printer_slot_live_mapping;
 pub mod printer_slot_location;
 pub mod spool_defaults;

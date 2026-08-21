@@ -614,8 +614,10 @@ fn return_spool_loan_rolls_back_loan_weight_and_reading_when_history_fails() {
             .lend_spool(super::LendSpoolInput {
                 spool_id: "atomic_loan_spool".to_string(),
                 borrower_name: "Atomic borrower".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(850),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
         engine
@@ -916,8 +918,10 @@ fn create_manual_borrowed_in_spool_registers_inbound_loan() {
         let lend_result = engine.lend_spool(super::LendSpoolInput {
             spool_id: "borrowed_spool_1".to_string(),
             borrower_name: "Bob".to_string(),
+            counterparty_contact: None,
             grams_out: Some(850),
             note: None,
+            expected_return_at: None,
         });
         assert!(lend_result.is_err());
 
@@ -1187,8 +1191,10 @@ fn delete_spool_rejects_active_loan() {
             .lend_spool(super::LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(800),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
 

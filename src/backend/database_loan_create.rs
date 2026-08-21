@@ -8,6 +8,7 @@ use super::database_text::normalize_optional_text;
 use super::loan_defaults::{
     ACTIVE_LOAN_PREDICATE_SQL, LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL,
 };
+use super::loan_expected_return::normalize_expected_return_date;
 
 pub(crate) fn create_spool_loan(
     conn: &Connection,
@@ -17,8 +18,15 @@ pub(crate) fn create_spool_loan(
     lent_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let tx = conn.unchecked_transaction()?;
-    let loan =
-        create_spool_loan_in_transaction(&tx, spool_id, borrower_name, grams_out, lent_note)?;
+    let loan = create_spool_loan_in_transaction(
+        &tx,
+        spool_id,
+        borrower_name,
+        None,
+        grams_out,
+        lent_note,
+        None,
+    )?;
     tx.commit()?;
     Ok(loan)
 }
@@ -27,8 +35,10 @@ pub(crate) fn create_spool_loan_in_transaction(
     conn: &Connection,
     spool_id: &str,
     borrower_name: &str,
+    counterparty_contact: Option<&str>,
     grams_out: i64,
     lent_note: Option<&str>,
+    expected_return_at: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let borrower = borrower_name.trim();
     if borrower.is_empty() {
@@ -36,6 +46,7 @@ pub(crate) fn create_spool_loan_in_transaction(
     }
 
     ensure_spool_can_be_loaned(conn, spool_id)?;
+    let expected_return_at = normalize_expected_return_date(expected_return_at)?;
 
     conn.execute(
         "UPDATE ams_slots
@@ -48,9 +59,18 @@ pub(crate) fn create_spool_loan_in_transaction(
     conn.execute(
         "INSERT INTO spool_loans (
             id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
-            counterparty_contact, counterparty_note, grams_out, lent_note, lent_at
-        ) VALUES (?1, ?2, ?3, 'OUTBOUND', 'ACTIVE', ?3, NULL, NULL, ?4, ?5, datetime('now'))",
-        params![loan_id, spool_id, borrower, grams_out.max(0), lent_note],
+            counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
+            expected_return_at
+        ) VALUES (?1, ?2, ?3, 'OUTBOUND', 'ACTIVE', ?3, ?4, NULL, ?5, ?6, datetime('now'), ?7)",
+        params![
+            loan_id,
+            spool_id,
+            borrower,
+            normalize_optional_text(counterparty_contact),
+            grams_out.max(0),
+            normalize_optional_text(lent_note),
+            expected_return_at
+        ],
     )?;
 
     let location = format!("Loaned to: {borrower}");

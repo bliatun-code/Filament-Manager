@@ -52,6 +52,9 @@ export const enDictionary: DictionaryNode = {
         "Return the loan before editing this roll's status or location.",
       spoolStatusEditLimited:
         "Browser edits are limited to in-stock, empty, or lost rolls.",
+      loanExpectedReturnInvalid: "Choose a valid expected return date.",
+      loanMetadataUnsupported:
+        "Update the host before saving loan contact details or an expected return date.",
       exportInvalidPayload: "The generated export is invalid.",
       downloadsUnavailable: "The Downloads folder is unavailable.",
       exportWriteFailed: "The export could not be saved.",
@@ -503,11 +506,15 @@ export const enDictionary: DictionaryNode = {
       loanSelectionHelp:
         "Choose an in-stock roll, then confirm who is taking it and how much is going out.",
       loanDetails: "Loan details",
-      loanDetailsHelp: "Confirm the borrower and outgoing weight before saving the loan.",
+      loanDetailsHelp:
+        "Confirm the borrower, contact details, expected return date and outgoing weight before saving the loan.",
       maxAvailable: "Max available",
       noLoanableRolls: "No rolls are currently available to loan out.",
       chooseRollToLoan: "Choose a roll to loan out.",
       borrowerName: "Borrower name",
+      borrowerContactOptional: "Contact information (optional)",
+      borrowerContactPlaceholder: "Phone, email or handle",
+      expectedReturnDateOptional: "Expected return date (optional)",
       outG: "Out g",
       loanNoteOptional: "Loan note (optional)",
       loanOutRoll: "Loan out roll",
@@ -740,6 +747,8 @@ export const enDictionary: DictionaryNode = {
         borrowedInNeedsOwner:
           "Borrowed-in registration needs a name for who the spool is borrowed from.",
         loanGrams: "Loan grams must be zero or greater.",
+        expectedReturnInvalid: "Choose a valid expected return date.",
+        expectedReturnPast: "Expected return date cannot be before today.",
         loanBorrowedIn: "Borrowed-in spools cannot be loaned out again.",
         loanOut: "Failed to loan out roll.",
         returnedGrams: "Returned grams must be zero or greater.",
@@ -864,6 +873,10 @@ export const enDictionary: DictionaryNode = {
       spool: "Spool",
       spoolId: "Spool ID",
       borrower: "Borrower",
+      contact: "Contact",
+      expectedReturn: "Expected return",
+      dueToday: "Due today",
+      overdue: "Overdue",
       lent: "Lent",
       borrowedInAt: "Borrowed in",
       out: "Out",

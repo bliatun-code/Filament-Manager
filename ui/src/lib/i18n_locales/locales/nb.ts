@@ -52,6 +52,9 @@ export const nbDictionary: DictionaryNode = {
         "Returner utlånet før du redigerer status eller plassering for denne rullen.",
       spoolStatusEditLimited:
         "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
+      loanExpectedReturnInvalid: "Velg en gyldig forventet returdato.",
+      loanMetadataUnsupported:
+        "Oppdater verten før du lagrer kontaktinformasjon eller forventet returdato for utlånet.",
       exportInvalidPayload: "Den genererte eksporten er ugyldig.",
       downloadsUnavailable: "Nedlastingsmappen er utilgjengelig.",
       exportWriteFailed: "Eksporten kunne ikke lagres.",
@@ -508,11 +511,15 @@ export const nbDictionary: DictionaryNode = {
       loanSelectionHelp:
         "Velg et filament på lager, og bekreft deretter hvem som låner det og hvor mye som går ut.",
       loanDetails: "Utlånsdetaljer",
-      loanDetailsHelp: "Bekreft låntaker og utgående vekt før utlånet lagres.",
+      loanDetailsHelp:
+        "Bekreft låntaker, kontaktinformasjon, forventet returdato og utgående vekt før utlånet lagres.",
       maxAvailable: "Maks tilgjengelig",
       noLoanableRolls: "Ingen filamenter er tilgjengelige for utlån akkurat nå.",
       chooseRollToLoan: "Velg et filament som skal lånes ut.",
       borrowerName: "Navn på låntaker",
+      borrowerContactOptional: "Kontaktinformasjon (valgfritt)",
+      borrowerContactPlaceholder: "Telefon, e-post eller brukernavn",
+      expectedReturnDateOptional: "Forventet returdato (valgfritt)",
       outG: "Ut g",
       loanNoteOptional: "Utlånsnotat (valgfritt)",
       loanOutRoll: "Lån ut filament",
@@ -745,6 +752,8 @@ export const nbDictionary: DictionaryNode = {
         borrowedInNeedsOwner:
           "Registrering av innlånt filament trenger navn på hvem filamentet er lånt fra.",
         loanGrams: "Utlånsgram må være 0 eller høyere.",
+        expectedReturnInvalid: "Velg en gyldig forventet returdato.",
+        expectedReturnPast: "Forventet returdato kan ikke være før i dag.",
         loanBorrowedIn: "Innlånte filamenter kan ikke lånes ut på nytt.",
         loanOut: "Kunne ikke låne ut rullen.",
         returnedGrams: "Returnerte gram må være 0 eller høyere.",
@@ -869,6 +878,10 @@ export const nbDictionary: DictionaryNode = {
       spool: "Filament",
       spoolId: "Filament-ID",
       borrower: "Låntaker",
+      contact: "Kontakt",
+      expectedReturn: "Forventet retur",
+      dueToday: "Forfaller i dag",
+      overdue: "Forfalt",
       lent: "Utlånt",
       borrowedInAt: "Lånt inn",
       out: "Ut",

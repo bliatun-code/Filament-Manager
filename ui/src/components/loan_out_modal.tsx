@@ -23,6 +23,7 @@ import {
   formatSpoolReference,
 } from "../lib/display_format";
 import { useI18n } from "../lib/i18n";
+import { toErrorMessage } from "../lib/error_text";
 import {
   inventorySwatchInsetStyle,
   inventorySwatchPanelStyle,
@@ -45,6 +46,10 @@ import {
 } from "../lib/loan_out_weight_model";
 import { isTauri } from "../lib/tauri_client";
 import { LoanOutCandidateList } from "./loan_out_candidate_list";
+import {
+  localCalendarDate,
+  validateLoanExpectedReturnDate,
+} from "../lib/loan_due_state";
 
 type LoanOutModalProps = {
   open: boolean;
@@ -57,7 +62,9 @@ type LoanOutModalProps = {
   onLoanCreated?: (details: {
     spoolId: string;
     borrowerName: string;
+    counterpartyContact: string | null;
     gramsOut: number;
+    expectedReturnAt: string | null;
   }) => Promise<void> | void;
 };
 
@@ -81,8 +88,11 @@ export function LoanOutModal({
   const [selectedSpoolId, setSelectedSpoolId] = useState<string | null>(null);
   const [spoolSearchQuery, setSpoolSearchQuery] = useState("");
   const [borrowerName, setBorrowerName] = useState("");
+  const [counterpartyContact, setCounterpartyContact] = useState("");
   const [gramsOut, setGramsOut] = useState("");
   const [note, setNote] = useState("");
+  const [expectedReturnAt, setExpectedReturnAt] = useState("");
+  const today = localCalendarDate();
 
   const reload = useCallback(async () => {
     if (!tauri) {
@@ -120,7 +130,9 @@ export function LoanOutModal({
       return;
     }
     setBorrowerName("");
+    setCounterpartyContact("");
     setNote("");
+    setExpectedReturnAt("");
     setSpoolSearchQuery("");
     setError(null);
     void reload();
@@ -170,6 +182,26 @@ export function LoanOutModal({
       return;
     }
     const grams = toLoanedFilamentWeight(selectedSpool, measuredTotalGrams);
+    const expectedReturn = validateLoanExpectedReturnDate(expectedReturnAt, today);
+    if (expectedReturn.error === "INVALID") {
+      setError(
+        t(
+          "inventory.error.expectedReturnInvalid",
+          "Choose a valid expected return date.",
+        ),
+      );
+      return;
+    }
+    if (expectedReturn.error === "PAST") {
+      setError(
+        t(
+          "inventory.error.expectedReturnPast",
+          "Expected return date cannot be before today.",
+        ),
+      );
+      return;
+    }
+    const contact = counterpartyContact.trim() || null;
 
     setBusy(true);
     setError(null);
@@ -178,20 +210,30 @@ export function LoanOutModal({
         {
           spool_id: selectedSpool.id,
           borrower_name: borrower,
+          counterparty_contact: contact,
           grams_out: grams,
           note: note.trim() || null,
+          expected_return_at: expectedReturn.value,
         },
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
       );
       await onLoanCreated?.({
         spoolId: selectedSpool.id,
         borrowerName: borrower,
+        counterpartyContact: contact,
         gramsOut: grams,
+        expectedReturnAt: expectedReturn.value,
       });
       onClose();
     } catch (loanError) {
       console.error(loanError);
-      setError(t("inventory.error.loanOut", "Failed to loan out roll."));
+      setError(
+        toErrorMessage(
+          loanError,
+          t("inventory.error.loanOut", "Failed to loan out roll."),
+          t,
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -328,6 +370,26 @@ export function LoanOutModal({
                           </ModalFormField>
 
                           <ModalFormField
+                            label={t(
+                              "inventory.borrowerContactOptional",
+                              "Contact information (optional)",
+                            )}
+                          >
+                            <input
+                              type="text"
+                              value={counterpartyContact}
+                              onChange={(event) => setCounterpartyContact(event.target.value)}
+                              className={modalFormInputClassName}
+                              placeholder={t(
+                                "inventory.borrowerContactPlaceholder",
+                                "Phone, email or handle",
+                              )}
+                              maxLength={200}
+                              disabled={!tauri || busy}
+                            />
+                          </ModalFormField>
+
+                          <ModalFormField
                             label={
                               <>
                                 {t("inventory.maxAvailable", "Max available")}:{" "}
@@ -348,6 +410,22 @@ export function LoanOutModal({
                               onChange={(event) => setGramsOut(event.target.value)}
                               className={modalFormInputClassName}
                               placeholder={t("inventory.outG", "Out g")}
+                              disabled={!tauri || busy}
+                            />
+                          </ModalFormField>
+
+                          <ModalFormField
+                            label={t(
+                              "inventory.expectedReturnDateOptional",
+                              "Expected return date (optional)",
+                            )}
+                          >
+                            <input
+                              type="date"
+                              min={today}
+                              value={expectedReturnAt}
+                              onChange={(event) => setExpectedReturnAt(event.target.value)}
+                              className={modalFormInputClassName}
                               disabled={!tauri || busy}
                             />
                           </ModalFormField>

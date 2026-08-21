@@ -373,8 +373,10 @@ test("lendInventorySpool routes client writes to the host", async () => {
     {
       spool_id: "spool-1",
       borrower_name: "Ada",
+      counterparty_contact: "ada@example.test",
       grams_out: 250,
       note: "Bring back",
+      expected_return_at: "2026-09-05",
     },
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
@@ -390,8 +392,10 @@ test("lendInventorySpool routes client writes to the host", async () => {
       input: {
         spool_id: "spool-1",
         borrower_name: "Ada",
+        counterparty_contact: "ada@example.test",
         grams_out: 250,
         note: "Bring back",
+        expected_return_at: "2026-09-05",
       },
     },
   ]);

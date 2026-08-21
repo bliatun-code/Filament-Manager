@@ -20,6 +20,14 @@ const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.spoolStatusEditLimited",
     "Browser edits are limited to in-stock, empty, or lost rolls.",
   ],
+  "loans.expected_return_invalid": [
+    "errors.loanExpectedReturnInvalid",
+    "Choose a valid expected return date.",
+  ],
+  "loans.host_metadata_unsupported": [
+    "errors.loanMetadataUnsupported",
+    "Update the host before saving loan contact details or an expected return date.",
+  ],
   "export.invalid_payload": ["errors.exportInvalidPayload", "The generated export is invalid."],
   "export.downloads_unavailable": [
     "errors.downloadsUnavailable",
