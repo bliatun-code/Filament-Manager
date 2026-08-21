@@ -4,7 +4,6 @@ import {
   normalizeDisplayToken as normalizeSharedDisplayToken,
 } from "./display_format";
 import {
-  isSpoolStatusEmpty,
   isSpoolStatusEmptyOrLost,
   isSpoolLowStock,
   isBorrowedInOwnership,
@@ -18,6 +17,10 @@ import {
 export type StatusFilter = "ALL" | ActiveSpoolStatus;
 export type OwnershipFilter = "ALL" | OwnershipType;
 export type InventorySemanticTone = "neutral" | "info" | "success" | "warning" | "danger";
+export type InventoryCollectionEmptyState =
+  | "LOADING"
+  | "EMPTY_INVENTORY"
+  | "NO_RESULTS";
 export { normalizeOwnershipType, type OwnershipType, type SpoolStatus };
 
 type TranslateFn = (key: string, fallback?: string) => string;
@@ -176,6 +179,20 @@ export function buildMaterialOptions(spools: InventorySpool[]): string[] {
   return ["ALL", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
 }
 
+export function resolveInventoryCollectionEmptyState(input: {
+  loading: boolean;
+  totalSpoolCount: number;
+  visibleSpoolCount: number;
+}): InventoryCollectionEmptyState | null {
+  if (input.visibleSpoolCount > 0) {
+    return null;
+  }
+  if (input.loading) {
+    return "LOADING";
+  }
+  return input.totalSpoolCount > 0 ? "NO_RESULTS" : "EMPTY_INVENTORY";
+}
+
 export function filterInventorySpools(
   spools: InventorySpool[],
   options: {
@@ -223,9 +240,7 @@ export function isInventorySpoolVisibleForStatusFilter(
   statusFilter: StatusFilter,
 ): boolean {
   const normalizedStatus = normalizeStatus(spool.status);
-  return statusFilter === "ALL"
-    ? !isSpoolStatusEmpty(normalizedStatus)
-    : normalizedStatus === statusFilter;
+  return statusFilter === "ALL" || normalizedStatus === statusFilter;
 }
 
 export function isInventorySpoolLowStockCandidate(

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { PageHeaderButton } from "./page_header_button";
 import { VendorBadge } from "./vendor_badge";
 import { inlineStatusSignalClass } from "../lib/chip_styles";
 import { formatPlacementLabel } from "../lib/display_format";
@@ -10,6 +11,7 @@ import {
   formatRollReference,
   inventoryOwnershipTone,
   remainingBarClass,
+  resolveInventoryCollectionEmptyState,
   spoolRemainingRatio,
   type InventorySpool,
   type SpoolGroup,
@@ -31,14 +33,18 @@ import {
 } from "../lib/inventory_collection_window";
 
 type InventorySpoolCollectionProps = {
+  addSpoolDisabled: boolean;
   filteredSpools: InventorySpool[];
   groupedSpools: SpoolGroup[];
   inventoryView: InventoryViewMode;
   loading: boolean;
+  onAddSpool: () => void;
+  onResetFilters: () => void;
   onSelectRoll: (spoolId: string) => void;
   recentlyAddedSpoolId: string | null;
   resolvedTheme: ResolvedTheme;
   selectedSpoolId: string | null;
+  totalSpoolCount: number;
 };
 
 function formatInventoryPlacement(
@@ -116,14 +122,18 @@ function inventorySpoolListButtonClassName(state: InventorySpoolListButtonState)
 }
 
 export function InventorySpoolCollection({
+  addSpoolDisabled,
   filteredSpools,
   groupedSpools,
   inventoryView,
   loading,
+  onAddSpool,
+  onResetFilters,
   onSelectRoll,
   recentlyAddedSpoolId,
   resolvedTheme,
   selectedSpoolId,
+  totalSpoolCount,
 }: InventorySpoolCollectionProps) {
   const { locale, t } = useI18n();
   const collectionId = useId();
@@ -146,8 +156,11 @@ export function InventorySpoolCollection({
       }),
     [filteredSpools, groupedSpools, inventoryView, renderLimit],
   );
-  const isEmpty =
-    inventoryView === "CARDS" ? groupedSpools.length === 0 : filteredSpools.length === 0;
+  const emptyState = resolveInventoryCollectionEmptyState({
+    loading,
+    totalSpoolCount,
+    visibleSpoolCount: filteredSpools.length,
+  });
 
   const updateGroupRollLimit = (groupKey: string, rollCount: number) => {
     setVisibleRollLimitsByGroup((current) => {
@@ -455,23 +468,56 @@ export function InventorySpoolCollection({
         </div>
       ) : null}
 
-      {isEmpty ? (
-        <div className="surface-subtle col-span-full border-dashed px-5 py-7">
+      {emptyState ? (
+        <div
+          aria-live="polite"
+          className="surface-subtle col-span-full border-dashed px-5 py-7"
+        >
           <div className="flex max-w-xl items-start gap-3">
             <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full border border-slate-300 bg-white shadow-[0_0_0_5px_rgba(148,163,184,0.12)] dark:border-slate-600 dark:bg-slate-800" />
             <div className="min-w-0">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {loading
+                {emptyState === "LOADING"
                   ? t("inventory.loading", "Loading spools...")
-                  : t("inventory.noMatch", "No spools match current filters.")}
+                  : emptyState === "EMPTY_INVENTORY"
+                    ? t("dashboard.onboardingInventoryTitle", "Add or import inventory")
+                    : t("inventory.noMatch", "No spools match current filters.")}
               </div>
-              {!loading ? (
+              {emptyState === "EMPTY_INVENTORY" ? (
+                <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                  {t(
+                    "dashboard.onboardingInventoryBody",
+                    "Start with one spool, or import an existing inventory or backup.",
+                  )}
+                </div>
+              ) : null}
+              {emptyState === "NO_RESULTS" ? (
                 <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
                   {t(
                     "inventory.noMatchHint",
                     "Try adjusting search, status, material or ownership filters.",
                   )}
                 </div>
+              ) : null}
+              {emptyState === "EMPTY_INVENTORY" ? (
+                <PageHeaderButton
+                  className="mt-4"
+                  disabled={addSpoolDisabled}
+                  onClick={onAddSpool}
+                  responsive={false}
+                  variant="primary"
+                >
+                  {t("inventory.addSpoolAction", "Add spool")}
+                </PageHeaderButton>
+              ) : null}
+              {emptyState === "NO_RESULTS" ? (
+                <PageHeaderButton
+                  className="mt-4"
+                  onClick={onResetFilters}
+                  responsive={false}
+                >
+                  {t("inventory.resetFilters", "Reset filters")}
+                </PageHeaderButton>
               ) : null}
             </div>
           </div>

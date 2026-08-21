@@ -23,7 +23,13 @@ type InventoryPageWorkspaceProps = {
   clientInventorySource: string | null;
   clientInventoryUpdatedAt: string | null;
   clientReadOnly: boolean;
-  collectionProps: ComponentProps<typeof InventorySpoolCollection>;
+  collectionProps: Omit<
+    ComponentProps<typeof InventorySpoolCollection>,
+    | "addSpoolDisabled"
+    | "onAddSpool"
+    | "onResetFilters"
+    | "totalSpoolCount"
+  >;
   controlsProps: ComponentProps<typeof InventoryControlsPanel>;
   error: string | null;
   headerActionsProps: ComponentProps<typeof InventoryHeaderActions>;
@@ -144,7 +150,13 @@ export function InventoryPageWorkspace({
             role="region"
             aria-labelledby="inventory-stock-tab"
           >
-            <InventorySpoolCollection {...collectionProps} />
+            <InventorySpoolCollection
+              {...collectionProps}
+              addSpoolDisabled={headerActionsProps.primaryActionsDisabled}
+              onAddSpool={headerActionsProps.onAddSpool}
+              onResetFilters={controlsProps.onResetFilters}
+              totalSpoolCount={totalInventoryCount}
+            />
           </div>
         ) : (
           <div
