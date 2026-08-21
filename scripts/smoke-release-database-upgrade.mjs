@@ -373,6 +373,7 @@ export function validateReleaseDatabaseUpgradeSmokeOptions({
   launchCount = DEFAULT_LAUNCH_COUNT,
   launchTimeoutMs = DEFAULT_LAUNCH_TIMEOUT_MS,
   logDirectory,
+  requireVisibleWindow = true,
 }) {
   for (const [label, value] of [
     ["database", databasePath],
@@ -396,12 +397,16 @@ export function validateReleaseDatabaseUpgradeSmokeOptions({
         `to ${MAXIMUM_LAUNCH_TIMEOUT_MS} milliseconds.`,
     );
   }
+  if (typeof requireVisibleWindow !== "boolean") {
+    throw new Error("Visible-window readiness must be a boolean.");
+  }
   return {
     databasePath: path.resolve(databasePath),
     executablePath: path.resolve(executablePath),
     launchCount,
     launchTimeoutMs,
     logDirectory: path.resolve(logDirectory),
+    requireVisibleWindow,
   };
 }
 
@@ -413,6 +418,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
     launchCount,
     launchTimeoutMs,
     logDirectory,
+    requireVisibleWindow,
   } = validateReleaseDatabaseUpgradeSmokeOptions(options);
   for (const [label, filePath] of [
     ["Database", databasePath],
@@ -461,7 +467,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       });
       const deadline = Date.now() + launchTimeoutMs;
       let after = null;
-      let visibleWindow = false;
+      let visibleWindow = !requireVisibleWindow;
       let lastError = null;
       while (Date.now() < deadline) {
         if (childState.error) {
@@ -489,10 +495,12 @@ export async function smokeReleaseDatabaseUpgrade(options) {
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
         }
-        visibleWindow = applicationWindowIsVisible(
-          childProcessId,
-          moduleCachePath,
-        );
+        if (requireVisibleWindow) {
+          visibleWindow = applicationWindowIsVisible(
+            childProcessId,
+            moduleCachePath,
+          );
+        }
         if (after?.schemaVersion === expectedSchemaVersion && visibleWindow && !lastError) {
           break;
         }
@@ -542,6 +550,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       `Source schema: ${before.schemaVersion}`,
       `Current schema: ${finalSnapshot.schemaVersion}`,
       `Launches: ${launchCount}`,
+      `Readiness: ${requireVisibleWindow ? "database and visible window" : "database"}`,
       `Preserved domain tables: ${Object.keys(before.counts).length}`,
       `Value-digested tables: ${Object.keys(before.valueDigests).length}`,
       `Protected settings: ${Object.keys(before.protectedValues.settings).length}`,
@@ -578,6 +587,7 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
   if (
     argv.some(
       (argument) =>
+        argument !== "--database-readiness-only" &&
         ![
           "--database=",
           "--executable=",
@@ -591,7 +601,7 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
       "Usage: node scripts/smoke-release-database-upgrade.mjs " +
         "--database=<sanitized-copy> --executable=<release-binary> " +
         "--log-dir=<private-directory> [--launch-count=2] " +
-        "[--launch-timeout-ms=90000]",
+        "[--launch-timeout-ms=90000] [--database-readiness-only]",
     );
   }
   const launchCount = optionValue("--launch-count");
@@ -608,6 +618,7 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
         ? DEFAULT_LAUNCH_TIMEOUT_MS
         : parseCliInteger(launchTimeoutMs, "Launch timeout"),
     logDirectory: optionValue("--log-dir"),
+    requireVisibleWindow: !argv.includes("--database-readiness-only"),
   };
 }
 

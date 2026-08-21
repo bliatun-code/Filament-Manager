@@ -1205,6 +1205,54 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
   );
 });
 
+test("macOS CI makes the sanitized database upgrade smoke a release gate", () => {
+  const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
+  const requiredChecksStep = readSection(
+    publishJob,
+    "      - name: Require successful CI checks",
+    "      - name: Checkout release notes",
+  );
+
+  assert.equal(
+    packageManifest.scripts["qa:release:upgrade-ci-fixture"],
+    "node ./scripts/prepare-ci-release-upgrade-fixture.mjs",
+  );
+  assert.equal(
+    packageManifest.scripts["smoke:release:database-upgrade"],
+    "node ./scripts/smoke-release-database-upgrade.mjs",
+  );
+  assert.match(macosJob, /timeout-minutes: 45/);
+  assert.match(
+    macosJob,
+    /- name: Build database upgrade candidate\s+run: cargo build --locked --package bambu-filament-manager/,
+  );
+  assert.match(
+    macosJob,
+    /npm run qa:release:upgrade-ci-fixture --[\s\S]*?--output="\$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"/,
+  );
+  assert.match(
+    macosJob,
+    /npm run smoke:release:database-upgrade --[\s\S]*?--database="\$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"[\s\S]*?--executable=target\/debug\/bambu-filament-manager[\s\S]*?--launch-timeout-ms=120000[\s\S]*?--database-readiness-only/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Upload database upgrade smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
+  assert.match(
+    requiredChecksStep,
+    /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+  );
+  assertStepOrder(macosJob, [
+    "Run full verification",
+    "Run data-backed Companion E2E",
+    "Build database upgrade candidate",
+    "Prepare sanitized historical database fixture",
+    "Exercise database upgrade and restart",
+    "Upload database upgrade smoke logs",
+  ]);
+});
+
 test("release workflow keeps the protected macOS signing sequence fail-closed", () => {
   const macosJob = readSection(
     releaseWorkflow,

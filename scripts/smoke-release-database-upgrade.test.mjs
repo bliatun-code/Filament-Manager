@@ -117,6 +117,7 @@ test("release database upgrade smoke normalizes accepted paths", () => {
   assert.equal(options.executablePath, path.resolve("candidate"));
   assert.equal(options.launchCount, 3);
   assert.equal(options.launchTimeoutMs, 120_000);
+  assert.equal(options.requireVisibleWindow, true);
 });
 
 test("release database upgrade CLI parses integers without partial coercion", () => {
@@ -132,6 +133,21 @@ test("release database upgrade CLI parses integers without partial coercion", ()
   ]);
   assert.equal(options.launchCount, 3);
   assert.equal(options.launchTimeoutMs, 120_000);
+  assert.equal(options.requireVisibleWindow, true);
+
+  const databaseReadinessOptions = parseReleaseDatabaseUpgradeSmokeCliOptions([
+    ...requiredArguments,
+    "--database-readiness-only",
+  ]);
+  assert.equal(databaseReadinessOptions.requireVisibleWindow, false);
+  assert.throws(
+    () =>
+      parseReleaseDatabaseUpgradeSmokeCliOptions([
+        ...requiredArguments,
+        "--database-readiness-only=1",
+      ]),
+    /Usage:/,
+  );
 
   for (const value of ["2.5", "2junk", " 2", "", "9007199254740992"]) {
     assert.throws(

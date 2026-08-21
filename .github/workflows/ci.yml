@@ -19,7 +19,7 @@ jobs:
   macos-smoke:
     name: macOS Smoke
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,6 +67,38 @@ jobs:
       - name: Run data-backed Companion E2E
         timeout-minutes: 10
         run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000
+
+      - name: Build database upgrade candidate
+        run: cargo build --locked --package bambu-filament-manager
+
+      - name: Prepare sanitized historical database fixture
+        env:
+          FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH: ${{ runner.temp }}/filament-manager-upgrade-fixture.db
+        run: >-
+          npm run qa:release:upgrade-ci-fixture --
+          --output="$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"
+
+      - name: Exercise database upgrade and restart
+        env:
+          FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH: ${{ runner.temp }}/filament-manager-upgrade-fixture.db
+          FILAMENT_MANAGER_UPGRADE_LOG_DIR: ${{ runner.temp }}/filament-manager-database-upgrade-smoke
+        run: >-
+          npm run smoke:release:database-upgrade --
+          --database="$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"
+          --executable=target/debug/bambu-filament-manager
+          --log-dir="$FILAMENT_MANAGER_UPGRADE_LOG_DIR"
+          --launch-timeout-ms=120000
+          --database-readiness-only
+
+      - name: Upload database upgrade smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-database-upgrade-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-database-upgrade-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
 
   windows-smoke:
     name: Windows Smoke

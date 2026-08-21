@@ -66,6 +66,7 @@
     "verify": "npm run smoke && npm run test:rust",
     "qa:visual:db": "node ./scripts/visual-qa-db.mjs",
     "qa:release:upgrade-fixture": "node ./scripts/prepare-release-upgrade-fixture.mjs",
+    "qa:release:upgrade-ci-fixture": "node ./scripts/prepare-ci-release-upgrade-fixture.mjs",
     "smoke:release:database-upgrade": "node ./scripts/smoke-release-database-upgrade.mjs",
     "qa:visual:fixture": "node ./scripts/create-visual-qa-fixture.mjs",
     "qa:visual": "node ./scripts/run-visual-qa.mjs",
