@@ -120,7 +120,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 ## Neste arbeid
 
 1. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
-2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 4-artifakter for macOS og Windows.
+2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 4-artifakt for Windows; den lokale macOS-kjøringen er bestått.
 
 ## Fremdriftslogg
 
@@ -146,6 +146,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Lavlagerpolicyen har én validert standard og valgfrie materialoverstyringer. Effektiv terskel følger hver spole gjennom Inventory, Dashboard, Statistics, Host, Client og Companion; eldre Host bruker en eksplisitt 200 g-kompatibilitetsverdi.
 - Utlån lagrer valgfri kontakt og forventet returdato. Ugyldige datoer stoppes før lagring, eldre Host avviser metadata før POST, og en ren datomodell identifiserer forfalte aktive lån uten å merke returnerte lån.
 - Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 4, og samme gate er koblet blokkerende til Windows CI.
+- Gjeldende lokale arm64 debug-DMG passerer den muterende macOS-gaten med schema 4 og 25 tabeller. Testen opprettet spole og printerspor, endret sluttvekten til 760 g, fullførte utlån og retur, startet den installerte appen på nytt og validerte en full backup med 1 128 rader. Tilsvarende gjeldende Windows-kjøring gjenstår på en Windows-runner.
 - Brukertestprotokollen har en deterministisk `npm run qa:usability:analyze`-kommando som avviser færre enn fem deltakere, under 90 % uhjulpet fullføring eller under 30 % median tidsforbedring.
 - En Rust-basert `ActiveLibraryGateway` velger nå autoritativt mellom lokal database og paret Host for den atomiske spole-detaljflyten. Ufullstendig klientoppsett og Host-/legitimasjonsfeil stopper uten lokal fallback, mens eksisterende Tauri-kommandoer er beholdt som kompatibilitetslag.
 - Status, eierskap, låneretning, lånestatus og lavlager-DTO-er har nå én faktisk Rust-kilde. Deterministiske TypeScript- og Companion-artefakter inneholder konstanter og validatorer, og både lokal kontraktsgate og CI avviser manglende eller utdaterte genererte filer.
