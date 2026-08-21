@@ -1,3 +1,5 @@
+import { LOW_STOCK_GRAMS } from "./inventory_constants";
+
 export type ActiveSpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
 export type RemovedSpoolStatus = "MISSING" | "DELETED";
 export type SpoolStatus = ActiveSpoolStatus | RemovedSpoolStatus;
@@ -91,6 +93,41 @@ export function isSpoolStatusRfidMatchable(raw?: string | null): boolean {
 
 export function isSpoolStatusMetadataMatchable(raw?: string | null): boolean {
   return isSpoolStatusRfidMatchable(raw) && parseSpoolStatus(raw) !== "EMPTY";
+}
+
+export type SpoolStockLevelInput = {
+  status?: string | null;
+  remainingGrams?: number | null;
+  currentWeightGrams?: number | null;
+  initialWeightGrams?: number | null;
+};
+
+export function resolveSpoolStockGrams(input: SpoolStockLevelInput): number {
+  const raw =
+    input.remainingGrams ?? input.currentWeightGrams ?? input.initialWeightGrams ?? 0;
+  return Number.isFinite(raw) ? Math.max(0, raw) : 0;
+}
+
+export function isSpoolLowStock(
+  input: SpoolStockLevelInput,
+  thresholdGrams = LOW_STOCK_GRAMS,
+): boolean {
+  const remaining = resolveSpoolStockGrams(input);
+  return (
+    !isSpoolStatusEmptyOrLost(input.status) &&
+    remaining > 0 &&
+    remaining <= Math.max(0, thresholdGrams)
+  );
+}
+
+export function isSpoolStockHealthy(
+  input: SpoolStockLevelInput,
+  thresholdGrams = LOW_STOCK_GRAMS,
+): boolean {
+  return (
+    isSpoolStatusOnHand(input.status) &&
+    resolveSpoolStockGrams(input) > Math.max(0, thresholdGrams)
+  );
 }
 
 export function normalizeOwnershipType(raw?: string | null): OwnershipType {

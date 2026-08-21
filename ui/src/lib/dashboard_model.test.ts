@@ -208,6 +208,34 @@ test("buildDashboardDerivedState keeps borrowed rows out of inventory health sco
   assert.equal(result.health.score, 0);
 });
 
+test("dashboard counts every low-stock spool and keeps the 200g boundary unhealthy", () => {
+  const result = buildDashboardDerivedState({
+    overview: overview(),
+    printers: [],
+    spoolRows: [
+      ...[1, 40, 80, 120, 160, 200].map((remaining, index) =>
+        spoolRow(`low-${index}`, {
+          current_weight_g: remaining,
+          remaining_g: remaining,
+        }),
+      ),
+      spoolRow("healthy", { current_weight_g: 201, remaining_g: 201 }),
+      spoolRow("zero", { current_weight_g: 0, remaining_g: 0 }),
+    ],
+    loans: [],
+    wishlist: [],
+    t,
+  });
+
+  assert.equal(result.stats.find((stat) => stat.id === "lowStock")?.value, "6");
+  assert.equal(
+    result.health.metrics.find((metric) => metric.id === "lowStock")?.value,
+    "6",
+  );
+  assert.equal(result.ownershipLowStock.owned, 6);
+  assert.equal(result.health.score, 13);
+});
+
 test("buildDashboardDerivedState reports insufficient data for an empty library", () => {
   const result = buildDashboardDerivedState({
     overview: overview(),

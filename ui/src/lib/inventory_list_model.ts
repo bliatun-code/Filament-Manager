@@ -1,4 +1,3 @@
-import { LOW_STOCK_GRAMS } from "./inventory_constants";
 import {
   formatFilamentDisplayTitle,
   formatSpoolReference,
@@ -7,6 +6,7 @@ import {
 import {
   isSpoolStatusEmpty,
   isSpoolStatusEmptyOrLost,
+  isSpoolLowStock,
   isBorrowedInOwnership,
   normalizeOwnershipType,
   normalizeSpoolStatus,
@@ -231,13 +231,11 @@ export function isInventorySpoolVisibleForStatusFilter(
 export function isInventorySpoolLowStockCandidate(
   spool: Pick<InventorySpool, "initialWeightGrams" | "remainingGrams" | "status">,
 ): boolean {
-  const normalizedStatus = normalizeStatus(spool.status);
-  const remaining = Math.max(0, spool.remainingGrams ?? spool.initialWeightGrams ?? 0);
-  return (
-    !isSpoolStatusEmptyOrLost(normalizedStatus) &&
-    remaining > 0 &&
-    remaining <= LOW_STOCK_GRAMS
-  );
+  return isSpoolLowStock({
+    status: normalizeStatus(spool.status),
+    remainingGrams: spool.remainingGrams,
+    initialWeightGrams: spool.initialWeightGrams,
+  });
 }
 
 export function isInventorySpoolLoanTrackingCandidate(

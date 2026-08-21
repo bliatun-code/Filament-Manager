@@ -3,6 +3,7 @@ use std::path::Path;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 
+use super::inventory_domain::LOW_STOCK_THRESHOLD_G;
 use super::spool_defaults::{
     SPOOL_OWNERSHIP_SELECT_SQL, SPOOL_OWNERSHIP_SELECT_SQL_S, SPOOL_STATUS_ASSIGNED_PREDICATE_SQL,
     SPOOL_STATUS_ON_HAND_PREDICATE_SQL,
@@ -239,14 +240,14 @@ fn inventory_overview_from_connection(
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
-                     AND remaining_g <= 200
+                     AND remaining_g <= ?1
                      AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
                     THEN 1 ELSE 0
                 END), 0) AS low_stock,
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
-                     AND remaining_g <= 200
+                     AND remaining_g <= ?1
                      AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
                      AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'OWNED'
                     THEN 1 ELSE 0
@@ -254,7 +255,7 @@ fn inventory_overview_from_connection(
                 COALESCE(SUM(CASE
                     WHEN remaining_g IS NOT NULL
                      AND remaining_g > 0
-                     AND remaining_g <= 200
+                     AND remaining_g <= ?1
                      AND {SPOOL_STATUS_ON_HAND_PREDICATE_SQL}
                      AND {SPOOL_OWNERSHIP_SELECT_SQL} = 'BORROWED_IN'
                     THEN 1 ELSE 0
@@ -262,7 +263,7 @@ fn inventory_overview_from_connection(
              FROM filament_spools
              WHERE deleted_at IS NULL"
             ),
-            [],
+            params![LOW_STOCK_THRESHOLD_G],
             |row| {
                 Ok((
                     row.get(0)?,
@@ -390,6 +391,8 @@ mod tests {
         LiveUsageDeltaInput, LiveUsageSessionInput,
     };
     use crate::backend::filament_database::{FilamentDatabase, ManualMasterInput, SpoolRow};
+    use crate::backend::inventory_domain::LOW_STOCK_THRESHOLD_G;
+    use rusqlite::params;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -620,6 +623,83 @@ mod tests {
         if let Err(message) = result {
             panic!(
                 "inventory_overview_splits_owned_and_borrowed_in_metrics test failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn inventory_overview_applies_low_stock_boundaries_without_truncating_count() {
+        let db_path = temp_db_path("low-stock-boundaries");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Black",
+                    hex_color: Some("#000000"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+
+            db.connection()
+                .execute(
+                    "INSERT INTO filament_spools (
+                        id, master_id, status, ownership_type,
+                        initial_weight_g, current_weight_g, remaining_g
+                     ) VALUES ('boundary_spool', ?1, 'IN_STOCK', 'OWNED', 1000, 0, 0)",
+                    params![&master_id],
+                )
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(LOW_STOCK_THRESHOLD_G, 200);
+            for (remaining_g, expected_low_stock) in [(0, 0), (1, 1), (199, 1), (200, 1), (201, 0)]
+            {
+                db.connection()
+                    .execute(
+                        "UPDATE filament_spools
+                         SET current_weight_g = ?1, remaining_g = ?1
+                         WHERE id = 'boundary_spool'",
+                        params![remaining_g],
+                    )
+                    .map_err(|error| error.to_string())?;
+
+                let overview = db.inventory_overview().map_err(|error| error.to_string())?;
+                assert_eq!(
+                    overview.low_stock, expected_low_stock,
+                    "unexpected low-stock result for {remaining_g} g"
+                );
+            }
+
+            for index in 0..6 {
+                db.connection()
+                    .execute(
+                        "INSERT INTO filament_spools (
+                            id, master_id, status, ownership_type,
+                            initial_weight_g, current_weight_g, remaining_g
+                         ) VALUES (?1, ?2, 'IN_STOCK', 'OWNED', 1000, 100, 100)",
+                        params![format!("low_stock_{index}"), &master_id],
+                    )
+                    .map_err(|error| error.to_string())?;
+            }
+
+            let overview = db.inventory_overview().map_err(|error| error.to_string())?;
+            assert_eq!(overview.low_stock, 6);
+            assert_eq!(overview.owned_low_stock, 6);
+            assert_eq!(overview.borrowed_in_low_stock, 0);
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "inventory_overview_applies_low_stock_boundaries_without_truncating_count failed: {message}"
             );
         }
     }

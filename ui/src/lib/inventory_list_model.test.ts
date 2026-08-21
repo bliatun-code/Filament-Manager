@@ -175,6 +175,8 @@ test("inventory spool status predicates centralize list visibility and low-stock
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "EMPTY", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "LOST", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 0 })), false);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 200 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 201 })), false);
 });
 
 test("inventory loan tracking candidates normalize ownership and excluded states", () => {

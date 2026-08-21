@@ -1,7 +1,8 @@
 import type { ActivityItem } from "../components/dashboard_widgets";
-import { LOW_STOCK_GRAMS } from "./inventory_constants";
 import {
   isBorrowedInOwnership,
+  isSpoolLowStock,
+  isSpoolStockHealthy,
   isSpoolStatusAssigned,
   isSpoolStatusEmptyOrLost,
   isSpoolStatusOnHand,
@@ -276,15 +277,15 @@ export function buildDashboardDerivedState(params: {
   const onHandInUse = onHandRows.filter((row) =>
     isSpoolStatusAssigned(row.spool.normalized_status),
   ).length;
-  const lowStockRows = spoolRows
-    .filter((row) => {
-      const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-      return (
-        !isSpoolStatusEmptyOrLost(row.spool.normalized_status) &&
-        remaining > 0 &&
-        remaining <= LOW_STOCK_GRAMS
-      );
-    })
+  const lowStockCandidates = spoolRows.filter((row) =>
+    isSpoolLowStock({
+      status: row.spool.normalized_status,
+      remainingGrams: row.spool.remaining_g,
+      currentWeightGrams: row.spool.current_weight_g,
+      initialWeightGrams: row.spool.initial_weight_g,
+    }),
+  );
+  const lowStockRows = [...lowStockCandidates]
     .sort((left, right) => (left.spool.remaining_g ?? 0) - (right.spool.remaining_g ?? 0))
     .slice(0, 5)
     .map((row) => ({
@@ -293,25 +294,13 @@ export function buildDashboardDerivedState(params: {
       color: row.master.color_name,
       remaining: formatGrams(row.spool.remaining_g ?? 0, "zero", locale),
     }));
-  const lowStockCount = lowStockRows.length;
-  const ownedLowStockCount = spoolRows.filter((row) => {
-    const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-    return (
-      !isSpoolStatusEmptyOrLost(row.spool.normalized_status) &&
-      !isBorrowedInOwnership(row.spool.ownership_type) &&
-      remaining > 0 &&
-      remaining <= LOW_STOCK_GRAMS
-    );
-  }).length;
-  const borrowedInLowStockCount = spoolRows.filter((row) => {
-    const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? 0;
-    return (
-      !isSpoolStatusEmptyOrLost(row.spool.normalized_status) &&
-      isBorrowedInOwnership(row.spool.ownership_type) &&
-      remaining > 0 &&
-      remaining <= LOW_STOCK_GRAMS
-    );
-  }).length;
+  const lowStockCount = lowStockCandidates.length;
+  const ownedLowStockCount = lowStockCandidates.filter(
+    (row) => !isBorrowedInOwnership(row.spool.ownership_type),
+  ).length;
+  const borrowedInLowStockCount = lowStockCandidates.filter((row) =>
+    isBorrowedInOwnership(row.spool.ownership_type),
+  ).length;
 
   const activity: ActivityItem[] = [
     ...activeLoans.slice(0, 3).map((loan) => ({
@@ -392,10 +381,14 @@ export function buildDashboardDerivedState(params: {
     loadedSlots: effectiveSlotTotals.loadedSlots,
   };
 
-  const healthySpools = onHandRows.filter((row) => {
-    const remaining = row.spool.remaining_g ?? row.spool.current_weight_g ?? row.spool.initial_weight_g ?? 0;
-    return remaining >= LOW_STOCK_GRAMS;
-  }).length;
+  const healthySpools = onHandRows.filter((row) =>
+    isSpoolStockHealthy({
+      status: row.spool.normalized_status,
+      remainingGrams: row.spool.remaining_g,
+      currentWeightGrams: row.spool.current_weight_g,
+      initialWeightGrams: row.spool.initial_weight_g,
+    }),
+  ).length;
   const healthScore =
     onHandTotal === 0
       ? null

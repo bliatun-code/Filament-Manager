@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub const LOW_STOCK_THRESHOLD_G: i64 = 200;
+
 fn normalize_domain_token(value: Option<&str>, fallback: &str) -> String {
     value
         .map(str::trim)
