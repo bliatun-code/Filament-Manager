@@ -67,8 +67,8 @@ Fasen er ferdig når innkjøpskøen nås direkte, spolekontekst følger hele arb
 | --- | --- | --- | --- |
 | P0 | Gjøre lokasjoner til egne objekter med stabil ID, oppretting, autofullføring, endring, sammenslåing og arkivering. | Ikke startet | Lokasjonsendringer synkroniseres, er med i backup og bryter ikke eksisterende spolehistorikk. |
 | P1 | Legge til massehandlinger for flytting, status, etiketter og eksport. | Ikke startet | Operasjonene er atomiske, viser berørt antall før bekreftelse og skriver historikk per spole. |
-| P0 | Gjøre lav-beholdningsgrensen konfigurerbar globalt, med valgfritt avvik per materiale. | Ikke startet | Inventory, Dashboard, Statistics, Host, Client og Companion bruker samme effektive terskel. |
-| P1 | Legge kontakt og forventet returdato på utlån. | Ikke startet | Forfalte lån kan identifiseres og fullført retur fjerner oppgaven umiddelbart. |
+| P0 | Gjøre lav-beholdningsgrensen konfigurerbar globalt, med valgfritt avvik per materiale. | Ferdig | Inventory, Dashboard, Statistics, Host, Client og Companion bruker samme effektive terskel. |
+| P1 | Legge kontakt og forventet returdato på utlån. | Ferdig | Forfalte lån kan identifiseres og fullført retur fjerner oppgaven umiddelbart. |
 | P0 | Lage Krever handling på Dashboard for lav beholdning, forfalte lån, mottaksklare bestillinger og Bambu Live-problemer. | Ikke startet | Hvert kort viser årsak, alder og direkte handling; løste forhold forsvinner uten manuell oppfriskning. |
 | P1 | Tillate ett klikk fra lav beholdning til innkjøpskø med duplikatkontroll. | Ikke startet | Eksisterende åpne ønsker eller bestillinger gjenbrukes eller varsles før et duplikat opprettes. |
 
@@ -87,7 +87,7 @@ Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater dele
 | P1 | Vise lagerverdi og materialkostnad per periode med sporbarhet tilbake til spolen. | Ikke startet | Summer kan spores til underliggende spoler og transaksjoner, med tydelig valuta- og manglende-datahåndtering. |
 | P2 | Lage en enkel, deterministisk forbruksprognose med synlig datagrunnlag. | Ferdig | Samme input gir samme prognose, antakelser vises, og funksjonen bestiller aldri automatisk. |
 | P0 | Authenticode-signere Windows MSI og programfil før bredere distribusjon. | Ikke startet | Installer og binær validerer korrekt signatur i støttede Windows-miljøer. |
-| P0 | Kjøre muterende pakket desktop-E2E på macOS og Windows. | Ikke startet | Testen oppretter en spole, endrer vekt, låner ut, returnerer, tilordner printerspor, restarter og validerer backup i den pakkede appen. |
+| P0 | Kjøre muterende pakket desktop-E2E på macOS og Windows. | Pågår | Testen oppretter en spole, endrer vekt, låner ut, returnerer, tilordner printerspor, restarter og validerer backup i den pakkede appen. |
 
 ### Faseport 3
 
@@ -102,7 +102,7 @@ Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer u
 | Innføre en Rust-basert `ActiveLibraryGateway` som velger lokal database eller Host. Start med én komplett spoleflyt og behold eksisterende kommandoer som kompatibilitetslag. | Ikke startet | Én ende-til-ende-spoleflyt bruker gatewayen i begge moduser, med kontraktstester og uendret offentlig oppførsel. |
 | Generere TypeScript- og Companion-kontrakter fra én Rust-kilde. | Ikke startet | Status, eierskap og valgte DTO-er genereres i CI; håndredigert duplisering for den valgte flyten er fjernet. |
 | Gjøre migrasjoner append-only med én autoritativ migrasjonsrekke. | Ferdig | CI avviser endring eller omnummerering av publiserte migrasjoner og verifiserer både tom installasjon og oppgradering. |
-| Flytte kritiske tester fra kildekodelesing til reell atferd. | Ikke startet | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
+| Flytte kritiske tester fra kildekodelesing til reell atferd. | Ferdig | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
 | Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ikke startet | En dokumentert beslutning tas på grunnlag av målt vedlikeholdskostnad, bundlepåvirkning og migrasjonsrisiko. |
 
 ## Avgrensning
@@ -119,11 +119,11 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Fullfør konfigurerbar lav-beholdningsgrense og utvidede utlånsdata.
-2. Gjør lokasjoner til stabile objekter og legg til sporbare massehandlinger.
-3. Bygg Dashboard-visningen Krever handling og koble lav beholdning til innkjøpskøen.
-4. Fullfør mottaksmetadata, lagerverdi og materialkostnad med sporbarhet.
-5. Fullfør pakket desktop-E2E og avklar leverandørdata for Windows-signering.
+1. Gjør lokasjoner til stabile objekter og legg til sporbare massehandlinger.
+2. Bygg Dashboard-visningen Krever handling og koble lav beholdning til innkjøpskøen.
+3. Fullfør mottaksmetadata, lagerverdi og materialkostnad med sporbarhet.
+4. Fullfør gatewayen og genererte kontrakter før konsolideringsbeslutningen.
+5. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
 
 ## Fremdriftslogg
 
@@ -143,3 +143,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Statistics støtter 30 dager, 90 dager, 12 måneder og egendefinert lokalt datointervall gjennom én halvåpen UTC-kontrakt. Døgngrenser er testet over både 23- og 25-timers DST-døgn.
 - En deterministisk 30-dagers forbruksprognose viser datagrunnlag og antakelser uten å opprette automatiske bestillinger.
 - Publiserte databasemigrasjoner er låst i et autoritativt manifest. CI avviser endring, sletting og omnummerering, og verifiserer både tom installasjon, schema-1-oppgradering og v0.27-kompatibilitet.
+- Lavlagerpolicyen har én validert standard og valgfrie materialoverstyringer. Effektiv terskel følger hver spole gjennom Inventory, Dashboard, Statistics, Host, Client og Companion; eldre Host bruker en eksplisitt 200 g-kompatibilitetsverdi.
+- Utlån lagrer valgfri kontakt og forventet returdato. Ugyldige datoer stoppes før lagring, eldre Host avviser metadata før POST, og en ren datomodell identifiserer forfalte aktive lån uten å merke returnerte lån.
+- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. Lokal DMG-kjøring passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; samme gate er koblet blokkerende til Windows CI.
+- Brukertestprotokollen har en deterministisk `npm run qa:usability:analyze`-kommando som avviser færre enn fem deltakere, under 90 % uhjulpet fullføring eller under 30 % median tidsforbedring.
