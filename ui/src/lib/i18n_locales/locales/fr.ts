@@ -12,12 +12,19 @@ export const frDictionary: DictionaryNode = {
     add: "Ajouter",
     all: "Tous",
     active: "Actif",
+    actions: "Actions",
+    archive: "Archiver",
+    archived: "Archivé",
+    create: "Créer",
     on: "Activé",
     off: "Désactivé",
     discontinued: "Arrêté",
     loading: "Chargement…",
     refresh: "Actualiser",
+    rename: "Renommer",
+    restore: "Restaurer",
     save: "Enregistrer",
+    status: "État",
     cancel: "Annuler",
     selected: "Sélectionné",
     remove: "Supprimer",
@@ -79,6 +86,20 @@ export const frDictionary: DictionaryNode = {
     bambuLiveAttentionBody:
       "{name} n’est plus en direct tant que vous n’avez pas vérifié et approuvé l’identité de l’imprimante.",
     openBambuLiveSettings: "Ouvrir les réglages Live",
+    actionRequiredTitle: "Action requise",
+    actionRequiredHint:
+      "Traitez les stocks faibles, les prêts en retard, les achats entrants et la confiance des imprimantes au même endroit.",
+    actionSnapshotAgeUnknown: "Heure de début inconnue · détecté dans cet instantané",
+    actionCreatedAt: "Créé",
+    actionLowStockReason:
+      "{count, plural, one {# bobine est} other {# bobines sont}} au seuil ou en dessous ; le niveau le plus bas est {remaining} sur {threshold}.",
+    actionOverdueReason:
+      "Le prêt actif à {name} a dépassé sa date de retour prévue.",
+    actionOnOrderReason:
+      "{count, plural, one {# bobine est} other {# bobines sont}} commandée et prête à être réceptionnée dans Achats.",
+    actionPurchaseAdded: "Ajouté à la liste de souhaits. Ouverture des achats.",
+    actionPurchaseReused:
+      "Un achat ouvert existe déjà. Il est réutilisé et les achats sont ouverts.",
     onboardingInventoryBody:
       "Commencez par une bobine, ou importez un stock ou une sauvegarde existants.",
     onboardingInventoryTitle: "Ajouter ou importer le stock",
@@ -120,6 +141,9 @@ export const frDictionary: DictionaryNode = {
     noActivePrinter: "Aucune imprimante active sélectionnée",
     noPrintersConfigured: "Aucune imprimante configurée",
     lowStock: "Stock faible",
+    atOrBelowThreshold: "À {count} g ou moins",
+    materialLowStockThresholds: "Seuils par matériau",
+    legacyLowStockFallback: "Valeur de repli de 200 g pour les anciens hôtes",
     noAlerts: "Aucune alerte",
     monthlyUsage: "Consommation mensuelle",
     gramsPerDay: "{count} g/jour",
@@ -231,6 +255,7 @@ export const frDictionary: DictionaryNode = {
     borrowedFrom: "Empruntée à",
     reference: "Référence",
     lowStockOnly: "Stock faible (1–200 g)",
+    lowStockFilter: "Stock faible",
     unassigned: "Non affectée",
     rolls: "Bobines",
     total: "Total",
@@ -243,6 +268,43 @@ export const frDictionary: DictionaryNode = {
     remainingWeight: "Poids restant (g)",
     emptySpoolWeight: "Poids de la bobine vide (g)",
     location: "Emplacement",
+    locationsTitle: "Emplacements",
+    locationsHelp:
+      "Les noms peuvent changer tandis que les identifiants immuables préservent le placement et l’historique.",
+    locationCount: "{count, plural, one {# emplacement} other {# emplacements}}",
+    locationsLegacyHost:
+      "Cet hôte est antérieur aux objets d’emplacement. Les anciens noms restent visibles, mais mettez l’hôte à jour avant toute modification.",
+    locationsOffline:
+      "Les emplacements enregistrés sont affichés. Reconnectez l’hôte avant de les modifier.",
+    locationsHostManaged:
+      "Associez ce client à l’hôte pour gérer les emplacements de la bibliothèque.",
+    locationCreate: "Créer un emplacement",
+    locationNamePlaceholder: "Exemple : boîte sèche 2",
+    locationChoose: "Choisir un emplacement",
+    locationRename: "Renommer l’emplacement",
+    locationNewName: "Nouveau nom",
+    locationMerge: "Fusionner des emplacements",
+    locationMergeHelp:
+      "Tous les emplacements actuels, de retour et enfants sont déplacés vers la cible. La source est archivée et chaque bobine concernée reçoit un événement d’historique.",
+    locationMergeSource: "Emplacement source",
+    locationMergeTarget: "Emplacement cible",
+    locationMergeAction: "Fusionner et archiver la source",
+    locationReviewMerge: "Vérifier la fusion",
+    locationMergeConfirmTitle: "Fusionner {source} dans {target} ?",
+    locationMergeConfirmDetail:
+      "Tous les emplacements actuels, de retour et enfants sont déplacés vers la cible, puis la source est archivée. Cette opération ne peut pas être annulée automatiquement.",
+    locationMergeConfirm: "Confirmer la fusion et l’archivage",
+    locationType: "Type",
+    locationSystemOwned: "Géré par le système",
+    locationGeneric: "Stockage",
+    locationSystemProtected: "Géré par le flux d’imprimante ou de prêt",
+    locationsEmpty:
+      "Aucun emplacement enregistré. Créez-en un ci-dessus ou saisissez un nouvel emplacement lors de l’ajout d’une bobine.",
+    locationCreated: "Emplacement créé.",
+    locationRenamed: "Emplacement renommé.",
+    locationArchived: "Emplacement archivé.",
+    locationRestored: "Emplacement restauré.",
+    locationsMerged: "Emplacements fusionnés.",
     qrLabel: "QR",
     rollHistory: "Historique de la bobine",
     dangerZone: "Zone de danger",
@@ -1115,6 +1177,24 @@ export const frDictionary: DictionaryNode = {
     noSamples: "Aucune mesure de poids pour le moment.",
   },
   statistics: {
+    forecastUnavailable: "Données de consommation insuffisantes",
+    forecastDays: "{count} jours",
+    consumptionForecast: "Prévision de consommation",
+    consumptionForecastHint:
+      "Une estimation déterministe fondée sur le stock possédé et la consommation enregistrée de filament possédé au cours des 30 derniers jours.",
+    forecastDataThrough: "Données jusqu’au {date} inclus",
+    forecastOwnedStock: "Stock possédé inclus",
+    forecastUsageBasis: "Consommation enregistrée · 30 jours",
+    forecastCoverage: "Autonomie estimée",
+    forecastDepletion: "Épuisement possible",
+    forecastNext30Days: "Consommation estimée · 30 prochains jours",
+    forecastRemaining30Days: "Stock estimé après 30 jours",
+    forecastDailyAverage: "Consommation quotidienne supposée",
+    forecastSpoolsIncluded: "Bobines possédées incluses",
+    forecastNeedsUsage:
+      "Enregistrez la consommation de filament possédé avant d’estimer une date d’épuisement.",
+    forecastAssumptions:
+      "Hypothèse : la consommation quotidienne reste égale à la moyenne des 30 derniers jours. Les bobines empruntées, vides, perdues et supprimées sont exclues. Cette prévision est fournie à titre informatif et ne crée jamais de commandes automatiquement.",
     subtitle: "Consommation, activité des imprimantes et historique des prêts.",
     totalConsumption: "Consommation totale",
     allTime: "Depuis le début",
@@ -1221,6 +1301,35 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
+    lowStockThresholds: "Seuils de stock faible",
+    lowStockThresholdsHint:
+      "Définissez une valeur par défaut pour la bibliothèque et ne la remplacez que pour les matériaux nécessitant un point de réapprovisionnement différent.",
+    lowStockThresholdsReadOnly:
+      "Gérez ces seuils pour toute la bibliothèque dans l’application de bureau de l’hôte.",
+    lowStockPolicyRepair:
+      "La règle de stock faible enregistrée est endommagée. Le stock et les statistiques restent indisponibles jusqu’à ce que vous enregistriez ici une règle de remplacement valide ; la valeur de 200 g ci-dessous n’est qu’un brouillon de réparation.",
+    lowStockDefaultThreshold: "Seuil par défaut",
+    lowStockMaterialOverrides: "Exceptions par matériau",
+    lowStockMaterialInheritance:
+      "Les matériaux sans exception utilisent le seuil par défaut de la bibliothèque.",
+    lowStockOverridesDefault: "Remplace la valeur par défaut",
+    lowStockThresholdGrams: "Seuil (g)",
+    lowStockUseDefault: "Utiliser la valeur par défaut",
+    lowStockAllMaterialsInherit:
+      "Tous les matériaux utilisent actuellement le seuil par défaut.",
+    lowStockMaterial: "Matériau",
+    lowStockChooseMaterial: "Choisir un matériau",
+    lowStockNewOverrideThreshold: "Nouveau seuil spécifique",
+    lowStockSetOverride: "Définir l’exception",
+    lowStockSelectedMaterialInheritance:
+      "Sans exception, ce matériau utilise le seuil de {count} g.",
+    lowStockThresholdValidation:
+      "Saisissez un nombre entier compris entre 1 et 100000 g.",
+    lowStockSaving: "Enregistrement des seuils…",
+    lowStockSave: "Enregistrer les seuils",
+    lowStockSaved: "Seuils de stock faible enregistrés.",
+    lowStockSaveError:
+      "Impossible d’enregistrer les seuils de stock faible.",
     "bambuDiscoveryTitle": "Rechercher une imprimante Bambu",
     "bambuDiscoveryHint": "Écoutez brièvement les annonces locales d’imprimantes Bambu. Aucun code d’accès n’est envoyé.",
     "bambuDiscoveryFind": "Rechercher des imprimantes Bambu",

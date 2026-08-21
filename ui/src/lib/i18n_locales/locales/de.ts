@@ -12,12 +12,19 @@ export const deDictionary: DictionaryNode = {
     add: "Hinzufügen",
     all: "Alle",
     active: "Aktiv",
+    actions: "Aktionen",
+    archive: "Archivieren",
+    archived: "Archiviert",
+    create: "Erstellen",
     on: "Ein",
     off: "Aus",
     discontinued: "Nicht mehr erhältlich",
     loading: "Wird geladen...",
     refresh: "Aktualisieren",
+    rename: "Umbenennen",
+    restore: "Wiederherstellen",
     save: "Speichern",
+    status: "Status",
     cancel: "Abbrechen",
     selected: "Ausgewählt",
     remove: "Entfernen",
@@ -78,6 +85,20 @@ export const deDictionary: DictionaryNode = {
     bambuLiveAttentionBody:
       "{name} ist nicht mehr Live, bis du die Druckeridentität überprüfst und bestätigst.",
     openBambuLiveSettings: "Live-Einstellungen öffnen",
+    actionRequiredTitle: "Handlung erforderlich",
+    actionRequiredHint:
+      "Bearbeite niedrigen Bestand, überfällige Leihen, eingehende Käufe und Druckervertrauen an einem Ort.",
+    actionSnapshotAgeUnknown: "Startzeit unbekannt · in diesem Datenstand erkannt",
+    actionCreatedAt: "Erstellt",
+    actionLowStockReason:
+      "{count, plural, one {# Rolle liegt} other {# Rollen liegen}} am oder unter dem Grenzwert; niedrigster Stand: {remaining} von {threshold}.",
+    actionOverdueReason:
+      "Die aktive Leihe an {name} hat das erwartete Rückgabedatum überschritten.",
+    actionOnOrderReason:
+      "{count, plural, one {# Rolle ist} other {# Rollen sind}} bestellt und kann unter Einkäufe empfangen werden.",
+    actionPurchaseAdded: "Zur Wunschliste hinzugefügt. Einkäufe werden geöffnet.",
+    actionPurchaseReused:
+      "Ein offener Kauf ist bereits vorhanden. Er wird wiederverwendet und Einkäufe werden geöffnet.",
     onboardingInventoryBody:
       "Starte mit einer Rolle oder importiere einen vorhandenen Bestand oder eine Sicherung.",
     onboardingInventoryTitle: "Bestand hinzufügen oder importieren",
@@ -113,6 +134,9 @@ export const deDictionary: DictionaryNode = {
     noActivePrinter: "Kein aktiver Drucker ausgewählt",
     noPrintersConfigured: "Keine Drucker konfiguriert",
     lowStock: "Niedriger Bestand",
+    atOrBelowThreshold: "Bei oder unter {count} g",
+    materialLowStockThresholds: "Grenzwerte nach Material",
+    legacyLowStockFallback: "200-g-Ersatzwert für ältere Hosts",
     noAlerts: "Keine Hinweise",
     monthlyUsage: "Monatlicher Verbrauch",
     gramsPerDay: "{count} g/Tag",
@@ -230,6 +254,7 @@ export const deDictionary: DictionaryNode = {
     ownerContactOptional: "Kontakt des Eigentümers (optional)",
     reference: "Referenz",
     lowStockOnly: "Niedriger Bestand (1–200 g)",
+    lowStockFilter: "Niedriger Bestand",
     unassigned: "Nicht zugewiesen",
     rolls: "Rollen",
     total: "Gesamt",
@@ -243,6 +268,43 @@ export const deDictionary: DictionaryNode = {
     remainingWeight: "Verbleibendes Gewicht (g)",
     emptySpoolWeight: "Leerrollengewicht (g)",
     location: "Lagerort",
+    locationsTitle: "Lagerorte",
+    locationsHelp:
+      "Namen können sich ändern, während unveränderliche IDs Platzierung und Verlauf stabil halten.",
+    locationCount: "{count, plural, one {# Lagerort} other {# Lagerorte}}",
+    locationsLegacyHost:
+      "Dieser Host stammt aus der Zeit vor Lagerortobjekten. Bestehende Platzierungsnamen bleiben sichtbar; aktualisiere den Host, bevor du Lagerorte änderst.",
+    locationsOffline:
+      "Gespeicherte Lagerorte werden angezeigt. Stelle die Verbindung zum Host wieder her, bevor du sie änderst.",
+    locationsHostManaged:
+      "Kopple diesen Client mit dem Host, um Lagerorte zu verwalten.",
+    locationCreate: "Lagerort erstellen",
+    locationNamePlaceholder: "Beispiel: Trockenbox 2",
+    locationChoose: "Lagerort auswählen",
+    locationRename: "Lagerort umbenennen",
+    locationNewName: "Neuer Name",
+    locationMerge: "Lagerorte zusammenführen",
+    locationMergeHelp:
+      "Alle aktuellen, Heimat- und untergeordneten Verweise wechseln zum Ziel. Die Quelle wird archiviert und jede betroffene Rolle erhält einen Verlaufseintrag.",
+    locationMergeSource: "Quelllagerort",
+    locationMergeTarget: "Ziellagerort",
+    locationMergeAction: "Zusammenführen und Quelle archivieren",
+    locationReviewMerge: "Zusammenführung prüfen",
+    locationMergeConfirmTitle: "{source} mit {target} zusammenführen?",
+    locationMergeConfirmDetail:
+      "Alle aktuellen, Heimat- und untergeordneten Verweise wechseln zum Ziel und die Quelle wird archiviert. Dies kann nicht automatisch rückgängig gemacht werden.",
+    locationMergeConfirm: "Zusammenführung und Archivierung bestätigen",
+    locationType: "Typ",
+    locationSystemOwned: "Systemverwaltet",
+    locationGeneric: "Lagerung",
+    locationSystemProtected: "Wird vom Drucker- oder Ausleihablauf verwaltet",
+    locationsEmpty:
+      "Noch keine Lagerorte gespeichert. Erstelle oben einen oder gib bei der Registrierung einer Rolle einen neuen Ort ein.",
+    locationCreated: "Lagerort erstellt.",
+    locationRenamed: "Lagerort umbenannt.",
+    locationArchived: "Lagerort archiviert.",
+    locationRestored: "Lagerort wiederhergestellt.",
+    locationsMerged: "Lagerorte zusammengeführt.",
     qrLabel: "QR",
     rollHistory: "Rollenverlauf",
     dangerZone: "Gefahrenbereich",
@@ -1087,6 +1149,24 @@ export const deDictionary: DictionaryNode = {
     noSamples: "Noch keine Gewichtsmessungen.",
   },
   statistics: {
+    forecastUnavailable: "Nicht genügend Verbrauchsdaten",
+    forecastDays: "{count} Tage",
+    consumptionForecast: "Verbrauchsprognose",
+    consumptionForecastHint:
+      "Eine deterministische Schätzung auf Grundlage des eigenen Bestands und des erfassten Verbrauchs eigener Materialien in den letzten 30 Tagen.",
+    forecastDataThrough: "Daten bis einschließlich {date}",
+    forecastOwnedStock: "Berücksichtigter eigener Bestand",
+    forecastUsageBasis: "Erfasster Verbrauch · 30 Tage",
+    forecastCoverage: "Geschätzte Reichweite",
+    forecastDepletion: "Möglicherweise aufgebraucht",
+    forecastNext30Days: "Geschätzter Verbrauch · nächste 30 Tage",
+    forecastRemaining30Days: "Geschätzter Bestand nach 30 Tagen",
+    forecastDailyAverage: "Angenommener Tagesverbrauch",
+    forecastSpoolsIncluded: "Berücksichtigte eigene Rollen",
+    forecastNeedsUsage:
+      "Erfasse den Verbrauch eigener Materialien, bevor ein voraussichtliches Aufbrauchdatum berechnet werden kann.",
+    forecastAssumptions:
+      "Annahme: Der tägliche Verbrauch entspricht weiterhin dem Durchschnitt der letzten 30 Tage. Geliehene, leere, verlorene und entfernte Rollen werden nicht berücksichtigt. Diese Prognose dient nur zur Information und erstellt niemals automatisch Bestellungen.",
     subtitle: "Bestand, Verbrauch, Ausleihen und Druckerleistung auswerten.",
     loansShort: "Ausleihen",
     totalConsumption: "Gesamtverbrauch",
@@ -1185,6 +1265,35 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    lowStockThresholds: "Grenzwerte für niedrigen Bestand",
+    lowStockThresholdsHint:
+      "Lege einen Standardwert für die Bibliothek fest und überschreibe ihn nur für Materialien, die einen anderen Nachbestellpunkt benötigen.",
+    lowStockThresholdsReadOnly:
+      "Verwalte diese bibliotheksweiten Grenzwerte in der Desktop-App des Hosts.",
+    lowStockPolicyRepair:
+      "Die gespeicherte Richtlinie für niedrigen Bestand ist beschädigt. Bestand und Statistiken bleiben nicht verfügbar, bis du hier einen gültigen Ersatz speicherst; der unten angezeigte Wert von 200 g ist nur ein Reparaturentwurf.",
+    lowStockDefaultThreshold: "Standardgrenzwert",
+    lowStockMaterialOverrides: "Abweichungen nach Material",
+    lowStockMaterialInheritance:
+      "Materialien ohne eigenen Wert übernehmen den Bibliotheksstandard.",
+    lowStockOverridesDefault: "Überschreibt den Standard",
+    lowStockThresholdGrams: "Grenzwert (g)",
+    lowStockUseDefault: "Standard verwenden",
+    lowStockAllMaterialsInherit:
+      "Alle Materialien verwenden derzeit den Standardgrenzwert.",
+    lowStockMaterial: "Material",
+    lowStockChooseMaterial: "Material auswählen",
+    lowStockNewOverrideThreshold: "Neuer Materialgrenzwert",
+    lowStockSetOverride: "Abweichung festlegen",
+    lowStockSelectedMaterialInheritance:
+      "Ohne eigenen Wert übernimmt dieses Material {count} g.",
+    lowStockThresholdValidation:
+      "Gib eine ganze Zahl von 1 bis 100000 g ein.",
+    lowStockSaving: "Grenzwerte werden gespeichert…",
+    lowStockSave: "Grenzwerte speichern",
+    lowStockSaved: "Grenzwerte für niedrigen Bestand gespeichert.",
+    lowStockSaveError:
+      "Grenzwerte für niedrigen Bestand konnten nicht gespeichert werden.",
     "bambuDiscoveryTitle": "Bambu-Drucker suchen",
     "bambuDiscoveryHint": "Kurz auf lokale Bambu-Druckerankündigungen warten. Es wird kein Zugriffscode gesendet.",
     "bambuDiscoveryFind": "Bambu-Drucker suchen",

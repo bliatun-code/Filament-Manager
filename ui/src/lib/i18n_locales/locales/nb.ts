@@ -12,12 +12,19 @@ export const nbDictionary: DictionaryNode = {
       add: "Legg til",
       all: "Alle",
       active: "Aktiv",
+      actions: "Handlinger",
+      archive: "Arkiver",
+      archived: "Arkivert",
+      create: "Opprett",
       on: "På",
       off: "Av",
       discontinued: "Utgått",
       loading: "Laster...",
       refresh: "Oppdater",
+      rename: "Gi nytt navn",
+      restore: "Gjenopprett",
       save: "Lagre",
+      status: "Status",
       cancel: "Avbryt",
       selected: "Valgt",
       remove: "Fjern",
@@ -78,6 +85,20 @@ export const nbDictionary: DictionaryNode = {
       bambuLiveAttentionBody:
         "{name} er ikke lenger Live før du kontrollerer og godkjenner printeridentiteten.",
       openBambuLiveSettings: "Åpne Live-innstillinger",
+      actionRequiredTitle: "Krever handling",
+      actionRequiredHint:
+        "Følg opp lav beholdning, forfalte utlån, innkommende kjøp og tillitsproblemer for printere på ett sted.",
+      actionSnapshotAgeUnknown: "Starttid ukjent · oppdaget i dette øyeblikksbildet",
+      actionCreatedAt: "Opprettet",
+      actionLowStockReason:
+        "{count, plural, one {# rull er} other {# ruller er}} på eller under grensen; laveste nivå er {remaining} av {threshold}.",
+      actionOverdueReason:
+        "Det aktive utlånet til {name} har passert forventet returdato.",
+      actionOnOrderReason:
+        "{count, plural, one {# rull er} other {# ruller er}} bestilt og klar til å mottas fra Innkjøp.",
+      actionPurchaseAdded: "Lagt til i ønskelisten. Åpner Innkjøp.",
+      actionPurchaseReused:
+        "Et åpent kjøp finnes allerede. Gjenbruker det og åpner Innkjøp.",
       onboardingInventoryBody:
         "Start med én rull, eller importer et eksisterende lager eller en sikkerhetskopi.",
       onboardingInventoryTitle: "Legg til eller importer lager",
@@ -308,6 +329,42 @@ export const nbDictionary: DictionaryNode = {
       remaining: "Gjenværende",
       placement: "Plassering",
       location: "Lokasjon",
+      locationsTitle: "Lokasjoner",
+      locationsHelp:
+        "Navn kan endres, mens uforanderlige ID-er holder plassering og historikk stabile.",
+      locationCount: "{count, plural, one {# lokasjon} other {# lokasjoner}}",
+      locationsLegacyHost:
+        "Denne verten er fra før lokasjonsobjekter. Eksisterende plasseringsnavn vises fortsatt, men verten må oppgraderes før lokasjoner kan endres.",
+      locationsOffline:
+        "Viser lagrede lokasjonsdata. Koble til verten igjen før lokasjoner endres.",
+      locationsHostManaged: "Par denne klienten med verten for å administrere lokasjoner.",
+      locationCreate: "Opprett lokasjon",
+      locationNamePlaceholder: "Eksempel: Tørkeboks 2",
+      locationChoose: "Velg lokasjon",
+      locationRename: "Gi lokasjonen nytt navn",
+      locationNewName: "Nytt navn",
+      locationMerge: "Slå sammen lokasjoner",
+      locationMergeHelp:
+        "Alle nåværende plasseringer, hjemmeplasseringer og underlokasjoner flyttes til målet. Kilden arkiveres, og alle berørte filamenter får en historikkhendelse.",
+      locationMergeSource: "Kildelokasjon",
+      locationMergeTarget: "Mållokasjon",
+      locationMergeAction: "Slå sammen og arkiver kilden",
+      locationReviewMerge: "Se gjennom sammenslåing",
+      locationMergeConfirmTitle: "Slå sammen {source} inn i {target}?",
+      locationMergeConfirmDetail:
+        "Alle nåværende plasseringer, hjemmeplasseringer og underlokasjoner flyttes til målet, og kilden arkiveres. Dette kan ikke angres automatisk.",
+      locationMergeConfirm: "Bekreft sammenslåing og arkivering",
+      locationType: "Type",
+      locationSystemOwned: "Systemeid",
+      locationGeneric: "Oppbevaring",
+      locationSystemProtected: "Administreres av printer- eller utlånsflyten",
+      locationsEmpty:
+        "Ingen lagrede lokasjoner ennå. Opprett en over, eller skriv inn en ny lokasjon når du registrerer et filament.",
+      locationCreated: "Lokasjonen er opprettet.",
+      locationRenamed: "Lokasjonen har fått nytt navn.",
+      locationArchived: "Lokasjonen er arkivert.",
+      locationRestored: "Lokasjonen er gjenopprettet.",
+      locationsMerged: "Lokasjonene er slått sammen.",
       assignedSlotLabel: "Tildelt spor",
       qrCode: "QR-kode",
       qrLabel: "QR",
@@ -1122,6 +1179,24 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     statistics: {
+      forecastUnavailable: "Ikke nok forbruksdata",
+      forecastDays: "{count} dager",
+      consumptionForecast: "Forbruksprognose",
+      consumptionForecastHint:
+        "Et deterministisk estimat basert på eid beholdning og registrert forbruk av eget filament de siste 30 dagene.",
+      forecastDataThrough: "Data til og med {date}",
+      forecastOwnedStock: "Eid beholdning inkludert",
+      forecastUsageBasis: "Registrert forbruk · 30 dager",
+      forecastCoverage: "Estimert dekning",
+      forecastDepletion: "Mulig tomdato",
+      forecastNext30Days: "Estimert forbruk · neste 30 dager",
+      forecastRemaining30Days: "Estimert beholdning etter 30 dager",
+      forecastDailyAverage: "Antatt daglig forbruk",
+      forecastSpoolsIncluded: "Eide ruller inkludert",
+      forecastNeedsUsage:
+        "Registrer forbruk av eget filament før en mulig tomdato kan beregnes.",
+      forecastAssumptions:
+        "Forutsetning: Daglig forbruk forblir lik gjennomsnittet for de siste 30 dagene. Innlånte, tomme, mistede og fjernede ruller er utelatt. Prognosen er kun veiledende og oppretter aldri bestillinger automatisk.",
       desktopOnly: "Statistikk er kun tilgjengelig i desktop-appen.",
       periodTitle: "Rapporteringsperiode",
       periodCustom: "Egendefinert intervall",

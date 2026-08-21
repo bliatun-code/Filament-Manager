@@ -12,12 +12,19 @@ export const enDictionary: DictionaryNode = {
       add: "Add",
       all: "All",
       active: "Active",
+      actions: "Actions",
+      archive: "Archive",
+      archived: "Archived",
+      create: "Create",
       on: "On",
       off: "Off",
       discontinued: "Discontinued",
       loading: "Loading...",
       refresh: "Refresh",
+      rename: "Rename",
+      restore: "Restore",
       save: "Save",
+      status: "Status",
       cancel: "Cancel",
       selected: "Selected",
       remove: "Remove",
@@ -78,6 +85,20 @@ export const enDictionary: DictionaryNode = {
       bambuLiveAttentionBody:
         "{name} is no longer Live until you review and trust the printer identity.",
       openBambuLiveSettings: "Open Live settings",
+      actionRequiredTitle: "Requires action",
+      actionRequiredHint:
+        "Resolve low stock, overdue loans, incoming purchases and printer trust issues from one place.",
+      actionSnapshotAgeUnknown: "Start time unknown · detected in this snapshot",
+      actionCreatedAt: "Created",
+      actionLowStockReason:
+        "{count, plural, one {# spool} other {# spools}} at or below the threshold; lowest is {remaining} of {threshold}.",
+      actionOverdueReason:
+        "The active loan to {name} is past its expected return date.",
+      actionOnOrderReason:
+        "{count, plural, one {# spool is} other {# spools are}} on order and ready to receive from Purchases.",
+      actionPurchaseAdded: "Added to the wishlist. Opening Purchases.",
+      actionPurchaseReused:
+        "An open purchase already exists. Reusing it and opening Purchases.",
       onboardingInventoryBody: "Start with one spool, or import an existing inventory or backup.",
       onboardingInventoryTitle: "Add or import inventory",
       onboardingPrinterBody:
@@ -307,6 +328,42 @@ export const enDictionary: DictionaryNode = {
       remaining: "Remaining",
       placement: "Placement",
       location: "Location",
+      locationsTitle: "Locations",
+      locationsHelp:
+        "Names can change while immutable IDs keep roll placement and history stable.",
+      locationCount: "{count, plural, one {# location} other {# locations}}",
+      locationsLegacyHost:
+        "This Host predates location objects. Existing placement names remain visible, but upgrade the Host before changing locations.",
+      locationsOffline:
+        "Showing saved location data. Reconnect to the Host before changing locations.",
+      locationsHostManaged: "Pair this client with the Host to manage library locations.",
+      locationCreate: "Create location",
+      locationNamePlaceholder: "Example: Dry box 2",
+      locationChoose: "Choose location",
+      locationRename: "Rename location",
+      locationNewName: "New name",
+      locationMerge: "Merge locations",
+      locationMergeHelp:
+        "All current, home and child references move to the target. The source is archived and every affected roll gets a history event.",
+      locationMergeSource: "Source location",
+      locationMergeTarget: "Target location",
+      locationMergeAction: "Merge & archive source",
+      locationReviewMerge: "Review merge",
+      locationMergeConfirmTitle: "Merge {source} into {target}?",
+      locationMergeConfirmDetail:
+        "Every current, home and child reference moves to the target and the source is archived. This cannot be automatically undone.",
+      locationMergeConfirm: "Confirm merge & archive",
+      locationType: "Type",
+      locationSystemOwned: "System-owned",
+      locationGeneric: "Storage",
+      locationSystemProtected: "Managed by printer or loan workflow",
+      locationsEmpty:
+        "No saved locations yet. Create one above or type a new location while registering a roll.",
+      locationCreated: "Location created.",
+      locationRenamed: "Location renamed.",
+      locationArchived: "Location archived.",
+      locationRestored: "Location restored.",
+      locationsMerged: "Locations merged.",
       assignedSlotLabel: "Assigned slot",
       qrCode: "QR code",
       qrLabel: "QR",
@@ -1116,6 +1173,24 @@ export const enDictionary: DictionaryNode = {
       },
     },
     statistics: {
+      forecastUnavailable: "Not enough usage data",
+      forecastDays: "{count} days",
+      consumptionForecast: "Consumption forecast",
+      consumptionForecastHint:
+        "A deterministic estimate based on owned stock and recorded owned usage during the last 30 days.",
+      forecastDataThrough: "Data through {date}",
+      forecastOwnedStock: "Owned stock included",
+      forecastUsageBasis: "Recorded use · 30 days",
+      forecastCoverage: "Estimated coverage",
+      forecastDepletion: "Potentially depleted",
+      forecastNext30Days: "Estimated use · next 30 days",
+      forecastRemaining30Days: "Estimated stock after 30 days",
+      forecastDailyAverage: "Assumed daily use",
+      forecastSpoolsIncluded: "Owned spools included",
+      forecastNeedsUsage:
+        "Record owned filament use before a depletion date can be estimated.",
+      forecastAssumptions:
+        "Assumption: daily use stays equal to the last 30-day average. Borrowed-in, empty, lost and removed spools are excluded. This forecast is informational and never creates orders automatically.",
       desktopOnly: "Statistics are available in the desktop app build.",
       periodTitle: "Reporting period",
       periodCustom: "Custom range",
