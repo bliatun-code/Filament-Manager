@@ -5,6 +5,11 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { I18nContext, type I18nContextValue } from "../lib/i18n";
+import {
+  groupInventorySpools,
+  type InventorySpool,
+} from "../lib/inventory_list_model";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 registerHooks({
   load(url, context, nextLoad) {
@@ -26,7 +31,7 @@ const { InventorySpoolCollection } = await import("./inventory_spool_collection"
 const i18nValue: I18nContextValue = {
   locale: "en",
   setLocale: () => {},
-  t: (_key, fallback = "") => fallback,
+  t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
 };
 
 function renderEmptyCollection(options: {
@@ -38,16 +43,19 @@ function renderEmptyCollection(options: {
     <I18nContext.Provider value={i18nValue}>
       <InventorySpoolCollection
         addSpoolDisabled={options.addSpoolDisabled ?? false}
+        bulkSelectionDisabled={false}
         filteredSpools={[]}
         groupedSpools={[]}
         inventoryView="CARDS"
         loading={options.loading ?? false}
         onAddSpool={() => {}}
+        onBulkSelectionChange={() => {}}
         onResetFilters={() => {}}
         onSelectRoll={() => {}}
         recentlyAddedSpoolId={null}
         resolvedTheme="light"
         selectedSpoolId={null}
+        selectedBulkSpoolIds={new Set()}
         totalSpoolCount={options.totalSpoolCount ?? 0}
       />
     </I18nContext.Provider>,
@@ -85,4 +93,47 @@ test("empty inventory respects read-only add restrictions", () => {
   const html = renderEmptyCollection({ addSpoolDisabled: true });
 
   assert.match(html, /<button[^>]*disabled=""[^>]*>Add spool<\/button>/);
+});
+
+test("visible inventory rows expose the controlled bulk selection independently of opening details", () => {
+  const spool: InventorySpool = {
+    colorName: "Black",
+    filamentName: "Basic",
+    id: "spool-a",
+    initialWeightGrams: 1_000,
+    masterId: "master-a",
+    material: "PLA",
+    ownershipType: "OWNED",
+    remainingGrams: 640,
+    status: "IN_STOCK",
+    vendor: "Bambu Lab",
+  };
+  const html = renderToStaticMarkup(
+    <I18nContext.Provider value={i18nValue}>
+      <InventorySpoolCollection
+        addSpoolDisabled={false}
+        bulkSelectionDisabled={false}
+        filteredSpools={[spool]}
+        groupedSpools={groupInventorySpools([spool])}
+        inventoryView="LIST"
+        loading={false}
+        onAddSpool={() => {}}
+        onBulkSelectionChange={() => {}}
+        onResetFilters={() => {}}
+        onSelectRoll={() => {}}
+        recentlyAddedSpoolId={null}
+        resolvedTheme="light"
+        selectedSpoolId={null}
+        selectedBulkSpoolIds={new Set([spool.id])}
+        totalSpoolCount={1}
+      />
+    </I18nContext.Provider>,
+  );
+
+  assert.match(
+    html,
+    /<input(?=[^>]*type="checkbox")(?=[^>]*checked="")[^>]*>/,
+  );
+  assert.match(html, /<span class="sr-only">Select #pool-a<\/span>/);
+  assert.match(html, /<button[^>]*type="button"/);
 });

@@ -66,8 +66,10 @@ pub(crate) fn library_sync_host_input(
 
 pub(crate) fn prepare_library_sync_host_write(
     input: &ValidateLibrarySyncHostInput,
-) -> Result<(String, Option<&str>), String> {
-    prepare_library_sync_host_checked(input)
+) -> Result<(String, CompanionHealthCheckResponse), String> {
+    let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
+    let health = ensure_library_sync_host_matches(&normalized_base_url, expected_library_id)?;
+    Ok((normalized_base_url, health))
 }
 
 pub(crate) fn prepare_library_sync_host_checked(

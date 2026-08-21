@@ -225,6 +225,7 @@ pub(crate) struct CompanionHealthResponse {
 }
 
 pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-return";
+pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-mutations";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

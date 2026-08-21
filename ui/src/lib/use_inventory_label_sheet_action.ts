@@ -7,6 +7,10 @@ import type {
   InventoryLabelSheetPaperId,
 } from "./inventory_label_sheet_layout";
 import { buildInventoryLabelSheetRows } from "./inventory_label_sheet_rows";
+import {
+  resolveInventoryBulkDataPlanRows,
+  type InventoryBulkDataPlan,
+} from "./inventory_bulk_actions_model";
 import type { InventorySpool } from "./inventory_list_model";
 import { exportInventoryLabelSheetPdf } from "./tauri_client";
 
@@ -38,7 +42,7 @@ export function useInventoryLabelSheetAction({
   const [saving, setSaving] = useState(false);
   const [items, setItems] = useState<InventoryLabelSheetItem[]>([]);
 
-  const openLabelSheet = useCallback(async () => {
+  const openLabelSheet = useCallback(async (selectionPlan?: InventoryBulkDataPlan) => {
     if (!tauriAvailable || busy || loading) {
       return;
     }
@@ -48,6 +52,12 @@ export function useInventoryLabelSheetAction({
     setError(null);
     setInfoMessage(null);
     try {
+      const selectedRows = selectionPlan
+        ? resolveInventoryBulkDataPlanRows(selectionPlan, spools)
+        : null;
+      if (selectedRows && !selectedRows.ok) {
+        throw new Error(`Inventory selection is stale: ${selectedRows.error}`);
+      }
       const [companionShellUrl, qrModule, labelModule] = await Promise.all([
         import("./spool_qr_artifacts").then(({ resolveSpoolQrCompanionShellUrl }) =>
           resolveSpoolQrCompanionShellUrl({ clientReadOnly, clientHostBaseUrl }),
@@ -56,7 +66,8 @@ export function useInventoryLabelSheetAction({
         import("./filament_label_print"),
       ]);
       const rows = await buildInventoryLabelSheetRows({
-        spools,
+        spools: selectedRows?.ok ? [...selectedRows.rows] : spools,
+        selectionMode: selectedRows?.ok ? "EXACT" : "ON_HAND",
         locale,
         companionShellUrl,
         labels: {

@@ -4,6 +4,7 @@ use crate::companion_http::{
     enforce_companion_rate_limit, enforce_companion_request_timeout, CompanionHttpSecurity,
     CompanionHttpSecurityConfig,
 };
+use crate::companion_inventory_bulk_write_api::handle_execute_inventory_bulk_mutation;
 use crate::companion_inventory_read_api::{
     handle_find_spool_by_qr, handle_get_spool_detail, handle_list_active_spool_loans,
     handle_list_catalog_masters, handle_list_printer_overview, handle_list_spool_loans,
@@ -66,6 +67,10 @@ fn build_router_with_security_config(
         )
         .route("/library/wishlist", get(handle_library_wishlist_items))
         .route("/inventory/spools", get(handle_list_spools))
+        .route(
+            "/inventory/bulk-mutations",
+            post(handle_execute_inventory_bulk_mutation),
+        )
         .route("/locations", get(handle_list_locations))
         .route("/locations", post(handle_create_location))
         .route("/locations/merge", post(handle_merge_locations))

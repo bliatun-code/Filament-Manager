@@ -31,6 +31,7 @@ import {
 } from "../lib/inventory_visual_fixture";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { useInventoryAddWorkflow } from "../lib/use_inventory_add_workflow";
+import { useInventoryBulkActions } from "../lib/use_inventory_bulk_actions";
 import { useInventoryDetailVisualFixture } from "../lib/use_inventory_detail_visual_fixture";
 import { useInventoryFeedbackTimeout } from "../lib/use_inventory_feedback_timeout";
 import { useInventoryFilters } from "../lib/use_inventory_filters";
@@ -682,6 +683,32 @@ export default function InventoryPage({
   });
   const inventoryLabelSheetVisualQaOpenedRef = useRef(false);
 
+  const {
+    collectionProps: inventoryBulkCollectionProps,
+    panelProps: inventoryBulkActionsProps,
+  } = useInventoryBulkActions({
+    activeLoanSpoolIds,
+    busy: manageBusy,
+    clientHostBaseUrl,
+    clientHostWritePaired,
+    clientLibraryId,
+    clientReadOnly,
+    filteredSpools,
+    loading,
+    locations,
+    openLabelSheet: openInventoryLabelSheet,
+    printerSlotBySpoolId,
+    reloadActiveLoans,
+    reloadPrinterOverview,
+    reloadSpools,
+    setBusy: setManageBusy,
+    setError,
+    setInfoMessage,
+    spools,
+    tauriAvailable: tauri,
+    t,
+  });
+
   useEffect(() => {
     if (
       desktopVisualQaScenario !== "settings-inventory-label-sheet" ||
@@ -1262,11 +1289,13 @@ export default function InventoryPage({
         activeView={activeWorkspaceView}
         addModalActive={addModalActive}
         addModalProps={inventoryAddModalProps}
+        bulkActionsProps={inventoryBulkActionsProps}
         clientHostDeviceName={clientHostDeviceName}
         clientInventorySource={clientInventorySource}
         clientInventoryUpdatedAt={clientInventoryUpdatedAt}
         clientReadOnly={clientReadOnly}
         collectionProps={{
+          ...inventoryBulkCollectionProps,
           filteredSpools,
           groupedSpools,
           inventoryView,

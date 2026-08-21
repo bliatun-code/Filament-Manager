@@ -34,16 +34,19 @@ import {
 
 type InventorySpoolCollectionProps = {
   addSpoolDisabled: boolean;
+  bulkSelectionDisabled: boolean;
   filteredSpools: InventorySpool[];
   groupedSpools: SpoolGroup[];
   inventoryView: InventoryViewMode;
   loading: boolean;
   onAddSpool: () => void;
+  onBulkSelectionChange: (spoolId: string, selected: boolean) => void;
   onResetFilters: () => void;
   onSelectRoll: (spoolId: string) => void;
   recentlyAddedSpoolId: string | null;
   resolvedTheme: ResolvedTheme;
   selectedSpoolId: string | null;
+  selectedBulkSpoolIds: ReadonlySet<string>;
   totalSpoolCount: number;
 };
 
@@ -93,6 +96,31 @@ function RemainingMeter({
   );
 }
 
+function InventoryBulkSpoolSelectionCheckbox({
+  checked,
+  disabled,
+  label,
+  onCheckedChange,
+}: Readonly<{
+  checked: boolean;
+  disabled: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}>) {
+  return (
+    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center">
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onCheckedChange(event.currentTarget.checked)}
+        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-600 dark:bg-slate-900"
+      />
+      <span className="sr-only">{label}</span>
+    </label>
+  );
+}
+
 function inventorySpoolRollButtonClassName(mode: "single" | "compact"): string {
   const base =
     "rounded-xl border px-3.5 py-3 text-left outline-none transition hover:-translate-y-[1px] focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
@@ -123,16 +151,19 @@ function inventorySpoolListButtonClassName(state: InventorySpoolListButtonState)
 
 export function InventorySpoolCollection({
   addSpoolDisabled,
+  bulkSelectionDisabled,
   filteredSpools,
   groupedSpools,
   inventoryView,
   loading,
   onAddSpool,
+  onBulkSelectionChange,
   onResetFilters,
   onSelectRoll,
   recentlyAddedSpoolId,
   resolvedTheme,
   selectedSpoolId,
+  selectedBulkSpoolIds,
   totalSpoolCount,
 }: InventorySpoolCollectionProps) {
   const { locale, t } = useI18n();
@@ -261,46 +292,60 @@ export function InventorySpoolCollection({
                 </div>
 
                 {singleVisibleRoll ? (
-                  <button
-                    type="button"
-                    onClick={() => onSelectRoll(singleVisibleRoll.id)}
-                    className={inventorySpoolRollButtonClassName("single")}
-                    style={inventorySwatchInteractiveInsetStyle(
-                      singleVisibleRoll.hexColor ?? group.hexColor,
-                      resolvedTheme,
-                      selectedSpoolId === singleVisibleRoll.id
-                        ? "selected"
-                        : singleVisibleRoll.id === recentlyAddedSpoolId
-                          ? "recent"
-                          : "default",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
-                          {formatInventoryPlacement(t, singleVisibleRoll.location)}
+                  <div className="flex items-start gap-1">
+                    <InventoryBulkSpoolSelectionCheckbox
+                      checked={selectedBulkSpoolIds.has(singleVisibleRoll.id)}
+                      disabled={bulkSelectionDisabled}
+                      label={t(
+                        "inventory.bulkSelectSpool",
+                        "Select {reference}",
+                        { reference: formatRollReference(singleVisibleRoll) },
+                      )}
+                      onCheckedChange={(selected) =>
+                        onBulkSelectionChange(singleVisibleRoll.id, selected)
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onSelectRoll(singleVisibleRoll.id)}
+                      className={`${inventorySpoolRollButtonClassName("single")} min-w-0 flex-1`}
+                      style={inventorySwatchInteractiveInsetStyle(
+                        singleVisibleRoll.hexColor ?? group.hexColor,
+                        resolvedTheme,
+                        selectedSpoolId === singleVisibleRoll.id
+                          ? "selected"
+                          : singleVisibleRoll.id === recentlyAddedSpoolId
+                            ? "recent"
+                            : "default",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-50">
+                            {formatInventoryPlacement(t, singleVisibleRoll.location)}
+                          </div>
+                          <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                            {formatRollReference(singleVisibleRoll)}
+                            {isBorrowedInOwnership(singleVisibleRoll.ownershipType) &&
+                            singleVisibleRoll.ownerName
+                              ? ` · ${t("inventory.borrowedFrom", "Borrowed from")}: ${
+                                  singleVisibleRoll.ownerName
+                                }`
+                              : ""}
+                          </div>
                         </div>
-                        <div className="mt-1 truncate text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                          {formatRollReference(singleVisibleRoll)}
-                          {isBorrowedInOwnership(singleVisibleRoll.ownershipType) &&
-                          singleVisibleRoll.ownerName
-                            ? ` · ${t("inventory.borrowedFrom", "Borrowed from")}: ${
-                                singleVisibleRoll.ownerName
-                              }`
-                            : ""}
+                        <div className="shrink-0 text-right">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                            {t("inventory.remaining", "Remaining")}
+                          </div>
+                          <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
+                            {formatGrams(singleVisibleRoll.remainingGrams, "dash", locale)}
+                          </div>
                         </div>
                       </div>
-                      <div className="shrink-0 text-right">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                          {t("inventory.remaining", "Remaining")}
-                        </div>
-                        <div className="mt-1 text-sm font-semibold leading-tight text-slate-900 dark:text-slate-50">
-                          {formatGrams(singleVisibleRoll.remainingGrams, "dash", locale)}
-                        </div>
-                      </div>
-                    </div>
-                    <RemainingMeter className="mt-3" spool={singleVisibleRoll} />
-                  </button>
+                      <RemainingMeter className="mt-3" spool={singleVisibleRoll} />
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2.5">
                     <div id={rollListId} className="space-y-2.5">
@@ -312,17 +357,29 @@ export function InventorySpoolCollection({
                               ? "recent"
                               : "default";
                         return (
-                          <button
-                            key={roll.id}
-                            type="button"
-                            onClick={() => onSelectRoll(roll.id)}
-                            className={inventorySpoolRollButtonClassName("compact")}
-                            style={inventorySwatchInteractiveInsetStyle(
-                              roll.hexColor ?? group.hexColor,
-                              resolvedTheme,
-                              emphasis,
-                            )}
-                          >
+                          <div key={roll.id} className="flex items-start gap-1">
+                            <InventoryBulkSpoolSelectionCheckbox
+                              checked={selectedBulkSpoolIds.has(roll.id)}
+                              disabled={bulkSelectionDisabled}
+                              label={t(
+                                "inventory.bulkSelectSpool",
+                                "Select {reference}",
+                                { reference: formatRollReference(roll) },
+                              )}
+                              onCheckedChange={(selected) =>
+                                onBulkSelectionChange(roll.id, selected)
+                              }
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onSelectRoll(roll.id)}
+                              className={`${inventorySpoolRollButtonClassName("compact")} min-w-0 flex-1`}
+                              style={inventorySwatchInteractiveInsetStyle(
+                                roll.hexColor ?? group.hexColor,
+                                resolvedTheme,
+                                emphasis,
+                              )}
+                            >
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <div className="truncate text-[13px] font-semibold leading-snug text-slate-900 dark:text-slate-50">
@@ -348,7 +405,8 @@ export function InventorySpoolCollection({
                                 {formatGrams(roll.remainingGrams, "dash", locale)}
                               </div>
                             </div>
-                          </button>
+                            </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -390,13 +448,25 @@ export function InventorySpoolCollection({
                   ? "recent"
                   : "default";
             return (
-              <button
-                key={roll.id}
-                type="button"
-                onClick={() => onSelectRoll(roll.id)}
-                className={inventorySpoolListButtonClassName(listButtonState)}
-                style={inventorySwatchCardStyle(roll.hexColor, resolvedTheme)}
-              >
+              <div key={roll.id} className="flex items-start gap-1">
+                <InventoryBulkSpoolSelectionCheckbox
+                  checked={selectedBulkSpoolIds.has(roll.id)}
+                  disabled={bulkSelectionDisabled}
+                  label={t(
+                    "inventory.bulkSelectSpool",
+                    "Select {reference}",
+                    { reference: formatRollReference(roll) },
+                  )}
+                  onCheckedChange={(selected) =>
+                    onBulkSelectionChange(roll.id, selected)
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => onSelectRoll(roll.id)}
+                  className={`${inventorySpoolListButtonClassName(listButtonState)} min-w-0 flex-1`}
+                  style={inventorySwatchCardStyle(roll.hexColor, resolvedTheme)}
+                >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
@@ -434,7 +504,8 @@ export function InventorySpoolCollection({
                     </div>
                   </div>
                 </div>
-              </button>
+                </button>
+              </div>
             );
           })}
 

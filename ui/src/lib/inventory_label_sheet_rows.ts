@@ -18,14 +18,18 @@ export async function buildInventoryLabelSheetRows(input: {
   companionShellUrl: string | null;
   labels: InventoryLabelSheetLabels;
   locale: string;
+  selectionMode?: "EXACT" | "ON_HAND";
   spools: InventorySpool[];
 }): Promise<InventoryOverviewPrintRow[]> {
   const collator = createLocaleCollator(input.locale, {
     numeric: true,
     sensitivity: "base",
   });
-  const onHand = input.spools
-    .filter((spool) => isSpoolStatusOnHand(spool.status))
+  const candidates = input.spools
+    .filter(
+      (spool) =>
+        input.selectionMode === "EXACT" || isSpoolStatusOnHand(spool.status),
+    )
     .sort((left, right) => {
       const material = collator.compare(left.material, right.material);
       if (material !== 0) {
@@ -39,7 +43,7 @@ export async function buildInventoryLabelSheetRows(input: {
     });
 
   return Promise.all(
-    onHand.map(async (spool) => {
+    candidates.map(async (spool) => {
       const reference = spool.id.trim();
       const qrPayload = input.buildFilamentQrPayload(reference, {
         companionShellUrl: input.companionShellUrl,

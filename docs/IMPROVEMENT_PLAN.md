@@ -66,7 +66,7 @@ Fasen er ferdig når innkjøpskøen nås direkte, spolekontekst følger hele arb
 | Prioritet | Arbeid | Status | Ferdigkriterium |
 | --- | --- | --- | --- |
 | P0 | Gjøre lokasjoner til egne objekter med stabil ID, oppretting, autofullføring, endring, sammenslåing og arkivering. | Ferdig | Lokasjonsendringer synkroniseres, er med i backup og bryter ikke eksisterende spolehistorikk. |
-| P1 | Legge til massehandlinger for flytting, status, etiketter og eksport. | Ikke startet | Operasjonene er atomiske, viser berørt antall før bekreftelse og skriver historikk per spole. |
+| P1 | Legge til massehandlinger for flytting, status, etiketter og eksport. | Ferdig | Operasjonene er atomiske, viser berørt antall før bekreftelse og skriver historikk per spole. |
 | P0 | Gjøre lav-beholdningsgrensen konfigurerbar globalt, med valgfritt avvik per materiale. | Ferdig | Inventory, Dashboard, Statistics, Host, Client og Companion bruker samme effektive terskel. |
 | P1 | Legge kontakt og forventet returdato på utlån. | Ferdig | Forfalte lån kan identifiseres og fullført retur fjerner oppgaven umiddelbart. |
 | P0 | Lage Krever handling på Dashboard for lav beholdning, forfalte lån, mottaksklare bestillinger og Bambu Live-problemer. | Ferdig | Hvert kort viser årsak, alder og direkte handling; løste forhold forsvinner uten manuell oppfriskning. |
@@ -119,10 +119,9 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Legg til sporbare massehandlinger for flytting, status, etiketter og eksport.
-2. Fullfør mottaksmetadata med validering, senere redigering og eksport.
-3. Legg til sporbar lagerverdi og materialkostnad uten å summere på tvers av valutaer.
-4. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
+1. Fullfør mottaksmetadata med validering, senere redigering og eksport.
+2. Legg til sporbar lagerverdi og materialkostnad uten å summere på tvers av valutaer.
+3. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
 
 ## Fremdriftslogg
 
@@ -144,6 +143,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - En deterministisk 30-dagers forbruksprognose viser datagrunnlag og antakelser uten å opprette automatiske bestillinger.
 - Publiserte databasemigrasjoner er låst i et autoritativt manifest. CI avviser endring, sletting og omnummerering, og verifiserer både tom installasjon, schema-1-oppgradering og v0.27-kompatibilitet.
 - Lokasjoner er egne objekter med uforanderlig ID, redigerbart navn, arkiv/gjenoppretting og atomisk sammenslåing. Desktop, Host, Client og Companion deler kontrakten; legacy `SHELF` migreres til `GENERIC` uten å endre spole-FK-er eller historikk.
+- Lageret har sporbare massehandlinger for flytting og status med en egen gjennomgang før bekreftelse. Backend validerer hele snapshotet før første skriv og committer alle endringer og historikkrader i én transaksjon; etiketter og CSV-/JSON-eksport bruker nøyaktig det valgte spolesettet. Client sender én beskyttet Host-operasjon uten lokal fallback, og eldre Host avvises eksplisitt via capability-sjekk.
 - Lavlagerpolicyen har én validert standard og valgfrie materialoverstyringer. Effektiv terskel følger hver spole gjennom Inventory, Dashboard, Statistics, Host, Client og Companion; eldre Host bruker en eksplisitt 200 g-kompatibilitetsverdi.
 - Utlån lagrer valgfri kontakt og forventet returdato. Ugyldige datoer stoppes før lagring, eldre Host avviser metadata før POST, og en ren datomodell identifiserer forfalte aktive lån uten å merke returnerte lån.
 - Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 3, og samme gate er koblet blokkerende til Windows CI.

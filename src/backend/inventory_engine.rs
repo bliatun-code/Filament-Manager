@@ -4,6 +4,9 @@ use crate::backend::database_events::{
     ensure_scale as ensure_scale_row, insert_spool_history_event as insert_spool_history_event_row,
     insert_weight_reading as insert_weight_reading_row,
 };
+pub use crate::backend::database_inventory_bulk_models::{
+    InventoryBulkMutationInput, InventoryBulkMutationResult, InventoryBulkSpoolPrecondition,
+};
 use crate::backend::database_loan_create::{
     create_inbound_spool_loan_in_transaction, create_spool_loan_in_transaction,
 };
@@ -278,6 +281,13 @@ pub struct InventoryEngine {
 impl InventoryEngine {
     pub fn new(db: FilamentDatabase) -> Self {
         Self { db }
+    }
+
+    pub fn execute_bulk_inventory_mutation(
+        &self,
+        input: InventoryBulkMutationInput,
+    ) -> InventoryResult<InventoryBulkMutationResult> {
+        self.db.execute_inventory_bulk_mutation(input)
     }
 
     pub fn list_spools(&self, limit: i64, offset: i64) -> InventoryResult<Vec<SpoolWithMasterRow>> {

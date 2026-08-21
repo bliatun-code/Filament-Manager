@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 import { FeedbackBanner } from "./feedback_banner";
 import { InventoryAddModal, type InventoryAddModalProps } from "./inventory_add_modal";
 import {
@@ -6,6 +6,7 @@ import {
   InventoryHeaderActions,
 } from "./inventory_controls_panel";
 import { InventorySpoolCollection } from "./inventory_spool_collection";
+import type { InventoryBulkActionsPanelViewProps } from "./inventory_bulk_actions_panel";
 import { InventoryLocationManagementPanel } from "./inventory_location_management_panel";
 import {
   InventoryWorkspaceNavigation,
@@ -16,10 +17,16 @@ import { WishlistQueuePanel, type WishlistQueuePanelProps } from "./wishlist_que
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 
+const InventoryBulkActionsPanelView = lazy(async () => {
+  const module = await import("./inventory_bulk_actions_panel");
+  return { default: module.InventoryBulkActionsPanelView };
+});
+
 type InventoryPageWorkspaceProps = {
   activeView: InventoryWorkspaceView;
   addModalActive: boolean;
   addModalProps: InventoryAddModalProps;
+  bulkActionsProps: InventoryBulkActionsPanelViewProps;
   clientHostDeviceName: string | null;
   clientInventorySource: string | null;
   clientInventoryUpdatedAt: string | null;
@@ -52,6 +59,7 @@ export function InventoryPageWorkspace({
   activeView,
   addModalActive,
   addModalProps,
+  bulkActionsProps,
   clientHostDeviceName,
   clientInventorySource,
   clientInventoryUpdatedAt,
@@ -163,13 +171,24 @@ export function InventoryPageWorkspace({
             role="region"
             aria-labelledby="inventory-stock-tab"
           >
-            <InventorySpoolCollection
-              {...collectionProps}
-              addSpoolDisabled={headerActionsProps.primaryActionsDisabled}
-              onAddSpool={headerActionsProps.onAddSpool}
-              onResetFilters={controlsProps.onResetFilters}
-              totalSpoolCount={totalInventoryCount}
-            />
+            <Suspense
+              fallback={
+                <div className="surface-subtle p-4 text-sm text-slate-600 dark:text-slate-300" role="status">
+                  {t("common.loading", "Loading...")}
+                </div>
+              }
+            >
+              <InventoryBulkActionsPanelView {...bulkActionsProps} />
+            </Suspense>
+            <div className="mt-4">
+              <InventorySpoolCollection
+                {...collectionProps}
+                addSpoolDisabled={headerActionsProps.primaryActionsDisabled}
+                onAddSpool={headerActionsProps.onAddSpool}
+                onResetFilters={controlsProps.onResetFilters}
+                totalSpoolCount={totalInventoryCount}
+              />
+            </div>
           </div>
         ) : activeView === "PURCHASES" ? (
           <div

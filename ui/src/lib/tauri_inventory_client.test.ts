@@ -2,10 +2,44 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildLibrarySyncHostInventoryBulkMutationPayload,
   buildLibrarySyncHostSpoolCreatePayload,
   type CreateManualSpoolInput,
   type CreateSpoolInput,
 } from "./tauri_inventory_client";
+
+test("bulk host payload preserves one tagged atomic mutation request", () => {
+  const command = {
+    action: "STATUS" as const,
+    expected_affected_count: 1,
+    spools: [
+      {
+        expected_active_loan: false,
+        expected_assigned_to_printer: false,
+        expected_home_location_id: "location-a",
+        expected_location_id: "location-a",
+        expected_status: "IN_STOCK" as const,
+        spool_id: "spool-a",
+      },
+    ],
+    target_status: "EMPTY" as const,
+  };
+
+  assert.deepEqual(
+    buildLibrarySyncHostInventoryBulkMutationPayload(
+      "http://host.local:4278",
+      "library-1",
+      command,
+    ),
+    {
+      input: {
+        base_url: "http://host.local:4278",
+        expected_library_id: "library-1",
+        mutation: command,
+      },
+    },
+  );
+});
 
 test("buildLibrarySyncHostSpoolCreatePayload forwards catalog ownership to host create", () => {
   const input: CreateSpoolInput = {

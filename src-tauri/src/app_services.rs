@@ -9,10 +9,10 @@ use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::{
     AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
     CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
-    InventoryEngine, LendSpoolInput, PurgeSpoolInput, ReceiveWishlistItemInput,
-    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
-    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
-    UpdateWishlistStatusInput, WeightSource,
+    InventoryBulkMutationInput, InventoryBulkMutationResult, InventoryEngine, LendSpoolInput,
+    PurgeSpoolInput, ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
+    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
+    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
@@ -285,6 +285,13 @@ impl CompanionService {
 
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.update_spool_details(input))
+    }
+
+    pub fn execute_inventory_bulk_mutation(
+        &self,
+        input: InventoryBulkMutationInput,
+    ) -> InventoryResult<InventoryBulkMutationResult> {
+        self.with_inventory(|engine| engine.execute_bulk_inventory_mutation(input))
     }
 
     pub fn update_spool_rfid_tag(

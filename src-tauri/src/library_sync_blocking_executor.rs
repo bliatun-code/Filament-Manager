@@ -357,6 +357,10 @@ mod tests {
                 ][..],
             ),
             (
+                include_str!("library_sync_inventory_bulk_write_commands.rs"),
+                &["execute_library_sync_host_inventory_bulk_mutation"][..],
+            ),
+            (
                 include_str!("library_sync_printer_write_commands.rs"),
                 &[
                     "assign_library_sync_host_printer_slot",

@@ -305,6 +305,54 @@ export const frDictionary: DictionaryNode = {
     locationArchived: "Emplacement archivé.",
     locationRestored: "Emplacement restauré.",
     locationsMerged: "Emplacements fusionnés.",
+    bulkActionsTitle: "Actions groupées",
+    bulkMoveAction: "Déplacer",
+    bulkStatusAction: "Modifier le statut",
+    bulkMoveTitle: "Déplacer les bobines sélectionnées",
+    bulkStatusTitle: "Modifier le statut des bobines sélectionnées",
+    bulkNoSelection: "Aucune bobine sélectionnée",
+    bulkSelectedCount: "{count, plural, one {# bobine sélectionnée} other {# bobines sélectionnées}}",
+    bulkSelectVisible: "Sélectionner {count} bobines visibles",
+    bulkSelectSpool: "Sélectionner {reference}",
+    bulkClearSelection: "Effacer la sélection",
+    bulkReviewMove: "Vérifier le déplacement",
+    bulkReviewStatus: "Vérifier le changement de statut",
+    bulkReviewTitle: "Vérifier : {action}",
+    bulkReviewSelected: "{count} sélectionnées",
+    bulkAffected: "Concernées",
+    bulkAffectedCount: "{count} concernées",
+    bulkUnchanged: "Inchangées",
+    bulkUnchangedCount: "{count} inchangées",
+    bulkTarget: "Cible",
+    bulkReviewTarget: "Cible de {action} : {target}",
+    bulkReviewChanged:
+      "La sélection ou les données des bobines ont changé. Vérifiez de nouveau l’action.",
+    bulkAtomicWarning:
+      "Les {count} modifications et leur historique sont enregistrés ensemble, ou rien n’est écrit.",
+    bulkConfirmAction: "Confirmer {action} pour {count}",
+    bulkActiveLoanBlocked:
+      "{count, plural, one {# bobine concernée a} other {# bobines concernées ont}} un prêt actif. Terminez-le avant de modifier l’emplacement ou le statut.",
+    bulkPrinterSlotBlocked:
+      "{count, plural, one {# bobine concernée est} other {# bobines concernées sont}} chargée dans une imprimante. Utilisez plutôt les actions d’emplacement d’imprimante.",
+    bulkRemovedBlocked:
+      "{count, plural, one {# bobine concernée est supprimée} other {# bobines concernées sont supprimées}}. Restaurez-les avant une action groupée.",
+    bulkNoChanges: "L’action sélectionnée ne modifierait aucune bobine.",
+    bulkInvalidStatus: "Choisissez IN_STOCK, EMPTY ou LOST comme statut cible.",
+    bulkInvalidLocation: "Choisissez un emplacement de stockage actif.",
+    bulkStaleSelection:
+      "Les bobines sélectionnées ont changé. Actualisez et vérifiez de nouveau l’action.",
+    bulkLegacyHostUnsupported:
+      "L’hôte connecté ne prend pas en charge les actions groupées atomiques. Mettez-le à jour et réessayez.",
+    bulkMutationDone:
+      "{count, plural, one {# bobine mise à jour} other {# bobines mises à jour}} atomiquement.",
+    bulkMutationFailed:
+      "L’action groupée a échoué. Aucune modification partielle n’a été enregistrée.",
+    bulkReceiptMismatch:
+      "L’hôte a renvoyé un résultat inattendu. Actualisez l’inventaire avant de réessayer.",
+    bulkExportDone:
+      "{count, plural, one {# bobine sélectionnée exportée} other {# bobines sélectionnées exportées}} au format {format}.",
+    bulkExportFailed:
+      "Les bobines sélectionnées n’ont pas pu être exportées. Actualisez et réessayez.",
     qrLabel: "QR",
     rollHistory: "Historique de la bobine",
     dangerZone: "Zone de danger",

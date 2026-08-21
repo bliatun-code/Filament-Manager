@@ -17,6 +17,7 @@ mod companion_api;
 mod companion_assets;
 mod companion_error;
 mod companion_http;
+mod companion_inventory_bulk_write_api;
 mod companion_inventory_read_api;
 mod companion_library_api;
 mod companion_location_api;
@@ -33,6 +34,8 @@ mod desktop_lifecycle;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
+mod inventory_bulk_commands;
+mod inventory_bulk_models;
 mod inventory_command_support;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
@@ -51,6 +54,7 @@ mod library_sync_cache_refresh;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
+mod library_sync_inventory_bulk_write_commands;
 mod library_sync_loan_write_commands;
 mod library_sync_location_commands;
 mod library_sync_models;
@@ -342,6 +346,7 @@ fn main() {
             inventory_location_commands::archive_inventory_location,
             inventory_location_commands::restore_inventory_location,
             inventory_location_commands::merge_inventory_locations,
+            inventory_bulk_commands::execute_inventory_bulk_mutation,
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
@@ -412,6 +417,7 @@ fn main() {
             library_sync_location_commands::archive_library_sync_host_location,
             library_sync_location_commands::restore_library_sync_host_location,
             library_sync_location_commands::merge_library_sync_host_locations,
+            library_sync_inventory_bulk_write_commands::execute_library_sync_host_inventory_bulk_mutation,
             library_sync_wishlist_write_commands::create_library_sync_host_wishlist_item,
             library_sync_printer_write_commands::create_library_sync_host_printer,
             library_sync_printer_write_commands::save_library_sync_host_bambu_live_integration,

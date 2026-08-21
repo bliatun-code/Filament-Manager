@@ -219,6 +219,14 @@ responsive. The result counter shows how many spools are currently displayed
 out of the complete matching set; choose **Show more** to continue. Search and
 filters still apply to the full inventory.
 
+Use **Bulk actions** above the inventory to select individual rolls or every
+roll in the current filtered result. Moving or changing status first opens a
+review with separate selected, affected, and unchanged counts. Confirming then
+writes every affected roll and its history together; if any reviewed roll has
+changed, is loaned, is loaded in a printer, or has been removed, none of the
+changes are written. Label sheets and CSV/JSON exports use the exact selected
+rolls, including explicitly selected non-stock statuses.
+
 The app remembers the card/list choice and whether advanced filters are open on
 this device. Resetting the filters does not reset the chosen layout. Opening a
 low-stock result from Dashboard may temporarily use the list without replacing
@@ -239,9 +247,10 @@ must be at least 20 mm greater than the height and at least 1.6 times the height
 The selected size and most recent valid custom dimensions are remembered locally
 on this device, so they are reused for other spools and in later app sessions.
 
-For several on-hand spools at once, use **Settings → General → Create inventory
-label sheet** instead. Inventory label sheets remain fixed at 60 × 24 mm and do
-not use the saved custom dimensions.
+For several spools at once, select them under **Inventory → Bulk actions** and
+choose **Create inventory label sheet**. To label every on-hand spool without a
+selection, use the same action in the Inventory controls. Inventory label sheets
+remain fixed at 60 × 24 mm and do not use the saved custom dimensions.
 
 The Wishlist and orders panel has its own status filters and search field. It
 shows the number of matching rows, lets you move purchases between Wishlist, On
@@ -427,7 +436,9 @@ from Dashboard still open the relevant tab.
 
 To create label sheets for the on-hand inventory:
 
-1. Open **Settings → General** and choose **Create inventory label sheet**.
+1. Open **Inventory** and choose **Create inventory label sheet** in the
+   inventory controls. To use an exact subset instead, select the rolls under
+   **Bulk actions** and choose the label action there.
 2. Select A4 or US Letter.
 3. Review the sheet preview and use the page controls when the inventory spans
    more than one page.

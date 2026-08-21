@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import {
   buildInventoryExportCsv,
   buildInventoryExportJson,
+  buildInventorySpoolExportCsv,
+  buildInventorySpoolExportJson,
 } from "./inventory_export";
+import type { InventorySpool } from "./inventory_list_model";
 import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import type { SpoolWithMasterRow } from "./tauri_client";
 
@@ -112,4 +115,44 @@ test("inventory export normalizes legacy spool status values", () => {
     },
   ]);
   assert.equal(legacyRow.spool.status, "loaned out");
+});
+
+test("selected inventory-spool export preserves only the resolved plan rows", () => {
+  const selected: InventorySpool[] = [
+    {
+      id: "spool-a",
+      masterId: "master-a",
+      vendor: "Bambu",
+      material: "PLA",
+      filamentName: "Basic, Matte",
+      colorName: "Blue",
+      initialWeightGrams: 1000,
+      status: "EMPTY",
+      ownershipType: "OWNED",
+      remainingGrams: 0,
+      location: "Renamed shelf",
+      locationId: "location-a",
+      qrCode: "QR-A",
+    },
+  ];
+
+  assert.equal(
+    buildInventorySpoolExportCsv(selected),
+    [
+      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
+      'spool-a,PLA,"Basic, Matte",Blue,EMPTY,0,location-a,QR-A',
+    ].join("\n"),
+  );
+  assert.deepEqual(JSON.parse(buildInventorySpoolExportJson(selected)), [
+    {
+      spool_id: "spool-a",
+      material: "PLA",
+      filament_name: "Basic, Matte",
+      color_name: "Blue",
+      status: "EMPTY",
+      remaining_g: 0,
+      location: "location-a",
+      qr_code: "QR-A",
+    },
+  ]);
 });

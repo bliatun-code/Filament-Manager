@@ -1430,6 +1430,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("loan-contact-and-expected-return") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("inventory-bulk-mutations") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -5066,10 +5072,144 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
     }
 }
 
+#[tokio::test]
+async fn companion_api_executes_one_atomic_inventory_bulk_request() {
+    let db_path = temp_db_path("inventory-bulk-mutation");
+    let result = async {
+        seed_db(&db_path)?;
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let preconditions = ["spool_1", "spool_2"]
+            .into_iter()
+            .map(|spool_id| {
+                let spool = db
+                    .get_spool_by_id(spool_id)
+                    .map_err(|error| error.to_string())?
+                    .ok_or_else(|| format!("missing seeded spool {spool_id}"))?;
+                Ok(serde_json::json!({
+                    "spool_id": spool.id,
+                    "expected_status": spool.status,
+                    "expected_location_id": spool.location_id,
+                    "expected_home_location_id": spool.home_location_id,
+                    "expected_active_loan": false,
+                    "expected_assigned_to_printer": false,
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        drop(db);
+
+        let payload = serde_json::json!({
+            "action": "STATUS",
+            "expected_affected_count": 2,
+            "spools": preconditions,
+            "target_status": "EMPTY",
+        });
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/inventory/bulk-mutations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(payload.to_string()))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let receipt: serde_json::Value = serde_json::from_slice(
+            &to_bytes(response.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(receipt["affected_count"], 2);
+        assert_eq!(receipt["committed"], true);
+        assert_eq!(receipt["history_spool_count"], 2);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        for spool_id in ["spool_1", "spool_2"] {
+            let spool = db
+                .get_spool_by_id(spool_id)
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| format!("missing mutated spool {spool_id}"))?;
+            assert_eq!(spool.status, "EMPTY");
+            let history_count: i64 = db
+                .connection()
+                .query_row(
+                    "SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = ?1 AND event_type = 'STATUS_UPDATED'",
+                    [spool_id],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(history_count, 1);
+        }
+        drop(db);
+
+        let stale = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/inventory/bulk-mutations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(payload.to_string()))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(stale.status(), StatusCode::BAD_REQUEST);
+        let stale_error: serde_json::Value = serde_json::from_slice(
+            &to_bytes(stale.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert!(stale_error["code"]
+            .as_str()
+            .is_some_and(|code| code.starts_with("inventory.bulk.")));
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let history_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id IN ('spool_1', 'spool_2') AND event_type = 'STATUS_UPDATED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_count, 2);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_executes_one_atomic_inventory_bulk_request failed: {message}");
+    }
+}
+
 #[test]
 fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
     let sources = [
         include_str!("companion_api.rs"),
+        include_str!("companion_inventory_bulk_write_api.rs"),
         include_str!("companion_inventory_read_api.rs"),
         include_str!("companion_library_api.rs"),
         include_str!("companion_location_api.rs"),

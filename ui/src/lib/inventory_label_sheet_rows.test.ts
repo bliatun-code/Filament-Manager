@@ -44,3 +44,23 @@ test("inventory label sheet keeps each on-hand spool reference in its direct QR 
   assert.deepEqual(payloads, ["qr:spool-a", "qr:spool-b"]);
   assert.equal(rows[1]?.ownershipMarker, "Borrowed in");
 });
+
+test("exact bulk selection keeps every explicitly selected status", async () => {
+  const rows = await buildInventoryLabelSheetRows({
+    spools: [
+      spool("spool-empty", { status: "EMPTY" }),
+      spool("spool-lost", { status: "LOST" }),
+    ],
+    selectionMode: "EXACT",
+    locale: "en",
+    companionShellUrl: null,
+    labels: { borrowedIn: "Borrowed in", unknown: "Unknown" },
+    buildFilamentQrPayload: (reference) => ({
+      payload: `qr:${reference}`,
+      target: `qr:${reference}`,
+    }),
+    buildFilamentLabelQrDataUrl: async (payload) => `image:${payload}`,
+  });
+
+  assert.deepEqual(rows.map((row) => row.reference), ["spool-empty", "spool-lost"]);
+});

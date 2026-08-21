@@ -2,6 +2,10 @@ import { invoke } from "./tauri_invoke";
 import type { LowStockPolicy } from "./shared_contracts.generated";
 import type { ActiveSpoolLoanRow } from "./tauri_loan_client";
 import type { ImportDataStats } from "./tauri_maintenance_client";
+import type {
+  InventoryBulkMutationCommand,
+  InventoryBulkMutationReceipt,
+} from "./inventory_bulk_actions_model";
 
 export type {
   LowStockMaterialOverride,
@@ -171,8 +175,48 @@ export type CompanionSpoolDetail = {
   active_loan?: ActiveSpoolLoanRow | null;
 };
 
+export type InventoryBulkMutationInput = InventoryBulkMutationCommand;
+export type InventoryBulkMutationResult = InventoryBulkMutationReceipt;
+
 export async function listSpools(limit = 100, offset = 0) {
   return invoke<SpoolWithMasterRow[]>("list_spools", { limit, offset });
+}
+
+export async function executeInventoryBulkMutation(
+  command: InventoryBulkMutationInput,
+) {
+  return invoke<InventoryBulkMutationResult>("execute_inventory_bulk_mutation", {
+    input: command,
+  });
+}
+
+export function buildLibrarySyncHostInventoryBulkMutationPayload(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  command: InventoryBulkMutationInput,
+) {
+  return {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      mutation: command,
+    },
+  };
+}
+
+export async function executeLibrarySyncHostInventoryBulkMutation(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  command: InventoryBulkMutationInput,
+) {
+  return invoke<InventoryBulkMutationResult>(
+    "execute_library_sync_host_inventory_bulk_mutation",
+    buildLibrarySyncHostInventoryBulkMutationPayload(
+      baseUrl,
+      expectedLibraryId,
+      command,
+    ),
+  );
 }
 
 export async function createSpool(input: CreateSpoolInput) {

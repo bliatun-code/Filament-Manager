@@ -8,7 +8,7 @@ use crate::companion_http::require_allowed_host;
 use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
-    LOAN_METADATA_CAPABILITY,
+    INVENTORY_BULK_MUTATION_CAPABILITY, LOAN_METADATA_CAPABILITY,
 };
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
@@ -30,7 +30,7 @@ pub(super) async fn handle_health(
             Ok(Json(CompanionHealthResponse {
                 ok: true,
                 api_version: "v1",
-                capabilities: &[LOAN_METADATA_CAPABILITY],
+                capabilities: &[LOAN_METADATA_CAPABILITY, INVENTORY_BULK_MUTATION_CAPABILITY],
                 auth_mode: state.runtime.auth_mode().to_string(),
                 access_mode: "trusted-lan",
                 library_id: sync_settings.library_id,
