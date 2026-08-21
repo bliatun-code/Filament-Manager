@@ -93,6 +93,7 @@ pub mod loan_expected_return;
 pub mod low_stock_policy;
 pub mod printer_slot_live_mapping;
 pub mod printer_slot_location;
+pub mod shared_contracts;
 pub mod spool_defaults;
 pub mod statistics;
 pub mod vendor_lookup;

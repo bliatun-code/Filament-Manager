@@ -1,6 +1,12 @@
 import { invoke } from "./tauri_invoke";
+import type { LowStockPolicy } from "./shared_contracts.generated";
 import type { ActiveSpoolLoanRow } from "./tauri_loan_client";
 import type { ImportDataStats } from "./tauri_maintenance_client";
+
+export type {
+  LowStockMaterialOverride,
+  LowStockPolicy,
+} from "./shared_contracts.generated";
 
 export type SpoolRow = {
   id: string;
@@ -51,17 +57,6 @@ export type SpoolWithMasterRow = {
   master: MasterRow;
   /** Missing only when reading a pre-policy Host or cache; consumers must use 200 g. */
   low_stock_threshold_g?: number | null;
-};
-
-export type LowStockMaterialOverride = {
-  material_key: string;
-  material: string;
-  threshold_g: number;
-};
-
-export type LowStockPolicy = {
-  default_threshold_g: number;
-  material_overrides: LowStockMaterialOverride[];
 };
 
 export type CreateSpoolInput = {

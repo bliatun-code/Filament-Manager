@@ -1,11 +1,15 @@
 import { LOW_STOCK_GRAMS } from "./inventory_constants";
+import {
+  isCanonicalSpoolStatus,
+  type LoanDirection,
+  type LoanStatus,
+  type OwnershipType,
+  type SpoolStatus,
+} from "./shared_contracts.generated";
 
-export type ActiveSpoolStatus = "IN_STOCK" | "ASSIGNED" | "BORROWED" | "EMPTY" | "LOST";
-export type RemovedSpoolStatus = "MISSING" | "DELETED";
-export type SpoolStatus = ActiveSpoolStatus | RemovedSpoolStatus;
-export type OwnershipType = "OWNED" | "BORROWED_IN";
-export type LoanDirection = "OUTBOUND" | "INBOUND";
-export type LoanStatus = "ACTIVE" | "RETURNED" | "LOST" | "CANCELLED";
+export type RemovedSpoolStatus = Extract<SpoolStatus, "MISSING" | "DELETED">;
+export type ActiveSpoolStatus = Exclude<SpoolStatus, RemovedSpoolStatus>;
+export type { LoanDirection, LoanStatus, OwnershipType, SpoolStatus };
 
 const LEGACY_REMOVED_SPOOL_STATUS_TOKENS = new Set(["MISSING", "DELETED"]);
 
@@ -21,17 +25,8 @@ export function parseSpoolStatus(raw?: string | null): SpoolStatus | null {
   if (status === "LOANED_OUT" || status === "LOANED") {
     return "BORROWED";
   }
-  if (
-    status === "BORROWED" ||
-    status === "EMPTY" ||
-    status === "LOST" ||
-    status === "MISSING" ||
-    status === "DELETED"
-  ) {
+  if (isCanonicalSpoolStatus(status)) {
     return status;
-  }
-  if (status === "IN_STOCK") {
-    return "IN_STOCK";
   }
   return null;
 }

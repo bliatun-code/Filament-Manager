@@ -16,6 +16,29 @@ permissions:
   contents: read
 
 jobs:
+  shared-contracts:
+    name: Shared Contract Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.97.1
+
+      - name: Reject stale or missing shared contracts
+        run: cargo run --locked --bin generate_shared_contracts -- --check
+
+      - name: Test generator failure behavior and serde contract
+        run: |
+          cargo test --locked --lib shared_contracts::tests
+          cargo test --locked --bin generate_shared_contracts
+
   migration-integrity:
     name: Database Migration Integrity
     runs-on: ubuntu-latest

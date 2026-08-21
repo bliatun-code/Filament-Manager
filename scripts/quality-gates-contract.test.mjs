@@ -75,6 +75,19 @@ test("required platform jobs keep every documented gate blocking", () => {
   assert.match(packageManifest.scripts.verify, /npm run smoke/);
   assert.match(packageManifest.scripts.verify, /npm run test:rust/);
   assert.match(packageManifest.scripts["test:rust"], /cargo test/);
+  assert.match(
+    packageManifest.scripts["check:contracts"],
+    /npm run check:shared-contracts/,
+  );
+
+  const sharedContractsJob = section(
+    ciWorkflow,
+    "  shared-contracts:",
+    "  migration-integrity:",
+  );
+  assert.match(sharedContractsJob, /cargo run --locked --bin generate_shared_contracts -- --check/);
+  assert.match(sharedContractsJob, /cargo test --locked --lib shared_contracts::tests/);
+  assert.match(sharedContractsJob, /cargo test --locked --bin generate_shared_contracts/);
 
   const macosJob = section(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
   const windowsJob = section(ciWorkflow, "  windows-smoke:");

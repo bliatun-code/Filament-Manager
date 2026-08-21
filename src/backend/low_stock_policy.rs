@@ -1,27 +1,11 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
-
 use super::inventory_domain::LOW_STOCK_THRESHOLD_G;
+pub use super::shared_contracts::{LowStockMaterialOverride, LowStockPolicy};
 
 pub const LOW_STOCK_THRESHOLD_MIN_G: i64 = 1;
 pub const LOW_STOCK_THRESHOLD_MAX_G: i64 = 100_000;
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct LowStockMaterialOverride {
-    #[serde(default)]
-    pub material_key: String,
-    pub material: String,
-    pub threshold_g: i64,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct LowStockPolicy {
-    pub default_threshold_g: i64,
-    #[serde(default)]
-    pub material_overrides: Vec<LowStockMaterialOverride>,
-}
 
 impl Default for LowStockPolicy {
     fn default() -> Self {

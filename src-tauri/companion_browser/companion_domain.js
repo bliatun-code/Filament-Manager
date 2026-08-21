@@ -1,3 +1,10 @@
+import {
+  isCanonicalLoanDirection,
+  isCanonicalLoanStatus,
+  isCanonicalOwnershipType,
+  isCanonicalSpoolStatus,
+} from "./shared_contracts.generated.js";
+
 const LEGACY_REMOVED_SPOOL_STATUS_TOKENS = new Set(["DELETED", "MISSING"]);
 
 export function normalizeDomainToken(value) {
@@ -15,7 +22,7 @@ export function parseSpoolStatus(value) {
   if (status === "LOANED_OUT" || status === "LOANED") {
     return "BORROWED";
   }
-  if (status === "IN_STOCK" || status === "BORROWED" || status === "EMPTY" || status === "LOST") {
+  if (isCanonicalSpoolStatus(status) && !LEGACY_REMOVED_SPOOL_STATUS_TOKENS.has(status)) {
     return status;
   }
   return null;
@@ -31,12 +38,18 @@ export function normalizeEditableSpoolStatus(value) {
 }
 
 export function normalizeOwnershipType(value) {
-  return normalizeDomainToken(value) === "BORROWED_IN" ? "BORROWED_IN" : "OWNED";
+  const ownershipType = normalizeDomainToken(value);
+  return isCanonicalOwnershipType(ownershipType) && ownershipType === "BORROWED_IN"
+    ? ownershipType
+    : "OWNED";
 }
 
 export function normalizeLoanDirection(value) {
   const direction = normalizeDomainToken(value);
-  return direction === "INBOUND" || direction === "IN_BOUND" ? "INBOUND" : "OUTBOUND";
+  const normalized = direction === "IN_BOUND" ? "INBOUND" : direction;
+  return isCanonicalLoanDirection(normalized) && normalized === "INBOUND"
+    ? normalized
+    : "OUTBOUND";
 }
 
 export function normalizeLoanStatus(value, returnedAt) {
@@ -44,7 +57,7 @@ export function normalizeLoanStatus(value, returnedAt) {
   if (status === "RETURNED" || String(returnedAt ?? "").trim()) {
     return "RETURNED";
   }
-  if (status === "LOST" || status === "CANCELLED") {
+  if (isCanonicalLoanStatus(status) && (status === "LOST" || status === "CANCELLED")) {
     return status;
   }
   return "ACTIVE";
