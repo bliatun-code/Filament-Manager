@@ -34,27 +34,36 @@ test("previous-release fixture paths are explicit, distinct and no-replace", () 
   );
 });
 
-test("v0.27 fixture is sanitized, provenance-bound and explicitly same-schema", async () => {
+test("v0.27 fixture is sanitized, provenance-bound and explicitly migrates schema 2 to 3", async () => {
   const directory = mkdtempSync(
     path.join(tmpdir(), "previous-release-fixture-test-"),
   );
   const databasePath = path.join(directory, "v0.27.0.db");
   const manifestPath = path.join(directory, "v0.27.0.json");
   try {
-    const result = await preparePreviousReleaseUpgradeFixture({
-      databasePath,
-      manifestPath,
-      sourcePath: path.resolve("."),
-    });
+    const result = await preparePreviousReleaseUpgradeFixture(
+      {
+        databasePath,
+        manifestPath,
+        sourcePath: path.resolve("."),
+      },
+      {
+        inspectSource: () => ({
+          generatorPath: path.resolve("scripts/create-visual-qa-fixture.mjs"),
+          schemaVersion: PREVIOUS_RELEASE_SCHEMA_VERSION,
+        }),
+        readCurrentSchemaVersion: () => 3,
+      },
+    );
     assert.equal(result.manifest.sourceRelease, PREVIOUS_RELEASE_REF);
     assert.equal(result.manifest.sourceCommit, PREVIOUS_RELEASE_COMMIT);
     assert.equal(
       result.manifest.sourceSchemaVersion,
       PREVIOUS_RELEASE_SCHEMA_VERSION,
     );
-    assert.equal(result.manifest.currentSchemaVersion, 2);
-    assert.equal(result.manifest.requiresSchemaMigration, false);
-    assert.equal(result.manifest.gateMode, "same-schema-compatibility");
+    assert.equal(result.manifest.currentSchemaVersion, 3);
+    assert.equal(result.manifest.requiresSchemaMigration, true);
+    assert.equal(result.manifest.gateMode, "schema-migration");
     assert.equal(result.manifest.sanitized, true);
     assert.equal(result.manifest.counts.filament_spools, 8);
 

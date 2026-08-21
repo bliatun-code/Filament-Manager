@@ -921,16 +921,16 @@ The Backup panel shows when this device last completed a validated full-backup
 download. The timestamp is a device-local activity hint; it does not inspect
 the downloaded file later and is not included in the portable backup.
 
-The local database uses schema version 2. Before writing to an existing database
+The local database uses schema version 3. Before writing to an existing database
 at startup, the app performs a read-only schema compatibility preflight and
 SQLite `quick_check`. A database from a newer schema, or one that fails the
 integrity check, is stopped instead of being silently rewritten.
 
-Before automatically upgrading an existing unversioned or schema-v1 database
-to schema v2, the app creates and verifies a local recovery snapshot. A verified
-snapshot is also created before a full restore and before storage migrations
-that replace or merge an existing database. If the snapshot cannot be created
-and verified, the upgrade, restore, or migration does not continue.
+Before automatically upgrading an existing unversioned, schema-v1, or schema-v2
+database to schema v3, the app creates and verifies a local recovery snapshot.
+A verified snapshot is also created before a full restore and before storage
+migrations that replace or merge an existing database. If the snapshot cannot
+be created and verified, the upgrade, restore, or migration does not continue.
 
 Full JSON backups are portable. They include library data such as inventory,
 history, catalog data, and printer profiles, but omit device-local connection

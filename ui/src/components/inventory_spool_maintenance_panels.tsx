@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { useI18n } from "../lib/i18n";
+import { INVENTORY_LOCATION_DATALIST_ID } from "./inventory_location_datalist";
 import {
   inventoryDetailDangerActionButtonClassName,
   inventoryDetailEyebrowClassName,
@@ -135,6 +136,7 @@ export function InventorySpoolHomeLocationPanel({
         <input
           id={inputId}
           type="text"
+          list={INVENTORY_LOCATION_DATALIST_ID}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}

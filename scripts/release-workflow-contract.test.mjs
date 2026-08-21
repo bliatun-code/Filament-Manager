@@ -1232,16 +1232,33 @@ test("CI rejects published migration rewrites and exercises both database paths"
 });
 
 test("CI executes real browser accessibility and sanitized Companion workflows", () => {
+  const sharedContractsJob = readSection(
+    ciWorkflow,
+    "  shared-contracts:",
+    "  migration-integrity:",
+  );
+  const migrationJob = readSection(
+    ciWorkflow,
+    "  migration-integrity:",
+    "  macos-smoke:",
+  );
   const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
   const windowsJobStart = ciWorkflow.indexOf("  windows-smoke:");
   assert.notEqual(windowsJobStart, -1, "Missing workflow section: windows-smoke:");
   const windowsJob = ciWorkflow.slice(windowsJobStart);
 
   assert.equal(
-    ciWorkflow.split("persist-credentials: false").length - 1,
-    3,
-    "every CI checkout must discard its GitHub credential",
+    (ciWorkflow.match(/uses: actions\/checkout@/g) ?? []).length,
+    4,
+    "CI must check out the repository once in every verification job",
   );
+  for (const job of [sharedContractsJob, migrationJob, macosJob, windowsJob]) {
+    assert.match(
+      job,
+      /uses: actions\/checkout@[^\r\n]+\s+with:\s+(?:[^\r\n]*\r?\n)*?\s+persist-credentials: false/,
+      "every CI checkout must discard its GitHub credential",
+    );
+  }
 
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:data-backed/);
@@ -1357,7 +1374,7 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
   );
   assert.match(
     previousReleaseFixturePreparer,
-    /"same-schema-compatibility"/,
+    /source\.schemaVersion < expectedCurrentSchemaVersion[\s\S]*?"schema-migration"/,
   );
 
   assert.match(fixtureJob, /name: Prepare v0\.27 database fixture/);

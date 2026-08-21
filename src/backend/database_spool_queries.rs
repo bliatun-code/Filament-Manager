@@ -46,9 +46,12 @@ pub(crate) fn get_spool_with_master_by_id(
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
-                m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
+                m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
+                location.name, home_location.name
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
+         LEFT JOIN inventory_locations location ON location.id = s.location_id
+         LEFT JOIN inventory_locations home_location ON home_location.id = s.home_location_id
          WHERE s.id = ?1 AND s.deleted_at IS NULL
          LIMIT 1",
     )?;
@@ -67,9 +70,12 @@ pub(crate) fn list_spools_with_master_by_rfid(
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
-                m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
+                m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
+                location.name, home_location.name
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
+         LEFT JOIN inventory_locations location ON location.id = s.location_id
+         LEFT JOIN inventory_locations home_location ON home_location.id = s.home_location_id
          WHERE s.deleted_at IS NULL
            AND trim(s.rfid_tag) COLLATE NOCASE = trim(?1) COLLATE NOCASE
          ORDER BY s.updated_at DESC, s.id DESC",
@@ -93,9 +99,12 @@ pub(crate) fn list_spools_with_master(
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, m.id, m.material,
-                m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor
+                m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
+                location.name, home_location.name
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
+         LEFT JOIN inventory_locations location ON location.id = s.location_id
+         LEFT JOIN inventory_locations home_location ON home_location.id = s.home_location_id
          WHERE s.deleted_at IS NULL
          ORDER BY s.updated_at DESC, s.id DESC
          LIMIT ?1 OFFSET ?2",

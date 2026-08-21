@@ -53,6 +53,8 @@ pub(crate) fn map_spool_with_master_row(
     Ok(SpoolWithMasterRow {
         spool,
         master,
+        location_name: row.get(28)?,
+        home_location_name: row.get(29)?,
         low_stock_threshold_g: None,
     })
 }

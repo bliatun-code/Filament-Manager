@@ -64,5 +64,12 @@ fn ensure_post_import_schema(conn: &Connection) -> InventoryResult<()> {
     ensure_printer_slot_rfid_override_schema(conn)?;
     ensure_printer_slot_live_cache_schema(conn)?;
     ensure_trusted_lan_schema(conn)?;
+    conn.execute(
+        "UPDATE inventory_locations
+         SET created_at = COALESCE(created_at, datetime('now')),
+             updated_at = COALESCE(updated_at, created_at, datetime('now'))
+         WHERE created_at IS NULL OR updated_at IS NULL",
+        [],
+    )?;
     Ok(())
 }

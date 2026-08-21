@@ -323,6 +323,18 @@ mod tests {
             "pair_library_sync_host",
         );
 
+        let location_commands = include_str!("library_sync_location_commands.rs");
+        for command in [
+            "fetch_library_sync_locations",
+            "create_library_sync_host_location",
+            "rename_library_sync_host_location",
+            "archive_library_sync_host_location",
+            "restore_library_sync_host_location",
+            "merge_library_sync_host_locations",
+        ] {
+            assert_async_blocking_wrapper(location_commands, command);
+        }
+
         let settings_commands = include_str!("library_sync_settings_commands.rs");
         for command in [
             "get_library_sync_settings",

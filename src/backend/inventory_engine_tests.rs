@@ -9,6 +9,7 @@ use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
     ManualMasterInput,
 };
+use rusqlite::OptionalExtension;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -18,6 +19,18 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-engine-{test_name}-{nanos}.db"))
+}
+
+fn location_name(db: &FilamentDatabase, location_id: Option<&str>) -> Option<String> {
+    let location_id = location_id?;
+    db.connection()
+        .query_row(
+            "SELECT name FROM inventory_locations WHERE id = ?1",
+            [location_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .expect("read location display name")
 }
 
 #[test]
@@ -89,7 +102,7 @@ fn create_manual_spool_rolls_back_catalog_location_and_spool_when_history_fails(
             .connection()
             .query_row(
                 "SELECT COUNT(*) FROM inventory_locations
-                 WHERE id = 'Atomic rollback shelf'",
+                 WHERE name = 'Atomic rollback shelf'",
                 [],
                 |row| row.get(0),
             )
@@ -565,9 +578,9 @@ fn assign_printer_slot_rolls_back_slot_and_spool_when_history_fails() {
 
         assert!(slot.spool_id.is_none());
         assert_eq!(spool.status, "IN_STOCK");
-        assert_eq!(spool.location_id.as_deref(), Some("Original atomic shelf"));
+        assert_eq!(spool.location_id, spool.home_location_id);
         assert_eq!(
-            spool.home_location_id.as_deref(),
+            location_name(&engine.db, spool.location_id.as_deref()).as_deref(),
             Some("Original atomic shelf")
         );
         assert_eq!(assignment_history_count, 0);
@@ -1050,8 +1063,12 @@ fn create_spool_with_location_persists_location_and_home_location() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected created spool".to_string())?;
-        assert_eq!(spool.location_id.as_deref(), Some("Shelf G"));
-        assert_eq!(spool.home_location_id.as_deref(), Some("Shelf G"));
+        assert_eq!(spool.location_id, spool.home_location_id);
+        assert_ne!(spool.location_id.as_deref(), Some("Shelf G"));
+        assert_eq!(
+            location_name(&engine.db, spool.location_id.as_deref()).as_deref(),
+            Some("Shelf G")
+        );
 
         Ok(())
     })();
@@ -1622,8 +1639,11 @@ fn assign_printer_slot_derives_manual_clear_cache_suppression_on_host() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected restored spool".to_string())?;
-        assert_eq!(restored_spool.location_id.as_deref(), Some("Shelf B"));
-        assert_eq!(restored_spool.home_location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(restored_spool.location_id, restored_spool.home_location_id);
+        assert_eq!(
+            location_name(&engine.db, restored_spool.location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
 
         Ok(())
     })();
@@ -1722,8 +1742,11 @@ fn assign_printer_slot_derives_manual_reassignment_cache_suppression_on_host() {
             .get_spool_by_id("spool_old")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected previous spool".to_string())?;
-        assert_eq!(old_spool.location_id.as_deref(), Some("Shelf C"));
-        assert_eq!(old_spool.home_location_id.as_deref(), Some("Shelf C"));
+        assert_eq!(old_spool.location_id, old_spool.home_location_id);
+        assert_eq!(
+            location_name(&engine.db, old_spool.location_id.as_deref()).as_deref(),
+            Some("Shelf C")
+        );
 
         Ok(())
     })();
@@ -1783,8 +1806,11 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected updated spool".to_string())?;
-        assert_eq!(spool.home_location_id.as_deref(), Some("Shelf D"));
-        assert_eq!(spool.location_id.as_deref(), Some("Shelf D"));
+        assert_eq!(spool.home_location_id, spool.location_id);
+        assert_eq!(
+            location_name(&engine.db, spool.location_id.as_deref()).as_deref(),
+            Some("Shelf D")
+        );
 
         Ok(())
     })();
@@ -1793,6 +1819,176 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
     if let Err(message) = result {
         panic!(
             "update_spool_details_syncs_home_location_to_current_location_when_unassigned failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn archived_location_stays_visible_on_spool_and_unchanged_detail_save_preserves_id() {
+    let db_path = temp_db_path("archived-location-detail-save");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "archived-location-spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#3366ff".to_string()),
+                product_url: None,
+                vendor: Some("Manual".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Archive Shelf".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("archived-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool before archive".to_string())?;
+        let location_id = before
+            .location_id
+            .clone()
+            .ok_or_else(|| "missing location id".to_string())?;
+        engine
+            .db
+            .archive_inventory_location(&location_id)
+            .map_err(|error| error.to_string())?;
+
+        let displayed = engine
+            .db
+            .get_spool_with_master_by_id("archived-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool detail".to_string())?;
+        assert_eq!(displayed.location_name.as_deref(), Some("Archive Shelf"));
+        assert_eq!(
+            displayed.spool.location_id.as_deref(),
+            Some(location_id.as_str())
+        );
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "archived-location-spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: Some("Archive Shelf".to_string()),
+                home_location: Some(Some("Archive Shelf".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let after = engine
+            .db
+            .get_spool_by_id("archived-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after save".to_string())?;
+        assert_eq!(after.location_id.as_deref(), Some(location_id.as_str()));
+        assert_eq!(
+            after.home_location_id.as_deref(),
+            Some(location_id.as_str())
+        );
+
+        let assignment_error = engine
+            .assign_location("archived-location-spool", Some(&location_id))
+            .expect_err("archived id must not be assignable as a new choice");
+        assert!(assignment_error.to_string().contains("Archived locations"));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "archived_location_stays_visible_on_spool_and_unchanged_detail_save_preserves_id failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn stale_location_name_after_rename_preserves_id_when_detail_write_uses_reference() {
+    let db_path = temp_db_path("renamed-location-stale-detail-save");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "renamed-location-spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#3366ff".to_string()),
+                product_url: None,
+                vendor: Some("Manual".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Old Shelf Name".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("renamed-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool before rename".to_string())?;
+        let location_id = before
+            .location_id
+            .clone()
+            .ok_or_else(|| "missing location id".to_string())?;
+        engine
+            .db
+            .rename_inventory_location(&location_id, "New Shelf Name")
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "renamed-location-spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: Some(location_id.clone()),
+                home_location: Some(Some(location_id.clone())),
+                spool_tare_weight_g: None,
+                ownership: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let after = engine
+            .db
+            .get_spool_by_id("renamed-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after stale detail save".to_string())?;
+        assert_eq!(after.location_id.as_deref(), Some(location_id.as_str()));
+        assert_eq!(
+            after.home_location_id.as_deref(),
+            Some(location_id.as_str())
+        );
+        let locations = engine
+            .db
+            .list_inventory_locations(true)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(locations.len(), 1);
+        assert_eq!(locations[0].id, location_id);
+        assert_eq!(locations[0].name, "New Shelf Name");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "stale_location_name_after_rename_preserves_id_when_detail_write_uses_reference failed: {message}"
         );
     }
 }
@@ -1850,11 +2046,15 @@ fn update_spool_details_keeps_active_inbound_location_while_updating_home_locati
             .get_spool_by_id("borrowed_spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected updated borrowed-in spool".to_string())?;
+        assert_eq!(borrowed_after.location_id, borrowed_before.location_id);
         assert_eq!(
-            borrowed_after.home_location_id.as_deref(),
+            location_name(&engine.db, borrowed_after.home_location_id.as_deref()).as_deref(),
             Some("Owner Shelf")
         );
-        assert_eq!(borrowed_after.location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(
+            location_name(&engine.db, borrowed_after.location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
 
         Ok(())
     })();
@@ -1941,7 +2141,10 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected updated spool".to_string())?;
-        assert_eq!(spool.home_location_id.as_deref(), Some("Shelf F"));
+        assert_eq!(
+            location_name(&engine.db, spool.home_location_id.as_deref()).as_deref(),
+            Some("Shelf F")
+        );
         assert!(spool
             .location_id
             .as_deref()
@@ -2014,8 +2217,15 @@ fn update_spool_details_saves_common_fields_atomically() {
             .get_spool_by_id("spool_common_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected spool after failed common save".to_string())?;
-        assert_eq!(after_failed.home_location_id.as_deref(), Some("Shelf A"));
-        assert_eq!(after_failed.location_id.as_deref(), Some("Shelf A"));
+        assert_eq!(
+            after_failed.home_location_id,
+            before_failed.home_location_id
+        );
+        assert_eq!(after_failed.location_id, before_failed.location_id);
+        assert_eq!(
+            location_name(&engine.db, after_failed.location_id.as_deref()).as_deref(),
+            Some("Shelf A")
+        );
         assert_eq!(
             after_failed.spool_tare_weight_g,
             before_failed.spool_tare_weight_g
@@ -2044,8 +2254,11 @@ fn update_spool_details_saves_common_fields_atomically() {
             .get_spool_by_id("spool_common_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected spool after common save".to_string())?;
-        assert_eq!(saved.home_location_id.as_deref(), Some("Shelf B"));
-        assert_eq!(saved.location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(saved.home_location_id, saved.location_id);
+        assert_eq!(
+            location_name(&engine.db, saved.location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
         assert_eq!(saved.spool_tare_weight_g, Some(275));
         assert_eq!(saved.ownership_type, "BORROWED_IN");
         assert_eq!(saved.owner_name.as_deref(), Some("Ada"));

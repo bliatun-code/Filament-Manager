@@ -19,6 +19,7 @@ mod companion_error;
 mod companion_http;
 mod companion_inventory_read_api;
 mod companion_library_api;
+mod companion_location_api;
 mod companion_models;
 mod companion_payload;
 mod companion_routes;
@@ -36,6 +37,8 @@ mod inventory_command_support;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
 mod inventory_loan_commands;
+mod inventory_location_commands;
+mod inventory_location_models;
 mod inventory_maintenance_commands;
 mod inventory_read_commands;
 mod inventory_stats_commands;
@@ -49,6 +52,7 @@ mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
 mod library_sync_loan_write_commands;
+mod library_sync_location_commands;
 mod library_sync_models;
 mod library_sync_pairing_commands;
 mod library_sync_printer_write_commands;
@@ -332,6 +336,12 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             inventory_read_commands::list_spools,
+            inventory_location_commands::list_inventory_locations,
+            inventory_location_commands::create_inventory_location,
+            inventory_location_commands::rename_inventory_location,
+            inventory_location_commands::archive_inventory_location,
+            inventory_location_commands::restore_inventory_location,
+            inventory_location_commands::merge_inventory_locations,
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
@@ -383,6 +393,8 @@ fn main() {
             library_sync_read_commands::fetch_library_sync_wishlist_items,
             library_sync_read_commands::fetch_library_sync_full_backup_json,
             library_sync_cache_commands::fetch_cached_library_sync_spools,
+            library_sync_location_commands::fetch_library_sync_locations,
+            library_sync_location_commands::fetch_cached_library_sync_locations,
             library_sync_cache_commands::save_library_sync_spool_cache,
             library_sync_read_commands::fetch_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_printer_settings,
@@ -395,6 +407,11 @@ fn main() {
             library_sync_pairing_commands::pair_library_sync_host,
             library_sync_settings_commands::clear_library_sync_client_auth,
             library_sync_spool_write_commands::create_library_sync_host_spool,
+            library_sync_location_commands::create_library_sync_host_location,
+            library_sync_location_commands::rename_library_sync_host_location,
+            library_sync_location_commands::archive_library_sync_host_location,
+            library_sync_location_commands::restore_library_sync_host_location,
+            library_sync_location_commands::merge_library_sync_host_locations,
             library_sync_wishlist_write_commands::create_library_sync_host_wishlist_item,
             library_sync_printer_write_commands::create_library_sync_host_printer,
             library_sync_printer_write_commands::save_library_sync_host_bambu_live_integration,

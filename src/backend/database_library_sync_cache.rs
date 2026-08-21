@@ -2,12 +2,14 @@ use rusqlite::Connection;
 
 use super::database_library_sync_models::{
     LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLoanListRow,
-    LibrarySyncCachedPrinterOverviewRow, LibrarySyncCachedSnapshotRow,
-    LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow,
+    LibrarySyncCachedLocationListRow, LibrarySyncCachedPrinterOverviewRow,
+    LibrarySyncCachedSnapshotRow, LibrarySyncCachedSpoolListRow, LibrarySyncCachedWishlistListRow,
 };
 use super::database_loan_models::SpoolLoanDetailsRow;
+use super::database_location_models::InventoryLocationRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_result::{InventoryError, InventoryResult};
+use super::database_settings::get_setting;
 use super::database_settings::set_setting;
 use super::database_spool_models::SpoolWithMasterRow;
 use super::database_time::sqlite_now;
@@ -34,6 +36,30 @@ pub(crate) fn save_library_sync_cached_spools(
     let serialized =
         serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
     set_setting(conn, "library_sync_cached_spools_json", &serialized)
+}
+
+pub(crate) fn save_library_sync_cached_locations(
+    conn: &Connection,
+    rows: &[InventoryLocationRow],
+) -> InventoryResult<LibrarySyncCachedLocationListRow> {
+    let payload = LibrarySyncCachedLocationListRow {
+        captured_at: sqlite_now(conn)?,
+        rows: rows.to_vec(),
+    };
+    let serialized =
+        serde_json::to_string(&payload).map_err(|error| InventoryError::Db(error.to_string()))?;
+    set_setting(conn, "library_sync_cached_locations_json", &serialized)?;
+    Ok(payload)
+}
+
+pub(crate) fn get_library_sync_cached_locations(
+    conn: &Connection,
+) -> InventoryResult<Option<LibrarySyncCachedLocationListRow>> {
+    get_setting(conn, "library_sync_cached_locations_json")?
+        .map(|payload| {
+            serde_json::from_str(&payload).map_err(|error| InventoryError::Db(error.to_string()))
+        })
+        .transpose()
 }
 
 pub(crate) fn save_library_sync_cached_printers(

@@ -65,12 +65,12 @@ Fasen er ferdig når innkjøpskøen nås direkte, spolekontekst følger hele arb
 
 | Prioritet | Arbeid | Status | Ferdigkriterium |
 | --- | --- | --- | --- |
-| P0 | Gjøre lokasjoner til egne objekter med stabil ID, oppretting, autofullføring, endring, sammenslåing og arkivering. | Ikke startet | Lokasjonsendringer synkroniseres, er med i backup og bryter ikke eksisterende spolehistorikk. |
+| P0 | Gjøre lokasjoner til egne objekter med stabil ID, oppretting, autofullføring, endring, sammenslåing og arkivering. | Ferdig | Lokasjonsendringer synkroniseres, er med i backup og bryter ikke eksisterende spolehistorikk. |
 | P1 | Legge til massehandlinger for flytting, status, etiketter og eksport. | Ikke startet | Operasjonene er atomiske, viser berørt antall før bekreftelse og skriver historikk per spole. |
 | P0 | Gjøre lav-beholdningsgrensen konfigurerbar globalt, med valgfritt avvik per materiale. | Ferdig | Inventory, Dashboard, Statistics, Host, Client og Companion bruker samme effektive terskel. |
 | P1 | Legge kontakt og forventet returdato på utlån. | Ferdig | Forfalte lån kan identifiseres og fullført retur fjerner oppgaven umiddelbart. |
-| P0 | Lage Krever handling på Dashboard for lav beholdning, forfalte lån, mottaksklare bestillinger og Bambu Live-problemer. | Ikke startet | Hvert kort viser årsak, alder og direkte handling; løste forhold forsvinner uten manuell oppfriskning. |
-| P1 | Tillate ett klikk fra lav beholdning til innkjøpskø med duplikatkontroll. | Ikke startet | Eksisterende åpne ønsker eller bestillinger gjenbrukes eller varsles før et duplikat opprettes. |
+| P0 | Lage Krever handling på Dashboard for lav beholdning, forfalte lån, mottaksklare bestillinger og Bambu Live-problemer. | Ferdig | Hvert kort viser årsak, alder og direkte handling; løste forhold forsvinner uten manuell oppfriskning. |
+| P1 | Tillate ett klikk fra lav beholdning til innkjøpskø med duplikatkontroll. | Ferdig | Eksisterende åpne ønsker eller bestillinger gjenbrukes eller varsles før et duplikat opprettes. |
 
 ### Faseport 2
 
@@ -119,9 +119,9 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Gjør lokasjoner til stabile objekter og legg til sporbare massehandlinger.
-2. Bygg Dashboard-visningen Krever handling og koble lav beholdning til innkjøpskøen.
-3. Fullfør mottaksmetadata, lagerverdi og materialkostnad med sporbarhet.
+1. Legg til sporbare massehandlinger for flytting, status, etiketter og eksport.
+2. Fullfør mottaksmetadata med validering, senere redigering og eksport.
+3. Legg til sporbar lagerverdi og materialkostnad uten å summere på tvers av valutaer.
 4. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
 
 ## Fremdriftslogg
@@ -130,21 +130,23 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 - Lav-beholdningsregelen er samlet i domenefunksjoner for UI og en delt konstant i Rust. 200 g er eksplisitt lav beholdning, 0 g er ikke lav beholdning, og sunn beholdning starter ved 201 g.
 - Dashboard teller nå alle lave spoler, men viser fortsatt maksimalt fem eksempler. Regresjonstester dekker 0, 1, 199, 200 og 201 g samt seks lave spoler.
+- Dashboard samler lav beholdning, forfalte lån, mottaksklare bestillinger og Bambu Live-problemer under Krever handling; lav-beholdningskort gjenbruker en eksisterende åpen innkjøpspost eller oppretter én ny før Inventory åpnes med riktig køfilter.
 - En obligatorisk databaseoppgraderingsgate migrerer en SHA-låst og sanitert schema-1-fixture til gjeldende skjema og kontrollerer databevaring gjennom to appstarter.
-- En separat SHA-pinnet v0.27-fixture verifiseres mot installert binær fra både DMG og MSI i release-workflowen. v0.27 og gjeldende release bruker begge schema 2, så dette er en same-schema kompatibilitets- og databevaringsgate; schema-1-smoken dekker den reelle 1→2-migreringen.
+- En separat SHA-pinnet v0.27-fixture med schema 2 verifiseres mot installert binær fra både DMG og MSI i release-workflowen. Gaten dekker nå den reelle 2→3-lokasjonsmigreringen, mens schema-1-smoken dekker hele 1→2→3-rekken.
 - Companion har nå CSP og øvrige sikkerhetsheadere, 64 KiB body-grense, 30 sekunders request-timeout og begrenset per-peer rate limiting, med strengere grense for paring og fornyelse.
 - Ytelse, backup/oppgradering, tilgjengelighet og lokalisering har dokumenterte blokkerende terskler, navngitt eier og en kontraktstest som verifiserer CI-koblingen.
 - Innkjøpskøen er flyttet til en egen ett-klikk-visning under Inventory. Lagerregistrering og kjøpsplanlegging har separate opprettingsflyter, mens statusendring, mottak og sletting er bevart.
-- Hele `npm run verify` passerer etter rebase på oppdatert `origin/main`, inkludert 1 150 UI-tester, 480 desktop-Rust-tester, 144 core-Rust-tester og Clippy i både dev- og releaseprofil. Oppgraderingssmoken passerer separat fra schema 1 til 2 gjennom to appstarter.
+- Hele `npm run verify` passerer etter rebase på oppdatert `origin/main`, inkludert 1 150 UI-tester, 480 desktop-Rust-tester, 144 core-Rust-tester og Clippy i både dev- og releaseprofil. Oppgraderingssmoken passerer separat fra schema 1 gjennom hele 1→2→3-rekken og to appstarter.
 - `All` viser nå samtlige statuser, og tomt lager er skilt fra null filtrerte treff med egne forklaringer og handlinger.
 - Spoledetaljen fører valgt spole direkte videre til utlån, printerlasting og etikettutskrift. Vanlige detaljendringer lagres atomisk, og lukking eller navigasjon beskytter ulagrede endringer.
 - Etikettark er flyttet fra Settings til Inventory uten tap av utskriftsflyten.
 - Statistics støtter 30 dager, 90 dager, 12 måneder og egendefinert lokalt datointervall gjennom én halvåpen UTC-kontrakt. Døgngrenser er testet over både 23- og 25-timers DST-døgn.
 - En deterministisk 30-dagers forbruksprognose viser datagrunnlag og antakelser uten å opprette automatiske bestillinger.
 - Publiserte databasemigrasjoner er låst i et autoritativt manifest. CI avviser endring, sletting og omnummerering, og verifiserer både tom installasjon, schema-1-oppgradering og v0.27-kompatibilitet.
+- Lokasjoner er egne objekter med uforanderlig ID, redigerbart navn, arkiv/gjenoppretting og atomisk sammenslåing. Desktop, Host, Client og Companion deler kontrakten; legacy `SHELF` migreres til `GENERIC` uten å endre spole-FK-er eller historikk.
 - Lavlagerpolicyen har én validert standard og valgfrie materialoverstyringer. Effektiv terskel følger hver spole gjennom Inventory, Dashboard, Statistics, Host, Client og Companion; eldre Host bruker en eksplisitt 200 g-kompatibilitetsverdi.
 - Utlån lagrer valgfri kontakt og forventet returdato. Ugyldige datoer stoppes før lagring, eldre Host avviser metadata før POST, og en ren datomodell identifiserer forfalte aktive lån uten å merke returnerte lån.
-- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. Lokal DMG-kjøring passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; samme gate er koblet blokkerende til Windows CI.
+- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 3, og samme gate er koblet blokkerende til Windows CI.
 - Brukertestprotokollen har en deterministisk `npm run qa:usability:analyze`-kommando som avviser færre enn fem deltakere, under 90 % uhjulpet fullføring eller under 30 % median tidsforbedring.
 - En Rust-basert `ActiveLibraryGateway` velger nå autoritativt mellom lokal database og paret Host for den atomiske spole-detaljflyten. Ufullstendig klientoppsett og Host-/legitimasjonsfeil stopper uten lokal fallback, mens eksisterende Tauri-kommandoer er beholdt som kompatibilitetslag.
 - Status, eierskap, låneretning, lånestatus og lavlager-DTO-er har nå én faktisk Rust-kilde. Deterministiske TypeScript- og Companion-artefakter inneholder konstanter og validatorer, og både lokal kontraktsgate og CI avviser manglende eller utdaterte genererte filer.

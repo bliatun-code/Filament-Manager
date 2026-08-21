@@ -3,7 +3,9 @@ import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
 import { isBorrowedInOwnership } from "./inventory_domain";
+import { resolveInventoryLocationReferenceForWrite } from "./inventory_location_model";
 import type { InventorySpool, OwnershipType } from "./inventory_list_model";
+import type { InventoryLocationRow } from "./tauri_location_client";
 import { parseInventorySpoolCommonDetailsDraft } from "./inventory_spool_detail_draft_model";
 import {
   canRefillSpoolStatus,
@@ -50,6 +52,7 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   editMasterVendor: string;
   ensureLocalWriteAllowed: () => boolean;
   manageBusy: boolean;
+  locations: InventoryLocationRow[];
   markCommonDetailsSaved: () => void;
   markMasterMetadataSaved: () => void;
   masterEditUnlocked: boolean;
@@ -111,6 +114,7 @@ export function useInventorySpoolDetailActions({
   editMasterVendor,
   ensureLocalWriteAllowed,
   manageBusy,
+  locations,
   markCommonDetailsSaved,
   markMasterMetadataSaved,
   masterEditUnlocked,
@@ -142,6 +146,12 @@ export function useInventorySpoolDetailActions({
   t,
 }: InventorySpoolDetailActionsInput) {
   const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const currentLocationReference = selectedSpool
+    ? resolveInventoryLocationReferenceForWrite(locations, selectedSpool.location, {
+        id: selectedSpool.locationId,
+        name: selectedSpool.location,
+      })
+    : null;
 
   async function reloadInventorySurfaces() {
     await reloadSpools();
@@ -283,11 +293,22 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: selectedSpool.status,
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
           // An empty string deliberately means "clear" for the local Tauri command.
           // Serde cannot otherwise distinguish JSON null from an omitted nested Option.
           ...(homeLocationChanged
-            ? { home_location: parsed.value.homeLocation ?? "" }
+            ? {
+                home_location: parsed.value.homeLocation
+                  ? (resolveInventoryLocationReferenceForWrite(
+                      locations,
+                      parsed.value.homeLocation,
+                      {
+                        id: selectedSpool.homeLocationId,
+                        name: selectedSpool.homeLocation,
+                      },
+                    ) ?? "")
+                  : "",
+              }
             : {}),
           ...(tareWeightChanged
             ? { spool_tare_weight_g: parsed.value.tareWeightGrams }
@@ -461,7 +482,7 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: "EMPTY",
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
         },
         hostWriteTarget,
       );
@@ -491,7 +512,14 @@ export function useInventorySpoolDetailActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    const location = selectedSpoolLocationDraft.trim();
+    const location = resolveInventoryLocationReferenceForWrite(
+      locations,
+      selectedSpoolLocationDraft,
+      {
+        id: selectedSpool.homeLocationId,
+        name: selectedSpool.homeLocation,
+      },
+    );
     setManageBusy(true);
     setError(null);
     try {
@@ -500,8 +528,8 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: selectedSpool.status,
-          location: selectedSpool.location ?? null,
-          home_location: location || null,
+          location: currentLocationReference,
+          home_location: location,
         },
         hostWriteTarget,
       );
@@ -552,7 +580,7 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: "IN_STOCK",
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
         },
         hostWriteTarget,
       );
@@ -598,7 +626,7 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: nextStatus,
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
         },
         hostWriteTarget,
       );
@@ -705,7 +733,7 @@ export function useInventorySpoolDetailActions({
             spool_id: selectedSpool.id,
             qr_code: selectedSpool.qrCode ?? null,
             status: "IN_STOCK",
-            location: selectedSpool.location ?? null,
+            location: currentLocationReference,
           },
           hostWriteTarget,
         );

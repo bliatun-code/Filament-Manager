@@ -54,7 +54,7 @@
       }
     ]
   },
-  "currentSchemaVersion": 2,
+  "currentSchemaVersion": 3,
   "publishedThroughSequence": 3,
   "publishedReference": {
     "ref": "v0.27.0",
@@ -80,6 +80,14 @@
       "role": "schema-migration",
       "fromSchemaVersion": 1,
       "toSchemaVersion": 2
+    },
+    {
+      "sequence": 4,
+      "file": "004_inventory_location_objects.sql",
+      "sha256": "67571f4da70afc1cdaee7b9d377d9a00e9d0cc1fc231582f2d533eb2c525c68e",
+      "role": "schema-migration",
+      "fromSchemaVersion": 2,
+      "toSchemaVersion": 3
     }
   ]
 }

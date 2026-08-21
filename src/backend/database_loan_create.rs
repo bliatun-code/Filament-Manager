@@ -75,10 +75,11 @@ pub(crate) fn create_spool_loan_in_transaction(
 
     let location = format!("Loaned to: {borrower}");
     conn.execute(
-        "INSERT INTO inventory_locations (id, name, type)
-         VALUES (?1, ?2, 'LOAN')
+        "INSERT INTO inventory_locations (id, name, type, created_at, updated_at)
+         VALUES (?1, ?2, 'LOAN', datetime('now'), datetime('now'))
          ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name",
+            name = excluded.name,
+            updated_at = datetime('now')",
         params![location, location],
     )?;
     conn.execute(

@@ -36,6 +36,8 @@ pub mod database_loan_models;
 pub mod database_loan_queries;
 pub mod database_loan_return;
 pub mod database_loan_update;
+pub mod database_location_facade;
+pub mod database_location_models;
 pub mod database_locations;
 pub mod database_low_stock_policy;
 pub mod database_maintenance;

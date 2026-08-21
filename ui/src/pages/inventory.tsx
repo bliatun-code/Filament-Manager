@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
+import { InventoryLocationDatalist } from "../components/inventory_location_datalist";
 import { InventoryLoadSpoolModal } from "../components/inventory_load_spool_modal";
 import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
@@ -14,6 +15,15 @@ import {
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
 import { isInventorySpoolLoanTrackingCandidate } from "../lib/inventory_list_model";
+import {
+  archiveLocationForInventory,
+  createLocationForInventory,
+  mergeLocationsForInventory,
+  renameLocationForInventory,
+  restoreLocationForInventory,
+  selectableInventoryLocations,
+  type InventoryLocationMutationContext,
+} from "../lib/inventory_location_data_source";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import {
   buildInventoryDetailVisualFixture,
@@ -88,6 +98,10 @@ export default function InventoryPage({
     librarySyncReady,
     loadError,
     loading,
+    locations,
+    locationsLoading,
+    locationMutationsSupported,
+    locationSource,
     printerOverview,
     refreshInventoryData,
     refreshing,
@@ -168,6 +182,97 @@ export default function InventoryPage({
   const [selectedRfidCaptureSlotId, setSelectedRfidCaptureSlotId] = useState<string | null>(null);
   const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
   const [rfidCaptureLoading, setRfidCaptureLoading] = useState(false);
+
+  const locationMutationContext = useMemo<InventoryLocationMutationContext>(
+    () => ({
+      clientHostBaseUrl,
+      clientHostWritePaired,
+      clientLibraryId,
+      clientReadOnly,
+      mutationsSupported: locationMutationsSupported,
+    }),
+    [
+      clientHostBaseUrl,
+      clientHostWritePaired,
+      clientLibraryId,
+      clientReadOnly,
+      locationMutationsSupported,
+    ],
+  );
+
+  const runLocationMutation = useCallback(
+    async (operation: () => Promise<unknown>, successMessage: string): Promise<boolean> => {
+      if (!tauri || manageBusy) {
+        return false;
+      }
+      setManageBusy(true);
+      setError(null);
+      setInfoMessage(null);
+      try {
+        await operation();
+        await reloadSpools();
+        setInfoMessage(successMessage);
+        return true;
+      } catch (locationError) {
+        setError(
+          typeof locationError === "string"
+            ? locationError
+            : locationError instanceof Error
+              ? locationError.message
+              : t("errors.requestFailed", "The request could not be completed."),
+        );
+        return false;
+      } finally {
+        setManageBusy(false);
+      }
+    },
+    [manageBusy, reloadSpools, t, tauri],
+  );
+
+  const createLocation = useCallback(
+    (name: string) =>
+      runLocationMutation(
+        () => createLocationForInventory(locationMutationContext, name),
+        t("inventory.locationCreated", "Location created."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const renameLocation = useCallback(
+    (locationId: string, name: string) =>
+      runLocationMutation(
+        () => renameLocationForInventory(locationMutationContext, locationId, name),
+        t("inventory.locationRenamed", "Location renamed."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const archiveLocation = useCallback(
+    (locationId: string) =>
+      runLocationMutation(
+        () => archiveLocationForInventory(locationMutationContext, locationId),
+        t("inventory.locationArchived", "Location archived."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const restoreLocation = useCallback(
+    (locationId: string) =>
+      runLocationMutation(
+        () => restoreLocationForInventory(locationMutationContext, locationId),
+        t("inventory.locationRestored", "Location restored."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const mergeLocations = useCallback(
+    (sourceId: string, targetId: string) =>
+      runLocationMutation(
+        () => mergeLocationsForInventory(locationMutationContext, sourceId, targetId),
+        t("inventory.locationsMerged", "Locations merged."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
 
   const openPurchaseQueue = useCallback(() => {
     setActiveWorkspaceView("PURCHASES");
@@ -641,6 +746,7 @@ export default function InventoryPage({
     editMasterVendor,
     ensureLocalWriteAllowed,
     manageBusy,
+    locations,
     markCommonDetailsSaved,
     markMasterMetadataSaved,
     masterEditUnlocked,
@@ -1043,6 +1149,8 @@ export default function InventoryPage({
 
       <InventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
 
+      <InventoryLocationDatalist rows={locations} />
+
       <InventorySpoolDetailModal
         assignedSlot={selectedSpoolAssignedSlot}
         canLoadInPrinter={canLoadSelectedSpool}
@@ -1189,6 +1297,19 @@ export default function InventoryPage({
         loadError={loadError}
         loadErrorRetryDisabled={!tauri || loading || manageBusy}
         loadErrorRetrying={refreshing}
+        locationPanelProps={{
+          busy: manageBusy,
+          canMutate: tauri && (!clientReadOnly || clientHostWritePaired),
+          loading: locationsLoading,
+          mutationsSupported: locationMutationsSupported,
+          onArchive: archiveLocation,
+          onCreate: createLocation,
+          onMerge: mergeLocations,
+          onRename: renameLocation,
+          onRestore: restoreLocation,
+          rows: locations,
+          source: locationSource,
+        }}
         onActiveViewChange={setActiveWorkspaceView}
         onRetryLoadError={refreshInventoryPage}
         purchaseQueueProps={purchaseQueueProps}
@@ -1209,6 +1330,7 @@ export default function InventoryPage({
         infoMessage={infoMessage}
         showRollModal={showRollModal}
         totalInventoryCount={spools.length}
+        totalLocationCount={selectableInventoryLocations(locations).length}
         totalPurchaseCount={wishlistItems.length}
       />
     </div>

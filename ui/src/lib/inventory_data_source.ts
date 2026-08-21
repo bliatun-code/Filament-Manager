@@ -103,8 +103,14 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
     ownershipNote: normalizedRow.spool.ownership_note ?? null,
     remainingGrams: normalizedRow.spool.remaining_g ?? null,
     spoolTareWeightGrams: normalizedRow.spool.spool_tare_weight_g ?? null,
-    location: normalizedRow.spool.location_id ?? null,
-    homeLocation: normalizedRow.spool.home_location_id ?? null,
+    location:
+      normalizedRow.location_name?.trim() || normalizedRow.spool.location_id || null,
+    locationId: normalizedRow.spool.location_id ?? null,
+    homeLocation:
+      normalizedRow.home_location_name?.trim() ||
+      normalizedRow.spool.home_location_id ||
+      null,
+    homeLocationId: normalizedRow.spool.home_location_id ?? null,
     qrCode: normalizedRow.spool.qr_code ?? null,
     rfidTag: normalizedRow.spool.rfid_tag ?? null,
     rfidObservedAt: normalizedRow.spool.rfid_observed_at ?? null,

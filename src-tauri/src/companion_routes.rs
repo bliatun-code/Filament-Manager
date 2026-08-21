@@ -10,6 +10,10 @@ use crate::companion_inventory_read_api::{
     handle_list_spools, handle_list_wishlist_items, handle_spool_qr_image_svg,
 };
 use crate::companion_library_api::*;
+use crate::companion_location_api::{
+    handle_archive_location, handle_create_location, handle_list_library_locations,
+    handle_list_locations, handle_merge_locations, handle_rename_location, handle_restore_location,
+};
 use crate::companion_state::CompanionApiState;
 use crate::companion_wishlist_write_api::{
     handle_create_wishlist_item, handle_delete_wishlist_item, handle_receive_wishlist_item,
@@ -41,6 +45,7 @@ fn build_router_with_security_config(
         .route("/library/revisions", get(handle_library_domain_revisions))
         .route("/library/snapshot", get(handle_library_snapshot))
         .route("/library/spools", get(handle_library_spools))
+        .route("/library/locations", get(handle_list_library_locations))
         .route("/library/printers", get(handle_library_printers))
         .route(
             "/library/printer-settings",
@@ -61,6 +66,21 @@ fn build_router_with_security_config(
         )
         .route("/library/wishlist", get(handle_library_wishlist_items))
         .route("/inventory/spools", get(handle_list_spools))
+        .route("/locations", get(handle_list_locations))
+        .route("/locations", post(handle_create_location))
+        .route("/locations/merge", post(handle_merge_locations))
+        .route(
+            "/locations/{location_id}/rename",
+            post(handle_rename_location),
+        )
+        .route(
+            "/locations/{location_id}/archive",
+            post(handle_archive_location),
+        )
+        .route(
+            "/locations/{location_id}/restore",
+            post(handle_restore_location),
+        )
         .route("/backup/full", get(handle_export_full_backup))
         .route("/catalog/masters", get(handle_list_catalog_masters))
         .route("/catalog/refresh", post(handle_refresh_vendor_catalog))

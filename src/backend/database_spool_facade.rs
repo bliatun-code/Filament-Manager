@@ -55,7 +55,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_location(&self, name: &str) -> InventoryResult<String> {
-        ensure_location_row(self.connection(), name)
+        self.with_inventory_transaction(|conn| ensure_location_row(conn, name))
     }
 
     pub fn list_spools_with_master(

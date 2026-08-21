@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::database_loan_models::SpoolLoanDetailsRow;
+use super::database_location_models::InventoryLocationRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_spool_models::SpoolWithMasterRow;
 use super::database_wishlist_models::WishlistItemRow;
@@ -50,6 +51,12 @@ pub struct LibrarySyncCachedSnapshotRow {
 pub struct LibrarySyncCachedSpoolListRow {
     pub captured_at: String,
     pub rows: Vec<SpoolWithMasterRow>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LibrarySyncCachedLocationListRow {
+    pub captured_at: String,
+    pub rows: Vec<InventoryLocationRow>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

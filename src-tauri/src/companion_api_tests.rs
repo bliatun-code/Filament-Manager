@@ -2927,7 +2927,7 @@ async fn companion_api_registers_owned_catalog_spool() {
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
-        assert!(detail_text.contains("\"location_id\":\"Shelf B\""));
+        assert!(detail_text.contains("\"location_name\":\"Shelf B\""));
         assert!(detail_text.contains("\"remaining_g\":900"));
         assert!(detail_text.contains("\"qr_code\":\"QR-CAT-1\""));
 
@@ -3657,7 +3657,7 @@ async fn companion_api_registers_borrowed_in_spool() {
         assert!(detail_text.contains("\"owner_name\":\"Carla\""));
         assert!(detail_text.contains("\"remaining_g\":860"));
         assert!(detail_text.contains("\"loan_direction\":\"INBOUND\""));
-        assert!(detail_text.contains("\"location_id\":\"Borrowed Shelf\""));
+        assert!(detail_text.contains("\"location_name\":\"Borrowed Shelf\""));
 
         let default_loans = router
             .clone()
@@ -3962,8 +3962,8 @@ async fn companion_api_updates_spool_status_and_location() {
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"status\":\"LOST\""));
-        assert!(detail_text.contains("\"location_id\":\"Archive Bin\""));
-        assert!(detail_text.contains("\"home_location_id\":\"Shelf C\""));
+        assert!(detail_text.contains("\"location_name\":\"Archive Bin\""));
+        assert!(detail_text.contains("\"home_location_name\":\"Shelf C\""));
         assert!(detail_text.contains("\"spool_tare_weight_g\":245"));
         assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
         assert!(detail_text.contains("\"qr_code\":\"qr-1\""));
@@ -4048,7 +4048,7 @@ async fn companion_api_preserves_location_when_status_update_omits_location() {
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"status\":\"LOST\""));
-        assert!(detail_text.contains("\"location_id\":\"Shelf A\""));
+        assert!(detail_text.contains("\"location_name\":\"Shelf A\""));
 
         Ok::<(), String>(())
     }
@@ -4237,7 +4237,7 @@ async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loa
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"status\":\"ASSIGNED\""));
-        assert!(detail_text.contains("\"home_location_id\":\"Shelf C\""));
+        assert!(detail_text.contains("\"home_location_name\":\"Shelf C\""));
         assert!(detail_text.contains("\"spool_tare_weight_g\":247"));
 
         let update = router
@@ -4810,12 +4810,269 @@ async fn companion_api_rejects_invalid_browser_lend_request() {
     }
 }
 
+#[tokio::test]
+async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_consistent() {
+    let db_path = temp_db_path("location-lifecycle");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+        let revision_before = FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .inventory;
+
+        let create_source = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/locations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"name":" Source   Shelf ","parent_id":null}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(create_source.status(), StatusCode::OK);
+        let source: serde_json::Value = serde_json::from_slice(
+            &to_bytes(create_source.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let source_id = source["id"]
+            .as_str()
+            .ok_or_else(|| "source id missing".to_string())?
+            .to_string();
+        assert!(source_id.starts_with("location_"));
+
+        let create_target = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/locations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"name":"Target Shelf","parent_id":null}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(create_target.status(), StatusCode::OK);
+        let target: serde_json::Value = serde_json::from_slice(
+            &to_bytes(create_target.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let target_id = target["id"]
+            .as_str()
+            .ok_or_else(|| "target id missing".to_string())?
+            .to_string();
+
+        let rename = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{source_id}/rename"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(
+                        r#"{{"location_id":"{source_id}","name":"Renamed Source"}}"#
+                    )))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rename.status(), StatusCode::OK);
+        let renamed: serde_json::Value = serde_json::from_slice(
+            &to_bytes(rename.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(renamed["id"], source_id);
+        assert_eq!(renamed["name"], "Renamed Source");
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.connection()
+            .execute(
+                "UPDATE filament_spools
+                 SET location_id = ?1, home_location_id = ?1
+                 WHERE id = 'spool_1'",
+                [&source_id],
+            )
+            .map_err(|error| error.to_string())?;
+        drop(db);
+
+        let merge = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/locations/merge")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(
+                        r#"{{"source_id":"{source_id}","target_id":"{target_id}"}}"#
+                    )))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(merge.status(), StatusCode::OK);
+        let merge_result: serde_json::Value = serde_json::from_slice(
+            &to_bytes(merge.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(merge_result["affected_spools"], 1);
+
+        let spools = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/spools?limit=10&offset=0")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(spools.status(), StatusCode::OK);
+        let spools_json: serde_json::Value = serde_json::from_slice(
+            &to_bytes(spools.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let moved = spools_json
+            .as_array()
+            .and_then(|rows| rows.iter().find(|row| row["spool"]["id"] == "spool_1"))
+            .ok_or_else(|| "moved spool missing".to_string())?;
+        assert_eq!(moved["spool"]["location_id"], target_id);
+        assert_eq!(moved["location_name"], "Target Shelf");
+
+        let archive = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{target_id}/archive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{target_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(archive.status(), StatusCode::OK);
+
+        let active = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/locations")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        let active_json: serde_json::Value = serde_json::from_slice(
+            &to_bytes(active.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert!(active_json
+            .as_array()
+            .is_some_and(|rows| rows.iter().all(|row| row["id"] != target_id)));
+
+        let restore = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{target_id}/restore"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{target_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(restore.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        assert!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .inventory
+                > revision_before
+        );
+        let history_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'spool_1' AND event_type = 'LOCATION_MERGED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_count, 1);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_location_lifecycle_merge_revision_and_spool_names_are_consistent failed: {message}"
+        );
+    }
+}
+
 #[test]
 fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
     let sources = [
         include_str!("companion_api.rs"),
         include_str!("companion_inventory_read_api.rs"),
         include_str!("companion_library_api.rs"),
+        include_str!("companion_location_api.rs"),
         include_str!("companion_wishlist_write_api.rs"),
     ];
     let blocking_io_markers = [

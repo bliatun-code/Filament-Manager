@@ -169,11 +169,17 @@ function writeManifestNoReplace(manifestPath, manifest) {
   chmodSync(manifestPath, 0o600);
 }
 
-export async function preparePreviousReleaseUpgradeFixture(options) {
+export async function preparePreviousReleaseUpgradeFixture(
+  options,
+  {
+    inspectSource = inspectPreviousReleaseSource,
+    readCurrentSchemaVersion = currentSchemaVersion,
+  } = {},
+) {
   const { databasePath, manifestPath, sourcePath } =
     validatePreviousReleaseFixtureOptions(options);
-  const source = inspectPreviousReleaseSource(sourcePath);
-  const expectedCurrentSchemaVersion = currentSchemaVersion();
+  const source = inspectSource(sourcePath);
+  const expectedCurrentSchemaVersion = readCurrentSchemaVersion();
   if (source.schemaVersion > expectedCurrentSchemaVersion) {
     throw new Error(
       `${PREVIOUS_RELEASE_REF} schema ${source.schemaVersion} is newer than ` +

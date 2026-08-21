@@ -55,6 +55,10 @@ export type MasterRow = {
 export type SpoolWithMasterRow = {
   spool: SpoolRow;
   master: MasterRow;
+  /** Human-readable label separate from the immutable location id. */
+  location_name?: string | null;
+  /** Human-readable home-location label separate from its immutable id. */
+  home_location_name?: string | null;
   /** Missing only when reading a pre-policy Host or cache; consumers must use 200 g. */
   low_stock_threshold_g?: number | null;
 };

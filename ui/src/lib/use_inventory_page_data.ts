@@ -11,6 +11,7 @@ import {
   loadInventorySpoolDetail,
   loadInventorySpools,
 } from "./inventory_data_source";
+import { loadInventoryLocations } from "./inventory_location_data_source";
 import { loadLibrarySyncPageState } from "./library_sync_state";
 import { usePageRefreshState } from "./page_refresh_state";
 import { loadPrinterOverviewData } from "./printer_data_source";
@@ -30,6 +31,7 @@ import type {
   SpoolUsagePointRow,
   WishlistItemRow,
 } from "./tauri_client";
+import type { InventoryLocationRow } from "./tauri_location_client";
 import type { InventorySpool } from "./inventory_list_model";
 
 type InventoryPageDataInput = {
@@ -51,6 +53,13 @@ export function useInventoryPageData({
   t,
 }: InventoryPageDataInput) {
   const [spools, setSpools] = useState<InventorySpool[]>([]);
+  const spoolsRef = useRef<InventorySpool[]>([]);
+  const [locations, setLocations] = useState<InventoryLocationRow[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
+  const [locationMutationsSupported, setLocationMutationsSupported] = useState(true);
+  const [locationSource, setLocationSource] = useState<
+    "LIVE" | "CACHED" | "LEGACY_HOST" | "OFFLINE"
+  >("LIVE");
   const {
     beginRefresh,
     completeRefresh,
@@ -111,6 +120,40 @@ export function useInventoryPageData({
     };
   }, [tauriAvailable]);
 
+  useEffect(() => {
+    spoolsRef.current = spools;
+  }, [spools]);
+
+  const reloadLocations = useCallback(async (
+    spoolRows: InventorySpool[] = spoolsRef.current,
+    reportResult?: InventoryReloadReporter,
+  ) => {
+    if (!tauriAvailable) {
+      reportResult?.(false);
+      return;
+    }
+    setLocationsLoading(true);
+    try {
+      const result = await loadInventoryLocations(
+        {
+          clientReadOnly,
+          clientHostBaseUrl,
+          clientLibraryId,
+        },
+        spoolRows,
+      );
+      setLocations(result.rows);
+      setLocationMutationsSupported(result.mutationsSupported);
+      setLocationSource(result.source);
+      reportResult?.(true);
+    } catch (locationError) {
+      console.error(locationError);
+      reportResult?.(false);
+    } finally {
+      setLocationsLoading(false);
+    }
+  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+
   const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
       reportResult?.(false);
@@ -130,13 +173,21 @@ export function useInventoryPageData({
           return;
         }
       }
+      spoolsRef.current = result.rows;
       setSpools(result.rows);
+      await reloadLocations(result.rows, reportResult);
       reportResult?.(true);
     } catch (loadError) {
       console.error(loadError);
       reportResult?.(false);
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+  }, [
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    reloadLocations,
+    tauriAvailable,
+  ]);
 
   const reloadWishlist = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
@@ -335,9 +386,14 @@ export function useInventoryPageData({
     librarySyncReady,
     loadError,
     loading,
+    locations,
+    locationsLoading,
+    locationMutationsSupported,
+    locationSource,
     printerOverview,
     reloadActiveLoans,
     reloadPrinterOverview,
+    reloadLocations,
     refreshInventoryData,
     reloadSpoolDetail,
     reloadSpools,

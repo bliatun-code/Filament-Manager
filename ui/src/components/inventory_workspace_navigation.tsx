@@ -1,10 +1,11 @@
 import { useI18n } from "../lib/i18n";
 
-export type InventoryWorkspaceView = "STOCK" | "PURCHASES";
+export type InventoryWorkspaceView = "STOCK" | "PURCHASES" | "LOCATIONS";
 
 type InventoryWorkspaceNavigationProps = {
   activeView: InventoryWorkspaceView;
   inventoryCount: number;
+  locationCount: number;
   onViewChange: (view: InventoryWorkspaceView) => void;
   purchaseCount: number;
 };
@@ -20,6 +21,7 @@ function inventoryWorkspaceTabClassName(active: boolean): string {
 export function InventoryWorkspaceNavigation({
   activeView,
   inventoryCount,
+  locationCount,
   onViewChange,
   purchaseCount,
 }: InventoryWorkspaceNavigationProps) {
@@ -41,6 +43,17 @@ export function InventoryWorkspaceNavigation({
       >
         <span>{t("nav.inventory", "Inventory")}</span>
         <span className="count-pill tabular-nums">{inventoryCount}</span>
+      </button>
+      <button
+        type="button"
+        id="inventory-locations-tab"
+        aria-controls="inventory-locations-panel"
+        aria-pressed={activeView === "LOCATIONS"}
+        className={inventoryWorkspaceTabClassName(activeView === "LOCATIONS")}
+        onClick={() => onViewChange("LOCATIONS")}
+      >
+        <span>{t("inventory.locationsTitle", "Locations")}</span>
+        <span className="count-pill tabular-nums">{locationCount}</span>
       </button>
       <button
         type="button"

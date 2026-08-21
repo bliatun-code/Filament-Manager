@@ -32,12 +32,20 @@ struct StructuralMigration {
 
 // This is the authoritative runtime order for versioned schema migrations.
 // Published rows are append-only; see docs/DATABASE_MIGRATIONS.md.
-const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[StructuralMigration {
-    from_version: 1,
-    name: "003_library_domain_revisions.sql",
-    sql: include_str!("../database/migrations/003_library_domain_revisions.sql"),
-    to_version: 2,
-}];
+const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
+    StructuralMigration {
+        from_version: 1,
+        name: "003_library_domain_revisions.sql",
+        sql: include_str!("../database/migrations/003_library_domain_revisions.sql"),
+        to_version: 2,
+    },
+    StructuralMigration {
+        from_version: 2,
+        name: "004_inventory_location_objects.sql",
+        sql: include_str!("../database/migrations/004_inventory_location_objects.sql"),
+        to_version: 3,
+    },
+];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
     let schema_version = ensure_supported_schema_version(conn)?;
@@ -146,6 +154,7 @@ mod tests {
         apply_schema_migrations, validate_structural_migration_sequence, BASELINE_SCHEMA_VERSION,
         STRUCTURAL_MIGRATIONS,
     };
+    use crate::backend::database_locations::{ensure_location, list_locations, rename_location};
     use crate::backend::database_schema::{
         database_schema_version, table_has_column, CURRENT_SCHEMA_VERSION,
     };
@@ -163,6 +172,7 @@ mod tests {
         let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
         assert_eq!(first.name, "003_library_domain_revisions.sql");
         assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
+        assert_eq!(last.name, "004_inventory_location_objects.sql");
         assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
     }
 
@@ -182,6 +192,13 @@ mod tests {
         assert!(
             table_has_column(&conn, "filament_spools", "rfid_tag").expect("inspect current schema")
         );
+        for column in ["archived_at", "created_at", "updated_at"] {
+            assert!(
+                table_has_column(&conn, "inventory_locations", column)
+                    .expect("inspect location metadata"),
+                "missing inventory_locations.{column}"
+            );
+        }
 
         let schema_cookie_before: i64 = conn
             .query_row("PRAGMA schema_version", [], |row| row.get(0))
@@ -300,6 +317,91 @@ mod tests {
             )
             .expect("read bumped inventory revision");
         assert_eq!(inventory_after, inventory_before + 1);
+    }
+
+    #[test]
+    fn version_two_location_ids_and_references_survive_object_migration() {
+        let conn = Connection::open_in_memory().expect("open version-two database");
+        conn.execute_batch(CURRENT_SCHEMA_SQL)
+            .expect("apply baseline tables");
+        conn.execute_batch(include_str!(
+            "../database/migrations/003_library_domain_revisions.sql"
+        ))
+        .expect("apply version-two migration");
+        conn.execute_batch(
+            "INSERT INTO filament_master_list (
+                id, material, filament_name, color_name, default_weight, vendor
+             ) VALUES ('legacy-master', 'PLA', 'Basic', 'Blue', 1000, 'Manual');
+             INSERT INTO inventory_locations (id, name, type)
+             VALUES ('Shelf A', 'Shelf A', 'SHELF');
+             INSERT INTO filament_spools (
+                id, master_id, status, location_id, home_location_id
+             ) VALUES ('legacy-spool', 'legacy-master', 'IN_STOCK', 'Shelf A', 'Shelf A');
+             PRAGMA user_version = 2;",
+        )
+        .expect("prepare version-two location data");
+
+        apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade version-two database");
+
+        let preserved: (String, String, String, String, String) = conn
+            .query_row(
+                "SELECT l.id, l.name, l.type, s.location_id, s.home_location_id
+                 FROM inventory_locations l
+                 JOIN filament_spools s ON s.location_id = l.id
+                 WHERE s.id = 'legacy-spool'",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .expect("read preserved location references");
+        assert_eq!(
+            preserved,
+            (
+                "Shelf A".to_string(),
+                "Shelf A".to_string(),
+                "GENERIC".to_string(),
+                "Shelf A".to_string(),
+                "Shelf A".to_string(),
+            )
+        );
+        let metadata_present: bool = conn
+            .query_row(
+                "SELECT created_at IS NOT NULL AND updated_at IS NOT NULL
+                 FROM inventory_locations WHERE id = 'Shelf A'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read migrated timestamps");
+        assert!(metadata_present);
+
+        assert_eq!(
+            ensure_location(&conn, "  shelf   a ").expect("reuse canonicalized shelf"),
+            "Shelf A"
+        );
+        let renamed =
+            rename_location(&conn, "Shelf A", "Archive Shelf").expect("rename canonicalized shelf");
+        assert_eq!(renamed.id, "Shelf A");
+        assert_eq!(renamed.name, "Archive Shelf");
+        assert!(list_locations(&conn, false)
+            .expect("list selectable locations")
+            .iter()
+            .any(|row| row.id == "Shelf A" && row.location_type == "GENERIC"));
+        let spool_fk: (String, String) = conn
+            .query_row(
+                "SELECT location_id, home_location_id
+                 FROM filament_spools WHERE id = 'legacy-spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read references after rename");
+        assert_eq!(spool_fk, ("Shelf A".to_string(), "Shelf A".to_string()));
     }
 
     #[test]

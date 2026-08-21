@@ -1,5 +1,6 @@
 import { useId, type CSSProperties } from "react";
 import { inventoryFormControlClassName } from "./form_control_class";
+import { INVENTORY_LOCATION_DATALIST_ID } from "./inventory_location_datalist";
 import { ModalActionButton } from "./modal_action_button";
 import { ModalFactCard, ModalFormField } from "./modal_chrome";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
@@ -214,6 +215,7 @@ export function InventoryCreateActionsPanel({
             >
               <input
                 type="text"
+                list={INVENTORY_LOCATION_DATALIST_ID}
                 value={location}
                 onChange={(event) => onLocationChange(event.target.value)}
                 className={`mt-1.5 ${inventoryFormControlClassName}`}

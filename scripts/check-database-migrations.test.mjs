@@ -64,7 +64,7 @@ function createMigrationTestDirectory() {
   return { directory, manifest, manifestPath, root };
 }
 
-function checkFixture({ currentSchemaVersion = 2, directory, manifestPath }) {
+function checkFixture({ currentSchemaVersion = 3, directory, manifestPath }) {
   return checkDatabaseMigrationIntegrity({
     currentSchemaVersion,
     manifestPath,
@@ -100,7 +100,7 @@ test("checked-in database migration manifest is complete and current", () => {
   const manifest = checkDatabaseMigrationIntegrity();
   assert.equal(manifest.policy, "append-only");
   assert.equal(manifest.baselineSchemaVersion, 1);
-  assert.equal(manifest.currentSchemaVersion, 2);
+  assert.equal(manifest.currentSchemaVersion, 3);
   assert.equal(manifest.publishedThroughSequence, 3);
   assert.deepEqual(
     manifest.migrations.map(({ file }) => file),
@@ -108,6 +108,7 @@ test("checked-in database migration manifest is complete and current", () => {
       "001_init.sql",
       "002_sync_queue.sql",
       "003_library_domain_revisions.sql",
+      "004_inventory_location_objects.sql",
     ],
   );
 });
@@ -202,29 +203,29 @@ test("published migrations cannot be deleted or renumbered", () => {
 test("a contiguous unpublished migration can be appended", () => {
   const fixture = createMigrationTestDirectory();
   try {
-    const filename = "004_test_append.sql";
+    const filename = "005_test_append.sql";
     const contents = "CREATE TABLE append_only_test (id INTEGER PRIMARY KEY);\n";
     writeFileSync(path.join(fixture.directory, filename), contents);
-    fixture.manifest.currentSchemaVersion = 3;
+    fixture.manifest.currentSchemaVersion = 4;
     fixture.manifest.migrations.push({
-      sequence: 4,
+      sequence: 5,
       file: filename,
       sha256: sha256(contents),
       role: "schema-migration",
-      fromSchemaVersion: 2,
-      toSchemaVersion: 3,
+      fromSchemaVersion: 3,
+      toSchemaVersion: 4,
     });
     appendRuntimeMigration(fixture, {
       file: filename,
-      fromSchemaVersion: 2,
-      toSchemaVersion: 3,
+      fromSchemaVersion: 3,
+      toSchemaVersion: 4,
     });
     writeFileSync(
       fixture.manifestPath,
       `${JSON.stringify(fixture.manifest, null, 2)}\n`,
     );
 
-    const validated = checkFixture({ ...fixture, currentSchemaVersion: 3 });
+    const validated = checkFixture({ ...fixture, currentSchemaVersion: 4 });
     assert.equal(validated.migrations.at(-1).file, filename);
     assert.equal(validated.publishedThroughSequence, 3);
   } finally {

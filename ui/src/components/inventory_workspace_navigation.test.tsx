@@ -15,12 +15,13 @@ const i18nValue: I18nContextValue = {
   t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
 };
 
-function renderNavigation(activeView: "STOCK" | "PURCHASES") {
+function renderNavigation(activeView: "STOCK" | "PURCHASES" | "LOCATIONS") {
   return renderToStaticMarkup(
     <I18nContext.Provider value={i18nValue}>
       <InventoryWorkspaceNavigation
         activeView={activeView}
         inventoryCount={18}
+        locationCount={3}
         onViewChange={() => {}}
         purchaseCount={4}
       />
@@ -28,14 +29,17 @@ function renderNavigation(activeView: "STOCK" | "PURCHASES") {
   );
 }
 
-test("inventory workspace exposes stock and purchases as one-click views with counts", () => {
+test("inventory workspace exposes stock, locations and purchases as one-click views with counts", () => {
   const html = renderNavigation("STOCK");
 
   assert.match(html, /role="group"/);
   assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="true"/);
   assert.match(html, /id="inventory-purchases-tab"[^>]*aria-pressed="false"/);
+  assert.match(html, /id="inventory-locations-tab"[^>]*aria-pressed="false"/);
   assert.match(html, />Inventory</);
   assert.match(html, />18</);
+  assert.match(html, />Locations</);
+  assert.match(html, />3</);
   assert.match(html, />Wishlist &amp; orders</);
   assert.match(html, />4</);
 });
@@ -45,4 +49,12 @@ test("purchase view owns the pressed navigation state", () => {
 
   assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="false"/);
   assert.match(html, /id="inventory-purchases-tab"[^>]*aria-pressed="true"/);
+});
+
+test("location view owns the pressed navigation state", () => {
+  const html = renderNavigation("LOCATIONS");
+
+  assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="false"/);
+  assert.match(html, /id="inventory-locations-tab"[^>]*aria-pressed="true"/);
+  assert.match(html, /id="inventory-purchases-tab"[^>]*aria-pressed="false"/);
 });

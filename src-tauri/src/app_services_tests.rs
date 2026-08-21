@@ -555,10 +555,13 @@ fn companion_service_updates_spool_details() {
             .get_spool_detail("spool_detail_1", Some(20), Some(50))
             .map_err(|error| error.to_string())?;
         assert_eq!(detail.spool.spool.status, "LOST");
-        assert_eq!(
-            detail.spool.spool.location_id.as_deref(),
-            Some("Archive Bin")
-        );
+        assert_eq!(detail.spool.location_name.as_deref(), Some("Archive Bin"));
+        assert!(detail
+            .spool
+            .spool
+            .location_id
+            .as_deref()
+            .is_some_and(|location_id| location_id.starts_with("location_")));
         assert_eq!(detail.spool.spool.qr_code.as_deref(), Some("detail-qr-2"));
         assert!(detail
             .history

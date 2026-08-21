@@ -18,7 +18,9 @@ use crate::backend::database_loan_update::{
     close_inbound_spool_loan_without_returning_spool as close_inbound_spool_loan_without_returning_spool_row,
     update_active_inbound_spool_loan_counterparty as update_active_inbound_spool_loan_counterparty_row,
 };
-use crate::backend::database_locations::ensure_location as ensure_location_row;
+use crate::backend::database_locations::{
+    location_reference_matches, resolve_active_generic_location_reference,
+};
 use crate::backend::database_print_jobs::insert_print_job as insert_print_job_row;
 use crate::backend::database_printer_queries::printer_exists as printer_exists_row;
 use crate::backend::database_printer_slot_assignment::assign_spool_to_ams_slot_in_transaction;
@@ -482,11 +484,15 @@ impl InventoryEngine {
 
         self.db.with_inventory_transaction(|conn| {
             spool.location_id = match requested_location.as_deref() {
-                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                Some(value) if !value.trim().is_empty() => {
+                    Some(resolve_active_generic_location_reference(conn, value)?)
+                }
                 _ => None,
             };
             spool.home_location_id = match requested_home_location.as_deref() {
-                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                Some(value) if !value.trim().is_empty() => {
+                    Some(resolve_active_generic_location_reference(conn, value)?)
+                }
                 _ => spool.location_id.clone(),
             };
 
@@ -593,7 +599,7 @@ impl InventoryEngine {
             if let Some(location) = input.location.as_deref()
                 && !location.trim().is_empty()
             {
-                let location_id = ensure_location_row(conn, location)?;
+                let location_id = resolve_active_generic_location_reference(conn, location)?;
                 set_spool_location_row(conn, &spool_id, Some(&location_id))?;
                 set_spool_home_location_row(conn, &spool_id, Some(&location_id))?;
                 insert_json_history_event(
@@ -770,7 +776,9 @@ impl InventoryEngine {
     ) -> InventoryResult<()> {
         self.db.with_inventory_transaction(|conn| {
             let resolved = match location_id {
-                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
+                Some(value) if !value.trim().is_empty() => {
+                    Some(resolve_active_generic_location_reference(conn, value)?)
+                }
                 _ => None,
             };
             set_spool_location_row(conn, spool_id, resolved.as_deref())?;
@@ -809,17 +817,20 @@ impl InventoryEngine {
                     "assign spool to a printer slot before setting ASSIGNED".to_string(),
                 ));
             }
-            let resolved_location = match input.location.as_deref() {
-                Some(value) if !value.trim().is_empty() => Some(ensure_location_row(conn, value)?),
-                _ => None,
-            };
             let existing_spool =
                 get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
+            let resolved_location = resolve_location_update(
+                conn,
+                input.location.as_deref(),
+                existing_spool.location_id.as_deref(),
+            )?;
             let has_active_loan = spool_has_active_loan_row(conn, &input.spool_id)?;
             let resolved_home_location = match &input.home_location {
-                Some(Some(value)) if !value.trim().is_empty() => {
-                    Some(ensure_location_row(conn, value)?)
-                }
+                Some(Some(value)) if !value.trim().is_empty() => resolve_location_update(
+                    conn,
+                    Some(value.as_str()),
+                    existing_spool.home_location_id.as_deref(),
+                )?,
                 Some(_) => None,
                 None => existing_spool.home_location_id.clone(),
             };
@@ -1780,6 +1791,24 @@ impl InventoryEngine {
     pub fn find_spool_by_qr(&self, qr_code: &str) -> InventoryResult<Option<SpoolRow>> {
         self.db.get_spool_by_qr(qr_code)
     }
+}
+
+fn resolve_location_update(
+    conn: &rusqlite::Connection,
+    requested: Option<&str>,
+    existing_id: Option<&str>,
+) -> InventoryResult<Option<String>> {
+    let Some(requested) = requested.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Ok(None);
+    };
+    if let Some(existing_id) = existing_id
+        && location_reference_matches(conn, existing_id, requested)?
+    {
+        return Ok(Some(existing_id.to_string()));
+    }
+    Ok(Some(resolve_active_generic_location_reference(
+        conn, requested,
+    )?))
 }
 
 fn insert_json_history_event(

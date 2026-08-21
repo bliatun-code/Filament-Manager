@@ -97,7 +97,17 @@ test("inventory exposes purchases as a page view and keeps queue management out 
   assert.match(inventoryPageWorkspaceSource, /id="inventory-purchases-panel"/);
   assert.match(inventoryPageSource, /setActiveWorkspaceView\("PURCHASES"\)/);
   assert.match(inventoryPageSource, /resetPurchaseQueue\("ON_ORDER"\)/);
+  assert.match(inventoryPageSource, /navigationIntent\.kind === "PURCHASES"/);
+  assert.match(inventoryPageSource, /resetPurchaseQueue\(navigationIntent\.status\)/);
   assert.doesNotMatch(inventoryAddModalSource, /WishlistQueuePanel/);
+});
+
+test("inventory exposes managed location objects and autocomplete in one click", () => {
+  assert.match(inventoryPageWorkspaceSource, /id="inventory-locations-panel"/);
+  assert.match(inventoryPageWorkspaceSource, /<InventoryLocationManagementPanel/);
+  assert.match(inventoryPageSource, /<InventoryLocationDatalist rows=\{locations\}/);
+  assert.match(inventoryPageSource, /locationPanelProps=\{\{/);
+  assert.match(inventoryPageSource, /totalLocationCount=\{selectableInventoryLocations/);
 });
 
 test("inventory search and filter controls expose accessible names and state", () => {

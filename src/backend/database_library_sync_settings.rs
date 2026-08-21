@@ -179,6 +179,7 @@ pub(crate) fn save_library_sync_settings(
         delete_setting(conn, "library_sync_last_validation_message")?;
         delete_setting(conn, "library_sync_cached_snapshot_json")?;
         delete_setting(conn, "library_sync_cached_spools_json")?;
+        delete_setting(conn, "library_sync_cached_locations_json")?;
         delete_setting(conn, "library_sync_cached_printers_json")?;
         delete_setting(conn, "library_sync_cached_loans_json")?;
         delete_setting(conn, "library_sync_cached_consumption_json")?;

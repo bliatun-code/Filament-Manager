@@ -6,6 +6,7 @@ import {
   InventoryHeaderActions,
 } from "./inventory_controls_panel";
 import { InventorySpoolCollection } from "./inventory_spool_collection";
+import { InventoryLocationManagementPanel } from "./inventory_location_management_panel";
 import {
   InventoryWorkspaceNavigation,
   type InventoryWorkspaceView,
@@ -37,11 +38,13 @@ type InventoryPageWorkspaceProps = {
   loadError: string | null;
   loadErrorRetryDisabled: boolean;
   loadErrorRetrying: boolean;
+  locationPanelProps: ComponentProps<typeof InventoryLocationManagementPanel>;
   onActiveViewChange: (view: InventoryWorkspaceView) => void;
   onRetryLoadError: () => void;
   purchaseQueueProps: WishlistQueuePanelProps;
   showRollModal: boolean;
   totalInventoryCount: number;
+  totalLocationCount: number;
   totalPurchaseCount: number;
 };
 
@@ -61,11 +64,13 @@ export function InventoryPageWorkspace({
   loadError,
   loadErrorRetryDisabled,
   loadErrorRetrying,
+  locationPanelProps,
   onActiveViewChange,
   onRetryLoadError,
   purchaseQueueProps,
   showRollModal,
   totalInventoryCount,
+  totalLocationCount,
   totalPurchaseCount,
 }: InventoryPageWorkspaceProps) {
   const { locale, t } = useI18n();
@@ -77,6 +82,8 @@ export function InventoryPageWorkspace({
           <h1 className="page-title">
             {activeView === "PURCHASES"
               ? t("inventory.wishlistOrders", "Wishlist & orders")
+              : activeView === "LOCATIONS"
+                ? t("inventory.locationsTitle", "Locations")
               : t("inventory.title", "Spools")}
           </h1>
           <div className="page-subtitle max-w-2xl">
@@ -85,6 +92,11 @@ export function InventoryPageWorkspace({
                   "inventory.wishlistQueueHelp",
                   "Keep planned purchases here, move them to on order, then stock them when they arrive.",
                 )
+              : activeView === "LOCATIONS"
+                ? t(
+                    "inventory.locationsHelp",
+                    "Names can change while immutable IDs keep roll placement and history stable.",
+                  )
               : t(
                   "inventory.subtitle",
                   "Track stock, assignments, loans and weight updates from one clear workspace.",
@@ -97,6 +109,7 @@ export function InventoryPageWorkspace({
       <InventoryWorkspaceNavigation
         activeView={activeView}
         inventoryCount={totalInventoryCount}
+        locationCount={totalLocationCount}
         onViewChange={onActiveViewChange}
         purchaseCount={totalPurchaseCount}
       />
@@ -158,13 +171,21 @@ export function InventoryPageWorkspace({
               totalSpoolCount={totalInventoryCount}
             />
           </div>
-        ) : (
+        ) : activeView === "PURCHASES" ? (
           <div
             id="inventory-purchases-panel"
             role="region"
             aria-labelledby="inventory-purchases-tab"
           >
             <WishlistQueuePanel {...purchaseQueueProps} />
+          </div>
+        ) : (
+          <div
+            id="inventory-locations-panel"
+            role="region"
+            aria-labelledby="inventory-locations-tab"
+          >
+            <InventoryLocationManagementPanel {...locationPanelProps} />
           </div>
         )}
 
