@@ -45,6 +45,12 @@ const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
         sql: include_str!("../database/migrations/004_inventory_location_objects.sql"),
         to_version: 3,
     },
+    StructuralMigration {
+        from_version: 3,
+        name: "005_purchase_receipt_metadata.sql",
+        sql: include_str!("../database/migrations/005_purchase_receipt_metadata.sql"),
+        to_version: 4,
+    },
 ];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
@@ -172,7 +178,7 @@ mod tests {
         let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
         assert_eq!(first.name, "003_library_domain_revisions.sql");
         assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
-        assert_eq!(last.name, "004_inventory_location_objects.sql");
+        assert_eq!(last.name, "005_purchase_receipt_metadata.sql");
         assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
     }
 
@@ -192,6 +198,13 @@ mod tests {
         assert!(
             table_has_column(&conn, "filament_spools", "rfid_tag").expect("inspect current schema")
         );
+        for column in ["purchase_currency", "supplier_reference"] {
+            assert!(
+                table_has_column(&conn, "filament_spools", column)
+                    .expect("inspect purchase receipt metadata"),
+                "missing filament_spools.{column}"
+            );
+        }
         for column in ["archived_at", "created_at", "updated_at"] {
             assert!(
                 table_has_column(&conn, "inventory_locations", column)
@@ -402,6 +415,79 @@ mod tests {
             )
             .expect("read references after rename");
         assert_eq!(spool_fk, ("Shelf A".to_string(), "Shelf A".to_string()));
+    }
+
+    #[test]
+    fn version_three_purchase_values_survive_receipt_metadata_migration() {
+        let conn = Connection::open_in_memory().expect("open version-three database");
+        conn.execute_batch(CURRENT_SCHEMA_SQL)
+            .expect("apply baseline tables");
+        conn.execute_batch(include_str!(
+            "../database/migrations/003_library_domain_revisions.sql"
+        ))
+        .expect("apply version-two migration");
+        conn.execute_batch(include_str!(
+            "../database/migrations/004_inventory_location_objects.sql"
+        ))
+        .expect("apply version-three migration");
+        conn.execute_batch(
+            "INSERT INTO filament_master_list (
+                id, material, filament_name, color_name, default_weight, vendor
+             ) VALUES ('receipt-master', 'PLA', 'Basic', 'Green', 1000, 'Manual');
+             INSERT INTO filament_spools (
+                id, master_id, status, purchase_date, purchase_price, batch_code
+             ) VALUES (
+                'receipt-spool', 'receipt-master', 'IN_STOCK', '2026-08-01', 249.5, 'legacy-batch'
+             );
+             PRAGMA user_version = 3;",
+        )
+        .expect("prepare version-three receipt data");
+
+        apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade version-three database");
+
+        assert_eq!(
+            database_schema_version(&conn).expect("read upgraded version"),
+            CURRENT_SCHEMA_VERSION
+        );
+        let preserved = conn
+            .query_row(
+                "SELECT purchase_date, purchase_price, batch_code,
+                        purchase_currency, supplier_reference
+                 FROM filament_spools WHERE id = 'receipt-spool'",
+                [],
+                |row| {
+                    Ok((
+                        row.get::<_, Option<String>>(0)?,
+                        row.get::<_, Option<f64>>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                        row.get::<_, Option<String>>(4)?,
+                    ))
+                },
+            )
+            .expect("read migrated receipt data");
+        assert_eq!(
+            preserved,
+            (
+                Some("2026-08-01".to_string()),
+                Some(249.5),
+                Some("legacy-batch".to_string()),
+                None,
+                None,
+            )
+        );
+        assert_eq!(
+            conn.query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
+                .expect("run quick check"),
+            "ok"
+        );
+        assert_eq!(
+            conn.query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .expect("check foreign keys"),
+            0
+        );
     }
 
     #[test]

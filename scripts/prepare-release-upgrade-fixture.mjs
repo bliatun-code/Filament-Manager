@@ -319,6 +319,7 @@ function sanitizePrivateRows(database) {
     qr_code: null,
     rfid_observed_at: null,
     rfid_tag: null,
+    supplier_reference: null,
   });
   updateExistingColumns(database, "ams_slots", {
     rfid_override_tray_uuid: null,

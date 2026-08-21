@@ -357,6 +357,7 @@ export function assertReleaseUpgradeFixtureSanitized(database) {
 
   for (const [table, column] of [
     ["filament_spools", "batch_code"],
+    ["filament_spools", "supplier_reference"],
     ["filament_spools", "owner_contact"],
     ["filament_spools", "owner_name"],
     ["filament_spools", "ownership_note"],

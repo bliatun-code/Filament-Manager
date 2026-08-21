@@ -281,6 +281,8 @@ fn make_inventory_spool(id: &str, rfid_tag: Option<&str>) -> SpoolWithMasterRow 
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         },
         master: FilamentMasterSummary {
             id: "master_1".to_string(),
@@ -2466,6 +2468,8 @@ fn enrich_with_match_status_records_live_usage_session_for_sane_decrease() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -2575,6 +2579,8 @@ fn live_weight_sync_rolls_back_all_usage_and_weight_writes_on_late_event_failure
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.assign_spool_to_ams_slot(
@@ -2719,6 +2725,8 @@ fn enrich_with_match_status_keeps_live_loaded_zero_gram_roll_assigned() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -2839,6 +2847,8 @@ fn enrich_with_match_status_keeps_present_bit_slot_assigned_on_empty_payload() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.assign_spool_to_ams_slot(
@@ -2948,6 +2958,8 @@ fn enrich_with_match_status_does_not_apply_global_exist_bits_to_indexed_ams_tray
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.assign_spool_to_ams_slot(
@@ -3067,6 +3079,8 @@ fn enrich_with_match_status_recovers_loaded_zero_rebound_from_same_live_roll() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -3207,6 +3221,8 @@ fn enrich_with_match_status_blocks_usage_accounting_when_nozzle_is_below_extrusi
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -3361,6 +3377,8 @@ fn enrich_with_match_status_records_recent_hot_cold_nozzle_ams_lag() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -3506,6 +3524,8 @@ fn enrich_with_match_status_ignores_stale_anonymous_progress_for_usage_context()
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -3649,6 +3669,8 @@ fn enrich_with_match_status_accepts_long_job_drop_when_cold_nozzle_signal_is_sta
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -3813,6 +3835,8 @@ fn enrich_with_match_status_rejects_large_failed_job_ams_drop() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -4036,6 +4060,8 @@ fn enrich_with_match_status_closes_stale_running_session_when_new_subtask_starts
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.record_live_usage_delta(
@@ -4188,6 +4214,8 @@ fn enrich_with_match_status_merges_anonymous_usage_back_into_active_subtask() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -4446,6 +4474,8 @@ fn enrich_with_match_status_corrects_live_usage_when_ams_rebounds() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.record_live_usage_delta(
@@ -4606,6 +4636,8 @@ fn enrich_with_match_status_keeps_stale_finish_job_running_and_preserves_usage_r
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -4783,6 +4815,8 @@ fn enrich_with_match_status_does_not_attach_stale_finished_job_to_weight_sync() 
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.record_live_usage_delta(
@@ -4943,6 +4977,8 @@ fn enrich_with_match_status_preserves_long_print_usage_across_late_rebounds_and_
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -5108,6 +5144,8 @@ fn enrich_with_match_status_finishes_near_complete_carried_live_session() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.record_live_usage_delta(
@@ -5219,6 +5257,8 @@ fn enrich_with_match_status_finishes_single_active_session_when_finish_subtask_c
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.record_live_usage_delta(
@@ -5334,6 +5374,8 @@ fn live_usage_sessions_split_repeated_subtask_after_completion() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -5476,6 +5518,8 @@ fn enrich_with_match_status_rebases_pre_usage_ams_rebound_before_counting_drop()
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -5648,6 +5692,8 @@ fn enrich_with_match_status_promotes_unknown_print_session_and_corrects_late_reb
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -5822,6 +5868,8 @@ fn live_weight_sync_logs_recorded_usage_decision_for_warmup_delta() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -5949,6 +5997,8 @@ fn live_weight_sync_records_small_initial_running_delta() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -6081,6 +6131,8 @@ fn enrich_with_match_status_attaches_tail_weight_sync_to_recent_completed_sessio
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         let finished_at = super::now_iso_string();
@@ -6251,6 +6303,8 @@ fn enrich_with_match_status_ignores_stale_near_finish_tail_after_completed_sessi
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         let finished_at = super::now_iso_string();
@@ -6412,6 +6466,8 @@ fn repeated_live_weight_increases_are_deduped_in_live_events() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
 
@@ -6549,6 +6605,8 @@ fn enrich_with_match_status_ignores_small_near_finish_ams_drop_after_established
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
         })
         .map_err(|error| error.to_string())?;
         db.record_live_usage_delta(

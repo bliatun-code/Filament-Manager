@@ -744,6 +744,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -768,6 +772,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -792,6 +800,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -816,6 +828,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -840,6 +856,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -864,6 +884,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1146,6 +1170,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1304,6 +1332,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1416,6 +1448,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1526,6 +1562,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1646,6 +1686,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1670,6 +1714,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1765,6 +1813,10 @@ mod tests {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
             db.upsert_printer_with_ams("printer_1", "P1S", "Brutus", 1, 4)

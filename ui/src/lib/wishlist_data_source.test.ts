@@ -18,7 +18,12 @@ import {
   summarizeWishlistQueue,
   updateWishlistEntryStatus,
 } from "./wishlist_data_source";
-import type { CreateWishlistItemInput, MasterCatalogRow, WishlistItemRow } from "./tauri_client";
+import type {
+  CreateWishlistItemInput,
+  MasterCatalogRow,
+  ReceiveWishlistItemInput,
+  WishlistItemRow,
+} from "./tauri_client";
 
 function wishlistItem(id: string): WishlistItemRow {
   return {
@@ -406,13 +411,20 @@ test("updateWishlistEntryStatus routes status changes to the host", async () => 
 });
 
 test("receiveWishlistEntry uses the same quantity contract for host and local writes", async () => {
-  const hostCalls: Array<{ baseUrl: string; itemId: string; quantity: number }> = [];
+  const hostCalls: Array<{ baseUrl: string; input: ReceiveWishlistItemInput }> = [];
+  const purchaseMetadata = {
+    purchase_price: 249.5,
+    purchase_currency: "NOK",
+    purchase_date: "2026-08-21",
+    batch_code: "LOT-7",
+    supplier_reference: "PO-42",
+  };
   const hostResult = await receiveWishlistEntry(
-    { item_id: "wish-host", quantity: 2 },
+    { item_id: "wish-host", quantity: 2, purchase_metadata: purchaseMetadata },
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
       receiveHostWishlistItem: async (baseUrl, _libraryId, input) => {
-        hostCalls.push({ baseUrl, itemId: input.item_id, quantity: input.quantity });
+        hostCalls.push({ baseUrl, input });
         return {
           spool_ids: ["spool-1", "spool-2"],
           received_quantity: 2,
@@ -423,17 +435,24 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
     },
   );
   assert.deepEqual(hostCalls, [
-    { baseUrl: "http://host", itemId: "wish-host", quantity: 2 },
+    {
+      baseUrl: "http://host",
+      input: {
+        item_id: "wish-host",
+        quantity: 2,
+        purchase_metadata: purchaseMetadata,
+      },
+    },
   ]);
   assert.equal(hostResult.remaining_quantity, 1);
 
-  const localCalls: Array<{ itemId: string; quantity: number }> = [];
+  const localCalls: ReceiveWishlistItemInput[] = [];
   const localResult = await receiveWishlistEntry(
     { item_id: "wish-local", quantity: 1 },
     { clientReadOnly: false },
     {
       receiveLocalWishlistItem: async (input) => {
-        localCalls.push({ itemId: input.item_id, quantity: input.quantity });
+        localCalls.push(input);
         return {
           spool_ids: ["spool-3"],
           received_quantity: 1,
@@ -443,7 +462,7 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
       },
     },
   );
-  assert.deepEqual(localCalls, [{ itemId: "wish-local", quantity: 1 }]);
+  assert.deepEqual(localCalls, [{ item_id: "wish-local", quantity: 1 }]);
   assert.equal(localResult.status, "RECEIVED");
 });
 

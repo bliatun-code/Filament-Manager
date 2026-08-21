@@ -9,6 +9,7 @@ use super::database_result::{require_rows, InventoryError, InventoryResult};
 use super::database_spool_insert::insert_spool;
 use super::database_spool_models::SpoolRow;
 use super::database_wishlist_models::{WishlistItemRow, WishlistReceiptResult};
+use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 pub(crate) fn list_wishlist_items(
     conn: &Connection,
@@ -86,6 +87,7 @@ pub(crate) fn receive_wishlist_item(
     conn: &Connection,
     item_id: &str,
     received_quantity: i64,
+    purchase_metadata: PurchaseReceiptMetadata,
 ) -> InventoryResult<WishlistReceiptResult> {
     if received_quantity <= 0 {
         return Err(InventoryError::InvalidOperation {
@@ -93,6 +95,7 @@ pub(crate) fn receive_wishlist_item(
             message: "Received quantity must be greater than zero".to_string(),
         });
     }
+    let purchase_metadata = purchase_metadata.normalize_for_new()?;
 
     let transaction = Transaction::new_unchecked(conn, TransactionBehavior::Immediate)?;
     let item = wishlist_item_by_id(&transaction, item_id)?.ok_or(InventoryError::NotFound)?;
@@ -134,10 +137,12 @@ pub(crate) fn receive_wishlist_item(
             spool_tare_weight_g: default_spool_tare_for_vendor(&vendor),
             location_id: None,
             home_location_id: None,
-            purchase_date: None,
-            purchase_price: None,
-            batch_code: None,
+            purchase_date: purchase_metadata.purchase_date.clone(),
+            purchase_price: purchase_metadata.purchase_price,
+            batch_code: purchase_metadata.batch_code.clone(),
             last_used_at: None,
+            purchase_currency: purchase_metadata.purchase_currency.clone(),
+            supplier_reference: purchase_metadata.supplier_reference.clone(),
         };
         insert_spool(&transaction, &spool)?;
         let payload = serde_json::to_string(&json!({
@@ -147,6 +152,18 @@ pub(crate) fn receive_wishlist_item(
         }))
         .map_err(|error| InventoryError::Db(error.to_string()))?;
         insert_spool_history_event(&transaction, &spool_id, "CREATED", &payload)?;
+        let receipt_payload = serde_json::to_string(&json!({
+            "wishlist_item_id": item.id,
+            "initial_weight_g": spool.initial_weight_g,
+            "purchase_metadata": purchase_metadata,
+        }))
+        .map_err(|error| InventoryError::Db(error.to_string()))?;
+        insert_spool_history_event(
+            &transaction,
+            &spool_id,
+            "PURCHASE_RECEIPT_RECORDED",
+            &receipt_payload,
+        )?;
         spool_ids.push(spool_id);
     }
 

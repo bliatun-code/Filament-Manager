@@ -28,6 +28,11 @@ import {
 import { prepareMeasuredWeightUpdate } from "./printer_slot_model";
 import { updateManagedMasterCatalogEntry } from "./catalog_writes";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
+import {
+  preparePurchaseReceiptMetadataUpdate,
+  type PurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "./purchase_receipt_metadata";
 
 type InventoryDetailReloads = {
   reloadActiveLoans: () => Promise<void>;
@@ -63,6 +68,7 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   selectedSpoolOwnerNameDraft: string;
   selectedSpoolOwnershipDraft: OwnershipType;
   selectedSpoolOwnershipNoteDraft: string;
+  selectedSpoolPurchaseMetadataDraft: PurchaseReceiptMetadataDraft;
   selectedSpoolResolvedTare: number;
   selectedSpoolTareDraft: string;
   setConfirmDelete: Dispatch<SetStateAction<boolean>>;
@@ -74,6 +80,9 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   setSelectedSpoolOwnerContactDraft: Dispatch<SetStateAction<string>>;
   setSelectedSpoolOwnerNameDraft: Dispatch<SetStateAction<string>>;
   setSelectedSpoolOwnershipNoteDraft: Dispatch<SetStateAction<string>>;
+  setSelectedSpoolPurchaseMetadataErrors: Dispatch<
+    SetStateAction<PurchaseReceiptMetadataValidationErrors>
+  >;
   setSelectedSpoolTareDraft: Dispatch<SetStateAction<string>>;
   tauriAvailable: boolean;
   t: ReturnType<typeof useI18n>["t"];
@@ -130,6 +139,7 @@ export function useInventorySpoolDetailActions({
   selectedSpoolOwnerNameDraft,
   selectedSpoolOwnershipDraft,
   selectedSpoolOwnershipNoteDraft,
+  selectedSpoolPurchaseMetadataDraft,
   selectedSpoolResolvedTare,
   selectedSpoolTareDraft,
   setConfirmDelete,
@@ -141,6 +151,7 @@ export function useInventorySpoolDetailActions({
   setSelectedSpoolOwnerContactDraft,
   setSelectedSpoolOwnerNameDraft,
   setSelectedSpoolOwnershipNoteDraft,
+  setSelectedSpoolPurchaseMetadataErrors,
   setSelectedSpoolTareDraft,
   tauriAvailable,
   t,
@@ -256,6 +267,7 @@ export function useInventorySpoolDetailActions({
       ownerName: selectedSpoolOwnerNameDraft,
       ownerContact: selectedSpoolOwnerContactDraft,
       ownershipNote: selectedSpoolOwnershipNoteDraft,
+      purchaseMetadata: selectedSpoolPurchaseMetadataDraft,
       tareWeight: selectedSpoolTareDraft,
     });
     if (!parsed.ok) {
@@ -269,6 +281,29 @@ export function useInventorySpoolDetailActions({
       );
       return;
     }
+
+    const purchaseMetadataBaseline = {
+      purchase_price: selectedSpool.purchasePrice ?? null,
+      purchase_currency: selectedSpool.purchaseCurrency ?? null,
+      purchase_date: selectedSpool.purchaseDate ?? null,
+      batch_code: selectedSpool.batchCode ?? null,
+      supplier_reference: selectedSpool.supplierReference ?? null,
+    };
+    const purchaseMetadata = preparePurchaseReceiptMetadataUpdate(
+      purchaseMetadataBaseline,
+      selectedSpoolPurchaseMetadataDraft,
+    );
+    if (!purchaseMetadata.ok) {
+      setSelectedSpoolPurchaseMetadataErrors(purchaseMetadata.errors);
+      setError(
+        t(
+          "inventory.error.purchaseMetadataInvalid",
+          "Review the highlighted purchase details.",
+        ),
+      );
+      return;
+    }
+    setSelectedSpoolPurchaseMetadataErrors({});
 
     setConfirmDelete(false);
     setConfirmPurge(false);
@@ -322,6 +357,9 @@ export function useInventorySpoolDetailActions({
                   ownership_note: parsed.value.ownershipNote,
                 },
               }
+            : {}),
+          ...(purchaseMetadata.changed
+            ? { purchase_metadata: purchaseMetadata.value }
             : {}),
         },
         hostWriteTarget,

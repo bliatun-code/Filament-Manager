@@ -76,6 +76,57 @@ test("detail baseline captures borrowed-in counterparty and detects real common 
   );
 });
 
+test("detail baseline captures purchase metadata and includes it in the dirty guard", () => {
+  const baseline = buildInventorySpoolDetailDraftBaseline(
+    spool({
+      purchasePrice: 249.5,
+      purchaseCurrency: "NOK",
+      purchaseDate: "2026-08-21",
+      batchCode: "LOT-7",
+      supplierReference: "PO-42",
+    }),
+  );
+
+  assert.deepEqual(baseline.common.purchaseMetadata, {
+    pricePerRoll: "249.5",
+    currency: "NOK",
+    purchaseDate: "2026-08-21",
+    batchCode: "LOT-7",
+    supplierReference: "PO-42",
+  });
+  assert.equal(
+    inventorySpoolCommonDetailsDraftChanged(baseline.common, {
+      ...baseline.common,
+      purchaseMetadata: {
+        ...baseline.common.purchaseMetadata,
+        supplierReference: "PO-43",
+      },
+    }),
+    true,
+  );
+});
+
+test("legacy currency-less prices stay clean until their numeric value changes", () => {
+  const baseline = buildInventorySpoolDetailDraftBaseline(
+    spool({ purchasePrice: 199, purchaseCurrency: null }),
+  ).common;
+
+  assert.equal(
+    inventorySpoolCommonDetailsDraftChanged(baseline, {
+      ...baseline,
+      purchaseMetadata: { ...baseline.purchaseMetadata, pricePerRoll: "199.0" },
+    }),
+    false,
+  );
+  assert.equal(
+    inventorySpoolCommonDetailsDraftChanged(baseline, {
+      ...baseline,
+      purchaseMetadata: { ...baseline.purchaseMetadata, pricePerRoll: "200" },
+    }),
+    true,
+  );
+});
+
 test("metadata dirty comparison treats casing in hex values and whitespace as presentation only", () => {
   const baseline = buildInventorySpoolDetailDraftBaseline(spool()).master;
   assert.equal(

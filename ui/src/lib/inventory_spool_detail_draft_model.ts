@@ -1,5 +1,10 @@
 import { isBorrowedInOwnership } from "./inventory_domain";
 import type { InventorySpool, OwnershipType } from "./inventory_list_model";
+import {
+  buildPurchaseReceiptMetadataDraft,
+  purchaseReceiptMetadataDraftChanged,
+  type PurchaseReceiptMetadataDraft,
+} from "./purchase_receipt_metadata";
 import { resolveSpoolTareWeight } from "./spool_weight";
 
 export type InventorySpoolCommonDetailsDraft = {
@@ -8,6 +13,7 @@ export type InventorySpoolCommonDetailsDraft = {
   ownerName: string;
   ownershipNote: string;
   ownershipType: OwnershipType;
+  purchaseMetadata: PurchaseReceiptMetadataDraft;
   tareWeight: string;
 };
 
@@ -58,6 +64,13 @@ export function buildInventorySpoolDetailDraftBaseline(
       ownerName: borrowedIn ? spool.ownerName ?? "" : "",
       ownerContact: borrowedIn ? spool.ownerContact ?? "" : "",
       ownershipNote: borrowedIn ? spool.ownershipNote ?? "" : "",
+      purchaseMetadata: buildPurchaseReceiptMetadataDraft({
+        purchase_price: spool.purchasePrice ?? null,
+        purchase_currency: spool.purchaseCurrency ?? null,
+        purchase_date: spool.purchaseDate ?? null,
+        batch_code: spool.batchCode ?? null,
+        supplier_reference: spool.supplierReference ?? null,
+      }),
       tareWeight: String(
         resolveSpoolTareWeight(spool.spoolTareWeightGrams, spool.vendor),
       ),
@@ -112,10 +125,20 @@ export function inventorySpoolCommonDetailsDraftChanged(
       normalizedText(baseline.ownerName) !== normalizedText(draft.ownerName) ||
       normalizedText(baseline.ownerContact) !== normalizedText(draft.ownerContact) ||
       normalizedText(baseline.ownershipNote) !== normalizedText(draft.ownershipNote) ||
+      purchaseReceiptMetadataDraftChanged(
+        baseline.purchaseMetadata,
+        draft.purchaseMetadata,
+      ) ||
       normalizedText(baseline.tareWeight) !== normalizedText(draft.tareWeight)
     );
   }
-  return JSON.stringify(left.value) !== JSON.stringify(right.value);
+  return (
+    JSON.stringify(left.value) !== JSON.stringify(right.value) ||
+    purchaseReceiptMetadataDraftChanged(
+      baseline.purchaseMetadata,
+      draft.purchaseMetadata,
+    )
+  );
 }
 
 export function inventorySpoolMasterMetadataDraftChanged(

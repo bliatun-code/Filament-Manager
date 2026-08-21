@@ -18,6 +18,11 @@ import {
   type InventorySpoolDetailDraftBaseline,
 } from "./inventory_spool_detail_draft_model";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "./tauri_client";
+import {
+  emptyPurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "./purchase_receipt_metadata";
 
 type InventorySelectedSpoolDetailStateInput = {
   closeRfidCaptureModal: () => void;
@@ -65,6 +70,10 @@ export function useInventorySelectedSpoolDetailState({
   const [selectedSpoolOwnerNameDraft, setSelectedSpoolOwnerNameDraft] = useState("");
   const [selectedSpoolOwnerContactDraft, setSelectedSpoolOwnerContactDraft] = useState("");
   const [selectedSpoolOwnershipNoteDraft, setSelectedSpoolOwnershipNoteDraft] = useState("");
+  const [selectedSpoolPurchaseMetadataDraft, setSelectedSpoolPurchaseMetadataDraft] =
+    useState<PurchaseReceiptMetadataDraft>(emptyPurchaseReceiptMetadataDraft);
+  const [selectedSpoolPurchaseMetadataErrors, setSelectedSpoolPurchaseMetadataErrors] =
+    useState<PurchaseReceiptMetadataValidationErrors>({});
   const [showRfidCapturedFields, setShowRfidCapturedFields] = useState(false);
   const [showRollHistory, setShowRollHistory] = useState(false);
   const [draftBaseline, setDraftBaseline] =
@@ -90,6 +99,8 @@ export function useInventorySelectedSpoolDetailState({
       setSelectedSpoolOwnerNameDraft("");
       setSelectedSpoolOwnerContactDraft("");
       setSelectedSpoolOwnershipNoteDraft("");
+      setSelectedSpoolPurchaseMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+      setSelectedSpoolPurchaseMetadataErrors({});
       setDraftBaseline(null);
       closeRfidCaptureModal();
       setSelectedRfidCaptureSlotId(null);
@@ -120,6 +131,8 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerNameDraft(nextBaseline.common.ownerName);
     setSelectedSpoolOwnerContactDraft(nextBaseline.common.ownerContact);
     setSelectedSpoolOwnershipNoteDraft(nextBaseline.common.ownershipNote);
+    setSelectedSpoolPurchaseMetadataDraft(nextBaseline.common.purchaseMetadata);
+    setSelectedSpoolPurchaseMetadataErrors({});
     closeRfidCaptureModal();
     setSelectedRfidCaptureSlotId(null);
     setRfidCaptureError(null);
@@ -172,6 +185,7 @@ export function useInventorySelectedSpoolDetailState({
       ownerName: selectedSpoolOwnerNameDraft,
       ownerContact: selectedSpoolOwnerContactDraft,
       ownershipNote: selectedSpoolOwnershipNoteDraft,
+      purchaseMetadata: selectedSpoolPurchaseMetadataDraft,
       tareWeight: selectedSpoolTareDraft,
     }),
     [
@@ -180,6 +194,7 @@ export function useInventorySelectedSpoolDetailState({
       selectedSpoolOwnerNameDraft,
       selectedSpoolOwnershipDraft,
       selectedSpoolOwnershipNoteDraft,
+      selectedSpoolPurchaseMetadataDraft,
       selectedSpoolTareDraft,
     ],
   );
@@ -214,6 +229,7 @@ export function useInventorySelectedSpoolDetailState({
     setDraftBaseline((current) =>
       current ? { ...current, common: commonDraft } : current,
     );
+    setSelectedSpoolPurchaseMetadataErrors({});
   }, [commonDraft]);
 
   const markMasterMetadataSaved = useCallback(() => {
@@ -237,6 +253,8 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerNameDraft(draftBaseline.common.ownerName);
     setSelectedSpoolOwnerContactDraft(draftBaseline.common.ownerContact);
     setSelectedSpoolOwnershipNoteDraft(draftBaseline.common.ownershipNote);
+    setSelectedSpoolPurchaseMetadataDraft(draftBaseline.common.purchaseMetadata);
+    setSelectedSpoolPurchaseMetadataErrors({});
     setMasterEditUnlocked(false);
   }, [draftBaseline]);
 
@@ -259,6 +277,8 @@ export function useInventorySelectedSpoolDetailState({
     selectedSpoolOwnerContactDraft,
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchaseMetadataDraft,
+    selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
     setConfirmDelete,
     setConfirmPurge,
@@ -273,6 +293,8 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerContactDraft,
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchaseMetadataDraft,
+    setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
     setShowRfidCapturedFields,
     setShowRollHistory,

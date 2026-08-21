@@ -33,6 +33,7 @@ pub use super::filament_master_models::FilamentMasterCatalogRow;
 #[cfg(any(test, feature = "test-support"))]
 pub use super::filament_master_models::FilamentMasterSummary;
 pub use super::low_stock_policy::{LowStockMaterialOverride, LowStockPolicy};
+pub use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 #[cfg(test)]
 #[path = "filament_database_architecture_tests.rs"]
 mod architecture_tests;

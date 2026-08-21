@@ -46,6 +46,7 @@ export const frDictionary: DictionaryNode = {
     minutesAgo: "il y a {count} min",
     hoursAgo: "il y a {count} h",
     daysAgo: "il y a {count} jours",
+    optional: "Facultatif",
   },
   errors: {
     invalidRequest: "La demande n’a pas pu être exécutée.",
@@ -63,6 +64,8 @@ export const frDictionary: DictionaryNode = {
     loanExpectedReturnInvalid: "Choisissez une date de retour prévue valide.",
     loanMetadataUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les coordonnées ou une date de retour prévue.",
+    purchaseMetadataHostUnsupported:
+      "Mettez à jour l’hôte avant d’enregistrer les détails d’achat.",
     exportInvalidPayload: "L’export généré n’est pas valide.",
     downloadsUnavailable: "Le dossier Téléchargements n’est pas disponible.",
     exportWriteFailed: "L’export n’a pas pu être enregistré.",
@@ -634,6 +637,24 @@ export const frDictionary: DictionaryNode = {
       "Conservez les achats prévus ici, passez-les en commande, puis ajoutez-les au stock à leur arrivée.",
     addDirectlyToStock: "Ajouter directement au stock",
     stockRollNow: "Ajouter la bobine au stock",
+    purchaseMetadataTitle: "Détails d’achat",
+    purchaseMetadataApplies:
+      "{count, plural, one {Ces détails sont enregistrés sur cette bobine.} other {Ces détails sont enregistrés sur chacune des # bobines reçues.}}",
+    purchasePricePerRoll: "Prix par bobine",
+    purchasePricePerRollHint: "Saisissez le prix unitaire d’une bobine, pas le total de la commande.",
+    purchaseCurrency: "Devise",
+    purchaseCurrencyHint: "Utilisez un code à trois lettres comme NOK ou EUR.",
+    purchaseDate: "Date d’achat",
+    purchaseBatchCode: "Code de lot",
+    purchaseSupplierReference: "Référence fournisseur",
+    purchasePriceInvalid: "Saisissez un prix numérique fini.",
+    purchasePriceNegative: "Le prix ne peut pas être négatif.",
+    purchaseCurrencyRequired: "La devise est requise lorsque le prix change.",
+    purchaseCurrencyInvalid: "Utilisez un code de devise à trois lettres.",
+    purchaseCurrencyWithoutPrice: "Saisissez un prix ou effacez la devise.",
+    purchaseDateInvalid: "Saisissez une date calendaire valide.",
+    purchaseBatchCodeTooLong: "Le code de lot est trop long.",
+    purchaseSupplierReferenceTooLong: "La référence fournisseur est trop longue.",
     registerBorrowedIn: "Enregistrer une bobine empruntée",
     loanTrackingSubtitle:
       "Prêtez une bobine du stock. Les retours se gèrent depuis la page Prêts.",
@@ -809,6 +830,8 @@ export const frDictionary: DictionaryNode = {
       usedUp: "Marquée comme vide",
       locationUpdated: "Emplacement mis à jour",
       detailsUpdated: "Détails mis à jour",
+      purchaseReceiptRecorded: "Réception de l’achat enregistrée",
+      purchaseMetadataUpdated: "Détails d’achat mis à jour",
       rfidSaved: "RFID enregistrée",
       assignedToAms: "Affectée à un emplacement d’imprimante",
       printJobRecorded: "Consommation d’impression enregistrée",
@@ -820,6 +843,8 @@ export const frDictionary: DictionaryNode = {
       deleted: "Supprimée",
       rfidSavedDetail: "L’identité RFID a été enregistrée depuis la capture AMS.",
       addedToLibraryDetail: "Le filament a été ajouté à la bibliothèque.",
+      purchaseReceiptRecordedDetail: "La réception de l’achat a été enregistrée.",
+      purchaseMetadataUpdatedDetail: "Les détails d’achat ont été mis à jour.",
     },
     error: {
       add: "Échec de l’ajout du filament.",
@@ -838,6 +863,7 @@ export const frDictionary: DictionaryNode = {
       createBambuBatch:
         "Échec de la création du lot Bambu. Vérifiez l’unicité des QR et les valeurs.",
       stockFromWishlist: "Échec de l’ajout au stock depuis la liste de souhaits.",
+      purchaseMetadataInvalid: "Vérifiez les détails d’achat signalés.",
       unlockMetadataFirst: "Déverrouillez les métadonnées avant de modifier le catalogue.",
       masterFieldsRequired:
         "Le fabricant, le matériau, le nom du filament et la couleur sont obligatoires.",
@@ -890,6 +916,10 @@ export const frDictionary: DictionaryNode = {
     statusFilter: "Filtre d’état de la liste de souhaits",
     itemStatusGroup: "État de {name}",
     qty: "Qté",
+    receivePurchase: "Réceptionner l’achat",
+    receivedQuantity: "Quantité reçue",
+    receiveQuantity:
+      "{count, plural, one {Réceptionner # bobine} other {Réceptionner # bobines}}",
     searchQueueLabel: "Rechercher dans la liste d’achats",
     searchQueuePlaceholder: "Rechercher par nom, couleur ou fabricant",
     resultCountOne: "élément",

@@ -72,7 +72,7 @@ function renderPanel(options: {
         onQueryChange={() => {}}
         onRequestDeleteItem={() => {}}
         onStatusChange={() => {}}
-        onStockItem={() => {}}
+        onStockItem={async () => true}
         query={options.query ?? ""}
         resolvedTheme="dark"
         summary={{ all: items.length, wishlist: 0, onOrder: items.length, received: 0 }}

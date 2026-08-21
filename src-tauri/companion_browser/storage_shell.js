@@ -21,6 +21,7 @@ import {
   renderSelectionBanner,
   renderSegmentedControl,
   renderSwatchListRow,
+  renderPurchaseReceiptMetadataFields,
   renderSwatchSelectionCard,
   renderSwatchSurface,
 } from "./shell_chrome.js";
@@ -221,27 +222,44 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               item.status !== "RECEIVED"
                 ? `<form class="wishlist-receipt-form" data-action="wishlist-stock-form" data-form-key="wishlist-stock:${escapeHtml(item.id)}">
                     <input name="wishlist-id" type="hidden" value="${escapeHtml(item.id)}" />
-                    <label class="wishlist-receipt-quantity">
-                      <span class="sr-only">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>
-                      <input
-                        class="weight-input"
-                        name="received-quantity"
-                        type="number"
-                        min="1"
-                        max="${escapeHtml(String(Math.max(1, Number(item.quantity) || 1)))}"
-                        step="1"
-                        value="1"
-                        aria-label="${escapeHtml(t(locale, "storage.quantity", "Qty"))}"
-                        ${busy ? "disabled" : ""}
-                      />
-                    </label>
-                    ${renderCompanionActionButton({
-                      disabled: busy,
-                      swatch: true,
-                      escapeHtml,
-                      label: t(locale, "storage.stockNow", "Stock now"),
-                      type: "submit",
-                    })}
+                    <div class="wishlist-receipt-primary">
+                      <label class="wishlist-receipt-quantity">
+                        <span class="sr-only">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>
+                        <input
+                          class="weight-input"
+                          name="received-quantity"
+                          type="number"
+                          min="1"
+                          max="${escapeHtml(String(Math.max(1, Number(item.quantity) || 1)))}"
+                          step="1"
+                          value="1"
+                          aria-label="${escapeHtml(t(locale, "storage.quantity", "Qty"))}"
+                          ${busy ? "disabled" : ""}
+                        />
+                      </label>
+                      ${renderCompanionActionButton({
+                        disabled: busy,
+                        swatch: true,
+                        escapeHtml,
+                        label: t(locale, "storage.stockNow", "Stock now"),
+                        type: "submit",
+                      })}
+                    </div>
+                    <details class="wishlist-receipt-details" data-collapsible="wishlist-receipt:${escapeHtml(item.id)}">
+                      <summary>${escapeHtml(
+                        t(
+                          locale,
+                          "purchaseReceipt.optionalSummary",
+                          "Purchase details (optional)",
+                        ),
+                      )}</summary>
+                      ${renderPurchaseReceiptMetadataFields({
+                        locale,
+                        escapeHtml,
+                        busy,
+                        context: "wishlist",
+                      })}
+                    </details>
                   </form>`
                 : ""
             }

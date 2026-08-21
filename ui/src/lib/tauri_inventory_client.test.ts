@@ -4,9 +4,41 @@ import test from "node:test";
 import {
   buildLibrarySyncHostInventoryBulkMutationPayload,
   buildLibrarySyncHostSpoolCreatePayload,
+  buildLibrarySyncHostSpoolDetailsPayload,
   type CreateManualSpoolInput,
   type CreateSpoolInput,
 } from "./tauri_inventory_client";
+
+test("host detail payload distinguishes omitted purchase metadata from clearing", () => {
+  const baseInput = {
+    spool_id: "spool-1",
+    qr_code: null,
+    status: "IN_STOCK",
+  };
+
+  const omitted = buildLibrarySyncHostSpoolDetailsPayload(
+    "http://host.local:4278",
+    "library-1",
+    baseInput,
+  );
+  assert.equal(Object.hasOwn(omitted, "purchase_metadata"), false);
+
+  const clearing = {
+    purchase_price: null,
+    purchase_currency: null,
+    purchase_date: null,
+    batch_code: null,
+    supplier_reference: null,
+  };
+  assert.deepEqual(
+    buildLibrarySyncHostSpoolDetailsPayload(
+      "http://host.local:4278",
+      "library-1",
+      { ...baseInput, purchase_metadata: clearing },
+    ).purchase_metadata,
+    clearing,
+  );
+});
 
 test("bulk host payload preserves one tagged atomic mutation request", () => {
   const command = {

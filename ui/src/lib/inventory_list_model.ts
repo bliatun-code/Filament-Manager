@@ -50,6 +50,11 @@ export type InventorySpool = {
   qrCode?: string | null;
   rfidTag?: string | null;
   rfidObservedAt?: string | null;
+  purchasePrice?: number | null;
+  purchaseCurrency?: string | null;
+  purchaseDate?: string | null;
+  batchCode?: string | null;
+  supplierReference?: string | null;
 };
 
 export type SpoolGroup = {

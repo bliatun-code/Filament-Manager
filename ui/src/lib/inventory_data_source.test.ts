@@ -32,7 +32,9 @@ function spoolRow(
       home_location_id: null,
       purchase_date: null,
       purchase_price: null,
+      purchase_currency: null,
       batch_code: null,
+      supplier_reference: null,
       rfid_tag: null,
       rfid_observed_at: null,
       created_at: "2026-04-01 10:00:00",
@@ -65,6 +67,11 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
         owner_name: "Ada",
         location_id: "Shelf A",
         rfid_tag: "rfid-1",
+        purchase_price: 249.5,
+        purchase_currency: "NOK",
+        purchase_date: "2026-08-21",
+        batch_code: "LOT-7",
+        supplier_reference: "PO-42",
       },
       { default_weight: 900 },
     ),
@@ -81,6 +88,11 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
   assert.equal(mapped.ownerName, "Ada");
   assert.equal(mapped.location, "Shelf A");
   assert.equal(mapped.rfidTag, "rfid-1");
+  assert.equal(mapped.purchasePrice, 249.5);
+  assert.equal(mapped.purchaseCurrency, "NOK");
+  assert.equal(mapped.purchaseDate, "2026-08-21");
+  assert.equal(mapped.batchCode, "LOT-7");
+  assert.equal(mapped.supplierReference, "PO-42");
   assert.equal(mapped.lowStockThresholdGrams, 325);
   assert.equal(mapped.lowStockThresholdLegacyFallback, false);
 });

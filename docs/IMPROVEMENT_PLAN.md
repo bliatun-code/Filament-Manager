@@ -82,7 +82,7 @@ Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater dele
 
 | Prioritet | Arbeid | Status | Ferdigkriterium |
 | --- | --- | --- | --- |
-| P1 | Registrere pris, kjøpsdato, batch og leverandørreferanse ved mottak. | Ikke startet | Feltene valideres, kan redigeres og eksporteres, og eldre data håndteres uten tvungen utfylling. |
+| P1 | Registrere pris, kjøpsdato, batch og leverandørreferanse ved mottak. | Ferdig | Feltene valideres, kan redigeres og eksporteres, og eldre data håndteres uten tvungen utfylling. |
 | P1 | Legge til periodene 30 dager, 90 dager, 12 måneder og egendefinert intervall i Statistics. | Ferdig | Alle nøkkeltall bruker valgt periode konsekvent og har tester for tids- og datogrenser. |
 | P1 | Vise lagerverdi og materialkostnad per periode med sporbarhet tilbake til spolen. | Ikke startet | Summer kan spores til underliggende spoler og transaksjoner, med tydelig valuta- og manglende-datahåndtering. |
 | P2 | Lage en enkel, deterministisk forbruksprognose med synlig datagrunnlag. | Ferdig | Samme input gir samme prognose, antakelser vises, og funksjonen bestiller aldri automatisk. |
@@ -119,9 +119,8 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Fullfør mottaksmetadata med validering, senere redigering og eksport.
-2. Legg til sporbar lagerverdi og materialkostnad uten å summere på tvers av valutaer.
-3. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
+1. Legg til sporbar lagerverdi og materialkostnad uten å summere på tvers av valutaer.
+2. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
 
 ## Fremdriftslogg
 
@@ -146,8 +145,9 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Lageret har sporbare massehandlinger for flytting og status med en egen gjennomgang før bekreftelse. Backend validerer hele snapshotet før første skriv og committer alle endringer og historikkrader i én transaksjon; etiketter og CSV-/JSON-eksport bruker nøyaktig det valgte spolesettet. Client sender én beskyttet Host-operasjon uten lokal fallback, og eldre Host avvises eksplisitt via capability-sjekk.
 - Lavlagerpolicyen har én validert standard og valgfrie materialoverstyringer. Effektiv terskel følger hver spole gjennom Inventory, Dashboard, Statistics, Host, Client og Companion; eldre Host bruker en eksplisitt 200 g-kompatibilitetsverdi.
 - Utlån lagrer valgfri kontakt og forventet returdato. Ugyldige datoer stoppes før lagring, eldre Host avviser metadata før POST, og en ren datomodell identifiserer forfalte aktive lån uten å merke returnerte lån.
-- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 3, og samme gate er koblet blokkerende til Windows CI.
+- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 4, og samme gate er koblet blokkerende til Windows CI.
 - Brukertestprotokollen har en deterministisk `npm run qa:usability:analyze`-kommando som avviser færre enn fem deltakere, under 90 % uhjulpet fullføring eller under 30 % median tidsforbedring.
 - En Rust-basert `ActiveLibraryGateway` velger nå autoritativt mellom lokal database og paret Host for den atomiske spole-detaljflyten. Ufullstendig klientoppsett og Host-/legitimasjonsfeil stopper uten lokal fallback, mens eksisterende Tauri-kommandoer er beholdt som kompatibilitetslag.
 - Status, eierskap, låneretning, lånestatus og lavlager-DTO-er har nå én faktisk Rust-kilde. Deterministiske TypeScript- og Companion-artefakter inneholder konstanter og validatorer, og både lokal kontraktsgate og CI avviser manglende eller utdaterte genererte filer.
 - React-desktop og browser-Companion beholder separate presentasjonslag. [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) dokumenterer HEAD-målte bundle-, overlapps-, avhengighets- og testbaselines og konkrete terskler for å prøve en dedikert React-Companion på nytt.
+- Mottak fra innkjøpskøen kan registrere pris med valuta, kjøpsdato, batch og leverandørreferanse per spole. Metadata kan senere endres eller tømmes atomisk i desktop, Client og Companion, skrives til historikken og rundtrippes gjennom CSV, JSON og full backup; eldre data uten valuta eller med historiske legacy-verdier bevares uten tvungen utfylling.

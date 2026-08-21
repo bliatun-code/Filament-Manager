@@ -183,6 +183,13 @@ test("updateInventorySpoolDetails keeps one public atomic payload in every saved
       owner_contact: "nora@example.com",
       ownership_note: "Return next week",
     },
+    purchase_metadata: {
+      purchase_price: null,
+      purchase_currency: null,
+      purchase_date: null,
+      batch_code: null,
+      supplier_reference: null,
+    },
   });
   const gatewayCalls: UpdateSpoolDetailsInput[] = [];
   const updateThroughGateway = async (gatewayInput: UpdateSpoolDetailsInput) => {

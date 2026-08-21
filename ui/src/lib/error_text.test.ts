@@ -25,3 +25,22 @@ test("structured command errors resolve safely while diagnostics stay explicit",
   assert.equal(toErrorMessage(error, "Kunne ikke fjerne rullen.", t), "Returner utlånet først.");
   assert.equal(diagnosticErrorText(error), "Diagnostic ID: fm-test-2");
 });
+
+test("older Host purchase metadata capability error is localized and actionable", () => {
+  const error = new Error(
+    JSON.stringify({
+      code: "purchase_metadata.host_unsupported",
+      safe_detail: null,
+      diagnostic_id: "fm-purchase-host-1",
+    }),
+  );
+  const t = (key: string, fallback = "") =>
+    key === "errors.purchaseMetadataHostUnsupported"
+      ? "Oppdater verten før du lagrer kjøpsdetaljer."
+      : fallback;
+
+  assert.equal(
+    toErrorMessage(error, "Kunne ikke lagre kjøpsdetaljer.", t),
+    "Oppdater verten før du lagrer kjøpsdetaljer.",
+  );
+});

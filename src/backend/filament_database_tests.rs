@@ -1718,6 +1718,10 @@ fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+
+            purchase_currency: None,
+
+            supplier_reference: None,
         };
         db.insert_spool(&spool).map_err(|error| error.to_string())?;
 
@@ -1811,6 +1815,10 @@ fn printer_overview_normalizes_slot_spool_ownership_tokens() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+
+            purchase_currency: None,
+
+            supplier_reference: None,
         };
         db.insert_spool(&spool).map_err(|error| error.to_string())?;
 
@@ -1885,6 +1893,10 @@ fn list_active_spool_loans_hides_deleted_spools() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+
+            purchase_currency: None,
+
+            supplier_reference: None,
         };
 
         for spool in [make_spool("active_spool"), make_spool("deleted_spool")] {
@@ -1978,6 +1990,10 @@ fn active_loan_queries_ignore_closed_status_without_return_timestamp() {
             purchase_price: None,
             batch_code: None,
             last_used_at: None,
+
+            purchase_currency: None,
+
+            supplier_reference: None,
         };
 
         for spool in [
@@ -2097,6 +2113,10 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
             SpoolRow {
                 id: "owned_out_2".to_string(),
@@ -2119,6 +2139,10 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
             SpoolRow {
                 id: "owned_out_deleted".to_string(),
@@ -2141,6 +2165,10 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
             SpoolRow {
                 id: "borrowed_in_1".to_string(),
@@ -2163,6 +2191,10 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
             SpoolRow {
                 id: "borrowed_in_2".to_string(),
@@ -2185,6 +2217,10 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
         ] {
             db.insert_spool(&spool).map_err(|error| error.to_string())?;
@@ -2306,6 +2342,10 @@ fn export_loans_csv_defaults_to_outbound_without_recursing() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
             SpoolRow {
                 id: "borrowed_in_1".to_string(),
@@ -2328,6 +2368,10 @@ fn export_loans_csv_defaults_to_outbound_without_recursing() {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+
+                purchase_currency: None,
+
+                supplier_reference: None,
             },
         ] {
             db.insert_spool(&spool).map_err(|error| error.to_string())?;
@@ -2418,6 +2462,278 @@ fn inventory_exports_do_not_truncate_after_ten_thousand_spools() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("inventory_exports_do_not_truncate_after_ten_thousand_spools failed: {message}");
+    }
+}
+
+#[test]
+fn inventory_exports_preserve_purchase_metadata_and_missing_price() {
+    let db_path = temp_db_path("inventory-export-purchase-metadata");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.conn
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor,
+                    catalog_source, catalog_user_edited
+                 ) VALUES (
+                    'master_receipt_export', 'PLA', 'Basic', 'Blue', 1000, 'Generic',
+                    'manual', 1
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, remaining_g,
+                    purchase_price, purchase_currency, purchase_date, batch_code,
+                    supplier_reference
+                 ) VALUES (
+                    'receipt_export_full', 'master_receipt_export', 'IN_STOCK', 'OWNED', 900,
+                    0, 'NOK', '2026-08-21', 'batch,one', 'PO \"7\"'
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, remaining_g
+                 ) VALUES (
+                    'receipt_export_missing', 'master_receipt_export', 'IN_STOCK', 'OWNED', 800
+                 );",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let csv = db.export_spools_csv().map_err(|error| error.to_string())?;
+        assert!(csv.starts_with(
+            "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference\n"
+        ));
+        let full_csv_row = csv
+            .lines()
+            .find(|line| line.starts_with("receipt_export_full,"))
+            .ok_or_else(|| "missing full receipt CSV row".to_string())?;
+        assert!(full_csv_row.contains(",0,NOK,2026-08-21,\"batch,one\","));
+        assert!(full_csv_row.ends_with("\"PO \"\"7\"\"\""));
+        let missing_csv_row = csv
+            .lines()
+            .find(|line| line.starts_with("receipt_export_missing,"))
+            .ok_or_else(|| "missing receipt CSV row with nulls".to_string())?;
+        assert!(missing_csv_row.ends_with(",,,,"));
+
+        let json_export = db.export_spools_json().map_err(|error| error.to_string())?;
+        let rows: Vec<serde_json::Value> =
+            serde_json::from_str(&json_export).map_err(|error| error.to_string())?;
+        let full = rows
+            .iter()
+            .find(|row| row["spool_id"] == "receipt_export_full")
+            .ok_or_else(|| "missing full receipt JSON row".to_string())?;
+        assert_eq!(full["purchase_price"], json!(0.0));
+        assert_eq!(full["purchase_currency"], "NOK");
+        assert_eq!(full["purchase_date"], "2026-08-21");
+        assert_eq!(full["batch_code"], "batch,one");
+        assert_eq!(full["supplier_reference"], "PO \"7\"");
+        let missing = rows
+            .iter()
+            .find(|row| row["spool_id"] == "receipt_export_missing")
+            .ok_or_else(|| "missing null receipt JSON row".to_string())?;
+        for field in [
+            "purchase_price",
+            "purchase_currency",
+            "purchase_date",
+            "batch_code",
+            "supplier_reference",
+        ] {
+            assert!(missing[field].is_null(), "expected null {field}");
+        }
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("inventory_exports_preserve_purchase_metadata_and_missing_price failed: {message}");
+    }
+}
+
+#[test]
+fn inventory_csv_and_json_round_trip_purchase_metadata_without_legacy_data_loss() {
+    let source_path = temp_db_path("inventory-receipt-roundtrip-source");
+    let csv_path = temp_db_path("inventory-receipt-roundtrip-csv");
+    let json_path = temp_db_path("inventory-receipt-roundtrip-json");
+
+    let result = (|| -> Result<(), String> {
+        let source = FilamentDatabase::open(&source_path).map_err(|error| error.to_string())?;
+        source.apply_schema().map_err(|error| error.to_string())?;
+        source
+            .conn
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor,
+                    catalog_source, catalog_user_edited
+                 ) VALUES (
+                    'master_receipt_roundtrip', 'PETG', 'Translucent', 'Blue', 1000, 'Generic',
+                    'manual', 1
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price, purchase_currency,
+                    purchase_date, batch_code, supplier_reference
+                 ) VALUES (
+                    'receipt_roundtrip_full', 'master_receipt_roundtrip', 'IN_STOCK', 'OWNED',
+                    1000, 875, 875, 249.5, 'NOK', '2026-08-20', 'batch,
+42', 'PO \"A-7\"' || char(13) || 'line 2'
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price
+                 ) VALUES (
+                    'receipt_roundtrip_legacy', 'master_receipt_roundtrip', 'IN_STOCK', 'OWNED',
+                    1000, 700, 700, 199.0
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price, purchase_date, batch_code,
+                    supplier_reference
+                 ) VALUES (
+                    'receipt_roundtrip_legacy_dirty', 'master_receipt_roundtrip', 'IN_STOCK',
+                    'OWNED', 1000, 650, 650, -1, 'legacy-not-a-date',
+                    ' ' || printf('%0119d', 0) || ' ', char(10) || 'REF' || char(10)
+                 );",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let csv = source
+            .export_spools_csv()
+            .map_err(|error| error.to_string())?;
+        let json = source
+            .export_spools_json()
+            .map_err(|error| error.to_string())?;
+
+        for (database_path, content, expected_format) in [
+            (&csv_path, csv, "INVENTORY_CSV"),
+            (&json_path, json, "INVENTORY_JSON"),
+        ] {
+            let destination =
+                FilamentDatabase::open(database_path).map_err(|error| error.to_string())?;
+            destination
+                .apply_schema()
+                .map_err(|error| error.to_string())?;
+            let stats = destination
+                .import_data_content(&content)
+                .map_err(|error| error.to_string())?;
+            assert_eq!(stats.detected_format, expected_format);
+            assert_eq!(stats.created_count, 3);
+
+            let full = destination
+                .get_spool_by_id("receipt_roundtrip_full")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "missing fully populated imported spool".to_string())?;
+            assert_eq!(full.purchase_price, Some(249.5));
+            assert_eq!(full.purchase_currency.as_deref(), Some("NOK"));
+            assert_eq!(full.purchase_date.as_deref(), Some("2026-08-20"));
+            assert_eq!(full.batch_code.as_deref(), Some("batch,\n42"));
+            assert_eq!(
+                full.supplier_reference.as_deref(),
+                Some("PO \"A-7\"\rline 2")
+            );
+
+            let legacy = destination
+                .get_spool_by_id("receipt_roundtrip_legacy")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "missing legacy imported spool".to_string())?;
+            assert_eq!(legacy.purchase_price, Some(199.0));
+            assert_eq!(legacy.purchase_currency, None);
+
+            let dirty_legacy = destination
+                .get_spool_by_id("receipt_roundtrip_legacy_dirty")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "missing dirty legacy imported spool".to_string())?;
+            assert_eq!(dirty_legacy.purchase_price, Some(-1.0));
+            assert_eq!(dirty_legacy.purchase_currency, None);
+            assert_eq!(
+                dirty_legacy.purchase_date.as_deref(),
+                Some("legacy-not-a-date")
+            );
+            assert_eq!(dirty_legacy.batch_code.as_deref().map(str::len), Some(121));
+            assert!(dirty_legacy
+                .batch_code
+                .as_deref()
+                .is_some_and(|value| value.starts_with(' ') && value.ends_with(' ')));
+            assert_eq!(dirty_legacy.supplier_reference.as_deref(), Some("\nREF\n"));
+
+            destination
+                .import_data_content(
+                    r#"[{"spool_id":"receipt_roundtrip_full","material":"PETG","filament_name":"Translucent","color_name":"Blue","remaining_g":800}]"#,
+                )
+                .map_err(|error| error.to_string())?;
+            let updated_from_legacy_format = destination
+                .get_spool_by_id("receipt_roundtrip_full")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "missing spool after legacy-format update".to_string())?;
+            assert_eq!(updated_from_legacy_format.remaining_g, Some(800));
+            assert_eq!(updated_from_legacy_format.purchase_price, Some(249.5));
+            assert_eq!(
+                updated_from_legacy_format.purchase_currency.as_deref(),
+                Some("NOK")
+            );
+
+            let invalid_import = destination
+                .import_data_content(
+                    r#"[
+                      {"spool_id":"receipt_roundtrip_full","material":"PETG","filament_name":"Translucent","color_name":"Blue","remaining_g":123},
+                      {"spool_id":"receipt_roundtrip_invalid","material":"PLA","filament_name":"Basic","color_name":"Red","purchase_price":"not-a-number"}
+                    ]"#,
+                )
+                .expect_err("invalid receipt metadata should reject the whole import");
+            match invalid_import {
+                crate::backend::database_result::InventoryError::InvalidOperation {
+                    code, ..
+                } => assert_eq!(code, "purchase_metadata.price_invalid"),
+                other => return Err(format!("unexpected import error: {other}")),
+            }
+            let after_rejected_import = destination
+                .get_spool_by_id("receipt_roundtrip_full")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "missing spool after rejected receipt import".to_string())?;
+            assert_eq!(after_rejected_import.remaining_g, Some(800));
+            assert!(
+                destination
+                    .get_spool_by_id("receipt_roundtrip_invalid")
+                    .map_err(|error| error.to_string())?
+                    .is_none(),
+                "receipt import must roll back earlier rows when later metadata is invalid"
+            );
+
+            let wrong_text_type = destination
+                .import_data_content(
+                    r#"[
+                      {"spool_id":"receipt_roundtrip_full","material":"PETG","filament_name":"Translucent","color_name":"Blue","remaining_g":321},
+                      {"spool_id":"receipt_roundtrip_wrong_type","material":"PLA","filament_name":"Basic","color_name":"Red","batch_code":42}
+                    ]"#,
+                )
+                .expect_err("non-string receipt text should reject the whole import");
+            match wrong_text_type {
+                crate::backend::database_result::InventoryError::InvalidOperation {
+                    code, ..
+                } => assert_eq!(code, "purchase_metadata.type_invalid"),
+                other => return Err(format!("unexpected import type error: {other}")),
+            }
+            let after_wrong_text_type = destination
+                .get_spool_by_id("receipt_roundtrip_full")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "missing spool after wrong receipt text type".to_string())?;
+            assert_eq!(after_wrong_text_type.remaining_g, Some(800));
+            assert!(
+                destination
+                    .get_spool_by_id("receipt_roundtrip_wrong_type")
+                    .map_err(|error| error.to_string())?
+                    .is_none(),
+                "receipt type errors must not partially mutate inventory"
+            );
+        }
+
+        Ok(())
+    })();
+
+    for path in [&source_path, &csv_path, &json_path] {
+        let _ = std::fs::remove_file(path);
+    }
+    if let Err(message) = result {
+        panic!(
+            "inventory_csv_and_json_round_trip_purchase_metadata_without_legacy_data_loss failed: {message}"
+        );
     }
 }
 
@@ -3038,6 +3354,171 @@ fn full_backup_export_includes_schema_and_app_version_metadata() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("full_backup_export_includes_schema_and_app_version_metadata failed: {message}");
+    }
+}
+
+#[test]
+fn full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_rows() {
+    let source_path = temp_db_path("backup-purchase-metadata-source");
+    let restored_path = temp_db_path("backup-purchase-metadata-restored");
+    let legacy_path = temp_db_path("backup-purchase-metadata-legacy");
+
+    let result = (|| -> Result<(), String> {
+        let source = FilamentDatabase::open(&source_path).map_err(|error| error.to_string())?;
+        source.apply_schema().map_err(|error| error.to_string())?;
+        source
+            .conn
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor,
+                    catalog_source, catalog_user_edited
+                 ) VALUES (
+                    'backup_receipt_master', 'PLA', 'Basic', 'Orange', 1000, 'Generic',
+                    'manual', 1
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price, purchase_currency,
+                    purchase_date, batch_code, supplier_reference
+                 ) VALUES (
+                    'backup_receipt_spool', 'backup_receipt_master', 'IN_STOCK', 'OWNED',
+                    1000, 900, 900, 349.5, 'NOK', '2026-08-21', 'backup-batch',
+                    'invoice-backup-7'
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price, purchase_currency,
+                    purchase_date, batch_code, supplier_reference
+                 ) VALUES (
+                    'backup_receipt_legacy_dirty', 'backup_receipt_master', 'IN_STOCK', 'OWNED',
+                    1000, 800, 800, -1, NULL, 'legacy-not-a-date', printf('%0121d', 0), NULL
+                 );",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let content = source
+            .export_full_backup_json()
+            .map_err(|error| error.to_string())?;
+        let mut backup: serde_json::Value =
+            serde_json::from_str(&content).map_err(|error| error.to_string())?;
+        let exported_spool = backup["tables"]["filament_spools"]
+            .as_array()
+            .and_then(|rows| rows.iter().find(|row| row["id"] == "backup_receipt_spool"))
+            .ok_or_else(|| "backup omitted receipt spool".to_string())?;
+        assert_eq!(exported_spool["purchase_price"], json!(349.5));
+        assert_eq!(exported_spool["purchase_currency"], "NOK");
+        assert_eq!(exported_spool["purchase_date"], "2026-08-21");
+        assert_eq!(exported_spool["batch_code"], "backup-batch");
+        assert_eq!(exported_spool["supplier_reference"], "invoice-backup-7");
+        let exported_legacy_spool = backup["tables"]["filament_spools"]
+            .as_array()
+            .and_then(|rows| {
+                rows.iter()
+                    .find(|row| row["id"] == "backup_receipt_legacy_dirty")
+            })
+            .ok_or_else(|| "backup omitted dirty legacy receipt spool".to_string())?;
+        assert_eq!(exported_legacy_spool["purchase_price"], json!(-1.0));
+        assert_eq!(exported_legacy_spool["purchase_currency"], json!(null));
+        assert_eq!(exported_legacy_spool["purchase_date"], "legacy-not-a-date");
+        assert_eq!(
+            exported_legacy_spool["batch_code"].as_str().map(str::len),
+            Some(121)
+        );
+
+        let restored = FilamentDatabase::open(&restored_path).map_err(|error| error.to_string())?;
+        restored.apply_schema().map_err(|error| error.to_string())?;
+        let mut invalid_backup = backup.clone();
+        let invalid_spool = invalid_backup["tables"]["filament_spools"]
+            .as_array_mut()
+            .and_then(|rows| {
+                rows.iter_mut()
+                    .find(|row| row["id"] == "backup_receipt_spool")
+            })
+            .ok_or_else(|| "could not prepare invalid receipt backup".to_string())?;
+        invalid_spool["purchase_price"] = json!({ "invalid": true });
+        let invalid_content = invalid_backup.to_string();
+        for error in [
+            restored
+                .validate_full_backup_json(&invalid_content)
+                .expect_err("validation must reject invalid backed-up receipt metadata"),
+            restored
+                .import_full_backup_json(&invalid_content)
+                .expect_err("restore must reject invalid backed-up receipt metadata"),
+        ] {
+            let message = error.to_string();
+            assert!(message.contains("field `purchase_price`"), "{message}");
+            assert!(message.contains("must be a number or null"), "{message}");
+        }
+        assert!(
+            restored
+                .get_spool_by_id("backup_receipt_spool")
+                .map_err(|error| error.to_string())?
+                .is_none(),
+            "invalid backup preflight must not mutate the destination"
+        );
+        restored
+            .import_full_backup_json(&content)
+            .map_err(|error| error.to_string())?;
+        let restored_spool = restored
+            .get_spool_by_id("backup_receipt_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "restored backup omitted receipt spool".to_string())?;
+        assert_eq!(restored_spool.purchase_price, Some(349.5));
+        assert_eq!(restored_spool.purchase_currency.as_deref(), Some("NOK"));
+        assert_eq!(restored_spool.purchase_date.as_deref(), Some("2026-08-21"));
+        assert_eq!(restored_spool.batch_code.as_deref(), Some("backup-batch"));
+        assert_eq!(
+            restored_spool.supplier_reference.as_deref(),
+            Some("invoice-backup-7")
+        );
+        let restored_legacy_spool = restored
+            .get_spool_by_id("backup_receipt_legacy_dirty")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "restore omitted dirty legacy receipt spool".to_string())?;
+        assert_eq!(restored_legacy_spool.purchase_price, Some(-1.0));
+        assert_eq!(restored_legacy_spool.purchase_currency, None);
+        assert_eq!(
+            restored_legacy_spool.purchase_date.as_deref(),
+            Some("legacy-not-a-date")
+        );
+        assert_eq!(
+            restored_legacy_spool.batch_code.as_deref().map(str::len),
+            Some(121)
+        );
+
+        backup["schema_version"] = json!(3);
+        let legacy_spools = backup["tables"]["filament_spools"]
+            .as_array_mut()
+            .ok_or_else(|| "could not prepare schema-three backup rows".to_string())?;
+        for legacy_spool in legacy_spools {
+            let legacy_spool = legacy_spool
+                .as_object_mut()
+                .ok_or_else(|| "schema-three spool row was not an object".to_string())?;
+            legacy_spool.remove("purchase_currency");
+            legacy_spool.remove("supplier_reference");
+        }
+
+        let legacy = FilamentDatabase::open(&legacy_path).map_err(|error| error.to_string())?;
+        legacy.apply_schema().map_err(|error| error.to_string())?;
+        legacy
+            .import_full_backup_json(&backup.to_string())
+            .map_err(|error| error.to_string())?;
+        let legacy_spool = legacy
+            .get_spool_by_id("backup_receipt_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "legacy backup omitted receipt spool".to_string())?;
+        assert_eq!(legacy_spool.purchase_price, Some(349.5));
+        assert_eq!(legacy_spool.purchase_currency, None);
+        assert_eq!(legacy_spool.supplier_reference, None);
+        assert_eq!(legacy_spool.batch_code.as_deref(), Some("backup-batch"));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&source_path);
+    let _ = std::fs::remove_file(&restored_path);
+    let _ = std::fs::remove_file(&legacy_path);
+    if let Err(message) = result {
+        panic!("full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_rows failed: {message}");
     }
 }
 

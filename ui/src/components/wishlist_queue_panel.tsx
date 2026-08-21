@@ -10,6 +10,14 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
 import {
+  emptyPurchaseReceiptMetadataDraft,
+  parsePurchaseReceiptMetadataDraft,
+  purchaseReceiptMetadataHasValues,
+  type PurchaseReceiptMetadata,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "../lib/purchase_receipt_metadata";
+import { WishlistReceiptModal } from "./wishlist_receipt_modal";
+import {
   canStockWishlistItem,
   normalizeWishlistReceiptQuantity,
   normalizeWishlistStatus,
@@ -32,7 +40,11 @@ export type WishlistQueuePanelProps = {
   onQueryChange: (query: string) => void;
   onRequestDeleteItem: (itemId: string) => void;
   onStatusChange: (itemId: string, status: WishlistStatus) => void;
-  onStockItem: (item: WishlistItemRow, quantity: number) => void;
+  onStockItem: (
+    item: WishlistItemRow,
+    quantity: number,
+    purchaseMetadata?: PurchaseReceiptMetadata,
+  ) => Promise<boolean>;
   resolvedTheme: ResolvedTheme;
   query: string;
   summary: WishlistQueueSummary;
@@ -88,11 +100,69 @@ export function WishlistQueuePanel({
 }: WishlistQueuePanelProps) {
   const { t } = useI18n();
   const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+  const [receiptItemId, setReceiptItemId] = useState<string | null>(null);
+  const [receiptMetadataDraft, setReceiptMetadataDraft] = useState(
+    emptyPurchaseReceiptMetadataDraft,
+  );
+  const [receiptMetadataErrors, setReceiptMetadataErrors] =
+    useState<PurchaseReceiptMetadataValidationErrors>({});
+  const [receiptSubmitting, setReceiptSubmitting] = useState(false);
+  const receiptItem = items.find((item) => item.id === receiptItemId) ?? null;
+  const receiptQuantityRaw = receiptItem
+    ? receiptQuantities[receiptItem.id] ?? "1"
+    : "1";
+  const receiptQuantity = receiptItem
+    ? normalizeWishlistReceiptQuantity(receiptQuantityRaw, receiptItem.quantity)
+    : 1;
   const resultCount = t(
     "wishlist.resultCount",
     "{count, plural, one {# item} other {# items}}",
     { count: visibleItems.length },
   );
+
+  const openReceipt = (item: WishlistItemRow) => {
+    setReceiptMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+    setReceiptMetadataErrors({});
+    setReceiptItemId(item.id);
+  };
+
+  const closeReceipt = () => {
+    if (busy || receiptSubmitting) {
+      return;
+    }
+    setReceiptItemId(null);
+    setReceiptMetadataErrors({});
+  };
+
+  const confirmReceipt = async () => {
+    if (!receiptItem || busy || receiptSubmitting) {
+      return;
+    }
+    const parsed = parsePurchaseReceiptMetadataDraft(receiptMetadataDraft);
+    if (!parsed.ok) {
+      setReceiptMetadataErrors(parsed.errors);
+      return;
+    }
+    setReceiptMetadataErrors({});
+    setReceiptSubmitting(true);
+    try {
+      const succeeded = await onStockItem(
+        receiptItem,
+        receiptQuantity,
+        purchaseReceiptMetadataHasValues(parsed.value) ? parsed.value : undefined,
+      );
+      if (succeeded) {
+        setReceiptQuantities((current) => ({
+          ...current,
+          [receiptItem.id]: "1",
+        }));
+        setReceiptItemId(null);
+        setReceiptMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+      }
+    } finally {
+      setReceiptSubmitting(false);
+    }
+  };
 
   return (
     <div className="surface-card space-y-4">
@@ -199,10 +269,6 @@ export function WishlistQueuePanel({
           );
           const confirmingRemove = confirmWishlistRemoveId === item.id;
           const receiptQuantityRaw = receiptQuantities[item.id] ?? "1";
-          const receiptQuantity = normalizeWishlistReceiptQuantity(
-            receiptQuantityRaw,
-            item.quantity,
-          );
           return (
             <div
               key={item.id}
@@ -327,13 +393,7 @@ export function WishlistQueuePanel({
                         <button
                           type="button"
                           className={wishlistQueueActionButtonClassName("stock")}
-                          onClick={() => {
-                            setReceiptQuantities((current) => ({
-                              ...current,
-                              [item.id]: "1",
-                            }));
-                            onStockItem(item, receiptQuantity);
-                          }}
+                          onClick={() => openReceipt(item)}
                           disabled={!tauriAvailable || busy}
                         >
                           {t("inventory.stockRollNow", "Stock roll now")}
@@ -355,6 +415,31 @@ export function WishlistQueuePanel({
           );
         })}
       </div>
+
+      {receiptItem ? (
+        <WishlistReceiptModal
+          busy={busy || receiptSubmitting}
+          errors={receiptMetadataErrors}
+          itemTitle={formatInventoryDisplayTitle(
+            receiptItem.material,
+            receiptItem.filament_name,
+            receiptItem.color_name,
+          )}
+          maxQuantity={receiptItem.quantity}
+          metadataDraft={receiptMetadataDraft}
+          onCancel={closeReceipt}
+          onConfirm={confirmReceipt}
+          onMetadataDraftChange={setReceiptMetadataDraft}
+          onQuantityChange={(value) =>
+            setReceiptQuantities((current) => ({
+              ...current,
+              [receiptItem.id]: value,
+            }))
+          }
+          quantity={receiptQuantity}
+          quantityValue={receiptQuantityRaw}
+        />
+      ) : null}
     </div>
   );
 }

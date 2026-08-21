@@ -29,6 +29,13 @@ test("active-library client invokes one target-agnostic atomic details command",
       owner_contact: "nora@example.com",
       ownership_note: "Return next week",
     },
+    purchase_metadata: {
+      purchase_price: 249.5,
+      purchase_currency: "NOK",
+      purchase_date: "2026-08-21",
+      batch_code: "LOT-7",
+      supplier_reference: "PO-42",
+    },
   };
 
   try {

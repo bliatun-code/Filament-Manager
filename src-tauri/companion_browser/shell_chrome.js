@@ -1,5 +1,6 @@
 import { formatInventoryDisplayTitle } from "./formatters.js";
 import { t } from "./companion_i18n.js";
+import { buildPurchaseReceiptMetadataDraft } from "./companion_domain.js";
 import { swatchCssStyle, toSwatchColor } from "./companion_theme.js";
 
 export const COMPANION_ROOT_FLOW_PANEL_ID = "companion-root-panel";
@@ -219,6 +220,127 @@ export function renderDetailField(options) {
       ${label ? `<span class="muted">${escape(label)}</span>` : ""}
       ${body}
     </${tagName}>
+  `;
+}
+
+function renderPurchaseReceiptOptionalLabel(locale, escapeHtml) {
+  return `<span class="purchase-receipt-optional">${escapeHtml(
+    t(locale, "purchaseReceipt.optional", "Optional"),
+  )}</span>`;
+}
+
+export function renderPurchaseReceiptMetadataFields({
+  metadata = null,
+  locale = "en",
+  escapeHtml,
+  busy = false,
+  context = "detail",
+}) {
+  const draft = buildPurchaseReceiptMetadataDraft(metadata);
+  const disabled = busy ? "disabled" : "";
+  const isLegacyCurrencylessPrice = Boolean(draft.pricePerRoll && !draft.currency.trim());
+  const summary =
+    context === "wishlist"
+      ? t(
+          locale,
+          "purchaseReceipt.wishlistHint",
+          "These details are saved to every roll received in this action.",
+        )
+      : t(
+          locale,
+          "purchaseReceipt.detailHint",
+          "Changes apply to this roll. Clear every field to remove its purchase details.",
+        );
+
+  return `
+    <fieldset class="purchase-receipt-fieldset">
+      <legend>${escapeHtml(t(locale, "purchaseReceipt.title", "Purchase details"))}</legend>
+      <p class="purchase-receipt-summary">${escapeHtml(summary)}</p>
+      ${
+        context === "detail" && isLegacyCurrencylessPrice
+          ? `<p class="purchase-receipt-legacy-hint">${escapeHtml(
+              t(
+                locale,
+                "purchaseReceipt.legacyPriceHint",
+                "This legacy price can remain without currency until the price changes.",
+              ),
+            )}</p>`
+          : ""
+      }
+      <div class="purchase-receipt-grid">
+        <label class="purchase-receipt-field">
+          <span>${escapeHtml(t(locale, "purchaseReceipt.pricePerRoll", "Price per roll"))} ${renderPurchaseReceiptOptionalLabel(locale, escapeHtml)}</span>
+          <input
+            class="text-input"
+            name="purchase_price"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            step="any"
+            value="${escapeHtml(draft.pricePerRoll)}"
+            ${disabled}
+          />
+          <span class="purchase-receipt-field-hint">${escapeHtml(
+            t(
+              locale,
+              "purchaseReceipt.pricePerRollHint",
+              "Enter the unit price for one roll, not the order total.",
+            ),
+          )}</span>
+        </label>
+        <label class="purchase-receipt-field">
+          <span>${escapeHtml(t(locale, "purchaseReceipt.currency", "Currency"))} ${renderPurchaseReceiptOptionalLabel(locale, escapeHtml)}</span>
+          <input
+            class="text-input purchase-receipt-currency"
+            name="purchase_currency"
+            type="text"
+            maxlength="3"
+            autocapitalize="characters"
+            autocomplete="off"
+            placeholder="NOK"
+            value="${escapeHtml(draft.currency)}"
+            ${disabled}
+          />
+          <span class="purchase-receipt-field-hint">${escapeHtml(
+            t(
+              locale,
+              "purchaseReceipt.currencyHint",
+              "Use a three-letter code such as NOK or EUR.",
+            ),
+          )}</span>
+        </label>
+        <label class="purchase-receipt-field">
+          <span>${escapeHtml(t(locale, "purchaseReceipt.purchaseDate", "Purchase date"))} ${renderPurchaseReceiptOptionalLabel(locale, escapeHtml)}</span>
+          <input
+            class="text-input"
+            name="purchase_date"
+            type="date"
+            value="${escapeHtml(draft.purchaseDate)}"
+            ${disabled}
+          />
+        </label>
+        <label class="purchase-receipt-field">
+          <span>${escapeHtml(t(locale, "purchaseReceipt.batchCode", "Batch code"))} ${renderPurchaseReceiptOptionalLabel(locale, escapeHtml)}</span>
+          <input
+            class="text-input"
+            name="batch_code"
+            type="text"
+            value="${escapeHtml(draft.batchCode)}"
+            ${disabled}
+          />
+        </label>
+        <label class="purchase-receipt-field purchase-receipt-field-wide">
+          <span>${escapeHtml(t(locale, "purchaseReceipt.supplierReference", "Supplier reference"))} ${renderPurchaseReceiptOptionalLabel(locale, escapeHtml)}</span>
+          <input
+            class="text-input"
+            name="supplier_reference"
+            type="text"
+            value="${escapeHtml(draft.supplierReference)}"
+            ${disabled}
+          />
+        </label>
+      </div>
+    </fieldset>
   `;
 }
 

@@ -50,6 +50,7 @@ use crate::backend::database_spool_updates::{
     set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
     update_spool_ownership as update_spool_ownership_row,
     update_spool_ownership_metadata as update_spool_ownership_metadata_row,
+    update_spool_purchase_metadata as update_spool_purchase_metadata_row,
     update_spool_rfid_tag as update_spool_rfid_tag_row,
     update_spool_status as update_spool_status_row,
     update_spool_tare_weight as update_spool_tare_weight_row,
@@ -64,6 +65,7 @@ use crate::backend::filament_database::{
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_printer_slot_live::derive_assign_printer_slot_live_context;
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
+pub use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::backend::statistics::FilamentConsumptionRow;
 use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -104,6 +106,10 @@ pub struct CreateSpoolInput {
     pub purchase_date: Option<String>,
     pub purchase_price: Option<f64>,
     pub batch_code: Option<String>,
+    #[serde(default)]
+    pub purchase_currency: Option<String>,
+    #[serde(default)]
+    pub supplier_reference: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -145,6 +151,8 @@ pub struct UpdateSpoolDetailsInput {
     pub spool_tare_weight_g: Option<i64>,
     #[serde(default)]
     pub ownership: Option<UpdateSpoolDetailsOwnershipInput>,
+    #[serde(default)]
+    pub purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -217,6 +225,8 @@ pub struct UpdateWishlistStatusInput {
 pub struct ReceiveWishlistItemInput {
     pub item_id: String,
     pub quantity: i64,
+    #[serde(default)]
+    pub purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -453,6 +463,14 @@ impl InventoryEngine {
 
     pub fn create_spool(&self, input: CreateSpoolInput) -> InventoryResult<()> {
         let spool_id = input.id.clone();
+        let purchase_metadata = PurchaseReceiptMetadata {
+            purchase_price: input.purchase_price,
+            purchase_currency: input.purchase_currency.clone(),
+            purchase_date: input.purchase_date.clone(),
+            batch_code: input.batch_code.clone(),
+            supplier_reference: input.supplier_reference.clone(),
+        }
+        .normalize_for_new()?;
         let ownership_type_kind = OwnershipType::from_raw(input.ownership_type.as_deref());
         let ownership_type = ownership_type_kind.as_str().to_string();
         let status = SpoolStatus::from_raw(Some(&input.status))
@@ -486,10 +504,12 @@ impl InventoryEngine {
             spool_tare_weight_g: None,
             location_id: None,
             home_location_id: None,
-            purchase_date: input.purchase_date,
-            purchase_price: input.purchase_price,
-            batch_code: input.batch_code,
+            purchase_date: purchase_metadata.purchase_date.clone(),
+            purchase_price: purchase_metadata.purchase_price,
+            batch_code: purchase_metadata.batch_code.clone(),
             last_used_at: None,
+            purchase_currency: purchase_metadata.purchase_currency.clone(),
+            supplier_reference: purchase_metadata.supplier_reference.clone(),
         };
 
         self.db.with_inventory_transaction(|conn| {
@@ -516,6 +536,18 @@ impl InventoryEngine {
                     "ownership_type": spool.ownership_type,
                 }),
             )?;
+            if !purchase_metadata.is_empty() {
+                insert_json_history_event(
+                    conn,
+                    &spool_id,
+                    "PURCHASE_RECEIPT_RECORDED",
+                    json!({
+                        "source": "DIRECT_CREATE",
+                        "initial_weight_g": spool.initial_weight_g,
+                        "purchase_metadata": purchase_metadata,
+                    }),
+                )?;
+            }
             if ownership_type_kind.is_borrowed_in() {
                 let loan = create_inbound_spool_loan_in_transaction(
                     conn,
@@ -603,6 +635,8 @@ impl InventoryEngine {
                 purchase_price: None,
                 batch_code: None,
                 last_used_at: None,
+                purchase_currency: None,
+                supplier_reference: None,
             };
             insert_spool_row(conn, &spool)?;
 
@@ -821,6 +855,7 @@ impl InventoryEngine {
                 normalize_optional_input_text(ownership.ownership_note.as_deref()),
             )
         });
+        let requested_purchase_metadata = input.purchase_metadata;
         self.db.with_inventory_transaction(|conn| {
             if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, &input.spool_id)? {
                 return Err(InventoryError::Db(
@@ -829,6 +864,9 @@ impl InventoryEngine {
             }
             let existing_spool =
                 get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
+            let normalized_purchase_metadata = requested_purchase_metadata
+                .map(|metadata| metadata.normalize_for_edit(&existing_spool))
+                .transpose()?;
             let resolved_location = resolve_location_update(
                 conn,
                 input.location.as_deref(),
@@ -864,25 +902,47 @@ impl InventoryEngine {
                 } else {
                     resolved_location.clone()
                 };
-            update_spool_details_row(
-                conn,
-                &input.spool_id,
-                input.qr_code.as_deref(),
-                &status,
-                effective_location.as_deref(),
-                resolved_home_location.as_deref(),
-            )?;
-            insert_json_history_event(
-                conn,
-                &input.spool_id,
-                "DETAILS_UPDATED",
-                json!({
-                    "status": status,
-                    "qr_code": input.qr_code,
-                    "location": effective_location,
-                    "home_location": resolved_home_location
-                }),
-            )?;
+            let common_details_changed = existing_spool.qr_code != input.qr_code
+                || existing_spool.status != status
+                || existing_spool.location_id != effective_location
+                || existing_spool.home_location_id != resolved_home_location;
+            if common_details_changed {
+                update_spool_details_row(
+                    conn,
+                    &input.spool_id,
+                    input.qr_code.as_deref(),
+                    &status,
+                    effective_location.as_deref(),
+                    resolved_home_location.as_deref(),
+                )?;
+                insert_json_history_event(
+                    conn,
+                    &input.spool_id,
+                    "DETAILS_UPDATED",
+                    json!({
+                        "status": status,
+                        "qr_code": input.qr_code,
+                        "location": effective_location,
+                        "home_location": resolved_home_location
+                    }),
+                )?;
+            }
+            if let Some(purchase_metadata) = normalized_purchase_metadata {
+                let before = PurchaseReceiptMetadata::from_spool(&existing_spool);
+                if before != purchase_metadata {
+                    update_spool_purchase_metadata_row(conn, &input.spool_id, &purchase_metadata)?;
+                    insert_json_history_event(
+                        conn,
+                        &input.spool_id,
+                        "PURCHASE_METADATA_UPDATED",
+                        json!({
+                            "before": before,
+                            "after": purchase_metadata,
+                            "initial_weight_g": existing_spool.initial_weight_g,
+                        }),
+                    )?;
+                }
+            }
             if let Some(grams) = input.spool_tare_weight_g {
                 update_spool_tare_weight_row(conn, &input.spool_id, Some(grams))?;
                 insert_json_history_event(
@@ -1282,8 +1342,11 @@ impl InventoryEngine {
         &self,
         input: ReceiveWishlistItemInput,
     ) -> InventoryResult<WishlistReceiptResult> {
-        self.db
-            .receive_wishlist_item(input.item_id.trim(), input.quantity)
+        self.db.receive_wishlist_item(
+            input.item_id.trim(),
+            input.quantity,
+            input.purchase_metadata.unwrap_or_default(),
+        )
     }
 
     pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {

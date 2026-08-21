@@ -39,7 +39,32 @@ import type {
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "../lib/tauri_client";
+import {
+  purchaseReceiptMetadataKeepsLegacyCurrencylessPrice,
+  type PurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "../lib/purchase_receipt_metadata";
+import { purchaseReceiptMetadataFieldsCopy } from "../lib/purchase_receipt_metadata_copy";
 import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
+import { PurchaseReceiptMetadataFields } from "./purchase_receipt_metadata_fields";
+
+/*
+ * Keep the legacy exception visible to assistive technology only while the
+ * exact pre-currency price remains unchanged. Validation stays strict as soon
+ * as the user changes that price or enters a new one.
+ */
+function keepsLegacyCurrencylessPurchasePrice(
+  spool: InventorySpool,
+  draft: PurchaseReceiptMetadataDraft,
+): boolean {
+  return purchaseReceiptMetadataKeepsLegacyCurrencylessPrice(
+    {
+      purchase_price: spool.purchasePrice ?? null,
+      purchase_currency: spool.purchaseCurrency ?? null,
+    },
+    draft,
+  );
+}
 
 type InventorySpoolDetailModalProps = {
   assignedSlot: InventorySpoolDetailAssignedSlot | null;
@@ -75,6 +100,7 @@ type InventorySpoolDetailModalProps = {
   onChangeOwnerName: (value: string) => void;
   onChangeOwnershipNote: (value: string) => void;
   onChangeOwnershipType: (value: OwnershipType) => void;
+  onChangePurchaseMetadata: (value: PurchaseReceiptMetadataDraft) => void;
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
   onCancelDangerZoneConfirmation: () => void;
@@ -100,6 +126,8 @@ type InventorySpoolDetailModalProps = {
   ownershipTypeDraft: OwnershipType;
   ownerContactDraft: string;
   ownerNameDraft: string;
+  purchaseMetadataDraft: PurchaseReceiptMetadataDraft;
+  purchaseMetadataErrors: PurchaseReceiptMetadataValidationErrors;
   qrCompanionAvailable: boolean;
   qrDataUrl: string | null;
   qrLoading: boolean;
@@ -154,6 +182,7 @@ export function InventorySpoolDetailModal({
   onChangeOwnerName,
   onChangeOwnershipNote,
   onChangeOwnershipType,
+  onChangePurchaseMetadata,
   onChangeTare,
   onChangeVendor,
   onCancelDangerZoneConfirmation,
@@ -179,6 +208,8 @@ export function InventorySpoolDetailModal({
   ownershipTypeDraft,
   ownerContactDraft,
   ownerNameDraft,
+  purchaseMetadataDraft,
+  purchaseMetadataErrors,
   qrCompanionAvailable,
   qrDataUrl,
   qrLoading,
@@ -344,6 +375,19 @@ export function InventorySpoolDetailModal({
                 showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 typeValue={ownershipTypeDraft}
+              />
+
+              <PurchaseReceiptMetadataFields
+                copy={purchaseReceiptMetadataFieldsCopy(t)}
+                disabled={!runtimeAvailable || manageBusy}
+                draft={purchaseMetadataDraft}
+                errors={purchaseMetadataErrors}
+                legacyCurrencylessPriceUnchanged={keepsLegacyCurrencylessPurchasePrice(
+                  spool,
+                  purchaseMetadataDraft,
+                )}
+                onChange={onChangePurchaseMetadata}
+                selectedQuantity={1}
               />
 
               <InventorySpoolLostStatusPanel

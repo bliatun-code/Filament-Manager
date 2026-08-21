@@ -46,6 +46,7 @@ export const nbDictionary: DictionaryNode = {
       minutesAgo: "{count} min siden",
       hoursAgo: "{count} t siden",
       daysAgo: "{count} dager siden",
+      optional: "Valgfritt",
     },
     errors: {
       invalidRequest: "Forespørselen kunne ikke fullføres.",
@@ -62,6 +63,8 @@ export const nbDictionary: DictionaryNode = {
       loanExpectedReturnInvalid: "Velg en gyldig forventet returdato.",
       loanMetadataUnsupported:
         "Oppdater verten før du lagrer kontaktinformasjon eller forventet returdato for utlånet.",
+      purchaseMetadataHostUnsupported:
+        "Oppdater verten før du lagrer kjøpsdetaljer.",
       exportInvalidPayload: "Den genererte eksporten er ugyldig.",
       downloadsUnavailable: "Nedlastingsmappen er utilgjengelig.",
       exportWriteFailed: "Eksporten kunne ikke lagres.",
@@ -598,6 +601,24 @@ export const nbDictionary: DictionaryNode = {
         "Behold planlagte kjøp her, flytt dem til bestilt, og legg dem på lager når de ankommer.",
       addDirectlyToStock: "Legg direkte til lager",
       stockRollNow: "Legg filament på lager nå",
+      purchaseMetadataTitle: "Kjøpsdetaljer",
+      purchaseMetadataApplies:
+        "{count, plural, one {Disse detaljene lagres på dette filamentet.} other {Disse detaljene lagres på hvert av de # mottatte filamentene.}}",
+      purchasePricePerRoll: "Pris per rull",
+      purchasePricePerRollHint: "Oppgi enhetsprisen for én rull, ikke totalsummen.",
+      purchaseCurrency: "Valuta",
+      purchaseCurrencyHint: "Bruk en trebokstavskode som NOK eller EUR.",
+      purchaseDate: "Kjøpsdato",
+      purchaseBatchCode: "Batchkode",
+      purchaseSupplierReference: "Leverandørreferanse",
+      purchasePriceInvalid: "Oppgi en endelig numerisk pris.",
+      purchasePriceNegative: "Prisen kan ikke være negativ.",
+      purchaseCurrencyRequired: "Valuta er påkrevd når prisen endres.",
+      purchaseCurrencyInvalid: "Bruk en valutakode på tre bokstaver.",
+      purchaseCurrencyWithoutPrice: "Oppgi en pris eller fjern valutaen.",
+      purchaseDateInvalid: "Oppgi en gyldig kalenderdato.",
+      purchaseBatchCodeTooLong: "Batchkoden er for lang.",
+      purchaseSupplierReferenceTooLong: "Leverandørreferansen er for lang.",
       registerBorrowedIn: "Registrer innlånt filament",
       loanTrackingSubtitle:
         "Lån ut et filament fra lageret. Returer håndteres fra Utlån-siden.",
@@ -802,6 +823,8 @@ export const nbDictionary: DictionaryNode = {
         usedUp: "Markert tom",
         locationUpdated: "Lokasjon oppdatert",
         detailsUpdated: "Detaljer oppdatert",
+        purchaseReceiptRecorded: "Kjøpsmottak registrert",
+        purchaseMetadataUpdated: "Kjøpsdetaljer oppdatert",
         rfidSaved: "RFID lagret",
         assignedToAms: "Tildelt printer-spor",
         printJobRecorded: "Printforbruk logget",
@@ -813,6 +836,8 @@ export const nbDictionary: DictionaryNode = {
         deleted: "Slettet",
         rfidSavedDetail: "RFID-identiteten ble lagret fra AMS-fangst.",
         addedToLibraryDetail: "Filamentet ble lagt til i lageret.",
+        purchaseReceiptRecordedDetail: "Mottak av kjøpet ble registrert.",
+        purchaseMetadataUpdatedDetail: "Kjøpsdetaljene ble oppdatert.",
       },
       error: {
         add: "Kunne ikke legge til filament.",
@@ -832,6 +857,7 @@ export const nbDictionary: DictionaryNode = {
         createBambuBatch:
           "Kunne ikke opprette Bambu-kodebatch. Sjekk QR-unikhet og verdier.",
         stockFromWishlist: "Kunne ikke legge filament til lager fra ønskelistepost.",
+        purchaseMetadataInvalid: "Kontroller de markerte kjøpsdetaljene.",
         unlockMetadataFirst: "Lås opp metadata før du redigerer katalogdetaljer.",
         masterFieldsRequired:
           "Leverandør, materiale, filamentnavn og farge er påkrevd for å lagre metadata.",
@@ -894,6 +920,10 @@ export const nbDictionary: DictionaryNode = {
       statusFilter: "Statusfilter for ønskeliste",
       itemStatusGroup: "Status for {name}",
       qty: "Antall",
+      receivePurchase: "Motta kjøp",
+      receivedQuantity: "Mottatt antall",
+      receiveQuantity:
+        "{count, plural, one {Motta # rull} other {Motta # ruller}}",
       searchQueueLabel: "Søk i kjøpskø",
       searchQueuePlaceholder: "Søk på navn, farge eller leverandør",
       resultCountOne: "treff",

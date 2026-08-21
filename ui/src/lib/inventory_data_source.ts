@@ -114,6 +114,11 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
     qrCode: normalizedRow.spool.qr_code ?? null,
     rfidTag: normalizedRow.spool.rfid_tag ?? null,
     rfidObservedAt: normalizedRow.spool.rfid_observed_at ?? null,
+    purchasePrice: normalizedRow.spool.purchase_price ?? null,
+    purchaseCurrency: normalizedRow.spool.purchase_currency ?? null,
+    purchaseDate: normalizedRow.spool.purchase_date ?? null,
+    batchCode: normalizedRow.spool.batch_code ?? null,
+    supplierReference: normalizedRow.spool.supplier_reference ?? null,
   };
 }
 

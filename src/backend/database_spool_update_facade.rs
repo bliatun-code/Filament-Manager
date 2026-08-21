@@ -5,11 +5,13 @@ use super::database_spool_updates::{
     set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
     update_spool_ownership as update_spool_ownership_row,
     update_spool_ownership_metadata as update_spool_ownership_metadata_row,
+    update_spool_purchase_metadata as update_spool_purchase_metadata_row,
     update_spool_rfid_tag as update_spool_rfid_tag_row,
     update_spool_status as update_spool_status_row,
     update_spool_tare_weight as update_spool_tare_weight_row,
     update_spool_weight as update_spool_weight_row,
 };
+use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 impl FilamentDatabase {
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
@@ -74,6 +76,14 @@ impl FilamentDatabase {
         home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
         set_spool_home_location_row(self.connection(), spool_id, home_location_id)
+    }
+
+    pub fn update_spool_purchase_metadata(
+        &self,
+        spool_id: &str,
+        metadata: &PurchaseReceiptMetadata,
+    ) -> InventoryResult<()> {
+        update_spool_purchase_metadata_row(self.connection(), spool_id, metadata)
     }
 
     pub fn update_spool_ownership_metadata(

@@ -1436,6 +1436,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("inventory-bulk-mutations") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("purchase-receipt-metadata") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -3227,6 +3233,141 @@ async fn companion_api_creates_and_updates_wishlist_item() {
 }
 
 #[tokio::test]
+async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
+    let db_path = temp_db_path("wishlist-receipt-metadata");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+
+        let create_item = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/wishlist")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"material":"PETG","filament_name":"Receipt metadata","color_name":"Blue","vendor":"Bambu","quantity":2}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(create_item.status(), StatusCode::OK);
+
+        let wishlist = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/wishlist?limit=20")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let wishlist_text =
+            String::from_utf8(wishlist_body.to_vec()).map_err(|error| error.to_string())?;
+        let item_id = extract_wishlist_item_id(&wishlist_text, "Receipt metadata")?;
+
+        let invalid = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"quantity":1,"purchase_metadata":{"purchase_price":249.5}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+        let invalid_body = to_bytes(invalid.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let invalid_json: serde_json::Value =
+            serde_json::from_slice(&invalid_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            invalid_json.get("code").and_then(|value| value.as_str()),
+            Some("purchase_metadata.currency_required")
+        );
+
+        let receive = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"quantity":2,"purchase_metadata":{"purchase_price":249.5,"purchase_currency":"nok","purchase_date":"2026-08-21","batch_code":" batch-7 ","supplier_reference":" po-19 "}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(receive.status(), StatusCode::OK);
+        let receive_body = to_bytes(receive.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let receipt: serde_json::Value =
+            serde_json::from_slice(&receive_body).map_err(|error| error.to_string())?;
+        let spool_ids = receipt
+            .get("spool_ids")
+            .and_then(|value| value.as_array())
+            .ok_or_else(|| "receipt spool_ids missing".to_string())?;
+        assert_eq!(spool_ids.len(), 2);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        for spool_id in spool_ids {
+            let spool_id = spool_id
+                .as_str()
+                .ok_or_else(|| "receipt spool id was not a string".to_string())?;
+            let spool = db
+                .get_spool_by_id(spool_id)
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| format!("received spool {spool_id} missing"))?;
+            assert_eq!(spool.purchase_price, Some(249.5));
+            assert_eq!(spool.purchase_currency.as_deref(), Some("NOK"));
+            assert_eq!(spool.purchase_date.as_deref(), Some("2026-08-21"));
+            assert_eq!(spool.batch_code.as_deref(), Some("batch-7"));
+            assert_eq!(spool.supplier_reference.as_deref(), Some("po-19"));
+        }
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_applies_receipt_metadata_to_every_received_spool failed: {message}");
+    }
+}
+
+#[tokio::test]
 async fn companion_api_creates_and_deletes_printer() {
     let db_path = temp_db_path("printer-create-delete");
     let result = async {
@@ -3982,6 +4123,332 @@ async fn companion_api_updates_spool_status_and_location() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_updates_spool_status_and_location failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_updates_and_explicitly_clears_spool_receipt_metadata() {
+    let db_path = temp_db_path("spool-receipt-metadata");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+
+        let update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":199.0,"purchase_currency":"eur","purchase_date":"2026-08-20","batch_code":"lot-4","supplier_reference":"invoice-8"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let spool = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after metadata update".to_string())?;
+        assert_eq!(spool.purchase_price, Some(199.0));
+        assert_eq!(spool.purchase_currency.as_deref(), Some("EUR"));
+        assert_eq!(spool.purchase_date.as_deref(), Some("2026-08-20"));
+        assert_eq!(spool.batch_code.as_deref(), Some("lot-4"));
+        assert_eq!(spool.supplier_reference.as_deref(), Some("invoice-8"));
+        drop(db);
+
+        let invalid = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":200.0}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+        let invalid_body = to_bytes(invalid.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let invalid_json: serde_json::Value =
+            serde_json::from_slice(&invalid_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            invalid_json.get("code").and_then(|value| value.as_str()),
+            Some("purchase_metadata.currency_required")
+        );
+
+        let clear = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":null,"purchase_currency":null,"purchase_date":null,"batch_code":null,"supplier_reference":null}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(clear.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let spool = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after metadata clear".to_string())?;
+        assert_eq!(spool.purchase_price, None);
+        assert_eq!(spool.purchase_currency, None);
+        assert_eq!(spool.purchase_date, None);
+        assert_eq!(spool.batch_code, None);
+        assert_eq!(spool.supplier_reference, None);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_updates_and_explicitly_clears_spool_receipt_metadata failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement() {
+    let db_path = temp_db_path("borrowed-spool-receipt-only");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+        let service = CompanionService::new(db_path.to_string_lossy().to_string());
+
+        service
+            .lend_spool(LendSpoolInput {
+                spool_id: "spool_1".to_string(),
+                borrower_name: "Alice".to_string(),
+                counterparty_contact: Some("alice@example.test".to_string()),
+                grams_out: Some(800),
+                note: Some("Prototype run".to_string()),
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let baseline_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after lend".to_string())?
+            .spool;
+        assert_eq!(baseline_spool.status, "BORROWED");
+        let baseline_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(baseline_loans.len(), 1);
+        let baseline_loan = serde_json::to_value(&baseline_loans[0].loan)
+            .map_err(|error| error.to_string())?;
+
+        let update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        serde_json::json!({
+                            "status": "BORROWED",
+                            "location": baseline_spool.location_id.clone(),
+                            "home_location": baseline_spool.home_location_id.clone(),
+                            "purchase_metadata": {
+                                "purchase_price": 249.5,
+                                "purchase_currency": "nok",
+                                "purchase_date": "2026-08-21",
+                                "batch_code": "LOT-7",
+                                "supplier_reference": "PO-42"
+                            }
+                        })
+                        .to_string(),
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update.status(), StatusCode::OK);
+
+        let updated_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after receipt update".to_string())?
+            .spool;
+        assert_eq!(updated_spool.status, baseline_spool.status);
+        assert_eq!(updated_spool.location_id, baseline_spool.location_id);
+        assert_eq!(updated_spool.home_location_id, baseline_spool.home_location_id);
+        assert_eq!(
+            updated_spool.spool_tare_weight_g,
+            baseline_spool.spool_tare_weight_g
+        );
+        assert_eq!(updated_spool.ownership_type, baseline_spool.ownership_type);
+        assert_eq!(updated_spool.owner_name, baseline_spool.owner_name);
+        assert_eq!(updated_spool.owner_contact, baseline_spool.owner_contact);
+        assert_eq!(updated_spool.ownership_note, baseline_spool.ownership_note);
+        assert_eq!(updated_spool.purchase_price, Some(249.5));
+        assert_eq!(updated_spool.purchase_currency.as_deref(), Some("NOK"));
+        assert_eq!(updated_spool.purchase_date.as_deref(), Some("2026-08-21"));
+        assert_eq!(updated_spool.batch_code.as_deref(), Some("LOT-7"));
+        assert_eq!(updated_spool.supplier_reference.as_deref(), Some("PO-42"));
+        let updated_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(updated_loans.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&updated_loans[0].loan)
+                .map_err(|error| error.to_string())?,
+            baseline_loan
+        );
+
+        let placement_mutation = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"BORROWED","location":"Shelf B","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"},"purchase_metadata":{"purchase_price":250.0,"purchase_currency":"NOK"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(placement_mutation.status(), StatusCode::BAD_REQUEST);
+
+        let status_mutation = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":250.0,"purchase_currency":"NOK"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(status_mutation.status(), StatusCode::BAD_REQUEST);
+
+        let clear = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"BORROWED","purchase_metadata":{"purchase_price":null,"purchase_currency":null,"purchase_date":null,"batch_code":null,"supplier_reference":null}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(clear.status(), StatusCode::OK);
+
+        let cleared_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after receipt clear".to_string())?
+            .spool;
+        assert_eq!(cleared_spool.status, baseline_spool.status);
+        assert_eq!(cleared_spool.location_id, baseline_spool.location_id);
+        assert_eq!(cleared_spool.home_location_id, baseline_spool.home_location_id);
+        assert_eq!(
+            cleared_spool.spool_tare_weight_g,
+            baseline_spool.spool_tare_weight_g
+        );
+        assert_eq!(cleared_spool.ownership_type, baseline_spool.ownership_type);
+        assert_eq!(cleared_spool.owner_name, baseline_spool.owner_name);
+        assert_eq!(cleared_spool.owner_contact, baseline_spool.owner_contact);
+        assert_eq!(cleared_spool.ownership_note, baseline_spool.ownership_note);
+        assert_eq!(cleared_spool.purchase_price, None);
+        assert_eq!(cleared_spool.purchase_currency, None);
+        assert_eq!(cleared_spool.purchase_date, None);
+        assert_eq!(cleared_spool.batch_code, None);
+        assert_eq!(cleared_spool.supplier_reference, None);
+        let cleared_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(cleared_loans.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&cleared_loans[0].loan)
+                .map_err(|error| error.to_string())?,
+            baseline_loan
+        );
+        assert_eq!(
+            service
+                .list_spool_history("spool_1", 100)
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .filter(|event| event.event_type == "PURCHASE_METADATA_UPDATED")
+                .count(),
+            2
+        );
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement failed: {message}"
+        );
     }
 }
 

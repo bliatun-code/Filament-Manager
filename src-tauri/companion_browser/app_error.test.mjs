@@ -67,3 +67,17 @@ test("legacy Host capability failures use a clear localized message", () => {
 
   assert.equal(translated, "Oppdater verten før utlånsdetaljene lagres.");
 });
+
+test("purchase metadata capability failures explicitly require a Host upgrade", () => {
+  const translated = localizedAppError(
+    { code: "purchase_metadata.host_unsupported" },
+    (key, fallback) =>
+      key === "errors.purchaseMetadataHostUnsupported"
+        ? "Oppdater verten før du lagrer innkjøpsdetaljer."
+        : fallback,
+    "Kunne ikke lagre innkjøpsdetaljer.",
+  );
+
+  assert.equal(translated, "Oppdater verten før du lagrer innkjøpsdetaljer.");
+  assert.doesNotMatch(translated, /purchase_metadata\.host_unsupported/);
+});

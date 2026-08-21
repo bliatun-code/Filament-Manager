@@ -6,6 +6,7 @@ import type {
   InventoryBulkMutationCommand,
   InventoryBulkMutationReceipt,
 } from "./inventory_bulk_actions_model";
+import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 
 export type {
   LowStockMaterialOverride,
@@ -29,6 +30,11 @@ export type SpoolRow = {
   spool_tare_weight_g?: number | null;
   location_id?: string | null;
   home_location_id?: string | null;
+  purchase_price?: number | null;
+  purchase_currency?: string | null;
+  purchase_date?: string | null;
+  batch_code?: string | null;
+  supplier_reference?: string | null;
 };
 
 export type SpoolHistoryEventRow = {
@@ -116,6 +122,7 @@ export type UpdateSpoolDetailsInput = {
     owner_contact?: string | null;
     ownership_note?: string | null;
   };
+  purchase_metadata?: PurchaseReceiptMetadata;
 };
 
 export type UpdateSpoolRfidTagInput = {
@@ -319,6 +326,20 @@ export async function updateLibrarySyncHostSpoolDetails(
   expectedLibraryId: string | null | undefined,
   input: UpdateSpoolDetailsInput,
 ) {
+  return invoke<void>("update_library_sync_host_spool_details", {
+    input: buildLibrarySyncHostSpoolDetailsPayload(
+      baseUrl,
+      expectedLibraryId,
+      input,
+    ),
+  });
+}
+
+export function buildLibrarySyncHostSpoolDetailsPayload(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateSpoolDetailsInput,
+) {
   const payload: Record<string, unknown> = {
     base_url: baseUrl,
     expected_library_id: expectedLibraryId ?? null,
@@ -338,10 +359,13 @@ export async function updateLibrarySyncHostSpoolDetails(
   if (input.ownership !== undefined) {
     payload.ownership = input.ownership;
   }
+  // Preserve the nested Option contract: omission means no purchase change,
+  // while an explicit all-null object means clear every purchase field.
+  if (input.purchase_metadata !== undefined) {
+    payload.purchase_metadata = input.purchase_metadata;
+  }
 
-  return invoke<void>("update_library_sync_host_spool_details", {
-    input: payload,
-  });
+  return payload;
 }
 
 export async function updateLibrarySyncHostSpoolOwnership(

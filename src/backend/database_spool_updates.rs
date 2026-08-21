@@ -2,6 +2,7 @@ use rusqlite::{params, Connection};
 
 use super::database_result::{require_rows, InventoryResult};
 use super::database_text::normalize_optional_text;
+use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 pub(crate) fn update_spool_status(
     conn: &Connection,
@@ -96,6 +97,32 @@ pub(crate) fn update_spool_details(
              updated_at = datetime('now')
          WHERE id = ?5 AND deleted_at IS NULL",
         params![qr_code, status, location_id, home_location_id, spool_id],
+    )?;
+    require_rows(affected)
+}
+
+pub(crate) fn update_spool_purchase_metadata(
+    conn: &Connection,
+    spool_id: &str,
+    metadata: &PurchaseReceiptMetadata,
+) -> InventoryResult<()> {
+    let affected = conn.execute(
+        "UPDATE filament_spools
+         SET purchase_price = ?1,
+             purchase_currency = ?2,
+             purchase_date = ?3,
+             batch_code = ?4,
+             supplier_reference = ?5,
+             updated_at = datetime('now')
+         WHERE id = ?6 AND deleted_at IS NULL",
+        params![
+            metadata.purchase_price,
+            metadata.purchase_currency,
+            metadata.purchase_date,
+            metadata.batch_code,
+            metadata.supplier_reference,
+            spool_id
+        ],
     )?;
     require_rows(affected)
 }

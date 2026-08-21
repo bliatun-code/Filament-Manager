@@ -220,6 +220,14 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /data-form-key="wishlist-stock:wish-1"/);
   assert.match(html, /name="received-quantity"/);
   assert.match(html, /max="2"/);
+  assert.match(html, /Purchase details \(optional\)/);
+  assert.match(html, /saved to every roll received in this action/);
+  assert.match(html, /name="purchase_price"/);
+  assert.match(html, /name="purchase_currency"/);
+  assert.match(html, /name="purchase_date"/);
+  assert.match(html, /name="batch_code"/);
+  assert.match(html, /name="supplier_reference"/);
+  assert.match(html, /data-collapsible="wishlist-receipt:wish-1"/);
   assert.match(html, /data-action="wishlist-delete"/);
   assert.match(html, /data-action="add-spool-form"/);
   assert.match(html, /data-action="wishlist-item-form"/);
@@ -231,6 +239,32 @@ test("add filament task sheet exposes stock and wishlist flows from the same sel
   assert.match(html, /Add spool to inventory/);
   assert.match(html, /Home location \(optional\)/);
   assert.match(html, /Add current selection to wishlist/);
+});
+
+test("wishlist purchase receipt fields localize in norwegian", () => {
+  const state = createInitialCompanionState();
+  state.locale = "nb";
+  state.wishlistItems = [
+    {
+      id: "wish-nb",
+      status: "ON_ORDER",
+      quantity: 1,
+      material: "PLA",
+      filament_name: "Basic",
+      color_name: "Blå",
+      vendor: "Bambu",
+    },
+  ];
+
+  const html = renderAddFilamentTaskSheetBody(
+    state,
+    false,
+    (value) => String(value ?? ""),
+  );
+
+  assert.match(html, /Innkjøpsdetaljer \(valgfritt\)/);
+  assert.match(html, /Pris per rull/);
+  assert.match(html, /Leverandørreferanse/);
 });
 
 test("add filament task sheet keeps Bambu filament code lookup in catalog search without help card", () => {

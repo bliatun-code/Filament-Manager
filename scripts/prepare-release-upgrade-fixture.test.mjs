@@ -62,6 +62,7 @@ function createLegacyDatabase(databasePath) {
       owner_contact TEXT,
       ownership_note TEXT,
       batch_code TEXT,
+      supplier_reference TEXT,
       qr_code TEXT,
       rfid_tag TEXT,
       rfid_observed_at TEXT
@@ -181,14 +182,15 @@ function createLegacyDatabase(databasePath) {
     .prepare(
       `INSERT INTO filament_spools
        (id, master_id, owner_name, owner_contact, ownership_note, batch_code,
-        qr_code, rfid_tag, rfid_observed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        supplier_reference, qr_code, rfid_tag, rfid_observed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       "spool-1",
       "master-1",
       "Private owner",
       "private@example.test",
+      secret,
       secret,
       secret,
       "http://192.0.2.10/private",

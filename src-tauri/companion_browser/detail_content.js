@@ -2,6 +2,7 @@ import { t } from "./companion_i18n.js";
 import {
   isBorrowedInOwnership,
   normalizeEditableSpoolStatus,
+  parseSpoolStatus,
 } from "./companion_domain.js";
 import { resolveSpoolTareWeight } from "./companion_spool_weight.js";
 import { formatInventoryDisplayTitle, formatRollReference, formatStatusLabel } from "./formatters.js";
@@ -10,6 +11,7 @@ import {
   renderCompanionStateCard,
   renderDetailField,
   renderFormActionBlock,
+  renderPurchaseReceiptMetadataFields,
   renderSwatchSelectionCard,
 } from "./shell_chrome.js";
 
@@ -32,7 +34,12 @@ export function renderSelectedSpoolDetailBody(options) {
 
   const selectedAssignment = findAssignedSlotForSpool(selectedSpool.spool.id);
   const detailTareWeight = resolveSpoolTareWeight(selectedSpool.spool, selectedSpool.master?.vendor);
-  const detailStatus = normalizeEditableSpoolStatus(selectedSpool.spool.status);
+  const detailStatus =
+    parseSpoolStatus(selectedSpool.spool.status) ||
+    normalizeEditableSpoolStatus(selectedSpool.spool.status);
+  const detailStatusIsBorrowed = detailStatus === "BORROWED";
+  const detailStatusIsPlacementLocked =
+    detailStatus === "ASSIGNED" || detailStatusIsBorrowed;
   const detailStatusLabel = formatStatusLabel(detailStatus, locale);
   const detailStatusTone =
     detailStatus === "LOST" ? "danger" : detailStatus === "EMPTY" ? "warning" : "success";
@@ -163,18 +170,31 @@ export function renderSelectedSpoolDetailBody(options) {
             })}
             ${renderDetailField({
               body: `
-              <select class="text-input" name="status" ${busy ? "disabled" : ""}>
-                ${[
-                  ["IN_STOCK", t(locale, "format.inStock", "In stock")],
-                  ["EMPTY", t(locale, "format.empty", "Empty")],
-                  ["LOST", t(locale, "format.lost", "Lost")],
-                ]
-                  .map(
-                    ([value, label]) =>
-                      `<option value="${escapeHtml(value)}" ${detailStatus === value ? "selected" : ""}>${escapeHtml(label)}</option>`,
-                  )
-                  .join("")}
-              </select>
+              ${
+                detailStatusIsPlacementLocked
+                  ? `
+                    <input name="status" type="hidden" value="${escapeHtml(detailStatus)}" />
+                    <select class="text-input" aria-label="${escapeHtml(
+                      t(locale, "detail.status", "Status"),
+                    )}" disabled>
+                      <option value="${escapeHtml(detailStatus)}" selected>${escapeHtml(detailStatusLabel)}</option>
+                    </select>
+                  `
+                  : `
+                    <select class="text-input" name="status" ${busy ? "disabled" : ""}>
+                      ${[
+                        ["IN_STOCK", t(locale, "format.inStock", "In stock")],
+                        ["EMPTY", t(locale, "format.empty", "Empty")],
+                        ["LOST", t(locale, "format.lost", "Lost")],
+                      ]
+                        .map(
+                          ([value, label]) =>
+                            `<option value="${escapeHtml(value)}" ${detailStatus === value ? "selected" : ""}>${escapeHtml(label)}</option>`,
+                        )
+                        .join("")}
+                    </select>
+                  `
+              }
               `,
               escapeHtml,
               label: t(locale, "detail.status", "Status"),
@@ -182,18 +202,40 @@ export function renderSelectedSpoolDetailBody(options) {
             ${renderDetailField({
               body: `
               <input type="hidden" name="location" value="${escapeHtml(detailLocation)}" />
-              <input
-                class="text-input"
-                name="home-location"
-                type="text"
-                value="${escapeHtml(detailHomeLocation)}"
-                placeholder="${escapeHtml(t(locale, "detail.homeLocationPlaceholder", "Shelf, drawer, or cart"))}"
-                ${busy ? "disabled" : ""}
-              />
+              ${
+                detailStatusIsBorrowed
+                  ? `
+                    <input type="hidden" name="home-location" value="${escapeHtml(detailHomeLocation)}" />
+                    <input
+                      class="text-input"
+                      type="text"
+                      value="${escapeHtml(detailHomeLocation)}"
+                      aria-label="${escapeHtml(t(locale, "detail.homeLocationOptional", "Home location (optional)"))}"
+                      disabled
+                    />
+                  `
+                  : `
+                    <input
+                      class="text-input"
+                      name="home-location"
+                      type="text"
+                      value="${escapeHtml(detailHomeLocation)}"
+                      placeholder="${escapeHtml(t(locale, "detail.homeLocationPlaceholder", "Shelf, drawer, or cart"))}"
+                      ${busy ? "disabled" : ""}
+                    />
+                  `
+              }
               <div class="meta-line">${escapeHtml(detailHomePlacementLabel)}</div>
               `,
               escapeHtml,
               label: t(locale, "detail.homeLocationOptional", "Home location (optional)"),
+            })}
+            ${renderPurchaseReceiptMetadataFields({
+              metadata: selectedSpool.spool,
+              locale,
+              escapeHtml,
+              busy,
+              context: "detail",
             })}
             ${renderSwatchSubmitAction(t(locale, "detail.saveDetails", "Save details"))}
           </form>
@@ -401,6 +443,8 @@ function formatHistoryEventLabel(value, locale = "en") {
     tare_weight_updated: "detail.eventTareWeightUpdate",
     created: "detail.eventCreated",
     details_updated: "detail.eventDetailsUpdated",
+    purchase_metadata_updated: "purchaseReceipt.historyUpdated",
+    purchase_receipt_recorded: "purchaseReceipt.historyRecorded",
     rfid_tag_updated: "detail.eventRfidSaved",
     status_updated: "detail.eventStatusUpdated",
     location_updated: "detail.eventLocationUpdated",

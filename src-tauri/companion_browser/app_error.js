@@ -28,6 +28,10 @@ const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.loanMetadataUnsupported",
     "Update the host before saving loan contact details or an expected return date.",
   ],
+  "purchase_metadata.host_unsupported": [
+    "errors.purchaseMetadataHostUnsupported",
+    "Update the Host before saving purchase details.",
+  ],
   "export.invalid_payload": ["errors.exportInvalidPayload", "The generated export is invalid."],
   "export.downloads_unavailable": [
     "errors.downloadsUnavailable",

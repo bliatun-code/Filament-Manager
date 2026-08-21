@@ -1,3 +1,10 @@
+import {
+  emptyPurchaseReceiptMetadataDraft,
+  parsePurchaseReceiptMetadataDraft,
+  purchaseReceiptMetadataHasValues,
+  purchaseReceiptMetadataValidationMessage,
+} from "./companion_domain.js";
+
 export function createCompanionWishlistMutations({
   state,
   refreshOverview,
@@ -76,7 +83,11 @@ export function createCompanionWishlistMutations({
     }
   }
 
-  async function submitWishlistStock(itemIdValue, quantityValue = "1") {
+  async function submitWishlistStock(
+    itemIdValue,
+    quantityValue = "1",
+    receiptDraft = emptyPurchaseReceiptMetadataDraft(),
+  ) {
     const itemId = String(itemIdValue || "").trim();
     const item = Array.isArray(state.wishlistItems)
       ? state.wishlistItems.find((row) => String(row?.id || "").trim() === itemId)
@@ -93,13 +104,27 @@ export function createCompanionWishlistMutations({
       render();
       return;
     }
+    const parsedReceipt = parsePurchaseReceiptMetadataDraft(receiptDraft);
+    if (!parsedReceipt.ok) {
+      setStatus(
+        purchaseReceiptMetadataValidationMessage(parsedReceipt.errors, tr),
+        "error",
+      );
+      render();
+      return;
+    }
 
     setBusy(true);
     setStatus(tr("status.wishlistStocking", "Adding wishlist spool to inventory..."), "default");
     try {
-      const payload = await postJson(`/api/v1/wishlist/${encodeURIComponent(item.id)}/receive`, {
-        quantity,
-      });
+      const requestBody = { quantity };
+      if (purchaseReceiptMetadataHasValues(parsedReceipt.value)) {
+        requestBody.purchase_metadata = parsedReceipt.value;
+      }
+      const payload = await postJson(
+        `/api/v1/wishlist/${encodeURIComponent(item.id)}/receive`,
+        requestBody,
+      );
       const spoolId = Array.isArray(payload?.spool_ids)
         ? String(payload.spool_ids[0] || "").trim()
         : "";

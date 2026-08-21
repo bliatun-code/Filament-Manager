@@ -1,3 +1,5 @@
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
+use crate::companion_models::PURCHASE_RECEIPT_METADATA_CAPABILITY;
 use crate::library_sync_host_client::ensure_library_sync_host_matches;
 use crate::library_sync_models::ValidateLibrarySyncHostInput;
 use crate::state::AppState;
@@ -92,6 +94,31 @@ pub(crate) fn trimmed_non_empty(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|entry| !entry.is_empty())
 }
 
+pub(crate) fn purchase_receipt_metadata_has_values(metadata: &PurchaseReceiptMetadata) -> bool {
+    metadata.purchase_price.is_some()
+        || trimmed_non_empty(metadata.purchase_currency.as_deref()).is_some()
+        || trimmed_non_empty(metadata.purchase_date.as_deref()).is_some()
+        || trimmed_non_empty(metadata.batch_code.as_deref()).is_some()
+        || trimmed_non_empty(metadata.supplier_reference.as_deref()).is_some()
+}
+
+pub(crate) fn require_host_purchase_receipt_metadata_capability(
+    capabilities: &[String],
+    requested: bool,
+) -> Result<(), String> {
+    if !requested
+        || capabilities
+            .iter()
+            .any(|capability| capability == PURCHASE_RECEIPT_METADATA_CAPABILITY)
+    {
+        return Ok(());
+    }
+
+    Err(crate::app_error::coded_command_error(
+        "purchase_metadata.host_unsupported",
+    ))
+}
+
 pub(crate) fn save_library_sync_success(
     state: &AppState,
     message: &str,
@@ -113,7 +140,12 @@ pub(crate) fn save_library_sync_success_without_message(
 
 #[cfg(test)]
 mod tests {
-    use super::{ensure_stable_local_library_sync_host, normalize_library_sync_base_url};
+    use super::{
+        ensure_stable_local_library_sync_host, normalize_library_sync_base_url,
+        purchase_receipt_metadata_has_values, require_host_purchase_receipt_metadata_capability,
+    };
+    use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
+    use crate::companion_models::PURCHASE_RECEIPT_METADATA_CAPABILITY;
 
     #[test]
     fn host_url_is_canonical_and_rejects_credential_leak_surfaces() {
@@ -155,5 +187,38 @@ mod tests {
                 "{invalid} must be rejected for new pairings"
             );
         }
+    }
+
+    #[test]
+    fn legacy_hosts_only_reject_meaningful_receipt_metadata() {
+        assert!(!purchase_receipt_metadata_has_values(
+            &PurchaseReceiptMetadata::default()
+        ));
+        assert!(!purchase_receipt_metadata_has_values(
+            &PurchaseReceiptMetadata {
+                purchase_currency: Some("  ".to_string()),
+                purchase_date: Some("".to_string()),
+                batch_code: Some("  ".to_string()),
+                supplier_reference: Some("".to_string()),
+                ..Default::default()
+            }
+        ));
+        assert!(purchase_receipt_metadata_has_values(
+            &PurchaseReceiptMetadata {
+                purchase_price: Some(0.0),
+                ..Default::default()
+            }
+        ));
+
+        assert!(require_host_purchase_receipt_metadata_capability(&[], false).is_ok());
+        let error = require_host_purchase_receipt_metadata_capability(&[], true)
+            .expect_err("metadata must fail closed for a legacy Host");
+        let envelope: serde_json::Value = serde_json::from_str(&error).expect("coded error");
+        assert_eq!(envelope["code"], "purchase_metadata.host_unsupported");
+        assert!(require_host_purchase_receipt_metadata_capability(
+            &[PURCHASE_RECEIPT_METADATA_CAPABILITY.to_string()],
+            true,
+        )
+        .is_ok());
     }
 }

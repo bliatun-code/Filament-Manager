@@ -129,6 +129,7 @@ mod tests {
         ActiveLibraryWriteTarget, INCOMPLETE_CLIENT_CONFIGURATION_ERROR,
     };
     use crate::backend::inventory_engine::UpdateSpoolDetailsInput;
+    use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
     use std::cell::{Cell, RefCell};
 
     fn configuration(mode: &str) -> ActiveLibraryConfiguration {
@@ -149,6 +150,13 @@ mod tests {
             home_location: Some(Some("Drybox 2".to_string())),
             spool_tare_weight_g: Some(241),
             ownership: None,
+            purchase_metadata: Some(PurchaseReceiptMetadata {
+                purchase_price: Some(249.0),
+                purchase_currency: Some("NOK".to_string()),
+                purchase_date: Some("2026-08-21".to_string()),
+                batch_code: Some("batch-7".to_string()),
+                supplier_reference: Some("po-19".to_string()),
+            }),
         }
     }
 
@@ -206,6 +214,13 @@ mod tests {
         assert_eq!(input.spool_id, "spool-1");
         assert_eq!(input.home_location, Some(Some("Drybox 2".to_string())));
         assert_eq!(input.spool_tare_weight_g, Some(241));
+        assert_eq!(
+            input
+                .purchase_metadata
+                .as_ref()
+                .and_then(|metadata| metadata.purchase_currency.as_deref()),
+            Some("NOK")
+        );
     }
 
     #[test]

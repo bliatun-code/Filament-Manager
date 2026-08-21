@@ -1,9 +1,11 @@
 use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::UpdateSpoolDetailsInput;
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
-    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
+    library_sync_host_input, prepare_library_sync_host_write,
+    require_host_purchase_receipt_metadata_capability, save_library_sync_success,
     trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
@@ -32,6 +34,7 @@ struct HostSpoolDetailsUpdate {
     home_location: OptionalUpdate<String>,
     spool_tare_weight_g: Option<i64>,
     ownership: Option<HostSpoolDetailsOwnership>,
+    purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[tauri::command]
@@ -139,6 +142,7 @@ fn update_library_sync_host_spool_details_blocking(
                 owner_contact: ownership.owner_contact,
                 ownership_note: ownership.ownership_note,
             }),
+            purchase_metadata: input.purchase_metadata,
         },
     )
 }
@@ -178,6 +182,7 @@ fn host_spool_details_update_from_active_input(
             owner_contact: ownership.owner_contact,
             ownership_note: ownership.ownership_note,
         }),
+        purchase_metadata: input.purchase_metadata,
     }
 }
 
@@ -188,14 +193,13 @@ fn update_library_sync_host_spool_details_for_target(
     input: HostSpoolDetailsUpdate,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(base_url, expected_library_id);
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
-
+    let (normalized_base_url, health) = prepare_library_sync_host_write(&host_input)?;
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
-    let payload = host_spool_details_payload(&input);
+    let payload = host_spool_details_payload_for_capabilities(&input, &health.capabilities)?;
 
     perform_library_sync_host_write(
         state,
@@ -244,8 +248,25 @@ fn host_spool_details_payload(
             }),
         );
     }
+    if let Some(purchase_metadata) = input.purchase_metadata.as_ref() {
+        payload.insert(
+            "purchase_metadata".to_string(),
+            serde_json::json!(purchase_metadata),
+        );
+    }
 
     payload
+}
+
+fn host_spool_details_payload_for_capabilities(
+    input: &HostSpoolDetailsUpdate,
+    capabilities: &[String],
+) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    require_host_purchase_receipt_metadata_capability(
+        capabilities,
+        input.purchase_metadata.is_some(),
+    )?;
+    Ok(host_spool_details_payload(input))
 }
 
 #[tauri::command]
@@ -401,12 +422,14 @@ fn library_sync_create_spool_path(
 #[cfg(test)]
 mod tests {
     use super::{
-        host_spool_details_payload, host_spool_details_update_from_active_input,
+        host_spool_details_payload_for_capabilities, host_spool_details_update_from_active_input,
         library_sync_create_spool_path,
     };
     use crate::backend::inventory_engine::{
         UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput,
     };
+    use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
+    use crate::companion_models::PURCHASE_RECEIPT_METADATA_CAPABILITY;
 
     #[test]
     fn library_sync_create_spool_path_uses_domain_ownership_tokens() {
@@ -434,7 +457,7 @@ mod tests {
 
     #[test]
     fn active_library_adapter_preserves_the_atomic_details_payload() {
-        let update = host_spool_details_update_from_active_input(UpdateSpoolDetailsInput {
+        let mut update = host_spool_details_update_from_active_input(UpdateSpoolDetailsInput {
             spool_id: "spool-1".to_string(),
             qr_code: Some(" FM-SPOOL-1 ".to_string()),
             status: " IN_STOCK ".to_string(),
@@ -447,10 +470,29 @@ mod tests {
                 owner_contact: Some(" nora@example.com ".to_string()),
                 ownership_note: Some(" Return next week ".to_string()),
             }),
+            purchase_metadata: Some(PurchaseReceiptMetadata {
+                purchase_price: None,
+                purchase_currency: None,
+                purchase_date: None,
+                batch_code: None,
+                supplier_reference: None,
+            }),
         });
 
+        let unsupported = host_spool_details_payload_for_capabilities(&update, &[])
+            .expect_err("explicit metadata must be rejected for a legacy Host");
+        let unsupported: serde_json::Value =
+            serde_json::from_str(&unsupported).expect("coded unsupported error");
+        assert_eq!(unsupported["code"], "purchase_metadata.host_unsupported");
+
         assert_eq!(
-            serde_json::Value::Object(host_spool_details_payload(&update)),
+            serde_json::Value::Object(
+                host_spool_details_payload_for_capabilities(
+                    &update,
+                    &[PURCHASE_RECEIPT_METADATA_CAPABILITY.to_string()],
+                )
+                .expect("capable Host payload"),
+            ),
             serde_json::json!({
                 "qr_code": "FM-SPOOL-1",
                 "status": "IN_STOCK",
@@ -462,8 +504,20 @@ mod tests {
                     "owner_name": "Nora",
                     "owner_contact": "nora@example.com",
                     "ownership_note": "Return next week"
+                },
+                "purchase_metadata": {
+                    "purchase_price": null,
+                    "purchase_currency": null,
+                    "purchase_date": null,
+                    "batch_code": null,
+                    "supplier_reference": null
                 }
             })
         );
+
+        update.purchase_metadata = None;
+        let legacy_payload = host_spool_details_payload_for_capabilities(&update, &[])
+            .expect("legacy detail without metadata");
+        assert!(!legacy_payload.contains_key("purchase_metadata"));
     }
 }

@@ -8,6 +8,7 @@ import test from "node:test";
 import Database from "better-sqlite3";
 
 import {
+  REQUIRED_WINDOWS_SMOKE_COLUMNS,
   REQUIRED_WINDOWS_SMOKE_TABLES,
   REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION,
   verifyWindowsAppDatabase,
@@ -30,7 +31,12 @@ function createDatabase(
   const database = new Database(databasePath);
   try {
     for (const tableName of tableNames) {
-      database.exec(`CREATE TABLE ${tableName} (id TEXT PRIMARY KEY)`);
+      const requiredColumns = REQUIRED_WINDOWS_SMOKE_COLUMNS[tableName] ?? [];
+      const columnDefinitions = [
+        "id TEXT PRIMARY KEY",
+        ...requiredColumns.map((columnName) => `${columnName} TEXT`),
+      ];
+      database.exec(`CREATE TABLE ${tableName} (${columnDefinitions.join(", ")})`);
     }
     database.pragma(`user_version = ${schemaVersion}`);
   } finally {
@@ -68,13 +74,13 @@ test("Windows app database verifier reports the schema version in CLI output", a
     );
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /database schema v3/);
+    assert.match(result.stdout, /database schema v4/);
   });
 });
 
 test("Windows app database verifier requires the exact current schema version", async () => {
   await withTemporaryDirectory(async (directory) => {
-    for (const schemaVersion of [0, 1, 2, 4]) {
+    for (const schemaVersion of [0, 1, 2, 3, 5]) {
       const databasePath = join(
         directory,
         `filament-manager-schema-${schemaVersion}.db`,
@@ -92,6 +98,28 @@ test("Windows app database verifier requires the exact current schema version", 
         ),
       );
     }
+  });
+});
+
+test("Windows app database verifier requires schema 4 receipt columns", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const databasePath = join(directory, "filament-manager.db");
+    const database = new Database(databasePath);
+    try {
+      for (const tableName of REQUIRED_WINDOWS_SMOKE_TABLES) {
+        database.exec(`CREATE TABLE ${tableName} (id TEXT PRIMARY KEY)`);
+      }
+      database.pragma(
+        `user_version = ${REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION}`,
+      );
+    } finally {
+      database.close();
+    }
+
+    await assert.rejects(
+      verifyWindowsAppDatabase(databasePath),
+      /filament_spools is missing required column\(s\): purchase_currency, supplier_reference/,
+    );
   });
 });
 

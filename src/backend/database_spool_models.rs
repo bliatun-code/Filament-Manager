@@ -25,6 +25,12 @@ pub struct SpoolRow {
     pub purchase_price: Option<f64>,
     pub batch_code: Option<String>,
     pub last_used_at: Option<String>,
+    /// Missing on payloads cached or fetched from a schema-3 Host.
+    #[serde(default)]
+    pub purchase_currency: Option<String>,
+    /// Missing on payloads cached or fetched from a schema-3 Host.
+    #[serde(default)]
+    pub supplier_reference: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -104,5 +110,7 @@ mod tests {
         assert_eq!(row.location_name, None);
         assert_eq!(row.home_location_name, None);
         assert_eq!(row.low_stock_threshold_g, None);
+        assert_eq!(row.spool.purchase_currency, None);
+        assert_eq!(row.spool.supplier_reference, None);
     }
 }

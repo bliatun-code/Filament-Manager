@@ -4,7 +4,7 @@ use rusqlite::Connection;
 
 use super::database_result::{InventoryError, InventoryResult};
 
-pub const CURRENT_SCHEMA_VERSION: i64 = 3;
+pub const CURRENT_SCHEMA_VERSION: i64 = 4;
 
 pub fn database_schema_version(conn: &Connection) -> InventoryResult<i64> {
     let version = conn.query_row("PRAGMA user_version", [], |row| row.get::<_, i64>(0))?;

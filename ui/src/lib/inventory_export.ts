@@ -8,12 +8,17 @@ type InventoryExportRecord = Readonly<{
   material: string;
   qrCode: string;
   remainingGrams: number;
+  purchasePrice: number | null;
+  purchaseCurrency: string;
+  purchaseDate: string;
+  batchCode: string;
+  supplierReference: string;
   spoolId: string;
   status: string;
 }>;
 
 function escapeInventoryExportCsv(value: string): string {
-  if (/[",\n]/.test(value)) {
+  if (/[",\n\r]/.test(value) || value.trim() !== value) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
@@ -33,6 +38,11 @@ function normalizedInventoryExportRecord(
     material: entry.master.material,
     qrCode: entry.spool.qr_code ?? "",
     remainingGrams: entry.spool.remaining_g ?? 0,
+    purchasePrice: entry.spool.purchase_price ?? null,
+    purchaseCurrency: entry.spool.purchase_currency ?? "",
+    purchaseDate: entry.spool.purchase_date ?? "",
+    batchCode: entry.spool.batch_code ?? "",
+    supplierReference: entry.spool.supplier_reference ?? "",
     spoolId: entry.spool.id,
     status: inventoryExportStatus(entry),
   };
@@ -46,6 +56,11 @@ function inventorySpoolExportRecord(spool: InventorySpool): InventoryExportRecor
     material: spool.material,
     qrCode: spool.qrCode ?? "",
     remainingGrams: spool.remainingGrams ?? 0,
+    purchasePrice: spool.purchasePrice ?? null,
+    purchaseCurrency: spool.purchaseCurrency ?? "",
+    purchaseDate: spool.purchaseDate ?? "",
+    batchCode: spool.batchCode ?? "",
+    supplierReference: spool.supplierReference ?? "",
     spoolId: spool.id,
     status: spool.status,
   };
@@ -53,7 +68,7 @@ function inventorySpoolExportRecord(spool: InventorySpool): InventoryExportRecor
 
 function buildInventoryExportRecordCsv(rows: readonly InventoryExportRecord[]): string {
   const output = [
-    "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
+    "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference",
   ];
   for (const row of rows) {
     output.push(
@@ -66,6 +81,11 @@ function buildInventoryExportRecordCsv(rows: readonly InventoryExportRecord[]): 
         String(row.remainingGrams),
         row.location,
         row.qrCode,
+        row.purchasePrice === null ? "" : String(row.purchasePrice),
+        row.purchaseCurrency,
+        row.purchaseDate,
+        row.batchCode,
+        row.supplierReference,
       ]
         .map(escapeInventoryExportCsv)
         .join(","),
@@ -85,6 +105,11 @@ function buildInventoryExportRecordJson(rows: readonly InventoryExportRecord[]):
       remaining_g: row.remainingGrams,
       location: row.location,
       qr_code: row.qrCode,
+      purchase_price: row.purchasePrice,
+      purchase_currency: row.purchaseCurrency || null,
+      purchase_date: row.purchaseDate || null,
+      batch_code: row.batchCode || null,
+      supplier_reference: row.supplierReference || null,
     })),
   );
 }

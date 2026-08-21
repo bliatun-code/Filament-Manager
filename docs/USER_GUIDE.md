@@ -574,10 +574,21 @@ You can add the current catalog selection to the wishlist from Add filament. Whe
 
 Use the status tabs to focus the queue and the search field to find a planned
 purchase by name, color, or vendor. When an order arrives, choose how many rolls
-were received and select **Stock roll now**. The app creates that number of
-physical spools, reduces the outstanding quantity, and marks the wishlist row as
-Received only when nothing remains. **Remove** deletes only the wishlist/order
-entry; it does not delete an inventory spool.
+were received and select **Stock roll now**. The receipt dialog can also record
+the price per roll, three-letter currency, purchase date, batch code, and supplier
+reference. The same normalized details are saved to every roll in that receipt;
+the price is a unit price, never the combined order total. The app creates the
+requested number of physical spools atomically, reduces the outstanding quantity,
+and marks the wishlist row as Received only when nothing remains. A validation or
+history-write failure leaves both inventory and the wishlist unchanged.
+
+Open a spool's details to correct or clear its purchase information later. The
+change is included in the same guarded save as the other spool details and is
+recorded in spool history. Historical rows that already have a price but no
+currency may keep that exact price while other receipt fields change; changing
+the price requires a currency. Inventory CSV/JSON exports and full backups include
+all purchase fields. **Remove** deletes only the wishlist/order entry; it does not
+delete an inventory spool.
 
 ### Missing Filament?
 
@@ -932,16 +943,17 @@ The Backup panel shows when this device last completed a validated full-backup
 download. The timestamp is a device-local activity hint; it does not inspect
 the downloaded file later and is not included in the portable backup.
 
-The local database uses schema version 3. Before writing to an existing database
+The local database uses schema version 4. Before writing to an existing database
 at startup, the app performs a read-only schema compatibility preflight and
 SQLite `quick_check`. A database from a newer schema, or one that fails the
 integrity check, is stopped instead of being silently rewritten.
 
-Before automatically upgrading an existing unversioned, schema-v1, or schema-v2
-database to schema v3, the app creates and verifies a local recovery snapshot.
-A verified snapshot is also created before a full restore and before storage
-migrations that replace or merge an existing database. If the snapshot cannot
-be created and verified, the upgrade, restore, or migration does not continue.
+Before automatically upgrading an existing unversioned, schema-v1, schema-v2,
+or schema-v3 database to schema v4, the app creates and verifies a local recovery
+snapshot. A verified snapshot is also created before a full restore and before
+storage migrations that replace or merge an existing database. If the snapshot
+cannot be created and verified, the upgrade, restore, or migration does not
+continue.
 
 Full JSON backups are portable. They include library data such as inventory,
 history, catalog data, and printer profiles, but omit device-local connection

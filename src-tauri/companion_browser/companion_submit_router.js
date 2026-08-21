@@ -1,4 +1,14 @@
 export function routeCompanionSubmitAction(action, data, handlers) {
+  function purchaseReceiptDraftFromForm() {
+    return {
+      pricePerRoll: String(data.get("purchase_price") || ""),
+      currency: String(data.get("purchase_currency") || ""),
+      purchaseDate: String(data.get("purchase_date") || ""),
+      batchCode: String(data.get("batch_code") || ""),
+      supplierReference: String(data.get("supplier_reference") || ""),
+    };
+  }
+
   function safeDecodeURIComponent(value) {
     try {
       return decodeURIComponent(value);
@@ -46,6 +56,7 @@ export function routeCompanionSubmitAction(action, data, handlers) {
       String(data.get("status") || ""),
       String(data.get("location") || ""),
       String(data.get("home-location") || ""),
+      purchaseReceiptDraftFromForm(),
     );
     return true;
   }
@@ -117,6 +128,7 @@ export function routeCompanionSubmitAction(action, data, handlers) {
     handlers.submitWishlistStock(
       String(data.get("wishlist-id") || ""),
       String(data.get("received-quantity") || "1"),
+      purchaseReceiptDraftFromForm(),
     );
     return true;
   }

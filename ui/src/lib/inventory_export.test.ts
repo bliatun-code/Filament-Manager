@@ -19,6 +19,11 @@ function createRow(overrides: Partial<SpoolWithMasterRow> = {}): SpoolWithMaster
       remaining_g: 842,
       location_id: "Shelf A",
       qr_code: "QR-1",
+      purchase_price: 249.5,
+      purchase_currency: "NOK",
+      purchase_date: "2026-08-21",
+      batch_code: "LOT-7",
+      supplier_reference: "PO-42",
     },
     master: {
       id: "master-1",
@@ -40,13 +45,13 @@ test("buildInventoryExportCsv writes stable inventory headers and values", () =>
   assert.equal(
     buildInventoryExportCsv(normalizeSpoolWithMasterRows([createRow()])),
     [
-      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
-      "spool-1,PLA,Basic PLA,Blue,IN_STOCK,842,Shelf A,QR-1",
+      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference",
+      "spool-1,PLA,Basic PLA,Blue,IN_STOCK,842,Shelf A,QR-1,249.5,NOK,2026-08-21,LOT-7,PO-42",
     ].join("\n"),
   );
 });
 
-test("buildInventoryExportCsv escapes commas, quotes, and newlines", () => {
+test("buildInventoryExportCsv escapes delimiters, newlines, and edge whitespace", () => {
   const rows = normalizeSpoolWithMasterRows([
     createRow({
       master: {
@@ -57,6 +62,8 @@ test("buildInventoryExportCsv escapes commas, quotes, and newlines", () => {
         location_id: "Shelf\nA",
         qr_code: null,
         remaining_g: null,
+        batch_code: "line 1\rline 2",
+        supplier_reference: " PO-42 ",
       },
     }),
   ]);
@@ -64,8 +71,8 @@ test("buildInventoryExportCsv escapes commas, quotes, and newlines", () => {
   assert.equal(
     buildInventoryExportCsv(rows),
     [
-      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
-      'spool-1,PLA,"PLA, Matte","Ocean ""Blue""",IN_STOCK,0,"Shelf\nA",',
+      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference",
+      'spool-1,PLA,"PLA, Matte","Ocean ""Blue""",IN_STOCK,0,"Shelf\nA",,249.5,NOK,2026-08-21,"line 1\rline 2"," PO-42 "',
     ].join("\n"),
   );
 });
@@ -83,6 +90,11 @@ test("buildInventoryExportJson mirrors the settings export payload", () => {
         remaining_g: 842,
         location: "Shelf A",
         qr_code: "QR-1",
+        purchase_price: 249.5,
+        purchase_currency: "NOK",
+        purchase_date: "2026-08-21",
+        batch_code: "LOT-7",
+        supplier_reference: "PO-42",
       },
     ],
   );
@@ -98,8 +110,8 @@ test("inventory export normalizes legacy spool status values", () => {
   assert.equal(
     buildInventoryExportCsv(normalizedRows),
     [
-      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
-      "spool-1,PLA,Basic PLA,Blue,BORROWED,842,Shelf A,QR-1",
+      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference",
+      "spool-1,PLA,Basic PLA,Blue,BORROWED,842,Shelf A,QR-1,249.5,NOK,2026-08-21,LOT-7,PO-42",
     ].join("\n"),
   );
   assert.deepEqual(JSON.parse(buildInventoryExportJson(normalizedRows)), [
@@ -112,6 +124,11 @@ test("inventory export normalizes legacy spool status values", () => {
       remaining_g: 842,
       location: "Shelf A",
       qr_code: "QR-1",
+      purchase_price: 249.5,
+      purchase_currency: "NOK",
+      purchase_date: "2026-08-21",
+      batch_code: "LOT-7",
+      supplier_reference: "PO-42",
     },
   ]);
   assert.equal(legacyRow.spool.status, "loaned out");
@@ -133,14 +150,19 @@ test("selected inventory-spool export preserves only the resolved plan rows", ()
       location: "Renamed shelf",
       locationId: "location-a",
       qrCode: "QR-A",
+      purchasePrice: 199,
+      purchaseCurrency: "EUR",
+      purchaseDate: "2026-08-20",
+      batchCode: "BATCH-A",
+      supplierReference: "ORDER-A",
     },
   ];
 
   assert.equal(
     buildInventorySpoolExportCsv(selected),
     [
-      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code",
-      'spool-a,PLA,"Basic, Matte",Blue,EMPTY,0,location-a,QR-A',
+      "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference",
+      'spool-a,PLA,"Basic, Matte",Blue,EMPTY,0,location-a,QR-A,199,EUR,2026-08-20,BATCH-A,ORDER-A',
     ].join("\n"),
   );
   assert.deepEqual(JSON.parse(buildInventorySpoolExportJson(selected)), [
@@ -153,6 +175,11 @@ test("selected inventory-spool export preserves only the resolved plan rows", ()
       remaining_g: 0,
       location: "location-a",
       qr_code: "QR-A",
+      purchase_price: 199,
+      purchase_currency: "EUR",
+      purchase_date: "2026-08-20",
+      batch_code: "BATCH-A",
+      supplier_reference: "ORDER-A",
     },
   ]);
 });

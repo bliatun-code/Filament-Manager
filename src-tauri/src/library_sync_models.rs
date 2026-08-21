@@ -2,6 +2,7 @@ use crate::backend::filament_database::{
     LibraryDomainRevisions, LowStockPolicy, PrinterOverviewRow, SpoolLoanDetailsRow,
     SpoolWithMasterRow, WishlistItemRow,
 };
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::backend::statistics::{InventoryOverview, StatisticsPeriod};
 use crate::optional_update::OptionalUpdate;
 use serde::{Deserialize, Serialize};
@@ -95,6 +96,8 @@ pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) home_location: OptionalUpdate<String>,
     pub(crate) spool_tare_weight_g: Option<i64>,
     pub(crate) ownership: Option<LibrarySyncUpdateSpoolDetailsOwnershipInput>,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Deserialize)]
@@ -268,6 +271,8 @@ pub(crate) struct LibrarySyncReceiveWishlistItemInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) item_id: String,
     pub(crate) quantity: i64,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Deserialize)]

@@ -582,10 +582,21 @@ Du kan legge gjeldende katalogvalg i ønskelisten fra Legg til filament. Når va
 
 Bruk statusfanene for å avgrense køen og søkefeltet for å finne et planlagt kjøp
 etter navn, farge eller leverandør. Når en bestilling kommer, velger du hvor mange
-ruller som ble mottatt og trykker **Lagerfør rull nå**. Programmet oppretter
-akkurat dette antallet fysiske ruller, reduserer gjenstående antall og markerer
-ønskelisteraden som Mottatt først når ingenting gjenstår. **Fjern** sletter bare
-ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
+ruller som ble mottatt og trykker **Lagerfør rull nå**. I mottaksdialogen kan du
+også registrere pris per rull, valutakode med tre bokstaver, kjøpsdato, batchkode og
+leverandørreferanse. De samme normaliserte opplysningene lagres på hver rull i
+dette mottaket; prisen er en enhetspris, aldri totalsummen for bestillingen.
+Programmet oppretter det valgte antallet fysiske ruller atomisk, reduserer
+gjenstående antall og markerer ønskelisteraden som Mottatt først når ingenting
+gjenstår. En validerings- eller historikkfeil lar både lager og ønskeliste være
+uendret.
+
+Åpne detaljene for en rull for å rette eller fjerne innkjøpsopplysningene senere.
+Endringen inngår i den samme beskyttede lagringen som de andre rulldetaljene og
+registreres i rullhistorikken. Eldre rader som allerede har pris uten valuta, kan
+beholde nøyaktig samme pris mens andre mottaksfelt endres; endring av prisen krever
+valuta. Lagerets CSV-/JSON-eksport og full backup tar med alle innkjøpsfeltene.
+**Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
 
 ### Mangler filamentet?
 
@@ -943,18 +954,18 @@ nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
 aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
 blir ikke med i den flyttbare sikkerhetskopien.
 
-Den lokale databasen bruker skjemaversjon 2. Før appen skriver til en eksisterende
+Den lokale databasen bruker skjemaversjon 4. Før appen skriver til en eksisterende
 database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
 av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
 ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
 varsel.
 
-Før en eksisterende database uten registrert skjemaversjon eller med skjema v1
-oppgraderes automatisk til skjema v2, oppretter og verifiserer appen en lokal
-gjenopprettingskopi. En verifisert kopi opprettes også før full gjenoppretting
-og før lagringsmigreringer som erstatter eller slår sammen en eksisterende
-database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter ikke
-oppgraderingen, gjenopprettingen eller migreringen.
+Før en eksisterende database uten registrert skjemaversjon eller med skjema v1,
+v2 eller v3 oppgraderes automatisk til skjema v4, oppretter og verifiserer appen
+en lokal gjenopprettingskopi. En verifisert kopi opprettes også før full
+gjenoppretting og før lagringsmigreringer som erstatter eller slår sammen en
+eksisterende database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter
+ikke oppgraderingen, gjenopprettingen eller migreringen.
 
 Fullstendige JSON-sikkerhetskopier er laget for å kunne flyttes. De tar med
 bibliotekdata som lager, historikk, katalogdata og printerprofiler, men utelater

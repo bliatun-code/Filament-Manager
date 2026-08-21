@@ -13,7 +13,16 @@ test("WishlistQueuePanel shares action button chrome across stock, remove, and c
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /wishlistQueueActionButtonClassName\("stock"\)/);
   assert.match(source, /normalizeWishlistReceiptQuantity/);
-  assert.match(source, /onStockItem\(item, receiptQuantity\)/);
+  assert.match(source, /onClick=\{\(\) => openReceipt\(item\)\}/);
+  const openReceiptStart = source.indexOf("const openReceipt");
+  const closeReceiptStart = source.indexOf("const closeReceipt");
+  assert.ok(openReceiptStart >= 0 && closeReceiptStart > openReceiptStart);
+  assert.doesNotMatch(
+    source.slice(openReceiptStart, closeReceiptStart),
+    /setReceiptQuantities/,
+  );
+  assert.match(source, /<WishlistReceiptModal/);
+  assert.match(source, /await onStockItem\([\s\S]*receiptQuantity[\s\S]*purchaseReceiptMetadataHasValues/);
   assert.match(source, /wishlistQueueActionButtonClassName\("remove"\)/);
   assert.match(source, /wishlistQueueActionButtonClassName\("danger"\)/);
   assert.doesNotMatch(

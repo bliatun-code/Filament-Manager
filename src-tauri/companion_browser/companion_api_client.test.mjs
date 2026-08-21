@@ -75,6 +75,25 @@ test("structured API errors use localized safe copy and retain only diagnostic i
   assert.doesNotMatch(error.message, /raw server detail/);
 });
 
+test("purchase metadata capability errors tell the user to upgrade the Host", () => {
+  const error = createCompanionRequestError(
+    {
+      parsed: {
+        code: "purchase_metadata.host_unsupported",
+        message: "unsupported internal command shape",
+        diagnostic_id: "fm-api-receipt-1",
+      },
+    },
+    400,
+    "nb",
+  );
+
+  assert.equal(error.message, "Oppdater verten før du lagrer innkjøpsdetaljer.");
+  assert.equal(error.code, "purchase_metadata.host_unsupported");
+  assert.equal(error.diagnostic_id, "fm-api-receipt-1");
+  assert.doesNotMatch(error.message, /unsupported internal command shape/);
+});
+
 test("companion api client retries a mutating request after session restore", async () => {
   const session = createInitialCompanionState();
   session.accessMode = "trusted-lan";

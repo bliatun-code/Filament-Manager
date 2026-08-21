@@ -8,6 +8,7 @@ use super::database_wishlist::{
     update_wishlist_item_status as update_wishlist_item_status_row,
 };
 use super::database_wishlist_models::{WishlistItemRow, WishlistReceiptResult};
+use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 impl FilamentDatabase {
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {
@@ -26,8 +27,9 @@ impl FilamentDatabase {
         &self,
         item_id: &str,
         quantity: i64,
+        purchase_metadata: PurchaseReceiptMetadata,
     ) -> InventoryResult<WishlistReceiptResult> {
-        receive_wishlist_item_rows(self.connection(), item_id, quantity)
+        receive_wishlist_item_rows(self.connection(), item_id, quantity, purchase_metadata)
     }
 
     pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {

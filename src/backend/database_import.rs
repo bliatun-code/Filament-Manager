@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::database_result::{InventoryError, InventoryResult};
+use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ImportDataStats {
@@ -24,6 +25,10 @@ pub(crate) struct InventoryImportRow {
     pub(crate) vendor: Option<String>,
     pub(crate) initial_weight_g: Option<i64>,
     pub(crate) current_weight_g: Option<i64>,
+    /// `None` means the source format did not contain receipt columns. `Some`
+    /// (including an all-null value) means those columns were explicitly
+    /// supplied and should replace the stored metadata.
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Clone, Debug)]
@@ -63,9 +68,13 @@ where
         Err(_) => {}
     }
 
-    if let Ok(rows) = parse_inventory_spools_json(normalized) {
-        let stats = import_inventory_rows(&rows)?;
-        return Ok(import_stats("INVENTORY_JSON", stats));
+    match parse_inventory_spools_json(normalized) {
+        Ok(rows) => {
+            let stats = import_inventory_rows(&rows)?;
+            return Ok(import_stats("INVENTORY_JSON", stats));
+        }
+        Err(error) if looks_like_json(normalized) => return Err(error),
+        Err(_) => {}
     }
 
     if let Ok(rows) = parse_inventory_spools_csv(normalized) {
@@ -76,6 +85,10 @@ where
     Err(InventoryError::Db(
         "Unsupported import format. Expected full backup JSON, inventory JSON array/object, or inventory CSV.".to_string(),
     ))
+}
+
+fn looks_like_json(content: &str) -> bool {
+    content.starts_with('{') || content.starts_with('[')
 }
 
 fn declares_full_backup_format(content: &str) -> bool {
@@ -152,6 +165,58 @@ pub(crate) fn parse_inventory_spools_json(
                 .or_else(|| object.get("colorName")),
         )
         .unwrap_or_default();
+        let has_purchase_metadata = [
+            "purchase_price",
+            "purchasePrice",
+            "purchase_currency",
+            "purchaseCurrency",
+            "purchase_date",
+            "purchaseDate",
+            "batch_code",
+            "batchCode",
+            "supplier_reference",
+            "supplierReference",
+        ]
+        .iter()
+        .any(|field| object.contains_key(*field));
+        let purchase_metadata = if has_purchase_metadata {
+            Some(PurchaseReceiptMetadata {
+                purchase_price: value_to_optional_receipt_price(
+                    object
+                        .get("purchase_price")
+                        .or_else(|| object.get("purchasePrice")),
+                    index,
+                )?,
+                purchase_currency: value_to_optional_receipt_text(
+                    object
+                        .get("purchase_currency")
+                        .or_else(|| object.get("purchaseCurrency")),
+                    "purchase_currency",
+                    index,
+                )?,
+                purchase_date: value_to_optional_receipt_text(
+                    object
+                        .get("purchase_date")
+                        .or_else(|| object.get("purchaseDate")),
+                    "purchase_date",
+                    index,
+                )?,
+                batch_code: value_to_optional_receipt_text(
+                    object.get("batch_code").or_else(|| object.get("batchCode")),
+                    "batch_code",
+                    index,
+                )?,
+                supplier_reference: value_to_optional_receipt_text(
+                    object
+                        .get("supplier_reference")
+                        .or_else(|| object.get("supplierReference")),
+                    "supplier_reference",
+                    index,
+                )?,
+            })
+        } else {
+            None
+        };
 
         output.push(InventoryImportRow {
             spool_id,
@@ -188,6 +253,7 @@ pub(crate) fn parse_inventory_spools_json(
                     .get("current_weight_g")
                     .or_else(|| object.get("currentWeightG")),
             ),
+            purchase_metadata,
         });
     }
     Ok(output)
@@ -196,11 +262,13 @@ pub(crate) fn parse_inventory_spools_json(
 pub(crate) fn parse_inventory_spools_csv(
     content: &str,
 ) -> InventoryResult<Vec<InventoryImportRow>> {
-    let mut lines = content.lines().filter(|line| !line.trim().is_empty());
-    let header_line = lines
+    let mut records = parse_csv_records(content)?
+        .into_iter()
+        .filter(|record| !record.iter().all(|field| field.trim().is_empty()));
+    let header_record = records
         .next()
         .ok_or_else(|| InventoryError::Db("Inventory CSV is empty".to_string()))?;
-    let headers = parse_csv_record(header_line)
+    let headers = header_record
         .into_iter()
         .map(|header| normalize_csv_header(&header))
         .collect::<Vec<_>>();
@@ -213,13 +281,23 @@ pub(crate) fn parse_inventory_spools_csv(
             )));
         }
     }
+    let has_purchase_metadata = [
+        "purchase_price",
+        "purchaseprice",
+        "purchase_currency",
+        "purchasecurrency",
+        "purchase_date",
+        "purchasedate",
+        "batch_code",
+        "batchcode",
+        "supplier_reference",
+        "supplierreference",
+    ]
+    .iter()
+    .any(|field| headers.iter().any(|header| header == field));
 
     let mut output = Vec::new();
-    for line in lines {
-        let values = parse_csv_record(line);
-        if values.iter().all(|value| value.trim().is_empty()) {
-            continue;
-        }
+    for values in records {
         output.push(InventoryImportRow {
             spool_id: csv_field(&headers, &values, &["spool_id", "id", "spoolid"])
                 .unwrap_or("")
@@ -268,6 +346,37 @@ pub(crate) fn parse_inventory_spools_csv(
                 &values,
                 &["current_weight_g", "current_weight", "currentweightg"],
             )),
+            purchase_metadata: if has_purchase_metadata {
+                Some(PurchaseReceiptMetadata {
+                    purchase_price: parse_f64_text(csv_field(
+                        &headers,
+                        &values,
+                        &["purchase_price", "purchaseprice"],
+                    )),
+                    purchase_currency: preserve_optional_csv_text(csv_field(
+                        &headers,
+                        &values,
+                        &["purchase_currency", "purchasecurrency"],
+                    )),
+                    purchase_date: preserve_optional_csv_text(csv_field(
+                        &headers,
+                        &values,
+                        &["purchase_date", "purchasedate"],
+                    )),
+                    batch_code: preserve_optional_csv_text(csv_field(
+                        &headers,
+                        &values,
+                        &["batch_code", "batchcode"],
+                    )),
+                    supplier_reference: preserve_optional_csv_text(csv_field(
+                        &headers,
+                        &values,
+                        &["supplier_reference", "supplierreference"],
+                    )),
+                })
+            } else {
+                None
+            },
         });
     }
     Ok(output)
@@ -280,12 +389,21 @@ fn normalize_optional_text(value: Option<&str>) -> Option<String> {
         .map(|text| text.to_string())
 }
 
+fn preserve_optional_csv_text(value: Option<&str>) -> Option<String> {
+    value.filter(|text| !text.is_empty()).map(str::to_string)
+}
+
 fn parse_i64_text(raw: Option<&str>) -> Option<i64> {
     let value = raw?.trim();
     if value.is_empty() {
         return None;
     }
     value.parse::<i64>().ok()
+}
+
+fn parse_f64_text(raw: Option<&str>) -> Option<f64> {
+    let value = raw.map(str::trim).filter(|value| !value.is_empty())?;
+    Some(value.parse::<f64>().unwrap_or(f64::NAN))
 }
 
 fn value_to_optional_string(value: Option<&Value>) -> Option<String> {
@@ -309,6 +427,47 @@ fn value_to_optional_i64(value: Option<&Value>) -> Option<i64> {
     }
 }
 
+fn value_to_optional_receipt_price(
+    value: Option<&Value>,
+    row_index: usize,
+) -> InventoryResult<Option<f64>> {
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Number(number)) => number.as_f64().map(Some).ok_or_else(|| {
+            invalid_receipt_json_type(row_index, "purchase_price", "a finite number or null")
+        }),
+        Some(_) => Err(InventoryError::InvalidOperation {
+            code: "purchase_metadata.price_invalid",
+            message: format!(
+                "Inventory JSON row {row_index} field `purchase_price` must be a number or null"
+            ),
+        }),
+    }
+}
+
+fn value_to_optional_receipt_text(
+    value: Option<&Value>,
+    field: &str,
+    row_index: usize,
+) -> InventoryResult<Option<String>> {
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(text)) => Ok(Some(text.clone())),
+        Some(_) => Err(invalid_receipt_json_type(
+            row_index,
+            field,
+            "a string or null",
+        )),
+    }
+}
+
+fn invalid_receipt_json_type(row_index: usize, field: &str, expected: &str) -> InventoryError {
+    InventoryError::InvalidOperation {
+        code: "purchase_metadata.type_invalid",
+        message: format!("Inventory JSON row {row_index} field `{field}` must be {expected}"),
+    }
+}
+
 fn normalize_csv_header(raw: &str) -> String {
     raw.trim()
         .trim_start_matches('\u{feff}')
@@ -316,13 +475,44 @@ fn normalize_csv_header(raw: &str) -> String {
         .replace([' ', '-'], "_")
 }
 
-fn parse_csv_record(line: &str) -> Vec<String> {
+fn parse_csv_records(content: &str) -> InventoryResult<Vec<Vec<String>>> {
+    let mut records = Vec::new();
     let mut fields = Vec::new();
     let mut current = String::new();
-    let mut chars = line.chars().peekable();
+    let mut chars = content.chars().peekable();
     let mut in_quotes = false;
+    let mut closed_quote = false;
 
     while let Some(ch) = chars.next() {
+        if closed_quote {
+            match ch {
+                ',' => {
+                    fields.push(std::mem::take(&mut current));
+                    closed_quote = false;
+                }
+                '\r' => {
+                    if matches!(chars.peek(), Some('\n')) {
+                        let _ = chars.next();
+                    }
+                    fields.push(std::mem::take(&mut current));
+                    records.push(std::mem::take(&mut fields));
+                    closed_quote = false;
+                }
+                '\n' => {
+                    fields.push(std::mem::take(&mut current));
+                    records.push(std::mem::take(&mut fields));
+                    closed_quote = false;
+                }
+                ' ' | '\t' => {}
+                _ => {
+                    return Err(InventoryError::Db(
+                        "Inventory CSV contains unexpected characters after a quoted field"
+                            .to_string(),
+                    ));
+                }
+            }
+            continue;
+        }
         match ch {
             '"' => {
                 if in_quotes {
@@ -331,22 +521,51 @@ fn parse_csv_record(line: &str) -> Vec<String> {
                         let _ = chars.next();
                     } else {
                         in_quotes = false;
+                        closed_quote = true;
                     }
                 } else if current.is_empty() {
                     in_quotes = true;
                 } else {
-                    current.push(ch);
+                    return Err(InventoryError::Db(
+                        "Inventory CSV contains an unexpected quote in an unquoted field"
+                            .to_string(),
+                    ));
                 }
             }
             ',' if !in_quotes => {
                 fields.push(current.trim().to_string());
                 current.clear();
             }
+            '\r' if !in_quotes => {
+                if matches!(chars.peek(), Some('\n')) {
+                    let _ = chars.next();
+                }
+                fields.push(current.trim().to_string());
+                current.clear();
+                records.push(std::mem::take(&mut fields));
+            }
+            '\n' if !in_quotes => {
+                fields.push(current.trim().to_string());
+                current.clear();
+                records.push(std::mem::take(&mut fields));
+            }
             _ => current.push(ch),
         }
     }
-    fields.push(current.trim().to_string());
-    fields
+    if in_quotes {
+        return Err(InventoryError::Db(
+            "Inventory CSV contains an unterminated quoted field".to_string(),
+        ));
+    }
+    if closed_quote || !current.is_empty() || !fields.is_empty() {
+        fields.push(if closed_quote {
+            current
+        } else {
+            current.trim().to_string()
+        });
+        records.push(fields);
+    }
+    Ok(records)
 }
 
 fn csv_field<'a>(headers: &[String], values: &'a [String], candidates: &[&str]) -> Option<&'a str> {
@@ -356,4 +575,38 @@ fn csv_field<'a>(headers: &[String], values: &'a [String], candidates: &[&str]) 
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_csv_records;
+
+    #[test]
+    fn csv_records_preserve_cr_and_lf_inside_quoted_fields() {
+        let records =
+            parse_csv_records("first,second\r\n\"line 1\rline 2\",\"line 1\nline 2\"\r\n")
+                .expect("parse multiline CSV records");
+        assert_eq!(
+            records,
+            vec![
+                vec!["first".to_string(), "second".to_string()],
+                vec!["line 1\rline 2".to_string(), "line 1\nline 2".to_string()]
+            ]
+        );
+    }
+
+    #[test]
+    fn csv_records_reject_characters_after_a_closed_quote() {
+        let error = parse_csv_records("field\n\"batch\"junk\n")
+            .expect_err("malformed quoted field must fail closed");
+        assert!(error
+            .to_string()
+            .contains("unexpected characters after a quoted field"));
+
+        let error = parse_csv_records("field\nbat\"ch\n")
+            .expect_err("a quote inside an unquoted field must fail closed");
+        assert!(error
+            .to_string()
+            .contains("unexpected quote in an unquoted field"));
+    }
 }

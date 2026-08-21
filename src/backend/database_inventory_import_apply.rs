@@ -8,6 +8,7 @@ use super::database_result::{InventoryError, InventoryResult};
 use super::database_spool_insert::insert_spool;
 use super::database_spool_models::SpoolRow;
 use super::database_spool_queries::get_spool_by_id;
+use super::database_spool_updates::update_spool_purchase_metadata;
 use super::database_text::normalize_optional_text;
 use super::spool_defaults::normalize_spool_status;
 
@@ -52,6 +53,11 @@ fn import_inventory_spools_rows_in_transaction(
         let home_location_id = location_id.clone();
         let qr_code = normalize_optional_text(row.qr_code.as_deref());
         let vendor = normalize_optional_text(row.vendor.as_deref());
+        let purchase_metadata = row
+            .purchase_metadata
+            .clone()
+            .map(|metadata| metadata.normalize_for_import())
+            .transpose()?;
         let master_id = upsert_manual_master(
             conn,
             ManualMasterInput {
@@ -77,6 +83,7 @@ fn import_inventory_spools_rows_in_transaction(
                     current_weight_g: normalized.current_weight_g,
                     remaining_g: normalized.remaining_g,
                     location_id: location_id.as_deref(),
+                    purchase_metadata: purchase_metadata.as_ref(),
                 },
             )?;
             updated_count += 1;
@@ -100,10 +107,22 @@ fn import_inventory_spools_rows_in_transaction(
                     spool_tare_weight_g: None,
                     location_id,
                     home_location_id,
-                    purchase_date: None,
-                    purchase_price: None,
-                    batch_code: None,
+                    purchase_date: purchase_metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.purchase_date.clone()),
+                    purchase_price: purchase_metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.purchase_price),
+                    batch_code: purchase_metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.batch_code.clone()),
                     last_used_at: None,
+                    purchase_currency: purchase_metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.purchase_currency.clone()),
+                    supplier_reference: purchase_metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.supplier_reference.clone()),
                 },
             )?;
             created_count += 1;
@@ -130,6 +149,7 @@ fn update_imported_spool(
         current_weight_g,
         remaining_g,
         location_id,
+        purchase_metadata,
     } = update;
 
     conn.execute(
@@ -157,6 +177,9 @@ fn update_imported_spool(
             spool_id
         ],
     )?;
+    if let Some(metadata) = purchase_metadata {
+        update_spool_purchase_metadata(conn, spool_id, metadata)?;
+    }
     Ok(())
 }
 
@@ -169,6 +192,7 @@ struct ImportedSpoolUpdate<'a> {
     current_weight_g: i64,
     remaining_g: i64,
     location_id: Option<&'a str>,
+    purchase_metadata: Option<&'a super::purchase_receipt_metadata::PurchaseReceiptMetadata>,
 }
 
 fn normalize_import_row<'a>(

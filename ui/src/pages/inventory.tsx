@@ -1,10 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
 import { InventoryLocationDatalist } from "../components/inventory_location_datalist";
 import { InventoryLoadSpoolModal } from "../components/inventory_load_spool_modal";
 import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
-import { InventorySpoolDetailModal } from "../components/inventory_spool_detail_modal";
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
@@ -57,6 +64,12 @@ import {
   type InventoryNavigationGuard,
 } from "../lib/use_inventory_unsaved_changes_guard";
 import { isTauri } from "../lib/tauri_client";
+
+const InventorySpoolDetailModal = lazy(() =>
+  import("../components/inventory_spool_detail_modal").then((module) => ({
+    default: module.InventorySpoolDetailModal,
+  })),
+);
 
 type InventoryPageProps = {
   navigationIntent?: InventoryNavigationIntent;
@@ -431,6 +444,8 @@ export default function InventoryPage({
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchaseMetadataDraft,
+    selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
     setConfirmDelete,
     setConfirmPurge,
@@ -445,6 +460,8 @@ export default function InventoryPage({
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchaseMetadataDraft,
+    setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
     setShowRfidCapturedFields,
     setShowRollHistory,
@@ -789,6 +806,7 @@ export default function InventoryPage({
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchaseMetadataDraft,
     selectedSpoolResolvedTare,
     selectedSpoolTareDraft,
     setConfirmDelete,
@@ -800,6 +818,7 @@ export default function InventoryPage({
     setSelectedSpoolOwnerContactDraft,
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
     tauriAvailable: tauri,
     t,
@@ -1178,84 +1197,91 @@ export default function InventoryPage({
 
       <InventoryLocationDatalist rows={locations} />
 
-      <InventorySpoolDetailModal
-        assignedSlot={selectedSpoolAssignedSlot}
-        canLoadInPrinter={canLoadSelectedSpool}
-        canLoanOut={canLoanSelectedSpool}
-        colorName={editMasterColorName}
-        confirmDelete={confirmDelete}
-        confirmPurge={confirmPurge}
-        deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
-        displayTitle={selectedSpoolDisplayTitle}
-        error={error}
-        filamentName={editMasterFilamentName}
-        formatHistoryEventDetails={formatHistoryEventDetails}
-        formatHistoryEventType={formatHistoryEventType}
-        hasCommonChanges={commonDetailsDirty}
-        hasHiddenHistoryRows={hasHiddenHistoryRows}
-        hasUnsavedChanges={hasUnsavedDetailChanges}
-        hexColor={editMasterHexColor}
-        historyLoading={historyLoading}
-        initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
-        infoMessage={infoMessage}
-        locationDraft={selectedSpoolLocationDraft}
-        locationValue={selectedSpoolLocationValue}
-        manageBusy={manageBusy}
-        masterEditUnlocked={masterEditUnlocked}
-        material={editMasterMaterial}
-        measuredTotal={selectedSpoolMeasuredTotal}
-        onChangeColorName={setEditMasterColorName}
-        onChangeFilamentName={setEditMasterFilamentName}
-        onChangeHexColor={setEditMasterHexColor}
-        onChangeLocation={setSelectedSpoolLocationDraft}
-        onChangeMaterial={setEditMasterMaterial}
-        onChangeOwnerContact={setSelectedSpoolOwnerContactDraft}
-        onChangeOwnerName={setSelectedSpoolOwnerNameDraft}
-        onChangeOwnershipNote={setSelectedSpoolOwnershipNoteDraft}
-        onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
-        onChangeTare={setSelectedSpoolTareDraft}
-        onChangeVendor={setEditMasterVendor}
-        onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
-        onClose={closeSelectedSpoolDetailModal}
-        onDelete={handleDeleteSelected}
-        onLoadInPrinter={openLoadSpoolModal}
-        onLoanOut={() => openLoanTrackingModal(selectedSpool)}
-        onMarkEmpty={handleMarkEmpty}
-        onPrintLabel={handlePrintLabel}
-        onPurge={handlePurgeSelected}
-        onRefill={handleRefillSpool}
-        onSaveCommonDetails={handleSaveSpoolCommonDetails}
-        onSaveMasterMetadata={handleSaveMasterMetadata}
-        onStartRfidCapture={handleStartRfidCapture}
-        onSubmitWeight={handleWeightSubmit}
-        onToggleEditUnlocked={toggleMasterEditUnlocked}
-        onToggleLostStatus={handleToggleLostStatus}
-        onToggleRollHistory={toggleRollHistory}
-        open={showRollModal}
-        ownershipLabel={selectedSpoolOwnershipLabel}
-        ownershipTone={selectedSpoolOwnershipTone}
-        ownershipTypeDraft={selectedSpoolOwnershipDraft}
-        ownerContactDraft={selectedSpoolOwnerContactDraft}
-        ownerNameDraft={selectedSpoolOwnerNameDraft}
-        ownershipNoteDraft={selectedSpoolOwnershipNoteDraft}
-        qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
-        qrDataUrl={selectedSpoolQrDataUrl}
-        qrLoading={selectedSpoolQrLoading}
-        qrTarget={selectedSpoolQrTarget}
-        rfidBindingMeta={selectedSpoolRfidBindingMeta}
-        resolvedTheme={resolvedTheme}
-        runtimeAvailable={tauri}
-        showRollHistory={showRollHistory}
-        spool={selectedSpool}
-        statusLabel={selectedSpoolStatusLabel}
-        statusTone={selectedSpoolStatusTone}
-        supportsRfidCapture={selectedSpoolSupportsRfidCapture}
-        tareDraft={selectedSpoolTareDraft}
-        usageLoading={usageLoading}
-        usagePoints={usagePoints}
-        vendor={editMasterVendor}
-        visibleHistoryRows={visibleHistoryRows}
-      />
+      {showRollModal ? (
+        <Suspense fallback={null}>
+          <InventorySpoolDetailModal
+            assignedSlot={selectedSpoolAssignedSlot}
+            canLoadInPrinter={canLoadSelectedSpool}
+            canLoanOut={canLoanSelectedSpool}
+            colorName={editMasterColorName}
+            confirmDelete={confirmDelete}
+            confirmPurge={confirmPurge}
+            deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
+            displayTitle={selectedSpoolDisplayTitle}
+            error={error}
+            filamentName={editMasterFilamentName}
+            formatHistoryEventDetails={formatHistoryEventDetails}
+            formatHistoryEventType={formatHistoryEventType}
+            hasCommonChanges={commonDetailsDirty}
+            hasHiddenHistoryRows={hasHiddenHistoryRows}
+            hasUnsavedChanges={hasUnsavedDetailChanges}
+            hexColor={editMasterHexColor}
+            historyLoading={historyLoading}
+            initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
+            infoMessage={infoMessage}
+            locationDraft={selectedSpoolLocationDraft}
+            locationValue={selectedSpoolLocationValue}
+            manageBusy={manageBusy}
+            masterEditUnlocked={masterEditUnlocked}
+            material={editMasterMaterial}
+            measuredTotal={selectedSpoolMeasuredTotal}
+            onChangeColorName={setEditMasterColorName}
+            onChangeFilamentName={setEditMasterFilamentName}
+            onChangeHexColor={setEditMasterHexColor}
+            onChangeLocation={setSelectedSpoolLocationDraft}
+            onChangeMaterial={setEditMasterMaterial}
+            onChangeOwnerContact={setSelectedSpoolOwnerContactDraft}
+            onChangeOwnerName={setSelectedSpoolOwnerNameDraft}
+            onChangeOwnershipNote={setSelectedSpoolOwnershipNoteDraft}
+            onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
+            onChangePurchaseMetadata={setSelectedSpoolPurchaseMetadataDraft}
+            onChangeTare={setSelectedSpoolTareDraft}
+            onChangeVendor={setEditMasterVendor}
+            onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
+            onClose={closeSelectedSpoolDetailModal}
+            onDelete={handleDeleteSelected}
+            onLoadInPrinter={openLoadSpoolModal}
+            onLoanOut={() => openLoanTrackingModal(selectedSpool)}
+            onMarkEmpty={handleMarkEmpty}
+            onPrintLabel={handlePrintLabel}
+            onPurge={handlePurgeSelected}
+            onRefill={handleRefillSpool}
+            onSaveCommonDetails={handleSaveSpoolCommonDetails}
+            onSaveMasterMetadata={handleSaveMasterMetadata}
+            onStartRfidCapture={handleStartRfidCapture}
+            onSubmitWeight={handleWeightSubmit}
+            onToggleEditUnlocked={toggleMasterEditUnlocked}
+            onToggleLostStatus={handleToggleLostStatus}
+            onToggleRollHistory={toggleRollHistory}
+            open={showRollModal}
+            ownershipLabel={selectedSpoolOwnershipLabel}
+            ownershipTone={selectedSpoolOwnershipTone}
+            ownershipTypeDraft={selectedSpoolOwnershipDraft}
+            ownerContactDraft={selectedSpoolOwnerContactDraft}
+            ownerNameDraft={selectedSpoolOwnerNameDraft}
+            ownershipNoteDraft={selectedSpoolOwnershipNoteDraft}
+            purchaseMetadataDraft={selectedSpoolPurchaseMetadataDraft}
+            purchaseMetadataErrors={selectedSpoolPurchaseMetadataErrors}
+            qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
+            qrDataUrl={selectedSpoolQrDataUrl}
+            qrLoading={selectedSpoolQrLoading}
+            qrTarget={selectedSpoolQrTarget}
+            rfidBindingMeta={selectedSpoolRfidBindingMeta}
+            resolvedTheme={resolvedTheme}
+            runtimeAvailable={tauri}
+            showRollHistory={showRollHistory}
+            spool={selectedSpool}
+            statusLabel={selectedSpoolStatusLabel}
+            statusTone={selectedSpoolStatusTone}
+            supportsRfidCapture={selectedSpoolSupportsRfidCapture}
+            tareDraft={selectedSpoolTareDraft}
+            usageLoading={usageLoading}
+            usagePoints={usagePoints}
+            vendor={editMasterVendor}
+            visibleHistoryRows={visibleHistoryRows}
+          />
+        </Suspense>
+      ) : null}
 
       <InventoryRfidCaptureModal
         canSave={Boolean(rfidCaptureSummary.rfidTag)}

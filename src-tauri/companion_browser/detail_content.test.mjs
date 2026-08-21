@@ -21,6 +21,11 @@ function createSelectedSpool(overrides = {}) {
       initial_weight_g: 1000,
       current_weight_g: 920,
       remaining_g: 900,
+      purchase_price: null,
+      purchase_currency: null,
+      purchase_date: null,
+      batch_code: null,
+      supplier_reference: null,
       ...overrides.spool,
     },
     master: {
@@ -171,6 +176,79 @@ test("detail content disables weight editing while spool detail is refreshing", 
   assert.match(html, /name="grams"[^>]* disabled/);
   assert.match(html, /name="tare-grams"[^>]* disabled/);
   assert.match(html, /type="submit"[^>]* disabled/);
+  assert.match(html, /name="purchase_price"[\s\S]*?disabled/);
+});
+
+test("detail content hydrates all purchase metadata fields from the selected spool", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        purchase_price: 249.5,
+        purchase_currency: "NOK",
+        purchase_date: "2026-08-21",
+        batch_code: "LOT-7",
+        supplier_reference: "PO-42",
+      },
+    }),
+  });
+
+  assert.match(html, /name="purchase_price"[\s\S]*?value="249\.5"/);
+  assert.match(html, /name="purchase_currency"[\s\S]*?value="NOK"/);
+  assert.match(html, /name="purchase_date"[\s\S]*?value="2026-08-21"/);
+  assert.match(html, /name="batch_code"[\s\S]*?value="LOT-7"/);
+  assert.match(html, /name="supplier_reference"[\s\S]*?value="PO-42"/);
+  assert.match(html, /Clear every field to remove its purchase details/);
+});
+
+test("detail content explains the legacy price-without-currency rule", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        purchase_price: 199,
+        purchase_currency: null,
+      },
+    }),
+  });
+
+  assert.match(html, /legacy price can remain without currency until the price changes/);
+  assert.doesNotMatch(html, /name="purchase_currency"[^>]*required/);
+});
+
+test("detail content preserves the assigned status for receipt-only edits", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        status: "ASSIGNED",
+        location_id: "Printer:Brutus:printer_1_ams_1_slot_2",
+      },
+    }),
+  });
+
+  assert.match(html, /name="status" type="hidden" value="ASSIGNED"/);
+  assert.match(html, /<option value="ASSIGNED" selected>Assigned<\/option>/);
+  assert.doesNotMatch(html, /<option value="IN_STOCK" selected>/);
+  assert.match(html, /name="purchase_price"/);
+});
+
+test("detail content locks a loaned-out spool to BORROWED while keeping receipt fields editable", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        status: "BORROWED",
+        location_id: "With Alice",
+        home_location_id: "Shelf A",
+      },
+    }),
+  });
+
+  assert.match(html, /name="status" type="hidden" value="BORROWED"/);
+  assert.match(html, /<option value="BORROWED" selected>Loaned out<\/option>/);
+  assert.doesNotMatch(html, /<option value="IN_STOCK" selected>/);
+  assert.match(html, /type="hidden" name="location" value="With Alice"/);
+  assert.match(html, /type="hidden" name="home-location" value="Shelf A"/);
+  assert.equal(html.match(/name="home-location"/g)?.length, 1);
+  assert.match(html, /value="Shelf A"[\s\S]*?disabled/);
+  assert.match(html, /name="purchase_price"/);
 });
 
 test("compact detail keeps history collapsed behind a short summary", () => {
@@ -256,6 +334,8 @@ test("detail content localizes newer history event labels in norwegian", () => {
         { event_type: "CREATED", created_at: "2026-04-17T10:00:00Z" },
         { event_type: "RFID_TAG_UPDATED", created_at: "2026-04-17T11:00:00Z" },
         { event_type: "TARE_WEIGHT_UPDATED", created_at: "2026-04-17T12:00:00Z" },
+        { event_type: "PURCHASE_METADATA_UPDATED", created_at: "2026-04-17T12:30:00Z" },
+        { event_type: "PURCHASE_RECEIPT_RECORDED", created_at: "2026-04-17T12:45:00Z" },
       ],
     }),
   });
@@ -263,6 +343,8 @@ test("detail content localizes newer history event labels in norwegian", () => {
   assert.match(html, /Lagt til i lageret/);
   assert.match(html, /RFID lagret/);
   assert.match(html, /Rullens tomvekt oppdatert/);
+  assert.match(html, /Innkjøpsdetaljer oppdatert/);
+  assert.match(html, /Innkjøpskvittering registrert/);
 });
 
 test("detail content localizes WEIGHT_UPDATED history labels in norwegian", () => {

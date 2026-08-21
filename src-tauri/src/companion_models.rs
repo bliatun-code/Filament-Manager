@@ -1,4 +1,5 @@
 use crate::backend::filament_database::{PrinterRow, SpoolLoanRow};
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::backend::statistics::InventoryOverview;
 use crate::optional_update::OptionalUpdate;
 use crate::printer_settings_commands::BambuLiveIntegrationSettingsEntry;
@@ -148,6 +149,8 @@ pub(crate) struct UpdateWishlistItemStatusRequest {
 #[derive(Deserialize)]
 pub(crate) struct ReceiveWishlistItemRequest {
     pub(crate) quantity: i64,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Deserialize)]
@@ -199,6 +202,8 @@ pub(crate) struct UpdateSpoolDetailsRequest {
     pub(crate) home_location: OptionalUpdate<String>,
     pub(crate) spool_tare_weight_g: Option<i64>,
     pub(crate) ownership: Option<UpdateSpoolOwnershipRequest>,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Deserialize)]
@@ -226,6 +231,7 @@ pub(crate) struct CompanionHealthResponse {
 
 pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-return";
 pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-mutations";
+pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

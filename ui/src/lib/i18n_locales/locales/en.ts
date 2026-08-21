@@ -46,6 +46,7 @@ export const enDictionary: DictionaryNode = {
       minutesAgo: "{count} min ago",
       hoursAgo: "{count} h ago",
       daysAgo: "{count} days ago",
+      optional: "Optional",
     },
     errors: {
       invalidRequest: "The request could not be completed.",
@@ -62,6 +63,8 @@ export const enDictionary: DictionaryNode = {
       loanExpectedReturnInvalid: "Choose a valid expected return date.",
       loanMetadataUnsupported:
         "Update the host before saving loan contact details or an expected return date.",
+      purchaseMetadataHostUnsupported:
+        "Update the Host before saving purchase details.",
       exportInvalidPayload: "The generated export is invalid.",
       downloadsUnavailable: "The Downloads folder is unavailable.",
       exportWriteFailed: "The export could not be saved.",
@@ -594,6 +597,24 @@ export const enDictionary: DictionaryNode = {
         "Keep planned purchases here, move them to on order, then stock them when they arrive.",
       addDirectlyToStock: "Add directly to stock",
       stockRollNow: "Stock roll now",
+      purchaseMetadataTitle: "Purchase details",
+      purchaseMetadataApplies:
+        "{count, plural, one {These details are saved to this roll.} other {These details are saved to each of the # received rolls.}}",
+      purchasePricePerRoll: "Price per roll",
+      purchasePricePerRollHint: "Enter the unit price for one roll, not the order total.",
+      purchaseCurrency: "Currency",
+      purchaseCurrencyHint: "Use a three-letter code such as NOK or EUR.",
+      purchaseDate: "Purchase date",
+      purchaseBatchCode: "Batch code",
+      purchaseSupplierReference: "Supplier reference",
+      purchasePriceInvalid: "Enter a finite numeric price.",
+      purchasePriceNegative: "Price cannot be negative.",
+      purchaseCurrencyRequired: "Currency is required when the price changes.",
+      purchaseCurrencyInvalid: "Use a three-letter currency code.",
+      purchaseCurrencyWithoutPrice: "Enter a price or clear the currency.",
+      purchaseDateInvalid: "Enter a real calendar date.",
+      purchaseBatchCodeTooLong: "The batch code is too long.",
+      purchaseSupplierReferenceTooLong: "The supplier reference is too long.",
       registerBorrowedIn: "Register borrowed-in spool",
       loanTrackingSubtitle:
         "Loan out a roll from inventory. Returns are handled from the Loans page.",
@@ -797,6 +818,8 @@ export const enDictionary: DictionaryNode = {
         usedUp: "Marked empty",
         locationUpdated: "Location updated",
         detailsUpdated: "Details updated",
+        purchaseReceiptRecorded: "Purchase receipt recorded",
+        purchaseMetadataUpdated: "Purchase details updated",
         rfidSaved: "RFID saved",
         assignedToAms: "Assigned to printer slot",
         printJobRecorded: "Print usage logged",
@@ -808,6 +831,8 @@ export const enDictionary: DictionaryNode = {
         deleted: "Deleted",
         rfidSavedDetail: "RFID identity was saved from AMS capture.",
         addedToLibraryDetail: "Filament was added to the library.",
+        purchaseReceiptRecordedDetail: "Purchase receipt was recorded.",
+        purchaseMetadataUpdatedDetail: "Purchase details were updated.",
       },
       error: {
         add: "Failed to add filament.",
@@ -827,6 +852,7 @@ export const enDictionary: DictionaryNode = {
         createBambuBatch:
           "Failed to create Bambu code batch. Check QR uniqueness and values.",
         stockFromWishlist: "Failed to stock roll from wishlist item.",
+        purchaseMetadataInvalid: "Review the highlighted purchase details.",
         unlockMetadataFirst: "Unlock metadata before editing catalog details.",
         masterFieldsRequired:
           "Vendor, material, filament name and color are required to save metadata.",
@@ -889,6 +915,10 @@ export const enDictionary: DictionaryNode = {
       statusFilter: "Wishlist status filter",
       itemStatusGroup: "Status for {name}",
       qty: "Qty",
+      receivePurchase: "Receive purchase",
+      receivedQuantity: "Received quantity",
+      receiveQuantity:
+        "{count, plural, one {Receive # roll} other {Receive # rolls}}",
       searchQueueLabel: "Search purchase queue",
       searchQueuePlaceholder: "Search by name, color or vendor",
       resultCountOne: "item",

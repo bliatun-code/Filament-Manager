@@ -155,6 +155,21 @@ test("French locale uses complete translated source copy", () => {
   assert.equal(t("fr", "missing.reviewKey", "Repli sûr"), "Repli sûr");
 });
 
+test("purchase receipt fields, validation, and Host-upgrade guidance are localized", () => {
+  const expected = {
+    en: ["Purchase details", "Supplier reference", "Update the Host before saving purchase details."],
+    nb: ["Innkjøpsdetaljer", "Leverandørreferanse", "Oppdater verten før du lagrer innkjøpsdetaljer."],
+    de: ["Kaufdetails", "Lieferantenreferenz", "Aktualisiere den Host, bevor du Kaufdetails speicherst."],
+    fr: ["Détails d’achat", "Référence fournisseur", "Mettez à jour l’hôte avant d’enregistrer les détails d’achat."],
+  };
+
+  for (const [locale, values] of Object.entries(expected)) {
+    assert.equal(t(locale, "purchaseReceipt.title"), values[0]);
+    assert.equal(t(locale, "purchaseReceipt.supplierReference"), values[1]);
+    assert.equal(t(locale, "errors.purchaseMetadataHostUnsupported"), values[2]);
+  }
+});
+
 test("French locale applies French zero, one, and other plural categories", () => {
   assert.equal(t("fr", "nav.spoolCount", "", { count: 0 }), "0 bobine");
   assert.equal(t("fr", "nav.spoolCount", "", { count: 1 }), "1 bobine");

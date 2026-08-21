@@ -54,7 +54,7 @@
       }
     ]
   },
-  "currentSchemaVersion": 3,
+  "currentSchemaVersion": 4,
   "publishedThroughSequence": 3,
   "publishedReference": {
     "ref": "v0.27.0",
@@ -88,6 +88,14 @@
       "role": "schema-migration",
       "fromSchemaVersion": 2,
       "toSchemaVersion": 3
+    },
+    {
+      "sequence": 5,
+      "file": "005_purchase_receipt_metadata.sql",
+      "sha256": "6cc624a43992226e881330069ac177014ef60a15df3110e8f380f6a3f0a74af5",
+      "role": "schema-migration",
+      "fromSchemaVersion": 3,
+      "toSchemaVersion": 4
     }
   ]
 }
