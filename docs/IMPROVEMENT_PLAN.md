@@ -49,11 +49,11 @@ Fasen er ferdig når lav-beholdning gir samme resultat overalt, oppgradering fra
 | Prioritet | Arbeid | Status | Ferdigkriterium |
 | --- | --- | --- | --- |
 | P0 | Gjøre Innkjøp til en synlig visning under Inventory og skille registrering fra innkjøpskø. | Ferdig | Innkjøpskøen nås med ett klikk fra Inventory, og Add spool-dialogen inneholder ikke skjult køadministrasjon. |
-| P0 | Legge kontekstuelle handlinger på spoledetaljen: Lån ut, Last i skriver og Skriv etikett. | Ikke startet | Valgt spole er forhåndsutfylt, og brukeren trenger ikke søke opp samme spole igjen mellom steg. |
-| P1 | Flytte etikettark fra Settings til Inventory. | Ikke startet | Etikettark er tilgjengelig der spolene velges, uten tap av eksisterende funksjonalitet. |
-| P0 | Samle vanlige detaljendringer i én lagre-handling og varsle om ulagrede endringer. | Ikke startet | Lukking, navigasjon og avbryt beskytter ulagrede data; lagring er atomisk og gir tydelig tilbakemelding. |
-| P1 | La filteret All vise alle statuser, eller gi det et navn som samsvarer med faktisk innhold. | Ikke startet | Filternavn og resultat samsvarer og er dekket av test. |
-| P1 | Skille mellom tomt lager og null treff i tomtilstander. | Ikke startet | Brukeren får riktig forklaring og relevant neste handling i begge situasjoner. |
+| P0 | Legge kontekstuelle handlinger på spoledetaljen: Lån ut, Last i skriver og Skriv etikett. | Ferdig | Valgt spole er forhåndsutfylt, og brukeren trenger ikke søke opp samme spole igjen mellom steg. |
+| P1 | Flytte etikettark fra Settings til Inventory. | Ferdig | Etikettark er tilgjengelig der spolene velges, uten tap av eksisterende funksjonalitet. |
+| P0 | Samle vanlige detaljendringer i én lagre-handling og varsle om ulagrede endringer. | Ferdig | Lukking, navigasjon og avbryt beskytter ulagrede data; lagring er atomisk og gir tydelig tilbakemelding. |
+| P1 | La filteret All vise alle statuser, eller gi det et navn som samsvarer med faktisk innhold. | Ferdig | Filternavn og resultat samsvarer og er dekket av test. |
+| P1 | Skille mellom tomt lager og null treff i tomtilstander. | Ferdig | Brukeren får riktig forklaring og relevant neste handling i begge situasjoner. |
 
 ### Faseport 1
 
@@ -83,9 +83,9 @@ Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater dele
 | Prioritet | Arbeid | Status | Ferdigkriterium |
 | --- | --- | --- | --- |
 | P1 | Registrere pris, kjøpsdato, batch og leverandørreferanse ved mottak. | Ikke startet | Feltene valideres, kan redigeres og eksporteres, og eldre data håndteres uten tvungen utfylling. |
-| P1 | Legge til periodene 30 dager, 90 dager, 12 måneder og egendefinert intervall i Statistics. | Ikke startet | Alle nøkkeltall bruker valgt periode konsekvent og har tester for tids- og datogrenser. |
+| P1 | Legge til periodene 30 dager, 90 dager, 12 måneder og egendefinert intervall i Statistics. | Ferdig | Alle nøkkeltall bruker valgt periode konsekvent og har tester for tids- og datogrenser. |
 | P1 | Vise lagerverdi og materialkostnad per periode med sporbarhet tilbake til spolen. | Ikke startet | Summer kan spores til underliggende spoler og transaksjoner, med tydelig valuta- og manglende-datahåndtering. |
-| P2 | Lage en enkel, deterministisk forbruksprognose med synlig datagrunnlag. | Ikke startet | Samme input gir samme prognose, antakelser vises, og funksjonen bestiller aldri automatisk. |
+| P2 | Lage en enkel, deterministisk forbruksprognose med synlig datagrunnlag. | Ferdig | Samme input gir samme prognose, antakelser vises, og funksjonen bestiller aldri automatisk. |
 | P0 | Authenticode-signere Windows MSI og programfil før bredere distribusjon. | Ikke startet | Installer og binær validerer korrekt signatur i støttede Windows-miljøer. |
 | P0 | Kjøre muterende pakket desktop-E2E på macOS og Windows. | Ikke startet | Testen oppretter en spole, endrer vekt, låner ut, returnerer, tilordner printerspor, restarter og validerer backup i den pakkede appen. |
 
@@ -101,7 +101,7 @@ Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer u
 | --- | --- | --- |
 | Innføre en Rust-basert `ActiveLibraryGateway` som velger lokal database eller Host. Start med én komplett spoleflyt og behold eksisterende kommandoer som kompatibilitetslag. | Ikke startet | Én ende-til-ende-spoleflyt bruker gatewayen i begge moduser, med kontraktstester og uendret offentlig oppførsel. |
 | Generere TypeScript- og Companion-kontrakter fra én Rust-kilde. | Ikke startet | Status, eierskap og valgte DTO-er genereres i CI; håndredigert duplisering for den valgte flyten er fjernet. |
-| Gjøre migrasjoner append-only med én autoritativ migrasjonsrekke. | Ikke startet | CI avviser endring eller omnummerering av publiserte migrasjoner og verifiserer både tom installasjon og oppgradering. |
+| Gjøre migrasjoner append-only med én autoritativ migrasjonsrekke. | Ferdig | CI avviser endring eller omnummerering av publiserte migrasjoner og verifiserer både tom installasjon og oppgradering. |
 | Flytte kritiske tester fra kildekodelesing til reell atferd. | Ikke startet | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
 | Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ikke startet | En dokumentert beslutning tas på grunnlag av målt vedlikeholdskostnad, bundlepåvirkning og migrasjonsrisiko. |
 
@@ -119,11 +119,11 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Fullfør kontekstuelle handlinger og atomisk lagring i spoledetaljen.
-2. Flytt etikettark til Inventory og bevar eksisterende utskriftsflyt.
-3. Rett `All`-filteret og skill tomt lager fra null filtrerte treff.
-4. Etabler den autoritative, append-only migrasjonsrekken i det parallelle tekniske sporet.
-5. Forbered lokasjonsobjekter og konfigurerbar lav-beholdningsgrense for fase 2.
+1. Fullfør konfigurerbar lav-beholdningsgrense og utvidede utlånsdata.
+2. Gjør lokasjoner til stabile objekter og legg til sporbare massehandlinger.
+3. Bygg Dashboard-visningen Krever handling og koble lav beholdning til innkjøpskøen.
+4. Fullfør mottaksmetadata, lagerverdi og materialkostnad med sporbarhet.
+5. Fullfør pakket desktop-E2E og avklar leverandørdata for Windows-signering.
 
 ## Fremdriftslogg
 
@@ -137,3 +137,9 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Ytelse, backup/oppgradering, tilgjengelighet og lokalisering har dokumenterte blokkerende terskler, navngitt eier og en kontraktstest som verifiserer CI-koblingen.
 - Innkjøpskøen er flyttet til en egen ett-klikk-visning under Inventory. Lagerregistrering og kjøpsplanlegging har separate opprettingsflyter, mens statusendring, mottak og sletting er bevart.
 - Hele `npm run verify` passerer etter rebase på oppdatert `origin/main`, inkludert 1 150 UI-tester, 480 desktop-Rust-tester, 144 core-Rust-tester og Clippy i både dev- og releaseprofil. Oppgraderingssmoken passerer separat fra schema 1 til 2 gjennom to appstarter.
+- `All` viser nå samtlige statuser, og tomt lager er skilt fra null filtrerte treff med egne forklaringer og handlinger.
+- Spoledetaljen fører valgt spole direkte videre til utlån, printerlasting og etikettutskrift. Vanlige detaljendringer lagres atomisk, og lukking eller navigasjon beskytter ulagrede endringer.
+- Etikettark er flyttet fra Settings til Inventory uten tap av utskriftsflyten.
+- Statistics støtter 30 dager, 90 dager, 12 måneder og egendefinert lokalt datointervall gjennom én halvåpen UTC-kontrakt. Døgngrenser er testet over både 23- og 25-timers DST-døgn.
+- En deterministisk 30-dagers forbruksprognose viser datagrunnlag og antakelser uten å opprette automatiske bestillinger.
+- Publiserte databasemigrasjoner er låst i et autoritativt manifest. CI avviser endring, sletting og omnummerering, og verifiserer både tom installasjon, schema-1-oppgradering og v0.27-kompatibilitet.
