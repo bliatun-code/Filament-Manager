@@ -13,7 +13,7 @@ not be weakened merely to make a change pass.
 | Gate | Named owner | Blocking threshold | Local command | Required CI path |
 | --- | --- | --- | --- | --- |
 | Performance | `@bliatun-code` (performance gate owner) | The deterministic 10,000-spool, concurrency, timeout, render-window, lazy-loading, and bundle contracts pass with zero failures. Production JavaScript chunks remain within the committed byte budgets in [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md). | `npm run test:performance:bundle` and `npm run test:performance` | `npm run verify` on macOS and Windows |
-| Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, and `npm run smoke:release:database-upgrade -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade/package smoke in required platform jobs |
+| Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. The installed DMG and MSI must pass the mutating spool/loan/printer/full-backup E2E across a restart. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, `npm run smoke:release:database-upgrade -- ...`, and `npm run smoke:release:packaged-desktop-e2e -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade and mutating packaged-app smokes in required platform jobs |
 | Accessibility | `@bliatun-code` (accessibility gate owner) | All six data-backed main pages have zero axe violations for WCAG 2.0 A/AA, 2.1 A/AA, and 2.2 AA and emit zero browser errors. The shared modal passes keyboard focus, Escape/focus return, and 200% zoom without page-level horizontal overflow. | `npm run test:a11y:app-modal` and `npm run test:a11y:data-backed` | `npm run verify` on macOS and Windows |
 | Localization | `@bliatun-code` (localization gate owner) | Published catalogs keep 100% key and placeholder coverage, zero unknown literal keys, and at least 95% translation signal. A locale described as maintained also needs a named native reviewer and a reviewed fingerprint matching the current English source. | `npm run check:i18n-readiness` and `npm run check:contracts` | `npm run verify` on macOS and Windows |
 
@@ -55,6 +55,17 @@ The append-only manifest and procedure are documented in
 compares published migration SQL, the frozen schema baseline, and its legacy
 normalization source set to the pinned release before exercising clean and
 historical database paths through the Rust runner.
+
+The packaged desktop E2E starts the executable installed from the candidate DMG
+or MSI twice against one synthetic, isolated database. Through the application's
+normal Tauri command layer it creates a spool, updates its weight, lends and
+returns it, creates a printer, assigns the spool to an AMS slot, restarts, and
+then validates both persisted state and a complete portable backup. The harness
+is available only when its exact environment gate, private work directory,
+run-specific marker, and database path all agree. Unix artifacts use owner-only
+`0700`/`0600` modes; Windows smoke parents use protected current-user ACLs. The
+database is removed after the run and is never uploaded with the private smoke
+logs.
 
 ## Accessibility authority
 

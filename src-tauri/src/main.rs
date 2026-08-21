@@ -60,6 +60,7 @@ mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
 mod local_service_advertisement;
 mod optional_update;
+mod packaged_desktop_e2e;
 mod printer_active_commands;
 mod printer_bambu_discovery_commands;
 mod printer_bambu_live_commands;
@@ -358,6 +359,9 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
+            packaged_desktop_e2e::get_packaged_desktop_e2e_configuration,
+            packaged_desktop_e2e::complete_packaged_desktop_e2e,
+            packaged_desktop_e2e::fail_packaged_desktop_e2e,
             desktop_lifecycle::get_desktop_lifecycle_settings,
             desktop_lifecycle::set_continue_in_background,
             desktop_lifecycle::set_launch_at_login,

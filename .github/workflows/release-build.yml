@@ -459,6 +459,7 @@ jobs:
           --signature-policy=release
           --upgrade-fixture="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.db"
           --upgrade-source-release=v0.27.0
+          --packaged-desktop-e2e
 
       - name: Upload installed macOS smoke logs
         if: always()
@@ -559,6 +560,7 @@ jobs:
           --expected-team-id="$EXPECTED_APPLE_TEAM_ID"
           --launch-timeout-ms=120000
           --signature-policy=release
+          --packaged-desktop-e2e
 
       - name: Upload Intel macOS smoke logs
         if: always()
@@ -730,6 +732,7 @@ jobs:
             -SignaturePolicy "UnsignedRequired" `
             -UpgradeFixturePath (Join-Path $env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0.27.0.db") `
             -UpgradeSourceRelease "v0.27.0" `
+            -RunPackagedDesktopE2E `
             -LaunchTimeoutSeconds 120
 
       - name: Upload release MSI smoke logs

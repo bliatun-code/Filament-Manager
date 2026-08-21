@@ -90,6 +90,27 @@ test("macOS installed DMG smoke defaults to the release signature policy", () =>
   assert.equal(options.signaturePolicy, "release");
   assert.equal(options.upgradeFixturePath, null);
   assert.equal(options.upgradeSourceRelease, null);
+  assert.equal(options.runPackagedDesktopE2E, false);
+});
+
+test("macOS installed DMG smoke accepts only an explicit packaged desktop E2E gate", () => {
+  const options = validateMacosDmgSmokeOptions({
+    dmgPath: "candidate.dmg",
+    expectedTeamId: "ABCDE12345",
+    logDirectory: "release-artifacts/smoke",
+    runPackagedDesktopE2E: true,
+  });
+  assert.equal(options.runPackagedDesktopE2E, true);
+  assert.throws(
+    () =>
+      validateMacosDmgSmokeOptions({
+        dmgPath: "candidate.dmg",
+        expectedTeamId: "ABCDE12345",
+        logDirectory: "release-artifacts/smoke",
+        runPackagedDesktopE2E: "true",
+      }),
+    /selection must be a boolean/,
+  );
 });
 
 test("macOS installed DMG smoke requires complete previous-release fixture identity", () => {

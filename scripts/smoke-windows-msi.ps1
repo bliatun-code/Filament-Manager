@@ -46,6 +46,9 @@ param(
     [string]$UpgradeSourceRelease = "",
 
     [Parameter(Mandatory = $false)]
+    [switch]$RunPackagedDesktopE2E,
+
+    [Parameter(Mandatory = $false)]
     [ValidateRange(10, 300)]
     [int]$LaunchTimeoutSeconds = 60
 )
@@ -606,6 +609,56 @@ if ([IO.Path]::GetFileName($ExpectedDatabaseName) -ne $ExpectedDatabaseName) {
 if (@($ExpectedWindowTitles | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count -eq 0) {
     throw "At least one non-empty expected window title is required."
 }
+
+function New-PrivateQaDirectory {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Description
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        throw "$Description must not exist before it is created: $Path"
+    }
+    New-Item -ItemType Directory -Path $Path -ErrorAction Stop | Out-Null
+    $resolvedPath = (Resolve-Path -LiteralPath $Path).Path
+    $currentUserSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    if ($null -eq $currentUserSid) {
+        throw "Could not resolve the current Windows user SID for $Description."
+    }
+    $accessRule = [Security.AccessControl.FileSystemAccessRule]::new(
+        $currentUserSid,
+        [Security.AccessControl.FileSystemRights]::FullControl,
+        [Security.AccessControl.InheritanceFlags]"ContainerInherit, ObjectInherit",
+        [Security.AccessControl.PropagationFlags]::None,
+        [Security.AccessControl.AccessControlType]::Allow
+    )
+    $accessControl = [Security.AccessControl.DirectorySecurity]::new()
+    $accessControl.SetOwner($currentUserSid)
+    $accessControl.SetAccessRuleProtection($true, $false)
+    [void]$accessControl.AddAccessRule($accessRule)
+    Set-Acl -LiteralPath $resolvedPath -AclObject $accessControl -ErrorAction Stop
+
+    $verifiedAccessControl = Get-Acl -LiteralPath $resolvedPath
+    if (-not $verifiedAccessControl.AreAccessRulesProtected) {
+        throw "$Description does not have protected private ACL inheritance."
+    }
+    $currentUserRules = @(
+        $verifiedAccessControl.Access |
+            Where-Object {
+                $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]) -eq
+                    $currentUserSid -and
+                $_.AccessControlType -eq
+                    [Security.AccessControl.AccessControlType]::Allow -and
+                ($_.FileSystemRights -band
+                    [Security.AccessControl.FileSystemRights]::FullControl) -eq
+                    [Security.AccessControl.FileSystemRights]::FullControl
+            }
+    )
+    if ($currentUserRules.Count -ne 1) {
+        throw "$Description does not grant exactly one full-control rule to the current user."
+    }
+    return $resolvedPath
+}
 if (
     [string]::IsNullOrWhiteSpace($UpgradeFixturePath) -ne
     [string]::IsNullOrWhiteSpace($UpgradeSourceRelease)
@@ -701,6 +754,8 @@ $appProcess = $null
 $secondaryProcess = $null
 $productCode = $null
 $previousReleaseDatabaseGateSummary = "not requested"
+$packagedDesktopE2eSummary = "not requested"
+$packagedDesktopE2eWorkParent = $null
 $createdAutostartRegistryKeys = @()
 $seededAutostartRegistryTargets = @()
 
@@ -817,6 +872,47 @@ try {
             throw "Installed MSI database compatibility smoke failed with exit code $upgradeSmokeExitCode."
         }
         $previousReleaseDatabaseGateSummary = "$UpgradeSourceRelease, two installed-binary launches"
+    }
+
+    if ($RunPackagedDesktopE2E) {
+        $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction Stop |
+            Select-Object -First 1
+        $packagedDesktopE2eRunner = Join-Path $PSScriptRoot "run-packaged-desktop-e2e.mjs"
+        $packagedDesktopE2eWorkParent = New-PrivateQaDirectory `
+            -Path (Join-Path ([IO.Path]::GetTempPath()) "filament-manager-packaged-desktop-e2e-$([Guid]::NewGuid().ToString('N'))") `
+            -Description "Packaged desktop E2E work parent"
+        $packagedDesktopE2eLogParent = New-PrivateQaDirectory `
+            -Path (Join-Path $resolvedLogDirectory "packaged-desktop-e2e-private") `
+            -Description "Packaged desktop E2E log parent"
+        $packagedDesktopE2eWorkDirectory = Join-Path $packagedDesktopE2eWorkParent "work"
+        $packagedDesktopE2eLogDirectory = Join-Path $packagedDesktopE2eLogParent "logs"
+        $packagedDesktopE2eArguments = @(
+            $packagedDesktopE2eRunner,
+            "--executable=$installedExecutablePath",
+            "--work-dir=$packagedDesktopE2eWorkDirectory",
+            "--log-dir=$packagedDesktopE2eLogDirectory",
+            "--launch-timeout-ms=$($LaunchTimeoutSeconds * 1000)"
+        )
+        $packagedDesktopE2eOutput = & $nodeCommand.Source @packagedDesktopE2eArguments 2>&1
+        $packagedDesktopE2eExitCode = $LASTEXITCODE
+        $packagedDesktopE2eOutput | ForEach-Object { Write-Host $_ }
+        if ($packagedDesktopE2eExitCode -ne 0) {
+            throw "Installed MSI packaged desktop mutating E2E failed with exit code $packagedDesktopE2eExitCode."
+        }
+        $packagedDesktopE2eSummaryPath = Join-Path $packagedDesktopE2eLogDirectory "summary.json"
+        if (-not (Test-Path -LiteralPath $packagedDesktopE2eSummaryPath -PathType Leaf)) {
+            throw "Packaged desktop mutating E2E did not publish its private summary."
+        }
+        $packagedDesktopE2eResult = Get-Content `
+            -LiteralPath $packagedDesktopE2eSummaryPath `
+            -Raw | ConvertFrom-Json
+        if (
+            $packagedDesktopE2eResult.status -ne "pass" -or
+            $packagedDesktopE2eResult.backup_total_rows -le 0
+        ) {
+            throw "Packaged desktop mutating E2E summary is not a passing full-backup result."
+        }
+        $packagedDesktopE2eSummary = "PASS, backup rows $($packagedDesktopE2eResult.backup_total_rows)"
     }
 
     $appProcess = Start-Process `
@@ -1060,6 +1156,7 @@ try {
         "User PATH entry removed: yes",
         "Signature policy: $SignaturePolicy",
         "Previous-release database gate: $previousReleaseDatabaseGateSummary",
+        "Packaged desktop mutating E2E: $packagedDesktopE2eSummary",
         "Result: PASS"
     ) -join [Environment]::NewLine
     [IO.File]::WriteAllText($summaryPath, "$summary$([Environment]::NewLine)")
@@ -1148,6 +1245,22 @@ finally {
         }
         catch {
             Write-Warning "Failed to remove smoke-test app data: $($_.Exception.Message)"
+        }
+    }
+
+    if (
+        $null -ne $packagedDesktopE2eWorkParent -and
+        (Test-Path -LiteralPath $packagedDesktopE2eWorkParent -PathType Container)
+    ) {
+        try {
+            Remove-Item `
+                -LiteralPath $packagedDesktopE2eWorkParent `
+                -Recurse `
+                -Force `
+                -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Failed to remove the private packaged desktop E2E work parent: $($_.Exception.Message)"
         }
     }
 

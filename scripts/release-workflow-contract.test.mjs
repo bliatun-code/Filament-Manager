@@ -7,6 +7,10 @@ const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
 const macosDmgSmoke = readFileSync("scripts/smoke-macos-dmg.mjs", "utf8");
+const packagedDesktopE2eRunner = readFileSync(
+  "scripts/run-packaged-desktop-e2e.mjs",
+  "utf8",
+);
 const releaseDatabaseUpgradeSmoke = readFileSync(
   "scripts/smoke-release-database-upgrade.mjs",
   "utf8",
@@ -1599,4 +1603,63 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     "Exercise installed signed application on Intel",
     "Upload Intel macOS smoke logs",
   ]);
+});
+
+test("CI and release workflows block on the packaged mutating desktop E2E", () => {
+  const ciMacosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const ciWindowsJob = readSection(ciWorkflow, "  windows-smoke:");
+  const releaseMacosJob = readSection(
+    releaseWorkflow,
+    "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const releaseIntelMacosJob = readSection(
+    releaseWorkflow,
+    "  smoke-macos-dmg-intel:",
+    "  build-windows-msi:",
+  );
+  const releaseWindowsJob = readSection(
+    releaseWorkflow,
+    "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+
+  assert.equal(
+    packageManifest.scripts["smoke:release:packaged-desktop-e2e"],
+    "node ./scripts/run-packaged-desktop-e2e.mjs",
+  );
+  assert.match(ciMacosJob, /- name: Build packaged macOS smoke bundle/);
+  assert.match(ciMacosJob, /npm run tauri -- build --debug --bundles dmg/);
+  assert.match(ciMacosJob, /- name: Exercise packaged macOS mutating E2E/);
+  assert.match(ciMacosJob, /--signature-policy=local-adhoc/);
+  assert.match(ciMacosJob, /--packaged-desktop-e2e/);
+  assert.match(
+    ciMacosJob,
+    /- name: Upload packaged macOS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn/,
+  );
+  assert.match(ciWindowsJob, /-RunPackagedDesktopE2E/);
+  assert.match(releaseMacosJob, /--packaged-desktop-e2e/);
+  assert.match(releaseIntelMacosJob, /--packaged-desktop-e2e/);
+  assert.match(releaseWindowsJob, /-RunPackagedDesktopE2E/);
+  assert.equal(
+    countOccurrences(releaseWorkflow, "--packaged-desktop-e2e"),
+    2,
+  );
+  assert.equal(
+    countOccurrences(releaseWorkflow, "-RunPackagedDesktopE2E"),
+    1,
+  );
+
+  assert.match(macosDmgSmoke, /runPackagedDesktopE2e\(\{/);
+  assert.match(windowsMsiSmoke, /function New-PrivateQaDirectory/);
+  assert.match(windowsMsiSmoke, /SetAccessRuleProtection\(\$true, \$false\)/);
+  assert.match(windowsMsiSmoke, /run-packaged-desktop-e2e\.mjs/);
+  assert.match(packagedDesktopE2eRunner, /spawn\(context\.executablePath, \[\], \{/);
+  assert.match(
+    packagedDesktopE2eRunner,
+    /FILAMENT_MANAGER_PACKAGED_DESKTOP_E2E: "1"/,
+  );
+  assert.match(packagedDesktopE2eRunner, /phase,\s*\n\s*runId: context\.runId/);
+  assert.match(packagedDesktopE2eRunner, /inspectPackagedDesktopE2eDatabase/);
+  assert.match(packagedDesktopE2eRunner, /backup_total_rows/);
 });

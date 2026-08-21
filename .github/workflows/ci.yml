@@ -120,12 +120,43 @@ jobs:
           --launch-timeout-ms=120000
           --database-readiness-only
 
+      - name: Build packaged macOS smoke bundle
+        run: npm run tauri -- build --debug --bundles dmg
+
+      - name: Exercise packaged macOS mutating E2E
+        env:
+          FILAMENT_MANAGER_PACKAGED_MACOS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-packaged-macos-smoke
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          candidate_dmgs=(target/debug/bundle/dmg/*.dmg)
+          if [[ ${#candidate_dmgs[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one packaged debug DMG, found ${#candidate_dmgs[@]}."
+            exit 1
+          fi
+          npm run smoke:macos-dmg -- \
+            "${candidate_dmgs[0]}" \
+            --log-dir="$FILAMENT_MANAGER_PACKAGED_MACOS_SMOKE_LOG_DIR" \
+            --launch-timeout-ms=120000 \
+            --signature-policy=local-adhoc \
+            --packaged-desktop-e2e
+
       - name: Upload database upgrade smoke logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: filament-manager-database-upgrade-smoke-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-database-upgrade-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
+
+      - name: Upload packaged macOS smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-packaged-macos-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-packaged-macos-smoke
           if-no-files-found: warn
           overwrite: true
           retention-days: 7
@@ -232,6 +263,7 @@ jobs:
             -ExpectedDatabaseName "filament-manager.db" `
             -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
             -SignaturePolicy "UnsignedRequired" `
+            -RunPackagedDesktopE2E `
             -LaunchTimeoutSeconds 90
 
       - name: Upload MSI smoke logs

@@ -28,6 +28,7 @@ import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
 
+import { runPackagedDesktopE2e } from "./run-packaged-desktop-e2e.mjs";
 import { smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
 import {
   parseCodesignDetails,
@@ -104,6 +105,7 @@ export function validateMacosDmgSmokeOptions({
   signaturePolicy = DEFAULT_SIGNATURE_POLICY,
   upgradeFixturePath = null,
   upgradeSourceRelease = null,
+  runPackagedDesktopE2E = false,
 }) {
   if (typeof dmgPath !== "string" || dmgPath.trim().length === 0) {
     throw new Error("A macOS DMG path is required.");
@@ -125,6 +127,9 @@ export function validateMacosDmgSmokeOptions({
     throw new Error(
       `Signature policy must be one of: ${[...SIGNATURE_POLICIES].join(", ")}.`,
     );
+  }
+  if (typeof runPackagedDesktopE2E !== "boolean") {
+    throw new Error("Packaged desktop E2E selection must be a boolean.");
   }
   const normalizedExpectedTeamId =
     typeof expectedTeamId === "string" ? expectedTeamId.trim() : "";
@@ -162,6 +167,7 @@ export function validateMacosDmgSmokeOptions({
       ? path.resolve(normalizedUpgradeFixturePath)
       : null,
     upgradeSourceRelease: normalizedUpgradeSourceRelease || null,
+    runPackagedDesktopE2E,
   };
 }
 
@@ -886,6 +892,7 @@ export async function smokeMacosDmg(options) {
     signaturePolicy,
     upgradeFixturePath,
     upgradeSourceRelease,
+    runPackagedDesktopE2E: shouldRunPackagedDesktopE2E,
   } = validateMacosDmgSmokeOptions(options);
   if (!existsSync(dmgPath) || statSync(dmgPath).size <= 0) {
     throw new Error(`DMG is missing or empty: ${dmgPath}`);
@@ -1001,6 +1008,18 @@ export async function smokeMacosDmg(options) {
         logDirectory: path.join(logDirectory, "database-compatibility"),
         requireVisibleWindow: false,
         sourceRelease: upgradeSourceRelease,
+      });
+    }
+    let packagedDesktopE2eResult = null;
+    if (shouldRunPackagedDesktopE2E) {
+      packagedDesktopE2eResult = await runPackagedDesktopE2e({
+        executablePath,
+        workDirectory: path.join(
+          temporaryDirectory,
+          "packaged-desktop-e2e-work",
+        ),
+        logDirectory: path.join(logDirectory, "packaged-desktop-e2e"),
+        launchTimeoutMs,
       });
     }
     const bundlePaths = canonicalPathCandidates(installedAppPath);
@@ -1171,6 +1190,7 @@ export async function smokeMacosDmg(options) {
           }
         : null,
       processId: applicationProcess.processId,
+      packagedDesktopE2e: packagedDesktopE2eResult,
       schemaVersion: databaseResult.schemaVersion,
       signaturePolicy,
       tableCount: databaseResult.tableCount,
@@ -1321,6 +1341,11 @@ export async function smokeMacosDmg(options) {
             `${result.databaseCompatibility.launches} launches`
           : "not requested"
       }`,
+      `Packaged desktop mutating E2E: ${
+        result.packagedDesktopE2e
+          ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}`
+          : "not requested"
+      }`,
       `Window: ${result.windowTitle || "(untitled)"} ${result.windowWidth}x${result.windowHeight}`,
       "",
     ].join("\n"),
@@ -1338,11 +1363,13 @@ function cliOptions(argv) {
     "--upgrade-fixture=",
     "--upgrade-source-release=",
   ];
+  const booleanOptions = new Set(["--packaged-desktop-e2e"]);
   if (
     dmgPaths.length !== 1 ||
     argv.some(
       (argument) =>
         argument.startsWith("--") &&
+        !booleanOptions.has(argument) &&
         !allowedOptionPrefixes.some((prefix) => argument.startsWith(prefix)),
     )
   ) {
@@ -1352,7 +1379,7 @@ function cliOptions(argv) {
         "[--launch-timeout-ms=90000] " +
         "[--signature-policy=release|local-adhoc] " +
         "[--upgrade-fixture=<sanitized-db> " +
-        "--upgrade-source-release=v0.27.0]",
+        "--upgrade-source-release=v0.27.0] [--packaged-desktop-e2e]",
     );
   }
   const expectedTeamId = argv
@@ -1384,6 +1411,7 @@ function cliOptions(argv) {
     signaturePolicy,
     upgradeFixturePath,
     upgradeSourceRelease,
+    runPackagedDesktopE2E: argv.includes("--packaged-desktop-e2e"),
   };
 }
 

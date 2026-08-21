@@ -70,6 +70,7 @@
     "qa:release:upgrade-ci-fixture": "node ./scripts/prepare-ci-release-upgrade-fixture.mjs",
     "qa:release:previous-fixture": "node ./scripts/prepare-previous-release-upgrade-fixture.mjs",
     "smoke:release:database-upgrade": "node ./scripts/smoke-release-database-upgrade.mjs",
+    "smoke:release:packaged-desktop-e2e": "node ./scripts/run-packaged-desktop-e2e.mjs",
     "qa:visual:fixture": "node ./scripts/create-visual-qa-fixture.mjs",
     "qa:visual": "node ./scripts/run-visual-qa.mjs",
     "qa:visual:companion": "node ./scripts/run-companion-visual-gate.mjs",
