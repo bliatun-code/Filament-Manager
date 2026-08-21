@@ -220,7 +220,7 @@ mod tests {
                 ..configuration("CLIENT")
             },
             ActiveLibraryConfiguration {
-                host_base_url: Some("file:///tmp/not-a-host".to_string()),
+                host_base_url: Some("ftp://host.local".to_string()),
                 ..configuration("CLIENT")
             },
             ActiveLibraryConfiguration {
