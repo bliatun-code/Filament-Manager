@@ -60,6 +60,7 @@
     "test:settings-ui": "npm run test:ui",
     "qa:performance:browser": "node ./scripts/ui-browser-performance-probe.mjs",
     "qa:performance": "node ./node_modules/tsx/dist/cli.mjs ./scripts/ui-performance-probe.ts",
+    "qa:usability:analyze": "node ./scripts/analyze-usability-results.mjs",
     "verify:macos-local": "node ./scripts/verify-macos-local.mjs",
     "verify:macos-release": "node ./scripts/verify-macos-release.mjs",
     "smoke:macos-dmg": "node ./scripts/smoke-macos-dmg.mjs",

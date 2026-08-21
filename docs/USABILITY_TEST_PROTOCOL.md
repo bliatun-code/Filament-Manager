@@ -57,7 +57,7 @@ Store results outside the repository as a JSON array. Each participant must have
 Analyze a completed study with:
 
 ```sh
-node scripts/analyze-usability-results.mjs /absolute/path/to/results.json
+npm run qa:usability:analyze -- /absolute/path/to/results.json
 ```
 
 The command exits non-zero when the dataset is incomplete or either blocking threshold is missed. Keep the raw participant file private; attach only the aggregate command output to the release evidence.
