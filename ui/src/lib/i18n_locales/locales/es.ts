@@ -1132,6 +1132,15 @@ export const esDictionary: DictionaryNode = {
   statistics: {
     desktopOnly:
       "Las estadísticas están disponibles en la aplicación de escritorio.",
+    periodTitle: "Periodo del informe",
+    periodCustom: "Intervalo personalizado",
+    periodStart: "Fecha de inicio",
+    periodEnd: "Fecha de fin",
+    periodApply: "Aplicar intervalo",
+    periodDateRequired: "Selecciona una fecha de inicio y una fecha de fin.",
+    periodDateInvalid: "Introduce fechas de calendario válidas.",
+    periodOrderInvalid: "La fecha de fin debe ser igual o posterior a la fecha de inicio.",
+    periodDetailsUnavailable: "Los totales y los detalles de filamento o impresora del periodo seleccionado no están disponibles en esta instantánea del host. Actualiza o vuelve a conectar el host.",
     clientReadOnlyCached:
       "El host no está disponible. Se muestran las últimas estadísticas guardadas.",
     clientReadOnlyOffline:

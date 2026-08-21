@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyStatisticsPeriodReportToOverview,
+  applyStatisticsPeriodReportToPrinters,
   deriveInventoryOverviewFromRows,
   filterConsumptionRows,
   listConsumptionMaterialOptions,
@@ -10,7 +12,13 @@ import {
   normalizeSpoolWithMasterRow,
   type NormalizedSpoolWithMasterRow,
 } from "./spool_row_normalization";
-import type { FilamentConsumptionRow, SpoolWithMasterRow } from "./tauri_client";
+import type {
+  FilamentConsumptionRow,
+  InventoryOverview,
+  PrinterOverviewRow,
+  SpoolWithMasterRow,
+  StatisticsPeriodReport,
+} from "./tauri_client";
 
 function spoolRow({
   status,
@@ -44,6 +52,44 @@ function consumptionRow(
     ownership_type: "OWNED",
     owner_name: null,
     ...overrides,
+  };
+}
+
+function report(overrides: Partial<StatisticsPeriodReport> = {}): StatisticsPeriodReport {
+  return {
+    period: {
+      start_at_utc: "2026-08-01T00:00:00Z",
+      end_at_utc: "2026-09-01T00:00:00Z",
+    },
+    total_used_g: 700,
+    owned_used_g: 500,
+    borrowed_in_used_g: 200,
+    total_jobs: 7,
+    successful_jobs: 6,
+    failed_jobs: 1,
+    printer_usage: [],
+    filament_consumption: [],
+    ...overrides,
+  };
+}
+
+function printer(id: string, totalUsed: number): PrinterOverviewRow {
+  return {
+    printer: {
+      id,
+      name: id,
+      model: "P1S",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+    usage: {
+      total_jobs: 99,
+      successful_jobs: 90,
+      failed_jobs: 9,
+      total_used_g: totalUsed,
+      last_job_at: "2026-07-01T00:00:00Z",
+    },
+    slots: [],
   };
 }
 
@@ -113,4 +159,72 @@ test("consumption filters build stable options and apply search, ownership and s
     }).map((row) => row.color_name),
     ["Blue", "Orange"],
   );
+});
+
+test("selected-period printer usage replaces all-time usage without changing printer state", () => {
+  const printers = [printer("printer-1", 9_000), printer("printer-2", 8_000)];
+  const selected = applyStatisticsPeriodReportToPrinters(
+    printers,
+    report({
+      printer_usage: [
+        {
+          printer_id: "printer-1",
+          total_jobs: 7,
+          successful_jobs: 6,
+          failed_jobs: 1,
+          total_used_g: 700,
+          last_job_at: "2026-08-20T12:00:00Z",
+        },
+      ],
+    }),
+  );
+
+  assert.deepEqual(selected[0]?.usage, {
+    total_jobs: 7,
+    successful_jobs: 6,
+    failed_jobs: 1,
+    total_used_g: 700,
+    last_job_at: "2026-08-20T12:00:00Z",
+  });
+  assert.deepEqual(selected[1]?.usage, {
+    total_jobs: 0,
+    successful_jobs: 0,
+    failed_jobs: 0,
+    total_used_g: 0,
+    last_job_at: null,
+  });
+  assert.equal(selected[0]?.printer, printers[0]?.printer);
+  assert.equal(selected[0]?.slots, printers[0]?.slots);
+  assert.equal(printers[0]?.usage.total_used_g, 9_000);
+});
+
+test("selected-period ownership usage overlays current inventory without changing forecast history", () => {
+  const current: InventoryOverview = {
+    total_spools: 8,
+    total_owned_spools: 6,
+    total_borrowed_in_spools: 2,
+    in_use: 3,
+    owned_in_use: 2,
+    borrowed_in_in_use: 1,
+    low_stock: 2,
+    owned_low_stock: 1,
+    borrowed_in_low_stock: 1,
+    total_consumption_30d: 321,
+    owned_consumption_30d: 300,
+    borrowed_in_consumption_30d: 21,
+    consumption_12m_available: true,
+    total_consumption_12m: 4_000,
+    consumption_12m: [{ month: "2026-08", used_grams: 321 }],
+  };
+
+  const selected = applyStatisticsPeriodReportToOverview(current, report());
+
+  assert.equal(selected.total_spools, 8);
+  assert.equal(selected.in_use, 3);
+  assert.equal(selected.total_consumption_30d, 700);
+  assert.equal(selected.owned_consumption_30d, 500);
+  assert.equal(selected.borrowed_in_consumption_30d, 200);
+  assert.equal(selected.total_consumption_12m, 4_000);
+  assert.equal(selected.consumption_12m, current.consumption_12m);
+  assert.equal(current.owned_consumption_30d, 300);
 });

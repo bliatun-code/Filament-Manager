@@ -24,9 +24,11 @@ export {
 };
 import type {
   FilamentConsumptionRow,
+  InventoryOverview,
   LoanUsageByPersonRow,
   PrinterAmsSlotRow,
   PrinterOverviewRow,
+  StatisticsPeriodReport,
 } from "./tauri_client";
 import type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
@@ -221,6 +223,40 @@ export function deriveStatisticsTotals(printers: PrinterOverviewRow[]): Statisti
     activeSlots += summarizeEffectivePrinterSlots(row.slots).loadedSlots;
   }
   return { totalUsed, totalJobs, failedJobs, activeSlots };
+}
+
+export function applyStatisticsPeriodReportToPrinters(
+  printers: PrinterOverviewRow[],
+  report: StatisticsPeriodReport,
+): PrinterOverviewRow[] {
+  const usageByPrinterId = new Map(
+    report.printer_usage.map((usage) => [usage.printer_id, usage]),
+  );
+  return printers.map((row) => {
+    const usage = usageByPrinterId.get(row.printer.id);
+    return {
+      ...row,
+      usage: {
+        total_jobs: usage?.total_jobs ?? 0,
+        successful_jobs: usage?.successful_jobs ?? 0,
+        failed_jobs: usage?.failed_jobs ?? 0,
+        total_used_g: usage?.total_used_g ?? 0,
+        last_job_at: usage?.last_job_at ?? null,
+      },
+    };
+  });
+}
+
+export function applyStatisticsPeriodReportToOverview(
+  overview: InventoryOverview,
+  report: StatisticsPeriodReport,
+): InventoryOverview {
+  return {
+    ...overview,
+    total_consumption_30d: report.total_used_g,
+    owned_consumption_30d: report.owned_used_g,
+    borrowed_in_consumption_30d: report.borrowed_in_used_g,
+  };
 }
 
 export function deriveInventoryOverviewFromRows(

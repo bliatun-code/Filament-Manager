@@ -1088,6 +1088,15 @@ export const nbDictionary: DictionaryNode = {
     },
     statistics: {
       desktopOnly: "Statistikk er kun tilgjengelig i desktop-appen.",
+      periodTitle: "Rapporteringsperiode",
+      periodCustom: "Egendefinert intervall",
+      periodStart: "Startdato",
+      periodEnd: "Sluttdato",
+      periodApply: "Bruk intervall",
+      periodDateRequired: "Velg både start- og sluttdato.",
+      periodDateInvalid: "Oppgi gyldige kalenderdatoer.",
+      periodOrderInvalid: "Sluttdato må være lik eller senere enn startdato.",
+      periodDetailsUnavailable: "Totaler og filament- eller printerdetaljer for valgt periode er utilgjengelige i dette vertsøyeblikksbildet. Oppdater eller koble til verten på nytt.",
       clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede statistikkdata.",
       clientReadOnlyOffline:
         "Verten er utilgjengelig, og ingen bufrede statistikkdata er tilgjengelige ennå.",

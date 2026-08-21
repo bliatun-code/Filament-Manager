@@ -1093,6 +1093,15 @@ export const frDictionary: DictionaryNode = {
     failedJobs: "Tâches échouées",
     failureRate: "Taux d’échec",
     desktopOnly: "Les statistiques sont disponibles dans l’application de bureau.",
+    periodTitle: "Période du rapport",
+    periodCustom: "Plage personnalisée",
+    periodStart: "Date de début",
+    periodEnd: "Date de fin",
+    periodApply: "Appliquer la plage",
+    periodDateRequired: "Choisissez une date de début et une date de fin.",
+    periodDateInvalid: "Saisissez des dates calendaires valides.",
+    periodOrderInvalid: "La date de fin doit être identique ou postérieure à la date de début.",
+    periodDetailsUnavailable: "Les totaux et les détails de filament ou d’imprimante pour la période sélectionnée ne sont pas disponibles dans cet instantané de l’hôte. Mettez à jour ou reconnectez l’hôte.",
     clientReadOnlyCached:
       "L’hôte est indisponible. Affichage du dernier instantané des statistiques.",
     clientReadOnlyOffline:

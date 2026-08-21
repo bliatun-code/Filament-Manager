@@ -7,18 +7,23 @@ import type {
   InventoryOverview,
   LoanUsageByPersonRow,
   PrinterOverviewRow,
+  StatisticsPeriod,
+  StatisticsPeriodReport,
 } from "../lib/tauri_client";
 import type {
   NormalizedLoanDetailsRow,
   NormalizedSpoolWithMasterRow,
+  StatisticsPeriodDataStatus,
 } from "../lib/statistics_data_source";
 
 type Translate = I18nContextValue["t"];
 
 export function useStatisticsPageData({
+  period,
   tauri,
   t,
 }: {
+  period: StatisticsPeriod;
   tauri: boolean;
   t: Translate;
 }) {
@@ -48,6 +53,9 @@ export function useStatisticsPageData({
     "OFFLINE",
   );
   const [clientStatisticsUpdatedAt, setClientStatisticsUpdatedAt] = useState<string | null>(null);
+  const [periodReport, setPeriodReport] = useState<StatisticsPeriodReport | null>(null);
+  const [periodStatus, setPeriodStatus] =
+    useState<StatisticsPeriodDataStatus>("UNAVAILABLE");
 
   const loadStatistics = useCallback(
     async () => {
@@ -57,8 +65,13 @@ export function useStatisticsPageData({
       const requestId = loadRequestRef.current + 1;
       loadRequestRef.current = requestId;
       beginRefresh();
+      setPeriodReport(null);
+      setPeriodStatus("UNAVAILABLE");
       try {
-        const result = await loadStatisticsPageData();
+        const result = await loadStatisticsPageData({
+          start_at_utc: period.start_at_utc,
+          end_at_utc: period.end_at_utc,
+        });
         if (requestId !== loadRequestRef.current) {
           return;
         }
@@ -76,6 +89,8 @@ export function useStatisticsPageData({
         setLoanDetails(result.loanDetails);
         setLoanUsage(result.loanUsage);
         setInboundLoanUsage(result.inboundLoanUsage);
+        setPeriodReport(result.periodReport);
+        setPeriodStatus(result.periodStatus);
         setClientStatisticsUpdatedAt(result.updatedAt);
         setClientStatsSource(result.source);
         completeRefresh();
@@ -86,7 +101,15 @@ export function useStatisticsPageData({
         }
       }
     },
-    [beginRefresh, completeRefresh, failRefresh, t, tauri],
+    [
+      beginRefresh,
+      completeRefresh,
+      failRefresh,
+      period.end_at_utc,
+      period.start_at_utc,
+      t,
+      tauri,
+    ],
   );
 
   useEffect(() => {
@@ -107,6 +130,8 @@ export function useStatisticsPageData({
     loanUsage,
     overview,
     overviewConsumptionRows,
+    periodReport,
+    periodStatus,
     printers,
     refreshing,
     reloadData: loadStatistics,

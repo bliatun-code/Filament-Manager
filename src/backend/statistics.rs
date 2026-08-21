@@ -1,7 +1,8 @@
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime, UtcOffset};
 
 use super::inventory_domain::LOW_STOCK_THRESHOLD_G;
 use super::spool_defaults::{
@@ -59,6 +60,102 @@ pub struct FilamentConsumptionRow {
     pub jobs: i64,
 }
 
+/// A reporting interval expressed as a half-open UTC range: `[start_at_utc, end_at_utc)`.
+/// The UI converts inclusive local calendar dates to these exact UTC boundaries before querying.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StatisticsPeriod {
+    pub start_at_utc: String,
+    pub end_at_utc: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct StatisticsPeriodPrinterUsageRow {
+    pub printer_id: String,
+    pub total_jobs: i64,
+    pub successful_jobs: i64,
+    pub failed_jobs: i64,
+    pub total_used_g: i64,
+    pub last_job_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct StatisticsPeriodReport {
+    pub period: StatisticsPeriod,
+    pub total_used_g: i64,
+    pub owned_used_g: i64,
+    pub borrowed_in_used_g: i64,
+    pub total_jobs: i64,
+    pub successful_jobs: i64,
+    pub failed_jobs: i64,
+    pub printer_usage: Vec<StatisticsPeriodPrinterUsageRow>,
+    pub filament_consumption: Vec<FilamentConsumptionRow>,
+}
+
+#[derive(Debug)]
+pub enum StatisticsPeriodError {
+    InvalidPeriod(String),
+    Database(rusqlite::Error),
+}
+
+impl fmt::Display for StatisticsPeriodError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidPeriod(message) => formatter.write_str(message),
+            Self::Database(error) => write!(formatter, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for StatisticsPeriodError {}
+
+impl From<rusqlite::Error> for StatisticsPeriodError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Database(error)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ValidatedStatisticsPeriod {
+    start_unix_seconds: i64,
+    end_unix_seconds: i64,
+}
+
+fn validate_statistics_period(
+    period: &StatisticsPeriod,
+) -> Result<ValidatedStatisticsPeriod, StatisticsPeriodError> {
+    let parse_boundary = |label: &str, value: &str| {
+        let trimmed = value.trim();
+        let parsed = OffsetDateTime::parse(trimmed, &Rfc3339).map_err(|_| {
+            StatisticsPeriodError::InvalidPeriod(format!(
+                "Statistics period {label} must be a valid RFC 3339 timestamp."
+            ))
+        })?;
+        if parsed.offset() != UtcOffset::UTC {
+            return Err(StatisticsPeriodError::InvalidPeriod(format!(
+                "Statistics period {label} must use the UTC offset."
+            )));
+        }
+        if parsed.nanosecond() != 0 {
+            return Err(StatisticsPeriodError::InvalidPeriod(format!(
+                "Statistics period {label} must use whole-second precision."
+            )));
+        }
+        Ok(parsed.unix_timestamp())
+    };
+
+    let start_unix_seconds = parse_boundary("start", &period.start_at_utc)?;
+    let end_unix_seconds = parse_boundary("end", &period.end_at_utc)?;
+    if end_unix_seconds <= start_unix_seconds {
+        return Err(StatisticsPeriodError::InvalidPeriod(
+            "Statistics period end must be after start.".to_string(),
+        ));
+    }
+    Ok(ValidatedStatisticsPeriod {
+        start_unix_seconds,
+        end_unix_seconds,
+    })
+}
+
 pub struct StatisticsEngine {
     conn: Connection,
 }
@@ -113,17 +210,163 @@ impl StatisticsEngine {
         limit: i64,
         printer_id: Option<&str>,
     ) -> Result<Vec<FilamentConsumptionRow>, rusqlite::Error> {
+        self.filament_consumption_with_bounds(limit, printer_id, None)
+    }
+
+    pub fn period_report(
+        &self,
+        period: &StatisticsPeriod,
+    ) -> Result<StatisticsPeriodReport, StatisticsPeriodError> {
+        let bounds = validate_statistics_period(period)?;
+        let (
+            total_used_g,
+            owned_used_g,
+            borrowed_in_used_g,
+            total_jobs,
+            successful_jobs,
+            failed_jobs,
+        ): (i64, i64, i64, i64, i64, i64) = self.conn.query_row(
+            &format!(
+                "WITH usage_rows AS (
+                    SELECT 'manual:' || p.id AS usage_job_id,
+                           p.printer_id,
+                           p.spool_id,
+                           p.started_at AS used_at,
+                           p.material_used_g AS used_g,
+                           p.success
+                    FROM print_jobs p
+                    UNION ALL
+                    SELECT 'live:' || u.id AS usage_job_id,
+                           u.printer_id,
+                           us.spool_id,
+                           COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
+                           us.used_g,
+                           u.success
+                    FROM printer_live_usage_session_spools us
+                    JOIN printer_live_usage_sessions u ON u.id = us.session_id
+                    WHERE us.used_g > 0
+                 )
+                 SELECT
+                    COALESCE(SUM(u.used_g), 0) AS total_used_g,
+                    COALESCE(SUM(CASE
+                        WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'OWNED' OR s.id IS NULL
+                        THEN u.used_g ELSE 0
+                    END), 0) AS owned_used_g,
+                    COALESCE(SUM(CASE
+                        WHEN {SPOOL_OWNERSHIP_SELECT_SQL_S} = 'BORROWED_IN'
+                        THEN u.used_g ELSE 0
+                    END), 0) AS borrowed_in_used_g,
+                    COUNT(DISTINCT u.usage_job_id) AS total_jobs,
+                    COUNT(DISTINCT CASE WHEN u.success = 1 THEN u.usage_job_id END)
+                        AS successful_jobs,
+                    COUNT(DISTINCT CASE WHEN u.success = 0 THEN u.usage_job_id END)
+                        AS failed_jobs
+                 FROM usage_rows u
+                 LEFT JOIN filament_spools s ON s.id = u.spool_id
+                 WHERE unixepoch(u.used_at) >= ?1
+                   AND unixepoch(u.used_at) < ?2"
+            ),
+            params![bounds.start_unix_seconds, bounds.end_unix_seconds],
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                    row.get(5)?,
+                ))
+            },
+        )?;
+
+        let mut printer_stmt = self.conn.prepare(
+            "WITH usage_rows AS (
+                SELECT 'manual:' || p.id AS usage_job_id,
+                       p.printer_id,
+                       p.started_at AS used_at,
+                       p.material_used_g AS used_g,
+                       p.success
+                FROM print_jobs p
+                UNION ALL
+                SELECT 'live:' || u.id AS usage_job_id,
+                       u.printer_id,
+                       COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
+                       us.used_g,
+                       u.success
+                FROM printer_live_usage_session_spools us
+                JOIN printer_live_usage_sessions u ON u.id = us.session_id
+                WHERE us.used_g > 0
+             )
+             SELECT
+                pr.id,
+                COUNT(DISTINCT u.usage_job_id) AS total_jobs,
+                COUNT(DISTINCT CASE WHEN u.success = 1 THEN u.usage_job_id END)
+                    AS successful_jobs,
+                COUNT(DISTINCT CASE WHEN u.success = 0 THEN u.usage_job_id END)
+                    AS failed_jobs,
+                COALESCE(SUM(u.used_g), 0) AS total_used_g,
+                MAX(datetime(u.used_at)) AS last_job_at
+             FROM printers pr
+             LEFT JOIN usage_rows u
+               ON u.printer_id = pr.id
+              AND unixepoch(u.used_at) >= ?1
+              AND unixepoch(u.used_at) < ?2
+             GROUP BY pr.id
+             ORDER BY pr.created_at ASC, pr.name ASC",
+        )?;
+        let printer_usage = printer_stmt
+            .query_map(
+                params![bounds.start_unix_seconds, bounds.end_unix_seconds],
+                |row| {
+                    Ok(StatisticsPeriodPrinterUsageRow {
+                        printer_id: row.get(0)?,
+                        total_jobs: row.get(1)?,
+                        successful_jobs: row.get(2)?,
+                        failed_jobs: row.get(3)?,
+                        total_used_g: row.get(4)?,
+                        last_job_at: row.get(5)?,
+                    })
+                },
+            )?
+            .collect::<Result<Vec<_>, _>>()?;
+        let filament_consumption =
+            self.filament_consumption_with_bounds(2_000, None, Some(bounds))?;
+
+        Ok(StatisticsPeriodReport {
+            period: StatisticsPeriod {
+                start_at_utc: period.start_at_utc.trim().to_string(),
+                end_at_utc: period.end_at_utc.trim().to_string(),
+            },
+            total_used_g,
+            owned_used_g,
+            borrowed_in_used_g,
+            total_jobs,
+            successful_jobs,
+            failed_jobs,
+            printer_usage,
+            filament_consumption,
+        })
+    }
+
+    fn filament_consumption_with_bounds(
+        &self,
+        limit: i64,
+        printer_id: Option<&str>,
+        period: Option<ValidatedStatisticsPeriod>,
+    ) -> Result<Vec<FilamentConsumptionRow>, rusqlite::Error> {
         let mut stmt = self.conn.prepare(&format!(
             "WITH usage_rows AS (
-                SELECT p.id AS usage_job_id,
+                SELECT 'manual:' || p.id AS usage_job_id,
                        p.printer_id,
                        p.spool_id,
+                       p.started_at AS used_at,
                        p.material_used_g AS used_g
                 FROM print_jobs p
                 UNION ALL
-                SELECT u.id AS usage_job_id,
+                SELECT 'live:' || u.id AS usage_job_id,
                        u.printer_id,
                        us.spool_id,
+                       COALESCE(u.finished_at, u.last_seen_at, u.started_at) AS used_at,
                        us.used_g
                 FROM printer_live_usage_session_spools us
                 JOIN printer_live_usage_sessions u ON u.id = us.session_id
@@ -150,6 +393,8 @@ impl StatisticsEngine {
              LEFT JOIN filament_spools s ON u.spool_id = s.id
              LEFT JOIN filament_master_list m ON s.master_id = m.id
              WHERE (?1 IS NULL OR u.printer_id = ?1)
+               AND (?2 IS NULL OR unixepoch(u.used_at) >= ?2)
+               AND (?3 IS NULL OR unixepoch(u.used_at) < ?3)
              GROUP BY
                u.printer_id,
                pr.name,
@@ -166,24 +411,32 @@ impl StatisticsEngine {
                END
              HAVING COALESCE(SUM(u.used_g), 0) > 0
              ORDER BY used_grams DESC
-             LIMIT ?2",
+             LIMIT ?4",
         ))?;
 
-        let rows = stmt.query_map(params![printer_id, limit], |row| {
-            Ok(FilamentConsumptionRow {
-                printer_id: row.get(0)?,
-                printer_name: row.get(1)?,
-                material: row.get(2)?,
-                filament_name: row.get(3)?,
-                color_name: row.get(4)?,
-                hex_color: row.get(5)?,
-                vendor: row.get(6)?,
-                ownership_type: row.get(7)?,
-                owner_name: row.get(8)?,
-                used_grams: row.get(9)?,
-                jobs: row.get(10)?,
-            })
-        })?;
+        let rows = stmt.query_map(
+            params![
+                printer_id,
+                period.map(|value| value.start_unix_seconds),
+                period.map(|value| value.end_unix_seconds),
+                limit
+            ],
+            |row| {
+                Ok(FilamentConsumptionRow {
+                    printer_id: row.get(0)?,
+                    printer_name: row.get(1)?,
+                    material: row.get(2)?,
+                    filament_name: row.get(3)?,
+                    color_name: row.get(4)?,
+                    hex_color: row.get(5)?,
+                    vendor: row.get(6)?,
+                    ownership_type: row.get(7)?,
+                    owner_name: row.get(8)?,
+                    used_grams: row.get(9)?,
+                    jobs: row.get(10)?,
+                })
+            },
+        )?;
 
         let mut results = Vec::new();
         for row in rows {
@@ -386,7 +639,7 @@ fn monthly_consumption_12m_from_connection(
 
 #[cfg(test)]
 mod tests {
-    use super::{InventoryOverview, StatisticsEngine};
+    use super::{InventoryOverview, StatisticsEngine, StatisticsPeriod, StatisticsPeriodError};
     use crate::backend::database_printer_usage_sessions::{
         LiveUsageDeltaInput, LiveUsageSessionInput,
     };
@@ -1413,6 +1666,206 @@ mod tests {
             panic!(
                 "live_usage_can_defer_first_warmup_delta_until_session_has_a_baseline failed: {message}"
             );
+        }
+    }
+
+    #[test]
+    fn period_report_uses_inclusive_start_and_exclusive_end_for_all_breakdowns() {
+        let db_path = temp_db_path("period-half-open-boundaries");
+
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let master_id = db
+                .upsert_manual_master(ManualMasterInput {
+                    material: "PLA",
+                    filament_name: "Basic",
+                    color_name: "Red",
+                    hex_color: Some("#ff0000"),
+                    product_url: None,
+                    vendor: Some("Generic"),
+                    default_weight: Some(1000),
+                })
+                .map_err(|error| error.to_string())?;
+            db.connection()
+                .execute(
+                    "INSERT INTO filament_spools (
+                        id, master_id, status, ownership_type,
+                        initial_weight_g, current_weight_g, remaining_g
+                     ) VALUES
+                        ('period_owned', ?1, 'IN_USE', 'OWNED', 1000, 800, 800),
+                        ('period_borrowed', ?1, 'IN_USE', 'BORROWED_IN', 1000, 800, 800)",
+                    params![master_id],
+                )
+                .map_err(|error| error.to_string())?;
+            db.upsert_printer_with_ams("period_printer", "P1S", "Period printer", 1, 4)
+                .map_err(|error| error.to_string())?;
+            db.upsert_printer_with_ams("idle_printer", "A1", "Idle printer", 1, 4)
+                .map_err(|error| error.to_string())?;
+
+            for (name, spool_id, grams, success, started_at) in [
+                (
+                    "Before start",
+                    "period_owned",
+                    10,
+                    true,
+                    "2026-07-31T23:59:59Z",
+                ),
+                ("At start", "period_owned", 20, true, "2026-08-01T00:00:00Z"),
+                (
+                    "Before end",
+                    "period_borrowed",
+                    30,
+                    false,
+                    "2026-08-01T23:59:59Z",
+                ),
+                ("At end", "period_owned", 40, true, "2026-08-02T00:00:00Z"),
+            ] {
+                db.insert_print_job("period_printer", spool_id, Some(name), grams, success)
+                    .map_err(|error| error.to_string())?;
+                db.connection()
+                    .execute(
+                        "UPDATE print_jobs SET started_at = ?1 WHERE job_name = ?2",
+                        params![started_at, name],
+                    )
+                    .map_err(|error| error.to_string())?;
+            }
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "period_printer",
+                session_key: "period:inside-live",
+                job_name: Some("Inside live"),
+                print_type: Some("cloud"),
+                spool_id: "period_owned",
+                used_grams: 50,
+                observed_at: Some("2026-08-01T12:00:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.finish_live_usage_session(
+                "period_printer",
+                "period:inside-live",
+                Some("2026-08-01T12:30:00Z"),
+                true,
+            )
+            .map_err(|error| error.to_string())?;
+
+            db.record_live_usage_delta(LiveUsageDeltaInput {
+                printer_id: "period_printer",
+                session_key: "period:end-live",
+                job_name: Some("End live"),
+                print_type: Some("cloud"),
+                spool_id: "period_borrowed",
+                used_grams: 60,
+                observed_at: Some("2026-08-02T00:00:00Z"),
+                defer_initial_delta: false,
+            })
+            .map_err(|error| error.to_string())?;
+            db.finish_live_usage_session(
+                "period_printer",
+                "period:end-live",
+                Some("2026-08-02T00:00:00Z"),
+                true,
+            )
+            .map_err(|error| error.to_string())?;
+
+            let report = StatisticsEngine::open(&db_path)
+                .map_err(|error| error.to_string())?
+                .period_report(&StatisticsPeriod {
+                    start_at_utc: "2026-08-01T00:00:00Z".to_string(),
+                    end_at_utc: "2026-08-02T00:00:00Z".to_string(),
+                })
+                .map_err(|error| error.to_string())?;
+
+            assert_eq!(report.total_used_g, 100);
+            assert_eq!(report.owned_used_g, 70);
+            assert_eq!(report.borrowed_in_used_g, 30);
+            assert_eq!(report.total_jobs, 3);
+            assert_eq!(report.successful_jobs, 2);
+            assert_eq!(report.failed_jobs, 1);
+
+            let printer = report
+                .printer_usage
+                .iter()
+                .find(|row| row.printer_id == "period_printer")
+                .ok_or_else(|| "missing selected-period printer row".to_string())?;
+            assert_eq!(printer.total_used_g, report.total_used_g);
+            assert_eq!(printer.total_jobs, report.total_jobs);
+            assert_eq!(printer.successful_jobs, report.successful_jobs);
+            assert_eq!(printer.failed_jobs, report.failed_jobs);
+            let idle = report
+                .printer_usage
+                .iter()
+                .find(|row| row.printer_id == "idle_printer")
+                .ok_or_else(|| "missing idle configured printer row".to_string())?;
+            assert_eq!(idle.total_used_g, 0);
+            assert_eq!(idle.total_jobs, 0);
+
+            assert_eq!(
+                report
+                    .filament_consumption
+                    .iter()
+                    .map(|row| row.used_grams)
+                    .sum::<i64>(),
+                report.total_used_g
+            );
+            let owned = report
+                .filament_consumption
+                .iter()
+                .find(|row| row.ownership_type == "OWNED")
+                .ok_or_else(|| "missing owned period breakdown".to_string())?;
+            assert_eq!((owned.used_grams, owned.jobs), (70, 2));
+            let borrowed = report
+                .filament_consumption
+                .iter()
+                .find(|row| row.ownership_type == "BORROWED_IN")
+                .ok_or_else(|| "missing borrowed period breakdown".to_string())?;
+            assert_eq!((borrowed.used_grams, borrowed.jobs), (30, 1));
+
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!(
+                "period_report_uses_inclusive_start_and_exclusive_end_for_all_breakdowns failed: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn period_report_rejects_non_utc_fractional_or_reversed_boundaries() {
+        let db_path = temp_db_path("period-validation");
+        let result = (|| -> Result<(), String> {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            let stats = StatisticsEngine::open(&db_path).map_err(|error| error.to_string())?;
+
+            for period in [
+                StatisticsPeriod {
+                    start_at_utc: "2026-08-01T00:00:00+02:00".to_string(),
+                    end_at_utc: "2026-08-02T00:00:00Z".to_string(),
+                },
+                StatisticsPeriod {
+                    start_at_utc: "2026-08-01T00:00:00.001Z".to_string(),
+                    end_at_utc: "2026-08-02T00:00:00Z".to_string(),
+                },
+                StatisticsPeriod {
+                    start_at_utc: "2026-08-02T00:00:00Z".to_string(),
+                    end_at_utc: "2026-08-02T00:00:00Z".to_string(),
+                },
+            ] {
+                assert!(matches!(
+                    stats.period_report(&period),
+                    Err(StatisticsPeriodError::InvalidPeriod(_))
+                ));
+            }
+            Ok(())
+        })();
+
+        let _ = std::fs::remove_file(&db_path);
+        if let Err(message) = result {
+            panic!("period_report_rejects_invalid_boundaries failed: {message}");
         }
     }
 }

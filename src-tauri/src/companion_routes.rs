@@ -52,6 +52,10 @@ fn build_router_with_security_config(
             get(handle_library_filament_consumption),
         )
         .route(
+            "/library/statistics/period-report",
+            get(handle_library_statistics_period_report),
+        )
+        .route(
             "/library/catalog/masters",
             get(handle_library_catalog_masters),
         )

@@ -27,6 +27,8 @@ import {
   readConsumptionPopupPrefs,
   sortFailedPrinterRows,
   sortLoggedPrinterRows,
+  applyStatisticsPeriodReportToOverview,
+  applyStatisticsPeriodReportToPrinters,
   deriveInventoryOverviewFromRows,
   type BorrowerFilamentUsageRow,
   type BorrowerPopupPrefs,
@@ -40,11 +42,17 @@ import {
   deriveStatisticsTotals,
 } from "../lib/statistics_model";
 import {
-  loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
   type NormalizedLoanDetailsRow,
 } from "../lib/statistics_data_source";
-import { resolveClientHostTarget } from "../lib/host_write_target";
+import {
+  applyCustomStatisticsPeriod,
+  createStatisticsPeriodPickerState,
+  formatStatisticsPeriodRange,
+  openCustomStatisticsPeriod,
+  selectStatisticsPeriodPreset,
+  updateCustomStatisticsPeriod,
+} from "../lib/statistics_period_model";
 import { useResolvedTheme } from "../lib/theme_mode";
 import {
   isTauri,
@@ -63,6 +71,7 @@ import {
   StatisticsConsumptionModal,
 } from "./statistics_usage_modals";
 import { StatisticsForecastPanel } from "./statistics_forecast_panel";
+import { StatisticsPeriodPicker } from "./statistics_period_picker";
 import { useStatisticsPageData } from "./use_statistics_page_data";
 
 function loanPartyName(row: NormalizedLoanDetailsRow): string {
@@ -73,10 +82,11 @@ export default function StatisticsPage() {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
+  const [periodPickerState, setPeriodPickerState] = useState(() =>
+    createStatisticsPeriodPickerState(),
+  );
   const {
-    clientHostBaseUrl,
     clientHostDeviceName,
-    clientLibraryId,
     clientReadOnly,
     clientStatisticsUpdatedAt,
     clientStatsSource,
@@ -86,12 +96,13 @@ export default function StatisticsPage() {
     loanDetails,
     loanUsage,
     overview,
-    overviewConsumptionRows,
+    periodReport,
+    periodStatus,
     printers,
     refreshing,
     reloadData,
     spoolRows,
-  } = useStatisticsPageData({ tauri, t });
+  } = useStatisticsPageData({ period: periodPickerState.period, tauri, t });
   const [showConsumptionModal, setShowConsumptionModal] = useState(false);
   const [consumptionModalTitle, setConsumptionModalTitle] = useState("");
   const [consumptionRows, setConsumptionRows] = useState<FilamentConsumptionRow[]>([]);
@@ -165,13 +176,37 @@ export default function StatisticsPage() {
     }
   }, [borrowerPrefs]);
 
-  const totals = useMemo(() => deriveStatisticsTotals(printers), [printers]);
+  const periodRangeLabel = useMemo(
+    () => formatStatisticsPeriodRange(periodPickerState, locale),
+    [locale, periodPickerState],
+  );
+  const currentTotals = useMemo(() => deriveStatisticsTotals(printers), [printers]);
+  const periodPrinters = useMemo(
+    () =>
+      periodReport ? applyStatisticsPeriodReportToPrinters(printers, periodReport) : [],
+    [periodReport, printers],
+  );
+  const totals = useMemo(
+    () =>
+      periodReport
+        ? {
+            totalUsed: periodReport.total_used_g,
+            totalJobs: periodReport.total_jobs,
+            failedJobs: periodReport.failed_jobs,
+          }
+        : null,
+    [periodReport],
+  );
   const ownershipOverview = useMemo(() => {
-    if (spoolRows.length > 0 || overviewConsumptionRows.length > 0) {
-      return deriveInventoryOverviewFromRows(spoolRows, overviewConsumptionRows);
+    const currentOverview =
+      spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : overview;
+    if (!currentOverview) {
+      return null;
     }
-    return overview;
-  }, [overview, overviewConsumptionRows, spoolRows]);
+    return periodReport
+      ? applyStatisticsPeriodReportToOverview(currentOverview, periodReport)
+      : currentOverview;
+  }, [overview, periodReport, spoolRows]);
   const consumptionForecast = useMemo(
     () =>
       buildConsumptionForecast({
@@ -179,63 +214,43 @@ export default function StatisticsPage() {
           clientStatisticsUpdatedAt?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ??
           new Date().toISOString().slice(0, 10),
         ownedConsumption30d:
-          overview?.owned_consumption_30d ??
-          ownershipOverview?.owned_consumption_30d ??
-          0,
+          overview?.owned_consumption_30d ?? 0,
         spools: spoolRows,
       }),
-    [clientStatisticsUpdatedAt, overview, ownershipOverview, spoolRows],
+    [clientStatisticsUpdatedAt, overview, spoolRows],
   );
   const openConsumptionModal = useCallback(
-    async (printer?: PrinterOverviewRow) => {
+    (printer?: PrinterOverviewRow) => {
       if (!tauri) {
         return;
       }
-      const title = printer
+      const titleBase = printer
         ? `${t("statistics.consumptionByFilament", "Consumption by filament")} · ${printer.printer.name}`
         : t("statistics.consumptionByFilament", "Consumption by filament");
-      const hostTarget = clientReadOnly
-        ? resolveClientHostTarget({ clientHostBaseUrl, clientLibraryId })
-        : null;
-      if (clientReadOnly) {
-        if (!hostTarget) {
-          setConsumptionModalTitle(title);
-          setShowConsumptionModal(true);
-          setConsumptionLoading(false);
-          setConsumptionRows([]);
-          setConsumptionError(
-            t(
-              "statistics.clientHostBreakdownOnly",
-              "Detailed filament breakdown is currently available on the host device.",
-            ),
-          );
-          return;
-        }
-      }
-      const printerId = printer?.printer.id ?? null;
-      setConsumptionModalTitle(title);
+      setConsumptionModalTitle(`${titleBase} · ${periodRangeLabel}`);
       setShowConsumptionModal(true);
-      setConsumptionLoading(true);
-      setConsumptionError(null);
-      try {
-        const rows = await loadFilamentConsumptionBreakdown({
-          clientReadOnly,
-          clientHostBaseUrl: hostTarget?.baseUrl ?? clientHostBaseUrl,
-          clientLibraryId: hostTarget?.libraryId ?? clientLibraryId,
-          printerId,
-        });
-        setConsumptionRows(rows);
-      } catch (loadError) {
-        console.error(loadError);
+      setConsumptionLoading(false);
+      if (!periodReport) {
         setConsumptionRows([]);
         setConsumptionError(
-          t("statistics.error.loadFilamentBreakdown", "Failed to load filament breakdown."),
+          t(
+            "statistics.periodDetailsUnavailable",
+            "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
+          ),
         );
-      } finally {
-        setConsumptionLoading(false);
+        return;
       }
+      const printerId = printer?.printer.id ?? null;
+      setConsumptionRows(
+        printerId
+          ? periodReport.filament_consumption.filter(
+              (row) => row.printer_id === printerId,
+            )
+          : periodReport.filament_consumption,
+      );
+      setConsumptionError(null);
     },
-    [clientHostBaseUrl, clientLibraryId, clientReadOnly, t, tauri],
+    [periodRangeLabel, periodReport, t, tauri],
   );
 
   const consumptionVendorOptions = useMemo(
@@ -253,7 +268,7 @@ export default function StatisticsPage() {
         return;
       }
       desktopVisualQaActionStartedRef.current = true;
-      void openConsumptionModal();
+      openConsumptionModal();
       return;
     }
 
@@ -386,9 +401,15 @@ export default function StatisticsPage() {
     [activeSlotRows],
   );
 
-  const failedPrinterRows = useMemo(() => sortFailedPrinterRows(printers), [printers]);
+  const failedPrinterRows = useMemo(
+    () => sortFailedPrinterRows(periodPrinters),
+    [periodPrinters],
+  );
 
-  const loggedPrinterRows = useMemo(() => sortLoggedPrinterRows(printers), [printers]);
+  const loggedPrinterRows = useMemo(
+    () => sortLoggedPrinterRows(periodPrinters),
+    [periodPrinters],
+  );
 
   const filteredLoanUsage = useMemo(
     () => filterLoanUsageRows(loanUsage, loanUsageListFilter),
@@ -408,6 +429,32 @@ export default function StatisticsPage() {
           </p>
         </div>
       </div>
+
+      <StatisticsPeriodPicker
+        locale={locale}
+        onApplyCustom={() => {
+          setShowConsumptionModal(false);
+          setMetricModalKind(null);
+          setPeriodPickerState((current) => applyCustomStatisticsPeriod(current));
+        }}
+        onCustomDateChange={(field, value) =>
+          setPeriodPickerState((current) =>
+            updateCustomStatisticsPeriod(current, field, value),
+          )
+        }
+        onOpenCustom={() =>
+          setPeriodPickerState((current) => openCustomStatisticsPeriod(current))
+        }
+        onSelectPreset={(preset) => {
+          setShowConsumptionModal(false);
+          setMetricModalKind(null);
+          setPeriodPickerState((current) =>
+            selectStatisticsPeriodPreset(current, preset),
+          );
+        }}
+        state={periodPickerState}
+        t={t}
+      />
 
       {!tauri ? (
         <FeedbackBanner tone="warning" className="mt-4">
@@ -444,37 +491,41 @@ export default function StatisticsPage() {
           ].join("")}
         </FeedbackBanner>
       ) : null}
+      {!loading && tauri && periodStatus !== "AVAILABLE" ? (
+        <FeedbackBanner tone="warning" className="mt-4">
+          {t(
+            "statistics.periodDetailsUnavailable",
+            "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
+          )}
+        </FeedbackBanner>
+      ) : null}
 
       <div className="content-section grid grid-cols-1 gap-3 min-[720px]:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title={t("statistics.totalConsumption", "Total Consumption")}
-          value={gramsToKgText(totals.totalUsed, locale)}
+          value={totals ? gramsToKgText(totals.totalUsed, locale) : "—"}
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          trend={t("statistics.allTime", "All time")}
+          trend={periodRangeLabel}
           accent="amber"
           actionLabel={t("statistics.viewDetails", "View details")}
           opensDialog
           onClick={() => {
-            void openConsumptionModal();
+            openConsumptionModal();
           }}
         />
         <StatCard
           title={t("statistics.loggedJobs", "Logged Jobs")}
-          value={formatDisplayInteger(totals.totalJobs, locale)}
+          value={totals ? formatDisplayInteger(totals.totalJobs, locale) : "—"}
           subtitle={t("statistics.linkedActivity", "Printer-linked activity")}
-          trend={t(
-            "statistics.printerCount",
-            "{count, plural, one {# printer} other {# printers}}",
-            { count: printers.length },
-          )}
           accent="sky"
-          actionLabel={t("statistics.viewDetails", "View details")}
-          opensDialog
-          onClick={() => setMetricModalKind("LOGGED_JOBS")}
+          trend={periodRangeLabel}
+          actionLabel={periodReport ? t("statistics.viewDetails", "View details") : undefined}
+          opensDialog={periodReport != null}
+          onClick={periodReport ? () => setMetricModalKind("LOGGED_JOBS") : undefined}
         />
         <StatCard
           title={t("statistics.activeAms", "Active loaded slots")}
-          value={formatDisplayInteger(totals.activeSlots, locale)}
+          value={formatDisplayInteger(currentTotals.activeSlots, locale)}
           subtitle={t("statistics.assignedSlots", "Slots with assigned rolls")}
           trend={t("statistics.currentSnapshot", "Current snapshot")}
           accent="emerald"
@@ -484,24 +535,30 @@ export default function StatisticsPage() {
         />
         <StatCard
           title={t("statistics.failedJobs", "Failed Jobs")}
-          value={formatDisplayInteger(totals.failedJobs, locale)}
+          value={totals ? formatDisplayInteger(totals.failedJobs, locale) : "—"}
           subtitle={t("statistics.acrossPrinters", "Across all printers")}
-          trend={formatDisplayPercent(
-            totals.totalJobs > 0
-              ? (totals.failedJobs / totals.totalJobs) * 100
-              : 0,
-            locale,
-          )}
+          trend={
+            totals
+              ? formatDisplayPercent(
+                  totals.totalJobs > 0
+                    ? (totals.failedJobs / totals.totalJobs) * 100
+                    : 0,
+                  locale,
+                )
+              : periodRangeLabel
+          }
           accent="rose"
-          actionLabel={t("statistics.viewDetails", "View details")}
-          opensDialog
-          onClick={() => setMetricModalKind("FAILED_JOBS")}
+          actionLabel={periodReport ? t("statistics.viewDetails", "View details") : undefined}
+          opensDialog={periodReport != null}
+          onClick={periodReport ? () => setMetricModalKind("FAILED_JOBS") : undefined}
         />
       </div>
 
       <StatisticsOwnershipSnapshotPanel
         locale={locale}
         ownershipOverview={ownershipOverview}
+        periodDataAvailable={periodReport != null}
+        periodLabel={periodRangeLabel}
         t={t}
       />
 
@@ -515,9 +572,19 @@ export default function StatisticsPage() {
         loading={loading}
         locale={locale}
         onOpenConsumption={(row) => {
-          void openConsumptionModal(row);
+          openConsumptionModal(row);
         }}
-        printers={printers}
+        periodLabel={periodRangeLabel}
+        periodUnavailableMessage={
+          periodReport
+            ? null
+            : t(
+                "statistics.periodDetailsUnavailable",
+                "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
+              )
+        }
+        printerCount={printers.length}
+        printers={periodPrinters}
         resolvedTheme={resolvedTheme}
         t={t}
       />
@@ -588,6 +655,7 @@ export default function StatisticsPage() {
           metricModalKind={metricModalKind}
           onClose={() => setMetricModalKind(null)}
           resolvedTheme={resolvedTheme}
+          periodLabel={periodRangeLabel}
           setSlotOwnershipFilter={setSlotOwnershipFilter}
           slotOwnershipFilter={slotOwnershipFilter}
           t={t}

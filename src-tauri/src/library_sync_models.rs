@@ -2,7 +2,7 @@ use crate::backend::filament_database::{
     LibraryDomainRevisions, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
     WishlistItemRow,
 };
-use crate::backend::statistics::InventoryOverview;
+use crate::backend::statistics::{InventoryOverview, StatisticsPeriod};
 use crate::optional_update::OptionalUpdate;
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +40,13 @@ pub(crate) struct LibrarySyncFilamentConsumptionInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) limit: Option<i64>,
     pub(crate) printer_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncStatisticsPeriodInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) period: StatisticsPeriod,
 }
 
 #[derive(Deserialize)]

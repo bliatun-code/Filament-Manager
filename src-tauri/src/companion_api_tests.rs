@@ -1502,6 +1502,7 @@ async fn companion_api_library_reads_require_an_active_session() {
             "/api/v1/library/printer-settings",
             "/api/v1/library/loans?limit=10",
             "/api/v1/library/statistics/filament-consumption?limit=10",
+            "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z",
             "/api/v1/library/catalog/masters?limit=10",
             "/api/v1/library/wishlist?limit=10",
         ];
@@ -1585,6 +1586,76 @@ async fn companion_api_library_reads_require_an_active_session() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_library_reads_require_an_active_session failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_statistics_period_report_validates_and_echoes_half_open_contract() {
+    let db_path = temp_db_path("statistics-period-report");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
+
+        let valid = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(valid.status(), StatusCode::OK);
+        assert_no_store(valid.headers());
+        let body = to_bytes(valid.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let report: serde_json::Value =
+            serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            report["period"]["start_at_utc"],
+            "2026-08-01T00:00:00Z"
+        );
+        assert_eq!(
+            report["period"]["end_at_utc"],
+            "2026-08-02T00:00:00Z"
+        );
+        assert_eq!(report["total_used_g"], 0);
+        assert_eq!(report["printer_usage"].as_array().map(Vec::len), Some(1));
+
+        let reversed = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/statistics/period-report?start_at_utc=2026-08-02T00%3A00%3A00Z&end_at_utc=2026-08-01T00%3A00%3A00Z")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(reversed.status(), StatusCode::BAD_REQUEST);
+        let body = to_bytes(reversed.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let error: serde_json::Value =
+            serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+        assert_eq!(error["code"], "common.invalid_request");
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_statistics_period_report_validates_and_echoes_half_open_contract failed: {message}"
+        );
     }
 }
 

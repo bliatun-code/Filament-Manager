@@ -1082,6 +1082,15 @@ export const enDictionary: DictionaryNode = {
     },
     statistics: {
       desktopOnly: "Statistics are available in the desktop app build.",
+      periodTitle: "Reporting period",
+      periodCustom: "Custom range",
+      periodStart: "Start date",
+      periodEnd: "End date",
+      periodApply: "Apply range",
+      periodDateRequired: "Choose both a start and end date.",
+      periodDateInvalid: "Enter valid calendar dates.",
+      periodOrderInvalid: "End date must be on or after start date.",
+      periodDetailsUnavailable: "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
       clientReadOnlyCached: "Host is unavailable. Showing the last cached statistics snapshot.",
       clientReadOnlyOffline:
         "Host is unavailable and no cached statistics snapshot is available yet.",

@@ -3,7 +3,9 @@ use crate::backend::filament_database::{
     FilamentMasterCatalogRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
     WishlistItemRow,
 };
-use crate::backend::statistics::FilamentConsumptionRow;
+use crate::backend::statistics::{
+    FilamentConsumptionRow, StatisticsPeriod, StatisticsPeriodReport,
+};
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_checked, prepare_library_sync_host_read,
@@ -13,7 +15,7 @@ use crate::library_sync_host_client::get_library_sync_host_json_authenticated;
 use crate::library_sync_models::{
     LibrarySyncCatalogListInput, LibrarySyncFilamentConsumptionInput,
     LibrarySyncFullBackupResponse, LibrarySyncSpoolDetailInput, LibrarySyncSpoolListInput,
-    LibrarySyncWishlistListInput, ValidateLibrarySyncHostInput,
+    LibrarySyncStatisticsPeriodInput, LibrarySyncWishlistListInput, ValidateLibrarySyncHostInput,
 };
 use crate::printer_settings_commands::PrinterSettingsSnapshot;
 use crate::state::AppState;
@@ -236,6 +238,50 @@ fn fetch_library_sync_filament_consumption_blocking(
 }
 
 #[tauri::command]
+pub(crate) async fn fetch_library_sync_statistics_period_report(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncStatisticsPeriodInput,
+) -> Result<Option<StatisticsPeriodReport>, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        fetch_library_sync_statistics_period_report_blocking(&state, input)
+    })
+    .await
+}
+
+fn fetch_library_sync_statistics_period_report_blocking(
+    state: &AppState,
+    input: LibrarySyncStatisticsPeriodInput,
+) -> Result<Option<StatisticsPeriodReport>, String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&host_input)?;
+    let path = library_sync_statistics_period_path(&input.period);
+    let report = match get_library_sync_host_json_authenticated(state, &normalized_base_url, &path)
+    {
+        Ok(report) => Some(report),
+        Err(error) if is_library_sync_read_not_found(&error) => None,
+        Err(error) => return Err(error),
+    };
+
+    save_library_sync_success(
+        state,
+        "Host statistics period refreshed.",
+        health.device_name.as_deref(),
+    )?;
+    Ok(report)
+}
+
+fn library_sync_statistics_period_path(period: &StatisticsPeriod) -> String {
+    let mut query = url::form_urlencoded::Serializer::new(String::new());
+    query.append_pair("start_at_utc", period.start_at_utc.trim());
+    query.append_pair("end_at_utc", period.end_at_utc.trim());
+    format!(
+        "/api/v1/library/statistics/period-report?{}",
+        query.finish()
+    )
+}
+
+#[tauri::command]
 pub(crate) async fn fetch_library_sync_catalog_masters(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCatalogListInput,
@@ -353,7 +399,10 @@ fn fetch_library_sync_full_backup_json_blocking(
 
 #[cfg(test)]
 mod tests {
-    use super::{is_library_sync_read_not_found, library_sync_catalog_masters_path};
+    use super::{
+        is_library_sync_read_not_found, library_sync_catalog_masters_path,
+        library_sync_statistics_period_path, StatisticsPeriod,
+    };
 
     #[test]
     fn read_not_found_classification_accepts_exact_http_status_error() {
@@ -370,6 +419,17 @@ mod tests {
         assert!(!is_library_sync_read_not_found(
             "Desktop sync read request failed for http://192.168.1.20:404."
         ));
+    }
+
+    #[test]
+    fn statistics_period_path_trims_and_encodes_utc_boundaries() {
+        assert_eq!(
+            library_sync_statistics_period_path(&StatisticsPeriod {
+                start_at_utc: " 2026-08-01T00:00:00Z ".to_string(),
+                end_at_utc: "2026-09-01T00:00:00Z".to_string(),
+            }),
+            "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-09-01T00%3A00%3A00Z"
+        );
     }
 
     #[test]

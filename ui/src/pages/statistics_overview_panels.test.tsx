@@ -30,6 +30,8 @@ test("ownership statistics retain all borrowed-from-others zero values", () => {
   const html = renderToStaticMarkup(
     <StatisticsOwnershipSnapshotPanel
       ownershipOverview={ownershipOverview}
+      periodDataAvailable
+      periodLabel="1 Jul – 30 Jul 2026"
       t={(_key, fallback = "") => fallback}
     />,
   );
@@ -46,6 +48,8 @@ test("ownership statistics use four columns around the desktop QA width and rose
   const html = renderToStaticMarkup(
     <StatisticsOwnershipSnapshotPanel
       ownershipOverview={ownershipOverview}
+      periodDataAvailable
+      periodLabel="1 Jul – 30 Jul 2026"
       t={(_key, fallback = "") => fallback}
     />,
   );
@@ -77,6 +81,9 @@ test("per-printer statistic rows use valid dialog button markup", () => {
     <StatisticsPerPrinterUsagePanel
       loading={false}
       onOpenConsumption={() => {}}
+      periodLabel="1 Jul – 30 Jul 2026"
+      periodUnavailableMessage={null}
+      printerCount={1}
       printers={[printer]}
       resolvedTheme="dark"
       t={(_key, fallback = "") => fallback}
@@ -90,4 +97,39 @@ test("per-printer statistic rows use valid dialog button markup", () => {
   assert.match(button, />View details<span aria-hidden="true">→/);
   assert.match(button, /focus-visible:ring-2/);
   assert.doesNotMatch(button, /<div|role="button"|tabindex="0"/);
+});
+
+test("period-unavailable state is distinct from no printer activity", () => {
+  const html = renderToStaticMarkup(
+    <StatisticsPerPrinterUsagePanel
+      loading={false}
+      onOpenConsumption={() => {}}
+      periodLabel="1 Jul – 30 Jul 2026"
+      periodUnavailableMessage="This host snapshot cannot provide the selected period."
+      printerCount={2}
+      printers={[]}
+      resolvedTheme="dark"
+      t={(_key, fallback = "") => fallback}
+    />,
+  );
+
+  assert.match(html, /1 Jul – 30 Jul 2026/);
+  assert.match(html, /This host snapshot cannot provide the selected period/);
+  assert.doesNotMatch(html, /No printer activity available yet/);
+  assert.match(html, /count-pill">2</);
+});
+
+test("ownership period usage is withheld when the host cannot periodize it", () => {
+  const html = renderToStaticMarkup(
+    <StatisticsOwnershipSnapshotPanel
+      ownershipOverview={ownershipOverview}
+      periodDataAvailable={false}
+      periodLabel="1 Jul – 30 Jul 2026"
+      t={(_key, fallback = "") => fallback}
+    />,
+  );
+
+  assert.match(html, /Recorded print use · owned[\s\S]*?>—</);
+  assert.match(html, /Recorded print use · borrowed from others[\s\S]*?>—</);
+  assert.match(html, /Owned on hand[\s\S]*?>46</);
 });
