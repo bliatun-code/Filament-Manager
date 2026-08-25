@@ -57,6 +57,16 @@ pub(crate) fn restore_inventory_location(
 }
 
 #[tauri::command]
+pub(crate) fn delete_inventory_location(
+    state: tauri::State<'_, AppState>,
+    input: InventoryLocationIdInput,
+) -> Result<InventoryLocationRow, String> {
+    with_db(&state, |db| {
+        db.delete_inventory_location(&input.location_id)
+    })
+}
+
+#[tauri::command]
 pub(crate) fn merge_inventory_locations(
     state: tauri::State<'_, AppState>,
     input: MergeInventoryLocationsInput,

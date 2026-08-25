@@ -4,6 +4,8 @@ import {
   archiveLibrarySyncHostLocation,
   createInventoryLocation,
   createLibrarySyncHostLocation,
+  deleteInventoryLocation,
+  deleteLibrarySyncHostLocation,
   fetchCachedLibrarySyncLocations,
   fetchLibrarySyncLocations,
   listInventoryLocations,
@@ -145,6 +147,11 @@ export type InventoryLocationMutationContext = InventoryLocationDataOptions & {
   mutationsSupported: boolean;
 };
 
+type DeleteLocationDependencies = {
+  deleteHost?: typeof deleteLibrarySyncHostLocation;
+  deleteLocal?: typeof deleteInventoryLocation;
+};
+
 function hostTarget(context: InventoryLocationMutationContext) {
   const baseUrl = context.clientHostBaseUrl?.trim();
   const expectedLibraryId = context.clientLibraryId?.trim();
@@ -194,6 +201,18 @@ export function restoreLocationForInventory(
   return context.clientReadOnly
     ? restoreLibrarySyncHostLocation(hostTarget(context), locationId)
     : restoreInventoryLocation(locationId);
+}
+
+export function deleteLocationForInventory(
+  context: InventoryLocationMutationContext,
+  locationId: string,
+  dependencies: DeleteLocationDependencies = {},
+) {
+  const deleteHost = dependencies.deleteHost ?? deleteLibrarySyncHostLocation;
+  const deleteLocal = dependencies.deleteLocal ?? deleteInventoryLocation;
+  return context.clientReadOnly
+    ? deleteHost(hostTarget(context), locationId)
+    : deleteLocal(locationId);
 }
 
 export function mergeLocationsForInventory(

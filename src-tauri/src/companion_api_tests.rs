@@ -5439,6 +5439,61 @@ async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_con
         .map_err(|error| error.to_string())?;
         assert_eq!(merge_result["affected_spools"], 1);
 
+        let referenced_delete = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{target_id}/delete"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{target_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(referenced_delete.status(), StatusCode::BAD_REQUEST);
+        let referenced_delete_error: serde_json::Value = serde_json::from_slice(
+            &to_bytes(referenced_delete.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(
+            referenced_delete_error["code"],
+            "inventory.location.has_references"
+        );
+
+        let delete_merged_source = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{source_id}/delete"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{source_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(delete_merged_source.status(), StatusCode::OK);
+        let deleted_source: serde_json::Value = serde_json::from_slice(
+            &to_bytes(delete_merged_source.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(deleted_source["id"], source_id);
+        assert_eq!(deleted_source["reference_count"], 0);
+        assert_eq!(deleted_source["can_delete"], true);
+
         let spools = router
             .clone()
             .oneshot(

@@ -15,6 +15,7 @@ import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
+import { commandErrorText } from "../lib/error_text";
 import { useI18n } from "../lib/i18n";
 import {
   chooseDesktopVisualQaLoanSpool,
@@ -25,6 +26,7 @@ import { isInventorySpoolLoanTrackingCandidate } from "../lib/inventory_list_mod
 import {
   archiveLocationForInventory,
   createLocationForInventory,
+  deleteLocationForInventory,
   mergeLocationsForInventory,
   renameLocationForInventory,
   restoreLocationForInventory,
@@ -220,7 +222,11 @@ export default function InventoryPage({
   );
 
   const runLocationMutation = useCallback(
-    async (operation: () => Promise<unknown>, successMessage: string): Promise<boolean> => {
+    async (
+      operation: () => Promise<unknown>,
+      successMessage: string,
+      reloadOnFailure = false,
+    ): Promise<boolean> => {
       if (!tauri || manageBusy) {
         return false;
       }
@@ -234,12 +240,15 @@ export default function InventoryPage({
         return true;
       } catch (locationError) {
         setError(
-          typeof locationError === "string"
-            ? locationError
-            : locationError instanceof Error
-              ? locationError.message
-              : t("errors.requestFailed", "The request could not be completed."),
+          commandErrorText(
+            locationError,
+            t("errors.requestFailed", "The request could not be completed."),
+            t,
+          ),
         );
+        if (reloadOnFailure) {
+          await reloadSpools();
+        }
         return false;
       } finally {
         setManageBusy(false);
@@ -280,6 +289,16 @@ export default function InventoryPage({
       runLocationMutation(
         () => restoreLocationForInventory(locationMutationContext, locationId),
         t("inventory.locationRestored", "Location restored."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const deleteLocation = useCallback(
+    (locationId: string) =>
+      runLocationMutation(
+        () => deleteLocationForInventory(locationMutationContext, locationId),
+        t("inventory.locationDeleted", "Location deleted."),
+        true,
       ),
     [locationMutationContext, runLocationMutation, t],
   );
@@ -1366,6 +1385,7 @@ export default function InventoryPage({
           mutationsSupported: locationMutationsSupported,
           onArchive: archiveLocation,
           onCreate: createLocation,
+          onDelete: deleteLocation,
           onMerge: mergeLocations,
           onRename: renameLocation,
           onRestore: restoreLocation,

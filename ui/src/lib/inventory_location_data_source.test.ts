@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createLocationForInventory,
+  deleteLocationForInventory,
   legacyLocationsFromSpools,
   loadInventoryLocations,
   selectableInventoryLocations,
@@ -139,4 +140,47 @@ test("restart or offline fallback keeps cached locations read-only until live su
   assert.equal(result.updatedAt, "2026-08-21 12:00:00");
   assert.equal(result.mutationsSupported, false);
   assert.deepEqual(result.rows.map((row) => row.id), ["location-1"]);
+});
+
+test("delete routes to the owning local database or paired Host", async () => {
+  const calls: string[] = [];
+  const dependencies = {
+    deleteLocal: async (locationId: string) => {
+      calls.push(`local:${locationId}`);
+      return location({ id: locationId });
+    },
+    deleteHost: async (
+      target: { baseUrl: string; expectedLibraryId?: string | null },
+      locationId: string,
+    ) => {
+      calls.push(`host:${target.baseUrl}:${target.expectedLibraryId}:${locationId}`);
+      return location({ id: locationId });
+    },
+  };
+
+  await deleteLocationForInventory(
+    {
+      clientReadOnly: false,
+      clientHostWritePaired: false,
+      mutationsSupported: true,
+    },
+    "local-location",
+    dependencies,
+  );
+  await deleteLocationForInventory(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host.test",
+      clientLibraryId: "library-1",
+      clientHostWritePaired: true,
+      mutationsSupported: true,
+    },
+    "host-location",
+    dependencies,
+  );
+
+  assert.deepEqual(calls, [
+    "local:local-location",
+    "host:http://host.test:library-1:host-location",
+  ]);
 });

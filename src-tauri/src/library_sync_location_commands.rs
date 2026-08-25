@@ -169,6 +169,23 @@ fn restore_library_sync_host_location_blocking(
     location_id_write_blocking(state, input, "restore", "Host location restored.")
 }
 
+#[tauri::command]
+pub(crate) async fn delete_library_sync_host_location(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncInventoryLocationIdInput,
+) -> Result<InventoryLocationRow, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || delete_library_sync_host_location_blocking(&state, input))
+        .await
+}
+
+fn delete_library_sync_host_location_blocking(
+    state: &AppState,
+    input: LibrarySyncInventoryLocationIdInput,
+) -> Result<InventoryLocationRow, String> {
+    location_id_write_blocking(state, input, "delete", "Host location deleted.")
+}
+
 fn location_id_write_blocking(
     state: &AppState,
     input: LibrarySyncInventoryLocationIdInput,

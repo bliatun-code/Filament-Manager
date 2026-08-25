@@ -330,6 +330,7 @@ mod tests {
             "rename_library_sync_host_location",
             "archive_library_sync_host_location",
             "restore_library_sync_host_location",
+            "delete_library_sync_host_location",
             "merge_library_sync_host_locations",
         ] {
             assert_async_blocking_wrapper(location_commands, command);

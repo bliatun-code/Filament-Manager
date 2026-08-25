@@ -9,7 +9,9 @@ export type InventoryLocationRow = {
   y?: number | null;
   z?: number | null;
   archived_at?: string | null;
+  can_delete?: boolean;
   created_at: string;
+  reference_count?: number | null;
   updated_at: string;
 };
 
@@ -118,6 +120,18 @@ export function restoreInventoryLocation(locationId: string) {
 
 export function restoreLibrarySyncHostLocation(target: HostTarget, locationId: string) {
   return invoke<InventoryLocationRow>("restore_library_sync_host_location", {
+    input: { ...hostTargetInput(target), location_id: locationId },
+  });
+}
+
+export function deleteInventoryLocation(locationId: string) {
+  return invoke<InventoryLocationRow>("delete_inventory_location", {
+    input: { location_id: locationId },
+  });
+}
+
+export function deleteLibrarySyncHostLocation(target: HostTarget, locationId: string) {
+  return invoke<InventoryLocationRow>("delete_library_sync_host_location", {
     input: { ...hostTargetInput(target), location_id: locationId },
   });
 }

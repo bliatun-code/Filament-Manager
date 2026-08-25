@@ -3,6 +3,7 @@ import type { InventoryLocationRow } from "./tauri_location_client";
 export type InventoryLocationActionState = InventoryLocationRow & {
   activeGeneric: boolean;
   canArchive: boolean;
+  canDelete: boolean;
   canRename: boolean;
   canRestore: boolean;
   restoreBlockedByNameConflict: boolean;
@@ -81,6 +82,7 @@ export function inventoryLocationActionRows(
       ...row,
       activeGeneric: !archived,
       canArchive: mutationsAvailable && !archived,
+      canDelete: mutationsAvailable && row.can_delete === true,
       canRename: mutationsAvailable,
       canRestore: mutationsAvailable && archived && !restoreBlockedByNameConflict,
       restoreBlockedByNameConflict,

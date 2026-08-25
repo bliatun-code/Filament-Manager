@@ -16,9 +16,12 @@ const fieldLabelClassName =
   "block text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400";
 const destructiveButtonClassName =
   "inline-flex min-h-11 max-w-full items-center justify-center whitespace-normal rounded-lg border border-rose-300/80 bg-white px-3.5 py-2 text-center text-sm font-semibold text-rose-700 outline-none transition hover:bg-rose-50 focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50 dark:border-rose-400/40 dark:bg-slate-900/70 dark:text-rose-200 dark:hover:bg-rose-500/10";
+const quietDeleteButtonClassName =
+  "inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-lg border border-rose-200/80 bg-transparent px-3.5 py-2 text-sm font-semibold text-rose-700 outline-none transition hover:bg-rose-50 focus-visible:ring-2 focus-visible:ring-rose-300 disabled:opacity-50 dark:border-rose-400/30 dark:text-rose-200 dark:hover:bg-rose-500/10";
 
 const activeLocationsHeadingId = "inventory-location-active-heading";
 const mergeReviewButtonId = "inventory-location-review-merge";
+const previousLocationsSummaryId = "inventory-location-previous-summary";
 
 type InventoryLocationMergeConfirmationProps = {
   busy: boolean;
@@ -74,7 +77,8 @@ type InventoryLocationArchiveConfirmationProps = {
   locationName: string;
   onCancel: () => void;
   onConfirm: () => void;
-  usageCount: number;
+  referenceCount: number | null;
+  visibleRollCount: number;
 };
 
 export function InventoryLocationArchiveConfirmation({
@@ -82,7 +86,8 @@ export function InventoryLocationArchiveConfirmation({
   locationName,
   onCancel,
   onConfirm,
-  usageCount,
+  referenceCount,
+  visibleRollCount,
 }: InventoryLocationArchiveConfirmationProps) {
   const { t } = useI18n();
 
@@ -94,11 +99,17 @@ export function InventoryLocationArchiveConfirmation({
         })}
       </div>
       <p className="mt-1">
-        {t(
-          "inventory.locationArchiveConfirmDetail",
-          "{count, plural, =0 {No rolls are connected to this location} one {# connected roll keeps this location} other {# connected rolls keep this location}}. The location disappears from new choices, but can be restored later.",
-          { count: usageCount },
-        )}
+        {referenceCount == null
+          ? t(
+              "inventory.locationArchiveLegacyConfirmDetail",
+              "{count, plural, =0 {No visible rolls are connected} one {# visible roll remains connected} other {# visible rolls remain connected}}. This Host cannot report hidden home or child links. The location disappears from new choices, but can be restored later.",
+              { count: visibleRollCount },
+            )
+          : t(
+              "inventory.locationArchiveConfirmDetail",
+              "{count, plural, =0 {No saved links point to this location} one {# saved link continues to point to this location} other {# saved links continue to point to this location}}. The location disappears from new choices, but can be restored later.",
+              { count: referenceCount },
+            )}
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         <PageHeaderButton
@@ -122,6 +133,56 @@ export function InventoryLocationArchiveConfirmation({
   );
 }
 
+type InventoryLocationDeleteConfirmationProps = {
+  busy: boolean;
+  locationName: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+export function InventoryLocationDeleteConfirmation({
+  busy,
+  locationName,
+  onCancel,
+  onConfirm,
+}: InventoryLocationDeleteConfirmationProps) {
+  const { t } = useI18n();
+
+  return (
+    <FeedbackBanner tone="danger" compact className="mt-2">
+      <div className="font-semibold">
+        {t("inventory.locationDeleteConfirmTitle", "Delete {name} permanently?", {
+          name: locationName,
+        })}
+      </div>
+      <p className="mt-1">
+        {t(
+          "inventory.locationDeleteConfirmDetail",
+          "This location has no linked rolls or child locations and can be deleted. This cannot be undone. History events are retained.",
+        )}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          className={destructiveButtonClassName}
+          type="button"
+          disabled={busy}
+          onClick={onConfirm}
+        >
+          {t("inventory.locationDeleteConfirm", "Delete location permanently")}
+        </button>
+        <PageHeaderButton
+          responsive={false}
+          type="button"
+          disabled={busy}
+          onClick={onCancel}
+        >
+          {t("common.cancel", "Cancel")}
+        </PageHeaderButton>
+      </div>
+    </FeedbackBanner>
+  );
+}
+
 type InventoryLocationManagementPanelProps = {
   busy: boolean;
   canMutate: boolean;
@@ -129,6 +190,7 @@ type InventoryLocationManagementPanelProps = {
   mutationsSupported: boolean;
   onArchive: (locationId: string) => Promise<boolean>;
   onCreate: (name: string) => Promise<boolean>;
+  onDelete: (locationId: string) => Promise<boolean>;
   onMerge: (sourceId: string, targetId: string) => Promise<boolean>;
   onRename: (locationId: string, name: string) => Promise<boolean>;
   onRestore: (locationId: string) => Promise<boolean>;
@@ -141,14 +203,20 @@ function locationDomId(locationId: string): string {
   return encodeURIComponent(locationId);
 }
 
-function locationActionDomId(action: "archive" | "rename" | "restore", locationId: string): string {
+function locationActionDomId(
+  action: "archive" | "delete" | "rename" | "restore",
+  locationId: string,
+): string {
   return `inventory-location-${action}-${locationDomId(locationId)}`;
 }
 
-function focusAfterRender(elementId: string): void {
+function focusAfterRender(elementId: string, fallbackElementId?: string): void {
   if (typeof window === "undefined") return;
   window.requestAnimationFrame(() => {
-    document.getElementById(elementId)?.focus();
+    const element =
+      document.getElementById(elementId) ??
+      (fallbackElementId ? document.getElementById(fallbackElementId) : null);
+    element?.focus();
   });
 }
 
@@ -159,6 +227,7 @@ export function InventoryLocationManagementPanel({
   mutationsSupported,
   onArchive,
   onCreate,
+  onDelete,
   onMerge,
   onRename,
   onRestore,
@@ -178,6 +247,7 @@ export function InventoryLocationManagementPanel({
   const [renameId, setRenameId] = useState("");
   const [renameName, setRenameName] = useState("");
   const [archiveConfirmationId, setArchiveConfirmationId] = useState("");
+  const [deleteConfirmationId, setDeleteConfirmationId] = useState("");
   const [sourceId, setSourceId] = useState("");
   const [targetId, setTargetId] = useState("");
   const [mergeConfirmationVisible, setMergeConfirmationVisible] = useState(false);
@@ -191,9 +261,11 @@ export function InventoryLocationManagementPanel({
 
   const renderLocationRow = (row: InventoryLocationActionState) => {
     const usageCount = usageByLocationId.get(row.id) ?? 0;
+    const referenceCount = row.reference_count;
     const renameInputId = `inventory-location-rename-${locationDomId(row.id)}`;
     const renameActionId = locationActionDomId("rename", row.id);
     const archiveActionId = locationActionDomId("archive", row.id);
+    const deleteActionId = locationActionDomId("delete", row.id);
     const restoreActionId = locationActionDomId("restore", row.id);
     const restoreConflictId = `inventory-location-restore-conflict-${locationDomId(row.id)}`;
     const editing = renameId === row.id;
@@ -261,11 +333,17 @@ export function InventoryLocationManagementPanel({
                 {row.name}
               </div>
               <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                {t(
-                  "inventory.locationUsageCount",
-                  "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
-                  { count: usageCount },
-                )}
+                {referenceCount == null
+                  ? t(
+                      "inventory.locationUsageCount",
+                      "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
+                      { count: usageCount },
+                    )
+                  : t(
+                      "inventory.locationReferenceCount",
+                      "{count, plural, =0 {No saved links} one {# saved link} other {# saved links}}",
+                      { count: referenceCount },
+                    )}
               </div>
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
@@ -280,6 +358,7 @@ export function InventoryLocationManagementPanel({
                   })}
                   onClick={() => {
                     setArchiveConfirmationId("");
+                    setDeleteConfirmationId("");
                     setRenameId(row.id);
                     setRenameName(row.name);
                   }}
@@ -298,6 +377,7 @@ export function InventoryLocationManagementPanel({
                   })}
                   onClick={() => {
                     resetRename();
+                    setDeleteConfirmationId("");
                     setArchiveConfirmationId(row.id);
                   }}
                 >
@@ -314,6 +394,7 @@ export function InventoryLocationManagementPanel({
                     name: row.name,
                   })}
                   onClick={() => {
+                    setDeleteConfirmationId("");
                     void onRestore(row.id).then((restored) => {
                       if (restored) focusAfterRender(renameActionId);
                     });
@@ -333,6 +414,26 @@ export function InventoryLocationManagementPanel({
                   )}
                 </span>
               ) : null}
+              {row.canDelete ? (
+                <button
+                  id={deleteActionId}
+                  className={quietDeleteButtonClassName}
+                  type="button"
+                  disabled={busy}
+                  aria-label={t(
+                    "inventory.locationDeleteNamed",
+                    "Delete {name} permanently",
+                    { name: row.name },
+                  )}
+                  onClick={() => {
+                    resetRename();
+                    setArchiveConfirmationId("");
+                    setDeleteConfirmationId(row.id);
+                  }}
+                >
+                  {t("inventory.locationDeleteAction", "Delete")}
+                </button>
+              ) : null}
             </div>
           </div>
         )}
@@ -341,7 +442,6 @@ export function InventoryLocationManagementPanel({
           <InventoryLocationArchiveConfirmation
             busy={busy}
             locationName={row.name}
-            usageCount={usageCount}
             onCancel={() => {
               setArchiveConfirmationId("");
               focusAfterRender(archiveActionId);
@@ -351,6 +451,35 @@ export function InventoryLocationManagementPanel({
                 if (archived) {
                   setArchiveConfirmationId("");
                   focusAfterRender(activeLocationsHeadingId);
+                }
+              });
+            }}
+            referenceCount={referenceCount ?? null}
+            visibleRollCount={usageCount}
+          />
+        ) : null}
+
+        {deleteConfirmationId === row.id ? (
+          <InventoryLocationDeleteConfirmation
+            busy={busy}
+            locationName={row.name}
+            onCancel={() => {
+              setDeleteConfirmationId("");
+              focusAfterRender(deleteActionId);
+            }}
+            onConfirm={() => {
+              void onDelete(row.id).then((deleted) => {
+                setDeleteConfirmationId("");
+                if (deleted) {
+                  focusAfterRender(
+                    row.activeGeneric ? activeLocationsHeadingId : previousLocationsSummaryId,
+                    activeLocationsHeadingId,
+                  );
+                } else {
+                  focusAfterRender(
+                    deleteActionId,
+                    row.activeGeneric ? activeLocationsHeadingId : previousLocationsSummaryId,
+                  );
                 }
               });
             }}
@@ -461,7 +590,10 @@ export function InventoryLocationManagementPanel({
 
       {archivedGeneric.length > 0 ? (
         <details className="group mt-4 rounded-xl border border-slate-200 bg-white/50 dark:border-slate-700 dark:bg-slate-950/20">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+          <summary
+            id={previousLocationsSummaryId}
+            className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          >
             <h3 className="min-w-0 text-sm font-semibold">
               {t("inventory.locationPreviousTitle", "Previous locations")}
               <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">

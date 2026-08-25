@@ -60,6 +60,8 @@ export const deDictionary: DictionaryNode = {
       "Beende die Ausleihe, bevor du Status oder Lagerort dieser Rolle änderst.",
     spoolStatusEditLimited:
       "Im Browser kann der Rollenstatus nur auf Lagernd, Leer oder Verloren gesetzt werden.",
+    locationHasReferences:
+      "Verschiebe alle Rollen und untergeordneten Lagerorte, bevor du diesen Lagerort löschst.",
     loanExpectedReturnInvalid: "Wähle ein gültiges erwartetes Rückgabedatum.",
     loanMetadataUnsupported:
       "Aktualisiere den Host, bevor du Kontaktdaten oder ein erwartetes Rückgabedatum speicherst.",
@@ -312,6 +314,8 @@ export const deDictionary: DictionaryNode = {
       "Archivierte Lagerorte verschwinden aus neuen Auswahlen. Verknüpfte Rollen behalten dieselbe Lagerort-ID; eine Wiederherstellung aktiviert genau diesen Lagerort erneut.",
     locationUsageCount:
       "{count, plural, =0 {Keine verknüpften Rollen} one {# verknüpfte Rolle} other {# verknüpfte Rollen}}",
+    locationReferenceCount:
+      "{count, plural, =0 {Keine gespeicherten Verknüpfungen} one {# gespeicherte Verknüpfung} other {# gespeicherte Verknüpfungen}}",
     locationsLegacyHost:
       "Dieser Host stammt aus der Zeit vor Lagerortobjekten. Bestehende Platzierungsnamen bleiben sichtbar; aktualisiere den Host, bevor du Lagerorte änderst.",
     locationsOffline:
@@ -324,14 +328,22 @@ export const deDictionary: DictionaryNode = {
     locationRename: "Lagerort umbenennen",
     locationRenameNamed: "{name} umbenennen",
     locationArchiveNamed: "{name} archivieren",
+    locationDeleteNamed: "{name} dauerhaft löschen",
+    locationDeleteAction: "Löschen",
     locationRestoreNamed: "{name} wiederherstellen",
     locationRestoreNameConflict:
       "Vor dem Wiederherstellen umbenennen: Ein aktiver Lagerort verwendet bereits diesen Namen.",
     locationNewName: "Neuer Name",
     locationArchiveConfirmTitle: "{name} archivieren?",
     locationArchiveConfirmDetail:
-      "{count, plural, =0 {Keine Rollen sind mit diesem Lagerort verknüpft} one {# verknüpfte Rolle behält diesen Lagerort} other {# verknüpfte Rollen behalten diesen Lagerort}}. Der Lagerort verschwindet aus neuen Auswahlen, kann aber später wiederhergestellt werden.",
+      "{count, plural, =0 {Keine gespeicherten Verknüpfungen verweisen auf diesen Lagerort} one {# gespeicherte Verknüpfung verweist weiterhin auf diesen Lagerort} other {# gespeicherte Verknüpfungen verweisen weiterhin auf diesen Lagerort}}. Der Lagerort verschwindet aus neuen Auswahlen, kann aber später wiederhergestellt werden.",
+    locationArchiveLegacyConfirmDetail:
+      "{count, plural, =0 {Keine sichtbaren Rollen sind verknüpft} one {# sichtbare Rolle bleibt verknüpft} other {# sichtbare Rollen bleiben verknüpft}}. Dieser Host kann ausgeblendete Heim- oder untergeordnete Verknüpfungen nicht melden. Der Lagerort verschwindet aus neuen Auswahlen, kann aber später wiederhergestellt werden.",
     locationArchiveConfirm: "Lagerort archivieren",
+    locationDeleteConfirmTitle: "{name} dauerhaft löschen?",
+    locationDeleteConfirmDetail:
+      "Dieser Lagerort hat keine verknüpften Rollen oder untergeordneten Lagerorte und kann gelöscht werden. Dies kann nicht rückgängig gemacht werden. Verlaufseinträge bleiben erhalten.",
+    locationDeleteConfirm: "Lagerort dauerhaft löschen",
     locationMerge: "Lagerorte zusammenführen",
     locationMergeAdvanced: "Erweitert: Lagerorte zusammenführen",
     locationMergeHelp:
@@ -353,6 +365,7 @@ export const deDictionary: DictionaryNode = {
     locationCreated: "Lagerort erstellt.",
     locationRenamed: "Lagerort umbenannt.",
     locationArchived: "Lagerort archiviert.",
+    locationDeleted: "Lagerort gelöscht.",
     locationRestored: "Lagerort wiederhergestellt.",
     locationsMerged: "Lagerorte zusammengeführt.",
     labelSheetAllAction: "Etikettenbogen für den gesamten Bestand erstellen",

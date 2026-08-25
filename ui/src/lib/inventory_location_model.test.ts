@@ -32,11 +32,18 @@ test("location drafts normalize whitespace and validate the backend length contr
 test("management rows hide system locations and expose only permitted lifecycle actions", () => {
   const [active, archived] = inventoryLocationActionRows(
     [
-      location(),
-      location({ id: "archived", name: "Old shelf", archived_at: "2026-08-21" }),
+      location({ can_delete: true, reference_count: 0 }),
+      location({
+        id: "archived",
+        name: "Old shelf",
+        archived_at: "2026-08-21",
+        can_delete: true,
+        reference_count: 0,
+      }),
       location({
         id: "Printer:Studio:slot-1",
         location_type: "PRINTER_SLOT",
+        can_delete: true,
       }),
     ],
     true,
@@ -46,19 +53,43 @@ test("management rows hide system locations and expose only permitted lifecycle 
     {
       rename: active.canRename,
       archive: active.canArchive,
+      delete: active.canDelete,
       restore: active.canRestore,
     },
-    { rename: true, archive: true, restore: false },
+    { rename: true, archive: true, delete: true, restore: false },
   );
   assert.deepEqual(
     {
       rename: archived.canRename,
       archive: archived.canArchive,
+      delete: archived.canDelete,
       restore: archived.canRestore,
     },
-    { rename: true, archive: false, restore: true },
+    { rename: true, archive: false, delete: true, restore: true },
   );
   assert.deepEqual([active.id, archived.id], ["location-1", "archived"]);
+});
+
+test("delete depends only on authoritative backend eligibility and live mutation access", () => {
+  const [deletable, referenced, legacy] = inventoryLocationActionRows(
+    [
+      location({ id: "deletable", can_delete: true, reference_count: 0 }),
+      location({ id: "referenced", can_delete: false, reference_count: 1 }),
+      location({ id: "legacy" }),
+    ],
+    true,
+  );
+
+  assert.equal(deletable.canDelete, true);
+  assert.equal(referenced.canDelete, false);
+  assert.equal(legacy.canDelete, false);
+  assert.equal(
+    inventoryLocationActionRows(
+      [location({ can_delete: true, reference_count: 0 })],
+      false,
+    )[0].canDelete,
+    false,
+  );
 });
 
 test("restore is blocked when an active location already uses the archived name", () => {
@@ -106,8 +137,8 @@ test("unsupported or offline Host disables every generic mutation", () => {
     [location(), location({ id: "archived", archived_at: "2026-08-21" })],
     false,
   );
-  assert.equal(active.canRename || active.canArchive, false);
-  assert.equal(archived.canRename || archived.canRestore, false);
+  assert.equal(active.canRename || active.canArchive || active.canDelete, false);
+  assert.equal(archived.canRename || archived.canRestore || archived.canDelete, false);
 });
 
 test("location writes preserve stale immutable references and resolve active autocomplete names", () => {

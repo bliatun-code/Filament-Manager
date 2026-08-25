@@ -10,6 +10,7 @@ import type { InventoryLocationRow } from "../lib/tauri_location_client";
 import { InventoryLocationDatalist } from "./inventory_location_datalist";
 import {
   InventoryLocationArchiveConfirmation,
+  InventoryLocationDeleteConfirmation,
   InventoryLocationManagementPanel,
   InventoryLocationMergeConfirmation,
 } from "./inventory_location_management_panel";
@@ -29,15 +30,22 @@ function location(overrides: Partial<InventoryLocationRow> = {}): InventoryLocat
     location_type: "GENERIC",
     parent_id: null,
     archived_at: null,
+    can_delete: false,
     created_at: "2026-08-21 10:00:00",
+    reference_count: 1,
     updated_at: "2026-08-21 10:00:00",
     ...overrides,
   };
 }
 
 const rows = [
-  location(),
-  location({ id: "location-active-2", name: "Shelf B" }),
+  location({ reference_count: 2 }),
+  location({
+    id: "location-active-2",
+    name: "Shelf B",
+    can_delete: true,
+    reference_count: 0,
+  }),
   location({
     id: "location-archived-conflict",
     name: "SHELF B",
@@ -49,9 +57,18 @@ const rows = [
     archived_at: "2026-08-21 11:00:00",
   }),
   location({
+    id: "location-archived-empty",
+    name: "Old empty shelf",
+    archived_at: "2026-08-21 11:30:00",
+    can_delete: true,
+    reference_count: 0,
+  }),
+  location({
     id: "Printer:Studio:slot-1",
     name: "Studio AMS 1",
     location_type: "PRINTER_SLOT",
+    can_delete: true,
+    reference_count: 0,
   }),
 ];
 
@@ -68,6 +85,7 @@ function renderPanel(
         mutationsSupported={mutationsSupported}
         onArchive={async () => true}
         onCreate={async () => true}
+        onDelete={async () => true}
         onMerge={async () => true}
         onRename={async () => true}
         onRestore={async () => true}
@@ -87,7 +105,8 @@ test("live location management stays compact and omits system-owned rows", () =>
 
   assert.match(html, /Create location/);
   assert.match(html, /2 active locations/);
-  assert.match(html, /2 connected rolls/);
+  assert.match(html, /2 saved links/);
+  assert.match(html, /No saved links/);
   assert.match(html, /Previous locations/);
   assert.match(html, /Advanced: merge locations/);
   assert.match(html, /Manage locations/);
@@ -98,6 +117,9 @@ test("live location management stays compact and omits system-owned rows", () =>
   assert.match(html, /aria-label="Rename Dry box"/);
   assert.match(html, /aria-label="Archive Dry box"/);
   assert.match(html, /aria-label="Restore Old shelf"/);
+  assert.match(html, /aria-label="Delete Shelf B permanently"/);
+  assert.match(html, /aria-label="Delete Old empty shelf permanently"/);
+  assert.doesNotMatch(html, /aria-label="Delete Dry box permanently"/);
   assert.match(html, /<h2[^>]*>Manage locations<\/h2>/);
   assert.equal((html.match(/<h3/g) ?? []).length, 4);
   assert.doesNotMatch(html, /Studio AMS 1|Printer:Studio:slot-1|System-owned/);
@@ -105,6 +127,26 @@ test("live location management stays compact and omits system-owned rows", () =>
   for (const detailsTag of html.match(/<details[^>]*>/g) ?? []) {
     assert.doesNotMatch(detailsTag, /\sopen(?:=|\s|>)/);
   }
+});
+
+test("delete confirmation makes permanence, eligibility and history retention explicit", () => {
+  const html = renderToStaticMarkup(
+    <I18nContext.Provider value={i18nValue}>
+      <InventoryLocationDeleteConfirmation
+        busy={false}
+        locationName="Empty shelf"
+        onCancel={() => {}}
+        onConfirm={() => {}}
+      />
+    </I18nContext.Provider>,
+  );
+
+  assert.match(html, /Delete Empty shelf permanently\?/);
+  assert.match(html, /no linked rolls or child locations/);
+  assert.match(html, /cannot be undone/);
+  assert.match(html, /History events are retained/);
+  assert.match(html, />Delete location permanently</);
+  assert.match(html, />Cancel</);
 });
 
 test("archive confirmation explains that existing roll links survive", () => {
@@ -115,16 +157,36 @@ test("archive confirmation explains that existing roll links survive", () => {
         locationName="Dry box"
         onCancel={() => {}}
         onConfirm={() => {}}
-        usageCount={2}
+        referenceCount={2}
+        visibleRollCount={1}
       />
     </I18nContext.Provider>,
   );
 
   assert.match(html, /Archive Dry box\?/);
-  assert.match(html, /2 connected rolls keep this location/);
+  assert.match(html, /2 saved links continue to point to this location/);
   assert.match(html, /disappears from new choices/);
   assert.match(html, />Archive location</);
   assert.match(html, />Cancel</);
+});
+
+test("archive confirmation labels older Host counts as visible rolls only", () => {
+  const html = renderToStaticMarkup(
+    <I18nContext.Provider value={i18nValue}>
+      <InventoryLocationArchiveConfirmation
+        busy={false}
+        locationName="Legacy shelf"
+        onCancel={() => {}}
+        onConfirm={() => {}}
+        referenceCount={null}
+        visibleRollCount={2}
+      />
+    </I18nContext.Provider>,
+  );
+
+  assert.match(html, /2 visible rolls remain connected/);
+  assert.match(html, /cannot report hidden home or child links/);
+  assert.doesNotMatch(html, /2 saved links/);
 });
 
 test("irreversible merge confirmation names source and target and explains archive impact", () => {
@@ -160,14 +222,34 @@ test("failed mutations preserve form drafts and successful actions restore focus
   assert.match(source, /if \(merged\) \{[\s\S]*setMergeConfirmationVisible\(false\);[\s\S]*setSourceId\(""\);[\s\S]*setTargetId\(""\)/);
   assert.match(source, /focusAfterRender\(renameActionId\)/);
   assert.match(source, /focusAfterRender\(archiveActionId\)/);
+  assert.match(source, /focusAfterRender\(deleteActionId\)/);
+  assert.match(source, /if \(deleted\)[\s\S]*else \{[\s\S]*deleteActionId/);
   assert.match(source, /focusAfterRender\(activeLocationsHeadingId\)/);
+  assert.match(source, /previousLocationsSummaryId/);
   assert.match(source, /focusAfterRender\(mergeReviewButtonId\)/);
+});
+
+test("a rejected delete refreshes stale eligibility before another attempt", () => {
+  const pageSource = readFileSync(
+    new URL("../pages/inventory.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    pageSource,
+    /reloadOnFailure = false[\s\S]*if \(reloadOnFailure\) \{\s*await reloadSpools\(\)/,
+  );
+  assert.match(
+    pageSource,
+    /deleteLocationForInventory\(locationMutationContext, locationId\)[\s\S]*locationDeleted[\s\S]*true/,
+  );
 });
 
 test("legacy and cached Host states explain read-only compatibility without enabling mutations", () => {
   const legacyHtml = renderPanel("LEGACY_HOST", false);
   assert.match(legacyHtml, /Host predates location objects/);
   assert.doesNotMatch(legacyHtml, />Archive</);
+  assert.doesNotMatch(legacyHtml, />Delete</);
   assert.doesNotMatch(legacyHtml, />Restore</);
 
   const cachedHtml = renderPanel("CACHED", false);
@@ -192,6 +274,7 @@ test("large system location sets never inflate the management surface", () => {
         mutationsSupported
         onArchive={async () => true}
         onCreate={async () => true}
+        onDelete={async () => true}
         onMerge={async () => true}
         onRename={async () => true}
         onRestore={async () => true}

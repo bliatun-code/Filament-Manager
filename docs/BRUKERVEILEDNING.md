@@ -250,6 +250,14 @@ lokasjonen valgbar igjen; en ny lokasjon med samme navn er et annet objekt og
 overtar ikke de gamle koblingene. Bruk den sammenfoldede avanserte
 sammenslåingen når alle koblinger faktisk skal flyttes til et annet lagersted.
 
+**Slett** vises bare når databasen bekrefter at lagerstedet ikke har noen
+nåværende plasseringer, hjemmeplasseringer eller underlokasjoner. Kontrollen
+omfatter også skjulte eller mykt slettede ruller som fortsatt har lagerstedet
+som hjemmeplassering. Sletting kan brukes direkte på både aktive og arkiverte
+egne lagersteder, kan ikke angres og fjerner lagerstedet permanent. Eksisterende
+historikkhendelser beholdes som historiske spor. Hvis en ny kobling oppstår før
+bekreftelsen, avviser databasen slettingen uten å endre lageret.
+
 Programmet husker kort-/listevisning og om avanserte filtre er åpne på denne
 enheten. Nullstilling av filtre endrer ikke valgt visning. Når du åpner lav
 beholdning fra Oversikt kan listevisning brukes midlertidig uten å erstatte den

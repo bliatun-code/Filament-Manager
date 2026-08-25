@@ -60,6 +60,8 @@ export const enDictionary: DictionaryNode = {
         "Return the loan before editing this roll's status or location.",
       spoolStatusEditLimited:
         "Browser edits are limited to in-stock, empty, or lost rolls.",
+      locationHasReferences:
+        "Move every roll and child location before deleting this location.",
       loanExpectedReturnInvalid: "Choose a valid expected return date.",
       loanMetadataUnsupported:
         "Update the host before saving loan contact details or an expected return date.",
@@ -371,6 +373,8 @@ export const enDictionary: DictionaryNode = {
         "Archived locations disappear from new choices. Connected rolls keep the same location ID, and restoring makes that exact location available again.",
       locationUsageCount:
         "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
+      locationReferenceCount:
+        "{count, plural, =0 {No saved links} one {# saved link} other {# saved links}}",
       locationsLegacyHost:
         "This Host predates location objects. Existing placement names remain visible, but upgrade the Host before changing locations.",
       locationsOffline:
@@ -382,14 +386,22 @@ export const enDictionary: DictionaryNode = {
       locationRename: "Rename location",
       locationRenameNamed: "Rename {name}",
       locationArchiveNamed: "Archive {name}",
+      locationDeleteNamed: "Delete {name} permanently",
+      locationDeleteAction: "Delete",
       locationRestoreNamed: "Restore {name}",
       locationRestoreNameConflict:
         "Rename before restoring: an active location already uses this name.",
       locationNewName: "New name",
       locationArchiveConfirmTitle: "Archive {name}?",
       locationArchiveConfirmDetail:
-        "{count, plural, =0 {No rolls are connected to this location} one {# connected roll keeps this location} other {# connected rolls keep this location}}. The location disappears from new choices, but can be restored later.",
+        "{count, plural, =0 {No saved links point to this location} one {# saved link continues to point to this location} other {# saved links continue to point to this location}}. The location disappears from new choices, but can be restored later.",
+      locationArchiveLegacyConfirmDetail:
+        "{count, plural, =0 {No visible rolls are connected} one {# visible roll remains connected} other {# visible rolls remain connected}}. This Host cannot report hidden home or child links. The location disappears from new choices, but can be restored later.",
       locationArchiveConfirm: "Archive location",
+      locationDeleteConfirmTitle: "Delete {name} permanently?",
+      locationDeleteConfirmDetail:
+        "This location has no linked rolls or child locations and can be deleted. This cannot be undone. History events are retained.",
+      locationDeleteConfirm: "Delete location permanently",
       locationMerge: "Merge locations",
       locationMergeAdvanced: "Advanced: merge locations",
       locationMergeHelp:
@@ -411,6 +423,7 @@ export const enDictionary: DictionaryNode = {
       locationCreated: "Location created.",
       locationRenamed: "Location renamed.",
       locationArchived: "Location archived.",
+      locationDeleted: "Location deleted.",
       locationRestored: "Location restored.",
       locationsMerged: "Locations merged.",
       labelSheetAllAction: "Create label sheet for all stock",

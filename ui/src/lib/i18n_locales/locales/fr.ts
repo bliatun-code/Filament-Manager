@@ -61,6 +61,8 @@ export const frDictionary: DictionaryNode = {
       "Terminez le prêt avant de modifier l’état ou l’emplacement de cette bobine.",
     spoolStatusEditLimited:
       "Dans le navigateur, l’état d’une bobine peut uniquement être défini sur En stock, Vide ou Perdue.",
+    locationHasReferences:
+      "Déplacez toutes les bobines et tous les sous-emplacements avant de supprimer cet emplacement.",
     loanExpectedReturnInvalid: "Choisissez une date de retour prévue valide.",
     loanMetadataUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les coordonnées ou une date de retour prévue.",
@@ -312,6 +314,8 @@ export const frDictionary: DictionaryNode = {
       "Les emplacements archivés disparaissent des nouveaux choix. Les bobines liées conservent le même identifiant et la restauration réactive exactement cet emplacement.",
     locationUsageCount:
       "{count, plural, =0 {Aucune bobine liée} one {# bobine liée} other {# bobines liées}}",
+    locationReferenceCount:
+      "{count, plural, =0 {Aucun lien enregistré} one {# lien enregistré} other {# liens enregistrés}}",
     locationsLegacyHost:
       "Cet hôte est antérieur aux objets d’emplacement. Les anciens noms restent visibles, mais mettez l’hôte à jour avant toute modification.",
     locationsOffline:
@@ -324,14 +328,22 @@ export const frDictionary: DictionaryNode = {
     locationRename: "Renommer l’emplacement",
     locationRenameNamed: "Renommer {name}",
     locationArchiveNamed: "Archiver {name}",
+    locationDeleteNamed: "Supprimer définitivement {name}",
+    locationDeleteAction: "Supprimer",
     locationRestoreNamed: "Restaurer {name}",
     locationRestoreNameConflict:
       "Renommez-le avant la restauration : un emplacement actif porte déjà ce nom.",
     locationNewName: "Nouveau nom",
     locationArchiveConfirmTitle: "Archiver {name} ?",
     locationArchiveConfirmDetail:
-      "{count, plural, =0 {Aucune bobine n’est liée à cet emplacement} one {# bobine liée conserve cet emplacement} other {# bobines liées conservent cet emplacement}}. L’emplacement disparaît des nouveaux choix, mais peut être restauré plus tard.",
+      "{count, plural, =0 {Aucun lien enregistré ne pointe vers cet emplacement} one {# lien enregistré continue de pointer vers cet emplacement} other {# liens enregistrés continuent de pointer vers cet emplacement}}. L’emplacement disparaît des nouveaux choix, mais peut être restauré plus tard.",
+    locationArchiveLegacyConfirmDetail:
+      "{count, plural, =0 {Aucune bobine visible n’est liée} one {# bobine visible reste liée} other {# bobines visibles restent liées}}. Cet hôte ne peut pas signaler les liens d’origine masqués ni les sous-emplacements. L’emplacement disparaît des nouveaux choix, mais peut être restauré plus tard.",
     locationArchiveConfirm: "Archiver l’emplacement",
+    locationDeleteConfirmTitle: "Supprimer définitivement {name} ?",
+    locationDeleteConfirmDetail:
+      "Cet emplacement n’a aucune bobine ni aucun sous-emplacement lié et peut être supprimé. Cette action est irréversible. Les événements d’historique sont conservés.",
+    locationDeleteConfirm: "Supprimer définitivement l’emplacement",
     locationMerge: "Fusionner des emplacements",
     locationMergeAdvanced: "Avancé : fusionner des emplacements",
     locationMergeHelp:
@@ -353,6 +365,7 @@ export const frDictionary: DictionaryNode = {
     locationCreated: "Emplacement créé.",
     locationRenamed: "Emplacement renommé.",
     locationArchived: "Emplacement archivé.",
+    locationDeleted: "Emplacement supprimé.",
     locationRestored: "Emplacement restauré.",
     locationsMerged: "Emplacements fusionnés.",
     labelSheetAllAction: "Créer une planche d’étiquettes pour tout le stock",

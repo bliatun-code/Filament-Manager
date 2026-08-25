@@ -111,6 +111,23 @@ pub(super) async fn handle_restore_location(
     Ok(Json(row))
 }
 
+pub(super) async fn handle_delete_location(
+    State(state): State<CompanionApiState>,
+    Path(location_id): Path<String>,
+    Json(payload): Json<InventoryLocationIdInput>,
+) -> Result<Json<InventoryLocationRow>, CompanionApiError> {
+    verify_location_id(&location_id, &payload.location_id)?;
+    let row = state
+        .run_blocking("inventory location delete", move |state| {
+            state
+                .open_db()?
+                .delete_inventory_location(location_id.trim())
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
+    Ok(Json(row))
+}
+
 pub(super) async fn handle_merge_locations(
     State(state): State<CompanionApiState>,
     Json(payload): Json<MergeInventoryLocationsInput>,

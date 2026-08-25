@@ -20,6 +20,10 @@ const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.spoolStatusEditLimited",
     "Browser edits are limited to in-stock, empty, or lost rolls.",
   ],
+  "inventory.location.has_references": [
+    "errors.locationHasReferences",
+    "Move every roll and child location before deleting this location.",
+  ],
   "loans.expected_return_invalid": [
     "errors.loanExpectedReturnInvalid",
     "Choose a valid expected return date.",

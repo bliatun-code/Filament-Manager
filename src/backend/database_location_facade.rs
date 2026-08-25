@@ -1,8 +1,8 @@
 use super::database_core::FilamentDatabase;
 use super::database_location_models::{InventoryLocationMergeResult, InventoryLocationRow};
 use super::database_locations::{
-    archive_location, create_location, list_locations, merge_locations, rename_location,
-    restore_location,
+    archive_location, create_location, delete_location, list_locations, merge_locations,
+    rename_location, restore_location,
 };
 use super::database_result::InventoryResult;
 
@@ -42,6 +42,13 @@ impl FilamentDatabase {
         location_id: &str,
     ) -> InventoryResult<InventoryLocationRow> {
         self.with_inventory_transaction(|conn| restore_location(conn, location_id))
+    }
+
+    pub fn delete_inventory_location(
+        &self,
+        location_id: &str,
+    ) -> InventoryResult<InventoryLocationRow> {
+        self.with_inventory_transaction(|conn| delete_location(conn, location_id))
     }
 
     pub fn merge_inventory_locations(

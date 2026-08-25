@@ -12,8 +12,9 @@ use crate::companion_inventory_read_api::{
 };
 use crate::companion_library_api::*;
 use crate::companion_location_api::{
-    handle_archive_location, handle_create_location, handle_list_library_locations,
-    handle_list_locations, handle_merge_locations, handle_rename_location, handle_restore_location,
+    handle_archive_location, handle_create_location, handle_delete_location,
+    handle_list_library_locations, handle_list_locations, handle_merge_locations,
+    handle_rename_location, handle_restore_location,
 };
 use crate::companion_state::CompanionApiState;
 use crate::companion_wishlist_write_api::{
@@ -85,6 +86,10 @@ fn build_router_with_security_config(
         .route(
             "/locations/{location_id}/restore",
             post(handle_restore_location),
+        )
+        .route(
+            "/locations/{location_id}/delete",
+            post(handle_delete_location),
         )
         .route("/backup/full", get(handle_export_full_backup))
         .route("/catalog/masters", get(handle_list_catalog_masters))

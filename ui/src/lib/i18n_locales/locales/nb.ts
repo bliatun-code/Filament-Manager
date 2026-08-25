@@ -60,6 +60,8 @@ export const nbDictionary: DictionaryNode = {
         "Returner utlånet før du redigerer status eller plassering for denne rullen.",
       spoolStatusEditLimited:
         "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
+      locationHasReferences:
+        "Flytt alle ruller og underlokasjoner før du sletter denne lokasjonen.",
       loanExpectedReturnInvalid: "Velg en gyldig forventet returdato.",
       loanMetadataUnsupported:
         "Oppdater verten før du lagrer kontaktinformasjon eller forventet returdato for utlånet.",
@@ -372,6 +374,8 @@ export const nbDictionary: DictionaryNode = {
         "Arkiverte lokasjoner forsvinner fra nye valg. Tilknyttede ruller beholder samme lokasjons-ID, og gjenoppretting gjør nøyaktig samme lokasjon tilgjengelig igjen.",
       locationUsageCount:
         "{count, plural, =0 {Ingen ruller knyttet} one {# rull knyttet} other {# ruller knyttet}}",
+      locationReferenceCount:
+        "{count, plural, =0 {Ingen lagrede tilknytninger} one {# lagret tilknytning} other {# lagrede tilknytninger}}",
       locationsLegacyHost:
         "Denne verten er fra før lokasjonsobjekter. Eksisterende plasseringsnavn vises fortsatt, men verten må oppgraderes før lokasjoner kan endres.",
       locationsOffline:
@@ -383,14 +387,22 @@ export const nbDictionary: DictionaryNode = {
       locationRename: "Gi lokasjonen nytt navn",
       locationRenameNamed: "Gi {name} nytt navn",
       locationArchiveNamed: "Arkiver {name}",
+      locationDeleteNamed: "Slett {name} permanent",
+      locationDeleteAction: "Slett",
       locationRestoreNamed: "Gjenopprett {name}",
       locationRestoreNameConflict:
         "Gi lokasjonen nytt navn før gjenoppretting: en aktiv lokasjon bruker allerede dette navnet.",
       locationNewName: "Nytt navn",
       locationArchiveConfirmTitle: "Arkiver {name}?",
       locationArchiveConfirmDetail:
-        "{count, plural, =0 {Ingen ruller er knyttet til denne lokasjonen} one {# tilknyttet rull beholder denne lokasjonen} other {# tilknyttede ruller beholder denne lokasjonen}}. Lokasjonen forsvinner fra nye valg, men kan gjenopprettes senere.",
+        "{count, plural, =0 {Ingen lagrede tilknytninger peker til denne lokasjonen} one {# lagret tilknytning fortsetter å peke til denne lokasjonen} other {# lagrede tilknytninger fortsetter å peke til denne lokasjonen}}. Lokasjonen forsvinner fra nye valg, men kan gjenopprettes senere.",
+      locationArchiveLegacyConfirmDetail:
+        "{count, plural, =0 {Ingen synlige ruller er knyttet til lokasjonen} one {# synlig rull forblir knyttet til lokasjonen} other {# synlige ruller forblir knyttet til lokasjonen}}. Denne verten kan ikke rapportere skjulte hjemme- eller underlokasjonskoblinger. Lokasjonen forsvinner fra nye valg, men kan gjenopprettes senere.",
       locationArchiveConfirm: "Arkiver lokasjonen",
+      locationDeleteConfirmTitle: "Slett {name} permanent?",
+      locationDeleteConfirmDetail:
+        "Lokasjonen har ingen tilknyttede ruller eller underlokasjoner og kan slettes. Dette kan ikke angres. Historikkhendelser beholdes.",
+      locationDeleteConfirm: "Slett lokasjonen permanent",
       locationMerge: "Slå sammen lokasjoner",
       locationMergeAdvanced: "Avansert: slå sammen lokasjoner",
       locationMergeHelp:
@@ -412,6 +424,7 @@ export const nbDictionary: DictionaryNode = {
       locationCreated: "Lokasjonen er opprettet.",
       locationRenamed: "Lokasjonen har fått nytt navn.",
       locationArchived: "Lokasjonen er arkivert.",
+      locationDeleted: "Lokasjonen er slettet.",
       locationRestored: "Lokasjonen er gjenopprettet.",
       locationsMerged: "Lokasjonene er slått sammen.",
       labelSheetAllAction: "Lag etikettark for hele lageret",

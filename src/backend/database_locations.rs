@@ -29,9 +29,16 @@ pub(crate) fn list_locations(
     include_archived: bool,
 ) -> InventoryResult<Vec<InventoryLocationRow>> {
     let mut statement = conn.prepare(
-        "SELECT id, name, type, parent_id, x, y, z, archived_at,
-                COALESCE(created_at, ''), COALESCE(updated_at, '')
-         FROM inventory_locations
+        "SELECT location.id, location.name, location.type, location.parent_id,
+                location.x, location.y, location.z, location.archived_at,
+                COALESCE(location.created_at, ''), COALESCE(location.updated_at, ''),
+                (SELECT COUNT(*) FROM filament_spools
+                 WHERE location_id = location.id)
+                  + (SELECT COUNT(*) FROM filament_spools
+                     WHERE home_location_id = location.id)
+                  + (SELECT COUNT(*) FROM inventory_locations child
+                     WHERE child.parent_id = location.id) AS reference_count
+         FROM inventory_locations location
          WHERE ?1 != 0 OR archived_at IS NULL
          ORDER BY archived_at IS NOT NULL, name COLLATE NOCASE, id",
     )?;
@@ -44,10 +51,17 @@ pub(crate) fn get_location(
     location_id: &str,
 ) -> InventoryResult<Option<InventoryLocationRow>> {
     conn.query_row(
-        "SELECT id, name, type, parent_id, x, y, z, archived_at,
-                COALESCE(created_at, ''), COALESCE(updated_at, '')
-         FROM inventory_locations
-         WHERE id = ?1
+        "SELECT location.id, location.name, location.type, location.parent_id,
+                location.x, location.y, location.z, location.archived_at,
+                COALESCE(location.created_at, ''), COALESCE(location.updated_at, ''),
+                (SELECT COUNT(*) FROM filament_spools
+                 WHERE location_id = location.id)
+                  + (SELECT COUNT(*) FROM filament_spools
+                     WHERE home_location_id = location.id)
+                  + (SELECT COUNT(*) FROM inventory_locations child
+                     WHERE child.parent_id = location.id) AS reference_count
+         FROM inventory_locations location
+         WHERE location.id = ?1
          LIMIT 1",
         params![location_id.trim()],
         map_location_row,
@@ -173,6 +187,49 @@ pub(crate) fn restore_location(
     get_location(conn, location_id)?.ok_or(InventoryError::NotFound)
 }
 
+pub(crate) fn delete_location(
+    conn: &Connection,
+    location_id: &str,
+) -> InventoryResult<InventoryLocationRow> {
+    let existing = require_generic_location(conn, location_id)?;
+    let references = location_reference_counts(conn, &existing.id)?;
+    if references.total() != 0 {
+        return Err(invalid_location(
+            "inventory.location.has_references",
+            &format!(
+                "Location cannot be deleted while it is referenced (current spool locations: {}, home locations: {}, child locations: {}).",
+                references.current_spools, references.home_spools, references.child_locations
+            ),
+        ));
+    }
+
+    // Keep the guards in the DELETE as a second line of defence. The facade
+    // runs this function in an IMMEDIATE transaction, so the read, decision,
+    // and permanent deletion are one atomic mutation.
+    let affected = conn.execute(
+        "DELETE FROM inventory_locations
+         WHERE id = ?1
+           AND type = 'GENERIC'
+           AND NOT EXISTS (
+             SELECT 1 FROM filament_spools WHERE location_id = ?1
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM filament_spools WHERE home_location_id = ?1
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM inventory_locations child WHERE child.parent_id = ?1
+           )",
+        params![existing.id],
+    )?;
+    if affected != 1 {
+        return Err(invalid_location(
+            "inventory.location.has_references",
+            "Location acquired a reference before it could be deleted.",
+        ));
+    }
+    Ok(existing)
+}
+
 pub(crate) fn merge_locations(
     conn: &Connection,
     source_id: &str,
@@ -293,10 +350,12 @@ pub(crate) fn location_reference_matches(
 }
 
 fn map_location_row(row: &rusqlite::Row<'_>) -> Result<InventoryLocationRow, rusqlite::Error> {
+    let location_type: String = row.get(2)?;
+    let reference_count: i64 = row.get(10)?;
     Ok(InventoryLocationRow {
         id: row.get(0)?,
         name: row.get(1)?,
-        location_type: row.get(2)?,
+        location_type: location_type.clone(),
         parent_id: row.get(3)?,
         x: row.get(4)?,
         y: row.get(5)?,
@@ -304,7 +363,43 @@ fn map_location_row(row: &rusqlite::Row<'_>) -> Result<InventoryLocationRow, rus
         archived_at: row.get(7)?,
         created_at: row.get(8)?,
         updated_at: row.get(9)?,
+        reference_count: Some(reference_count),
+        can_delete: location_type == "GENERIC" && reference_count == 0,
     })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct LocationReferenceCounts {
+    current_spools: i64,
+    home_spools: i64,
+    child_locations: i64,
+}
+
+impl LocationReferenceCounts {
+    fn total(self) -> i64 {
+        self.current_spools + self.home_spools + self.child_locations
+    }
+}
+
+fn location_reference_counts(
+    conn: &Connection,
+    location_id: &str,
+) -> InventoryResult<LocationReferenceCounts> {
+    conn.query_row(
+        "SELECT
+           (SELECT COUNT(*) FROM filament_spools WHERE location_id = ?1),
+           (SELECT COUNT(*) FROM filament_spools WHERE home_location_id = ?1),
+           (SELECT COUNT(*) FROM inventory_locations WHERE parent_id = ?1)",
+        params![location_id],
+        |row| {
+            Ok(LocationReferenceCounts {
+                current_spools: row.get(0)?,
+                home_spools: row.get(1)?,
+                child_locations: row.get(2)?,
+            })
+        },
+    )
+    .map_err(Into::into)
 }
 
 fn find_active_generic_by_normalized_name(
@@ -447,6 +542,7 @@ mod tests {
     use rusqlite::params;
 
     use super::super::database_core::FilamentDatabase;
+    use super::super::database_result::InventoryError;
     use super::super::database_revision::LibraryDomainRevisions;
 
     fn temp_db_path(name: &str) -> PathBuf {
@@ -486,6 +582,15 @@ mod tests {
                 params![spool_id, location_id, home_location_id],
             )
             .expect("seed spool");
+    }
+
+    fn assert_location_has_references(error: InventoryError) {
+        match error {
+            InventoryError::InvalidOperation { code, .. } => {
+                assert_eq!(code, "inventory.location.has_references")
+            }
+            other => panic!("expected location reference rejection, got {other:?}"),
+        }
     }
 
     #[test]
@@ -675,6 +780,142 @@ mod tests {
     }
 
     #[test]
+    fn delete_removes_unreferenced_active_or_archived_generic_locations() {
+        let (path, db) = open_db("delete-unreferenced");
+        let before = db
+            .library_domain_revisions()
+            .expect("read revisions before deletes");
+        let active = db
+            .create_inventory_location("Temporary Shelf", None)
+            .expect("create active location");
+        assert_eq!(active.reference_count, Some(0));
+        assert!(active.can_delete);
+
+        let deleted_active = db
+            .delete_inventory_location(&active.id)
+            .expect("delete unreferenced active location");
+        assert_eq!(deleted_active.id, active.id);
+        assert!(db
+            .list_inventory_locations(true)
+            .expect("list after active delete")
+            .into_iter()
+            .all(|row| row.id != active.id));
+
+        let archived = db
+            .create_inventory_location("Temporary Archived Shelf", None)
+            .expect("create location to archive");
+        db.archive_inventory_location(&archived.id)
+            .expect("archive unreferenced location");
+        let archived_row = db
+            .list_inventory_locations(true)
+            .expect("list archived location")
+            .into_iter()
+            .find(|row| row.id == archived.id)
+            .expect("find archived location");
+        assert_eq!(archived_row.reference_count, Some(0));
+        assert!(archived_row.can_delete);
+        db.delete_inventory_location(&archived.id)
+            .expect("delete unreferenced archived location");
+
+        let after = db
+            .library_domain_revisions()
+            .expect("read revisions after deletes");
+        assert!(after.inventory >= before.inventory + 5);
+
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn delete_rejects_location_used_as_a_spool_current_location() {
+        let (path, db) = open_db("delete-current-reference");
+        let location = db
+            .create_inventory_location("Current Shelf", None)
+            .expect("create referenced location");
+        let other = db
+            .create_inventory_location("Home Shelf", None)
+            .expect("create other location");
+        seed_master_and_spool(&db, "current-reference-spool", &location.id, &other.id);
+
+        let row = db
+            .list_inventory_locations(false)
+            .expect("list referenced location")
+            .into_iter()
+            .find(|row| row.id == location.id)
+            .expect("find referenced location");
+        assert_eq!(row.reference_count, Some(1));
+        assert!(!row.can_delete);
+        assert_location_has_references(
+            db.delete_inventory_location(&location.id)
+                .expect_err("current location reference must block delete"),
+        );
+        assert!(db
+            .list_inventory_locations(false)
+            .expect("list after rejected delete")
+            .into_iter()
+            .any(|row| row.id == location.id));
+
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn delete_rejects_location_used_as_a_spool_home_location() {
+        let (path, db) = open_db("delete-home-reference");
+        let location = db
+            .create_inventory_location("Home Shelf", None)
+            .expect("create referenced location");
+        let other = db
+            .create_inventory_location("Current Shelf", None)
+            .expect("create other location");
+        seed_master_and_spool(&db, "home-reference-spool", &other.id, &location.id);
+        db.soft_delete_spool("home-reference-spool")
+            .expect("soft delete spool while preserving its home reference");
+
+        let row = db
+            .list_inventory_locations(false)
+            .expect("list referenced location")
+            .into_iter()
+            .find(|row| row.id == location.id)
+            .expect("find referenced location");
+        assert_eq!(row.reference_count, Some(1));
+        assert!(!row.can_delete);
+        assert_location_has_references(
+            db.delete_inventory_location(&location.id)
+                .expect_err("home location reference must block delete"),
+        );
+
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn delete_rejects_location_used_as_a_parent_location() {
+        let (path, db) = open_db("delete-parent-reference");
+        let location = db
+            .create_inventory_location("Parent Shelf", None)
+            .expect("create parent location");
+        db.create_inventory_location("Child Shelf", Some(&location.id))
+            .expect("create child location");
+
+        let row = db
+            .list_inventory_locations(false)
+            .expect("list referenced location")
+            .into_iter()
+            .find(|row| row.id == location.id)
+            .expect("find referenced location");
+        assert_eq!(row.reference_count, Some(1));
+        assert!(!row.can_delete);
+        assert_location_has_references(
+            db.delete_inventory_location(&location.id)
+                .expect_err("child location reference must block delete"),
+        );
+
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
     fn merge_moves_all_references_writes_history_and_archives_source() {
         let (path, db) = open_db("merge");
         let source = db
@@ -844,6 +1085,8 @@ mod tests {
                 .expect_err("archive should fail"),
             db.restore_inventory_location("Printer:Studio:slot-1")
                 .expect_err("restore should fail"),
+            db.delete_inventory_location("Printer:Studio:slot-1")
+                .expect_err("delete should fail"),
         ] {
             assert!(error.to_string().contains("system locations"));
         }

@@ -44,3 +44,22 @@ test("older Host purchase metadata capability error is localized and actionable"
     "Oppdater verten før du lagrer kjøpsdetaljer.",
   );
 });
+
+test("referenced location deletion error explains the required cleanup", () => {
+  const error = new Error(
+    JSON.stringify({
+      code: "inventory.location.has_references",
+      safe_detail: null,
+      diagnostic_id: null,
+    }),
+  );
+  const t = (key: string, fallback = "") =>
+    key === "errors.locationHasReferences"
+      ? "Flytt alle ruller og underlokasjoner først."
+      : fallback;
+
+  assert.equal(
+    toErrorMessage(error, "Kunne ikke slette lokasjonen.", t),
+    "Flytt alle ruller og underlokasjoner først.",
+  );
+});
