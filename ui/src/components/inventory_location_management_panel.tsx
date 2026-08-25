@@ -6,6 +6,7 @@ import {
   validateLocationMerge,
   type InventoryLocationActionState,
 } from "../lib/inventory_location_model";
+import type { InventoryLocationFilter } from "../lib/inventory_list_model";
 import type { InventoryLocationRow } from "../lib/tauri_location_client";
 import { useI18n } from "../lib/i18n";
 import { FeedbackBanner } from "./feedback_banner";
@@ -191,6 +192,7 @@ type InventoryLocationManagementPanelProps = {
   onArchive: (locationId: string) => Promise<boolean>;
   onCreate: (name: string) => Promise<boolean>;
   onDelete: (locationId: string) => Promise<boolean>;
+  onOpenLinkedSpools: (location: InventoryLocationFilter) => void;
   onMerge: (sourceId: string, targetId: string) => Promise<boolean>;
   onRename: (locationId: string, name: string) => Promise<boolean>;
   onRestore: (locationId: string) => Promise<boolean>;
@@ -228,6 +230,7 @@ export function InventoryLocationManagementPanel({
   onArchive,
   onCreate,
   onDelete,
+  onOpenLinkedSpools,
   onMerge,
   onRename,
   onRestore,
@@ -262,6 +265,21 @@ export function InventoryLocationManagementPanel({
   const renderLocationRow = (row: InventoryLocationActionState) => {
     const usageCount = usageByLocationId.get(row.id) ?? 0;
     const referenceCount = row.reference_count;
+    const usageLabel = t(
+      "inventory.locationUsageCount",
+      "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
+      { count: usageCount },
+    );
+    const referenceLabel =
+      referenceCount == null
+        ? null
+        : t(
+            "inventory.locationReferenceCount",
+            "{count, plural, =0 {No saved links} one {# saved link} other {# saved links}}",
+            { count: referenceCount },
+          );
+    const drilldownLabel =
+      referenceCount === usageCount && referenceLabel ? referenceLabel : usageLabel;
     const renameInputId = `inventory-location-rename-${locationDomId(row.id)}`;
     const renameActionId = locationActionDomId("rename", row.id);
     const archiveActionId = locationActionDomId("archive", row.id);
@@ -332,19 +350,26 @@ export function InventoryLocationManagementPanel({
               <div className="truncate text-sm font-semibold text-slate-950 dark:text-white">
                 {row.name}
               </div>
-              <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                {referenceCount == null
-                  ? t(
-                      "inventory.locationUsageCount",
-                      "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
-                      { count: usageCount },
-                    )
-                  : t(
-                      "inventory.locationReferenceCount",
-                      "{count, plural, =0 {No saved links} one {# saved link} other {# saved links}}",
-                      { count: referenceCount },
-                    )}
-              </div>
+              {referenceLabel && (usageCount === 0 || referenceCount !== usageCount) ? (
+                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {referenceLabel}
+                </div>
+              ) : null}
+              {usageCount > 0 ? (
+                <button
+                  type="button"
+                  aria-label={`${row.name}: ${usageLabel}`}
+                  className="mt-1 inline-flex items-center gap-1 rounded text-left text-xs font-semibold text-sky-700 underline decoration-sky-300 underline-offset-2 outline-none transition hover:text-sky-900 focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-sky-300 dark:decoration-sky-600 dark:hover:text-sky-100"
+                  onClick={() => onOpenLinkedSpools({ id: row.id, name: row.name })}
+                >
+                  <span>{drilldownLabel}</span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              ) : referenceCount == null ? (
+                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {usageLabel}
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2 sm:justify-end">
               {row.canRename ? (

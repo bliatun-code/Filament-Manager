@@ -22,7 +22,10 @@ import {
   chooseDesktopVisualQaSpoolId,
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
-import { isInventorySpoolLoanTrackingCandidate } from "../lib/inventory_list_model";
+import {
+  isInventorySpoolLoanTrackingCandidate,
+  type InventoryLocationFilter,
+} from "../lib/inventory_list_model";
 import {
   archiveLocationForInventory,
   createLocationForInventory,
@@ -158,9 +161,11 @@ export default function InventoryPage({
   const {
     activeFilterCount,
     advancedFiltersOpen,
+    clearLocationFilter,
     filteredSpools,
     groupedSpools,
     inventoryView,
+    locationFilter,
     lowStockOnly,
     materialFilter,
     materialOptions,
@@ -176,6 +181,7 @@ export default function InventoryPage({
     setStatusFilter,
     setVendorFilter,
     showLowStockList,
+    showLocationSpools,
     statusFilter,
     vendorFilter,
     vendorOptions,
@@ -183,6 +189,18 @@ export default function InventoryPage({
   } = useInventoryFilters(spools, {
     deterministicPagePreferences: Boolean(desktopVisualQaScenario || detailVisualFixture),
   });
+  const openLinkedLocationSpools = useCallback(
+    (location: InventoryLocationFilter) => {
+      showLocationSpools(location);
+      setActiveWorkspaceView("STOCK");
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          document.getElementById("inventory-location-filter-chip")?.focus();
+        });
+      }
+    },
+    [showLocationSpools],
+  );
   const {
     closeRfidCaptureModal,
     closeRollModal,
@@ -1393,10 +1411,12 @@ export default function InventoryPage({
           activeFilterCount,
           advancedFiltersOpen,
           inventoryView,
+          locationFilter,
           materialFilter,
           materialOptions,
           onAdvancedFiltersOpenChange: setAdvancedFiltersOpen,
           onInventoryViewChange: setInventoryView,
+          onLocationFilterClear: clearLocationFilter,
           onMaterialFilterChange: setMaterialFilter,
           onOwnershipFilterChange: setOwnershipFilter,
           onResetFilters: resetFilters,
@@ -1418,6 +1438,7 @@ export default function InventoryPage({
           onArchive: archiveLocation,
           onCreate: createLocation,
           onDelete: deleteLocation,
+          onOpenLinkedSpools: openLinkedLocationSpools,
           onMerge: mergeLocations,
           onRename: renameLocation,
           onRestore: restoreLocation,

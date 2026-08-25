@@ -282,6 +282,51 @@ test("search, status and low-stock filters compose without widening results", ()
   );
 });
 
+test("location search and drilldown include home placement while filtering by exact ID", () => {
+  const rows = [
+    spool({
+      id: "shelf-xx",
+      location: "Shelf xx",
+      locationId: "location-xx",
+    }),
+    spool({
+      id: "shelf-xxx",
+      location: "Shelf xxx",
+      locationId: "location-xxx",
+    }),
+    spool({
+      id: "loaned-hakon",
+      location: "Loaned to: Håkon",
+      locationId: "loan-hakon",
+      homeLocation: "Shelf Håkon",
+      homeLocationId: "location-hakon",
+      status: "BORROWED",
+    }),
+  ];
+
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      search: "Shelf Håkon",
+    }).map((row) => row.id),
+    ["loaned-hakon"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      locationFilterId: "location-xx",
+    }).map((row) => row.id),
+    ["shelf-xx"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      locationFilterId: "location-hakon",
+    }).map((row) => row.id),
+    ["loaned-hakon"],
+  );
+});
+
 test("low-stock search and status filters use each material-effective threshold", () => {
   const rows = [
     spool({

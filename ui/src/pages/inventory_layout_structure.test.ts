@@ -132,6 +132,11 @@ test("inventory exposes managed location objects and autocomplete in one click",
   assert.match(inventoryPageWorkspaceSource, /<InventoryLocationManagementPanel/);
   assert.match(inventoryPageSource, /<InventoryLocationDatalist rows=\{locations\}/);
   assert.match(inventoryPageSource, /locationPanelProps=\{\{/);
+  assert.match(inventoryPageSource, /onOpenLinkedSpools: openLinkedLocationSpools/);
+  assert.match(
+    inventoryPageSource,
+    /showLocationSpools\(location\);\s*setActiveWorkspaceView\("STOCK"\)/,
+  );
   assert.match(inventoryPageSource, /totalLocationCount=\{selectableInventoryLocations/);
 });
 
@@ -147,6 +152,14 @@ test("inventory search and filter controls expose accessible names and state", (
   assert.match(inventoryControlsSource, /aria-expanded=\{advancedFiltersOpen\}/);
   assert.match(inventoryControlsSource, /aria-controls="inventory-advanced-filters"/);
   assert.match(inventoryControlsSource, /id="inventory-advanced-filters"/);
+  assert.match(inventoryControlsSource, /onClick=\{onLocationFilterClear\}/);
+  assert.match(inventoryControlsSource, /id="inventory-location-filter-chip"/);
+  assert.match(inventoryControlsSource, /common\.remove/);
+  assert.match(inventoryControlsSource, /locationFilter\.name/);
+  assert.match(
+    inventoryPageSource,
+    /getElementById\("inventory-location-filter-chip"\)\?\.focus\(\)/,
+  );
 });
 
 test("inventory result summary counts all active filters and offers reset", () => {

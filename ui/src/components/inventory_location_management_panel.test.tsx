@@ -86,6 +86,7 @@ function renderPanel(
         onArchive={async () => true}
         onCreate={async () => true}
         onDelete={async () => true}
+        onOpenLinkedSpools={() => {}}
         onMerge={async () => true}
         onRename={async () => true}
         onRestore={async () => true}
@@ -106,7 +107,10 @@ test("live location management stays compact and omits system-owned rows", () =>
   assert.match(html, /Create location/);
   assert.match(html, /2 active locations/);
   assert.match(html, /2 saved links/);
+  assert.match(html, /aria-label="Dry box: 2 connected rolls"/);
+  assert.match(html, /aria-label="Dry box: 2 connected rolls"[^>]*><span>2 saved links/);
   assert.match(html, /No saved links/);
+  assert.doesNotMatch(html, /aria-label="Shelf B: No connected rolls"/);
   assert.match(html, /Previous locations/);
   assert.match(html, /Advanced: merge locations/);
   assert.match(html, /Manage locations/);
@@ -275,6 +279,7 @@ test("large system location sets never inflate the management surface", () => {
         onArchive={async () => true}
         onCreate={async () => true}
         onDelete={async () => true}
+        onOpenLinkedSpools={() => {}}
         onMerge={async () => true}
         onRename={async () => true}
         onRestore={async () => true}

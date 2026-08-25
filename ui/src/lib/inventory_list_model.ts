@@ -16,6 +16,10 @@ import {
 
 export type StatusFilter = "ALL" | ActiveSpoolStatus;
 export type OwnershipFilter = "ALL" | OwnershipType;
+export type InventoryLocationFilter = Readonly<{
+  id: string;
+  name: string;
+}>;
 export type InventorySemanticTone = "neutral" | "info" | "success" | "warning" | "danger";
 export type InventoryCollectionEmptyState =
   | "LOADING"
@@ -213,24 +217,41 @@ export function filterInventorySpools(
     materialFilter: string;
     vendorFilter: string;
     lowStockOnly: boolean;
+    locationFilterId?: string | null;
   },
 ): InventorySpool[] {
-  const { search, statusFilter, ownershipFilter, materialFilter, vendorFilter, lowStockOnly } = options;
+  const {
+    search,
+    statusFilter,
+    ownershipFilter,
+    materialFilter,
+    vendorFilter,
+    lowStockOnly,
+    locationFilterId,
+  } = options;
   const term = search.trim().toLowerCase();
+  const exactLocationId = locationFilterId?.trim() ?? "";
   return spools.filter((spool) => {
     const statusMatch = isInventorySpoolVisibleForStatusFilter(spool, statusFilter);
     const ownershipMatch = ownershipFilter === "ALL" ? true : spool.ownershipType === ownershipFilter;
     const materialMatch = materialFilter === "ALL" ? true : spool.material === materialFilter;
     const vendorMatch = vendorFilter === "ALL" ? true : spool.vendor === vendorFilter;
     const lowStockMatch = lowStockOnly ? isInventorySpoolLowStockCandidate(spool) : true;
+    const locationMatch =
+      exactLocationId.length === 0 ||
+      [spool.locationId, spool.homeLocationId].some(
+        (locationId) => locationId?.trim() === exactLocationId,
+      );
     const searchMatch =
       term.length === 0
         ? true
         : `${spool.id} ${formatRollReference(spool)} ${spool.material} ${spool.filamentName} ${
             spool.colorName
-          } ${spool.location ?? ""} ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${
-            spool.ownerName ?? ""
-          } ${spool.ownerContact ?? ""} ${
+          } ${spool.location ?? ""} ${spool.homeLocation ?? ""} ${spool.locationId ?? ""} ${
+            spool.homeLocationId ?? ""
+          } ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${spool.ownerName ?? ""} ${
+            spool.ownerContact ?? ""
+          } ${
             isBorrowedInOwnership(spool.ownershipType) ? "borrowed in" : "owned"
           }`
             .toLowerCase()
@@ -241,6 +262,7 @@ export function filterInventorySpools(
       materialMatch &&
       vendorMatch &&
       lowStockMatch &&
+      locationMatch &&
       searchMatch
     );
   });

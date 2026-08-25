@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { neutralChipClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
-import type { OwnershipFilter, StatusFilter } from "../lib/inventory_list_model";
+import type {
+  InventoryLocationFilter,
+  OwnershipFilter,
+  StatusFilter,
+} from "../lib/inventory_list_model";
 import type { InventoryViewMode } from "../lib/inventory_page_preferences";
 import { materialTone } from "../lib/material_theme";
 import { PageHeaderButton } from "./page_header_button";
@@ -62,11 +66,13 @@ type InventoryControlsPanelProps = {
   bulkSelectionActive: boolean;
   bulkSelectionDisabled: boolean;
   inventoryView: InventoryViewMode;
+  locationFilter: InventoryLocationFilter | null;
   materialFilter: string;
   materialOptions: string[];
   onAdvancedFiltersOpenChange: (value: boolean) => void;
   onBulkSelectionActiveChange: (value: boolean) => void;
   onInventoryViewChange: (value: InventoryViewMode) => void;
+  onLocationFilterClear: () => void;
   onMaterialFilterChange: (value: string) => void;
   onOwnershipFilterChange: (value: OwnershipFilter) => void;
   onResetFilters: () => void;
@@ -206,11 +212,13 @@ export function InventoryControlsPanel({
   bulkSelectionActive,
   bulkSelectionDisabled,
   inventoryView,
+  locationFilter,
   materialFilter,
   materialOptions,
   onAdvancedFiltersOpenChange,
   onBulkSelectionActiveChange,
   onInventoryViewChange,
+  onLocationFilterClear,
   onMaterialFilterChange,
   onOwnershipFilterChange,
   onResetFilters,
@@ -240,6 +248,23 @@ export function InventoryControlsPanel({
               <span className="rounded-full border border-sky-300/65 bg-sky-50/70 px-2.5 py-1 text-[11px] font-semibold text-sky-700 dark:border-sky-400/35 dark:bg-sky-500/10 dark:text-sky-200">
                 {activeFilterCount} {t("inventory.activeFilters", "active")}
               </span>
+            ) : null}
+            {locationFilter ? (
+              <button
+                id="inventory-location-filter-chip"
+                type="button"
+                aria-label={`${t("common.remove", "Remove")} ${t("inventory.location", "Location")}: ${locationFilter.name}`}
+                onClick={onLocationFilterClear}
+                className={neutralChipClass(
+                  true,
+                  "max-w-full gap-1 px-2.5 py-1 text-[11px]",
+                )}
+              >
+                <span className="truncate">
+                  {t("inventory.location", "Location")}: {locationFilter.name}
+                </span>
+                <span aria-hidden="true">×</span>
+              </button>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2 min-[920px]:justify-end">
