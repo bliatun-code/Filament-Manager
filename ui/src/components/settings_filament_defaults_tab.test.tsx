@@ -62,7 +62,7 @@ function renderTab({
       ]}
       settingsValid={settingsValid}
       spoolRows={[
-        spool("white"),
+        spool("spool_1775435249521", { colorName: "White" }),
         spool("black", {
           purchasePrice: 279,
           purchaseCurrency: "NOK",
@@ -109,6 +109,8 @@ test("filament defaults tab combines currency, low stock and collapsed price gro
   assert.match(html, /Bambu Lab/);
   assert.match(html, /4 spools/);
   assert.match(html, /PLA Basic/);
+  assert.match(html, /#249521/);
+  assert.doesNotMatch(html, /#spool_1775435249521/);
   assert.match(html, /Batch locked/);
   assert.match(html, /Historical/);
   assert.match(html, /Historical · Empty/);

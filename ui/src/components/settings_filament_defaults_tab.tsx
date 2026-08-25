@@ -7,6 +7,8 @@ import {
 } from "react";
 
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
+import { formatSpoolReference } from "../lib/display_format";
+import { formatInventoryStatusLabel } from "../lib/inventory_list_model";
 import {
   allFilamentPriceGroups,
   buildFilamentPriceBatchPreview,
@@ -40,7 +42,6 @@ import { AppModal } from "./app_modal";
 import { toErrorMessage } from "../lib/error_text";
 import { SettingsLowStockPanel, type SettingsLowStockPanelProps } from "./settings_low_stock_panel";
 import { SettingsNotice, SettingsSurfaceCard } from "./settings_ui";
-import { formatInventoryStatusLabel } from "../lib/inventory_list_model";
 
 type TranslateFn = (key: string, fallback?: string, params?: MessageParams) => string;
 
@@ -200,7 +201,7 @@ function GroupSpoolRow({
           {label}
         </button>
         <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-          <span>#{row.spoolId}</span>
+          <span>{formatSpoolReference(row.spoolId)}</span>
           {row.batchPriceLocked ? (
             <span className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
               {t("settings.filamentDefaultsBatchLocked", "Batch locked")}
