@@ -238,7 +238,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Record build environment
@@ -598,7 +598,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
 
       - name: Install root dependencies
         run: npm ci

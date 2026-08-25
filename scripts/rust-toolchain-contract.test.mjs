@@ -57,7 +57,7 @@ test("the edition migration keeps formatting changes isolated", () => {
 
 test("the repository selects one complete reviewed Rust toolchain", () => {
   assert.match(toolchain, /^\[toolchain\]$/m);
-  assert.match(toolchain, /^channel = "1\.97\.1"$/m);
+  assert.match(toolchain, /^channel = "1\.98\.0"$/m);
   assert.match(toolchain, /^profile = "minimal"$/m);
   assert.match(toolchain, /^components = \["clippy", "rustfmt"\]$/m);
 });
@@ -91,7 +91,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
     );
     assert.match(
       step,
-      /^          toolchain: 1\.97\.1$/m,
+      /^          toolchain: 1\.98\.0$/m,
       `${name} must install the reviewed Rust release explicitly`,
     );
   }

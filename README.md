@@ -205,7 +205,7 @@ Bambu Live boundaries.
 - Node.js `24.x`
 - npm `>=10`
 - Rust 1.88 or newer for Tauri builds; `rust-toolchain.toml` selects the
-  reviewed Rust 1.97.1 toolchain through rustup
+  reviewed Rust 1.98.0 toolchain through rustup
 - Xcode app + Command Line Tools for macOS builds
 - `sqlite3` CLI recommended for scraper fallback behavior
 - Current macOS DMG: Apple Silicon or Intel and macOS 11.0 Big Sur or newer

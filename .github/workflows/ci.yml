@@ -29,7 +29,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
 
       - name: Reject stale or missing shared contracts
         run: cargo run --locked --bin generate_shared_contracts -- --check
@@ -64,7 +64,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
 
       - name: Test clean install and historical upgrades
         run: cargo test --locked --lib database_schema_setup::tests
@@ -101,7 +101,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           components: clippy,rustfmt
 
       - name: Install root dependencies
@@ -222,7 +222,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           components: clippy,rustfmt
 
       - name: Install root dependencies
