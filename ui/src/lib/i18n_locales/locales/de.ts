@@ -300,9 +300,18 @@ export const deDictionary: DictionaryNode = {
     emptySpoolWeight: "Leerrollengewicht (g)",
     location: "Lagerort",
     locationsTitle: "Lagerorte",
+    locationManagementTitle: "Lagerorte verwalten",
     locationsHelp:
-      "Namen können sich ändern, während unveränderliche IDs Platzierung und Verlauf stabil halten.",
+      "Verwalte deine Lagerorte. Drucker- und Ausleihorte werden automatisch verwaltet und hier nicht angezeigt.",
     locationCount: "{count, plural, one {# Lagerort} other {# Lagerorte}}",
+    locationActiveCount:
+      "{count, plural, one {# aktiver Lagerort} other {# aktive Lagerorte}}",
+    locationActiveTitle: "Aktive Lagerorte",
+    locationPreviousTitle: "Frühere Lagerorte",
+    locationArchiveHelp:
+      "Archivierte Lagerorte verschwinden aus neuen Auswahlen. Verknüpfte Rollen behalten dieselbe Lagerort-ID; eine Wiederherstellung aktiviert genau diesen Lagerort erneut.",
+    locationUsageCount:
+      "{count, plural, =0 {Keine verknüpften Rollen} one {# verknüpfte Rolle} other {# verknüpfte Rollen}}",
     locationsLegacyHost:
       "Dieser Host stammt aus der Zeit vor Lagerortobjekten. Bestehende Platzierungsnamen bleiben sichtbar; aktualisiere den Host, bevor du Lagerorte änderst.",
     locationsOffline:
@@ -313,8 +322,18 @@ export const deDictionary: DictionaryNode = {
     locationNamePlaceholder: "Beispiel: Trockenbox 2",
     locationChoose: "Lagerort auswählen",
     locationRename: "Lagerort umbenennen",
+    locationRenameNamed: "{name} umbenennen",
+    locationArchiveNamed: "{name} archivieren",
+    locationRestoreNamed: "{name} wiederherstellen",
+    locationRestoreNameConflict:
+      "Vor dem Wiederherstellen umbenennen: Ein aktiver Lagerort verwendet bereits diesen Namen.",
     locationNewName: "Neuer Name",
+    locationArchiveConfirmTitle: "{name} archivieren?",
+    locationArchiveConfirmDetail:
+      "{count, plural, =0 {Keine Rollen sind mit diesem Lagerort verknüpft} one {# verknüpfte Rolle behält diesen Lagerort} other {# verknüpfte Rollen behalten diesen Lagerort}}. Der Lagerort verschwindet aus neuen Auswahlen, kann aber später wiederhergestellt werden.",
+    locationArchiveConfirm: "Lagerort archivieren",
     locationMerge: "Lagerorte zusammenführen",
+    locationMergeAdvanced: "Erweitert: Lagerorte zusammenführen",
     locationMergeHelp:
       "Alle aktuellen, Heimat- und untergeordneten Verweise wechseln zum Ziel. Die Quelle wird archiviert und jede betroffene Rolle erhält einen Verlaufseintrag.",
     locationMergeSource: "Quelllagerort",

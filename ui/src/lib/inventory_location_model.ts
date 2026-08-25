@@ -5,8 +5,14 @@ export type InventoryLocationActionState = InventoryLocationRow & {
   canArchive: boolean;
   canRename: boolean;
   canRestore: boolean;
-  systemOwned: boolean;
+  restoreBlockedByNameConflict: boolean;
 };
+
+type InventoryLocationReferenceSpool = Readonly<{
+  homeLocationId?: string | null;
+  id: string;
+  locationId?: string | null;
+}>;
 
 export function normalizeInventoryLocationName(value: string): string {
   return value.trim().split(/\s+/u).filter(Boolean).join(" ");
@@ -61,18 +67,42 @@ export function inventoryLocationActionRows(
   rows: InventoryLocationRow[],
   mutationsAvailable: boolean,
 ): InventoryLocationActionState[] {
-  return rows.map((row) => {
-    const systemOwned = row.location_type !== "GENERIC";
+  const activeGenericNames = new Set(
+    rows
+      .filter((row) => row.location_type === "GENERIC" && !row.archived_at)
+      .map((row) => comparableLocationName(row.name)),
+  );
+
+  return rows.filter((row) => row.location_type === "GENERIC").map((row) => {
     const archived = Boolean(row.archived_at);
+    const restoreBlockedByNameConflict =
+      archived && activeGenericNames.has(comparableLocationName(row.name));
     return {
       ...row,
-      activeGeneric: !systemOwned && !archived,
-      canArchive: mutationsAvailable && !systemOwned && !archived,
-      canRename: mutationsAvailable && !systemOwned,
-      canRestore: mutationsAvailable && !systemOwned && archived,
-      systemOwned,
+      activeGeneric: !archived,
+      canArchive: mutationsAvailable && !archived,
+      canRename: mutationsAvailable,
+      canRestore: mutationsAvailable && archived && !restoreBlockedByNameConflict,
+      restoreBlockedByNameConflict,
     };
   });
+}
+
+export function inventoryLocationUsageById(
+  spools: readonly InventoryLocationReferenceSpool[],
+): ReadonlyMap<string, number> {
+  const usageById = new Map<string, number>();
+  for (const spool of spools) {
+    const referencedIds = new Set(
+      [spool.locationId, spool.homeLocationId]
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value)),
+    );
+    for (const locationId of referencedIds) {
+      usageById.set(locationId, (usageById.get(locationId) ?? 0) + 1);
+    }
+  }
+  return usageById;
 }
 
 export function validateLocationMerge(

@@ -359,9 +359,18 @@ export const enDictionary: DictionaryNode = {
       placement: "Placement",
       location: "Location",
       locationsTitle: "Locations",
+      locationManagementTitle: "Manage locations",
       locationsHelp:
-        "Names can change while immutable IDs keep roll placement and history stable.",
+        "Manage your storage locations. Printer and loan locations are handled automatically and stay out of this list.",
       locationCount: "{count, plural, one {# location} other {# locations}}",
+      locationActiveCount:
+        "{count, plural, one {# active location} other {# active locations}}",
+      locationActiveTitle: "Active storage locations",
+      locationPreviousTitle: "Previous locations",
+      locationArchiveHelp:
+        "Archived locations disappear from new choices. Connected rolls keep the same location ID, and restoring makes that exact location available again.",
+      locationUsageCount:
+        "{count, plural, =0 {No connected rolls} one {# connected roll} other {# connected rolls}}",
       locationsLegacyHost:
         "This Host predates location objects. Existing placement names remain visible, but upgrade the Host before changing locations.",
       locationsOffline:
@@ -371,8 +380,18 @@ export const enDictionary: DictionaryNode = {
       locationNamePlaceholder: "Example: Dry box 2",
       locationChoose: "Choose location",
       locationRename: "Rename location",
+      locationRenameNamed: "Rename {name}",
+      locationArchiveNamed: "Archive {name}",
+      locationRestoreNamed: "Restore {name}",
+      locationRestoreNameConflict:
+        "Rename before restoring: an active location already uses this name.",
       locationNewName: "New name",
+      locationArchiveConfirmTitle: "Archive {name}?",
+      locationArchiveConfirmDetail:
+        "{count, plural, =0 {No rolls are connected to this location} one {# connected roll keeps this location} other {# connected rolls keep this location}}. The location disappears from new choices, but can be restored later.",
+      locationArchiveConfirm: "Archive location",
       locationMerge: "Merge locations",
+      locationMergeAdvanced: "Advanced: merge locations",
       locationMergeHelp:
         "All current, home and child references move to the target. The source is archived and every affected roll gets a history event.",
       locationMergeSource: "Source location",

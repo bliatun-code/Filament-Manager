@@ -32,6 +32,7 @@ import {
   type InventoryLocationMutationContext,
 } from "../lib/inventory_location_data_source";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
+import { inventoryLocationUsageById } from "../lib/inventory_location_model";
 import {
   buildInventoryDetailVisualFixture,
   isInventoryDetailVisualFixtureEnabled,
@@ -141,6 +142,10 @@ export default function InventoryPage({
     tauriAvailable: tauri,
     t,
   });
+  const locationUsageById = useMemo(
+    () => inventoryLocationUsageById(spools),
+    [spools],
+  );
   const {
     activeFilterCount,
     advancedFiltersOpen,
@@ -1366,6 +1371,7 @@ export default function InventoryPage({
           onRestore: restoreLocation,
           rows: locations,
           source: locationSource,
+          usageByLocationId: locationUsageById,
         }}
         onActiveViewChange={setActiveWorkspaceView}
         onRetryLoadError={refreshInventoryPage}

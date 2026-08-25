@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   inventoryLocationActionRows,
+  inventoryLocationUsageById,
   normalizeInventoryLocationName,
   resolveInventoryLocationReferenceForWrite,
   validInventoryLocationName,
@@ -28,11 +29,11 @@ test("location drafts normalize whitespace and validate the backend length contr
   assert.equal(validInventoryLocationName("A".repeat(121)), false);
 });
 
-test("archived and system locations expose only permitted lifecycle actions", () => {
-  const [active, archived, system] = inventoryLocationActionRows(
+test("management rows hide system locations and expose only permitted lifecycle actions", () => {
+  const [active, archived] = inventoryLocationActionRows(
     [
       location(),
-      location({ id: "archived", archived_at: "2026-08-21" }),
+      location({ id: "archived", name: "Old shelf", archived_at: "2026-08-21" }),
       location({
         id: "Printer:Studio:slot-1",
         location_type: "PRINTER_SLOT",
@@ -57,8 +58,34 @@ test("archived and system locations expose only permitted lifecycle actions", ()
     },
     { rename: true, archive: false, restore: true },
   );
-  assert.equal(system.systemOwned, true);
-  assert.equal(system.canRename || system.canArchive || system.canRestore, false);
+  assert.deepEqual([active.id, archived.id], ["location-1", "archived"]);
+});
+
+test("restore is blocked when an active location already uses the archived name", () => {
+  const [, archived] = inventoryLocationActionRows(
+    [
+      location({ id: "active", name: "Shelf One" }),
+      location({ id: "archived", name: "  shelf   one  ", archived_at: "2026-08-21" }),
+    ],
+    true,
+  );
+
+  assert.equal(archived.restoreBlockedByNameConflict, true);
+  assert.equal(archived.canRename, true);
+  assert.equal(archived.canRestore, false);
+});
+
+test("location usage counts each roll once across current and home references", () => {
+  const usage = inventoryLocationUsageById([
+    { id: "spool-a", locationId: "shelf-a", homeLocationId: "shelf-a" },
+    { id: "spool-b", locationId: "shelf-b", homeLocationId: "shelf-a" },
+    { id: "spool-c", locationId: null, homeLocationId: " shelf-b " },
+  ]);
+
+  assert.deepEqual([...usage.entries()], [
+    ["shelf-a", 2],
+    ["shelf-b", 2],
+  ]);
 });
 
 test("merge accepts only two different active generic locations", () => {

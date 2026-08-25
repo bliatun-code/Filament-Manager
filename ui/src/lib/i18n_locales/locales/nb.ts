@@ -360,9 +360,18 @@ export const nbDictionary: DictionaryNode = {
       placement: "Plassering",
       location: "Lokasjon",
       locationsTitle: "Lokasjoner",
+      locationManagementTitle: "Administrer lokasjoner",
       locationsHelp:
-        "Navn kan endres, mens uforanderlige ID-er holder plassering og historikk stabile.",
+        "Opprett og organiser egne lagersteder. Printer- og utlånslokasjoner håndteres automatisk og vises ikke her.",
       locationCount: "{count, plural, one {# lokasjon} other {# lokasjoner}}",
+      locationActiveCount:
+        "{count, plural, one {# aktiv lokasjon} other {# aktive lokasjoner}}",
+      locationActiveTitle: "Aktive lagersteder",
+      locationPreviousTitle: "Tidligere lokasjoner",
+      locationArchiveHelp:
+        "Arkiverte lokasjoner forsvinner fra nye valg. Tilknyttede ruller beholder samme lokasjons-ID, og gjenoppretting gjør nøyaktig samme lokasjon tilgjengelig igjen.",
+      locationUsageCount:
+        "{count, plural, =0 {Ingen ruller knyttet} one {# rull knyttet} other {# ruller knyttet}}",
       locationsLegacyHost:
         "Denne verten er fra før lokasjonsobjekter. Eksisterende plasseringsnavn vises fortsatt, men verten må oppgraderes før lokasjoner kan endres.",
       locationsOffline:
@@ -372,8 +381,18 @@ export const nbDictionary: DictionaryNode = {
       locationNamePlaceholder: "Eksempel: Tørkeboks 2",
       locationChoose: "Velg lokasjon",
       locationRename: "Gi lokasjonen nytt navn",
+      locationRenameNamed: "Gi {name} nytt navn",
+      locationArchiveNamed: "Arkiver {name}",
+      locationRestoreNamed: "Gjenopprett {name}",
+      locationRestoreNameConflict:
+        "Gi lokasjonen nytt navn før gjenoppretting: en aktiv lokasjon bruker allerede dette navnet.",
       locationNewName: "Nytt navn",
+      locationArchiveConfirmTitle: "Arkiver {name}?",
+      locationArchiveConfirmDetail:
+        "{count, plural, =0 {Ingen ruller er knyttet til denne lokasjonen} one {# tilknyttet rull beholder denne lokasjonen} other {# tilknyttede ruller beholder denne lokasjonen}}. Lokasjonen forsvinner fra nye valg, men kan gjenopprettes senere.",
+      locationArchiveConfirm: "Arkiver lokasjonen",
       locationMerge: "Slå sammen lokasjoner",
+      locationMergeAdvanced: "Avansert: slå sammen lokasjoner",
       locationMergeHelp:
         "Alle nåværende plasseringer, hjemmeplasseringer og underlokasjoner flyttes til målet. Kilden arkiveres, og alle berørte filamenter får en historikkhendelse.",
       locationMergeSource: "Kildelokasjon",

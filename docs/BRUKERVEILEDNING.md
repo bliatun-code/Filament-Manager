@@ -237,6 +237,19 @@ valgt en status utenfor lagerbeholdningen. Hvis filtre skjuler deler av
 utvalget, viser handlingslinjen både totalt antall valgte og antallet i den
 gjeldende visningen.
 
+Under **Lager → Lokasjoner** administrerer du bare egne lagersteder. Tekniske
+printer- og utlånslokasjoner håndteres automatisk og vises ikke i denne listen.
+Hvert lagersted viser hvor mange ruller som fortsatt er knyttet til det, og kan
+gis nytt navn uten at koblinger eller historikk endres.
+
+**Arkiver** fjerner lagerstedet fra nye lokasjonsvalg, men sletter det ikke.
+Rullene beholder både nåværende plassering og hjemmeplassering mot den samme
+uforanderlige lokasjons-ID-en. Arkiverte steder ligger derfor sammenfoldet
+under **Tidligere lokasjoner**. **Gjenopprett** gjør nøyaktig den samme
+lokasjonen valgbar igjen; en ny lokasjon med samme navn er et annet objekt og
+overtar ikke de gamle koblingene. Bruk den sammenfoldede avanserte
+sammenslåingen når alle koblinger faktisk skal flyttes til et annet lagersted.
+
 Programmet husker kort-/listevisning og om avanserte filtre er åpne på denne
 enheten. Nullstilling av filtre endrer ikke valgt visning. Når du åpner lav
 beholdning fra Oversikt kan listevisning brukes midlertidig uten å erstatte den

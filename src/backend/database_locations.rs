@@ -617,6 +617,64 @@ mod tests {
     }
 
     #[test]
+    fn archived_location_keeps_spool_links_and_a_same_named_replacement_is_distinct() {
+        let (path, db) = open_db("archive-reference-identity");
+        let original = db
+            .create_inventory_location("Shelf One", None)
+            .expect("create original location");
+        seed_master_and_spool(&db, "linked-spool", &original.id, &original.id);
+
+        db.archive_inventory_location(&original.id)
+            .expect("archive original location");
+        let replacement = db
+            .create_inventory_location("Shelf One", None)
+            .expect("create same-named replacement");
+        assert_ne!(replacement.id, original.id);
+
+        let restore_error = db
+            .restore_inventory_location(&original.id)
+            .expect_err("same-named active replacement must block restore");
+        assert!(restore_error
+            .to_string()
+            .contains("active location uses that name"));
+
+        let references_before_restore: (String, String) = db
+            .connection()
+            .query_row(
+                "SELECT location_id, home_location_id
+                 FROM filament_spools WHERE id = 'linked-spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read archived references");
+        assert_eq!(
+            references_before_restore,
+            (original.id.clone(), original.id.clone())
+        );
+
+        db.rename_inventory_location(&replacement.id, "Replacement Shelf")
+            .expect("free original name");
+        let restored = db
+            .restore_inventory_location(&original.id)
+            .expect("restore original location");
+        assert_eq!(restored.id, original.id);
+
+        let references_after_restore: (String, String) = db
+            .connection()
+            .query_row(
+                "SELECT location_id, home_location_id
+                 FROM filament_spools WHERE id = 'linked-spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read restored references");
+        assert_eq!(references_after_restore, references_before_restore);
+
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
     fn merge_moves_all_references_writes_history_and_archives_source() {
         let (path, db) = open_db("merge");
         let source = db

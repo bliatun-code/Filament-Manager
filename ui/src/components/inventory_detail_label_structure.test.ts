@@ -183,3 +183,35 @@ test("multi-roll label workflow is rendered in Inventory and linked from roll de
   );
   assert.doesNotMatch(html, /Settings → General/);
 });
+
+test("stock-specific header tools stay out of location management", () => {
+  const noop = () => {};
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nContext.Provider,
+      {
+        value: {
+          locale: "en",
+          setLocale: noop,
+          t: (_key: string, fallback = "") => fallback,
+        },
+      },
+      React.createElement(InventoryHeaderActions, {
+        labelSheetDisabled: false,
+        lowStockOnly: false,
+        onAddSpool: noop,
+        onCreateLabelSheet: noop,
+        onLoanOutRoll: noop,
+        onLowStockOnlyChange: noop,
+        onSearchChange: noop,
+        onStatusFilterChange: noop,
+        primaryActionsDisabled: false,
+        search: "",
+        showStockFilters: false,
+        statusFilter: "ALL",
+      }),
+    ),
+  );
+
+  assert.equal(html, "");
+});

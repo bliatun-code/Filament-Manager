@@ -300,9 +300,18 @@ export const frDictionary: DictionaryNode = {
     emptySpoolWeight: "Poids de la bobine vide (g)",
     location: "Emplacement",
     locationsTitle: "Emplacements",
+    locationManagementTitle: "Gérer les emplacements",
     locationsHelp:
-      "Les noms peuvent changer tandis que les identifiants immuables préservent le placement et l’historique.",
+      "Gérez vos emplacements de stockage. Les emplacements d’imprimante et de prêt sont gérés automatiquement et masqués ici.",
     locationCount: "{count, plural, one {# emplacement} other {# emplacements}}",
+    locationActiveCount:
+      "{count, plural, one {# emplacement actif} other {# emplacements actifs}}",
+    locationActiveTitle: "Emplacements de stockage actifs",
+    locationPreviousTitle: "Anciens emplacements",
+    locationArchiveHelp:
+      "Les emplacements archivés disparaissent des nouveaux choix. Les bobines liées conservent le même identifiant et la restauration réactive exactement cet emplacement.",
+    locationUsageCount:
+      "{count, plural, =0 {Aucune bobine liée} one {# bobine liée} other {# bobines liées}}",
     locationsLegacyHost:
       "Cet hôte est antérieur aux objets d’emplacement. Les anciens noms restent visibles, mais mettez l’hôte à jour avant toute modification.",
     locationsOffline:
@@ -313,8 +322,18 @@ export const frDictionary: DictionaryNode = {
     locationNamePlaceholder: "Exemple : boîte sèche 2",
     locationChoose: "Choisir un emplacement",
     locationRename: "Renommer l’emplacement",
+    locationRenameNamed: "Renommer {name}",
+    locationArchiveNamed: "Archiver {name}",
+    locationRestoreNamed: "Restaurer {name}",
+    locationRestoreNameConflict:
+      "Renommez-le avant la restauration : un emplacement actif porte déjà ce nom.",
     locationNewName: "Nouveau nom",
+    locationArchiveConfirmTitle: "Archiver {name} ?",
+    locationArchiveConfirmDetail:
+      "{count, plural, =0 {Aucune bobine n’est liée à cet emplacement} one {# bobine liée conserve cet emplacement} other {# bobines liées conservent cet emplacement}}. L’emplacement disparaît des nouveaux choix, mais peut être restauré plus tard.",
+    locationArchiveConfirm: "Archiver l’emplacement",
     locationMerge: "Fusionner des emplacements",
+    locationMergeAdvanced: "Avancé : fusionner des emplacements",
     locationMergeHelp:
       "Tous les emplacements actuels, de retour et enfants sont déplacés vers la cible. La source est archivée et chaque bobine concernée reçoit un événement d’historique.",
     locationMergeSource: "Emplacement source",

@@ -128,6 +128,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 - Dashboard skiller nå reelle oppgaver fra valgfrie lav-beholdningsforslag. Forslagene ligger som en nøytral, sammenleggbar seksjon etter nøkkeltallene, kan skjules og gjenopprettes per produkt på denne enheten og påvirker verken lav-beholdningstallet eller den autoritative lagerstatusen.
 - Lageret prioriterer nå filtre og filamentlisten i normalvisningen. Massehandlinger åpnes som en midlertidig «Velg flere»-modus, avkrysningsbokser og handlinger vises progressivt, bare én flytte-/statuseditor åpnes om gangen, og etikettark for hele lageret er tydelig skilt fra etikettark for valgte ruller.
+- Lokasjonsadministrasjonen viser nå bare egne lagersteder i en kompakt tokolonners liste. Tekniske printer-/utlånslokasjoner er skjult, arkiverte steder og sammenslåing er sammenfoldet, og grensesnittet forklarer at arkivering bevarer rullenes stabile lokasjonskoblinger.
 
 ### 2026-08-21
 

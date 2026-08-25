@@ -9,6 +9,7 @@ import { I18nContext, type I18nContextValue } from "../lib/i18n";
 import type { InventoryLocationRow } from "../lib/tauri_location_client";
 import { InventoryLocationDatalist } from "./inventory_location_datalist";
 import {
+  InventoryLocationArchiveConfirmation,
   InventoryLocationManagementPanel,
   InventoryLocationMergeConfirmation,
 } from "./inventory_location_management_panel";
@@ -36,6 +37,12 @@ function location(overrides: Partial<InventoryLocationRow> = {}): InventoryLocat
 
 const rows = [
   location(),
+  location({ id: "location-active-2", name: "Shelf B" }),
+  location({
+    id: "location-archived-conflict",
+    name: "SHELF B",
+    archived_at: "2026-08-21 10:30:00",
+  }),
   location({
     id: "location-archived",
     name: "Old shelf",
@@ -66,20 +73,58 @@ function renderPanel(
         onRestore={async () => true}
         rows={rows}
         source={source}
+        usageByLocationId={new Map([
+          ["location-active", 2],
+          ["location-archived", 1],
+        ])}
       />
     </I18nContext.Provider>,
   );
 }
 
-test("live location management exposes generic lifecycle actions and protects system rows", () => {
+test("live location management stays compact and omits system-owned rows", () => {
   const html = renderPanel("LIVE", true);
 
   assert.match(html, /Create location/);
+  assert.match(html, /2 active locations/);
+  assert.match(html, /2 connected rolls/);
+  assert.match(html, /Previous locations/);
+  assert.match(html, /Advanced: merge locations/);
+  assert.match(html, /Manage locations/);
   assert.match(html, /Review merge/);
   assert.match(html, />Archive</);
   assert.match(html, />Restore</);
-  assert.match(html, /Studio AMS 1/);
-  assert.match(html, /Managed by printer or loan workflow/);
+  assert.match(html, /Rename before restoring: an active location already uses this name/);
+  assert.match(html, /aria-label="Rename Dry box"/);
+  assert.match(html, /aria-label="Archive Dry box"/);
+  assert.match(html, /aria-label="Restore Old shelf"/);
+  assert.match(html, /<h2[^>]*>Manage locations<\/h2>/);
+  assert.equal((html.match(/<h3/g) ?? []).length, 4);
+  assert.doesNotMatch(html, /Studio AMS 1|Printer:Studio:slot-1|System-owned/);
+  assert.doesNotMatch(html, /<table|>Type<|>Status<|<code/);
+  for (const detailsTag of html.match(/<details[^>]*>/g) ?? []) {
+    assert.doesNotMatch(detailsTag, /\sopen(?:=|\s|>)/);
+  }
+});
+
+test("archive confirmation explains that existing roll links survive", () => {
+  const html = renderToStaticMarkup(
+    <I18nContext.Provider value={i18nValue}>
+      <InventoryLocationArchiveConfirmation
+        busy={false}
+        locationName="Dry box"
+        onCancel={() => {}}
+        onConfirm={() => {}}
+        usageCount={2}
+      />
+    </I18nContext.Provider>,
+  );
+
+  assert.match(html, /Archive Dry box\?/);
+  assert.match(html, /2 connected rolls keep this location/);
+  assert.match(html, /disappears from new choices/);
+  assert.match(html, />Archive location</);
+  assert.match(html, />Cancel</);
 });
 
 test("irreversible merge confirmation names source and target and explains archive impact", () => {
@@ -100,18 +145,23 @@ test("irreversible merge confirmation names source and target and explains archi
   assert.match(html, /cannot be automatically undone/);
   assert.match(html, /Confirm merge &amp; archive/);
   assert.match(html, />Cancel</);
+  assert.match(html, /<button class="[^"]*whitespace-normal[^"]*"[^>]*>Confirm merge/);
 });
 
-test("failed mutations preserve form drafts and reset merge confirmation", () => {
+test("failed mutations preserve form drafts and successful actions restore focus", () => {
   const source = readFileSync(
     new URL("./inventory_location_management_panel.tsx", import.meta.url),
     "utf8",
   );
 
   assert.match(source, /onCreate\(normalizedNewName\)\.then\(\(created\) => \{\s*if \(created\) setNewName\(""\)/);
-  assert.match(source, /onRename\(renameId, normalizedRename\)\.then\(\(renamed\) => \{\s*if \(renamed\)/);
-  assert.match(source, /setMergeConfirmationVisible\(false\);\s*void onMerge\(sourceId, targetId\)\.then\(\(merged\)/);
-  assert.match(source, /if \(merged\) \{\s*setSourceId\(""\);\s*setTargetId\(""\)/);
+  assert.match(source, /onRename\(row\.id, normalizedRename\)\.then\(\(renamed\) => \{\s*if \(renamed\)/);
+  assert.match(source, /void onMerge\(sourceId, targetId\)\.then\(\(merged\) => \{\s*if \(merged\) \{/);
+  assert.match(source, /if \(merged\) \{[\s\S]*setMergeConfirmationVisible\(false\);[\s\S]*setSourceId\(""\);[\s\S]*setTargetId\(""\)/);
+  assert.match(source, /focusAfterRender\(renameActionId\)/);
+  assert.match(source, /focusAfterRender\(archiveActionId\)/);
+  assert.match(source, /focusAfterRender\(activeLocationsHeadingId\)/);
+  assert.match(source, /focusAfterRender\(mergeReviewButtonId\)/);
 });
 
 test("legacy and cached Host states explain read-only compatibility without enabling mutations", () => {
@@ -123,6 +173,38 @@ test("legacy and cached Host states explain read-only compatibility without enab
   const cachedHtml = renderPanel("CACHED", false);
   assert.match(cachedHtml, /Reconnect to the Host/);
   assert.doesNotMatch(cachedHtml, /Host predates location objects/);
+});
+
+test("large system location sets never inflate the management surface", () => {
+  const systemRows = Array.from({ length: 1_000 }, (_, index) =>
+    location({
+      id: `Printer:Studio:slot-${index}`,
+      name: `Studio slot ${index}`,
+      location_type: "PRINTER_SLOT",
+    }),
+  );
+  const html = renderToStaticMarkup(
+    <I18nContext.Provider value={i18nValue}>
+      <InventoryLocationManagementPanel
+        busy={false}
+        canMutate
+        loading={false}
+        mutationsSupported
+        onArchive={async () => true}
+        onCreate={async () => true}
+        onMerge={async () => true}
+        onRename={async () => true}
+        onRestore={async () => true}
+        rows={[location(), ...systemRows]}
+        source="LIVE"
+        usageByLocationId={new Map()}
+      />
+    </I18nContext.Provider>,
+  );
+
+  assert.match(html, /1 active location/);
+  assert.match(html, /Dry box/);
+  assert.doesNotMatch(html, /Studio slot|Printer:Studio/);
 });
 
 test("autocomplete includes active storage names but excludes archived and system locations", () => {
