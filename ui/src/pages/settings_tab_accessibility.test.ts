@@ -7,6 +7,7 @@ import {
   settingsTabId,
   settingsTabPanelId,
 } from "./settings_tab_accessibility";
+import { settingsRouteOutletGridClass } from "./settings_route_layout";
 
 const navSource = readFileSync(new URL("./settings_tab_nav.tsx", import.meta.url), "utf8");
 const accessibilitySource = readFileSync(
@@ -47,6 +48,21 @@ test("settings tabs use balanced responsive columns instead of an orphaned wrapp
   );
   assert.match(navSource, /min-w-0 w-full/);
   assert.doesNotMatch(navSource, /flex flex-wrap gap-1\.5/);
+});
+
+test("compact settings tabs keep two columns at laptop widths", () => {
+  assert.equal(
+    settingsRouteOutletGridClass("FILAMENT_DEFAULTS"),
+    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+  );
+  assert.equal(
+    settingsRouteOutletGridClass("GENERAL"),
+    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]",
+  );
+  assert.match(
+    settingsRouteOutletGridClass("PRINTERS"),
+    /xl:grid-cols-\[minmax\(0,1\.2fr\)_minmax\(0,1fr\)\]/,
+  );
 });
 
 test("settings tab keyboard navigation wraps and supports Home and End", () => {

@@ -80,7 +80,7 @@ export function SettingsGeneralTab({
   return (
     <>
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.appearance", "Appearance")}
         description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
       >
@@ -110,7 +110,7 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.language", "Language")}
         description={t(
           "settings.languageHint",
@@ -138,7 +138,7 @@ export function SettingsGeneralTab({
 
       {tauri ? (
         <SettingsSurfaceCard
-          className="space-y-4"
+          className="min-w-0 space-y-4"
           eyebrow={t("settings.backgroundOperation", "Background operation")}
           description={t(
             "settings.backgroundOperationHint",
@@ -293,7 +293,7 @@ export function SettingsGeneralTab({
         </SettingsSurfaceCard>
       ) : null}
 
-      <SettingsSurfaceCard className="space-y-4" eyebrow={t("settings.program", "Program")}>
+      <SettingsSurfaceCard className="min-w-0 space-y-4" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
             <div className={settingsSectionLabelClass}>
@@ -412,7 +412,7 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.help", "Help")}
         description={t(
           "settings.helpHint",

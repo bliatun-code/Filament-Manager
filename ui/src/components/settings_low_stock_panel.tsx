@@ -127,7 +127,7 @@ export function SettingsLowStockPanel({
 
   return (
     <SettingsSurfaceCard
-      className="space-y-4"
+      className="min-w-0 space-y-4"
       eyebrow={t("settings.lowStockThresholds", "Low-stock thresholds")}
       description={t(
         "settings.lowStockThresholdsHint",

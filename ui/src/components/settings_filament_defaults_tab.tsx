@@ -264,7 +264,7 @@ function BatchReceiptCard({
 
   return (
     <SettingsSurfaceCard
-      className="space-y-4 xl:col-span-2"
+      className="min-w-0 space-y-4 lg:col-span-2"
       eyebrow={t("settings.filamentDefaultsReceipt", "Latest pricing receipt")}
       description={t(
         "settings.filamentDefaultsReceiptHint",
@@ -670,7 +670,7 @@ export function SettingsFilamentDefaultsTab({
   return (
     <>
       {!settingsValid ? (
-        <SettingsNotice tone="warning">
+        <SettingsNotice className="lg:col-span-2" tone="warning">
           {readOnly
             ? t(
                 "settings.filamentDefaultsSettingsRepairReadOnly",
@@ -683,7 +683,7 @@ export function SettingsFilamentDefaultsTab({
         </SettingsNotice>
       ) : null}
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.filamentDefaultsCurrency", "Default purchase currency")}
         description={t(
           "settings.filamentDefaultsCurrencyHint",
@@ -745,13 +745,13 @@ export function SettingsFilamentDefaultsTab({
       <SettingsLowStockPanel {...lowStock} t={t} />
 
       {localError ? (
-        <SettingsNotice className="xl:col-span-2" tone="danger">
+        <SettingsNotice className="lg:col-span-2" tone="danger">
           {localError}
         </SettingsNotice>
       ) : null}
 
       <SettingsSurfaceCard
-        className="space-y-4 xl:col-span-2"
+        className="min-w-0 space-y-4 lg:col-span-2"
         eyebrow={t("settings.filamentDefaultsGroupPrices", "Filament group prices")}
         description={t(
           "settings.filamentDefaultsGroupPricesHint",
