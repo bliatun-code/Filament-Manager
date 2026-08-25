@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import type { BambuLiveIntegrationEntry } from "../lib/tauri_client";
 import {
+  buildDiagnosticCaptureSession,
   updateDiagnosticCaptureSessionFromObservedState,
   type DiagnosticCaptureSession,
   type DiagnosticFilterKey,
   type DiagnosticSortKey,
 } from "../lib/diagnostic_capture";
-import { createSettingsBambuLiveCaptureSession } from "./settings_bambu_live_diagnostics_model";
 
 type BambuLiveIntegrationConfig = BambuLiveIntegrationEntry["config"];
 
@@ -66,7 +66,7 @@ export function useSettingsBambuLiveDiagnostics({
       }
       return {
         ...current,
-        [printerId]: createSettingsBambuLiveCaptureSession(liveConfig),
+        [printerId]: buildDiagnosticCaptureSession(liveConfig?.observed_state ?? null),
       };
     });
     setDiagnosticCaptureActiveByPrinterId((current) => ({
@@ -93,7 +93,7 @@ export function useSettingsBambuLiveDiagnostics({
     }
 
     const liveConfig = bambuLiveIntegrations[printerId] ?? null;
-    const nextSession = createSettingsBambuLiveCaptureSession(liveConfig);
+    const nextSession = buildDiagnosticCaptureSession(liveConfig?.observed_state ?? null);
     setDiagnosticCaptureByPrinterId((current) => ({
       ...current,
       [printerId]: nextSession,

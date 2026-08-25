@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
+import type { SettingsLibraryRoleModalRoute } from "./settings_library_role_modal_route";
 
 type SettingsLibraryRoleModalRouteProps = ComponentProps<
   typeof SettingsLibraryRoleModalRoute

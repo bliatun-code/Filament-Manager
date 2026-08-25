@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
+import type { SettingsTrustedLanBrowsersPanel } from "../components/settings_trusted_lan_browsers_panel";
 
 type SettingsLibraryBrowsersPanelProps = ComponentProps<typeof SettingsTrustedLanBrowsersPanel>;
 

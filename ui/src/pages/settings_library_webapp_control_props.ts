@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
+import type { SettingsLibraryWebappControl } from "./settings_library_webapp_control";
 
 type SettingsLibraryWebappControlProps = ComponentProps<typeof SettingsLibraryWebappControl>;
 
