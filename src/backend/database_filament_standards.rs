@@ -52,6 +52,8 @@ enum VerifiedBatchAction {
         purchase_price: f64,
         purchase_currency: String,
         purchase_price_source: String,
+        purchase_price_batch_locked: bool,
+        historical_missing_price_fill: bool,
     },
     Skip(FilamentPriceBatchSkippedSpool),
 }
@@ -249,7 +251,8 @@ pub(crate) fn apply_filament_price_batch(
             input.mode,
             input.price,
             &currency,
-        ));
+            precondition.allow_historical_missing_price_fill,
+        )?);
     }
 
     let batch_id = format!("filament_price_batch_{:032x}", rand::random::<u128>());
@@ -263,18 +266,22 @@ pub(crate) fn apply_filament_price_batch(
                 purchase_price,
                 purchase_currency,
                 purchase_price_source,
+                purchase_price_batch_locked,
+                historical_missing_price_fill,
             } => {
                 let affected = connection.execute(
                     "UPDATE filament_spools
                      SET purchase_price = ?1,
                          purchase_currency = ?2,
                          purchase_price_source = ?3,
+                         purchase_price_batch_locked = ?4,
                          updated_at = datetime('now')
-                     WHERE id = ?4 AND deleted_at IS NULL",
+                     WHERE id = ?5 AND deleted_at IS NULL",
                     params![
                         purchase_price,
                         purchase_currency,
                         purchase_price_source,
+                        purchase_price_batch_locked,
                         spool.spool_id
                     ],
                 )?;
@@ -292,12 +299,15 @@ pub(crate) fn apply_filament_price_batch(
                         "purchase_price": spool.purchase_price,
                         "purchase_currency": spool.purchase_currency,
                         "purchase_price_source": spool.purchase_price_source,
+                        "purchase_price_batch_locked": spool.purchase_price_batch_locked,
                     },
                     "after": {
                         "purchase_price": purchase_price,
                         "purchase_currency": purchase_currency,
                         "purchase_price_source": purchase_price_source,
-                    }
+                        "purchase_price_batch_locked": purchase_price_batch_locked,
+                    },
+                    "historical_missing_price_fill": historical_missing_price_fill,
                 });
                 insert_spool_history_event(
                     connection,
@@ -315,6 +325,7 @@ pub(crate) fn apply_filament_price_batch(
                     purchase_price,
                     purchase_currency,
                     purchase_price_source,
+                    purchase_price_batch_locked,
                 });
             }
         }
@@ -527,7 +538,8 @@ fn verify_batch_action(
     mode: FilamentPriceBatchMode,
     target_price: f64,
     target_currency: &str,
-) -> VerifiedBatchAction {
+    allow_historical_missing_price_fill: bool,
+) -> InventoryResult<VerifiedBatchAction> {
     let skipped = |spool: &StoredGroupSpool, reason| {
         VerifiedBatchAction::Skip(FilamentPriceBatchSkippedSpool {
             spool_id: spool.spool_id.clone(),
@@ -536,23 +548,42 @@ fn verify_batch_action(
             reason,
         })
     };
-    if spool.purchase_price_batch_locked {
-        return skipped(&spool, FilamentPriceBatchSkipReason::BatchLocked);
-    }
     if OwnershipType::from_raw(Some(&spool.ownership_type)).is_borrowed_in() {
-        return skipped(&spool, FilamentPriceBatchSkipReason::BorrowedIn);
+        if allow_historical_missing_price_fill {
+            return Err(invalid_batch(
+                "filament_price_batch.invalid_historical_fill",
+                "Borrowed spools cannot use historical missing-price fill.",
+            ));
+        }
+        return Ok(skipped(&spool, FilamentPriceBatchSkipReason::BorrowedIn));
     }
-    if is_historical_status(&spool.status) {
-        return skipped(&spool, FilamentPriceBatchSkipReason::Inactive);
+    let historical = is_historical_status(&spool.status);
+    let historical_missing_price_fill = allow_historical_missing_price_fill
+        && mode == FilamentPriceBatchMode::MissingOnly
+        && historical
+        && spool.purchase_price.is_none();
+    if allow_historical_missing_price_fill && !historical_missing_price_fill {
+        return Err(invalid_batch(
+            "filament_price_batch.invalid_historical_fill",
+            "Historical missing-price fill requires an owned historical spool without a purchase price in MISSING_ONLY mode.",
+        ));
+    }
+    if spool.purchase_price_batch_locked && !historical_missing_price_fill {
+        return Ok(skipped(&spool, FilamentPriceBatchSkipReason::BatchLocked));
+    }
+    if historical && !historical_missing_price_fill {
+        return Ok(skipped(&spool, FilamentPriceBatchSkipReason::Inactive));
     }
 
     if mode == FilamentPriceBatchMode::Overwrite {
-        return VerifiedBatchAction::Update {
+        return Ok(VerifiedBatchAction::Update {
             spool: Box::new(spool),
             purchase_price: target_price,
             purchase_currency: target_currency.to_string(),
             purchase_price_source: PURCHASE_PRICE_SOURCE_STANDARD_BATCH.to_string(),
-        };
+            purchase_price_batch_locked: false,
+            historical_missing_price_fill: false,
+        });
     }
 
     match spool.purchase_price {
@@ -562,36 +593,44 @@ fn verify_batch_action(
                 .flatten()
                 .is_some()
             {
-                return skipped(&spool, FilamentPriceBatchSkipReason::AlreadyPriced);
+                return Ok(skipped(&spool, FilamentPriceBatchSkipReason::AlreadyPriced));
             }
             let source = spool
                 .purchase_price_source
                 .clone()
                 .unwrap_or_else(|| PURCHASE_PRICE_SOURCE_MANUAL.to_string());
-            VerifiedBatchAction::Update {
+            Ok(VerifiedBatchAction::Update {
                 spool: Box::new(spool),
                 purchase_price: existing_price,
                 purchase_currency: target_currency.to_string(),
                 purchase_price_source: source,
-            }
+                purchase_price_batch_locked: false,
+                historical_missing_price_fill: false,
+            })
         }
-        None => match normalized_existing_currency(spool.purchase_currency.as_deref()) {
-            Ok(None) => VerifiedBatchAction::Update {
-                spool: Box::new(spool),
-                purchase_price: target_price,
-                purchase_currency: target_currency.to_string(),
-                purchase_price_source: PURCHASE_PRICE_SOURCE_STANDARD_BATCH.to_string(),
+        None => Ok(
+            match normalized_existing_currency(spool.purchase_currency.as_deref()) {
+                Ok(None) => VerifiedBatchAction::Update {
+                    spool: Box::new(spool),
+                    purchase_price: target_price,
+                    purchase_currency: target_currency.to_string(),
+                    purchase_price_source: PURCHASE_PRICE_SOURCE_STANDARD_BATCH.to_string(),
+                    purchase_price_batch_locked: historical_missing_price_fill,
+                    historical_missing_price_fill,
+                },
+                Ok(Some(existing)) if existing == target_currency => VerifiedBatchAction::Update {
+                    spool: Box::new(spool),
+                    purchase_price: target_price,
+                    purchase_currency: existing,
+                    purchase_price_source: PURCHASE_PRICE_SOURCE_STANDARD_BATCH.to_string(),
+                    purchase_price_batch_locked: historical_missing_price_fill,
+                    historical_missing_price_fill,
+                },
+                Ok(Some(_)) | Err(()) => {
+                    skipped(&spool, FilamentPriceBatchSkipReason::ManualUpdateRequired)
+                }
             },
-            Ok(Some(existing)) if existing == target_currency => VerifiedBatchAction::Update {
-                spool: Box::new(spool),
-                purchase_price: target_price,
-                purchase_currency: existing,
-                purchase_price_source: PURCHASE_PRICE_SOURCE_STANDARD_BATCH.to_string(),
-            },
-            Ok(Some(_)) | Err(()) => {
-                skipped(&spool, FilamentPriceBatchSkipReason::ManualUpdateRequired)
-            }
-        },
+        ),
     }
 }
 
@@ -718,6 +757,7 @@ mod tests {
             expected_purchase_currency: spool.purchase_currency.clone(),
             expected_purchase_price_source: spool.purchase_price_source.clone(),
             expected_purchase_price_batch_locked: spool.purchase_price_batch_locked,
+            allow_historical_missing_price_fill: false,
         }
     }
 
@@ -1029,6 +1069,199 @@ mod tests {
             )
             .expect("read conflicting currency spool");
         assert_eq!(conflict, (None, Some("EUR".to_string()), None));
+
+        cleanup_database(&path, db);
+    }
+
+    #[test]
+    fn explicit_historical_missing_price_fill_is_atomic_and_keeps_every_roll_locked() {
+        let (path, db) = temp_database("standards-historical-missing-price");
+        insert_master(&db, "series", "Bambu", "PLA", "PLA Basic", "Black");
+        for (id, status) in [
+            ("used-up", "EMPTY"),
+            ("lost-history", "LOST"),
+            ("missing-history", "MISSING"),
+        ] {
+            insert_spool(&db, id, "series", status, "OWNED", None, None, None, false);
+        }
+
+        let reviewed = db
+            .get_filament_standards()
+            .expect("review historical group");
+        let group = group_for_master(&reviewed, "series");
+        let mut spools = group.spools.iter().map(precondition).collect::<Vec<_>>();
+        for spool in &mut spools {
+            spool.allow_historical_missing_price_fill = true;
+        }
+        db.connection()
+            .execute_batch(
+                "CREATE TRIGGER force_historical_price_history_failure
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'PURCHASE_PRICE_STANDARD_APPLIED'
+                      AND NEW.spool_id = 'lost-history'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced historical price history failure');
+                 END;",
+            )
+            .expect("install historical history failure trigger");
+        let failed = db
+            .apply_filament_price_batch(FilamentPriceBatchInput {
+                mode: FilamentPriceBatchMode::MissingOnly,
+                group_key: group.group_key.clone(),
+                price: 219.0,
+                currency: "NOK".to_string(),
+                spools: spools.clone(),
+            })
+            .expect_err("history failure must roll back historical price and lock writes");
+        assert!(failed
+            .to_string()
+            .contains("forced historical price history failure"));
+        let after_failure: (i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT
+                    SUM(CASE WHEN purchase_price IS NOT NULL THEN 1 ELSE 0 END),
+                    SUM(purchase_price_batch_locked)
+                 FROM filament_spools WHERE master_id = 'series'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read rolled-back historical rows");
+        assert_eq!(after_failure, (0, 0));
+        db.connection()
+            .execute_batch("DROP TRIGGER force_historical_price_history_failure;")
+            .expect("remove historical history failure trigger");
+
+        let receipt = db
+            .apply_filament_price_batch(FilamentPriceBatchInput {
+                mode: FilamentPriceBatchMode::MissingOnly,
+                group_key: group.group_key.clone(),
+                price: 219.0,
+                currency: "NOK".to_string(),
+                spools,
+            })
+            .expect("fill deliberately selected historical prices");
+        assert_eq!(receipt.updated_count, 3);
+        assert!(receipt
+            .updated
+            .iter()
+            .all(|row| row.purchase_price_batch_locked));
+        let stored: (i64, i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT
+                    SUM(CASE WHEN purchase_price = 219.0 AND purchase_currency = 'NOK' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN purchase_price_source = 'STANDARD_BATCH' THEN 1 ELSE 0 END),
+                    SUM(purchase_price_batch_locked)
+                 FROM filament_spools WHERE master_id = 'series'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .expect("read historical price and protection writes");
+        assert_eq!(stored, (3, 3, 3));
+
+        db.connection()
+            .execute(
+                "UPDATE filament_spools SET status = 'IN_STOCK' WHERE master_id = 'series'",
+                [],
+            )
+            .expect("reactivate protected historical rows");
+        let refreshed = db
+            .get_filament_standards()
+            .expect("review reactivated group");
+        let group = group_for_master(&refreshed, "series");
+        let overwrite = db
+            .apply_filament_price_batch(FilamentPriceBatchInput {
+                mode: FilamentPriceBatchMode::Overwrite,
+                group_key: group.group_key.clone(),
+                price: 299.0,
+                currency: "NOK".to_string(),
+                spools: group.spools.iter().map(precondition).collect(),
+            })
+            .expect("locked reactivated rows produce a receipt");
+        assert_eq!(overwrite.updated_count, 0);
+        assert!(overwrite
+            .skipped
+            .iter()
+            .all(|row| row.reason == FilamentPriceBatchSkipReason::BatchLocked));
+
+        cleanup_database(&path, db);
+    }
+
+    #[test]
+    fn historical_missing_price_intent_rejects_active_or_overwrite_requests_before_writes() {
+        let (path, db) = temp_database("standards-invalid-historical-intent");
+        insert_master(
+            &db,
+            "series",
+            "Test vendor",
+            "TEST-MATERIAL",
+            "Historical intent fixture",
+            "Fixture white",
+        );
+        insert_spool(
+            &db, "active", "series", "IN_STOCK", "OWNED", None, None, None, false,
+        );
+        let reviewed = db.get_filament_standards().expect("review active group");
+        let group = group_for_master(&reviewed, "series");
+        let mut active = precondition(&group.spools[0]);
+        active.allow_historical_missing_price_fill = true;
+        let error = db
+            .apply_filament_price_batch(FilamentPriceBatchInput {
+                mode: FilamentPriceBatchMode::MissingOnly,
+                group_key: group.group_key.clone(),
+                price: 199.0,
+                currency: "NOK".to_string(),
+                spools: vec![active],
+            })
+            .expect_err("active rows cannot claim historical fill intent");
+        assert!(error
+            .to_string()
+            .contains("requires an owned historical spool"));
+        let price: Option<f64> = db
+            .connection()
+            .query_row(
+                "SELECT purchase_price FROM filament_spools WHERE id = 'active'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("active price remains untouched");
+        assert_eq!(price, None);
+
+        db.connection()
+            .execute(
+                "UPDATE filament_spools SET status = 'EMPTY' WHERE id = 'active'",
+                [],
+            )
+            .expect("make the fixture historical");
+        let reviewed = db
+            .get_filament_standards()
+            .expect("review historical group");
+        let group = group_for_master(&reviewed, "series");
+        let mut historical = precondition(&group.spools[0]);
+        historical.allow_historical_missing_price_fill = true;
+        let error = db
+            .apply_filament_price_batch(FilamentPriceBatchInput {
+                mode: FilamentPriceBatchMode::Overwrite,
+                group_key: group.group_key.clone(),
+                price: 299.0,
+                currency: "NOK".to_string(),
+                spools: vec![historical],
+            })
+            .expect_err("overwrite cannot claim historical fill intent");
+        assert!(error
+            .to_string()
+            .contains("requires an owned historical spool"));
+        let untouched: (Option<f64>, bool) = db
+            .connection()
+            .query_row(
+                "SELECT purchase_price, purchase_price_batch_locked
+                 FROM filament_spools WHERE id = 'active'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("historical price remains untouched");
+        assert_eq!(untouched, (None, false));
 
         cleanup_database(&path, db);
     }

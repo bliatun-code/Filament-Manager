@@ -1535,6 +1535,10 @@ export const nbDictionary: DictionaryNode = {
       filamentDefaultsReceiptAlreadyPriced: "Hadde allerede en pris",
       filamentDefaultsReceiptSkipped: "Ikke oppdatert",
       filamentDefaultsSelectSpool: "Velg rull",
+      filamentDefaultsSelectHistoricalSpool:
+        "Sett pris på historisk rull og beskytt den mot senere gruppeoppdateringer",
+      filamentDefaultsHistoricalSelectionHint:
+        "Velges aldri automatisk. Den kan få manglende pris én gang og forblir deretter beskyttet mot gruppeoppdateringer.",
       filamentDefaultsBatchLocked: "Låst for gruppeprising",
       filamentDefaultsBorrowed: "Innlånt",
       filamentDefaultsHistorical: "Historisk",
@@ -1543,11 +1547,15 @@ export const nbDictionary: DictionaryNode = {
       filamentDefaultsReceipt: "Kvittering fra siste prisoppdatering",
       filamentDefaultsReceiptHint: "Kvitteringen blir stående til du lukker den eller kjører en ny prisoppdatering.",
       filamentDefaultsReceiptCommitted: "{updated} oppdatert · {skipped} ikke oppdatert",
+      filamentDefaultsReceiptCommittedProtected:
+        "{updated} oppdatert · {protected} beskyttet mot senere gruppeoppdateringer · {skipped} ikke oppdatert",
       filamentDefaultsReceiptNotCommitted: "Prisoppdateringen ble ikke lagret.",
       filamentDefaultsDismissReceipt: "Lukk kvitteringen",
       filamentDefaultsNotUpdated: "Ikke oppdatert",
       filamentDefaultsReceiptNoSkips: "Alle valgte og aktuelle ruller ble oppdatert.",
       filamentDefaultsReceiptUpdatedList: "Vis {count} oppdaterte ruller",
+      filamentDefaultsReceiptPriceSetProtected:
+        "Pris satt · Beskyttet mot senere gruppeoppdateringer",
       filamentDefaultsCurrency: "Standard kjøpsvaluta",
       filamentDefaultsCurrencyHint: "Brukes som startvaluta for nye individuelle priser og prisgrupper. Eksisterende kjøpsdata endres ikke automatisk.",
       filamentDefaultsHostOwned: "Administrer bibliotekets filamentstandarder i skrivebordsappen på verten.",
@@ -1572,16 +1580,24 @@ export const nbDictionary: DictionaryNode = {
       filamentDefaultsMissingOnlyHint: "Beholder alle eksisterende individuelle priser.",
       filamentDefaultsOverwrite: "Oppdater valgte priser",
       filamentDefaultsOverwriteHint: "Erstatter eksisterende individuelle priser etter en egen bekreftelse.",
-      filamentDefaultsSelectGroup: "Velg alle {count} aktuelle ruller",
+      filamentDefaultsSelectGroup: "Velg alle {count} aktive ruller",
+      filamentDefaultsHistoricalSelectionRemoved:
+        "{count} historiske ruller ble fjernet fra utvalget fordi overskriving ikke kan endre dem.",
+      filamentDefaultsHistoricalProtectionHint:
+        "Historiske og oppbrukte ruller er beskyttet og fravalgt som standard. Under Bare manglende priser kan en historisk rull uten pris velges enkeltvis; beskyttelsen forblir aktiv etterpå.",
       filamentDefaultsSelected: "valgt",
       filamentDefaultsWillUpdate: "oppdateres",
       filamentDefaultsOverwritePreview: "{count} eksisterende priser blir erstattet, inkludert {manual} individuelt satte priser.",
       filamentDefaultsLockedPreview: "{count} valgte, låste ruller hoppes over og vises i kvitteringen for manuell oppfølging.",
+      filamentDefaultsHistoricalMissingPreview:
+        "{count} bevisst valgte historiske ruller får manglende pris og forblir beskyttet mot senere gruppeoppdateringer.",
       filamentDefaultsCurrencyOnlyPreview: "{count} eksisterende priser beholdes mens manglende valuta fylles inn.",
       filamentDefaultsManualPreview: "{count} ruller mangler pris, men har allerede en annen valuta. De krever manuell oppfølging og vises i kvitteringen.",
       filamentDefaultsBorrowedPreview: "{count} innlånte ruller blir ikke endret.",
       filamentDefaultsReviewOverwrite: "Se gjennom og bekreft overskriving",
       filamentDefaultsApplyMissing: "Sett pris på ruller uten pris",
+      filamentDefaultsApplyMissingAndProtect:
+        "Sett manglende priser og beskytt historiske ruller",
       filamentDefaultsConfirmOverwrite: "Bekreft overskriving av priser",
       filamentDefaultsOverwriteReview: "Gjennomgang før overskriving",
       filamentDefaultsOverwriteConfirmationWarning: "{count} eksisterende priser blir erstattet. {manual} av dem er satt individuelt. Dette endrer ikke rullenes lås for gruppeprising.",

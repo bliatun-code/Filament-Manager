@@ -176,6 +176,8 @@ pub struct FilamentPriceBatchSpoolPrecondition {
     pub expected_purchase_currency: Option<String>,
     pub expected_purchase_price_source: Option<String>,
     pub expected_purchase_price_batch_locked: bool,
+    #[serde(default)]
+    pub allow_historical_missing_price_fill: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -209,6 +211,7 @@ pub struct FilamentPriceBatchUpdatedSpool {
     pub purchase_price: f64,
     pub purchase_currency: String,
     pub purchase_price_source: String,
+    pub purchase_price_batch_locked: bool,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]

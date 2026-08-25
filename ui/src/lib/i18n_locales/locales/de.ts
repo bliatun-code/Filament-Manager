@@ -1504,6 +1504,10 @@ export const deDictionary: DictionaryNode = {
     filamentDefaultsReceiptAlreadyPriced: "Already had a price",
     filamentDefaultsReceiptSkipped: "Not updated",
     filamentDefaultsSelectSpool: "Select spool",
+    filamentDefaultsSelectHistoricalSpool:
+      "Set price on historical spool and protect it from later group updates",
+    filamentDefaultsHistoricalSelectionHint:
+      "Never selected automatically. It can receive its missing price once and will then remain protected from group updates.",
     filamentDefaultsBatchLocked: "Batch locked",
     filamentDefaultsBorrowed: "Borrowed",
     filamentDefaultsHistorical: "Historical",
@@ -1512,11 +1516,15 @@ export const deDictionary: DictionaryNode = {
     filamentDefaultsReceipt: "Latest pricing receipt",
     filamentDefaultsReceiptHint: "This receipt stays here until you dismiss it or run another price update.",
     filamentDefaultsReceiptCommitted: "{updated} updated · {skipped} not updated",
+    filamentDefaultsReceiptCommittedProtected:
+      "{updated} updated · {protected} protected from later group updates · {skipped} not updated",
     filamentDefaultsReceiptNotCommitted: "The pricing operation was not committed.",
     filamentDefaultsDismissReceipt: "Dismiss receipt",
     filamentDefaultsNotUpdated: "Not updated",
     filamentDefaultsReceiptNoSkips: "Every selected eligible spool was updated.",
     filamentDefaultsReceiptUpdatedList: "Show {count} updated spools",
+    filamentDefaultsReceiptPriceSetProtected:
+      "Price set · Protected from later group updates",
     filamentDefaultsCurrency: "Default purchase currency",
     filamentDefaultsCurrencyHint: "Used as the starting currency for new individual prices and filament group defaults. Existing purchase data is not changed automatically.",
     filamentDefaultsHostOwned: "Manage library-wide filament defaults on the Host desktop app.",
@@ -1541,16 +1549,24 @@ export const deDictionary: DictionaryNode = {
     filamentDefaultsMissingOnlyHint: "Keeps every existing individual price.",
     filamentDefaultsOverwrite: "Update selected prices",
     filamentDefaultsOverwriteHint: "Replaces existing individual prices after a separate confirmation.",
-    filamentDefaultsSelectGroup: "Select all {count} eligible spools",
+    filamentDefaultsSelectGroup: "Select all {count} active spools",
+    filamentDefaultsHistoricalSelectionRemoved:
+      "{count} historical spools were removed from the selection because overwrite cannot change them.",
+    filamentDefaultsHistoricalProtectionHint:
+      "Historical and used-up spools are protected and excluded by default. In Only missing prices, an unpriced historical spool can be selected individually; its protection remains enabled afterward.",
     filamentDefaultsSelected: "selected",
     filamentDefaultsWillUpdate: "Will update",
     filamentDefaultsOverwritePreview: "{count} existing prices will be replaced, including {manual} individually set prices.",
     filamentDefaultsLockedPreview: "{count} selected locked spools will be skipped and listed in the receipt for manual follow-up.",
+    filamentDefaultsHistoricalMissingPreview:
+      "{count} deliberately selected historical spools will receive their missing price and remain protected from later group updates.",
     filamentDefaultsCurrencyOnlyPreview: "{count} existing prices are kept while their missing currency is filled in.",
     filamentDefaultsManualPreview: "{count} spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.",
     filamentDefaultsBorrowedPreview: "{count} borrowed spools will not be changed.",
     filamentDefaultsReviewOverwrite: "Review and confirm overwrite",
     filamentDefaultsApplyMissing: "Price spools missing a price",
+    filamentDefaultsApplyMissingAndProtect:
+      "Set missing prices and protect historical spools",
     filamentDefaultsConfirmOverwrite: "Confirm price overwrite",
     filamentDefaultsOverwriteReview: "Overwrite review",
     filamentDefaultsOverwriteConfirmationWarning: "{count} existing prices will be replaced. {manual} were individually set. This does not change the per-spool batch locks.",

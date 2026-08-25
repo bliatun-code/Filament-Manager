@@ -65,6 +65,7 @@ export type FilamentPriceBatchSpoolPrecondition = {
   expected_purchase_currency?: string | null;
   expected_purchase_price_source?: string | null;
   expected_purchase_price_batch_locked: boolean;
+  allow_historical_missing_price_fill: boolean;
 };
 
 export type FilamentPriceBatchInput = {
@@ -91,6 +92,7 @@ export type FilamentPriceBatchUpdatedSpool = {
   purchase_price: number;
   purchase_currency: string;
   purchase_price_source: string;
+  purchase_price_batch_locked: boolean;
 };
 
 export type FilamentPriceBatchSkippedSpool = {

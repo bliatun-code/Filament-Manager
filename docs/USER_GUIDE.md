@@ -423,11 +423,19 @@ Enter and save a group price, then choose one of two actions:
   prices will be overwritten.
 
 You can remove individual spools from the selection before running it.
-Borrowed-in and historical spools are not changed. A receipt then lists updated
-and unchanged spools; rows requiring manual follow-up open that spool's details
-directly. If any reviewed spool changes before the batch starts, the entire
-operation stops before its first write so an old review cannot overwrite newer
-data.
+Borrowed-in spools are never changed. Historical spools, such as empty, lost,
+or missing spools, remain visible but are never selected automatically or by a
+group selection. Under **Only missing prices**, you may deliberately select
+unpriced historical spools one by one. Their price, currency, and protection
+lock are then stored together, preventing later price-group updates. Historical
+spools cannot be selected under **Update selected prices**, and this exception
+never changes an existing historical price.
+
+A receipt then lists updated and unchanged spools. The historical spool is
+marked as protected and opens its details directly; other rows requiring manual
+follow-up are linked in the same way. If any reviewed spool changes before the
+batch starts, the entire operation stops before its first write so an old review
+cannot overwrite newer data.
 
 An individual price remains editable in spool details. Enable **Protect
 individual price from group updates** when the defaults page must never

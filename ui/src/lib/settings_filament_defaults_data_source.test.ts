@@ -93,6 +93,7 @@ test("batch adapter sends an exact stale-review precondition and maps its receip
     price: 249,
     currency: "NOK",
     spoolIds: ["spool-white"],
+    historicalMissingPriceSpoolIds: [],
   };
   assert.deepEqual(buildFilamentPriceBatchInput(current, request), {
     group_key: current.groups[0]!.group_key,
@@ -109,6 +110,7 @@ test("batch adapter sends an exact stale-review precondition and maps its receip
         expected_purchase_currency: null,
         expected_purchase_price_source: null,
         expected_purchase_price_batch_locked: false,
+        allow_historical_missing_price_fill: false,
       },
     ],
   });
@@ -137,6 +139,49 @@ test("batch adapter sends an exact stale-review precondition and maps its receip
   assert.equal(receipt.committed, true);
   assert.equal(receipt.skipped[0]?.spoolLabel, "PLA Basic · Jade White");
   assert.equal(receipt.skipped[0]?.reason, "BATCH_LOCKED");
+});
+
+test("batch adapter preserves explicit historical fill intent and protected receipt state", () => {
+  const current = snapshot();
+  current.groups[0]!.spools[0]!.status = "EMPTY";
+  const request = {
+    groupKey: current.groups[0]!.group_key,
+    mode: "MISSING_ONLY" as const,
+    price: 249,
+    currency: "NOK",
+    spoolIds: ["spool-white"],
+    historicalMissingPriceSpoolIds: ["spool-white"],
+  };
+  const input = buildFilamentPriceBatchInput(current, request);
+  assert.equal(input.spools[0]?.allow_historical_missing_price_fill, true);
+
+  const receipt = mapFilamentPriceBatchReceipt(
+    {
+      batch_id: "batch-historical",
+      mode: "MISSING_ONLY",
+      group_key: current.groups[0]!.group_key,
+      committed: true,
+      updated_count: 1,
+      skipped_count: 0,
+      updated: [
+        {
+          spool_id: "spool-white",
+          master_id: "master-white",
+          color_name: "Jade White",
+          previous_purchase_price: null,
+          previous_purchase_currency: null,
+          purchase_price: 249,
+          purchase_currency: "NOK",
+          purchase_price_source: "STANDARD_BATCH",
+          purchase_price_batch_locked: true,
+        },
+      ],
+      skipped: [],
+    },
+    request,
+    current,
+  );
+  assert.equal(receipt.updated[0]?.protectedFromBatchPricing, true);
 });
 
 test("post-batch refresh failures never turn a committed batch into a failed receipt", async () => {

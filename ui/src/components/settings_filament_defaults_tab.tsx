@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -10,14 +11,17 @@ import {
   allFilamentPriceGroups,
   buildFilamentPriceBatchPreview,
   buildFilamentPriceGroups,
+  canExplicitlyPriceHistoricalMissingSpool,
   createDefaultFilamentPriceSelection,
   filamentDefaultsSpoolLabel,
   filamentPriceSelectionState,
   filamentPriceSkipPresentation,
   hasFilamentPurchasePrice,
   isFilamentPriceBatchSelectable,
+  isFilamentPriceHistorical,
   normalizeFilamentDefaultCurrency,
   parseFilamentGroupPrice,
+  reconcileFilamentPriceSelection,
   updateFilamentPriceGroupSelection,
   type FilamentDefaultsSpoolRow,
   type FilamentGroupPriceDefault,
@@ -36,8 +40,9 @@ import { AppModal } from "./app_modal";
 import { toErrorMessage } from "../lib/error_text";
 import { SettingsLowStockPanel, type SettingsLowStockPanelProps } from "./settings_low_stock_panel";
 import { SettingsNotice, SettingsSurfaceCard } from "./settings_ui";
+import { formatInventoryStatusLabel } from "../lib/inventory_list_model";
 
-type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
+type TranslateFn = (key: string, fallback?: string, params?: MessageParams) => string;
 
 export type SettingsFilamentDefaultsFocusTarget =
   | "DEFAULT_CURRENCY"
@@ -165,14 +170,22 @@ function GroupSpoolRow({
   onOpenSpoolDetail: (spoolId: string) => void;
   onSelectionChange: (selected: boolean) => void;
 }) {
+  const historicalHintId = useId();
   const borrowed = row.ownershipType?.trim().toLocaleUpperCase("en-US").replace(/[\s-]+/g, "_") === "BORROWED_IN";
   const inactive = !borrowed && !isFilamentPriceBatchSelectable(row);
   const priced = hasFilamentPurchasePrice(row.purchasePrice);
+  const label = filamentDefaultsSpoolLabel(row);
+  const historicalMissing = inactive && !priced;
 
   return (
     <div className="grid gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 dark:border-slate-700 dark:bg-slate-950/30 sm:grid-cols-[auto_minmax(10rem,1fr)_auto] sm:items-center">
       <input
-        aria-label={`${t("settings.filamentDefaultsSelectSpool", "Select spool")} · ${filamentDefaultsSpoolLabel(row)}`}
+        aria-describedby={historicalMissing ? historicalHintId : undefined}
+        aria-label={
+          historicalMissing
+            ? `${t("settings.filamentDefaultsSelectHistoricalSpool", "Set price on historical spool and protect it from later group updates")} · ${label}`
+            : `${t("settings.filamentDefaultsSelectSpool", "Select spool")} · ${label}`
+        }
         checked={selected}
         disabled={disabled}
         type="checkbox"
@@ -184,7 +197,7 @@ function GroupSpoolRow({
           type="button"
           onClick={() => onOpenSpoolDetail(row.spoolId)}
         >
-          {filamentDefaultsSpoolLabel(row)}
+          {label}
         </button>
         <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
           <span>#{row.spoolId}</span>
@@ -200,10 +213,18 @@ function GroupSpoolRow({
           ) : null}
           {inactive ? (
             <span className="rounded-full border border-slate-300 px-2 py-0.5 font-semibold dark:border-slate-600">
-              {t("settings.filamentDefaultsHistorical", "Historical")}
+              {t("settings.filamentDefaultsHistorical", "Historical")} · {formatInventoryStatusLabel(t, row.status ?? "")}
             </span>
           ) : null}
         </div>
+        {historicalMissing ? (
+          <span className="sr-only" id={historicalHintId}>
+            {t(
+              "settings.filamentDefaultsHistoricalSelectionHint",
+              "Never selected automatically. It can receive its missing price once and will then remain protected from group updates.",
+            )}
+          </span>
+        ) : null}
       </div>
       <div className="text-left text-xs sm:text-right">
         {priced ? (
@@ -236,6 +257,10 @@ function BatchReceiptCard({
   onClear: () => void;
   onOpenSpoolDetail: (spoolId: string) => void;
 }) {
+  const protectedCount = receipt.updated.filter(
+    (entry) => entry.protectedFromBatchPricing,
+  ).length;
+
   return (
     <SettingsSurfaceCard
       className="space-y-4 xl:col-span-2"
@@ -246,21 +271,33 @@ function BatchReceiptCard({
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <SettingsNotice tone={receipt.committed ? "success" : "danger"}>
-          {receipt.committed
-            ? t(
-                "settings.filamentDefaultsReceiptCommitted",
-                `${receipt.updated.length} updated · ${receipt.skipped.length} not updated`,
-                {
-                  updated: receipt.updated.length,
-                  skipped: receipt.skipped.length,
-                },
-              )
-            : t(
-                "settings.filamentDefaultsReceiptNotCommitted",
-                "The pricing operation was not committed.",
-              )}
-        </SettingsNotice>
+        <div aria-atomic="true" aria-live="polite" role="status">
+          <SettingsNotice tone={receipt.committed ? "success" : "danger"}>
+            {receipt.committed
+              ? protectedCount > 0
+                ? t(
+                    "settings.filamentDefaultsReceiptCommittedProtected",
+                    `${receipt.updated.length} updated · ${protectedCount} protected from later group updates · ${receipt.skipped.length} not updated`,
+                    {
+                      updated: receipt.updated.length,
+                      protected: protectedCount,
+                      skipped: receipt.skipped.length,
+                    },
+                  )
+                : t(
+                  "settings.filamentDefaultsReceiptCommitted",
+                  `${receipt.updated.length} updated · ${receipt.skipped.length} not updated`,
+                  {
+                    updated: receipt.updated.length,
+                    skipped: receipt.skipped.length,
+                  },
+                )
+              : t(
+                  "settings.filamentDefaultsReceiptNotCommitted",
+                  "The pricing operation was not committed.",
+                )}
+          </SettingsNotice>
+        </div>
         <button
           className={settingsActionButtonClass("neutral", "compact")}
           type="button"
@@ -326,7 +363,23 @@ function BatchReceiptCard({
           </summary>
           <ul className="mt-2 grid gap-1 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2">
             {receipt.updated.map((entry) => (
-              <li key={entry.spoolId}>{entry.spoolLabel}</li>
+              <li key={entry.spoolId}>
+                <button
+                  className="grid w-full gap-0.5 rounded-md px-2 py-1 text-left outline-none hover:bg-slate-100 focus-visible:bg-slate-100 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800"
+                  type="button"
+                  onClick={() => onOpenSpoolDetail(entry.spoolId)}
+                >
+                  <span className="font-semibold">{entry.spoolLabel}</span>
+                  {entry.protectedFromBatchPricing ? (
+                    <span>
+                      {t(
+                        "settings.filamentDefaultsReceiptPriceSetProtected",
+                        "Price set · Protected from later group updates",
+                      )}
+                    </span>
+                  ) : null}
+                </button>
+              </li>
             ))}
           </ul>
         </details>
@@ -375,6 +428,7 @@ export function SettingsFilamentDefaultsTab({
   const [localBatchReceipt, setLocalBatchReceipt] =
     useState<FilamentPriceBatchReceipt | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [selectionAnnouncement, setSelectionAnnouncement] = useState<string | null>(null);
   const receipt = batchReceipt === undefined ? localBatchReceipt : batchReceipt;
 
   function setReceipt(next: FilamentPriceBatchReceipt | null) {
@@ -391,6 +445,16 @@ export function SettingsFilamentDefaultsTab({
   useEffect(() => {
     setSelectedSpoolIds(new Set(JSON.parse(defaultSelectionSignature) as string[]));
   }, [defaultSelectionSignature]);
+
+  useEffect(() => {
+    setSelectedSpoolIds((current) =>
+      reconcileFilamentPriceSelection({
+        groups,
+        groupModes,
+        selectedSpoolIds: current,
+      }),
+    );
+  }, [groups, groupModes]);
 
   useEffect(() => {
     if (focusTarget === "DEFAULT_CURRENCY") {
@@ -426,6 +490,7 @@ export function SettingsFilamentDefaultsTab({
   }
 
   function setSpoolSelected(spoolId: string, selected: boolean) {
+    setSelectionAnnouncement(null);
     setSelectedSpoolIds((current) => {
       const next = new Set(current);
       if (selected) {
@@ -435,6 +500,34 @@ export function SettingsFilamentDefaultsTab({
       }
       return next;
     });
+  }
+
+  function setGroupMode(group: FilamentPriceGroup, mode: FilamentPriceBatchMode) {
+    const nextModes = { ...groupModes, [group.key]: mode };
+    const removedHistoricalCount = mode === "OVERWRITE"
+      ? group.spoolRows.filter(
+          (row) =>
+            isFilamentPriceHistorical(row) &&
+            selectedSpoolIds.has(row.spoolId),
+        ).length
+      : 0;
+    setGroupModes(nextModes);
+    setSelectedSpoolIds((current) =>
+      reconcileFilamentPriceSelection({
+        groups,
+        groupModes: nextModes,
+        selectedSpoolIds: current,
+      }),
+    );
+    setSelectionAnnouncement(
+      removedHistoricalCount > 0
+        ? t(
+            "settings.filamentDefaultsHistoricalSelectionRemoved",
+            `${removedHistoricalCount} historical spools were removed from the selection because overwrite cannot change them.`,
+            { count: removedHistoricalCount },
+          )
+        : null,
+    );
   }
 
   async function saveDefaultCurrency() {
@@ -516,6 +609,8 @@ export function SettingsFilamentDefaultsTab({
       price,
       currency,
       spoolIds: preview.selectedSpoolIds,
+      historicalMissingPriceSpoolIds:
+        preview.historicalMissingPriceSpoolIds,
     };
   }
 
@@ -525,6 +620,23 @@ export function SettingsFilamentDefaultsTab({
     try {
       const result = await onApplyBatch(request);
       setReceipt(result);
+      const requestedHistoricalIds = new Set(
+        request.historicalMissingPriceSpoolIds,
+      );
+      const completedHistoricalIds = new Set(
+        result.updated
+          .filter((entry) => requestedHistoricalIds.has(entry.spoolId))
+          .map((entry) => entry.spoolId),
+      );
+      if (completedHistoricalIds.size > 0) {
+        setSelectedSpoolIds((current) => {
+          const next = new Set(current);
+          for (const spoolId of completedHistoricalIds) {
+            next.delete(spoolId);
+          }
+          return next;
+        });
+      }
       setPendingOverwrite(null);
     } catch (error) {
       setLocalError(
@@ -651,6 +763,17 @@ export function SettingsFilamentDefaultsTab({
           tabIndex={-1}
           className="space-y-3 outline-none"
         >
+          {selectionAnnouncement ? (
+            <p
+              aria-atomic="true"
+              aria-live="polite"
+              className="sr-only"
+              id="settings-filament-selection-status"
+              role="status"
+            >
+              {selectionAnnouncement}
+            </p>
+          ) : null}
           {categories.length === 0 ? (
             <div className="surface-subtle border-dashed px-4 py-6 text-center text-sm text-slate-600 dark:text-slate-300">
               {t(
@@ -781,7 +904,7 @@ export function SettingsFilamentDefaultsTab({
                                 name={`price-mode-${group.key}`}
                                 type="radio"
                                 value="MISSING_ONLY"
-                                onChange={() => setGroupModes((current) => ({ ...current, [group.key]: "MISSING_ONLY" }))}
+                                onChange={() => setGroupMode(group, "MISSING_ONLY")}
                               />
                               <span>
                                 <span className="block font-semibold">
@@ -799,7 +922,7 @@ export function SettingsFilamentDefaultsTab({
                                 name={`price-mode-${group.key}`}
                                 type="radio"
                                 value="OVERWRITE"
-                                onChange={() => setGroupModes((current) => ({ ...current, [group.key]: "OVERWRITE" }))}
+                                onChange={() => setGroupMode(group, "OVERWRITE")}
                               />
                               <span>
                                 <span className="block font-semibold">
@@ -811,6 +934,15 @@ export function SettingsFilamentDefaultsTab({
                               </span>
                             </label>
                           </div>
+
+                          {group.counts.inactive > 0 ? (
+                            <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+                              {t(
+                                "settings.filamentDefaultsHistoricalProtectionHint",
+                                "Historical and used-up spools are protected and excluded by default. In Only missing prices, an unpriced historical spool can be selected individually; its protection remains enabled afterward.",
+                              )}
+                            </p>
+                          ) : null}
 
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <GroupSelectionCheckbox
@@ -840,7 +972,11 @@ export function SettingsFilamentDefaultsTab({
                           <div className="grid gap-2">
                             {group.spoolRows.map((row) => (
                               <GroupSpoolRow
-                                disabled={disabled || !isFilamentPriceBatchSelectable(row)}
+                                disabled={
+                                  disabled ||
+                                  (!isFilamentPriceBatchSelectable(row) &&
+                                    !canExplicitlyPriceHistoricalMissingSpool(row, mode))
+                                }
                                 key={row.spoolId}
                                 row={row}
                                 selected={selectedSpoolIds.has(row.spoolId)}
@@ -869,6 +1005,15 @@ export function SettingsFilamentDefaultsTab({
                                 "settings.filamentDefaultsLockedPreview",
                                 `${preview.lockedCount} selected locked spools will be skipped and listed in the receipt for manual follow-up.`,
                                 { count: preview.lockedCount },
+                              )}
+                            </p>
+                          ) : null}
+                          {preview.historicalMissingPriceCount > 0 ? (
+                            <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+                              {t(
+                                "settings.filamentDefaultsHistoricalMissingPreview",
+                                `${preview.historicalMissingPriceCount} deliberately selected historical spools will receive their missing price and remain protected from later group updates.`,
+                                { count: preview.historicalMissingPriceCount },
                               )}
                             </p>
                           ) : null}
@@ -908,7 +1053,12 @@ export function SettingsFilamentDefaultsTab({
                           >
                             {mode === "OVERWRITE"
                               ? t("settings.filamentDefaultsReviewOverwrite", "Review and confirm overwrite")
-                              : t("settings.filamentDefaultsApplyMissing", "Price spools missing a price")}
+                              : preview.historicalMissingPriceCount > 0
+                                ? t(
+                                    "settings.filamentDefaultsApplyMissingAndProtect",
+                                    "Set missing prices and protect historical spools",
+                                  )
+                                : t("settings.filamentDefaultsApplyMissing", "Price spools missing a price")}
                           </button>
                         </div>
                       </details>

@@ -111,6 +111,9 @@ test("filament defaults tab combines currency, low stock and collapsed price gro
   assert.match(html, /PLA Basic/);
   assert.match(html, /Batch locked/);
   assert.match(html, /Historical/);
+  assert.match(html, /Historical · Empty/);
+  assert.match(html, /Historical and used-up spools are protected and excluded by default/);
+  assert.match(html, /Set price on historical spool and protect it from later group updates/);
   assert.match(html, /Only missing prices/);
   assert.match(html, /Update selected prices/);
   assert.match(html, /Price spools missing a price/);
@@ -148,6 +151,8 @@ test("overwrite uses AppModal and manual receipt entries navigate to spool detai
   assert.match(source, /filamentPriceSkipPresentation/);
   assert.match(source, /presentation\.requiresManualUpdate/);
   assert.match(source, /onOpenSpoolDetail\(entry\.spoolId\)/);
+  assert.match(source, /settings-filament-selection-status/);
+  assert.match(source, /filamentDefaultsHistoricalSelectionRemoved/);
   assert.match(source, /receipt stays here until you dismiss it or run another price update/i);
 });
 
@@ -173,4 +178,29 @@ test("an app-owned receipt remains renderable after the settings route remounts"
   assert.match(html, /Latest pricing receipt/);
   assert.match(html, /PLA Basic · Locked/);
   assert.match(html, /Protected from batch pricing/);
+});
+
+test("a historical missing-price receipt exposes the retained protection and detail link", () => {
+  const receipt: FilamentPriceBatchReceipt = {
+    batchId: "batch-historical",
+    groupKey: 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]',
+    mode: "MISSING_ONLY",
+    price: 249,
+    currency: "NOK",
+    committed: true,
+    updated: [
+      {
+        spoolId: "empty",
+        spoolLabel: "PLA Basic · Empty",
+        protectedFromBatchPricing: true,
+      },
+    ],
+    skipped: [],
+  };
+
+  const html = renderTab({ batchReceipt: receipt });
+  assert.match(html, /1 updated · 1 protected from later group updates · 0 not updated/);
+  assert.match(html, /Price set · Protected from later group updates/);
+  assert.match(html, /aria-live="polite"/);
+  assert.match(html, /role="status"/);
 });

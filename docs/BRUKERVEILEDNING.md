@@ -454,11 +454,20 @@ Angi og lagre en pris på gruppen, velg deretter én av to handlinger:
   en egen gjennomgang som viser hvor mange eksisterende og individuelt satte
   priser som blir overskrevet.
 
-Du kan fjerne enkeltruller fra utvalget før kjøring. Innlånte og historiske
-ruller endres ikke. Etterpå vises en kvittering med oppdaterte og uendrede
-ruller. Rader som krever manuell oppfølging kan åpnes direkte i rulldetaljene.
-Hvis en rull endres etter gjennomgangen, avbrytes hele operasjonen før første
-skriving, slik at en gammel gjennomgang ikke overskriver nyere data.
+Du kan fjerne enkeltruller fra utvalget før kjøring. Innlånte ruller endres
+ikke. Historiske ruller, som tomme, tapte eller manglende ruller, er synlige,
+men velges aldri automatisk eller via gruppevalget. I **Bare manglende priser**
+kan du bevisst krysse av historiske ruller som mangler pris, én og én. Pris,
+valuta og beskyttelseslås lagres da samlet; rullen kan ikke senere overskrives
+fra en prisgruppe. Historiske ruller kan ikke velges i **Oppdater valgte
+priser**, og en eksisterende historisk pris endres aldri gjennom denne
+særregelen.
+
+Etterpå vises en kvittering med oppdaterte og uendrede ruller. Den historiske
+rullen merkes som beskyttet og kan åpnes direkte i rulldetaljene. Andre rader
+som krever manuell oppfølging kan også åpnes derfra. Hvis en rull endres etter
+gjennomgangen, avbrytes hele operasjonen før første skriving, slik at en gammel
+gjennomgang ikke overskriver nyere data.
 
 I rulldetaljene kan du fortsatt sette en individuell pris. Aktiver **Beskytt
 individuell pris mot gruppeoppdateringer** når standardfanen aldri skal

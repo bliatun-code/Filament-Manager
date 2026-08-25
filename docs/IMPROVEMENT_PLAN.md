@@ -112,7 +112,7 @@ Den lokale lageranalysen 25. august 2026 viser at pris varierer på produktfamil
 ### Sikkerhets- og kompatibilitetsregler
 
 - Individuell pris forblir rullens autoritative verdi; standardfanen setter faktiske rullverdier og lager ingen skjult, beregnet «gruppepris».
-- Standardvaluta fyller forslag, men endrer ikke historiske ruller uten en eksplisitt batch.
+- Historiske ruller er synlige, men holdes utenfor standard- og gruppeutvalg. Historiske ruller uten pris kan velges eksplisitt én og én i «Bare manglende pris»; pris og batchlås lagres atomisk, og historiske ruller kan aldri velges i «Overskriv».
 - «Bare manglende pris» setter pris på ruller uten pris og kan fylle manglende valuta uten å endre en eksisterende pris. «Overskriv» endrer pris og valuta på valgte, ulåste ruller etter en separat gjennomgang.
 - Batchlåsen beskytter mot begge batchmoduser. Manuell lagring i filamentdetaljene er fortsatt tillatt.
 - Kjøpsdato, batchkode og leverandørreferanse berøres aldri av batchprising.
@@ -156,6 +156,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Lageret prioriterer nå filtre og filamentlisten i normalvisningen. Massehandlinger åpnes som en midlertidig «Velg flere»-modus, avkrysningsbokser og handlinger vises progressivt, bare én flytte-/statuseditor åpnes om gangen, og etikettark for hele lageret er tydelig skilt fra etikettark for valgte ruller.
 - Lokasjonsadministrasjonen viser nå bare egne lagersteder i en kompakt tokolonners liste. Tekniske printer-/utlånslokasjoner er skjult, arkiverte steder og sammenslåing er sammenfoldet, og grensesnittet forklarer at arkivering bevarer rullenes stabile lokasjonskoblinger. Aktive og arkiverte steder kan slettes permanent først når databasen autoritativt bekrefter at ingen nåværende-, hjemme- eller underlokasjonskoblinger finnes.
 - Filamentstandarder samler nå lavlagergrenser, standard kjøpsvaluta og sammenleggbare prisgrupper basert på leverandør, produktfamilie og nominell rullvekt. Brukeren kan prise bare manglende verdier eller eksplisitt overskrive valgte ruller; en per-rull-lås, atomisk forhåndskontroll og en varig, klikkbar kvittering beskytter individuelle priser. Manglende pris eller valuta i Statistics åpner riktig kontroll direkte. Schema 5, Host/Client-kontrakten, backup/import, tilgjengelighet, responsivitet og hele den lokale verifikasjonspakken er bestått.
+- Historiske ruller er fortsatt valgt bort som standard, men en tom, tapt eller manglende rull uten pris kan nå velges bevisst i «Bare manglende pris». Den får pris og beskyttelseslås i samme transaksjon, markeres som beskyttet i den klikkbare kvitteringen og forblir utilgjengelig for senere gruppeoverskriving.
 
 ### 2026-08-21
 

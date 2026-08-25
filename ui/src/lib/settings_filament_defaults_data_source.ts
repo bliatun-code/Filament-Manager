@@ -127,6 +127,9 @@ export function buildFilamentPriceBatchInput(
     throw new Error("Filamentgruppen har endret seg. Se gjennom utvalget på nytt.");
   }
   const spoolsById = new Map(group.spools.map((spool) => [spool.spool_id, spool]));
+  const historicalMissingPriceSpoolIds = new Set(
+    request.historicalMissingPriceSpoolIds,
+  );
   const spools = request.spoolIds.map((spoolId) => {
     const spool = spoolsById.get(spoolId);
     if (!spool) {
@@ -144,6 +147,8 @@ export function buildFilamentPriceBatchInput(
       expected_purchase_price_source: spool.purchase_price_source ?? null,
       expected_purchase_price_batch_locked:
         spool.purchase_price_batch_locked,
+      allow_historical_missing_price_fill:
+        historicalMissingPriceSpoolIds.has(spool.spool_id),
     };
   });
 
@@ -183,6 +188,7 @@ export function mapFilamentPriceBatchReceipt(
     updated: receipt.updated.map((entry) => ({
       spoolId: entry.spool_id,
       spoolLabel: label(entry.spool_id, entry.color_name),
+      protectedFromBatchPricing: entry.purchase_price_batch_locked,
     })),
     skipped: receipt.skipped.map((entry) => ({
       spoolId: entry.spool_id,

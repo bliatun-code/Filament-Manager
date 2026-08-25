@@ -71,11 +71,13 @@ export type FilamentPriceBatchPreview = Readonly<{
   lockedCount: number;
   borrowedInCount: number;
   inactiveCount: number;
+  historicalMissingPriceCount: number;
   selectedSpoolIds: readonly string[];
   eligibleSpoolIds: readonly string[];
   lockedSpoolIds: readonly string[];
   borrowedInSpoolIds: readonly string[];
   inactiveSpoolIds: readonly string[];
+  historicalMissingPriceSpoolIds: readonly string[];
   manualUpdateSpoolIds: readonly string[];
   alreadyCompleteSpoolIds: readonly string[];
 }>;
@@ -223,14 +225,32 @@ function normalizedSpoolStatus(row: FilamentDefaultsSpoolRow): string {
   return canonicalTextKey(row.status).replace(/[\s-]+/g, "_");
 }
 
+export function isFilamentPriceHistorical(
+  row: FilamentDefaultsSpoolRow,
+): boolean {
+  return new Set(["empty", "lost", "missing", "deleted"]).has(
+    normalizedSpoolStatus(row),
+  );
+}
+
 export function isFilamentPriceBatchSelectable(
   row: FilamentDefaultsSpoolRow,
 ): boolean {
   if (isBorrowedIn(row)) {
     return false;
   }
-  return !new Set(["empty", "lost", "missing", "deleted"]).has(
-    normalizedSpoolStatus(row),
+  return !isFilamentPriceHistorical(row);
+}
+
+export function canExplicitlyPriceHistoricalMissingSpool(
+  row: FilamentDefaultsSpoolRow,
+  mode: FilamentPriceBatchMode,
+): boolean {
+  return (
+    mode === "MISSING_ONLY" &&
+    !isBorrowedIn(row) &&
+    isFilamentPriceHistorical(row) &&
+    !hasFilamentPurchasePrice(row.purchasePrice)
   );
 }
 
@@ -383,6 +403,31 @@ export function updateFilamentPriceGroupSelection({
   return next;
 }
 
+export function reconcileFilamentPriceSelection({
+  groups,
+  groupModes,
+  selectedSpoolIds,
+}: {
+  groups: readonly FilamentPriceGroup[];
+  groupModes: Readonly<Record<string, FilamentPriceBatchMode>>;
+  selectedSpoolIds: ReadonlySet<string>;
+}): Set<string> {
+  const next = new Set<string>();
+  for (const group of groups) {
+    const mode = groupModes[group.key] ?? "MISSING_ONLY";
+    for (const row of group.spoolRows) {
+      if (
+        selectedSpoolIds.has(row.spoolId) &&
+        (isFilamentPriceBatchSelectable(row) ||
+          canExplicitlyPriceHistoricalMissingSpool(row, mode))
+      ) {
+        next.add(row.spoolId);
+      }
+    }
+  }
+  return next;
+}
+
 export function buildFilamentPriceBatchPreview({
   currency,
   group,
@@ -395,13 +440,29 @@ export function buildFilamentPriceBatchPreview({
   currency?: string | null;
 }): FilamentPriceBatchPreview {
   const selected = group.spoolRows.filter((row) => selectedSpoolIds.has(row.spoolId));
-  const locked = selected.filter((row) => row.batchPriceLocked);
-  const unlocked = selected.filter((row) => !row.batchPriceLocked);
-  const borrowed = unlocked.filter(isBorrowedIn);
-  const inactive = unlocked.filter(
-    (row) => !isBorrowedIn(row) && !isFilamentPriceBatchSelectable(row),
+  const explicitHistoricalMissingPrice = selected.filter((row) =>
+    canExplicitlyPriceHistoricalMissingSpool(row, mode),
   );
-  const candidates = unlocked.filter(isFilamentPriceBatchSelectable);
+  const explicitHistoricalIds = new Set(
+    explicitHistoricalMissingPrice.map((row) => row.spoolId),
+  );
+  const locked = selected.filter(
+    (row) => row.batchPriceLocked && !explicitHistoricalIds.has(row.spoolId),
+  );
+  const available = selected.filter(
+    (row) => !row.batchPriceLocked || explicitHistoricalIds.has(row.spoolId),
+  );
+  const borrowed = available.filter(isBorrowedIn);
+  const inactive = available.filter(
+    (row) =>
+      !isBorrowedIn(row) &&
+      !isFilamentPriceBatchSelectable(row) &&
+      !explicitHistoricalIds.has(row.spoolId),
+  );
+  const candidates = available.filter(
+    (row) =>
+      isFilamentPriceBatchSelectable(row) || explicitHistoricalIds.has(row.spoolId),
+  );
   const normalizedCurrency = normalizeFilamentDefaultCurrency(currency ?? "");
   const missingPriceWithOtherCurrency =
     mode === "MISSING_ONLY"
@@ -464,11 +525,17 @@ export function buildFilamentPriceBatchPreview({
     lockedCount: locked.length,
     borrowedInCount: borrowed.length,
     inactiveCount: inactive.length,
+    historicalMissingPriceCount: eligible.filter((row) =>
+      explicitHistoricalIds.has(row.spoolId),
+    ).length,
     selectedSpoolIds: selected.map((row) => row.spoolId),
     eligibleSpoolIds: eligible.map((row) => row.spoolId),
     lockedSpoolIds: locked.map((row) => row.spoolId),
     borrowedInSpoolIds: borrowed.map((row) => row.spoolId),
     inactiveSpoolIds: inactive.map((row) => row.spoolId),
+    historicalMissingPriceSpoolIds: explicitHistoricalMissingPrice.map(
+      (row) => row.spoolId,
+    ),
     manualUpdateSpoolIds: missingPriceWithOtherCurrency.map((row) => row.spoolId),
     alreadyCompleteSpoolIds: alreadyComplete.map((row) => row.spoolId),
   };
@@ -489,6 +556,7 @@ export type FilamentPriceBatchReceiptEntry = Readonly<{
   spoolLabel: string;
   reason?: FilamentPriceBatchSkipReason;
   detail?: string | null;
+  protectedFromBatchPricing?: boolean;
 }>;
 
 export type FilamentPriceBatchReceipt = Readonly<{
@@ -509,6 +577,7 @@ export type FilamentPriceBatchRequest = Readonly<{
   price: number;
   groupKey: string;
   spoolIds: readonly string[];
+  historicalMissingPriceSpoolIds: readonly string[];
 }>;
 
 export type FilamentGroupPriceDefault = Readonly<{

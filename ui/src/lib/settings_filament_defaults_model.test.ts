@@ -5,12 +5,14 @@ import {
   allFilamentPriceGroups,
   buildFilamentPriceBatchPreview,
   buildFilamentPriceGroups,
+  canExplicitlyPriceHistoricalMissingSpool,
   canonicalizeFilamentVendor,
   createDefaultFilamentPriceSelection,
   filamentPriceSelectionState,
   filamentPriceSkipPresentation,
   normalizeFilamentDefaultCurrency,
   parseFilamentGroupPrice,
+  reconcileFilamentPriceSelection,
   updateFilamentPriceGroupSelection,
   type FilamentDefaultsSpoolRow,
 } from "./settings_filament_defaults_model";
@@ -212,11 +214,13 @@ test("missing-only preview updates only unpriced owned rows and reports every sk
     lockedCount: 1,
     borrowedInCount: 1,
     inactiveCount: 0,
+    historicalMissingPriceCount: 0,
     selectedSpoolIds: ["borrowed", "locked", "missing", "priced"],
     eligibleSpoolIds: ["missing"],
     lockedSpoolIds: ["locked"],
     borrowedInSpoolIds: ["borrowed"],
     inactiveSpoolIds: [],
+    historicalMissingPriceSpoolIds: [],
     manualUpdateSpoolIds: [],
     alreadyCompleteSpoolIds: ["priced"],
   });
@@ -294,6 +298,84 @@ test("default selection excludes borrowed and inactive historical spools but inc
   );
   assert.equal(group.counts.inactive, 1);
   assert.equal(group.counts.total, 4);
+});
+
+test("historical missing prices require an individual missing-only selection and stay out of group selection", () => {
+  const [group] = allFilamentPriceGroups(
+    buildFilamentPriceGroups([
+      spool("active"),
+      spool("empty", { status: "EMPTY", batchPriceLocked: true }),
+      spool("lost", { status: "LOST" }),
+      spool("historical-priced", {
+        status: "EMPTY",
+        purchasePrice: 219,
+        purchaseCurrency: "NOK",
+      }),
+      spool("borrowed-history", {
+        status: "EMPTY",
+        ownershipType: "BORROWED_IN",
+      }),
+    ]),
+  );
+  assert.ok(group);
+  const empty = group.spoolRows.find((row) => row.spoolId === "empty")!;
+  const priced = group.spoolRows.find((row) => row.spoolId === "historical-priced")!;
+  assert.equal(canExplicitlyPriceHistoricalMissingSpool(empty, "MISSING_ONLY"), true);
+  assert.equal(canExplicitlyPriceHistoricalMissingSpool(empty, "OVERWRITE"), false);
+  assert.equal(canExplicitlyPriceHistoricalMissingSpool(priced, "MISSING_ONLY"), false);
+  assert.deepEqual(Array.from(createDefaultFilamentPriceSelection([group])), ["active"]);
+
+  const preview = buildFilamentPriceBatchPreview({
+    group,
+    mode: "MISSING_ONLY",
+    currency: "NOK",
+    selectedSpoolIds: new Set(["empty", "lost"]),
+  });
+  assert.equal(preview.eligibleCount, 2);
+  assert.equal(preview.historicalMissingPriceCount, 2);
+  assert.equal(preview.lockedCount, 0, "explicit historical fill narrowly bypasses its lock");
+  assert.deepEqual(preview.historicalMissingPriceSpoolIds, ["empty", "lost"]);
+});
+
+test("selection reconciliation removes completed historical pricing and overwrite-ineligible history", () => {
+  const [before] = allFilamentPriceGroups(
+    buildFilamentPriceGroups([
+      spool("active"),
+      spool("empty", { status: "EMPTY" }),
+    ]),
+  );
+  assert.ok(before);
+  const selected = new Set(["active", "empty"]);
+
+  const overwriteSelection = reconcileFilamentPriceSelection({
+    groups: [before],
+    groupModes: { [before.key]: "OVERWRITE" },
+    selectedSpoolIds: selected,
+  });
+  assert.deepEqual(Array.from(overwriteSelection), ["active"]);
+
+  const [after] = allFilamentPriceGroups(
+    buildFilamentPriceGroups([
+      spool("active"),
+      spool("empty", {
+        status: "EMPTY",
+        purchasePrice: 249,
+        purchaseCurrency: "NOK",
+        batchPriceLocked: true,
+      }),
+    ]),
+  );
+  assert.ok(after);
+  const refreshedSelection = reconcileFilamentPriceSelection({
+    groups: [after],
+    groupModes: { [after.key]: "MISSING_ONLY" },
+    selectedSpoolIds: selected,
+  });
+  assert.deepEqual(
+    Array.from(refreshedSelection),
+    ["active"],
+    "a successfully priced historical row is no longer left selected and disabled",
+  );
 });
 
 test("an authoritative backend group key wins over the generated legacy key", () => {
