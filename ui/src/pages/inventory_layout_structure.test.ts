@@ -130,6 +130,11 @@ test("inventory result summary counts all active filters and offers reset", () =
   assert.match(inventoryControlsSource, /activeFilterCount > 0/);
   assert.match(inventoryControlsSource, /onClick=\{onResetFilters\}/);
   assert.match(inventoryControlsSource, /inventory\.resetFilters/);
+  assert.match(inventoryControlsSource, /aria-expanded=\{bulkSelectionActive\}/);
+  assert.match(inventoryControlsSource, /inventory\.bulkSelectionModeStart/);
+  assert.match(inventoryControlsSource, /inventory\.bulkSelectionModeDone/);
+  assert.match(inventoryPageWorkspaceSource, /bulkActionsProps\.active \? \(/);
+  assert.match(inventoryPageWorkspaceSource, /bulkSelectionTriggerProps\.onActiveChange/);
 });
 
 test("inventory layout preferences stay deterministic in visual QA and separate from filters", () => {

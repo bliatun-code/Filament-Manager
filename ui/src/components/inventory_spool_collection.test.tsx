@@ -43,6 +43,7 @@ function renderEmptyCollection(options: {
     <I18nContext.Provider value={i18nValue}>
       <InventorySpoolCollection
         addSpoolDisabled={options.addSpoolDisabled ?? false}
+        bulkSelectionActive={false}
         bulkSelectionDisabled={false}
         filteredSpools={[]}
         groupedSpools={[]}
@@ -95,7 +96,7 @@ test("empty inventory respects read-only add restrictions", () => {
   assert.match(html, /<button[^>]*disabled=""[^>]*>Add spool<\/button>/);
 });
 
-test("visible inventory rows expose the controlled bulk selection independently of opening details", () => {
+test("visible inventory rows expose selection only while multi-select mode is active", () => {
   const spool: InventorySpool = {
     colorName: "Black",
     filamentName: "Basic",
@@ -108,27 +109,35 @@ test("visible inventory rows expose the controlled bulk selection independently 
     status: "IN_STOCK",
     vendor: "Bambu Lab",
   };
-  const html = renderToStaticMarkup(
-    <I18nContext.Provider value={i18nValue}>
-      <InventorySpoolCollection
-        addSpoolDisabled={false}
-        bulkSelectionDisabled={false}
-        filteredSpools={[spool]}
-        groupedSpools={groupInventorySpools([spool])}
-        inventoryView="LIST"
-        loading={false}
-        onAddSpool={() => {}}
-        onBulkSelectionChange={() => {}}
-        onResetFilters={() => {}}
-        onSelectRoll={() => {}}
-        recentlyAddedSpoolId={null}
-        resolvedTheme="light"
-        selectedSpoolId={null}
-        selectedBulkSpoolIds={new Set([spool.id])}
-        totalSpoolCount={1}
-      />
-    </I18nContext.Provider>,
-  );
+  const renderCollection = (bulkSelectionActive: boolean) =>
+    renderToStaticMarkup(
+      <I18nContext.Provider value={i18nValue}>
+        <InventorySpoolCollection
+          addSpoolDisabled={false}
+          bulkSelectionActive={bulkSelectionActive}
+          bulkSelectionDisabled={false}
+          filteredSpools={[spool]}
+          groupedSpools={groupInventorySpools([spool])}
+          inventoryView="LIST"
+          loading={false}
+          onAddSpool={() => {}}
+          onBulkSelectionChange={() => {}}
+          onResetFilters={() => {}}
+          onSelectRoll={() => {}}
+          recentlyAddedSpoolId={null}
+          resolvedTheme="light"
+          selectedSpoolId={null}
+          selectedBulkSpoolIds={new Set([spool.id])}
+          totalSpoolCount={1}
+        />
+      </I18nContext.Provider>,
+    );
+
+  const inactiveHtml = renderCollection(false);
+  assert.doesNotMatch(inactiveHtml, /type="checkbox"|Select #pool-a/);
+  assert.match(inactiveHtml, /<button[^>]*type="button"/);
+
+  const html = renderCollection(true);
 
   assert.match(
     html,

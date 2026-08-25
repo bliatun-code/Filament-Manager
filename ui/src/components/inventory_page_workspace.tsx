@@ -27,6 +27,11 @@ type InventoryPageWorkspaceProps = {
   addModalActive: boolean;
   addModalProps: InventoryAddModalProps;
   bulkActionsProps: InventoryBulkActionsPanelViewProps;
+  bulkSelectionTriggerProps: Readonly<{
+    active: boolean;
+    disabled: boolean;
+    onActiveChange: (active: boolean) => void;
+  }>;
   clientHostDeviceName: string | null;
   clientInventorySource: string | null;
   clientInventoryUpdatedAt: string | null;
@@ -38,7 +43,12 @@ type InventoryPageWorkspaceProps = {
     | "onResetFilters"
     | "totalSpoolCount"
   >;
-  controlsProps: ComponentProps<typeof InventoryControlsPanel>;
+  controlsProps: Omit<
+    ComponentProps<typeof InventoryControlsPanel>,
+    | "bulkSelectionActive"
+    | "bulkSelectionDisabled"
+    | "onBulkSelectionActiveChange"
+  >;
   error: string | null;
   headerActionsProps: ComponentProps<typeof InventoryHeaderActions>;
   infoMessage: string | null;
@@ -60,6 +70,7 @@ export function InventoryPageWorkspace({
   addModalActive,
   addModalProps,
   bulkActionsProps,
+  bulkSelectionTriggerProps,
   clientHostDeviceName,
   clientInventorySource,
   clientInventoryUpdatedAt,
@@ -122,7 +133,14 @@ export function InventoryPageWorkspace({
         purchaseCount={totalPurchaseCount}
       />
 
-      {activeView === "STOCK" ? <InventoryControlsPanel {...controlsProps} /> : null}
+      {activeView === "STOCK" ? (
+        <InventoryControlsPanel
+          {...controlsProps}
+          bulkSelectionActive={bulkSelectionTriggerProps.active}
+          bulkSelectionDisabled={bulkSelectionTriggerProps.disabled}
+          onBulkSelectionActiveChange={bulkSelectionTriggerProps.onActiveChange}
+        />
+      ) : null}
 
       {error && !addModalActive ? (
         <FeedbackBanner tone="danger" className="mt-4">
@@ -164,23 +182,25 @@ export function InventoryPageWorkspace({
         </FeedbackBanner>
       ) : null}
 
-      <div className="mt-8">
+      <div className={activeView === "STOCK" ? "mt-4" : "mt-8"}>
         {activeView === "STOCK" ? (
           <div
             id="inventory-stock-panel"
             role="region"
             aria-labelledby="inventory-stock-tab"
           >
-            <Suspense
-              fallback={
-                <div className="surface-subtle p-4 text-sm text-slate-600 dark:text-slate-300" role="status">
-                  {t("common.loading", "Loading...")}
-                </div>
-              }
-            >
-              <InventoryBulkActionsPanelView {...bulkActionsProps} />
-            </Suspense>
-            <div className="mt-4">
+            {bulkActionsProps.active ? (
+              <Suspense
+                fallback={
+                  <div className="surface-subtle p-4 text-sm text-slate-600 dark:text-slate-300" role="status">
+                    {t("common.loading", "Loading...")}
+                  </div>
+                }
+              >
+                <InventoryBulkActionsPanelView {...bulkActionsProps} />
+              </Suspense>
+            ) : null}
+            <div className={bulkActionsProps.active ? "mt-4" : undefined}>
               <InventorySpoolCollection
                 {...collectionProps}
                 addSpoolDisabled={headerActionsProps.primaryActionsDisabled}

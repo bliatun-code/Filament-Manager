@@ -395,13 +395,20 @@ export const nbDictionary: DictionaryNode = {
       locationArchived: "Lokasjonen er arkivert.",
       locationRestored: "Lokasjonen er gjenopprettet.",
       locationsMerged: "Lokasjonene er slått sammen.",
+      labelSheetAllAction: "Lag etikettark for hele lageret",
       bulkActionsTitle: "Massehandlinger",
+      bulkSelectionModeStart: "Velg flere",
+      bulkSelectionModeDone: "Ferdig",
+      bulkSelectionHint: "Velg ruller for flytting, status, etiketter eller eksport.",
+      bulkCreateLabels:
+        "{count, plural, one {Lag etikettark for # valgt rull} other {Lag etikettark for # valgte ruller}}",
       bulkMoveAction: "Flytt",
       bulkStatusAction: "Endre status",
       bulkMoveTitle: "Flytt valgte ruller",
       bulkStatusTitle: "Endre status for valgte ruller",
       bulkNoSelection: "Ingen ruller er valgt",
       bulkSelectedCount: "{count, plural, one {# rull valgt} other {# ruller valgt}}",
+      bulkSelectedAcrossFilters: "{selected} valgt totalt · {visible} i denne visningen",
       bulkSelectVisible: "Velg {count} synlige ruller",
       bulkSelectSpool: "Velg {reference}",
       bulkClearSelection: "Tøm utvalg",
@@ -699,7 +706,7 @@ export const nbDictionary: DictionaryNode = {
       returnToInventory: "Returner til lager",
       printQr: "Lag QR-etikett",
       labelSheetInventoryHint:
-        "Trenger du etiketter til flere filamenter? Lag et etikettark fra toppen av Lager-siden.",
+        "Trenger du etiketter til flere ruller? Velg «Velg flere» i Lager, eller lag et etikettark for hele lageret fra toppen av siden.",
       labelBuilderTitle: "Lag etikettbilde",
       labelBuilderSubtitle:
         "Velg fysisk størrelse, kontroller forhåndsvisningen og lagre en utskriftsklar PNG.",
@@ -2063,7 +2070,7 @@ export const nbDictionary: DictionaryNode = {
       inventoryOverviewPrintHint:
         "Lag QR-etikettark for alle ruller du har tilgjengelig, med samme lesbare 60 × 24 mm-layout som enkeltetikettene.",
       inventoryOverviewPrintAction: "Lag etikettark for lageret",
-      inventoryOverviewBuilderTitle: "Lag etikettark for lageret",
+      inventoryOverviewBuilderTitle: "Lag etikettark",
       inventoryOverviewBuilderSubtitle:
         "Velg papirformat, kontroller sidene og lagre en utskriftsklar PDF.",
       inventoryOverviewPaperFormat: "Papirformat",

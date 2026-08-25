@@ -703,6 +703,7 @@ export default function InventoryPage({
   const {
     collectionProps: inventoryBulkCollectionProps,
     panelProps: inventoryBulkActionsProps,
+    selectionModeTriggerProps: inventoryBulkSelectionTriggerProps,
   } = useInventoryBulkActions({
     activeLoanSpoolIds,
     busy: manageBusy,
@@ -1316,6 +1317,7 @@ export default function InventoryPage({
         addModalActive={addModalActive}
         addModalProps={inventoryAddModalProps}
         bulkActionsProps={inventoryBulkActionsProps}
+        bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
         clientHostDeviceName={clientHostDeviceName}
         clientInventorySource={clientInventorySource}
         clientInventoryUpdatedAt={clientInventoryUpdatedAt}

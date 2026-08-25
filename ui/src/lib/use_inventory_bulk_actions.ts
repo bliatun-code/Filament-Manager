@@ -93,11 +93,16 @@ export function inventoryBulkActionsCopy(t: TranslateFn): InventoryBulkActionsCo
         "Confirm {action} for {count}",
         { action: bulkActionLabel(t, action), count: affectedCount },
       ),
-    createLabels: () =>
-      t("settings.inventoryOverviewPrintAction", "Create inventory label sheet"),
+    createLabels: (selectedCount) =>
+      t(
+        "inventory.bulkCreateLabels",
+        "{count, plural, one {Create label sheet for # selected roll} other {Create label sheet for # selected rolls}}",
+        { count: selectedCount },
+      ),
     exportSelectedCsv: () => t("common.exportCsv", "Export CSV"),
     exportSelectedJson: () => t("common.exportJson", "Export JSON"),
     locationLabel: t("inventory.location", "Location"),
+    moveAction: t("inventory.bulkMoveAction", "Move"),
     moveTitle: t("inventory.bulkMoveTitle", "Move selected rolls"),
     noSelection: t("inventory.bulkNoSelection", "No rolls selected"),
     reviewAffected: (affectedCount) =>
@@ -135,12 +140,23 @@ export function inventoryBulkActionsCopy(t: TranslateFn): InventoryBulkActionsCo
       t("inventory.bulkSelectVisible", "Select {count} visible rolls", {
         count: visibleCount,
       }),
+    selectionHint: t(
+      "inventory.bulkSelectionHint",
+      "Select rolls to move, change status, create labels or export.",
+    ),
     selected: (selectedCount) =>
       t(
         "inventory.bulkSelectedCount",
         "{count, plural, one {# roll selected} other {# rolls selected}}",
         { count: selectedCount },
       ),
+    selectedAcrossFilters: (selectedCount, visibleSelectedCount) =>
+      t(
+        "inventory.bulkSelectedAcrossFilters",
+        "{selected} selected total · {visible} in this view",
+        { selected: selectedCount, visible: visibleSelectedCount },
+      ),
+    statusAction: t("inventory.bulkStatusAction", "Change status"),
     statusLabel: t("inventory.status", "Status"),
     statusName: (status) => formatInventoryStatusLabel(t, status),
     statusTitle: t("inventory.bulkStatusTitle", "Change selected status"),
@@ -228,6 +244,15 @@ function sameIds(left: readonly string[], right: readonly string[]): boolean {
   );
 }
 
+function focusInventoryBulkSelectionModeTriggerAfterRender(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.requestAnimationFrame(() =>
+    document.getElementById("inventory-bulk-selection-mode-trigger")?.focus(),
+  );
+}
+
 export function useInventoryBulkActions({
   activeLoanSpoolIds,
   busy,
@@ -250,7 +275,10 @@ export function useInventoryBulkActions({
   tauriAvailable,
   t,
 }: UseInventoryBulkActionsInput) {
+  const [selectionModeActive, setSelectionModeActive] = useState(false);
   const [selection, setSelection] = useState(() => createInventoryBulkSelection());
+  const [activeMutationAction, setActiveMutationAction] =
+    useState<InventoryBulkMutationAction | null>(null);
   const [moveTargetLocationId, setMoveTargetLocationId] = useState("");
   const [statusTarget, setStatusTarget] =
     useState<InventoryBulkManualStatus>("IN_STOCK");
@@ -293,6 +321,13 @@ export function useInventoryBulkActions({
       return sameIds(current.spoolIds, reconciled.spoolIds) ? current : reconciled;
     });
   }, [spools]);
+
+  useEffect(() => {
+    if (selection.spoolIds.length === 0) {
+      setActiveMutationAction(null);
+      setReview(null);
+    }
+  }, [selection.spoolIds.length]);
 
   const labelsPlan = useMemo(() => {
     const result = buildInventoryBulkDataPlan({
@@ -436,7 +471,10 @@ export function useInventoryBulkActions({
           reloadPrinterOverview(),
         ]);
         setSelection(clearInventoryBulkSelection());
+        setSelectionModeActive(false);
+        setActiveMutationAction(null);
         setReview(null);
+        focusInventoryBulkSelectionModeTriggerAfterRender();
         setInfoMessage(
           t(
             "inventory.bulkMutationDone",
@@ -576,6 +614,14 @@ export function useInventoryBulkActions({
 
   const clearSelection = useCallback(() => {
     setSelection(clearInventoryBulkSelection());
+    setActiveMutationAction(null);
+    setReview(null);
+  }, []);
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionModeActive(false);
+    setSelection(clearInventoryBulkSelection());
+    setActiveMutationAction(null);
     setReview(null);
   }, []);
 
@@ -584,20 +630,32 @@ export function useInventoryBulkActions({
     [selection.spoolIds],
   );
   const panelDisabled = !tauriAvailable || loading || busy;
+  const visibleSpoolIdSet = useMemo(
+    () => new Set(visibleSpoolIds),
+    [visibleSpoolIds],
+  );
+  const visibleSelectedCount = useMemo(
+    () => selection.spoolIds.filter((spoolId) => visibleSpoolIdSet.has(spoolId)).length,
+    [selection.spoolIds, visibleSpoolIdSet],
+  );
 
   return {
     collectionProps: {
+      bulkSelectionActive: selectionModeActive,
       bulkSelectionDisabled: panelDisabled,
       onBulkSelectionChange: updateSelection,
       selectedBulkSpoolIds,
     },
     panelProps: {
+      active: selectionModeActive,
+      activeMutationAction,
       copy: inventoryBulkActionsCopy(t),
       disabled: panelDisabled,
       exportPlan,
       labelsPlan,
       locationTargets,
       moveTargetLocationId,
+      onActiveMutationActionChange: setActiveMutationAction,
       onCancelReview: () => setReview(null),
       onClearSelection: clearSelection,
       onConfirmReview: (plan: InventoryBulkMutationPlan) => void confirmReview(plan),
@@ -614,10 +672,22 @@ export function useInventoryBulkActions({
       selectedCount: selection.spoolIds.length,
       statusTarget,
       visibleCount: visibleSpoolIds.length,
+      visibleSelectedCount,
       visibleSelectionState: inventoryBulkSelectAllState(
         selection,
         visibleSpoolIds,
       ),
+    },
+    selectionModeTriggerProps: {
+      active: selectionModeActive,
+      disabled: panelDisabled || (!selectionModeActive && visibleSpoolIds.length === 0),
+      onActiveChange: (active: boolean) => {
+        if (active) {
+          setSelectionModeActive(true);
+        } else {
+          exitSelectionMode();
+        }
+      },
     },
   };
 }

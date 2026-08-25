@@ -221,13 +221,21 @@ Store filtrerte lager vises trinnvis for å holde visningen responsiv.
 Resultattelleren viser hvor mange ruller som vises av alle treffene; velg **Vis
 mer** for å fortsette. Søk og filtre gjelder fortsatt hele lageret.
 
-Bruk **Massehandlinger** over lageret for å velge enkeltruller eller alle
-rullene i det filtrerte resultatet. Flytting og statusendring viser først en
-gjennomgang med separate tall for valgte, berørte og uendrede ruller. Ved
-bekreftelse skrives alle berørte ruller og historikken deres samlet. Hvis en
-gjennomgått rull er endret, utlånt, lastet i en printer eller fjernet, blir ingen
-av endringene skrevet. Etikettark og CSV-/JSON-eksport bruker nøyaktig de valgte
-rullene, også når du uttrykkelig har valgt en status utenfor lagerbeholdningen.
+Velg **Velg flere** ved resultattelleren når du vil bruke massehandlinger.
+Avkrysningsboksene og den kompakte handlingslinjen vises bare i denne
+valgmodusen. Velg enkeltruller eller alle rullene i det filtrerte resultatet, og
+åpne deretter flytting, status, etiketter eller eksport. Bare den valgte
+flytte- eller statushandlingen åpner innstillingene sine. Velg **Ferdig** for å
+avslutte og tømme utvalget.
+
+Flytting og statusendring viser først en gjennomgang med separate tall for
+valgte, berørte og uendrede ruller. Ved bekreftelse skrives alle berørte ruller
+og historikken deres samlet. Hvis en gjennomgått rull er endret, utlånt, lastet
+i en printer eller fjernet, blir ingen av endringene skrevet. Etikettark og
+CSV-/JSON-eksport bruker nøyaktig de valgte rullene, også når du uttrykkelig har
+valgt en status utenfor lagerbeholdningen. Hvis filtre skjuler deler av
+utvalget, viser handlingslinjen både totalt antall valgte og antallet i den
+gjeldende visningen.
 
 Programmet husker kort-/listevisning og om avanserte filtre er åpne på denne
 enheten. Nullstilling av filtre endrer ikke valgt visning. Når du åpner lav
@@ -251,11 +259,11 @@ liggende: Bredden må være minst 20 mm større enn høyden og minst 1,6 ganger
 høyden. Valgt størrelse og de sist gyldige egendefinerte målene huskes lokalt på
 denne enheten, slik at de brukes igjen for andre ruller og i senere økter.
 
-For flere ruller samtidig velger du dem under **Lager → Massehandlinger** og
-bruker **Lag etikettark for lageret**. Du kan bruke den samme handlingen i
-lagerkontrollene uten et utvalg for å lage etiketter til alle tilgjengelige
-ruller. Etikettark bruker alltid 60 × 24 mm og påvirkes ikke av de lagrede
-egendefinerte målene.
+For flere ruller samtidig velger du **Velg flere** under **Lager**, merker
+rullene og bruker **Lag etikettark for valgte ruller**. Bruk **Lag etikettark
+for hele lageret** i lagerkontrollene når alle tilgjengelige ruller skal med.
+Etikettark bruker alltid 60 × 24 mm og påvirkes ikke av de lagrede egendefinerte
+målene.
 
 Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
 antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
@@ -463,9 +471,9 @@ snarveier fra Oversikt fremdeles åpner riktig fane.
 
 Slik lager du etikettark for rullene som er på lager:
 
-1. Åpne **Lager** og velg **Lag etikettark for lageret** i lagerkontrollene.
-   For et nøyaktig delutvalg velger du først rullene under
-   **Massehandlinger** og bruker etiketthandlingen der.
+1. Åpne **Lager** og velg **Lag etikettark for hele lageret** i
+   lagerkontrollene. For et nøyaktig delutvalg velger du **Velg flere**, merker
+   rullene og bruker **Lag etikettark for valgte ruller**.
 2. Velg A4 eller US Letter.
 3. Kontroller forhåndsvisningen, og bruk sidekontrollene dersom lageret dekker
    flere sider.

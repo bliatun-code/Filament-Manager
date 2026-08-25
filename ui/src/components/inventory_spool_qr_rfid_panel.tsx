@@ -322,7 +322,7 @@ export function InventorySpoolQrRfidPanel({
       <div className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
         {t(
           "inventory.labelSheetInventoryHint",
-          "Need labels for several rolls? Create an inventory label sheet from the Inventory header.",
+          "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",
         )}
       </div>
       {labelPanelOpen ? (
@@ -477,7 +477,7 @@ export function InventorySpoolQrRfidPanel({
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
                 {t(
                   "inventory.labelSheetInventoryHint",
-                  "Need labels for several rolls? Create an inventory label sheet from the Inventory header.",
+                  "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",
                 )}
               </div>
               <button

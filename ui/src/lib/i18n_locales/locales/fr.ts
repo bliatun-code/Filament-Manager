@@ -336,13 +336,21 @@ export const frDictionary: DictionaryNode = {
     locationArchived: "Emplacement archivé.",
     locationRestored: "Emplacement restauré.",
     locationsMerged: "Emplacements fusionnés.",
+    labelSheetAllAction: "Créer une planche d’étiquettes pour tout le stock",
     bulkActionsTitle: "Actions groupées",
+    bulkSelectionModeStart: "Sélection multiple",
+    bulkSelectionModeDone: "Terminer la sélection",
+    bulkSelectionHint:
+      "Sélectionnez des bobines à déplacer, modifier, étiqueter ou exporter.",
+    bulkCreateLabels:
+      "{count, plural, one {Créer une planche pour # bobine sélectionnée} other {Créer une planche pour # bobines sélectionnées}}",
     bulkMoveAction: "Déplacer",
     bulkStatusAction: "Modifier le statut",
     bulkMoveTitle: "Déplacer les bobines sélectionnées",
     bulkStatusTitle: "Modifier le statut des bobines sélectionnées",
     bulkNoSelection: "Aucune bobine sélectionnée",
     bulkSelectedCount: "{count, plural, one {# bobine sélectionnée} other {# bobines sélectionnées}}",
+    bulkSelectedAcrossFilters: "{selected} sélectionnées au total · {visible} dans cette vue",
     bulkSelectVisible: "Sélectionner {count} bobines visibles",
     bulkSelectSpool: "Sélectionner {reference}",
     bulkClearSelection: "Effacer la sélection",
@@ -409,7 +417,7 @@ export const frDictionary: DictionaryNode = {
     allChangesSaved: "Toutes les modifications ont été enregistrées.",
     rollChangesSaved: "Modifications de la bobine enregistrées.",
     labelSheetInventoryHint:
-      "Créez et imprimez une planche d’étiquettes pour plusieurs bobines du stock.",
+      "Besoin d’étiquettes pour plusieurs bobines ? Choisissez Sélection multiple dans le stock ou créez une planche pour tout le stock depuis l’en-tête.",
     loanOutRoll: "Prêter la bobine",
     loanCreated: "Prêt créé.",
     printQr: "Créer une étiquette QR",
@@ -2053,7 +2061,7 @@ export const frDictionary: DictionaryNode = {
     inventoryOverviewPrintHint:
       "Créez des planches d’étiquettes QR pour toutes les bobines disponibles, avec la même disposition lisible de 60 × 24 mm que les étiquettes individuelles.",
     inventoryOverviewPrintAction: "Créer une planche d’étiquettes",
-    inventoryOverviewBuilderTitle: "Créer une planche d’étiquettes du stock",
+    inventoryOverviewBuilderTitle: "Créer une planche d’étiquettes",
     inventoryOverviewBuilderSubtitle:
       "Choisissez le format du papier, vérifiez les pages et enregistrez un PDF prêt à imprimer.",
     inventoryOverviewPaperFormat: "Format du papier",

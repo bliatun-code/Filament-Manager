@@ -59,10 +59,13 @@ type InventoryHeaderActionsProps = {
 type InventoryControlsPanelProps = {
   activeFilterCount: number;
   advancedFiltersOpen: boolean;
+  bulkSelectionActive: boolean;
+  bulkSelectionDisabled: boolean;
   inventoryView: InventoryViewMode;
   materialFilter: string;
   materialOptions: string[];
   onAdvancedFiltersOpenChange: (value: boolean) => void;
+  onBulkSelectionActiveChange: (value: boolean) => void;
   onInventoryViewChange: (value: InventoryViewMode) => void;
   onMaterialFilterChange: (value: string) => void;
   onOwnershipFilterChange: (value: OwnershipFilter) => void;
@@ -139,7 +142,7 @@ export function InventoryHeaderActions({
           onClick={onCreateLabelSheet}
           disabled={labelSheetDisabled}
         >
-          {t("settings.inventoryOverviewPrintAction", "Create inventory label sheet")}
+          {t("inventory.labelSheetAllAction", "Create label sheet for all stock")}
         </PageHeaderButton>
       </div>
       {showStockFilters ? (
@@ -198,10 +201,13 @@ export function InventoryHeaderActions({
 export function InventoryControlsPanel({
   activeFilterCount,
   advancedFiltersOpen,
+  bulkSelectionActive,
+  bulkSelectionDisabled,
   inventoryView,
   materialFilter,
   materialOptions,
   onAdvancedFiltersOpenChange,
+  onBulkSelectionActiveChange,
   onInventoryViewChange,
   onMaterialFilterChange,
   onOwnershipFilterChange,
@@ -235,6 +241,19 @@ export function InventoryControlsPanel({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2 min-[920px]:justify-end">
+            <button
+              id="inventory-bulk-selection-mode-trigger"
+              type="button"
+              aria-controls="inventory-bulk-actions"
+              aria-expanded={bulkSelectionActive}
+              disabled={bulkSelectionDisabled}
+              onClick={() => onBulkSelectionActiveChange(!bulkSelectionActive)}
+              className={neutralChipClass(bulkSelectionActive, "px-3 py-1.5 text-xs")}
+            >
+              {bulkSelectionActive
+                ? t("inventory.bulkSelectionModeDone", "Done selecting")
+                : t("inventory.bulkSelectionModeStart", "Select multiple")}
+            </button>
             {activeFilterCount > 0 ? (
               <button
                 type="button"

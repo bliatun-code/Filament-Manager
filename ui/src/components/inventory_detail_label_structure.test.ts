@@ -176,10 +176,10 @@ test("multi-roll label workflow is rendered in Inventory and linked from roll de
     ),
   );
 
-  assert.match(html, />Create inventory label sheet<\/button>/);
+  assert.match(html, />Create label sheet for all stock<\/button>/);
   assert.match(
     html,
-    /Need labels for several rolls\? Create an inventory label sheet from the Inventory header\./,
+    /Need labels for several rolls\? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header\./,
   );
   assert.doesNotMatch(html, /Settings → General/);
 });

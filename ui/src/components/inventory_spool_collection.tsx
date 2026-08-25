@@ -34,6 +34,7 @@ import {
 
 type InventorySpoolCollectionProps = {
   addSpoolDisabled: boolean;
+  bulkSelectionActive: boolean;
   bulkSelectionDisabled: boolean;
   filteredSpools: InventorySpool[];
   groupedSpools: SpoolGroup[];
@@ -151,6 +152,7 @@ function inventorySpoolListButtonClassName(state: InventorySpoolListButtonState)
 
 export function InventorySpoolCollection({
   addSpoolDisabled,
+  bulkSelectionActive,
   bulkSelectionDisabled,
   filteredSpools,
   groupedSpools,
@@ -293,18 +295,20 @@ export function InventorySpoolCollection({
 
                 {singleVisibleRoll ? (
                   <div className="flex items-start gap-1">
-                    <InventoryBulkSpoolSelectionCheckbox
-                      checked={selectedBulkSpoolIds.has(singleVisibleRoll.id)}
-                      disabled={bulkSelectionDisabled}
-                      label={t(
-                        "inventory.bulkSelectSpool",
-                        "Select {reference}",
-                        { reference: formatRollReference(singleVisibleRoll) },
-                      )}
-                      onCheckedChange={(selected) =>
-                        onBulkSelectionChange(singleVisibleRoll.id, selected)
-                      }
-                    />
+                    {bulkSelectionActive ? (
+                      <InventoryBulkSpoolSelectionCheckbox
+                        checked={selectedBulkSpoolIds.has(singleVisibleRoll.id)}
+                        disabled={bulkSelectionDisabled}
+                        label={t(
+                          "inventory.bulkSelectSpool",
+                          "Select {reference}",
+                          { reference: formatRollReference(singleVisibleRoll) },
+                        )}
+                        onCheckedChange={(selected) =>
+                          onBulkSelectionChange(singleVisibleRoll.id, selected)
+                        }
+                      />
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => onSelectRoll(singleVisibleRoll.id)}
@@ -358,18 +362,20 @@ export function InventorySpoolCollection({
                               : "default";
                         return (
                           <div key={roll.id} className="flex items-start gap-1">
-                            <InventoryBulkSpoolSelectionCheckbox
-                              checked={selectedBulkSpoolIds.has(roll.id)}
-                              disabled={bulkSelectionDisabled}
-                              label={t(
-                                "inventory.bulkSelectSpool",
-                                "Select {reference}",
-                                { reference: formatRollReference(roll) },
-                              )}
-                              onCheckedChange={(selected) =>
-                                onBulkSelectionChange(roll.id, selected)
-                              }
-                            />
+                            {bulkSelectionActive ? (
+                              <InventoryBulkSpoolSelectionCheckbox
+                                checked={selectedBulkSpoolIds.has(roll.id)}
+                                disabled={bulkSelectionDisabled}
+                                label={t(
+                                  "inventory.bulkSelectSpool",
+                                  "Select {reference}",
+                                  { reference: formatRollReference(roll) },
+                                )}
+                                onCheckedChange={(selected) =>
+                                  onBulkSelectionChange(roll.id, selected)
+                                }
+                              />
+                            ) : null}
                             <button
                               type="button"
                               onClick={() => onSelectRoll(roll.id)}
@@ -449,18 +455,20 @@ export function InventorySpoolCollection({
                   : "default";
             return (
               <div key={roll.id} className="flex items-start gap-1">
-                <InventoryBulkSpoolSelectionCheckbox
-                  checked={selectedBulkSpoolIds.has(roll.id)}
-                  disabled={bulkSelectionDisabled}
-                  label={t(
-                    "inventory.bulkSelectSpool",
-                    "Select {reference}",
-                    { reference: formatRollReference(roll) },
-                  )}
-                  onCheckedChange={(selected) =>
-                    onBulkSelectionChange(roll.id, selected)
-                  }
-                />
+                {bulkSelectionActive ? (
+                  <InventoryBulkSpoolSelectionCheckbox
+                    checked={selectedBulkSpoolIds.has(roll.id)}
+                    disabled={bulkSelectionDisabled}
+                    label={t(
+                      "inventory.bulkSelectSpool",
+                      "Select {reference}",
+                      { reference: formatRollReference(roll) },
+                    )}
+                    onCheckedChange={(selected) =>
+                      onBulkSelectionChange(roll.id, selected)
+                    }
+                  />
+                ) : null}
                 <button
                   type="button"
                   onClick={() => onSelectRoll(roll.id)}

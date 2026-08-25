@@ -336,13 +336,21 @@ export const deDictionary: DictionaryNode = {
     locationArchived: "Lagerort archiviert.",
     locationRestored: "Lagerort wiederhergestellt.",
     locationsMerged: "Lagerorte zusammengeführt.",
+    labelSheetAllAction: "Etikettenbogen für den gesamten Bestand erstellen",
     bulkActionsTitle: "Massenaktionen",
+    bulkSelectionModeStart: "Mehrere auswählen",
+    bulkSelectionModeDone: "Auswahl beenden",
+    bulkSelectionHint:
+      "Rollen zum Verschieben, Ändern des Status, Erstellen von Etiketten oder Exportieren auswählen.",
+    bulkCreateLabels:
+      "{count, plural, one {Etikettenbogen für # ausgewählte Rolle erstellen} other {Etikettenbogen für # ausgewählte Rollen erstellen}}",
     bulkMoveAction: "Verschieben",
     bulkStatusAction: "Status ändern",
     bulkMoveTitle: "Ausgewählte Rollen verschieben",
     bulkStatusTitle: "Status ausgewählter Rollen ändern",
     bulkNoSelection: "Keine Rollen ausgewählt",
     bulkSelectedCount: "{count, plural, one {# Rolle ausgewählt} other {# Rollen ausgewählt}}",
+    bulkSelectedAcrossFilters: "{selected} insgesamt ausgewählt · {visible} in dieser Ansicht",
     bulkSelectVisible: "{count} sichtbare Rollen auswählen",
     bulkSelectSpool: "{reference} auswählen",
     bulkClearSelection: "Auswahl aufheben",
@@ -612,7 +620,7 @@ export const deDictionary: DictionaryNode = {
     allChangesSaved: "Alle Änderungen gespeichert.",
     rollChangesSaved: "Rollenänderungen gespeichert.",
     labelSheetInventoryHint:
-      "Erstelle und drucke einen Etikettenbogen für mehrere Rollen aus dem Bestand.",
+      "Brauchst du Etiketten für mehrere Rollen? Wähle Mehrere auswählen im Bestand oder erstelle über die Kopfzeile einen Etikettenbogen für den gesamten Bestand.",
     outG: "Ausgehend g",
     loanNoteOptional: "Ausleihnotiz (optional)",
     loanOutRoll: "Rolle ausleihen",
@@ -2189,7 +2197,7 @@ export const deDictionary: DictionaryNode = {
     inventoryOverviewPrintHint:
       "QR-Etikettenbögen für alle vorhandenen Rollen mit demselben gut lesbaren 60 × 24-mm-Layout wie Einzeletiketten erstellen.",
     inventoryOverviewPrintAction: "Bestandsetikettenbogen erstellen",
-    inventoryOverviewBuilderTitle: "Bestandsetikettenbogen erstellen",
+    inventoryOverviewBuilderTitle: "Etikettenbogen erstellen",
     inventoryOverviewBuilderSubtitle:
       "Papierformat auswählen, Seiten prüfen und eine druckfertige PDF speichern.",
     inventoryOverviewPaperFormat: "Papierformat",

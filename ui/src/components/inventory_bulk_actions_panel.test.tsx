@@ -31,6 +31,7 @@ const copy: InventoryBulkActionsCopy = {
   exportSelectedCsv: (count) => `Export CSV (${count})`,
   exportSelectedJson: (count) => `Export JSON (${count})`,
   locationLabel: "Destination",
+  moveAction: "Move",
   moveTitle: "Move selected",
   noSelection: "No spools selected",
   reviewAffected: (count) => `${count} affected`,
@@ -46,7 +47,11 @@ const copy: InventoryBulkActionsCopy = {
   reviewUnchanged: (count) => `${count} unchanged`,
   reviewUnchangedTerm: "Unchanged",
   selectVisible: (count) => `Select ${count} visible spools`,
+  selectionHint: "Choose rolls before using an action.",
   selected: (count) => `${count} spools selected`,
+  selectedAcrossFilters: (selectedCount, visibleSelectedCount) =>
+    `${selectedCount} selected total · ${visibleSelectedCount} in this view`,
+  statusAction: "Change status",
   statusLabel: "New status",
   statusName: (status) => status,
   statusTitle: "Change status",
@@ -123,6 +128,8 @@ function panelProps(
   overrides: Partial<InventoryBulkActionsPanelViewProps> = {},
 ): InventoryBulkActionsPanelViewProps {
   return {
+    active: true,
+    activeMutationAction: null,
     copy,
     disabled: false,
     exportPlan,
@@ -133,6 +140,7 @@ function panelProps(
       { archived: true, id: "location-old", name: "Old shelf" },
     ],
     moveTargetLocationId: "location-b",
+    onActiveMutationActionChange: () => {},
     onCancelReview: () => {},
     onConfirmReview: () => {},
     onCreateLabels: () => {},
@@ -149,6 +157,7 @@ function panelProps(
     selectedCount: 3,
     statusTarget: "EMPTY",
     visibleCount: 3,
+    visibleSelectedCount: 3,
     visibleSelectionState: "ALL",
     ...overrides,
   };
@@ -210,30 +219,99 @@ function click(element: TestElement): void {
   (onClick as () => void)();
 }
 
-test("configuration shows exact selection and separate MOVE, STATUS, LABELS, and EXPORT actions", () => {
+test("inactive selection mode leaves the inventory surface empty", () => {
+  const html = renderToStaticMarkup(
+    <InventoryBulkActionsPanelView {...panelProps({ active: false })} />,
+  );
+
+  assert.equal(html, "");
+});
+
+test("selection mode with no selection stays compact and hides unavailable actions", () => {
+  const html = renderToStaticMarkup(
+    <InventoryBulkActionsPanelView
+      {...panelProps({
+        exportPlan: null,
+        labelsPlan: null,
+        selectedCount: 0,
+        visibleSelectedCount: 0,
+        visibleSelectionState: "NONE",
+      })}
+    />,
+  );
+
+  assert.match(html, /No spools selected/);
+  assert.match(html, /Choose rolls before using an action\./);
+  assert.match(html, /Select 3 visible spools/);
+  assert.match(html, /id="inventory-bulk-select-visible"/);
+  assert.doesNotMatch(html, />Move<\/button>/);
+  assert.doesNotMatch(html, />Change status<\/button>/);
+  assert.doesNotMatch(html, /Labels \(0\)|Export CSV \(0\)|Export JSON \(0\)/);
+  assert.doesNotMatch(html, /<fieldset/);
+});
+
+test("a selected set exposes compact action entry points without opening editors", () => {
   const html = renderToStaticMarkup(<InventoryBulkActionsPanelView {...panelProps()} />);
 
   assert.match(html, /aria-labelledby="inventory-bulk-actions-title"/);
   assert.match(html, /3 spools selected/);
-  assert.match(html, />Move selected</);
-  assert.match(html, />Change status</);
-  assert.match(html, />Review move<\/button>/);
-  assert.match(html, />Review status<\/button>/);
+  assert.match(html, /id="inventory-bulk-move-action"/);
+  assert.match(html, /id="inventory-bulk-status-action"/);
+  assert.match(html, />Move<\/button>/);
+  assert.match(html, />Change status<\/button>/);
   assert.match(html, />Labels \(3\)<\/button>/);
   assert.match(html, />Export CSV \(3\)<\/button>/);
   assert.match(html, />Export JSON \(3\)<\/button>/);
-  assert.match(html, /Select 3 visible spools/);
   assert.match(html, />Clear selection<\/button>/);
-  assert.match(html, /<option value="location-old" disabled="">Old shelf \(archived\)<\/option>/);
-  assert.doesNotMatch(html, /Confirm MOVE/);
+  assert.doesNotMatch(html, /<fieldset/);
+  assert.doesNotMatch(html, />Review move<\/button>|>Review status<\/button>/);
+});
+
+test("only the requested MOVE or STATUS editor is expanded", () => {
+  const moveHtml = renderToStaticMarkup(
+    <InventoryBulkActionsPanelView
+      {...panelProps({ activeMutationAction: "MOVE" })}
+    />,
+  );
+  assert.match(moveHtml, /id="inventory-bulk-move-editor"/);
+  assert.match(moveHtml, />Review move<\/button>/);
+  assert.match(
+    moveHtml,
+    /<option value="location-old" disabled="">Old shelf \(archived\)<\/option>/,
+  );
+  assert.doesNotMatch(moveHtml, /id="inventory-bulk-status-editor"|>Review status<\/button>/);
+
+  const statusHtml = renderToStaticMarkup(
+    <InventoryBulkActionsPanelView
+      {...panelProps({ activeMutationAction: "STATUS" })}
+    />,
+  );
+  assert.match(statusHtml, /id="inventory-bulk-status-editor"/);
+  assert.match(statusHtml, />Review status<\/button>/);
+  assert.doesNotMatch(statusHtml, /id="inventory-bulk-move-editor"|>Review move<\/button>/);
 });
 
 test("first mutation step requests a review and never calls the backend confirmation callback", () => {
   let moveTarget = "";
   let statusTarget = "";
   let confirmCount = 0;
-  const tree = InventoryBulkActionsPanelView(
+  const moveTree = InventoryBulkActionsPanelView(
     panelProps({
+      activeMutationAction: "MOVE",
+      onConfirmReview: () => {
+        confirmCount += 1;
+      },
+      onRequestMoveReview: (target) => {
+        moveTarget = target.id;
+      },
+      onRequestStatusReview: (status) => {
+        statusTarget = status;
+      },
+    }),
+  );
+  const statusTree = InventoryBulkActionsPanelView(
+    panelProps({
+      activeMutationAction: "STATUS",
       onConfirmReview: () => {
         confirmCount += 1;
       },
@@ -246,8 +324,8 @@ test("first mutation step requests a review and never calls the backend confirma
     }),
   );
 
-  click(findButton(tree, "Review move"));
-  click(findButton(tree, "Review status"));
+  click(findButton(moveTree, "Review move"));
+  click(findButton(statusTree, "Review status"));
   assert.equal(moveTarget, "location-b");
   assert.equal(statusTarget, "EMPTY");
   assert.equal(confirmCount, 0);
@@ -296,6 +374,10 @@ test("second mutation step shows exact affected count and is the only step that 
   const tree = InventoryBulkActionsPanelView(props);
 
   assert.match(html, /role="alert"/);
+  assert.match(
+    html,
+    /<h3 id="inventory-bulk-review-title"[^>]*tabindex="-1"[^>]*>/,
+  );
   assert.match(html, /3 selected/);
   assert.match(html, /2 affected/);
   assert.match(html, /1 unchanged/);
@@ -319,19 +401,29 @@ test("a changed review is visible and cannot be confirmed", () => {
   assert.match(html, /<button(?=[^>]*disabled="")[^>]*>Confirm MOVE for 2<\/button>/);
 });
 
-test("no selection or mismatched data plans disables every action", () => {
+test("mismatched data plans disable only their exact-selection actions", () => {
   const html = renderToStaticMarkup(
     <InventoryBulkActionsPanelView
       {...panelProps({
         exportPlan: null,
         labelsPlan: null,
-        moveTargetLocationId: "location-old",
-        selectedCount: 0,
       })}
     />,
   );
-  assert.match(html, /No spools selected/);
-  assert.equal((html.match(/disabled=""/g) ?? []).length, 7);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>Labels \(3\)<\/button>/);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>Export CSV \(3\)<\/button>/);
+  assert.match(html, /<button(?=[^>]*disabled="")[^>]*>Export JSON \(3\)<\/button>/);
+  assert.doesNotMatch(html, /<button(?=[^>]*disabled="")[^>]*>Move<\/button>/);
+});
+
+test("selection summary calls out selected rolls hidden by current filters", () => {
+  const html = renderToStaticMarkup(
+    <InventoryBulkActionsPanelView
+      {...panelProps({ visibleSelectedCount: 1, visibleSelectionState: "SOME" })}
+    />,
+  );
+
+  assert.match(html, /3 selected total · 1 in this view/);
 });
 
 test("select-visible checkbox exposes controlled, accessible multi-selection", () => {
