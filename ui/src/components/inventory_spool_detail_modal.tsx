@@ -47,6 +47,7 @@ import {
 import { purchaseReceiptMetadataFieldsCopy } from "../lib/purchase_receipt_metadata_copy";
 import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
 import { PurchaseReceiptMetadataFields } from "./purchase_receipt_metadata_fields";
+import { InventoryPurchasePriceProtectionControl } from "./inventory_purchase_price_protection_control";
 
 /*
  * Keep the legacy exception visible to assistive technology only while the
@@ -72,6 +73,7 @@ type InventorySpoolDetailModalProps = {
   confirmDelete: boolean;
   confirmPurge: boolean;
   deterministicLabelPreferences?: boolean;
+  defaultPurchaseCurrency?: string;
   displayTitle: string;
   error: string | null;
   filamentName: string;
@@ -100,6 +102,7 @@ type InventorySpoolDetailModalProps = {
   onChangeOwnerName: (value: string) => void;
   onChangeOwnershipNote: (value: string) => void;
   onChangeOwnershipType: (value: OwnershipType) => void;
+  onChangePurchasePriceBatchLocked: (value: boolean) => void;
   onChangePurchaseMetadata: (value: PurchaseReceiptMetadataDraft) => void;
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
@@ -126,6 +129,7 @@ type InventorySpoolDetailModalProps = {
   ownershipTypeDraft: OwnershipType;
   ownerContactDraft: string;
   ownerNameDraft: string;
+  purchasePriceBatchLockedDraft: boolean;
   purchaseMetadataDraft: PurchaseReceiptMetadataDraft;
   purchaseMetadataErrors: PurchaseReceiptMetadataValidationErrors;
   qrCompanionAvailable: boolean;
@@ -154,6 +158,7 @@ export function InventorySpoolDetailModal({
   confirmDelete,
   confirmPurge,
   deterministicLabelPreferences = false,
+  defaultPurchaseCurrency = "",
   displayTitle,
   error,
   filamentName,
@@ -182,6 +187,7 @@ export function InventorySpoolDetailModal({
   onChangeOwnerName,
   onChangeOwnershipNote,
   onChangeOwnershipType,
+  onChangePurchasePriceBatchLocked,
   onChangePurchaseMetadata,
   onChangeTare,
   onChangeVendor,
@@ -208,6 +214,7 @@ export function InventorySpoolDetailModal({
   ownershipTypeDraft,
   ownerContactDraft,
   ownerNameDraft,
+  purchasePriceBatchLockedDraft,
   purchaseMetadataDraft,
   purchaseMetadataErrors,
   qrCompanionAvailable,
@@ -379,6 +386,7 @@ export function InventorySpoolDetailModal({
 
               <PurchaseReceiptMetadataFields
                 copy={purchaseReceiptMetadataFieldsCopy(t)}
+                defaultCurrency={defaultPurchaseCurrency}
                 disabled={!runtimeAvailable || manageBusy}
                 draft={purchaseMetadataDraft}
                 errors={purchaseMetadataErrors}
@@ -388,6 +396,12 @@ export function InventorySpoolDetailModal({
                 )}
                 onChange={onChangePurchaseMetadata}
                 selectedQuantity={1}
+              />
+
+              <InventoryPurchasePriceProtectionControl
+                checked={purchasePriceBatchLockedDraft}
+                disabled={!runtimeAvailable || manageBusy}
+                onChange={onChangePurchasePriceBatchLocked}
               />
 
               <InventorySpoolLostStatusPanel

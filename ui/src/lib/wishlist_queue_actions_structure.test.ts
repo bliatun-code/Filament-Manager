@@ -79,6 +79,10 @@ test("purchase receipt and later detail writes both localize structured Host err
   assert.match(saveBlock, /purchase_metadata: purchaseMetadata\.value/);
   assert.match(
     saveBlock,
+    /purchase_price_batch_locked: parsed\.value\.purchasePriceBatchLocked/,
+  );
+  assert.match(
+    saveBlock,
     /catch \(updateError\)[\s\S]*commandErrorText\([\s\S]*updateError[\s\S]*,[\s\S]*t[\s\S]*\)/,
   );
 });

@@ -5,6 +5,7 @@ import {
   formatStatisticsMoney,
   groupStatisticsCurrencyAmounts,
   statisticsCoveragePercent,
+  statisticsMissingReasonFilamentDefaultsTarget,
   statisticsMissingReasonLabel,
 } from "./statistics_value_cost_model";
 import type { StatisticsMonetarySummary } from "./tauri_client";
@@ -50,6 +51,21 @@ test("currency totals remain separate by currency and ownership", () => {
       borrowedIn: null,
     },
   ]);
+});
+
+test("purchase-data gaps target the matching filament-default control", () => {
+  assert.equal(
+    statisticsMissingReasonFilamentDefaultsTarget("purchase_currency_missing"),
+    "DEFAULT_CURRENCY",
+  );
+  assert.equal(
+    statisticsMissingReasonFilamentDefaultsTarget("purchase_price_invalid"),
+    "GROUP_PRICING",
+  );
+  assert.equal(
+    statisticsMissingReasonFilamentDefaultsTarget("remaining_weight_missing"),
+    null,
+  );
 });
 
 test("money formatting keeps the ISO currency visible", () => {

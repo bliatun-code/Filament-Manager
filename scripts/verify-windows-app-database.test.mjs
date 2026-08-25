@@ -74,13 +74,13 @@ test("Windows app database verifier reports the schema version in CLI output", a
     );
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /database schema v4/);
+    assert.match(result.stdout, /database schema v5/);
   });
 });
 
 test("Windows app database verifier requires the exact current schema version", async () => {
   await withTemporaryDirectory(async (directory) => {
-    for (const schemaVersion of [0, 1, 2, 3, 5]) {
+    for (const schemaVersion of [0, 1, 2, 3, 4, 6]) {
       const databasePath = join(
         directory,
         `filament-manager-schema-${schemaVersion}.db`,
@@ -101,7 +101,7 @@ test("Windows app database verifier requires the exact current schema version", 
   });
 });
 
-test("Windows app database verifier requires schema 4 receipt columns", async () => {
+test("Windows app database verifier requires schema 5 purchase-standard columns", async () => {
   await withTemporaryDirectory(async (directory) => {
     const databasePath = join(directory, "filament-manager.db");
     const database = new Database(databasePath);
@@ -118,7 +118,7 @@ test("Windows app database verifier requires schema 4 receipt columns", async ()
 
     await assert.rejects(
       verifyWindowsAppDatabase(databasePath),
-      /filament_spools is missing required column\(s\): purchase_currency, supplier_reference/,
+      /filament_spools is missing required column\(s\): purchase_currency, supplier_reference, purchase_price_batch_locked, purchase_price_source/,
     );
   });
 });

@@ -108,7 +108,12 @@ pub(crate) fn update_spool_purchase_metadata(
 ) -> InventoryResult<()> {
     let affected = conn.execute(
         "UPDATE filament_spools
-         SET purchase_price = ?1,
+         SET purchase_price_source = CASE
+                 WHEN purchase_price IS NOT ?1
+                 THEN CASE WHEN ?1 IS NULL THEN NULL ELSE 'MANUAL' END
+                 ELSE purchase_price_source
+             END,
+             purchase_price = ?1,
              purchase_currency = ?2,
              purchase_date = ?3,
              batch_code = ?4,
@@ -123,6 +128,36 @@ pub(crate) fn update_spool_purchase_metadata(
             metadata.supplier_reference,
             spool_id
         ],
+    )?;
+    require_rows(affected)
+}
+
+pub(crate) fn set_spool_purchase_price_batch_locked(
+    conn: &Connection,
+    spool_id: &str,
+    locked: bool,
+) -> InventoryResult<()> {
+    let affected = conn.execute(
+        "UPDATE filament_spools
+         SET purchase_price_batch_locked = ?1,
+             updated_at = datetime('now')
+         WHERE id = ?2 AND deleted_at IS NULL",
+        params![locked, spool_id],
+    )?;
+    require_rows(affected)
+}
+
+pub(crate) fn set_spool_purchase_price_source(
+    conn: &Connection,
+    spool_id: &str,
+    source: Option<&str>,
+) -> InventoryResult<()> {
+    let affected = conn.execute(
+        "UPDATE filament_spools
+         SET purchase_price_source = ?1,
+             updated_at = datetime('now')
+         WHERE id = ?2 AND deleted_at IS NULL",
+        params![source, spool_id],
     )?;
     require_rows(affected)
 }

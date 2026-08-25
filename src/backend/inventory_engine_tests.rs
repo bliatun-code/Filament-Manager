@@ -1802,6 +1802,7 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
                 spool_tare_weight_g: None,
                 ownership: None,
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1889,6 +1890,7 @@ fn archived_location_stays_visible_on_spool_and_unchanged_detail_save_preserves_
                 spool_tare_weight_g: None,
                 ownership: None,
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
         let after = engine
@@ -1968,6 +1970,7 @@ fn stale_location_name_after_rename_preserves_id_when_detail_write_uses_referenc
                 spool_tare_weight_g: None,
                 ownership: None,
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -2045,6 +2048,7 @@ fn update_spool_details_keeps_active_inbound_location_while_updating_home_locati
                 spool_tare_weight_g: None,
                 ownership: None,
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -2141,6 +2145,7 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
                 spool_tare_weight_g: None,
                 ownership: None,
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -2218,6 +2223,7 @@ fn update_spool_details_saves_common_fields_atomically() {
                 ownership_note: None,
             }),
             purchase_metadata: None,
+            purchase_price_batch_locked: None,
         });
         assert!(failed.is_err());
 
@@ -2256,6 +2262,7 @@ fn update_spool_details_saves_common_fields_atomically() {
                     ownership_note: Some("Return next month".to_string()),
                 }),
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -2342,6 +2349,7 @@ fn update_spool_details_preserves_legacy_price_and_records_purchase_history() {
                     batch_code: Some(" legacy-batch ".to_string()),
                     supplier_reference: Some(" po-legacy ".to_string()),
                 }),
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
         let legacy_saved = engine
@@ -2373,6 +2381,7 @@ fn update_spool_details_preserves_legacy_price_and_records_purchase_history() {
                     batch_code: Some("should-not-save".to_string()),
                     supplier_reference: None,
                 }),
+                purchase_price_batch_locked: None,
             })
             .expect_err("changed legacy price without currency should fail");
         match rejected {
@@ -2415,6 +2424,7 @@ fn update_spool_details_preserves_legacy_price_and_records_purchase_history() {
                     batch_code: Some("new-batch".to_string()),
                     supplier_reference: Some("invoice-9".to_string()),
                 }),
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
         let saved = engine
@@ -2454,6 +2464,7 @@ fn update_spool_details_preserves_legacy_price_and_records_purchase_history() {
                     batch_code: Some("new-batch".to_string()),
                     supplier_reference: Some("invoice-9".to_string()),
                 }),
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
         let revision_after_idempotent_save: i64 = engine
@@ -2496,6 +2507,126 @@ fn update_spool_details_preserves_legacy_price_and_records_purchase_history() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("update_spool_details_preserves_legacy_price_and_records_purchase_history failed: {message}");
+    }
+}
+
+#[test]
+fn update_spool_details_marks_manual_prices_and_saves_batch_lock_atomically() {
+    let db_path = temp_db_path("update-purchase-price-batch-lock");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "manual_price_lock_spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Manual price lock".to_string(),
+                color_name: "Black".to_string(),
+                hex_color: None,
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "manual_price_lock_spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(249.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-25".to_string()),
+                    batch_code: None,
+                    supplier_reference: None,
+                }),
+                purchase_price_batch_locked: Some(true),
+            })
+            .map_err(|error| error.to_string())?;
+        let saved = engine
+            .db
+            .get_spool_by_id("manual_price_lock_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing manually priced spool".to_string())?;
+        assert_eq!(saved.purchase_price, Some(249.0));
+        assert_eq!(saved.purchase_price_source.as_deref(), Some("MANUAL"));
+        assert!(saved.purchase_price_batch_locked);
+        let history = engine
+            .list_spool_history("manual_price_lock_spool", 20)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            history
+                .iter()
+                .filter(|event| event.event_type == "PURCHASE_PRICE_BATCH_LOCK_UPDATED")
+                .count(),
+            1
+        );
+
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_price_lock_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced price lock history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+        let failed = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "manual_price_lock_spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(259.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-25".to_string()),
+                    batch_code: None,
+                    supplier_reference: None,
+                }),
+                purchase_price_batch_locked: Some(false),
+            })
+            .expect_err("lock history failure must roll back price and lock together");
+        assert!(failed
+            .to_string()
+            .contains("forced price lock history failure"));
+        let rolled_back = engine
+            .db
+            .get_spool_by_id("manual_price_lock_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after lock rollback".to_string())?;
+        assert_eq!(rolled_back.purchase_price, Some(249.0));
+        assert_eq!(rolled_back.purchase_price_source.as_deref(), Some("MANUAL"));
+        assert!(rolled_back.purchase_price_batch_locked);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_spool_details_marks_manual_prices_and_saves_batch_lock_atomically failed: {message}"
+        );
     }
 }
 
@@ -2570,6 +2701,7 @@ fn update_spool_details_rolls_back_common_and_purchase_fields_when_history_fails
                     batch_code: Some("rollback-batch".to_string()),
                     supplier_reference: Some("rollback-ref".to_string()),
                 }),
+                purchase_price_batch_locked: None,
             })
             .expect_err("forced history failure should abort detail save");
         assert!(error

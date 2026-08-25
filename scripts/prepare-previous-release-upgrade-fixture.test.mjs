@@ -34,7 +34,7 @@ test("previous-release fixture paths are explicit, distinct and no-replace", () 
   );
 });
 
-test("v0.27 fixture is sanitized, provenance-bound and explicitly migrates schema 2 to 4", async () => {
+test("v0.27 fixture is sanitized, provenance-bound and explicitly migrates schema 2 to 5", async () => {
   const directory = mkdtempSync(
     path.join(tmpdir(), "previous-release-fixture-test-"),
   );
@@ -52,7 +52,7 @@ test("v0.27 fixture is sanitized, provenance-bound and explicitly migrates schem
           generatorPath: path.resolve("scripts/create-visual-qa-fixture.mjs"),
           schemaVersion: PREVIOUS_RELEASE_SCHEMA_VERSION,
         }),
-        readCurrentSchemaVersion: () => 4,
+        readCurrentSchemaVersion: () => 5,
       },
     );
     assert.equal(result.manifest.sourceRelease, PREVIOUS_RELEASE_REF);
@@ -61,7 +61,7 @@ test("v0.27 fixture is sanitized, provenance-bound and explicitly migrates schem
       result.manifest.sourceSchemaVersion,
       PREVIOUS_RELEASE_SCHEMA_VERSION,
     );
-    assert.equal(result.manifest.currentSchemaVersion, 4);
+    assert.equal(result.manifest.currentSchemaVersion, 5);
     assert.equal(result.manifest.requiresSchemaMigration, true);
     assert.equal(result.manifest.gateMode, "schema-migration");
     assert.equal(result.manifest.sanitized, true);

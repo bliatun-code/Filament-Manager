@@ -36,6 +36,50 @@ const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.purchaseMetadataHostUnsupported",
     "Update the Host before saving purchase details.",
   ],
+  "filament_standards.host_unsupported": [
+    "errors.filamentStandardsHostUnsupported",
+    "Update the Host before using filament pricing standards.",
+  ],
+  "filament_price_batch.stale_review": [
+    "errors.filamentStandardsStaleReview",
+    "The selected rolls changed. Review the filament price group again.",
+  ],
+  "filament_standards.currency_invalid": [
+    "errors.filamentStandardsCurrencyInvalid",
+    "Enter a valid three-letter purchase currency.",
+  ],
+  "filament_standards.price_invalid": [
+    "errors.filamentStandardsPriceInvalid",
+    "Enter a valid filament price of zero or more.",
+  ],
+  "filament_standards.version_unsupported": [
+    "errors.filamentStandardsInvalid",
+    "The saved filament standards are no longer valid. Reload and review them.",
+  ],
+  "filament_standards.nominal_weight_invalid": [
+    "errors.filamentStandardsInvalid",
+    "The saved filament standards are no longer valid. Reload and review them.",
+  ],
+  "filament_standards.group_key_mismatch": [
+    "errors.filamentStandardsInvalid",
+    "The saved filament standards are no longer valid. Reload and review them.",
+  ],
+  "filament_standards.duplicate_group": [
+    "errors.filamentStandardsInvalid",
+    "The saved filament standards are no longer valid. Reload and review them.",
+  ],
+  "filament_standards.group_component_invalid": [
+    "errors.filamentStandardsInvalid",
+    "The saved filament standards are no longer valid. Reload and review them.",
+  ],
+  "filament_standards.group_missing": [
+    "errors.filamentStandardsStaleReview",
+    "The selected rolls changed. Review the filament price group again.",
+  ],
+  "filament_standards.group_metadata_stale": [
+    "errors.filamentStandardsStaleReview",
+    "The selected rolls changed. Review the filament price group again.",
+  ],
   "export.invalid_payload": ["errors.exportInvalidPayload", "The generated export is invalid."],
   "export.downloads_unavailable": [
     "errors.downloadsUnavailable",

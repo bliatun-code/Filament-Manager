@@ -9,9 +9,14 @@ export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "filament_spools",
   "settings",
 ];
-export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 4;
+export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 5;
 export const REQUIRED_WINDOWS_SMOKE_COLUMNS = {
-  filament_spools: ["purchase_currency", "supplier_reference"],
+  filament_spools: [
+    "purchase_currency",
+    "supplier_reference",
+    "purchase_price_batch_locked",
+    "purchase_price_source",
+  ],
 };
 
 function parseArguments(argv) {

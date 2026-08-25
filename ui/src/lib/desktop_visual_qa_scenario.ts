@@ -35,6 +35,7 @@ export type DesktopVisualQaScenario =
   | "printer-slot-replacement"
   | "printer-slot-clear"
   | "settings-general"
+  | "settings-filament-defaults"
   | "settings-updates"
   | "settings-inventory-label-sheet"
   | "settings-library"
@@ -61,7 +62,12 @@ export type DesktopVisualQaScenario =
 export type DesktopVisualQaInitialPage =
   "dashboard" | "inventory" | "loans" | "printers" | "settings" | "statistics";
 export type DesktopVisualQaInitialSettingsTab =
-  "GENERAL" | "LIBRARY" | "PRINTERS" | "CATALOG" | "MAINTENANCE";
+  | "GENERAL"
+  | "FILAMENT_DEFAULTS"
+  | "LIBRARY"
+  | "PRINTERS"
+  | "CATALOG"
+  | "MAINTENANCE";
 export type DesktopVisualQaScenarioCategory =
   "overview" | "modal" | "workflow" | "settings";
 export type DesktopVisualQaReadinessToken =

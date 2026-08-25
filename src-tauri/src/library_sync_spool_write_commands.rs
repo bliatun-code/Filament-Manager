@@ -5,6 +5,7 @@ use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_write,
+    require_host_filament_price_standards_capability,
     require_host_purchase_receipt_metadata_capability, save_library_sync_success,
     trimmed_non_empty,
 };
@@ -35,6 +36,7 @@ struct HostSpoolDetailsUpdate {
     spool_tare_weight_g: Option<i64>,
     ownership: Option<HostSpoolDetailsOwnership>,
     purchase_metadata: Option<PurchaseReceiptMetadata>,
+    purchase_price_batch_locked: Option<bool>,
 }
 
 #[tauri::command]
@@ -143,6 +145,7 @@ fn update_library_sync_host_spool_details_blocking(
                 ownership_note: ownership.ownership_note,
             }),
             purchase_metadata: input.purchase_metadata,
+            purchase_price_batch_locked: input.purchase_price_batch_locked,
         },
     )
 }
@@ -183,6 +186,7 @@ fn host_spool_details_update_from_active_input(
             ownership_note: ownership.ownership_note,
         }),
         purchase_metadata: input.purchase_metadata,
+        purchase_price_batch_locked: input.purchase_price_batch_locked,
     }
 }
 
@@ -254,6 +258,12 @@ fn host_spool_details_payload(
             serde_json::json!(purchase_metadata),
         );
     }
+    if let Some(locked) = input.purchase_price_batch_locked {
+        payload.insert(
+            "purchase_price_batch_locked".to_string(),
+            serde_json::json!(locked),
+        );
+    }
 
     payload
 }
@@ -265,6 +275,10 @@ fn host_spool_details_payload_for_capabilities(
     require_host_purchase_receipt_metadata_capability(
         capabilities,
         input.purchase_metadata.is_some(),
+    )?;
+    require_host_filament_price_standards_capability(
+        capabilities,
+        input.purchase_price_batch_locked.is_some(),
     )?;
     Ok(host_spool_details_payload(input))
 }
@@ -429,7 +443,9 @@ mod tests {
         UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput,
     };
     use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
-    use crate::companion_models::PURCHASE_RECEIPT_METADATA_CAPABILITY;
+    use crate::companion_models::{
+        FILAMENT_PRICE_STANDARDS_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
+    };
 
     #[test]
     fn library_sync_create_spool_path_uses_domain_ownership_tokens() {
@@ -477,6 +493,7 @@ mod tests {
                 batch_code: None,
                 supplier_reference: None,
             }),
+            purchase_price_batch_locked: None,
         });
 
         let unsupported = host_spool_details_payload_for_capabilities(&update, &[])
@@ -519,5 +536,25 @@ mod tests {
         let legacy_payload = host_spool_details_payload_for_capabilities(&update, &[])
             .expect("legacy detail without metadata");
         assert!(!legacy_payload.contains_key("purchase_metadata"));
+
+        update.purchase_price_batch_locked = Some(true);
+        let unsupported_lock = host_spool_details_payload_for_capabilities(&update, &[])
+            .expect_err("legacy Host must not silently discard the requested lock change");
+        let unsupported_lock: serde_json::Value =
+            serde_json::from_str(&unsupported_lock).expect("coded unsupported error");
+        assert_eq!(
+            unsupported_lock["code"],
+            "filament_standards.host_unsupported"
+        );
+
+        let capable_payload = host_spool_details_payload_for_capabilities(
+            &update,
+            &[FILAMENT_PRICE_STANDARDS_CAPABILITY.to_string()],
+        )
+        .expect("filament-standards capable Host payload");
+        assert_eq!(
+            capable_payload.get("purchase_price_batch_locked"),
+            Some(&serde_json::json!(true))
+        );
     }
 }

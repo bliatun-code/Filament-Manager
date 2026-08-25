@@ -34,6 +34,10 @@ const inventorySelectedDetailStateSource = readFileSync(
   new URL("../lib/use_inventory_selected_spool_detail_state.ts", import.meta.url),
   "utf8",
 );
+const inventorySpoolDetailActionsSource = readFileSync(
+  new URL("../lib/use_inventory_spool_detail_actions.ts", import.meta.url),
+  "utf8",
+);
 const inventoryLabelSheetActionSource = readFileSync(
   new URL("../lib/use_inventory_label_sheet_action.ts", import.meta.url),
   "utf8",
@@ -95,6 +99,10 @@ test("inventory exposes purchases as a page view and keeps queue management out 
   assert.match(inventoryPageWorkspaceSource, /activeView === "STOCK"/);
   assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel \{\.\.\.purchaseQueueProps\} \/>/);
   assert.match(inventoryPageWorkspaceSource, /id="inventory-purchases-panel"/);
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /id="inventory-purchases-panel"[\s\S]*hidden=\{activeView !== "PURCHASES"\}/,
+  );
   assert.match(inventoryPageSource, /setActiveWorkspaceView\("PURCHASES"\)/);
   assert.match(inventoryPageSource, /resetPurchaseQueue\("ON_ORDER"\)/);
   assert.match(inventoryPageSource, /navigationIntent\.kind === "PURCHASES"/);
@@ -102,8 +110,25 @@ test("inventory exposes purchases as a page view and keeps queue management out 
   assert.doesNotMatch(inventoryAddModalSource, /WishlistQueuePanel/);
 });
 
+test("spool-detail navigation waits for inventory readiness before revealing its target", () => {
+  assert.match(inventoryPageSource, /navigationIntent\.kind === "SPOOL_DETAIL"/);
+  assert.match(inventoryPageSource, /!librarySyncReady \|\| loading/);
+  assert.match(
+    inventoryPageSource,
+    /spools\.find\(\(spool\) => spool\.id === navigationIntent\.spoolId\)/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /resetFilters\(\);[\s\S]*setActiveWorkspaceView\("STOCK"\);[\s\S]*openRollModal\(targetSpool\.id\);[\s\S]*onConsumeNavigationIntent\?\.\(\)/,
+  );
+});
+
 test("inventory exposes managed location objects and autocomplete in one click", () => {
   assert.match(inventoryPageWorkspaceSource, /id="inventory-locations-panel"/);
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /id="inventory-locations-panel"[\s\S]*hidden=\{activeView !== "LOCATIONS"\}/,
+  );
   assert.match(inventoryPageWorkspaceSource, /<InventoryLocationManagementPanel/);
   assert.match(inventoryPageSource, /<InventoryLocationDatalist rows=\{locations\}/);
   assert.match(inventoryPageSource, /locationPanelProps=\{\{/);
@@ -190,6 +215,41 @@ test("inventory loaders preserve last-good state on transient failures", () => {
   assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current === selectedSpool\.id/);
   assert.match(inventoryPageSource, /error=\{error\}/);
   assert.match(inventoryPageSource, /loadError=\{loadError\}/);
+});
+
+test("individual price protection stays in the common-detail draft and atomic save", () => {
+  const purchaseFieldsIndex = inventoryDetailModalSource.indexOf(
+    "<PurchaseReceiptMetadataFields",
+  );
+  const protectionIndex = inventoryDetailModalSource.indexOf(
+    "<InventoryPurchasePriceProtectionControl",
+  );
+  const lostStatusIndex = inventoryDetailModalSource.indexOf(
+    "<InventorySpoolLostStatusPanel",
+  );
+
+  assert.ok(purchaseFieldsIndex >= 0 && protectionIndex > purchaseFieldsIndex);
+  assert.ok(lostStatusIndex > protectionIndex);
+  assert.match(
+    inventorySelectedDetailStateSource,
+    /draftBaseline\.common\.purchasePriceBatchLocked/,
+  );
+  assert.match(
+    inventorySelectedDetailStateSource,
+    /setSelectedSpoolPurchasePriceBatchLockedDraft\(false\)/,
+  );
+  assert.match(
+    inventorySpoolDetailActionsSource,
+    /purchase_price_batch_locked: parsed\.value\.purchasePriceBatchLocked/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /onChangePurchasePriceBatchLocked=\{[\s\S]*setSelectedSpoolPurchasePriceBatchLockedDraft/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /purchasePriceBatchLockedDraft=\{selectedSpoolPurchasePriceBatchLockedDraft\}/,
+  );
 });
 
 test("history visual QA waits for rows and targets the modal scroll container", () => {

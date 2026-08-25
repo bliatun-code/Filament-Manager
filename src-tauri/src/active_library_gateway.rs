@@ -157,6 +157,7 @@ mod tests {
                 batch_code: Some("batch-7".to_string()),
                 supplier_reference: Some("po-19".to_string()),
             }),
+            purchase_price_batch_locked: None,
         }
     }
 

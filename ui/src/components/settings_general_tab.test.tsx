@@ -55,15 +55,6 @@ const defaultDesktopLifecycle: DesktopLifecycleRenderProps = {
   desktopLifecycleUpdating: false,
 };
 
-const defaultLowStock: SettingsGeneralTabProps["lowStock"] = {
-  busy: false,
-  materialOptions: [],
-  policy: null,
-  policyValid: true,
-  readOnly: false,
-  onSave: () => {},
-};
-
 function renderGeneralTab(
   locale: Locale = "en",
   desktopLifecycleOverrides: Partial<DesktopLifecycleRenderProps> = {},
@@ -84,7 +75,6 @@ function renderGeneralTab(
           busy: false,
           ...desktopLifecycle,
           locale,
-          lowStock: defaultLowStock,
           tauri: true,
           themeMode: "dark",
           t: i18nValue(locale).t,
@@ -99,11 +89,11 @@ function renderGeneralTab(
   );
 }
 
-test("SettingsGeneralTab supports a valid empty low-stock material catalog", () => {
+test("SettingsGeneralTab keeps filament defaults out of the General route", () => {
   const html = renderGeneralTab();
 
-  assert.match(html, /Low-stock thresholds/);
-  assert.match(html, /Default threshold/);
+  assert.doesNotMatch(html, /Low-stock thresholds/);
+  assert.doesNotMatch(html, /Default threshold/);
 });
 
 test("SettingsGeneralTab exposes license and source links", () => {

@@ -28,7 +28,7 @@ pub(crate) fn export_loans_csv_for_direction(
 
 pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<String> {
     let mut output = String::from(
-        "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference\n",
+        "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference,purchase_price_batch_locked,purchase_price_source\n",
     );
     for entry in rows {
         let purchase_price = entry
@@ -37,7 +37,7 @@ pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<
             .map(|value| value.to_string())
             .unwrap_or_default();
         output.push_str(&format!(
-            "{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            "{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
             escape_csv(&entry.spool.id),
             escape_csv(&entry.master.material),
             escape_csv(&entry.master.filament_name),
@@ -51,6 +51,8 @@ pub(crate) fn export_spools_csv(rows: &[SpoolWithMasterRow]) -> InventoryResult<
             escape_csv(entry.spool.purchase_date.as_deref().unwrap_or("")),
             escape_csv(entry.spool.batch_code.as_deref().unwrap_or("")),
             escape_csv(entry.spool.supplier_reference.as_deref().unwrap_or("")),
+            entry.spool.purchase_price_batch_locked,
+            escape_csv(entry.spool.purchase_price_source.as_deref().unwrap_or("")),
         ));
     }
     Ok(output)
@@ -74,6 +76,8 @@ pub(crate) fn export_spools_json(rows: &[SpoolWithMasterRow]) -> InventoryResult
                 "purchase_date": entry.spool.purchase_date,
                 "batch_code": entry.spool.batch_code,
                 "supplier_reference": entry.spool.supplier_reference,
+                "purchase_price_batch_locked": entry.spool.purchase_price_batch_locked,
+                "purchase_price_source": entry.spool.purchase_price_source,
             })
         })
         .collect::<Vec<_>>();

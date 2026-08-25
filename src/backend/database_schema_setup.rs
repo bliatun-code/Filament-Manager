@@ -51,6 +51,12 @@ const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
         sql: include_str!("../database/migrations/005_purchase_receipt_metadata.sql"),
         to_version: 4,
     },
+    StructuralMigration {
+        from_version: 4,
+        name: "006_filament_price_standards.sql",
+        sql: include_str!("../database/migrations/006_filament_price_standards.sql"),
+        to_version: 5,
+    },
 ];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
@@ -178,7 +184,7 @@ mod tests {
         let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
         assert_eq!(first.name, "003_library_domain_revisions.sql");
         assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
-        assert_eq!(last.name, "005_purchase_receipt_metadata.sql");
+        assert_eq!(last.name, "006_filament_price_standards.sql");
         assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
     }
 
@@ -202,6 +208,13 @@ mod tests {
             assert!(
                 table_has_column(&conn, "filament_spools", column)
                     .expect("inspect purchase receipt metadata"),
+                "missing filament_spools.{column}"
+            );
+        }
+        for column in ["purchase_price_batch_locked", "purchase_price_source"] {
+            assert!(
+                table_has_column(&conn, "filament_spools", column)
+                    .expect("inspect filament price-standard metadata"),
                 "missing filament_spools.{column}"
             );
         }
@@ -487,6 +500,58 @@ mod tests {
             })
             .expect("check foreign keys"),
             0
+        );
+    }
+
+    #[test]
+    fn version_four_prices_are_backfilled_as_manual_and_batch_lock_defaults_unlocked() {
+        let conn = Connection::open_in_memory().expect("open version-four database");
+        conn.execute_batch(CURRENT_SCHEMA_SQL)
+            .expect("apply baseline tables");
+        for migration in [
+            include_str!("../database/migrations/003_library_domain_revisions.sql"),
+            include_str!("../database/migrations/004_inventory_location_objects.sql"),
+            include_str!("../database/migrations/005_purchase_receipt_metadata.sql"),
+        ] {
+            conn.execute_batch(migration)
+                .expect("apply historical structural migration");
+        }
+        conn.execute_batch(
+            "INSERT INTO filament_master_list (
+                id, material, filament_name, color_name, default_weight, vendor
+             ) VALUES ('price-master', 'PETG', 'Basic', 'Black', 1000, 'eSUN');
+             INSERT INTO filament_spools (
+                id, master_id, status, purchase_price, purchase_currency
+             ) VALUES
+                ('priced-spool', 'price-master', 'IN_STOCK', 229.0, 'NOK'),
+                ('unpriced-spool', 'price-master', 'IN_STOCK', NULL, NULL);
+             PRAGMA user_version = 4;",
+        )
+        .expect("prepare version-four price data");
+
+        apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade version-four database");
+
+        let priced: (bool, Option<String>) = conn
+            .query_row(
+                "SELECT purchase_price_batch_locked, purchase_price_source
+                 FROM filament_spools WHERE id = 'priced-spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read priced spool migration fields");
+        assert_eq!(priced, (false, Some("MANUAL".to_string())));
+        let unpriced: (bool, Option<String>) = conn
+            .query_row(
+                "SELECT purchase_price_batch_locked, purchase_price_source
+                 FROM filament_spools WHERE id = 'unpriced-spool'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read unpriced spool migration fields");
+        assert_eq!(unpriced, (false, None));
+        assert_eq!(
+            database_schema_version(&conn).expect("read upgraded version"),
+            CURRENT_SCHEMA_VERSION
         );
     }
 

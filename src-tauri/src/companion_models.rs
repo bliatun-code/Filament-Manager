@@ -204,6 +204,11 @@ pub(crate) struct UpdateSpoolDetailsRequest {
     pub(crate) ownership: Option<UpdateSpoolOwnershipRequest>,
     #[serde(default)]
     pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
+    /// Optional so older Companion clients keep their existing behavior while
+    /// newer clients can explicitly protect an individual spool from price
+    /// standard batches.
+    #[serde(default)]
+    pub(crate) purchase_price_batch_locked: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -233,6 +238,7 @@ pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-ret
 pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-mutations";
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
+pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

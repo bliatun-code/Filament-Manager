@@ -55,6 +55,8 @@ export type InventorySpool = {
   purchaseDate?: string | null;
   batchCode?: string | null;
   supplierReference?: string | null;
+  purchasePriceBatchLocked?: boolean;
+  purchasePriceSource?: string | null;
 };
 
 export type SpoolGroup = {

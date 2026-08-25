@@ -70,6 +70,10 @@ export function useInventorySelectedSpoolDetailState({
   const [selectedSpoolOwnerNameDraft, setSelectedSpoolOwnerNameDraft] = useState("");
   const [selectedSpoolOwnerContactDraft, setSelectedSpoolOwnerContactDraft] = useState("");
   const [selectedSpoolOwnershipNoteDraft, setSelectedSpoolOwnershipNoteDraft] = useState("");
+  const [
+    selectedSpoolPurchasePriceBatchLockedDraft,
+    setSelectedSpoolPurchasePriceBatchLockedDraft,
+  ] = useState(false);
   const [selectedSpoolPurchaseMetadataDraft, setSelectedSpoolPurchaseMetadataDraft] =
     useState<PurchaseReceiptMetadataDraft>(emptyPurchaseReceiptMetadataDraft);
   const [selectedSpoolPurchaseMetadataErrors, setSelectedSpoolPurchaseMetadataErrors] =
@@ -99,6 +103,7 @@ export function useInventorySelectedSpoolDetailState({
       setSelectedSpoolOwnerNameDraft("");
       setSelectedSpoolOwnerContactDraft("");
       setSelectedSpoolOwnershipNoteDraft("");
+      setSelectedSpoolPurchasePriceBatchLockedDraft(false);
       setSelectedSpoolPurchaseMetadataDraft(emptyPurchaseReceiptMetadataDraft());
       setSelectedSpoolPurchaseMetadataErrors({});
       setDraftBaseline(null);
@@ -131,6 +136,9 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerNameDraft(nextBaseline.common.ownerName);
     setSelectedSpoolOwnerContactDraft(nextBaseline.common.ownerContact);
     setSelectedSpoolOwnershipNoteDraft(nextBaseline.common.ownershipNote);
+    setSelectedSpoolPurchasePriceBatchLockedDraft(
+      nextBaseline.common.purchasePriceBatchLocked,
+    );
     setSelectedSpoolPurchaseMetadataDraft(nextBaseline.common.purchaseMetadata);
     setSelectedSpoolPurchaseMetadataErrors({});
     closeRfidCaptureModal();
@@ -185,6 +193,7 @@ export function useInventorySelectedSpoolDetailState({
       ownerName: selectedSpoolOwnerNameDraft,
       ownerContact: selectedSpoolOwnerContactDraft,
       ownershipNote: selectedSpoolOwnershipNoteDraft,
+      purchasePriceBatchLocked: selectedSpoolPurchasePriceBatchLockedDraft,
       purchaseMetadata: selectedSpoolPurchaseMetadataDraft,
       tareWeight: selectedSpoolTareDraft,
     }),
@@ -194,6 +203,7 @@ export function useInventorySelectedSpoolDetailState({
       selectedSpoolOwnerNameDraft,
       selectedSpoolOwnershipDraft,
       selectedSpoolOwnershipNoteDraft,
+      selectedSpoolPurchasePriceBatchLockedDraft,
       selectedSpoolPurchaseMetadataDraft,
       selectedSpoolTareDraft,
     ],
@@ -253,6 +263,9 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerNameDraft(draftBaseline.common.ownerName);
     setSelectedSpoolOwnerContactDraft(draftBaseline.common.ownerContact);
     setSelectedSpoolOwnershipNoteDraft(draftBaseline.common.ownershipNote);
+    setSelectedSpoolPurchasePriceBatchLockedDraft(
+      draftBaseline.common.purchasePriceBatchLocked,
+    );
     setSelectedSpoolPurchaseMetadataDraft(draftBaseline.common.purchaseMetadata);
     setSelectedSpoolPurchaseMetadataErrors({});
     setMasterEditUnlocked(false);
@@ -277,6 +290,7 @@ export function useInventorySelectedSpoolDetailState({
     selectedSpoolOwnerContactDraft,
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft,
     selectedSpoolPurchaseMetadataDraft,
     selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
@@ -293,6 +307,7 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerContactDraft,
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchasePriceBatchLockedDraft,
     setSelectedSpoolPurchaseMetadataDraft,
     setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,

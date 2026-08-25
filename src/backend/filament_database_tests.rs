@@ -1722,6 +1722,8 @@ fn clearing_printer_slot_releases_legacy_assigned_status_tokens() {
             purchase_currency: None,
 
             supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
         };
         db.insert_spool(&spool).map_err(|error| error.to_string())?;
 
@@ -1819,6 +1821,8 @@ fn printer_overview_normalizes_slot_spool_ownership_tokens() {
             purchase_currency: None,
 
             supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
         };
         db.insert_spool(&spool).map_err(|error| error.to_string())?;
 
@@ -1897,6 +1901,8 @@ fn list_active_spool_loans_hides_deleted_spools() {
             purchase_currency: None,
 
             supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
         };
 
         for spool in [make_spool("active_spool"), make_spool("deleted_spool")] {
@@ -1994,6 +2000,8 @@ fn active_loan_queries_ignore_closed_status_without_return_timestamp() {
             purchase_currency: None,
 
             supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
         };
 
         for spool in [
@@ -2117,6 +2125,8 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
             SpoolRow {
                 id: "owned_out_2".to_string(),
@@ -2143,6 +2153,8 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
             SpoolRow {
                 id: "owned_out_deleted".to_string(),
@@ -2169,6 +2181,8 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
             SpoolRow {
                 id: "borrowed_in_1".to_string(),
@@ -2195,6 +2209,8 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
             SpoolRow {
                 id: "borrowed_in_2".to_string(),
@@ -2221,6 +2237,8 @@ fn list_loan_usage_by_person_can_scope_to_inbound_and_outbound() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
         ] {
             db.insert_spool(&spool).map_err(|error| error.to_string())?;
@@ -2346,6 +2364,8 @@ fn export_loans_csv_defaults_to_outbound_without_recursing() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
             SpoolRow {
                 id: "borrowed_in_1".to_string(),
@@ -2372,6 +2392,8 @@ fn export_loans_csv_defaults_to_outbound_without_recursing() {
                 purchase_currency: None,
 
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             },
         ] {
             db.insert_spool(&spool).map_err(|error| error.to_string())?;
@@ -2499,19 +2521,19 @@ fn inventory_exports_preserve_purchase_metadata_and_missing_price() {
 
         let csv = db.export_spools_csv().map_err(|error| error.to_string())?;
         assert!(csv.starts_with(
-            "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference\n"
+            "spool_id,material,filament_name,color_name,status,remaining_g,location,qr_code,purchase_price,purchase_currency,purchase_date,batch_code,supplier_reference,purchase_price_batch_locked,purchase_price_source\n"
         ));
         let full_csv_row = csv
             .lines()
             .find(|line| line.starts_with("receipt_export_full,"))
             .ok_or_else(|| "missing full receipt CSV row".to_string())?;
         assert!(full_csv_row.contains(",0,NOK,2026-08-21,\"batch,one\","));
-        assert!(full_csv_row.ends_with("\"PO \"\"7\"\"\""));
+        assert!(full_csv_row.ends_with("\"PO \"\"7\"\"\",false,"));
         let missing_csv_row = csv
             .lines()
             .find(|line| line.starts_with("receipt_export_missing,"))
             .ok_or_else(|| "missing receipt CSV row with nulls".to_string())?;
-        assert!(missing_csv_row.ends_with(",,,,"));
+        assert!(missing_csv_row.ends_with(",,,,,false,"));
 
         let json_export = db.export_spools_json().map_err(|error| error.to_string())?;
         let rows: Vec<serde_json::Value> =
@@ -2525,6 +2547,8 @@ fn inventory_exports_preserve_purchase_metadata_and_missing_price() {
         assert_eq!(full["purchase_date"], "2026-08-21");
         assert_eq!(full["batch_code"], "batch,one");
         assert_eq!(full["supplier_reference"], "PO \"7\"");
+        assert_eq!(full["purchase_price_batch_locked"], false);
+        assert_eq!(full["purchase_price_source"], json!(null));
         let missing = rows
             .iter()
             .find(|row| row["spool_id"] == "receipt_export_missing")
@@ -3379,11 +3403,12 @@ fn full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_r
                  INSERT INTO filament_spools (
                     id, master_id, status, ownership_type, initial_weight_g,
                     current_weight_g, remaining_g, purchase_price, purchase_currency,
-                    purchase_date, batch_code, supplier_reference
+                    purchase_date, batch_code, supplier_reference,
+                    purchase_price_batch_locked, purchase_price_source
                  ) VALUES (
                     'backup_receipt_spool', 'backup_receipt_master', 'IN_STOCK', 'OWNED',
                     1000, 900, 900, 349.5, 'NOK', '2026-08-21', 'backup-batch',
-                    'invoice-backup-7'
+                    'invoice-backup-7', 1, 'MANUAL'
                  );
                  INSERT INTO filament_spools (
                     id, master_id, status, ownership_type, initial_weight_g,
@@ -3410,6 +3435,8 @@ fn full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_r
         assert_eq!(exported_spool["purchase_date"], "2026-08-21");
         assert_eq!(exported_spool["batch_code"], "backup-batch");
         assert_eq!(exported_spool["supplier_reference"], "invoice-backup-7");
+        assert_eq!(exported_spool["purchase_price_batch_locked"], 1);
+        assert_eq!(exported_spool["purchase_price_source"], "MANUAL");
         let exported_legacy_spool = backup["tables"]["filament_spools"]
             .as_array()
             .and_then(|rows| {
@@ -3467,6 +3494,11 @@ fn full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_r
         assert_eq!(restored_spool.purchase_currency.as_deref(), Some("NOK"));
         assert_eq!(restored_spool.purchase_date.as_deref(), Some("2026-08-21"));
         assert_eq!(restored_spool.batch_code.as_deref(), Some("backup-batch"));
+        assert!(restored_spool.purchase_price_batch_locked);
+        assert_eq!(
+            restored_spool.purchase_price_source.as_deref(),
+            Some("MANUAL")
+        );
         assert_eq!(
             restored_spool.supplier_reference.as_deref(),
             Some("invoice-backup-7")
@@ -3496,6 +3528,8 @@ fn full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_r
                 .ok_or_else(|| "schema-three spool row was not an object".to_string())?;
             legacy_spool.remove("purchase_currency");
             legacy_spool.remove("supplier_reference");
+            legacy_spool.remove("purchase_price_batch_locked");
+            legacy_spool.remove("purchase_price_source");
         }
 
         let legacy = FilamentDatabase::open(&legacy_path).map_err(|error| error.to_string())?;
@@ -3510,6 +3544,8 @@ fn full_backup_round_trip_preserves_purchase_metadata_and_accepts_schema_three_r
         assert_eq!(legacy_spool.purchase_price, Some(349.5));
         assert_eq!(legacy_spool.purchase_currency, None);
         assert_eq!(legacy_spool.supplier_reference, None);
+        assert!(!legacy_spool.purchase_price_batch_locked);
+        assert_eq!(legacy_spool.purchase_price_source, None);
         assert_eq!(legacy_spool.batch_code.as_deref(), Some("backup-batch"));
         Ok(())
     })();
@@ -4009,6 +4045,9 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
                     ('theme_mode', 'dark'),
                     ('library_sync_library_id', 'library_portable'),
                     ('trusted_lan_port', '4279'),
+                    ('default_purchase_currency', 'NOK'),
+                    ('filament_price_standards_json', '{"schema_version":1,"price_standards":[]}'),
+                    ('low_stock_policy_json', '{"default_threshold_g":200,"material_overrides":[]}'),
                     ('credential_store_profile_id', 'credential_profile_11111111111111111111111111111111'),
                     ('credential_store_profile_migration_v1', 'complete'),
                     ('library_sync_client_session_id', 'session-secret'),
@@ -4096,7 +4135,14 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
             .collect::<HashSet<_>>();
         assert_eq!(
             exported_setting_keys,
-            HashSet::from(["theme_mode", "library_sync_library_id", "trusted_lan_port",])
+            HashSet::from([
+                "theme_mode",
+                "library_sync_library_id",
+                "trusted_lan_port",
+                "default_purchase_currency",
+                "filament_price_standards_json",
+                "low_stock_policy_json",
+            ])
         );
 
         // Simulate a backup created by an older build that still carried

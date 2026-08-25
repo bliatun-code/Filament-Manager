@@ -15,6 +15,7 @@ export type SettingsPageChromeLabels = {
 
 export const SETTINGS_PAGE_TAB_ORDER = [
   "GENERAL",
+  "FILAMENT_DEFAULTS",
   "LIBRARY",
   "PRINTERS",
   "CATALOG",

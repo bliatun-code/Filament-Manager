@@ -66,6 +66,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "printer-slot-replacement",
     "printer-slot-clear",
     "settings-general",
+    "settings-filament-defaults",
     "settings-updates",
     "settings-inventory-label-sheet",
     "settings-library",
@@ -177,6 +178,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(
     normalizeDesktopVisualQaScenario("general-settings"),
     "settings-general",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("filament-standards"),
+    "settings-filament-defaults",
   );
   assert.equal(
     normalizeDesktopVisualQaScenario("update-check"),
@@ -543,6 +548,10 @@ test("desktop visual QA scenarios resolve to the page they exercise", () => {
     "settings",
   );
   assert.equal(
+    desktopVisualQaInitialPage("?bfm_visual_qa=settings-filament-defaults"),
+    "settings",
+  );
+  assert.equal(
     desktopVisualQaInitialPage("?bfm_visual_qa=settings-updates"),
     "settings",
   );
@@ -659,6 +668,17 @@ test("desktop visual QA settings scenarios resolve to the intended tab", () => {
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-general"),
     "GENERAL",
+  );
+  assert.equal(
+    desktopVisualQaInitialSettingsTab(
+      "?bfm_visual_qa=settings-filament-defaults",
+    ),
+    "FILAMENT_DEFAULTS",
+  );
+  assert.equal(
+    desktopVisualQaScenarioDefinition("filament-defaults")
+      ?.requiresDatabaseFixture,
+    true,
   );
   assert.equal(
     desktopVisualQaInitialSettingsTab("?bfm_visual_qa=settings-updates"),

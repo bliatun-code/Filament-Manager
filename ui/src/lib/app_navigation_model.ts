@@ -35,6 +35,11 @@ export type InventoryNavigationIntent =
       seq: number;
       status: "WISHLIST" | "ON_ORDER";
     }
+  | {
+      kind: "SPOOL_DETAIL";
+      seq: number;
+      spoolId: string;
+    }
   | null;
 
 export function resolveInitialPageFromSearch(

@@ -54,7 +54,7 @@
       }
     ]
   },
-  "currentSchemaVersion": 4,
+  "currentSchemaVersion": 5,
   "publishedThroughSequence": 3,
   "publishedReference": {
     "ref": "v0.27.0",
@@ -96,6 +96,14 @@
       "role": "schema-migration",
       "fromSchemaVersion": 3,
       "toSchemaVersion": 4
+    },
+    {
+      "sequence": 6,
+      "file": "006_filament_price_standards.sql",
+      "sha256": "0401db674abfe074e69ebe4ad9cba77006559972b5204c979243cfea52d39d54",
+      "role": "schema-migration",
+      "fromSchemaVersion": 4,
+      "toSchemaVersion": 5
     }
   ]
 }

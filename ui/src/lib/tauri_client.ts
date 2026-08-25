@@ -1,5 +1,6 @@
 export * from "./tauri_invoke";
 export * from "./tauri_catalog_client";
+export * from "./tauri_filament_standards_client";
 export * from "./tauri_inventory_client";
 export * from "./tauri_library_sync_client";
 export * from "./tauri_loan_client";

@@ -16,8 +16,11 @@ import {
   formatStatisticsMoney,
   groupStatisticsCurrencyAmounts,
   statisticsCoveragePercent,
+  statisticsMissingReasonFilamentDefaultsTarget,
   statisticsMissingReasonLabel,
+  statisticsMissingReasonOpensFilamentDefaults,
   statisticsOwnershipLabel,
+  type StatisticsFilamentDefaultsTarget,
 } from "../lib/statistics_value_cost_model";
 import type {
   StatisticsInventoryValueTraceRow,
@@ -298,10 +301,12 @@ export function MaterialCostTraceCard({
 
 function CoveragePanel({
   locale,
+  onOpenFilamentDefaults,
   summary,
   t,
 }: {
   locale: Locale;
+  onOpenFilamentDefaults?: (target: StatisticsFilamentDefaultsTarget) => void;
   summary: StatisticsMonetarySummary;
   t: TranslateFn;
 }) {
@@ -384,27 +389,61 @@ function CoveragePanel({
             {t("statistics.valueCostMissingData", "Why data is missing")}
           </div>
           <ul className="mt-2 space-y-2">
-            {coverage.missing_reasons.map((reason) => (
-              <li
-                key={reason.reason}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/80 bg-amber-50/75 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-100"
-              >
-                <span>{statisticsMissingReasonLabel(t, reason.reason)}</span>
-                <span className="font-semibold">
-                  {interpolateCount(
-                    t,
-                    "statistics.valueCostMissingReasonCount",
-                    "{rows} rows · {grams}",
-                    {
-                      grams: reasonHasUnavailableWeight(reason.reason)
-                        ? t("statistics.valueCostWeightUnavailable", "weight unavailable")
-                        : formatDisplayGrams(reason.grams, locale),
-                      rows: formatDisplayInteger(reason.rows, locale),
-                    },
+            {coverage.missing_reasons.map((reason) => {
+              const label = statisticsMissingReasonLabel(t, reason.reason);
+              const filamentDefaultsTarget =
+                statisticsMissingReasonFilamentDefaultsTarget(reason.reason);
+              const count = interpolateCount(
+                t,
+                "statistics.valueCostMissingReasonCount",
+                "{rows} rows · {grams}",
+                {
+                  grams: reasonHasUnavailableWeight(reason.reason)
+                    ? t("statistics.valueCostWeightUnavailable", "weight unavailable")
+                    : formatDisplayGrams(reason.grams, locale),
+                  rows: formatDisplayInteger(reason.rows, locale),
+                },
+              );
+              const rowContent = (
+                <>
+                  <span>{label}</span>
+                  <span className="flex items-center gap-2 font-semibold">
+                    {count}
+                    {statisticsMissingReasonOpensFilamentDefaults(reason.reason) &&
+                    onOpenFilamentDefaults ? (
+                      <span aria-hidden="true">→</span>
+                    ) : null}
+                  </span>
+                </>
+              );
+              const rowClassName =
+                "rounded-lg border border-amber-200/80 bg-amber-50/75 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-100";
+
+              return (
+                <li key={reason.reason} className={rowClassName}>
+                  {statisticsMissingReasonOpensFilamentDefaults(reason.reason) &&
+                  onOpenFilamentDefaults ? (
+                    <button
+                      type="button"
+                      aria-label={`${label}. ${t(
+                        "statistics.openFilamentDefaults",
+                        "Open filament defaults",
+                      )}`}
+                      className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition hover:bg-amber-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:hover:bg-amber-400/10 dark:focus-visible:ring-amber-300 dark:focus-visible:ring-offset-slate-950"
+                      onClick={() =>
+                        onOpenFilamentDefaults?.(filamentDefaultsTarget!)
+                      }
+                    >
+                      {rowContent}
+                    </button>
+                  ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+                      {rowContent}
+                    </div>
                   )}
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : coverage.total_rows > 0 ? (
@@ -487,6 +526,7 @@ function StatisticsValueCostMetric({
   kind,
   locale,
   materialRows,
+  onOpenFilamentDefaults,
   periodLabel,
   summary,
   t,
@@ -495,6 +535,7 @@ function StatisticsValueCostMetric({
   kind: ValueCostMetricKind;
   locale: Locale;
   materialRows?: StatisticsMaterialCostTraceRow[];
+  onOpenFilamentDefaults?: (target: StatisticsFilamentDefaultsTarget) => void;
   periodLabel: string;
   summary: StatisticsMonetarySummary;
   t: TranslateFn;
@@ -547,7 +588,12 @@ function StatisticsValueCostMetric({
       </div>
 
       <CurrencyTotals locale={locale} summary={summary} t={t} />
-      <CoveragePanel locale={locale} summary={summary} t={t} />
+      <CoveragePanel
+        locale={locale}
+        onOpenFilamentDefaults={onOpenFilamentDefaults}
+        summary={summary}
+        t={t}
+      />
 
       <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
         <button
@@ -638,6 +684,7 @@ export function StatisticsValueCostPanel({
   hostUpgradeRequired,
   loading,
   locale,
+  onOpenFilamentDefaults,
   periodLabel,
   report,
   t,
@@ -645,6 +692,7 @@ export function StatisticsValueCostPanel({
   hostUpgradeRequired: boolean;
   loading: boolean;
   locale: Locale;
+  onOpenFilamentDefaults?: (target: StatisticsFilamentDefaultsTarget) => void;
   periodLabel: string;
   report: StatisticsValueCostReport | null;
   t: TranslateFn;
@@ -695,6 +743,7 @@ export function StatisticsValueCostPanel({
             inventoryRows={report.inventory_trace}
             kind="INVENTORY_VALUE"
             locale={locale}
+            onOpenFilamentDefaults={onOpenFilamentDefaults}
             periodLabel={periodLabel}
             summary={report.inventory_value}
             t={t}
@@ -703,6 +752,7 @@ export function StatisticsValueCostPanel({
             kind="MATERIAL_COST"
             locale={locale}
             materialRows={report.material_cost_trace}
+            onOpenFilamentDefaults={onOpenFilamentDefaults}
             periodLabel={periodLabel}
             summary={report.material_cost}
             t={t}

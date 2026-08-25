@@ -119,6 +119,9 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
     purchaseDate: normalizedRow.spool.purchase_date ?? null,
     batchCode: normalizedRow.spool.batch_code ?? null,
     supplierReference: normalizedRow.spool.supplier_reference ?? null,
+    purchasePriceBatchLocked:
+      normalizedRow.spool.purchase_price_batch_locked ?? false,
+    purchasePriceSource: normalizedRow.spool.purchase_price_source ?? null,
   };
 }
 

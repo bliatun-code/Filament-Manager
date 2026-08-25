@@ -13,10 +13,30 @@ test("ordinary Settings navigation can restore storage while explicit navigation
   assert.match(appSource, /function initialSettingsTabFromUrl\(\): SettingsTabKey \| null/);
   assert.match(appSource, /useState<SettingsTabKey \| null>/);
   assert.match(appSource, /setSettingsInitialTab\(null\)/);
-  assert.match(appSource, /const openSettingsTab = \(tab: SettingsTabKey\)/);
+  assert.match(
+    appSource,
+    /const openSettingsTab = \(\s*tab: SettingsTabKey,\s*filamentDefaultsFocusTarget:/,
+  );
   assert.match(appSource, /openSettingsTab\("LIBRARY"\)/);
   assert.match(appSource, /openSettingsTab\("MAINTENANCE"\)/);
+  assert.match(appSource, /openSettingsTab\("FILAMENT_DEFAULTS", target\)/);
   assert.match(settingsActiveTabSource, /resolveSettingsActiveTab\(initialTab/);
+});
+
+test("the latest filament pricing receipt survives navigation to spool details", () => {
+  assert.match(
+    appSource,
+    /useState<FilamentPriceBatchReceipt \| null>\(null\)/,
+  );
+  assert.match(
+    appSource,
+    /filamentPriceBatchReceipt=\{filamentPriceBatchReceipt\}/,
+  );
+  assert.match(
+    appSource,
+    /onFilamentPriceBatchReceiptChange=\{setFilamentPriceBatchReceipt\}/,
+  );
+  assert.match(settingsSource, /batchReceipt: filamentPriceBatchReceipt/);
 });
 
 test("Settings visual QA uses the requested tab without reading or writing user preferences", () => {

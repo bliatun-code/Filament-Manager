@@ -36,6 +36,7 @@ test("active-library client invokes one target-agnostic atomic details command",
       batch_code: "LOT-7",
       supplier_reference: "PO-42",
     },
+    purchase_price_batch_locked: true,
   };
 
   try {

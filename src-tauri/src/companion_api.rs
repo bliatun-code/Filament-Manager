@@ -873,6 +873,7 @@ pub(super) async fn handle_create_borrowed_in_spool(
                             spool_tare_weight_g: None,
                             ownership: None,
                             purchase_metadata: None,
+                            purchase_price_batch_locked: None,
                         })
                         .map_err(CompanionApiError::from)?;
                 }
@@ -1224,6 +1225,9 @@ pub(super) async fn handle_update_spool_details(
                 .is_some_and(|metadata| {
                     metadata != &PurchaseReceiptMetadata::from_spool(&spool.spool)
                 });
+            let purchase_price_batch_lock_changes = payload
+                .purchase_price_batch_locked
+                .is_some_and(|locked| locked != spool.spool.purchase_price_batch_locked);
             let requested_home_location_is_unchanged = match &requested_home_location {
                 Some(value) => value == &spool.spool.home_location_id,
                 None => true,
@@ -1243,7 +1247,7 @@ pub(super) async fn handle_update_spool_details(
                 && requested_home_location_is_unchanged
                 && payload.spool_tare_weight_g.is_none()
                 && ownership.is_none()
-                && purchase_metadata_changes;
+                && (purchase_metadata_changes || purchase_price_batch_lock_changes);
             if (current_status == SpoolStatus::Borrowed || has_active_outbound_loan)
                 && !editing_loan_receipt_only
             {
@@ -1257,7 +1261,8 @@ pub(super) async fn handle_update_spool_details(
                 && (payload.home_location.is_set()
                     || payload.spool_tare_weight_g.is_some()
                     || ownership.is_some()
-                    || normalized_purchase_metadata.is_some());
+                    || normalized_purchase_metadata.is_some()
+                    || payload.purchase_price_batch_locked.is_some());
             if (current_status.is_assigned() || state.spool_assigned_to_printer(spool_id)?)
                 && !editing_nonplacement_details
             {
@@ -1285,6 +1290,7 @@ pub(super) async fn handle_update_spool_details(
                     spool_tare_weight_g: payload.spool_tare_weight_g,
                     ownership,
                     purchase_metadata: normalized_purchase_metadata,
+                    purchase_price_batch_locked: payload.purchase_price_batch_locked,
                 })
                 .map_err(CompanionApiError::from)?;
 

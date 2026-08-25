@@ -47,7 +47,9 @@ use crate::backend::database_spool_queries::{
 };
 use crate::backend::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
-    set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
+    set_spool_location as set_spool_location_row,
+    set_spool_purchase_price_batch_locked as set_spool_purchase_price_batch_locked_row,
+    update_spool_details as update_spool_details_row,
     update_spool_ownership as update_spool_ownership_row,
     update_spool_ownership_metadata as update_spool_ownership_metadata_row,
     update_spool_purchase_metadata as update_spool_purchase_metadata_row,
@@ -61,6 +63,11 @@ use crate::backend::filament_database::{
     LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput,
     PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
     SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
+};
+use crate::backend::filament_standards::PURCHASE_PRICE_SOURCE_MANUAL;
+pub use crate::backend::filament_standards::{
+    FilamentPriceBatchInput, FilamentPriceBatchReceipt, FilamentStandardsSettings,
+    FilamentStandardsSnapshot,
 };
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_printer_slot_live::derive_assign_printer_slot_live_context;
@@ -153,6 +160,10 @@ pub struct UpdateSpoolDetailsInput {
     pub ownership: Option<UpdateSpoolDetailsOwnershipInput>,
     #[serde(default)]
     pub purchase_metadata: Option<PurchaseReceiptMetadata>,
+    /// When present, updates whether standards batches may change this spool's
+    /// purchase price. Missing on older local/Host request payloads.
+    #[serde(default)]
+    pub purchase_price_batch_locked: Option<bool>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -298,6 +309,24 @@ impl InventoryEngine {
         input: InventoryBulkMutationInput,
     ) -> InventoryResult<InventoryBulkMutationResult> {
         self.db.execute_inventory_bulk_mutation(input)
+    }
+
+    pub fn get_filament_standards(&self) -> InventoryResult<FilamentStandardsSnapshot> {
+        self.db.get_filament_standards()
+    }
+
+    pub fn save_filament_standards(
+        &self,
+        settings: FilamentStandardsSettings,
+    ) -> InventoryResult<FilamentStandardsSnapshot> {
+        self.db.save_filament_standards(settings)
+    }
+
+    pub fn apply_filament_price_batch(
+        &self,
+        input: FilamentPriceBatchInput,
+    ) -> InventoryResult<FilamentPriceBatchReceipt> {
+        self.db.apply_filament_price_batch(input)
     }
 
     pub fn list_spools(&self, limit: i64, offset: i64) -> InventoryResult<Vec<SpoolWithMasterRow>> {
@@ -510,6 +539,10 @@ impl InventoryEngine {
             last_used_at: None,
             purchase_currency: purchase_metadata.purchase_currency.clone(),
             supplier_reference: purchase_metadata.supplier_reference.clone(),
+            purchase_price_batch_locked: false,
+            purchase_price_source: purchase_metadata
+                .purchase_price
+                .map(|_| PURCHASE_PRICE_SOURCE_MANUAL.to_string()),
         };
 
         self.db.with_inventory_transaction(|conn| {
@@ -637,6 +670,8 @@ impl InventoryEngine {
                 last_used_at: None,
                 purchase_currency: None,
                 supplier_reference: None,
+                purchase_price_batch_locked: false,
+                purchase_price_source: None,
             };
             insert_spool_row(conn, &spool)?;
 
@@ -856,6 +891,7 @@ impl InventoryEngine {
             )
         });
         let requested_purchase_metadata = input.purchase_metadata;
+        let requested_purchase_price_batch_locked = input.purchase_price_batch_locked;
         self.db.with_inventory_transaction(|conn| {
             if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, &input.spool_id)? {
                 return Err(InventoryError::Db(
@@ -942,6 +978,22 @@ impl InventoryEngine {
                         }),
                     )?;
                 }
+            }
+            if requested_purchase_price_batch_locked
+                .is_some_and(|locked| locked != existing_spool.purchase_price_batch_locked)
+            {
+                let locked = requested_purchase_price_batch_locked
+                    .expect("lock presence was checked before update");
+                set_spool_purchase_price_batch_locked_row(conn, &input.spool_id, locked)?;
+                insert_json_history_event(
+                    conn,
+                    &input.spool_id,
+                    "PURCHASE_PRICE_BATCH_LOCK_UPDATED",
+                    json!({
+                        "before": existing_spool.purchase_price_batch_locked,
+                        "after": locked,
+                    }),
+                )?;
             }
             if let Some(grams) = input.spool_tare_weight_g {
                 update_spool_tare_weight_row(conn, &input.spool_id, Some(grams))?;

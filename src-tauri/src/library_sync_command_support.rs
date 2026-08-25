@@ -1,5 +1,7 @@
 use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
-use crate::companion_models::PURCHASE_RECEIPT_METADATA_CAPABILITY;
+use crate::companion_models::{
+    FILAMENT_PRICE_STANDARDS_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
+};
 use crate::library_sync_host_client::ensure_library_sync_host_matches;
 use crate::library_sync_models::ValidateLibrarySyncHostInput;
 use crate::state::AppState;
@@ -119,6 +121,23 @@ pub(crate) fn require_host_purchase_receipt_metadata_capability(
     ))
 }
 
+pub(crate) fn require_host_filament_price_standards_capability(
+    capabilities: &[String],
+    requested: bool,
+) -> Result<(), String> {
+    if !requested
+        || capabilities
+            .iter()
+            .any(|capability| capability == FILAMENT_PRICE_STANDARDS_CAPABILITY)
+    {
+        return Ok(());
+    }
+
+    Err(crate::app_error::coded_command_error(
+        "filament_standards.host_unsupported",
+    ))
+}
+
 pub(crate) fn save_library_sync_success(
     state: &AppState,
     message: &str,
@@ -142,10 +161,13 @@ pub(crate) fn save_library_sync_success_without_message(
 mod tests {
     use super::{
         ensure_stable_local_library_sync_host, normalize_library_sync_base_url,
-        purchase_receipt_metadata_has_values, require_host_purchase_receipt_metadata_capability,
+        purchase_receipt_metadata_has_values, require_host_filament_price_standards_capability,
+        require_host_purchase_receipt_metadata_capability,
     };
     use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
-    use crate::companion_models::PURCHASE_RECEIPT_METADATA_CAPABILITY;
+    use crate::companion_models::{
+        FILAMENT_PRICE_STANDARDS_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
+    };
 
     #[test]
     fn host_url_is_canonical_and_rejects_credential_leak_surfaces() {
@@ -217,6 +239,20 @@ mod tests {
         assert_eq!(envelope["code"], "purchase_metadata.host_unsupported");
         assert!(require_host_purchase_receipt_metadata_capability(
             &[PURCHASE_RECEIPT_METADATA_CAPABILITY.to_string()],
+            true,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn filament_standards_requests_fail_closed_for_legacy_hosts() {
+        assert!(require_host_filament_price_standards_capability(&[], false).is_ok());
+        let error = require_host_filament_price_standards_capability(&[], true)
+            .expect_err("filament standards must fail closed for a legacy Host");
+        let envelope: serde_json::Value = serde_json::from_str(&error).expect("coded error");
+        assert_eq!(envelope["code"], "filament_standards.host_unsupported");
+        assert!(require_host_filament_price_standards_capability(
+            &[FILAMENT_PRICE_STANDARDS_CAPABILITY.to_string()],
             true,
         )
         .is_ok());

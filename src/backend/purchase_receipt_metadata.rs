@@ -229,6 +229,8 @@ mod tests {
             last_used_at: None,
             purchase_currency: None,
             supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
         }
     }
 

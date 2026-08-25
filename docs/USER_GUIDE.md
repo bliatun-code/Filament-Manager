@@ -398,6 +398,45 @@ General:
 - language, selected from one compact list
 - inventory QR label sheets
 
+Filament defaults:
+
+- low-stock thresholds, with one default and material-specific exceptions
+- one three-letter default purchase currency, such as NOK or EUR
+- collapsible price groups with spool counts and price coverage
+- controlled bulk pricing for an explicitly selected set
+
+Price groups are derived from the inventory's own master data: vendor,
+material, product series, and nominal spool weight. Color does not split a
+group. Bambu Lab PLA Basic and PLA Matte, or eSUN PLA+ and PLA+HS, therefore
+remain separate price groups. Generic and smaller vendors follow the same rule;
+a unique product series simply becomes a one-spool group. The app does not fetch
+or guess an online price.
+
+Enter and save a group price, then choose one of two actions:
+
+- **Only missing prices** preserves every existing price. It sets price and
+  currency where both are missing, and it can fill a missing currency without
+  changing an existing price. An unpriced spool that already carries a
+  different currency requires manual follow-up.
+- **Update selected prices** replaces price and currency on the selected spools
+  after a separate review shows how many existing and individually entered
+  prices will be overwritten.
+
+You can remove individual spools from the selection before running it.
+Borrowed-in and historical spools are not changed. A receipt then lists updated
+and unchanged spools; rows requiring manual follow-up open that spool's details
+directly. If any reviewed spool changes before the batch starts, the entire
+operation stops before its first write so an old review cannot overwrite newer
+data.
+
+An individual price remains editable in spool details. Enable **Protect
+individual price from group updates** when the defaults page must never
+overwrite that spool. The lock blocks both group actions but does not block
+manual editing. Locked rows are explained and linked in the receipt. Yellow
+missing-price and missing-currency rows under **Statistics → Value & cost** open
+the matching control in Filament defaults. A Client shows the Host's groups and
+defaults read-only; changes are made on the Host.
+
 The desktop app and Companion support English, Norwegian Bokmål, German,
 French, Spanish, Brazilian Portuguese, Italian, Polish, Dutch, Czech,
 Simplified Chinese, Traditional Chinese, Japanese, Korean, Turkish, Ukrainian,
@@ -608,7 +647,9 @@ change is included in the same guarded save as the other spool details and is
 recorded in spool history. Historical rows that already have a price but no
 currency may keep that exact price while other receipt fields change; changing
 the price requires a currency. Inventory CSV/JSON exports and full backups include
-all purchase fields. **Remove** deletes only the wishlist/order entry; it does not
+all purchase fields. You can also protect the individual price from group
+updates on the Filament defaults page; that protection is included in a full
+backup. **Remove** deletes only the wishlist/order entry; it does not
 delete an inventory spool.
 
 ### Missing Filament?

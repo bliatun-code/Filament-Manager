@@ -1,9 +1,10 @@
 use crate::backend::database_result::{InventoryError, InventoryResult};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveObservedTrayRow, FilamentDatabase,
-    FilamentMasterCatalogRow, PrinterOverviewRow, SpoolHistoryEventRow, SpoolLoanDetailsRow,
-    SpoolLoanRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow,
-    WishlistReceiptResult,
+    FilamentMasterCatalogRow, FilamentPriceBatchInput, FilamentPriceBatchReceipt,
+    FilamentStandardsSettings, FilamentStandardsSnapshot, PrinterOverviewRow, SpoolHistoryEventRow,
+    SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow,
+    WishlistItemRow, WishlistReceiptResult,
 };
 use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::{
@@ -292,6 +293,24 @@ impl CompanionService {
         input: InventoryBulkMutationInput,
     ) -> InventoryResult<InventoryBulkMutationResult> {
         self.with_inventory(|engine| engine.execute_bulk_inventory_mutation(input))
+    }
+
+    pub fn get_filament_standards(&self) -> InventoryResult<FilamentStandardsSnapshot> {
+        self.with_inventory(|engine| engine.get_filament_standards())
+    }
+
+    pub fn save_filament_standards(
+        &self,
+        settings: FilamentStandardsSettings,
+    ) -> InventoryResult<FilamentStandardsSnapshot> {
+        self.with_inventory(|engine| engine.save_filament_standards(settings))
+    }
+
+    pub fn apply_filament_price_batch(
+        &self,
+        input: FilamentPriceBatchInput,
+    ) -> InventoryResult<FilamentPriceBatchReceipt> {
+        self.with_inventory(|engine| engine.apply_filament_price_batch(input))
     }
 
     pub fn update_spool_rfid_tag(

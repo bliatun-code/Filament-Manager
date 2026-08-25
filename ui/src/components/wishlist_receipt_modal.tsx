@@ -10,6 +10,7 @@ import { SaveOnlyModal } from "./save_only_modal";
 
 export type WishlistReceiptModalProps = Readonly<{
   busy: boolean;
+  defaultPurchaseCurrency?: string;
   errors: PurchaseReceiptMetadataValidationErrors;
   itemTitle: string;
   maxQuantity: number;
@@ -24,6 +25,7 @@ export type WishlistReceiptModalProps = Readonly<{
 
 export function WishlistReceiptModal({
   busy,
+  defaultPurchaseCurrency = "",
   errors,
   itemTitle,
   maxQuantity,
@@ -69,6 +71,7 @@ export function WishlistReceiptModal({
 
         <PurchaseReceiptMetadataFields
           copy={purchaseReceiptMetadataFieldsCopy(t)}
+          defaultCurrency={defaultPurchaseCurrency}
           disabled={busy}
           draft={metadataDraft}
           errors={errors}

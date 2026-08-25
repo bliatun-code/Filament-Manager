@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { I18nContext, type I18nContextValue } from "../lib/i18n";
 import type { InventorySpool } from "../lib/inventory_list_model";
 import { InventoryHeaderActions } from "./inventory_controls_panel";
+import { InventoryPurchasePriceProtectionControl } from "./inventory_purchase_price_protection_control";
 import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
@@ -214,4 +215,34 @@ test("stock-specific header tools stay out of location management", () => {
   );
 
   assert.equal(html, "");
+});
+
+test("individual price protection is a described checkbox and keeps manual edits explicit", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nContext.Provider,
+      {
+        value: {
+          locale: "en",
+          setLocale: () => {},
+          t: (_key: string, fallback = "") => fallback,
+        },
+      },
+      React.createElement(InventoryPurchasePriceProtectionControl, {
+        checked: true,
+        disabled: false,
+        onChange: () => {},
+      }),
+    ),
+  );
+
+  assert.match(html, /type="checkbox"/);
+  assert.match(html, /checked=""/);
+  assert.match(html, /aria-describedby="([^"]+)"/);
+  const describedBy = html.match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(describedBy);
+  assert.match(html, new RegExp(`id="${describedBy}"`));
+  assert.match(html, /Protect individual price from group updates/);
+  assert.match(html, /Manual price edits for this roll still work/);
+  assert.match(html, /Filament defaults will skip it during group updates/);
 });

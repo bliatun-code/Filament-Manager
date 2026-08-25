@@ -93,6 +93,32 @@ Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater dele
 
 Fasen er ferdig når kostnader og prognoser er sporbare, Windows-artifakter er signert, og den komplette muterende desktop-flyten passerer på både macOS og Windows.
 
+## Produktspor – Filamentstandarder
+
+**Mål:** Samle lagergrenser, standard kjøpsvaluta og trygg masseprising på ett naturlig sted uten å fjerne muligheten til å registrere en individuell kjøpspris på hver rull.
+
+Den lokale lageranalysen 25. august 2026 viser at pris varierer på produktfamilienivå, ikke bare per hovedmateriale. Bambu-rullene er blant annet fordelt på PLA Basic, PLA Matte, PETG Basic og PETG HF, mens eSUN-rullene er fordelt på blant annet PLA+, PLA+HS, PLA-Matte, PETG og PETG+HS. Prisgrupper bygges derfor deterministisk av leverandør, produktfamilie og nominell rullvekt. Farge er ikke en del av gruppen. Generic og andre små leverandører behandles på samme måte; en unik rull blir en synlig gruppe med teller 1 og kan velges bort. Bambu og eSUN priser også refill og rull ulikt, men dagens katalog har ikke et autoritativt felt for pakningsform. Programmet skal derfor ikke gjette dette; pakningsform blir en eksplisitt utvidelsesdimensjon når katalogen kan lagre den trygt.
+
+| Prioritet | Arbeid | Status | Ferdigkriterium |
+| --- | --- | --- | --- |
+| P0 | Opprette fanen **Filamentstandarder** og flytte lav-beholdningsgrensene dit. | Ferdig | General-fanen inneholder ikke lenger lagergrenser, og den nye fanen kan åpnes direkte fra andre flater. |
+| P0 | Lagre én bibliotekseid standard kjøpsvaluta. | Ferdig | Valuta valideres som en trebokstavskode, brukes som forhåndsvalg ved prisarbeid og kan leses og endres via lokal app og Host uten lokal reserveverdi i Client-modus. |
+| P0 | Vise sammenleggbare leverandører og prisgrupper med antall ruller, prisdekning og individuelt utvalg. | Ferdig | Gruppene er stabile, fargeuavhengige og bygget fra autoritative lagerdata; hver rull kan krysses ut før gjennomgang. |
+| P0 | Legge til atomisk batchprising for **bare manglende pris** og eksplisitt **overskriv valgte priser**. | Ferdig | Hele utvalget valideres før første skriv, alle endringer og historikkrader committes i én transaksjon, og overskrivingsmodusen viser antall eksisterende individuelle priser som erstattes før bekreftelse. |
+| P0 | Legge en per-rull-lås i filamentdetaljene som hindrer batchprising, men ikke manuell redigering. | Ferdig | Låsen følger rullen gjennom database, backup, lokal app, Host og Client. Begge batchmoduser hopper over låste ruller og endrer aldri annen kjøpsmetadata. |
+| P0 | Returnere en varig kvittering etter batchen. | Ferdig | Kvitteringen viser oppdaterte, uendrede og låste ruller; hver låste rad forklarer at prisen må endres manuelt og åpner den aktuelle filamentdetaljen direkte. |
+| P1 | Gjøre gule mangler i Statistics handlingsrettede. | Ferdig | «Kjøpsvaluta mangler» åpner standardvalutaen og «Kjøpspris mangler» åpner prisgruppene i Filamentstandarder-fanen med tydelig fokus. |
+
+### Sikkerhets- og kompatibilitetsregler
+
+- Individuell pris forblir rullens autoritative verdi; standardfanen setter faktiske rullverdier og lager ingen skjult, beregnet «gruppepris».
+- Standardvaluta fyller forslag, men endrer ikke historiske ruller uten en eksplisitt batch.
+- «Bare manglende pris» setter pris på ruller uten pris og kan fylle manglende valuta uten å endre en eksisterende pris. «Overskriv» endrer pris og valuta på valgte, ulåste ruller etter en separat gjennomgang.
+- Batchlåsen beskytter mot begge batchmoduser. Manuell lagring i filamentdetaljene er fortsatt tillatt.
+- Kjøpsdato, batchkode og leverandørreferanse berøres aldri av batchprising.
+- En Client skriver én beskyttet Host-operasjon. Manglende Host-støtte avvises tydelig før skriv; det finnes ingen lokal fallback.
+- Prisgrupper avledes hver gang fra lagerets masterdata. Dermed blir nye Bambu-, eSUN-, Generic- og tredjepartsfamilier støttet uten en hardkodet prisliste eller nettavhengighet.
+
 ## Parallelt teknisk spor
 
 Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer uten å blokkere produktarbeidet.
@@ -120,7 +146,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 ## Neste arbeid
 
 1. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
-2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 4-artifakt for Windows; den lokale macOS-kjøringen er bestått.
+2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 5-artifakt for Windows; den tidligere lokale macOS-kjøringen på schema 4 er bestått.
 
 ## Fremdriftslogg
 
@@ -129,6 +155,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Dashboard skiller nå reelle oppgaver fra valgfrie lav-beholdningsforslag. Forslagene ligger som en nøytral, sammenleggbar seksjon etter nøkkeltallene, kan skjules og gjenopprettes per produkt på denne enheten og påvirker verken lav-beholdningstallet eller den autoritative lagerstatusen.
 - Lageret prioriterer nå filtre og filamentlisten i normalvisningen. Massehandlinger åpnes som en midlertidig «Velg flere»-modus, avkrysningsbokser og handlinger vises progressivt, bare én flytte-/statuseditor åpnes om gangen, og etikettark for hele lageret er tydelig skilt fra etikettark for valgte ruller.
 - Lokasjonsadministrasjonen viser nå bare egne lagersteder i en kompakt tokolonners liste. Tekniske printer-/utlånslokasjoner er skjult, arkiverte steder og sammenslåing er sammenfoldet, og grensesnittet forklarer at arkivering bevarer rullenes stabile lokasjonskoblinger. Aktive og arkiverte steder kan slettes permanent først når databasen autoritativt bekrefter at ingen nåværende-, hjemme- eller underlokasjonskoblinger finnes.
+- Filamentstandarder samler nå lavlagergrenser, standard kjøpsvaluta og sammenleggbare prisgrupper basert på leverandør, produktfamilie og nominell rullvekt. Brukeren kan prise bare manglende verdier eller eksplisitt overskrive valgte ruller; en per-rull-lås, atomisk forhåndskontroll og en varig, klikkbar kvittering beskytter individuelle priser. Manglende pris eller valuta i Statistics åpner riktig kontroll direkte. Schema 5, Host/Client-kontrakten, backup/import, tilgjengelighet, responsivitet og hele den lokale verifikasjonspakken er bestått.
 
 ### 2026-08-21
 
@@ -151,8 +178,8 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Lageret har sporbare massehandlinger for flytting og status med en egen gjennomgang før bekreftelse. Backend validerer hele snapshotet før første skriv og committer alle endringer og historikkrader i én transaksjon; etiketter og CSV-/JSON-eksport bruker nøyaktig det valgte spolesettet. Client sender én beskyttet Host-operasjon uten lokal fallback, og eldre Host avvises eksplisitt via capability-sjekk.
 - Lavlagerpolicyen har én validert standard og valgfrie materialoverstyringer. Effektiv terskel følger hver spole gjennom Inventory, Dashboard, Statistics, Host, Client og Companion; eldre Host bruker en eksplisitt 200 g-kompatibilitetsverdi.
 - Utlån lagrer valgfri kontakt og forventet returdato. Ugyldige datoer stoppes før lagring, eldre Host avviser metadata før POST, og en ren datomodell identifiserer forfalte aktive lån uten å merke returnerte lån.
-- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 4, og samme gate er koblet blokkerende til Windows CI.
-- Gjeldende lokale arm64 debug-DMG passerer den muterende macOS-gaten med schema 4 og 25 tabeller. Testen opprettet spole og printerspor, endret sluttvekten til 760 g, fullførte utlån og retur, startet den installerte appen på nytt og validerte en full backup med 1 128 rader. Tilsvarende gjeldende Windows-kjøring gjenstår på en Windows-runner.
+- Den pakkede desktop-gaten starter installert app mot en privat database, muterer hele spoleflyten, restarter og validerer full backup. En historisk kjøring før lokasjonsmigreringen passerte med schema 2, stabilt SQLite-snapshot og 1 128 backuprader; gjeldende kriterium er schema 5, og samme gate er koblet blokkerende til Windows CI.
+- Den tidligere lokale arm64 debug-DMG-en passerte den muterende macOS-gaten med schema 4 og 25 tabeller. Testen opprettet spole og printerspor, endret sluttvekten til 760 g, fullførte utlån og retur, startet den installerte appen på nytt og validerte en full backup med 1 128 rader. En ny pakket schema-5-kjøring og tilsvarende Windows-kjøring gjenstår på de respektive plattformene.
 - Authenticode-verifikatoren og MSI-smokens signaturpåbud er klare og feiler lukket på ugyldig Subject, manglende Code Signing-EKU eller timestamp. Release-workflowen forblir bevisst unsigned inntil eksakt juridisk sertifikat-Subject, signeringsleverandør og autentiseringsmodell samt beskyttet GitHub-miljø er avklart; privat nøkkel skal aldri legges i repo, artifact eller logg.
 - Brukertestprotokollen har en deterministisk `npm run qa:usability:analyze`-kommando som avviser færre enn fem deltakere, under 90 % uhjulpet fullføring eller under 30 % median tidsforbedring.
 - En Rust-basert `ActiveLibraryGateway` velger nå autoritativt mellom lokal database og paret Host for den atomiske spole-detaljflyten. Ufullstendig klientoppsett og Host-/legitimasjonsfeil stopper uten lokal fallback, mens eksisterende Tauri-kommandoer er beholdt som kompatibilitetslag.

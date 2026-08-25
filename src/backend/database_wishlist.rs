@@ -143,6 +143,10 @@ pub(crate) fn receive_wishlist_item(
             last_used_at: None,
             purchase_currency: purchase_metadata.purchase_currency.clone(),
             supplier_reference: purchase_metadata.supplier_reference.clone(),
+            purchase_price_batch_locked: false,
+            purchase_price_source: purchase_metadata
+                .purchase_price
+                .map(|_| "MANUAL".to_string()),
         };
         insert_spool(&transaction, &spool)?;
         let payload = serde_json::to_string(&json!({

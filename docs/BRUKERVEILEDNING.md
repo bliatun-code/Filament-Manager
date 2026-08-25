@@ -430,6 +430,44 @@ Generelt:
 - språk, valgt fra én kompakt liste
 - etikettark med QR for lageret
 
+Filamentstandarder:
+
+- grenser for lav beholdning, med standardgrense og materialspesifikke unntak
+- én standard kjøpsvaluta med trebokstavskode, for eksempel NOK eller EUR
+- sammenleggbare prisgrupper med antall ruller og prisdekning
+- kontrollert masseprising av et selvvalgt utvalg
+
+Prisgruppene bygges fra lagerets egne masterdata: leverandør, materiale,
+produktserie og nominell rullvekt. Farge deler ikke gruppen. Dermed vises for
+eksempel Bambu Lab PLA Basic og PLA Matte, eller eSUN PLA+ og PLA+HS, som egne
+prisgrupper. Generic og små leverandører følger den samme regelen; en unik
+produktserie blir ganske enkelt en gruppe med én rull. Programmet henter eller
+gjetter ikke en nettpris.
+
+Angi og lagre en pris på gruppen, velg deretter én av to handlinger:
+
+- **Bare manglende priser** beholder alle eksisterende priser. Den setter pris
+  og valuta der begge mangler, og kan fylle inn manglende valuta uten å endre en
+  eksisterende pris. En rull uten pris som allerede har en annen valuta, krever
+  manuell oppfølging.
+- **Oppdater valgte priser** erstatter pris og valuta på de valgte rullene etter
+  en egen gjennomgang som viser hvor mange eksisterende og individuelt satte
+  priser som blir overskrevet.
+
+Du kan fjerne enkeltruller fra utvalget før kjøring. Innlånte og historiske
+ruller endres ikke. Etterpå vises en kvittering med oppdaterte og uendrede
+ruller. Rader som krever manuell oppfølging kan åpnes direkte i rulldetaljene.
+Hvis en rull endres etter gjennomgangen, avbrytes hele operasjonen før første
+skriving, slik at en gammel gjennomgang ikke overskriver nyere data.
+
+I rulldetaljene kan du fortsatt sette en individuell pris. Aktiver **Beskytt
+individuell pris mot gruppeoppdateringer** når standardfanen aldri skal
+overskrive denne rullen. Låsen hindrer begge gruppehandlingene, men sperrer ikke
+manuell redigering. En låst rull blir forklart og lenket i kvitteringen. De gule
+radene for manglende kjøpspris eller kjøpsvaluta i **Statistikk → Verdi og
+kostnad** åpner den relevante kontrollen i Filamentstandarder. En Client viser
+Hostens grupper og standarder skrivebeskyttet; endringene utføres på Hosten.
+
 Desktop-appen og Companion støtter engelsk, norsk bokmål, tysk, fransk,
 spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
 forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
@@ -645,6 +683,8 @@ Endringen inngår i den samme beskyttede lagringen som de andre rulldetaljene og
 registreres i rullhistorikken. Eldre rader som allerede har pris uten valuta, kan
 beholde nøyaktig samme pris mens andre mottaksfelt endres; endring av prisen krever
 valuta. Lagerets CSV-/JSON-eksport og full backup tar med alle innkjøpsfeltene.
+Her kan du også beskytte den individuelle prisen mot gruppeoppdateringer fra
+Filamentstandarder; beskyttelsen følger rullen i full backup.
 **Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
 
 ### Mangler filamentet?

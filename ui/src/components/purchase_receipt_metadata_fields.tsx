@@ -1,6 +1,7 @@
 import { useId } from "react";
 
 import {
+  updatePurchasePriceDraft,
   type PurchaseReceiptMetadataDraft,
   type PurchaseReceiptMetadataField,
   type PurchaseReceiptMetadataValidationErrors,
@@ -10,6 +11,7 @@ import { formInputChromeClassName } from "./form_control_class";
 
 export type PurchaseReceiptMetadataFieldsProps = {
   copy: PurchaseReceiptMetadataFieldsCopy;
+  defaultCurrency?: string | null;
   disabled?: boolean;
   draft: PurchaseReceiptMetadataDraft;
   errors?: PurchaseReceiptMetadataValidationErrors;
@@ -25,6 +27,7 @@ function describedBy(...ids: Array<string | null>): string | undefined {
 
 export function PurchaseReceiptMetadataFields({
   copy,
+  defaultCurrency = null,
   disabled = false,
   draft,
   errors = {},
@@ -94,7 +97,15 @@ export function PurchaseReceiptMetadataFields({
             step="any"
             inputMode="decimal"
             value={draft.pricePerRoll}
-            onChange={(event) => updateField("pricePerRoll", event.target.value)}
+            onChange={(event) =>
+              onChange(
+                updatePurchasePriceDraft(
+                  draft,
+                  event.target.value,
+                  defaultCurrency,
+                ),
+              )
+            }
             className={`mt-1.5 w-full ${formInputChromeClassName}`}
             aria-invalid={Boolean(errors.pricePerRoll)}
             aria-describedby={describedBy(priceHintId, errorId("pricePerRoll"))}

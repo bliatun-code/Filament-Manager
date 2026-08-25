@@ -53,6 +53,10 @@ fn build_router_with_security_config(
             "/library/printer-settings",
             get(handle_library_printer_settings),
         )
+        .route(
+            "/library/filament-standards",
+            get(handle_library_filament_standards),
+        )
         .route("/library/loans", get(handle_library_loans))
         .route(
             "/library/statistics/filament-consumption",

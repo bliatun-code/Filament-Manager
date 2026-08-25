@@ -98,6 +98,8 @@ pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) ownership: Option<LibrarySyncUpdateSpoolDetailsOwnershipInput>,
     #[serde(default)]
     pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
+    #[serde(default)]
+    pub(crate) purchase_price_batch_locked: Option<bool>,
 }
 
 #[derive(Deserialize)]

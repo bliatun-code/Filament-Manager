@@ -1448,6 +1448,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("statistics-value-cost-report") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("filament-price-standards-v1") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -1563,6 +1569,7 @@ async fn companion_api_library_reads_require_an_active_session() {
             "/api/v1/library/spools?limit=10&offset=0",
             "/api/v1/library/printers",
             "/api/v1/library/printer-settings",
+            "/api/v1/library/filament-standards",
             "/api/v1/library/loans?limit=10",
             "/api/v1/library/statistics/filament-consumption?limit=10",
             "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z",
@@ -4088,7 +4095,7 @@ async fn companion_api_updates_spool_status_and_location() {
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
                     .body(Body::from(
-                        r#"{"status":"LOST","location":"Archive Bin","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"}}"#,
+                        r#"{"status":"LOST","location":"Archive Bin","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"},"purchase_price_batch_locked":true}"#,
                     ))
                     .map_err(|error| error.to_string())?,
             )
@@ -4127,6 +4134,7 @@ async fn companion_api_updates_spool_status_and_location() {
         assert!(detail_text.contains("\"home_location_name\":\"Shelf C\""));
         assert!(detail_text.contains("\"spool_tare_weight_g\":245"));
         assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
+        assert!(detail_text.contains("\"purchase_price_batch_locked\":true"));
         assert!(detail_text.contains("\"qr_code\":\"qr-1\""));
         assert!(detail_text.contains("\"event_type\":\"DETAILS_UPDATED\""));
 

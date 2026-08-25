@@ -1,11 +1,11 @@
 import type { SettingsTabKey } from "./settings_page_model";
 
 export function settingsTabId(tab: SettingsTabKey): string {
-  return `settings-tab-${tab.toLowerCase()}`;
+  return `settings-tab-${tab.toLowerCase().replaceAll("_", "-")}`;
 }
 
 export function settingsTabPanelId(tab: SettingsTabKey): string {
-  return `settings-panel-${tab.toLowerCase()}`;
+  return `settings-panel-${tab.toLowerCase().replaceAll("_", "-")}`;
 }
 
 export function resolveSettingsTabNavigationIndex(

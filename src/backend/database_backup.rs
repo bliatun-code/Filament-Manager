@@ -197,8 +197,38 @@ fn ensure_full_backup_purchase_metadata_types_are_valid(
         ] {
             let _ = backup_optional_text(row, field, row_index)?;
         }
+        let _ = backup_optional_batch_lock(row, row_index)?;
+        if let Some(source) = backup_optional_text(row, "purchase_price_source", row_index)?
+            && !matches!(source.as_str(), "MANUAL" | "STANDARD_BATCH")
+        {
+            return Err(invalid_backup_purchase_field(
+                row_index,
+                "purchase_price_source",
+                "must be `MANUAL`, `STANDARD_BATCH`, or null",
+            ));
+        }
     }
     Ok(())
+}
+
+fn backup_optional_batch_lock(
+    row: &Map<String, Value>,
+    row_index: usize,
+) -> InventoryResult<Option<bool>> {
+    match row.get("purchase_price_batch_locked") {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Bool(value)) => Ok(Some(*value)),
+        Some(Value::Number(value))
+            if value.as_i64().is_some_and(|value| matches!(value, 0 | 1)) =>
+        {
+            Ok(Some(value.as_i64() == Some(1)))
+        }
+        Some(_) => Err(invalid_backup_purchase_field(
+            row_index,
+            "purchase_price_batch_locked",
+            "must be 0, 1, a boolean, or null",
+        )),
+    }
 }
 
 fn backup_optional_price(

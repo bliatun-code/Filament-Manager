@@ -1,0 +1,176 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+import type {
+  FilamentDefaultsSpoolRow,
+  FilamentPriceBatchReceipt,
+} from "../lib/settings_filament_defaults_model";
+import { SettingsFilamentDefaultsTab } from "./settings_filament_defaults_tab";
+
+(globalThis as typeof globalThis & { React: typeof React }).React = React;
+
+const t = (_key: string, fallback: string) => fallback;
+
+function spool(
+  spoolId: string,
+  overrides: Partial<FilamentDefaultsSpoolRow> = {},
+): FilamentDefaultsSpoolRow {
+  return {
+    spoolId,
+    masterId: `master-${spoolId}`,
+    groupKey: 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]',
+    vendor: "Bambu Lab",
+    material: "PLA",
+    filamentName: "PLA Basic",
+    colorName: spoolId,
+    nominalWeightG: 1000,
+    purchasePrice: null,
+    purchaseCurrency: null,
+    purchasePriceSource: null,
+    batchPriceLocked: false,
+    ownershipType: "OWNED",
+    status: "IN_STOCK",
+    ...overrides,
+  };
+}
+
+function renderTab({
+  batchReceipt,
+  readOnly = false,
+  settingsValid = true,
+}: {
+  batchReceipt?: FilamentPriceBatchReceipt | null;
+  readOnly?: boolean;
+  settingsValid?: boolean;
+} = {}) {
+  return renderToStaticMarkup(
+    <SettingsFilamentDefaultsTab
+      busy={false}
+      batchReceipt={batchReceipt}
+      readOnly={readOnly}
+      t={t}
+      defaultCurrency="NOK"
+      persistedGroupPrices={[
+        {
+          groupKey: 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]',
+          price: 249,
+          currency: "NOK",
+        },
+      ]}
+      settingsValid={settingsValid}
+      spoolRows={[
+        spool("white"),
+        spool("black", {
+          purchasePrice: 279,
+          purchaseCurrency: "NOK",
+          purchasePriceSource: "MANUAL",
+        }),
+        spool("locked", { batchPriceLocked: true }),
+        spool("empty", { status: "EMPTY" }),
+      ]}
+      lowStock={{
+        busy: false,
+        materialOptions: ["PLA", "PETG"],
+        policy: {
+          default_threshold_g: 200,
+          material_overrides: [],
+        },
+        policyValid: true,
+        readOnly,
+        onSave: () => {},
+      }}
+      onSaveDefaultCurrency={() => {}}
+      onSaveGroupPrice={() => {}}
+      onApplyBatch={() => ({
+        groupKey: 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]',
+        mode: "MISSING_ONLY",
+        price: 249,
+        currency: "NOK",
+        committed: true,
+        updated: [],
+        skipped: [],
+      })}
+      onOpenSpoolDetail={() => {}}
+    />,
+  );
+}
+
+test("filament defaults tab combines currency, low stock and collapsed price groups", () => {
+  const html = renderTab();
+
+  assert.match(html, /Default purchase currency/);
+  assert.match(html, /value="NOK"/);
+  assert.match(html, /Low-stock thresholds/);
+  assert.match(html, /Filament group prices/);
+  assert.match(html, /<details/);
+  assert.match(html, /Bambu Lab/);
+  assert.match(html, /4 spools/);
+  assert.match(html, /PLA Basic/);
+  assert.match(html, /Batch locked/);
+  assert.match(html, /Historical/);
+  assert.match(html, /Only missing prices/);
+  assert.match(html, /Update selected prices/);
+  assert.match(html, /Price spools missing a price/);
+  assert.match(html, /No supplier prices are hard-coded/);
+  assert.doesNotMatch(html, /24\.99|29\.99|34\.99/);
+});
+
+test("read-only filament defaults tab disables library-wide controls", () => {
+  const html = renderTab({ readOnly: true });
+
+  assert.match(html, /Manage library-wide filament defaults on the Host desktop app/);
+  assert.match(html, /<input[^>]*disabled[^>]*value="NOK"/);
+  assert.match(html, /Manage these library-wide thresholds on the Host desktop app/);
+});
+
+test("invalid or orphaned saved standards expose the repair state", () => {
+  const writable = renderTab({ settingsValid: false });
+  assert.match(writable, /have been excluded/);
+  assert.match(writable, /repairs the stored settings/);
+
+  const readOnly = renderTab({ readOnly: true, settingsValid: false });
+  assert.match(readOnly, /Repair them on the Host desktop app/);
+});
+
+test("overwrite uses AppModal and manual receipt entries navigate to spool details", () => {
+  const source = readFileSync(
+    new URL("./settings_filament_defaults_tab.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /<AppModal/);
+  assert.match(source, /Overwrite review/);
+  assert.match(source, /Review and confirm overwrite/);
+  assert.match(source, /individually set/);
+  assert.match(source, /filamentPriceSkipPresentation/);
+  assert.match(source, /presentation\.requiresManualUpdate/);
+  assert.match(source, /onOpenSpoolDetail\(entry\.spoolId\)/);
+  assert.match(source, /receipt stays here until you dismiss it or run another price update/i);
+});
+
+test("an app-owned receipt remains renderable after the settings route remounts", () => {
+  const receipt: FilamentPriceBatchReceipt = {
+    batchId: "batch-persisted",
+    groupKey: 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]',
+    mode: "MISSING_ONLY",
+    price: 249,
+    currency: "NOK",
+    committed: true,
+    updated: [],
+    skipped: [
+      {
+        spoolId: "locked",
+        spoolLabel: "PLA Basic · Locked",
+        reason: "BATCH_LOCKED",
+      },
+    ],
+  };
+
+  const html = renderTab({ batchReceipt: receipt });
+  assert.match(html, /Latest pricing receipt/);
+  assert.match(html, /PLA Basic · Locked/);
+  assert.match(html, /Protected from batch pricing/);
+});

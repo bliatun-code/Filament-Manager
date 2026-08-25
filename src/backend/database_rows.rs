@@ -35,6 +35,8 @@ pub(crate) fn map_spool_row(row: &Row<'_>) -> Result<SpoolRow, rusqlite::Error> 
         last_used_at: row.get(19)?,
         purchase_currency: row.get(20)?,
         supplier_reference: row.get(21)?,
+        purchase_price_batch_locked: row.get(22)?,
+        purchase_price_source: row.get(23)?,
     })
 }
 
@@ -43,20 +45,20 @@ pub(crate) fn map_spool_with_master_row(
 ) -> Result<SpoolWithMasterRow, rusqlite::Error> {
     let spool = map_spool_row(row)?;
     let master = FilamentMasterSummary {
-        id: row.get(22)?,
-        material: row.get(23)?,
-        filament_name: row.get(24)?,
-        color_name: row.get(25)?,
-        hex_color: row.get(26)?,
-        product_url: row.get(27)?,
-        default_weight: row.get(28)?,
-        vendor: row.get(29)?,
+        id: row.get(24)?,
+        material: row.get(25)?,
+        filament_name: row.get(26)?,
+        color_name: row.get(27)?,
+        hex_color: row.get(28)?,
+        product_url: row.get(29)?,
+        default_weight: row.get(30)?,
+        vendor: row.get(31)?,
     };
     Ok(SpoolWithMasterRow {
         spool,
         master,
-        location_name: row.get(30)?,
-        home_location_name: row.get(31)?,
+        location_name: row.get(32)?,
+        home_location_name: row.get(33)?,
         low_stock_threshold_g: None,
     })
 }

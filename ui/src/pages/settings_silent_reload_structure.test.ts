@@ -48,6 +48,18 @@ test("silent settings reloads still update persisted and live datasets", () => {
   }
 });
 
+test("a completed settings data reload also refreshes filament standards", () => {
+  const inventoryUpdateIndex = source.indexOf("setSpoolRows(pageData.spoolRows);");
+  const standardsReloadIndex = source.indexOf("await onDataReloaded?.();");
+  const revisionCommitIndex = source.indexOf(
+    "revisionTrackerRef.current = observedTracker;",
+  );
+
+  assert.ok(inventoryUpdateIndex > 0);
+  assert.ok(standardsReloadIndex > inventoryUpdateIndex);
+  assert.ok(revisionCommitIndex > standardsReloadIndex);
+});
+
 test("silent settings polling gates full reads on a library revision signal", () => {
   assert.match(source, /fetchLibraryDomainRevisionsForSource/);
   assert.match(source, /SETTINGS_REVISION_DOMAINS/);

@@ -11,6 +11,7 @@ import {
   preparePurchaseReceiptMetadataUpdate,
   purchaseReceiptMetadataDraftChanged,
   purchaseReceiptMetadataKeepsLegacyCurrencylessPrice,
+  updatePurchasePriceDraft,
 } from "./purchase_receipt_metadata";
 
 test("empty receipt metadata remains valid and legacy fields hydrate without loss", () => {
@@ -38,6 +39,20 @@ test("empty receipt metadata remains valid and legacy fields hydrate without los
     batchCode: "BATCH-42",
     supplierReference: "",
   });
+});
+
+test("a valid default currency follows a newly entered price without creating empty metadata", () => {
+  const empty = emptyPurchaseReceiptMetadataDraft();
+  const priced = updatePurchasePriceDraft(empty, "249", " nok ");
+  assert.equal(priced.currency, "NOK");
+  assert.equal(priced.pricePerRoll, "249");
+  assert.deepEqual(updatePurchasePriceDraft(priced, "", "NOK"), empty);
+  assert.equal(updatePurchasePriceDraft(empty, "249", "N0K").currency, "");
+  assert.equal(
+    updatePurchasePriceDraft({ ...empty, currency: "EUR" }, "249", "NOK")
+      .currency,
+    "EUR",
+  );
 });
 
 test("unchanged historical price without currency can be saved while any price change is strict", () => {

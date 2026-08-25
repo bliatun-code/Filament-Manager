@@ -190,6 +190,7 @@ test("updateInventorySpoolDetails keeps one public atomic payload in every saved
       batch_code: null,
       supplier_reference: null,
     },
+    purchase_price_batch_locked: true,
   });
   const gatewayCalls: UpdateSpoolDetailsInput[] = [];
   const updateThroughGateway = async (gatewayInput: UpdateSpoolDetailsInput) => {

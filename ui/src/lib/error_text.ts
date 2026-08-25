@@ -1,6 +1,7 @@
 import {
   appErrorDiagnosticSummary,
   localizedAppError,
+  parseAppError,
 } from "../../../src-tauri/companion_browser/app_error.js";
 import type { I18nContextValue } from "./i18n";
 
@@ -20,6 +21,10 @@ export function toErrorMessage(
 }
 
 export const commandErrorText = toErrorMessage;
+
+export function appErrorCode(error: unknown): string | null {
+  return parseAppError(error)?.code ?? null;
+}
 
 export function diagnosticErrorText(error: unknown): string {
   return appErrorDiagnosticSummary(error);

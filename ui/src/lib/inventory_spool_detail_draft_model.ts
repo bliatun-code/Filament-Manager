@@ -13,6 +13,7 @@ export type InventorySpoolCommonDetailsDraft = {
   ownerName: string;
   ownershipNote: string;
   ownershipType: OwnershipType;
+  purchasePriceBatchLocked: boolean;
   purchaseMetadata: PurchaseReceiptMetadataDraft;
   tareWeight: string;
 };
@@ -37,6 +38,7 @@ export type ParsedInventorySpoolCommonDetailsDraft = {
   ownerName: string | null;
   ownershipNote: string | null;
   ownershipType: OwnershipType;
+  purchasePriceBatchLocked: boolean;
   tareWeightGrams: number;
 };
 
@@ -64,6 +66,7 @@ export function buildInventorySpoolDetailDraftBaseline(
       ownerName: borrowedIn ? spool.ownerName ?? "" : "",
       ownerContact: borrowedIn ? spool.ownerContact ?? "" : "",
       ownershipNote: borrowedIn ? spool.ownershipNote ?? "" : "",
+      purchasePriceBatchLocked: spool.purchasePriceBatchLocked ?? false,
       purchaseMetadata: buildPurchaseReceiptMetadataDraft({
         purchase_price: spool.purchasePrice ?? null,
         purchase_currency: spool.purchaseCurrency ?? null,
@@ -107,6 +110,7 @@ export function parseInventorySpoolCommonDetailsDraft(
       ownerName: borrowedIn ? ownerName : null,
       ownerContact: borrowedIn ? normalizedText(draft.ownerContact) || null : null,
       ownershipNote: borrowedIn ? normalizedText(draft.ownershipNote) || null : null,
+      purchasePriceBatchLocked: draft.purchasePriceBatchLocked,
       tareWeightGrams: parsedTare,
     },
   };
@@ -125,6 +129,7 @@ export function inventorySpoolCommonDetailsDraftChanged(
       normalizedText(baseline.ownerName) !== normalizedText(draft.ownerName) ||
       normalizedText(baseline.ownerContact) !== normalizedText(draft.ownerContact) ||
       normalizedText(baseline.ownershipNote) !== normalizedText(draft.ownershipNote) ||
+      baseline.purchasePriceBatchLocked !== draft.purchasePriceBatchLocked ||
       purchaseReceiptMetadataDraftChanged(
         baseline.purchaseMetadata,
         draft.purchaseMetadata,

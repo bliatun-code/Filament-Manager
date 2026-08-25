@@ -191,6 +191,14 @@
       "category": "settings"
     },
     {
+      "id": "settings-filament-defaults",
+      "aliases": ["filament-defaults", "filament-standards"],
+      "page": "settings",
+      "settingsTab": "FILAMENT_DEFAULTS",
+      "category": "settings",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "settings-updates",
       "aliases": ["update-check", "settings-update-check"],
       "page": "settings",

@@ -35,6 +35,10 @@ export type SpoolRow = {
   purchase_date?: string | null;
   batch_code?: string | null;
   supplier_reference?: string | null;
+  /** Missing on payloads from a Host predating filament price standards. */
+  purchase_price_batch_locked?: boolean;
+  /** MANUAL, STANDARD_BATCH, or missing on legacy/unpriced rows. */
+  purchase_price_source?: string | null;
 };
 
 export type SpoolHistoryEventRow = {
@@ -123,6 +127,7 @@ export type UpdateSpoolDetailsInput = {
     ownership_note?: string | null;
   };
   purchase_metadata?: PurchaseReceiptMetadata;
+  purchase_price_batch_locked?: boolean;
 };
 
 export type UpdateSpoolRfidTagInput = {
@@ -363,6 +368,9 @@ export function buildLibrarySyncHostSpoolDetailsPayload(
   // while an explicit all-null object means clear every purchase field.
   if (input.purchase_metadata !== undefined) {
     payload.purchase_metadata = input.purchase_metadata;
+  }
+  if (input.purchase_price_batch_locked !== undefined) {
+    payload.purchase_price_batch_locked = input.purchase_price_batch_locked;
   }
 
   return payload;

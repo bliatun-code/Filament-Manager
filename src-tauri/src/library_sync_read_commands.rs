@@ -1,7 +1,7 @@
 use crate::app_services::CompanionSpoolDetail;
 use crate::backend::filament_database::{
-    FilamentMasterCatalogRow, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
-    WishlistItemRow,
+    FilamentMasterCatalogRow, FilamentStandardsSnapshot, PrinterOverviewRow, SpoolLoanDetailsRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{
     FilamentConsumptionRow, StatisticsPeriod, StatisticsPeriodReport,
@@ -9,7 +9,7 @@ use crate::backend::statistics::{
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     library_sync_host_input, prepare_library_sync_host_checked, prepare_library_sync_host_read,
-    save_library_sync_success,
+    require_host_filament_price_standards_capability, save_library_sync_success,
 };
 use crate::library_sync_host_client::get_library_sync_host_json_authenticated;
 use crate::library_sync_models::{
@@ -153,6 +153,37 @@ fn fetch_library_sync_printer_settings_blocking(
     save_library_sync_success(
         state,
         "Host printer settings refreshed.",
+        health.device_name.as_deref(),
+    )?;
+
+    Ok(snapshot)
+}
+
+#[tauri::command]
+pub(crate) async fn fetch_library_sync_filament_standards(
+    state: tauri::State<'_, AppState>,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<FilamentStandardsSnapshot, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || fetch_library_sync_filament_standards_blocking(&state, input))
+        .await
+}
+
+fn fetch_library_sync_filament_standards_blocking(
+    state: &AppState,
+    input: ValidateLibrarySyncHostInput,
+) -> Result<FilamentStandardsSnapshot, String> {
+    let (normalized_base_url, health) = prepare_library_sync_host_read(&input)?;
+    require_host_filament_price_standards_capability(&health.capabilities, true)?;
+    let snapshot: FilamentStandardsSnapshot = get_library_sync_host_json_authenticated(
+        state,
+        &normalized_base_url,
+        "/api/v1/library/filament-standards",
+    )?;
+
+    save_library_sync_success(
+        state,
+        "Host filament standards refreshed.",
         health.device_name.as_deref(),
     )?;
 

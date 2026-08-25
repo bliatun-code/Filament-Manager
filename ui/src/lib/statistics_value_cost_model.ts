@@ -128,6 +128,36 @@ export function statisticsMissingReasonLabel(t: TranslateFn, reason: string): st
   }
 }
 
+export function statisticsMissingReasonOpensFilamentDefaults(reason: string): boolean {
+  return statisticsMissingReasonFilamentDefaultsTarget(reason) != null;
+}
+
+export type StatisticsFilamentDefaultsTarget =
+  | "DEFAULT_CURRENCY"
+  | "GROUP_PRICING";
+
+export function statisticsMissingReasonFilamentDefaultsTarget(
+  reason: string,
+): StatisticsFilamentDefaultsTarget | null {
+  const token = reason.trim().toLowerCase();
+  if (
+    token === "missing_purchase_currency" ||
+    token === "purchase_currency_missing" ||
+    token === "purchase_currency_invalid"
+  ) {
+    return "DEFAULT_CURRENCY";
+  }
+  return (
+    token === "missing_purchase_price" ||
+    token === "purchase_price_missing" ||
+    token === "invalid_purchase_price" ||
+    token === "negative_purchase_price" ||
+    token === "purchase_price_invalid"
+  )
+    ? "GROUP_PRICING"
+    : null;
+}
+
 export function statisticsCoveragePercent(summary: StatisticsMonetarySummary): number | null {
   if (summary.coverage.total_rows <= 0) {
     return null;

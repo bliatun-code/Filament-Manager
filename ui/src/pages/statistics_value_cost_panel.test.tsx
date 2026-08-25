@@ -9,6 +9,7 @@ import type {
   StatisticsMonetarySummary,
   StatisticsValueCostReport,
 } from "../lib/tauri_client";
+import { statisticsMissingReasonOpensFilamentDefaults } from "../lib/statistics_value_cost_model";
 import {
   InventoryValueTraceCard,
   MaterialCostTraceCard,
@@ -108,6 +109,53 @@ test("value and cost panel keeps currencies and ownership totals visibly separat
   assert.match(html, /aria-valuenow="75"/);
   assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 2);
   assert.doesNotMatch(html, /145\.00/);
+});
+
+test("purchase price and currency coverage gaps open filament defaults accessibly", () => {
+  const actionableReport: StatisticsValueCostReport = {
+    ...report,
+    inventory_value: monetarySummary({
+      coverage: {
+        total_rows: 5,
+        valued_rows: 0,
+        unvalued_rows: 5,
+        covered_grams: 0,
+        uncovered_grams: 1_000,
+        missing_reasons: [
+          { reason: "purchase_price_missing", rows: 1, grams: 200 },
+          { reason: "purchase_price_invalid", rows: 1, grams: 200 },
+          { reason: "purchase_currency_missing", rows: 1, grams: 200 },
+          { reason: "purchase_currency_invalid", rows: 1, grams: 200 },
+          { reason: "remaining_weight_missing", rows: 1, grams: 200 },
+        ],
+        trace_total_rows: 5,
+        trace_returned_rows: 5,
+        trace_truncated: false,
+      },
+    }),
+  };
+  const html = renderToStaticMarkup(
+    <StatisticsValueCostPanel
+      hostUpgradeRequired={false}
+      loading={false}
+      locale="en"
+      onOpenFilamentDefaults={() => {}}
+      periodLabel="1–31 Aug 2026"
+      report={actionableReport}
+      t={t}
+    />,
+  );
+
+  assert.equal((html.match(/Open filament defaults/g) ?? []).length, 4);
+  assert.match(html, /aria-label="Purchase price is missing\. Open filament defaults"/);
+  assert.match(html, /aria-label="Purchase currency is invalid\. Open filament defaults"/);
+  assert.doesNotMatch(
+    html,
+    /aria-label="Remaining weight is missing\. Open filament defaults"/,
+  );
+  assert.equal(statisticsMissingReasonOpensFilamentDefaults("purchase_price_missing"), true);
+  assert.equal(statisticsMissingReasonOpensFilamentDefaults("purchase_currency_invalid"), true);
+  assert.equal(statisticsMissingReasonOpensFilamentDefaults("remaining_weight_missing"), false);
 });
 
 test("legacy Host state asks for an upgrade and never invents a local total", () => {

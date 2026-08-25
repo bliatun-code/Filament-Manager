@@ -1834,6 +1834,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
     "settings-general",
   );
   assert.equal(
+    normalizeDesktopVisualQaScenario("filament-standards"),
+    "settings-filament-defaults",
+  );
+  assert.equal(
     normalizeDesktopVisualQaScenario("update-check"),
     "settings-updates",
   );
@@ -2091,6 +2095,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     "LIBRARY",
   );
   assert.equal(
+    desktopVisualQaScenarioDefinition("filament-defaults").settingsTab,
+    "FILAMENT_DEFAULTS",
+  );
+  assert.equal(
     desktopVisualQaScenarioDefinition("library-role-dialog").settingsTab,
     "LIBRARY",
   );
@@ -2178,6 +2186,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
 });
 
 test("desktop screenshot gate marks DB-fixture visual states", () => {
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("filament-defaults"),
+    true,
+  );
   assert.equal(
     desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"),
     true,
@@ -2435,7 +2447,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 49);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 50);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",

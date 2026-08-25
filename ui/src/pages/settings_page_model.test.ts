@@ -50,6 +50,7 @@ test("settings page chrome labels keep the page header copy explicit", () => {
 test("settings page tab labels keep all primary tabs explicit", () => {
   const labels = buildSettingsPageTabLabels({
     CATALOG: "Filament catalogue",
+    FILAMENT_DEFAULTS: "Filament defaults",
     GENERAL: "General",
     LIBRARY: "Library & web app",
     MAINTENANCE: "Program maintenance",
@@ -58,6 +59,7 @@ test("settings page tab labels keep all primary tabs explicit", () => {
 
   assert.deepEqual(labels, {
     CATALOG: "Filament catalogue",
+    FILAMENT_DEFAULTS: "Filament defaults",
     GENERAL: "General",
     LIBRARY: "Library & web app",
     MAINTENANCE: "Program maintenance",
@@ -68,6 +70,7 @@ test("settings page tab labels keep all primary tabs explicit", () => {
 test("settings page tabs keep the intended navigation order", () => {
   assert.deepEqual(SETTINGS_PAGE_TAB_ORDER, [
     "GENERAL",
+    "FILAMENT_DEFAULTS",
     "LIBRARY",
     "PRINTERS",
     "CATALOG",
@@ -77,6 +80,7 @@ test("settings page tabs keep the intended navigation order", () => {
   assert.deepEqual(
     buildSettingsPageTabs({
       CATALOG: "Filament catalogue",
+      FILAMENT_DEFAULTS: "Filament defaults",
       GENERAL: "General",
       LIBRARY: "Library & web app",
       MAINTENANCE: "Program maintenance",
@@ -84,6 +88,7 @@ test("settings page tabs keep the intended navigation order", () => {
     }),
     [
       { id: "GENERAL", label: "General" },
+      { id: "FILAMENT_DEFAULTS", label: "Filament defaults" },
       { id: "LIBRARY", label: "Library & web app" },
       { id: "PRINTERS", label: "3D printers" },
       { id: "CATALOG", label: "Filament catalogue" },
@@ -95,6 +100,7 @@ test("settings page tabs keep the intended navigation order", () => {
 test("settings page tab buttons mark only the active tab", () => {
   const tabs = buildSettingsPageTabs({
     CATALOG: "Filament catalogue",
+    FILAMENT_DEFAULTS: "Filament defaults",
     GENERAL: "General",
     LIBRARY: "Library & web app",
     MAINTENANCE: "Program maintenance",
@@ -108,6 +114,7 @@ test("settings page tab buttons mark only the active tab", () => {
     })),
     [
       { active: false, id: "GENERAL" },
+      { active: false, id: "FILAMENT_DEFAULTS" },
       { active: false, id: "LIBRARY" },
       { active: true, id: "PRINTERS" },
       { active: false, id: "CATALOG" },
@@ -118,6 +125,7 @@ test("settings page tab buttons mark only the active tab", () => {
 
 test("settings initial tab normalizer preserves valid tab keys", () => {
   assert.equal(normalizeSettingsInitialTab("GENERAL"), "GENERAL");
+  assert.equal(normalizeSettingsInitialTab("FILAMENT_DEFAULTS"), "FILAMENT_DEFAULTS");
   assert.equal(normalizeSettingsInitialTab("LIBRARY"), "LIBRARY");
   assert.equal(normalizeSettingsInitialTab("PRINTERS"), "PRINTERS");
   assert.equal(normalizeSettingsInitialTab("CATALOG"), "CATALOG");
@@ -125,6 +133,7 @@ test("settings initial tab normalizer preserves valid tab keys", () => {
   assert.equal(normalizeSettingsInitialTab("library"), "GENERAL");
   assert.equal(normalizeSettingsInitialTab(null), "GENERAL");
   assert.equal(isSettingsTabKey("LIBRARY"), true);
+  assert.equal(isSettingsTabKey("FILAMENT_DEFAULTS"), true);
   assert.equal(isSettingsTabKey("library"), false);
   assert.equal(isSettingsTabKey(null), false);
 });

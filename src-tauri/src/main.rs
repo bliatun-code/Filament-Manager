@@ -39,6 +39,7 @@ mod inventory_bulk_models;
 mod inventory_command_support;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
+mod inventory_filament_standards_commands;
 mod inventory_loan_commands;
 mod inventory_location_commands;
 mod inventory_location_models;
@@ -348,6 +349,9 @@ fn main() {
             inventory_location_commands::delete_inventory_location,
             inventory_location_commands::merge_inventory_locations,
             inventory_bulk_commands::execute_inventory_bulk_mutation,
+            inventory_filament_standards_commands::get_filament_standards,
+            inventory_filament_standards_commands::save_filament_standards,
+            inventory_filament_standards_commands::apply_filament_price_batch,
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
@@ -404,6 +408,7 @@ fn main() {
             library_sync_cache_commands::save_library_sync_spool_cache,
             library_sync_read_commands::fetch_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_printer_settings,
+            library_sync_read_commands::fetch_library_sync_filament_standards,
             library_sync_cache_commands::fetch_cached_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_loans,
             library_sync_read_commands::fetch_library_sync_filament_consumption,

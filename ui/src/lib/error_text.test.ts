@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { commandErrorText, diagnosticErrorText, toErrorMessage } from "./error_text";
+import {
+  appErrorCode,
+  commandErrorText,
+  diagnosticErrorText,
+  toErrorMessage,
+} from "./error_text";
 
 test("toErrorMessage keeps unknown technical details out of ordinary UI", () => {
   assert.equal(toErrorMessage(new Error("boom"), "Fallback"), "Fallback");
@@ -62,4 +67,36 @@ test("referenced location deletion error explains the required cleanup", () => {
     toErrorMessage(error, "Kunne ikke slette lokasjonen.", t),
     "Flytt alle ruller og underlokasjoner først.",
   );
+});
+
+test("stale filament pricing reviews use an actionable localized message", () => {
+  const error = new Error(
+    JSON.stringify({
+      code: "filament_price_batch.stale_review",
+      safe_detail: null,
+      diagnostic_id: "fm-price-review-1",
+    }),
+  );
+  const t = (key: string, fallback = "") =>
+    key === "errors.filamentStandardsStaleReview"
+      ? "Rullene er endret. Se gjennom prisgruppen på nytt."
+      : fallback;
+
+  assert.equal(
+    toErrorMessage(error, "Kunne ikke bruke filamentprisene.", t),
+    "Rullene er endret. Se gjennom prisgruppen på nytt.",
+  );
+});
+
+test("structured Host capability errors expose a safe machine-readable code", () => {
+  const error = new Error(
+    JSON.stringify({
+      code: "filament_standards.host_unsupported",
+      safe_detail: null,
+      diagnostic_id: "fm-standards-host-1",
+    }),
+  );
+
+  assert.equal(appErrorCode(error), "filament_standards.host_unsupported");
+  assert.equal(appErrorCode(new Error("network failed")), null);
 });

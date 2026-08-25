@@ -73,13 +73,18 @@ import {
 import { StatisticsForecastPanel } from "./statistics_forecast_panel";
 import { StatisticsPeriodPicker } from "./statistics_period_picker";
 import { StatisticsValueCostPanel } from "./statistics_value_cost_panel";
+import type { StatisticsFilamentDefaultsTarget } from "../lib/statistics_value_cost_model";
 import { useStatisticsPageData } from "./use_statistics_page_data";
 
 function loanPartyName(row: NormalizedLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
 }
 
-export default function StatisticsPage() {
+type StatisticsPageProps = {
+  onOpenFilamentDefaults: (target: StatisticsFilamentDefaultsTarget) => void;
+};
+
+export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPageProps) {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const tauri = isTauri();
@@ -571,6 +576,7 @@ export default function StatisticsPage() {
         }
         loading={loading}
         locale={locale}
+        onOpenFilamentDefaults={onOpenFilamentDefaults}
         periodLabel={periodRangeLabel}
         report={periodReport?.value_cost ?? null}
         t={t}

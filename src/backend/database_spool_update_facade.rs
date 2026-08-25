@@ -2,7 +2,10 @@ use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
 use super::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
-    set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
+    set_spool_location as set_spool_location_row,
+    set_spool_purchase_price_batch_locked as set_spool_purchase_price_batch_locked_row,
+    set_spool_purchase_price_source as set_spool_purchase_price_source_row,
+    update_spool_details as update_spool_details_row,
     update_spool_ownership as update_spool_ownership_row,
     update_spool_ownership_metadata as update_spool_ownership_metadata_row,
     update_spool_purchase_metadata as update_spool_purchase_metadata_row,
@@ -14,6 +17,22 @@ use super::database_spool_updates::{
 use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 impl FilamentDatabase {
+    pub fn set_spool_purchase_price_batch_locked(
+        &self,
+        spool_id: &str,
+        locked: bool,
+    ) -> InventoryResult<()> {
+        set_spool_purchase_price_batch_locked_row(self.connection(), spool_id, locked)
+    }
+
+    pub fn set_spool_purchase_price_source(
+        &self,
+        spool_id: &str,
+        source: Option<&str>,
+    ) -> InventoryResult<()> {
+        set_spool_purchase_price_source_row(self.connection(), spool_id, source)
+    }
+
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
         update_spool_status_row(self.connection(), spool_id, status)
     }

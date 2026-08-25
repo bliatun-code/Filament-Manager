@@ -31,6 +31,7 @@ export type WishlistQueuePanelProps = {
   busy: boolean;
   catalogMasterById: Map<string, MasterCatalogRow>;
   confirmWishlistRemoveId: string | null;
+  defaultPurchaseCurrency?: string;
   items: WishlistItemRow[];
   loading: boolean;
   onCancelDeleteItem: () => void;
@@ -81,6 +82,7 @@ export function WishlistQueuePanel({
   busy,
   catalogMasterById,
   confirmWishlistRemoveId,
+  defaultPurchaseCurrency = "",
   items,
   loading,
   onCancelDeleteItem,
@@ -419,6 +421,7 @@ export function WishlistQueuePanel({
       {receiptItem ? (
         <WishlistReceiptModal
           busy={busy || receiptSubmitting}
+          defaultPurchaseCurrency={defaultPurchaseCurrency}
           errors={receiptMetadataErrors}
           itemTitle={formatInventoryDisplayTitle(
             receiptItem.material,

@@ -123,6 +123,11 @@ fn import_inventory_spools_rows_in_transaction(
                     supplier_reference: purchase_metadata
                         .as_ref()
                         .and_then(|metadata| metadata.supplier_reference.clone()),
+                    purchase_price_batch_locked: false,
+                    purchase_price_source: purchase_metadata
+                        .as_ref()
+                        .and_then(|metadata| metadata.purchase_price)
+                        .map(|_| "MANUAL".to_string()),
                 },
             )?;
             created_count += 1;

@@ -12,7 +12,8 @@ pub(crate) fn get_spool_by_qr(
         "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
                 rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
                 location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at,
-                purchase_currency, supplier_reference
+                purchase_currency, supplier_reference, purchase_price_batch_locked,
+                purchase_price_source
          FROM filament_spools
          WHERE qr_code = ?1 AND deleted_at IS NULL",
     )?;
@@ -28,7 +29,8 @@ pub(crate) fn get_spool_by_id(
         "SELECT id, master_id, qr_code, status, ownership_type, owner_name, owner_contact,
                 rfid_tag, rfid_observed_at, ownership_note, initial_weight_g, current_weight_g, remaining_g, spool_tare_weight_g,
                 location_id, home_location_id, purchase_date, purchase_price, batch_code, last_used_at,
-                purchase_currency, supplier_reference
+                purchase_currency, supplier_reference, purchase_price_batch_locked,
+                purchase_price_source
          FROM filament_spools
          WHERE id = ?1
          LIMIT 1",
@@ -48,7 +50,8 @@ pub(crate) fn get_spool_with_master_by_id(
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, s.purchase_currency,
-                s.supplier_reference, m.id, m.material,
+                s.supplier_reference, s.purchase_price_batch_locked, s.purchase_price_source,
+                m.id, m.material,
                 m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
                 location.name, home_location.name
          FROM filament_spools s
@@ -73,7 +76,8 @@ pub(crate) fn list_spools_with_master_by_rfid(
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, s.purchase_currency,
-                s.supplier_reference, m.id, m.material,
+                s.supplier_reference, s.purchase_price_batch_locked, s.purchase_price_source,
+                m.id, m.material,
                 m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
                 location.name, home_location.name
          FROM filament_spools s
@@ -103,7 +107,8 @@ pub(crate) fn list_spools_with_master(
                 s.owner_contact, s.rfid_tag, s.rfid_observed_at, s.ownership_note, s.initial_weight_g, s.current_weight_g,
                 s.remaining_g, s.spool_tare_weight_g, s.location_id, s.home_location_id, s.purchase_date,
                 s.purchase_price, s.batch_code, s.last_used_at, s.purchase_currency,
-                s.supplier_reference, m.id, m.material,
+                s.supplier_reference, s.purchase_price_batch_locked, s.purchase_price_source,
+                m.id, m.material,
                 m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
                 location.name, home_location.name
          FROM filament_spools s

@@ -31,6 +31,12 @@ pub struct SpoolRow {
     /// Missing on payloads cached or fetched from a schema-3 Host.
     #[serde(default)]
     pub supplier_reference: Option<String>,
+    /// Missing on payloads cached or fetched from a pre-price-standards Host.
+    #[serde(default)]
+    pub purchase_price_batch_locked: bool,
+    /// `None` on older Host/cache payloads and on spools without a purchase price.
+    #[serde(default)]
+    pub purchase_price_source: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -112,5 +118,7 @@ mod tests {
         assert_eq!(row.low_stock_threshold_g, None);
         assert_eq!(row.spool.purchase_currency, None);
         assert_eq!(row.spool.supplier_reference, None);
+        assert!(!row.spool.purchase_price_batch_locked);
+        assert_eq!(row.spool.purchase_price_source, None);
     }
 }

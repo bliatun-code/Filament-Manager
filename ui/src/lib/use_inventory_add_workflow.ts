@@ -32,6 +32,7 @@ type InventoryAddWorkflowInput = {
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
+  defaultPurchaseCurrency: string;
   ensureLocalWriteAllowed: () => boolean;
   error: string | null;
   infoMessage: string | null;
@@ -56,6 +57,7 @@ export function useInventoryAddWorkflow({
   clientHostBaseUrl,
   clientLibraryId,
   clientReadOnly,
+  defaultPurchaseCurrency,
   ensureLocalWriteAllowed,
   error,
   infoMessage,
@@ -359,6 +361,7 @@ export function useInventoryAddWorkflow({
     busy,
     catalogMasterById,
     confirmWishlistRemoveId,
+    defaultPurchaseCurrency,
     items: wishlistItems,
     loading: wishlistLoading,
     onAddPurchase: openPurchaseModal,

@@ -28,6 +28,7 @@ import {
 import type { LibrarySyncMode } from "./settings_library_sync_model";
 
 type UseSettingsPageReloadInput = {
+  onDataReloaded?: () => Promise<unknown> | unknown;
   setBambuLiveIntegrations: Dispatch<SetStateAction<Record<string, BambuLiveIntegrationEntry["config"]>>>;
   setCatalogMasters: Dispatch<SetStateAction<MasterCatalogRow[]>>;
   setError: Dispatch<SetStateAction<string | null>>;
@@ -64,6 +65,7 @@ const SETTINGS_REVISION_DOMAINS = [
 class SettingsRevisionPollError extends Error {}
 
 export function useSettingsPageReload({
+  onDataReloaded,
   setBambuLiveIntegrations,
   setCatalogMasters,
   setError,
@@ -163,6 +165,7 @@ export function useSettingsPageReload({
         setLibrarySyncValidation(null);
         setSwatchDraftById(pageData.swatchDraftById);
       }
+      await onDataReloaded?.();
       if (options?.revisionCheck) {
         if (observedTracker && pageData.revisionPollComplete) {
           revisionTrackerRef.current = observedTracker;
@@ -200,6 +203,7 @@ export function useSettingsPageReload({
       );
     }
   }, [
+    onDataReloaded,
     setBambuLiveIntegrations,
     setCatalogMasters,
     setError,

@@ -1,6 +1,6 @@
 use crate::backend::filament_database::{
-    FilamentDatabase, FilamentMasterCatalogRow, LibrarySyncSettingsRow, PrinterOverviewRow,
-    SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
 use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine, StatisticsPeriod};
 use crate::companion_error::CompanionApiError;
@@ -8,8 +8,9 @@ use crate::companion_http::require_allowed_host;
 use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
-    INVENTORY_BULK_MUTATION_CAPABILITY, LOAN_METADATA_CAPABILITY,
-    PURCHASE_RECEIPT_METADATA_CAPABILITY, STATISTICS_VALUE_COST_REPORT_CAPABILITY,
+    FILAMENT_PRICE_STANDARDS_CAPABILITY, INVENTORY_BULK_MUTATION_CAPABILITY,
+    LOAN_METADATA_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
+    STATISTICS_VALUE_COST_REPORT_CAPABILITY,
 };
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
@@ -36,6 +37,7 @@ pub(super) async fn handle_health(
                     INVENTORY_BULK_MUTATION_CAPABILITY,
                     PURCHASE_RECEIPT_METADATA_CAPABILITY,
                     STATISTICS_VALUE_COST_REPORT_CAPABILITY,
+                    FILAMENT_PRICE_STANDARDS_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
                 access_mode: "trusted-lan",
@@ -45,6 +47,22 @@ pub(super) async fn handle_health(
             }))
         })
         .await
+}
+
+pub(super) async fn handle_library_filament_standards(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<FilamentStandardsSnapshot>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let snapshot = state
+        .run_blocking("library filament standards", move |state| {
+            state
+                .service
+                .get_filament_standards()
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
+    Ok(Json(snapshot))
 }
 
 pub(super) async fn handle_library_snapshot(

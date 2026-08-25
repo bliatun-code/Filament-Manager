@@ -35,7 +35,7 @@ export function SettingsTabNav({ label, onTabChange, tabs }: SettingsTabNavProps
   return (
     <div className="mt-6 rounded-lg border border-slate-300/50 bg-white/44 p-1.5 dark:border-slate-700/70 dark:bg-slate-950/24">
       <div
-        className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 min-[1050px]:grid-cols-5"
+        className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 min-[1050px]:grid-cols-6"
         role="tablist"
         aria-label={label}
         aria-orientation="horizontal"

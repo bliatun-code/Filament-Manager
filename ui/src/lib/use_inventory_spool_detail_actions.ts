@@ -68,6 +68,7 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   selectedSpoolOwnerNameDraft: string;
   selectedSpoolOwnershipDraft: OwnershipType;
   selectedSpoolOwnershipNoteDraft: string;
+  selectedSpoolPurchasePriceBatchLockedDraft: boolean;
   selectedSpoolPurchaseMetadataDraft: PurchaseReceiptMetadataDraft;
   selectedSpoolResolvedTare: number;
   selectedSpoolTareDraft: string;
@@ -139,6 +140,7 @@ export function useInventorySpoolDetailActions({
   selectedSpoolOwnerNameDraft,
   selectedSpoolOwnershipDraft,
   selectedSpoolOwnershipNoteDraft,
+  selectedSpoolPurchasePriceBatchLockedDraft,
   selectedSpoolPurchaseMetadataDraft,
   selectedSpoolResolvedTare,
   selectedSpoolTareDraft,
@@ -267,6 +269,7 @@ export function useInventorySpoolDetailActions({
       ownerName: selectedSpoolOwnerNameDraft,
       ownerContact: selectedSpoolOwnerContactDraft,
       ownershipNote: selectedSpoolOwnershipNoteDraft,
+      purchasePriceBatchLocked: selectedSpoolPurchasePriceBatchLockedDraft,
       purchaseMetadata: selectedSpoolPurchaseMetadataDraft,
       tareWeight: selectedSpoolTareDraft,
     });
@@ -315,6 +318,9 @@ export function useInventorySpoolDetailActions({
         (parsed.value.homeLocation ?? "");
       const tareWeightChanged =
         parsed.value.tareWeightGrams !== selectedSpoolResolvedTare;
+      const purchasePriceBatchLockChanged =
+        parsed.value.purchasePriceBatchLocked !==
+        (selectedSpool.purchasePriceBatchLocked ?? false);
       const ownershipChanged =
         selectedSpool.ownershipType !== parsed.value.ownershipType ||
         (isBorrowedInOwnership(parsed.value.ownershipType) &&
@@ -329,6 +335,9 @@ export function useInventorySpoolDetailActions({
           qr_code: selectedSpool.qrCode ?? null,
           status: selectedSpool.status,
           location: currentLocationReference,
+          ...(purchasePriceBatchLockChanged
+            ? { purchase_price_batch_locked: parsed.value.purchasePriceBatchLocked }
+            : {}),
           // An empty string deliberately means "clear" for the local Tauri command.
           // Serde cannot otherwise distinguish JSON null from an omitted nested Option.
           ...(homeLocationChanged

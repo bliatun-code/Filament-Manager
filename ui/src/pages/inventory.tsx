@@ -62,6 +62,7 @@ import { useInventorySpoolDetailUtilityActions } from "../lib/use_inventory_spoo
 import { useInventorySpoolQrArtifacts } from "../lib/use_inventory_spool_qr_artifacts";
 import { useInventorySpoolSelection } from "../lib/use_inventory_spool_selection";
 import { useInventoryWriteGuards } from "../lib/use_inventory_write_guards";
+import { useDefaultPurchaseCurrency } from "../lib/use_default_purchase_currency";
 import {
   useInventoryUnsavedChangesGuard,
   type InventoryNavigationGuard,
@@ -143,6 +144,12 @@ export default function InventoryPage({
     setRfidCaptureFieldsBySlotId,
     tauriAvailable: tauri,
     t,
+  });
+  const defaultPurchaseCurrency = useDefaultPurchaseCurrency({
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    tauriAvailable: tauri,
   });
   const locationUsageById = useMemo(
     () => inventoryLocationUsageById(spools),
@@ -340,6 +347,7 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    defaultPurchaseCurrency,
     ensureLocalWriteAllowed,
     error,
     infoMessage,
@@ -382,7 +390,18 @@ export default function InventoryPage({
     if (!navigationIntent) {
       return;
     }
-    if (navigationIntent.kind === "LOW_STOCK") {
+    if (navigationIntent.kind === "SPOOL_DETAIL") {
+      if (!librarySyncReady || loading) {
+        return;
+      }
+      const targetSpool = spools.find((spool) => spool.id === navigationIntent.spoolId);
+      if (!targetSpool) {
+        return;
+      }
+      resetFilters();
+      setActiveWorkspaceView("STOCK");
+      openRollModal(targetSpool.id);
+    } else if (navigationIntent.kind === "LOW_STOCK") {
       setActiveWorkspaceView("STOCK");
       showLowStockList();
     } else if (navigationIntent.kind === "ADD_SPOOL") {
@@ -410,12 +429,17 @@ export default function InventoryPage({
     onConsumeNavigationIntent?.();
   }, [
     navigationIntent,
+    librarySyncReady,
+    loading,
     onConsumeNavigationIntent,
     openAddModal,
     openPurchaseQueue,
+    openRollModal,
+    resetFilters,
     resetPurchaseQueue,
     setInfoMessage,
     showLowStockList,
+    spools,
     t,
   ]);
 
@@ -468,6 +492,7 @@ export default function InventoryPage({
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft,
     selectedSpoolPurchaseMetadataDraft,
     selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
@@ -484,6 +509,7 @@ export default function InventoryPage({
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchasePriceBatchLockedDraft,
     setSelectedSpoolPurchaseMetadataDraft,
     setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
@@ -831,6 +857,7 @@ export default function InventoryPage({
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft,
     selectedSpoolPurchaseMetadataDraft,
     selectedSpoolResolvedTare,
     selectedSpoolTareDraft,
@@ -1233,6 +1260,7 @@ export default function InventoryPage({
             confirmPurge={confirmPurge}
             deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
             displayTitle={selectedSpoolDisplayTitle}
+            defaultPurchaseCurrency={defaultPurchaseCurrency}
             error={error}
             filamentName={editMasterFilamentName}
             formatHistoryEventDetails={formatHistoryEventDetails}
@@ -1259,6 +1287,9 @@ export default function InventoryPage({
             onChangeOwnerName={setSelectedSpoolOwnerNameDraft}
             onChangeOwnershipNote={setSelectedSpoolOwnershipNoteDraft}
             onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
+            onChangePurchasePriceBatchLocked={
+              setSelectedSpoolPurchasePriceBatchLockedDraft
+            }
             onChangePurchaseMetadata={setSelectedSpoolPurchaseMetadataDraft}
             onChangeTare={setSelectedSpoolTareDraft}
             onChangeVendor={setEditMasterVendor}
@@ -1285,6 +1316,7 @@ export default function InventoryPage({
             ownerContactDraft={selectedSpoolOwnerContactDraft}
             ownerNameDraft={selectedSpoolOwnerNameDraft}
             ownershipNoteDraft={selectedSpoolOwnershipNoteDraft}
+            purchasePriceBatchLockedDraft={selectedSpoolPurchasePriceBatchLockedDraft}
             purchaseMetadataDraft={selectedSpoolPurchaseMetadataDraft}
             purchaseMetadataErrors={selectedSpoolPurchaseMetadataErrors}
             qrCompanionAvailable={selectedSpoolQrCompanionAvailable}

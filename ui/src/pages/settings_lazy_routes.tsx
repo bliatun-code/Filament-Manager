@@ -12,6 +12,12 @@ export const SettingsGeneralRoute = lazy(() =>
   })),
 );
 
+export const SettingsFilamentDefaultsRoute = lazy(() =>
+  import("./settings_filament_defaults_route").then((module) => ({
+    default: module.SettingsFilamentDefaultsRoute,
+  })),
+);
+
 export const SettingsLibraryTab = lazy(() =>
   import("./settings_library_tab").then((module) => ({
     default: module.SettingsLibraryTab,

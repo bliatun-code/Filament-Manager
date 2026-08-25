@@ -237,6 +237,8 @@ fn companion_service_finds_old_active_inbound_loan_in_spool_detail() {
             last_used_at: None,
             purchase_currency: None,
             supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
         };
 
         db.insert_spool(&make_spool("target_borrowed_spool"))
@@ -551,6 +553,7 @@ fn companion_service_updates_spool_details() {
                 spool_tare_weight_g: None,
                 ownership: None,
                 purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 

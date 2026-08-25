@@ -111,6 +111,30 @@ export function emptyPurchaseReceiptMetadataDraft(): PurchaseReceiptMetadataDraf
   };
 }
 
+export function updatePurchasePriceDraft(
+  draft: PurchaseReceiptMetadataDraft,
+  pricePerRoll: string,
+  defaultCurrency?: string | null,
+): PurchaseReceiptMetadataDraft {
+  const currency = trimmed(defaultCurrency).toUpperCase();
+  const usableDefault = CURRENCY_PATTERN.test(currency) ? currency : "";
+  const currentCurrency = trimmed(draft.currency).toUpperCase();
+  const priceProvided = trimmed(pricePerRoll).length > 0;
+
+  if (priceProvided && !currentCurrency && usableDefault) {
+    return { ...draft, pricePerRoll, currency: usableDefault };
+  }
+  if (
+    !priceProvided &&
+    trimmed(draft.pricePerRoll).length > 0 &&
+    usableDefault &&
+    currentCurrency === usableDefault
+  ) {
+    return { ...draft, pricePerRoll, currency: "" };
+  }
+  return { ...draft, pricePerRoll };
+}
+
 export function buildPurchaseReceiptMetadataDraft(
   metadata: Partial<PurchaseReceiptMetadata> | null | undefined,
 ): PurchaseReceiptMetadataDraft {

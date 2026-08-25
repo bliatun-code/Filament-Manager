@@ -183,12 +183,14 @@ export function InventoryPageWorkspace({
       ) : null}
 
       <div className={activeView === "STOCK" ? "mt-4" : "mt-8"}>
-        {activeView === "STOCK" ? (
-          <div
-            id="inventory-stock-panel"
-            role="region"
-            aria-labelledby="inventory-stock-tab"
-          >
+        <div
+          id="inventory-stock-panel"
+          role="region"
+          aria-labelledby="inventory-stock-tab"
+          hidden={activeView !== "STOCK"}
+        >
+          {activeView === "STOCK" ? (
+            <>
             {bulkActionsProps.active ? (
               <Suspense
                 fallback={
@@ -209,24 +211,29 @@ export function InventoryPageWorkspace({
                 totalSpoolCount={totalInventoryCount}
               />
             </div>
-          </div>
-        ) : activeView === "PURCHASES" ? (
-          <div
-            id="inventory-purchases-panel"
-            role="region"
-            aria-labelledby="inventory-purchases-tab"
-          >
+            </>
+          ) : null}
+        </div>
+        <div
+          id="inventory-purchases-panel"
+          role="region"
+          aria-labelledby="inventory-purchases-tab"
+          hidden={activeView !== "PURCHASES"}
+        >
+          {activeView === "PURCHASES" ? (
             <WishlistQueuePanel {...purchaseQueueProps} />
-          </div>
-        ) : (
-          <div
-            id="inventory-locations-panel"
-            role="region"
-            aria-labelledby="inventory-locations-tab"
-          >
+          ) : null}
+        </div>
+        <div
+          id="inventory-locations-panel"
+          role="region"
+          aria-labelledby="inventory-locations-tab"
+          hidden={activeView !== "LOCATIONS"}
+        >
+          {activeView === "LOCATIONS" ? (
             <InventoryLocationManagementPanel {...locationPanelProps} />
-          </div>
-        )}
+          ) : null}
+        </div>
 
         <InventoryAddModal {...addModalProps} />
       </div>

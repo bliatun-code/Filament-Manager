@@ -106,6 +106,25 @@ test("detail baseline captures purchase metadata and includes it in the dirty gu
   );
 });
 
+test("detail baseline defaults legacy price protection off and tracks lock changes", () => {
+  const legacyBaseline = buildInventorySpoolDetailDraftBaseline(
+    spool({ purchasePriceBatchLocked: undefined }),
+  ).common;
+  const lockedBaseline = buildInventorySpoolDetailDraftBaseline(
+    spool({ purchasePriceBatchLocked: true }),
+  ).common;
+
+  assert.equal(legacyBaseline.purchasePriceBatchLocked, false);
+  assert.equal(lockedBaseline.purchasePriceBatchLocked, true);
+  assert.equal(
+    inventorySpoolCommonDetailsDraftChanged(legacyBaseline, {
+      ...legacyBaseline,
+      purchasePriceBatchLocked: true,
+    }),
+    true,
+  );
+});
+
 test("legacy currency-less prices stay clean until their numeric value changes", () => {
   const baseline = buildInventorySpoolDetailDraftBaseline(
     spool({ purchasePrice: 199, purchaseCurrency: null }),
