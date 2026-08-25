@@ -91,7 +91,7 @@ export const frDictionary: DictionaryNode = {
     openBambuLiveSettings: "Ouvrir les réglages Live",
     actionRequiredTitle: "Action requise",
     actionRequiredHint:
-      "Traitez les stocks faibles, les prêts en retard, les achats entrants et la confiance des imprimantes au même endroit.",
+      "Suivez les prêts en retard, les achats entrants et les problèmes de confiance des imprimantes.",
     actionSnapshotAgeUnknown: "Heure de début inconnue · détecté dans cet instantané",
     actionCreatedAt: "Créé",
     actionLowStockReason:
@@ -103,6 +103,34 @@ export const frDictionary: DictionaryNode = {
     actionPurchaseAdded: "Ajouté à la liste de souhaits. Ouverture des achats.",
     actionPurchaseReused:
       "Un achat ouvert existe déjà. Il est réutilisé et les achats sont ouverts.",
+    lowStockSuggestionCount:
+      "{count, plural, one {# suggestion} other {# suggestions}}",
+    lowStockHiddenCount:
+      "{count, plural, one {# masquée} other {# masquées}}",
+    lowStockSuggestionsTitle: "Suggestions de stock faible",
+    lowStockSuggestionsHint:
+      "Suggestions d’achat facultatives basées sur vos seuils de stock faible.",
+    hideLowStockSuggestions: "Masquer les suggestions",
+    showLowStockSuggestions: "Afficher les suggestions",
+    lowStockSuggestionHidden:
+      "Suggestion masquée pour {name} sur cet appareil.",
+    lowStockUndo: "Annuler",
+    lowStockSuggestionReason:
+      "{count, plural, one {# bobine est} other {# bobines sont}} au seuil ou en dessous ; le niveau le plus bas est {remaining} sur {threshold}.",
+    queueLowStockSuggestionAria:
+      "Ajouter {name} à la liste de souhaits ou à une commande",
+    queueLowStockSuggestion: "Ajouter à la liste / commande",
+    hideLowStockSuggestionAria:
+      "Masquer la suggestion pour {name} sur cet appareil",
+    hideLowStockSuggestion: "Masquer la suggestion",
+    noVisibleLowStockSuggestions: "Aucune suggestion d’achat visible.",
+    openLowStockInventory: "Ouvrir le stock faible",
+    lowStockSuggestionsOptional:
+      "Ces suggestions sont facultatives et peuvent être masquées sur cet appareil.",
+    hiddenLowStockSuggestionsTitle: "Suggestions masquées",
+    restoreLowStockSuggestionAria:
+      "Afficher à nouveau la suggestion pour {name}",
+    restoreLowStockSuggestion: "Afficher à nouveau",
     onboardingInventoryBody:
       "Commencez par une bobine, ou importez un stock ou une sauvegarde existants.",
     onboardingInventoryTitle: "Ajouter ou importer le stock",

@@ -265,6 +265,7 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
 
   assert.equal(result.syncSource, "local");
   assert.equal(result.syncMode, "STANDALONE");
+  assert.equal(result.libraryId, "library-1");
   assert.equal(result.clientHostNeedsRepair, false);
   assert.equal(result.clientHostPaired, false);
   assert.equal(result.setupDataAvailable, true);
@@ -399,6 +400,7 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
   );
 
   assert.equal(result.syncSource, "client-live");
+  assert.equal(result.libraryId, "library-1");
   assert.deepEqual(result.actionItems, []);
   assert.deepEqual(result.bambuLiveAttention, []);
   assert.equal(result.clientHostCompanionTone, "live");

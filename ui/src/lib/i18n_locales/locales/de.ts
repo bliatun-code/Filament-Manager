@@ -90,7 +90,7 @@ export const deDictionary: DictionaryNode = {
     openBambuLiveSettings: "Live-Einstellungen öffnen",
     actionRequiredTitle: "Handlung erforderlich",
     actionRequiredHint:
-      "Bearbeite niedrigen Bestand, überfällige Leihen, eingehende Käufe und Druckervertrauen an einem Ort.",
+      "Verfolge überfällige Leihen, eingehende Käufe und Vertrauensprobleme bei Druckern.",
     actionSnapshotAgeUnknown: "Startzeit unbekannt · in diesem Datenstand erkannt",
     actionCreatedAt: "Erstellt",
     actionLowStockReason:
@@ -102,6 +102,34 @@ export const deDictionary: DictionaryNode = {
     actionPurchaseAdded: "Zur Wunschliste hinzugefügt. Einkäufe werden geöffnet.",
     actionPurchaseReused:
       "Ein offener Kauf ist bereits vorhanden. Er wird wiederverwendet und Einkäufe werden geöffnet.",
+    lowStockSuggestionCount:
+      "{count, plural, one {# Vorschlag} other {# Vorschläge}}",
+    lowStockHiddenCount:
+      "{count, plural, one {# ausgeblendet} other {# ausgeblendet}}",
+    lowStockSuggestionsTitle: "Vorschläge bei niedrigem Bestand",
+    lowStockSuggestionsHint:
+      "Optionale Kaufvorschläge basierend auf den Grenzwerten für niedrigen Bestand.",
+    hideLowStockSuggestions: "Vorschläge ausblenden",
+    showLowStockSuggestions: "Vorschläge anzeigen",
+    lowStockSuggestionHidden:
+      "Der Vorschlag für {name} wurde auf diesem Gerät ausgeblendet.",
+    lowStockUndo: "Rückgängig",
+    lowStockSuggestionReason:
+      "{count, plural, one {# Rolle liegt} other {# Rollen liegen}} am oder unter dem Grenzwert; niedrigster Stand: {remaining} von {threshold}.",
+    queueLowStockSuggestionAria:
+      "{name} zur Wunschliste oder einer Bestellung hinzufügen",
+    queueLowStockSuggestion: "Zur Wunschliste / Bestellung hinzufügen",
+    hideLowStockSuggestionAria:
+      "Den Vorschlag für {name} auf diesem Gerät ausblenden",
+    hideLowStockSuggestion: "Vorschlag ausblenden",
+    noVisibleLowStockSuggestions: "Keine sichtbaren Kaufvorschläge.",
+    openLowStockInventory: "Bestand mit niedrigem Füllstand öffnen",
+    lowStockSuggestionsOptional:
+      "Diese Vorschläge sind optional und können auf diesem Gerät einzeln ausgeblendet werden.",
+    hiddenLowStockSuggestionsTitle: "Ausgeblendete Vorschläge",
+    restoreLowStockSuggestionAria:
+      "Den Vorschlag für {name} wieder anzeigen",
+    restoreLowStockSuggestion: "Wieder anzeigen",
     onboardingInventoryBody:
       "Starte mit einer Rolle oder importiere einen vorhandenen Bestand oder eine Sicherung.",
     onboardingInventoryTitle: "Bestand hinzufügen oder importieren",

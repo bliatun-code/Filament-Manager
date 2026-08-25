@@ -90,7 +90,7 @@ export const enDictionary: DictionaryNode = {
       openBambuLiveSettings: "Open Live settings",
       actionRequiredTitle: "Requires action",
       actionRequiredHint:
-        "Resolve low stock, overdue loans, incoming purchases and printer trust issues from one place.",
+        "Follow up overdue loans, incoming purchases and printer trust issues.",
       actionSnapshotAgeUnknown: "Start time unknown · detected in this snapshot",
       actionCreatedAt: "Created",
       actionLowStockReason:
@@ -102,6 +102,33 @@ export const enDictionary: DictionaryNode = {
       actionPurchaseAdded: "Added to the wishlist. Opening Purchases.",
       actionPurchaseReused:
         "An open purchase already exists. Reusing it and opening Purchases.",
+      lowStockSuggestionCount:
+        "{count, plural, one {# suggestion} other {# suggestions}}",
+      lowStockHiddenCount: "{count, plural, one {# hidden} other {# hidden}}",
+      lowStockSuggestionsTitle: "Low-stock suggestions",
+      lowStockSuggestionsHint:
+        "Optional purchase suggestions based on your low-stock thresholds.",
+      hideLowStockSuggestions: "Hide suggestions",
+      showLowStockSuggestions: "Show suggestions",
+      lowStockSuggestionHidden:
+        "Hidden the suggestion for {name} on this device.",
+      lowStockUndo: "Undo",
+      lowStockSuggestionReason:
+        "{count, plural, one {# spool} other {# spools}} at or below the threshold; lowest is {remaining} of {threshold}.",
+      queueLowStockSuggestionAria:
+        "Add {name} to the wishlist or an order",
+      queueLowStockSuggestion: "Add to wishlist / order",
+      hideLowStockSuggestionAria:
+        "Hide the suggestion for {name} on this device",
+      hideLowStockSuggestion: "Hide suggestion",
+      noVisibleLowStockSuggestions: "No visible purchase suggestions.",
+      openLowStockInventory: "Open low-stock inventory",
+      lowStockSuggestionsOptional:
+        "These suggestions are optional and can be hidden on this device.",
+      hiddenLowStockSuggestionsTitle: "Hidden suggestions",
+      restoreLowStockSuggestionAria:
+        "Show the suggestion for {name} again",
+      restoreLowStockSuggestion: "Show again",
       onboardingInventoryBody: "Start with one spool, or import an existing inventory or backup.",
       onboardingInventoryTitle: "Add or import inventory",
       onboardingPrinterBody:

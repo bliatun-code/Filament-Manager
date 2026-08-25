@@ -5,7 +5,7 @@
 | Planstatus | Påbegynt |
 | Planperiode | 12 uker |
 | Oppstart | 2026-08-21 |
-| Sist oppdatert | 2026-08-21 |
+| Sist oppdatert | 2026-08-25 |
 | Eier | Prosjektteamet |
 
 ## Mål
@@ -69,12 +69,12 @@ Fasen er ferdig når innkjøpskøen nås direkte, spolekontekst følger hele arb
 | P1 | Legge til massehandlinger for flytting, status, etiketter og eksport. | Ferdig | Operasjonene er atomiske, viser berørt antall før bekreftelse og skriver historikk per spole. |
 | P0 | Gjøre lav-beholdningsgrensen konfigurerbar globalt, med valgfritt avvik per materiale. | Ferdig | Inventory, Dashboard, Statistics, Host, Client og Companion bruker samme effektive terskel. |
 | P1 | Legge kontakt og forventet returdato på utlån. | Ferdig | Forfalte lån kan identifiseres og fullført retur fjerner oppgaven umiddelbart. |
-| P0 | Lage Krever handling på Dashboard for lav beholdning, forfalte lån, mottaksklare bestillinger og Bambu Live-problemer. | Ferdig | Hvert kort viser årsak, alder og direkte handling; løste forhold forsvinner uten manuell oppfriskning. |
+| P0 | Lage Krever handling på Dashboard for forfalte lån, mottaksklare bestillinger og Bambu Live-problemer, med lav beholdning som et separat rådgivende signal. | Ferdig | Reelle oppgaver viser årsak, alder og direkte handling; lav-beholdningsforslag er nedtonet, sammenleggbart og kan skjules lokalt uten å endre lagertallene. |
 | P1 | Tillate ett klikk fra lav beholdning til innkjøpskø med duplikatkontroll. | Ferdig | Eksisterende åpne ønsker eller bestillinger gjenbrukes eller varsles før et duplikat opprettes. |
 
 ### Faseport 2
 
-Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater deler samme lagergrense, og Dashboard-oppgaver blir opprettet og ryddet automatisk.
+Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater deler samme lagergrense, reelle Dashboard-oppgaver ryddes automatisk og valgfrie lav-beholdningsforslag ikke tar over oversikten.
 
 ## Fase 3 – beslutningsstøtte og v1-kvalitet (uke 9–12)
 
@@ -123,6 +123,10 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 4-artifakt for Windows; den lokale macOS-kjøringen er bestått.
 
 ## Fremdriftslogg
+
+### 2026-08-25
+
+- Dashboard skiller nå reelle oppgaver fra valgfrie lav-beholdningsforslag. Forslagene ligger som en nøytral, sammenleggbar seksjon etter nøkkeltallene, kan skjules og gjenopprettes per produkt på denne enheten og påvirker verken lav-beholdningstallet eller den autoritative lagerstatusen.
 
 ### 2026-08-21
 

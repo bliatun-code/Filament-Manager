@@ -7,6 +7,7 @@ import {
 } from "../components/dashboard_widgets";
 import { DashboardOnboardingChecklist } from "../components/dashboard_onboarding_checklist";
 import { DashboardActionPanel } from "../components/dashboard_action_panel";
+import { DashboardLowStockPanel } from "../components/dashboard_low_stock_panel";
 import { PageHeaderButton } from "../components/page_header_button";
 import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import {
@@ -19,7 +20,17 @@ import {
   DASHBOARD_PURCHASE_CLIENT_PAIRING_REQUIRED,
   DASHBOARD_PURCHASE_HOST_TARGET_REQUIRED,
 } from "../lib/dashboard_low_stock_purchase";
-import type { DashboardLowStockAction } from "../lib/dashboard_action_model";
+import type {
+  DashboardActionItem,
+  DashboardLowStockAction,
+} from "../lib/dashboard_action_model";
+import {
+  addHiddenDashboardLowStockProductKey,
+  readDashboardLowStockPreferences,
+  removeHiddenDashboardLowStockProductKey,
+  writeDashboardLowStockPreferences,
+  type DashboardLowStockPreferences,
+} from "../lib/dashboard_low_stock_preferences";
 import {
   buildDashboardOnboardingState,
   dismissDashboardOnboarding,
@@ -82,6 +93,7 @@ export default function DashboardPage({
     goalMetrics,
     health,
     lastSyncLabel,
+    libraryId,
     loading,
     ownershipLowStock,
     ownershipOnHand,
@@ -117,6 +129,24 @@ export default function DashboardPage({
     : usageTotal12m;
   const forceOnboardingVisible =
     desktopVisualQaScenario === "dashboard-onboarding";
+  const deterministicDashboardPreferences = desktopVisualQaScenario != null;
+  const lowStockActionItems = useMemo(
+    () =>
+      actionItems.filter(
+        (item): item is DashboardLowStockAction => item.kind === "LOW_STOCK",
+      ),
+    [actionItems],
+  );
+  const priorityActionItems = useMemo(
+    () =>
+      actionItems.filter(
+        (
+          item,
+        ): item is Exclude<DashboardActionItem, DashboardLowStockAction> =>
+          item.kind !== "LOW_STOCK",
+      ),
+    [actionItems],
+  );
   const hasBambuLiveAction = actionItems.some(
     (item) => item.kind === "BAMBU_TRUST",
   );
@@ -256,6 +286,58 @@ export default function DashboardPage({
   );
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [lowStockPreferences, setLowStockPreferences] =
+    useState<DashboardLowStockPreferences>(() => ({ hiddenProductKeys: [] }));
+  const lowStockPreferencesRef = useRef(lowStockPreferences);
+  useEffect(() => {
+    const nextPreferences = readDashboardLowStockPreferences({
+      deterministic: deterministicDashboardPreferences,
+      libraryId,
+    });
+    lowStockPreferencesRef.current = nextPreferences;
+    setLowStockPreferences(nextPreferences);
+  }, [deterministicDashboardPreferences, libraryId]);
+  const hiddenLowStockProductKeys = useMemo(
+    () => new Set(lowStockPreferences.hiddenProductKeys),
+    [lowStockPreferences.hiddenProductKeys],
+  );
+  const commitLowStockPreferences = useCallback(
+    (nextPreferences: DashboardLowStockPreferences) => {
+      lowStockPreferencesRef.current = nextPreferences;
+      setLowStockPreferences(nextPreferences);
+      writeDashboardLowStockPreferences(nextPreferences, {
+        deterministic: deterministicDashboardPreferences,
+        libraryId,
+      });
+    },
+    [deterministicDashboardPreferences, libraryId],
+  );
+  const handleHideLowStock = useCallback(
+    (item: DashboardLowStockAction) => {
+      commitLowStockPreferences(
+        addHiddenDashboardLowStockProductKey(
+          lowStockPreferencesRef.current,
+          item.candidate.productKey,
+        ),
+      );
+      setActionError(null);
+      setActionMessage(null);
+    },
+    [commitLowStockPreferences],
+  );
+  const handleRestoreLowStock = useCallback(
+    (item: DashboardLowStockAction) => {
+      commitLowStockPreferences(
+        removeHiddenDashboardLowStockProductKey(
+          lowStockPreferencesRef.current,
+          item.candidate.productKey,
+        ),
+      );
+      setActionError(null);
+      setActionMessage(null);
+    },
+    [commitLowStockPreferences],
+  );
   const handleQueueLowStock = useCallback(
     async (item: DashboardLowStockAction) => {
       setActionBusyIds((current) => new Set(current).add(item.id));
@@ -358,15 +440,10 @@ export default function DashboardPage({
       ) : null}
 
       <DashboardActionPanel
-        busyIds={actionBusyIds}
-        error={actionError}
-        items={actionItems}
-        message={actionMessage}
+        items={priorityActionItems}
         onOpenBambuLiveSettings={onOpenBambuLiveSettings}
         onOpenLoans={() => onNavigate?.("loans")}
-        onOpenLowStock={onOpenLowStock}
         onOpenPurchases={onOpenPurchases}
-        onQueueLowStock={(item) => void handleQueueLowStock(item)}
       />
 
       {showOnboarding ? (
@@ -405,6 +482,22 @@ export default function DashboardPage({
           />
         ))}
       </div>
+
+      {lowStockActionItems.length > 0 || actionError || actionMessage ? (
+        <div className="mt-4">
+          <DashboardLowStockPanel
+            busyIds={actionBusyIds}
+            error={actionError}
+            hiddenProductKeys={hiddenLowStockProductKeys}
+            items={lowStockActionItems}
+            message={actionMessage}
+            onHideLowStock={handleHideLowStock}
+            onOpenLowStock={() => onOpenLowStock?.()}
+            onQueueLowStock={(item) => void handleQueueLowStock(item)}
+            onRestoreLowStock={handleRestoreLowStock}
+          />
+        </div>
+      ) : null}
 
       <OwnershipSnapshotPanel
         locale={locale}

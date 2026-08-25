@@ -130,6 +130,34 @@ test("dashboard actions group unresolved low stock by master", () => {
   assert.equal(lowStock.duplicate, null);
 });
 
+test("low-stock product identity stays stable across weight and spool membership changes", () => {
+  const buildLowStock = (rows: SpoolWithMasterRow[]) => {
+    const action = buildDashboardActionItems({
+      bambuLiveAttention: [],
+      loans: [],
+      now: new Date("2026-08-21T12:00:00.000Z"),
+      spoolRows: normalizeSpoolWithMasterRows(rows),
+      today: "2026-08-21",
+      wishlist: [],
+    }).find((item) => item.kind === "LOW_STOCK");
+    assert.ok(action && action.kind === "LOW_STOCK");
+    return action;
+  };
+
+  const before = buildLowStock([
+    spool("spool-a", { remainingG: 80 }),
+    spool("spool-b", { remainingG: 120 }),
+  ]);
+  const after = buildLowStock([
+    spool("spool-c", { remainingG: 40 }),
+  ]);
+
+  assert.equal(after.candidate.productKey, before.candidate.productKey);
+  assert.equal(after.id, before.id);
+  assert.notDeepEqual(after.spoolIds, before.spoolIds);
+  assert.notEqual(after.lowestRemainingG, before.lowestRemainingG);
+});
+
 test("an open purchase mitigates low stock and ON_ORDER produces only its receive action", () => {
   const spoolRows = normalizeSpoolWithMasterRows([
     spool("spool-low", { remainingG: 80 }),

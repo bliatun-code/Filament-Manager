@@ -58,6 +58,7 @@ export type DashboardDataLoadResult = {
   actionItems: DashboardActionItem[];
   bambuLiveAttention: DashboardBambuLiveAttention[];
   derived: DashboardDerivedState;
+  libraryId: string | null;
   syncMode: string;
   trustedLan: TrustedLanCompanionStatus | null;
   clientHostConnectionObservation: DashboardHostConnectionObservation;
@@ -211,6 +212,7 @@ export async function loadDashboardData(
   ]);
 
   const syncMode = parseSyncMode(syncSettings);
+  const libraryId = syncSettings?.library_id?.trim() || null;
   const cachedSnapshot = syncSettings?.cached_snapshot ?? null;
   const clientMode = syncMode === "CLIENT";
   const revisionSource = resolveLibraryRevisionSource({
@@ -410,6 +412,7 @@ export async function loadDashboardData(
         locale: params.locale,
         t: params.t,
       }),
+      libraryId,
       syncMode,
       trustedLan,
       clientHostConnectionObservation,
@@ -461,6 +464,7 @@ export async function loadDashboardData(
       locale: params.locale,
       t: params.t,
     }),
+    libraryId,
     syncMode,
     trustedLan,
     clientHostConnectionObservation,

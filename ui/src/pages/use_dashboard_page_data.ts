@@ -258,6 +258,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
       initialSnapshot?.lastSyncLabel ??
       t("dashboard.syncedFromDb", "Synced from local DB"),
   );
+  const [libraryId, setLibraryId] = useState<string | null>(
+    () => initialSnapshot?.libraryId ?? null,
+  );
   const [companionStatus, setCompanionStatus] =
     useState<TrustedLanCompanionStatus | null>(
       () => initialSnapshot?.companionStatus ?? null,
@@ -384,6 +387,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             goalMetrics: loaded.derived.goalMetrics,
             health: loaded.derived.health,
             lastSyncLabel: nextLastSyncLabel,
+            libraryId: loaded.libraryId,
             locale,
             ownershipLowStock: loaded.derived.ownershipLowStock,
             ownershipOnHand: loaded.derived.ownershipOnHand,
@@ -426,6 +430,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         setOwnershipLowStock(loaded.derived.ownershipLowStock);
         setGoalMetrics(loaded.derived.goalMetrics);
         setHealth(loaded.derived.health);
+        setLibraryId(loaded.libraryId);
         setLastSyncLabel(nextLastSyncLabel);
         completeRefresh();
         if (!loaded.revisionPollComplete) {
@@ -772,6 +777,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     goalMetrics,
     health,
     lastSyncLabel,
+    libraryId,
     loading,
     ownershipLowStock,
     ownershipOnHand,

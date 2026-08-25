@@ -90,7 +90,7 @@ export const nbDictionary: DictionaryNode = {
       openBambuLiveSettings: "Åpne Live-innstillinger",
       actionRequiredTitle: "Krever handling",
       actionRequiredHint:
-        "Følg opp lav beholdning, forfalte utlån, innkommende kjøp og tillitsproblemer for printere på ett sted.",
+        "Følg opp forfalte utlån, innkommende kjøp og tillitsproblemer for printere.",
       actionSnapshotAgeUnknown: "Starttid ukjent · oppdaget i dette øyeblikksbildet",
       actionCreatedAt: "Opprettet",
       actionLowStockReason:
@@ -102,6 +102,33 @@ export const nbDictionary: DictionaryNode = {
       actionPurchaseAdded: "Lagt til i ønskelisten. Åpner Innkjøp.",
       actionPurchaseReused:
         "Et åpent kjøp finnes allerede. Gjenbruker det og åpner Innkjøp.",
+      lowStockSuggestionCount:
+        "{count, plural, one {# forslag} other {# forslag}}",
+      lowStockHiddenCount:
+        "{count, plural, one {# skjult} other {# skjulte}}",
+      lowStockSuggestionsTitle: "Forslag ved lav beholdning",
+      lowStockSuggestionsHint:
+        "Valgfrie kjøpsforslag basert på grensene dine for lav beholdning.",
+      hideLowStockSuggestions: "Skjul forslag",
+      showLowStockSuggestions: "Vis forslag",
+      lowStockSuggestionHidden:
+        "Skjulte forslaget for {name} på denne enheten.",
+      lowStockUndo: "Angre",
+      lowStockSuggestionReason:
+        "{count, plural, one {# rull er} other {# ruller er}} på eller under grensen; laveste nivå er {remaining} av {threshold}.",
+      queueLowStockSuggestionAria:
+        "Legg {name} til i ønskelisten eller en bestilling",
+      queueLowStockSuggestion: "Legg til i ønskeliste / bestilling",
+      hideLowStockSuggestionAria:
+        "Skjul forslaget for {name} på denne enheten",
+      hideLowStockSuggestion: "Skjul forslag",
+      noVisibleLowStockSuggestions: "Ingen synlige kjøpsforslag.",
+      openLowStockInventory: "Åpne lager med lav beholdning",
+      lowStockSuggestionsOptional:
+        "Forslagene er valgfrie og kan skjules enkeltvis på denne enheten.",
+      hiddenLowStockSuggestionsTitle: "Skjulte forslag",
+      restoreLowStockSuggestionAria: "Vis forslaget for {name} igjen",
+      restoreLowStockSuggestion: "Vis igjen",
       onboardingInventoryBody:
         "Start med én rull, eller importer et eksisterende lager eller en sikkerhetskopi.",
       onboardingInventoryTitle: "Legg til eller importer lager",

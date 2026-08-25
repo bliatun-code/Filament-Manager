@@ -23,6 +23,7 @@ export type DashboardPageSnapshot = {
   goalMetrics: DashboardGoalMetrics;
   health: DashboardHealth;
   lastSyncLabel: string;
+  libraryId?: string | null;
   locale: string;
   ownershipLowStock: {
     owned: number;
@@ -74,6 +75,10 @@ function cloneDashboardActionItem(item: DashboardActionItem): DashboardActionIte
 function cloneDashboardPageSnapshot(
   snapshot: DashboardPageSnapshot,
 ): DashboardPageSnapshot {
+  const libraryId =
+    typeof snapshot.libraryId === "string" && snapshot.libraryId.trim()
+      ? snapshot.libraryId.trim()
+      : null;
   return {
     ...snapshot,
     activity: snapshot.activity.map((item) => ({ ...item })),
@@ -87,6 +92,7 @@ function cloneDashboardPageSnapshot(
       ...snapshot.health,
       metrics: snapshot.health.metrics.map((metric) => ({ ...metric })),
     },
+    libraryId,
     ownershipLowStock: { ...snapshot.ownershipLowStock },
     ownershipOnHand: { ...snapshot.ownershipOnHand },
     revisionSource: snapshot.revisionSource
