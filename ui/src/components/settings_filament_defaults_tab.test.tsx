@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
+import { lookup, type Locale } from "../lib/i18n";
+import { deDictionary } from "../lib/i18n_locales/locales/de";
+import { enDictionary } from "../lib/i18n_locales/locales/en";
+import { frDictionary } from "../lib/i18n_locales/locales/fr";
+import { nbDictionary } from "../lib/i18n_locales/locales/nb";
 import type {
   FilamentDefaultsSpoolRow,
   FilamentPriceBatchReceipt,
@@ -12,7 +18,18 @@ import { SettingsFilamentDefaultsTab } from "./settings_filament_defaults_tab";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
-const t = (_key: string, fallback: string) => fallback;
+function translator(locale: Locale) {
+  const dictionary =
+    locale === "nb"
+      ? nbDictionary
+      : locale === "de"
+        ? deDictionary
+        : locale === "fr"
+          ? frDictionary
+          : enDictionary;
+  return (key: string, fallback = "", params = {}) =>
+    formatMessage(lookup(dictionary, key) ?? fallback, params, locale);
+}
 
 function spool(
   spoolId: string,
@@ -39,16 +56,23 @@ function spool(
 
 function renderTab({
   batchReceipt,
+  locale = "en",
+  hostUnsupported = false,
   readOnly = false,
   settingsValid = true,
 }: {
   batchReceipt?: FilamentPriceBatchReceipt | null;
+  locale?: Locale;
+  hostUnsupported?: boolean;
   readOnly?: boolean;
   settingsValid?: boolean;
 } = {}) {
+  const t = translator(locale);
   return renderToStaticMarkup(
     <SettingsFilamentDefaultsTab
       busy={false}
+      hostUnsupported={hostUnsupported}
+      locale={locale}
       batchReceipt={batchReceipt}
       readOnly={readOnly}
       t={t}
@@ -112,6 +136,7 @@ test("filament defaults tab combines currency, low stock and collapsed price gro
   assert.match(html, /4 spools/);
   assert.match(html, /PLA Basic/);
   assert.match(html, /#249521/);
+  assert.match(html, /aria-label="Select spool · PLA Basic · White · #249521"/);
   assert.doesNotMatch(html, /#spool_1775435249521/);
   assert.match(html, /Batch locked/);
   assert.match(html, /Historical/);
@@ -125,12 +150,42 @@ test("filament defaults tab combines currency, low stock and collapsed price gro
   assert.doesNotMatch(html, /24\.99|29\.99|34\.99/);
 });
 
+test("filament defaults group weights follow the selected app locale", () => {
+  const html = renderTab({ locale: "nb" });
+
+  assert.match(html, /1\u00a0000 g/);
+});
+
 test("read-only filament defaults tab disables library-wide controls", () => {
   const html = renderTab({ readOnly: true });
 
   assert.match(html, /Manage library-wide filament defaults on the Host desktop app/);
   assert.match(html, /<input[^>]*disabled[^>]*value="NOK"/);
   assert.match(html, /Manage these library-wide thresholds on the Host desktop app/);
+});
+
+test("older Hosts expose the localized upgrade warning while fallback rows remain visible", () => {
+  const german = renderTab({
+    hostUnsupported: true,
+    locale: "de",
+    readOnly: true,
+  });
+  assert.match(
+    german,
+    /Aktualisiere den Host, bevor du Filament-Preisstandards verwendest/,
+  );
+  assert.match(german, /PLA Basic/);
+
+  const french = renderTab({
+    hostUnsupported: true,
+    locale: "fr",
+    readOnly: true,
+  });
+  assert.match(
+    french,
+    /Mettez à jour l’hôte avant d’utiliser les valeurs de tarification des filaments/,
+  );
+  assert.match(french, /PLA Basic/);
 });
 
 test("invalid or orphaned saved standards expose the repair state", () => {

@@ -6,9 +6,14 @@ import {
   mapFilamentPriceBatchReceipt,
   mapFilamentStandardsSnapshotRows,
   refreshAfterFilamentPriceBatch,
+  requireWritableFilamentStandardsSnapshot,
   settingsWithDefaultPurchaseCurrency,
   settingsWithGroupPriceDefault,
 } from "./settings_filament_defaults_data_source";
+import { appErrorCode, toErrorMessage } from "./error_text";
+import { lookup, type DictionaryNode } from "./i18n";
+import { deDictionary } from "./i18n_locales/locales/de";
+import { frDictionary } from "./i18n_locales/locales/fr";
 import type { FilamentStandardsSnapshot } from "./tauri_filament_standards_client";
 
 function snapshot(): FilamentStandardsSnapshot {
@@ -53,6 +58,19 @@ function snapshot(): FilamentStandardsSnapshot {
   };
 }
 
+function thrownBy(action: () => void): unknown {
+  try {
+    action();
+  } catch (error) {
+    return error;
+  }
+  throw new Error("Expected action to throw");
+}
+
+function dictionaryTranslator(dictionary: DictionaryNode) {
+  return (key: string, fallback = "") => lookup(dictionary, key) ?? fallback;
+}
+
 test("snapshot adapter preserves the authoritative group key and price provenance", () => {
   const [row] = mapFilamentStandardsSnapshotRows(snapshot());
   assert.equal(row?.groupKey, 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]');
@@ -83,6 +101,68 @@ test("saving currency and group defaults preserves the rest of the versioned set
       currency: "NOK",
     },
   ]);
+});
+
+test("stale filament groups retain their specific guidance in German", () => {
+  const current = snapshot();
+  current.groups = [];
+  const error = thrownBy(() =>
+    settingsWithGroupPriceDefault(current, {
+      groupKey: 'v1:["BAMBU LAB","PLA","PLA BASIC",1000]',
+      price: 249,
+      currency: "NOK",
+    }),
+  );
+
+  assert.equal(appErrorCode(error), "filament_price_batch.stale_review");
+  assert.equal(
+    toErrorMessage(
+      error,
+      "Could not save the filament group price.",
+      dictionaryTranslator(deDictionary),
+    ),
+    "Die ausgewählten Rollen haben sich geändert. Prüfe die Filament-Preisgruppe erneut.",
+  );
+});
+
+test("a role-resolution race retains its specific guidance in French", () => {
+  const error = thrownBy(() =>
+    requireWritableFilamentStandardsSnapshot({
+      clientReadOnly: false,
+      roleResolved: false,
+      snapshot: snapshot(),
+    }),
+  );
+
+  assert.equal(appErrorCode(error), "filament_standards.role_unresolved");
+  assert.equal(
+    toErrorMessage(
+      error,
+      "Could not apply the filament prices.",
+      dictionaryTranslator(frDictionary),
+    ),
+    "Attendez la fin du chargement du rôle de la bibliothèque, puis réessayez.",
+  );
+});
+
+test("writable snapshot preconditions expose stable host-managed and loading codes", () => {
+  const hostManaged = thrownBy(() =>
+    requireWritableFilamentStandardsSnapshot({
+      clientReadOnly: true,
+      roleResolved: true,
+      snapshot: snapshot(),
+    }),
+  );
+  assert.equal(appErrorCode(hostManaged), "filament_standards.host_managed");
+
+  const notLoaded = thrownBy(() =>
+    requireWritableFilamentStandardsSnapshot({
+      clientReadOnly: false,
+      roleResolved: true,
+      snapshot: null,
+    }),
+  );
+  assert.equal(appErrorCode(notLoaded), "filament_standards.not_loaded");
 });
 
 test("batch adapter sends an exact stale-review precondition and maps its receipt", () => {

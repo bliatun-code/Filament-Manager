@@ -48,6 +48,7 @@ export type LibrarySyncSettings = {
   device_name: string;
   library_id: string;
   host_base_url?: string | null;
+  target_generation?: number;
   host_device_name?: string | null;
   client_auth_paired: boolean;
   client_auth_paired_at?: string | null;
@@ -254,17 +255,52 @@ export async function fetchLibrarySyncPrinterSettings(
   });
 }
 
-export async function fetchCachedLibrarySyncSpools() {
-  return invoke<LibrarySyncCachedSpoolList | null>("fetch_cached_library_sync_spools");
+function librarySyncCacheTargetInput(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return {
+    base_url: baseUrl,
+    expected_library_id: expectedLibraryId,
+    target_generation: targetGeneration,
+  };
 }
 
-export async function saveLibrarySyncSpoolCache(rows: SpoolWithMasterRow[]) {
-  return invoke<void>("save_library_sync_spool_cache", { input: { rows } });
+export async function fetchCachedLibrarySyncSpools(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return invoke<LibrarySyncCachedSpoolList | null>("fetch_cached_library_sync_spools", {
+    input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration),
+  });
 }
 
-export async function fetchCachedLibrarySyncPrinterOverview() {
+export async function saveLibrarySyncSpoolCache(
+  rows: SpoolWithMasterRow[],
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return invoke<void>("save_library_sync_spool_cache", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId,
+      target_generation: targetGeneration,
+      rows,
+    },
+  });
+}
+
+export async function fetchCachedLibrarySyncPrinterOverview(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
   return invoke<LibrarySyncCachedPrinterOverview | null>(
     "fetch_cached_library_sync_printer_overview",
+    { input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration) },
   );
 }
 
@@ -283,12 +319,24 @@ export async function fetchLibrarySyncLoans(
   });
 }
 
-export async function fetchCachedLibrarySyncLoans() {
-  return invoke<LibrarySyncCachedLoanList | null>("fetch_cached_library_sync_loans");
+export async function fetchCachedLibrarySyncLoans(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return invoke<LibrarySyncCachedLoanList | null>("fetch_cached_library_sync_loans", {
+    input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration),
+  });
 }
 
-export async function fetchCachedLibrarySyncWishlist() {
-  return invoke<LibrarySyncCachedWishlistList | null>("fetch_cached_library_sync_wishlist");
+export async function fetchCachedLibrarySyncWishlist(
+  baseUrl: string,
+  expectedLibraryId: string,
+  targetGeneration: number,
+) {
+  return invoke<LibrarySyncCachedWishlistList | null>("fetch_cached_library_sync_wishlist", {
+    input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration),
+  });
 }
 
 export async function pairLibrarySyncHost(baseUrl: string, pairingTokenOrUrl: string) {

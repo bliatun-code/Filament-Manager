@@ -280,10 +280,21 @@ pub(crate) async fn enforce_companion_request_timeout(
     request: Request<Body>,
     next: Next,
 ) -> Response {
+    if !request_timeout_applies(request.method()) {
+        // The handler may already have dispatched a non-cancellable SQLite transaction through
+        // `spawn_blocking`. Returning 408 while that work continues would make the caller retry an
+        // operation that may have committed. Mutations therefore wait for one definitive result;
+        // bounded timeouts remain appropriate for idempotent reads.
+        return next.run(request).await;
+    }
     match tokio::time::timeout(security.config.request_timeout, next.run(request)).await {
         Ok(response) => response,
         Err(_) => CompanionApiError::RequestTimeout.into_response(),
     }
+}
+
+fn request_timeout_applies(method: &Method) -> bool {
+    matches!(*method, Method::GET | Method::HEAD | Method::OPTIONS)
 }
 
 pub(crate) async fn apply_companion_cache_policy(request: Request<Body>, next: Next) -> Response {
@@ -464,8 +475,19 @@ fn is_allowed_origin(origin: &str, runtime: &TrustedLanCompanionRuntime) -> bool
 
 #[cfg(test)]
 mod tests {
-    use super::{is_allowed_host, is_allowed_origin, TokenBucket};
+    use super::{
+        enforce_companion_request_timeout, is_allowed_host, is_allowed_origin,
+        CompanionHttpSecurity, CompanionHttpSecurityConfig, TokenBucket,
+    };
     use crate::state::TrustedLanCompanionRuntime;
+    use axum::body::{to_bytes, Body};
+    use axum::http::{Method, Request, StatusCode};
+    use axum::middleware;
+    use axum::response::IntoResponse;
+    use axum::routing::post;
+    use axum::Router;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use std::time::{Duration, Instant};
 
     fn stable_runtime() -> TrustedLanCompanionRuntime {
@@ -534,5 +556,50 @@ mod tests {
             bucket.consume(2, window, started_at + Duration::from_secs(31)),
             Ok(())
         );
+    }
+
+    #[tokio::test]
+    async fn mutating_request_outlives_read_deadline_and_commits_exactly_once() {
+        let commits = Arc::new(AtomicUsize::new(0));
+        let handler_commits = Arc::clone(&commits);
+        let router = Router::new()
+            .route(
+                "/write",
+                post(move || {
+                    let commits = Arc::clone(&handler_commits);
+                    async move {
+                        tokio::time::sleep(Duration::from_millis(40)).await;
+                        commits.fetch_add(1, Ordering::SeqCst);
+                        StatusCode::OK.into_response()
+                    }
+                }),
+            )
+            .layer(middleware::from_fn_with_state(
+                CompanionHttpSecurity::new(CompanionHttpSecurityConfig::for_test(
+                    1024,
+                    Duration::from_millis(10),
+                    Duration::from_secs(60),
+                    10,
+                    10,
+                )),
+                enforce_companion_request_timeout,
+            ));
+
+        let response = tower::ServiceExt::oneshot(
+            router,
+            Request::builder()
+                .method(Method::POST)
+                .uri("/write")
+                .body(Body::empty())
+                .expect("build mutation request"),
+        )
+        .await
+        .expect("complete mutation request");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let _ = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("read response");
+        assert_eq!(commits.load(Ordering::SeqCst), 1);
     }
 }

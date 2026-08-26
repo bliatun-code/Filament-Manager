@@ -206,7 +206,7 @@ test("inventory refreshes every page dataset without a persistent header action"
   assert.doesNotMatch(headerActionsSource, /PageRefreshButton/);
   assert.doesNotMatch(headerActionsSource, /onRefresh/);
   assert.match(inventoryPageWorkspaceSource, /PageLoadErrorBanner/);
-  assert.match(inventoryPageSource, /onRetryLoadError=\{refreshInventoryPage\}/);
+  assert.match(inventoryPageSource, /onRetryLoadError=\{retryInventoryPageLoad\}/);
   assert.match(inventoryPageDataSource, /usePageRefreshState/);
   assert.match(refreshSource, /reloadSpools\(reportResult\)/);
   assert.match(refreshSource, /reloadWishlist\(reportResult\)/);
@@ -218,12 +218,63 @@ test("inventory refreshes every page dataset without a persistent header action"
   assert.match(refreshSource, /failRefresh\(/);
 });
 
+test("inventory role resolution stays fail-closed and retryable before enabling writes", () => {
+  assert.match(
+    inventoryPageDataSource,
+    /const \[clientReadOnly, setClientReadOnly\] = useState\(tauriAvailable\)/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /tauriAvailable \? "LOADING" : "READY"/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /setLibrarySyncResolution\("ERROR"\);[\s\S]*failRefresh\(/,
+  );
+  assert.match(inventoryPageDataSource, /const retryLibrarySyncRole = useCallback/);
+  assert.match(
+    inventoryPageSource,
+    /!librarySyncReady \|\| \(clientReadOnly \? !clientHostWritePaired : false\)/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /tauri &&[\s\S]*librarySyncReady &&[\s\S]*\(!clientReadOnly \|\| clientHostWritePaired\)/,
+  );
+});
+
+test("inventory data requests cannot land after a role or target transition", () => {
+  assert.match(inventoryPageDataSource, /type InventoryDataRequestDomain/);
+  assert.match(inventoryPageDataSource, /invalidateInventoryDataRequests\(\)/);
+  assert.match(inventoryPageDataSource, /clearTargetScopedData\(\)/);
+  const targetClearSource = inventoryPageDataSource.slice(
+    inventoryPageDataSource.indexOf("const clearTargetScopedData"),
+    inventoryPageDataSource.indexOf("const resolveLibrarySyncRole"),
+  );
+  assert.match(targetClearSource, /setLocationsLoading\(false\)/);
+  assert.match(targetClearSource, /setWishlistLoading\(false\)/);
+  assert.match(targetClearSource, /setHistoryLoading\(false\)/);
+  assert.match(targetClearSource, /setUsageLoading\(false\)/);
+  assert.match(
+    inventoryPageDataSource,
+    /const requestId = beginDataRequest\("spools"\);[\s\S]*?if \(!dataRequestIsCurrent\("spools", requestId\)\) \{\s*return;/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /const requestId = refreshRequestRef\.current \+ 1;[\s\S]*?if \(refreshRequestRef\.current !== requestId\) \{\s*return;/,
+  );
+  assert.doesNotMatch(inventoryPageDataSource, /refreshInFlightRef/);
+});
+
 test("inventory loaders preserve last-good state on transient failures", () => {
-  assert.doesNotMatch(inventoryPageDataSource, /setWishlistItems\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setActiveLoans\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setPrinterOverview\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setHistoryRows\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setUsagePoints\(\[\]\)/);
+  const transientLoaderSource = inventoryPageDataSource.slice(
+    inventoryPageDataSource.indexOf("const reloadLocations"),
+    inventoryPageDataSource.indexOf("const refreshInventoryData"),
+  );
+  assert.doesNotMatch(transientLoaderSource, /setWishlistItems\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setActiveLoans\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setPrinterOverview\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setHistoryRows\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setUsagePoints\(\[\]\)/);
   assert.doesNotMatch(inventoryCatalogReloadSource, /setMasters\(\[\]\)/);
   assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current === selectedSpool\.id/);
   assert.match(inventoryPageSource, /error=\{error\}/);

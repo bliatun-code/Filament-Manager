@@ -86,6 +86,7 @@ test("older Host location endpoint becomes explicit read-only legacy capability"
       clientReadOnly: true,
       clientHostBaseUrl: "http://host.test",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
     },
     [spool()],
     {
@@ -122,17 +123,25 @@ test("restart or offline fallback keeps cached locations read-only until live su
       clientReadOnly: true,
       clientHostBaseUrl: "http://host.test",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
     },
     [],
     {
       fetchHost: async () => {
         throw new Error("offline");
       },
-      fetchCached: async () => ({
-        rows: [location()],
-        mutations_supported: false,
-        captured_at: "2026-08-21 12:00:00",
-      }),
+      fetchCached: async (target) => {
+        assert.deepEqual(target, {
+          baseUrl: "http://host.test",
+          expectedLibraryId: "library-1",
+          targetGeneration: 7,
+        });
+        return {
+          rows: [location()],
+          mutations_supported: false,
+          captured_at: "2026-08-21 12:00:00",
+        };
+      },
     },
   );
 

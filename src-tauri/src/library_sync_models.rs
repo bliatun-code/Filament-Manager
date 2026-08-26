@@ -34,7 +34,17 @@ pub(crate) struct LibrarySyncSpoolListInput {
 
 #[derive(Deserialize)]
 pub(crate) struct SaveLibrarySyncSpoolCacheInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: String,
+    pub(crate) target_generation: u64,
     pub(crate) rows: Vec<SpoolWithMasterRow>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncCacheTargetInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: String,
+    pub(crate) target_generation: u64,
 }
 
 #[derive(Deserialize)]

@@ -16,6 +16,7 @@ pub struct LibrarySyncSettingsRow {
     pub device_name: String,
     pub library_id: String,
     pub host_base_url: Option<String>,
+    pub target_generation: u64,
     pub host_device_name: Option<String>,
     pub client_auth_paired: bool,
     pub client_auth_paired_at: Option<String>,

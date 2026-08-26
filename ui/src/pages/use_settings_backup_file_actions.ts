@@ -155,6 +155,7 @@ export function useSettingsBackupFileActions({
         toErrorMessage(
           importError,
           buildSettingsBackupErrorMessage("importDataFailed", settingsBackupErrorMessageLabels()),
+          t,
         ),
       );
     } finally {
@@ -185,6 +186,7 @@ export function useSettingsBackupFileActions({
             "validateBackupFailed",
             settingsBackupErrorMessageLabels(),
           ),
+          t,
         ),
       );
     } finally {

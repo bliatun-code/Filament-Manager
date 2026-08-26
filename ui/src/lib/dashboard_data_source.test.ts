@@ -227,6 +227,38 @@ test("hasInvalidClientPairingMessage detects persisted repair messages", () => {
   assert.equal(hasInvalidClientPairingMessage("host is reachable"), false);
 });
 
+test("loadDashboardData fails closed when the library role cannot be resolved", async () => {
+  let targetScopedReads = 0;
+  const unexpectedRead = async () => {
+    targetScopedReads += 1;
+    throw new Error("target-scoped data must not load before the role is known");
+  };
+
+  await assert.rejects(
+    loadDashboardData(
+      { previousClientHostNeedsRepair: false, t },
+      {
+        fetchHostLoans: unexpectedRead,
+        fetchHostPrinterOverview: unexpectedRead,
+        fetchHostSnapshot: unexpectedRead,
+        fetchHostWishlist: unexpectedRead,
+        listLocalLoans: unexpectedRead,
+        listLocalPrinters: unexpectedRead,
+        listLocalWishlist: unexpectedRead,
+        loadInventoryOverview: unexpectedRead,
+        loadPrinterSettings: unexpectedRead,
+        loadSpoolRows: unexpectedRead,
+        loadSyncSettings: async () => {
+          throw new Error("library role unavailable");
+        },
+        loadTrustedLanStatus: async () => null,
+      },
+    ),
+    /library role unavailable/,
+  );
+  assert.equal(targetScopedReads, 0);
+});
+
 test("loadDashboardData loads local dashboard data outside client mode", async () => {
   const result = await loadDashboardData(
     { previousClientHostNeedsRepair: true, t },
@@ -538,6 +570,7 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
   const cached = snapshot("Cached Host", {
     captured_at: "2026-04-01 09:00:00",
   });
+  let localPrinterSettingsReads = 0;
   const result = await loadDashboardData(
     { previousClientHostNeedsRepair: false, t },
     {
@@ -549,7 +582,10 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
           cached_snapshot: cached,
         }),
       loadTrustedLanStatus: async () => null,
-      loadPrinterSettings: async () => printerSettingsSnapshot(),
+      loadPrinterSettings: async () => {
+        localPrinterSettingsReads += 1;
+        throw new Error("Client mode must not read local printer settings");
+      },
       validateHost: async () => {
         throw new Error("should not validate without a complete target");
       },
@@ -572,6 +608,7 @@ test("loadDashboardData skips host calls for incomplete client targets and uses 
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
   assert.equal(result.revisionSource, null);
   assert.equal(result.revisionPollComplete, false);
+  assert.equal(localPrinterSettingsReads, 0);
 });
 
 test("loadDashboardData uses cached client rows without a cached snapshot", async () => {

@@ -140,7 +140,10 @@ export function createCompanionLogic({ state, sections, sectionLabels }) {
         row.master.vendor,
         row.spool.owner_name,
         row.spool.status,
+        row.location_name,
+        row.home_location_name,
         row.spool.location_id,
+        row.spool.home_location_id,
       ];
       return values.some((value) => String(value || "").toLowerCase().includes(query));
     });

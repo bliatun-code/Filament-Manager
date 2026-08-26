@@ -16,7 +16,7 @@ use super::filament_standards::{
     FilamentPriceGroup, FilamentPriceGroupSpool, FilamentPriceStandard, FilamentStandardsSettings,
     FilamentStandardsSnapshot, PURCHASE_PRICE_SOURCE_MANUAL, PURCHASE_PRICE_SOURCE_STANDARD_BATCH,
 };
-use super::inventory_domain::{OwnershipType, SpoolStatus};
+use super::inventory_domain::{is_historical_spool_status, OwnershipType};
 
 pub const DEFAULT_PURCHASE_CURRENCY_SETTING_KEY: &str = "default_purchase_currency";
 pub const FILAMENT_PRICE_STANDARDS_SETTING_KEY: &str = "filament_price_standards_json";
@@ -644,10 +644,7 @@ fn normalized_existing_currency(value: Option<&str>) -> Result<Option<String>, (
 }
 
 fn is_historical_status(status: &str) -> bool {
-    matches!(
-        SpoolStatus::from_raw(Some(status)),
-        SpoolStatus::Empty | SpoolStatus::Lost | SpoolStatus::Missing | SpoolStatus::Deleted
-    )
+    is_historical_spool_status(Some(status))
 }
 
 fn invalid_batch(code: &'static str, message: impl Into<String>) -> InventoryError {
@@ -1069,6 +1066,60 @@ mod tests {
             )
             .expect("read conflicting currency spool");
         assert_eq!(conflict, (None, Some("EUR".to_string()), None));
+
+        cleanup_database(&path, db);
+    }
+
+    #[test]
+    fn legacy_archived_spool_is_historical_and_cannot_be_overwritten() {
+        let (path, db) = temp_database("standards-legacy-archived");
+        insert_master(
+            &db,
+            "archived-series",
+            "Test vendor",
+            "PLA",
+            "Legacy archived",
+            "Black",
+        );
+        insert_spool(
+            &db,
+            "archived-spool",
+            "archived-series",
+            "ARCHIVED",
+            "OWNED",
+            Some(149.0),
+            Some("NOK"),
+            Some(PURCHASE_PRICE_SOURCE_MANUAL),
+            false,
+        );
+
+        let snapshot = db.get_filament_standards().expect("review archived group");
+        let group = group_for_master(&snapshot, "archived-series");
+        assert_eq!(group.owned_spool_count, 0);
+        let receipt = db
+            .apply_filament_price_batch(FilamentPriceBatchInput {
+                mode: FilamentPriceBatchMode::Overwrite,
+                group_key: group.group_key.clone(),
+                price: 299.0,
+                currency: "NOK".to_string(),
+                spools: group.spools.iter().map(precondition).collect(),
+            })
+            .expect("archived overwrite produces skip receipt");
+        assert_eq!(receipt.updated_count, 0);
+        assert_eq!(receipt.skipped_count, 1);
+        assert_eq!(
+            receipt.skipped[0].reason,
+            FilamentPriceBatchSkipReason::Inactive
+        );
+        let stored_price: f64 = db
+            .connection()
+            .query_row(
+                "SELECT purchase_price FROM filament_spools WHERE id = 'archived-spool'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read untouched archived price");
+        assert_eq!(stored_price, 149.0);
 
         cleanup_database(&path, db);
     }

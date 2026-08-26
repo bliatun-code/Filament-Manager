@@ -9,7 +9,7 @@ const source = readFileSync(
 
 test("silent settings reloads preserve editable local drafts", () => {
   const snapshotUpdateIndex = source.indexOf(
-    "setLibrarySyncSnapshot(pageData.librarySyncSettings.cached_snapshot ?? null);",
+    "setLibrarySyncSnapshot(pageData.librarySyncSnapshot);",
   );
   const draftGuardIndex = source.indexOf(
     "if (!options?.silent) {",
@@ -71,4 +71,29 @@ test("settings keeps periodic fallback reads while revisions are unavailable", (
   assert.match(source, /revisionSignalFailed = true/);
   assert.doesNotMatch(source, /status !== "unavailable"/);
   assert.doesNotMatch(source, /Library revision signal remains unavailable/);
+});
+
+test("a failed settings read clears the persisted role before any later write", () => {
+  const catchIndex = source.indexOf("} catch (loadError) {");
+  const roleClearIndex = source.indexOf("setLibrarySyncSettings(null);", catchIndex);
+  const errorIndex = source.indexOf(
+    "setError(buildSettingsPageLoadErrorMessage",
+    catchIndex,
+  );
+
+  assert.ok(catchIndex > 0);
+  assert.ok(roleClearIndex > catchIndex);
+  assert.ok(errorIndex > roleClearIndex);
+});
+
+test("settings reloads discard stale role targets without dropping the replacement load", () => {
+  assert.match(source, /const reloadRequestRef = useRef\(0\)/);
+  assert.match(source, /const dataSourceIdentity = \[/);
+  assert.match(source, /settingsClientTargetGeneration/);
+  assert.match(source, /settingsClientHostWritePaired/);
+  assert.match(
+    source,
+    /const pageData = buildSettingsPageDataModel\([\s\S]*?if \(!requestIsCurrent\(\)\) \{\s*return;\s*\}[\s\S]*?setPrinters\(pageData\.printers\)/,
+  );
+  assert.doesNotMatch(source, /silentReloadInFlightRef\.current\) \{[\s\S]*?return;/);
 });

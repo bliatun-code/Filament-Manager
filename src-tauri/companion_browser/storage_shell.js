@@ -658,14 +658,17 @@ function renderSelectedSpoolHiddenBanner(
     selectedSpool.master.color_name,
     locale,
   );
+  const locationId = selectedSpool.spool.location_id || "";
   const homeLocationId = selectedSpool.spool.home_location_id || "";
+  const locationLabel = selectedSpool.location_name || locationId;
+  const homeLocationLabel = selectedSpool.home_location_name || homeLocationId;
   const summaryItems = [
     formatRollReference(selectedSpool.spool, locale),
     formatGrams(selectedSpool.spool.remaining_g),
-    selectedSpool.spool.location_id ? formatPlacementLabel(selectedSpool.spool.location_id, locale) : "",
+    locationLabel ? formatPlacementLabel(locationLabel, locale) : "",
     homeLocationId &&
-    homeLocationId !== selectedSpool.spool.location_id
-      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(homeLocationId, locale)}`
+    homeLocationId !== locationId
+      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(homeLocationLabel, locale)}`
       : "",
   ].filter(Boolean);
   return renderSelectionBanner({
@@ -749,9 +752,11 @@ function renderSpoolRows(options) {
         .filter(Boolean)
         .join(" · ");
       const metaBits = [
-        row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
+        row.spool.location_id
+          ? formatPlacementLabel(row.location_name || row.spool.location_id, locale)
+          : "",
         row.spool.home_location_id && row.spool.home_location_id !== row.spool.location_id
-          ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.spool.home_location_id, locale)}`
+          ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.home_location_name || row.spool.home_location_id, locale)}`
           : "",
         row.spool.owner_name
           ? t(locale, "loans.borrowedFrom", "Borrowed from {name}", { name: row.spool.owner_name })

@@ -10,6 +10,10 @@ import {
 } from "./dashboard_model";
 import { lookup } from "./i18n";
 import { nbDictionary } from "./i18n_locales/locales/nb";
+import {
+  formatMessage,
+  type MessageParams,
+} from "../../../src-tauri/companion_browser/message_format.js";
 import { normalizeLoanDetailsRow, type NormalizedLoanDetailsRow } from "./loan_row_normalization";
 import {
   normalizeSpoolWithMasterRow,
@@ -22,8 +26,10 @@ import type {
   SpoolWithMasterRow,
 } from "./tauri_client";
 
-const t = (_key: string, fallback: string) => fallback;
-const nbT = (key: string, fallback: string) => lookup(nbDictionary, key) ?? fallback;
+const t = (_key: string, fallback: string, params?: MessageParams) =>
+  formatMessage(fallback, params, "en");
+const nbT = (key: string, fallback: string, params?: MessageParams) =>
+  formatMessage(lookup(nbDictionary, key) ?? fallback, params, "nb");
 
 function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview {
   return {

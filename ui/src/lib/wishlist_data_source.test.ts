@@ -302,7 +302,7 @@ test("loadWishlistItems avoids local fallback when client host details are incom
   assert.deepEqual(rows, []);
 });
 
-test("loadWishlistItems uses cached wishlist when client host details are incomplete", async () => {
+test("loadWishlistItems ignores unscoped cache when client host details are incomplete", async () => {
   const rows = await loadWishlistItems(
     { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
     {
@@ -319,12 +319,17 @@ test("loadWishlistItems uses cached wishlist when client host details are incomp
     },
   );
 
-  assert.deepEqual(rows.map((row) => row.id), ["cached-item"]);
+  assert.deepEqual(rows, []);
 });
 
 test("loadWishlistItems falls back to cached wishlist when host load fails", async () => {
   const rows = await loadWishlistItems(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       fetchHostWishlist: async () => {
         throw new Error("host wishlist unavailable");

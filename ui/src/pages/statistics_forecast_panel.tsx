@@ -22,8 +22,8 @@ export function StatisticsForecastPanel({
   const coverageValue =
     forecast.daysOfSupply == null
       ? t("statistics.forecastUnavailable", "Not enough usage data")
-      : t("statistics.forecastDays", "{count} days", {
-          count: formatDisplayInteger(forecast.daysOfSupply, locale),
+      : t("statistics.forecastDays", "{count, plural, one {# day} other {# days}}", {
+          count: forecast.daysOfSupply,
         });
   const depletionValue = forecast.estimatedDepletionDate
     ? formatForecastDate(forecast.estimatedDepletionDate, locale ?? "en")

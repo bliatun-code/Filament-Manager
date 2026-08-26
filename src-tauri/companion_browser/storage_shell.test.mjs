@@ -26,6 +26,8 @@ function createSpoolRow(id, overrides = {}) {
       vendor: "Bambu",
       ...overrides.master,
     },
+    location_name: overrides.location_name ?? null,
+    home_location_name: overrides.home_location_name ?? null,
   };
 }
 
@@ -110,6 +112,23 @@ test("storage shell shows the selected hidden banner when a search hides the act
   assert.match(html, /data-root-flow="loans"/);
   assert.match(html, /data-action="open-current-detail"/);
   assert.match(html, /Detail/);
+});
+
+test("storage shell renders Host location names instead of opaque location ids", () => {
+  const named = createSpoolRow("spool-named", {
+    spool: {
+      location_id: "location_aaaaaaaa",
+      home_location_id: "location_bbbbbbbb",
+    },
+    location_name: "Dry box",
+    home_location_name: "Shelf 2",
+  });
+  const html = renderShell({ spools: [named], selectedSpool: named });
+
+  assert.match(html, /Dry box/);
+  assert.match(html, /Home: Shelf 2/);
+  assert.doesNotMatch(html, />location_aaaaaaaa</);
+  assert.doesNotMatch(html, />location_bbbbbbbb</);
 });
 
 test("storage shell localizes hidden selection recovery in norwegian", () => {

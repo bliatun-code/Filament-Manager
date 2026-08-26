@@ -152,6 +152,7 @@ export function buildLibrarySyncClientState(input: {
   pairingChecked: boolean | null | undefined;
   pairingValid: boolean | null | undefined;
 }): LibrarySyncClientState {
+  const roleResolved = input.mode != null;
   const savedMode = normalizeLibrarySyncMode(input.mode);
   const hostWritePaired = Boolean(input.clientAuthPaired);
   const pairingChecked = Boolean(input.pairingChecked);
@@ -160,7 +161,10 @@ export function buildLibrarySyncClientState(input: {
 
   return {
     savedMode,
-    readOnly: savedMode === "CLIENT",
+    // Missing settings means the role is still unknown or failed to load. Treat
+    // that state as read-only so Host-owned settings can never fall through to
+    // local commands before the persisted role is authoritative.
+    readOnly: !roleResolved || savedMode === "CLIENT",
     hostBaseUrl: input.hostBaseUrl ?? null,
     libraryId: input.libraryId ?? null,
     hostWritePaired,

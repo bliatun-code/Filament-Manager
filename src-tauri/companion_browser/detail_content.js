@@ -46,8 +46,10 @@ export function renderSelectedSpoolDetailBody(options) {
   const detailOwnershipTone = isBorrowedInOwnership(selectedSpool.spool.ownership_type)
     ? "info"
     : "neutral";
-  const detailLocation = selectedSpool.spool.location_id || "";
-  const detailHomeLocation = selectedSpool.spool.home_location_id || "";
+  const detailLocationId = selectedSpool.spool.location_id || "";
+  const detailHomeLocationId = selectedSpool.spool.home_location_id || "";
+  const detailLocation = selectedSpool.location_name || detailLocationId;
+  const detailHomeLocation = selectedSpool.home_location_name || detailHomeLocationId;
   const detailPlacementLabel = formatPlacementLabel(detailLocation, locale);
   const detailHomePlacementLabel = detailHomeLocation
     ? formatPlacementLabel(detailHomeLocation, locale)
@@ -201,11 +203,11 @@ export function renderSelectedSpoolDetailBody(options) {
             })}
             ${renderDetailField({
               body: `
-              <input type="hidden" name="location" value="${escapeHtml(detailLocation)}" />
+              <input type="hidden" name="location" value="${escapeHtml(detailLocationId)}" />
               ${
                 detailStatusIsBorrowed
                   ? `
-                    <input type="hidden" name="home-location" value="${escapeHtml(detailHomeLocation)}" />
+                    <input type="hidden" name="home-location" value="${escapeHtml(detailHomeLocationId)}" />
                     <input
                       class="text-input"
                       type="text"

@@ -1,6 +1,6 @@
 use super::{
     companion_browser_assets, companion_service_instance_name, hash_secret,
-    shutdown_trusted_lan_server, CompanionApiState,
+    require_companion_session, shutdown_trusted_lan_server, CompanionApiState,
 };
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
@@ -20,11 +20,13 @@ use crate::state::{AppState, CompanionRuntimeState, TrustedLanCompanionRuntime};
 use axum::body::{to_bytes, Body};
 use axum::extract::ConnectInfo;
 use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
+use axum::{middleware, routing::get, Router};
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::io::Read;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 
@@ -1119,6 +1121,57 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
         assert!(return_text.contains("\"message\":\"Spool loan returned\""));
         assert!(return_text.contains("\"returned_grams\":660"));
 
+        let repeated_return = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/loans/{loan_id}/return"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"returned_grams":660,"note":"Returned after prototype"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(repeated_return.status(), StatusCode::OK);
+
+        let conflicting_return = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/loans/{loan_id}/return"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"returned_grams":659,"note":"Returned after prototype"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(conflicting_return.status(), StatusCode::BAD_REQUEST);
+        let conflicting_return_body = to_bytes(conflicting_return.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let conflicting_return_json: serde_json::Value =
+            serde_json::from_slice(&conflicting_return_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            conflicting_return_json
+                .get("code")
+                .and_then(|value| value.as_str()),
+            Some("loans.already_returned")
+        );
+
         let returned_detail = router
             .clone()
             .oneshot(
@@ -1188,6 +1241,16 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             extract_loan_statuses(&history_after_return_text)?,
             vec!["RETURNED".to_string()]
         );
+        let service = CompanionService::new(db_path.to_string_lossy().to_string());
+        assert_eq!(
+            service
+                .list_spool_history("spool_1", 100)
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .filter(|row| row.event_type == "LOAN_RETURNED")
+                .count(),
+            1
+        );
 
         Ok::<(), String>(())
     }
@@ -1196,6 +1259,201 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_pairs_session_and_requires_csrf_for_writes failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_client_role_rejects_protected_reads_and_writes_without_mutating_local_shadow_data(
+) {
+    let db_path = temp_db_path("client-role-authority-gate");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+
+        let before = {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            let spool = db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "spool_1 missing before Client-role request".to_string())?;
+            db.set_setting("library_sync_mode", "CLIENT")
+                .map_err(|error| error.to_string())?;
+            db.create_trusted_lan_pairing(
+                Some("Rejected Client browser"),
+                &hash_secret("client-role-pairing"),
+                600,
+            )
+            .map_err(|error| error.to_string())?;
+            (spool.current_weight_g, spool.remaining_g)
+        };
+
+        let health = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/health")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(health.status(), StatusCode::OK);
+
+        let rejected_pair = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/auth/pair")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .body(Body::from(r#"{"pairing_token":"client-role-pairing"}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_pair.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+        let rejected_read = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_read.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let rejected_read_body = to_bytes(rejected_read.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        assert!(String::from_utf8_lossy(&rejected_read_body)
+            .contains("\"code\":\"common.unavailable\""));
+
+        let rejected_write = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/weight")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, csrf_token)
+                    .body(Body::from(r#"{"grams":123}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_write.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let after = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after rejected Client-role write".to_string())?;
+        assert_eq!((after.current_weight_g, after.remaining_g), before);
+        assert!(
+            db.consume_trusted_lan_pairing_and_create_browser(
+                &hash_secret("client-role-pairing"),
+                &hash_secret("post-rejection-device"),
+                None,
+            )
+            .map_err(|error| error.to_string())?
+            .is_some(),
+            "rejected Client-role pairing must not consume its token"
+        );
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_client_role_rejects_protected_reads_and_writes_without_mutating_local_shadow_data failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn in_flight_companion_get_discards_local_response_after_host_becomes_client() {
+    let db_path = temp_db_path("in-flight-client-role-read");
+    let result = async {
+        seed_db(&db_path)?;
+        let state = test_state(&db_path);
+        let pairing_router = build_router(state.clone());
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&pairing_router, &db_path).await?;
+
+        let handler_entered = Arc::new(tokio::sync::Notify::new());
+        let release_handler = Arc::new(tokio::sync::Notify::new());
+        let entered_for_handler = handler_entered.clone();
+        let release_for_handler = release_handler.clone();
+        let protected_router = Router::new()
+            .route(
+                "/slow-local-read",
+                get(move || {
+                    let entered = entered_for_handler.clone();
+                    let release = release_for_handler.clone();
+                    async move {
+                        entered.notify_one();
+                        release.notified().await;
+                        "local-shadow-data"
+                    }
+                }),
+            )
+            .route_layer(middleware::from_fn_with_state(
+                state,
+                require_companion_session,
+            ));
+
+        let request = Request::builder()
+            .uri("/slow-local-read")
+            .header("host", "127.0.0.1:4278")
+            .header("cookie", format!("bfm_companion_session={session_cookie}"))
+            .body(Body::empty())
+            .map_err(|error| error.to_string())?;
+        let response_task = tokio::spawn(protected_router.oneshot(request));
+        handler_entered.notified().await;
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.set_setting("library_sync_mode", "CLIENT")
+            .map_err(|error| error.to_string())?;
+        drop(db);
+        release_handler.notify_one();
+
+        let response = response_task
+            .await
+            .map_err(|error| error.to_string())?
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let body_text = String::from_utf8_lossy(&body);
+        assert!(body_text.contains("\"code\":\"common.unavailable\""));
+        assert!(!body_text.contains("local-shadow-data"));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "in_flight_companion_get_discards_local_response_after_host_becomes_client failed: {message}"
+        );
     }
 }
 
@@ -1436,6 +1694,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("inventory-bulk-mutations") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("spool-common-details-v2") })));
         assert!(host_health_json
             .get("capabilities")
             .and_then(|value| value.as_array())

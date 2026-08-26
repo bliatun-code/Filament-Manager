@@ -1,4 +1,4 @@
-use crate::active_library_gateway::ActiveLibraryGateway;
+use crate::active_library_gateway::{with_authoritative_local_library, ActiveLibraryGateway};
 use crate::backend::inventory_engine::{
     UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
     UpdateSpoolRfidTagInput, WeightSource,
@@ -42,8 +42,10 @@ pub(crate) fn update_spool_status(
     spool_id: String,
     status: String,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| {
-        engine.update_spool_status(&spool_id, &status)
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| {
+            engine.update_spool_status(&spool_id, &status)
+        })
     })
 }
 
@@ -82,7 +84,9 @@ pub(crate) fn update_spool_rfid_tag(
     state: tauri::State<'_, AppState>,
     input: UpdateSpoolRfidTagInput,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.update_spool_rfid_tag(input))
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.update_spool_rfid_tag(input))
+    })
 }
 
 #[tauri::command]
@@ -90,7 +94,9 @@ pub(crate) fn update_master_catalog_entry(
     state: tauri::State<'_, AppState>,
     input: UpdateMasterCatalogEntryInput,
 ) -> Result<String, String> {
-    with_inventory(&state, |engine| engine.update_master_catalog_entry(input))
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.update_master_catalog_entry(input))
+    })
 }
 
 #[tauri::command]
@@ -99,7 +105,9 @@ pub(crate) fn assign_location(
     spool_id: String,
     location_id: Option<String>,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| {
-        engine.assign_location(&spool_id, location_id.as_deref())
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| {
+            engine.assign_location(&spool_id, location_id.as_deref())
+        })
     })
 }

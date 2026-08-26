@@ -220,6 +220,7 @@ test("settings page data model prepares reload state in one place", () => {
   const model = buildSettingsPageDataModel({
     bambuLiveIntegrations: { host: { enabled: true } },
     catalogRows,
+    librarySyncSnapshot: null,
     overviewRows,
     revisionPollComplete: true,
     snapshot,

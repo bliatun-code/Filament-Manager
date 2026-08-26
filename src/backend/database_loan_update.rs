@@ -6,7 +6,8 @@ use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
 use super::inventory_domain::{LoanDirection, LoanStatus};
 use super::loan_defaults::{
-    ACTIVE_LOAN_PREDICATE_SQL, LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL,
+    invalid_loan_operation, ACTIVE_LOAN_PREDICATE_SQL, LOAN_ALREADY_RETURNED_CODE,
+    LOAN_DIRECTION_MISMATCH_CODE, LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL,
 };
 
 pub(crate) fn update_active_inbound_spool_loan_counterparty(
@@ -45,12 +46,16 @@ pub(crate) fn close_inbound_spool_loan_without_returning_spool(
     return_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let loan = select_loan_by_id_optional(conn, loan_id)?.ok_or(InventoryError::NotFound)?;
-    if !LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref()).is_active() {
-        return Err(InventoryError::Db("loan already returned".to_string()));
-    }
     if LoanDirection::from_raw(Some(&loan.loan_direction)) != LoanDirection::Inbound {
-        return Err(InventoryError::Db(
-            "this flow only supports inbound loans".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_DIRECTION_MISMATCH_CODE,
+            "this flow only supports inbound loans",
+        ));
+    }
+    if !LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref()).is_active() {
+        return Err(invalid_loan_operation(
+            LOAN_ALREADY_RETURNED_CODE,
+            "loan already returned",
         ));
     }
 

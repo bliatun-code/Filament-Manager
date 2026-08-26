@@ -227,6 +227,15 @@ changed, is loaned, is loaded in a printer, or has been removed, none of the
 changes are written. Label sheets and CSV/JSON exports use the exact selected
 rolls, including explicitly selected non-stock statuses.
 
+Inventory CSV/JSON includes vendor, nominal/current/remaining weight, spool tare,
+user storage locations, ownership/counterparty details, and
+purchase/price-protection metadata. It is a lightweight spool exchange, not a
+full backup: printer-slot relations and the original loan history are not
+included. On import into another library, a loaded or loaned-out spool is
+normalized to **In stock** without creating technical locations. A borrowed-in
+spool retains its ownership and counterparty as a new active inbound relation.
+Use a full backup when moving the complete library with relations and history.
+
 The app remembers the card/list choice and whether advanced filters are open on
 this device. Resetting the filters does not reset the chosen layout. Opening a
 low-stock result from Dashboard may temporarily use the list without replacing
@@ -655,7 +664,8 @@ change is included in the same guarded save as the other spool details and is
 recorded in spool history. Historical rows that already have a price but no
 currency may keep that exact price while other receipt fields change; changing
 the price requires a currency. Inventory CSV/JSON exports and full backups include
-all purchase fields. You can also protect the individual price from group
+all purchase fields, vendor, weight data, spool tare, and price protection. You
+can also protect the individual price from group
 updates on the Filament defaults page; that protection is included in a full
 backup. **Remove** deletes only the wishlist/order entry; it does not
 delete an inventory spool.
@@ -1013,13 +1023,13 @@ The Backup panel shows when this device last completed a validated full-backup
 download. The timestamp is a device-local activity hint; it does not inspect
 the downloaded file later and is not included in the portable backup.
 
-The local database uses schema version 4. Before writing to an existing database
+The local database uses schema version 5. Before writing to an existing database
 at startup, the app performs a read-only schema compatibility preflight and
 SQLite `quick_check`. A database from a newer schema, or one that fails the
 integrity check, is stopped instead of being silently rewritten.
 
 Before automatically upgrading an existing unversioned, schema-v1, schema-v2,
-or schema-v3 database to schema v4, the app creates and verifies a local recovery
+schema-v3, or schema-v4 database to schema v5, the app creates and verifies a local recovery
 snapshot. A verified snapshot is also created before a full restore and before
 storage migrations that replace or merge an existing database. If the snapshot
 cannot be created and verified, the upgrade, restore, or migration does not

@@ -2,8 +2,11 @@ use rusqlite::{params, Connection};
 
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolRow;
+use super::inventory_domain::is_historical_spool_status;
 
 pub(crate) fn insert_spool(conn: &Connection, spool: &SpoolRow) -> InventoryResult<()> {
+    let purchase_price_batch_locked =
+        spool.purchase_price_batch_locked || is_historical_spool_status(Some(&spool.status));
     conn.execute(
         "INSERT INTO filament_spools (
             id, master_id, qr_code, rfid_tag, rfid_observed_at, status, ownership_type, owner_name, owner_contact,
@@ -34,7 +37,7 @@ pub(crate) fn insert_spool(conn: &Connection, spool: &SpoolRow) -> InventoryResu
             spool.last_used_at,
             spool.purchase_currency,
             spool.supplier_reference,
-            spool.purchase_price_batch_locked,
+            purchase_price_batch_locked,
             spool.purchase_price_source.as_deref().or_else(|| {
                 spool.purchase_price.map(|_| "MANUAL")
             })

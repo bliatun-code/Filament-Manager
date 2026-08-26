@@ -1,5 +1,6 @@
 use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
+use super::database_spool_price_lock::lock_spool_price_for_historical_status;
 use super::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
     set_spool_location as set_spool_location_row,
@@ -34,7 +35,21 @@ impl FilamentDatabase {
     }
 
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
-        update_spool_status_row(self.connection(), spool_id, status)
+        let update = |connection: &rusqlite::Connection| {
+            update_spool_status_row(connection, spool_id, status)?;
+            lock_spool_price_for_historical_status(
+                connection,
+                spool_id,
+                status,
+                "SPOOL_STATUS_UPDATE",
+            )?;
+            Ok(())
+        };
+        if self.connection().is_autocommit() {
+            self.with_inventory_transaction(update)
+        } else {
+            update(self.connection())
+        }
     }
 
     pub fn update_spool_weight(
@@ -79,14 +94,28 @@ impl FilamentDatabase {
         location_id: Option<&str>,
         home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
-        update_spool_details_row(
-            self.connection(),
-            spool_id,
-            qr_code,
-            status,
-            location_id,
-            home_location_id,
-        )
+        let update = |connection: &rusqlite::Connection| {
+            update_spool_details_row(
+                connection,
+                spool_id,
+                qr_code,
+                status,
+                location_id,
+                home_location_id,
+            )?;
+            lock_spool_price_for_historical_status(
+                connection,
+                spool_id,
+                status,
+                "SPOOL_DETAILS_UPDATE",
+            )?;
+            Ok(())
+        };
+        if self.connection().is_autocommit() {
+            self.with_inventory_transaction(update)
+        } else {
+            update(self.connection())
+        }
     }
 
     pub fn set_spool_home_location(

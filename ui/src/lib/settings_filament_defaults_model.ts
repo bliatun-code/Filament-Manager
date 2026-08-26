@@ -228,7 +228,7 @@ function normalizedSpoolStatus(row: FilamentDefaultsSpoolRow): string {
 export function isFilamentPriceHistorical(
   row: FilamentDefaultsSpoolRow,
 ): boolean {
-  return new Set(["empty", "lost", "missing", "deleted"]).has(
+  return new Set(["empty", "lost", "missing", "deleted", "archived"]).has(
     normalizedSpoolStatus(row),
   );
 }

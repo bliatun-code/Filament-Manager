@@ -113,10 +113,12 @@ export default function InventoryPage({
     clientInventoryUpdatedAt,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     completeDataLoad,
     historyLoading,
     historyRows,
     librarySyncReady,
+    librarySyncResolving,
     loadError,
     loading,
     locations,
@@ -128,6 +130,7 @@ export default function InventoryPage({
     refreshing,
     reloadActiveLoans,
     reloadPrinterOverview,
+    retryLibrarySyncRole,
     reloadSpoolDetail,
     reloadSpools,
     reloadWishlist,
@@ -371,7 +374,8 @@ export default function InventoryPage({
     infoMessage,
     librarySyncReady,
     onOpenPurchaseQueue: openPurchaseQueue,
-    purchaseActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
+    purchaseActionsDisabled:
+      !librarySyncReady || (clientReadOnly ? !clientHostWritePaired : false),
     reloadSpools,
     reloadWishlist,
     resolvedTheme,
@@ -403,6 +407,14 @@ export default function InventoryPage({
       selectedSpoolId: showRollModal ? selectedSpoolId : null,
     });
   }, [refreshInventoryData, reloadCatalog, selectedSpoolId, showRollModal]);
+
+  const retryInventoryPageLoad = useCallback(() => {
+    if (!librarySyncReady) {
+      retryLibrarySyncRole();
+      return;
+    }
+    refreshInventoryPage();
+  }, [librarySyncReady, refreshInventoryPage, retryLibrarySyncRole]);
 
   useEffect(() => {
     if (!navigationIntent) {
@@ -780,7 +792,7 @@ export default function InventoryPage({
     clientLibraryId,
     clientReadOnly,
     filteredSpools,
-    loading,
+    loading: loading || !librarySyncReady,
     locations,
     openLabelSheet: openInventoryLabelSheet,
     printerSlotBySpoolId,
@@ -1250,6 +1262,7 @@ export default function InventoryPage({
         clientHostWritePaired={clientHostWritePaired}
         clientHostBaseUrl={clientHostBaseUrl}
         clientLibraryId={clientLibraryId}
+        clientTargetGeneration={clientTargetGeneration}
         onLoanCreated={handleLoanCreated}
       />
 
@@ -1428,11 +1441,14 @@ export default function InventoryPage({
         }}
         error={error}
         loadError={loadError}
-        loadErrorRetryDisabled={!tauri || loading || manageBusy}
-        loadErrorRetrying={refreshing}
+        loadErrorRetryDisabled={!tauri || librarySyncResolving || manageBusy}
+        loadErrorRetrying={librarySyncResolving || refreshing}
         locationPanelProps={{
           busy: manageBusy,
-          canMutate: tauri && (!clientReadOnly || clientHostWritePaired),
+          canMutate:
+            tauri &&
+            librarySyncReady &&
+            (!clientReadOnly || clientHostWritePaired),
           loading: locationsLoading,
           mutationsSupported: locationMutationsSupported,
           onArchive: archiveLocation,
@@ -1447,7 +1463,7 @@ export default function InventoryPage({
           usageByLocationId: locationUsageById,
         }}
         onActiveViewChange={setActiveWorkspaceView}
-        onRetryLoadError={refreshInventoryPage}
+        onRetryLoadError={retryInventoryPageLoad}
         purchaseQueueProps={purchaseQueueProps}
         headerActionsProps={{
           labelSheetDisabled: !tauri || manageBusy || loading,
@@ -1458,7 +1474,8 @@ export default function InventoryPage({
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,
-          primaryActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
+          primaryActionsDisabled:
+            !librarySyncReady || (clientReadOnly ? !clientHostWritePaired : false),
           search,
           showStockFilters: activeWorkspaceView === "STOCK",
           statusFilter,

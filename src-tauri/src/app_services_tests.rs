@@ -1,4 +1,5 @@
 use super::CompanionService;
+use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
     ManualMasterInput, SpoolRow,
@@ -43,6 +44,38 @@ fn rust_function_body<'a>(source: &'a str, signature: &str) -> &'a str {
 }
 
 #[test]
+fn companion_service_rejects_local_library_mutations_in_client_mode() {
+    let db_path = temp_db_path("client-write-guard");
+    let db = FilamentDatabase::open(&db_path).expect("open db");
+    db.apply_schema().expect("apply schema");
+    db.set_setting("library_sync_mode", "CLIENT")
+        .expect("set client mode");
+    drop(db);
+
+    let service = CompanionService::new(db_path.to_string_lossy().to_string());
+    let error = service
+        .create_printer(CreatePrinterInput {
+            id: "client-shadow-printer".to_string(),
+            model: "Bambu Lab P1S".to_string(),
+            name: "Must not persist".to_string(),
+            ams_units: Some(1),
+            slots_per_ams: Some(4),
+        })
+        .expect_err("client mode must reject a local service mutation");
+
+    match error {
+        InventoryError::InvalidOperation { code, .. } => assert_eq!(code, "common.forbidden"),
+        other => panic!("unexpected authority error: {other:?}"),
+    }
+    assert!(service
+        .list_printer_overview()
+        .expect("read local shadow")
+        .is_empty());
+
+    let _ = std::fs::remove_file(db_path);
+}
+
+#[test]
 fn compound_companion_reads_keep_one_database_snapshot() {
     let source = include_str!("app_services.rs");
     for signature in [
@@ -67,6 +100,67 @@ fn compound_companion_reads_keep_one_database_snapshot() {
             );
         }
     }
+}
+
+#[test]
+fn companion_server_binding_rejects_same_process_after_library_identity_switch() {
+    let db_path = temp_db_path("server-library-binding");
+    let db = FilamentDatabase::open(&db_path).expect("open Companion database");
+    db.apply_schema().expect("apply Companion schema");
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("load library settings");
+    settings.mode = "HOST".to_string();
+    db.save_library_sync_settings(&settings)
+        .expect("save Host role");
+    drop(db);
+
+    let service =
+        CompanionService::new_bound_to_current_library(db_path.to_string_lossy().to_string());
+    service
+        .require_bound_authority()
+        .expect("unchanged Host library remains authoritative");
+
+    let db = FilamentDatabase::open(&db_path).expect("reopen Companion database");
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("reload library settings");
+    settings.library_id = "replacement-library".to_string();
+    db.save_library_sync_settings(&settings)
+        .expect("switch Host library identity");
+    drop(db);
+
+    assert!(
+        service.require_bound_authority().is_err(),
+        "an already-running Companion server must not follow a replacement library",
+    );
+    let _ = std::fs::remove_file(db_path);
+}
+
+#[test]
+fn companion_server_binding_rejects_restored_credential_profile() {
+    let db_path = temp_db_path("server-credential-profile-binding");
+    let db = FilamentDatabase::open(&db_path).expect("open Companion database");
+    db.apply_schema().expect("apply Companion schema");
+    let service =
+        CompanionService::new_bound_to_current_library(db_path.to_string_lossy().to_string());
+    service
+        .require_bound_authority()
+        .expect("initial credential profile remains authoritative");
+    db.connection()
+        .execute(
+            "INSERT INTO settings (key, value) VALUES ('credential_store_profile_id', ?1)\
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ["credential_profile_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        )
+        .expect("replace credential profile as a restore would");
+    drop(db);
+
+    assert!(
+        service.require_bound_authority().is_err(),
+        "an already-running Companion server must not follow a restored credential profile",
+    );
+    let _ = std::fs::remove_file(db_path);
 }
 
 #[test]
@@ -1384,6 +1478,29 @@ fn companion_service_returns_outbound_loan() {
         assert_eq!(returned.loan_status, "RETURNED");
         assert_eq!(returned.returned_grams, Some(660));
 
+        let repeated = service
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id.clone(),
+                returned_grams: 660,
+                note: Some("Returned after test print".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(repeated.id, returned.id);
+
+        let conflict = service
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id.clone(),
+                returned_grams: 659,
+                note: Some("Returned after test print".to_string()),
+            })
+            .expect_err("different retry details must remain a structured conflict");
+        match conflict {
+            crate::backend::database_result::InventoryError::InvalidOperation { code, .. } => {
+                assert_eq!(code, "loans.already_returned")
+            }
+            other => return Err(format!("unexpected return conflict: {other}")),
+        }
+
         let detail = service
             .get_spool_detail("spool_1", Some(20), Some(50))
             .map_err(|error| error.to_string())?;
@@ -1394,6 +1511,14 @@ fn companion_service_returns_outbound_loan() {
             .history
             .iter()
             .any(|row| row.event_type == "LOAN_RETURNED"));
+        assert_eq!(
+            detail
+                .history
+                .iter()
+                .filter(|row| row.event_type == "LOAN_RETURNED")
+                .count(),
+            1
+        );
 
         Ok(())
     })();

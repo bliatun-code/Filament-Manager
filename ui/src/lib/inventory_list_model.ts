@@ -46,11 +46,14 @@ export type InventorySpool = {
   ownerContact?: string | null;
   ownershipNote?: string | null;
   remainingGrams?: number | null;
+  currentWeightGrams?: number | null;
   spoolTareWeightGrams?: number | null;
   location?: string | null;
   locationId?: string | null;
+  locationType?: string | null;
   homeLocation?: string | null;
   homeLocationId?: string | null;
+  homeLocationType?: string | null;
   qrCode?: string | null;
   rfidTag?: string | null;
   rfidObservedAt?: string | null;

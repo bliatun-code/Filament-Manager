@@ -99,16 +99,23 @@ test("buildLoanableSpoolCandidates skips assigned, borrowed-in, and unavailable 
 
 test("loadLoanableSpoolCandidates uses shared spool and printer data sources", async () => {
   const candidates = await loadLoanableSpoolCandidates(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       loadSpoolRows: async (options, limit, offset) => {
         assert.equal(options.clientReadOnly, true);
+        assert.equal(options.clientTargetGeneration, 7);
         assert.equal(limit, 1000);
         assert.equal(offset, 0);
         return [spoolRow("spool-a"), spoolRow("spool-b")];
       },
       loadPrinterOverview: async (options) => {
         assert.equal(options.clientHostBaseUrl, "http://host");
+        assert.equal(options.clientTargetGeneration, 7);
         return {
           printers: printerOverview("spool-a"),
           bambuLiveIntegrations: {},
@@ -122,17 +129,16 @@ test("loadLoanableSpoolCandidates uses shared spool and printer data sources", a
   assert.deepEqual(candidates.map((spool) => spool.id), ["spool-b"]);
 });
 
-test("loadLoanableSpoolCandidates uses cached client spools when host target is incomplete", async () => {
+test("loadLoanableSpoolCandidates ignores unscoped cache when host target is incomplete", async () => {
   const candidates = await loadLoanableSpoolCandidates(
     { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
     {
       loadSpoolRows: async () => {
         throw new Error("host spools should not load without a complete target");
       },
-      fetchCachedSpools: async () => ({
-        captured_at: "cached-at",
-        rows: [spoolRow("spool-cache"), spoolRow("spool-assigned")],
-      }),
+      fetchCachedSpools: async () => {
+        throw new Error("unscoped cache must not load");
+      },
       loadPrinterOverview: async (options) => {
         assert.equal(options.clientReadOnly, true);
         return {
@@ -145,5 +151,5 @@ test("loadLoanableSpoolCandidates uses cached client spools when host target is 
     },
   );
 
-  assert.deepEqual(candidates.map((spool) => spool.id), ["spool-cache"]);
+  assert.deepEqual(candidates, []);
 });

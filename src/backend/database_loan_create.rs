@@ -6,7 +6,9 @@ use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
 use super::loan_defaults::{
-    ACTIVE_LOAN_PREDICATE_SQL, LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL,
+    invalid_loan_operation, ACTIVE_LOAN_PREDICATE_SQL, LOAN_ALREADY_ACTIVE_CODE,
+    LOAN_BORROWER_REQUIRED_CODE, LOAN_COUNTERPARTY_REQUIRED_CODE, LOAN_DIRECTION_SELECT_SQL,
+    LOAN_STATUS_SELECT_SQL,
 };
 use super::loan_expected_return::normalize_expected_return_date;
 
@@ -42,7 +44,10 @@ pub(crate) fn create_spool_loan_in_transaction(
 ) -> InventoryResult<SpoolLoanRow> {
     let borrower = borrower_name.trim();
     if borrower.is_empty() {
-        return Err(InventoryError::Db("borrower name is required".to_string()));
+        return Err(invalid_loan_operation(
+            LOAN_BORROWER_REQUIRED_CODE,
+            "borrower name is required",
+        ));
     }
 
     ensure_spool_can_be_loaned(conn, spool_id)?;
@@ -127,8 +132,9 @@ pub(crate) fn create_inbound_spool_loan_in_transaction(
 ) -> InventoryResult<SpoolLoanRow> {
     let counterparty = counterparty_name.trim();
     if counterparty.is_empty() {
-        return Err(InventoryError::Db(
-            "counterparty name is required".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_COUNTERPARTY_REQUIRED_CODE,
+            "counterparty name is required",
         ));
     }
 
@@ -179,8 +185,9 @@ fn ensure_spool_can_be_loaned(conn: &Connection, spool_id: &str) -> InventoryRes
         )
         .optional()?;
     if already_loaned.is_some() {
-        return Err(InventoryError::Db(
-            "this spool already has an active loan".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_ALREADY_ACTIVE_CODE,
+            "this spool already has an active loan",
         ));
     }
     Ok(())

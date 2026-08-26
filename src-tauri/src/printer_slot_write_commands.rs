@@ -1,5 +1,5 @@
 use crate::backend::inventory_engine::AssignPrinterSlotInput;
-use crate::printer_command_support::companion_service;
+use crate::printer_command_support::{companion_service, inventory_error_to_string};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -28,5 +28,5 @@ pub(crate) fn assign_printer_slot(
                 .filter(|value| !value.is_empty()),
             input.clear_live_cache_before_next_refresh.unwrap_or(false),
         )
-        .map_err(|error| error.to_string())
+        .map_err(inventory_error_to_string)
 }

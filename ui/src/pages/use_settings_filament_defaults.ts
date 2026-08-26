@@ -10,6 +10,7 @@ import {
   mapFilamentPriceBatchReceipt,
   mapFilamentStandardsSnapshotRows,
   refreshAfterFilamentPriceBatch,
+  requireWritableFilamentStandardsSnapshot,
   settingsWithDefaultPurchaseCurrency,
   settingsWithGroupPriceDefault,
 } from "../lib/settings_filament_defaults_data_source";
@@ -27,11 +28,14 @@ import {
 
 type UseSettingsFilamentDefaultsInput = {
   clientHostBaseUrl?: string | null;
+  clientHostWritePaired: boolean;
   clientLibraryId?: string | null;
   clientReadOnly: boolean;
+  clientTargetGeneration?: number | null;
   fallbackSpoolRows: readonly NormalizedSpoolWithMasterRow[];
   onInventoryChanged: () => Promise<void> | void;
   onLoadError: (error: unknown) => void;
+  roleResolved: boolean;
   tauri: boolean;
 };
 
@@ -42,17 +46,30 @@ type LoadFilamentStandardsOptions = {
 
 export function useSettingsFilamentDefaults({
   clientHostBaseUrl,
+  clientHostWritePaired,
   clientLibraryId,
   clientReadOnly,
+  clientTargetGeneration,
   fallbackSpoolRows,
   onInventoryChanged,
   onLoadError,
+  roleResolved,
   tauri,
 }: UseSettingsFilamentDefaultsInput) {
   const dataSourceKey = !tauri
     ? "browser"
+    : !roleResolved
+      ? "unresolved"
     : clientReadOnly
-      ? `client:${clientHostBaseUrl?.trim() ?? ""}:${clientLibraryId?.trim() ?? ""}`
+      ? [
+          "client",
+          clientHostBaseUrl?.trim() ?? "",
+          clientLibraryId?.trim() ?? "",
+          Number.isSafeInteger(clientTargetGeneration)
+            ? String(clientTargetGeneration)
+            : "unresolved-generation",
+          clientHostWritePaired ? "paired" : "unpaired",
+        ].join(":")
       : "local";
   const [snapshotState, setSnapshotState] = useState<{
     dataSourceKey: string;
@@ -69,6 +86,14 @@ export function useSettingsFilamentDefaults({
     [dataSourceKey],
   );
   const [loading, setLoading] = useState(tauri);
+  const [hostUnsupportedState, setHostUnsupportedState] = useState<{
+    dataSourceKey: string;
+    value: boolean;
+  }>(() => ({ dataSourceKey, value: false }));
+  const hostUnsupported =
+    hostUnsupportedState.dataSourceKey === dataSourceKey
+      ? hostUnsupportedState.value
+      : false;
   const requestGenerationRef = useRef(0);
 
   const loadSnapshot = useCallback(
@@ -77,6 +102,16 @@ export function useSettingsFilamentDefaults({
       requestGenerationRef.current = requestGeneration;
       if (!tauri) {
         setSnapshot(null);
+        setHostUnsupportedState({ dataSourceKey, value: false });
+        setLoading(false);
+        return null;
+      }
+      if (!roleResolved) {
+        // The persisted role is authoritative for this library-wide feature.
+        // Do not expose local rows or call local commands while role loading is
+        // pending or has failed.
+        setSnapshot(null);
+        setHostUnsupportedState({ dataSourceKey, value: false });
         setLoading(false);
         return null;
       }
@@ -94,6 +129,7 @@ export function useSettingsFilamentDefaults({
           return null;
         }
         setSnapshot(next);
+        setHostUnsupportedState({ dataSourceKey, value: false });
         return next;
       } catch (error) {
         if (requestGenerationRef.current !== requestGeneration) {
@@ -106,6 +142,11 @@ export function useSettingsFilamentDefaults({
           // An older Host can still provide its spool list. Keep the tab useful
           // and read-only without presenting local defaults as Host data.
           setSnapshot(null);
+        }
+        if (hostUnsupported) {
+          setHostUnsupportedState({ dataSourceKey, value: true });
+        } else if (!options.preserveSnapshotOnFailure) {
+          setHostUnsupportedState({ dataSourceKey, value: false });
         }
         if (!clientReadOnly) {
           onLoadError(error);
@@ -126,7 +167,9 @@ export function useSettingsFilamentDefaults({
       clientHostBaseUrl,
       clientLibraryId,
       clientReadOnly,
+      dataSourceKey,
       onLoadError,
+      roleResolved,
       setSnapshot,
       tauri,
     ],
@@ -150,10 +193,12 @@ export function useSettingsFilamentDefaults({
 
   const spoolRows = useMemo(
     () =>
-      snapshot
+      !roleResolved
+        ? []
+        : snapshot
         ? mapFilamentStandardsSnapshotRows(snapshot)
         : mapFallbackFilamentDefaultsRows(fallbackSpoolRows),
-    [fallbackSpoolRows, snapshot],
+    [fallbackSpoolRows, roleResolved, snapshot],
   );
 
   const persistedGroupPrices = useMemo(
@@ -161,15 +206,15 @@ export function useSettingsFilamentDefaults({
     [snapshot],
   );
 
-  const requireWritableSnapshot = useCallback(() => {
-    if (clientReadOnly) {
-      throw new Error("Filamentstandarder administreres på vertsmaskinen.");
-    }
-    if (!snapshot) {
-      throw new Error("Filamentstandardene er ikke ferdig lastet.");
-    }
-    return snapshot;
-  }, [clientReadOnly, snapshot]);
+  const requireWritableSnapshot = useCallback(
+    () =>
+      requireWritableFilamentStandardsSnapshot({
+        clientReadOnly,
+        roleResolved,
+        snapshot,
+      }),
+    [clientReadOnly, roleResolved, snapshot],
+  );
 
   const onSaveDefaultCurrency = useCallback(
     async (currency: string) => {
@@ -214,6 +259,7 @@ export function useSettingsFilamentDefaults({
 
   return {
     busy: loading,
+    hostUnsupported,
     defaultCurrency:
       snapshot?.settings.default_purchase_currency ??
       emptyFilamentStandardsSettings().default_purchase_currency ??

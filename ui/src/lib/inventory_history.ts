@@ -48,6 +48,11 @@ function payloadNumber(record: Record<string, unknown>, key: string): number | n
   return null;
 }
 
+function payloadBoolean(record: Record<string, unknown>, key: string): boolean | null {
+  const value = record[key];
+  return typeof value === "boolean" ? value : null;
+}
+
 function nestedPayloadRecord(
   record: Record<string, unknown>,
   key: string,
@@ -193,6 +198,18 @@ export function formatInventoryHistoryEventType(eventType: string, t: TranslateF
       "Purchase details updated",
     );
   }
+  if (eventType === "PURCHASE_PRICE_STANDARD_APPLIED") {
+    return t("inventory.historyEvent.purchasePriceStandardApplied", "Group price applied");
+  }
+  if (eventType === "PURCHASE_PRICE_BATCH_LOCK_UPDATED") {
+    return t(
+      "inventory.historyEvent.purchasePriceBatchLockUpdated",
+      "Group price protection changed",
+    );
+  }
+  if (eventType === "LOCATION_MERGED") {
+    return t("inventory.historyEvent.locationMerged", "Locations merged");
+  }
   if (eventType === "RFID_TAG_UPDATED") {
     return t("inventory.historyEvent.rfidSaved", "RFID saved");
   }
@@ -230,6 +247,24 @@ export function formatInventoryHistoryEventDetails(
   const { t, formatDateTime, formatStatusLabel, locale, printerNameById, slotLabelById } = deps;
   const payload = payloadRecord(event.payload_json);
   if (!payload) {
+    if (event.event_type === "PURCHASE_PRICE_STANDARD_APPLIED") {
+      return t(
+        "inventory.historyEvent.purchasePriceStandardAppliedDetail",
+        "The saved group price was applied to this roll.",
+      );
+    }
+    if (event.event_type === "PURCHASE_PRICE_BATCH_LOCK_UPDATED") {
+      return t(
+        "inventory.historyEvent.purchasePriceBatchLockUpdatedDetail",
+        "Group price protection was changed for this roll.",
+      );
+    }
+    if (event.event_type === "LOCATION_MERGED") {
+      return t(
+        "inventory.historyEvent.locationMergedDetail",
+        "This roll was moved because two storage locations were merged.",
+      );
+    }
     const raw = historyPayloadText(event.payload_json);
     return raw || "—";
   }
@@ -264,6 +299,77 @@ export function formatInventoryHistoryEventDetails(
         "inventory.historyEvent.purchaseMetadataUpdatedDetail",
         "Purchase details were updated.",
       )
+    );
+  }
+  if (event.event_type === "PURCHASE_PRICE_STANDARD_APPLIED") {
+    const details = purchaseMetadataChanges(
+      nestedPayloadRecord(payload, "before"),
+      nestedPayloadRecord(payload, "after"),
+      deps,
+    );
+    const mode = payloadString(payload, "mode");
+    if (mode) {
+      const modeLabel =
+        mode === "MISSING_ONLY"
+          ? t("settings.filamentDefaultsMissingOnly", "Only missing prices")
+          : mode === "OVERWRITE"
+            ? t("settings.filamentDefaultsOverwrite", "Update selected prices")
+            : null;
+      if (modeLabel) {
+        details.push(
+          `${t("settings.filamentDefaultsBatchMode", "Pricing mode")}: ${modeLabel}`,
+        );
+      }
+    }
+    return (
+      details.join(" · ") ||
+      t(
+        "inventory.historyEvent.purchasePriceStandardAppliedDetail",
+        "The saved group price was applied to this roll.",
+      )
+    );
+  }
+  if (event.event_type === "PURCHASE_PRICE_BATCH_LOCK_UPDATED") {
+    const before = payloadBoolean(payload, "before");
+    const after = payloadBoolean(payload, "after");
+    const details: string[] = [];
+    const booleanLabel = (value: boolean) =>
+      value ? t("common.on", "On") : t("common.off", "Off");
+    const protectionLabel = t(
+      "inventory.historyEvent.purchasePriceBatchProtection",
+      "Group price protection",
+    );
+    if (before != null && after != null && before !== after) {
+      details.push(
+        `${protectionLabel}: ${booleanLabel(before)} → ${booleanLabel(after)}`,
+      );
+    } else if (after != null) {
+      details.push(`${protectionLabel}: ${booleanLabel(after)}`);
+    }
+    const status = payloadString(payload, "status");
+    if (status) {
+      details.push(`${t("inventory.status", "Status")}: ${formatStatusLabel(status)}`);
+    }
+    return (
+      details.join(" · ") ||
+      t(
+        "inventory.historyEvent.purchasePriceBatchLockUpdatedDetail",
+        "Group price protection was changed for this roll.",
+      )
+    );
+  }
+  if (event.event_type === "LOCATION_MERGED") {
+    const sourceName = payloadString(payload, "source_location_name");
+    const targetName = payloadString(payload, "target_location_name");
+    if (sourceName && targetName) {
+      return `${t("inventory.location", "Location")}: ${sourceName} → ${targetName}`;
+    }
+    if (targetName) {
+      return `${t("inventory.location", "Location")}: ${targetName}`;
+    }
+    return t(
+      "inventory.historyEvent.locationMergedDetail",
+      "This roll was moved because two storage locations were merged.",
     );
   }
   if (event.event_type === "WEIGHT_UPDATED" || event.event_type === "WEIGHT_CORRECTED") {

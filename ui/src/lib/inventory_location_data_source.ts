@@ -19,11 +19,13 @@ import {
   type InventoryLocationMergeResult,
   type InventoryLocationRow,
 } from "./tauri_location_client";
+import { resolveClientHostCacheTarget } from "./host_write_target";
 
 export type InventoryLocationDataOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 export type InventoryLocationLoadResult = {
@@ -92,6 +94,7 @@ export async function loadInventoryLocations(
 
   const baseUrl = options.clientHostBaseUrl?.trim();
   const libraryId = options.clientLibraryId?.trim();
+  const cacheTarget = resolveClientHostCacheTarget(options);
   if (!baseUrl || !libraryId) {
     return {
       rows: legacyLocationsFromSpools(spools),
@@ -119,9 +122,13 @@ export async function loadInventoryLocations(
       updatedAt: live.captured_at ?? null,
     };
   } catch (error) {
-    const cached = await fetchCached().catch(
-      (): InventoryLocationListResponse | null => null,
-    );
+    const cached = cacheTarget
+      ? await fetchCached({
+          baseUrl: cacheTarget.baseUrl,
+          expectedLibraryId: cacheTarget.libraryId,
+          targetGeneration: cacheTarget.targetGeneration,
+        }).catch((): InventoryLocationListResponse | null => null)
+      : null;
     if (cached) {
       return {
         rows: cached.rows,

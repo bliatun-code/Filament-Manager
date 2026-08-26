@@ -93,7 +93,12 @@ test("loadPrinterOverviewData loads local overview and live integration settings
 
 test("loadPrinterOverviewData loads host overview without local live integrations", async () => {
   const result = await loadPrinterOverviewData(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       fetchHostOverview: async () => [printerOverviewRow("printer-host")],
       fetchCachedOverview: async () => ({
@@ -110,7 +115,12 @@ test("loadPrinterOverviewData loads host overview without local live integration
 
 test("loadPrinterOverviewData falls back to cached host overview", async () => {
   const result = await loadPrinterOverviewData(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       fetchHostOverview: async () => {
         throw new Error("host unavailable");
@@ -129,7 +139,7 @@ test("loadPrinterOverviewData falls back to cached host overview", async () => {
   assert.deepEqual(result.bambuLiveIntegrations, {});
 });
 
-test("loadPrinterOverviewData uses cached rows when client host target is incomplete", async () => {
+test("loadPrinterOverviewData ignores unscoped cache when client host target is incomplete", async () => {
   const result = await loadPrinterOverviewData(
     { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
     {
@@ -149,9 +159,9 @@ test("loadPrinterOverviewData uses cached rows when client host target is incomp
     },
   );
 
-  assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "2026-04-01 12:00:00");
-  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
+  assert.equal(result.source, "OFFLINE");
+  assert.equal(result.updatedAt, null);
+  assert.deepEqual(result.printers, []);
 });
 
 test("loadPrinterOverviewData reports offline when host and cache are unavailable", async () => {
@@ -174,7 +184,7 @@ test("loadPrinterOverviewData reports offline when host and cache are unavailabl
   });
 });
 
-test("loadPrinterPageData uses cached client data when host target is incomplete", async () => {
+test("loadPrinterPageData ignores unscoped cache when host target is incomplete", async () => {
   const result = await loadPrinterPageData(
     {
       clientReadOnly: true,
@@ -212,12 +222,11 @@ test("loadPrinterPageData uses cached client data when host target is incomplete
     },
   );
 
-  assert.equal(result.source, "CACHED");
+  assert.equal(result.source, "OFFLINE");
   assert.equal(result.revisionPollComplete, false);
-  assert.equal(result.updatedAt, "2026-04-01 12:00:00");
-  assert.deepEqual(result.printers.map((entry) => entry.printer.id), ["printer-cache"]);
-  assert.deepEqual(result.spools.map((entry) => entry.spool.id), ["cached-spool"]);
-  assert.equal(result.spools[0]?.spool.normalized_status, "BORROWED");
+  assert.equal(result.updatedAt, null);
+  assert.deepEqual(result.printers, []);
+  assert.deepEqual(result.spools, []);
   assert.deepEqual(result.bambuLiveIntegrations, {});
 });
 
@@ -228,6 +237,7 @@ test("loadPrinterPageData keeps fulfilled client spools when host overview fails
       clientReadOnly: true,
       clientHostBaseUrl: " http://host ",
       clientLibraryId: " library-1 ",
+      clientTargetGeneration: 7,
       supportedPrinterModels: ["Generic"],
     },
     {
@@ -270,6 +280,7 @@ test("loadPrinterPageData uses cached spool timestamp when spool data falls back
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
       supportedPrinterModels: ["Generic"],
     },
     {
@@ -303,6 +314,7 @@ test("loadPrinterPageData timestamps the cache piece actually used during partia
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
       supportedPrinterModels: ["Generic"],
     },
     {

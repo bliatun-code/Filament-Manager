@@ -58,6 +58,38 @@ test("library source changes invalidate the dashboard snapshot", () => {
   assert.match(pairingSource, /clearDashboardPageSnapshot\(\)/);
 });
 
+test("library role changes order Trusted LAN writes around authoritative role changes", () => {
+  const saveSource = libraryActionsSource.slice(
+    libraryActionsSource.indexOf("const handleSaveLibrarySyncSettings"),
+    libraryActionsSource.indexOf("const handleSaveLibrarySyncDeviceName"),
+  );
+  const savedIndex = saveSource.indexOf(
+    "const saved = await saveLibrarySyncSettings",
+  );
+  const clientDisableIndex = saveSource.indexOf(
+    'else if (nextMode === "CLIENT")',
+  );
+  const hostEnableIndex = saveSource.indexOf(
+    'if (nextMode === "HOST")',
+    savedIndex,
+  );
+  assert.ok(clientDisableIndex >= 0 && clientDisableIndex < savedIndex);
+  assert.ok(hostEnableIndex > savedIndex);
+  assert.match(
+    saveSource.slice(hostEnableIndex),
+    /persistTrustedLanConfig\(\s*true,[\s\S]*selectedInterface/,
+  );
+
+  const pairingSource = libraryActionsSource.slice(
+    libraryActionsSource.indexOf("const handlePairLibrarySyncHost"),
+    libraryActionsSource.indexOf("const handleClearLibrarySyncClientAuth"),
+  );
+  assert.ok(
+    pairingSource.indexOf("persistTrustedLanConfig(") <
+      pairingSource.indexOf("await saveLibrarySyncSettings("),
+  );
+});
+
 test("desktop pairing retains actionable host-validation feedback", () => {
   const pairingSource = libraryActionsSource.slice(
     libraryActionsSource.indexOf("const handlePairLibrarySyncHost"),

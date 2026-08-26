@@ -172,14 +172,21 @@ function remoteSnapshot(
 }
 
 test("loadSettingsPageData loads local settings overview and local spools", async () => {
+  let roleResolved = false;
   const result = await loadSettingsPageData({
-    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadPrinterSettings: async () => {
+      assert.equal(roleResolved, true);
+      return printerSettingsSnapshot("printer-local");
+    },
     loadCatalogRows: async (options) => {
       assert.equal(options.limit, 5000);
       assert.equal(options.clientReadOnly, false);
       return catalogRows;
     },
-    loadSyncSettings: async () => syncSettings(),
+    loadSyncSettings: async () => {
+      roleResolved = true;
+      return syncSettings();
+    },
     loadSpoolRows: async (options, limit) => {
       assert.equal(options.clientReadOnly, false);
       assert.equal(limit, 1000);
@@ -221,8 +228,19 @@ test("settings remain loadable for explicit recovery when the local low-stock po
 });
 
 test("loadSettingsPageData prefers host overview, settings, and spools for clients", async () => {
+  const freshHostSnapshot = remoteSnapshot({
+    inventory: {
+      ...remoteSnapshot().inventory,
+      low_stock_policy: {
+        default_threshold_g: 350,
+        material_overrides: [],
+      },
+    },
+  });
   const result = await loadSettingsPageData({
-    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadPrinterSettings: async () => {
+      throw new Error("local printer settings must not be read in client mode");
+    },
     loadCatalogRows: async (options) => {
       assert.equal(options.clientReadOnly, true);
       assert.equal(options.clientHostBaseUrl, "http://host");
@@ -235,9 +253,12 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
         mode: "CLIENT",
         host_base_url: " http://host ",
         library_id: " library-host ",
+        target_generation: 7,
       }),
-    loadSpoolRows: async (options) =>
-      options.clientReadOnly ? hostSpoolRows : localSpoolRows,
+    loadSpoolRows: async (options) => {
+      assert.equal(options.clientTargetGeneration, 7);
+      return options.clientReadOnly ? hostSpoolRows : localSpoolRows;
+    },
     fetchHostPrinterOverview: async (baseUrl, libraryId) => {
       assert.equal(baseUrl, "http://host");
       assert.equal(libraryId, "library-host");
@@ -248,6 +269,21 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
       assert.equal(libraryId, "library-host");
       return printerSettingsSnapshot("printer-host");
     },
+    refreshHostSnapshot: async (baseUrl, libraryId, targetGeneration) => {
+      assert.equal(baseUrl, "http://host");
+      assert.equal(libraryId, "library-host");
+      assert.equal(targetGeneration, 7);
+      return {
+        snapshot: freshHostSnapshot,
+        syncSettings: syncSettings({
+          mode: "CLIENT",
+          host_base_url: "http://host",
+          library_id: "library-host",
+          target_generation: 7,
+          cached_snapshot: freshHostSnapshot,
+        }),
+      };
+    },
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-host"]);
@@ -257,12 +293,24 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "OWNED");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+  assert.equal(result.librarySyncSnapshot?.inventory.low_stock_policy?.default_threshold_g, 350);
   assert.equal(result.revisionPollComplete, true);
 });
 
 test("loadSettingsPageData falls back to cached client printers and spools", async () => {
+  const cachedSnapshot = remoteSnapshot({
+    inventory: {
+      ...remoteSnapshot().inventory,
+      low_stock_policy: {
+        default_threshold_g: 275,
+        material_overrides: [],
+      },
+    },
+  });
   const result = await loadSettingsPageData({
-    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadPrinterSettings: async () => {
+      throw new Error("local printer settings must not be read in client mode");
+    },
     loadCatalogRows: async (options) => {
       assert.equal(options.clientReadOnly, true);
       return hostCatalogRows;
@@ -272,6 +320,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
         mode: "CLIENT",
         host_base_url: "http://host",
         library_id: "library-host",
+        cached_snapshot: cachedSnapshot,
         cached_printers: {
           captured_at: "2026-04-01 11:00:00",
           rows: [printerOverviewRow("printer-cache")],
@@ -289,6 +338,9 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
       throw new Error("host unavailable");
     },
     fetchHostPrinterSettings: async () => printerSettingsSnapshot("printer-host"),
+    refreshHostSnapshot: async () => {
+      throw new Error("host snapshot unavailable");
+    },
     onHostLoadError: () => {},
   });
 
@@ -299,12 +351,15 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+  assert.equal(result.librarySyncSnapshot, cachedSnapshot);
   assert.equal(result.revisionPollComplete, false);
 });
 
-test("loadSettingsPageData avoids local spools when client host details are incomplete", async () => {
+test("loadSettingsPageData avoids local spools and Bambu settings when client host details are incomplete", async () => {
   const result = await loadSettingsPageData({
-    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadPrinterSettings: async () => {
+      throw new Error("local printer settings must not be read in client mode");
+    },
     loadCatalogRows: async () => {
       throw new Error("local catalog should not be loaded for incomplete client settings");
     },
@@ -331,6 +386,9 @@ test("loadSettingsPageData avoids local spools when client host details are inco
     fetchHostPrinterSettings: async () => {
       throw new Error("host should not be loaded without a complete target");
     },
+    refreshHostSnapshot: async () => {
+      throw new Error("host snapshot should not be loaded without a complete target");
+    },
   });
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
@@ -338,15 +396,18 @@ test("loadSettingsPageData avoids local spools when client host details are inco
   assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-cache"]);
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
-  assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+  assert.deepEqual(result.bambuLiveIntegrations, {});
   assert.equal(result.revisionPollComplete, false);
 });
 
-test("loadSettingsPageData keeps fulfilled host client data when one host endpoint fails", async () => {
+test("loadSettingsPageData keeps fulfilled host client data without mixing local Bambu settings when the Host settings endpoint fails", async () => {
   const errors: unknown[] = [];
+  const freshHostSnapshot = remoteSnapshot();
 
   const result = await loadSettingsPageData({
-    loadPrinterSettings: async () => printerSettingsSnapshot("printer-local"),
+    loadPrinterSettings: async () => {
+      throw new Error("local printer settings must not be read in client mode");
+    },
     loadCatalogRows: async (options) => {
       assert.equal(options.clientReadOnly, true);
       return hostCatalogRows;
@@ -367,6 +428,15 @@ test("loadSettingsPageData keeps fulfilled host client data when one host endpoi
     fetchHostPrinterSettings: async () => {
       throw new Error("settings endpoint unavailable");
     },
+    refreshHostSnapshot: async () => ({
+      snapshot: freshHostSnapshot,
+      syncSettings: syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        cached_snapshot: freshHostSnapshot,
+      }),
+    }),
     onHostLoadError: (error) => {
       errors.push(error);
     },
@@ -376,7 +446,7 @@ test("loadSettingsPageData keeps fulfilled host client data when one host endpoi
   assert.equal(result.catalogRows, hostCatalogRows);
   assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-host"]);
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
-  assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+  assert.deepEqual(result.bambuLiveIntegrations, {});
   assert.equal(errors.length, 1);
   assert.equal(result.revisionPollComplete, false);
 });
@@ -385,7 +455,7 @@ test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", asyn
   const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
   const cachedSnapshot = remoteSnapshot({ device_name: "Cached" });
 
-  const result = await refreshLibrarySyncSnapshot(" http://host ", " library-host ", {
+  const result = await refreshLibrarySyncSnapshot(" http://host ", " library-host ", 11, {
     fetchHostSnapshot: async (baseUrl, libraryId) => {
       assert.equal(baseUrl, "http://host");
       assert.equal(libraryId, "library-host");
@@ -396,6 +466,7 @@ test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", asyn
         mode: "CLIENT",
         host_base_url: "http://host",
         library_id: "library-host",
+        target_generation: 11,
         cached_snapshot: cachedSnapshot,
       }),
   });
@@ -407,7 +478,7 @@ test("refreshLibrarySyncSnapshot returns the freshly cached sync snapshot", asyn
 test("refreshLibrarySyncSnapshot falls back to the fetched snapshot before cache is updated", async () => {
   const fetchedSnapshot = remoteSnapshot({ device_name: "Fetched" });
 
-  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", {
+  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", undefined, {
     fetchHostSnapshot: async () => fetchedSnapshot,
     loadSyncSettings: async () =>
       syncSettings({
@@ -431,7 +502,7 @@ test("refreshLibrarySyncSnapshot ignores stale cached snapshots", async () => {
     device_name: "Stale Cached",
   });
 
-  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", {
+  const result = await refreshLibrarySyncSnapshot("http://host", "library-host", undefined, {
     fetchHostSnapshot: async () => fetchedSnapshot,
     loadSyncSettings: async () =>
       syncSettings({
@@ -449,9 +520,29 @@ test("refreshLibrarySyncSnapshot ignores stale cached snapshots", async () => {
 test("refreshLibrarySyncSnapshot rejects incomplete host targets before fetching", async () => {
   await assert.rejects(
     () =>
-      refreshLibrarySyncSnapshot("http://host", " ", {
+      refreshLibrarySyncSnapshot("http://host", " ", undefined, {
         fetchHostSnapshot: async () => remoteSnapshot(),
       }),
     /configured host and library id/,
+  );
+});
+
+test("refreshLibrarySyncSnapshot rejects a response after the client target generation changes", async () => {
+  const fetchedSnapshot = remoteSnapshot();
+
+  await assert.rejects(
+    () =>
+      refreshLibrarySyncSnapshot("http://host", "library-host", 4, {
+        fetchHostSnapshot: async () => fetchedSnapshot,
+        loadSyncSettings: async () =>
+          syncSettings({
+            mode: "CLIENT",
+            host_base_url: "http://host",
+            library_id: "library-host",
+            target_generation: 6,
+            cached_snapshot: null,
+          }),
+      }),
+    /connection changed/,
   );
 });

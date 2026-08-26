@@ -9,6 +9,12 @@
     },
     {
       "surface": "desktop",
+      "key": "errors.libraryRoleLoadFailed",
+      "meaning": "Fail-closed page error shown when the desktop cannot determine whether this process owns the local library or must use a remote Host; local reads and writes stay blocked until retry succeeds.",
+      "screenshot": "docs/screenshots/settings-library.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.backgroundOperation",
       "meaning": "Heading for keeping the desktop process active after its main window is hidden; this is not an operating-system service.",
       "screenshot": "docs/screenshots/settings-general.jpg"
@@ -285,6 +291,488 @@
       "meaning": "Compact label for Bambu Lab's Automatic Material System. Keep the product acronym AMS.",
       "screenshot": "docs/screenshots/companion-phone-printers.jpg",
       "maxCharacters": 8
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.historyEvent.locationMerged",
+      "meaning": "Roll-history event label recording that one user-managed storage location was merged into another.",
+      "screenshot": "docs/screenshots/filament-history.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.historyEvent.locationMergedDetail",
+      "meaning": "Roll-history explanation that this roll moved because two storage locations were merged; location names are user data and must not be translated.",
+      "screenshot": "docs/screenshots/filament-history.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.borrowedInCannotLend",
+      "meaning": "Conflict shown when a roll owned by someone else is selected for the outgoing-loan workflow; the roll must instead use the borrowed-in return flow.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.inboundLoanRequired",
+      "meaning": "Conflict shown when returning a borrowed-in roll that no longer has the matching active inbound-loan record.",
+      "screenshot": "docs/screenshots/return-inbound-loan.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.borrowedInCannotLend",
+      "meaning": "Browser Companion conflict shown when a roll owned by someone else is sent to the outgoing-loan flow.",
+      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.inboundLoanRequired",
+      "meaning": "Browser Companion conflict shown when a borrowed-in return has no matching active inbound-loan record.",
+      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
     }
-  ]
+  ],
+  "groups": [
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.location",
+      "meaning": "Errors for user-managed storage locations; references include rolls assigned there and nested child locations.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.loan",
+      "meaning": "Loan validation and conflict errors, including contact details, expected-return dates, older Host capability failures, active or already returned loans, and direction mismatches.",
+      "screenshot": "docs/screenshots/loan-out.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.purchaseMetadata",
+      "meaning": "Capability error shown when purchase price and receipt metadata require a newer Host.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.filamentStandards",
+      "meaning": "Validation, stale-review and Host-capability errors for library-wide filament price standards.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.action",
+      "meaning": "Dashboard action queue combining low stock, overdue loans, incoming orders and printer health; action does not always mean an error.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.lowStock",
+      "meaning": "Optional low-stock purchase suggestions that users may hide without changing the underlying inventory threshold.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.location",
+      "meaning": "Create, rename, archive, restore, merge and delete user-managed storage locations; printer and loan locations are system-owned.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.bulk",
+      "meaning": "Multi-select inventory actions and their atomic review receipt; a roll can be selected yet blocked from the requested change.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.purchase",
+      "meaning": "Per-roll purchase price, currency and optional receipt metadata; price means unit price for one physical spool.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.historyEvent.purchase",
+      "meaning": "History entries distinguishing initial purchase receipt recording, later edits to purchase metadata, group-price application and per-roll protection from future group updates.",
+      "screenshot": "docs/screenshots/filament-history.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.forecast",
+      "meaning": "Consumption forecast derived from owned stock and recorded usage; it is an estimate and not a purchase recommendation.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.period",
+      "meaning": "Reporting-period controls and validation for statistics date ranges.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.valueCost",
+      "meaning": "Inventory value and material-cost coverage, trace rows and missing-data reasons; currencies remain separate and are never converted implicitly.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "settings.filamentDefaults",
+      "meaning": "Library-wide purchase currency and price groups. Group updates may skip protected, borrowed or historical spools and produce a follow-up receipt.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "settings.lowStock",
+      "meaning": "Default low-stock threshold plus optional per-material overrides; materials without an override inherit the library default.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.location",
+      "meaning": "Browser Companion error for deleting a storage location that still has roll or child-location references.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.loan",
+      "meaning": "Browser Companion loan validation and conflict errors, including contact and expected-return metadata, older-Host capability failures, active or already returned loans, and direction mismatches.",
+      "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.filamentStandards",
+      "meaning": "Browser Companion fallbacks for Host-owned filament price-standard validation and stale group reviews.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "purchaseReceipt.",
+      "meaning": "Optional purchase receipt fields saved per physical spool; price is the unit price and currency is a three-letter code.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.hideLowStock",
+      "meaning": "Controls that hide low-stock purchase suggestions from the dashboard without changing stock data or thresholds.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.showLowStock",
+      "meaning": "Control that reveals previously hidden low-stock purchase suggestions on the dashboard.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.queueLowStock",
+      "meaning": "Action that adds a low-stock filament suggestion to the wishlist or ordering queue.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.restoreLowStock",
+      "meaning": "Action that restores one hidden low-stock suggestion to the visible dashboard queue.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.openLowStock",
+      "meaning": "Action that opens inventory already filtered to the affected low-stock filament rows.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.noVisibleLowStock",
+      "meaning": "Empty state shown when all current low-stock suggestions have been hidden by the user.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.hiddenLowStock",
+      "meaning": "Heading for the dashboard section containing low-stock suggestions hidden by the user.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.atOrBelowThreshold",
+      "meaning": "Explains that a spool is considered low stock when its remaining weight is at or below its configured gram threshold.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.materialLowStockThresholds",
+      "meaning": "Notes that low-stock status can use different configured thresholds for different filament materials.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "dashboard.legacyLowStockFallback",
+      "meaning": "Compatibility notice that an older Host forces the legacy 200 gram low-stock threshold.",
+      "screenshot": "docs/screenshots/dashboard.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.lowStock",
+      "meaning": "Inventory filter for physical spools whose remaining weight meets their configured low-stock threshold.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.selectedRollActions",
+      "meaning": "Heading for actions that apply only to the currently selected inventory spool.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.nextStep",
+      "meaning": "Compact heading for the most likely follow-up actions after selecting an inventory spool.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.loanOut",
+      "meaning": "Action that starts an outbound loan for the selected owned inventory spool.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.loadInPrinter",
+      "meaning": "Actions and guidance for assigning the selected inventory spool to an available printer material slot.",
+      "screenshot": "docs/screenshots/printer-slot-assignment.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.noAvailablePrinterSlots",
+      "meaning": "Empty state shown when the selected spool cannot be loaded because no compatible printer slot is available.",
+      "screenshot": "docs/screenshots/printer-slot-assignment.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.loadedInPrinter",
+      "meaning": "State label confirming that the selected spool is already assigned to a printer slot.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.printLabel",
+      "meaning": "Action that prints or creates a label for the currently selected physical spool.",
+      "screenshot": "docs/screenshots/filament-label.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.unsaved",
+      "meaning": "Warning that edits to the selected spool have not yet been persisted.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.allChanges",
+      "meaning": "Save-state confirmation that every edit in the spool detail view has been persisted.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.discardUnsaved",
+      "meaning": "Action that intentionally abandons unsaved edits to the selected spool.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.rollChanges",
+      "meaning": "Confirmation that edits to the current physical spool were saved.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.labelSheet",
+      "meaning": "Label-sheet actions and guidance; distinguish a sheet for all inventory from one for selected spools.",
+      "screenshot": "docs/screenshots/inventory-label-sheet.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.protectIndividualPriceFromGroupUpdates",
+      "meaning": "Per-spool lock that preserves an individually edited purchase price when library-wide price groups are applied.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.borrowerContact",
+      "meaning": "Optional contact details for the person borrowing an owned spool; this is separate from the borrower name.",
+      "screenshot": "docs/screenshots/loan-out.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.expectedReturn",
+      "meaning": "Optional expected-return date entered while creating an outbound spool loan.",
+      "screenshot": "docs/screenshots/loan-out.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.error.purchaseMetadata",
+      "meaning": "Validation error for invalid per-spool purchase price, currency or receipt metadata.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.error.loadInPrinter",
+      "meaning": "Failure or stale-state error while assigning an inventory spool to a printer slot.",
+      "screenshot": "docs/screenshots/printer-slot-assignment.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "inventory.error.expectedReturn",
+      "meaning": "Validation errors for an impossible or past expected-return date on an outbound loan.",
+      "screenshot": "docs/screenshots/loan-out.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "wishlist.receive",
+      "meaning": "Workflow for receiving a wishlist purchase into inventory and choosing how many physical spools arrived.",
+      "screenshot": "docs/screenshots/wishlist-queue.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "loans.contact",
+      "meaning": "Contact information for the person associated with a tracked spool loan.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "loans.expectedReturn",
+      "meaning": "Expected date when an active outbound spool loan should be returned.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "loans.dueToday",
+      "meaning": "Status label for an active loan whose expected-return date is the current local calendar day.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "loans.overdue",
+      "meaning": "Status label for an active loan whose expected-return date has already passed.",
+      "screenshot": "docs/screenshots/loans.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.consumptionForecast",
+      "meaning": "Statistics heading and guidance for projected filament depletion based on recorded owned-stock consumption.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.inventoryValue",
+      "meaning": "Statistics heading and guidance for current inventory value calculated from remaining weight and registered spool prices.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.materialCost",
+      "meaning": "Statistics heading and guidance for material cost attributed to recorded filament consumption.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "statistics.openFilamentDefaults",
+      "meaning": "Action from incomplete cost data to the Filament defaults settings where currency and group prices can be configured.",
+      "screenshot": "docs/screenshots/statistics.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "settings.tabFilamentDefaults",
+      "meaning": "Settings navigation tab for low-stock thresholds, default purchase currency and filament price groups.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "settings.languageBeta",
+      "meaning": "Beta-language label and explanation that an incomplete locale can still display some English fallback text.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.purchaseMetadata",
+      "meaning": "Browser Companion capability error requiring a newer Host before purchase metadata can be saved.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.purchasePriceProtection",
+      "meaning": "Lightweight inventory-import validation for the per-spool price-protection lock and price-source fields.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.wishlist",
+      "meaning": "Validation, stale-state and quantity errors shown when changing wishlist status or receiving physical rolls into inventory.",
+      "screenshot": "docs/screenshots/wishlist-queue.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.inventoryBulk",
+      "meaning": "Atomic inventory bulk-action failures that require refreshing, changing the selection or using the owning printer or loan workflow.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.filamentBatch",
+      "meaning": "Validation failures for applying a filament price group to selected active or explicitly chosen historical spools.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.purchase",
+      "meaning": "Per-spool purchase price, currency and receipt-metadata validation; price always means the unit price of one physical spool.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.inventoryBulk",
+      "meaning": "Browser Companion fallbacks for atomic inventory bulk-action failures owned by the desktop or Host workflow.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.filamentBatch",
+      "meaning": "Browser Companion fallbacks for Host-owned filament price-batch validation failures.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.purchase",
+      "meaning": "Browser Companion purchase price, currency and receipt-metadata validation; price is per physical spool.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.spoolCommonDetailsHostUnsupported",
+      "meaning": "Shown before any write when an older Host cannot atomically save tare weight or ownership together with common roll details.",
+      "screenshot": "docs/screenshots/filament-details.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.spoolCommonDetailsHostUnsupported",
+      "meaning": "Localized capability fallback for clients that require the atomic common-details Host contract.",
+      "screenshot": "docs/screenshots/companion-phone-detail.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "errors.unavailable",
+      "meaning": "Fail-closed message shown when the configured Host library cannot safely serve the requested desktop Client operation, including after a role or target change.",
+      "screenshot": "docs/screenshots/settings-library.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "errors.unavailable",
+      "meaning": "Fail-closed response shown when this process is configured as a Client and therefore cannot serve protected Host-library routes.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    }
+  ],
+  "trivialGroups": [
+    {
+      "surface": "desktop",
+      "keyPrefix": "common.",
+      "reason": "Short conventional interface verbs and state labels are intentionally reviewed without feature-specific translator context. Ambiguous exceptions remain exact message entries."
+    }
+  ],
+  "coverage": {
+    "strategy": "uncovered-key-delta",
+    "reviewedUncoveredKeyCount": 2118,
+    "reviewedUncoveredKeyFingerprint": "sha256:9bf5ce060f012afa53919e746dd2c5b87acdca8d37e78db42768e379515a7289"
+  }
 }

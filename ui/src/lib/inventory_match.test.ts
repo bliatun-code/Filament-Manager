@@ -10,6 +10,10 @@ import {
 } from "./inventory_match";
 import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import type { SpoolWithMasterRow } from "./tauri_client";
+import {
+  formatMessage,
+  type MessageParams,
+} from "../../../src-tauri/companion_browser/message_format.js";
 
 type SharedLiveRfidCandidateFixture = {
   cases: Array<{
@@ -715,10 +719,12 @@ test("buildInventoryMatchResult excludes borrowed rolls from non-RFID metadata c
 });
 
 test("translateObservedMatchNote localizes known notes and preserves unknown notes", () => {
-  const t = (key: string, fallback?: string) =>
-    key === "settings.bambuLivePresetNozzleSuffix"
-      ? (fallback ?? "")
-      : `${key}:${fallback ?? ""}`;
+  const t = (key: string, fallback?: string, params?: MessageParams) => {
+    const renderedFallback = formatMessage(fallback ?? "", params, "en");
+    return key === "settings.bambuLivePresetNozzleSuffix"
+      ? renderedFallback
+      : `${key}:${renderedFallback}`;
+  };
   assert.equal(
     translateObservedMatchNote("Exact RFID/AMS identity match against inventory.", t),
     "settings.bambuLiveMatchNoteExact:Exact RFID/AMS identity match against inventory.",

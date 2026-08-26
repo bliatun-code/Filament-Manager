@@ -74,6 +74,9 @@ export function SettingsGeneralTab({
   const tourUrl = screenshotTourUrl();
   const userGuideUrl = userGuideUrlForLocale(locale);
   const checkingForUpdates = updateCheck.state.status === "CHECKING";
+  const selectedLanguageIsBeta = SELECTABLE_LOCALES.some(
+    (definition) => definition.id === locale && definition.catalogKind === "draft",
+  );
 
   const updateMessage = appUpdateCheckMessage(updateCheck.state, t);
 
@@ -129,9 +132,20 @@ export function SettingsGeneralTab({
               {SELECTABLE_LOCALES.map((definition) => (
                 <option key={definition.id} value={definition.id}>
                   {definition.nativeLabel}
+                  {definition.catalogKind === "draft"
+                    ? ` · ${t("settings.languageBeta", "Beta")}`
+                    : ""}
                 </option>
               ))}
             </select>
+            {selectedLanguageIsBeta ? (
+              <span className="mt-2 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {t(
+                  "settings.languageBetaHint",
+                  "Beta languages are still being completed and may show some text in English.",
+                )}
+              </span>
+            ) : null}
           </label>
         </div>
       </SettingsSurfaceCard>

@@ -4,9 +4,19 @@ use super::database_ids::new_id;
 use super::database_loan_models::SpoolLoanRow;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
+use super::database_spool_price_lock::lock_spool_price_for_historical_status;
 use super::database_text::normalize_optional_text;
 use super::inventory_domain::{LoanDirection, LoanStatus};
 use super::loan_defaults::{LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL};
+
+use super::loan_defaults::{
+    invalid_loan_operation, LOAN_ALREADY_RETURNED_CODE, LOAN_DIRECTION_MISMATCH_CODE,
+};
+
+pub(crate) struct SpoolLoanReturnOutcome {
+    pub(crate) loan: SpoolLoanRow,
+    pub(crate) newly_returned: bool,
+}
 
 pub(crate) fn return_spool_loan(
     conn: &Connection,
@@ -15,7 +25,7 @@ pub(crate) fn return_spool_loan(
     return_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let tx = conn.unchecked_transaction()?;
-    let loan = return_spool_loan_in_transaction(&tx, loan_id, returned_grams, return_note)?;
+    let loan = return_spool_loan_in_transaction(&tx, loan_id, returned_grams, return_note)?.loan;
     tx.commit()?;
     Ok(loan)
 }
@@ -25,18 +35,33 @@ pub(crate) fn return_spool_loan_in_transaction(
     loan_id: &str,
     returned_grams: i64,
     return_note: Option<&str>,
-) -> InventoryResult<SpoolLoanRow> {
+) -> InventoryResult<SpoolLoanReturnOutcome> {
     let loan = select_loan_by_id_optional(conn, loan_id)?.ok_or(InventoryError::NotFound)?;
-    if !LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref()).is_active() {
-        return Err(InventoryError::Db("loan already returned".to_string()));
-    }
     if LoanDirection::from_raw(Some(&loan.loan_direction)) != LoanDirection::Outbound {
-        return Err(InventoryError::Db(
-            "inbound loans require a dedicated return flow".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_DIRECTION_MISMATCH_CODE,
+            "inbound loans require a dedicated return flow",
         ));
     }
 
     let safe_returned = returned_grams.max(0);
+    let normalized_return_note = normalize_optional_text(return_note);
+    let loan_status = LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref());
+    if !loan_status.is_active() {
+        if loan_status == LoanStatus::Returned
+            && loan.returned_grams == Some(safe_returned)
+            && normalize_optional_text(loan.return_note.as_deref()) == normalized_return_note
+        {
+            return Ok(SpoolLoanReturnOutcome {
+                loan,
+                newly_returned: false,
+            });
+        }
+        return Err(invalid_loan_operation(
+            LOAN_ALREADY_RETURNED_CODE,
+            "loan already returned with different return details",
+        ));
+    }
     let consumed = (loan.grams_out - safe_returned).max(0);
 
     conn.execute(
@@ -47,7 +72,7 @@ pub(crate) fn return_spool_loan_in_transaction(
              consumed_grams = ?3,
              return_note = ?4
          WHERE id = ?1",
-        params![loan_id, safe_returned, consumed, return_note],
+        params![loan_id, safe_returned, consumed, normalized_return_note],
     )?;
 
     let next_status = if safe_returned == 0 {
@@ -64,6 +89,12 @@ pub(crate) fn return_spool_loan_in_transaction(
              updated_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
         params![loan.spool_id, next_status, safe_returned],
+    )?;
+    lock_spool_price_for_historical_status(
+        conn,
+        &loan.spool_id,
+        next_status,
+        "OUTBOUND_LOAN_RETURN",
     )?;
 
     conn.execute(
@@ -82,7 +113,10 @@ pub(crate) fn return_spool_loan_in_transaction(
         params![new_id(), loan.spool_id, safe_returned],
     )?;
 
-    select_loan_by_id(conn, loan_id)
+    Ok(SpoolLoanReturnOutcome {
+        loan: select_loan_by_id(conn, loan_id)?,
+        newly_returned: true,
+    })
 }
 
 pub(crate) fn return_inbound_spool_loan(
@@ -92,7 +126,8 @@ pub(crate) fn return_inbound_spool_loan(
     return_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let tx = conn.unchecked_transaction()?;
-    let loan = return_inbound_spool_loan_in_transaction(&tx, loan_id, returned_grams, return_note)?;
+    let loan =
+        return_inbound_spool_loan_in_transaction(&tx, loan_id, returned_grams, return_note)?.loan;
     tx.commit()?;
     Ok(loan)
 }
@@ -102,14 +137,31 @@ pub(crate) fn return_inbound_spool_loan_in_transaction(
     loan_id: &str,
     returned_grams: i64,
     return_note: Option<&str>,
-) -> InventoryResult<SpoolLoanRow> {
+) -> InventoryResult<SpoolLoanReturnOutcome> {
     let loan = select_loan_by_id_optional(conn, loan_id)?.ok_or(InventoryError::NotFound)?;
-    if !LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref()).is_active() {
-        return Err(InventoryError::Db("loan already returned".to_string()));
-    }
     if LoanDirection::from_raw(Some(&loan.loan_direction)) != LoanDirection::Inbound {
-        return Err(InventoryError::Db(
-            "this flow only supports inbound loans".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_DIRECTION_MISMATCH_CODE,
+            "this flow only supports inbound loans",
+        ));
+    }
+
+    let safe_returned = returned_grams.max(0);
+    let normalized_return_note = normalize_optional_text(return_note);
+    let loan_status = LoanStatus::from_raw(Some(&loan.loan_status), loan.returned_at.as_deref());
+    if !loan_status.is_active() {
+        if loan_status == LoanStatus::Returned
+            && loan.returned_grams == Some(safe_returned)
+            && normalize_optional_text(loan.return_note.as_deref()) == normalized_return_note
+        {
+            return Ok(SpoolLoanReturnOutcome {
+                loan,
+                newly_returned: false,
+            });
+        }
+        return Err(invalid_loan_operation(
+            LOAN_ALREADY_RETURNED_CODE,
+            "loan already returned with different return details",
         ));
     }
 
@@ -128,7 +180,6 @@ pub(crate) fn return_inbound_spool_loan_in_transaction(
         return Err(InventoryError::NotFound);
     }
 
-    let safe_returned = returned_grams.max(0);
     let consumed = (loan.grams_out - safe_returned).max(0);
 
     conn.execute(
@@ -139,12 +190,7 @@ pub(crate) fn return_inbound_spool_loan_in_transaction(
              consumed_grams = ?3,
              return_note = ?4
          WHERE id = ?1",
-        params![
-            loan_id,
-            safe_returned,
-            consumed,
-            normalize_optional_text(return_note)
-        ],
+        params![loan_id, safe_returned, consumed, normalized_return_note],
     )?;
 
     conn.execute(
@@ -166,8 +212,12 @@ pub(crate) fn return_inbound_spool_loan_in_transaction(
            AND deleted_at IS NULL",
         params![loan.spool_id, safe_returned],
     )?;
+    lock_spool_price_for_historical_status(conn, &loan.spool_id, "DELETED", "INBOUND_LOAN_RETURN")?;
 
-    select_loan_by_id(conn, loan_id)
+    Ok(SpoolLoanReturnOutcome {
+        loan: select_loan_by_id(conn, loan_id)?,
+        newly_returned: true,
+    })
 }
 
 fn select_loan_by_id_optional(

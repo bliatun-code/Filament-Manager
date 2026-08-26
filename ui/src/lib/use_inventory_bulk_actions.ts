@@ -137,9 +137,11 @@ export function inventoryBulkActionsCopy(t: TranslateFn): InventoryBulkActionsCo
       }),
     reviewUnchangedTerm: t("inventory.bulkUnchanged", "Unchanged"),
     selectVisible: (visibleCount) =>
-      t("inventory.bulkSelectVisible", "Select {count} visible rolls", {
-        count: visibleCount,
-      }),
+      t(
+        "inventory.bulkSelectVisible",
+        "{count, plural, one {Select # visible roll} other {Select # visible rolls}}",
+        { count: visibleCount },
+      ),
     selectionHint: t(
       "inventory.bulkSelectionHint",
       "Select rolls to move, change status, create labels or export.",
@@ -186,7 +188,8 @@ function validationErrorMessage(
     case "REMOVED_SPOOL":
       return t(
         "inventory.bulkRemovedBlocked",
-        "Removed rolls cannot be changed with bulk actions.",
+        "{count, plural, one {# affected roll is removed} other {# affected rolls are removed}}. Restore them before using bulk actions.",
+        { count },
       );
     case "NO_CHANGES":
       return t(

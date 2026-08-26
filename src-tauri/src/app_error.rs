@@ -126,6 +126,19 @@ mod tests {
     }
 
     #[test]
+    fn returned_loan_conflicts_keep_the_stable_code_in_desktop_envelopes() {
+        let encoded = inventory_error_to_command_string(InventoryError::InvalidOperation {
+            code: "loans.already_returned",
+            message: "loan already returned with different return details".to_string(),
+        });
+        let parsed: serde_json::Value = serde_json::from_str(&encoded).expect("valid envelope");
+        assert_eq!(parsed["code"], "loans.already_returned");
+        assert_eq!(parsed["safe_detail"], serde_json::Value::Null);
+        assert_eq!(parsed["diagnostic_id"], serde_json::Value::Null);
+        assert!(!encoded.contains("different return details"));
+    }
+
+    #[test]
     fn document_inventory_errors_keep_raw_database_details_out_of_the_envelope() {
         let encoded = document_inventory_error_to_command_string(InventoryError::Db(
             "private document database detail".to_string(),

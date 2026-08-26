@@ -39,8 +39,9 @@ import type {
   PrinterAmsSlotRow,
 } from "../lib/tauri_client";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
+import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 
-type TranslateFn = (key: string, fallback: string) => string;
+type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
 type BuildSettingsBambuLiveDiagnosticTrayCardInput = {
   amsReadInProgress: boolean;
@@ -366,7 +367,9 @@ export function buildSettingsBambuLiveTrayReviewState({
     hasReview: Boolean(hasReview),
     matchNote:
       tray.match_note && !amsReadInProgress
-        ? translateObservedMatchNote(tray.match_note, (key, fallback) => t(key, fallback ?? ""))
+        ? translateObservedMatchNote(tray.match_note, (key, fallback, params) =>
+            t(key, fallback ?? "", params),
+          )
         : null,
     reviewTitle: tray.match_note ?? "",
   };

@@ -142,10 +142,17 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 2);
   assert.match(languageSelect, /<option value="de">Deutsch<\/option>/);
   assert.match(languageSelect, /<option value="fr">Français<\/option>/);
-  assert.match(languageSelect, /<option value="es">Español<\/option>/);
-  assert.match(languageSelect, /<option value="fi-FI">Suomi<\/option>/);
+  assert.match(languageSelect, /<option value="es">Español · Beta<\/option>/);
+  assert.match(languageSelect, /<option value="fi-FI">Suomi · Beta<\/option>/);
+  assert.doesNotMatch(html, /Beta languages are still being completed/);
   assert.equal((languageSelect.match(/<option /g) ?? []).length, 21);
   assert.doesNotMatch(languageSelect, /Pseudo \(QA\)/);
+});
+
+test("SettingsGeneralTab explains English fallback only for the selected beta language", () => {
+  const html = renderGeneralTab("es");
+
+  assert.match(html, /Beta languages are still being completed/);
 });
 
 test("SettingsGeneralTab localizes license controls in Norwegian", () => {

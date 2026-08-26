@@ -1,4 +1,5 @@
 import type { ActivityItem } from "../components/dashboard_widgets";
+import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import {
   isBorrowedInOwnership,
   isSpoolLowStock,
@@ -23,7 +24,11 @@ import {
 import { formatGrams } from "./weight_display";
 import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 
-type TranslateFn = (key: string, fallback: string) => string;
+type TranslateFn = (
+  key: string,
+  fallback: string,
+  params?: MessageParams,
+) => string;
 
 export type DashboardGoalMetrics = {
   totalSpools: number;
@@ -321,10 +326,9 @@ export function buildDashboardDerivedState(params: {
         "200 g fallback for older Host",
       )
     : thresholdValues.size <= 1
-      ? t("dashboard.atOrBelowThreshold", "At or below {count} g").replace(
-          "{count}",
-          formatDisplayInteger(onlyThreshold, locale),
-        )
+      ? t("dashboard.atOrBelowThreshold", "At or below {count, number} g", {
+          count: onlyThreshold,
+        })
       : t("dashboard.materialLowStockThresholds", "Thresholds by material");
 
   const activity: ActivityItem[] = [
@@ -375,10 +379,9 @@ export function buildDashboardDerivedState(params: {
       title: t("dashboard.monthlyUsage", "Monthly Usage"),
       value: formatGrams(overview.total_consumption_30d, "zero", locale),
       subtitle: t("dashboard.last30", "Last 30 days"),
-      trend: t("dashboard.gramsPerDay", "{count} g/day").replace(
-        "{count}",
-        formatDisplayInteger(overview.total_consumption_30d / 30, locale),
-      ),
+      trend: t("dashboard.gramsPerDay", "{count} g/day", {
+        count: formatDisplayInteger(overview.total_consumption_30d / 30, locale),
+      }),
       accent: "amber",
     },
   ];

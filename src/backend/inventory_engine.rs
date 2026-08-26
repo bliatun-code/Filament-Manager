@@ -41,6 +41,7 @@ use crate::backend::database_spool_assignment::{
 };
 use crate::backend::database_spool_delete::soft_delete_spool_in_transaction;
 use crate::backend::database_spool_insert::insert_spool as insert_spool_row;
+use crate::backend::database_spool_price_lock::lock_spool_price_for_historical_status;
 use crate::backend::database_spool_queries::{
     get_spool_by_id as get_spool_by_id_row,
     get_spool_with_master_by_id as get_spool_with_master_by_id_row,
@@ -59,18 +60,25 @@ use crate::backend::database_spool_updates::{
     update_spool_weight as update_spool_weight_row,
 };
 use crate::backend::filament_database::{
-    ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, LibrarySyncCachedSnapshotRow,
-    LibrarySyncSettingsRow, LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput,
-    PrinterOverviewRow, PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow,
-    SpoolRow, SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
+    ActiveSpoolLoanRow, CatalogResetStats, FilamentDatabase, InventoryLocationRow,
+    LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
+    LoanUsageByPersonRow, ManualMasterInput, MasterCatalogUpdateInput, PrinterOverviewRow,
+    PrinterRow, SpoolHistoryEventRow, SpoolLoanDetailsRow, SpoolLoanRow, SpoolRow,
+    SpoolUsagePointRow, SpoolWithMasterRow, WishlistItemRow, WishlistReceiptResult,
 };
 use crate::backend::filament_standards::PURCHASE_PRICE_SOURCE_MANUAL;
 pub use crate::backend::filament_standards::{
     FilamentPriceBatchInput, FilamentPriceBatchReceipt, FilamentStandardsSettings,
     FilamentStandardsSnapshot,
 };
-use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
+use crate::backend::inventory_domain::{
+    is_historical_spool_status, LoanDirection, OwnershipType, SpoolStatus,
+};
 use crate::backend::inventory_printer_slot_live::derive_assign_printer_slot_live_context;
+use crate::backend::loan_defaults::{
+    invalid_loan_operation, LOAN_ALREADY_ACTIVE_CODE, LOAN_BORROWED_IN_CANNOT_LEND_CODE,
+    LOAN_COUNTERPARTY_REQUIRED_CODE, LOAN_INBOUND_REQUIRED_CODE,
+};
 use crate::backend::printer_slot_live_mapping::bambu_live_slot_matches_tray;
 pub use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::backend::statistics::FilamentConsumptionRow;
@@ -383,6 +391,19 @@ impl InventoryEngine {
         self.db.save_library_sync_cached_spools(rows)
     }
 
+    pub fn save_library_sync_cached_locations(
+        &self,
+        rows: &[InventoryLocationRow],
+    ) -> InventoryResult<LibrarySyncCachedLocationListRow> {
+        self.db.save_library_sync_cached_locations(rows)
+    }
+
+    pub fn get_library_sync_cached_locations(
+        &self,
+    ) -> InventoryResult<Option<LibrarySyncCachedLocationListRow>> {
+        self.db.get_library_sync_cached_locations()
+    }
+
     pub fn save_library_sync_cached_printers(
         &self,
         rows: &[PrinterOverviewRow],
@@ -509,8 +530,9 @@ impl InventoryEngine {
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
         if ownership_type_kind.is_borrowed_in() && owner_name.is_none() {
-            return Err(InventoryError::Db(
-                "borrowed-in spools require an owner/counterparty name".to_string(),
+            return Err(invalid_loan_operation(
+                LOAN_COUNTERPARTY_REQUIRED_CODE,
+                "borrowed-in spools require an owner/counterparty name",
             ));
         }
         let remaining_g = compute_remaining(input.initial_weight_g, input.current_weight_g);
@@ -622,8 +644,9 @@ impl InventoryEngine {
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
         if ownership_type_kind.is_borrowed_in() && owner_name.is_none() {
-            return Err(InventoryError::Db(
-                "borrowed-in spools require an owner/counterparty name".to_string(),
+            return Err(invalid_loan_operation(
+                LOAN_COUNTERPARTY_REQUIRED_CODE,
+                "borrowed-in spools require an owner/counterparty name",
             ));
         }
         let initial_weight = input
@@ -830,6 +853,12 @@ impl InventoryEngine {
                 ));
             }
             update_spool_status_row(conn, spool_id, normalized_status)?;
+            lock_spool_price_for_historical_status(
+                conn,
+                spool_id,
+                normalized_status,
+                "SPOOL_STATUS_UPDATE",
+            )?;
             insert_json_history_event(
                 conn,
                 spool_id,
@@ -963,6 +992,14 @@ impl InventoryEngine {
                     }),
                 )?;
             }
+            let historical_transition = is_historical_spool_status(Some(&status))
+                || is_historical_spool_status(Some(&existing_spool.status));
+            let historical_lock_changed = lock_spool_price_for_historical_status(
+                conn,
+                &input.spool_id,
+                &status,
+                "SPOOL_DETAILS_UPDATE",
+            )?;
             if let Some(purchase_metadata) = normalized_purchase_metadata {
                 let before = PurchaseReceiptMetadata::from_spool(&existing_spool);
                 if before != purchase_metadata {
@@ -979,9 +1016,11 @@ impl InventoryEngine {
                     )?;
                 }
             }
-            if requested_purchase_price_batch_locked
-                .is_some_and(|locked| locked != existing_spool.purchase_price_batch_locked)
-            {
+            let effective_existing_lock =
+                existing_spool.purchase_price_batch_locked || historical_lock_changed;
+            if requested_purchase_price_batch_locked.is_some_and(|locked| {
+                locked != effective_existing_lock && !(historical_transition && !locked)
+            }) {
                 let locked = requested_purchase_price_batch_locked
                     .expect("lock presence was checked before update");
                 set_spool_purchase_price_batch_locked_row(conn, &input.spool_id, locked)?;
@@ -990,7 +1029,7 @@ impl InventoryEngine {
                     &input.spool_id,
                     "PURCHASE_PRICE_BATCH_LOCK_UPDATED",
                     json!({
-                        "before": existing_spool.purchase_price_batch_locked,
+                        "before": effective_existing_lock,
                         "after": locked,
                     }),
                 )?;
@@ -1054,9 +1093,13 @@ impl InventoryEngine {
             return Err(InventoryError::Db("spool id is required".to_string()));
         }
 
-        let owner_name = normalize_optional_input_text(Some(input.owner_name.as_str())).ok_or(
-            InventoryError::Db("borrowed-in spools require an owner/counterparty name".to_string()),
-        )?;
+        let owner_name = normalize_optional_input_text(Some(input.owner_name.as_str()))
+            .ok_or_else(|| {
+                invalid_loan_operation(
+                    LOAN_COUNTERPARTY_REQUIRED_CODE,
+                    "borrowed-in spools require an owner/counterparty name",
+                )
+            })?;
         let owner_contact = normalize_optional_input_text(input.owner_contact.as_deref());
         let ownership_note = normalize_optional_input_text(input.ownership_note.as_deref());
 
@@ -1064,8 +1107,9 @@ impl InventoryEngine {
             let spool =
                 get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
             if !OwnershipType::from_raw(Some(&spool.spool.ownership_type)).is_borrowed_in() {
-                return Err(InventoryError::Db(
-                    "this flow only supports borrowed-in spools".to_string(),
+                return Err(invalid_loan_operation(
+                    LOAN_INBOUND_REQUIRED_CODE,
+                    "this flow only supports borrowed-in spools",
                 ));
             }
 
@@ -1115,9 +1159,12 @@ impl InventoryEngine {
         let previous_ownership_type = previous_ownership_type_kind.as_str().to_string();
 
         if next_ownership_type_kind.is_borrowed_in() {
-            let owner_name = owner_name.ok_or(InventoryError::Db(
-                "borrowed-in spools require an owner/counterparty name".to_string(),
-            ))?;
+            let owner_name = owner_name.ok_or_else(|| {
+                invalid_loan_operation(
+                    LOAN_COUNTERPARTY_REQUIRED_CODE,
+                    "borrowed-in spools require an owner/counterparty name",
+                )
+            })?;
             if previous_ownership_type_kind.is_borrowed_in() {
                 update_spool_ownership_metadata_row(
                     conn,
@@ -1149,8 +1196,9 @@ impl InventoryEngine {
                 );
             }
             if spool_has_active_loan_row(conn, spool_id)? {
-                return Err(InventoryError::Db(
-                    "finish active loan history before changing ownership".to_string(),
+                return Err(invalid_loan_operation(
+                    LOAN_ALREADY_ACTIVE_CODE,
+                    "finish active loan history before changing ownership",
                 ));
             }
 
@@ -1213,8 +1261,9 @@ impl InventoryEngine {
         )?
         .is_some()
         {
-            return Err(InventoryError::Db(
-                "return loaned-out spool before changing ownership".to_string(),
+            return Err(invalid_loan_operation(
+                LOAN_ALREADY_ACTIVE_CODE,
+                "return loaned-out spool before changing ownership",
             ));
         }
 
@@ -1538,6 +1587,12 @@ impl InventoryEngine {
                 "PRINT_JOB",
             )?;
             update_spool_status_row(conn, &input.spool_id, next_status)?;
+            lock_spool_price_for_historical_status(
+                conn,
+                &input.spool_id,
+                next_status,
+                "PRINT_JOB_USAGE",
+            )?;
             insert_json_history_event(
                 conn,
                 &input.spool_id,
@@ -1786,8 +1841,9 @@ impl InventoryEngine {
             let spool =
                 get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
             if OwnershipType::from_raw(Some(&spool.ownership_type)).is_borrowed_in() {
-                return Err(InventoryError::Db(
-                    "borrowed-in spools cannot be loaned out".to_string(),
+                return Err(invalid_loan_operation(
+                    LOAN_BORROWED_IN_CANNOT_LEND_CODE,
+                    "borrowed-in spools cannot be loaned out",
                 ));
             }
             let grams_out = input
@@ -1830,27 +1886,30 @@ impl InventoryEngine {
 
     pub fn return_spool_loan(&self, input: ReturnSpoolLoanInput) -> InventoryResult<SpoolLoanRow> {
         self.db.with_inventory_transaction(|conn| {
-            let loan = return_spool_loan_in_transaction(
+            let outcome = return_spool_loan_in_transaction(
                 conn,
                 &input.loan_id,
                 input.returned_grams,
                 input.note.as_deref(),
             )?;
-            insert_json_history_event(
-                conn,
-                &loan.spool_id,
-                "LOAN_RETURNED",
-                json!({
-                    "loan_id": loan.id,
-                    "loan_direction": loan.loan_direction,
-                    "borrower_name": loan.borrower_name,
-                    "counterparty_name": loan.counterparty_name,
-                    "grams_out": loan.grams_out,
-                    "returned_grams": loan.returned_grams,
-                    "consumed_grams": loan.consumed_grams,
-                    "note": loan.return_note,
-                }),
-            )?;
+            let loan = outcome.loan;
+            if outcome.newly_returned {
+                insert_json_history_event(
+                    conn,
+                    &loan.spool_id,
+                    "LOAN_RETURNED",
+                    json!({
+                        "loan_id": loan.id,
+                        "loan_direction": loan.loan_direction,
+                        "borrower_name": loan.borrower_name,
+                        "counterparty_name": loan.counterparty_name,
+                        "grams_out": loan.grams_out,
+                        "returned_grams": loan.returned_grams,
+                        "consumed_grams": loan.consumed_grams,
+                        "note": loan.return_note,
+                    }),
+                )?;
+            }
             Ok(loan)
         })
     }
@@ -1860,26 +1919,29 @@ impl InventoryEngine {
         input: ReturnSpoolLoanInput,
     ) -> InventoryResult<SpoolLoanRow> {
         self.db.with_inventory_transaction(|conn| {
-            let loan = return_inbound_spool_loan_in_transaction(
+            let outcome = return_inbound_spool_loan_in_transaction(
                 conn,
                 &input.loan_id,
                 input.returned_grams,
                 input.note.as_deref(),
             )?;
-            insert_json_history_event(
-                conn,
-                &loan.spool_id,
-                "BORROWED_IN_RETURNED",
-                json!({
-                    "loan_id": loan.id,
-                    "loan_direction": loan.loan_direction,
-                    "borrower_name": loan.borrower_name,
-                    "counterparty_name": loan.counterparty_name,
-                    "returned_grams": loan.returned_grams,
-                    "consumed_grams": loan.consumed_grams,
-                    "note": loan.return_note,
-                }),
-            )?;
+            let loan = outcome.loan;
+            if outcome.newly_returned {
+                insert_json_history_event(
+                    conn,
+                    &loan.spool_id,
+                    "BORROWED_IN_RETURNED",
+                    json!({
+                        "loan_id": loan.id,
+                        "loan_direction": loan.loan_direction,
+                        "borrower_name": loan.borrower_name,
+                        "counterparty_name": loan.counterparty_name,
+                        "returned_grams": loan.returned_grams,
+                        "consumed_grams": loan.consumed_grams,
+                        "note": loan.return_note,
+                    }),
+                )?;
+            }
             Ok(loan)
         })
     }

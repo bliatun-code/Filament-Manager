@@ -1,4 +1,5 @@
 import type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
+import { createAppError } from "./error_text";
 import type {
   FilamentDefaultsSpoolRow,
   FilamentGroupPriceDefault,
@@ -93,7 +94,7 @@ export function settingsWithGroupPriceDefault(
     (candidate) => candidate.group_key === request.groupKey,
   );
   if (!group) {
-    throw new Error("Filamentgruppen har endret seg. Last inn innstillingene på nytt.");
+    throw createAppError("filament_price_batch.stale_review");
   }
 
   const standard = {
@@ -124,7 +125,7 @@ export function buildFilamentPriceBatchInput(
     (candidate) => candidate.group_key === request.groupKey,
   );
   if (!group) {
-    throw new Error("Filamentgruppen har endret seg. Se gjennom utvalget på nytt.");
+    throw createAppError("filament_price_batch.stale_review");
   }
   const spoolsById = new Map(group.spools.map((spool) => [spool.spool_id, spool]));
   const historicalMissingPriceSpoolIds = new Set(
@@ -133,9 +134,7 @@ export function buildFilamentPriceBatchInput(
   const spools = request.spoolIds.map((spoolId) => {
     const spool = spoolsById.get(spoolId);
     if (!spool) {
-      throw new Error(
-        "En valgt rull har endret gruppe. Se gjennom utvalget på nytt.",
-      );
+      throw createAppError("filament_price_batch.stale_review");
     }
     return {
       spool_id: spool.spool_id,
@@ -159,6 +158,27 @@ export function buildFilamentPriceBatchInput(
     currency: request.currency,
     spools,
   };
+}
+
+export function requireWritableFilamentStandardsSnapshot({
+  clientReadOnly,
+  roleResolved,
+  snapshot,
+}: {
+  clientReadOnly: boolean;
+  roleResolved: boolean;
+  snapshot: FilamentStandardsSnapshot | null;
+}): FilamentStandardsSnapshot {
+  if (!roleResolved) {
+    throw createAppError("filament_standards.role_unresolved");
+  }
+  if (clientReadOnly) {
+    throw createAppError("filament_standards.host_managed");
+  }
+  if (!snapshot) {
+    throw createAppError("filament_standards.not_loaded");
+  }
+  return snapshot;
 }
 
 export function mapFilamentPriceBatchReceipt(

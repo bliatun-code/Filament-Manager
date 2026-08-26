@@ -1,3 +1,4 @@
+use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::filament_database::TrustedLanSettingsRow;
 use crate::companion_api;
 use crate::state::{AppState, TrustedLanCompanionRuntimeSnapshot};
@@ -47,12 +48,25 @@ pub(crate) async fn update_trusted_lan_companion_config(
             .filter(|value| *value > 0)
             .unwrap_or(companion_api::COMPANION_DEFAULT_PORT),
     };
-    with_db(&state, |db| db.save_trusted_lan_settings(&settings))?;
-    state.companion.trusted_lan.apply_config(
-        settings.enabled,
-        selected_interface,
-        settings.listen_port,
-    );
+    if settings.enabled {
+        with_authoritative_local_library(&state, || {
+            with_db(&state, |db| db.save_trusted_lan_settings(&settings))?;
+            state.companion.trusted_lan.apply_config(
+                true,
+                selected_interface.clone(),
+                settings.listen_port,
+            );
+            Ok(())
+        })?;
+    } else {
+        // Disabling the local server is always safe and remains available as a
+        // recovery action even when this device is already a Client.
+        with_db(&state, |db| db.save_trusted_lan_settings(&settings))?;
+        state
+            .companion
+            .trusted_lan
+            .apply_config(false, selected_interface, settings.listen_port);
+    }
     companion_api::reconcile_trusted_lan_server_locked(state.inner()).await?;
     Ok(state.companion.trusted_lan.snapshot())
 }

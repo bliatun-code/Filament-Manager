@@ -64,6 +64,27 @@ impl FilamentDatabase {
         )
     }
 
+    /// Consumes a one-time pairing and creates its durable browser credential in one transaction.
+    /// If browser creation fails, the token remains unused and can be retried safely.
+    pub fn consume_trusted_lan_pairing_and_create_browser(
+        &self,
+        pairing_token_hash: &str,
+        device_token_hash: &str,
+        last_origin: Option<&str>,
+    ) -> InventoryResult<Option<TrustedLanPairedBrowserRow>> {
+        self.with_write_transaction(|db| {
+            let Some(display_name) = db.consume_trusted_lan_pairing(pairing_token_hash)? else {
+                return Ok(None);
+            };
+            db.create_trusted_lan_paired_browser(
+                display_name.as_deref(),
+                device_token_hash,
+                last_origin,
+            )
+            .map(Some)
+        })
+    }
+
     pub fn get_trusted_lan_paired_browser_by_id(
         &self,
         browser_id: &str,

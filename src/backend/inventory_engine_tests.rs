@@ -477,6 +477,7 @@ fn empty_status_rolls_back_when_second_history_event_fails() {
             )
             .map_err(|error| error.to_string())?;
         assert_eq!(spool.status, "IN_STOCK");
+        assert!(!spool.purchase_price_batch_locked);
         assert_eq!(history_after, history_before);
         Ok(())
     })();
@@ -1120,6 +1121,12 @@ fn delete_spool_clears_printer_slot_assignment() {
                 location: Some("Shelf".to_string()),
             })
             .map_err(|error| error.to_string())?;
+        let original_home_location_id = engine
+            .db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .and_then(|spool| spool.home_location_id)
+            .ok_or_else(|| "expected original home location".to_string())?;
 
         let slot_id = "printer_1_ams_1_slot_1";
         engine
@@ -1158,6 +1165,8 @@ fn delete_spool_clears_printer_slot_assignment() {
             .ok_or_else(|| "expected soft-deleted spool to remain for history".to_string())?;
         assert_eq!(stored_spool.status, "DELETED");
         assert!(stored_spool.location_id.is_none());
+        assert!(stored_spool.home_location_id.is_none());
+        assert!(stored_spool.purchase_price_batch_locked);
 
         let active_spools = engine
             .list_spools(20, 0)
@@ -1167,7 +1176,14 @@ fn delete_spool_clears_printer_slot_assignment() {
         let history_rows = engine
             .list_spool_history("spool_1", 20)
             .map_err(|error| error.to_string())?;
-        assert!(history_rows.iter().any(|row| row.event_type == "DELETED"));
+        let deleted_event = history_rows
+            .iter()
+            .find(|row| row.event_type == "DELETED")
+            .ok_or_else(|| "expected deleted history event".to_string())?;
+        assert_eq!(
+            deleted_event.payload_json["snapshot"]["home_location_id"].as_str(),
+            Some(original_home_location_id.as_str())
+        );
 
         Ok(())
     })();
@@ -1327,6 +1343,28 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
         assert_eq!(returned.returned_grams, Some(610));
         assert_eq!(returned.consumed_grams, Some(210));
 
+        let repeated = engine
+            .return_inbound_spool_loan(ReturnSpoolLoanInput {
+                loan_id: returned.id.clone(),
+                returned_grams: 610,
+                note: Some("Owner picked it up".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(repeated.id, returned.id);
+        let conflict = engine
+            .return_inbound_spool_loan(ReturnSpoolLoanInput {
+                loan_id: returned.id.clone(),
+                returned_grams: 609,
+                note: Some("Owner picked it up".to_string()),
+            })
+            .expect_err("different return details must remain a structured conflict");
+        match conflict {
+            crate::backend::database_result::InventoryError::InvalidOperation { code, .. } => {
+                assert_eq!(code, "loans.already_returned")
+            }
+            other => return Err(format!("unexpected return conflict: {other}")),
+        }
+
         let hidden_from_inventory = engine
             .list_spools(20, 0)
             .map_err(|error| error.to_string())?;
@@ -1339,6 +1377,7 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
             .ok_or_else(|| "expected handed-back spool row to remain for history".to_string())?;
         assert_eq!(stored_spool.status, "DELETED");
         assert_eq!(stored_spool.remaining_g, Some(610));
+        assert!(stored_spool.purchase_price_batch_locked);
 
         let qr_lookup = engine
             .find_spool_by_qr("borrowed-qr-2")
@@ -1373,6 +1412,17 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
         assert!(history_rows
             .iter()
             .any(|row| row.event_type == "BORROWED_IN_RETURNED"));
+        assert_eq!(
+            history_rows
+                .iter()
+                .filter(|row| row.event_type == "BORROWED_IN_RETURNED")
+                .count(),
+            1
+        );
+        assert!(history_rows.iter().any(|row| {
+            row.event_type == "PURCHASE_PRICE_BATCH_LOCK_UPDATED"
+                && row.payload_json["source"] == "INBOUND_LOAN_RETURN"
+        }));
 
         Ok(())
     })();
@@ -3710,6 +3760,287 @@ fn accept_bambu_live_weight_estimate_rejects_offline_or_disconnected_state() {
         if let Err(message) = result {
             panic!("{scenario} failed: {message}");
         }
+    }
+}
+
+#[test]
+fn historical_status_transitions_lock_batch_price_and_detail_reactivation_preserves_lock() {
+    let db_path = temp_db_path("historical-status-price-lock");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.connection()
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES (
+                    'historical-lock-master', 'PLA', 'Basic', 'Black', 1000, 'Generic'
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price_batch_locked
+                 ) VALUES
+                    ('direct-history-lock', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 500, 500, 0),
+                    ('detail-history-lock', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 500, 500, 0),
+                    ('legacy-archived-reactivation', 'historical-lock-master', 'ARCHIVED', 'OWNED', 1000, 500, 500, 1),
+                    ('borrowed-is-not-history', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 500, 500, 0),
+                    ('print-history-lock', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 50, 50, 0);",
+            )
+            .map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .update_spool_status("direct-history-lock", "LOST")
+            .map_err(|error| error.to_string())?;
+        let direct = engine
+            .db
+            .get_spool_by_id("direct-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing direct-transition spool".to_string())?;
+        assert_eq!(direct.status, "LOST");
+        assert!(direct.purchase_price_batch_locked);
+
+        engine
+            .update_spool_status("borrowed-is-not-history", "BORROWED")
+            .map_err(|error| error.to_string())?;
+        let borrowed = engine
+            .db
+            .get_spool_by_id("borrowed-is-not-history")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing borrowed spool".to_string())?;
+        assert!(!borrowed.purchase_price_batch_locked);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "historical-lock-printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Historical lock printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "historical-lock-printer".to_string(),
+                slot_id: "historical-lock-printer_ams_1_slot_1".to_string(),
+                spool_id: Some("print-history-lock".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .record_print_usage(RecordPrintUsageInput {
+                printer_id: "historical-lock-printer".to_string(),
+                spool_id: "print-history-lock".to_string(),
+                grams: 50,
+                job_name: Some("Use the remainder".to_string()),
+                success: Some(true),
+            })
+            .map_err(|error| error.to_string())?;
+        let printed_empty = engine
+            .db
+            .get_spool_by_id("print-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing print-empty spool".to_string())?;
+        assert_eq!(printed_empty.status, "EMPTY");
+        assert!(printed_empty.purchase_price_batch_locked);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "detail-history-lock".to_string(),
+                qr_code: None,
+                status: "EMPTY".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: Some(false),
+            })
+            .map_err(|error| error.to_string())?;
+        let historical = engine
+            .db
+            .get_spool_by_id("detail-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing historical detail spool".to_string())?;
+        assert_eq!(historical.status, "EMPTY");
+        assert!(historical.purchase_price_batch_locked);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "detail-history-lock".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: Some(false),
+            })
+            .map_err(|error| error.to_string())?;
+        let reactivated = engine
+            .db
+            .get_spool_by_id("detail-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing reactivated detail spool".to_string())?;
+        assert_eq!(reactivated.status, "IN_STOCK");
+        assert!(reactivated.purchase_price_batch_locked);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "legacy-archived-reactivation".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: Some(false),
+            })
+            .map_err(|error| error.to_string())?;
+        let legacy_reactivated = engine
+            .db
+            .get_spool_by_id("legacy-archived-reactivation")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy archived spool".to_string())?;
+        assert_eq!(legacy_reactivated.status, "IN_STOCK");
+        assert!(legacy_reactivated.purchase_price_batch_locked);
+
+        let mut statement = engine
+            .db
+            .connection()
+            .prepare(
+                "SELECT spool_id, json_extract(payload_json, '$.source')
+                 FROM spool_history_events
+                 WHERE event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'
+                 ORDER BY spool_id",
+            )
+            .map_err(|error| error.to_string())?;
+        let lock_events = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            lock_events,
+            vec![
+                (
+                    "detail-history-lock".to_string(),
+                    "SPOOL_DETAILS_UPDATE".to_string()
+                ),
+                (
+                    "direct-history-lock".to_string(),
+                    "SPOOL_STATUS_UPDATE".to_string()
+                ),
+                (
+                    "print-history-lock".to_string(),
+                    "PRINT_JOB_USAGE".to_string()
+                ),
+            ]
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "historical_status_transitions_lock_batch_price_and_detail_reactivation_preserves_lock failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn zero_gram_outbound_return_locks_price_and_reactivation_keeps_it_locked() {
+    let db_path = temp_db_path("zero-return-price-lock");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.connection()
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('zero-return-master', 'PETG', 'Basic', 'Blue', 1000, 'Generic');
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price_batch_locked
+                 ) VALUES (
+                    'zero-return-spool', 'zero-return-master', 'IN_STOCK', 'OWNED',
+                    1000, 500, 500, 0
+                 );",
+            )
+            .map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "zero-return-spool".to_string(),
+                borrower_name: "No filament left".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(500),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let borrowed = engine
+            .db
+            .get_spool_by_id("zero-return-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing borrowed spool".to_string())?;
+        assert_eq!(borrowed.status, "BORROWED");
+        assert!(!borrowed.purchase_price_batch_locked);
+
+        engine
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id,
+                returned_grams: 0,
+                note: Some("Used completely".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let returned = engine
+            .db
+            .get_spool_by_id("zero-return-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing returned spool".to_string())?;
+        assert_eq!(returned.status, "EMPTY");
+        assert!(returned.purchase_price_batch_locked);
+
+        engine
+            .update_spool_status("zero-return-spool", "IN_STOCK")
+            .map_err(|error| error.to_string())?;
+        let reactivated = engine
+            .db
+            .get_spool_by_id("zero-return-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing reactivated spool".to_string())?;
+        assert_eq!(reactivated.status, "IN_STOCK");
+        assert!(reactivated.purchase_price_batch_locked);
+
+        let source: String = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT json_extract(payload_json, '$.source')
+                 FROM spool_history_events
+                 WHERE spool_id = 'zero-return-spool'
+                   AND event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(source, "OUTBOUND_LOAN_RETURN");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "zero_gram_outbound_return_locks_price_and_reactivation_keeps_it_locked failed: {message}"
+        );
     }
 }
 

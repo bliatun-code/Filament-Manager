@@ -30,5 +30,7 @@ export function useSettingsLibraryClientState({
     settingsClientHostWritePaired: librarySyncClientState.hostWritePaired,
     settingsClientLibraryId: librarySyncClientState.libraryId,
     settingsClientReadOnly: librarySyncClientState.readOnly,
+    settingsClientTargetGeneration:
+      librarySyncSettings?.target_generation ?? null,
   };
 }

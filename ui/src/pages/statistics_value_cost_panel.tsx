@@ -300,11 +300,13 @@ export function MaterialCostTraceCard({
 }
 
 function CoveragePanel({
+  filamentDefaultsManagedOnHost,
   locale,
   onOpenFilamentDefaults,
   summary,
   t,
 }: {
+  filamentDefaultsManagedOnHost?: boolean;
   locale: Locale;
   onOpenFilamentDefaults?: (target: StatisticsFilamentDefaultsTarget) => void;
   summary: StatisticsMonetarySummary;
@@ -315,6 +317,9 @@ function CoveragePanel({
   const totalGrams = coverage.covered_grams + coverage.uncovered_grams;
   const hasUnavailableWeight = coverage.missing_reasons.some((reason) =>
     reasonHasUnavailableWeight(reason.reason),
+  );
+  const hasFilamentDefaultsGap = coverage.missing_reasons.some((reason) =>
+    statisticsMissingReasonOpensFilamentDefaults(reason.reason),
   );
 
   return (
@@ -445,6 +450,14 @@ function CoveragePanel({
               );
             })}
           </ul>
+          {filamentDefaultsManagedOnHost && hasFilamentDefaultsGap ? (
+            <p className="mt-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
+              {t(
+                "settings.filamentDefaultsHostOwned",
+                "Manage library-wide filament defaults on the Host desktop app.",
+              )}
+            </p>
+          ) : null}
         </div>
       ) : coverage.total_rows > 0 ? (
         <div className="mt-3 text-xs font-medium text-emerald-700 dark:text-emerald-300">
@@ -522,6 +535,7 @@ function CurrencyTotals({
 }
 
 function StatisticsValueCostMetric({
+  filamentDefaultsManagedOnHost,
   inventoryRows,
   kind,
   locale,
@@ -531,6 +545,7 @@ function StatisticsValueCostMetric({
   summary,
   t,
 }: {
+  filamentDefaultsManagedOnHost?: boolean;
   inventoryRows?: StatisticsInventoryValueTraceRow[];
   kind: ValueCostMetricKind;
   locale: Locale;
@@ -589,6 +604,7 @@ function StatisticsValueCostMetric({
 
       <CurrencyTotals locale={locale} summary={summary} t={t} />
       <CoveragePanel
+        filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
         locale={locale}
         onOpenFilamentDefaults={onOpenFilamentDefaults}
         summary={summary}
@@ -681,6 +697,7 @@ function StatisticsValueCostMetric({
 }
 
 export function StatisticsValueCostPanel({
+  filamentDefaultsManagedOnHost = false,
   hostUpgradeRequired,
   loading,
   locale,
@@ -689,6 +706,7 @@ export function StatisticsValueCostPanel({
   report,
   t,
 }: {
+  filamentDefaultsManagedOnHost?: boolean;
   hostUpgradeRequired: boolean;
   loading: boolean;
   locale: Locale;
@@ -740,19 +758,25 @@ export function StatisticsValueCostPanel({
       {report ? (
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
           <StatisticsValueCostMetric
+            filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
             inventoryRows={report.inventory_trace}
             kind="INVENTORY_VALUE"
             locale={locale}
-            onOpenFilamentDefaults={onOpenFilamentDefaults}
+            onOpenFilamentDefaults={
+              filamentDefaultsManagedOnHost ? undefined : onOpenFilamentDefaults
+            }
             periodLabel={periodLabel}
             summary={report.inventory_value}
             t={t}
           />
           <StatisticsValueCostMetric
+            filamentDefaultsManagedOnHost={filamentDefaultsManagedOnHost}
             kind="MATERIAL_COST"
             locale={locale}
             materialRows={report.material_cost_trace}
-            onOpenFilamentDefaults={onOpenFilamentDefaults}
+            onOpenFilamentDefaults={
+              filamentDefaultsManagedOnHost ? undefined : onOpenFilamentDefaults
+            }
             periodLabel={periodLabel}
             summary={report.material_cost}
             t={t}

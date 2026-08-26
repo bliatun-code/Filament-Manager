@@ -1,6 +1,7 @@
 use super::{
-    claim_auto_recovery_attempt, is_live_print_running, merge_tray_payload,
-    run_bounded_blocking_polls, run_live_observer, AUTO_RECOVERY_COOLDOWN,
+    capture_bambu_live_poll_batch, claim_auto_recovery_attempt, is_live_print_running,
+    merge_tray_payload, run_bounded_blocking_polls, run_live_observer,
+    with_current_bambu_live_authority, AUTO_RECOVERY_COOLDOWN,
 };
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentDatabase, FilamentMasterSummary, ManualMasterInput,
@@ -22,7 +23,7 @@ use serde_json::Value;
 use std::io::Cursor;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -140,6 +141,114 @@ async fn cancelled_bounded_poll_does_not_schedule_the_next_entry() {
         None,
         "the second entry must remain pending after cancellation"
     );
+}
+
+#[test]
+fn client_role_skips_bambu_live_poll_batch_before_credentials_or_network() {
+    let db_path = temp_db_path("client-role-skips-poll");
+    let db = FilamentDatabase::open(&db_path).expect("open client poll database");
+    db.apply_schema().expect("apply client poll schema");
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("load standalone role");
+    settings.mode = "CLIENT".to_string();
+    settings.host_base_url = Some("http://host.local:4278".to_string());
+    db.save_library_sync_settings(&settings)
+        .expect("save client role");
+    drop(db);
+
+    let batch = capture_bambu_live_poll_batch(
+        db_path.to_string_lossy().as_ref(),
+        &CredentialStore::in_memory(),
+    )
+    .expect("client role should be a clean no-op");
+    assert!(batch.is_none());
+
+    let _ = std::fs::remove_file(db_path);
+}
+
+#[test]
+fn in_flight_bambu_observation_cannot_mutate_after_host_switches_to_client() {
+    let db_path = temp_db_path("host-to-client-in-flight");
+    let db = FilamentDatabase::open(&db_path).expect("open Host poll database");
+    db.apply_schema().expect("apply Host poll schema");
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("load standalone role");
+    settings.mode = "HOST".to_string();
+    let saved_host = db
+        .save_library_sync_settings(&settings)
+        .expect("save Host role");
+    drop(db);
+
+    let (authority, _, _) = capture_bambu_live_poll_batch(
+        db_path.to_string_lossy().as_ref(),
+        &CredentialStore::in_memory(),
+    )
+    .expect("capture Host poll")
+    .expect("Host role should produce a poll batch");
+    assert_eq!(authority.target_generation, saved_host.target_generation);
+
+    let db = FilamentDatabase::open(&db_path).expect("reopen Host database");
+    let mut settings = db.get_library_sync_settings().expect("reload Host role");
+    settings.mode = "CLIENT".to_string();
+    settings.host_base_url = Some("http://replacement-host.local:4278".to_string());
+    db.save_library_sync_settings(&settings)
+        .expect("switch to Client while observation is in flight");
+    drop(db);
+
+    let mutation_ran = AtomicBool::new(false);
+    let applied =
+        with_current_bambu_live_authority(db_path.to_string_lossy().as_ref(), &authority, |db| {
+            mutation_ran.store(true, Ordering::SeqCst);
+            db.set_setting("bambu_live_in_flight_test", "mutated")
+                .map_err(|error| error.to_string())
+        })
+        .expect("stale poll should be discarded cleanly");
+    assert!(applied.is_none());
+    assert!(!mutation_ran.load(Ordering::SeqCst));
+
+    let db = FilamentDatabase::open(&db_path).expect("verify replacement library");
+    assert_eq!(
+        db.get_setting("bambu_live_in_flight_test")
+            .expect("read mutation marker"),
+        None
+    );
+    drop(db);
+    let _ = std::fs::remove_file(db_path);
+}
+
+#[test]
+fn in_flight_bambu_observation_is_bound_to_credential_profile_after_restore() {
+    let db_path = temp_db_path("credential-profile-switch");
+    let db = FilamentDatabase::open(&db_path).expect("open poll database");
+    db.apply_schema().expect("apply poll schema");
+    let (authority, _, _) = capture_bambu_live_poll_batch(
+        db_path.to_string_lossy().as_ref(),
+        &CredentialStore::in_memory(),
+    )
+    .expect("capture poll batch")
+    .expect("standalone role should produce a batch");
+    db.connection()
+        .execute(
+            "INSERT INTO settings (key, value) VALUES ('credential_store_profile_id', ?1)\
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ["credential_profile_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+        )
+        .expect("replace restored credential profile");
+    drop(db);
+
+    let mutation_ran = AtomicBool::new(false);
+    let applied =
+        with_current_bambu_live_authority(db_path.to_string_lossy().as_ref(), &authority, |_db| {
+            mutation_ran.store(true, Ordering::SeqCst);
+            Ok(())
+        })
+        .expect("restored profile should discard old observation");
+    assert!(applied.is_none());
+    assert!(!mutation_ran.load(Ordering::SeqCst));
+
+    let _ = std::fs::remove_file(db_path);
 }
 
 fn temp_db_path(test_name: &str) -> PathBuf {
@@ -297,7 +406,9 @@ fn make_inventory_spool(id: &str, rfid_tag: Option<&str>) -> SpoolWithMasterRow 
             vendor: "Generic".to_string(),
         },
         location_name: None,
+        location_type: None,
         home_location_name: None,
+        home_location_type: None,
         low_stock_threshold_g: Some(200),
     }
 }

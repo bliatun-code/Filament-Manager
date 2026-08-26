@@ -1,13 +1,47 @@
+use crate::app_error::coded_command_error;
+use crate::backend::filament_database::FilamentDatabase;
 use crate::backend::filament_database::LibrarySyncSettingsRow;
 use crate::backend::inventory_engine::UpdateSpoolDetailsInput;
-use crate::inventory_command_support::{companion_service, inventory_error_to_string};
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_spool_write_commands::update_active_library_host_spool_details_blocking;
+use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::with_inventory;
 
-const INCOMPLETE_CLIENT_CONFIGURATION_ERROR: &str =
-    "Active library CLIENT configuration is incomplete. Configure and pair a valid Host library before writing.";
+pub(crate) fn require_authoritative_local_library_under_gate(
+    state: &AppState,
+) -> Result<(), String> {
+    require_authoritative_local_library_path_under_gate(&state.db_path)
+}
+
+pub(crate) fn require_authoritative_local_library_path_under_gate(
+    db_path: &str,
+) -> Result<(), String> {
+    let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
+    let settings = db
+        .get_library_sync_settings()
+        .map_err(|error| error.to_string())?;
+    require_authoritative_local_mode(&settings.mode)
+}
+
+pub(crate) fn with_authoritative_local_library<Output>(
+    state: &AppState,
+    write: impl FnOnce() -> Result<Output, String>,
+) -> Result<Output, String> {
+    // Role transitions use this same gate. Holding it from the persisted-role
+    // check through the mutation prevents HOST -> CLIENT from racing between
+    // authorization and a local database or credential write.
+    let _authority_gate = lock_secure_credential_mutation()?;
+    require_authoritative_local_library_under_gate(state)?;
+    write()
+}
+
+pub(crate) fn require_authoritative_local_mode(mode: &str) -> Result<(), String> {
+    match mode.trim().to_ascii_uppercase().as_str() {
+        "STANDALONE" | "HOST" => Ok(()),
+        _ => Err(coded_command_error("common.forbidden")),
+    }
+}
 
 pub(crate) struct ActiveLibraryGateway<'state> {
     state: &'state AppState,
@@ -22,26 +56,26 @@ impl<'state> ActiveLibraryGateway<'state> {
         &self,
         input: UpdateSpoolDetailsInput,
     ) -> Result<(), String> {
+        let authority_gate = lock_secure_credential_mutation()?;
         let settings = with_inventory(self.state, |engine| engine.get_library_sync_settings())?;
         let target = resolve_write_target(ActiveLibraryConfiguration::from(settings))?;
-
-        dispatch_spool_details_update(
-            target,
-            input,
-            |input| {
-                companion_service(self.state)
-                    .update_spool_details(input)
-                    .map_err(inventory_error_to_string)
-            },
-            |target, input| {
+        match target {
+            ActiveLibraryWriteTarget::Local => {
+                with_inventory(self.state, |engine| engine.update_spool_details(input))
+            }
+            ActiveLibraryWriteTarget::Host(target) => {
+                // Do not serialize a network round-trip behind the local
+                // authority gate. The Host command has its own persisted
+                // target-generation guard.
+                drop(authority_gate);
                 update_active_library_host_spool_details_blocking(
                     self.state,
                     &target.base_url,
                     &target.library_id,
                     input,
                 )
-            },
-        )
+            }
+        }
     }
 }
 
@@ -83,29 +117,30 @@ fn resolve_write_target(
         "STANDALONE" | "HOST" => Ok(ActiveLibraryWriteTarget::Local),
         "CLIENT" => {
             if !configuration.client_auth_paired {
-                return Err(INCOMPLETE_CLIENT_CONFIGURATION_ERROR.to_string());
+                return Err(coded_command_error("common.forbidden"));
             }
             let raw_base_url = configuration
                 .host_base_url
                 .as_deref()
                 .map(str::trim)
                 .filter(|value| !value.is_empty())
-                .ok_or_else(|| INCOMPLETE_CLIENT_CONFIGURATION_ERROR.to_string())?;
+                .ok_or_else(|| coded_command_error("common.forbidden"))?;
             let base_url = normalize_library_sync_base_url(raw_base_url)
-                .map_err(|_| INCOMPLETE_CLIENT_CONFIGURATION_ERROR.to_string())?;
+                .map_err(|_| coded_command_error("common.forbidden"))?;
             let library_id = configuration.library_id.trim();
             if library_id.is_empty() {
-                return Err(INCOMPLETE_CLIENT_CONFIGURATION_ERROR.to_string());
+                return Err(coded_command_error("common.forbidden"));
             }
             Ok(ActiveLibraryWriteTarget::Host(ActiveLibraryHostTarget {
                 base_url,
                 library_id: library_id.to_string(),
             }))
         }
-        _ => Err("Active library mode is invalid; refusing to select a write target.".to_string()),
+        _ => Err(coded_command_error("common.forbidden")),
     }
 }
 
+#[cfg(test)]
 fn dispatch_spool_details_update<LocalWrite, HostWrite>(
     target: ActiveLibraryWriteTarget,
     input: UpdateSpoolDetailsInput,
@@ -125,11 +160,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        dispatch_spool_details_update, resolve_write_target, ActiveLibraryConfiguration,
-        ActiveLibraryWriteTarget, INCOMPLETE_CLIENT_CONFIGURATION_ERROR,
+        dispatch_spool_details_update, require_authoritative_local_mode, resolve_write_target,
+        with_authoritative_local_library, ActiveLibraryConfiguration, ActiveLibraryWriteTarget,
     };
+    use crate::backend::filament_database::FilamentDatabase;
     use crate::backend::inventory_engine::UpdateSpoolDetailsInput;
     use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
+    use crate::credential_store::CredentialStore;
+    use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+    use crate::state::{
+        AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
+    };
     use std::cell::{Cell, RefCell};
 
     fn configuration(mode: &str) -> ActiveLibraryConfiguration {
@@ -246,10 +287,9 @@ mod tests {
         ];
 
         for case in cases {
-            assert_eq!(
-                resolve_write_target(case).expect_err("configuration must fail"),
-                INCOMPLETE_CLIENT_CONFIGURATION_ERROR
-            );
+            assert!(resolve_write_target(case)
+                .expect_err("configuration must fail")
+                .contains("common.forbidden"));
         }
     }
 
@@ -275,6 +315,55 @@ mod tests {
     fn unknown_modes_fail_closed() {
         let error = resolve_write_target(configuration("CORRUPT"))
             .expect_err("unknown mode must not choose local storage");
-        assert!(error.contains("refusing"));
+        assert!(error.contains("common.forbidden"));
+    }
+
+    #[test]
+    fn direct_local_library_writes_require_standalone_or_host_authority() {
+        for mode in ["STANDALONE", "HOST", " host "] {
+            require_authoritative_local_mode(mode).expect("authoritative local role");
+        }
+        assert!(require_authoritative_local_mode("CLIENT")
+            .expect_err("client must fail closed")
+            .contains("common.forbidden"));
+        assert!(require_authoritative_local_mode("CORRUPT")
+            .expect_err("unknown role must fail closed")
+            .contains("common.forbidden"));
+    }
+
+    #[test]
+    fn persisted_client_role_rejects_a_direct_local_mutation_before_it_runs() {
+        let path = std::env::temp_dir().join(format!(
+            "filament-manager-authority-guard-{}-{}.sqlite",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let db = FilamentDatabase::open(&path).expect("create test database");
+        db.apply_schema().expect("apply schema");
+        db.set_setting("library_sync_mode", "CLIENT")
+            .expect("set client role");
+        drop(db);
+        let state = AppState {
+            db_path: path.to_string_lossy().into_owned(),
+            companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+                TRUSTED_LAN_DEFAULT_PORT,
+            )),
+            credentials: CredentialStore::in_memory(),
+            library_sync_auth: LibrarySyncRuntimeAuth::new(),
+        };
+        let mutation_ran = Cell::new(false);
+
+        let error = with_authoritative_local_library(&state, || {
+            mutation_ran.set(true);
+            Ok(())
+        })
+        .expect_err("client role must reject local mutation");
+
+        assert!(error.contains("common.forbidden"));
+        assert!(!mutation_ran.get());
+        let _ = std::fs::remove_file(path);
     }
 }

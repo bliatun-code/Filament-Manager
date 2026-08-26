@@ -47,6 +47,24 @@ type InventoryRefreshInput = {
   selectedSpoolId?: string | null;
 };
 
+type LibrarySyncResolution = "LOADING" | "READY" | "ERROR";
+type InventoryDataRequestDomain =
+  | "spools"
+  | "locations"
+  | "wishlist"
+  | "loans"
+  | "printers"
+  | "detail";
+
+const INVENTORY_DATA_REQUEST_DOMAINS: readonly InventoryDataRequestDomain[] = [
+  "spools",
+  "locations",
+  "wishlist",
+  "loans",
+  "printers",
+  "detail",
+];
+
 export function useInventoryPageData({
   setRfidCaptureFieldsBySlotId,
   tauriAvailable,
@@ -56,10 +74,10 @@ export function useInventoryPageData({
   const spoolsRef = useRef<InventorySpool[]>([]);
   const [locations, setLocations] = useState<InventoryLocationRow[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
-  const [locationMutationsSupported, setLocationMutationsSupported] = useState(true);
+  const [locationMutationsSupported, setLocationMutationsSupported] = useState(false);
   const [locationSource, setLocationSource] = useState<
     "LIVE" | "CACHED" | "LEGACY_HOST" | "OFFLINE"
-  >("LIVE");
+  >("OFFLINE");
   const {
     beginRefresh,
     completeRefresh,
@@ -68,13 +86,29 @@ export function useInventoryPageData({
     loading,
     refreshing,
   } = usePageRefreshState(tauriAvailable);
-  const refreshInFlightRef = useRef(false);
-  const [clientReadOnly, setClientReadOnly] = useState(false);
+  const refreshRequestRef = useRef(0);
+  const dataRequestRef = useRef<Record<InventoryDataRequestDomain, number>>({
+    spools: 0,
+    locations: 0,
+    wishlist: 0,
+    loans: 0,
+    printers: 0,
+    detail: 0,
+  });
+  const librarySyncRequestRef = useRef(0);
+  // A desktop with an unresolved role must behave like a client without a
+  // writable Host target. Standalone/local writes are enabled only after the
+  // persisted role has been read successfully.
+  const [clientReadOnly, setClientReadOnly] = useState(tauriAvailable);
   const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
   const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
   const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [librarySyncReady, setLibrarySyncReady] = useState(!tauriAvailable);
+  const [clientTargetGeneration, setClientTargetGeneration] = useState<number | null>(null);
+  const [librarySyncResolution, setLibrarySyncResolution] =
+    useState<LibrarySyncResolution>(tauriAvailable ? "LOADING" : "READY");
+  const librarySyncReady = librarySyncResolution === "READY";
+  const librarySyncResolving = librarySyncResolution === "LOADING";
   const [clientInventorySource, setClientInventorySource] = useState<
     "LIVE" | "CACHED" | "OFFLINE"
   >("LIVE");
@@ -91,34 +125,119 @@ export function useInventoryPageData({
     Record<string, BambuLiveIntegrationSettings>
   >({});
 
+  const beginDataRequest = useCallback((domain: InventoryDataRequestDomain) => {
+    const requestId = dataRequestRef.current[domain] + 1;
+    dataRequestRef.current[domain] = requestId;
+    return requestId;
+  }, []);
+
+  const dataRequestIsCurrent = useCallback(
+    (domain: InventoryDataRequestDomain, requestId: number) =>
+      dataRequestRef.current[domain] === requestId,
+    [],
+  );
+
+  const invalidateInventoryDataRequests = useCallback(() => {
+    for (const domain of INVENTORY_DATA_REQUEST_DOMAINS) {
+      dataRequestRef.current[domain] += 1;
+    }
+    refreshRequestRef.current += 1;
+  }, []);
+
+  const clearTargetScopedData = useCallback(() => {
+    spoolsRef.current = [];
+    setSpools([]);
+    setLocations([]);
+    setLocationsLoading(false);
+    setLocationMutationsSupported(false);
+    setLocationSource("OFFLINE");
+    setWishlistItems([]);
+    setWishlistLoading(false);
+    setActiveLoans([]);
+    setPrinterOverview([]);
+    setBambuLiveIntegrations({});
+    setHistoryRows([]);
+    setHistoryLoading(false);
+    setUsagePoints([]);
+    setUsageLoading(false);
+    setClientInventorySource("OFFLINE");
+    setClientInventoryUpdatedAt(null);
+    setRfidCaptureFieldsBySlotId({});
+  }, [setRfidCaptureFieldsBySlotId]);
+
+  const resolveLibrarySyncRole = useCallback(async () => {
+    if (!tauriAvailable) {
+      setLibrarySyncResolution("READY");
+      return true;
+    }
+    const requestId = librarySyncRequestRef.current + 1;
+    librarySyncRequestRef.current = requestId;
+    invalidateInventoryDataRequests();
+    clearTargetScopedData();
+    setClientReadOnly(true);
+    setClientHostWritePaired(false);
+    setClientHostDeviceName(null);
+    setClientHostBaseUrl(null);
+    setClientLibraryId(null);
+    setClientTargetGeneration(null);
+    setLibrarySyncResolution("LOADING");
+    try {
+      const syncState = await loadLibrarySyncPageState();
+      if (requestId !== librarySyncRequestRef.current) {
+        return false;
+      }
+      invalidateInventoryDataRequests();
+      setClientReadOnly(syncState.clientReadOnly);
+      setClientHostWritePaired(syncState.clientHostWritePaired);
+      setClientHostDeviceName(syncState.clientHostDeviceName);
+      setClientHostBaseUrl(syncState.clientHostBaseUrl);
+      setClientLibraryId(syncState.clientLibraryId);
+      setClientTargetGeneration(syncState.clientTargetGeneration);
+      setLibrarySyncResolution("READY");
+      return true;
+    } catch (syncError) {
+      console.error(syncError);
+      if (requestId === librarySyncRequestRef.current) {
+        invalidateInventoryDataRequests();
+        // Preserve the fail-closed defaults and give the page's existing load
+        // error banner a retry path. Never reinterpret an unknown role as local.
+        setClientReadOnly(true);
+        setClientHostWritePaired(false);
+        setClientHostDeviceName(null);
+        setClientHostBaseUrl(null);
+        setClientLibraryId(null);
+        setClientTargetGeneration(null);
+        setLibrarySyncResolution("ERROR");
+        failRefresh(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
+      return false;
+    }
+  }, [
+    clearTargetScopedData,
+    failRefresh,
+    invalidateInventoryDataRequests,
+    t,
+    tauriAvailable,
+  ]);
+
   useEffect(() => {
     if (!tauriAvailable) {
       return;
     }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const syncState = await loadLibrarySyncPageState();
-        if (cancelled) {
-          return;
-        }
-        setClientReadOnly(syncState.clientReadOnly);
-        setClientHostWritePaired(syncState.clientHostWritePaired);
-        setClientHostDeviceName(syncState.clientHostDeviceName);
-        setClientHostBaseUrl(syncState.clientHostBaseUrl);
-        setClientLibraryId(syncState.clientLibraryId);
-      } catch (syncError) {
-        console.error(syncError);
-      } finally {
-        if (!cancelled) {
-          setLibrarySyncReady(true);
-        }
-      }
-    })();
+    void resolveLibrarySyncRole();
     return () => {
-      cancelled = true;
+      librarySyncRequestRef.current += 1;
+      invalidateInventoryDataRequests();
     };
-  }, [tauriAvailable]);
+  }, [invalidateInventoryDataRequests, resolveLibrarySyncRole, tauriAvailable]);
+
+  const retryLibrarySyncRole = useCallback(() => {
+    if (!tauriAvailable || librarySyncResolving) {
+      return;
+    }
+    beginRefresh();
+    void resolveLibrarySyncRole();
+  }, [beginRefresh, librarySyncResolving, resolveLibrarySyncRole, tauriAvailable]);
 
   useEffect(() => {
     spoolsRef.current = spools;
@@ -132,6 +251,7 @@ export function useInventoryPageData({
       reportResult?.(false);
       return;
     }
+    const requestId = beginDataRequest("locations");
     setLocationsLoading(true);
     try {
       const result = await loadInventoryLocations(
@@ -139,32 +259,53 @@ export function useInventoryPageData({
           clientReadOnly,
           clientHostBaseUrl,
           clientLibraryId,
+          clientTargetGeneration,
         },
         spoolRows,
       );
+      if (!dataRequestIsCurrent("locations", requestId)) {
+        return;
+      }
       setLocations(result.rows);
       setLocationMutationsSupported(result.mutationsSupported);
       setLocationSource(result.source);
       reportResult?.(true);
     } catch (locationError) {
       console.error(locationError);
-      reportResult?.(false);
+      if (dataRequestIsCurrent("locations", requestId)) {
+        reportResult?.(false);
+      }
     } finally {
-      setLocationsLoading(false);
+      if (dataRequestIsCurrent("locations", requestId)) {
+        setLocationsLoading(false);
+      }
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+  }, [
+    beginDataRequest,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    clientTargetGeneration,
+    dataRequestIsCurrent,
+    tauriAvailable,
+  ]);
 
   const reloadSpools = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
       reportResult?.(false);
       return;
     }
+    const requestId = beginDataRequest("spools");
     try {
       const result = await loadInventorySpools({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
       });
+      if (!dataRequestIsCurrent("spools", requestId)) {
+        return;
+      }
       if (clientReadOnly) {
         setClientInventorySource(result.source);
         setClientInventoryUpdatedAt(result.updatedAt);
@@ -176,15 +317,22 @@ export function useInventoryPageData({
       spoolsRef.current = result.rows;
       setSpools(result.rows);
       await reloadLocations(result.rows, reportResult);
-      reportResult?.(true);
+      if (dataRequestIsCurrent("spools", requestId)) {
+        reportResult?.(true);
+      }
     } catch (loadError) {
       console.error(loadError);
-      reportResult?.(false);
+      if (dataRequestIsCurrent("spools", requestId)) {
+        reportResult?.(false);
+      }
     }
   }, [
+    beginDataRequest,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
+    dataRequestIsCurrent,
     reloadLocations,
     tauriAvailable,
   ]);
@@ -194,53 +342,90 @@ export function useInventoryPageData({
       reportResult?.(false);
       return;
     }
+    const requestId = beginDataRequest("wishlist");
     setWishlistLoading(true);
     try {
       const rows = await loadWishlistItems({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
       });
+      if (!dataRequestIsCurrent("wishlist", requestId)) {
+        return;
+      }
       setWishlistItems(rows);
       reportResult?.(true);
     } catch (wishlistError) {
       console.error(wishlistError);
-      reportResult?.(false);
+      if (dataRequestIsCurrent("wishlist", requestId)) {
+        reportResult?.(false);
+      }
     } finally {
-      setWishlistLoading(false);
+      if (dataRequestIsCurrent("wishlist", requestId)) {
+        setWishlistLoading(false);
+      }
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+  }, [
+    beginDataRequest,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    clientTargetGeneration,
+    dataRequestIsCurrent,
+    tauriAvailable,
+  ]);
 
   const reloadActiveLoans = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
       reportResult?.(false);
       return;
     }
+    const requestId = beginDataRequest("loans");
     try {
       const rows = await loadActiveLoanRows({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
       });
+      if (!dataRequestIsCurrent("loans", requestId)) {
+        return;
+      }
       setActiveLoans(rows);
       reportResult?.(true);
     } catch (loanError) {
       console.error(loanError);
-      reportResult?.(false);
+      if (dataRequestIsCurrent("loans", requestId)) {
+        reportResult?.(false);
+      }
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+  }, [
+    beginDataRequest,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    clientTargetGeneration,
+    dataRequestIsCurrent,
+    tauriAvailable,
+  ]);
 
   const reloadPrinterOverview = useCallback(async (reportResult?: InventoryReloadReporter) => {
     if (!tauriAvailable) {
       reportResult?.(false);
       return;
     }
+    const requestId = beginDataRequest("printers");
     try {
       const overview = await loadPrinterOverviewData({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
       });
+      if (!dataRequestIsCurrent("printers", requestId)) {
+        return;
+      }
       if (overview.source === "OFFLINE") {
         reportResult?.(false);
         return;
@@ -270,12 +455,17 @@ export function useInventoryPageData({
       reportResult?.(true);
     } catch (overviewError) {
       console.error(overviewError);
-      reportResult?.(false);
+      if (dataRequestIsCurrent("printers", requestId)) {
+        reportResult?.(false);
+      }
     }
   }, [
+    beginDataRequest,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
+    dataRequestIsCurrent,
     setRfidCaptureFieldsBySlotId,
     tauriAvailable,
   ]);
@@ -288,6 +478,7 @@ export function useInventoryPageData({
       reportResult?.(false);
       return;
     }
+    const requestId = beginDataRequest("detail");
     if (
       clientReadOnly &&
       (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim())
@@ -302,28 +493,45 @@ export function useInventoryPageData({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
         spoolId,
       });
+      if (!dataRequestIsCurrent("detail", requestId)) {
+        return;
+      }
       setHistoryRows(detail.historyRows);
       setUsagePoints(detail.usagePoints);
       reportResult?.(true);
     } catch (detailError) {
       console.error(detailError);
-      reportResult?.(false);
+      if (dataRequestIsCurrent("detail", requestId)) {
+        reportResult?.(false);
+      }
     } finally {
-      setHistoryLoading(false);
-      setUsageLoading(false);
+      if (dataRequestIsCurrent("detail", requestId)) {
+        setHistoryLoading(false);
+        setUsageLoading(false);
+      }
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, tauriAvailable]);
+  }, [
+    beginDataRequest,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    clientTargetGeneration,
+    dataRequestIsCurrent,
+    tauriAvailable,
+  ]);
 
   const refreshInventoryData = useCallback(async ({
     reloadCatalog,
     selectedSpoolId,
   }: InventoryRefreshInput) => {
-    if (!tauriAvailable || refreshInFlightRef.current) {
+    if (!tauriAvailable) {
       return;
     }
-    refreshInFlightRef.current = true;
+    const requestId = refreshRequestRef.current + 1;
+    refreshRequestRef.current = requestId;
     beginRefresh();
     let successfulLoads = 0;
     let failedLoads = 0;
@@ -346,6 +554,9 @@ export function useInventoryPageData({
         refreshes.push(reloadSpoolDetail(selectedSpoolId, reportResult));
       }
       await Promise.all(refreshes);
+      if (refreshRequestRef.current !== requestId) {
+        return;
+      }
       if (failedLoads === 0) {
         completeRefresh();
         return;
@@ -354,8 +565,11 @@ export function useInventoryPageData({
         completeRefresh();
       }
       failRefresh(t("errors.requestFailed", "The request could not be completed."));
-    } finally {
-      refreshInFlightRef.current = false;
+    } catch (refreshError) {
+      console.error(refreshError);
+      if (refreshRequestRef.current === requestId) {
+        failRefresh(t("errors.requestFailed", "The request could not be completed."));
+      }
     }
   }, [
     beginRefresh,
@@ -380,10 +594,12 @@ export function useInventoryPageData({
     clientInventoryUpdatedAt,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     completeDataLoad: completeRefresh,
     historyLoading,
     historyRows,
     librarySyncReady,
+    librarySyncResolving,
     loadError,
     loading,
     locations,
@@ -394,6 +610,7 @@ export function useInventoryPageData({
     reloadActiveLoans,
     reloadPrinterOverview,
     reloadLocations,
+    retryLibrarySyncRole,
     refreshInventoryData,
     reloadSpoolDetail,
     reloadSpools,

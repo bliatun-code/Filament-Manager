@@ -53,6 +53,7 @@ export const deDictionary: DictionaryNode = {
     unauthorized: "Eine Anmeldung ist erforderlich.",
     forbidden: "Diese Aktion ist nicht erlaubt.",
     notFound: "Der angeforderte Eintrag wurde nicht gefunden.",
+    unavailable: "Der Dienst ist vorübergehend nicht verfügbar.",
     internal: "Ein Fehler ist aufgetreten. Versuche es erneut.",
     spoolActiveLoan: "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
     loadedSpoolEditBlocked: "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
@@ -62,21 +63,99 @@ export const deDictionary: DictionaryNode = {
       "Im Browser kann der Rollenstatus nur auf Lagernd, Leer oder Verloren gesetzt werden.",
     locationHasReferences:
       "Verschiebe alle Rollen und untergeordneten Lagerorte, bevor du diesen Lagerort löschst.",
+    locationNameRequired: "Ein Name für den Lagerort ist erforderlich.",
+    locationNameTooLong:
+      "Der Name eines Lagerorts darf höchstens 120 Zeichen enthalten.",
+    locationNameConflict: "Ein aktiver Lagerort verwendet bereits diesen Namen.",
+    locationAlreadyArchived: "Dieser Lagerort ist bereits archiviert.",
+    locationNotArchived: "Dieser Lagerort ist bereits aktiv.",
+    locationArchived:
+      "Stelle diesen Lagerort wieder her, bevor du ihn verwendest oder Rollen zuweist.",
+    locationMergeSameId: "Wähle zwei verschiedene Lagerorte zum Zusammenführen aus.",
+    locationParentCycle:
+      "Ein Lagerort kann nicht unter sich selbst oder einen untergeordneten Lagerort verschoben werden.",
+    locationMergeDescendant:
+      "Ein Lagerort kann nicht mit einem seiner untergeordneten Lagerorte zusammengeführt werden.",
+    locationSystemOwned:
+      "Dieser Lagerort wird vom Drucker- oder Ausleihablauf verwaltet.",
+    locationHostUnsupported:
+      "Aktualisiere den Host, bevor du Lagerortobjekte verwaltest.",
+    inventoryBulkInvalidExpectedCount:
+      "Die Sammelprüfung ist ungültig. Lade den Bestand neu und prüfe die Aktion erneut.",
+    inventoryBulkEmptySelection:
+      "Wähle mindestens eine Rolle für die Sammelaktion aus.",
+    inventoryBulkInvalidSelection:
+      "Die ausgewählten Rollen sind ungültig. Leere die Auswahl und wähle sie erneut aus.",
+    inventoryBulkStaleReview:
+      "Die ausgewählten Rollen haben sich geändert. Lade den Bestand neu und prüfe die Sammelaktion erneut.",
+    inventoryBulkInvalidLocationTarget:
+      "Wähle einen aktiven Lagerort und prüfe das Verschieben erneut.",
+    inventoryBulkInvalidStatusTarget:
+      "Wähle einen zulässigen Bestandsstatus und prüfe die Aktion erneut.",
+    inventoryBulkRemovedSpool:
+      "Eine ausgewählte Rolle wurde entfernt. Lade den Bestand neu und prüfe die Aktion erneut.",
+    inventoryBulkPrinterSlotControlled:
+      "Eine ausgewählte Rolle ist in einen Drucker geladen. Verwende die Druckerplatz-Aktionen oder entferne die Rolle aus der Auswahl.",
+    inventoryBulkActiveLoan:
+      "Eine ausgewählte Rolle hat eine aktive Ausleihe. Beende sie oder entferne die Rolle aus der Auswahl.",
     loanExpectedReturnInvalid: "Wähle ein gültiges erwartetes Rückgabedatum.",
     loanMetadataUnsupported:
       "Aktualisiere den Host, bevor du Kontaktdaten oder ein erwartetes Rückgabedatum speicherst.",
+    loanAlreadyActive: "Diese Rolle hat bereits eine aktive Ausleihe.",
+    loanAlreadyReturned:
+      "Diese Ausleihe wurde bereits mit anderen Rückgabedaten beendet.",
+    loanDirectionMismatch:
+      "Verwende die Rückgabeaktion für diese Ausleihrichtung.",
+    borrowedInCannotLend:
+      "Eine geliehene Rolle kann nicht weiterverliehen werden.",
+    inboundLoanRequired:
+      "Diese Aktion ist nur für geliehene Rollen verfügbar.",
+    spoolCommonDetailsHostUnsupported:
+      "Aktualisiere den Host, bevor du Taragewicht oder Eigentum zusammen mit den Rollendetails speicherst.",
     purchaseMetadataHostUnsupported:
       "Aktualisiere den Host, bevor du Kaufdetails speicherst.",
+    purchasePriceInvalid:
+      "Gib einen gültigen Kaufpreis von null oder mehr ein.",
+    purchaseCurrencyInvalid:
+      "Gib eine gültige dreibuchstabige Kaufwährung ein.",
+    purchaseCurrencyRequired:
+      "Eine Kaufwährung ist erforderlich, wenn ein Kaufpreis festgelegt ist.",
+    purchasePriceRequired:
+      "Ein Kaufpreis ist erforderlich, wenn eine Kaufwährung festgelegt ist.",
+    purchaseDateInvalid: "Gib ein gültiges Kaufdatum ein.",
+    purchaseBatchCodeTooLong: "Der Chargencode des Kaufs ist zu lang.",
+    purchaseSupplierReferenceTooLong: "Die Lieferantenreferenz ist zu lang.",
+    purchaseMetadataTypeInvalid:
+      "Die Kaufdetails haben ein ungültiges Format. Prüfe sie und versuche es erneut.",
+    purchasePriceProtectionLockInvalid:
+      "Der importierte Preisschutzwert muss wahr oder falsch sein.",
+    purchasePriceProtectionSourceInvalid:
+      "Die importierte Preisquelle muss MANUAL, STANDARD_BATCH oder leer sein.",
     filamentStandardsHostUnsupported:
-      "Update the Host before using filament pricing standards.",
+      "Aktualisiere den Host, bevor du Filament-Preisstandards verwendest.",
+    filamentStandardsRoleUnresolved:
+      "Warte, bis die Bibliotheksrolle geladen ist, und versuche es dann erneut.",
+    libraryRoleLoadFailed:
+      "Die Bibliotheksrolle dieses Geräts konnte nicht ermittelt werden. Lokale Daten und Änderungen sind erst verfügbar, nachdem die Rolle geladen wurde.",
+    filamentStandardsHostManaged:
+      "Verwalte die bibliotheksweiten Filamentstandards in der Desktop-App auf dem Host.",
+    filamentStandardsNotLoaded:
+      "Warte, bis die Filamentstandards geladen sind, und versuche es dann erneut.",
     filamentStandardsStaleReview:
-      "The selected rolls changed. Review the filament price group again.",
+      "Die ausgewählten Rollen haben sich geändert. Prüfe die Filament-Preisgruppe erneut.",
+    filamentBatchGroupRequired: "Wähle eine Filament-Preisgruppe.",
+    filamentBatchEmptySelection:
+      "Wähle mindestens eine Rolle für diese Preisaktualisierung aus.",
+    filamentBatchInvalidSelection:
+      "Die ausgewählten Rollen sind ungültig. Prüfe die Filament-Preisgruppe erneut.",
+    filamentBatchInvalidHistoricalFill:
+      "Das Ergänzen eines fehlenden Preises bei einer historischen Rolle ist nur für eine eigene historische Rolle ohne Preis im Modus Nur fehlende Preise verfügbar.",
     filamentStandardsCurrencyInvalid:
-      "Enter a valid three-letter purchase currency.",
+      "Gib eine gültige dreibuchstabige Kaufwährung ein.",
     filamentStandardsPriceInvalid:
-      "Enter a valid filament price of zero or more.",
+      "Gib einen gültigen Filamentpreis von null oder mehr ein.",
     filamentStandardsInvalid:
-      "The saved filament standards are no longer valid. Reload and review them.",
+      "Die gespeicherten Filamentstandards sind nicht mehr gültig. Lade sie neu und prüfe sie.",
     exportInvalidPayload: "Der erzeugte Export ist ungültig.",
     downloadsUnavailable: "Der Download-Ordner ist nicht verfügbar.",
     exportWriteFailed: "Der Export konnte nicht gespeichert werden.",
@@ -177,7 +256,7 @@ export const deDictionary: DictionaryNode = {
     noActivePrinter: "Kein aktiver Drucker ausgewählt",
     noPrintersConfigured: "Keine Drucker konfiguriert",
     lowStock: "Niedriger Bestand",
-    atOrBelowThreshold: "Bei oder unter {count} g",
+    atOrBelowThreshold: "Bei oder unter {count, number} g",
     materialLowStockThresholds: "Grenzwerte nach Material",
     legacyLowStockFallback: "200-g-Ersatzwert für ältere Hosts",
     noAlerts: "Keine Hinweise",
@@ -393,7 +472,8 @@ export const deDictionary: DictionaryNode = {
     bulkNoSelection: "Keine Rollen ausgewählt",
     bulkSelectedCount: "{count, plural, one {# Rolle ausgewählt} other {# Rollen ausgewählt}}",
     bulkSelectedAcrossFilters: "{selected} insgesamt ausgewählt · {visible} in dieser Ansicht",
-    bulkSelectVisible: "{count} sichtbare Rollen auswählen",
+    bulkSelectVisible:
+      "{count, plural, one {# sichtbare Rolle auswählen} other {# sichtbare Rollen auswählen}}",
     bulkSelectSpool: "{reference} auswählen",
     bulkClearSelection: "Auswahl aufheben",
     bulkReviewMove: "Verschieben prüfen",
@@ -821,6 +901,16 @@ export const deDictionary: DictionaryNode = {
       detailsUpdated: "Details aktualisiert",
       purchaseReceiptRecorded: "Kaufbeleg erfasst",
       purchaseMetadataUpdated: "Kaufdetails aktualisiert",
+      purchasePriceStandardApplied: "Gruppenpreis angewendet",
+      purchasePriceStandardAppliedDetail:
+        "Der gespeicherte Gruppenpreis wurde auf diese Rolle angewendet.",
+      purchasePriceBatchLockUpdated: "Schutz vor Gruppenpreisen geändert",
+      purchasePriceBatchProtection: "Schutz vor Gruppenpreisen",
+      purchasePriceBatchLockUpdatedDetail:
+        "Der Schutz vor Gruppenpreisen wurde für diese Rolle geändert.",
+      locationMerged: "Lagerorte zusammengeführt",
+      locationMergedDetail:
+        "Diese Rolle wurde verschoben, weil zwei Lagerorte zusammengeführt wurden.",
       rfidSaved: "RFID gespeichert",
       assignedToAms: "Druckerplatz zugewiesen",
       printJobRecorded: "Druckverbrauch erfasst",
@@ -1306,7 +1396,7 @@ export const deDictionary: DictionaryNode = {
   },
   statistics: {
     forecastUnavailable: "Nicht genügend Verbrauchsdaten",
-    forecastDays: "{count} Tage",
+    forecastDays: "{count, plural, one {# Tag} other {# Tage}}",
     consumptionForecast: "Verbrauchsprognose",
     consumptionForecastHint:
       "Eine deterministische Schätzung auf Grundlage des eigenen Bestands und des erfassten Verbrauchs eigener Materialien in den letzten 30 Tagen.",
@@ -1488,91 +1578,105 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
-    filamentDefaultsUnknownWeight: "Unknown nominal weight",
-    filamentDefaultsLoadError: "Failed to load filament defaults.",
-    filamentDefaultsSaveCurrencyError: "Could not save the default currency.",
-    filamentDefaultsSaveGroupError: "Could not save the filament group price.",
-    filamentDefaultsApplyError: "Could not apply the filament prices.",
+    filamentDefaultsUnknownWeight: "Unbekanntes Nenngewicht",
+    filamentDefaultsLoadError: "Filamentstandards konnten nicht geladen werden.",
+    filamentDefaultsSaveCurrencyError: "Die Standardwährung konnte nicht gespeichert werden.",
+    filamentDefaultsSaveGroupError: "Der Preis der Filamentgruppe konnte nicht gespeichert werden.",
+    filamentDefaultsApplyError: "Die Filamentpreise konnten nicht angewendet werden.",
     filamentDefaultsSettingsRepair:
-      "Some saved filament standards were invalid or no longer matched this library and have been excluded. Saving a valid default repairs the stored settings.",
+      "Einige gespeicherte Filamentstandards waren ungültig oder passten nicht mehr zu dieser Bibliothek und wurden ausgeschlossen. Durch Speichern eines gültigen Standards werden die Einstellungen repariert.",
     filamentDefaultsSettingsRepairReadOnly:
-      "Some saved filament standards were invalid or no longer matched the Host library and have been excluded. Repair them on the Host desktop app.",
-    filamentDefaultsReceiptBatchLocked: "Protected from batch pricing",
-    filamentDefaultsReceiptManual: "Must be updated manually",
-    filamentDefaultsReceiptBorrowed: "Borrowed spool was not changed",
-    filamentDefaultsReceiptInactive: "Historical spool was not changed",
-    filamentDefaultsReceiptAlreadyPriced: "Already had a price",
-    filamentDefaultsReceiptSkipped: "Not updated",
-    filamentDefaultsSelectSpool: "Select spool",
+      "Einige gespeicherte Filamentstandards waren ungültig oder passten nicht mehr zur Host-Bibliothek und wurden ausgeschlossen. Repariere sie in der Desktop-App des Hosts.",
+    filamentDefaultsReceiptBatchLocked: "Vor Gruppenpreisänderungen geschützt",
+    filamentDefaultsReceiptManual: "Muss manuell aktualisiert werden",
+    filamentDefaultsReceiptBorrowed: "Geliehene Rolle wurde nicht geändert",
+    filamentDefaultsReceiptInactive: "Historische Rolle wurde nicht geändert",
+    filamentDefaultsReceiptAlreadyPriced: "Hatte bereits einen Preis",
+    filamentDefaultsReceiptSkipped: "Nicht aktualisiert",
+    filamentDefaultsSelectSpool: "Rolle auswählen",
     filamentDefaultsSelectHistoricalSpool:
-      "Set price on historical spool and protect it from later group updates",
+      "Preis für historische Rolle festlegen und vor späteren Gruppenänderungen schützen",
     filamentDefaultsHistoricalSelectionHint:
-      "Never selected automatically. It can receive its missing price once and will then remain protected from group updates.",
-    filamentDefaultsBatchLocked: "Batch locked",
-    filamentDefaultsBorrowed: "Borrowed",
-    filamentDefaultsHistorical: "Historical",
-    filamentDefaultsCurrentPrice: "Current price",
-    filamentDefaultsMissingPrice: "Missing price",
-    filamentDefaultsReceipt: "Latest pricing receipt",
-    filamentDefaultsReceiptHint: "This receipt stays here until you dismiss it or run another price update.",
-    filamentDefaultsReceiptCommitted: "{updated} updated · {skipped} not updated",
+      "Wird nie automatisch ausgewählt. Der fehlende Preis kann einmal eingetragen werden; danach bleibt die Rolle vor Gruppenänderungen geschützt.",
+    filamentDefaultsBatchLocked: "Für Gruppenpreise gesperrt",
+    filamentDefaultsBorrowed: "Geliehen",
+    filamentDefaultsHistorical: "Historisch",
+    filamentDefaultsCurrentPrice: "Aktueller Preis",
+    filamentDefaultsMissingPrice: "Preis fehlt",
+    filamentDefaultsReceipt: "Letzter Preisaktualisierungsbeleg",
+    filamentDefaultsReceiptHint: "Dieser Beleg bleibt sichtbar, bis du ihn schließt oder eine weitere Preisaktualisierung ausführst.",
+    filamentDefaultsReceiptCommitted: "{updated} aktualisiert · {skipped} nicht aktualisiert",
     filamentDefaultsReceiptCommittedProtected:
-      "{updated} updated · {protected} protected from later group updates · {skipped} not updated",
-    filamentDefaultsReceiptNotCommitted: "The pricing operation was not committed.",
-    filamentDefaultsDismissReceipt: "Dismiss receipt",
-    filamentDefaultsNotUpdated: "Not updated",
-    filamentDefaultsReceiptNoSkips: "Every selected eligible spool was updated.",
-    filamentDefaultsReceiptUpdatedList: "Show {count} updated spools",
+      "{updated} aktualisiert · {protected} vor späteren Gruppenänderungen geschützt · {skipped} nicht aktualisiert",
+    filamentDefaultsReceiptNotCommitted: "Die Preisaktualisierung wurde nicht gespeichert.",
+    filamentDefaultsDismissReceipt: "Beleg schließen",
+    filamentDefaultsNotUpdated: "Nicht aktualisiert",
+    filamentDefaultsReceiptNoSkips: "Alle ausgewählten geeigneten Rollen wurden aktualisiert.",
+    filamentDefaultsReceiptUpdatedList:
+      "{count, plural, one {# aktualisierte Rolle anzeigen} other {# aktualisierte Rollen anzeigen}}",
     filamentDefaultsReceiptPriceSetProtected:
-      "Price set · Protected from later group updates",
-    filamentDefaultsCurrency: "Default purchase currency",
-    filamentDefaultsCurrencyHint: "Used as the starting currency for new individual prices and filament group defaults. Existing purchase data is not changed automatically.",
-    filamentDefaultsHostOwned: "Manage library-wide filament defaults on the Host desktop app.",
-    filamentDefaultsCurrencyCode: "Three-letter currency code",
-    filamentDefaultsCurrencyCodeHint: "For example NOK, EUR or USD. Saving this default never rewrites existing spool prices.",
-    filamentDefaultsCurrencyInvalid: "Enter exactly three letters.",
+      "Preis festgelegt · Vor späteren Gruppenänderungen geschützt",
+    filamentDefaultsCurrency: "Standard-Kaufwährung",
+    filamentDefaultsCurrencyHint: "Dient als Ausgangswährung für neue Einzelpreise und Standards von Filamentgruppen. Bestehende Kaufdaten werden nicht automatisch geändert.",
+    filamentDefaultsHostOwned: "Verwalte bibliotheksweite Filamentstandards in der Desktop-App des Hosts.",
+    filamentDefaultsCurrencyCode: "Dreibuchstabiger Währungscode",
+    filamentDefaultsCurrencyCodeHint: "Zum Beispiel NOK, EUR oder USD. Beim Speichern dieses Standards werden vorhandene Rollenpreise niemals überschrieben.",
+    filamentDefaultsCurrencyInvalid: "Gib genau drei Buchstaben ein.",
     filamentDefaultsCurrencyPlaceholder: "NOK",
-    filamentDefaultsSaveCurrency: "Save default currency",
-    filamentDefaultsGroupPrices: "Filament group prices",
-    filamentDefaultsGroupPricesHint: "Groups are built from vendor, material, filament series and nominal spool weight. Color does not split a price group. No supplier prices are hard-coded.",
-    filamentDefaultsNoSpools: "There are no spools available for group pricing.",
-    filamentDefaultsSpools: "spools",
-    filamentDefaultsGroups: "price groups",
-    filamentDefaultsWithoutPrice: "without price",
-    filamentDefaultsWithoutCurrency: "without currency",
-    filamentDefaultsLocked: "locked",
-    filamentDefaultsGroupPrice: "Price per spool",
-    filamentDefaultsCurrencyCodeShort: "Currency",
-    filamentDefaultsSaveGroupDefault: "Save group default",
-    filamentDefaultsBatchMode: "Pricing mode",
-    filamentDefaultsMissingOnly: "Only missing prices",
-    filamentDefaultsMissingOnlyHint: "Keeps every existing individual price.",
-    filamentDefaultsOverwrite: "Update selected prices",
-    filamentDefaultsOverwriteHint: "Replaces existing individual prices after a separate confirmation.",
-    filamentDefaultsSelectGroup: "Select all {count} active spools",
+    filamentDefaultsSaveCurrency: "Standardwährung speichern",
+    filamentDefaultsGroupPrices: "Preise für Filamentgruppen",
+    filamentDefaultsGroupPricesHint: "Gruppen werden aus Hersteller, Material, Filamentserie und Nenngewicht der Rolle gebildet. Die Farbe teilt keine Preisgruppe. Lieferantenpreise sind nicht fest einprogrammiert.",
+    filamentDefaultsNoSpools: "Für die Gruppenpreisvergabe sind keine Rollen verfügbar.",
+    filamentDefaultsSpools:
+      "{count, plural, one {# Rolle} other {# Rollen}}",
+    filamentDefaultsGroups:
+      "{count, plural, one {# Preisgruppe} other {# Preisgruppen}}",
+    filamentDefaultsWithoutPrice: "ohne Preis",
+    filamentDefaultsWithoutCurrency: "ohne Währung",
+    filamentDefaultsLocked: "gesperrt",
+    filamentDefaultsGroupPrice: "Preis pro Rolle",
+    filamentDefaultsCurrencyCodeShort: "Währung",
+    filamentDefaultsSaveGroupDefault: "Gruppenstandard speichern",
+    filamentDefaultsBatchMode: "Preismodus",
+    filamentDefaultsMissingOnly: "Nur fehlende Preise",
+    filamentDefaultsMissingOnlyHint: "Behält alle vorhandenen Einzelpreise bei.",
+    filamentDefaultsOverwrite: "Ausgewählte Preise aktualisieren",
+    filamentDefaultsOverwriteHint: "Ersetzt vorhandene Einzelpreise nach einer gesonderten Bestätigung.",
+    filamentDefaultsSelectGroup:
+      "{count, plural, one {Die # aktive Rolle auswählen} other {Alle # aktiven Rollen auswählen}}",
     filamentDefaultsHistoricalSelectionRemoved:
-      "{count} historical spools were removed from the selection because overwrite cannot change them.",
+      "{count, plural, one {# historische Rolle wurde aus der Auswahl entfernt, weil sie beim Überschreiben nicht geändert werden kann.} other {# historische Rollen wurden aus der Auswahl entfernt, weil sie beim Überschreiben nicht geändert werden können.}}",
     filamentDefaultsHistoricalProtectionHint:
-      "Historical and used-up spools are protected and excluded by default. In Only missing prices, an unpriced historical spool can be selected individually; its protection remains enabled afterward.",
-    filamentDefaultsSelected: "selected",
-    filamentDefaultsWillUpdate: "Will update",
-    filamentDefaultsOverwritePreview: "{count} existing prices will be replaced, including {manual} individually set prices.",
-    filamentDefaultsLockedPreview: "{count} selected locked spools will be skipped and listed in the receipt for manual follow-up.",
+      "Historische und aufgebrauchte Rollen sind standardmäßig geschützt und ausgeschlossen. Unter Nur fehlende Preise kann eine historische Rolle ohne Preis einzeln ausgewählt werden; ihr Schutz bleibt danach aktiv.",
+    filamentDefaultsSelected:
+      "{count, plural, one {# ausgewählt} other {# ausgewählt}}",
+    filamentDefaultsWillUpdate: "Wird aktualisiert",
+    filamentDefaultsWillUpdateCount:
+      "{count, plural, one {# wird aktualisiert} other {# werden aktualisiert}}",
+    filamentDefaultsOverwritePreview:
+      "{count, plural, one {# vorhandener Preis wird ersetzt} other {# vorhandene Preise werden ersetzt}}, darunter {manual, plural, one {# individuell festgelegter Preis} other {# individuell festgelegte Preise}}.",
+    filamentDefaultsLockedPreview:
+      "{count, plural, one {# ausgewählte gesperrte Rolle wird übersprungen und zur manuellen Bearbeitung im Beleg aufgeführt.} other {# ausgewählte gesperrte Rollen werden übersprungen und zur manuellen Bearbeitung im Beleg aufgeführt.}}",
     filamentDefaultsHistoricalMissingPreview:
-      "{count} deliberately selected historical spools will receive their missing price and remain protected from later group updates.",
-    filamentDefaultsCurrencyOnlyPreview: "{count} existing prices are kept while their missing currency is filled in.",
-    filamentDefaultsManualPreview: "{count} spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.",
-    filamentDefaultsBorrowedPreview: "{count} borrowed spools will not be changed.",
-    filamentDefaultsReviewOverwrite: "Review and confirm overwrite",
-    filamentDefaultsApplyMissing: "Price spools missing a price",
+      "{count, plural, one {# bewusst ausgewählte historische Rolle erhält ihren fehlenden Preis und bleibt vor späteren Gruppenänderungen geschützt.} other {# bewusst ausgewählte historische Rollen erhalten ihren fehlenden Preis und bleiben vor späteren Gruppenänderungen geschützt.}}",
+    filamentDefaultsCurrencyOnlyPreview:
+      "{count, plural, one {# vorhandener Preis bleibt bestehen, während die fehlende Währung ergänzt wird.} other {# vorhandene Preise bleiben bestehen, während die fehlende Währung ergänzt wird.}}",
+    filamentDefaultsManualPreview:
+      "{count, plural, one {# Rolle hat keinen Preis, verwendet aber bereits eine andere Währung. Sie muss manuell bearbeitet werden und wird im Beleg aufgeführt.} other {# Rollen haben keinen Preis, verwenden aber bereits eine andere Währung. Sie müssen manuell bearbeitet werden und werden im Beleg aufgeführt.}}",
+    filamentDefaultsBorrowedPreview:
+      "{count, plural, one {# geliehene Rolle wird nicht geändert.} other {# geliehene Rollen werden nicht geändert.}}",
+    filamentDefaultsReviewOverwrite: "Überschreiben prüfen und bestätigen",
+    filamentDefaultsApplyMissing: "Preis für Rollen ohne Preis festlegen",
     filamentDefaultsApplyMissingAndProtect:
-      "Set missing prices and protect historical spools",
-    filamentDefaultsConfirmOverwrite: "Confirm price overwrite",
-    filamentDefaultsOverwriteReview: "Overwrite review",
-    filamentDefaultsOverwriteConfirmationWarning: "{count} existing prices will be replaced. {manual} were individually set. This does not change the per-spool batch locks.",
-    filamentDefaultsExistingPrices: "Existing prices",
-    filamentDefaultsWillSkip: "Will skip",
-    filamentDefaultsConfirmOverwriteAction: "Confirm price update for {count} spools",
+      "Fehlende Preise festlegen und historische Rollen schützen",
+    filamentDefaultsConfirmOverwrite: "Überschreiben der Preise bestätigen",
+    filamentDefaultsOverwriteReview: "Prüfung vor dem Überschreiben",
+    filamentDefaultsOverwriteConfirmationWarning:
+      "{count, plural, one {# vorhandener Preis wird ersetzt.} other {# vorhandene Preise werden ersetzt.}} {manual, plural, one {# davon wurde individuell festgelegt.} other {# davon wurden individuell festgelegt.}} Die Sperren der einzelnen Rollen für Gruppenpreise werden dadurch nicht geändert.",
+    filamentDefaultsExistingPrices: "Vorhandene Preise",
+    filamentDefaultsWillSkip: "Wird übersprungen",
+    filamentDefaultsConfirmOverwriteAction:
+      "{count, plural, one {Preisaktualisierung für # Rolle bestätigen} other {Preisaktualisierung für # Rollen bestätigen}}",
     lowStockThresholds: "Grenzwerte für niedrigen Bestand",
     lowStockThresholdsHint:
       "Lege einen Standardwert für die Bibliothek fest und überschreibe ihn nur für Materialien, die einen anderen Nachbestellpunkt benötigen.",
@@ -1594,7 +1698,7 @@ export const deDictionary: DictionaryNode = {
     lowStockNewOverrideThreshold: "Neuer Materialgrenzwert",
     lowStockSetOverride: "Abweichung festlegen",
     lowStockSelectedMaterialInheritance:
-      "Ohne eigenen Wert übernimmt dieses Material {count} g.",
+      "Ohne eigenen Wert übernimmt dieses Material {count, number} g.",
     lowStockThresholdValidation:
       "Gib eine ganze Zahl von 1 bis 100000 g ein.",
     lowStockSaving: "Grenzwerte werden gespeichert…",
@@ -1644,6 +1748,9 @@ export const deDictionary: DictionaryNode = {
     appearance: "Darstellung",
     language: "Sprache",
     languageHint: "Sprache für alle Hauptansichten auswählen.",
+    languageBeta: "Beta",
+    languageBetaHint:
+      "Betasprachen sind noch nicht vollständig und können teilweise englischen Text anzeigen.",
     light: "Hell",
     dark: "Dunkel",
     auto: "Automatisch (System)",

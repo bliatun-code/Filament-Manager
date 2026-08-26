@@ -18,6 +18,10 @@ const inventoryDataHookSource = readFileSync(
   new URL("../lib/use_inventory_page_data.ts", import.meta.url),
   "utf8",
 );
+const printerDataHookSource = readFileSync(
+  new URL("./use_printer_page_data.ts", import.meta.url),
+  "utf8",
+);
 const hostClientSource = readFileSync(
   new URL(
     "../../../src-tauri/src/library_sync_host_client.rs",
@@ -103,7 +107,7 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   assert.doesNotMatch(loader, /\b(?:sleep|delay|wait)\s*\(/i);
   assert.match(
     loader,
-    /const \[syncSettings, trustedLan, printerSettings\] = await Promise\.all\(\[/,
+    /const \[syncSettings, trustedLan\] = await Promise\.all\(\[/,
   );
   assert.match(
     loader,
@@ -112,7 +116,11 @@ test("dashboard startup has no artificial wait and keeps independent reads concu
   assert.doesNotMatch(loader, /\bvalidateHost\(/);
   assert.match(
     loader,
-    /const \[overview, printers, spoolRowsRaw, loans, wishlist\] = await Promise\.all\(\[/,
+    /const \[overview, printers, spoolRowsRaw, loans, wishlist, printerSettings\] =\s*await Promise\.all\(\[/,
+  );
+  assert.ok(
+    loader.indexOf("if (clientMode)") < loader.indexOf("loadPrinterSettings().catch"),
+    "Host-only printer settings must not be read until Client mode has returned",
   );
   assert.doesNotMatch(loader, /fetchHostConsumption|listLocalTopMaterials/);
 });
@@ -165,7 +173,21 @@ test("inventory page refresh does not serialize independent page reads", () => {
   assert.doesNotMatch(refreshSource, /\bsetTimeout\s*\(/);
 });
 
-test("slow and interrupted hosts retain bounded validation and request timeouts", () => {
+test("printer reloads discard stale library targets without dropping the replacement", () => {
+  assert.match(printerDataHookSource, /const reloadRequestRef = useRef\(0\)/);
+  assert.match(printerDataHookSource, /const dataSourceIdentity = \[/);
+  assert.match(
+    printerDataHookSource,
+    /const loaded = await loadPrinterPageData\([\s\S]*?if \(!requestIsCurrent\(\)\) \{\s*return \{ succeeded: false, revisionPollComplete: false \};/,
+  );
+  assert.match(
+    printerDataHookSource,
+    /reloadRequestRef\.current \+= 1;[\s\S]*?setPrinters\(\[\]\);[\s\S]*?void reloadData\(\)/,
+  );
+  assert.doesNotMatch(printerDataHookSource, /reloadInFlightRef/);
+});
+
+test("Host reads stay bounded while non-idempotent mutations wait for a definitive result", () => {
   const validation = rustFunctionSource(
     hostValidationSource,
     "validate_library_sync_host",
@@ -188,8 +210,6 @@ test("slow and interrupted hosts retain bounded validation and request timeouts"
 
   for (const [name, nextName] of [
     ["fetch_library_sync_host_json", "pair_library_sync_host_session"],
-    ["pair_library_sync_host_session", "renew_library_sync_host_session"],
-    ["renew_library_sync_host_session", "load_library_sync_device_token"],
     [
       "get_library_sync_host_json_authenticated",
       "post_library_sync_host_write_json",
@@ -202,23 +222,21 @@ test("slow and interrupted hosts retain bounded validation and request timeouts"
     );
   }
 
-  assert.match(
-    rustFunctionSource(
-      hostClientSource,
-      "post_library_sync_host_write_json",
-      "perform_library_sync_host_write",
-    ),
-    /send_library_sync_request\(base_url, timeout/,
-    "configured host writes must use the caller's bounded timeout",
-  );
-
-  assert.match(
-    rustFunctionSource(
-      hostClientSource,
-      "perform_library_sync_host_write_and_parse",
-      "perform_library_sync_host_write_and_parse_with_timeout",
-    ),
-    /Duration::from_millis\(2500\)/,
-    "default host writes must remain bounded to 2.5 seconds",
-  );
+  for (const [name, nextName] of [
+    ["pair_library_sync_host_session", "renew_library_sync_host_session"],
+    ["renew_library_sync_host_session", "load_library_sync_device_token"],
+    ["post_library_sync_host_write_json", "perform_library_sync_host_write"],
+  ] as const) {
+    const source = rustFunctionSource(hostClientSource, name, nextName);
+    assert.match(
+      source,
+      /send_library_sync_mutation_request/,
+      `${name} must wait for one definitive non-replayed mutation result`,
+    );
+    assert.doesNotMatch(
+      source,
+      /LIBRARY_SYNC_REQUEST_TIMEOUT|\.timeout\(/,
+      `${name} must not report a timeout while a non-cancellable Host mutation can still commit`,
+    );
+  }
 });

@@ -14,6 +14,7 @@ use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema::{
     ensure_database_quick_check, ensure_supported_schema_version, CURRENT_SCHEMA_VERSION,
 };
+use super::database_spool_price_lock::backfill_historical_spool_price_locks;
 use super::database_spool_schema::{
     ensure_spool_home_location_schema, ensure_spool_identity_schema, ensure_spool_lifecycle_schema,
     ensure_spool_weight_schema,
@@ -68,6 +69,7 @@ pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> In
     // step so bundled catalog revisions still reach already-versioned databases.
     apply_seed_catalog(conn)?;
     backfill_official_bambu_composite_swatches(conn)?;
+    backfill_historical_spool_price_locks(conn)?;
     Ok(())
 }
 

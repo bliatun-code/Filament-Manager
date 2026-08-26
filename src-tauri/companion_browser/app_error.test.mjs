@@ -2,10 +2,75 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  ERROR_MESSAGE_DESCRIPTORS,
   appErrorDiagnosticSummary,
   localizedAppError,
   parseAppError,
 } from "./app_error.js";
+
+test("temporarily unavailable Host responses have a localizable descriptor", () => {
+  assert.deepEqual(ERROR_MESSAGE_DESCRIPTORS["common.unavailable"], [
+    "errors.unavailable",
+    "The service is temporarily unavailable.",
+  ]);
+});
+
+test("location lifecycle errors have distinct localizable descriptors", () => {
+  const expectedKeys = {
+    "inventory.location.name_required": "errors.locationNameRequired",
+    "inventory.location.name_too_long": "errors.locationNameTooLong",
+    "inventory.location.name_conflict": "errors.locationNameConflict",
+    "inventory.location.already_archived": "errors.locationAlreadyArchived",
+    "inventory.location.not_archived": "errors.locationNotArchived",
+    "inventory.location.archived": "errors.locationArchived",
+    "inventory.location.has_references": "errors.locationHasReferences",
+    "inventory.location.merge_same_id": "errors.locationMergeSameId",
+    "inventory.location.parent_cycle": "errors.locationParentCycle",
+    "inventory.location.merge_descendant": "errors.locationMergeDescendant",
+    "inventory.location.system_owned": "errors.locationSystemOwned",
+    "inventory.location.host_unsupported": "errors.locationHostUnsupported",
+  };
+
+  for (const [code, key] of Object.entries(expectedKeys)) {
+    assert.equal(ERROR_MESSAGE_DESCRIPTORS[code]?.[0], key, code);
+    assert.ok(ERROR_MESSAGE_DESCRIPTORS[code]?.[1], code);
+  }
+});
+
+test("loan business conflicts have stable localizable descriptors", () => {
+  for (const code of [
+    "loans.borrower_required",
+    "loans.counterparty_required",
+    "loans.already_active",
+    "loans.already_returned",
+    "loans.direction_mismatch",
+    "loans.borrowed_in_cannot_lend",
+    "loans.inbound_required",
+  ]) {
+    assert.ok(ERROR_MESSAGE_DESCRIPTORS[code]?.[0], code);
+    assert.ok(ERROR_MESSAGE_DESCRIPTORS[code]?.[1], code);
+  }
+  assert.equal(
+    ERROR_MESSAGE_DESCRIPTORS["loans.already_returned"][0],
+    "errors.loanAlreadyReturned",
+  );
+  assert.equal(
+    ERROR_MESSAGE_DESCRIPTORS["loans.direction_mismatch"][0],
+    "errors.loanDirectionMismatch",
+  );
+});
+
+test("legacy Hosts cannot receive a non-atomic common-details fallback", () => {
+  assert.deepEqual(
+    ERROR_MESSAGE_DESCRIPTORS[
+      "inventory.spool.common_details_host_unsupported"
+    ],
+    [
+      "errors.spoolCommonDetailsHostUnsupported",
+      "Update the Host before saving tare weight or ownership together with roll details.",
+    ],
+  );
+});
 
 test("structured command errors parse from Tauri JSON strings without exposing diagnostics", () => {
   const error = new Error(

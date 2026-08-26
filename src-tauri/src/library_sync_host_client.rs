@@ -1,12 +1,15 @@
 use crate::credential_store::{CredentialKey, SecretValue};
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_runtime_auth::LibrarySyncRenewalFailureKind;
+use crate::library_sync_target_guard::{
+    capture_library_sync_target, ensure_library_sync_target_current,
+};
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::trusted_lan_health::CompanionHealthCheckResponse;
 use crate::with_inventory;
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, COOKIE, HOST, ORIGIN, SET_COOKIE};
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -81,6 +84,15 @@ static LIBRARY_SYNC_MDNS_TRANSPORT: OnceLock<MdnsTransport> = OnceLock::new();
 struct LibrarySyncAuthenticatedSessionResponse {
     ok: bool,
     csrf_token: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct LibrarySyncHostErrorEnvelope {
+    code: String,
+    #[serde(default)]
+    safe_detail: Option<String>,
+    #[serde(default)]
+    diagnostic_id: Option<String>,
 }
 
 pub(crate) struct LibrarySyncAuthenticatedSessionState {
@@ -180,6 +192,46 @@ pub(crate) fn send_library_sync_request(
         make_request,
     )
     .map(|outcome| outcome.response)
+}
+
+/// Sends one mutating request exactly once and waits for its definitive response.
+///
+/// A response deadline is unsafe for the current Companion write API because it has no
+/// idempotency key: the server-side blocking transaction can commit after the client reports a
+/// timeout, and a retry can then apply the mutation twice. Connection establishment and mDNS
+/// discovery remain bounded, but once a write has been sent we let the operating system and
+/// server produce the authoritative result.
+fn send_library_sync_mutation_request(
+    base_url: &str,
+    operation: &str,
+    make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+) -> Result<reqwest::blocking::Response, String> {
+    if let Some((hostname, port)) = stable_local_host_and_port(base_url) {
+        let route = mdns_transport().current_route_with(
+            &hostname,
+            port,
+            MDNS_RETRY_TIMEOUT,
+            operation,
+            &resolve_stable_local_hostname_with_mdns,
+        )?;
+        let request = make_request(&route.route.client)
+            .build()
+            .map_err(|error| format!("Failed to prepare {operation}: {error}"))?;
+        return match route.route.client.execute(request) {
+            Ok(response) => Ok(response),
+            Err(error) => {
+                route
+                    .slot
+                    .invalidate_without_resolution(route.route.generation);
+                Err(format!("{operation} failed: {error}"))
+            }
+        };
+    }
+
+    let client = shared_library_sync_http_client(operation)?;
+    make_request(client)
+        .send()
+        .map_err(|error| format!("{operation} failed: {error}"))
 }
 
 fn send_library_sync_request_with_fallback_candidate(
@@ -841,19 +893,15 @@ pub(crate) fn pair_library_sync_host_session(
     let host_header = library_sync_host_header_value(base_url)?;
     let request_url = format!("{base_url}/api/v1/auth/pair");
     let request_body = serde_json::json!({ "pairing_token": pairing_token }).to_string();
-    let response = send_library_sync_request(
-        base_url,
-        LIBRARY_SYNC_REQUEST_TIMEOUT,
-        "Host pairing request",
-        |client| {
+    let response =
+        send_library_sync_mutation_request(base_url, "Host pairing request", |client| {
             client
                 .post(&request_url)
                 .header(HOST, host_header.as_str())
                 .header(ORIGIN, base_url)
                 .header(CONTENT_TYPE, "application/json")
                 .body(request_body.clone())
-        },
-    )?;
+        })?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -908,18 +956,14 @@ pub(crate) fn renew_library_sync_host_session(
     let cookie_header = build_library_sync_cookie_header(None, Some(device_token))
         .ok_or_else(|| "Host session renewal requires a paired device token.".to_string())?;
     let request_url = format!("{base_url}/api/v1/auth/renew");
-    let response = send_library_sync_request(
-        base_url,
-        LIBRARY_SYNC_REQUEST_TIMEOUT,
-        "Host session renewal request",
-        |client| {
+    let response =
+        send_library_sync_mutation_request(base_url, "Host session renewal request", |client| {
             client
                 .post(&request_url)
                 .header(HOST, host_header.as_str())
                 .header(ORIGIN, base_url)
                 .header(reqwest::header::COOKIE, cookie_header.as_str())
-        },
-    )?;
+        })?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -1272,6 +1316,7 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     base_url: &str,
     path: &str,
 ) -> Result<T, String> {
+    let target = capture_library_sync_target(state, base_url, None)?;
     let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
 
     let execute = |session_id: &str,
@@ -1311,15 +1356,19 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     }
 
     if !response.status().is_success() {
-        let status = response.status();
-        return Err(format!("Desktop sync read request returned {status}."));
+        return Err(library_sync_non_success_error(
+            response,
+            "Desktop sync read request",
+        ));
     }
 
     let body_text = response
         .text()
         .map_err(|error| format!("Desktop sync read response could not be read: {error}"))?;
-    serde_json::from_str(&body_text)
-        .map_err(|error| format!("Desktop sync read returned invalid JSON: {error}"))
+    let parsed = serde_json::from_str(&body_text)
+        .map_err(|error| format!("Desktop sync read returned invalid JSON: {error}"))?;
+    ensure_library_sync_target_current(state, &target)?;
+    Ok(parsed)
 }
 
 pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
@@ -1329,7 +1378,6 @@ pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
     device_token: &str,
     csrf_token: &str,
     payload: &T,
-    timeout: Duration,
 ) -> Result<reqwest::blocking::Response, String> {
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
@@ -1337,7 +1385,7 @@ pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
     let request_url = format!("{base_url}{path}");
     let request_body = serde_json::to_string(payload)
         .map_err(|error| format!("Failed to encode desktop sync write payload: {error}"))?;
-    send_library_sync_request(base_url, timeout, "Desktop sync write request", |client| {
+    send_library_sync_mutation_request(base_url, "Desktop sync write request", |client| {
         client
             .post(&request_url)
             .header(HOST, host_header.as_str())
@@ -1370,25 +1418,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
     path: &str,
     payload: &T,
 ) -> Result<R, String> {
-    perform_library_sync_host_write_and_parse_with_timeout(
-        state,
-        base_url,
-        path,
-        payload,
-        Duration::from_millis(2500),
-    )
-}
-
-pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
-    T: serde::Serialize,
-    R: DeserializeOwned,
->(
-    state: &AppState,
-    base_url: &str,
-    path: &str,
-    payload: &T,
-    timeout: Duration,
-) -> Result<R, String> {
+    let target = capture_library_sync_target(state, base_url, None)?;
     let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
 
     let mut response = post_library_sync_host_write_json(
@@ -1398,7 +1428,6 @@ pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
         &initial_auth_state.device_token,
         &initial_auth_state.csrf_token,
         payload,
-        timeout,
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
@@ -1415,20 +1444,95 @@ pub(crate) fn perform_library_sync_host_write_and_parse_with_timeout<
             &renewed.device_token,
             &renewed.csrf_token,
             payload,
-            timeout,
         )?;
     }
 
     if !response.status().is_success() {
-        let status = response.status();
-        return Err(format!("Desktop sync write request returned {status}."));
+        return Err(library_sync_non_success_error(
+            response,
+            "Desktop sync write request",
+        ));
     }
 
     let body_text = response
         .text()
         .map_err(|error| format!("Desktop sync write response could not be read: {error}"))?;
-    serde_json::from_str(&body_text)
-        .map_err(|error| format!("Desktop sync write returned invalid JSON: {error}"))
+    let parsed = serde_json::from_str(&body_text)
+        .map_err(|error| format!("Desktop sync write returned invalid JSON: {error}"))?;
+    ensure_library_sync_target_current(state, &target)?;
+    Ok(parsed)
+}
+
+fn library_sync_non_success_error(
+    response: reqwest::blocking::Response,
+    operation: &str,
+) -> String {
+    let status = response.status();
+    let forwarded = response
+        .text()
+        .ok()
+        .and_then(|body| validated_library_sync_host_error(&body));
+    forwarded.unwrap_or_else(|| format!("{operation} returned {status}."))
+}
+
+fn validated_library_sync_host_error(body: &str) -> Option<String> {
+    serde_json::to_string(&validated_library_sync_host_error_envelope(body)?).ok()
+}
+
+pub(crate) fn library_sync_host_error_code(body: &str) -> Option<String> {
+    Some(validated_library_sync_host_error_envelope(body)?.code)
+}
+
+fn validated_library_sync_host_error_envelope(body: &str) -> Option<LibrarySyncHostErrorEnvelope> {
+    let envelope: LibrarySyncHostErrorEnvelope = serde_json::from_str(body).ok()?;
+    let code = envelope.code.trim();
+    if !valid_library_sync_error_code(code) {
+        return None;
+    }
+    let safe_detail = validated_optional_host_error_field(envelope.safe_detail, 512, false)?;
+    let diagnostic_id = validated_optional_host_error_field(envelope.diagnostic_id, 160, true)?;
+
+    Some(LibrarySyncHostErrorEnvelope {
+        code: code.to_string(),
+        safe_detail,
+        diagnostic_id,
+    })
+}
+
+fn valid_library_sync_error_code(code: &str) -> bool {
+    let mut bytes = code.bytes();
+    let Some(first) = bytes.next() else {
+        return false;
+    };
+    (2..=128).contains(&code.len())
+        && first.is_ascii_lowercase()
+        && bytes.all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'_' | b'.' | b'-')
+        })
+}
+
+fn validated_optional_host_error_field(
+    value: Option<String>,
+    max_len: usize,
+    identifier: bool,
+) -> Option<Option<String>> {
+    let Some(value) = value else {
+        return Some(None);
+    };
+    let value = value.trim();
+    if value.is_empty() {
+        return Some(None);
+    }
+    if value.chars().count() > max_len
+        || value.chars().any(|character| character.is_control())
+        || (identifier
+            && !value.chars().all(|character| {
+                character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.' | ':')
+            }))
+    {
+        return None;
+    }
+    Some(Some(value.to_string()))
 }
 
 pub(crate) fn ensure_library_sync_host_matches(
@@ -1485,6 +1589,15 @@ fn verify_and_confirm_library_sync_host_identity(
 ) -> Result<CompanionHealthCheckResponse, String> {
     if !parsed.ok {
         return Err("Host reported not ready.".to_string());
+    }
+    if parsed
+        .sync_mode
+        .as_deref()
+        .is_some_and(|mode| mode.trim().eq_ignore_ascii_case("CLIENT"))
+    {
+        return Err(
+            "The selected desktop is a library Client, not an authoritative Host.".to_string(),
+        );
     }
 
     match expected_library_id {
@@ -1548,9 +1661,10 @@ mod tests {
         library_sync_http_client_builder, load_library_sync_device_token,
         load_library_sync_device_token_optional, parse_library_sync_health_response,
         remaining_library_sync_request_timeout, renew_and_cache_library_sync_auth_with,
-        renew_or_reuse_library_sync_auth_with, send_mdns_local_request_with,
-        send_mdns_local_request_with_fallback_candidate, stable_local_host_and_port,
-        store_library_sync_device_token, verify_and_confirm_library_sync_host_identity,
+        renew_or_reuse_library_sync_auth_with, send_library_sync_mutation_request,
+        send_mdns_local_request_with, send_mdns_local_request_with_fallback_candidate,
+        stable_local_host_and_port, store_library_sync_device_token,
+        validated_library_sync_host_error, verify_and_confirm_library_sync_host_identity,
         LibrarySyncAuthenticatedSessionState, MdnsTransport, MDNS_HOST_CACHE_LIMIT,
         MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF, MDNS_ROUTE_FRESH_TTL,
         SHARED_RENEWAL_FAILED_ERROR, SHARED_RENEWAL_UNAUTHORIZED_ERROR,
@@ -1688,6 +1802,39 @@ mod tests {
             ),
             None,
         );
+    }
+
+    #[test]
+    fn mutation_waits_beyond_the_legacy_deadline_and_is_sent_exactly_once() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind slow mutation Host");
+        let address = listener.local_addr().expect("read slow mutation address");
+        let request_count = Arc::new(AtomicUsize::new(0));
+        let server_count = Arc::clone(&request_count);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept slow mutation");
+            let mut request = [0_u8; 4096];
+            let read = stream.read(&mut request).expect("read slow mutation");
+            assert!(String::from_utf8_lossy(&request[..read]).starts_with("POST /write HTTP/1.1"));
+            server_count.fetch_add(1, Ordering::SeqCst);
+            thread::sleep(Duration::from_millis(2_650));
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                .expect("write slow mutation response");
+        });
+        let base_url = format!("http://{address}");
+        let request_url = format!("{base_url}/write");
+
+        let started = Instant::now();
+        let response =
+            send_library_sync_mutation_request(&base_url, "slow mutation test", |client| {
+                client.post(&request_url).body("{}")
+            })
+            .expect("wait for definitive mutation result");
+
+        assert!(response.status().is_success());
+        assert!(started.elapsed() >= Duration::from_millis(2_500));
+        server.join().expect("join slow mutation Host");
+        assert_eq!(request_count.load(Ordering::SeqCst), 1);
     }
 
     #[test]
@@ -2579,6 +2726,18 @@ mod tests {
     }
 
     #[test]
+    fn client_mode_health_is_never_accepted_as_an_authoritative_host() {
+        let mut health = test_health(Some("library-a"), true);
+        health.sync_mode = Some("CLIENT".to_string());
+
+        let error = verify_and_confirm_library_sync_host_identity(health, Some("library-a"), None)
+            .err()
+            .expect("a Client desktop must not be paired or used as a Host");
+
+        assert!(error.contains("library Client"), "{error}");
+    }
+
+    #[test]
     fn missing_expected_library_identity_never_retain_fallback_candidate() {
         let transport = MdnsTransport::default();
         let initial = transport
@@ -2867,6 +3026,33 @@ mod tests {
             Some("bfm_companion_session=session; bfm_trusted_lan_device=device")
         );
         assert_eq!(build_library_sync_cookie_header(Some(" "), None), None);
+    }
+
+    #[test]
+    fn host_error_envelopes_preserve_only_valid_safe_fields() {
+        let forwarded = validated_library_sync_host_error(
+            r#"{"code":"inventory.location.has_references","message":"internal database detail","safe_detail":"Move linked spools first.","diagnostic_id":"fm-host-42"}"#,
+        )
+        .expect("valid Host error envelope");
+        let parsed: serde_json::Value = serde_json::from_str(&forwarded).expect("forwarded JSON");
+        assert_eq!(parsed["code"], "inventory.location.has_references");
+        assert_eq!(parsed["safe_detail"], "Move linked spools first.");
+        assert_eq!(parsed["diagnostic_id"], "fm-host-42");
+        assert!(parsed.get("message").is_none());
+
+        for invalid in [
+            r#"{"code":"LOCATION_HAS_REFERENCES"}"#,
+            r#"{"code":"inventory.location.has_references","safe_detail":"line\nbreak"}"#,
+            r#"{"code":"inventory.location.has_references","diagnostic_id":"not safe/id"}"#,
+            r#"{"message":"missing code"}"#,
+            "not-json",
+        ] {
+            assert_eq!(
+                validated_library_sync_host_error(invalid),
+                None,
+                "invalid envelope must use status fallback: {invalid}"
+            );
+        }
     }
 
     #[test]

@@ -569,6 +569,7 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
       />
 
       <StatisticsValueCostPanel
+        filamentDefaultsManagedOnHost={clientReadOnly}
         hostUpgradeRequired={
           clientReadOnly &&
           (periodStatus === "LEGACY_HOST" ||

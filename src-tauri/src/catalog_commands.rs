@@ -1,3 +1,4 @@
+use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::{
     self,
     filament_database::{FilamentDatabase, ManualMasterInput},
@@ -40,11 +41,14 @@ pub(crate) async fn refresh_bambu_catalog(
         "Preparing Bambu catalog refresh...",
     );
 
+    let state = state.inner().clone();
     let db_path = state.db_path.clone();
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            refresh_bambu_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+            with_authoritative_local_library(&state, || {
+                refresh_bambu_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+            })
         }))
     })
     .await
@@ -110,11 +114,14 @@ pub(crate) async fn refresh_esun_catalog(
         "Preparing eSUN catalog refresh...",
     );
 
+    let state = state.inner().clone();
     let db_path = state.db_path.clone();
     let app_for_worker = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || {
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            refresh_esun_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+            with_authoritative_local_library(&state, || {
+                refresh_esun_catalog_blocking(&db_path, material_types, Some(&app_for_worker))
+            })
         }))
     })
     .await

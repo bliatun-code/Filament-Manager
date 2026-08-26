@@ -83,8 +83,16 @@ test("loadActiveLoanRows returns no local active loans in client mode", async ()
 
 test("loadActiveLoanRows reuses cached active outbound loans in client mode", async () => {
   const rows = await loadActiveLoanRows(
-    { clientReadOnly: true },
     {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
+    {
+      fetchHostLoans: async () => {
+        throw new Error("host unavailable");
+      },
       fetchCachedLoans: async () => ({
         captured_at: "cached-at",
         rows: [
@@ -163,6 +171,7 @@ test("loadActiveLoanRows falls back to cached client loans when live host loans 
         clientReadOnly: true,
         clientHostBaseUrl: "http://host",
         clientLibraryId: "library-1",
+        clientTargetGeneration: 7,
       },
       {
         fetchHostLoans: async () => {
@@ -228,6 +237,7 @@ test("loadLoanRowsPage uses live host rows and cached timestamp in client mode",
       clientReadOnly: true,
       clientHostBaseUrl: " http://host ",
       clientLibraryId: " library-1 ",
+      clientTargetGeneration: 7,
       limit: 25,
     },
     {
@@ -282,7 +292,12 @@ test("loadLoanRowsPage normalizes host loan direction and returned status", asyn
 
 test("loadLoanRowsPage falls back to cached client rows when host loans fail", async () => {
   const result = await loadLoanRowsPage(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       fetchHostLoans: async () => {
         throw new Error("host unavailable");
@@ -323,7 +338,7 @@ test("loadLoanRowsPage avoids local fallback when client host details are incomp
   });
 });
 
-test("loadLoanRowsPage uses cached loans when client host details are incomplete", async () => {
+test("loadLoanRowsPage ignores unscoped cache when client host details are incomplete", async () => {
   const result = await loadLoanRowsPage(
     { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
     {
@@ -340,10 +355,10 @@ test("loadLoanRowsPage uses cached loans when client host details are incomplete
     },
   );
 
-  assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "cached-at");
+  assert.equal(result.source, "OFFLINE");
+  assert.equal(result.updatedAt, null);
   assert.equal(result.usedFallback, true);
-  assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["cached-spool"]);
+  assert.deepEqual(result.rows, []);
 });
 
 test("loadLoanRowsPage loads local rows outside client mode", async () => {

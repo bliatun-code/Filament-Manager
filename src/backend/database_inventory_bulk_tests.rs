@@ -163,6 +163,82 @@ fn history_count(database: &FilamentDatabase, event_type: &str) -> i64 {
         .expect("read history count")
 }
 
+fn spool_price_batch_locked(database: &FilamentDatabase, spool_id: &str) -> bool {
+    database
+        .connection()
+        .query_row(
+            "SELECT purchase_price_batch_locked
+             FROM filament_spools
+             WHERE id = ?1",
+            params![spool_id],
+            |row| row.get(0),
+        )
+        .expect("read batch price lock")
+}
+
+#[test]
+fn bulk_historical_status_locks_price_and_reactivation_preserves_lock() {
+    with_test_database("historical-price-lock", |database| {
+        insert_spool(
+            database,
+            "bulk-history-lock",
+            SpoolStatus::InStock,
+            Some("location-a"),
+            Some("location-a"),
+        );
+
+        database
+            .execute_inventory_bulk_mutation(status_input(
+                1,
+                vec![precondition(
+                    "bulk-history-lock",
+                    SpoolStatus::InStock,
+                    Some("location-a"),
+                    Some("location-a"),
+                    false,
+                    false,
+                )],
+                SpoolStatus::Lost,
+            ))
+            .expect("mark spool lost");
+        assert_eq!(spool_status(database, "bulk-history-lock"), "LOST");
+        assert!(spool_price_batch_locked(database, "bulk-history-lock"));
+
+        database
+            .execute_inventory_bulk_mutation(status_input(
+                1,
+                vec![precondition(
+                    "bulk-history-lock",
+                    SpoolStatus::Lost,
+                    Some("location-a"),
+                    Some("location-a"),
+                    false,
+                    false,
+                )],
+                SpoolStatus::InStock,
+            ))
+            .expect("reactivate spool");
+        assert_eq!(spool_status(database, "bulk-history-lock"), "IN_STOCK");
+        assert!(spool_price_batch_locked(database, "bulk-history-lock"));
+        assert_eq!(
+            history_count(database, "PURCHASE_PRICE_BATCH_LOCK_UPDATED"),
+            1
+        );
+        let source: String = database
+            .connection()
+            .query_row(
+                "SELECT json_extract(payload_json, '$.source')
+                 FROM spool_history_events
+                 WHERE spool_id = 'bulk-history-lock'
+                   AND event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read lock audit source");
+        assert_eq!(source, BULK_SOURCE);
+    });
+}
+
 #[test]
 fn move_updates_current_and_home_counts_exact_changes_and_skips_true_noops() {
     with_test_database("move", |database| {

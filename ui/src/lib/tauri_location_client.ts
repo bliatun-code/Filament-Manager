@@ -54,9 +54,17 @@ export function fetchLibrarySyncLocations(target: HostTarget) {
   });
 }
 
-export function fetchCachedLibrarySyncLocations() {
+export function fetchCachedLibrarySyncLocations(
+  target: HostTarget & { expectedLibraryId: string; targetGeneration: number },
+) {
   return invoke<InventoryLocationListResponse | null>(
     "fetch_cached_library_sync_locations",
+    {
+      input: {
+        ...hostTargetInput(target),
+        target_generation: target.targetGeneration,
+      },
+    },
   );
 }
 

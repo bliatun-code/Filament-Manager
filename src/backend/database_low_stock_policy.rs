@@ -1,6 +1,7 @@
 use rusqlite::{types::Type, Connection, OptionalExtension};
 
 use super::database_result::{InventoryError, InventoryResult};
+use super::database_revision::{bump_library_domain_revision, INVENTORY_REVISION_DOMAIN};
 use super::database_settings::set_setting;
 use super::low_stock_policy::LowStockPolicy;
 
@@ -36,10 +37,22 @@ pub(crate) fn save_low_stock_policy(
             code: "low_stock_policy.invalid",
             message: error.to_string(),
         })?;
+    let changed = match load_low_stock_policy(connection) {
+        Ok(current) => current != policy,
+        // A valid explicit save is also the supported repair path for a
+        // malformed persisted policy. Replacing that unusable value changes
+        // the effective inventory projection and must invalidate Clients.
+        Err(rusqlite::Error::FromSqlConversionFailure(_, _, _)) => true,
+        Err(error) => return Err(error.into()),
+    };
+    if !changed {
+        return Ok(policy);
+    }
     let serialized = serde_json::to_string(&policy).map_err(|error| {
         InventoryError::Db(format!("Could not serialize low-stock policy: {error}"))
     })?;
     set_setting(connection, LOW_STOCK_POLICY_SETTING_KEY, &serialized)?;
+    bump_library_domain_revision(connection, INVENTORY_REVISION_DOMAIN)?;
     Ok(policy)
 }
 
@@ -53,9 +66,27 @@ mod tests {
     fn settings_connection() -> Connection {
         let connection = Connection::open_in_memory().expect("open settings database");
         connection
-            .execute_batch("CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);")
+            .execute_batch(
+                "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                 CREATE TABLE library_domain_revisions (
+                    domain TEXT PRIMARY KEY,
+                    revision INTEGER NOT NULL DEFAULT 0,
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                 );
+                 INSERT INTO library_domain_revisions (domain) VALUES ('inventory');",
+            )
             .expect("create settings table");
         connection
+    }
+
+    fn inventory_revision(connection: &Connection) -> i64 {
+        connection
+            .query_row(
+                "SELECT revision FROM library_domain_revisions WHERE domain = 'inventory'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read inventory revision")
     }
 
     #[test]
@@ -100,5 +131,87 @@ mod tests {
                 .expect("store invalid policy");
             assert!(load_low_stock_policy(&connection).is_err());
         }
+    }
+
+    #[test]
+    fn normalized_policy_changes_bump_inventory_revision_once_and_noops_do_not() {
+        let connection = settings_connection();
+        assert_eq!(inventory_revision(&connection), 0);
+
+        save_low_stock_policy(&connection, LowStockPolicy::default())
+            .expect("saving the effective default is a no-op");
+        assert_eq!(inventory_revision(&connection), 0);
+
+        save_low_stock_policy(
+            &connection,
+            LowStockPolicy {
+                default_threshold_g: 225,
+                material_overrides: vec![
+                    LowStockMaterialOverride {
+                        material_key: "ignored".to_string(),
+                        material: " TPU ".to_string(),
+                        threshold_g: 450,
+                    },
+                    LowStockMaterialOverride {
+                        material_key: String::new(),
+                        material: " PETG   CF ".to_string(),
+                        threshold_g: 375,
+                    },
+                ],
+            },
+        )
+        .expect("save changed policy");
+        assert_eq!(inventory_revision(&connection), 1);
+
+        save_low_stock_policy(
+            &connection,
+            LowStockPolicy {
+                default_threshold_g: 225,
+                material_overrides: vec![
+                    LowStockMaterialOverride {
+                        material_key: "another ignored key".to_string(),
+                        material: " PETG CF ".to_string(),
+                        threshold_g: 375,
+                    },
+                    LowStockMaterialOverride {
+                        material_key: "TPU".to_string(),
+                        material: "TPU".to_string(),
+                        threshold_g: 450,
+                    },
+                ],
+            },
+        )
+        .expect("save equivalent normalized policy");
+        assert_eq!(inventory_revision(&connection), 1);
+
+        save_low_stock_policy(
+            &connection,
+            LowStockPolicy {
+                default_threshold_g: 250,
+                material_overrides: vec![],
+            },
+        )
+        .expect("save second changed policy");
+        assert_eq!(inventory_revision(&connection), 2);
+    }
+
+    #[test]
+    fn repairing_corrupt_policy_bumps_inventory_revision() {
+        let connection = settings_connection();
+        connection
+            .execute(
+                "INSERT INTO settings (key, value) VALUES (?1, 'not-json')",
+                [LOW_STOCK_POLICY_SETTING_KEY],
+            )
+            .expect("store corrupt policy");
+
+        save_low_stock_policy(&connection, LowStockPolicy::default())
+            .expect("repair corrupt policy");
+
+        assert_eq!(inventory_revision(&connection), 1);
+        assert_eq!(
+            load_low_stock_policy(&connection).expect("load repaired policy"),
+            LowStockPolicy::default()
+        );
     }
 }

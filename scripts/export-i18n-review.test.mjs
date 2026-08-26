@@ -30,6 +30,14 @@ test("review rows combine desktop and Companion copy with translator context", (
           screenshot: "docs/screenshots/example.jpg",
         },
       ],
+      groups: [
+        {
+          surface: "companion",
+          keyPrefix: "shell.",
+          meaning: "Browser Companion shell action.",
+          screenshot: "docs/screenshots/companion-phone-settings.jpg",
+        },
+      ],
     },
   });
 
@@ -43,6 +51,7 @@ test("review rows combine desktop and Companion copy with translator context", (
   );
   assert.equal(rows[1].meaning, "Persist the current edit.");
   assert.equal(rows[1].maxCharacters, 12);
+  assert.equal(rows[0].meaning, "Browser Companion shell action.");
 });
 
 test("review TSV keeps one physical row per message", () => {

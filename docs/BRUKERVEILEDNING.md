@@ -237,6 +237,15 @@ valgt en status utenfor lagerbeholdningen. Hvis filtre skjuler deler av
 utvalget, viser handlingslinjen både totalt antall valgte og antallet i den
 gjeldende visningen.
 
+Lagerets CSV-/JSON-format tar med leverandør, nominell/nåværende/gjenstående
+vekt, spolevekt, egne lagersteder, eierskap/eierkontakt og
+innkjøps-/prisbeskyttelse. Det er en lettvektsutveksling av ruller, ikke en full
+sikkerhetskopi: printerspor og den opprinnelige utlånshistorikken følger ikke
+med. Ved import til et annet bibliotek blir en rull som var lastet eller lånt ut
+normalisert til **På lager**, uten å opprette tekniske lokasjoner. En innlånt
+rull beholder derimot eierskap og motpart som en ny, aktiv innlånsrelasjon. Bruk
+full sikkerhetskopi når hele biblioteket med relasjoner og historikk skal flyttes.
+
 Under **Lager → Lokasjoner** administrerer du bare egne lagersteder. Tekniske
 printer- og utlånslokasjoner håndteres automatisk og vises ikke i denne listen.
 Hvert lagersted viser hvor mange ruller som fortsatt er knyttet til det, og kan
@@ -691,7 +700,8 @@ uendret.
 Endringen inngår i den samme beskyttede lagringen som de andre rulldetaljene og
 registreres i rullhistorikken. Eldre rader som allerede har pris uten valuta, kan
 beholde nøyaktig samme pris mens andre mottaksfelt endres; endring av prisen krever
-valuta. Lagerets CSV-/JSON-eksport og full backup tar med alle innkjøpsfeltene.
+valuta. Lagerets CSV-/JSON-eksport og full backup tar med alle innkjøpsfeltene,
+leverandør, vektdata, spolevekt og prisbeskyttelse.
 Her kan du også beskytte den individuelle prisen mot gruppeoppdateringer fra
 Filamentstandarder; beskyttelsen følger rullen i full backup.
 **Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
@@ -1052,14 +1062,14 @@ nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
 aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
 blir ikke med i den flyttbare sikkerhetskopien.
 
-Den lokale databasen bruker skjemaversjon 4. Før appen skriver til en eksisterende
+Den lokale databasen bruker skjemaversjon 5. Før appen skriver til en eksisterende
 database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
 av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
 ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
 varsel.
 
 Før en eksisterende database uten registrert skjemaversjon eller med skjema v1,
-v2 eller v3 oppgraderes automatisk til skjema v4, oppretter og verifiserer appen
+v2, v3 eller v4 oppgraderes automatisk til skjema v5, oppretter og verifiserer appen
 en lokal gjenopprettingskopi. En verifisert kopi opprettes også før full
 gjenoppretting og før lagringsmigreringer som erstatter eller slår sammen en
 eksisterende database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter

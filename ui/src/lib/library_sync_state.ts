@@ -9,6 +9,7 @@ export type LibrarySyncPageState = {
   clientHostDeviceName: string | null;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
+  clientTargetGeneration: number | null;
 };
 
 export function deriveLibrarySyncPageState(
@@ -22,6 +23,10 @@ export function deriveLibrarySyncPageState(
     clientHostDeviceName: syncSettings.host_device_name ?? null,
     clientHostBaseUrl: syncSettings.host_base_url ?? null,
     clientLibraryId: syncSettings.library_id ?? null,
+    clientTargetGeneration:
+      typeof syncSettings.target_generation === "number"
+        ? syncSettings.target_generation
+        : null,
   };
 }
 

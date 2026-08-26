@@ -35,6 +35,8 @@ function createSelectedSpool(overrides = {}) {
       vendor: "Bambu",
       ...overrides.master,
     },
+    location_name: overrides.location_name ?? null,
+    home_location_name: overrides.home_location_name ?? null,
   };
 }
 
@@ -249,6 +251,24 @@ test("detail content locks a loaned-out spool to BORROWED while keeping receipt 
   assert.equal(html.match(/name="home-location"/g)?.length, 1);
   assert.match(html, /value="Shelf A"[\s\S]*?disabled/);
   assert.match(html, /name="purchase_price"/);
+});
+
+test("detail content displays location names while preserving opaque ids for writes", () => {
+  const html = renderBody({
+    selectedSpool: createSelectedSpool({
+      spool: {
+        location_id: "location_aaaaaaaa",
+        home_location_id: "location_bbbbbbbb",
+      },
+      location_name: "Dry box",
+      home_location_name: "Shelf 2",
+    }),
+  });
+
+  assert.match(html, /Dry box/);
+  assert.match(html, /value="Shelf 2"/);
+  assert.match(html, /type="hidden" name="location" value="location_aaaaaaaa"/);
+  assert.doesNotMatch(html, /type="hidden" name="location" value="Dry box"/);
 });
 
 test("compact detail keeps history collapsed behind a short summary", () => {

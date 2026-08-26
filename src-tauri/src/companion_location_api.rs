@@ -47,10 +47,10 @@ pub(super) async fn handle_create_location(
 ) -> Result<Json<InventoryLocationRow>, CompanionApiError> {
     let row = state
         .run_blocking("inventory location create", move |state| {
-            state
-                .open_db()?
-                .create_inventory_location(&payload.name, payload.parent_id.as_deref())
-                .map_err(CompanionApiError::from)
+            state.with_authoritative_db(|db| {
+                db.create_inventory_location(&payload.name, payload.parent_id.as_deref())
+                    .map_err(CompanionApiError::from)
+            })
         })
         .await?;
     Ok(Json(row))
@@ -68,10 +68,10 @@ pub(super) async fn handle_rename_location(
     }
     let row = state
         .run_blocking("inventory location rename", move |state| {
-            state
-                .open_db()?
-                .rename_inventory_location(location_id.trim(), &payload.name)
-                .map_err(CompanionApiError::from)
+            state.with_authoritative_db(|db| {
+                db.rename_inventory_location(location_id.trim(), &payload.name)
+                    .map_err(CompanionApiError::from)
+            })
         })
         .await?;
     Ok(Json(row))
@@ -85,10 +85,10 @@ pub(super) async fn handle_archive_location(
     verify_location_id(&location_id, &payload.location_id)?;
     let row = state
         .run_blocking("inventory location archive", move |state| {
-            state
-                .open_db()?
-                .archive_inventory_location(location_id.trim())
-                .map_err(CompanionApiError::from)
+            state.with_authoritative_db(|db| {
+                db.archive_inventory_location(location_id.trim())
+                    .map_err(CompanionApiError::from)
+            })
         })
         .await?;
     Ok(Json(row))
@@ -102,10 +102,10 @@ pub(super) async fn handle_restore_location(
     verify_location_id(&location_id, &payload.location_id)?;
     let row = state
         .run_blocking("inventory location restore", move |state| {
-            state
-                .open_db()?
-                .restore_inventory_location(location_id.trim())
-                .map_err(CompanionApiError::from)
+            state.with_authoritative_db(|db| {
+                db.restore_inventory_location(location_id.trim())
+                    .map_err(CompanionApiError::from)
+            })
         })
         .await?;
     Ok(Json(row))
@@ -119,10 +119,10 @@ pub(super) async fn handle_delete_location(
     verify_location_id(&location_id, &payload.location_id)?;
     let row = state
         .run_blocking("inventory location delete", move |state| {
-            state
-                .open_db()?
-                .delete_inventory_location(location_id.trim())
-                .map_err(CompanionApiError::from)
+            state.with_authoritative_db(|db| {
+                db.delete_inventory_location(location_id.trim())
+                    .map_err(CompanionApiError::from)
+            })
         })
         .await?;
     Ok(Json(row))
@@ -134,10 +134,10 @@ pub(super) async fn handle_merge_locations(
 ) -> Result<Json<InventoryLocationMergeResult>, CompanionApiError> {
     let result = state
         .run_blocking("inventory location merge", move |state| {
-            state
-                .open_db()?
-                .merge_inventory_locations(&payload.source_id, &payload.target_id)
-                .map_err(CompanionApiError::from)
+            state.with_authoritative_db(|db| {
+                db.merge_inventory_locations(&payload.source_id, &payload.target_id)
+                    .map_err(CompanionApiError::from)
+            })
         })
         .await?;
     Ok(Json(result))

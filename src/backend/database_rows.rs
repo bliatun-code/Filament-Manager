@@ -59,6 +59,8 @@ pub(crate) fn map_spool_with_master_row(
         master,
         location_name: row.get(32)?,
         home_location_name: row.get(33)?,
+        location_type: row.get(34)?,
+        home_location_type: row.get(35)?,
         low_stock_threshold_g: None,
     })
 }

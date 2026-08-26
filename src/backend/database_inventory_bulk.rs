@@ -11,6 +11,7 @@ use super::database_loan_queries::spool_has_active_loan;
 use super::database_locations::get_location;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_spool_assignment::spool_assigned_to_printer;
+use super::database_spool_price_lock::lock_spool_price_for_historical_status;
 use super::inventory_domain::SpoolStatus;
 
 const BULK_SOURCE: &str = "INVENTORY_BULK_ACTION";
@@ -344,6 +345,12 @@ fn apply_status(
         params![target_status.as_str(), snapshot.spool_id],
     )?;
     require_single_write(affected, &snapshot.spool_id)?;
+    lock_spool_price_for_historical_status(
+        connection,
+        &snapshot.spool_id,
+        target_status.as_str(),
+        BULK_SOURCE,
+    )?;
     insert_json_history(
         connection,
         &snapshot.spool_id,

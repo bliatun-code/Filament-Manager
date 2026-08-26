@@ -53,7 +53,7 @@ pub(crate) fn get_spool_with_master_by_id(
                 s.supplier_reference, s.purchase_price_batch_locked, s.purchase_price_source,
                 m.id, m.material,
                 m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
-                location.name, home_location.name
+                location.name, home_location.name, location.type, home_location.type
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
          LEFT JOIN inventory_locations location ON location.id = s.location_id
@@ -79,7 +79,7 @@ pub(crate) fn list_spools_with_master_by_rfid(
                 s.supplier_reference, s.purchase_price_batch_locked, s.purchase_price_source,
                 m.id, m.material,
                 m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
-                location.name, home_location.name
+                location.name, home_location.name, location.type, home_location.type
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
          LEFT JOIN inventory_locations location ON location.id = s.location_id
@@ -110,7 +110,7 @@ pub(crate) fn list_spools_with_master(
                 s.supplier_reference, s.purchase_price_batch_locked, s.purchase_price_source,
                 m.id, m.material,
                 m.filament_name, m.color_name, m.hex_color, m.product_url, m.default_weight, m.vendor,
-                location.name, home_location.name
+                location.name, home_location.name, location.type, home_location.type
          FROM filament_spools s
          JOIN filament_master_list m ON m.id = s.master_id
          LEFT JOIN inventory_locations location ON location.id = s.location_id

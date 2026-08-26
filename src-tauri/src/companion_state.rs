@@ -1,8 +1,10 @@
 use crate::app_services::CompanionService;
+use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{FilamentDatabase, PrinterAmsSlotRow};
 use crate::companion_error::CompanionApiError;
 use crate::companion_session::{new_companion_session_store, CompanionSessionStore};
 use crate::credential_store::CredentialStore;
+use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::TrustedLanCompanionRuntime;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -100,7 +102,7 @@ impl CompanionApiState {
         credentials: CredentialStore,
     ) -> Self {
         Self {
-            service: CompanionService::new(db_path.clone()),
+            service: CompanionService::new_bound_to_current_library(db_path.clone()),
             db_path,
             runtime,
             sessions: new_companion_session_store(),
@@ -126,6 +128,32 @@ impl CompanionApiState {
         FilamentDatabase::open(&self.db_path).map_err(|error| {
             CompanionApiError::Internal(format!("Failed to open companion database: {error}"))
         })
+    }
+
+    pub(crate) fn require_authoritative_library_under_gate(&self) -> Result<(), CompanionApiError> {
+        let db = self.open_db()?;
+        self.service
+            .require_authority_under_gate(&db)
+            .map_err(map_companion_authority_error)
+    }
+
+    pub(crate) fn require_bound_authoritative_library(&self) -> Result<(), CompanionApiError> {
+        self.service
+            .require_bound_authority()
+            .map_err(map_companion_authority_error)
+    }
+
+    pub(crate) fn with_authoritative_db<Output>(
+        &self,
+        write: impl FnOnce(&FilamentDatabase) -> Result<Output, CompanionApiError>,
+    ) -> Result<Output, CompanionApiError> {
+        let _authority_gate =
+            lock_secure_credential_mutation().map_err(CompanionApiError::Internal)?;
+        let db = self.open_db()?;
+        self.service
+            .require_authority_under_gate(&db)
+            .map_err(map_companion_authority_error)?;
+        write(&db)
     }
 
     pub(crate) fn find_printer_slot(
@@ -158,6 +186,16 @@ impl CompanionApiState {
             .into_iter()
             .flat_map(|printer| printer.slots.into_iter())
             .any(|slot| slot.spool_id.as_deref() == Some(spool_id)))
+    }
+}
+
+fn map_companion_authority_error(error: InventoryError) -> CompanionApiError {
+    match error {
+        InventoryError::InvalidOperation {
+            code: "common.forbidden",
+            message,
+        } => CompanionApiError::ServiceUnavailable(message),
+        other => CompanionApiError::from(other),
     }
 }
 

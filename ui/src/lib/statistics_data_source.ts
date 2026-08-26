@@ -37,7 +37,10 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
-import { resolveClientHostTarget } from "./host_write_target";
+import {
+  resolveClientHostCacheTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
@@ -184,6 +187,9 @@ export async function loadStatisticsData(
 ): Promise<StatisticsDataLoadResult> {
   const syncState = deriveStatisticsLibrarySyncState(syncSettings);
   const hostTarget = syncState.clientReadOnly ? resolveClientHostTarget(syncState) : null;
+  const cacheTarget = syncState.clientReadOnly
+    ? resolveClientHostCacheTarget(syncState)
+    : null;
 
   if (hostTarget) {
     const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
@@ -224,6 +230,7 @@ export async function loadStatisticsData(
           clientReadOnly: true,
           clientHostBaseUrl: hostTarget.baseUrl,
           clientLibraryId: hostTarget.libraryId,
+          clientTargetGeneration: syncSettings.target_generation ?? null,
         }).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
@@ -236,9 +243,27 @@ export async function loadStatisticsData(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchCachedPrinterOverview().catch(() => null),
-        fetchCachedLoans().catch(() => null),
-        fetchCachedSpools().catch(() => null),
+        cacheTarget
+          ? fetchCachedPrinterOverview(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
+        cacheTarget
+          ? fetchCachedLoans(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
+        cacheTarget
+          ? fetchCachedSpools(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
       ]);
 
     if (!snapshotResult.ok) {
@@ -257,19 +282,17 @@ export async function loadStatisticsData(
       console.error(periodReportResult.error);
     }
 
-    const resolvedSnapshot = snapshotResult.ok
-      ? snapshotResult.value
-      : syncSettings.cached_snapshot ?? null;
+    const resolvedSnapshot = snapshotResult.ok ? snapshotResult.value : null;
     const resolvedPrinters = printersResult.ok
       ? printersResult.value
-      : cachedPrinters?.rows ?? syncSettings.cached_printers?.rows ?? [];
+      : cachedPrinters?.rows ?? [];
     const resolvedLoanRows = loansResult.ok
       ? loansResult.value
-      : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
+      : cachedLoans?.rows ?? [];
     const resolvedLoans = normalizeLoanDetailsRows(resolvedLoanRows);
     const resolvedSpoolRowsRaw = spoolsResult.ok
       ? spoolsResult.value
-      : cachedSpools?.rows ?? syncSettings.cached_spools?.rows ?? [];
+      : cachedSpools?.rows ?? [];
     const resolvedSpoolRows = normalizeSpoolWithMasterRows(resolvedSpoolRowsRaw);
     const resolvedPeriodReport = periodReportResult.ok ? periodReportResult.value : null;
     const resolvedConsumptionRows = resolvedPeriodReport?.filament_consumption ?? [];
@@ -305,19 +328,13 @@ export async function loadStatisticsData(
       const liveUpdatedAt = firstDefinedTimestamp(
         resolvedSnapshot?.captured_at,
         cachedPrinters?.captured_at,
-        syncSettings.cached_printers?.captured_at,
         cachedLoans?.captured_at,
-        syncSettings.cached_loans?.captured_at,
         cachedSpools?.captured_at,
-        syncSettings.cached_spools?.captured_at,
       );
       const fallbackUpdatedAt = firstDefinedTimestamp(
         spoolsResult.ok ? null : cachedSpools?.captured_at,
-        spoolsResult.ok ? null : syncSettings.cached_spools?.captured_at,
         printersResult.ok ? null : cachedPrinters?.captured_at,
-        printersResult.ok ? null : syncSettings.cached_printers?.captured_at,
         loansResult.ok ? null : cachedLoans?.captured_at,
-        loansResult.ok ? null : syncSettings.cached_loans?.captured_at,
         snapshotResult.ok || derivedOverview ? null : resolvedSnapshot?.captured_at,
       );
       return {
@@ -355,51 +372,6 @@ export async function loadStatisticsData(
   }
 
   if (syncState.clientReadOnly) {
-    const spoolRows = normalizeSpoolWithMasterRows(syncSettings.cached_spools?.rows ?? []);
-    const loanRows = normalizeLoanDetailsRows(syncSettings.cached_loans?.rows ?? []);
-    const spoolRowsOverview =
-      spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
-    const overview = spoolRowsOverview
-      ? {
-          ...(syncSettings.cached_snapshot?.inventory ?? spoolRowsOverview),
-          ...spoolRowsOverview,
-          total_consumption_30d:
-            syncSettings.cached_snapshot?.inventory.total_consumption_30d ?? 0,
-          owned_consumption_30d:
-            syncSettings.cached_snapshot?.inventory.owned_consumption_30d ?? 0,
-          borrowed_in_consumption_30d:
-            syncSettings.cached_snapshot?.inventory.borrowed_in_consumption_30d ?? 0,
-        }
-      : syncSettings.cached_snapshot?.inventory ?? null;
-    const spoolRowsUpdatedAt =
-      spoolRowsOverview ? syncSettings.cached_spools?.captured_at ?? null : null;
-    if (
-      overview ||
-      spoolRows.length > 0 ||
-      (syncSettings.cached_printers?.rows.length ?? 0) > 0 ||
-      loanRows.length > 0
-    ) {
-      return {
-        overview,
-        printers: syncSettings.cached_printers?.rows ?? [],
-        spoolRows,
-        consumptionRows: [],
-        loanDetails: loanRows,
-        loanUsage: groupLoanUsageByPerson(loanRows, "OUTBOUND"),
-        inboundLoanUsage: groupLoanUsageByPerson(loanRows, "INBOUND"),
-        periodReport: null,
-        periodStatus: "UNAVAILABLE",
-        updatedAt:
-          spoolRowsUpdatedAt ??
-          syncSettings.cached_snapshot?.captured_at ??
-          syncSettings.cached_printers?.captured_at ??
-          syncSettings.cached_loans?.captured_at ??
-          syncSettings.cached_spools?.captured_at ??
-          null,
-        source: "CACHED",
-      };
-    }
-
     return {
       overview: null,
       printers: [],

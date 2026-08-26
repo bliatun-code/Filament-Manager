@@ -158,6 +158,28 @@ test("purchase price and currency coverage gaps open filament defaults accessibl
   assert.equal(statisticsMissingReasonOpensFilamentDefaults("remaining_weight_missing"), false);
 });
 
+test("client coverage gaps point to the Host without exposing a local settings action", () => {
+  const html = renderToStaticMarkup(
+    <StatisticsValueCostPanel
+      filamentDefaultsManagedOnHost
+      hostUpgradeRequired={false}
+      loading={false}
+      locale="en"
+      onOpenFilamentDefaults={() => {}}
+      periodLabel="1–31 Aug 2026"
+      report={report}
+      t={t}
+    />,
+  );
+
+  assert.match(
+    html,
+    /Manage library-wide filament defaults on the Host desktop app\./,
+  );
+  assert.doesNotMatch(html, /Open filament defaults/);
+  assert.doesNotMatch(html, /aria-label="Purchase price is missing\./);
+});
+
 test("legacy Host state asks for an upgrade and never invents a local total", () => {
   const html = renderToStaticMarkup(
     <StatisticsValueCostPanel

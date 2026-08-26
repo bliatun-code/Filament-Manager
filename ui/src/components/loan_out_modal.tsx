@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppModal } from "./app_modal";
 import {
   inventoryModalOverlayClassName,
@@ -59,6 +59,7 @@ type LoanOutModalProps = {
   clientHostWritePaired?: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
   onLoanCreated?: (details: {
     spoolId: string;
     borrowerName: string;
@@ -76,6 +77,7 @@ export function LoanOutModal({
   clientHostWritePaired = false,
   clientHostBaseUrl = null,
   clientLibraryId = null,
+  clientTargetGeneration = null,
   onLoanCreated,
 }: LoanOutModalProps) {
   const { locale, t } = useI18n();
@@ -92,12 +94,15 @@ export function LoanOutModal({
   const [gramsOut, setGramsOut] = useState("");
   const [note, setNote] = useState("");
   const [expectedReturnAt, setExpectedReturnAt] = useState("");
+  const reloadRequestRef = useRef(0);
   const today = localCalendarDate();
 
   const reload = useCallback(async () => {
     if (!tauri) {
       return;
     }
+    const requestId = reloadRequestRef.current + 1;
+    reloadRequestRef.current = requestId;
     setLoading(true);
     setError(null);
     try {
@@ -105,7 +110,11 @@ export function LoanOutModal({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
       });
+      if (reloadRequestRef.current !== requestId) {
+        return;
+      }
       setSpools(candidates);
       const preferredById = preferredSpoolId
         ? candidates.find((spool) => spool.id === preferredSpoolId)
@@ -119,11 +128,23 @@ export function LoanOutModal({
       );
     } catch (loadError) {
       console.error(loadError);
-      setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+      if (reloadRequestRef.current === requestId) {
+        setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
     } finally {
-      setLoading(false);
+      if (reloadRequestRef.current === requestId) {
+        setLoading(false);
+      }
     }
-  }, [clientHostBaseUrl, clientLibraryId, clientReadOnly, preferredSpoolId, t, tauri]);
+  }, [
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    clientTargetGeneration,
+    preferredSpoolId,
+    t,
+    tauri,
+  ]);
 
   useEffect(() => {
     if (!open || !tauri) {
@@ -136,6 +157,9 @@ export function LoanOutModal({
     setSpoolSearchQuery("");
     setError(null);
     void reload();
+    return () => {
+      reloadRequestRef.current += 1;
+    };
   }, [open, reload, tauri]);
 
   const selectedSpool = useMemo(

@@ -13,7 +13,6 @@ import {
   type validateLibrarySyncHost,
   type LibrarySyncSettings,
   type InventoryOverview,
-  type PrinterSettingsSnapshot,
   type TrustedLanCompanionStatus,
   type WishlistItemRow,
 } from "./tauri_client";
@@ -196,18 +195,11 @@ export async function loadDashboardData(
   const actionNow = params.now ?? new Date();
   const actionToday = params.today ?? localCalendarDate(actionNow);
 
-  const [syncSettings, trustedLan, printerSettings] = await Promise.all([
-    loadSyncSettings().catch((error) => {
-      onLoadError(error);
-      return null;
-    }),
+  const [syncSettings, trustedLan] = await Promise.all([
+    loadSyncSettings(),
     loadTrustedLanStatus().catch((error) => {
       onLoadError(error);
       return null;
-    }),
-    loadPrinterSettings().catch((error) => {
-      onLoadError(error);
-      return null as PrinterSettingsSnapshot | null;
     }),
   ]);
 
@@ -259,6 +251,7 @@ export async function loadDashboardData(
         clientReadOnly: true,
         clientHostBaseUrl: clientHostTarget.baseUrl,
         clientLibraryId: clientHostTarget.libraryId,
+        clientTargetGeneration: syncSettings?.target_generation ?? null,
       }),
       fetchHostPrinterOverview(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       fetchHostLoans(clientHostTarget.baseUrl, clientHostTarget.libraryId, 2000),
@@ -430,17 +423,23 @@ export async function loadDashboardData(
     };
   }
 
-  const [overview, printers, spoolRowsRaw, loans, wishlist] = await Promise.all([
-    loadInventoryOverview(),
-    listLocalPrinters(),
-    loadSpoolRows({
-      clientReadOnly: false,
-      clientHostBaseUrl: null,
-      clientLibraryId: null,
-    }),
-    listLocalLoans(),
-    listLocalWishlist(500),
-  ]);
+  const [overview, printers, spoolRowsRaw, loans, wishlist, printerSettings] =
+    await Promise.all([
+      loadInventoryOverview(),
+      listLocalPrinters(),
+      loadSpoolRows({
+        clientReadOnly: false,
+        clientHostBaseUrl: null,
+        clientLibraryId: null,
+        clientTargetGeneration: null,
+      }),
+      listLocalLoans(),
+      listLocalWishlist(500),
+      loadPrinterSettings().catch((error) => {
+        onLoadError(error);
+        return null;
+      }),
+    ]);
   const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
   const normalizedLoans = loans.map(normalizeActiveLoanRow);
   const bambuLiveAttention = buildDashboardBambuLiveAttention(printerSettings);

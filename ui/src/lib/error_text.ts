@@ -22,6 +22,12 @@ export function toErrorMessage(
 
 export const commandErrorText = toErrorMessage;
 
+export function createAppError(code: string): Error {
+  return new Error(
+    JSON.stringify({ code, safe_detail: null, diagnostic_id: null }),
+  );
+}
+
 export function appErrorCode(error: unknown): string | null {
   return parseAppError(error)?.code ?? null;
 }

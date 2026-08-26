@@ -8,6 +8,7 @@ import {
 
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import { formatSpoolReference } from "../lib/display_format";
+import type { Locale } from "../lib/i18n";
 import { formatInventoryStatusLabel } from "../lib/inventory_list_model";
 import {
   allFilamentPriceGroups,
@@ -52,6 +53,8 @@ export type SettingsFilamentDefaultsFocusTarget =
 
 export type SettingsFilamentDefaultsTabProps = {
   busy: boolean;
+  hostUnsupported: boolean;
+  locale: Locale;
   readOnly: boolean;
   t: TranslateFn;
   lowStock: Omit<SettingsLowStockPanelProps, "t">;
@@ -127,11 +130,23 @@ function GroupSelectionCheckbox({
 
 function groupWeightLabel(
   group: FilamentPriceGroup,
+  locale: Locale,
   t: TranslateFn,
 ): string {
   return group.nominalWeightG == null
     ? t("settings.filamentDefaultsUnknownWeight", "Unknown nominal weight")
-    : `${group.nominalWeightG.toLocaleString()} g`;
+    : `${group.nominalWeightG.toLocaleString(locale)} g`;
+}
+
+function localizedGroupLabel(value: string, t: TranslateFn): string {
+  const normalized = value.trim().toLocaleLowerCase("en-US");
+  if (["unknown", "unspecified"].includes(normalized)) {
+    return t("common.unknown", "Unknown");
+  }
+  if (["filament", "generic", "manual", "other"].includes(normalized)) {
+    return t("vendor.generic", "Generic");
+  }
+  return value;
 }
 
 function receiptReasonLabel(
@@ -176,6 +191,7 @@ function GroupSpoolRow({
   const inactive = !borrowed && !isFilamentPriceBatchSelectable(row);
   const priced = hasFilamentPurchasePrice(row.purchasePrice);
   const label = filamentDefaultsSpoolLabel(row);
+  const spoolReference = formatSpoolReference(row.spoolId);
   const historicalMissing = inactive && !priced;
 
   return (
@@ -184,8 +200,8 @@ function GroupSpoolRow({
         aria-describedby={historicalMissing ? historicalHintId : undefined}
         aria-label={
           historicalMissing
-            ? `${t("settings.filamentDefaultsSelectHistoricalSpool", "Set price on historical spool and protect it from later group updates")} · ${label}`
-            : `${t("settings.filamentDefaultsSelectSpool", "Select spool")} · ${label}`
+            ? `${t("settings.filamentDefaultsSelectHistoricalSpool", "Set price on historical spool and protect it from later group updates")} · ${label} · ${spoolReference}`
+            : `${t("settings.filamentDefaultsSelectSpool", "Select spool")} · ${label} · ${spoolReference}`
         }
         checked={selected}
         disabled={disabled}
@@ -201,7 +217,7 @@ function GroupSpoolRow({
           {label}
         </button>
         <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-          <span>{formatSpoolReference(row.spoolId)}</span>
+          <span>{spoolReference}</span>
           {row.batchPriceLocked ? (
             <span className="rounded-full border border-amber-300/80 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
               {t("settings.filamentDefaultsBatchLocked", "Batch locked")}
@@ -358,7 +374,7 @@ function BatchReceiptCard({
           <summary className="cursor-pointer text-sm font-semibold text-slate-700 dark:text-slate-200">
             {t(
               "settings.filamentDefaultsReceiptUpdatedList",
-              `Show ${receipt.updated.length} updated spools`,
+              "{count, plural, one {Show # updated spool} other {Show # updated spools}}",
               { count: receipt.updated.length },
             )}
           </summary>
@@ -391,6 +407,8 @@ function BatchReceiptCard({
 
 export function SettingsFilamentDefaultsTab({
   busy,
+  hostUnsupported,
+  locale,
   readOnly,
   t,
   lowStock,
@@ -524,7 +542,7 @@ export function SettingsFilamentDefaultsTab({
       removedHistoricalCount > 0
         ? t(
             "settings.filamentDefaultsHistoricalSelectionRemoved",
-            `${removedHistoricalCount} historical spools were removed from the selection because overwrite cannot change them.`,
+            "{count, plural, one {# historical spool was removed from the selection because overwrite cannot change it.} other {# historical spools were removed from the selection because overwrite cannot change them.}}",
             { count: removedHistoricalCount },
           )
         : null,
@@ -669,6 +687,14 @@ export function SettingsFilamentDefaultsTab({
 
   return (
     <>
+      {hostUnsupported ? (
+        <SettingsNotice className="lg:col-span-2" tone="warning">
+          {t(
+            "errors.filamentStandardsHostUnsupported",
+            "Update the Host before using filament pricing standards.",
+          )}
+        </SettingsNotice>
+      ) : null}
       {!settingsValid ? (
         <SettingsNotice className="lg:col-span-2" tone="warning">
           {readOnly
@@ -791,10 +817,20 @@ export function SettingsFilamentDefaultsTab({
                 <summary className="cursor-pointer px-4 py-3 outline-none transition hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-900/55 dark:focus-visible:bg-slate-900/55">
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {category.label}
+                      {category.key === "generic"
+                        ? t("vendor.generic", "Generic")
+                        : category.label}
                     </span>
                     <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                      {category.spoolCount} {t("settings.filamentDefaultsSpools", "spools")} · {category.groupCount} {t("settings.filamentDefaultsGroups", "price groups")}
+                      {t(
+                        "settings.filamentDefaultsSpools",
+                        "{count, plural, one {# spool} other {# spools}}",
+                        { count: category.spoolCount },
+                      )} · {t(
+                        "settings.filamentDefaultsGroups",
+                        "{count, plural, one {# price group} other {# price groups}}",
+                        { count: category.groupCount },
+                      )}
                     </span>
                   </span>
                 </summary>
@@ -833,15 +869,19 @@ export function SettingsFilamentDefaultsTab({
                           <span className="flex flex-wrap items-center justify-between gap-2">
                             <span>
                               <span className="block text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {group.materialLabel} · {group.filamentLabel}
+                                {localizedGroupLabel(group.materialLabel, t)} · {localizedGroupLabel(group.filamentLabel, t)}
                               </span>
                               <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                                {groupWeightLabel(group, t)}
+                                {groupWeightLabel(group, locale, t)}
                               </span>
                             </span>
                             <span className="flex flex-wrap justify-end gap-1.5 text-[11px] font-semibold">
                               <span className="rounded-full border border-slate-300 px-2 py-0.5 text-slate-600 dark:border-slate-600 dark:text-slate-300">
-                                {group.counts.total} {t("settings.filamentDefaultsSpools", "spools")}
+                                {t(
+                                  "settings.filamentDefaultsSpools",
+                                  "{count, plural, one {# spool} other {# spools}}",
+                                  { count: group.counts.total },
+                                )}
                               </span>
                               {group.counts.missingPrice > 0 ? (
                                 <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
@@ -952,7 +992,7 @@ export function SettingsFilamentDefaultsTab({
                               indeterminate={selectionState === "SOME"}
                               label={t(
                                 "settings.filamentDefaultsSelectGroup",
-                                `Select all ${selectableRows.length} eligible spools`,
+                                "{count, plural, one {Select the # eligible spool} other {Select all # eligible spools}}",
                                 { count: selectableRows.length },
                               )}
                               onChange={(selected) =>
@@ -966,7 +1006,15 @@ export function SettingsFilamentDefaultsTab({
                               }
                             />
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {preview.selectedCount} {t("settings.filamentDefaultsSelected", "selected")} · {preview.eligibleCount} {t("settings.filamentDefaultsWillUpdate", "will update")}
+                              {t(
+                                "settings.filamentDefaultsSelected",
+                                "{count, plural, one {# selected} other {# selected}}",
+                                { count: preview.selectedCount },
+                              )} · {t(
+                                "settings.filamentDefaultsWillUpdateCount",
+                                "{count, plural, one {# will update} other {# will update}}",
+                                { count: preview.eligibleCount },
+                              )}
                             </span>
                           </div>
 
@@ -992,7 +1040,7 @@ export function SettingsFilamentDefaultsTab({
                             <SettingsNotice tone="warning">
                               {t(
                                 "settings.filamentDefaultsOverwritePreview",
-                                `${preview.overwriteCount} existing prices will be replaced, including ${preview.manualOverwriteCount} individually set prices.`,
+                                "{count, plural, one {# existing price will be replaced} other {# existing prices will be replaced}}, including {manual, plural, one {# individually set price} other {# individually set prices}}.",
                                 {
                                   count: preview.overwriteCount,
                                   manual: preview.manualOverwriteCount,
@@ -1004,7 +1052,7 @@ export function SettingsFilamentDefaultsTab({
                             <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
                               {t(
                                 "settings.filamentDefaultsLockedPreview",
-                                `${preview.lockedCount} selected locked spools will be skipped and listed in the receipt for manual follow-up.`,
+                                "{count, plural, one {# selected locked spool will be skipped and listed in the receipt for manual follow-up.} other {# selected locked spools will be skipped and listed in the receipt for manual follow-up.}}",
                                 { count: preview.lockedCount },
                               )}
                             </p>
@@ -1013,7 +1061,7 @@ export function SettingsFilamentDefaultsTab({
                             <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
                               {t(
                                 "settings.filamentDefaultsHistoricalMissingPreview",
-                                `${preview.historicalMissingPriceCount} deliberately selected historical spools will receive their missing price and remain protected from later group updates.`,
+                                "{count, plural, one {# deliberately selected historical spool will receive its missing price and remain protected from later group updates.} other {# deliberately selected historical spools will receive their missing price and remain protected from later group updates.}}",
                                 { count: preview.historicalMissingPriceCount },
                               )}
                             </p>
@@ -1022,7 +1070,7 @@ export function SettingsFilamentDefaultsTab({
                             <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
                               {t(
                                 "settings.filamentDefaultsCurrencyOnlyPreview",
-                                `${preview.currencyOnlyCount} existing prices are kept while their missing currency is filled in.`,
+                                "{count, plural, one {# existing price is kept while its missing currency is filled in.} other {# existing prices are kept while their missing currency is filled in.}}",
                                 { count: preview.currencyOnlyCount },
                               )}
                             </p>
@@ -1031,7 +1079,7 @@ export function SettingsFilamentDefaultsTab({
                             <SettingsNotice tone="warning">
                               {t(
                                 "settings.filamentDefaultsManualPreview",
-                                `${preview.manualUpdateCount} spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.`,
+                                "{count, plural, one {# spool has no price but already uses another currency. It requires manual follow-up and will be listed in the receipt.} other {# spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.}}",
                                 { count: preview.manualUpdateCount },
                               )}
                             </SettingsNotice>
@@ -1040,7 +1088,7 @@ export function SettingsFilamentDefaultsTab({
                             <p className="text-xs leading-5 text-slate-600 dark:text-slate-300">
                               {t(
                                 "settings.filamentDefaultsBorrowedPreview",
-                                `${preview.borrowedInCount} borrowed spools will not be changed.`,
+                                "{count, plural, one {# borrowed spool will not be changed.} other {# borrowed spools will not be changed.}}",
                                 { count: preview.borrowedInCount },
                               )}
                             </p>
@@ -1104,13 +1152,17 @@ export function SettingsFilamentDefaultsTab({
                   {pendingOverwrite.group.materialLabel} · {pendingOverwrite.group.filamentLabel}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {pendingOverwrite.request.price} {pendingOverwrite.request.currency} · {preview.eligibleCount} {t("settings.filamentDefaultsSpools", "spools")}
+                  {pendingOverwrite.request.price} {pendingOverwrite.request.currency} · {t(
+                    "settings.filamentDefaultsSpools",
+                    "{count, plural, one {# spool} other {# spools}}",
+                    { count: preview.eligibleCount },
+                  )}
                 </p>
               </div>
               <SettingsNotice tone="warning">
                 {t(
                   "settings.filamentDefaultsOverwriteConfirmationWarning",
-                  `${preview.overwriteCount} existing prices will be replaced. ${preview.manualOverwriteCount} were individually set. This does not change the per-spool batch locks.`,
+                  "{count, plural, one {# existing price will be replaced.} other {# existing prices will be replaced.}} {manual, plural, one {# was individually set.} other {# were individually set.}} This does not change the per-spool batch locks.",
                   {
                     count: preview.overwriteCount,
                     manual: preview.manualOverwriteCount,
@@ -1160,7 +1212,7 @@ export function SettingsFilamentDefaultsTab({
                 >
                   {t(
                     "settings.filamentDefaultsConfirmOverwriteAction",
-                    `Confirm price update for ${preview.eligibleCount} spools`,
+                    "{count, plural, one {Confirm price update for # spool} other {Confirm price update for # spools}}",
                     { count: preview.eligibleCount },
                   )}
                 </button>

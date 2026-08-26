@@ -46,9 +46,15 @@ pub struct SpoolWithMasterRow {
     /// Human-readable label for `spool.location_id`. Missing on older Hosts.
     #[serde(default)]
     pub location_name: Option<String>,
+    /// Location kind for `spool.location_id`. Missing on older Hosts.
+    #[serde(default)]
+    pub location_type: Option<String>,
     /// Human-readable label for `spool.home_location_id`. Missing on older Hosts.
     #[serde(default)]
     pub home_location_name: Option<String>,
+    /// Location kind for `spool.home_location_id`. Missing on older Hosts.
+    #[serde(default)]
+    pub home_location_type: Option<String>,
     /// `None` is accepted only for payloads cached or fetched from a pre-policy Host.
     /// New local and Host reads always populate the material-effective threshold.
     #[serde(default)]
@@ -114,7 +120,9 @@ mod tests {
         .expect("legacy Host row should deserialize");
 
         assert_eq!(row.location_name, None);
+        assert_eq!(row.location_type, None);
         assert_eq!(row.home_location_name, None);
+        assert_eq!(row.home_location_type, None);
         assert_eq!(row.low_stock_threshold_g, None);
         assert_eq!(row.spool.purchase_currency, None);
         assert_eq!(row.spool.supplier_reference, None);

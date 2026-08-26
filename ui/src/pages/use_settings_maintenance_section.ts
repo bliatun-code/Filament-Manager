@@ -67,6 +67,7 @@ type UseSettingsMaintenanceSectionInput = {
   settingsClientHostWritePaired: boolean;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
+  settingsClientTargetGeneration: number | null;
   settingsInventoryRows: NormalizedSpoolWithMasterRow[];
   settingsImportMessageLabels: () => SettingsImportMessageLabels;
   settingsInventoryExportMessageLabels: () => SettingsInventoryExportMessageLabels;
@@ -109,6 +110,7 @@ export function useSettingsMaintenanceSection({
   settingsClientHostWritePaired,
   settingsClientLibraryId,
   settingsClientReadOnly,
+  settingsClientTargetGeneration,
   settingsInventoryRows,
   settingsImportMessageLabels,
   settingsInventoryExportMessageLabels,
@@ -170,6 +172,7 @@ export function useSettingsMaintenanceSection({
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
   });
 
   const {

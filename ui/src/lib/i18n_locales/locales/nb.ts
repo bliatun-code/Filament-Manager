@@ -53,6 +53,7 @@ export const nbDictionary: DictionaryNode = {
       unauthorized: "Autentisering er påkrevd.",
       forbidden: "Denne handlingen er ikke tillatt.",
       notFound: "Den forespurte posten ble ikke funnet.",
+      unavailable: "Tjenesten er midlertidig utilgjengelig.",
       internal: "Noe gikk galt. Prøv igjen.",
       spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
       loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
@@ -62,15 +63,88 @@ export const nbDictionary: DictionaryNode = {
         "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
       locationHasReferences:
         "Flytt alle ruller og underlokasjoner før du sletter denne lokasjonen.",
+      locationNameRequired: "Lokasjonsnavn er påkrevd.",
+      locationNameTooLong: "Lokasjonsnavn kan ha maksimalt 120 tegn.",
+      locationNameConflict: "En aktiv lokasjon bruker allerede dette navnet.",
+      locationAlreadyArchived: "Denne lokasjonen er allerede arkivert.",
+      locationNotArchived: "Denne lokasjonen er allerede aktiv.",
+      locationArchived:
+        "Gjenopprett denne lokasjonen før du bruker den eller tilordner ruller til den.",
+      locationMergeSameId: "Velg to forskjellige lokasjoner som skal slås sammen.",
+      locationParentCycle:
+        "En lokasjon kan ikke flyttes under seg selv eller en av underlokasjonene sine.",
+      locationMergeDescendant:
+        "En lokasjon kan ikke slås sammen med en av underlokasjonene sine.",
+      locationSystemOwned:
+        "Denne lokasjonen administreres av printer- eller utlånsflyten.",
+      locationHostUnsupported:
+        "Oppdater verten før du administrerer lokasjonsobjekter.",
+      inventoryBulkInvalidExpectedCount:
+        "Massegjennomgangen er ugyldig. Last inn lageret på nytt og se gjennom handlingen igjen.",
+      inventoryBulkEmptySelection: "Velg minst én rull for massehandlingen.",
+      inventoryBulkInvalidSelection:
+        "De valgte rullene er ugyldige. Tøm utvalget og velg dem på nytt.",
+      inventoryBulkStaleReview:
+        "De valgte rullene er endret. Last inn lageret på nytt og se gjennom massehandlingen igjen.",
+      inventoryBulkInvalidLocationTarget:
+        "Velg en aktiv lagerlokasjon og se gjennom flyttingen på nytt.",
+      inventoryBulkInvalidStatusTarget:
+        "Velg en tillatt lagerstatus og se gjennom handlingen på nytt.",
+      inventoryBulkRemovedSpool:
+        "En valgt rull er fjernet. Last inn lageret på nytt og se gjennom handlingen igjen.",
+      inventoryBulkPrinterSlotControlled:
+        "En valgt rull er lastet i en printer. Bruk printersporhandlingene eller fjern rullen fra utvalget.",
+      inventoryBulkActiveLoan:
+        "En valgt rull har et aktivt utlån. Returner den eller fjern rullen fra utvalget.",
       loanExpectedReturnInvalid: "Velg en gyldig forventet returdato.",
       loanMetadataUnsupported:
         "Oppdater verten før du lagrer kontaktinformasjon eller forventet returdato for utlånet.",
+      loanAlreadyActive: "Denne rullen har allerede et aktivt utlån.",
+      loanAlreadyReturned:
+        "Dette utlånet er allerede returnert med andre returdetaljer.",
+      loanDirectionMismatch: "Bruk returhandlingen for denne utlånsretningen.",
+      borrowedInCannotLend: "En innlånt rull kan ikke lånes ut videre.",
+      inboundLoanRequired:
+        "Denne handlingen er bare tilgjengelig for innlånte ruller.",
+      spoolCommonDetailsHostUnsupported:
+        "Oppdater verten før du lagrer tara eller eierskap sammen med rulldetaljer.",
       purchaseMetadataHostUnsupported:
         "Oppdater verten før du lagrer kjøpsdetaljer.",
+      purchasePriceInvalid: "Skriv inn en gyldig kjøpspris som er null eller høyere.",
+      purchaseCurrencyInvalid:
+        "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",
+      purchaseCurrencyRequired:
+        "Kjøpsvaluta er påkrevd når kjøpspris er satt.",
+      purchasePriceRequired:
+        "Kjøpspris er påkrevd når kjøpsvaluta er satt.",
+      purchaseDateInvalid: "Skriv inn en gyldig kjøpsdato.",
+      purchaseBatchCodeTooLong: "Batchkoden for kjøpet er for lang.",
+      purchaseSupplierReferenceTooLong: "Leverandørreferansen er for lang.",
+      purchaseMetadataTypeInvalid:
+        "Kjøpsdetaljene har et ugyldig format. Se gjennom dem og prøv igjen.",
+      purchasePriceProtectionLockInvalid:
+        "Den importerte prisbeskyttelsen må være sann eller usann.",
+      purchasePriceProtectionSourceInvalid:
+        "Den importerte priskilden må være MANUAL, STANDARD_BATCH eller tom.",
       filamentStandardsHostUnsupported:
         "Oppdater verten før du bruker filamentstandarder for priser.",
+      filamentStandardsRoleUnresolved:
+        "Vent til bibliotekrollen er ferdig lastet, og prøv på nytt.",
+      libraryRoleLoadFailed:
+        "Kunne ikke fastslå bibliotekrollen til denne enheten. Lokale data og endringer er utilgjengelige til rollen er lastet.",
+      filamentStandardsHostManaged:
+        "Administrer bibliotekets filamentstandarder i skrivebordsappen på verten.",
+      filamentStandardsNotLoaded:
+        "Vent til filamentstandardene er ferdig lastet, og prøv på nytt.",
       filamentStandardsStaleReview:
         "De valgte rullene er endret. Se gjennom prisgruppen på nytt.",
+      filamentBatchGroupRequired: "Velg en prisgruppe for filament.",
+      filamentBatchEmptySelection:
+        "Velg minst én rull for denne prisoppdateringen.",
+      filamentBatchInvalidSelection:
+        "De valgte rullene er ugyldige. Se gjennom prisgruppen på nytt.",
+      filamentBatchInvalidHistoricalFill:
+        "Utfylling av manglende pris på en historisk rull er bare tilgjengelig for en eid, historisk rull uten pris i modusen Bare manglende priser.",
       filamentStandardsCurrencyInvalid:
         "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",
       filamentStandardsPriceInvalid:
@@ -184,7 +258,7 @@ export const nbDictionary: DictionaryNode = {
       lowStock: "Lav beholdning",
       below20: "Under 20%",
       below200: "Under 200g",
-      atOrBelowThreshold: "På eller under {count} g",
+      atOrBelowThreshold: "På eller under {count, number} g",
       materialLowStockThresholds: "Grenser per materiale",
       legacyLowStockFallback: "200 g reserveverdi for eldre vert",
       lowest: "lavest",
@@ -451,7 +525,8 @@ export const nbDictionary: DictionaryNode = {
       bulkNoSelection: "Ingen ruller er valgt",
       bulkSelectedCount: "{count, plural, one {# rull valgt} other {# ruller valgt}}",
       bulkSelectedAcrossFilters: "{selected} valgt totalt · {visible} i denne visningen",
-      bulkSelectVisible: "Velg {count} synlige ruller",
+      bulkSelectVisible:
+        "{count, plural, one {Velg # synlig rull} other {Velg # synlige ruller}}",
       bulkSelectSpool: "Velg {reference}",
       bulkClearSelection: "Tøm utvalg",
       bulkReviewMove: "Se gjennom flytting",
@@ -905,6 +980,16 @@ export const nbDictionary: DictionaryNode = {
         detailsUpdated: "Detaljer oppdatert",
         purchaseReceiptRecorded: "Kjøpsmottak registrert",
         purchaseMetadataUpdated: "Kjøpsdetaljer oppdatert",
+        purchasePriceStandardApplied: "Gruppepris brukt",
+        purchasePriceStandardAppliedDetail:
+          "Den lagrede gruppeprisen ble brukt på denne rullen.",
+        purchasePriceBatchLockUpdated: "Beskyttelse mot gruppepris endret",
+        purchasePriceBatchProtection: "Beskyttelse mot gruppepris",
+        purchasePriceBatchLockUpdatedDetail:
+          "Beskyttelsen mot gruppepris ble endret for denne rullen.",
+        locationMerged: "Lokasjoner slått sammen",
+        locationMergedDetail:
+          "Denne rullen ble flyttet fordi to lagersteder ble slått sammen.",
         rfidSaved: "RFID lagret",
         assignedToAms: "Tildelt printer-spor",
         printJobRecorded: "Printforbruk logget",
@@ -1334,7 +1419,7 @@ export const nbDictionary: DictionaryNode = {
     },
     statistics: {
       forecastUnavailable: "Ikke nok forbruksdata",
-      forecastDays: "{count} dager",
+      forecastDays: "{count, plural, one {# dag} other {# dager}}",
       consumptionForecast: "Forbruksprognose",
       consumptionForecastHint:
         "Et deterministisk estimat basert på eid beholdning og registrert forbruk av eget filament de siste 30 dagene.",
@@ -1553,7 +1638,8 @@ export const nbDictionary: DictionaryNode = {
       filamentDefaultsDismissReceipt: "Lukk kvitteringen",
       filamentDefaultsNotUpdated: "Ikke oppdatert",
       filamentDefaultsReceiptNoSkips: "Alle valgte og aktuelle ruller ble oppdatert.",
-      filamentDefaultsReceiptUpdatedList: "Vis {count} oppdaterte ruller",
+      filamentDefaultsReceiptUpdatedList:
+        "{count, plural, one {Vis # oppdatert rull} other {Vis # oppdaterte ruller}}",
       filamentDefaultsReceiptPriceSetProtected:
         "Pris satt · Beskyttet mot senere gruppeoppdateringer",
       filamentDefaultsCurrency: "Standard kjøpsvaluta",
@@ -1567,8 +1653,10 @@ export const nbDictionary: DictionaryNode = {
       filamentDefaultsGroupPrices: "Gruppepriser for filament",
       filamentDefaultsGroupPricesHint: "Gruppene bygges av leverandør, materiale, filamentserie og nominell rullvekt. Farge deler ikke en prisgruppe. Ingen leverandørpriser er hardkodet.",
       filamentDefaultsNoSpools: "Ingen ruller er tilgjengelige for gruppeprising.",
-      filamentDefaultsSpools: "ruller",
-      filamentDefaultsGroups: "prisgrupper",
+      filamentDefaultsSpools:
+        "{count, plural, one {# rull} other {# ruller}}",
+      filamentDefaultsGroups:
+        "{count, plural, one {# prisgruppe} other {# prisgrupper}}",
       filamentDefaultsWithoutPrice: "uten pris",
       filamentDefaultsWithoutCurrency: "uten valuta",
       filamentDefaultsLocked: "låst",
@@ -1580,30 +1668,41 @@ export const nbDictionary: DictionaryNode = {
       filamentDefaultsMissingOnlyHint: "Beholder alle eksisterende individuelle priser.",
       filamentDefaultsOverwrite: "Oppdater valgte priser",
       filamentDefaultsOverwriteHint: "Erstatter eksisterende individuelle priser etter en egen bekreftelse.",
-      filamentDefaultsSelectGroup: "Velg alle {count} aktive ruller",
+      filamentDefaultsSelectGroup:
+        "{count, plural, one {Velg den # aktive rullen} other {Velg alle # aktive ruller}}",
       filamentDefaultsHistoricalSelectionRemoved:
-        "{count} historiske ruller ble fjernet fra utvalget fordi overskriving ikke kan endre dem.",
+        "{count, plural, one {# historisk rull ble fjernet fra utvalget fordi overskriving ikke kan endre den.} other {# historiske ruller ble fjernet fra utvalget fordi overskriving ikke kan endre dem.}}",
       filamentDefaultsHistoricalProtectionHint:
         "Historiske og oppbrukte ruller er beskyttet og fravalgt som standard. Under Bare manglende priser kan en historisk rull uten pris velges enkeltvis; beskyttelsen forblir aktiv etterpå.",
-      filamentDefaultsSelected: "valgt",
-      filamentDefaultsWillUpdate: "oppdateres",
-      filamentDefaultsOverwritePreview: "{count} eksisterende priser blir erstattet, inkludert {manual} individuelt satte priser.",
-      filamentDefaultsLockedPreview: "{count} valgte, låste ruller hoppes over og vises i kvitteringen for manuell oppfølging.",
+      filamentDefaultsSelected:
+        "{count, plural, one {# valgt} other {# valgt}}",
+      filamentDefaultsWillUpdate: "Oppdateres",
+      filamentDefaultsWillUpdateCount:
+        "{count, plural, one {# oppdateres} other {# oppdateres}}",
+      filamentDefaultsOverwritePreview:
+        "{count, plural, one {# eksisterende pris blir erstattet} other {# eksisterende priser blir erstattet}}, inkludert {manual, plural, one {# individuelt satt pris} other {# individuelt satte priser}}.",
+      filamentDefaultsLockedPreview:
+        "{count, plural, one {# valgt, låst rull hoppes over og vises i kvitteringen for manuell oppfølging.} other {# valgte, låste ruller hoppes over og vises i kvitteringen for manuell oppfølging.}}",
       filamentDefaultsHistoricalMissingPreview:
-        "{count} bevisst valgte historiske ruller får manglende pris og forblir beskyttet mot senere gruppeoppdateringer.",
-      filamentDefaultsCurrencyOnlyPreview: "{count} eksisterende priser beholdes mens manglende valuta fylles inn.",
-      filamentDefaultsManualPreview: "{count} ruller mangler pris, men har allerede en annen valuta. De krever manuell oppfølging og vises i kvitteringen.",
-      filamentDefaultsBorrowedPreview: "{count} innlånte ruller blir ikke endret.",
+        "{count, plural, one {# bevisst valgt historisk rull får manglende pris og forblir beskyttet mot senere gruppeoppdateringer.} other {# bevisst valgte historiske ruller får manglende pris og forblir beskyttet mot senere gruppeoppdateringer.}}",
+      filamentDefaultsCurrencyOnlyPreview:
+        "{count, plural, one {# eksisterende pris beholdes mens manglende valuta fylles inn.} other {# eksisterende priser beholdes mens manglende valuta fylles inn.}}",
+      filamentDefaultsManualPreview:
+        "{count, plural, one {# rull mangler pris, men har allerede en annen valuta. Den krever manuell oppfølging og vises i kvitteringen.} other {# ruller mangler pris, men har allerede en annen valuta. De krever manuell oppfølging og vises i kvitteringen.}}",
+      filamentDefaultsBorrowedPreview:
+        "{count, plural, one {# innlånt rull blir ikke endret.} other {# innlånte ruller blir ikke endret.}}",
       filamentDefaultsReviewOverwrite: "Se gjennom og bekreft overskriving",
       filamentDefaultsApplyMissing: "Sett pris på ruller uten pris",
       filamentDefaultsApplyMissingAndProtect:
         "Sett manglende priser og beskytt historiske ruller",
       filamentDefaultsConfirmOverwrite: "Bekreft overskriving av priser",
       filamentDefaultsOverwriteReview: "Gjennomgang før overskriving",
-      filamentDefaultsOverwriteConfirmationWarning: "{count} eksisterende priser blir erstattet. {manual} av dem er satt individuelt. Dette endrer ikke rullenes lås for gruppeprising.",
+      filamentDefaultsOverwriteConfirmationWarning:
+        "{count, plural, one {# eksisterende pris blir erstattet.} other {# eksisterende priser blir erstattet.}} {manual, plural, one {# av dem er satt individuelt.} other {# av dem er satt individuelt.}} Dette endrer ikke rullenes lås for gruppeprising.",
       filamentDefaultsExistingPrices: "Eksisterende priser",
       filamentDefaultsWillSkip: "Hoppes over",
-      filamentDefaultsConfirmOverwriteAction: "Bekreft prisoppdatering av {count} ruller",
+      filamentDefaultsConfirmOverwriteAction:
+        "{count, plural, one {Bekreft prisoppdatering av # rull} other {Bekreft prisoppdatering av # ruller}}",
       lowStockThresholds: "Grenser for lav beholdning",
       lowStockThresholdsHint:
         "Angi én standard for biblioteket, og overstyr bare materialer som trenger et annet innkjøpspunkt.",
@@ -1625,7 +1724,7 @@ export const nbDictionary: DictionaryNode = {
       lowStockNewOverrideThreshold: "Ny materialgrense",
       lowStockSetOverride: "Angi overstyring",
       lowStockSelectedMaterialInheritance:
-        "Uten en overstyring arver dette materialet {count} g.",
+        "Uten en overstyring arver dette materialet {count, number} g.",
       lowStockThresholdValidation:
         "Oppgi et heltall fra 1 til 100000 g.",
       lowStockSaving: "Lagrer grenser …",
@@ -1837,6 +1936,9 @@ export const nbDictionary: DictionaryNode = {
       language: "Språk",
       languageHint:
         "Velg appspråk for alle hovedvisninger.",
+      languageBeta: "Beta",
+      languageBetaHint:
+        "Betaspråk er fortsatt under arbeid og kan vise noe tekst på engelsk.",
       appearance: "Utseende",
       light: "Lys",
       dark: "Mørk",

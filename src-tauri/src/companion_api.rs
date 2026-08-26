@@ -37,7 +37,7 @@ use crate::state::AppState;
 use crate::trusted_lan_interfaces::current_trusted_lan_interface_index;
 use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::http::{header::ORIGIN, HeaderMap, Request};
+use axum::http::{header::ORIGIN, HeaderMap, Method, Request};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -385,33 +385,31 @@ pub(super) async fn handle_pair_session(
             }
 
             let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-            let db = state.open_db()?;
             let pairing_token_hash = hash_secret(pairing_token);
-            let pairing_display_name = db
-                .consume_trusted_lan_pairing(&pairing_token_hash)
-                .map_err(CompanionApiError::from)?
-                .ok_or_else(|| {
-                    CompanionApiError::Unauthorized(
-                        "Pairing link is invalid, expired, or already used".to_string(),
-                    )
-                })?;
             let device_token = random_hex_token(32);
             let device_token_hash = hash_secret(&device_token);
-            let paired_browser = db
-                .create_trusted_lan_paired_browser(
-                    pairing_display_name.as_deref(),
-                    &device_token_hash,
+            state.with_authoritative_db(|db| {
+                let paired_browser = db
+                    .consume_trusted_lan_pairing_and_create_browser(
+                        &pairing_token_hash,
+                        &device_token_hash,
+                        origin.as_deref(),
+                    )
+                    .map_err(CompanionApiError::from)?
+                    .ok_or_else(|| {
+                        CompanionApiError::Unauthorized(
+                            "Pairing link is invalid, expired, or already used".to_string(),
+                        )
+                    })?;
+
+                build_authenticated_session_response(
+                    &state.sessions,
+                    &state.db_path,
+                    Some(paired_browser.id),
+                    Some(&device_token),
                     origin.as_deref(),
                 )
-                .map_err(CompanionApiError::from)?;
-
-            build_authenticated_session_response(
-                &state.sessions,
-                &state.db_path,
-                Some(paired_browser.id),
-                Some(&device_token),
-                origin.as_deref(),
-            )
+            })
         })
         .await
 }
@@ -425,21 +423,23 @@ pub(super) async fn handle_renew_session(
             require_allowed_host(&headers, &state.runtime)?;
             require_allowed_origin(&headers, &state.runtime)?;
 
-            let paired_browser = find_active_trusted_lan_browser(&state.db_path, &headers)?
-                .ok_or_else(|| {
-                    CompanionApiError::Unauthorized(
-                        "Trusted-LAN browser pairing is required".to_string(),
-                    )
-                })?;
-
             let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-            build_authenticated_session_response(
-                &state.sessions,
-                &state.db_path,
-                Some(paired_browser.id),
-                None,
-                origin.as_deref(),
-            )
+            state.with_authoritative_db(|_db| {
+                let paired_browser = find_active_trusted_lan_browser(&state.db_path, &headers)?
+                    .ok_or_else(|| {
+                        CompanionApiError::Unauthorized(
+                            "Trusted-LAN browser pairing is required".to_string(),
+                        )
+                    })?;
+
+                build_authenticated_session_response(
+                    &state.sessions,
+                    &state.db_path,
+                    Some(paired_browser.id),
+                    None,
+                    origin.as_deref(),
+                )
+            })
         })
         .await
 }
@@ -586,6 +586,7 @@ pub(super) async fn handle_delete_printer(
             }
             let _credential_mutation =
                 lock_secure_credential_mutation().map_err(CompanionApiError::Internal)?;
+            state.require_authoritative_library_under_gate()?;
 
     let integration = state
         .open_db()?
@@ -676,7 +677,10 @@ pub(super) async fn handle_delete_printer(
         }
     }
 
-    if let Err(error) = state.service.delete_printer(printer_id) {
+    if let Err(error) = state
+        .service
+        .delete_printer_under_authority_gate(printer_id)
+    {
         if let Err(rollback_error) = restore_previous_secret() {
             return Err(CompanionApiError::Internal(format!(
                 "Printer deletion failed: {error:?}. Credential rollback failed: {rollback_error}"
@@ -1419,21 +1423,6 @@ pub(super) async fn handle_return_spool_loan(
                 ));
             }
 
-            let active_loan = state
-                .service
-                .list_active_spool_loans()
-                .map_err(CompanionApiError::from)?
-                .into_iter()
-                .find(|row| row.loan.id == loan_id)
-                .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-            if LoanDirection::from_raw(Some(&active_loan.loan.loan_direction))
-                != LoanDirection::Outbound
-            {
-                return Err(CompanionApiError::BadRequest(
-                    "Inbound loan returns stay desktop-first for now".to_string(),
-                ));
-            }
-
             let loan = state
                 .service
                 .return_spool_loan(ReturnSpoolLoanInput {
@@ -1643,6 +1632,8 @@ pub(super) async fn require_companion_session(
     request: Request<Body>,
     next: Next,
 ) -> Response {
+    let revalidate_authority_after_response =
+        request.method() == Method::GET || request.method() == Method::HEAD;
     let headers = request.headers().clone();
     if let Err(error) = require_allowed_host(&headers, &state.runtime) {
         return error.into_response();
@@ -1650,7 +1641,11 @@ pub(super) async fn require_companion_session(
 
     let session = match state
         .run_blocking("session authorization", move |state| {
-            find_active_session(&state.sessions, &state.db_path, &headers)
+            let session = find_active_session(&state.sessions, &state.db_path, &headers)?;
+            if session.is_some() {
+                state.require_bound_authoritative_library()?;
+            }
+            Ok(session)
         })
         .await
     {
@@ -1675,7 +1670,17 @@ pub(super) async fn require_companion_session(
     }
 
     drop(session);
-    next.run(request).await
+    let response = next.run(request).await;
+    if revalidate_authority_after_response
+        && let Err(error) = state
+            .run_blocking("session authority revalidation", move |state| {
+                state.require_bound_authoritative_library()
+            })
+            .await
+    {
+        return error.into_response();
+    }
+    response
 }
 
 pub(super) async fn require_companion_host(

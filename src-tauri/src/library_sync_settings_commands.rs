@@ -53,7 +53,13 @@ fn save_library_sync_settings_blocking(
     let _credential_mutation = lock_secure_credential_mutation()?;
     let previous = with_inventory(state, |engine| engine.get_library_sync_settings())?;
     let library_identity_changed = previous.library_id.trim() != input.library_id.trim();
-    let target_mode_is_client = input.mode.trim().eq_ignore_ascii_case("CLIENT");
+    let target_mode = match input.mode.trim().to_ascii_uppercase().as_str() {
+        "CLIENT" => "CLIENT",
+        "HOST" => "HOST",
+        _ => "STANDALONE",
+    };
+    let target_mode_is_client = target_mode == "CLIENT";
+    let library_role_changed = previous.mode != target_mode;
     let target_host = if target_mode_is_client {
         input
             .host_base_url
@@ -67,10 +73,15 @@ fn save_library_sync_settings_blocking(
     };
     input.host_base_url = target_host.clone();
     let previous_host = normalized_optional_host(previous.host_base_url.as_deref());
-    let host_or_mode_changed =
-        !target_mode_is_client || previous_host.as_deref() != target_host.as_deref();
+    // A device token and its runtime session are scoped to the complete Host
+    // library target, not merely to the network origin. Reusing the same Host
+    // URL for a different library must therefore clear pairing just like a
+    // Host or role change.
+    let pairing_scope_changed = !target_mode_is_client
+        || library_identity_changed
+        || previous_host.as_deref() != target_host.as_deref();
 
-    if host_or_mode_changed {
+    if pairing_scope_changed {
         let pairing_snapshot = capture_library_sync_pairing(state, previous_host.clone())?;
         if let Err(error) = clear_library_sync_pairing(state, &pairing_snapshot) {
             return Err(with_library_sync_pairing_rollback(
@@ -87,7 +98,10 @@ fn save_library_sync_settings_blocking(
         });
         return match saved {
             Ok(saved) => {
-                reload_trusted_lan_after_library_identity_change(state, library_identity_changed)?;
+                reload_trusted_lan_after_library_authority_change(
+                    state,
+                    library_identity_changed || library_role_changed,
+                )?;
                 settings_with_secure_pairing_state(state, saved)
             }
             Err(error) => Err(with_library_sync_pairing_rollback(
@@ -109,8 +123,10 @@ fn save_library_sync_settings_blocking(
             previous.low_stock_policy_valid,
         ))
     })?;
-    let reload_result =
-        reload_trusted_lan_after_library_identity_change(state, library_identity_changed);
+    let reload_result = reload_trusted_lan_after_library_authority_change(
+        state,
+        library_identity_changed || library_role_changed,
+    );
     let runtime_result = if stale_runtime {
         state.library_sync_auth.clear()
     } else {
@@ -121,11 +137,11 @@ fn save_library_sync_settings_blocking(
     settings_with_secure_pairing_state(state, saved)
 }
 
-fn reload_trusted_lan_after_library_identity_change(
+fn reload_trusted_lan_after_library_authority_change(
     state: &AppState,
-    library_identity_changed: bool,
+    library_authority_changed: bool,
 ) -> Result<(), String> {
-    if library_identity_changed {
+    if library_authority_changed {
         reload_trusted_lan_runtime_after_library_change(state)?;
     }
     Ok(())
@@ -212,6 +228,7 @@ fn settings_row_from_input(
         device_name: input.device_name,
         library_id: input.library_id,
         host_base_url: input.host_base_url,
+        target_generation: 0,
         host_device_name: input.host_device_name,
         client_auth_paired: false,
         client_auth_paired_at: None,
@@ -320,6 +337,7 @@ mod tests {
     };
     use crate::backend::filament_database::{
         FilamentDatabase, LibrarySyncSettingsRow, LowStockMaterialOverride, LowStockPolicy,
+        TrustedLanSettingsRow,
     };
     use crate::credential_store::CredentialStore;
     use crate::library_sync_host_client::{
@@ -333,7 +351,7 @@ mod tests {
     };
     use crate::trusted_lan_runtime_commands::companion_local_hostname;
     use std::sync::atomic::{AtomicU64, Ordering};
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
     use zeroize::Zeroizing;
 
     static NEXT_TEST_DATABASE: AtomicU64 = AtomicU64::new(1);
@@ -366,6 +384,7 @@ mod tests {
             device_name: "Client".to_string(),
             library_id: "library-id".to_string(),
             host_base_url: Some(host.to_string()),
+            target_generation: 0,
             host_device_name: Some("Host".to_string()),
             client_auth_paired: paired,
             client_auth_paired_at: None,
@@ -471,6 +490,103 @@ mod tests {
     }
 
     #[test]
+    fn host_settings_bump_inventory_only_when_normalized_low_stock_policy_changes() {
+        let state = test_state();
+        let initial = get_library_sync_settings_blocking(&state).expect("load initial settings");
+        let initial_revision =
+            with_test_database(&state, |db| db.library_domain_revisions()).inventory;
+
+        let sync_only = save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "HOST".to_string(),
+                device_name: "Main Host".to_string(),
+                library_id: initial.library_id.clone(),
+                host_base_url: None,
+                host_device_name: None,
+                low_stock_policy: None,
+            },
+        )
+        .expect("save sync-only Host settings");
+        assert_eq!(sync_only.mode, "HOST");
+        assert_eq!(
+            with_test_database(&state, |db| db.library_domain_revisions()).inventory,
+            initial_revision,
+            "role and device settings must not invalidate inventory",
+        );
+
+        let changed_policy = LowStockPolicy {
+            default_threshold_g: 275,
+            material_overrides: vec![LowStockMaterialOverride {
+                material_key: "ignored".to_string(),
+                material: " PETG   CF ".to_string(),
+                threshold_g: 425,
+            }],
+        };
+        save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "HOST".to_string(),
+                device_name: "Main Host".to_string(),
+                library_id: initial.library_id.clone(),
+                host_base_url: None,
+                host_device_name: None,
+                low_stock_policy: Some(changed_policy),
+            },
+        )
+        .expect("save changed low-stock policy");
+        assert_eq!(
+            with_test_database(&state, |db| db.library_domain_revisions()).inventory,
+            initial_revision + 1,
+        );
+
+        save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "HOST".to_string(),
+                device_name: "Main Host".to_string(),
+                library_id: initial.library_id.clone(),
+                host_base_url: None,
+                host_device_name: None,
+                low_stock_policy: Some(LowStockPolicy {
+                    default_threshold_g: 275,
+                    material_overrides: vec![LowStockMaterialOverride {
+                        material_key: "PETG CF".to_string(),
+                        material: "PETG CF".to_string(),
+                        threshold_g: 425,
+                    }],
+                }),
+            },
+        )
+        .expect("save normalized-equivalent policy and sync settings");
+        assert_eq!(
+            with_test_database(&state, |db| db.library_domain_revisions()).inventory,
+            initial_revision + 1,
+            "equivalent normalized policy must not bump inventory again",
+        );
+
+        save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "HOST".to_string(),
+                device_name: "Renamed Host".to_string(),
+                library_id: initial.library_id,
+                host_base_url: None,
+                host_device_name: None,
+                low_stock_policy: None,
+            },
+        )
+        .expect("save pure sync setting change");
+        assert_eq!(
+            with_test_database(&state, |db| db.library_domain_revisions()).inventory,
+            initial_revision + 1,
+            "pure sync settings must not invalidate inventory",
+        );
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
     fn unpaired_client_still_rejects_a_nonempty_invalid_host() {
         let state = test_state();
 
@@ -542,6 +658,53 @@ mod tests {
     }
 
     #[test]
+    fn changing_client_library_on_the_same_host_removes_old_token_and_runtime_session() {
+        let state = test_state();
+        let host = "http://host.local:4278";
+        let initial = with_test_database(&state, |db| {
+            db.save_library_sync_settings(&client_settings(host, false))
+        });
+        store_library_sync_device_token(&state, host, "device-token").expect("store token");
+        state
+            .library_sync_auth
+            .replace_authenticated(host, "session", "csrf", "device-token")
+            .expect("save runtime session");
+
+        let saved = save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "CLIENT".to_string(),
+                device_name: "Client".to_string(),
+                library_id: "replacement-library-id".to_string(),
+                host_base_url: Some(host.to_string()),
+                host_device_name: Some("Same Host".to_string()),
+                low_stock_policy: None,
+            },
+        )
+        .expect("change library on same Host");
+
+        assert_eq!(saved.library_id, "replacement-library-id");
+        assert_eq!(saved.host_base_url.as_deref(), Some(host));
+        assert!(saved.target_generation > initial.target_generation);
+        assert!(!saved.client_auth_paired);
+        assert!(load_library_sync_device_token_optional(&state, host)
+            .expect("read old token")
+            .is_none());
+        assert!(state
+            .library_sync_auth
+            .current()
+            .expect("read runtime")
+            .is_none());
+        assert!(
+            !get_library_sync_settings_blocking(&state)
+                .expect("read settings")
+                .client_auth_paired
+        );
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
     fn changing_library_identity_reloads_the_stable_companion_hostname_without_restart() {
         let state = test_state();
         let old_hostname = "filament-manager-old-library.local";
@@ -572,6 +735,52 @@ mod tests {
             Some(expected_hostname.as_str())
         );
         assert_ne!(runtime.advertised_hostname.as_deref(), Some(old_hostname));
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[tokio::test]
+    async fn switching_to_client_disables_and_stops_trusted_lan_runtime() {
+        let state = test_state();
+        with_test_database(&state, |db| {
+            db.save_trusted_lan_settings(&TrustedLanSettingsRow {
+                enabled: true,
+                selected_interface_name: Some("Test interface".to_string()),
+                selected_interface_address: Some("127.0.0.1".to_string()),
+                listen_port: TRUSTED_LAN_DEFAULT_PORT,
+            })
+        });
+        state.companion.trusted_lan.apply_loaded_config(
+            true,
+            Some(("Test interface".to_string(), "127.0.0.1".to_string())),
+            TRUSTED_LAN_DEFAULT_PORT,
+            "fm-test.local",
+        );
+        state.companion.trusted_lan.mark_running();
+
+        save_library_sync_settings_blocking(
+            &state,
+            SaveLibrarySyncSettingsInput {
+                mode: "CLIENT".to_string(),
+                device_name: "Client".to_string(),
+                library_id: "library-id".to_string(),
+                host_base_url: Some("http://host.local:4278".to_string()),
+                host_device_name: Some("Host".to_string()),
+                low_stock_policy: None,
+            },
+        )
+        .expect("switch to Client role");
+
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while state.companion.trusted_lan.snapshot().running {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("Trusted-LAN server should stop promptly after switching to Client");
+        let runtime = state.companion.trusted_lan.snapshot();
+        assert!(!runtime.enabled);
+        assert!(!runtime.running);
+
         let _ = std::fs::remove_file(&state.db_path);
     }
 

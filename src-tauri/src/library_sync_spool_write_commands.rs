@@ -1,10 +1,11 @@
 use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::UpdateSpoolDetailsInput;
 use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
+use crate::companion_models::SPOOL_COMMON_DETAILS_V2_CAPABILITY;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
-    library_sync_host_input, prepare_library_sync_host_write,
+    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
     require_host_filament_price_standards_capability,
     require_host_purchase_receipt_metadata_capability, save_library_sync_success,
     trimmed_non_empty,
@@ -54,13 +55,14 @@ fn update_library_sync_host_spool_weight_blocking(
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
         &normalized_base_url,
@@ -68,8 +70,8 @@ fn update_library_sync_host_spool_weight_blocking(
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool weight updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool weight updated.", None)?;
     Ok(())
 }
 
@@ -90,13 +92,14 @@ fn update_library_sync_host_spool_tare_weight_blocking(
     input: LibrarySyncWeightWriteInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
         &normalized_base_url,
@@ -104,8 +107,8 @@ fn update_library_sync_host_spool_tare_weight_blocking(
         &serde_json::json!({ "grams": input.grams.max(0) }),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool tare weight updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool tare weight updated.", None)?;
     Ok(())
 }
 
@@ -197,13 +200,17 @@ fn update_library_sync_host_spool_details_for_target(
     input: HostSpoolDetailsUpdate,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(base_url, expected_library_id);
-    let (normalized_base_url, health) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, health, target) =
+        prepare_library_sync_host_write(state, &host_input)?;
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let supports_common_details_v2 = host_supports_common_details_v2(&health.capabilities);
+    require_atomic_common_details_capability(&input, supports_common_details_v2)?;
     let payload = host_spool_details_payload_for_capabilities(&input, &health.capabilities)?;
+    let spool_id = encode_library_sync_path_segment(spool_id);
 
     perform_library_sync_host_write(
         state,
@@ -212,13 +219,34 @@ fn update_library_sync_host_spool_details_for_target(
         &serde_json::Value::Object(payload),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool details updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool details updated.", None)?;
     Ok(())
+}
+
+fn require_atomic_common_details_capability(
+    input: &HostSpoolDetailsUpdate,
+    supports_common_details_v2: bool,
+) -> Result<(), String> {
+    // A legacy Host can apply `/details`, `/tare-weight`, and `/ownership` only as separate
+    // transactions. Returning an error after request two or three would leave a partial edit even
+    // though the desktop reports failure, and client-side rollback is not safe. Keep the old
+    // single-endpoint subset working, but fail before any request when this edit needs the newer
+    // atomic contract.
+    if supports_common_details_v2
+        || (input.spool_tare_weight_g.is_none() && input.ownership.is_none())
+    {
+        Ok(())
+    } else {
+        Err(crate::app_error::coded_command_error(
+            "inventory.spool.common_details_host_unsupported",
+        ))
+    }
 }
 
 fn host_spool_details_payload(
     input: &HostSpoolDetailsUpdate,
+    include_common_details_v2: bool,
 ) -> serde_json::Map<String, serde_json::Value> {
     let mut payload = serde_json::Map::new();
     payload.insert(
@@ -238,19 +266,21 @@ fn host_spool_details_payload(
             serde_json::json!(trimmed_non_empty(value.map(String::as_str))),
         );
     }
-    if let Some(grams) = input.spool_tare_weight_g {
-        payload.insert("spool_tare_weight_g".to_string(), serde_json::json!(grams));
-    }
-    if let Some(ownership) = input.ownership.as_ref() {
-        payload.insert(
-            "ownership".to_string(),
-            serde_json::json!({
-                "ownership_type": ownership.ownership_type,
-                "owner_name": trimmed_non_empty(ownership.owner_name.as_deref()),
-                "owner_contact": trimmed_non_empty(ownership.owner_contact.as_deref()),
-                "ownership_note": trimmed_non_empty(ownership.ownership_note.as_deref()),
-            }),
-        );
+    if include_common_details_v2 {
+        if let Some(grams) = input.spool_tare_weight_g {
+            payload.insert("spool_tare_weight_g".to_string(), serde_json::json!(grams));
+        }
+        if let Some(ownership) = input.ownership.as_ref() {
+            payload.insert(
+                "ownership".to_string(),
+                serde_json::json!({
+                    "ownership_type": ownership.ownership_type,
+                    "owner_name": trimmed_non_empty(ownership.owner_name.as_deref()),
+                    "owner_contact": trimmed_non_empty(ownership.owner_contact.as_deref()),
+                    "ownership_note": trimmed_non_empty(ownership.ownership_note.as_deref()),
+                }),
+            );
+        }
     }
     if let Some(purchase_metadata) = input.purchase_metadata.as_ref() {
         payload.insert(
@@ -280,7 +310,16 @@ fn host_spool_details_payload_for_capabilities(
         capabilities,
         input.purchase_price_batch_locked.is_some(),
     )?;
-    Ok(host_spool_details_payload(input))
+    Ok(host_spool_details_payload(
+        input,
+        host_supports_common_details_v2(capabilities),
+    ))
+}
+
+fn host_supports_common_details_v2(capabilities: &[String]) -> bool {
+    capabilities
+        .iter()
+        .any(|capability| capability == SPOOL_COMMON_DETAILS_V2_CAPABILITY)
 }
 
 #[tauri::command]
@@ -300,13 +339,14 @@ fn update_library_sync_host_spool_ownership_blocking(
     input: LibrarySyncUpdateSpoolOwnershipInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
         &normalized_base_url,
@@ -319,8 +359,8 @@ fn update_library_sync_host_spool_ownership_blocking(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool ownership updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool ownership updated.", None)?;
     Ok(())
 }
 
@@ -341,13 +381,14 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
     input: LibrarySyncUpdateSpoolRfidTagInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
         &normalized_base_url,
@@ -358,8 +399,8 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool RFID updated.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool RFID updated.", None)?;
     Ok(())
 }
 
@@ -377,7 +418,7 @@ fn create_library_sync_host_spool_blocking(
     input: LibrarySyncCreateSpoolInput,
 ) -> Result<String, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let path = library_sync_create_spool_path(
         input.ownership_type.as_deref(),
@@ -407,8 +448,8 @@ fn create_library_sync_host_spool_blocking(
         return Err(response.message);
     }
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, &response.message, None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, &response.message, None)?;
 
     Ok(response.spool_id)
 }
@@ -437,15 +478,149 @@ fn library_sync_create_spool_path(
 mod tests {
     use super::{
         host_spool_details_payload_for_capabilities, host_spool_details_update_from_active_input,
-        library_sync_create_spool_path,
+        library_sync_create_spool_path, update_library_sync_host_spool_details_for_target,
+        HostSpoolDetailsOwnership, HostSpoolDetailsUpdate,
     };
+    use crate::backend::filament_database::FilamentDatabase;
     use crate::backend::inventory_engine::{
         UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput,
     };
     use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
     use crate::companion_models::{
         FILAMENT_PRICE_STANDARDS_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
+        SPOOL_COMMON_DETAILS_V2_CAPABILITY,
     };
+    use crate::credential_store::CredentialStore;
+    use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+    use crate::optional_update::OptionalUpdate;
+    use crate::state::{
+        AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
+    };
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::path::PathBuf;
+    use std::thread;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct FakeHostResponse {
+        expected_request_line: &'static str,
+        status: &'static str,
+        body: &'static str,
+        required_request_fragments: &'static [&'static str],
+        forbidden_request_fragments: &'static [&'static str],
+    }
+
+    fn read_http_request(stream: &mut std::net::TcpStream) -> String {
+        let mut received = Vec::new();
+        let mut buffer = [0_u8; 4096];
+        loop {
+            let read = stream.read(&mut buffer).expect("read fake Host request");
+            assert!(read > 0, "fake Host request ended before its body");
+            received.extend_from_slice(&buffer[..read]);
+            let Some(header_end) = received.windows(4).position(|part| part == b"\r\n\r\n") else {
+                continue;
+            };
+            let headers = String::from_utf8_lossy(&received[..header_end]);
+            let content_length = headers
+                .lines()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().ok())
+                        .flatten()
+                })
+                .unwrap_or(0);
+            if received.len() >= header_end + 4 + content_length {
+                return String::from_utf8(received).expect("UTF-8 fake Host request");
+            }
+        }
+    }
+
+    fn spawn_fake_host(responses: Vec<FakeHostResponse>) -> (String, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind fake Host");
+        let address = listener.local_addr().expect("read fake Host address");
+        let handle = thread::spawn(move || {
+            for response in responses {
+                let (mut stream, _) = listener.accept().expect("accept fake Host request");
+                let request = read_http_request(&mut stream);
+                assert!(
+                    request.starts_with(response.expected_request_line),
+                    "unexpected fake Host request: {request}"
+                );
+                for fragment in response.required_request_fragments {
+                    assert!(
+                        request.contains(fragment),
+                        "missing {fragment:?}: {request}"
+                    );
+                }
+                for fragment in response.forbidden_request_fragments {
+                    assert!(!request.contains(fragment), "found {fragment:?}: {request}");
+                }
+                let wire = format!(
+                    "HTTP/1.1 {}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                    response.status,
+                    response.body.len(),
+                    response.body,
+                );
+                stream
+                    .write_all(wire.as_bytes())
+                    .expect("write fake Host response");
+            }
+        });
+        (format!("http://{address}"), handle)
+    }
+
+    fn fake_host_state(base_url: &str) -> (AppState, PathBuf) {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let db_path = std::env::temp_dir().join(format!(
+            "filament-manager-common-details-host-test-{}-{suffix}.sqlite",
+            std::process::id(),
+        ));
+        let db = FilamentDatabase::open(&db_path).expect("open fake Host database");
+        db.apply_schema().expect("apply fake Host schema");
+        let mut settings = db.get_library_sync_settings().expect("load settings");
+        settings.mode = "CLIENT".to_string();
+        settings.host_base_url = Some(base_url.to_string());
+        settings.library_id = "library-test".to_string();
+        db.save_library_sync_settings(&settings)
+            .expect("save Client target");
+        drop(db);
+        let state = AppState {
+            db_path: db_path.to_string_lossy().into_owned(),
+            companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+                TRUSTED_LAN_DEFAULT_PORT,
+            )),
+            credentials: CredentialStore::in_memory(),
+            library_sync_auth: LibrarySyncRuntimeAuth::new(),
+        };
+        state
+            .library_sync_auth
+            .replace_authenticated(base_url, "session", "csrf", "device")
+            .expect("seed fake Host authentication");
+        (state, db_path)
+    }
+
+    fn common_details_update() -> HostSpoolDetailsUpdate {
+        HostSpoolDetailsUpdate {
+            spool_id: "spool-1".to_string(),
+            qr_code: Some("FM-SPOOL-1".to_string()),
+            status: "IN_STOCK".to_string(),
+            location: OptionalUpdate::Unset,
+            home_location: OptionalUpdate::Unset,
+            spool_tare_weight_g: Some(241),
+            ownership: Some(HostSpoolDetailsOwnership {
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: Some("Nora".to_string()),
+                owner_contact: None,
+                ownership_note: None,
+            }),
+            purchase_metadata: None,
+            purchase_price_batch_locked: None,
+        }
+    }
 
     #[test]
     fn library_sync_create_spool_path_uses_domain_ownership_tokens() {
@@ -506,7 +681,10 @@ mod tests {
             serde_json::Value::Object(
                 host_spool_details_payload_for_capabilities(
                     &update,
-                    &[PURCHASE_RECEIPT_METADATA_CAPABILITY.to_string()],
+                    &[
+                        PURCHASE_RECEIPT_METADATA_CAPABILITY.to_string(),
+                        SPOOL_COMMON_DETAILS_V2_CAPABILITY.to_string(),
+                    ],
                 )
                 .expect("capable Host payload"),
             ),
@@ -536,6 +714,8 @@ mod tests {
         let legacy_payload = host_spool_details_payload_for_capabilities(&update, &[])
             .expect("legacy detail without metadata");
         assert!(!legacy_payload.contains_key("purchase_metadata"));
+        assert!(!legacy_payload.contains_key("spool_tare_weight_g"));
+        assert!(!legacy_payload.contains_key("ownership"));
 
         update.purchase_price_batch_locked = Some(true);
         let unsupported_lock = host_spool_details_payload_for_capabilities(&update, &[])
@@ -555,6 +735,53 @@ mod tests {
         assert_eq!(
             capable_payload.get("purchase_price_batch_locked"),
             Some(&serde_json::json!(true))
+        );
+    }
+
+    #[test]
+    fn legacy_host_rejects_multi_endpoint_common_details_before_any_write() {
+        let health = r#"{"ok":true,"api_version":"v1","capabilities":[],"auth_mode":"pairing-session","access_mode":"trusted-lan","library_id":"library-test","device_name":"Old Host","sync_mode":"HOST"}"#;
+        let (base_url, server) = spawn_fake_host(vec![FakeHostResponse {
+            expected_request_line: "GET /api/v1/health HTTP/1.1",
+            status: "200 OK",
+            body: health,
+            required_request_fragments: &[],
+            forbidden_request_fragments: &[],
+        }]);
+        let (state, db_path) = fake_host_state(&base_url);
+
+        let error = update_library_sync_host_spool_details_for_target(
+            &state,
+            &base_url,
+            Some("library-test"),
+            common_details_update(),
+        )
+        .expect_err("legacy Host must fail before the first partial write");
+        server.join().expect("join fake Host");
+        let envelope: serde_json::Value = serde_json::from_str(&error).expect("coded error");
+        assert_eq!(
+            envelope["code"],
+            "inventory.spool.common_details_host_unsupported"
+        );
+        let settings = FilamentDatabase::open(&db_path)
+            .expect("reopen fake Host database")
+            .get_library_sync_settings()
+            .expect("read validation state");
+        assert_ne!(
+            settings.last_validation_message.as_deref(),
+            Some("Host spool details updated.")
+        );
+        let _ = std::fs::remove_file(db_path);
+    }
+
+    #[test]
+    fn legacy_host_keeps_single_endpoint_detail_subset_available() {
+        let mut update = common_details_update();
+        update.spool_tare_weight_g = None;
+        update.ownership = None;
+        assert!(super::require_atomic_common_details_capability(&update, false).is_ok());
+        assert!(
+            super::require_atomic_common_details_capability(&common_details_update(), true).is_ok()
         );
     }
 }

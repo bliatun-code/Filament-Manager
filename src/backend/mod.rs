@@ -71,6 +71,7 @@ pub mod database_spool_delete;
 pub mod database_spool_facade;
 pub mod database_spool_insert;
 pub mod database_spool_models;
+pub mod database_spool_price_lock;
 pub mod database_spool_queries;
 pub mod database_spool_schema;
 pub mod database_spool_update_facade;

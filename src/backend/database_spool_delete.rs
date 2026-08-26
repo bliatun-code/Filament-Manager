@@ -2,6 +2,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::database_result::require_rows;
 use super::database_result::{InventoryError, InventoryResult};
+use super::database_spool_price_lock::lock_spool_price_for_historical_status;
 use super::loan_defaults::ACTIVE_LOAN_PREDICATE_SQL;
 
 pub(crate) fn soft_delete_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
@@ -40,11 +41,13 @@ pub(crate) fn soft_delete_spool_in_transaction(
          SET deleted_at = datetime('now'),
              status = 'DELETED',
              location_id = NULL,
+             home_location_id = NULL,
              updated_at = datetime('now')
          WHERE id = ?1 AND deleted_at IS NULL",
         params![spool_id],
     )?;
     require_rows(affected)?;
+    lock_spool_price_for_historical_status(conn, spool_id, "DELETED", "SPOOL_DELETE")?;
     conn.execute(
         "UPDATE ams_slots
          SET spool_id = NULL,

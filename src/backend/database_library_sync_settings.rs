@@ -12,6 +12,16 @@ use super::database_result::InventoryResult;
 use super::database_settings::{delete_setting, get_setting, set_setting};
 use super::library_sync_defaults::{default_library_sync_device_name, normalize_library_sync_mode};
 
+const LIBRARY_SYNC_HOST_CACHE_KEYS: &[&str] = &[
+    "library_sync_cached_snapshot_json",
+    "library_sync_cached_spools_json",
+    "library_sync_cached_locations_json",
+    "library_sync_cached_printers_json",
+    "library_sync_cached_loans_json",
+    "library_sync_cached_consumption_json",
+    "library_sync_cached_wishlist_json",
+];
+
 pub(crate) fn get_library_sync_settings(
     conn: &Connection,
 ) -> InventoryResult<LibrarySyncSettingsRow> {
@@ -24,6 +34,7 @@ pub(crate) fn get_library_sync_settings(
     let host_base_url = get_setting(conn, "library_sync_host_base_url")?
         .map(|value| value.trim().trim_end_matches('/').to_string())
         .filter(|value| !value.is_empty());
+    let target_generation = library_sync_target_generation(conn)?;
     let host_device_name = trimmed_setting(conn, "library_sync_host_device_name")?;
     let client_auth_paired = trimmed_setting(conn, "library_sync_client_auth_configured")?
         .is_some()
@@ -62,6 +73,7 @@ pub(crate) fn get_library_sync_settings(
         device_name,
         library_id,
         host_base_url,
+        target_generation,
         host_device_name,
         client_auth_paired,
         client_auth_paired_at,
@@ -152,6 +164,26 @@ pub(crate) fn save_library_sync_settings(
     let previous_host_base_url = get_setting(conn, "library_sync_host_base_url")?
         .map(|value| value.trim().trim_end_matches('/').to_string())
         .filter(|value| !value.is_empty());
+    let previous_library_id = trimmed_setting(conn, "library_sync_library_id")?;
+    let previous_mode =
+        normalize_library_sync_mode(get_setting(conn, "library_sync_mode")?.as_deref());
+    let previous_target_generation = library_sync_target_generation(conn)?;
+    let target_changed = previous_mode != mode
+        || previous_host_base_url != host_base_url
+        || previous_library_id.as_deref() != Some(safe_library_id.as_str());
+
+    if target_changed {
+        let next_generation = previous_target_generation.checked_add(1).ok_or_else(|| {
+            super::database_result::InventoryError::Db(
+                "Library sync target generation is exhausted.".to_string(),
+            )
+        })?;
+        set_setting(
+            conn,
+            "library_sync_target_generation",
+            &next_generation.to_string(),
+        )?;
+    }
 
     set_setting(conn, "library_sync_mode", &mode)?;
     set_setting(conn, "library_sync_device_name", &safe_device_name)?;
@@ -161,15 +193,18 @@ pub(crate) fn save_library_sync_settings(
     }
 
     if mode == "CLIENT" {
-        let host_changed = previous_host_base_url != host_base_url;
         save_optional_setting(conn, "library_sync_host_base_url", host_base_url.as_deref())?;
         save_optional_setting(
             conn,
             "library_sync_host_device_name",
             host_device_name.as_deref(),
         )?;
-        if host_changed {
+        if target_changed {
             clear_library_sync_client_auth_state(conn)?;
+            // Every cached read is scoped to exactly one Host library. The
+            // enclosing settings transaction clears them together with auth so
+            // an offline replacement target can never inherit Host A's data.
+            clear_library_sync_host_caches(conn)?;
         }
     } else {
         delete_setting(conn, "library_sync_host_base_url")?;
@@ -177,17 +212,29 @@ pub(crate) fn save_library_sync_settings(
         delete_setting(conn, "library_sync_last_checked_at")?;
         delete_setting(conn, "library_sync_last_reachable_at")?;
         delete_setting(conn, "library_sync_last_validation_message")?;
-        delete_setting(conn, "library_sync_cached_snapshot_json")?;
-        delete_setting(conn, "library_sync_cached_spools_json")?;
-        delete_setting(conn, "library_sync_cached_locations_json")?;
-        delete_setting(conn, "library_sync_cached_printers_json")?;
-        delete_setting(conn, "library_sync_cached_loans_json")?;
-        delete_setting(conn, "library_sync_cached_consumption_json")?;
-        delete_setting(conn, "library_sync_cached_wishlist_json")?;
+        clear_library_sync_host_caches(conn)?;
         clear_library_sync_client_auth_state(conn)?;
     }
 
     get_library_sync_settings(conn)
+}
+
+fn library_sync_target_generation(conn: &Connection) -> InventoryResult<u64> {
+    match trimmed_setting(conn, "library_sync_target_generation")? {
+        Some(value) => value.parse::<u64>().map_err(|_| {
+            super::database_result::InventoryError::Db(
+                "Library sync target generation is invalid.".to_string(),
+            )
+        }),
+        None => Ok(0),
+    }
+}
+
+fn clear_library_sync_host_caches(conn: &Connection) -> InventoryResult<()> {
+    for key in LIBRARY_SYNC_HOST_CACHE_KEYS {
+        delete_setting(conn, key)?;
+    }
+    Ok(())
 }
 
 fn trimmed_setting(conn: &Connection, key: &str) -> InventoryResult<Option<String>> {

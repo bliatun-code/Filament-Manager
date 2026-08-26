@@ -53,6 +53,7 @@ export const frDictionary: DictionaryNode = {
     unauthorized: "Une authentification est requise.",
     forbidden: "Cette action n’est pas autorisée.",
     notFound: "L’élément demandé est introuvable.",
+    unavailable: "Le service est temporairement indisponible.",
     internal: "Une erreur est survenue. Réessayez.",
     spoolActiveLoan: "Terminez le prêt actif avant de supprimer cette bobine.",
     loadedSpoolEditBlocked:
@@ -63,21 +64,99 @@ export const frDictionary: DictionaryNode = {
       "Dans le navigateur, l’état d’une bobine peut uniquement être défini sur En stock, Vide ou Perdue.",
     locationHasReferences:
       "Déplacez toutes les bobines et tous les sous-emplacements avant de supprimer cet emplacement.",
+    locationNameRequired: "Le nom de l’emplacement est obligatoire.",
+    locationNameTooLong:
+      "Le nom d’un emplacement ne peut pas dépasser 120 caractères.",
+    locationNameConflict: "Un emplacement actif utilise déjà ce nom.",
+    locationAlreadyArchived: "Cet emplacement est déjà archivé.",
+    locationNotArchived: "Cet emplacement est déjà actif.",
+    locationArchived:
+      "Restaurez cet emplacement avant de l’utiliser ou d’y affecter des bobines.",
+    locationMergeSameId: "Choisissez deux emplacements différents à fusionner.",
+    locationParentCycle:
+      "Un emplacement ne peut pas être déplacé sous lui-même ni sous l’un de ses sous-emplacements.",
+    locationMergeDescendant:
+      "Un emplacement ne peut pas être fusionné avec l’un de ses sous-emplacements.",
+    locationSystemOwned:
+      "Cet emplacement est géré par le flux d’imprimante ou de prêt.",
+    locationHostUnsupported:
+      "Mettez à jour l’hôte avant de gérer les objets d’emplacement.",
+    inventoryBulkInvalidExpectedCount:
+      "La vérification groupée n’est pas valide. Rechargez le stock et vérifiez à nouveau l’action.",
+    inventoryBulkEmptySelection:
+      "Sélectionnez au moins une bobine pour l’action groupée.",
+    inventoryBulkInvalidSelection:
+      "Les bobines sélectionnées ne sont pas valides. Effacez la sélection et choisissez-les à nouveau.",
+    inventoryBulkStaleReview:
+      "Les bobines sélectionnées ont changé. Rechargez le stock et vérifiez à nouveau l’action groupée.",
+    inventoryBulkInvalidLocationTarget:
+      "Choisissez un emplacement de stock actif et vérifiez à nouveau le déplacement.",
+    inventoryBulkInvalidStatusTarget:
+      "Choisissez un état de stock autorisé et vérifiez à nouveau l’action.",
+    inventoryBulkRemovedSpool:
+      "Une bobine sélectionnée a été supprimée. Rechargez le stock et vérifiez à nouveau l’action.",
+    inventoryBulkPrinterSlotControlled:
+      "Une bobine sélectionnée est chargée dans une imprimante. Utilisez les actions d’emplacement d’imprimante ou retirez la bobine de la sélection.",
+    inventoryBulkActiveLoan:
+      "Une bobine sélectionnée fait l’objet d’un prêt actif. Terminez le prêt ou retirez la bobine de la sélection.",
     loanExpectedReturnInvalid: "Choisissez une date de retour prévue valide.",
     loanMetadataUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les coordonnées ou une date de retour prévue.",
+    loanAlreadyActive: "Cette bobine fait déjà l’objet d’un prêt actif.",
+    loanAlreadyReturned:
+      "Ce prêt a déjà été retourné avec d’autres détails de retour.",
+    loanDirectionMismatch:
+      "Utilisez l’action de retour correspondant au sens de ce prêt.",
+    borrowedInCannotLend:
+      "Une bobine empruntée ne peut pas être prêtée à nouveau.",
+    inboundLoanRequired:
+      "Cette action est uniquement disponible pour les bobines empruntées.",
+    spoolCommonDetailsHostUnsupported:
+      "Mettez à jour l’hôte avant d’enregistrer la tare ou la propriété avec les détails de la bobine.",
     purchaseMetadataHostUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les détails d’achat.",
+    purchasePriceInvalid:
+      "Saisissez un prix d’achat valide, supérieur ou égal à zéro.",
+    purchaseCurrencyInvalid:
+      "Saisissez une devise d’achat valide à trois lettres.",
+    purchaseCurrencyRequired:
+      "La devise d’achat est obligatoire lorsqu’un prix d’achat est défini.",
+    purchasePriceRequired:
+      "Le prix d’achat est obligatoire lorsqu’une devise d’achat est définie.",
+    purchaseDateInvalid: "Saisissez une date d’achat valide.",
+    purchaseBatchCodeTooLong: "Le code de lot d’achat est trop long.",
+    purchaseSupplierReferenceTooLong: "La référence fournisseur est trop longue.",
+    purchaseMetadataTypeInvalid:
+      "Le format des détails d’achat n’est pas valide. Vérifiez-les et réessayez.",
+    purchasePriceProtectionLockInvalid:
+      "La valeur de protection du prix importée doit être vraie ou fausse.",
+    purchasePriceProtectionSourceInvalid:
+      "La source de prix importée doit être MANUAL, STANDARD_BATCH ou vide.",
     filamentStandardsHostUnsupported:
-      "Update the Host before using filament pricing standards.",
+      "Mettez à jour l’hôte avant d’utiliser les valeurs de tarification des filaments.",
+    filamentStandardsRoleUnresolved:
+      "Attendez la fin du chargement du rôle de la bibliothèque, puis réessayez.",
+    libraryRoleLoadFailed:
+      "Impossible de déterminer le rôle de bibliothèque de cet appareil. Les données et modifications locales restent indisponibles jusqu’au chargement du rôle.",
+    filamentStandardsHostManaged:
+      "Gérez les valeurs de filament de toute la bibliothèque dans l’application de bureau sur l’hôte.",
+    filamentStandardsNotLoaded:
+      "Attendez la fin du chargement des valeurs de filament, puis réessayez.",
     filamentStandardsStaleReview:
-      "The selected rolls changed. Review the filament price group again.",
+      "Les bobines sélectionnées ont changé. Vérifiez à nouveau le groupe de prix du filament.",
+    filamentBatchGroupRequired: "Choisissez un groupe de prix de filament.",
+    filamentBatchEmptySelection:
+      "Sélectionnez au moins une bobine pour cette mise à jour de prix.",
+    filamentBatchInvalidSelection:
+      "Les bobines sélectionnées ne sont pas valides. Vérifiez à nouveau le groupe de prix du filament.",
+    filamentBatchInvalidHistoricalFill:
+      "Le renseignement d’un prix manquant pour une bobine historique n’est disponible que pour une bobine historique possédée, sans prix, en mode Uniquement les prix manquants.",
     filamentStandardsCurrencyInvalid:
-      "Enter a valid three-letter purchase currency.",
+      "Saisissez une devise d’achat valide à trois lettres.",
     filamentStandardsPriceInvalid:
-      "Enter a valid filament price of zero or more.",
+      "Saisissez un prix de filament valide, supérieur ou égal à zéro.",
     filamentStandardsInvalid:
-      "The saved filament standards are no longer valid. Reload and review them.",
+      "Les valeurs de filament enregistrées ne sont plus valides. Rechargez-les et vérifiez-les.",
     exportInvalidPayload: "L’export généré n’est pas valide.",
     downloadsUnavailable: "Le dossier Téléchargements n’est pas disponible.",
     exportWriteFailed: "L’export n’a pas pu être enregistré.",
@@ -184,7 +263,7 @@ export const frDictionary: DictionaryNode = {
     noActivePrinter: "Aucune imprimante active sélectionnée",
     noPrintersConfigured: "Aucune imprimante configurée",
     lowStock: "Stock faible",
-    atOrBelowThreshold: "À {count} g ou moins",
+    atOrBelowThreshold: "À {count, number} g ou moins",
     materialLowStockThresholds: "Seuils par matériau",
     legacyLowStockFallback: "Valeur de repli de 200 g pour les anciens hôtes",
     noAlerts: "Aucune alerte",
@@ -393,7 +472,8 @@ export const frDictionary: DictionaryNode = {
     bulkNoSelection: "Aucune bobine sélectionnée",
     bulkSelectedCount: "{count, plural, one {# bobine sélectionnée} other {# bobines sélectionnées}}",
     bulkSelectedAcrossFilters: "{selected} sélectionnées au total · {visible} dans cette vue",
-    bulkSelectVisible: "Sélectionner {count} bobines visibles",
+    bulkSelectVisible:
+      "{count, plural, one {Sélectionner # bobine visible} other {Sélectionner # bobines visibles}}",
     bulkSelectSpool: "Sélectionner {reference}",
     bulkClearSelection: "Effacer la sélection",
     bulkReviewMove: "Vérifier le déplacement",
@@ -914,6 +994,16 @@ export const frDictionary: DictionaryNode = {
       detailsUpdated: "Détails mis à jour",
       purchaseReceiptRecorded: "Réception de l’achat enregistrée",
       purchaseMetadataUpdated: "Détails d’achat mis à jour",
+      purchasePriceStandardApplied: "Prix de groupe appliqué",
+      purchasePriceStandardAppliedDetail:
+        "Le prix de groupe enregistré a été appliqué à cette bobine.",
+      purchasePriceBatchLockUpdated: "Protection du prix de groupe modifiée",
+      purchasePriceBatchProtection: "Protection du prix de groupe",
+      purchasePriceBatchLockUpdatedDetail:
+        "La protection du prix de groupe a été modifiée pour cette bobine.",
+      locationMerged: "Emplacements fusionnés",
+      locationMergedDetail:
+        "Cette bobine a été déplacée à la suite de la fusion de deux emplacements.",
       rfidSaved: "RFID enregistrée",
       assignedToAms: "Affectée à un emplacement d’imprimante",
       printJobRecorded: "Consommation d’impression enregistrée",
@@ -1338,7 +1428,7 @@ export const frDictionary: DictionaryNode = {
   },
   statistics: {
     forecastUnavailable: "Données de consommation insuffisantes",
-    forecastDays: "{count} jours",
+    forecastDays: "{count, plural, one {# jour} other {# jours}}",
     consumptionForecast: "Prévision de consommation",
     consumptionForecastHint:
       "Une estimation déterministe fondée sur le stock possédé et la consommation enregistrée de filament possédé au cours des 30 derniers jours.",
@@ -1528,91 +1618,106 @@ export const frDictionary: DictionaryNode = {
     },
   },
   settings: {
-    filamentDefaultsUnknownWeight: "Unknown nominal weight",
-    filamentDefaultsLoadError: "Failed to load filament defaults.",
-    filamentDefaultsSaveCurrencyError: "Could not save the default currency.",
-    filamentDefaultsSaveGroupError: "Could not save the filament group price.",
-    filamentDefaultsApplyError: "Could not apply the filament prices.",
+    filamentDefaultsUnknownWeight: "Poids nominal inconnu",
+    filamentDefaultsLoadError: "Impossible de charger les valeurs par défaut du filament.",
+    filamentDefaultsSaveCurrencyError: "Impossible d’enregistrer la devise par défaut.",
+    filamentDefaultsSaveGroupError: "Impossible d’enregistrer le prix du groupe de filaments.",
+    filamentDefaultsApplyError: "Impossible d’appliquer les prix des filaments.",
     filamentDefaultsSettingsRepair:
-      "Some saved filament standards were invalid or no longer matched this library and have been excluded. Saving a valid default repairs the stored settings.",
+      "Certaines valeurs par défaut enregistrées étaient invalides ou ne correspondaient plus à cette bibliothèque et ont été exclues. Enregistrer une valeur valide répare les paramètres stockés.",
     filamentDefaultsSettingsRepairReadOnly:
-      "Some saved filament standards were invalid or no longer matched the Host library and have been excluded. Repair them on the Host desktop app.",
-    filamentDefaultsReceiptBatchLocked: "Protected from batch pricing",
-    filamentDefaultsReceiptManual: "Must be updated manually",
-    filamentDefaultsReceiptBorrowed: "Borrowed spool was not changed",
-    filamentDefaultsReceiptInactive: "Historical spool was not changed",
-    filamentDefaultsReceiptAlreadyPriced: "Already had a price",
-    filamentDefaultsReceiptSkipped: "Not updated",
-    filamentDefaultsSelectSpool: "Select spool",
+      "Certaines valeurs par défaut enregistrées étaient invalides ou ne correspondaient plus à la bibliothèque de l’hôte et ont été exclues. Réparez-les dans l’application de bureau de l’hôte.",
+    filamentDefaultsReceiptBatchLocked: "Protégée contre la tarification groupée",
+    filamentDefaultsReceiptManual: "Doit être mise à jour manuellement",
+    filamentDefaultsReceiptBorrowed: "La bobine empruntée n’a pas été modifiée",
+    filamentDefaultsReceiptInactive: "La bobine historique n’a pas été modifiée",
+    filamentDefaultsReceiptAlreadyPriced: "Avait déjà un prix",
+    filamentDefaultsReceiptSkipped: "Non mise à jour",
+    filamentDefaultsSelectSpool: "Sélectionner la bobine",
     filamentDefaultsSelectHistoricalSpool:
-      "Set price on historical spool and protect it from later group updates",
+      "Définir le prix de la bobine historique et la protéger des mises à jour groupées ultérieures",
     filamentDefaultsHistoricalSelectionHint:
-      "Never selected automatically. It can receive its missing price once and will then remain protected from group updates.",
-    filamentDefaultsBatchLocked: "Batch locked",
-    filamentDefaultsBorrowed: "Borrowed",
-    filamentDefaultsHistorical: "Historical",
-    filamentDefaultsCurrentPrice: "Current price",
-    filamentDefaultsMissingPrice: "Missing price",
-    filamentDefaultsReceipt: "Latest pricing receipt",
-    filamentDefaultsReceiptHint: "This receipt stays here until you dismiss it or run another price update.",
-    filamentDefaultsReceiptCommitted: "{updated} updated · {skipped} not updated",
+      "Jamais sélectionnée automatiquement. Son prix manquant peut être défini une fois, puis elle reste protégée des mises à jour groupées.",
+    filamentDefaultsBatchLocked: "Tarification groupée verrouillée",
+    filamentDefaultsBorrowed: "Empruntée",
+    filamentDefaultsHistorical: "Historique",
+    filamentDefaultsCurrentPrice: "Prix actuel",
+    filamentDefaultsMissingPrice: "Prix manquant",
+    filamentDefaultsReceipt: "Dernier reçu de mise à jour des prix",
+    filamentDefaultsReceiptHint: "Ce reçu reste affiché jusqu’à ce que vous le fermiez ou lanciez une autre mise à jour des prix.",
+    filamentDefaultsReceiptCommitted:
+      "{updated, plural, one {# bobine mise à jour} other {# bobines mises à jour}} · {skipped, plural, one {# non mise à jour} other {# non mises à jour}}",
     filamentDefaultsReceiptCommittedProtected:
-      "{updated} updated · {protected} protected from later group updates · {skipped} not updated",
-    filamentDefaultsReceiptNotCommitted: "The pricing operation was not committed.",
-    filamentDefaultsDismissReceipt: "Dismiss receipt",
-    filamentDefaultsNotUpdated: "Not updated",
-    filamentDefaultsReceiptNoSkips: "Every selected eligible spool was updated.",
-    filamentDefaultsReceiptUpdatedList: "Show {count} updated spools",
+      "{updated, plural, one {# bobine mise à jour} other {# bobines mises à jour}} · {protected, plural, one {# protégée des mises à jour groupées ultérieures} other {# protégées des mises à jour groupées ultérieures}} · {skipped, plural, one {# non mise à jour} other {# non mises à jour}}",
+    filamentDefaultsReceiptNotCommitted: "La mise à jour des prix n’a pas été enregistrée.",
+    filamentDefaultsDismissReceipt: "Fermer le reçu",
+    filamentDefaultsNotUpdated: "Non mise à jour",
+    filamentDefaultsReceiptNoSkips: "Toutes les bobines sélectionnées et admissibles ont été mises à jour.",
+    filamentDefaultsReceiptUpdatedList:
+      "{count, plural, one {Afficher # bobine mise à jour} other {Afficher # bobines mises à jour}}",
     filamentDefaultsReceiptPriceSetProtected:
-      "Price set · Protected from later group updates",
-    filamentDefaultsCurrency: "Default purchase currency",
-    filamentDefaultsCurrencyHint: "Used as the starting currency for new individual prices and filament group defaults. Existing purchase data is not changed automatically.",
-    filamentDefaultsHostOwned: "Manage library-wide filament defaults on the Host desktop app.",
-    filamentDefaultsCurrencyCode: "Three-letter currency code",
-    filamentDefaultsCurrencyCodeHint: "For example NOK, EUR or USD. Saving this default never rewrites existing spool prices.",
-    filamentDefaultsCurrencyInvalid: "Enter exactly three letters.",
+      "Prix défini · Protégée des mises à jour groupées ultérieures",
+    filamentDefaultsCurrency: "Devise d’achat par défaut",
+    filamentDefaultsCurrencyHint: "Utilisée comme devise initiale pour les nouveaux prix individuels et les valeurs par défaut des groupes. Les données d’achat existantes ne sont pas modifiées automatiquement.",
+    filamentDefaultsHostOwned: "Gérez les valeurs par défaut de toute la bibliothèque dans l’application de bureau de l’hôte.",
+    filamentDefaultsCurrencyCode: "Code devise à trois lettres",
+    filamentDefaultsCurrencyCodeHint: "Par exemple NOK, EUR ou USD. Enregistrer cette valeur par défaut ne remplace jamais les prix existants des bobines.",
+    filamentDefaultsCurrencyInvalid: "Saisissez exactement trois lettres.",
     filamentDefaultsCurrencyPlaceholder: "NOK",
-    filamentDefaultsSaveCurrency: "Save default currency",
-    filamentDefaultsGroupPrices: "Filament group prices",
-    filamentDefaultsGroupPricesHint: "Groups are built from vendor, material, filament series and nominal spool weight. Color does not split a price group. No supplier prices are hard-coded.",
-    filamentDefaultsNoSpools: "There are no spools available for group pricing.",
-    filamentDefaultsSpools: "spools",
-    filamentDefaultsGroups: "price groups",
-    filamentDefaultsWithoutPrice: "without price",
-    filamentDefaultsWithoutCurrency: "without currency",
-    filamentDefaultsLocked: "locked",
-    filamentDefaultsGroupPrice: "Price per spool",
-    filamentDefaultsCurrencyCodeShort: "Currency",
-    filamentDefaultsSaveGroupDefault: "Save group default",
-    filamentDefaultsBatchMode: "Pricing mode",
-    filamentDefaultsMissingOnly: "Only missing prices",
-    filamentDefaultsMissingOnlyHint: "Keeps every existing individual price.",
-    filamentDefaultsOverwrite: "Update selected prices",
-    filamentDefaultsOverwriteHint: "Replaces existing individual prices after a separate confirmation.",
-    filamentDefaultsSelectGroup: "Select all {count} active spools",
+    filamentDefaultsSaveCurrency: "Enregistrer la devise par défaut",
+    filamentDefaultsGroupPrices: "Prix des groupes de filaments",
+    filamentDefaultsGroupPricesHint: "Les groupes reposent sur le fabricant, le matériau, la gamme de filament et le poids nominal de la bobine. La couleur ne sépare pas un groupe de prix. Aucun prix fournisseur n’est codé en dur.",
+    filamentDefaultsNoSpools: "Aucune bobine n’est disponible pour la tarification groupée.",
+    filamentDefaultsSpools:
+      "{count, plural, one {# bobine} other {# bobines}}",
+    filamentDefaultsGroups:
+      "{count, plural, one {# groupe de prix} other {# groupes de prix}}",
+    filamentDefaultsWithoutPrice: "sans prix",
+    filamentDefaultsWithoutCurrency: "sans devise",
+    filamentDefaultsLocked: "verrouillée",
+    filamentDefaultsGroupPrice: "Prix par bobine",
+    filamentDefaultsCurrencyCodeShort: "Devise",
+    filamentDefaultsSaveGroupDefault: "Enregistrer la valeur du groupe",
+    filamentDefaultsBatchMode: "Mode de tarification",
+    filamentDefaultsMissingOnly: "Uniquement les prix manquants",
+    filamentDefaultsMissingOnlyHint: "Conserve tous les prix individuels existants.",
+    filamentDefaultsOverwrite: "Mettre à jour les prix sélectionnés",
+    filamentDefaultsOverwriteHint: "Remplace les prix individuels existants après une confirmation distincte.",
+    filamentDefaultsSelectGroup:
+      "{count, plural, one {Sélectionner la # bobine active} other {Sélectionner les # bobines actives}}",
     filamentDefaultsHistoricalSelectionRemoved:
-      "{count} historical spools were removed from the selection because overwrite cannot change them.",
+      "{count, plural, one {# bobine historique a été retirée de la sélection, car l’écrasement ne peut pas la modifier.} other {# bobines historiques ont été retirées de la sélection, car l’écrasement ne peut pas les modifier.}}",
     filamentDefaultsHistoricalProtectionHint:
-      "Historical and used-up spools are protected and excluded by default. In Only missing prices, an unpriced historical spool can be selected individually; its protection remains enabled afterward.",
-    filamentDefaultsSelected: "selected",
-    filamentDefaultsWillUpdate: "Will update",
-    filamentDefaultsOverwritePreview: "{count} existing prices will be replaced, including {manual} individually set prices.",
-    filamentDefaultsLockedPreview: "{count} selected locked spools will be skipped and listed in the receipt for manual follow-up.",
+      "Les bobines historiques et épuisées sont protégées et exclues par défaut. Dans Uniquement les prix manquants, une bobine historique sans prix peut être sélectionnée individuellement ; sa protection reste ensuite active.",
+    filamentDefaultsSelected:
+      "{count, plural, one {# sélectionnée} other {# sélectionnées}}",
+    filamentDefaultsWillUpdate: "À mettre à jour",
+    filamentDefaultsWillUpdateCount:
+      "{count, plural, one {# sera mise à jour} other {# seront mises à jour}}",
+    filamentDefaultsOverwritePreview:
+      "{count, plural, one {# prix existant sera remplacé} other {# prix existants seront remplacés}}, dont {manual, plural, one {# prix défini individuellement} other {# prix définis individuellement}}.",
+    filamentDefaultsLockedPreview:
+      "{count, plural, one {# bobine verrouillée sélectionnée sera ignorée et indiquée dans le reçu pour un suivi manuel.} other {# bobines verrouillées sélectionnées seront ignorées et indiquées dans le reçu pour un suivi manuel.}}",
     filamentDefaultsHistoricalMissingPreview:
-      "{count} deliberately selected historical spools will receive their missing price and remain protected from later group updates.",
-    filamentDefaultsCurrencyOnlyPreview: "{count} existing prices are kept while their missing currency is filled in.",
-    filamentDefaultsManualPreview: "{count} spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.",
-    filamentDefaultsBorrowedPreview: "{count} borrowed spools will not be changed.",
-    filamentDefaultsReviewOverwrite: "Review and confirm overwrite",
-    filamentDefaultsApplyMissing: "Price spools missing a price",
+      "{count, plural, one {# bobine historique sélectionnée volontairement recevra son prix manquant et restera protégée des mises à jour groupées ultérieures.} other {# bobines historiques sélectionnées volontairement recevront leur prix manquant et resteront protégées des mises à jour groupées ultérieures.}}",
+    filamentDefaultsCurrencyOnlyPreview:
+      "{count, plural, one {# prix existant est conservé pendant que sa devise manquante est ajoutée.} other {# prix existants sont conservés pendant que leur devise manquante est ajoutée.}}",
+    filamentDefaultsManualPreview:
+      "{count, plural, one {# bobine n’a pas de prix, mais utilise déjà une autre devise. Elle nécessite un suivi manuel et sera indiquée dans le reçu.} other {# bobines n’ont pas de prix, mais utilisent déjà une autre devise. Elles nécessitent un suivi manuel et seront indiquées dans le reçu.}}",
+    filamentDefaultsBorrowedPreview:
+      "{count, plural, one {# bobine empruntée ne sera pas modifiée.} other {# bobines empruntées ne seront pas modifiées.}}",
+    filamentDefaultsReviewOverwrite: "Vérifier et confirmer l’écrasement",
+    filamentDefaultsApplyMissing: "Définir le prix des bobines sans prix",
     filamentDefaultsApplyMissingAndProtect:
-      "Set missing prices and protect historical spools",
-    filamentDefaultsConfirmOverwrite: "Confirm price overwrite",
-    filamentDefaultsOverwriteReview: "Overwrite review",
-    filamentDefaultsOverwriteConfirmationWarning: "{count} existing prices will be replaced. {manual} were individually set. This does not change the per-spool batch locks.",
-    filamentDefaultsExistingPrices: "Existing prices",
-    filamentDefaultsWillSkip: "Will skip",
-    filamentDefaultsConfirmOverwriteAction: "Confirm price update for {count} spools",
+      "Définir les prix manquants et protéger les bobines historiques",
+    filamentDefaultsConfirmOverwrite: "Confirmer l’écrasement des prix",
+    filamentDefaultsOverwriteReview: "Vérification avant écrasement",
+    filamentDefaultsOverwriteConfirmationWarning:
+      "{count, plural, one {# prix existant sera remplacé.} other {# prix existants seront remplacés.}} {manual, plural, one {# a été défini individuellement.} other {# ont été définis individuellement.}} Cela ne modifie pas le verrouillage de tarification groupée de chaque bobine.",
+    filamentDefaultsExistingPrices: "Prix existants",
+    filamentDefaultsWillSkip: "Sera ignorée",
+    filamentDefaultsConfirmOverwriteAction:
+      "{count, plural, one {Confirmer la mise à jour du prix de # bobine} other {Confirmer la mise à jour du prix de # bobines}}",
     lowStockThresholds: "Seuils de stock faible",
     lowStockThresholdsHint:
       "Définissez une valeur par défaut pour la bibliothèque et ne la remplacez que pour les matériaux nécessitant un point de réapprovisionnement différent.",
@@ -1634,7 +1739,7 @@ export const frDictionary: DictionaryNode = {
     lowStockNewOverrideThreshold: "Nouveau seuil spécifique",
     lowStockSetOverride: "Définir l’exception",
     lowStockSelectedMaterialInheritance:
-      "Sans exception, ce matériau utilise le seuil de {count} g.",
+      "Sans exception, ce matériau utilise le seuil de {count, number} g.",
     lowStockThresholdValidation:
       "Saisissez un nombre entier compris entre 1 et 100000 g.",
     lowStockSaving: "Enregistrement des seuils…",
@@ -1685,6 +1790,9 @@ export const frDictionary: DictionaryNode = {
     appearance: "Apparence",
     language: "Langue",
     languageHint: "Choisissez la langue de toutes les vues principales.",
+    languageBeta: "Bêta",
+    languageBetaHint:
+      "Les langues bêta sont encore incomplètes et peuvent afficher une partie du texte en anglais.",
     light: "Clair",
     dark: "Sombre",
     auto: "Automatique (système)",

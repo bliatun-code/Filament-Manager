@@ -1,3 +1,4 @@
+use crate::active_library_gateway::require_authoritative_local_library_under_gate;
 use crate::app_error::internal_command_error;
 use crate::credential_store::CredentialKey;
 use crate::inventory_maintenance_commands::CredentialDeletionRollback;
@@ -15,6 +16,7 @@ pub(crate) fn delete_printer(
 
 pub(crate) fn delete_printer_inner(state: &AppState, printer_id: &str) -> Result<(), String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
+    require_authoritative_local_library_under_gate(state)?;
     let integration = with_db(state, |db| {
         Ok(db
             .list_bambu_live_integrations()?

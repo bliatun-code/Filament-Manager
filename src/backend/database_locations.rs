@@ -11,13 +11,13 @@ pub(crate) fn normalize_location_name(value: &str) -> InventoryResult<(String, S
     let display_name = value.split_whitespace().collect::<Vec<_>>().join(" ");
     if display_name.is_empty() {
         return Err(invalid_location(
-            "LOCATION_NAME_REQUIRED",
+            "inventory.location.name_required",
             "Location name is required.",
         ));
     }
     if display_name.chars().count() > 120 {
         return Err(invalid_location(
-            "LOCATION_NAME_TOO_LONG",
+            "inventory.location.name_too_long",
             "Location name must be 120 characters or fewer.",
         ));
     }
@@ -33,9 +33,9 @@ pub(crate) fn list_locations(
                 location.x, location.y, location.z, location.archived_at,
                 COALESCE(location.created_at, ''), COALESCE(location.updated_at, ''),
                 (SELECT COUNT(*) FROM filament_spools
-                 WHERE location_id = location.id)
+                 WHERE location_id = location.id AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM filament_spools
-                     WHERE home_location_id = location.id)
+                     WHERE home_location_id = location.id AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM inventory_locations child
                      WHERE child.parent_id = location.id) AS reference_count
          FROM inventory_locations location
@@ -55,9 +55,9 @@ pub(crate) fn get_location(
                 location.x, location.y, location.z, location.archived_at,
                 COALESCE(location.created_at, ''), COALESCE(location.updated_at, ''),
                 (SELECT COUNT(*) FROM filament_spools
-                 WHERE location_id = location.id)
+                 WHERE location_id = location.id AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM filament_spools
-                     WHERE home_location_id = location.id)
+                     WHERE home_location_id = location.id AND deleted_at IS NULL)
                   + (SELECT COUNT(*) FROM inventory_locations child
                      WHERE child.parent_id = location.id) AS reference_count
          FROM inventory_locations location
@@ -95,7 +95,7 @@ pub(crate) fn create_location(
     let (normalized_name, display_name) = normalize_location_name(name)?;
     if find_active_generic_by_normalized_name(conn, &normalized_name, None)?.is_some() {
         return Err(invalid_location(
-            "LOCATION_NAME_CONFLICT",
+            "inventory.location.name_conflict",
             "An active location already uses that name.",
         ));
     }
@@ -126,7 +126,7 @@ pub(crate) fn rename_location(
         .is_some()
     {
         return Err(invalid_location(
-            "LOCATION_NAME_CONFLICT",
+            "inventory.location.name_conflict",
             "An active location already uses that name.",
         ));
     }
@@ -146,7 +146,7 @@ pub(crate) fn archive_location(
     let existing = require_generic_location(conn, location_id)?;
     if existing.archived_at.is_some() {
         return Err(invalid_location(
-            "LOCATION_ALREADY_ARCHIVED",
+            "inventory.location.already_archived",
             "Location is already archived.",
         ));
     }
@@ -166,7 +166,7 @@ pub(crate) fn restore_location(
     let existing = require_generic_location(conn, location_id)?;
     if existing.archived_at.is_none() {
         return Err(invalid_location(
-            "LOCATION_NOT_ARCHIVED",
+            "inventory.location.not_archived",
             "Location is already active.",
         ));
     }
@@ -174,7 +174,7 @@ pub(crate) fn restore_location(
     if find_active_generic_by_normalized_name(conn, &normalized_name, Some(&existing.id))?.is_some()
     {
         return Err(invalid_location(
-            "LOCATION_NAME_CONFLICT",
+            "inventory.location.name_conflict",
             "Rename the archived location before restoring it because an active location uses that name.",
         ));
     }
@@ -202,6 +202,20 @@ pub(crate) fn delete_location(
             ),
         ));
     }
+
+    // Versions before location deletion was introduced kept a removed spool's
+    // home-location foreign key. Its DELETED history snapshot already retains
+    // the human context, so detach those legacy-only references atomically
+    // before deleting an otherwise unreferenced location.
+    conn.execute(
+        "UPDATE filament_spools
+         SET location_id = CASE WHEN location_id = ?1 THEN NULL ELSE location_id END,
+             home_location_id = CASE WHEN home_location_id = ?1 THEN NULL ELSE home_location_id END,
+             updated_at = datetime('now')
+         WHERE deleted_at IS NOT NULL
+           AND (location_id = ?1 OR home_location_id = ?1)",
+        params![existing.id],
+    )?;
 
     // Keep the guards in the DELETE as a second line of defence. The facade
     // runs this function in an IMMEDIATE transaction, so the read, decision,
@@ -239,7 +253,7 @@ pub(crate) fn merge_locations(
     let target = require_active_generic_location(conn, target_id)?;
     if source.id == target.id {
         return Err(invalid_location(
-            "LOCATION_MERGE_SAME_ID",
+            "inventory.location.merge_same_id",
             "Source and target locations must be different.",
         ));
     }
@@ -313,7 +327,7 @@ pub(crate) fn resolve_active_generic_location_reference(
     let trimmed = value.trim();
     if trimmed.is_empty() {
         return Err(invalid_location(
-            "LOCATION_NAME_REQUIRED",
+            "inventory.location.name_required",
             "Location name is required.",
         ));
     }
@@ -323,7 +337,7 @@ pub(crate) fn resolve_active_generic_location_reference(
         }
         if row.is_archived() {
             return Err(invalid_location(
-                "LOCATION_ARCHIVED",
+                "inventory.location.archived",
                 "Archived locations cannot be assigned. Restore the location first.",
             ));
         }
@@ -387,8 +401,8 @@ fn location_reference_counts(
 ) -> InventoryResult<LocationReferenceCounts> {
     conn.query_row(
         "SELECT
-           (SELECT COUNT(*) FROM filament_spools WHERE location_id = ?1),
-           (SELECT COUNT(*) FROM filament_spools WHERE home_location_id = ?1),
+           (SELECT COUNT(*) FROM filament_spools WHERE location_id = ?1 AND deleted_at IS NULL),
+           (SELECT COUNT(*) FROM filament_spools WHERE home_location_id = ?1 AND deleted_at IS NULL),
            (SELECT COUNT(*) FROM inventory_locations WHERE parent_id = ?1)",
         params![location_id],
         |row| {
@@ -456,7 +470,7 @@ fn require_active_generic_location(
     let row = require_generic_location(conn, location_id)?;
     if row.is_archived() {
         return Err(invalid_location(
-            "LOCATION_ARCHIVED",
+            "inventory.location.archived",
             "Archived locations cannot be used until they are restored.",
         ));
     }
@@ -473,13 +487,13 @@ fn ensure_target_is_not_descendant(
     while let Some(location_id) = cursor {
         if !visited.insert(location_id.clone()) {
             return Err(invalid_location(
-                "LOCATION_PARENT_CYCLE",
+                "inventory.location.parent_cycle",
                 "Location hierarchy contains a cycle.",
             ));
         }
         if location_id == source_id {
             return Err(invalid_location(
-                "LOCATION_MERGE_DESCENDANT",
+                "inventory.location.merge_descendant",
                 "A location cannot be merged into one of its descendants.",
             ));
         }
@@ -523,7 +537,7 @@ fn new_generic_location_id(conn: &Connection) -> InventoryResult<String> {
 
 fn system_owned_location_error() -> InventoryError {
     invalid_location(
-        "LOCATION_SYSTEM_OWNED",
+        "inventory.location.system_owned",
         "Printer-slot and other system locations cannot be changed with generic location tools.",
     )
 }
@@ -860,7 +874,7 @@ mod tests {
     }
 
     #[test]
-    fn delete_rejects_location_used_as_a_spool_home_location() {
+    fn delete_cleans_legacy_soft_deleted_spool_home_reference() {
         let (path, db) = open_db("delete-home-reference");
         let location = db
             .create_inventory_location("Home Shelf", None)
@@ -869,8 +883,14 @@ mod tests {
             .create_inventory_location("Current Shelf", None)
             .expect("create other location");
         seed_master_and_spool(&db, "home-reference-spool", &other.id, &location.id);
-        db.soft_delete_spool("home-reference-spool")
-            .expect("soft delete spool while preserving its home reference");
+        db.connection()
+            .execute(
+                "UPDATE filament_spools
+                 SET deleted_at = datetime('now'), status = 'DELETED', location_id = NULL
+                 WHERE id = 'home-reference-spool'",
+                [],
+            )
+            .expect("simulate legacy soft delete that preserved its home reference");
 
         let row = db
             .list_inventory_locations(false)
@@ -878,12 +898,24 @@ mod tests {
             .into_iter()
             .find(|row| row.id == location.id)
             .expect("find referenced location");
-        assert_eq!(row.reference_count, Some(1));
-        assert!(!row.can_delete);
-        assert_location_has_references(
-            db.delete_inventory_location(&location.id)
-                .expect_err("home location reference must block delete"),
-        );
+        assert_eq!(row.reference_count, Some(0));
+        assert!(row.can_delete);
+        db.delete_inventory_location(&location.id)
+            .expect("legacy removed-spool reference should be detached during deletion");
+        let stored_home: Option<String> = db
+            .connection()
+            .query_row(
+                "SELECT home_location_id FROM filament_spools WHERE id = 'home-reference-spool'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read cleaned legacy home reference");
+        assert_eq!(stored_home, None);
+        assert!(db
+            .list_inventory_locations(true)
+            .expect("list after deleting legacy-referenced location")
+            .into_iter()
+            .all(|row| row.id != location.id));
 
         drop(db);
         let _ = std::fs::remove_file(path);

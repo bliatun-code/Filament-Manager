@@ -31,6 +31,8 @@ function createSpoolRow(id, overrides = {}) {
       vendor: "Bambu",
       ...overrides.master,
     },
+    location_name: overrides.location_name ?? null,
+    home_location_name: overrides.home_location_name ?? null,
   };
 }
 
@@ -137,6 +139,23 @@ test("filteredSpools excludes EMPTY rows from storage visibility", () => {
 
   const visibleIds = logic.filteredSpools().map((row) => row.spool.id);
   assert.deepEqual(visibleIds, ["spool-in-stock"]);
+});
+
+test("filteredSpools searches human location names from Host DTOs", () => {
+  const { logic } = createLogic({
+    search: "dry box",
+    spools: [
+      createSpoolRow("spool-location", {
+        spool: { location_id: "location_aaaaaaaa" },
+        location_name: "Dry box",
+      }),
+      createSpoolRow("spool-other"),
+    ],
+  });
+
+  assert.deepEqual(logic.filteredSpools().map((row) => row.spool.id), [
+    "spool-location",
+  ]);
 });
 
 test("printer load guard excludes inactive spool statuses", () => {

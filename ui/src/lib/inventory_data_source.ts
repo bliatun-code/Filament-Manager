@@ -15,7 +15,10 @@ import {
   loadAllSpoolRowsWithPageLoader,
   loadSpoolRowsPage,
 } from "./spool_data_source";
-import { resolveClientHostTarget } from "./host_write_target";
+import {
+  resolveClientHostCacheTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 import {
   normalizeSpoolWithMasterRow,
   normalizeSpoolWithMasterRows,
@@ -29,6 +32,7 @@ export type InventoryDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 export type InventoryDataLoadResult = {
@@ -102,15 +106,18 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
     ownerContact: normalizedRow.spool.owner_contact ?? null,
     ownershipNote: normalizedRow.spool.ownership_note ?? null,
     remainingGrams: normalizedRow.spool.remaining_g ?? null,
+    currentWeightGrams: normalizedRow.spool.current_weight_g ?? null,
     spoolTareWeightGrams: normalizedRow.spool.spool_tare_weight_g ?? null,
     location:
       normalizedRow.location_name?.trim() || normalizedRow.spool.location_id || null,
     locationId: normalizedRow.spool.location_id ?? null,
+    locationType: normalizedRow.location_type ?? null,
     homeLocation:
       normalizedRow.home_location_name?.trim() ||
       normalizedRow.spool.home_location_id ||
       null,
     homeLocationId: normalizedRow.spool.home_location_id ?? null,
+    homeLocationType: normalizedRow.home_location_type ?? null,
     qrCode: normalizedRow.spool.qr_code ?? null,
     rfidTag: normalizedRow.spool.rfid_tag ?? null,
     rfidObservedAt: normalizedRow.spool.rfid_observed_at ?? null,
@@ -131,6 +138,9 @@ export async function loadInventorySpools(
 ): Promise<InventoryDataLoadResult> {
   const loadRowsPage = dependencies.loadRowsPage ?? loadSpoolRowsPage;
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
+  const cacheTarget = options.clientReadOnly
+    ? resolveClientHostCacheTarget(options)
+    : null;
 
   try {
     const rows = dependencies.loadRowsPage
@@ -140,8 +150,12 @@ export async function loadInventorySpools(
           loadRowsPage,
         )
       : await loadAllSpoolRows(options);
-    const cached = options.clientReadOnly
-      ? await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null)
+    const cached = cacheTarget
+      ? await fetchCachedSpools(
+          cacheTarget.baseUrl,
+          cacheTarget.libraryId,
+          cacheTarget.targetGeneration,
+        ).catch((): LibrarySyncCachedSpoolList | null => null)
       : null;
     return {
       rows: mapSpoolRowsToInventorySpools(rows),
@@ -154,7 +168,13 @@ export async function loadInventorySpools(
       throw loadError;
     }
 
-    const cached = await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null);
+    const cached = cacheTarget
+      ? await fetchCachedSpools(
+          cacheTarget.baseUrl,
+          cacheTarget.libraryId,
+          cacheTarget.targetGeneration,
+        ).catch((): LibrarySyncCachedSpoolList | null => null)
+      : null;
     if (cached) {
       return {
         rows: mapSpoolRowsToInventorySpools(cached.rows),

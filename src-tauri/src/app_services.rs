@@ -1,3 +1,4 @@
+use crate::active_library_gateway::require_authoritative_local_mode;
 use crate::backend::database_result::{InventoryError, InventoryResult};
 use crate::backend::filament_database::{
     ActiveSpoolLoanRow, BambuLiveIntegrationEntryRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -22,6 +23,7 @@ use crate::backend::statistics::InventoryOverview;
 use crate::catalog_commands::{
     refresh_bambu_catalog_blocking, refresh_esun_catalog_blocking, CatalogRefreshResult,
 };
+use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_SPOOL_HISTORY_LIMIT: i64 = 80;
@@ -32,6 +34,20 @@ const BAMBU_SECONDARY_EXTERNAL_TRAY_INDEX: i64 = 254;
 #[derive(Clone)]
 pub struct CompanionService {
     db_path: String,
+    authority_binding: CompanionAuthorityBinding,
+}
+
+#[derive(Clone)]
+enum CompanionAuthorityBinding {
+    CurrentLibrary,
+    ServerLibrary(Option<CompanionAuthorityIdentity>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct CompanionAuthorityIdentity {
+    library_id: String,
+    target_generation: u64,
+    credential_profile_id: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -55,6 +71,45 @@ impl CompanionService {
     pub fn new(db_path: impl Into<String>) -> Self {
         Self {
             db_path: db_path.into(),
+            authority_binding: CompanionAuthorityBinding::CurrentLibrary,
+        }
+    }
+
+    pub(crate) fn new_bound_to_current_library(db_path: impl Into<String>) -> Self {
+        let db_path = db_path.into();
+        let authority_binding =
+            lock_secure_credential_mutation()
+                .ok()
+                .and_then(|_authority_gate| {
+                    let db = FilamentDatabase::open(&db_path).ok()?;
+                    capture_companion_authority_identity(&db).ok()
+                });
+        Self {
+            db_path,
+            authority_binding: CompanionAuthorityBinding::ServerLibrary(authority_binding),
+        }
+    }
+
+    pub(crate) fn require_bound_authority(&self) -> InventoryResult<()> {
+        let _authority_gate = lock_secure_credential_mutation().map_err(authority_error)?;
+        let db = FilamentDatabase::open(&self.db_path)?;
+        self.require_authority_under_gate(&db)
+    }
+
+    pub(crate) fn require_authority_under_gate(
+        &self,
+        db: &FilamentDatabase,
+    ) -> InventoryResult<()> {
+        let current = capture_companion_authority_identity(db)?;
+        match &self.authority_binding {
+            CompanionAuthorityBinding::CurrentLibrary => Ok(()),
+            CompanionAuthorityBinding::ServerLibrary(Some(expected)) if expected == &current => {
+                Ok(())
+            }
+            CompanionAuthorityBinding::ServerLibrary(_) => Err(authority_error(
+                "The authoritative library changed after this Companion server started."
+                    .to_string(),
+            )),
         }
     }
 
@@ -75,21 +130,25 @@ impl CompanionService {
         &self,
         input: UpdateMasterCatalogEntryInput,
     ) -> InventoryResult<String> {
-        self.with_inventory(|engine| engine.update_master_catalog_entry(input))
+        self.with_authoritative_inventory(|engine| engine.update_master_catalog_entry(input))
     }
 
     pub fn refresh_bambu_catalog(
         &self,
         material_types: Option<Vec<String>>,
     ) -> Result<CatalogRefreshResult, String> {
-        refresh_bambu_catalog_blocking(&self.db_path, material_types, None)
+        self.with_authoritative_write(|| {
+            refresh_bambu_catalog_blocking(&self.db_path, material_types, None)
+        })
     }
 
     pub fn refresh_esun_catalog(
         &self,
         material_types: Option<Vec<String>>,
     ) -> Result<CatalogRefreshResult, String> {
-        refresh_esun_catalog_blocking(&self.db_path, material_types, None)
+        self.with_authoritative_write(|| {
+            refresh_esun_catalog_blocking(&self.db_path, material_types, None)
+        })
     }
 
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {
@@ -228,71 +287,73 @@ impl CompanionService {
         scale_id: Option<&str>,
         source: WeightSource,
     ) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_spool_weight(spool_id, grams, scale_id, source))
+        self.with_authoritative_inventory(|engine| {
+            engine.update_spool_weight(spool_id, grams, scale_id, source)
+        })
     }
 
     pub fn update_spool_tare_weight(&self, spool_id: &str, grams: i64) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_spool_tare_weight(spool_id, grams))
+        self.with_authoritative_inventory(|engine| engine.update_spool_tare_weight(spool_id, grams))
     }
 
     pub fn delete_spool(&self, input: DeleteSpoolInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.delete_spool(input))
+        self.with_authoritative_inventory(|engine| engine.delete_spool(input))
     }
 
     pub fn purge_spool(&self, input: PurgeSpoolInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.purge_spool(input))
+        self.with_authoritative_inventory(|engine| engine.purge_spool(input))
     }
 
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.create_manual_spool(input))
+        self.with_authoritative_inventory(|engine| engine.create_manual_spool(input))
     }
 
     pub fn create_spool(&self, input: CreateSpoolInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.create_spool(input))
+        self.with_authoritative_inventory(|engine| engine.create_spool(input))
     }
 
     pub fn create_wishlist_item(&self, input: CreateWishlistItemInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.create_wishlist_item(input))
+        self.with_authoritative_inventory(|engine| engine.create_wishlist_item(input))
     }
 
     pub fn update_wishlist_item_status(
         &self,
         input: UpdateWishlistStatusInput,
     ) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_wishlist_item_status(input))
+        self.with_authoritative_inventory(|engine| engine.update_wishlist_item_status(input))
     }
 
     pub fn receive_wishlist_item(
         &self,
         input: ReceiveWishlistItemInput,
     ) -> InventoryResult<WishlistReceiptResult> {
-        self.with_inventory(|engine| engine.receive_wishlist_item(input))
+        self.with_authoritative_inventory(|engine| engine.receive_wishlist_item(input))
     }
 
     pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.delete_wishlist_item(item_id))
+        self.with_authoritative_inventory(|engine| engine.delete_wishlist_item(item_id))
     }
 
     pub fn update_borrowed_in_spool(
         &self,
         input: UpdateBorrowedInSpoolInput,
     ) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_borrowed_in_spool(input))
+        self.with_authoritative_inventory(|engine| engine.update_borrowed_in_spool(input))
     }
 
     pub fn update_spool_ownership(&self, input: UpdateSpoolOwnershipInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_spool_ownership(input))
+        self.with_authoritative_inventory(|engine| engine.update_spool_ownership(input))
     }
 
     pub fn update_spool_details(&self, input: UpdateSpoolDetailsInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_spool_details(input))
+        self.with_authoritative_inventory(|engine| engine.update_spool_details(input))
     }
 
     pub fn execute_inventory_bulk_mutation(
         &self,
         input: InventoryBulkMutationInput,
     ) -> InventoryResult<InventoryBulkMutationResult> {
-        self.with_inventory(|engine| engine.execute_bulk_inventory_mutation(input))
+        self.with_authoritative_inventory(|engine| engine.execute_bulk_inventory_mutation(input))
     }
 
     pub fn get_filament_standards(&self) -> InventoryResult<FilamentStandardsSnapshot> {
@@ -303,21 +364,21 @@ impl CompanionService {
         &self,
         settings: FilamentStandardsSettings,
     ) -> InventoryResult<FilamentStandardsSnapshot> {
-        self.with_inventory(|engine| engine.save_filament_standards(settings))
+        self.with_authoritative_inventory(|engine| engine.save_filament_standards(settings))
     }
 
     pub fn apply_filament_price_batch(
         &self,
         input: FilamentPriceBatchInput,
     ) -> InventoryResult<FilamentPriceBatchReceipt> {
-        self.with_inventory(|engine| engine.apply_filament_price_batch(input))
+        self.with_authoritative_inventory(|engine| engine.apply_filament_price_batch(input))
     }
 
     pub fn update_spool_rfid_tag(
         &self,
         input: crate::backend::inventory_engine::UpdateSpoolRfidTagInput,
     ) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.update_spool_rfid_tag(input))
+        self.with_authoritative_inventory(|engine| engine.update_spool_rfid_tag(input))
     }
 
     pub fn assign_printer_slot(
@@ -329,7 +390,7 @@ impl CompanionService {
         rfid_override_color_hex: Option<&str>,
         clear_live_cache_before_next_refresh: bool,
     ) -> InventoryResult<()> {
-        self.with_inventory(|engine| {
+        self.with_authoritative_inventory(|engine| {
             engine.assign_printer_slot(AssignPrinterSlotInput {
                 printer_id: printer_id.to_string(),
                 slot_id: slot_id.to_string(),
@@ -342,41 +403,44 @@ impl CompanionService {
     }
 
     pub fn record_print_usage(&self, input: RecordPrintUsageInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.record_print_usage(input))
+        self.with_authoritative_inventory(|engine| engine.record_print_usage(input))
     }
 
     pub fn accept_bambu_live_weight_estimate(
         &self,
         input: AcceptBambuLiveWeightEstimateInput,
     ) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.accept_bambu_live_weight_estimate(input))
+        self.with_authoritative_inventory(|engine| engine.accept_bambu_live_weight_estimate(input))
     }
 
     pub fn create_printer(&self, input: CreatePrinterInput) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.create_printer(input))
+        self.with_authoritative_inventory(|engine| engine.create_printer(input))
     }
 
-    pub fn delete_printer(&self, printer_id: &str) -> InventoryResult<()> {
+    pub(crate) fn delete_printer_under_authority_gate(
+        &self,
+        printer_id: &str,
+    ) -> InventoryResult<()> {
         self.with_inventory(|engine| engine.delete_printer(printer_id))
     }
 
     pub fn set_active_printer(&self, printer_id: Option<&str>) -> InventoryResult<()> {
-        self.with_inventory(|engine| engine.set_active_printer(printer_id))
+        self.with_authoritative_inventory(|engine| engine.set_active_printer(printer_id))
     }
 
     pub fn lend_spool(&self, input: LendSpoolInput) -> InventoryResult<SpoolLoanRow> {
-        self.with_inventory(|engine| engine.lend_spool(input))
+        self.with_authoritative_inventory(|engine| engine.lend_spool(input))
     }
 
     pub fn return_spool_loan(&self, input: ReturnSpoolLoanInput) -> InventoryResult<SpoolLoanRow> {
-        self.with_inventory(|engine| engine.return_spool_loan(input))
+        self.with_authoritative_inventory(|engine| engine.return_spool_loan(input))
     }
 
     pub fn return_inbound_spool_loan(
         &self,
         input: ReturnSpoolLoanInput,
     ) -> InventoryResult<SpoolLoanRow> {
-        self.with_inventory(|engine| engine.return_inbound_spool_loan(input))
+        self.with_authoritative_inventory(|engine| engine.return_inbound_spool_loan(input))
     }
 
     fn with_inventory<Func, Output>(&self, func: Func) -> InventoryResult<Output>
@@ -386,6 +450,46 @@ impl CompanionService {
         let db = FilamentDatabase::open(&self.db_path)?;
         let engine = InventoryEngine::new(db);
         func(engine)
+    }
+
+    fn with_authoritative_inventory<Func, Output>(&self, func: Func) -> InventoryResult<Output>
+    where
+        Func: FnOnce(InventoryEngine) -> InventoryResult<Output>,
+    {
+        let _authority_gate = lock_secure_credential_mutation().map_err(authority_error)?;
+        let db = FilamentDatabase::open(&self.db_path)?;
+        self.require_authority_under_gate(&db)?;
+        func(InventoryEngine::new(db))
+    }
+
+    fn with_authoritative_write<Output>(
+        &self,
+        write: impl FnOnce() -> Result<Output, String>,
+    ) -> Result<Output, String> {
+        let _authority_gate = lock_secure_credential_mutation()?;
+        let db = FilamentDatabase::open(&self.db_path).map_err(|error| error.to_string())?;
+        self.require_authority_under_gate(&db)
+            .map_err(crate::app_error::inventory_error_to_command_string)?;
+        write()
+    }
+}
+
+fn capture_companion_authority_identity(
+    db: &FilamentDatabase,
+) -> InventoryResult<CompanionAuthorityIdentity> {
+    let settings = db.get_library_sync_settings()?;
+    require_authoritative_local_mode(&settings.mode).map_err(authority_error)?;
+    Ok(CompanionAuthorityIdentity {
+        library_id: settings.library_id.trim().to_string(),
+        target_generation: settings.target_generation,
+        credential_profile_id: db.get_or_create_credential_store_profile_id()?,
+    })
+}
+
+fn authority_error(message: String) -> InventoryError {
+    InventoryError::InvalidOperation {
+        code: "common.forbidden",
+        message,
     }
 }
 

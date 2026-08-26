@@ -236,6 +236,8 @@ pub(crate) struct CompanionHealthResponse {
 
 pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-return";
 pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-mutations";
+pub(crate) const INVENTORY_LOCATIONS_CAPABILITY: &str = "inventory-locations-v1";
+pub(crate) const SPOOL_COMMON_DETAILS_V2_CAPABILITY: &str = "spool-common-details-v2";
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
 pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";

@@ -41,6 +41,20 @@ impl SpoolStatus {
     pub fn is_assigned(self) -> bool {
         self == Self::Assigned
     }
+
+    pub fn is_historical(self) -> bool {
+        matches!(
+            self,
+            Self::Empty | Self::Lost | Self::Missing | Self::Deleted
+        )
+    }
+}
+
+/// Classifies both canonical historical statuses and the legacy-only
+/// `ARCHIVED` token without expanding the shared wire enum.
+pub(crate) fn is_historical_spool_status(value: Option<&str>) -> bool {
+    let normalized = normalize_domain_token(value, "IN_STOCK");
+    normalized == "ARCHIVED" || SpoolStatus::from_raw(Some(&normalized)).is_historical()
 }
 
 impl LoanDirection {

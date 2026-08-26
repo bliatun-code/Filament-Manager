@@ -37,6 +37,13 @@ test("LoanOutModal uses shared wide modal layout rhythm", () => {
   assert.match(source, /ModalNotice/);
   assert.match(source, /LoanOutCandidateList/);
   assert.match(source, /setSpoolSearchQuery\(""\)/);
+  assert.match(source, /clientTargetGeneration/);
+  assert.match(source, /clientTargetGeneration,\s*\}\);/);
+  assert.match(source, /const reloadRequestRef = useRef\(0\)/);
+  assert.match(
+    source,
+    /if \(reloadRequestRef\.current !== requestId\) \{\s*return;/,
+  );
   assert.match(candidateSource, /loanOutSpoolButtonClassName/);
   assert.match(candidateSource, /hoveredSpoolId/);
   assert.match(candidateSource, /setHoveredSpoolId\(spool\.id\)/);

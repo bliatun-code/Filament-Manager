@@ -53,6 +53,7 @@ export const enDictionary: DictionaryNode = {
       unauthorized: "Authentication is required.",
       forbidden: "This action is not allowed.",
       notFound: "The requested record was not found.",
+      unavailable: "The service is temporarily unavailable.",
       internal: "Something went wrong. Try again.",
       spoolActiveLoan: "Return the active loan before removing this roll.",
       loadedSpoolEditBlocked: "Use the printer-slot actions to edit a loaded roll.",
@@ -62,15 +63,88 @@ export const enDictionary: DictionaryNode = {
         "Browser edits are limited to in-stock, empty, or lost rolls.",
       locationHasReferences:
         "Move every roll and child location before deleting this location.",
+      locationNameRequired: "Location name is required.",
+      locationNameTooLong: "Location names can contain at most 120 characters.",
+      locationNameConflict: "An active location already uses this name.",
+      locationAlreadyArchived: "This location is already archived.",
+      locationNotArchived: "This location is already active.",
+      locationArchived:
+        "Restore this location before using it or assigning rolls to it.",
+      locationMergeSameId: "Choose two different locations to merge.",
+      locationParentCycle:
+        "A location cannot be moved beneath itself or one of its descendants.",
+      locationMergeDescendant:
+        "A location cannot be merged into one of its descendants.",
+      locationSystemOwned:
+        "This location is managed by the printer or loan workflow.",
+      locationHostUnsupported:
+        "Update the Host before managing location objects.",
+      inventoryBulkInvalidExpectedCount:
+        "The bulk review is invalid. Reload inventory and review the action again.",
+      inventoryBulkEmptySelection: "Select at least one roll for the bulk action.",
+      inventoryBulkInvalidSelection:
+        "The selected rolls are invalid. Clear the selection and choose them again.",
+      inventoryBulkStaleReview:
+        "The selected rolls changed. Reload inventory and review the bulk action again.",
+      inventoryBulkInvalidLocationTarget:
+        "Choose an active inventory location and review the move again.",
+      inventoryBulkInvalidStatusTarget:
+        "Choose an allowed inventory status and review the action again.",
+      inventoryBulkRemovedSpool:
+        "A selected roll was removed. Reload inventory and review the action again.",
+      inventoryBulkPrinterSlotControlled:
+        "A selected roll is loaded in a printer. Use printer-slot actions or remove it from the selection.",
+      inventoryBulkActiveLoan:
+        "A selected roll has an active loan. Return it or remove it from the selection.",
       loanExpectedReturnInvalid: "Choose a valid expected return date.",
       loanMetadataUnsupported:
         "Update the host before saving loan contact details or an expected return date.",
+      loanAlreadyActive: "This roll already has an active loan.",
+      loanAlreadyReturned:
+        "This loan was already returned with different return details.",
+      loanDirectionMismatch: "Use the return action for this loan direction.",
+      borrowedInCannotLend: "A borrowed-in roll cannot be loaned out.",
+      inboundLoanRequired:
+        "This action is only available for borrowed-in rolls.",
+      spoolCommonDetailsHostUnsupported:
+        "Update the Host before saving tare weight or ownership together with roll details.",
       purchaseMetadataHostUnsupported:
         "Update the Host before saving purchase details.",
+      purchasePriceInvalid: "Enter a valid purchase price of zero or more.",
+      purchaseCurrencyInvalid:
+        "Enter a valid three-letter purchase currency.",
+      purchaseCurrencyRequired:
+        "Purchase currency is required when a purchase price is set.",
+      purchasePriceRequired:
+        "Purchase price is required when a purchase currency is set.",
+      purchaseDateInvalid: "Enter a valid purchase date.",
+      purchaseBatchCodeTooLong: "The purchase batch code is too long.",
+      purchaseSupplierReferenceTooLong: "The supplier reference is too long.",
+      purchaseMetadataTypeInvalid:
+        "The purchase details have an invalid format. Review them and try again.",
+      purchasePriceProtectionLockInvalid:
+        "The imported price-protection value must be true or false.",
+      purchasePriceProtectionSourceInvalid:
+        "The imported price source must be MANUAL, STANDARD_BATCH, or empty.",
       filamentStandardsHostUnsupported:
         "Update the Host before using filament pricing standards.",
+      filamentStandardsRoleUnresolved:
+        "Wait for the library role to finish loading, then try again.",
+      libraryRoleLoadFailed:
+        "Could not determine this device's library role. No local data or changes are available until the role is loaded.",
+      filamentStandardsHostManaged:
+        "Manage library-wide filament defaults on the Host desktop app.",
+      filamentStandardsNotLoaded:
+        "Wait for filament standards to finish loading, then try again.",
       filamentStandardsStaleReview:
         "The selected rolls changed. Review the filament price group again.",
+      filamentBatchGroupRequired: "Choose a filament price group.",
+      filamentBatchEmptySelection:
+        "Select at least one roll for this price update.",
+      filamentBatchInvalidSelection:
+        "The selected rolls are invalid. Review the filament price group again.",
+      filamentBatchInvalidHistoricalFill:
+        "Historical missing-price fill is only available for an owned, unpriced historical roll in Only missing prices mode.",
       filamentStandardsCurrencyInvalid:
         "Enter a valid three-letter purchase currency.",
       filamentStandardsPriceInvalid:
@@ -183,7 +257,7 @@ export const enDictionary: DictionaryNode = {
       lowStock: "Low Stock",
       below20: "Below 20%",
       below200: "Below 200g",
-      atOrBelowThreshold: "At or below {count} g",
+      atOrBelowThreshold: "At or below {count, number} g",
       materialLowStockThresholds: "Thresholds by material",
       legacyLowStockFallback: "200 g fallback for older Host",
       lowest: "lowest",
@@ -450,7 +524,8 @@ export const enDictionary: DictionaryNode = {
       bulkNoSelection: "No rolls selected",
       bulkSelectedCount: "{count, plural, one {# roll selected} other {# rolls selected}}",
       bulkSelectedAcrossFilters: "{selected} selected total · {visible} in this view",
-      bulkSelectVisible: "Select {count} visible rolls",
+      bulkSelectVisible:
+        "{count, plural, one {Select # visible roll} other {Select # visible rolls}}",
       bulkSelectSpool: "Select {reference}",
       bulkClearSelection: "Clear selection",
       bulkReviewMove: "Review move",
@@ -900,6 +975,16 @@ export const enDictionary: DictionaryNode = {
         detailsUpdated: "Details updated",
         purchaseReceiptRecorded: "Purchase receipt recorded",
         purchaseMetadataUpdated: "Purchase details updated",
+        purchasePriceStandardApplied: "Group price applied",
+        purchasePriceStandardAppliedDetail:
+          "The saved group price was applied to this roll.",
+        purchasePriceBatchLockUpdated: "Group price protection changed",
+        purchasePriceBatchProtection: "Group price protection",
+        purchasePriceBatchLockUpdatedDetail:
+          "Group price protection was changed for this roll.",
+        locationMerged: "Locations merged",
+        locationMergedDetail:
+          "This roll was moved because two storage locations were merged.",
         rfidSaved: "RFID saved",
         assignedToAms: "Assigned to printer slot",
         printJobRecorded: "Print usage logged",
@@ -1328,7 +1413,7 @@ export const enDictionary: DictionaryNode = {
     },
     statistics: {
       forecastUnavailable: "Not enough usage data",
-      forecastDays: "{count} days",
+      forecastDays: "{count, plural, one {# day} other {# days}}",
       consumptionForecast: "Consumption forecast",
       consumptionForecastHint:
         "A deterministic estimate based on owned stock and recorded owned usage during the last 30 days.",
@@ -1547,7 +1632,8 @@ export const enDictionary: DictionaryNode = {
       filamentDefaultsDismissReceipt: "Dismiss receipt",
       filamentDefaultsNotUpdated: "Not updated",
       filamentDefaultsReceiptNoSkips: "Every selected eligible spool was updated.",
-      filamentDefaultsReceiptUpdatedList: "Show {count} updated spools",
+      filamentDefaultsReceiptUpdatedList:
+        "{count, plural, one {Show # updated spool} other {Show # updated spools}}",
       filamentDefaultsReceiptPriceSetProtected:
         "Price set · Protected from later group updates",
       filamentDefaultsCurrency: "Default purchase currency",
@@ -1561,8 +1647,10 @@ export const enDictionary: DictionaryNode = {
       filamentDefaultsGroupPrices: "Filament group prices",
       filamentDefaultsGroupPricesHint: "Groups are built from vendor, material, filament series and nominal spool weight. Color does not split a price group. No supplier prices are hard-coded.",
       filamentDefaultsNoSpools: "There are no spools available for group pricing.",
-      filamentDefaultsSpools: "spools",
-      filamentDefaultsGroups: "price groups",
+      filamentDefaultsSpools:
+        "{count, plural, one {# spool} other {# spools}}",
+      filamentDefaultsGroups:
+        "{count, plural, one {# price group} other {# price groups}}",
       filamentDefaultsWithoutPrice: "without price",
       filamentDefaultsWithoutCurrency: "without currency",
       filamentDefaultsLocked: "locked",
@@ -1574,30 +1662,41 @@ export const enDictionary: DictionaryNode = {
       filamentDefaultsMissingOnlyHint: "Keeps every existing individual price.",
       filamentDefaultsOverwrite: "Update selected prices",
       filamentDefaultsOverwriteHint: "Replaces existing individual prices after a separate confirmation.",
-      filamentDefaultsSelectGroup: "Select all {count} active spools",
+      filamentDefaultsSelectGroup:
+        "{count, plural, one {Select the # active spool} other {Select all # active spools}}",
       filamentDefaultsHistoricalSelectionRemoved:
-        "{count} historical spools were removed from the selection because overwrite cannot change them.",
+        "{count, plural, one {# historical spool was removed from the selection because overwrite cannot change it.} other {# historical spools were removed from the selection because overwrite cannot change them.}}",
       filamentDefaultsHistoricalProtectionHint:
         "Historical and used-up spools are protected and excluded by default. In Only missing prices, an unpriced historical spool can be selected individually; its protection remains enabled afterward.",
-      filamentDefaultsSelected: "selected",
+      filamentDefaultsSelected:
+        "{count, plural, one {# selected} other {# selected}}",
       filamentDefaultsWillUpdate: "Will update",
-      filamentDefaultsOverwritePreview: "{count} existing prices will be replaced, including {manual} individually set prices.",
-      filamentDefaultsLockedPreview: "{count} selected locked spools will be skipped and listed in the receipt for manual follow-up.",
+      filamentDefaultsWillUpdateCount:
+        "{count, plural, one {# will update} other {# will update}}",
+      filamentDefaultsOverwritePreview:
+        "{count, plural, one {# existing price will be replaced} other {# existing prices will be replaced}}, including {manual, plural, one {# individually set price} other {# individually set prices}}.",
+      filamentDefaultsLockedPreview:
+        "{count, plural, one {# selected locked spool will be skipped and listed in the receipt for manual follow-up.} other {# selected locked spools will be skipped and listed in the receipt for manual follow-up.}}",
       filamentDefaultsHistoricalMissingPreview:
-        "{count} deliberately selected historical spools will receive their missing price and remain protected from later group updates.",
-      filamentDefaultsCurrencyOnlyPreview: "{count} existing prices are kept while their missing currency is filled in.",
-      filamentDefaultsManualPreview: "{count} spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.",
-      filamentDefaultsBorrowedPreview: "{count} borrowed spools will not be changed.",
+        "{count, plural, one {# deliberately selected historical spool will receive its missing price and remain protected from later group updates.} other {# deliberately selected historical spools will receive their missing price and remain protected from later group updates.}}",
+      filamentDefaultsCurrencyOnlyPreview:
+        "{count, plural, one {# existing price is kept while its missing currency is filled in.} other {# existing prices are kept while their missing currency is filled in.}}",
+      filamentDefaultsManualPreview:
+        "{count, plural, one {# spool has no price but already uses another currency. It requires manual follow-up and will be listed in the receipt.} other {# spools have no price but already use another currency. They require manual follow-up and will be listed in the receipt.}}",
+      filamentDefaultsBorrowedPreview:
+        "{count, plural, one {# borrowed spool will not be changed.} other {# borrowed spools will not be changed.}}",
       filamentDefaultsReviewOverwrite: "Review and confirm overwrite",
       filamentDefaultsApplyMissing: "Price spools missing a price",
       filamentDefaultsApplyMissingAndProtect:
         "Set missing prices and protect historical spools",
       filamentDefaultsConfirmOverwrite: "Confirm price overwrite",
       filamentDefaultsOverwriteReview: "Overwrite review",
-      filamentDefaultsOverwriteConfirmationWarning: "{count} existing prices will be replaced. {manual} were individually set. This does not change the per-spool batch locks.",
+      filamentDefaultsOverwriteConfirmationWarning:
+        "{count, plural, one {# existing price will be replaced.} other {# existing prices will be replaced.}} {manual, plural, one {# was individually set.} other {# were individually set.}} This does not change the per-spool batch locks.",
       filamentDefaultsExistingPrices: "Existing prices",
       filamentDefaultsWillSkip: "Will skip",
-      filamentDefaultsConfirmOverwriteAction: "Confirm price update for {count} spools",
+      filamentDefaultsConfirmOverwriteAction:
+        "{count, plural, one {Confirm price update for # spool} other {Confirm price update for # spools}}",
       lowStockThresholds: "Low-stock thresholds",
       lowStockThresholdsHint:
         "Set one default for the library and override it only for materials that need a different restock point.",
@@ -1619,7 +1718,7 @@ export const enDictionary: DictionaryNode = {
       lowStockNewOverrideThreshold: "New override threshold",
       lowStockSetOverride: "Set override",
       lowStockSelectedMaterialInheritance:
-        "Without an override, this material inherits {count} g.",
+        "Without an override, this material inherits {count, number} g.",
       lowStockThresholdValidation:
         "Enter a whole number from 1 to 100000 g.",
       lowStockSaving: "Saving thresholds…",
@@ -1825,6 +1924,9 @@ export const enDictionary: DictionaryNode = {
       librarySyncDeviceNameSaved: "Device name saved.",
       language: "Language",
       languageHint: "Choose app language for all main views.",
+      languageBeta: "Beta",
+      languageBetaHint:
+        "Beta languages are still being completed and may show some text in English.",
       appearance: "Appearance",
       light: "Light",
       dark: "Dark",

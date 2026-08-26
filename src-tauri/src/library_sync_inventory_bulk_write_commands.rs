@@ -29,7 +29,7 @@ fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     input: LibrarySyncInventoryBulkMutationInput,
 ) -> Result<InventoryBulkMutationResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, health) = prepare_library_sync_host_write(&host_input)?;
+    let (base_url, health, target) = prepare_library_sync_host_write(state, &host_input)?;
     require_inventory_bulk_mutation_capability(&health.capabilities)?;
     let result = perform_library_sync_host_write_and_parse(
         state,
@@ -39,8 +39,8 @@ fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     )
     .map_err(map_inventory_bulk_host_error)?;
 
-    refresh_library_sync_spool_cache(state, &base_url);
-    save_library_sync_success(state, "Host inventory bulk change saved.", None)?;
+    refresh_library_sync_spool_cache(state, &base_url, &target);
+    save_library_sync_success(state, &target, "Host inventory bulk change saved.", None)?;
     Ok(result)
 }
 

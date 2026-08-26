@@ -216,6 +216,7 @@ export default function SettingsPage({
     settingsClientHostWritePaired,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
     showLibraryClientAdvanced,
     trustedLanActionBusy,
     trustedLanEnabledDraft,
@@ -438,6 +439,8 @@ export default function SettingsPage({
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
+    settingsClientHostWritePaired,
     tauri,
   });
   useEffect(() => {
@@ -486,6 +489,7 @@ export default function SettingsPage({
     settingsClientHostWritePaired,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
     settingsInventoryRows: spoolRows,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
@@ -628,9 +632,12 @@ export default function SettingsPage({
     clientHostBaseUrl: settingsClientHostBaseUrl,
     clientLibraryId: settingsClientLibraryId,
     clientReadOnly: settingsClientReadOnly,
+    clientTargetGeneration: settingsClientTargetGeneration,
+    clientHostWritePaired: settingsClientHostWritePaired,
     fallbackSpoolRows: spoolRows,
     onInventoryChanged: reloadSettings,
     onLoadError: handleFilamentDefaultsLoadError,
+    roleResolved: librarySyncSettings != null,
     tauri,
   });
   useEffect(() => {
@@ -812,6 +819,8 @@ export default function SettingsPage({
           filamentDefaults.busy ||
           librarySyncBusy ||
           loading,
+        locale,
+        hostUnsupported: filamentDefaults.hostUnsupported,
         readOnly: !tauri || settingsClientReadOnly,
         t,
         lowStock: {
@@ -824,7 +833,7 @@ export default function SettingsPage({
           policyValid:
             librarySyncSettings?.mode === "CLIENT" ||
             librarySyncSettings?.low_stock_policy_valid !== false,
-          readOnly: !tauri || librarySyncSettings?.mode === "CLIENT",
+          readOnly: !tauri || settingsClientReadOnly,
           onSave: handleSaveLowStockPolicy,
         },
         defaultCurrency: filamentDefaults.defaultCurrency,

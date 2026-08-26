@@ -307,8 +307,9 @@ export function SettingsLowStockPanel({
           <p className="text-xs text-slate-500 dark:text-slate-400">
             {t(
               "settings.lowStockSelectedMaterialInheritance",
-              "Without an override, this material inherits {count} g.",
-            ).replace("{count}", String(defaultThreshold))}
+              "Without an override, this material inherits {count, number} g.",
+              { count: defaultThreshold },
+            )}
           </p>
         ) : null}
       </div>

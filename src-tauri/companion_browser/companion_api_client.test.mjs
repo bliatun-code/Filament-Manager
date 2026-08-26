@@ -94,6 +94,47 @@ test("purchase metadata capability errors tell the user to upgrade the Host", ()
   assert.doesNotMatch(error.message, /unsupported internal command shape/);
 });
 
+test("wishlist receipt conflicts keep their structured localized guidance", () => {
+  const cases = [
+    [
+      "wishlist.receive.quantity_invalid",
+      "Velg et antall på minst én rull.",
+    ],
+    [
+      "wishlist.receive.already_received",
+      "Denne ønskelisteposten er allerede mottatt. Oppdater ønskelisten.",
+    ],
+    [
+      "wishlist.receive.quantity_exceeds_remaining",
+      "Antallet overstiger hvor mange ruller som fortsatt er forventet. Oppdater ønskelisten.",
+    ],
+    ["wishlist.status.invalid", "Velg en gyldig ønskelistestatus."],
+    [
+      "wishlist.status.received_requires_receipt",
+      "Motta de gjenstående rullene gjennom lagerføringshandlingen.",
+    ],
+  ];
+
+  for (const [code, expectedMessage] of cases) {
+    const error = createCompanionRequestError(
+      {
+        parsed: {
+          code,
+          message: "raw database conflict detail",
+          diagnostic_id: `fm-api-${code}`,
+        },
+      },
+      409,
+      "nb",
+    );
+
+    assert.equal(error.message, expectedMessage, code);
+    assert.equal(error.code, code);
+    assert.equal(error.diagnostic_id, `fm-api-${code}`);
+    assert.doesNotMatch(error.message, /raw database conflict detail/);
+  }
+});
+
 test("companion api client retries a mutating request after session restore", async () => {
   const session = createInitialCompanionState();
   session.accessMode = "trusted-lan";

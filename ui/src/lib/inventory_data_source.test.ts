@@ -117,7 +117,12 @@ test("mapSpoolRowToInventorySpool falls back to master weight and then 1000g", (
 
 test("loadInventorySpools reports live client rows with cached snapshot timestamp", async () => {
   const result = await loadInventorySpools(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       loadRowsPage: async () => [spoolRow("live-spool", { status: "IN_USE" })],
       fetchCachedSpools: async () => ({
@@ -136,7 +141,12 @@ test("loadInventorySpools reports live client rows with cached snapshot timestam
 
 test("loadInventorySpools falls back to cached client rows when host load fails", async () => {
   const result = await loadInventorySpools(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       loadRowsPage: async () => {
         throw new Error("host unavailable");

@@ -14,6 +14,11 @@ pub(crate) fn load_trusted_lan_runtime(
     let library_id = db
         .get_library_sync_library_id()
         .map_err(|error| error.to_string())?;
+    let authoritative_library_role = library_sync_mode_is_authoritative(
+        db.get_setting("library_sync_mode")
+            .map_err(|error| error.to_string())?
+            .as_deref(),
+    );
     if let (Some(name), Some(address)) = (
         settings.selected_interface_name.as_deref(),
         settings.selected_interface_address.as_deref(),
@@ -27,7 +32,7 @@ pub(crate) fn load_trusted_lan_runtime(
             .map_err(|error| error.to_string())?;
     }
     let runtime = TrustedLanCompanionRuntime::new(settings.listen_port)
-        .with_enabled(settings.enabled)
+        .with_enabled(settings.enabled && authoritative_library_role)
         .with_advertised_hostname(companion_local_hostname(&library_id));
     let runtime = match (
         settings.selected_interface_name.as_deref(),
@@ -80,6 +85,11 @@ pub(crate) fn reload_trusted_lan_runtime_after_library_change(
     let library_id = db
         .get_library_sync_library_id()
         .map_err(|error| error.to_string())?;
+    let authoritative_library_role = library_sync_mode_is_authoritative(
+        db.get_setting("library_sync_mode")
+            .map_err(|error| error.to_string())?
+            .as_deref(),
+    );
     let selected_interface = match (
         settings.selected_interface_name.as_deref(),
         settings.selected_interface_address.as_deref(),
@@ -90,7 +100,7 @@ pub(crate) fn reload_trusted_lan_runtime_after_library_change(
         _ => None,
     };
     state.companion.trusted_lan.apply_loaded_config(
-        settings.enabled,
+        settings.enabled && authoritative_library_role,
         selected_interface,
         settings.listen_port,
         &companion_local_hostname(&library_id),
@@ -105,9 +115,16 @@ pub(crate) fn reload_trusted_lan_runtime_after_library_change(
     Ok(())
 }
 
+pub(crate) fn library_sync_mode_is_authoritative(raw_mode: Option<&str>) -> bool {
+    match raw_mode.map(str::trim).filter(|value| !value.is_empty()) {
+        None => true,
+        Some(mode) => matches!(mode.to_ascii_uppercase().as_str(), "STANDALONE" | "HOST"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::companion_local_hostname;
+    use super::{companion_local_hostname, library_sync_mode_is_authoritative};
 
     #[test]
     fn companion_local_hostname_is_stable_private_and_dns_safe() {
@@ -127,5 +144,15 @@ mod tests {
             .trim_end_matches(".local")
             .bytes()
             .all(|character| b"23456789abcdefghjkmnpqrstvwxyz".contains(&character)));
+    }
+
+    #[test]
+    fn only_local_library_roles_are_authoritative_for_trusted_lan() {
+        assert!(library_sync_mode_is_authoritative(None));
+        assert!(library_sync_mode_is_authoritative(Some(" ")));
+        assert!(library_sync_mode_is_authoritative(Some("standalone")));
+        assert!(library_sync_mode_is_authoritative(Some("HOST")));
+        assert!(!library_sync_mode_is_authoritative(Some("CLIENT")));
+        assert!(!library_sync_mode_is_authoritative(Some("damaged")));
     }
 }

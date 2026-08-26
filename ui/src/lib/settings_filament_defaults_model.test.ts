@@ -288,6 +288,7 @@ test("default selection excludes borrowed and inactive historical spools but inc
       spool("locked", { batchPriceLocked: true }),
       spool("borrowed", { ownershipType: "BORROWED_IN" }),
       spool("empty", { status: "EMPTY" }),
+      spool("archived", { status: "ARCHIVED" }),
       spool("deleted", { status: "DELETED" }),
     ]),
   );
@@ -296,8 +297,8 @@ test("default selection excludes borrowed and inactive historical spools but inc
     Array.from(createDefaultFilamentPriceSelection([group])).sort(),
     ["active", "locked"],
   );
-  assert.equal(group.counts.inactive, 1);
-  assert.equal(group.counts.total, 4);
+  assert.equal(group.counts.inactive, 2);
+  assert.equal(group.counts.total, 5);
 });
 
 test("historical missing prices require an individual missing-only selection and stay out of group selection", () => {
