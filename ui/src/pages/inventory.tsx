@@ -972,6 +972,12 @@ export default function InventoryPage({
       return;
     }
 
+    if (desktopVisualQaScenario === "inventory-locations") {
+      setActiveWorkspaceView("LOCATIONS");
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
     if (desktopVisualQaScenario === "wishlist-queue") {
       resetPurchaseQueue("ON_ORDER");
       openPurchaseQueue();

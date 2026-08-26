@@ -176,6 +176,19 @@ biblioteket og denne enhetens historikk for validerte sikkerhetskopier. En
 midlertidig nettverks- eller vertsfeil vises derfor ikke som om hele oppsettet
 mangler.
 
+Panelet **Krever handling** er for forfalte utlån, bestilte varer som kan
+mottas, og printere der Bambu Live-identiteten må kontrolleres. Lav beholdning
+ligger ikke lenger som store handlingskort i dette panelet. Den vises i stedet i
+det kompakte, sammenfoldede panelet **Forslag ved lav beholdning** og er fortsatt
+tilgjengelig som måltall og lagerfilter.
+
+Velg **Vis forslag** for å åpne panelet. Der kan du bruke **Legg til i
+ønskeliste / bestilling**, **Åpne lager med lav beholdning** eller **Skjul
+forslag** for en enkelt produktgruppe. Skjuling lagres bare for dette biblioteket
+på denne enheten; den endrer verken beholdningen, grensen for lav beholdning
+eller lagerfilteret. Bruk **Angre** rett etter skjuling, eller åpne **Skjulte
+forslag** og velg **Vis igjen** senere.
+
 Kortet **Månedlig forbruk** måler nøyaktig de siste 30 dagene og viser
 gjennomsnittlig antall gram per dag. Den større grafen **Filamentforbruk** er en
 annen visning: Den dekker inneværende lokale kalendermåned og de elleve
@@ -200,6 +213,10 @@ printeren under **Innstillinger -> 3D-printere** og kontrollere identiteten.
 ### Lager
 
 Lager er hovedbildet for filamentruller.
+
+Arbeidsområdet er delt i **Lager**, **Lokasjoner** og **Ønskeliste og
+bestillinger**, slik at rullelisten beholder hovedplassen mens administrasjon
+åpnes ved behov.
 
 Her kan du:
 
@@ -251,6 +268,14 @@ printer- og utlånslokasjoner håndteres automatisk og vises ikke i denne listen
 Hvert lagersted viser hvor mange ruller som fortsatt er knyttet til det, og kan
 gis nytt navn uten at koblinger eller historikk endres.
 
+Når antallet tilknyttede ruller vises som en lenke, åpner den **Lager** med et
+eksakt filter for lokasjonens uforanderlige ID. Resultatet tar med både ruller
+som står der nå, og ruller som har stedet som hjemmeplassering, selv om en utlånt
+rull for øyeblikket står på en teknisk utlånslokasjon. Filterbrikken viser navnet
+på lagerstedet og kan fjernes for å gå tilbake til resten av lageret. Det vanlige
+søket finner også lokasjonsnavn, men denne lenken unngår tvetydige treff mellom
+steder med lignende navn.
+
 **Arkiver** fjerner lagerstedet fra nye lokasjonsvalg, men sletter det ikke.
 Rullene beholder både nåværende plassering og hjemmeplassering mot den samme
 uforanderlige lokasjons-ID-en. Arkiverte steder ligger derfor sammenfoldet
@@ -295,9 +320,10 @@ for hele lageret** i lagerkontrollene når alle tilgjengelige ruller skal med.
 Etikettark bruker alltid 60 × 24 mm og påvirkes ikke av de lagrede egendefinerte
 målene.
 
-Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
-antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
-en ankommet vare som fysisk rull og fjerne planer som ikke lenger er aktuelle.
+Arbeidsområdet **Lager → Ønskeliste og bestillinger** har egne statusfiltre og
+søkefelt. Det viser antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt
+og Mottatt, lagerføre en ankommet vare som fysisk rull og fjerne planer som ikke
+lenger er aktuelle.
 
 ### Utlån
 
@@ -330,7 +356,8 @@ Typisk flyt:
 3. Velg person eller skriv inn låntaker.
 4. Angi hvor mange gram som lånes ut hvis det ikke er hele gjenværende rull.
 5. Legg inn kontakt eller notat ved behov.
-6. Bekreft utlånet.
+6. Angi en valgfri forventet returdato.
+7. Bekreft utlånet.
 
 Når rullen er utlånt:
 
@@ -338,6 +365,13 @@ Når rullen er utlånt:
 - den skjules fra vanlig tilgjengelig lager
 - den kan ikke behandles som ordinært printerklart lager før den er returnert
 - historikken viser hvem som lånte den, når den gikk ut og hvor mye som gikk ut
+
+En forventet returdato må være en gyldig kalenderdato og kan ikke ligge før
+dagens dato når utlånet opprettes. Aktive utlån viser **Forventet retur** og
+merkes **Forfaller i dag** eller **Forfalt** når det er aktuelt. Forfalte utgående
+utlån vises også under **Krever handling** på Oversikt og åpner Utlån for videre
+oppfølging. Returdatoen og kontaktopplysningene beholdes i den returnerte
+historikken.
 
 Ved retur registrerer du hvor mye som kommer tilbake. Programmet kan da beregne differansen som utlånsforbruk dersom mindre kommer tilbake enn det som ble lånt ut. Dette gjør at utlån kan bidra til reelt materialforbruk uten at det blandes sammen med printerforbruk.
 
@@ -406,6 +440,16 @@ Den dekker blant annet:
 
 Forbruk bygges fra manuelle vektoppdateringer og automatiske live-observasjoner når reglene for live-forbruk er oppfylt.
 
+**Rapporteringsperiode** står som standard på **Siste 30 dager**. Du kan velge
+90 dager, **Siste 12 måneder** eller et egendefinert intervall der både start- og
+sluttdatoen er med. Perioden styrer printerknyttet totalforbruk, loggførte og
+feilede jobber, registrert forbruk fordelt på eierskap, detaljer per printer og
+filament og materialkostnad. **Aktive lastede spor** og **Lagerverdi** er derimot
+nåbilder. Utlånspanelene og forbruksprognosen bruker sine egne datagrunnlag og
+endres ikke av periodevelgeren. Hvis en Client er koblet til en eldre Host som
+ikke kan levere perioderapporten, viser programmet en oppdaterings- eller
+tilkoblingsmelding i stedet for å konstruere tall lokalt.
+
 Området **Verdi og kostnad** viser to beslektede, men bevisst adskilte tall:
 
 - **Lagerverdi** er et nåbilde av aktive spoler. For hver spole brukes
@@ -426,6 +470,15 @@ bolker. Summer og dekning inkluderer likevel alle aktuelle rader. Når en Client
 er koblet til en Host fra før denne rapporten ble innført, ber den om
 Host-oppgradering i stedet for å anslå verdier lokalt.
 
+**Forbruksprognose** er et deterministisk estimat som alltid bruker eid
+beholdning og registrert forbruk av eget filament de siste 30 dagene, uavhengig
+av valgt rapporteringsperiode. Den viser estimert antall dager med dekning,
+mulig tomdato, forventet forbruk de neste 30 dagene, estimert beholdning etter
+30 dager, antatt dagsforbruk og hvor mange eide ruller som inngår. Innlånte,
+tomme, tapte og fjernede ruller er utelatt. Hvis det ikke finnes nok registrert
+forbruk, vises ingen tomdato. Prognosen er bare veiledende og oppretter aldri
+ønskelisteposter eller bestillinger automatisk.
+
 ### Innstillinger
 
 Innstillinger er delt i flere områder.
@@ -437,7 +490,6 @@ Generelt:
 - valgfri bakgrunnskjøring ved lukking og oppstart ved innlogging
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
-- etikettark med QR for lageret
 
 Filamentstandarder:
 
@@ -472,6 +524,11 @@ fra en prisgruppe. Historiske ruller kan ikke velges i **Oppdater valgte
 priser**, og en eksisterende historisk pris endres aldri gjennom denne
 særregelen.
 
+Når en rull får status Tom, Tapt, Mangler eller Arkivert, aktiveres
+prisbeskyttelsen automatisk. Eldre historiske rader får den samme beskyttelsen
+ved oppstart, og låsen beholdes hvis rullen senere aktiveres igjen. Dette sperrer
+gruppeprising, men ikke en bevisst manuell prisendring i rulldetaljene.
+
 Etterpå vises en kvittering med oppdaterte og uendrede ruller. Den historiske
 rullen merkes som beskyttet og kan åpnes direkte i rulldetaljene. Andre rader
 som krever manuell oppfølging kan også åpnes derfra. Hvis en rull endres etter
@@ -490,8 +547,12 @@ Desktop-appen og Companion støtter engelsk, norsk bokmål, tysk, fransk,
 spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
 forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
-for hver flate, og engelsk brukes som fallback ved behov. Korrigeringer til
-community-oversettelsene kan foreslås via det egne
+for hver flate, og engelsk er det kanoniske fallback-språket. Norsk bokmål,
+tysk og fransk har komplette kataloger for den gjeldende teksten, men alle
+ikke-engelske språk er fortsatt merket **Beta** frem til en ny språkfaglig
+gjennomgang. De øvrige Beta-katalogene bruker testet engelsk fallback for tekst
+som ennå ikke er oversatt. Korrigeringer til community-oversettelsene kan
+foreslås via det egne
 [skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
 ikke-engelske katalogene får faktisk språkfaglig gjennomgang.

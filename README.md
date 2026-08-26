@@ -20,6 +20,7 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/dashboard.jpg"><img src="docs/screenshots/dashboard-thumb.jpg" alt="Dashboard overview with inventory health, recent activity, and an actionable Bambu Live trust warning" width="220"></a>
   <a href="docs/screenshots/dashboard-consumption.jpg"><img src="docs/screenshots/dashboard-consumption-thumb.jpg" alt="Dashboard rolling twelve-month filament consumption chart" width="220"></a>
   <a href="docs/screenshots/inventory.jpg"><img src="docs/screenshots/inventory-thumb.jpg" alt="Inventory grid with filament spool cards" width="220"></a>
+  <a href="docs/screenshots/inventory-locations.jpg"><img src="docs/screenshots/inventory-locations-thumb.jpg" alt="Stable storage locations with linked-roll drilldown" width="220"></a>
   <a href="docs/screenshots/add-filament.jpg"><img src="docs/screenshots/add-filament-thumb.jpg" alt="Add filament stock entry flow" width="220"></a>
   <a href="docs/screenshots/bambu-batch-add.jpg"><img src="docs/screenshots/bambu-batch-add-thumb.jpg" alt="Bambu batch add flow" width="220"></a>
   <a href="docs/screenshots/wishlist-queue.jpg"><img src="docs/screenshots/wishlist-queue-thumb.jpg" alt="Wishlist and order queue" width="220"></a>
@@ -33,6 +34,7 @@ open the larger screenshot, or open the full
   <a href="docs/screenshots/inventory-label-sheet.jpg"><img src="docs/screenshots/inventory-label-sheet-thumb.jpg" alt="Inventory label sheet preview with A4 and US Letter choices" width="220"></a>
   <a href="docs/screenshots/filament-history.jpg"><img src="docs/screenshots/filament-history-thumb.jpg" alt="Filament roll history timeline" width="220"></a>
   <a href="docs/screenshots/settings-general.jpg"><img src="docs/screenshots/settings-general-thumb.jpg" alt="Settings with language and background-operation controls" width="220"></a>
+  <a href="docs/screenshots/settings-filament-defaults.jpg"><img src="docs/screenshots/settings-filament-defaults-thumb.jpg" alt="Filament defaults with guarded group pricing" width="220"></a>
   <a href="docs/screenshots/settings-updates.jpg"><img src="docs/screenshots/settings-updates-thumb.jpg" alt="Program version, automatic update notification, and manual update check" width="220"></a>
   <a href="docs/screenshots/companion-tablet-inventory.jpg"><img src="docs/screenshots/companion-tablet-inventory-thumb.jpg" alt="Companion tablet inventory view" width="220"></a>
   <a href="docs/screenshots/companion-phone-inventory.jpg"><img src="docs/screenshots/companion-phone-inventory-thumb.jpg" alt="Companion phone inventory view" width="220"></a>
@@ -54,6 +56,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.28.0](RELEASE_NOTES_v0.28.0.md)
 - [v0.27.0](RELEASE_NOTES_v0.27.0.md)
 - [v0.26.0](RELEASE_NOTES_v0.26.0.md)
 - [v0.25.0](RELEASE_NOTES_v0.25.0.md)
@@ -73,10 +76,16 @@ Release notes:
 ## Feature Overview
 
 - Inventory for owned and borrowed-in filament spools, with progressive
-  rendering and shown/total controls for large result sets.
+  rendering, shown/total controls for large result sets, compact normal browsing,
+  and an explicit multi-selection mode for reviewed atomic bulk actions.
+- Stable user-managed storage locations can be created, renamed, archived,
+  restored, merged, and—when completely unreferenced—deleted. Association counts
+  open the exact filtered inventory view, while printer and loan locations stay
+  automatic and outside the shelf-management list.
 - Add filament flow for Bambu, eSUN, generic/manual entries, Bambu Filament
   Code lookup, manual Bambu code batch entry, and quantity-aware wishlist/order
-  receipt with partial deliveries.
+  receipt with partial deliveries. Wishlist and ordering now have a dedicated
+  Inventory workspace.
 - Loan tracking for outgoing loans and borrowed-in spools, including returns and
   CSV export.
 - Printer profiles for Bambu AMS, Prusa MMU3, Prusa XL toolheads, and
@@ -87,6 +96,16 @@ Release notes:
   twelve-month chart based on local calendar months. The chart runs oldest to
   newest, keeps zero-use months visible, and totals recorded printer-linked
   jobs and Bambu Live usage from the same twelve buckets.
+- Dashboard follow-up separates important overdue-loan, incoming-order, and
+  trust work from quieter optional low-stock suggestions. Suggestions can be
+  collapsed or hidden locally without changing inventory data.
+- Filament defaults provide global and material-specific low-stock thresholds,
+  a default purchase currency, and inventory-derived price groups. Missing-only
+  and confirmed overwrite modes respect per-spool price locks and protect
+  historical or unavailable rolls from accidental repricing.
+- Purchase metadata, bounded reporting periods, inventory value, material cost,
+  traceable coverage gaps, and deterministic consumption forecasts make price
+  and usage data auditable without currency conversion or guessed supplier data.
 - Optional Bambu Live integration for local AMS slot observations, RFID matching,
   estimated AMS weight, Bambu filament settings/status diagnostics, nozzle
   temperature, and print-session usage accounting. Printer identity is approved
@@ -135,9 +154,10 @@ Release notes:
   older v1 files that lack it; backups from a newer schema are rejected before
   data is changed. Program maintenance also shows when this device last
   completed a validated full-backup download.
-- Schema v2 startup checks and verified local SQLite recovery snapshots before
+- Schema v5 startup checks and verified local SQLite recovery snapshots before
   older-schema upgrades, full restores, and storage migrations that replace or
-  merge an existing database.
+  merge an existing database. The additive v0.28 migrations introduce stable
+  locations, purchase metadata, and filament pricing standards.
 - Application/database health diagnostics and a privacy-sanitized support JSON
   download under **Settings → Program maintenance**, including the non-secret
   build commit, target, and distribution channel.
@@ -161,9 +181,12 @@ Filament Manager can be used in 21 languages:
 - Ukrainian, Russian, and Hungarian.
 
 Language is selected from one compact list under **Settings → General**. English
-remains the canonical fallback. All non-English translations have complete
-catalogs and automated visual QA, and are published for community use and
-review. Corrections and current-catalog native review are welcome through
+remains the canonical fallback. Norwegian Bokmål, German, and French ship
+complete catalogs for the current copy, but every non-English locale remains
+clearly marked Beta until it receives a fresh native-language review. Other
+Beta catalogs use tested English fallback for copy still awaiting translation.
+All selectable locales pass key, parameter, plural, accessibility, and visual
+QA contracts. Corrections and current-catalog native review are welcome through
 the dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set is intentionally stable while these
@@ -337,7 +360,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.27.0_universal.dmg \
+  /path/to/Filament\ Manager_0.28.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -389,7 +412,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.27.0`
+- Current version: `0.28.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
@@ -488,11 +511,12 @@ Windows:
 Before writing to an existing database at startup, the app performs a read-only
 schema compatibility preflight and SQLite `quick_check`. A database created by
 a newer schema or one that fails the integrity check is stopped rather than
-silently rewritten. An existing unversioned or schema-v1 database receives a
-verified local recovery snapshot before its automatic schema v2 upgrade. The
-same safeguard is used before a full restore and storage migrations that
-replace or merge an existing database; the operation does not continue if its
-snapshot cannot be created and verified.
+silently rewritten. An existing unversioned, schema-v1, schema-v2, schema-v3,
+or schema-v4 database receives a verified local recovery snapshot before its
+automatic schema-v5 upgrade. Location, purchase-metadata, and pricing-standard
+migrations run in one transaction. The same safeguard is used before a full
+restore and storage migrations that replace or merge an existing database; the
+operation does not continue if its snapshot cannot be created and verified.
 
 Portable `filament-manager-backup-v1` exports include `schema_version` and
 `app_version` metadata. Older v1 exports without these fields remain supported,

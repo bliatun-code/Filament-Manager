@@ -349,6 +349,14 @@ fn visual_qa_scenario_normalizer_accepts_known_stateful_scenarios() {
     use super::normalize_visual_qa_scenario;
 
     assert_eq!(
+        normalize_visual_qa_scenario("location-management"),
+        Some("inventory-locations")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("filament-standards"),
+        Some("settings-filament-defaults")
+    );
+    assert_eq!(
         normalize_visual_qa_scenario("dashboard-usage"),
         Some("dashboard-consumption")
     );

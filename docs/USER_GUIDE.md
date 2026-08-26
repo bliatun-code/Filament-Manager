@@ -174,6 +174,19 @@ required steps. Completion is derived from the current library and this
 device's validated backup history; temporary host or network failures do not
 turn an unavailable library into a list of missing setup steps.
 
+The **Requires action** panel is reserved for overdue loans, incoming purchases
+that are ready to receive, and printers whose Bambu Live identity needs review.
+Low stock no longer appears there as large action cards. It is shown instead in
+the compact, collapsed **Low-stock suggestions** panel and remains available as
+a dashboard metric and inventory filter.
+
+Choose **Show suggestions** to open the panel. From there, use **Add to wishlist
+/ order**, **Open low-stock inventory**, or **Hide suggestion** for an individual
+product group. Hiding is stored only for this library on this device; it does
+not change inventory, the low-stock threshold, or the inventory filter. Choose
+**Undo** immediately after hiding, or open **Hidden suggestions** and choose
+**Show again** later.
+
 The **Monthly Usage** card measures the exact preceding 30 days and shows its
 average grams per day. The larger **Filament Consumption** chart is a different
 view: it covers the current local calendar month and the preceding eleven
@@ -198,6 +211,10 @@ attention**. Select **Open Live settings** to open that exact printer in
 
 Inventory is the main view for filament spools.
 
+The workspace is divided into **Stock**, **Locations**, and **Wishlist &
+orders**, keeping the spool list in the primary space while opening management
+tools only when needed.
+
 You can:
 
 - search by material, color, owner, location, or QR
@@ -219,13 +236,19 @@ responsive. The result counter shows how many spools are currently displayed
 out of the complete matching set; choose **Show more** to continue. Search and
 filters still apply to the full inventory.
 
-Use **Bulk actions** above the inventory to select individual rolls or every
-roll in the current filtered result. Moving or changing status first opens a
-review with separate selected, affected, and unchanged counts. Confirming then
-writes every affected roll and its history together; if any reviewed roll has
-changed, is loaned, is loaded in a printer, or has been removed, none of the
-changes are written. Label sheets and CSV/JSON exports use the exact selected
-rolls, including explicitly selected non-stock statuses.
+Choose **Select multiple** beside the result counter when you want bulk actions.
+The checkboxes and compact action bar appear only in this selection mode. Select
+individual rolls or every roll in the filtered result, then open move, status,
+labels, or export. Only the selected move or status action expands its settings.
+Choose **Done selecting** to exit and clear the selection.
+
+Moving and status changes first open a review with separate selected, affected,
+and unchanged counts. Confirming writes all affected rolls and their history
+together. If a reviewed roll has changed, is loaned, is loaded in a printer, or
+has been removed, none of the changes are written. Label sheets and CSV/JSON
+exports use exactly the selected rolls, including rolls in a non-stock status
+that you explicitly selected. If filters hide part of the selection, the action
+bar shows both the total selected count and the count in the current view.
 
 Inventory CSV/JSON includes vendor, nominal/current/remaining weight, spool tare,
 user storage locations, ownership/counterparty details, and
@@ -235,6 +258,35 @@ included. On import into another library, a loaded or loaned-out spool is
 normalized to **In stock** without creating technical locations. A borrowed-in
 spool retains its ownership and counterparty as a new active inbound relation.
 Use a full backup when moving the complete library with relations and history.
+
+Under **Inventory → Locations**, you manage only your own storage locations.
+Technical printer and loan locations are managed automatically and are not
+shown in this list. Each location shows how many rolls still refer to it and can
+be renamed without changing links or history.
+
+When the connected-roll count is shown as a link, it opens **Stock** with an
+exact filter for the location's immutable ID. The result includes both rolls
+currently placed there and rolls whose home location is there, even when a
+loaned roll is currently at a technical loan location. The filter chip shows
+the storage-location name and can be removed to return to the rest of the
+inventory. Normal search also matches location names, but this link avoids
+ambiguous results between similarly named locations.
+
+**Archive** removes the location from new location choices without deleting it.
+Rolls keep both current and home-location references to the same immutable ID.
+Archived locations are therefore collapsed under **Previous locations**.
+**Restore** makes that exact location selectable again; a new location with the
+same name is a different object and does not take over the old links. Use the
+collapsed advanced merge control when all links really should move to another
+storage location.
+
+**Delete** is shown only after the database confirms that the location has no
+current placements, home placements, or child locations. This check includes
+hidden or soft-deleted rolls that still use it as their home location. You can
+delete either an active or archived user location directly. Deletion is
+permanent, while existing history events remain as historical traces. If a new
+link appears before confirmation, the database rejects the deletion without
+changing the inventory.
 
 The app remembers the card/list choice and whether advanced filters are open on
 this device. Resetting the filters does not reset the chosen layout. Opening a
@@ -256,15 +308,16 @@ must be at least 20 mm greater than the height and at least 1.6 times the height
 The selected size and most recent valid custom dimensions are remembered locally
 on this device, so they are reused for other spools and in later app sessions.
 
-For several spools at once, select them under **Inventory → Bulk actions** and
-choose **Create inventory label sheet**. To label every on-hand spool without a
-selection, use the same action in the Inventory controls. Inventory label sheets
-remain fixed at 60 × 24 mm and do not use the saved custom dimensions.
+For several spools at once, choose **Select multiple** under **Inventory**, mark
+the rolls, and use **Create label sheet for selected rolls**. Use **Create label
+sheet for all stock** in the inventory controls when every available roll should
+be included. Inventory label sheets remain fixed at 60 × 24 mm and do not use
+the saved custom dimensions.
 
-The Wishlist and orders panel has its own status filters and search field. It
-shows the number of matching rows, lets you move purchases between Wishlist, On
-order, and Received, stocks an arrived item as a physical spool, and removes
-plans that are no longer needed.
+The **Inventory → Wishlist & orders** workspace has its own status filters and
+search field. It shows the number of matching rows, lets you move purchases
+between Wishlist, On order, and Received, stocks an arrived item as a physical
+spool, and removes plans that are no longer needed.
 
 ### Loans
 
@@ -297,7 +350,8 @@ Typical flow:
 3. Select or enter the borrower.
 4. Enter how many grams are loaned out if it is not the full remaining spool.
 5. Add contact details or notes when useful.
-6. Confirm the loan.
+6. Enter an optional expected return date.
+7. Confirm the loan.
 
 When the spool is loaned out:
 
@@ -305,6 +359,12 @@ When the spool is loaned out:
 - it is hidden from normal available stock
 - it should not be treated as printer-ready stock until it is returned
 - history records who borrowed it, when it went out, and how much went out
+
+An expected return date must be a valid calendar date and cannot be earlier
+than today when the loan is created. Active loans show **Expected return** and
+are marked **Due today** or **Overdue** when applicable. Overdue outgoing loans
+also appear under **Requires action** on Dashboard and open Loans for follow-up.
+The return date and contact details remain available in returned-loan history.
 
 When the spool is returned, record how much comes back. If less comes back than went out, the app can treat the difference as loan usage. That lets loans contribute to real material usage without mixing that usage with printer usage.
 
@@ -373,6 +433,16 @@ It includes:
 
 Usage is built from manual weight updates and automatic live observations when the live-usage rules are satisfied.
 
+**Reporting period** defaults to **Last 30 days**. You can choose 90 days,
+**Last 12 months**, or a custom range that includes both its start and end date.
+The period controls printer-linked total usage, logged and failed jobs, recorded
+usage split by ownership, per-printer and per-filament details, and material
+cost. **Active loaded slots** and **Inventory value** remain current snapshots.
+The loan panels and consumption forecast use their own data sources and do not
+change with the period picker. If a Client is connected to an older Host that
+cannot supply the period report, the app shows an update or reconnect message
+instead of constructing figures locally.
+
 The **Value & cost** section shows two related, but deliberately separate,
 figures:
 
@@ -394,6 +464,15 @@ batches. The monetary totals and coverage still include every applicable row.
 When a Client is connected to a Host version that predates this report, it asks
 for a Host upgrade instead of estimating values locally.
 
+**Consumption forecast** is a deterministic estimate that always uses owned
+stock and recorded use of owned filament during the last 30 days, independently
+of the selected reporting period. It shows estimated days of coverage, a
+possible depletion date, estimated use over the next 30 days, estimated stock
+after 30 days, assumed daily use, and the number of owned spools included.
+Borrowed-in, empty, lost, and removed spools are excluded. When there is not
+enough recorded usage, no depletion date is shown. The forecast is
+informational and never creates wishlist entries or orders automatically.
+
 ### Settings
 
 Settings is split into several areas.
@@ -405,7 +484,6 @@ General:
 - optional close-to-tray background operation and launch at login
 - theme: Auto, Light, Dark
 - language, selected from one compact list
-- inventory QR label sheets
 
 Filament defaults:
 
@@ -440,6 +518,11 @@ lock are then stored together, preventing later price-group updates. Historical
 spools cannot be selected under **Update selected prices**, and this exception
 never changes an existing historical price.
 
+When a spool becomes Empty, Lost, Missing, or Archived, price protection is
+enabled automatically. Existing historical rows receive the same protection at
+startup, and the lock is retained if the spool is later reactivated. This blocks
+price-group updates, but not an intentional manual price edit in spool details.
+
 A receipt then lists updated and unchanged spools. The historical spool is
 marked as protected and opens its details directly; other rows requiring manual
 follow-up are linked in the same way. If any reviewed spool changes before the
@@ -458,8 +541,12 @@ The desktop app and Companion support English, Norwegian Bokmål, German,
 French, Spanish, Brazilian Portuguese, Italian, Polish, Dutch, Czech,
 Simplified Chinese, Traditional Chinese, Japanese, Korean, Turkish, Ukrainian,
 Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
-stored locally for each surface. English remains the fallback when needed.
-Corrections to community translations can be proposed through the dedicated
+stored locally for each surface. English remains the canonical fallback.
+Norwegian Bokmål, German, and French have complete catalogs for the current
+copy, but every non-English language remains marked **Beta** until a fresh
+native-language review. The other Beta catalogs use tested English fallback for
+copy that is not yet translated. Corrections to community translations can be
+proposed through the dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set stays fixed while the existing
 non-English catalogs receive community and native-language review.
@@ -513,9 +600,9 @@ from Dashboard still open the relevant tab.
 
 To create label sheets for the on-hand inventory:
 
-1. Open **Inventory** and choose **Create inventory label sheet** in the
-   inventory controls. To use an exact subset instead, select the rolls under
-   **Bulk actions** and choose the label action there.
+1. Open **Inventory** and choose **Create label sheet for all stock** in the
+   inventory controls. For an exact subset, choose **Select multiple**, mark the
+   rolls, and use **Create label sheet for selected rolls**.
 2. Select A4 or US Letter.
 3. Review the sheet preview and use the page controls when the inventory spans
    more than one page.
@@ -1029,11 +1116,11 @@ SQLite `quick_check`. A database from a newer schema, or one that fails the
 integrity check, is stopped instead of being silently rewritten.
 
 Before automatically upgrading an existing unversioned, schema-v1, schema-v2,
-schema-v3, or schema-v4 database to schema v5, the app creates and verifies a local recovery
-snapshot. A verified snapshot is also created before a full restore and before
-storage migrations that replace or merge an existing database. If the snapshot
-cannot be created and verified, the upgrade, restore, or migration does not
-continue.
+schema-v3, or schema-v4 database to schema v5, the app creates and verifies a
+local recovery snapshot. A verified snapshot is also created before a full
+restore and before storage migrations that replace or merge an existing
+database. If the snapshot cannot be created and verified, the upgrade, restore,
+or migration does not continue.
 
 Full JSON backups are portable. They include library data such as inventory,
 history, catalog data, and printer profiles, but omit device-local connection

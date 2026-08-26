@@ -916,42 +916,34 @@ async function prepareSettingsScenario(page, timeoutMs) {
   await page.waitForSelector(".settings-card", { timeout: timeoutMs });
 }
 
-async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, options = {}) {
-  const locale = normalizeCompanionScreenshotLocale(options.locale);
-  const context = await browser.newContext({
-    colorScheme: options.themeMode === "dark" ? "dark" : undefined,
-    locale: intlLocaleFor(locale),
-    viewport: scenario.viewport,
-  });
-  const page = await context.newPage();
-  const runtimeErrors = [];
-  page.on("pageerror", (error) => runtimeErrors.push(String(error?.message ?? error)));
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      runtimeErrors.push(message.text());
+export async function resetCompanionScreenshotScenarioPage(page, timeoutMs) {
+  const closeOverlay = page.locator(
+    '[data-action="close-detail"], [data-action="return-from-detail"], [data-action="close-task-sheet"]',
+  );
+  for (
+    let attempt = 0;
+    attempt < 3 && (await closeOverlay.count()) > 0;
+    attempt += 1
+  ) {
+    await closeOverlay.first().click({ timeout: timeoutMs });
+    await page.waitForTimeout(25);
+  }
+
+  await page.locator('[data-root-flow="storage"]').first().click({ timeout: timeoutMs });
+  await page.waitForSelector(".list-row", { state: "visible", timeout: timeoutMs });
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    for (const element of document.querySelectorAll(
+      ".shell-main, .workflow-stage, .task-sheet-body, .detail-modal-body",
+    )) {
+      element.scrollTo?.(0, 0);
     }
   });
+}
+
+async function runScenarioOnPage(page, scenario, outputDir, timeoutMs, options = {}) {
+  const runtimeErrors = options.runtimeErrors ?? [];
   try {
-    await page.addInitScript(
-      ({ localeKey, localeValue, themeKey, themeValue }) => {
-        window.localStorage?.setItem(localeKey, localeValue);
-        if (themeValue) {
-          window.localStorage?.setItem(themeKey, themeValue);
-        }
-      },
-      {
-        localeKey: COMPANION_LOCALE_STORAGE_KEY,
-        localeValue: locale,
-        themeKey: COMPANION_THEME_STORAGE_KEY,
-        themeValue: options.themeMode ?? "",
-      },
-    );
-    await bootstrapCompanionSession(page, baseUrl, timeoutMs);
-    await page.goto(routeUrl(baseUrl, "/companion"), {
-      waitUntil: "domcontentloaded",
-      timeout: timeoutMs,
-    });
-    await waitForCompanionReady(page, timeoutMs);
     await scenario.prepare?.(page, timeoutMs);
     await page.waitForTimeout(250);
     const metrics = await readPageMetrics(page, scenario);
@@ -977,8 +969,6 @@ async function runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, opt
       ? ` ${JSON.stringify({ ...diagnostic, runtimeErrors: runtimeErrors.slice(-5) })}`
       : "";
     throw new Error(`[${scenario.name}] ${error.message}${detail}`);
-  } finally {
-    await context.close();
   }
 }
 
@@ -1078,17 +1068,69 @@ export async function runCompanionScreenshotGate(options = {}) {
   const locale = normalizeCompanionScreenshotLocale(options.locale);
   await preparePrivateQaArtifactDirectory(outputDir, options);
 
-  const browser = await chromium.launch({ headless: options.headless !== false });
+  const launchBrowser =
+    options.launchBrowser ?? ((launchOptions) => chromium.launch(launchOptions));
+  const browser = await launchBrowser({ headless: options.headless !== false });
+  let context = null;
   try {
     const scenarios = options.scenarios ?? buildCompanionScreenshotScenarios();
+    const initialViewport = scenarios[0]?.viewport ?? COMPANION_SCREENSHOT_VIEWPORTS.wide;
+    // Companion assets intentionally require revalidation. Reusing one authenticated page keeps
+    // the deterministic QA matrix below the unchanged production request limit, while the reset
+    // below gives every capture the same inventory starting surface.
+    context = await browser.newContext({
+      colorScheme: themeMode === "dark" ? "dark" : undefined,
+      locale: intlLocaleFor(locale),
+      viewport: initialViewport,
+    });
+    await context.addInitScript(
+      ({ localeKey, localeValue, themeKey, themeValue }) => {
+        window.localStorage?.setItem(localeKey, localeValue);
+        if (themeValue) {
+          window.localStorage?.setItem(themeKey, themeValue);
+        }
+      },
+      {
+        localeKey: COMPANION_LOCALE_STORAGE_KEY,
+        localeValue: locale,
+        themeKey: COMPANION_THEME_STORAGE_KEY,
+        themeValue: themeMode,
+      },
+    );
+    const page = await context.newPage();
+    const runtimeErrors = [];
+    page.on("pageerror", (error) => runtimeErrors.push(String(error?.message ?? error)));
+    page.on("console", (message) => {
+      if (message.type() === "error") {
+        runtimeErrors.push(message.text());
+      }
+    });
+
+    const bootstrapSession = options.bootstrapSession ?? bootstrapCompanionSession;
+    const waitForReady = options.waitForReady ?? waitForCompanionReady;
+    const resetScenarioPage =
+      options.resetScenarioPage ?? resetCompanionScreenshotScenarioPage;
+    const runScenario = options.runScenario ?? runScenarioOnPage;
+
+    await bootstrapSession(page, baseUrl, timeoutMs);
+    await page.goto(routeUrl(baseUrl, "/companion"), {
+      waitUntil: "domcontentloaded",
+      timeout: timeoutMs,
+    });
+    await waitForReady(page, timeoutMs);
+
     const metrics = [];
     for (const scenario of scenarios) {
+      runtimeErrors.length = 0;
+      await page.setViewportSize(scenario.viewport);
+      await resetScenarioPage(page, timeoutMs);
       metrics.push(
-        await runScenario(browser, baseUrl, scenario, outputDir, timeoutMs, {
+        await runScenario(page, scenario, outputDir, timeoutMs, {
           locale,
           themeMode,
           platform: options.platform,
           chmodFn: options.chmodFn,
+          runtimeErrors,
         }),
       );
     }
@@ -1100,7 +1142,11 @@ export async function runCompanionScreenshotGate(options = {}) {
       outputDir,
     };
   } finally {
-    await browser.close();
+    try {
+      await context?.close();
+    } finally {
+      await browser.close();
+    }
   }
 }
 

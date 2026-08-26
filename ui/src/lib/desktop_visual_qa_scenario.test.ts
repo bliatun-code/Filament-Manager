@@ -44,6 +44,7 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
     "dashboard-onboarding",
     "dashboard-consumption",
     "inventory-overview",
+    "inventory-locations",
     "add-filament",
     "wishlist-queue",
     "bambu-batch-add",
@@ -106,6 +107,10 @@ test("desktop visual QA scenario parser accepts stable aliases in dev only", () 
   assert.equal(
     normalizeDesktopVisualQaScenario("inventory"),
     "inventory-overview",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("location-management"),
+    "inventory-locations",
   );
   assert.equal(
     normalizeDesktopVisualQaScenario("inventory-add"),

@@ -13,6 +13,7 @@ export type DesktopVisualQaScenario =
   | "dashboard-onboarding"
   | "dashboard-consumption"
   | "inventory-overview"
+  | "inventory-locations"
   | "add-filament"
   | "wishlist-queue"
   | "bambu-batch-add"

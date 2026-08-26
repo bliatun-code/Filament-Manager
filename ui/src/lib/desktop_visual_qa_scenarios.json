@@ -39,6 +39,13 @@
       "category": "overview"
     },
     {
+      "id": "inventory-locations",
+      "aliases": ["locations", "location-management"],
+      "page": "inventory",
+      "category": "overview",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "add-filament",
       "aliases": ["inventory-add"],
       "page": "inventory",

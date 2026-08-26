@@ -508,6 +508,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
             Some("dashboard-consumption")
         }
         "inventory-overview" | "inventory" => Some("inventory-overview"),
+        "inventory-locations" | "locations" | "location-management" => Some("inventory-locations"),
         "add-filament" | "inventory-add" => Some("add-filament"),
         "wishlist-queue" | "inventory-wishlist" | "wishlist-orders" | "order-queue" => {
             Some("wishlist-queue")
@@ -555,6 +556,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
+        "settings-filament-defaults" | "filament-defaults" | "filament-standards" => {
+            Some("settings-filament-defaults")
+        }
         "settings-updates" | "update-check" | "settings-update-check" => Some("settings-updates"),
         "settings-inventory-label-sheet" | "inventory-label-sheet" | "settings-label-sheet" => {
             Some("settings-inventory-label-sheet")

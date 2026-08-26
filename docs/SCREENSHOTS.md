@@ -46,6 +46,13 @@ dialog, the individual custom-label preview, and the fixed inventory label
 sheet on 2026-08-15. The settings capture isolates desktop lifecycle state from
 the real user profile; the label captures use deterministic synthetic data and
 cover both the new custom-size UI and the shared QR renderer.
+The v0.28.0 refresh regenerated the complete documented desktop and Companion
+tour on 2026-08-26 after the Inventory, Dashboard, Statistics, and Settings
+workspaces were reorganized. It adds dedicated captures for stable location
+management and Filament defaults/group pricing. All v0.28 images use the same
+committed sanitized seed, temporary migrated database copies, the English dark
+theme, and deterministic 1,200 × 800 desktop or named responsive Companion
+viewports.
 
 ## Quick Preview
 
@@ -53,6 +60,7 @@ cover both the new custom-size UI and the shared QR renderer.
   <a href="#dashboard"><img src="screenshots/dashboard-thumb.jpg" alt="Dashboard" width="150"></a>
   <a href="#twelve-month-consumption"><img src="screenshots/dashboard-consumption-thumb.jpg" alt="Twelve-month filament consumption" width="150"></a>
   <a href="#inventory"><img src="screenshots/inventory-thumb.jpg" alt="Inventory" width="150"></a>
+  <a href="#locations"><img src="screenshots/inventory-locations-thumb.jpg" alt="Location management" width="150"></a>
   <a href="#individual-filament-label"><img src="screenshots/filament-label-thumb.jpg" alt="Individual filament label" width="150"></a>
   <a href="#add-filament"><img src="screenshots/add-filament-thumb.jpg" alt="Add filament" width="150"></a>
   <a href="#wishlist-and-orders"><img src="screenshots/wishlist-queue-thumb.jpg" alt="Wishlist and orders" width="150"></a>
@@ -61,6 +69,7 @@ cover both the new custom-size UI and the shared QR renderer.
   <a href="#add-printer"><img src="screenshots/add-printer-thumb.jpg" alt="Add printer with optional Bambu Live" width="150"></a>
   <a href="#use-an-ams-weight-estimate"><img src="screenshots/printer-ams-weight-estimate-thumb.jpg" alt="Use an AMS weight estimate" width="150"></a>
   <a href="#settings"><img src="screenshots/settings-general-thumb.jpg" alt="Settings background operation" width="150"></a>
+  <a href="#filament-defaults"><img src="screenshots/settings-filament-defaults-thumb.jpg" alt="Filament defaults and group pricing" width="150"></a>
   <a href="#stable-local-companion-address"><img src="screenshots/settings-library-network-thumb.jpg" alt="Stable local Companion address" width="150"></a>
   <a href="#program-and-update-notifications"><img src="screenshots/settings-updates-thumb.jpg" alt="Program version, update notifications, and manual update check" width="150"></a>
   <a href="#bambu-live-security-setup"><img src="screenshots/settings-printer-editor-thumb.jpg" alt="Bambu Live security setup" width="150"></a>
@@ -98,10 +107,21 @@ sessions rather than all-time inventory changes.
 ### Inventory
 
 Searchable spool cards with remaining weight, location, material/vendor badges,
-ownership, and low-stock state. Large result sets render progressively with a
-shown/total counter and **Show more** control.
+ownership, and low-stock state. The normal view stays compact until **Select
+multiple** is enabled; large result sets render progressively with a shown/total
+counter and **Show more** control.
 
 ![Inventory grid](screenshots/inventory.jpg)
+
+### Locations
+
+Only user-managed storage locations appear in this workspace. Create, rename,
+archive, restore, merge, or—when no current, home, or child references
+remain—delete a location. The linked-roll count opens Inventory with the exact
+location filter, while printer and loan locations continue to be managed
+automatically outside this list.
+
+![Stable storage location management](screenshots/inventory-locations.jpg)
 
 ### Add Filament
 
@@ -255,8 +275,11 @@ returns the spool to its home location when it is no longer loaded.
 
 ### Statistics
 
-Material use, printer activity, ownership split, loan consumption, and filtered
-breakdowns across manual jobs and live printer usage.
+Material use, printer activity, ownership split, loan consumption, selectable
+reporting periods, inventory value, material cost, data-coverage explanations,
+and a deterministic consumption forecast. Missing purchase data is shown as
+missing rather than being counted as zero, and yellow price/currency rows open
+the matching Filament defaults control.
 
 ![Statistics overview](screenshots/statistics.jpg)
 
@@ -277,6 +300,17 @@ hidden when the current user signs in.
 
 ![Settings General tab with background-operation controls](screenshots/settings-general.jpg)
 
+### Filament Defaults
+
+The dedicated Filament defaults tab contains purchase currency, global and
+per-material low-stock thresholds, and collapsible inventory-derived price
+groups. Missing-only updates preserve individual prices; overwrite mode has a
+separate review. Historical and individually protected rolls stay outside
+automatic batch selection, while an unpriced historical roll can be chosen
+deliberately in missing-price mode.
+
+![Filament defaults and guarded group pricing](screenshots/settings-filament-defaults.jpg)
+
 ### Program And Update Notifications
 
 The Program section shows the exact version, license/source links, and
@@ -293,11 +327,12 @@ notifications can work.
 
 ### Inventory Label Sheet
 
-The inventory label-sheet builder arranges all on-hand rolls on A4 or US Letter
+Opened from Inventory, the label-sheet builder arranges all on-hand rolls—or an
+explicit multi-selection—on A4 or US Letter
 pages with the same 60 × 24 mm layout as an individual P-Touch label. Page
 controls provide an in-app preview before the print-ready PDF is saved to
-Downloads, and the panel points back to Inventory when only one roll needs a
-label.
+Downloads. Open one roll's details when only a single custom-size label is
+needed.
 
 ![Inventory label-sheet builder](screenshots/inventory-label-sheet.jpg)
 

@@ -8,6 +8,7 @@ import {
 
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import { formatSpoolReference } from "../lib/display_format";
+import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import type { Locale } from "../lib/i18n";
 import { formatInventoryStatusLabel } from "../lib/inventory_list_model";
 import {
@@ -436,6 +437,10 @@ export function SettingsFilamentDefaultsTab({
   );
   const currencyInputRef = useRef<HTMLInputElement | null>(null);
   const pricingSectionRef = useRef<HTMLElement | null>(null);
+  const visualQaPricingOpen = useMemo(
+    () => resolveDesktopVisualQaScenario() === "settings-filament-defaults",
+    [],
+  );
   const [defaultCurrencyRaw, setDefaultCurrencyRaw] = useState(defaultCurrency);
   const [groupDrafts, setGroupDrafts] = useState<Record<string, GroupPriceDraft>>({});
   const [groupModes, setGroupModes] = useState<Record<string, FilamentPriceBatchMode>>({});
@@ -484,6 +489,17 @@ export function SettingsFilamentDefaultsTab({
       pricingSectionRef.current?.focus({ preventScroll: true });
     }
   }, [focusTarget]);
+
+  useEffect(() => {
+    if (!visualQaPricingOpen || categories.length === 0) {
+      return;
+    }
+    const frameId = window.requestAnimationFrame(() => {
+      pricingSectionRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      pricingSectionRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [categories.length, visualQaPricingOpen]);
 
   const normalizedDefaultCurrency = normalizeFilamentDefaultCurrency(defaultCurrencyRaw);
   const disabled = busy || readOnly || activeMutation != null;
@@ -809,10 +825,11 @@ export function SettingsFilamentDefaultsTab({
               )}
             </div>
           ) : (
-            categories.map((category) => (
+            categories.map((category, categoryIndex) => (
               <details
                 className="overflow-hidden rounded-xl border border-slate-200 bg-white/60 dark:border-slate-700 dark:bg-slate-950/25"
                 key={category.key}
+                open={visualQaPricingOpen ? categoryIndex === 0 : undefined}
               >
                 <summary className="cursor-pointer px-4 py-3 outline-none transition hover:bg-slate-50 focus-visible:bg-slate-50 dark:hover:bg-slate-900/55 dark:focus-visible:bg-slate-900/55">
                   <span className="flex flex-wrap items-center justify-between gap-2">
@@ -835,7 +852,7 @@ export function SettingsFilamentDefaultsTab({
                   </span>
                 </summary>
                 <div className="grid gap-3 border-t border-slate-200/80 p-3 dark:border-slate-700/80">
-                  {category.groups.map((group) => {
+                  {category.groups.map((group, groupIndex) => {
                     const draft = draftForGroup(group);
                     const price = parseFilamentGroupPrice(draft.priceRaw);
                     const currency = normalizeFilamentDefaultCurrency(draft.currencyRaw);
@@ -864,6 +881,9 @@ export function SettingsFilamentDefaultsTab({
                       <details
                         className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-700 dark:bg-slate-900/35"
                         key={group.key}
+                        open={visualQaPricingOpen
+                          ? categoryIndex === 0 && groupIndex === 0
+                          : undefined}
                       >
                         <summary className="cursor-pointer px-4 py-3 outline-none transition hover:bg-white focus-visible:bg-white dark:hover:bg-slate-900/75 dark:focus-visible:bg-slate-900/75">
                           <span className="flex flex-wrap items-center justify-between gap-2">
