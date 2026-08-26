@@ -5,7 +5,7 @@
 | Planstatus | Påbegynt |
 | Planperiode | 12 uker |
 | Oppstart | 2026-08-21 |
-| Sist oppdatert | 2026-08-25 |
+| Sist oppdatert | 2026-08-26 |
 | Eier | Prosjektteamet |
 
 ## Mål
@@ -131,6 +131,22 @@ Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer u
 | Flytte kritiske tester fra kildekodelesing til reell atferd. | Ferdig | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
 | Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ferdig | [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) beholder separate presentasjonslag og fastsetter målte terskler for ny vurdering av en dedikert React-Companion. |
 
+## Kvalitetsrunde før publisering
+
+**Mål:** Lukke funnene fra den samlede gjennomgangen av de lokale produktendringene før grenen deles eller pushes.
+
+| Prioritet | Arbeid | Status | Ferdigkriterium |
+| --- | --- | --- | --- |
+| P0 | Gjøre rolleavklaring fail-closed i Inventory og Filamentstandarder. | Ferdig | Ingen lokal mutasjon kan starte før Standalone, Host eller Client er autoritativt avklart; feil under rollelasting gir en synlig, gjenopprettbar lesetilstand. |
+| P0 | Sikre tapsfri CSV-/JSON-rundtur for lagerdata. | Ferdig | Leverandør, vekt, tara, eierskap, motpart, kjøpsdata, prisbeskyttelse og brukerdefinerte nåværende-/hjemmelokasjoner bevares. Gamle eksportfiler støttes, mens fremmede printer- og utlånsrelasjoner normaliseres sikkert. |
+| P1 | Rydde skjulte lokasjonsreferanser og knytte cache til riktig Host-bibliotek. | Ferdig | Slettede ruller blokkerer ikke lokasjonsopprydding, og cached lokasjoner kan aldri vises under en annen Host eller library-ID. |
+| P1 | Lukke lokaliserings-, pluraliserings- og tilgjengelighetsfunn. | Ferdig | Alle vedlikeholdte språk har reelle oversettelser, delvise språk merkes tydelig, dynamiske parametere og flertall testes, og like ruller har entydige tilgjengelige navn. |
+| P1 | Samkjøre lokasjonsnavn og reparasjonsveier mellom desktop, Client og Companion. | Ferdig | Companion viser menneskelige lokasjonsnavn, og Client tilbyr bare handlinger som faktisk kan fullføres på Host. |
+| P0 | Binde alle Client-lesinger, cacher og valideringsresultater til eksakt Host-, bibliotek- og målgenerasjon. | Ferdig | Svar fra et tidligere mål kan ikke oppdatere UI, cache, valideringsstatus eller runtime-autentisering etter A→B eller A→B→A; rollefeil leser aldri lokal skyggedatabase. |
+| P0 | Gjøre Host-skriving entydig ved tregt nett og eldre Host-versjoner. | Ferdig | Ikke-idempotente forespørsler sendes én gang og venter på et definitivt svar; capability-avvik avvises før første delskriv, mens identiske lånereturer kan gjentas uten dobbel historikk. |
+| P0 | Gjøre Client/Host- og Companion-overganger atomiske og fail-closed. | Ferdig | Paring bruker token og oppretter nettleserøkt i én transaksjon, Client kan ikke starte lokale Host-tjenester, og Client→Host lagrer autoritativ rolle før Trusted-LAN aktiveres. |
+| P1 | Sikre dynamiske Host-stier og feilkontrakter på tvers av desktop og Companion. | Ferdig | Alle dynamiske ID-er og søkeverdier RFC 3986-kodes, og stabile feil for autoritet, utlån og legacy-capabilities er lokalisert i vedlikeholdte appspråk. |
+
 ## Avgrensning
 
 Følgende prioriteres ikke i denne 12-ukersperioden:
@@ -149,6 +165,22 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 5-artifakt for Windows; den tidligere lokale macOS-kjøringen på schema 4 er bestått.
 
 ## Fremdriftslogg
+
+### 2026-08-26
+
+- Inventory og Filamentstandarder avklarer nå Standalone-, Host- og Client-rollen før muterende handlinger aktiveres. Midlertidige rolle- og nettverksfeil gir en synlig, gjenopprettbar lesetilstand uten lokal reserveendring.
+- Client/Host-grensen validerer strukturerte feilkoder, tømmer alle bibliotekavhengige cacher ved vert- eller library-bytte og bruker eksplisitte capabilities. Eldre Host-versjoner får avgrensede lesefallbacker, mens moderne ressursfeil og manglende skrivefunksjoner feiler lukket.
+- Client-operasjoner bindes til en monoton Host-målgenerasjon. Et pågående svar fra Host A kan derfor verken fylle cacher eller rapportere vellykket skriving etter bytte til Host B, og Settings henter en fersk Host-snapshot før lavlagerpolicy vises med målscopet cache som eksplisitt frakoblet reserve.
+- Lettvekts CSV-/JSON-eksport fra en schema 5-database rundtripper leverandør, initial/gjeldende/gjenstående vekt, tara, kjøpsmetadata, prisbeskyttelse, eierskap, motpart og brukerdefinerte nåværende-/hjemmelokasjoner. Fremmede printerspor og utgående lånerelasjoner importeres ikke som hyller; en innlånt rull oppretter i stedet en ny lokal, aktiv innlånsrelasjon.
+- Legacy subset-import er feltbevisst: utelatt status, QR, nåværende-/hjemmelokasjon og hvert enkelt kjøpsfelt bevarer eksisterende data, mens eksplisitt null eller blankt felt kan tømme bare det valgte feltet. Returnerte innlån gjenåpnes ikke, og systemeide lokasjons-ID-er kan ikke gjenbrukes som brukerhyller.
+- Historiske, tomme, tapte, manglende, slettede og legacy-arkiverte ruller får automatisk batchprislås ved overgang, import og startup-reparasjon. Direkte manuell prissetting er fortsatt tillatt, men historiske detaljer kan ikke låse opp rullen eller bli med i en senere gruppeoverskriving.
+- Full backup-restore reparerer historisk prislås og skriver revisjonshendelsen inne i samme transaksjon før validering og commit; reaktiveringsimport kan ikke omgå en tidligere historisk lås med eksplisitt `false`.
+- Lavlagerpolicyen oppdaterer inventory-revisjonen nøyaktig én gang ved en reell semantisk endring eller reparasjon av korrupt policy, og ikke ved no-op eller rene synkroniseringsinnstillinger.
+- Norsk, engelsk, tysk og fransk har komplett vedlikeholdt tekst for de nye flatene. De øvrige delvise språkene er tydelig merket Beta og bruker testet engelsk fallback i både desktop og Companion; kontekst-, parameter-, plural- og tilgjengelighetsportene er utvidet.
+- Filamentstandard-, ønskeliste- og importfeil bruker nå stabile feilkoder gjennom desktop og Companion. Eldre Host, foreldede prisgrupper og ugyldig prisbeskyttelse/priskilde viser handlingsrettet lokalisert tekst uten å eksponere rå backendmeldinger.
+- Dashboard, Settings, Inventory, Printers og utlånsdialogen avviser foreldede svar etter rolle- eller målbytte. Rolleoppslag feiler lukket, lokale printerhemmeligheter blandes aldri inn i Client-visning, målbundet utlånscache fungerer offline, og alle mellomliggende lasteflagg nullstilles ved overgang.
+- Dynamiske Host-stier og queryverdier kodes med én RFC 3986-hjelper. Ikke-idempotente Host-skriv sendes nøyaktig én gang og venter på et definitivt svar; eldre Host avviser sammensatte detaljendringer før første skriv, og identiske lånereturer lager ikke dobbel vekt eller historikk.
+- Companion-paring, desktop-fornyelse og Host-validering er bundet til autoritativ rolle og eksakt målgenerasjon. En treg validering kan ikke skrive status til et nyere Host-mål, en pågående Companion-GET forkaster lokale svardata hvis Host blir Client før svaret returneres, og Client→Host setter autoritativ rolle før den lokale Trusted-LAN-serveren aktiveres.
 
 ### 2026-08-25
 
