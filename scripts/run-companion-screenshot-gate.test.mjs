@@ -19,6 +19,7 @@ import {
   POSIX_PROCESS_GROUP_TERM_GRACE_MS,
   resolveCompanionQaLoopbackBaseUrl,
   resolveCompanionScreenshotTauriLaunch,
+  runCompanionScreenshotGate,
   runLaunchedCompanionScreenshotGate,
   summarizeCompanionScreenshotPixels,
   terminateWindowsProcessTree,
@@ -375,6 +376,105 @@ test("companion screenshot scenarios cover wide, tablet, and phone task surfaces
     scenarios.find((scenario) => scenario.name === "tablet-settings")?.expectations,
     { settings: true },
   );
+});
+
+test("companion screenshot scenarios reuse one browser context, page, and QA session", async () => {
+  const calls = {
+    bootstrap: [],
+    context: [],
+    contextClose: 0,
+    initScript: [],
+    newPage: 0,
+    pageEvents: [],
+    pageGoto: [],
+    reset: [],
+    run: [],
+    viewport: [],
+    waitForReady: [],
+  };
+  const page = {
+    goto: async (...args) => calls.pageGoto.push(args),
+    on: (...args) => calls.pageEvents.push(args),
+    setViewportSize: async (viewport) => calls.viewport.push(viewport),
+  };
+  const context = {
+    addInitScript: async (...args) => calls.initScript.push(args),
+    close: async () => {
+      calls.contextClose += 1;
+    },
+    newPage: async () => {
+      calls.newPage += 1;
+      return page;
+    },
+  };
+  let browserClose = 0;
+  const browser = {
+    close: async () => {
+      browserClose += 1;
+    },
+    newContext: async (options) => {
+      calls.context.push(options);
+      return context;
+    },
+  };
+  const scenarios = [
+    {
+      expectations: {},
+      name: "wide-inventory",
+      viewport: COMPANION_SCREENSHOT_VIEWPORTS.wide,
+    },
+    {
+      expectations: {},
+      name: "tablet-inventory",
+      viewport: COMPANION_SCREENSHOT_VIEWPORTS.tablet,
+    },
+    {
+      expectations: {},
+      name: "phone-inventory",
+      viewport: COMPANION_SCREENSHOT_VIEWPORTS.phone,
+    },
+  ];
+
+  const result = await runCompanionScreenshotGate({
+    baseUrl: "http://127.0.0.1:4278",
+    bootstrapSession: async (...args) => calls.bootstrap.push(args),
+    launchBrowser: async () => browser,
+    outputDir: testOutputDir,
+    resetScenarioPage: async (...args) => calls.reset.push(args),
+    runScenario: async (scenarioPage, scenario) => {
+      calls.run.push({ page: scenarioPage, scenario });
+      return createMetric({
+        document: {
+          clientWidth: scenario.viewport.width,
+          scrollWidth: scenario.viewport.width,
+        },
+        expectations: scenario.expectations,
+        name: scenario.name,
+        screenshotPixels: {
+          ...createMetric().screenshotPixels,
+          height: scenario.viewport.height,
+          width: scenario.viewport.width,
+        },
+        viewport: scenario.viewport,
+      });
+    },
+    scenarios,
+    waitForReady: async (...args) => calls.waitForReady.push(args),
+  });
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(calls.context.length, 1);
+  assert.equal(calls.newPage, 1);
+  assert.equal(calls.initScript.length, 1);
+  assert.equal(calls.bootstrap.length, 1);
+  assert.equal(calls.waitForReady.length, 1);
+  assert.equal(calls.pageGoto.length, 1);
+  assert.equal(calls.reset.length, scenarios.length);
+  assert.equal(calls.run.length, scenarios.length);
+  assert.ok(calls.run.every(({ page: scenarioPage }) => scenarioPage === page));
+  assert.deepEqual(calls.viewport, scenarios.map(({ viewport }) => viewport));
+  assert.equal(calls.contextClose, 1);
+  assert.equal(browserClose, 1);
 });
 
 test("companion printer screenshots wait up to 30 seconds for live data", async () => {

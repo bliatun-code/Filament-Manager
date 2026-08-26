@@ -242,6 +242,8 @@ export function renderPrinterPickerTaskSheetBody(options) {
       row.master.color_name,
       row.master.vendor,
       row.spool.id,
+      row.location_name,
+      row.home_location_name,
       row.spool.location_id,
       row.spool.home_location_id,
       row.spool.qr_code,
@@ -284,10 +286,12 @@ export function renderPrinterPickerTaskSheetBody(options) {
                   const rowMeta = [
                     row.master.vendor,
                     formatRollReference(row.spool, locale),
-                    row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
+                    row.spool.location_id
+                      ? formatPlacementLabel(row.location_name || row.spool.location_id, locale)
+                      : "",
                     row.spool.home_location_id &&
                     row.spool.home_location_id !== row.spool.location_id
-                      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.spool.home_location_id, locale)}`
+                      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.home_location_name || row.spool.home_location_id, locale)}`
                       : "",
                   ]
                     .filter(Boolean)

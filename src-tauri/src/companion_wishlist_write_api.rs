@@ -138,6 +138,7 @@ pub(super) async fn handle_receive_wishlist_item(
                 .receive_wishlist_item(ReceiveWishlistItemInput {
                     item_id: item_id.to_string(),
                     quantity: payload.quantity,
+                    purchase_metadata: payload.purchase_metadata,
                 })
                 .map_err(CompanionApiError::from)?;
             Ok(Json(result))

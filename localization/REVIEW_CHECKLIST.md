@@ -41,6 +41,19 @@ reviewer or record approval by itself.
 - Check long compound labels and narrow controls without shortening away the
   meaning of destructive or security-sensitive actions.
 
+## Maintaining translator context
+
+- Add an exact entry or a narrowly scoped prefix group in
+  `localization/message-context.json` for new copy whose meaning depends on a
+  workflow, state transition, warning or product concept.
+- Reserve `trivialGroups` for conventional, self-explanatory interface words.
+  Every exemption needs a written reason; ambiguous exceptions still need an
+  exact context entry.
+- The uncovered-key delta baseline prevents new source keys from silently
+  bypassing this review. If readiness reports a changed baseline, add context
+  first. Update the reported count and fingerprint only after explicitly
+  reviewing any remaining additions as genuinely trivial.
+
 ## Workflow review
 
 - Dashboard ownership, health, client snapshot and activity cards.

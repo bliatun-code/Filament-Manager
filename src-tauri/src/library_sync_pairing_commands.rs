@@ -11,6 +11,9 @@ use crate::library_sync_host_client::{
     store_library_sync_device_token_bytes, LibrarySyncAuthenticatedSessionState,
 };
 use crate::library_sync_models::PairLibrarySyncHostInput;
+use crate::library_sync_target_guard::{
+    capture_library_sync_target, ensure_library_sync_target_current,
+};
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
 use crate::with_inventory;
@@ -28,21 +31,30 @@ fn pair_library_sync_host_blocking(
     state: &AppState,
     input: PairLibrarySyncHostInput,
 ) -> Result<LibrarySyncSettingsRow, String> {
-    let _credential_mutation = lock_secure_credential_mutation()?;
     let host_input = library_sync_host_input(&input.base_url, None);
     let (normalized_base_url, _) = normalize_library_sync_host_input(&host_input)?;
     ensure_stable_local_library_sync_host(&normalized_base_url)?;
-    ensure_pairing_target_is_current(state, &normalized_base_url)?;
     let pairing_token = extract_library_sync_pairing_token(&input.pairing_token_or_url)
         .ok_or_else(|| "Pairing token or URL is required.".to_string())?;
 
-    let auth_state = pair_library_sync_host_session(&normalized_base_url, &pairing_token)?;
-    let health = ensure_library_sync_host_matches(&normalized_base_url, None)?;
-    ensure_pairing_target_is_current(state, &normalized_base_url)?;
+    pair_library_sync_host_at_current_target(state, &normalized_base_url, &pairing_token)
+}
+
+fn pair_library_sync_host_at_current_target(
+    state: &AppState,
+    normalized_base_url: &str,
+    pairing_token: &str,
+) -> Result<LibrarySyncSettingsRow, String> {
+    let _credential_mutation = lock_secure_credential_mutation()?;
+    let target = capture_library_sync_target(state, normalized_base_url, None)?;
+
+    let auth_state = pair_library_sync_host_session(normalized_base_url, pairing_token)?;
+    let health = ensure_library_sync_host_matches(normalized_base_url, Some(target.library_id()))?;
+    ensure_library_sync_target_current(state, &target)?;
 
     persist_library_sync_pairing_under_gate(
         state,
-        &normalized_base_url,
+        normalized_base_url,
         auth_state,
         health.device_name.as_deref(),
     )
@@ -134,26 +146,6 @@ fn persist_library_sync_pairing_under_gate(
     }
 }
 
-fn ensure_pairing_target_is_current(
-    state: &AppState,
-    normalized_base_url: &str,
-) -> Result<(), String> {
-    let settings = with_inventory(state, |engine| engine.get_library_sync_settings())?;
-    let current_host = settings
-        .host_base_url
-        .as_deref()
-        .map(str::trim)
-        .map(|host| host.trim_end_matches('/'))
-        .filter(|host| !host.is_empty());
-    if settings.mode != "CLIENT" || current_host != Some(normalized_base_url) {
-        return Err(
-            "Desktop client settings changed while pairing. Review the library host and pair again."
-                .to_string(),
-        );
-    }
-    Ok(())
-}
-
 fn restore_library_sync_pairing_state(
     state: &AppState,
     normalized_base_url: &str,
@@ -200,18 +192,24 @@ fn with_pairing_rollback(error: String, rollback: Result<(), String>) -> String 
 
 #[cfg(test)]
 mod tests {
-    use super::{persist_library_sync_pairing, restore_library_sync_pairing_state};
+    use super::{
+        pair_library_sync_host_at_current_target, persist_library_sync_pairing,
+        restore_library_sync_pairing_state,
+    };
     use crate::backend::filament_database::FilamentDatabase;
     use crate::credential_store::CredentialStore;
     use crate::library_sync_host_client::{
-        load_library_sync_device_token, store_library_sync_device_token_bytes,
-        LibrarySyncAuthenticatedSessionState,
+        load_library_sync_device_token, load_library_sync_device_token_optional,
+        store_library_sync_device_token_bytes, LibrarySyncAuthenticatedSessionState,
     };
     use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
     use std::sync::atomic::{AtomicU64, Ordering};
+    use std::thread;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     static NEXT_TEST_DATABASE: AtomicU64 = AtomicU64::new(1);
@@ -340,6 +338,71 @@ mod tests {
             load_library_sync_device_token(&state, host).expect("replacement token"),
             "replacement-device-secret"
         );
+
+        let _ = std::fs::remove_file(&state.db_path);
+    }
+
+    #[test]
+    fn pairing_rejects_a_different_remote_library_without_persisting_auth() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind mismatched pairing Host");
+        let address = listener
+            .local_addr()
+            .expect("read mismatched pairing Host address");
+        let server = thread::spawn(move || {
+            for (expected_request, status, headers, body) in [
+                (
+                    "POST /api/v1/auth/pair HTTP/1.1",
+                    "200 OK",
+                    "Set-Cookie: bfm_companion_session=session-secret; Path=/; HttpOnly\r\nSet-Cookie: bfm_trusted_lan_device=device-secret; Path=/; HttpOnly\r\n",
+                    r#"{"ok":true,"csrf_token":"csrf-secret"}"#,
+                ),
+                (
+                    "GET /api/v1/health HTTP/1.1",
+                    "200 OK",
+                    "",
+                    r#"{"ok":true,"api_version":"v1","capabilities":[],"auth_mode":"pairing-session","access_mode":"trusted-lan","library_id":"library-b","device_name":"Wrong Host","sync_mode":"HOST"}"#,
+                ),
+            ] {
+                let (mut stream, _) = listener.accept().expect("accept pairing Host request");
+                let mut request = [0_u8; 16 * 1024];
+                let read = stream.read(&mut request).expect("read pairing Host request");
+                let request = String::from_utf8_lossy(&request[..read]);
+                assert!(request.starts_with(expected_request), "{request}");
+                let response = format!(
+                    "HTTP/1.1 {status}\r\nContent-Type: application/json\r\n{headers}Content-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len(),
+                );
+                stream
+                    .write_all(response.as_bytes())
+                    .expect("write pairing Host response");
+            }
+        });
+        let base_url = format!("http://{address}");
+        let state = test_state();
+        with_test_database(&state, |db| {
+            let mut settings = db.get_library_sync_settings()?;
+            settings.mode = "CLIENT".to_string();
+            settings.host_base_url = Some(base_url.clone());
+            settings.library_id = "library-a".to_string();
+            db.save_library_sync_settings(&settings)?;
+            Ok(())
+        });
+
+        let error = pair_library_sync_host_at_current_target(&state, &base_url, "pairing-token")
+            .expect_err("pairing must reject a different remote library");
+        assert!(error.contains("different library"), "{error}");
+        server.join().expect("join mismatched pairing Host");
+
+        assert!(load_library_sync_device_token_optional(&state, &base_url)
+            .expect("read device token after rejected pairing")
+            .is_none());
+        assert!(state
+            .library_sync_auth
+            .current()
+            .expect("read runtime auth after rejected pairing")
+            .is_none());
+        let settings = with_test_database(&state, |db| db.get_library_sync_settings());
+        assert!(!settings.client_auth_paired);
 
         let _ = std::fs::remove_file(&state.db_path);
     }

@@ -2031,6 +2031,15 @@ export const itITDictionary: DictionaryNode = {
     currentSnapshot: "Istantanea corrente",
     desktopOnly:
       "Le statistiche sono disponibili nella build dell'app desktop.",
+    periodTitle: "Periodo del rapporto",
+    periodCustom: "Intervallo personalizzato",
+    periodStart: "Data di inizio",
+    periodEnd: "Data di fine",
+    periodApply: "Applica intervallo",
+    periodDateRequired: "Scegli sia una data di inizio sia una data di fine.",
+    periodDateInvalid: "Inserisci date di calendario valide.",
+    periodOrderInvalid: "La data di fine deve essere uguale o successiva alla data di inizio.",
+    periodDetailsUnavailable: "I totali e i dettagli di filamento o stampante per il periodo selezionato non sono disponibili in questa istantanea dell’host. Aggiorna o riconnetti l’host.",
     error: {
       load: "Impossibile caricare le statistiche.",
       loadBorrowerBreakdown:

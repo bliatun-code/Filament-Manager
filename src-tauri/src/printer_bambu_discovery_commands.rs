@@ -1,3 +1,4 @@
+use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::filament_database::BambuLiveTlsIdentityRow;
 use crate::bambu_live::tls_identity::{assess_trust, BambuTlsIdentity, BambuTlsTrustDecision};
 use crate::bambu_live::{probe_printer_tls_identity, trusted_pin_from_config};
@@ -67,7 +68,9 @@ fn recover_bambu_live_host_with_probe(
     input: RecoverBambuLiveHostInput,
     probe: impl FnOnce(&str, &str) -> Result<BambuTlsIdentity, String>,
 ) -> Result<BambuLiveHostRecovery, String> {
-    recover_bambu_live_host_at_path(&state.db_path, input, probe)
+    with_authoritative_local_library(state, || {
+        recover_bambu_live_host_at_path(&state.db_path, input, probe)
+    })
 }
 
 fn recover_bambu_live_host_at_path(

@@ -8,7 +8,13 @@ import {
   type SpoolStatus,
 } from "./inventory_domain";
 import type { SpoolWithMasterRow } from "./tauri_client";
-import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
+import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
+
+type TranslateFn = (
+  key: string,
+  fallback?: string,
+  params?: MessageParams,
+) => string;
 
 type InventoryMatchNormalizedSpoolRow = SpoolWithMasterRow["spool"] & {
   normalized_status: SpoolStatus | null;
@@ -457,7 +463,7 @@ function sortMetadataCandidates<Row extends SpoolWithMasterRow>(
 
 function formatSettingsPresetSignal(
   presetSignal: string,
-  t: (key: string, fallback?: string) => string,
+  t: TranslateFn,
 ): string {
   const match = presetSignal.match(/^(.+?)\s+\((.+)\)$/);
   if (!match) {
@@ -585,7 +591,7 @@ export function buildBambuUnknownRfidInventoryDecision<Row extends SpoolWithMast
 
 export function translateObservedMatchNote(
   note: string | null | undefined,
-  t: (key: string, fallback?: string) => string,
+  t: TranslateFn,
 ): string | null {
   const normalized = (note ?? "").trim();
   if (!normalized) {
@@ -598,11 +604,9 @@ export function translateObservedMatchNote(
     const baseNote = presetSignalMatch[1].trim();
     const baseTranslation = baseNote ? translateObservedMatchNote(baseNote, t) : null;
     const presetSignal = formatSettingsPresetSignal(presetSignalMatch[2].trim(), t);
-    const presetTranslation = formatMessage(
-      t(
-        "settings.bambuLiveMatchNotePresetSignal",
-        "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
-      ),
+    const presetTranslation = t(
+      "settings.bambuLiveMatchNotePresetSignal",
+      "Filament settings preset: {preset}. This is a material/settings hint, not a roll identity.",
       { preset: presetSignal },
     );
     return [baseTranslation, presetTranslation].filter(Boolean).join(" ");

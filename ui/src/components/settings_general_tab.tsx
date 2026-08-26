@@ -26,10 +26,6 @@ import {
   settingsSectionLabelClass,
 } from "../lib/settings_ui_classes";
 import { SettingsSurfaceCard } from "./settings_ui";
-import {
-  SettingsInventoryLabelSheetModal,
-  type SettingsInventoryLabelSheetModalProps,
-} from "./settings_inventory_label_sheet_modal";
 
 type TranslateFn = (key: string, fallback: string, params?: MessageParams) => string;
 
@@ -42,14 +38,12 @@ export type SettingsGeneralTabProps = {
   desktopLifecycleUpdateError: string | null;
   desktopLifecycleUpdating: boolean;
   locale: Locale;
-  inventoryLabelSheetModalProps: SettingsInventoryLabelSheetModalProps;
   tauri: boolean;
   themeMode: ThemeMode;
   t: TranslateFn;
   onLocaleSelection: (locale: Locale) => void;
   onContinueInBackground: (enabled: boolean) => Promise<void> | void;
   onLaunchAtLogin: (enabled: boolean) => Promise<void> | void;
-  onOpenInventoryLabelSheet: () => void;
   onRetryDesktopLifecycleLoad: () => void;
   onThemeSelection: (mode: ThemeMode) => void;
 };
@@ -62,7 +56,6 @@ export function SettingsGeneralTab({
   desktopLifecycleSettings,
   desktopLifecycleUpdateError,
   desktopLifecycleUpdating,
-  inventoryLabelSheetModalProps,
   locale,
   tauri,
   themeMode,
@@ -70,7 +63,6 @@ export function SettingsGeneralTab({
   onLocaleSelection,
   onContinueInBackground,
   onLaunchAtLogin,
-  onOpenInventoryLabelSheet,
   onRetryDesktopLifecycleLoad,
   onThemeSelection,
 }: SettingsGeneralTabProps) {
@@ -82,13 +74,16 @@ export function SettingsGeneralTab({
   const tourUrl = screenshotTourUrl();
   const userGuideUrl = userGuideUrlForLocale(locale);
   const checkingForUpdates = updateCheck.state.status === "CHECKING";
+  const selectedLanguageIsBeta = SELECTABLE_LOCALES.some(
+    (definition) => definition.id === locale && definition.catalogKind === "draft",
+  );
 
   const updateMessage = appUpdateCheckMessage(updateCheck.state, t);
 
   return (
     <>
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.appearance", "Appearance")}
         description={t("settings.autoHint", "Auto follows your system light/dark preference.")}
       >
@@ -118,7 +113,7 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.language", "Language")}
         description={t(
           "settings.languageHint",
@@ -137,16 +132,27 @@ export function SettingsGeneralTab({
               {SELECTABLE_LOCALES.map((definition) => (
                 <option key={definition.id} value={definition.id}>
                   {definition.nativeLabel}
+                  {definition.catalogKind === "draft"
+                    ? ` · ${t("settings.languageBeta", "Beta")}`
+                    : ""}
                 </option>
               ))}
             </select>
+            {selectedLanguageIsBeta ? (
+              <span className="mt-2 block text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {t(
+                  "settings.languageBetaHint",
+                  "Beta languages are still being completed and may show some text in English.",
+                )}
+              </span>
+            ) : null}
           </label>
         </div>
       </SettingsSurfaceCard>
 
       {tauri ? (
         <SettingsSurfaceCard
-          className="space-y-4"
+          className="min-w-0 space-y-4"
           eyebrow={t("settings.backgroundOperation", "Background operation")}
           description={t(
             "settings.backgroundOperationHint",
@@ -301,7 +307,7 @@ export function SettingsGeneralTab({
         </SettingsSurfaceCard>
       ) : null}
 
-      <SettingsSurfaceCard className="space-y-4" eyebrow={t("settings.program", "Program")}>
+      <SettingsSurfaceCard className="min-w-0 space-y-4" eyebrow={t("settings.program", "Program")}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="surface-subtle px-4 py-3">
             <div className={settingsSectionLabelClass}>
@@ -420,7 +426,7 @@ export function SettingsGeneralTab({
       </SettingsSurfaceCard>
 
       <SettingsSurfaceCard
-        className="space-y-4"
+        className="min-w-0 space-y-4"
         eyebrow={t("settings.help", "Help")}
         description={t(
           "settings.helpHint",
@@ -449,31 +455,6 @@ export function SettingsGeneralTab({
         </div>
       </SettingsSurfaceCard>
 
-      <SettingsSurfaceCard
-        className="space-y-4"
-        eyebrow={t("settings.inventoryOverviewPrint", "Inventory label sheets")}
-        description={t(
-          "settings.inventoryOverviewPrintHint",
-          "Create QR label sheets for every on-hand roll, using the same readable 60 × 24 mm layout as individual labels.",
-        )}
-      >
-        <button
-          type="button"
-          onClick={onOpenInventoryLabelSheet}
-          className={settingsActionButtonClass("accent")}
-          disabled={!tauri || busy}
-        >
-          {t("settings.inventoryOverviewPrintAction", "Create inventory label sheet")}
-        </button>
-        <div className="text-xs leading-5 text-slate-500 dark:text-slate-400">
-          {t(
-            "settings.inventoryOverviewSingleLabelHint",
-            "Need just one label? Open the roll in Inventory and choose Create QR label.",
-          )}
-        </div>
-      </SettingsSurfaceCard>
-
-      <SettingsInventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
     </>
   );
 }

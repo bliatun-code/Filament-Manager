@@ -14,6 +14,7 @@ type SpoolDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 type SpoolRowsPageLoader = (
   options: SpoolDataSourceOptions,
@@ -60,8 +61,18 @@ export async function loadAllSpoolRows(
   const loadPage = dependencies.loadPage ?? loadSpoolRowsPage;
   const rows = await loadAllSpoolRowsWithPageLoader(options, limit, loadPage);
   if (options.clientReadOnly) {
+    const hostTarget = resolveClientHostTarget(options);
+    const targetGeneration = options.clientTargetGeneration;
+    if (!hostTarget || !Number.isSafeInteger(targetGeneration) || targetGeneration! < 0) {
+      return rows;
+    }
     const saveClientCache = dependencies.saveClientCache ?? saveLibrarySyncSpoolCache;
-    await saveClientCache(rows).catch(dependencies.onCacheError ?? console.warn);
+    await saveClientCache(
+      rows,
+      hostTarget.baseUrl,
+      hostTarget.libraryId,
+      targetGeneration!,
+    ).catch(dependencies.onCacheError ?? console.warn);
   }
   return rows;
 }

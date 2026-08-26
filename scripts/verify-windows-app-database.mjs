@@ -9,7 +9,15 @@ export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "filament_spools",
   "settings",
 ];
-export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 2;
+export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 5;
+export const REQUIRED_WINDOWS_SMOKE_COLUMNS = {
+  filament_spools: [
+    "purchase_currency",
+    "supplier_reference",
+    "purchase_price_batch_locked",
+    "purchase_price_source",
+  ],
+};
 
 function parseArguments(argv) {
   if (argv.length !== 2 || argv[0] !== "--database" || !argv[1]?.trim()) {
@@ -75,6 +83,21 @@ export async function verifyWindowsAppDatabase(
       throw new Error(
         `Database is missing required table(s): ${missingTables.join(", ")}`,
       );
+    }
+
+    for (const [tableName, requiredColumns] of Object.entries(
+      REQUIRED_WINDOWS_SMOKE_COLUMNS,
+    )) {
+      const columnRows = database.pragma(`table_info(${tableName})`);
+      const presentColumns = new Set(columnRows.map(({ name }) => name));
+      const missingColumns = requiredColumns.filter(
+        (columnName) => !presentColumns.has(columnName),
+      );
+      if (missingColumns.length > 0) {
+        throw new Error(
+          `Database table ${tableName} is missing required column(s): ${missingColumns.join(", ")}`,
+        );
+      }
     }
 
     return {

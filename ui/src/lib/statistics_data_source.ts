@@ -2,20 +2,23 @@ import {
   fetchCachedLibrarySyncSpools,
   fetchCachedLibrarySyncLoans,
   fetchCachedLibrarySyncPrinterOverview,
-  fetchLibrarySyncFilamentConsumption,
   fetchLibrarySyncLoans,
   fetchLibrarySyncPrinterOverview,
   fetchLibrarySyncSnapshot,
+  fetchLibrarySyncStatisticsPeriodReport,
   getLibrarySyncSettings,
+  inventoryOverview,
   listLoanUsageByPerson,
-  listFilamentConsumption,
   listPrinterOverview,
   listSpoolLoans,
+  statisticsPeriodReport,
   type InventoryOverview,
   type LibrarySyncSettings,
   type LoanUsageByPersonRow,
   type PrinterOverviewRow,
   type FilamentConsumptionRow,
+  type StatisticsPeriod,
+  type StatisticsPeriodReport,
   type SpoolLoanDetailsRow,
 } from "./tauri_client";
 import { loadAllSpoolRows } from "./spool_data_source";
@@ -34,10 +37,14 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
-import { resolveClientHostTarget } from "./host_write_target";
+import {
+  resolveClientHostCacheTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
+export type StatisticsPeriodDataStatus = "AVAILABLE" | "LEGACY_HOST" | "UNAVAILABLE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
 export type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
 export type { NormalizedSpoolWithMasterRow } from "./spool_row_normalization";
@@ -50,6 +57,8 @@ export type StatisticsDataLoadResult = {
   loanDetails: NormalizedLoanDetailsRow[];
   loanUsage: LoanUsageByPersonRow[];
   inboundLoanUsage: LoanUsageByPersonRow[];
+  periodReport: StatisticsPeriodReport | null;
+  periodStatus: StatisticsPeriodDataStatus;
   updatedAt: string | null;
   source: StatisticsSnapshotSource;
 };
@@ -58,24 +67,11 @@ export type StatisticsPageDataLoadResult = StatisticsDataLoadResult & {
   syncState: StatisticsLibrarySyncState;
 };
 
-export type FilamentConsumptionBreakdownOptions = {
-  clientReadOnly: boolean;
-  clientHostBaseUrl?: string | null;
-  clientLibraryId?: string | null;
-  printerId?: string | null;
-  limit?: number;
-};
-
 export type LoanBreakdownRowsOptions = {
   clientReadOnly: boolean;
   cachedLoanDetails: NormalizedLoanDetailsRow[];
   direction?: string | null;
   limit?: number;
-};
-
-type FilamentConsumptionBreakdownDependencies = {
-  fetchHostConsumption?: typeof fetchLibrarySyncFilamentConsumption;
-  listLocalConsumption?: typeof listFilamentConsumption;
 };
 
 type LoanBreakdownRowsDependencies = {
@@ -91,15 +87,16 @@ type StatisticsDataDependencies = {
   fetchHostSnapshot?: typeof fetchLibrarySyncSnapshot;
   fetchHostPrinterOverview?: typeof fetchLibrarySyncPrinterOverview;
   fetchHostLoans?: typeof fetchLibrarySyncLoans;
-  fetchHostConsumption?: typeof fetchLibrarySyncFilamentConsumption;
+  fetchHostPeriodReport?: typeof fetchLibrarySyncStatisticsPeriodReport;
   fetchCachedPrinterOverview?: typeof fetchCachedLibrarySyncPrinterOverview;
   fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
   fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
   loadHostSpools?: typeof loadAllSpoolRows;
   loadLocalSpools?: typeof loadAllSpoolRows;
-  listLocalConsumption?: typeof listFilamentConsumption;
+  loadLocalOverview?: typeof inventoryOverview;
   listLocalLoanUsageByPerson?: typeof listLoanUsageByPerson;
   listLocalPrinterOverview?: typeof listPrinterOverview;
+  loadLocalPeriodReport?: typeof statisticsPeriodReport;
 };
 
 function normalizeLoanDetailsRows(rows: SpoolLoanDetailsRow[]): NormalizedLoanDetailsRow[] {
@@ -152,6 +149,7 @@ export function groupLoanUsageByPerson(
 }
 
 export async function loadStatisticsPageData(
+  period: StatisticsPeriod,
   dependencies: StatisticsPageDataDependencies = {},
 ): Promise<StatisticsPageDataLoadResult> {
   const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
@@ -159,33 +157,13 @@ export async function loadStatisticsPageData(
   const syncSettings = await loadSyncSettings();
   const [syncState, data] = await Promise.all([
     Promise.resolve(deriveStatisticsLibrarySyncState(syncSettings)),
-    loadData(syncSettings),
+    loadData(syncSettings, period),
   ]);
 
   return {
     ...data,
     syncState,
   };
-}
-
-export async function loadFilamentConsumptionBreakdown(
-  options: FilamentConsumptionBreakdownOptions,
-  dependencies: FilamentConsumptionBreakdownDependencies = {},
-): Promise<FilamentConsumptionRow[]> {
-  const fetchHostConsumption =
-    dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
-  const listLocalConsumption = dependencies.listLocalConsumption ?? listFilamentConsumption;
-  const { clientReadOnly, printerId = null, limit = 500 } = options;
-  const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
-
-  if (clientReadOnly) {
-    if (!hostTarget) {
-      return [];
-    }
-    return fetchHostConsumption(hostTarget.baseUrl, hostTarget.libraryId, limit, printerId);
-  }
-
-  return listLocalConsumption(limit, printerId);
 }
 
 export async function loadLoanBreakdownRows(
@@ -204,18 +182,22 @@ export async function loadLoanBreakdownRows(
 
 export async function loadStatisticsData(
   syncSettings: LibrarySyncSettings,
+  period: StatisticsPeriod,
   dependencies: StatisticsDataDependencies = {},
 ): Promise<StatisticsDataLoadResult> {
   const syncState = deriveStatisticsLibrarySyncState(syncSettings);
   const hostTarget = syncState.clientReadOnly ? resolveClientHostTarget(syncState) : null;
+  const cacheTarget = syncState.clientReadOnly
+    ? resolveClientHostCacheTarget(syncState)
+    : null;
 
   if (hostTarget) {
     const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
     const fetchHostPrinterOverview =
       dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
     const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
-    const fetchHostConsumption =
-      dependencies.fetchHostConsumption ?? fetchLibrarySyncFilamentConsumption;
+    const fetchHostPeriodReport =
+      dependencies.fetchHostPeriodReport ?? fetchLibrarySyncStatisticsPeriodReport;
     const fetchCachedPrinterOverview =
       dependencies.fetchCachedPrinterOverview ?? fetchCachedLibrarySyncPrinterOverview;
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
@@ -226,7 +208,7 @@ export async function loadStatisticsData(
       printersResult,
       loansResult,
       spoolsResult,
-      consumptionResult,
+      periodReportResult,
       cachedPrinters,
       cachedLoans,
       cachedSpools,
@@ -248,22 +230,40 @@ export async function loadStatisticsData(
           clientReadOnly: true,
           clientHostBaseUrl: hostTarget.baseUrl,
           clientLibraryId: hostTarget.libraryId,
+          clientTargetGeneration: syncSettings.target_generation ?? null,
         }).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchHostConsumption(
+        fetchHostPeriodReport(
           hostTarget.baseUrl,
           hostTarget.libraryId,
-          500,
-          null,
+          period,
         ).then(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchCachedPrinterOverview().catch(() => null),
-        fetchCachedLoans().catch(() => null),
-        fetchCachedSpools().catch(() => null),
+        cacheTarget
+          ? fetchCachedPrinterOverview(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
+        cacheTarget
+          ? fetchCachedLoans(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
+        cacheTarget
+          ? fetchCachedSpools(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
       ]);
 
     if (!snapshotResult.ok) {
@@ -278,33 +278,43 @@ export async function loadStatisticsData(
     if (!spoolsResult.ok) {
       console.error(spoolsResult.error);
     }
-    if (!consumptionResult.ok) {
-      console.error(consumptionResult.error);
+    if (!periodReportResult.ok) {
+      console.error(periodReportResult.error);
     }
 
-    const resolvedSnapshot = snapshotResult.ok
-      ? snapshotResult.value
-      : syncSettings.cached_snapshot ?? null;
+    const resolvedSnapshot = snapshotResult.ok ? snapshotResult.value : null;
     const resolvedPrinters = printersResult.ok
       ? printersResult.value
-      : cachedPrinters?.rows ?? syncSettings.cached_printers?.rows ?? [];
+      : cachedPrinters?.rows ?? [];
     const resolvedLoanRows = loansResult.ok
       ? loansResult.value
-      : cachedLoans?.rows ?? syncSettings.cached_loans?.rows ?? [];
+      : cachedLoans?.rows ?? [];
     const resolvedLoans = normalizeLoanDetailsRows(resolvedLoanRows);
     const resolvedSpoolRowsRaw = spoolsResult.ok
       ? spoolsResult.value
-      : cachedSpools?.rows ?? syncSettings.cached_spools?.rows ?? [];
+      : cachedSpools?.rows ?? [];
     const resolvedSpoolRows = normalizeSpoolWithMasterRows(resolvedSpoolRowsRaw);
-    const resolvedConsumptionRows = consumptionResult.ok ? consumptionResult.value : [];
+    const resolvedPeriodReport = periodReportResult.ok ? periodReportResult.value : null;
+    const resolvedConsumptionRows = resolvedPeriodReport?.filament_consumption ?? [];
     const derivedOverview =
-      resolvedSpoolRows.length > 0 || resolvedConsumptionRows.length > 0
-        ? deriveInventoryOverviewFromRows(resolvedSpoolRows, resolvedConsumptionRows)
+      resolvedSpoolRows.length > 0
+        ? deriveInventoryOverviewFromRows(resolvedSpoolRows, [])
         : null;
-    const resolvedOverview = derivedOverview ?? resolvedSnapshot?.inventory ?? null;
+    const resolvedOverview = derivedOverview
+      ? {
+          ...(resolvedSnapshot?.inventory ?? derivedOverview),
+          ...derivedOverview,
+          total_consumption_30d:
+            resolvedSnapshot?.inventory.total_consumption_30d ?? 0,
+          owned_consumption_30d:
+            resolvedSnapshot?.inventory.owned_consumption_30d ?? 0,
+          borrowed_in_consumption_30d:
+            resolvedSnapshot?.inventory.borrowed_in_consumption_30d ?? 0,
+        }
+      : resolvedSnapshot?.inventory ?? null;
     const hasLiveOverview =
       snapshotResult.ok ||
-      (spoolsResult.ok && consumptionResult.ok && derivedOverview != null);
+      (spoolsResult.ok && derivedOverview != null);
 
     if (resolvedOverview || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
       const source =
@@ -312,25 +322,19 @@ export async function loadStatisticsData(
         printersResult.ok &&
         loansResult.ok &&
         spoolsResult.ok &&
-        consumptionResult.ok
+        periodReportResult.ok
           ? "LIVE"
           : "CACHED";
       const liveUpdatedAt = firstDefinedTimestamp(
         resolvedSnapshot?.captured_at,
         cachedPrinters?.captured_at,
-        syncSettings.cached_printers?.captured_at,
         cachedLoans?.captured_at,
-        syncSettings.cached_loans?.captured_at,
         cachedSpools?.captured_at,
-        syncSettings.cached_spools?.captured_at,
       );
       const fallbackUpdatedAt = firstDefinedTimestamp(
         spoolsResult.ok ? null : cachedSpools?.captured_at,
-        spoolsResult.ok ? null : syncSettings.cached_spools?.captured_at,
         printersResult.ok ? null : cachedPrinters?.captured_at,
-        printersResult.ok ? null : syncSettings.cached_printers?.captured_at,
         loansResult.ok ? null : cachedLoans?.captured_at,
-        loansResult.ok ? null : syncSettings.cached_loans?.captured_at,
         snapshotResult.ok || derivedOverview ? null : resolvedSnapshot?.captured_at,
       );
       return {
@@ -341,6 +345,12 @@ export async function loadStatisticsData(
         loanDetails: resolvedLoans,
         loanUsage: groupLoanUsageByPerson(resolvedLoans, "OUTBOUND"),
         inboundLoanUsage: groupLoanUsageByPerson(resolvedLoans, "INBOUND"),
+        periodReport: resolvedPeriodReport,
+        periodStatus: resolvedPeriodReport
+          ? "AVAILABLE"
+          : periodReportResult.ok
+            ? "LEGACY_HOST"
+            : "UNAVAILABLE",
         updatedAt: source === "LIVE" ? liveUpdatedAt : fallbackUpdatedAt ?? liveUpdatedAt,
         source,
       };
@@ -354,44 +364,14 @@ export async function loadStatisticsData(
       loanDetails: [],
       loanUsage: [],
       inboundLoanUsage: [],
+      periodReport: null,
+      periodStatus: "UNAVAILABLE",
       updatedAt: null,
       source: "OFFLINE",
     };
   }
 
   if (syncState.clientReadOnly) {
-    const spoolRows = normalizeSpoolWithMasterRows(syncSettings.cached_spools?.rows ?? []);
-    const loanRows = normalizeLoanDetailsRows(syncSettings.cached_loans?.rows ?? []);
-    const spoolRowsOverview =
-      spoolRows.length > 0 ? deriveInventoryOverviewFromRows(spoolRows, []) : null;
-    const overview = spoolRowsOverview ?? syncSettings.cached_snapshot?.inventory ?? null;
-    const spoolRowsUpdatedAt =
-      spoolRowsOverview ? syncSettings.cached_spools?.captured_at ?? null : null;
-    if (
-      overview ||
-      spoolRows.length > 0 ||
-      (syncSettings.cached_printers?.rows.length ?? 0) > 0 ||
-      loanRows.length > 0
-    ) {
-      return {
-        overview,
-        printers: syncSettings.cached_printers?.rows ?? [],
-        spoolRows,
-        consumptionRows: [],
-        loanDetails: loanRows,
-        loanUsage: groupLoanUsageByPerson(loanRows, "OUTBOUND"),
-        inboundLoanUsage: groupLoanUsageByPerson(loanRows, "INBOUND"),
-        updatedAt:
-          spoolRowsUpdatedAt ??
-          syncSettings.cached_snapshot?.captured_at ??
-          syncSettings.cached_printers?.captured_at ??
-          syncSettings.cached_loans?.captured_at ??
-          syncSettings.cached_spools?.captured_at ??
-          null,
-        source: "CACHED",
-      };
-    }
-
     return {
       overview: null,
       printers: [],
@@ -400,23 +380,34 @@ export async function loadStatisticsData(
       loanDetails: [],
       loanUsage: [],
       inboundLoanUsage: [],
+      periodReport: null,
+      periodStatus: "UNAVAILABLE",
       updatedAt: null,
       source: "OFFLINE",
     };
   }
 
   const loadLocalSpools = dependencies.loadLocalSpools ?? loadAllSpoolRows;
-  const listLocalConsumption = dependencies.listLocalConsumption ?? listFilamentConsumption;
+  const loadLocalOverview = dependencies.loadLocalOverview ?? inventoryOverview;
+  const loadLocalPeriodReport = dependencies.loadLocalPeriodReport ?? statisticsPeriodReport;
   const listLocalPrinterOverview = dependencies.listLocalPrinterOverview ?? listPrinterOverview;
   const listLocalLoanUsageByPerson =
     dependencies.listLocalLoanUsageByPerson ?? listLoanUsageByPerson;
-  const [spoolRowsRaw, consumptionRows, printerRows, loanRows, inboundLoanRows] = await Promise.all([
+  const [
+    spoolRowsRaw,
+    localOverview,
+    localPeriodReport,
+    printerRows,
+    loanRows,
+    inboundLoanRows,
+  ] = await Promise.all([
     loadLocalSpools({
       clientReadOnly: false,
       clientHostBaseUrl: null,
       clientLibraryId: null,
     }),
-    listLocalConsumption(500, null),
+    loadLocalOverview(),
+    loadLocalPeriodReport(period),
     listLocalPrinterOverview(),
     listLocalLoanUsageByPerson(30, "OUTBOUND"),
     listLocalLoanUsageByPerson(30, "INBOUND"),
@@ -424,13 +415,15 @@ export async function loadStatisticsData(
   const spoolRows = normalizeSpoolWithMasterRows(spoolRowsRaw);
 
   return {
-    overview: deriveInventoryOverviewFromRows(spoolRows, consumptionRows),
+    overview: localOverview,
     printers: printerRows,
     spoolRows,
-    consumptionRows,
+    consumptionRows: localPeriodReport.filament_consumption,
     loanDetails: [],
     loanUsage: loanRows,
     inboundLoanUsage: inboundLoanRows,
+    periodReport: localPeriodReport,
+    periodStatus: "AVAILABLE",
     updatedAt: null,
     source: "LIVE",
   };

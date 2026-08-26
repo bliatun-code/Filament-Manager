@@ -9,15 +9,18 @@ use super::database_library_sync_auth::{
     scrub_library_sync_client_auth_secrets as scrub_library_sync_client_auth_secret_rows,
 };
 use super::database_library_sync_cache::{
+    get_library_sync_cached_locations as get_library_sync_cached_location_rows,
     save_library_sync_cached_consumption as save_library_sync_cached_consumption_rows,
     save_library_sync_cached_loans as save_library_sync_cached_loan_rows,
+    save_library_sync_cached_locations as save_library_sync_cached_location_rows,
     save_library_sync_cached_printers as save_library_sync_cached_printer_rows,
     save_library_sync_cached_snapshot as save_library_sync_cached_snapshot_row,
     save_library_sync_cached_spools as save_library_sync_cached_spool_rows,
     save_library_sync_cached_wishlist as save_library_sync_cached_wishlist_rows,
 };
 use super::database_library_sync_models::{
-    LibrarySyncCachedSnapshotRow, LibrarySyncClientAuthState, LibrarySyncSettingsRow,
+    LibrarySyncCachedLocationListRow, LibrarySyncCachedSnapshotRow, LibrarySyncClientAuthState,
+    LibrarySyncSettingsRow,
 };
 use super::database_library_sync_settings::{
     get_library_sync_library_id as get_library_sync_library_id_row,
@@ -26,6 +29,7 @@ use super::database_library_sync_settings::{
 };
 use super::database_library_sync_validation::save_library_sync_validation_state as save_library_sync_validation_state_row;
 use super::database_loan_models::SpoolLoanDetailsRow;
+use super::database_location_models::InventoryLocationRow;
 use super::database_printer_models::PrinterOverviewRow;
 use super::database_result::InventoryResult;
 use super::database_spool_models::SpoolWithMasterRow;
@@ -157,6 +161,19 @@ impl FilamentDatabase {
         rows: &[SpoolWithMasterRow],
     ) -> InventoryResult<()> {
         save_library_sync_cached_spool_rows(self.connection(), rows)
+    }
+
+    pub fn save_library_sync_cached_locations(
+        &self,
+        rows: &[InventoryLocationRow],
+    ) -> InventoryResult<LibrarySyncCachedLocationListRow> {
+        save_library_sync_cached_location_rows(self.connection(), rows)
+    }
+
+    pub fn get_library_sync_cached_locations(
+        &self,
+    ) -> InventoryResult<Option<LibrarySyncCachedLocationListRow>> {
+        get_library_sync_cached_location_rows(self.connection())
     }
 
     pub fn save_library_sync_cached_printers(

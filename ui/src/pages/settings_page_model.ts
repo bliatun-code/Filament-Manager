@@ -15,6 +15,7 @@ export type SettingsPageChromeLabels = {
 
 export const SETTINGS_PAGE_TAB_ORDER = [
   "GENERAL",
+  "FILAMENT_DEFAULTS",
   "LIBRARY",
   "PRINTERS",
   "CATALOG",
@@ -38,6 +39,7 @@ export type SettingsPageDataModel = {
   librarySyncHostBaseUrlDraft: string;
   librarySyncModeDraft: LibrarySyncMode;
   librarySyncSettings: SettingsPageData["syncSettings"];
+  librarySyncSnapshot: SettingsPageData["librarySyncSnapshot"];
   printerOverview: SettingsPageData["overviewRows"];
   printers: SettingsPageData["snapshot"]["printers"];
   revisionPollComplete: SettingsPageData["revisionPollComplete"];
@@ -117,6 +119,7 @@ export function buildSettingsPageDataModel(data: SettingsPageData): SettingsPage
     librarySyncHostBaseUrlDraft: data.syncSettings.host_base_url ?? "",
     librarySyncModeDraft: normalizeLibrarySyncMode(data.syncSettings.mode),
     librarySyncSettings: data.syncSettings,
+    librarySyncSnapshot: data.librarySyncSnapshot,
     printerOverview: data.overviewRows,
     printers: resolveSettingsPagePrinters({
       overviewRows: data.overviewRows,

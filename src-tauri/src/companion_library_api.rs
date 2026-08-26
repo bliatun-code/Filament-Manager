@@ -1,13 +1,16 @@
 use crate::backend::filament_database::{
-    FilamentDatabase, FilamentMasterCatalogRow, LibrarySyncSettingsRow, PrinterOverviewRow,
-    SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
+    FilamentDatabase, FilamentMasterCatalogRow, FilamentStandardsSnapshot, LibrarySyncSettingsRow,
+    PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow, WishlistItemRow,
 };
-use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine};
+use crate::backend::statistics::{FilamentConsumptionRow, StatisticsEngine, StatisticsPeriod};
 use crate::companion_error::CompanionApiError;
 use crate::companion_http::require_allowed_host;
 use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
+    FILAMENT_PRICE_STANDARDS_CAPABILITY, INVENTORY_BULK_MUTATION_CAPABILITY,
+    INVENTORY_LOCATIONS_CAPABILITY, LOAN_METADATA_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
+    SPOOL_COMMON_DETAILS_V2_CAPABILITY, STATISTICS_VALUE_COST_REPORT_CAPABILITY,
 };
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
@@ -29,6 +32,15 @@ pub(super) async fn handle_health(
             Ok(Json(CompanionHealthResponse {
                 ok: true,
                 api_version: "v1",
+                capabilities: &[
+                    LOAN_METADATA_CAPABILITY,
+                    INVENTORY_BULK_MUTATION_CAPABILITY,
+                    INVENTORY_LOCATIONS_CAPABILITY,
+                    SPOOL_COMMON_DETAILS_V2_CAPABILITY,
+                    PURCHASE_RECEIPT_METADATA_CAPABILITY,
+                    STATISTICS_VALUE_COST_REPORT_CAPABILITY,
+                    FILAMENT_PRICE_STANDARDS_CAPABILITY,
+                ],
                 auth_mode: state.runtime.auth_mode().to_string(),
                 access_mode: "trusted-lan",
                 library_id: sync_settings.library_id,
@@ -37,6 +49,22 @@ pub(super) async fn handle_health(
             }))
         })
         .await
+}
+
+pub(super) async fn handle_library_filament_standards(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+) -> Result<Json<FilamentStandardsSnapshot>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let snapshot = state
+        .run_blocking("library filament standards", move |state| {
+            state
+                .service
+                .get_filament_standards()
+                .map_err(CompanionApiError::from)
+        })
+        .await?;
+    Ok(Json(snapshot))
 }
 
 pub(super) async fn handle_library_snapshot(
@@ -225,6 +253,29 @@ pub(super) async fn handle_library_filament_consumption(
         })
         .await?;
     Ok(Json(rows))
+}
+
+pub(super) async fn handle_library_statistics_period_report(
+    State(state): State<CompanionApiState>,
+    headers: HeaderMap,
+    Query(period): Query<StatisticsPeriod>,
+) -> Result<Json<crate::backend::statistics::StatisticsPeriodReport>, CompanionApiError> {
+    require_allowed_host(&headers, &state.runtime)?;
+    let report = state
+        .run_blocking("library statistics period report", move |state| {
+            let stats = StatisticsEngine::open(&state.db_path)
+                .map_err(|error| CompanionApiError::Internal(error.to_string()))?;
+            stats.period_report(&period).map_err(|error| match error {
+                crate::backend::statistics::StatisticsPeriodError::InvalidPeriod(message) => {
+                    CompanionApiError::BadRequest(message)
+                }
+                crate::backend::statistics::StatisticsPeriodError::Database(error) => {
+                    CompanionApiError::Internal(error.to_string())
+                }
+            })
+        })
+        .await?;
+    Ok(Json(report))
 }
 
 pub(super) async fn handle_library_catalog_masters(

@@ -12,15 +12,20 @@ import {
 } from "../src-tauri/companion_browser/companion_i18n.js";
 import { companionLocaleAssetName } from "./generate-companion-locales.mjs";
 
-const MAX_INITIAL_TRANSLATION_BYTES = 64 * 1024;
+// Draft locales load their reviewed overlay plus English so missing keys never
+// become raw UI copy. Keep the complete synchronous lookup chain bounded.
+const MAX_INITIAL_TRANSLATION_BYTES = 76 * 1024;
 
-test("Companion locale loading fetches only the selected source dictionary", async () => {
+test("Companion locale loading fetches the selected source and configured fallback only", async () => {
   const requested = [];
   const loadModule = async (locale) => {
     requested.push(locale);
     return {
       locale,
-      default: { nav: { storage: `${locale} inventory` } },
+      default: {
+        nav: { storage: `${locale} inventory` },
+        ...(locale === "en" ? { fallbackOnly: "English fallback" } : {}),
+      },
     };
   };
 
@@ -29,10 +34,11 @@ test("Companion locale loading fetches only the selected source dictionary", asy
   assert.deepEqual(requested, ["nb"]);
   assert.equal(t("nb", "nav.storage"), "nb inventory");
 
-  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es"]);
+  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es", "en"]);
   await loadCompanionLocale("es", { loadModule });
-  assert.deepEqual(requested, ["nb", "es"]);
+  assert.deepEqual(requested, ["nb", "es", "en"]);
   assert.equal(t("es", "nav.storage"), "es inventory");
+  assert.equal(t("es", "fallbackOnly"), "English fallback");
   assert.equal(t("es", "missing.key", "Safe fallback"), "Safe fallback");
 
   assert.deepEqual(requiredCompanionDictionaryLocales("en-XA"), ["en"]);
@@ -78,9 +84,13 @@ test("every selected Companion locale stays within the initial translation budge
   ).byteLength;
 
   for (const { id } of CATALOG_LOCALES) {
-    const localeBytes = readFileSync(
-      resolve(browserRoot, companionLocaleAssetName(id)),
-    ).byteLength;
+    const localeBytes = requiredCompanionDictionaryLocales(id).reduce(
+      (total, locale) =>
+        total +
+        readFileSync(resolve(browserRoot, companionLocaleAssetName(locale)))
+          .byteLength,
+      0,
+    );
     assert.ok(
       runtimeBytes + localeBytes <= MAX_INITIAL_TRANSLATION_BYTES,
       `${id} initial translation payload is ${runtimeBytes + localeBytes} bytes`,

@@ -1,6 +1,55 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadLibrarySyncPageState } from "../lib/library_sync_state";
+import {
+  loadLibrarySyncPageState,
+  type LibrarySyncPageState,
+} from "../lib/library_sync_state";
+
+type LibrarySyncResolution = "LOADING" | "READY" | "ERROR";
+
+type ResolvedLibrarySyncUiState = LibrarySyncPageState & {
+  librarySyncResolution: LibrarySyncResolution;
+};
+
+type ResolveLibrarySyncUiStateDependencies = {
+  loadPageState?: typeof loadLibrarySyncPageState;
+};
+
+function failClosedLibrarySyncState(
+  resolution: LibrarySyncResolution,
+): ResolvedLibrarySyncUiState {
+  return {
+    clientReadOnly: true,
+    clientHostWritePaired: false,
+    clientHostDeviceName: null,
+    clientHostBaseUrl: null,
+    clientLibraryId: null,
+    clientTargetGeneration: null,
+    librarySyncResolution: resolution,
+  };
+}
+
+export async function resolveLibrarySyncUiState(
+  tauri: boolean,
+  dependencies: ResolveLibrarySyncUiStateDependencies = {},
+): Promise<ResolvedLibrarySyncUiState> {
+  if (!tauri) {
+    return {
+      ...failClosedLibrarySyncState("READY"),
+      clientReadOnly: false,
+    };
+  }
+  const loadPageState = dependencies.loadPageState ?? loadLibrarySyncPageState;
+  try {
+    return {
+      ...(await loadPageState()),
+      librarySyncResolution: "READY",
+    };
+  } catch (error) {
+    console.error(error);
+    return failClosedLibrarySyncState("ERROR");
+  }
+}
 
 export type LibrarySyncUiState = {
   clientReadOnly: boolean;
@@ -8,52 +57,62 @@ export type LibrarySyncUiState = {
   clientHostDeviceName: string | null;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
+  clientTargetGeneration: number | null;
+  librarySyncError: boolean;
   librarySyncReady: boolean;
+  librarySyncResolving: boolean;
+  retryLibrarySyncRole: () => void;
 };
 
 export function useLibrarySyncState(tauri: boolean): LibrarySyncUiState {
-  const [clientReadOnly, setClientReadOnly] = useState(false);
-  const [clientHostWritePaired, setClientHostWritePaired] = useState(false);
-  const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
-  const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
-  const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [librarySyncReady, setLibrarySyncReady] = useState(!tauri);
+  const [state, setState] = useState<ResolvedLibrarySyncUiState>(() =>
+    tauri
+      ? failClosedLibrarySyncState("LOADING")
+      : {
+          ...failClosedLibrarySyncState("READY"),
+          clientReadOnly: false,
+        },
+  );
+  const requestRef = useRef(0);
 
-  useEffect(() => {
-    if (!tauri) {
-      return;
+  const resolveRole = useCallback(async () => {
+    const requestId = requestRef.current + 1;
+    requestRef.current = requestId;
+    setState(
+      tauri
+        ? failClosedLibrarySyncState("LOADING")
+        : {
+            ...failClosedLibrarySyncState("READY"),
+            clientReadOnly: false,
+          },
+    );
+    const next = await resolveLibrarySyncUiState(tauri);
+    if (requestRef.current === requestId) {
+      setState(next);
     }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const syncState = await loadLibrarySyncPageState();
-        if (cancelled) {
-          return;
-        }
-        setClientReadOnly(syncState.clientReadOnly);
-        setClientHostWritePaired(syncState.clientHostWritePaired);
-        setClientHostDeviceName(syncState.clientHostDeviceName);
-        setClientHostBaseUrl(syncState.clientHostBaseUrl);
-        setClientLibraryId(syncState.clientLibraryId);
-      } catch (syncError) {
-        console.error(syncError);
-      } finally {
-        if (!cancelled) {
-          setLibrarySyncReady(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, [tauri]);
 
+  useEffect(() => {
+    void resolveRole();
+    return () => {
+      requestRef.current += 1;
+    };
+  }, [resolveRole]);
+
   return {
-    clientReadOnly,
-    clientHostWritePaired,
-    clientHostDeviceName,
-    clientHostBaseUrl,
-    clientLibraryId,
-    librarySyncReady,
+    clientReadOnly: state.clientReadOnly,
+    clientHostWritePaired: state.clientHostWritePaired,
+    clientHostDeviceName: state.clientHostDeviceName,
+    clientHostBaseUrl: state.clientHostBaseUrl,
+    clientLibraryId: state.clientLibraryId,
+    clientTargetGeneration: state.clientTargetGeneration,
+    librarySyncError: state.librarySyncResolution === "ERROR",
+    librarySyncReady: state.librarySyncResolution === "READY",
+    librarySyncResolving: state.librarySyncResolution === "LOADING",
+    retryLibrarySyncRole: () => {
+      if (state.librarySyncResolution !== "LOADING") {
+        void resolveRole();
+      }
+    },
   };
 }

@@ -30,6 +30,14 @@ test("review rows combine desktop and Companion copy with translator context", (
           screenshot: "docs/screenshots/example.jpg",
         },
       ],
+      groups: [
+        {
+          surface: "companion",
+          keyPrefix: "shell.",
+          meaning: "Browser Companion shell action.",
+          screenshot: "docs/screenshots/companion-phone-settings.jpg",
+        },
+      ],
     },
   });
 
@@ -43,6 +51,7 @@ test("review rows combine desktop and Companion copy with translator context", (
   );
   assert.equal(rows[1].meaning, "Persist the current edit.");
   assert.equal(rows[1].maxCharacters, 12);
+  assert.equal(rows[0].meaning, "Browser Companion shell action.");
 });
 
 test("review TSV keeps one physical row per message", () => {
@@ -64,19 +73,32 @@ test("review TSV keeps one physical row per message", () => {
   assert.match(tsv, /Première ligne\\nDeuxième ligne/);
 });
 
-test("completed catalog locales contain no English fallback rows", () => {
+test("maintained catalog locales contain no English fallback rows", () => {
   const directory = mkdtempSync(
     join(tmpdir(), "filament-manager-i18n-review-"),
+  );
+  const localeStatus = JSON.parse(
+    readFileSync(
+      new URL("../localization/locale-status.json", import.meta.url),
+      "utf8",
+    ),
   );
   try {
     for (const locale of ["de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU", "sv-SE", "da-DK", "fi-FI"]) {
       const outputPath = join(directory, `${locale}.tsv`);
       const result = exportLocalizationReview({ locale, outputPath });
-      assert.equal(
-        result.states.fallback,
-        0,
-        `${locale} contains fallback rows`,
+      const releaseStatus = localeStatus.locales?.[locale]?.releaseStatus;
+      assert.ok(
+        releaseStatus === "draft" || releaseStatus === "maintained",
+        `${locale} has an unsupported release status`,
       );
+      if (releaseStatus === "maintained") {
+        assert.equal(
+          result.states.fallback,
+          0,
+          `${locale} contains fallback rows`,
+        );
+      }
       assert.equal(
         readFileSync(outputPath, "utf8").split("\n")[0],
         "surface\tkey\tstate\tsource_en\ttarget\tmeaning\tmax_characters\tscreenshot",

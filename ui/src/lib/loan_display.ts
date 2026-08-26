@@ -135,9 +135,11 @@ export function filterLoans(
     const searchMatch =
       term.length === 0
         ? true
-        : `${loan.loan.borrower_name} ${loan.loan.counterparty_name ?? ""} ${loan.material ?? ""} ${
-            loan.filament_name ?? ""
-          } ${loan.color_name ?? ""} ${loan.loan.spool_id}`
+        : `${loan.loan.borrower_name} ${loan.loan.counterparty_name ?? ""} ${
+            loan.loan.counterparty_contact ?? ""
+          } ${loan.material ?? ""} ${loan.filament_name ?? ""} ${loan.color_name ?? ""} ${
+            loan.loan.spool_id
+          }`
             .toLowerCase()
             .includes(term);
     return statusMatch && searchMatch;

@@ -14,11 +14,14 @@ import {
   isSpoolStatusOnHand,
   isSpoolStatusRfidMatchable,
   isSpoolStatusUnavailableForSlot,
+  isSpoolLowStock,
+  isSpoolStockHealthy,
   normalizeLoanDirection,
   normalizeLoanStatus,
   normalizeOwnershipType,
   normalizeSpoolStatus,
   parseSpoolStatus,
+  resolveSpoolStockGrams,
 } from "./inventory_domain";
 
 test("inventory domain normalizers preserve legacy spool and ownership values", () => {
@@ -61,6 +64,38 @@ test("inventory domain status helpers preserve contextual legacy semantics", () 
   assert.equal(isSpoolStatusRfidMatchable("DELETED"), false);
   assert.equal(isSpoolStatusMetadataMatchable("EMPTY"), false);
   assert.equal(isSpoolStatusMetadataMatchable("LEGACY_ACTIVE"), true);
+});
+
+test("inventory domain centralizes low-stock boundaries and weight precedence", () => {
+  const stock = (remainingGrams: number) => ({
+    status: "IN_STOCK",
+    remainingGrams,
+    currentWeightGrams: 900,
+    initialWeightGrams: 1000,
+  });
+
+  assert.equal(isSpoolLowStock(stock(0)), false);
+  assert.equal(isSpoolLowStock(stock(1)), true);
+  assert.equal(isSpoolLowStock(stock(199)), true);
+  assert.equal(isSpoolLowStock(stock(200)), true);
+  assert.equal(isSpoolLowStock(stock(201)), false);
+  assert.equal(isSpoolStockHealthy(stock(200)), false);
+  assert.equal(isSpoolStockHealthy(stock(201)), true);
+  assert.equal(isSpoolLowStock({ ...stock(90), status: "EMPTY" }), false);
+  assert.equal(isSpoolLowStock({ ...stock(90), status: "LOST" }), false);
+  assert.equal(isSpoolLowStock({ ...stock(90), status: "BORROWED" }), false);
+  assert.equal(isSpoolLowStock(stock(299), 300), true);
+  assert.equal(isSpoolLowStock(stock(300), 300), true);
+  assert.equal(isSpoolLowStock(stock(301), 300), false);
+  assert.equal(
+    resolveSpoolStockGrams({
+      remainingGrams: null,
+      currentWeightGrams: 175,
+      initialWeightGrams: 1000,
+    }),
+    175,
+  );
+  assert.equal(resolveSpoolStockGrams({ remainingGrams: Number.NaN }), 0);
 });
 
 test("inventory domain normalizers preserve loan direction and status semantics", () => {

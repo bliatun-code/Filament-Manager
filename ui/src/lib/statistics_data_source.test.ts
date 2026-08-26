@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  loadFilamentConsumptionBreakdown,
   loadLoanBreakdownRows,
   loadStatisticsData,
   loadStatisticsPageData,
@@ -12,9 +11,16 @@ import type {
   InventoryOverview,
   LibrarySyncSettings,
   PrinterOverviewRow,
+  StatisticsPeriod,
+  StatisticsPeriodReport,
   SpoolLoanDetailsRow,
   SpoolWithMasterRow,
 } from "./tauri_client";
+
+const reportingPeriod: StatisticsPeriod = {
+  start_at_utc: "2026-08-01T00:00:00Z",
+  end_at_utc: "2026-09-01T00:00:00Z",
+};
 
 function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview {
   return {
@@ -45,6 +51,23 @@ function consumptionRow(id: string): FilamentConsumptionRow {
     jobs: 1,
     ownership_type: "OWNED",
     owner_name: null,
+  };
+}
+
+function periodReport(
+  overrides: Partial<StatisticsPeriodReport> = {},
+): StatisticsPeriodReport {
+  return {
+    period: reportingPeriod,
+    total_used_g: 100,
+    owned_used_g: 100,
+    borrowed_in_used_g: 0,
+    total_jobs: 1,
+    successful_jobs: 1,
+    failed_jobs: 0,
+    printer_usage: [],
+    filament_consumption: [consumptionRow("period-consumption")],
+    ...overrides,
   };
 }
 
@@ -135,61 +158,6 @@ function printerRow(id: string): PrinterOverviewRow {
   };
 }
 
-test("loadFilamentConsumptionBreakdown uses host consumption in client mode", async () => {
-  const calls: Array<{ baseUrl: string; libraryId: string | null | undefined; limit: number; printerId: string | null }> = [];
-  const rows = await loadFilamentConsumptionBreakdown(
-    {
-      clientReadOnly: true,
-      clientHostBaseUrl: " http://host ",
-      clientLibraryId: " library-1 ",
-      printerId: "printer-1",
-    },
-    {
-      fetchHostConsumption: async (baseUrl, libraryId, limit, printerId) => {
-        calls.push({ baseUrl, libraryId, limit, printerId });
-        return [consumptionRow("host-spool")];
-      },
-    },
-  );
-
-  assert.deepEqual(calls, [
-    { baseUrl: "http://host", libraryId: "library-1", limit: 500, printerId: "printer-1" },
-  ]);
-  assert.deepEqual(rows.map((row) => row.filament_name), ["host-spool"]);
-});
-
-test("loadFilamentConsumptionBreakdown uses local consumption outside client host mode", async () => {
-  const calls: Array<{ limit: number; printerId?: string | null }> = [];
-  const rows = await loadFilamentConsumptionBreakdown(
-    { clientReadOnly: false, printerId: null, limit: 25 },
-    {
-      listLocalConsumption: async (limit, printerId) => {
-        calls.push({ limit, printerId });
-        return [consumptionRow("local-spool")];
-      },
-    },
-  );
-
-  assert.deepEqual(calls, [{ limit: 25, printerId: null }]);
-  assert.deepEqual(rows.map((row) => row.filament_name), ["local-spool"]);
-});
-
-test("loadFilamentConsumptionBreakdown avoids local fallback for incomplete client host details", async () => {
-  const rows = await loadFilamentConsumptionBreakdown(
-    { clientReadOnly: true, clientHostBaseUrl: " ", clientLibraryId: "library-1" },
-    {
-      fetchHostConsumption: async () => {
-        throw new Error("host consumption should not load without a complete target");
-      },
-      listLocalConsumption: async () => {
-        throw new Error("local consumption should not load in client mode");
-      },
-    },
-  );
-
-  assert.deepEqual(rows, []);
-});
-
 test("loadLoanBreakdownRows reuses cached client loan details", async () => {
   const cachedRows = [loanRow("client-spool")];
   const cachedRow = cachedRows[0]!;
@@ -235,14 +203,17 @@ test("loadLoanBreakdownRows loads local loans outside client mode", async () => 
 });
 
 test("loadStatisticsPageData loads sync settings once and returns derived sync state", async () => {
-  const result = await loadStatisticsPageData({
+  let forwardedPeriod: StatisticsPeriod | null = null;
+  const result = await loadStatisticsPageData(reportingPeriod, {
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
         host_base_url: "http://host",
         host_device_name: "Host",
       }),
-    loadData: async () => ({
+    loadData: async (_settings, period) => {
+      forwardedPeriod = period;
+      return {
       overview: null,
       printers: [],
       spoolRows: [],
@@ -250,18 +221,22 @@ test("loadStatisticsPageData loads sync settings once and returns derived sync s
       loanDetails: [],
       loanUsage: [],
       inboundLoanUsage: [],
+      periodReport: null,
+      periodStatus: "UNAVAILABLE",
       updatedAt: null,
       source: "OFFLINE",
-    }),
+      };
+    },
   });
 
+  assert.deepEqual(forwardedPeriod, reportingPeriod);
   assert.equal(result.syncState.clientReadOnly, true);
   assert.equal(result.syncState.clientHostDeviceName, "Host");
   assert.equal(result.syncState.clientHostBaseUrl, "http://host");
 });
 
 test("loadStatisticsPageData keeps incomplete client settings in client mode", async () => {
-  const result = await loadStatisticsPageData({
+  const result = await loadStatisticsPageData(reportingPeriod, {
     loadSyncSettings: async () =>
       syncSettings({
         mode: "CLIENT",
@@ -276,6 +251,8 @@ test("loadStatisticsPageData keeps incomplete client settings in client mode", a
       loanDetails: [],
       loanUsage: [],
       inboundLoanUsage: [],
+      periodReport: null,
+      periodStatus: "UNAVAILABLE",
       updatedAt: null,
       source: "OFFLINE",
     }),
@@ -285,7 +262,7 @@ test("loadStatisticsPageData keeps incomplete client settings in client mode", a
   assert.equal(result.syncState.clientHostBaseUrl, " ");
 });
 
-test("loadStatisticsData avoids local fallback when client host details are incomplete", async () => {
+test("loadStatisticsData ignores unscoped caches when client host details are incomplete", async () => {
   const result = await loadStatisticsData(
     syncSettings({
       mode: "CLIENT",
@@ -309,12 +286,13 @@ test("loadStatisticsData avoids local fallback when client host details are inco
         rows: [loanRow("cached-loan")],
       },
     }),
+    reportingPeriod,
     {
       loadLocalSpools: async () => {
         throw new Error("local spools should not load in client mode");
       },
-      listLocalConsumption: async () => {
-        throw new Error("local consumption should not load in client mode");
+      loadLocalPeriodReport: async () => {
+        throw new Error("local period report should not load in client mode");
       },
       listLocalPrinterOverview: async () => {
         throw new Error("local printers should not load in client mode");
@@ -325,18 +303,15 @@ test("loadStatisticsData avoids local fallback when client host details are inco
     },
   );
 
-  assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "spool-cache");
-  assert.equal(result.overview?.total_spools, 1);
-  assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
-  assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
-  assert.equal(result.spoolRows[0]?.spool.status, "IN_USE");
-  assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
-  assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
-  assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
+  assert.equal(result.source, "OFFLINE");
+  assert.equal(result.updatedAt, null);
+  assert.equal(result.overview, null);
+  assert.deepEqual(result.printers, []);
+  assert.deepEqual(result.spoolRows, []);
+  assert.deepEqual(result.loanDetails, []);
 });
 
-test("loadStatisticsData prefers cached spool rows over stale snapshot totals", async () => {
+test("loadStatisticsData ignores unscoped snapshot and spool caches", async () => {
   const result = await loadStatisticsData(
     syncSettings({
       mode: "CLIENT",
@@ -352,6 +327,8 @@ test("loadStatisticsData prefers cached spool rows over stale snapshot totals", 
           total_owned_spools: 99,
           low_stock: 99,
           owned_low_stock: 99,
+          total_consumption_30d: 777,
+          owned_consumption_30d: 777,
         }),
         total_spools: 99,
         in_use: 0,
@@ -364,12 +341,13 @@ test("loadStatisticsData prefers cached spool rows over stale snapshot totals", 
         rows: [spoolRow("cached-spool")],
       },
     }),
+    reportingPeriod,
     {
       loadLocalSpools: async () => {
         throw new Error("local spools should not load in client mode");
       },
-      listLocalConsumption: async () => {
-        throw new Error("local consumption should not load in client mode");
+      loadLocalPeriodReport: async () => {
+        throw new Error("local period report should not load in client mode");
       },
       listLocalPrinterOverview: async () => {
         throw new Error("local printers should not load in client mode");
@@ -380,18 +358,27 @@ test("loadStatisticsData prefers cached spool rows over stale snapshot totals", 
     },
   );
 
-  assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "spool-cache");
-  assert.equal(result.overview?.total_spools, 1);
-  assert.equal(result.overview?.low_stock, 0);
+  assert.equal(result.source, "OFFLINE");
+  assert.equal(result.updatedAt, null);
+  assert.equal(result.overview, null);
+  assert.deepEqual(result.spoolRows, []);
 });
 
 test("loadStatisticsData marks local statistics loads as live", async () => {
   const result = await loadStatisticsData(
     syncSettings(),
+    reportingPeriod,
     {
       loadLocalSpools: async () => [spoolRow("local-spool")],
-      listLocalConsumption: async () => [consumptionRow("local-consumption")],
+      loadLocalOverview: async () => overview({
+        total_spools: 1,
+        total_consumption_30d: 777,
+        owned_consumption_30d: 777,
+      }),
+      loadLocalPeriodReport: async (period) => {
+        assert.deepEqual(period, reportingPeriod);
+        return periodReport();
+      },
       listLocalPrinterOverview: async () => [printerRow("local-printer")],
       listLocalLoanUsageByPerson: async (_days, direction) => [
         {
@@ -408,12 +395,17 @@ test("loadStatisticsData marks local statistics loads as live", async () => {
   assert.equal(result.source, "LIVE");
   assert.equal(result.updatedAt, null);
   assert.equal(result.overview?.total_spools, 1);
+  assert.equal(result.overview?.owned_consumption_30d, 777);
+  assert.equal(result.periodStatus, "AVAILABLE");
+  assert.deepEqual(result.consumptionRows.map((row) => row.filament_name), [
+    "period-consumption",
+  ]);
   assert.deepEqual(result.printers.map((row) => row.printer.id), ["local-printer"]);
   assert.deepEqual(result.loanUsage.map((row) => row.borrower_name), ["Ada"]);
   assert.deepEqual(result.inboundLoanUsage.map((row) => row.borrower_name), ["Borrower"]);
 });
 
-test("loadStatisticsData normalizes cached client loan details", async () => {
+test("loadStatisticsData ignores unscoped cached client loan details", async () => {
   const cachedLoan = loanRow("cached-inbound");
   cachedLoan.loan.loan_direction = "in-bound";
   cachedLoan.loan.loan_status = "active";
@@ -427,14 +419,14 @@ test("loadStatisticsData normalizes cached client loan details", async () => {
         rows: [cachedLoan],
       },
     }),
+    reportingPeriod,
   );
 
-  assert.equal(result.source, "CACHED");
-  assert.equal(result.updatedAt, "loan-cache");
-  assert.equal(result.loanDetails[0]?.loan.loan_direction, "INBOUND");
-  assert.equal(result.loanDetails[0]?.loan.loan_status, "RETURNED");
+  assert.equal(result.source, "OFFLINE");
+  assert.equal(result.updatedAt, null);
+  assert.deepEqual(result.loanDetails, []);
   assert.deepEqual(result.loanUsage, []);
-  assert.deepEqual(result.inboundLoanUsage.map((row) => row.borrower_name), ["Ada"]);
+  assert.deepEqual(result.inboundLoanUsage, []);
   assert.equal(cachedLoan.loan.loan_direction, "in-bound");
   assert.equal(cachedLoan.loan.loan_status, "active");
 });
@@ -449,7 +441,9 @@ test("loadStatisticsData keeps partial client host data and cache when host call
         mode: "CLIENT",
         host_base_url: " http://host ",
         library_id: " library-1 ",
+        target_generation: 7,
       }),
+      reportingPeriod,
       {
         fetchHostSnapshot: async () => {
           throw new Error("snapshot unavailable");
@@ -467,10 +461,13 @@ test("loadStatisticsData keeps partial client host data and cache when host call
           });
           return [spoolRow("spool-1")];
         },
-        fetchHostConsumption: async (baseUrl, libraryId) => {
+        fetchHostPeriodReport: async (baseUrl, libraryId, period) => {
           assert.equal(baseUrl, "http://host");
           assert.equal(libraryId, "library-1");
-          return [consumptionRow("host-consumption")];
+          assert.deepEqual(period, reportingPeriod);
+          return periodReport({
+            filament_consumption: [consumptionRow("host-consumption")],
+          });
         },
         fetchCachedPrinterOverview: async () => ({
           captured_at: "printer-cache",
@@ -496,6 +493,99 @@ test("loadStatisticsData keeps partial client host data and cache when host call
     assert.deepEqual(result.consumptionRows.map((row) => row.filament_name), [
       "host-consumption",
     ]);
+    assert.equal(result.periodStatus, "AVAILABLE");
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("loadStatisticsData marks an older host snapshot as not periodizable", async () => {
+  const result = await loadStatisticsData(
+    syncSettings({
+      mode: "CLIENT",
+      host_base_url: "http://host",
+      library_id: "library-1",
+    }),
+    reportingPeriod,
+    {
+      fetchHostSnapshot: async () => ({
+        captured_at: "snapshot-live",
+        library_id: "library-1",
+        device_name: "Host",
+        sync_mode: "HOST",
+        inventory: overview({
+          total_spools: 1,
+          total_consumption_30d: 321,
+          owned_consumption_30d: 321,
+        }),
+        total_spools: 1,
+        in_use: 0,
+        low_stock: 0,
+        active_loans: 0,
+        printers: 1,
+      }),
+      fetchHostPrinterOverview: async () => [printerRow("live-printer")],
+      fetchHostLoans: async () => [],
+      loadHostSpools: async () => [spoolRow("live-spool")],
+      fetchHostPeriodReport: async (baseUrl, libraryId, period) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
+        assert.deepEqual(period, reportingPeriod);
+        return null;
+      },
+      fetchCachedPrinterOverview: async () => null,
+      fetchCachedLoans: async () => null,
+      fetchCachedSpools: async () => null,
+    },
+  );
+
+  assert.equal(result.source, "LIVE");
+  assert.equal(result.periodStatus, "LEGACY_HOST");
+  assert.equal(result.periodReport, null);
+  assert.deepEqual(result.consumptionRows, []);
+  assert.equal(result.overview?.owned_consumption_30d, 321);
+});
+
+test("loadStatisticsData distinguishes a period report failure from an older host", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-1",
+        target_generation: 7,
+      }),
+      reportingPeriod,
+      {
+        fetchHostSnapshot: async () => ({
+          captured_at: "snapshot-live",
+          library_id: "library-1",
+          device_name: "Host",
+          sync_mode: "HOST",
+          inventory: overview({ total_spools: 1 }),
+          total_spools: 1,
+          in_use: 0,
+          low_stock: 0,
+          active_loans: 0,
+          printers: 1,
+        }),
+        fetchHostPrinterOverview: async () => [printerRow("live-printer")],
+        fetchHostLoans: async () => [],
+        loadHostSpools: async () => [spoolRow("live-spool")],
+        fetchHostPeriodReport: async () => {
+          throw new Error("period endpoint unavailable");
+        },
+        fetchCachedPrinterOverview: async () => null,
+        fetchCachedLoans: async () => null,
+        fetchCachedSpools: async () => null,
+      },
+    );
+
+    assert.equal(result.source, "CACHED");
+    assert.equal(result.periodStatus, "UNAVAILABLE");
+    assert.equal(result.periodReport, null);
   } finally {
     console.error = originalConsoleError;
   }
@@ -510,7 +600,9 @@ test("loadStatisticsData timestamps the fallback slice when snapshot is live", a
         mode: "CLIENT",
         host_base_url: "http://host",
         library_id: "library-1",
+        target_generation: 7,
       }),
+      reportingPeriod,
       {
         fetchHostSnapshot: async () => ({
           captured_at: "snapshot-live",
@@ -529,7 +621,7 @@ test("loadStatisticsData timestamps the fallback slice when snapshot is live", a
         },
         fetchHostLoans: async () => [loanRow("live-loan")],
         loadHostSpools: async () => [spoolRow("live-spool")],
-        fetchHostConsumption: async () => [consumptionRow("live-consumption")],
+        fetchHostPeriodReport: async () => periodReport(),
         fetchCachedPrinterOverview: async () => ({
           captured_at: "printer-cache",
           rows: [printerRow("cached-printer")],
@@ -557,11 +649,9 @@ test("loadStatisticsData marks cached spool fallback as cached statistics", asyn
         mode: "CLIENT",
         host_base_url: "http://host",
         library_id: "library-1",
-        cached_spools: {
-          captured_at: "spool-cache",
-          rows: [spoolRow("cached-spool")],
-        },
+        target_generation: 7,
       }),
+      reportingPeriod,
       {
         fetchHostSnapshot: async () => {
           throw new Error("snapshot unavailable");
@@ -571,12 +661,13 @@ test("loadStatisticsData marks cached spool fallback as cached statistics", asyn
         loadHostSpools: async () => {
           throw new Error("host spools unavailable");
         },
-        fetchHostConsumption: async () => [consumptionRow("live-consumption")],
+        fetchHostPeriodReport: async () => periodReport(),
         fetchCachedPrinterOverview: async () => null,
         fetchCachedLoans: async () => null,
-        fetchCachedSpools: async () => {
-          throw new Error("cached spools endpoint unavailable");
-        },
+        fetchCachedSpools: async () => ({
+          captured_at: "spool-cache",
+          rows: [spoolRow("cached-spool")],
+        }),
       },
     );
 

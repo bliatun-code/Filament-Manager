@@ -1,28 +1,57 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { InventoryPageWorkspace } from "../components/inventory_page_workspace";
+import { InventoryLocationDatalist } from "../components/inventory_location_datalist";
+import { InventoryLoadSpoolModal } from "../components/inventory_load_spool_modal";
+import type { InventoryWorkspaceView } from "../components/inventory_workspace_navigation";
 import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_modal";
-import { InventorySpoolDetailModal } from "../components/inventory_spool_detail_modal";
+import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
+import { commandErrorText } from "../lib/error_text";
 import { useI18n } from "../lib/i18n";
 import {
   chooseDesktopVisualQaLoanSpool,
   chooseDesktopVisualQaSpoolId,
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
-import { isInventorySpoolLoanTrackingCandidate } from "../lib/inventory_list_model";
+import {
+  isInventorySpoolLoanTrackingCandidate,
+  type InventoryLocationFilter,
+} from "../lib/inventory_list_model";
+import {
+  archiveLocationForInventory,
+  createLocationForInventory,
+  deleteLocationForInventory,
+  mergeLocationsForInventory,
+  renameLocationForInventory,
+  restoreLocationForInventory,
+  selectableInventoryLocations,
+  type InventoryLocationMutationContext,
+} from "../lib/inventory_location_data_source";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
+import { inventoryLocationUsageById } from "../lib/inventory_location_model";
 import {
   buildInventoryDetailVisualFixture,
   isInventoryDetailVisualFixtureEnabled,
 } from "../lib/inventory_visual_fixture";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { useInventoryAddWorkflow } from "../lib/use_inventory_add_workflow";
+import { useInventoryBulkActions } from "../lib/use_inventory_bulk_actions";
 import { useInventoryDetailVisualFixture } from "../lib/use_inventory_detail_visual_fixture";
 import { useInventoryFeedbackTimeout } from "../lib/use_inventory_feedback_timeout";
 import { useInventoryFilters } from "../lib/use_inventory_filters";
 import { useInventoryHistoryFormatters } from "../lib/use_inventory_history_formatters";
 import { useInventoryLoanTrackingModal } from "../lib/use_inventory_loan_tracking_modal";
+import { useInventoryLabelSheetAction } from "../lib/use_inventory_label_sheet_action";
+import { useInventoryLoadSpoolAction } from "../lib/use_inventory_load_spool_action";
 import { useInventoryPageData } from "../lib/use_inventory_page_data";
 import { useInventoryPrinterSlots } from "../lib/use_inventory_printer_slots";
 import { useInventoryRfidCaptureRefresh } from "../lib/use_inventory_rfid_capture_refresh";
@@ -36,16 +65,29 @@ import { useInventorySpoolDetailUtilityActions } from "../lib/use_inventory_spoo
 import { useInventorySpoolQrArtifacts } from "../lib/use_inventory_spool_qr_artifacts";
 import { useInventorySpoolSelection } from "../lib/use_inventory_spool_selection";
 import { useInventoryWriteGuards } from "../lib/use_inventory_write_guards";
+import { useDefaultPurchaseCurrency } from "../lib/use_default_purchase_currency";
+import {
+  useInventoryUnsavedChangesGuard,
+  type InventoryNavigationGuard,
+} from "../lib/use_inventory_unsaved_changes_guard";
 import { isTauri } from "../lib/tauri_client";
+
+const InventorySpoolDetailModal = lazy(() =>
+  import("../components/inventory_spool_detail_modal").then((module) => ({
+    default: module.InventorySpoolDetailModal,
+  })),
+);
 
 type InventoryPageProps = {
   navigationIntent?: InventoryNavigationIntent;
   onConsumeNavigationIntent?: () => void;
+  onNavigationGuardChange?: (guard: InventoryNavigationGuard | null) => void;
 };
 
 export default function InventoryPage({
   navigationIntent = null,
   onConsumeNavigationIntent,
+  onNavigationGuardChange,
 }: InventoryPageProps) {
   const { t, locale } = useI18n();
   const resolvedTheme = useResolvedTheme();
@@ -56,6 +98,8 @@ export default function InventoryPage({
   );
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [error, setError] = useState<string | null>(null);
+  const [activeWorkspaceView, setActiveWorkspaceView] =
+    useState<InventoryWorkspaceView>("STOCK");
   const [rfidCaptureFieldsBySlotId, setRfidCaptureFieldsBySlotId] = useState<
     Record<string, RfidCaptureField[]>
   >({});
@@ -69,17 +113,24 @@ export default function InventoryPage({
     clientInventoryUpdatedAt,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     completeDataLoad,
     historyLoading,
     historyRows,
     librarySyncReady,
+    librarySyncResolving,
     loadError,
     loading,
+    locations,
+    locationsLoading,
+    locationMutationsSupported,
+    locationSource,
     printerOverview,
     refreshInventoryData,
     refreshing,
     reloadActiveLoans,
     reloadPrinterOverview,
+    retryLibrarySyncRole,
     reloadSpoolDetail,
     reloadSpools,
     reloadWishlist,
@@ -100,12 +151,24 @@ export default function InventoryPage({
     tauriAvailable: tauri,
     t,
   });
+  const defaultPurchaseCurrency = useDefaultPurchaseCurrency({
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    tauriAvailable: tauri,
+  });
+  const locationUsageById = useMemo(
+    () => inventoryLocationUsageById(spools),
+    [spools],
+  );
   const {
     activeFilterCount,
     advancedFiltersOpen,
+    clearLocationFilter,
     filteredSpools,
     groupedSpools,
     inventoryView,
+    locationFilter,
     lowStockOnly,
     materialFilter,
     materialOptions,
@@ -121,6 +184,7 @@ export default function InventoryPage({
     setStatusFilter,
     setVendorFilter,
     showLowStockList,
+    showLocationSpools,
     statusFilter,
     vendorFilter,
     vendorOptions,
@@ -128,6 +192,18 @@ export default function InventoryPage({
   } = useInventoryFilters(spools, {
     deterministicPagePreferences: Boolean(desktopVisualQaScenario || detailVisualFixture),
   });
+  const openLinkedLocationSpools = useCallback(
+    (location: InventoryLocationFilter) => {
+      showLocationSpools(location);
+      setActiveWorkspaceView("STOCK");
+      if (typeof window !== "undefined") {
+        window.requestAnimationFrame(() => {
+          document.getElementById("inventory-location-filter-chip")?.focus();
+        });
+      }
+    },
+    [showLocationSpools],
+  );
   const {
     closeRfidCaptureModal,
     closeRollModal,
@@ -156,6 +232,118 @@ export default function InventoryPage({
   const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
   const [rfidCaptureLoading, setRfidCaptureLoading] = useState(false);
 
+  const locationMutationContext = useMemo<InventoryLocationMutationContext>(
+    () => ({
+      clientHostBaseUrl,
+      clientHostWritePaired,
+      clientLibraryId,
+      clientReadOnly,
+      mutationsSupported: locationMutationsSupported,
+    }),
+    [
+      clientHostBaseUrl,
+      clientHostWritePaired,
+      clientLibraryId,
+      clientReadOnly,
+      locationMutationsSupported,
+    ],
+  );
+
+  const runLocationMutation = useCallback(
+    async (
+      operation: () => Promise<unknown>,
+      successMessage: string,
+      reloadOnFailure = false,
+    ): Promise<boolean> => {
+      if (!tauri || manageBusy) {
+        return false;
+      }
+      setManageBusy(true);
+      setError(null);
+      setInfoMessage(null);
+      try {
+        await operation();
+        await reloadSpools();
+        setInfoMessage(successMessage);
+        return true;
+      } catch (locationError) {
+        setError(
+          commandErrorText(
+            locationError,
+            t("errors.requestFailed", "The request could not be completed."),
+            t,
+          ),
+        );
+        if (reloadOnFailure) {
+          await reloadSpools();
+        }
+        return false;
+      } finally {
+        setManageBusy(false);
+      }
+    },
+    [manageBusy, reloadSpools, t, tauri],
+  );
+
+  const createLocation = useCallback(
+    (name: string) =>
+      runLocationMutation(
+        () => createLocationForInventory(locationMutationContext, name),
+        t("inventory.locationCreated", "Location created."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const renameLocation = useCallback(
+    (locationId: string, name: string) =>
+      runLocationMutation(
+        () => renameLocationForInventory(locationMutationContext, locationId, name),
+        t("inventory.locationRenamed", "Location renamed."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const archiveLocation = useCallback(
+    (locationId: string) =>
+      runLocationMutation(
+        () => archiveLocationForInventory(locationMutationContext, locationId),
+        t("inventory.locationArchived", "Location archived."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const restoreLocation = useCallback(
+    (locationId: string) =>
+      runLocationMutation(
+        () => restoreLocationForInventory(locationMutationContext, locationId),
+        t("inventory.locationRestored", "Location restored."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const deleteLocation = useCallback(
+    (locationId: string) =>
+      runLocationMutation(
+        () => deleteLocationForInventory(locationMutationContext, locationId),
+        t("inventory.locationDeleted", "Location deleted."),
+        true,
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const mergeLocations = useCallback(
+    (sourceId: string, targetId: string) =>
+      runLocationMutation(
+        () => mergeLocationsForInventory(locationMutationContext, sourceId, targetId),
+        t("inventory.locationsMerged", "Locations merged."),
+      ),
+    [locationMutationContext, runLocationMutation, t],
+  );
+
+  const openPurchaseQueue = useCallback(() => {
+    setActiveWorkspaceView("PURCHASES");
+  }, []);
+
   const { canUseClientHostWrite, ensureLocalWriteAllowed } = useInventoryWriteGuards({
     clientHostBaseUrl,
     clientHostWritePaired,
@@ -170,7 +358,9 @@ export default function InventoryPage({
     addModalActive,
     modalProps: addModalProps,
     openAddModal,
+    purchaseQueueProps,
     reloadCatalog,
+    resetPurchaseQueue,
     setMasters,
     switchToManageMode,
   } = useInventoryAddWorkflow({
@@ -178,10 +368,14 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    defaultPurchaseCurrency,
     ensureLocalWriteAllowed,
     error,
     infoMessage,
     librarySyncReady,
+    onOpenPurchaseQueue: openPurchaseQueue,
+    purchaseActionsDisabled:
+      !librarySyncReady || (clientReadOnly ? !clientHostWritePaired : false),
     reloadSpools,
     reloadWishlist,
     resolvedTheme,
@@ -197,7 +391,6 @@ export default function InventoryPage({
   const { onBambuBatchInputChange, onCatalogQueryChange, onCreateModeChange } = addModalProps;
   const inventoryAddModalProps = {
     ...addModalProps,
-    autoFocusWishlistQueue: desktopVisualQaScenario === "wishlist-queue",
     autoOpenBambuBatch: desktopVisualQaScenario === "bambu-batch-add",
   };
 
@@ -215,17 +408,70 @@ export default function InventoryPage({
     });
   }, [refreshInventoryData, reloadCatalog, selectedSpoolId, showRollModal]);
 
+  const retryInventoryPageLoad = useCallback(() => {
+    if (!librarySyncReady) {
+      retryLibrarySyncRole();
+      return;
+    }
+    refreshInventoryPage();
+  }, [librarySyncReady, refreshInventoryPage, retryLibrarySyncRole]);
+
   useEffect(() => {
     if (!navigationIntent) {
       return;
     }
-    if (navigationIntent.kind === "LOW_STOCK") {
+    if (navigationIntent.kind === "SPOOL_DETAIL") {
+      if (!librarySyncReady || loading) {
+        return;
+      }
+      const targetSpool = spools.find((spool) => spool.id === navigationIntent.spoolId);
+      if (!targetSpool) {
+        return;
+      }
+      resetFilters();
+      setActiveWorkspaceView("STOCK");
+      openRollModal(targetSpool.id);
+    } else if (navigationIntent.kind === "LOW_STOCK") {
+      setActiveWorkspaceView("STOCK");
       showLowStockList();
     } else if (navigationIntent.kind === "ADD_SPOOL") {
+      setActiveWorkspaceView("STOCK");
       openAddModal();
+    } else if (navigationIntent.kind === "PURCHASES") {
+      resetPurchaseQueue(navigationIntent.status);
+      openPurchaseQueue();
+      if (navigationIntent.notice === "CREATED") {
+        setInfoMessage(
+          t(
+            "dashboard.actionPurchaseAdded",
+            "Added to the wishlist. Opening Purchases.",
+          ),
+        );
+      } else if (navigationIntent.notice === "REUSED") {
+        setInfoMessage(
+          t(
+            "dashboard.actionPurchaseReused",
+            "An open purchase already exists. Reusing it and opening Purchases.",
+          ),
+        );
+      }
     }
     onConsumeNavigationIntent?.();
-  }, [navigationIntent, onConsumeNavigationIntent, openAddModal, showLowStockList]);
+  }, [
+    navigationIntent,
+    librarySyncReady,
+    loading,
+    onConsumeNavigationIntent,
+    openAddModal,
+    openPurchaseQueue,
+    openRollModal,
+    resetFilters,
+    resetPurchaseQueue,
+    setInfoMessage,
+    showLowStockList,
+    spools,
+    t,
+  ]);
 
   useInventoryDetailVisualFixture({
     completeDataLoad,
@@ -260,17 +506,25 @@ export default function InventoryPage({
   const {
     confirmDelete,
     confirmPurge,
+    commonDetailsDirty,
     editMasterColorName,
     editMasterFilamentName,
     editMasterHexColor,
     editMasterMaterial,
     editMasterVendor,
+    markCommonDetailsSaved,
+    markMasterMetadataSaved,
     masterEditUnlocked,
+    masterMetadataDirty,
+    resetDetailDrafts,
     selectedSpoolLocationDraft,
     selectedSpoolOwnerContactDraft,
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft,
+    selectedSpoolPurchaseMetadataDraft,
+    selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
     setConfirmDelete,
     setConfirmPurge,
@@ -285,6 +539,9 @@ export default function InventoryPage({
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchasePriceBatchLockedDraft,
+    setSelectedSpoolPurchaseMetadataDraft,
+    setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
     setShowRfidCapturedFields,
     setShowRollHistory,
@@ -311,10 +568,23 @@ export default function InventoryPage({
     setConfirmPurge(false);
   }, [setConfirmDelete, setConfirmPurge]);
 
-  const closeSelectedSpoolDetailModal = useCallback(() => {
+  const discardSelectedSpoolDetail = useCallback(() => {
+    resetDetailDrafts();
     cancelDangerZoneConfirmation();
     closeRollModal();
-  }, [cancelDangerZoneConfirmation, closeRollModal]);
+  }, [cancelDangerZoneConfirmation, closeRollModal, resetDetailDrafts]);
+
+  const hasUnsavedDetailChanges = commonDetailsDirty || masterMetadataDirty;
+  const closeSelectedSpoolDetailModal = useInventoryUnsavedChangesGuard({
+    active: showRollModal,
+    hasUnsavedChanges: hasUnsavedDetailChanges,
+    message: t(
+      "inventory.discardUnsavedChanges",
+      "Discard unsaved roll changes? Your edits will be lost.",
+    ),
+    onDiscard: discardSelectedSpoolDetail,
+    onNavigationGuardChange,
+  });
 
   const {
     companionShellUrl: selectedSpoolQrCompanionShellUrl,
@@ -412,6 +682,14 @@ export default function InventoryPage({
   });
 
   const selectRollForManage = useCallback((spoolId: string) => {
+    if (
+      showRollModal &&
+      selectedSpoolId !== spoolId &&
+      !closeSelectedSpoolDetailModal()
+    ) {
+      return;
+    }
+    setActiveWorkspaceView("STOCK");
     if (clientReadOnly && !clientHostWritePaired) {
       setInfoMessage(
         t(
@@ -428,8 +706,11 @@ export default function InventoryPage({
   }, [
     clientHostWritePaired,
     clientReadOnly,
+    closeSelectedSpoolDetailModal,
     openRollModal,
+    selectedSpoolId,
     setShowRollHistory,
+    showRollModal,
     switchToManageMode,
     t,
   ]);
@@ -454,8 +735,93 @@ export default function InventoryPage({
     t,
   });
 
+  const canLoanSelectedSpool = Boolean(
+    selectedSpool && loanTrackingCandidates.some((candidate) => candidate.id === selectedSpool.id),
+  );
+  const {
+    availableSlots: availableLoadSlots,
+    canLoadSelectedSpool,
+    closeLoadSpoolModal,
+    confirmLoadSpool,
+    openLoadSpoolModal,
+    showLoadSpoolModal,
+  } = useInventoryLoadSpoolAction({
+    assignedSlot: selectedSpoolAssignedSlot,
+    canUseClientHostWrite,
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    ensureLocalWriteAllowed,
+    manageBusy,
+    printerSlots: printerSlotOptions,
+    reloadPrinterOverview,
+    reloadSpoolDetail,
+    reloadSpools,
+    selectedSpool,
+    setError,
+    setInfoMessage,
+    setManageBusy,
+    tauriAvailable: tauri,
+    t,
+  });
+  const {
+    modalProps: inventoryLabelSheetModalProps,
+    openLabelSheet: openInventoryLabelSheet,
+  } = useInventoryLabelSheetAction({
+    busy: manageBusy,
+    clientHostBaseUrl,
+    clientReadOnly,
+    locale,
+    setError,
+    setInfoMessage,
+    spools,
+    tauriAvailable: tauri,
+    t,
+  });
+  const inventoryLabelSheetVisualQaOpenedRef = useRef(false);
+
+  const {
+    collectionProps: inventoryBulkCollectionProps,
+    panelProps: inventoryBulkActionsProps,
+    selectionModeTriggerProps: inventoryBulkSelectionTriggerProps,
+  } = useInventoryBulkActions({
+    activeLoanSpoolIds,
+    busy: manageBusy,
+    clientHostBaseUrl,
+    clientHostWritePaired,
+    clientLibraryId,
+    clientReadOnly,
+    filteredSpools,
+    loading: loading || !librarySyncReady,
+    locations,
+    openLabelSheet: openInventoryLabelSheet,
+    printerSlotBySpoolId,
+    reloadActiveLoans,
+    reloadPrinterOverview,
+    reloadSpools,
+    setBusy: setManageBusy,
+    setError,
+    setInfoMessage,
+    spools,
+    tauriAvailable: tauri,
+    t,
+  });
+
+  useEffect(() => {
+    if (
+      desktopVisualQaScenario !== "settings-inventory-label-sheet" ||
+      inventoryLabelSheetVisualQaOpenedRef.current ||
+      !tauri ||
+      loading
+    ) {
+      return;
+    }
+    inventoryLabelSheetVisualQaOpenedRef.current = true;
+    void openInventoryLabelSheet();
+  }, [desktopVisualQaScenario, loading, openInventoryLabelSheet, tauri]);
+
   useInventoryRollModalEscape({
-    closeRollModal,
+    closeRollModal: closeSelectedSpoolDetailModal,
     showRollModal,
   });
 
@@ -487,9 +853,7 @@ export default function InventoryPage({
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
-    handleSaveSpoolOwnership,
-    handleSaveSpoolLocation,
-    handleSaveSpoolTareWeight,
+    handleSaveSpoolCommonDetails,
     handleToggleLostStatus,
     handleWeightSubmit,
   } = useInventorySpoolDetailActions({
@@ -507,6 +871,9 @@ export default function InventoryPage({
     editMasterVendor,
     ensureLocalWriteAllowed,
     manageBusy,
+    locations,
+    markCommonDetailsSaved,
+    markMasterMetadataSaved,
     masterEditUnlocked,
     reloadActiveLoans,
     reloadCatalog,
@@ -520,6 +887,8 @@ export default function InventoryPage({
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft,
+    selectedSpoolPurchaseMetadataDraft,
     selectedSpoolResolvedTare,
     selectedSpoolTareDraft,
     setConfirmDelete,
@@ -531,6 +900,7 @@ export default function InventoryPage({
     setSelectedSpoolOwnerContactDraft,
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
     tauriAvailable: tauri,
     t,
@@ -602,9 +972,21 @@ export default function InventoryPage({
       return;
     }
 
+    if (desktopVisualQaScenario === "inventory-locations") {
+      setActiveWorkspaceView("LOCATIONS");
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
+    if (desktopVisualQaScenario === "wishlist-queue") {
+      resetPurchaseQueue("ON_ORDER");
+      openPurchaseQueue();
+      setDesktopVisualQaStage("done");
+      return;
+    }
+
     if (
       desktopVisualQaScenario === "add-filament" ||
-      desktopVisualQaScenario === "wishlist-queue" ||
       desktopVisualQaScenario === "bambu-batch-add"
     ) {
       if (desktopVisualQaScenario === "bambu-batch-add") {
@@ -612,9 +994,7 @@ export default function InventoryPage({
       } else if (desktopVisualQaScenario === "add-filament") {
         onCreateModeChange("esun");
       }
-      openAddModal({
-        wishlistFilter: desktopVisualQaScenario === "wishlist-queue" ? "ON_ORDER" : undefined,
-      });
+      openAddModal();
       setDesktopVisualQaStage(
         desktopVisualQaScenario === "add-filament" ? "add-esun-opened" : "done",
       );
@@ -657,7 +1037,9 @@ export default function InventoryPage({
     onBambuBatchInputChange,
     onCreateModeChange,
     openAddModal,
+    openPurchaseQueue,
     openLoanTrackingModal,
+    resetPurchaseQueue,
     selectRollForManage,
     spools,
   ]);
@@ -886,83 +1268,114 @@ export default function InventoryPage({
         clientHostWritePaired={clientHostWritePaired}
         clientHostBaseUrl={clientHostBaseUrl}
         clientLibraryId={clientLibraryId}
+        clientTargetGeneration={clientTargetGeneration}
         onLoanCreated={handleLoanCreated}
       />
 
-      <InventorySpoolDetailModal
-        assignedSlot={selectedSpoolAssignedSlot}
-        colorName={editMasterColorName}
-        confirmDelete={confirmDelete}
-        confirmPurge={confirmPurge}
-        deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
-        displayTitle={selectedSpoolDisplayTitle}
-        error={error}
-        filamentName={editMasterFilamentName}
-        formatHistoryEventDetails={formatHistoryEventDetails}
-        formatHistoryEventType={formatHistoryEventType}
-        hasHiddenHistoryRows={hasHiddenHistoryRows}
-        hexColor={editMasterHexColor}
-        historyLoading={historyLoading}
-        initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
-        infoMessage={infoMessage}
-        locationDraft={selectedSpoolLocationDraft}
-        locationValue={selectedSpoolLocationValue}
-        manageBusy={manageBusy}
-        masterEditUnlocked={masterEditUnlocked}
-        material={editMasterMaterial}
-        measuredTotal={selectedSpoolMeasuredTotal}
-        onChangeColorName={setEditMasterColorName}
-        onChangeFilamentName={setEditMasterFilamentName}
-        onChangeHexColor={setEditMasterHexColor}
-        onChangeLocation={setSelectedSpoolLocationDraft}
-        onChangeMaterial={setEditMasterMaterial}
-        onChangeOwnerContact={setSelectedSpoolOwnerContactDraft}
-        onChangeOwnerName={setSelectedSpoolOwnerNameDraft}
-        onChangeOwnershipNote={setSelectedSpoolOwnershipNoteDraft}
-        onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
-        onChangeTare={setSelectedSpoolTareDraft}
-        onChangeVendor={setEditMasterVendor}
-        onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
-        onClose={closeSelectedSpoolDetailModal}
-        onDelete={handleDeleteSelected}
-        onMarkEmpty={handleMarkEmpty}
-        onPrintLabel={handlePrintLabel}
-        onPurge={handlePurgeSelected}
-        onRefill={handleRefillSpool}
-        onSaveLocation={handleSaveSpoolLocation}
-        onSaveMasterMetadata={handleSaveMasterMetadata}
-        onSaveOwnership={handleSaveSpoolOwnership}
-        onSaveTareWeight={handleSaveSpoolTareWeight}
-        onStartRfidCapture={handleStartRfidCapture}
-        onSubmitWeight={handleWeightSubmit}
-        onToggleEditUnlocked={toggleMasterEditUnlocked}
-        onToggleLostStatus={handleToggleLostStatus}
-        onToggleRollHistory={toggleRollHistory}
-        open={showRollModal}
-        ownershipLabel={selectedSpoolOwnershipLabel}
-        ownershipTone={selectedSpoolOwnershipTone}
-        ownershipTypeDraft={selectedSpoolOwnershipDraft}
-        ownerContactDraft={selectedSpoolOwnerContactDraft}
-        ownerNameDraft={selectedSpoolOwnerNameDraft}
-        ownershipNoteDraft={selectedSpoolOwnershipNoteDraft}
-        qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
-        qrDataUrl={selectedSpoolQrDataUrl}
-        qrLoading={selectedSpoolQrLoading}
-        qrTarget={selectedSpoolQrTarget}
-        rfidBindingMeta={selectedSpoolRfidBindingMeta}
-        resolvedTheme={resolvedTheme}
-        runtimeAvailable={tauri}
-        showRollHistory={showRollHistory}
+      <InventoryLoadSpoolModal
+        busy={manageBusy}
+        onClose={closeLoadSpoolModal}
+        onConfirm={(slotId) => void confirmLoadSpool(slotId)}
+        open={showLoadSpoolModal}
+        slotLabelById={slotLabelById}
+        slots={availableLoadSlots}
         spool={selectedSpool}
-        statusLabel={selectedSpoolStatusLabel}
-        statusTone={selectedSpoolStatusTone}
-        supportsRfidCapture={selectedSpoolSupportsRfidCapture}
-        tareDraft={selectedSpoolTareDraft}
-        usageLoading={usageLoading}
-        usagePoints={usagePoints}
-        vendor={editMasterVendor}
-        visibleHistoryRows={visibleHistoryRows}
       />
+
+      <InventoryLabelSheetModal {...inventoryLabelSheetModalProps} />
+
+      <InventoryLocationDatalist rows={locations} />
+
+      {showRollModal ? (
+        <Suspense fallback={null}>
+          <InventorySpoolDetailModal
+            assignedSlot={selectedSpoolAssignedSlot}
+            canLoadInPrinter={canLoadSelectedSpool}
+            canLoanOut={canLoanSelectedSpool}
+            colorName={editMasterColorName}
+            confirmDelete={confirmDelete}
+            confirmPurge={confirmPurge}
+            deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
+            displayTitle={selectedSpoolDisplayTitle}
+            defaultPurchaseCurrency={defaultPurchaseCurrency}
+            error={error}
+            filamentName={editMasterFilamentName}
+            formatHistoryEventDetails={formatHistoryEventDetails}
+            formatHistoryEventType={formatHistoryEventType}
+            hasCommonChanges={commonDetailsDirty}
+            hasHiddenHistoryRows={hasHiddenHistoryRows}
+            hasUnsavedChanges={hasUnsavedDetailChanges}
+            hexColor={editMasterHexColor}
+            historyLoading={historyLoading}
+            initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
+            infoMessage={infoMessage}
+            locationDraft={selectedSpoolLocationDraft}
+            locationValue={selectedSpoolLocationValue}
+            manageBusy={manageBusy}
+            masterEditUnlocked={masterEditUnlocked}
+            material={editMasterMaterial}
+            measuredTotal={selectedSpoolMeasuredTotal}
+            onChangeColorName={setEditMasterColorName}
+            onChangeFilamentName={setEditMasterFilamentName}
+            onChangeHexColor={setEditMasterHexColor}
+            onChangeLocation={setSelectedSpoolLocationDraft}
+            onChangeMaterial={setEditMasterMaterial}
+            onChangeOwnerContact={setSelectedSpoolOwnerContactDraft}
+            onChangeOwnerName={setSelectedSpoolOwnerNameDraft}
+            onChangeOwnershipNote={setSelectedSpoolOwnershipNoteDraft}
+            onChangeOwnershipType={setSelectedSpoolOwnershipDraft}
+            onChangePurchasePriceBatchLocked={
+              setSelectedSpoolPurchasePriceBatchLockedDraft
+            }
+            onChangePurchaseMetadata={setSelectedSpoolPurchaseMetadataDraft}
+            onChangeTare={setSelectedSpoolTareDraft}
+            onChangeVendor={setEditMasterVendor}
+            onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
+            onClose={closeSelectedSpoolDetailModal}
+            onDelete={handleDeleteSelected}
+            onLoadInPrinter={openLoadSpoolModal}
+            onLoanOut={() => openLoanTrackingModal(selectedSpool)}
+            onMarkEmpty={handleMarkEmpty}
+            onPrintLabel={handlePrintLabel}
+            onPurge={handlePurgeSelected}
+            onRefill={handleRefillSpool}
+            onSaveCommonDetails={handleSaveSpoolCommonDetails}
+            onSaveMasterMetadata={handleSaveMasterMetadata}
+            onStartRfidCapture={handleStartRfidCapture}
+            onSubmitWeight={handleWeightSubmit}
+            onToggleEditUnlocked={toggleMasterEditUnlocked}
+            onToggleLostStatus={handleToggleLostStatus}
+            onToggleRollHistory={toggleRollHistory}
+            open={showRollModal}
+            ownershipLabel={selectedSpoolOwnershipLabel}
+            ownershipTone={selectedSpoolOwnershipTone}
+            ownershipTypeDraft={selectedSpoolOwnershipDraft}
+            ownerContactDraft={selectedSpoolOwnerContactDraft}
+            ownerNameDraft={selectedSpoolOwnerNameDraft}
+            ownershipNoteDraft={selectedSpoolOwnershipNoteDraft}
+            purchasePriceBatchLockedDraft={selectedSpoolPurchasePriceBatchLockedDraft}
+            purchaseMetadataDraft={selectedSpoolPurchaseMetadataDraft}
+            purchaseMetadataErrors={selectedSpoolPurchaseMetadataErrors}
+            qrCompanionAvailable={selectedSpoolQrCompanionAvailable}
+            qrDataUrl={selectedSpoolQrDataUrl}
+            qrLoading={selectedSpoolQrLoading}
+            qrTarget={selectedSpoolQrTarget}
+            rfidBindingMeta={selectedSpoolRfidBindingMeta}
+            resolvedTheme={resolvedTheme}
+            runtimeAvailable={tauri}
+            showRollHistory={showRollHistory}
+            spool={selectedSpool}
+            statusLabel={selectedSpoolStatusLabel}
+            statusTone={selectedSpoolStatusTone}
+            supportsRfidCapture={selectedSpoolSupportsRfidCapture}
+            tareDraft={selectedSpoolTareDraft}
+            usageLoading={usageLoading}
+            usagePoints={usagePoints}
+            vendor={editMasterVendor}
+            visibleHistoryRows={visibleHistoryRows}
+          />
+        </Suspense>
+      ) : null}
 
       <InventoryRfidCaptureModal
         canSave={Boolean(rfidCaptureSummary.rfidTag)}
@@ -993,13 +1406,17 @@ export default function InventoryPage({
       />
 
       <InventoryPageWorkspace
+        activeView={activeWorkspaceView}
         addModalActive={addModalActive}
         addModalProps={inventoryAddModalProps}
+        bulkActionsProps={inventoryBulkActionsProps}
+        bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
         clientHostDeviceName={clientHostDeviceName}
         clientInventorySource={clientInventorySource}
         clientInventoryUpdatedAt={clientInventoryUpdatedAt}
         clientReadOnly={clientReadOnly}
         collectionProps={{
+          ...inventoryBulkCollectionProps,
           filteredSpools,
           groupedSpools,
           inventoryView,
@@ -1013,10 +1430,12 @@ export default function InventoryPage({
           activeFilterCount,
           advancedFiltersOpen,
           inventoryView,
+          locationFilter,
           materialFilter,
           materialOptions,
           onAdvancedFiltersOpenChange: setAdvancedFiltersOpen,
           onInventoryViewChange: setInventoryView,
+          onLocationFilterClear: clearLocationFilter,
           onMaterialFilterChange: setMaterialFilter,
           onOwnershipFilterChange: setOwnershipFilter,
           onResetFilters: resetFilters,
@@ -1028,22 +1447,50 @@ export default function InventoryPage({
         }}
         error={error}
         loadError={loadError}
-        loadErrorRetryDisabled={!tauri || loading || manageBusy}
-        loadErrorRetrying={refreshing}
-        onRetryLoadError={refreshInventoryPage}
+        loadErrorRetryDisabled={!tauri || librarySyncResolving || manageBusy}
+        loadErrorRetrying={librarySyncResolving || refreshing}
+        locationPanelProps={{
+          busy: manageBusy,
+          canMutate:
+            tauri &&
+            librarySyncReady &&
+            (!clientReadOnly || clientHostWritePaired),
+          loading: locationsLoading,
+          mutationsSupported: locationMutationsSupported,
+          onArchive: archiveLocation,
+          onCreate: createLocation,
+          onDelete: deleteLocation,
+          onOpenLinkedSpools: openLinkedLocationSpools,
+          onMerge: mergeLocations,
+          onRename: renameLocation,
+          onRestore: restoreLocation,
+          rows: locations,
+          source: locationSource,
+          usageByLocationId: locationUsageById,
+        }}
+        onActiveViewChange={setActiveWorkspaceView}
+        onRetryLoadError={retryInventoryPageLoad}
+        purchaseQueueProps={purchaseQueueProps}
         headerActionsProps={{
+          labelSheetDisabled: !tauri || manageBusy || loading,
           lowStockOnly,
           onAddSpool: () => openAddModal(),
+          onCreateLabelSheet: () => void openInventoryLabelSheet(),
           onLoanOutRoll: openLoanTrackingModal,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,
-          primaryActionsDisabled: clientReadOnly ? !clientHostWritePaired : false,
+          primaryActionsDisabled:
+            !librarySyncReady || (clientReadOnly ? !clientHostWritePaired : false),
           search,
+          showStockFilters: activeWorkspaceView === "STOCK",
           statusFilter,
         }}
         infoMessage={infoMessage}
         showRollModal={showRollModal}
+        totalInventoryCount={spools.length}
+        totalLocationCount={selectableInventoryLocations(locations).length}
+        totalPurchaseCount={wishlistItems.length}
       />
     </div>
   );

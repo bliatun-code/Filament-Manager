@@ -3,7 +3,10 @@ import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
 import { isBorrowedInOwnership } from "./inventory_domain";
+import { resolveInventoryLocationReferenceForWrite } from "./inventory_location_model";
 import type { InventorySpool, OwnershipType } from "./inventory_list_model";
+import type { InventoryLocationRow } from "./tauri_location_client";
+import { parseInventorySpoolCommonDetailsDraft } from "./inventory_spool_detail_draft_model";
 import {
   canRefillSpoolStatus,
   nextLostToggleStatus,
@@ -25,6 +28,11 @@ import {
 import { prepareMeasuredWeightUpdate } from "./printer_slot_model";
 import { updateManagedMasterCatalogEntry } from "./catalog_writes";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
+import {
+  preparePurchaseReceiptMetadataUpdate,
+  type PurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "./purchase_receipt_metadata";
 
 type InventoryDetailReloads = {
   reloadActiveLoans: () => Promise<void>;
@@ -49,6 +57,9 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   editMasterVendor: string;
   ensureLocalWriteAllowed: () => boolean;
   manageBusy: boolean;
+  locations: InventoryLocationRow[];
+  markCommonDetailsSaved: () => void;
+  markMasterMetadataSaved: () => void;
   masterEditUnlocked: boolean;
   selectedSpool: InventorySpool | null;
   selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
@@ -57,6 +68,8 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   selectedSpoolOwnerNameDraft: string;
   selectedSpoolOwnershipDraft: OwnershipType;
   selectedSpoolOwnershipNoteDraft: string;
+  selectedSpoolPurchasePriceBatchLockedDraft: boolean;
+  selectedSpoolPurchaseMetadataDraft: PurchaseReceiptMetadataDraft;
   selectedSpoolResolvedTare: number;
   selectedSpoolTareDraft: string;
   setConfirmDelete: Dispatch<SetStateAction<boolean>>;
@@ -68,6 +81,9 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   setSelectedSpoolOwnerContactDraft: Dispatch<SetStateAction<string>>;
   setSelectedSpoolOwnerNameDraft: Dispatch<SetStateAction<string>>;
   setSelectedSpoolOwnershipNoteDraft: Dispatch<SetStateAction<string>>;
+  setSelectedSpoolPurchaseMetadataErrors: Dispatch<
+    SetStateAction<PurchaseReceiptMetadataValidationErrors>
+  >;
   setSelectedSpoolTareDraft: Dispatch<SetStateAction<string>>;
   tauriAvailable: boolean;
   t: ReturnType<typeof useI18n>["t"];
@@ -108,6 +124,9 @@ export function useInventorySpoolDetailActions({
   editMasterVendor,
   ensureLocalWriteAllowed,
   manageBusy,
+  locations,
+  markCommonDetailsSaved,
+  markMasterMetadataSaved,
   masterEditUnlocked,
   reloadActiveLoans,
   reloadCatalog,
@@ -121,6 +140,8 @@ export function useInventorySpoolDetailActions({
   selectedSpoolOwnerNameDraft,
   selectedSpoolOwnershipDraft,
   selectedSpoolOwnershipNoteDraft,
+  selectedSpoolPurchasePriceBatchLockedDraft,
+  selectedSpoolPurchaseMetadataDraft,
   selectedSpoolResolvedTare,
   selectedSpoolTareDraft,
   setConfirmDelete,
@@ -132,11 +153,18 @@ export function useInventorySpoolDetailActions({
   setSelectedSpoolOwnerContactDraft,
   setSelectedSpoolOwnerNameDraft,
   setSelectedSpoolOwnershipNoteDraft,
+  setSelectedSpoolPurchaseMetadataErrors,
   setSelectedSpoolTareDraft,
   tauriAvailable,
   t,
 }: InventorySpoolDetailActionsInput) {
   const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const currentLocationReference = selectedSpool
+    ? resolveInventoryLocationReferenceForWrite(locations, selectedSpool.location, {
+        id: selectedSpool.locationId,
+        name: selectedSpool.location,
+      })
+    : null;
 
   async function reloadInventorySurfaces() {
     await reloadSpools();
@@ -209,6 +237,7 @@ export function useInventorySpoolDetailActions({
       await reloadActiveLoans();
       await reloadPrinterOverview();
       await reloadSpoolDetail(selectedSpool.id);
+      markMasterMetadataSaved();
       setMasterEditUnlocked(false);
     } catch (updateError) {
       console.error(updateError);
@@ -216,6 +245,151 @@ export function useInventorySpoolDetailActions({
         commandErrorText(
           updateError,
           t("inventory.error.updateMetadata", "Failed to update roll metadata."),
+        ),
+      );
+    } finally {
+      setManageBusy(false);
+    }
+  }
+
+  async function handleSaveSpoolCommonDetails() {
+    if (!tauriAvailable || !selectedSpool || manageBusy) {
+      return;
+    }
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      return;
+    }
+    if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+
+    const parsed = parseInventorySpoolCommonDetailsDraft({
+      homeLocation: selectedSpoolLocationDraft,
+      ownershipType: selectedSpoolOwnershipDraft,
+      ownerName: selectedSpoolOwnerNameDraft,
+      ownerContact: selectedSpoolOwnerContactDraft,
+      ownershipNote: selectedSpoolOwnershipNoteDraft,
+      purchasePriceBatchLocked: selectedSpoolPurchasePriceBatchLockedDraft,
+      purchaseMetadata: selectedSpoolPurchaseMetadataDraft,
+      tareWeight: selectedSpoolTareDraft,
+    });
+    if (!parsed.ok) {
+      setError(
+        parsed.error === "borrowed-owner-required"
+          ? t(
+              "inventory.error.ownerNameRequired",
+              "Borrowed-in rolls need an owner or counterparty name.",
+            )
+          : t("inventory.error.invalidWeight", "Weight value is invalid."),
+      );
+      return;
+    }
+
+    const purchaseMetadataBaseline = {
+      purchase_price: selectedSpool.purchasePrice ?? null,
+      purchase_currency: selectedSpool.purchaseCurrency ?? null,
+      purchase_date: selectedSpool.purchaseDate ?? null,
+      batch_code: selectedSpool.batchCode ?? null,
+      supplier_reference: selectedSpool.supplierReference ?? null,
+    };
+    const purchaseMetadata = preparePurchaseReceiptMetadataUpdate(
+      purchaseMetadataBaseline,
+      selectedSpoolPurchaseMetadataDraft,
+    );
+    if (!purchaseMetadata.ok) {
+      setSelectedSpoolPurchaseMetadataErrors(purchaseMetadata.errors);
+      setError(
+        t(
+          "inventory.error.purchaseMetadataInvalid",
+          "Review the highlighted purchase details.",
+        ),
+      );
+      return;
+    }
+    setSelectedSpoolPurchaseMetadataErrors({});
+
+    setConfirmDelete(false);
+    setConfirmPurge(false);
+    setManageBusy(true);
+    setError(null);
+    try {
+      const homeLocationChanged =
+        (selectedSpool.homeLocation ?? "").trim() !==
+        (parsed.value.homeLocation ?? "");
+      const tareWeightChanged =
+        parsed.value.tareWeightGrams !== selectedSpoolResolvedTare;
+      const purchasePriceBatchLockChanged =
+        parsed.value.purchasePriceBatchLocked !==
+        (selectedSpool.purchasePriceBatchLocked ?? false);
+      const ownershipChanged =
+        selectedSpool.ownershipType !== parsed.value.ownershipType ||
+        (isBorrowedInOwnership(parsed.value.ownershipType) &&
+          ((selectedSpool.ownerName ?? "").trim() !== parsed.value.ownerName ||
+            (selectedSpool.ownerContact ?? "").trim() !==
+              (parsed.value.ownerContact ?? "") ||
+            (selectedSpool.ownershipNote ?? "").trim() !==
+              (parsed.value.ownershipNote ?? "")));
+      await updateInventorySpoolDetails(
+        {
+          spool_id: selectedSpool.id,
+          qr_code: selectedSpool.qrCode ?? null,
+          status: selectedSpool.status,
+          location: currentLocationReference,
+          ...(purchasePriceBatchLockChanged
+            ? { purchase_price_batch_locked: parsed.value.purchasePriceBatchLocked }
+            : {}),
+          // An empty string deliberately means "clear" for the local Tauri command.
+          // Serde cannot otherwise distinguish JSON null from an omitted nested Option.
+          ...(homeLocationChanged
+            ? {
+                home_location: parsed.value.homeLocation
+                  ? (resolveInventoryLocationReferenceForWrite(
+                      locations,
+                      parsed.value.homeLocation,
+                      {
+                        id: selectedSpool.homeLocationId,
+                        name: selectedSpool.homeLocation,
+                      },
+                    ) ?? "")
+                  : "",
+              }
+            : {}),
+          ...(tareWeightChanged
+            ? { spool_tare_weight_g: parsed.value.tareWeightGrams }
+            : {}),
+          ...(ownershipChanged
+            ? {
+                ownership: {
+                  ownership_type: parsed.value.ownershipType,
+                  owner_name: parsed.value.ownerName,
+                  owner_contact: parsed.value.ownerContact,
+                  ownership_note: parsed.value.ownershipNote,
+                },
+              }
+            : {}),
+          ...(purchaseMetadata.changed
+            ? { purchase_metadata: purchaseMetadata.value }
+            : {}),
+        },
+        hostWriteTarget,
+      );
+      markCommonDetailsSaved();
+      await reloadInventorySurfaces();
+      await reloadSpoolDetail(selectedSpool.id);
+      if (!isBorrowedInOwnership(parsed.value.ownershipType)) {
+        setSelectedSpoolOwnerNameDraft("");
+        setSelectedSpoolOwnerContactDraft("");
+        setSelectedSpoolOwnershipNoteDraft("");
+      }
+      setSelectedSpoolTareDraft(String(parsed.value.tareWeightGrams));
+      setInfoMessage(t("inventory.rollChangesSaved", "Roll changes saved."));
+    } catch (updateError) {
+      console.error(updateError);
+      setError(
+        commandErrorText(
+          updateError,
+          t("inventory.error.saveRollChanges", "Failed to save roll changes."),
+          t,
         ),
       );
     } finally {
@@ -355,7 +529,7 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: "EMPTY",
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
         },
         hostWriteTarget,
       );
@@ -385,7 +559,14 @@ export function useInventorySpoolDetailActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    const location = selectedSpoolLocationDraft.trim();
+    const location = resolveInventoryLocationReferenceForWrite(
+      locations,
+      selectedSpoolLocationDraft,
+      {
+        id: selectedSpool.homeLocationId,
+        name: selectedSpool.homeLocation,
+      },
+    );
     setManageBusy(true);
     setError(null);
     try {
@@ -394,8 +575,8 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: selectedSpool.status,
-          location: selectedSpool.location ?? null,
-          home_location: location || null,
+          location: currentLocationReference,
+          home_location: location,
         },
         hostWriteTarget,
       );
@@ -446,7 +627,7 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: "IN_STOCK",
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
         },
         hostWriteTarget,
       );
@@ -492,7 +673,7 @@ export function useInventorySpoolDetailActions({
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
           status: nextStatus,
-          location: selectedSpool.location ?? null,
+          location: currentLocationReference,
         },
         hostWriteTarget,
       );
@@ -599,7 +780,7 @@ export function useInventorySpoolDetailActions({
             spool_id: selectedSpool.id,
             qr_code: selectedSpool.qrCode ?? null,
             status: "IN_STOCK",
-            location: selectedSpool.location ?? null,
+            location: currentLocationReference,
           },
           hostWriteTarget,
         );
@@ -682,6 +863,7 @@ export function useInventorySpoolDetailActions({
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
+    handleSaveSpoolCommonDetails,
     handleSaveSpoolOwnership,
     handleSaveSpoolLocation,
     handleSaveSpoolTareWeight,

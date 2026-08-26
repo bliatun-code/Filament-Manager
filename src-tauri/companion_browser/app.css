@@ -1152,6 +1152,13 @@
 }
 
 .wishlist-receipt-form {
+  display: grid;
+  flex: 1 1 100%;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.wishlist-receipt-primary {
   display: flex;
   align-items: end;
   gap: 0.45rem;
@@ -1164,6 +1171,89 @@
 .wishlist-receipt-quantity .weight-input {
   min-height: 2.35rem;
   padding: 0.5rem 0.65rem;
+}
+
+.wishlist-receipt-details {
+  border: 1px solid var(--border);
+  border-radius: var(--compact-card-radius);
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.wishlist-receipt-details > summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.62rem 0.7rem;
+}
+
+.wishlist-receipt-details[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.wishlist-receipt-details .purchase-receipt-fieldset {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.purchase-receipt-fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--compact-card-radius);
+  background: var(--surface-strong);
+  padding: 0.72rem;
+}
+
+.purchase-receipt-fieldset > legend {
+  padding: 0 0.22rem;
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.purchase-receipt-summary,
+.purchase-receipt-legacy-hint {
+  margin: 0 0 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.purchase-receipt-legacy-hint {
+  color: var(--warning);
+  font-weight: 650;
+}
+
+.purchase-receipt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.68rem;
+}
+
+.purchase-receipt-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.34rem;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.purchase-receipt-field-wide {
+  grid-column: 1 / -1;
+}
+
+.purchase-receipt-optional,
+.purchase-receipt-field-hint {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.purchase-receipt-currency {
+  text-transform: uppercase;
 }
 
 .companion-selection-card {

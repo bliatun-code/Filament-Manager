@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
+import type { SettingsTrustedLanServerPanel } from "../components/settings_trusted_lan_server_panel";
 
 type SettingsLibraryServerPanelProps = ComponentProps<typeof SettingsTrustedLanServerPanel>;
 

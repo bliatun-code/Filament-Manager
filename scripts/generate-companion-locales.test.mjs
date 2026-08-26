@@ -11,7 +11,7 @@ import {
   writeGeneratedCompanionLocales,
 } from "./generate-companion-locales.mjs";
 
-test("Companion locale generator writes deterministic modules from one catalog", () => {
+test("Companion locale generator writes deterministic modules from one catalog", async () => {
   const root = mkdtempSync(resolve(tmpdir(), "filament-manager-locales-"));
   const catalogFile = resolve(root, "catalog.json");
   const outputRoot = resolve(root, "output");
@@ -22,8 +22,8 @@ test("Companion locale generator writes deterministic modules from one catalog",
     JSON.stringify({
       schemaVersion: 1,
       dictionaries: {
-        en: { nav: { storage: "Inventory" } },
-        nb: { nav: { storage: "Lager" } },
+        en: { nav: { storage: "Inventory", "aria-label": "Inventory" } },
+        nb: { nav: { storage: "Lager", "aria-label": "Lagerbeholdning" } },
       },
     }),
   );
@@ -40,7 +40,15 @@ test("Companion locale generator writes deterministic modules from one catalog",
     "utf8",
   );
   assert.match(norwegian, /export const locale = "nb";/);
-  assert.match(norwegian, /"storage":"Lager"/);
+  assert.match(norwegian, /nav:\{storage:"Lager"/);
+  assert.match(norwegian, /"aria-label":"Lagerbeholdning"/);
+  const generatedModule = await import(
+    `data:text/javascript;base64,${Buffer.from(norwegian).toString("base64")}`,
+  );
+  assert.equal(generatedModule.locale, "nb");
+  assert.deepEqual(generatedModule.default, {
+    nav: { storage: "Lager", "aria-label": "Lagerbeholdning" },
+  });
   assert.deepEqual(
     checkGeneratedCompanionLocales({
       catalogFile,

@@ -3,7 +3,14 @@ import {
   liveSlotObservedRfid,
   rowCanReceiveLiveBambuRfid,
 } from "./companion_live_rfid_candidates.js";
-import { isEditableSpoolStatus, normalizeEditableSpoolStatus } from "./companion_domain.js";
+import {
+  buildPurchaseReceiptMetadataDraft,
+  isEditableSpoolStatus,
+  normalizeEditableSpoolStatus,
+  parseSpoolStatus,
+  preparePurchaseReceiptMetadataUpdate,
+  purchaseReceiptMetadataValidationMessage,
+} from "./companion_domain.js";
 import { parseQrPayload } from "./qr_payload.js";
 
 export function createCompanionSpoolMutations({
@@ -111,30 +118,87 @@ export function createCompanionSpoolMutations({
     }
   }
 
-  async function submitSpoolDetailsUpdate(spoolId, statusValue, locationValue, homeLocationValue) {
+  async function submitSpoolDetailsUpdate(
+    spoolId,
+    statusValue,
+    locationValue,
+    homeLocationValue,
+    receiptDraft = null,
+  ) {
     const trimmedSpoolId = String(spoolId || "").trim();
-    const normalizedStatus = normalizeEditableSpoolStatus(statusValue);
     const normalizedLocation = String(locationValue || "").trim();
     const normalizedHomeLocation = String(homeLocationValue || "").trim();
-    const currentSpool = state.spools.find((row) => String(row?.spool?.id || "").trim() === trimmedSpoolId) || null;
-    const currentStatus = normalizeEditableSpoolStatus(currentSpool?.spool?.status);
+    const selectedDetailSpool = state.selectedDetail?.spool;
+    const currentSpool =
+      (String(selectedDetailSpool?.spool?.id || "").trim() === trimmedSpoolId
+        ? selectedDetailSpool
+        : null) ||
+      (Array.isArray(state.spools) ? state.spools : []).find(
+        (row) => String(row?.spool?.id || "").trim() === trimmedSpoolId,
+      ) ||
+      null;
+    const currentStatus =
+      parseSpoolStatus(currentSpool?.spool?.status) ||
+      normalizeEditableSpoolStatus(currentSpool?.spool?.status);
+    const requestedStatus = parseSpoolStatus(statusValue);
+    const preservesAssignedStatus =
+      currentStatus === "ASSIGNED" && requestedStatus === "ASSIGNED";
+    const preservesBorrowedStatus =
+      currentStatus === "BORROWED" && requestedStatus === "BORROWED";
+    const preservesPlacementLockedStatus =
+      preservesAssignedStatus || preservesBorrowedStatus;
+    const normalizedStatus = preservesPlacementLockedStatus
+      ? currentStatus
+      : normalizeEditableSpoolStatus(statusValue);
     const currentLocation = String(currentSpool?.spool?.location_id || "").trim();
     const currentHomeLocation = String(currentSpool?.spool?.home_location_id || "").trim();
-    const homeLocationOnlyUpdate =
-      normalizedStatus === currentStatus &&
-      normalizedLocation === currentLocation &&
-      normalizedHomeLocation !== currentHomeLocation;
 
     if (!trimmedSpoolId) {
       setStatus(tr("status.selectSpoolBeforeEdit", "Select a spool before editing its details."), "error");
       render();
       return;
     }
-    if (!isEditableSpoolStatus(statusValue)) {
+    if (!isEditableSpoolStatus(statusValue) && !preservesPlacementLockedStatus) {
       setStatus(tr("status.invalidDetailStatus", "Choose a valid status before saving details."), "error");
       render();
       return;
     }
+    const effectiveReceiptDraft =
+      receiptDraft ?? buildPurchaseReceiptMetadataDraft(currentSpool?.spool);
+    const receiptUpdate = preparePurchaseReceiptMetadataUpdate(
+      currentSpool?.spool,
+      effectiveReceiptDraft,
+    );
+    if (!receiptUpdate.ok) {
+      setStatus(
+        purchaseReceiptMetadataValidationMessage(receiptUpdate.errors, tr),
+        "error",
+      );
+      render();
+      return;
+    }
+    if (
+      currentStatus === "BORROWED" &&
+      (!preservesBorrowedStatus ||
+        normalizedLocation !== currentLocation ||
+        normalizedHomeLocation !== currentHomeLocation ||
+        !receiptUpdate.changed)
+    ) {
+      setStatus(
+        tr(
+          "status.loanedOutEditBlocked",
+          "Loaned-out spools use the companion loan return flow instead of manual status/location edits.",
+        ),
+        "error",
+      );
+      render();
+      return;
+    }
+    const homeLocationOnlyUpdate =
+      normalizedStatus === currentStatus &&
+      normalizedLocation === currentLocation &&
+      normalizedHomeLocation !== currentHomeLocation &&
+      !receiptUpdate.changed;
 
     clearDetailFeedback(trimmedSpoolId);
     setBusy(true);
@@ -146,11 +210,19 @@ export function createCompanionSpoolMutations({
           "content-type": "application/json",
           "x-csrf-token": state.csrfToken,
         },
-        body: JSON.stringify({
-          status: normalizedStatus,
-          location: normalizedLocation || null,
-          home_location: normalizedHomeLocation || null,
-        }),
+        body: JSON.stringify(
+          preservesBorrowedStatus
+            ? {
+                status: "BORROWED",
+                purchase_metadata: receiptUpdate.value,
+              }
+            : {
+                status: normalizedStatus,
+                location: normalizedLocation || null,
+                home_location: normalizedHomeLocation || null,
+                ...(receiptUpdate.changed ? { purchase_metadata: receiptUpdate.value } : {}),
+              },
+        ),
       });
       await refreshOverview();
       setDetailFeedback(

@@ -12,12 +12,19 @@ export const deDictionary: DictionaryNode = {
     add: "Hinzufügen",
     all: "Alle",
     active: "Aktiv",
+    actions: "Aktionen",
+    archive: "Archivieren",
+    archived: "Archiviert",
+    create: "Erstellen",
     on: "Ein",
     off: "Aus",
     discontinued: "Nicht mehr erhältlich",
     loading: "Wird geladen...",
     refresh: "Aktualisieren",
+    rename: "Umbenennen",
+    restore: "Wiederherstellen",
     save: "Speichern",
+    status: "Status",
     cancel: "Abbrechen",
     selected: "Ausgewählt",
     remove: "Entfernen",
@@ -39,12 +46,14 @@ export const deDictionary: DictionaryNode = {
     minutesAgo: "vor {count} Min.",
     hoursAgo: "vor {count} Std.",
     daysAgo: "vor {count} Tagen",
+    optional: "Optional",
   },
   errors: {
     invalidRequest: "Die Anfrage konnte nicht ausgeführt werden.",
     unauthorized: "Eine Anmeldung ist erforderlich.",
     forbidden: "Diese Aktion ist nicht erlaubt.",
     notFound: "Der angeforderte Eintrag wurde nicht gefunden.",
+    unavailable: "Der Dienst ist vorübergehend nicht verfügbar.",
     internal: "Ein Fehler ist aufgetreten. Versuche es erneut.",
     spoolActiveLoan: "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
     loadedSpoolEditBlocked: "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
@@ -52,6 +61,101 @@ export const deDictionary: DictionaryNode = {
       "Beende die Ausleihe, bevor du Status oder Lagerort dieser Rolle änderst.",
     spoolStatusEditLimited:
       "Im Browser kann der Rollenstatus nur auf Lagernd, Leer oder Verloren gesetzt werden.",
+    locationHasReferences:
+      "Verschiebe alle Rollen und untergeordneten Lagerorte, bevor du diesen Lagerort löschst.",
+    locationNameRequired: "Ein Name für den Lagerort ist erforderlich.",
+    locationNameTooLong:
+      "Der Name eines Lagerorts darf höchstens 120 Zeichen enthalten.",
+    locationNameConflict: "Ein aktiver Lagerort verwendet bereits diesen Namen.",
+    locationAlreadyArchived: "Dieser Lagerort ist bereits archiviert.",
+    locationNotArchived: "Dieser Lagerort ist bereits aktiv.",
+    locationArchived:
+      "Stelle diesen Lagerort wieder her, bevor du ihn verwendest oder Rollen zuweist.",
+    locationMergeSameId: "Wähle zwei verschiedene Lagerorte zum Zusammenführen aus.",
+    locationParentCycle:
+      "Ein Lagerort kann nicht unter sich selbst oder einen untergeordneten Lagerort verschoben werden.",
+    locationMergeDescendant:
+      "Ein Lagerort kann nicht mit einem seiner untergeordneten Lagerorte zusammengeführt werden.",
+    locationSystemOwned:
+      "Dieser Lagerort wird vom Drucker- oder Ausleihablauf verwaltet.",
+    locationHostUnsupported:
+      "Aktualisiere den Host, bevor du Lagerortobjekte verwaltest.",
+    inventoryBulkInvalidExpectedCount:
+      "Die Sammelprüfung ist ungültig. Lade den Bestand neu und prüfe die Aktion erneut.",
+    inventoryBulkEmptySelection:
+      "Wähle mindestens eine Rolle für die Sammelaktion aus.",
+    inventoryBulkInvalidSelection:
+      "Die ausgewählten Rollen sind ungültig. Leere die Auswahl und wähle sie erneut aus.",
+    inventoryBulkStaleReview:
+      "Die ausgewählten Rollen haben sich geändert. Lade den Bestand neu und prüfe die Sammelaktion erneut.",
+    inventoryBulkInvalidLocationTarget:
+      "Wähle einen aktiven Lagerort und prüfe das Verschieben erneut.",
+    inventoryBulkInvalidStatusTarget:
+      "Wähle einen zulässigen Bestandsstatus und prüfe die Aktion erneut.",
+    inventoryBulkRemovedSpool:
+      "Eine ausgewählte Rolle wurde entfernt. Lade den Bestand neu und prüfe die Aktion erneut.",
+    inventoryBulkPrinterSlotControlled:
+      "Eine ausgewählte Rolle ist in einen Drucker geladen. Verwende die Druckerplatz-Aktionen oder entferne die Rolle aus der Auswahl.",
+    inventoryBulkActiveLoan:
+      "Eine ausgewählte Rolle hat eine aktive Ausleihe. Beende sie oder entferne die Rolle aus der Auswahl.",
+    loanExpectedReturnInvalid: "Wähle ein gültiges erwartetes Rückgabedatum.",
+    loanMetadataUnsupported:
+      "Aktualisiere den Host, bevor du Kontaktdaten oder ein erwartetes Rückgabedatum speicherst.",
+    loanAlreadyActive: "Diese Rolle hat bereits eine aktive Ausleihe.",
+    loanAlreadyReturned:
+      "Diese Ausleihe wurde bereits mit anderen Rückgabedaten beendet.",
+    loanDirectionMismatch:
+      "Verwende die Rückgabeaktion für diese Ausleihrichtung.",
+    borrowedInCannotLend:
+      "Eine geliehene Rolle kann nicht weiterverliehen werden.",
+    inboundLoanRequired:
+      "Diese Aktion ist nur für geliehene Rollen verfügbar.",
+    spoolCommonDetailsHostUnsupported:
+      "Aktualisiere den Host, bevor du Taragewicht oder Eigentum zusammen mit den Rollendetails speicherst.",
+    purchaseMetadataHostUnsupported:
+      "Aktualisiere den Host, bevor du Kaufdetails speicherst.",
+    purchasePriceInvalid:
+      "Gib einen gültigen Kaufpreis von null oder mehr ein.",
+    purchaseCurrencyInvalid:
+      "Gib eine gültige dreibuchstabige Kaufwährung ein.",
+    purchaseCurrencyRequired:
+      "Eine Kaufwährung ist erforderlich, wenn ein Kaufpreis festgelegt ist.",
+    purchasePriceRequired:
+      "Ein Kaufpreis ist erforderlich, wenn eine Kaufwährung festgelegt ist.",
+    purchaseDateInvalid: "Gib ein gültiges Kaufdatum ein.",
+    purchaseBatchCodeTooLong: "Der Chargencode des Kaufs ist zu lang.",
+    purchaseSupplierReferenceTooLong: "Die Lieferantenreferenz ist zu lang.",
+    purchaseMetadataTypeInvalid:
+      "Die Kaufdetails haben ein ungültiges Format. Prüfe sie und versuche es erneut.",
+    purchasePriceProtectionLockInvalid:
+      "Der importierte Preisschutzwert muss wahr oder falsch sein.",
+    purchasePriceProtectionSourceInvalid:
+      "Die importierte Preisquelle muss MANUAL, STANDARD_BATCH oder leer sein.",
+    filamentStandardsHostUnsupported:
+      "Aktualisiere den Host, bevor du Filament-Preisstandards verwendest.",
+    filamentStandardsRoleUnresolved:
+      "Warte, bis die Bibliotheksrolle geladen ist, und versuche es dann erneut.",
+    libraryRoleLoadFailed:
+      "Die Bibliotheksrolle dieses Geräts konnte nicht ermittelt werden. Lokale Daten und Änderungen sind erst verfügbar, nachdem die Rolle geladen wurde.",
+    filamentStandardsHostManaged:
+      "Verwalte die bibliotheksweiten Filamentstandards in der Desktop-App auf dem Host.",
+    filamentStandardsNotLoaded:
+      "Warte, bis die Filamentstandards geladen sind, und versuche es dann erneut.",
+    filamentStandardsStaleReview:
+      "Die ausgewählten Rollen haben sich geändert. Prüfe die Filament-Preisgruppe erneut.",
+    filamentBatchGroupRequired: "Wähle eine Filament-Preisgruppe.",
+    filamentBatchEmptySelection:
+      "Wähle mindestens eine Rolle für diese Preisaktualisierung aus.",
+    filamentBatchInvalidSelection:
+      "Die ausgewählten Rollen sind ungültig. Prüfe die Filament-Preisgruppe erneut.",
+    filamentBatchInvalidHistoricalFill:
+      "Das Ergänzen eines fehlenden Preises bei einer historischen Rolle ist nur für eine eigene historische Rolle ohne Preis im Modus Nur fehlende Preise verfügbar.",
+    filamentStandardsCurrencyInvalid:
+      "Gib eine gültige dreibuchstabige Kaufwährung ein.",
+    filamentStandardsPriceInvalid:
+      "Gib einen gültigen Filamentpreis von null oder mehr ein.",
+    filamentStandardsInvalid:
+      "Die gespeicherten Filamentstandards sind nicht mehr gültig. Lade sie neu und prüfe sie.",
     exportInvalidPayload: "Der erzeugte Export ist ungültig.",
     downloadsUnavailable: "Der Download-Ordner ist nicht verfügbar.",
     exportWriteFailed: "Der Export konnte nicht gespeichert werden.",
@@ -75,6 +179,48 @@ export const deDictionary: DictionaryNode = {
     bambuLiveAttentionBody:
       "{name} ist nicht mehr Live, bis du die Druckeridentität überprüfst und bestätigst.",
     openBambuLiveSettings: "Live-Einstellungen öffnen",
+    actionRequiredTitle: "Handlung erforderlich",
+    actionRequiredHint:
+      "Verfolge überfällige Leihen, eingehende Käufe und Vertrauensprobleme bei Druckern.",
+    actionSnapshotAgeUnknown: "Startzeit unbekannt · in diesem Datenstand erkannt",
+    actionCreatedAt: "Erstellt",
+    actionLowStockReason:
+      "{count, plural, one {# Rolle liegt} other {# Rollen liegen}} am oder unter dem Grenzwert; niedrigster Stand: {remaining} von {threshold}.",
+    actionOverdueReason:
+      "Die aktive Leihe an {name} hat das erwartete Rückgabedatum überschritten.",
+    actionOnOrderReason:
+      "{count, plural, one {# Rolle ist} other {# Rollen sind}} bestellt und kann unter Einkäufe empfangen werden.",
+    actionPurchaseAdded: "Zur Wunschliste hinzugefügt. Einkäufe werden geöffnet.",
+    actionPurchaseReused:
+      "Ein offener Kauf ist bereits vorhanden. Er wird wiederverwendet und Einkäufe werden geöffnet.",
+    lowStockSuggestionCount:
+      "{count, plural, one {# Vorschlag} other {# Vorschläge}}",
+    lowStockHiddenCount:
+      "{count, plural, one {# ausgeblendet} other {# ausgeblendet}}",
+    lowStockSuggestionsTitle: "Vorschläge bei niedrigem Bestand",
+    lowStockSuggestionsHint:
+      "Optionale Kaufvorschläge basierend auf den Grenzwerten für niedrigen Bestand.",
+    hideLowStockSuggestions: "Vorschläge ausblenden",
+    showLowStockSuggestions: "Vorschläge anzeigen",
+    lowStockSuggestionHidden:
+      "Der Vorschlag für {name} wurde auf diesem Gerät ausgeblendet.",
+    lowStockUndo: "Rückgängig",
+    lowStockSuggestionReason:
+      "{count, plural, one {# Rolle liegt} other {# Rollen liegen}} am oder unter dem Grenzwert; niedrigster Stand: {remaining} von {threshold}.",
+    queueLowStockSuggestionAria:
+      "{name} zur Wunschliste oder einer Bestellung hinzufügen",
+    queueLowStockSuggestion: "Zur Wunschliste / Bestellung hinzufügen",
+    hideLowStockSuggestionAria:
+      "Den Vorschlag für {name} auf diesem Gerät ausblenden",
+    hideLowStockSuggestion: "Vorschlag ausblenden",
+    noVisibleLowStockSuggestions: "Keine sichtbaren Kaufvorschläge.",
+    openLowStockInventory: "Bestand mit niedrigem Füllstand öffnen",
+    lowStockSuggestionsOptional:
+      "Diese Vorschläge sind optional und können auf diesem Gerät einzeln ausgeblendet werden.",
+    hiddenLowStockSuggestionsTitle: "Ausgeblendete Vorschläge",
+    restoreLowStockSuggestionAria:
+      "Den Vorschlag für {name} wieder anzeigen",
+    restoreLowStockSuggestion: "Wieder anzeigen",
     onboardingInventoryBody:
       "Starte mit einer Rolle oder importiere einen vorhandenen Bestand oder eine Sicherung.",
     onboardingInventoryTitle: "Bestand hinzufügen oder importieren",
@@ -110,6 +256,9 @@ export const deDictionary: DictionaryNode = {
     noActivePrinter: "Kein aktiver Drucker ausgewählt",
     noPrintersConfigured: "Keine Drucker konfiguriert",
     lowStock: "Niedriger Bestand",
+    atOrBelowThreshold: "Bei oder unter {count, number} g",
+    materialLowStockThresholds: "Grenzwerte nach Material",
+    legacyLowStockFallback: "200-g-Ersatzwert für ältere Hosts",
     noAlerts: "Keine Hinweise",
     monthlyUsage: "Monatlicher Verbrauch",
     gramsPerDay: "{count} g/Tag",
@@ -227,6 +376,7 @@ export const deDictionary: DictionaryNode = {
     ownerContactOptional: "Kontakt des Eigentümers (optional)",
     reference: "Referenz",
     lowStockOnly: "Niedriger Bestand (1–200 g)",
+    lowStockFilter: "Niedriger Bestand",
     unassigned: "Nicht zugewiesen",
     rolls: "Rollen",
     total: "Gesamt",
@@ -240,6 +390,126 @@ export const deDictionary: DictionaryNode = {
     remainingWeight: "Verbleibendes Gewicht (g)",
     emptySpoolWeight: "Leerrollengewicht (g)",
     location: "Lagerort",
+    locationsTitle: "Lagerorte",
+    locationManagementTitle: "Lagerorte verwalten",
+    locationsHelp:
+      "Verwalte deine Lagerorte. Drucker- und Ausleihorte werden automatisch verwaltet und hier nicht angezeigt.",
+    locationCount: "{count, plural, one {# Lagerort} other {# Lagerorte}}",
+    locationActiveCount:
+      "{count, plural, one {# aktiver Lagerort} other {# aktive Lagerorte}}",
+    locationActiveTitle: "Aktive Lagerorte",
+    locationPreviousTitle: "Frühere Lagerorte",
+    locationArchiveHelp:
+      "Archivierte Lagerorte verschwinden aus neuen Auswahlen. Verknüpfte Rollen behalten dieselbe Lagerort-ID; eine Wiederherstellung aktiviert genau diesen Lagerort erneut.",
+    locationUsageCount:
+      "{count, plural, =0 {Keine verknüpften Rollen} one {# verknüpfte Rolle} other {# verknüpfte Rollen}}",
+    locationReferenceCount:
+      "{count, plural, =0 {Keine gespeicherten Verknüpfungen} one {# gespeicherte Verknüpfung} other {# gespeicherte Verknüpfungen}}",
+    locationsLegacyHost:
+      "Dieser Host stammt aus der Zeit vor Lagerortobjekten. Bestehende Platzierungsnamen bleiben sichtbar; aktualisiere den Host, bevor du Lagerorte änderst.",
+    locationsOffline:
+      "Gespeicherte Lagerorte werden angezeigt. Stelle die Verbindung zum Host wieder her, bevor du sie änderst.",
+    locationsHostManaged:
+      "Kopple diesen Client mit dem Host, um Lagerorte zu verwalten.",
+    locationCreate: "Lagerort erstellen",
+    locationNamePlaceholder: "Beispiel: Trockenbox 2",
+    locationChoose: "Lagerort auswählen",
+    locationRename: "Lagerort umbenennen",
+    locationRenameNamed: "{name} umbenennen",
+    locationArchiveNamed: "{name} archivieren",
+    locationDeleteNamed: "{name} dauerhaft löschen",
+    locationDeleteAction: "Löschen",
+    locationRestoreNamed: "{name} wiederherstellen",
+    locationRestoreNameConflict:
+      "Vor dem Wiederherstellen umbenennen: Ein aktiver Lagerort verwendet bereits diesen Namen.",
+    locationNewName: "Neuer Name",
+    locationArchiveConfirmTitle: "{name} archivieren?",
+    locationArchiveConfirmDetail:
+      "{count, plural, =0 {Keine gespeicherten Verknüpfungen verweisen auf diesen Lagerort} one {# gespeicherte Verknüpfung verweist weiterhin auf diesen Lagerort} other {# gespeicherte Verknüpfungen verweisen weiterhin auf diesen Lagerort}}. Der Lagerort verschwindet aus neuen Auswahlen, kann aber später wiederhergestellt werden.",
+    locationArchiveLegacyConfirmDetail:
+      "{count, plural, =0 {Keine sichtbaren Rollen sind verknüpft} one {# sichtbare Rolle bleibt verknüpft} other {# sichtbare Rollen bleiben verknüpft}}. Dieser Host kann ausgeblendete Heim- oder untergeordnete Verknüpfungen nicht melden. Der Lagerort verschwindet aus neuen Auswahlen, kann aber später wiederhergestellt werden.",
+    locationArchiveConfirm: "Lagerort archivieren",
+    locationDeleteConfirmTitle: "{name} dauerhaft löschen?",
+    locationDeleteConfirmDetail:
+      "Dieser Lagerort hat keine verknüpften Rollen oder untergeordneten Lagerorte und kann gelöscht werden. Dies kann nicht rückgängig gemacht werden. Verlaufseinträge bleiben erhalten.",
+    locationDeleteConfirm: "Lagerort dauerhaft löschen",
+    locationMerge: "Lagerorte zusammenführen",
+    locationMergeAdvanced: "Erweitert: Lagerorte zusammenführen",
+    locationMergeHelp:
+      "Alle aktuellen, Heimat- und untergeordneten Verweise wechseln zum Ziel. Die Quelle wird archiviert und jede betroffene Rolle erhält einen Verlaufseintrag.",
+    locationMergeSource: "Quelllagerort",
+    locationMergeTarget: "Ziellagerort",
+    locationMergeAction: "Zusammenführen und Quelle archivieren",
+    locationReviewMerge: "Zusammenführung prüfen",
+    locationMergeConfirmTitle: "{source} mit {target} zusammenführen?",
+    locationMergeConfirmDetail:
+      "Alle aktuellen, Heimat- und untergeordneten Verweise wechseln zum Ziel und die Quelle wird archiviert. Dies kann nicht automatisch rückgängig gemacht werden.",
+    locationMergeConfirm: "Zusammenführung und Archivierung bestätigen",
+    locationType: "Typ",
+    locationSystemOwned: "Systemverwaltet",
+    locationGeneric: "Lagerung",
+    locationSystemProtected: "Wird vom Drucker- oder Ausleihablauf verwaltet",
+    locationsEmpty:
+      "Noch keine Lagerorte gespeichert. Erstelle oben einen oder gib bei der Registrierung einer Rolle einen neuen Ort ein.",
+    locationCreated: "Lagerort erstellt.",
+    locationRenamed: "Lagerort umbenannt.",
+    locationArchived: "Lagerort archiviert.",
+    locationDeleted: "Lagerort gelöscht.",
+    locationRestored: "Lagerort wiederhergestellt.",
+    locationsMerged: "Lagerorte zusammengeführt.",
+    labelSheetAllAction: "Etikettenbogen für den gesamten Bestand erstellen",
+    bulkActionsTitle: "Massenaktionen",
+    bulkSelectionModeStart: "Mehrere auswählen",
+    bulkSelectionModeDone: "Auswahl beenden",
+    bulkSelectionHint:
+      "Rollen zum Verschieben, Ändern des Status, Erstellen von Etiketten oder Exportieren auswählen.",
+    bulkCreateLabels:
+      "{count, plural, one {Etikettenbogen für # ausgewählte Rolle erstellen} other {Etikettenbogen für # ausgewählte Rollen erstellen}}",
+    bulkMoveAction: "Verschieben",
+    bulkStatusAction: "Status ändern",
+    bulkMoveTitle: "Ausgewählte Rollen verschieben",
+    bulkStatusTitle: "Status ausgewählter Rollen ändern",
+    bulkNoSelection: "Keine Rollen ausgewählt",
+    bulkSelectedCount: "{count, plural, one {# Rolle ausgewählt} other {# Rollen ausgewählt}}",
+    bulkSelectedAcrossFilters: "{selected} insgesamt ausgewählt · {visible} in dieser Ansicht",
+    bulkSelectVisible:
+      "{count, plural, one {# sichtbare Rolle auswählen} other {# sichtbare Rollen auswählen}}",
+    bulkSelectSpool: "{reference} auswählen",
+    bulkClearSelection: "Auswahl aufheben",
+    bulkReviewMove: "Verschieben prüfen",
+    bulkReviewStatus: "Statusänderung prüfen",
+    bulkReviewTitle: "{action} prüfen",
+    bulkReviewSelected: "{count} ausgewählt",
+    bulkAffected: "Betroffen",
+    bulkAffectedCount: "{count} betroffen",
+    bulkUnchanged: "Unverändert",
+    bulkUnchangedCount: "{count} unverändert",
+    bulkTarget: "Ziel",
+    bulkReviewTarget: "Ziel für {action}: {target}",
+    bulkReviewChanged: "Die Auswahl oder Rollendaten haben sich geändert. Prüfe die Aktion erneut.",
+    bulkAtomicWarning:
+      "Alle {count} Änderungen und ihre Verläufe werden gemeinsam gespeichert, oder es wird nichts geschrieben.",
+    bulkConfirmAction: "{action} für {count} bestätigen",
+    bulkActiveLoanBlocked:
+      "{count, plural, one {# betroffene Rolle hat} other {# betroffene Rollen haben}} eine aktive Ausleihe. Beende sie, bevor Platzierung oder Status geändert werden.",
+    bulkPrinterSlotBlocked:
+      "{count, plural, one {# betroffene Rolle ist} other {# betroffene Rollen sind}} in einem Drucker geladen. Verwende stattdessen die Druckerplatz-Aktionen.",
+    bulkRemovedBlocked:
+      "{count, plural, one {# betroffene Rolle ist entfernt} other {# betroffene Rollen sind entfernt}}. Stelle sie vor einer Massenaktion wieder her.",
+    bulkNoChanges: "Die ausgewählte Aktion würde keine Rollen ändern.",
+    bulkInvalidStatus: "Wähle IN_STOCK, EMPTY oder LOST als Zielstatus.",
+    bulkInvalidLocation: "Wähle einen aktiven Lagerort.",
+    bulkStaleSelection: "Die ausgewählten Rollen haben sich geändert. Aktualisiere und prüfe erneut.",
+    bulkLegacyHostUnsupported:
+      "Der verbundene Host unterstützt keine atomischen Bestands-Massenaktionen. Aktualisiere den Host und versuche es erneut.",
+    bulkMutationDone:
+      "{count, plural, one {# Rolle wurde} other {# Rollen wurden}} atomisch aktualisiert.",
+    bulkMutationFailed: "Die Massenaktion ist fehlgeschlagen. Es wurden keine Teiländerungen gespeichert.",
+    bulkReceiptMismatch:
+      "Der Host hat ein unerwartetes Ergebnis zurückgegeben. Aktualisiere den Bestand vor dem nächsten Versuch.",
+    bulkExportDone:
+      "{count, plural, one {# ausgewählte Rolle} other {# ausgewählte Rollen}} als {format} exportiert.",
+    bulkExportFailed: "Die ausgewählten Rollen konnten nicht exportiert werden. Aktualisiere und versuche es erneut.",
     qrLabel: "QR",
     rollHistory: "Rollenverlauf",
     dangerZone: "Gefahrenbereich",
@@ -429,6 +699,28 @@ export const deDictionary: DictionaryNode = {
       "Geplante Käufe vormerken, als bestellt kennzeichnen und nach Erhalt einlagern.",
     addDirectlyToStock: "Direkt einlagern",
     stockRollNow: "Rolle jetzt einlagern",
+    purchaseMetadataTitle: "Kaufdetails",
+    purchaseMetadataApplies:
+      "{count, plural, one {Diese Details werden für diese Rolle gespeichert.} other {Diese Details werden für jede der # empfangenen Rollen gespeichert.}}",
+    purchasePricePerRoll: "Preis pro Rolle",
+    purchasePricePerRollHint: "Gib den Stückpreis für eine Rolle ein, nicht die Bestellsumme.",
+    protectIndividualPriceFromGroupUpdates:
+      "Individuellen Preis vor Gruppenaktualisierungen schützen",
+    protectIndividualPriceFromGroupUpdatesHint:
+      "Manuelle Preisänderungen für diese Rolle sind weiterhin möglich. Filamentstandards überspringen sie bei Gruppenaktualisierungen.",
+    purchaseCurrency: "Währung",
+    purchaseCurrencyHint: "Verwende einen dreibuchstabigen Code wie NOK oder EUR.",
+    purchaseDate: "Kaufdatum",
+    purchaseBatchCode: "Chargencode",
+    purchaseSupplierReference: "Lieferantenreferenz",
+    purchasePriceInvalid: "Gib einen endlichen Zahlenwert als Preis ein.",
+    purchasePriceNegative: "Der Preis darf nicht negativ sein.",
+    purchaseCurrencyRequired: "Bei einer Preisänderung ist die Währung erforderlich.",
+    purchaseCurrencyInvalid: "Verwende einen dreibuchstabigen Währungscode.",
+    purchaseCurrencyWithoutPrice: "Gib einen Preis ein oder entferne die Währung.",
+    purchaseDateInvalid: "Gib ein gültiges Kalenderdatum ein.",
+    purchaseBatchCodeTooLong: "Der Chargencode ist zu lang.",
+    purchaseSupplierReferenceTooLong: "Die Lieferantenreferenz ist zu lang.",
     registerBorrowedIn: "Geliehene Rolle registrieren",
     availableToLoan: "Zum Ausleihen verfügbar",
     loanSearchLabel: "Verfügbare Rollen suchen",
@@ -438,6 +730,23 @@ export const deDictionary: DictionaryNode = {
     noLoanSearchResults: "Keine verfügbare Rolle entspricht der Suche.",
     loanDetails: "Ausleihdetails",
     borrowerName: "Name des Entleihers",
+    borrowerContactOptional: "Kontaktdaten (optional)",
+    borrowerContactPlaceholder: "Telefon, E-Mail oder Benutzername",
+    expectedReturnDateOptional: "Erwartetes Rückgabedatum (optional)",
+    selectedRollActions: "Aktionen für die ausgewählte Rolle",
+    nextStep: "Nächster Schritt",
+    loanOutAction: "Ausleihen",
+    loadInPrinter: "In Drucker laden",
+    loadInPrinterHint: "Wähle einen freien Druckerplatz für diese Rolle.",
+    loadedInPrinter: "Rolle in den Drucker geladen.",
+    noAvailablePrinterSlots: "Keine freien Druckerplätze verfügbar.",
+    printLabelAction: "Etikett drucken",
+    unsavedChanges: "Nicht gespeicherte Änderungen",
+    discardUnsavedChanges: "Nicht gespeicherte Änderungen verwerfen?",
+    allChangesSaved: "Alle Änderungen gespeichert.",
+    rollChangesSaved: "Rollenänderungen gespeichert.",
+    labelSheetInventoryHint:
+      "Brauchst du Etiketten für mehrere Rollen? Wähle Mehrere auswählen im Bestand oder erstelle über die Kopfzeile einen Etikettenbogen für den gesamten Bestand.",
     outG: "Ausgehend g",
     loanNoteOptional: "Ausleihnotiz (optional)",
     loanOutRoll: "Rolle ausleihen",
@@ -590,6 +899,18 @@ export const deDictionary: DictionaryNode = {
       usedUp: "Als leer markiert",
       locationUpdated: "Lagerort aktualisiert",
       detailsUpdated: "Details aktualisiert",
+      purchaseReceiptRecorded: "Kaufbeleg erfasst",
+      purchaseMetadataUpdated: "Kaufdetails aktualisiert",
+      purchasePriceStandardApplied: "Gruppenpreis angewendet",
+      purchasePriceStandardAppliedDetail:
+        "Der gespeicherte Gruppenpreis wurde auf diese Rolle angewendet.",
+      purchasePriceBatchLockUpdated: "Schutz vor Gruppenpreisen geändert",
+      purchasePriceBatchProtection: "Schutz vor Gruppenpreisen",
+      purchasePriceBatchLockUpdatedDetail:
+        "Der Schutz vor Gruppenpreisen wurde für diese Rolle geändert.",
+      locationMerged: "Lagerorte zusammengeführt",
+      locationMergedDetail:
+        "Diese Rolle wurde verschoben, weil zwei Lagerorte zusammengeführt wurden.",
       rfidSaved: "RFID gespeichert",
       assignedToAms: "Druckerplatz zugewiesen",
       printJobRecorded: "Druckverbrauch erfasst",
@@ -601,6 +922,8 @@ export const deDictionary: DictionaryNode = {
       deleted: "Gelöscht",
       rfidSavedDetail: "RFID-Identität wurde aus der AMS-Erfassung gespeichert.",
       addedToLibraryDetail: "Filament wurde zur Bibliothek hinzugefügt.",
+      purchaseReceiptRecordedDetail: "Der Kaufbeleg wurde erfasst.",
+      purchaseMetadataUpdatedDetail: "Die Kaufdetails wurden aktualisiert.",
     },
     rfidHintReady:
       "AMS-/RFID-Identitätsdaten erfassen, prüfen und die beobachtete RFID-Identität speichern, wenn sie korrekt wirkt.",
@@ -682,6 +1005,7 @@ export const deDictionary: DictionaryNode = {
       bambuBatchWrongMode: "Wechsle vor dem Erstellen eines Filamentcode-Stapels zur Bambu-Quelle.",
       createBambuBatch: "Bambu-Code-Stapel konnte nicht erstellt werden. Prüfe QR-Eindeutigkeit und Werte.",
       stockFromWishlist: "Rolle aus Wunschlisteneintrag konnte nicht eingelagert werden.",
+      purchaseMetadataInvalid: "Prüfe die markierten Kaufdetails.",
       unlockMetadataFirst: "Entsperre vor dem Bearbeiten der Katalogdetails die Metadaten.",
       masterFieldsRequired: "Hersteller, Material, Filamentname und Farbe sind zum Speichern erforderlich.",
       invalidHex:
@@ -701,6 +1025,11 @@ export const deDictionary: DictionaryNode = {
       borrowerRequired: "Name des Entleihers ist erforderlich.",
       borrowedInNeedsOwner: "Für eine geliehene Rolle muss angegeben werden, von wem sie geliehen ist.",
       loanGrams: "Ausgeliehene Gramm müssen null oder größer sein.",
+      expectedReturnInvalid: "Wähle ein gültiges erwartetes Rückgabedatum.",
+      expectedReturnPast: "Das erwartete Rückgabedatum darf nicht vor heute liegen.",
+      loadInPrinter: "Rolle konnte nicht in den Drucker geladen werden.",
+      loadInPrinterStale:
+        "Der ausgewählte Druckerplatz hat sich geändert. Lade die Daten neu und versuche es erneut.",
       loanBorrowedIn: "Geliehene Rollen können nicht erneut ausgeliehen werden.",
       loanOut: "Rolle konnte nicht ausgeliehen werden.",
       returnedGrams: "Zurückgegebene Gramm müssen null oder größer sein.",
@@ -734,6 +1063,10 @@ export const deDictionary: DictionaryNode = {
     statusFilter: "Wunschlistenstatusfilter",
     itemStatusGroup: "Status für {name}",
     qty: "Anz.",
+    receivePurchase: "Einkauf empfangen",
+    receivedQuantity: "Empfangene Menge",
+    receiveQuantity:
+      "{count, plural, one {# Rolle empfangen} other {# Rollen empfangen}}",
     searchQueueLabel: "Einkaufsliste durchsuchen",
     searchQueuePlaceholder: "Name, Farbe oder Hersteller suchen",
     resultCountOne: "Eintrag",
@@ -800,6 +1133,10 @@ export const deDictionary: DictionaryNode = {
     spool: "Rolle",
     spoolId: "Rollen-ID",
     borrower: "Entleiher",
+    contact: "Kontakt",
+    expectedReturn: "Erwartete Rückgabe",
+    dueToday: "Heute fällig",
+    overdue: "Überfällig",
     lent: "Ausgeliehen",
     returned: "Zurückgegeben",
     returnAction: "Zurückgeben",
@@ -1058,6 +1395,24 @@ export const deDictionary: DictionaryNode = {
     noSamples: "Noch keine Gewichtsmessungen.",
   },
   statistics: {
+    forecastUnavailable: "Nicht genügend Verbrauchsdaten",
+    forecastDays: "{count, plural, one {# Tag} other {# Tage}}",
+    consumptionForecast: "Verbrauchsprognose",
+    consumptionForecastHint:
+      "Eine deterministische Schätzung auf Grundlage des eigenen Bestands und des erfassten Verbrauchs eigener Materialien in den letzten 30 Tagen.",
+    forecastDataThrough: "Daten bis einschließlich {date}",
+    forecastOwnedStock: "Berücksichtigter eigener Bestand",
+    forecastUsageBasis: "Erfasster Verbrauch · 30 Tage",
+    forecastCoverage: "Geschätzte Reichweite",
+    forecastDepletion: "Möglicherweise aufgebraucht",
+    forecastNext30Days: "Geschätzter Verbrauch · nächste 30 Tage",
+    forecastRemaining30Days: "Geschätzter Bestand nach 30 Tagen",
+    forecastDailyAverage: "Angenommener Tagesverbrauch",
+    forecastSpoolsIncluded: "Berücksichtigte eigene Rollen",
+    forecastNeedsUsage:
+      "Erfasse den Verbrauch eigener Materialien, bevor ein voraussichtliches Aufbrauchdatum berechnet werden kann.",
+    forecastAssumptions:
+      "Annahme: Der tägliche Verbrauch entspricht weiterhin dem Durchschnitt der letzten 30 Tage. Geliehene, leere, verlorene und entfernte Rollen werden nicht berücksichtigt. Diese Prognose dient nur zur Information und erstellt niemals automatisch Bestellungen.",
     subtitle: "Bestand, Verbrauch, Ausleihen und Druckerleistung auswerten.",
     loansShort: "Ausleihen",
     totalConsumption: "Gesamtverbrauch",
@@ -1065,6 +1420,15 @@ export const deDictionary: DictionaryNode = {
     failedJobs: "Fehlgeschlagene Aufträge",
     completed: "Abgeschlossen",
     desktopOnly: "Statistiken sind in der Desktop-App verfügbar.",
+    periodTitle: "Berichtszeitraum",
+    periodCustom: "Benutzerdefinierter Zeitraum",
+    periodStart: "Startdatum",
+    periodEnd: "Enddatum",
+    periodApply: "Zeitraum anwenden",
+    periodDateRequired: "Start- und Enddatum auswählen.",
+    periodDateInvalid: "Gültige Kalenderdaten eingeben.",
+    periodOrderInvalid: "Das Enddatum muss am oder nach dem Startdatum liegen.",
+    periodDetailsUnavailable: "Summen sowie Filament- oder Druckerdetails für den ausgewählten Zeitraum sind in diesem Host-Snapshot nicht verfügbar. Host aktualisieren oder erneut verbinden.",
     clientReadOnlyCached: "Host nicht verfügbar. Letzte gespeicherte Statistikübersicht wird angezeigt.",
     clientReadOnlyOffline: "Host nicht verfügbar und noch keine gespeicherte Statistikübersicht vorhanden.",
     clientReadOnlyUpdated: "Aktualisiert",
@@ -1094,6 +1458,73 @@ export const deDictionary: DictionaryNode = {
     activeAms: "Aktiv belegte Plätze",
     assignedSlots: "Plätze mit zugewiesenen Rollen",
     currentSnapshot: "Aktuelle Momentaufnahme",
+    valueCost: "Wert und Kosten",
+    valueCostTitle: "Lagerwert und Materialkosten",
+    valueCostHint:
+      "Verbindliche Werte aus erfassten Einkaufsdaten. Währungen und Eigentumsarten bleiben getrennt; fehlende Daten werden nie als null ausgewiesen.",
+    valueCostLoading: "Wert- und Kostendaten werden geladen...",
+    valueCostHostUpgrade:
+      "Dieser Host unterstützt noch keine Wert- und Kostenberichte. Aktualisiere den Host, um verbindliche, nach Währung getrennte Summen und Nachverfolgungsdetails zu sehen.",
+    valueCostUnavailable:
+      "Wert- und Kostendaten sind für diesen Berichtszeitraum nicht verfügbar.",
+    inventoryValue: "Lagerwert",
+    inventoryValueHint:
+      "Aktueller Wert aktiver Rollen auf Grundlage von Restgewicht und erfasstem Einkaufspreis.",
+    materialCost: "Materialkosten",
+    materialCostHint:
+      "Kosten des erfassten Materialverbrauchs im ausgewählten Berichtszeitraum.",
+    valueCostCurrencySeparate: "Nach Währung getrennt",
+    valueCostOwned: "Eigene",
+    valueCostBorrowedIn: "Geliehen",
+    valueCostNoValuedRows: "Keine bewerteten Zeilen",
+    valueCostNoMonetaryTotals:
+      "Eine Geldsumme kann erst angezeigt werden, wenn die fehlenden Einkaufsdaten ergänzt wurden.",
+    valueCostCoverage: "Datenabdeckung",
+    valueCostCoverageRows: "{valued} von {total} Zeilen bewertet",
+    valueCostNoApplicableRows: "Keine zutreffenden Zeilen",
+    valueCostCoveredWeight: "Bewertetes bekanntes Gewicht",
+    valueCostUnvaluedRows: "Zeilen ohne Wert",
+    valueCostWeightUnavailable: "Gewicht nicht verfügbar",
+    valueCostUnknownWeightHint:
+      "Fehlendes oder ungültiges Gewicht wird aus der Gewichtsabdeckung ausgeschlossen und nicht als null gezählt.",
+    valueCostMissingData: "Warum Daten fehlen",
+    valueCostMissingReasonCount: "{rows} Zeilen · {grams}",
+    openFilamentDefaults: "Filamentstandards öffnen",
+    valueCostCompleteCoverage: "Alle zutreffenden Zeilen sind bewertet.",
+    valueCostInventoryTrace: "Lagerwert nachverfolgen",
+    valueCostUsageTrace: "Materialkosten nachverfolgen",
+    valueCostTraceCount:
+      "{shown} von {returned} verfügbaren Nachverfolgungszeilen werden angezeigt ({total} insgesamt).",
+    valueCostTraceTruncated:
+      "Die Nachverfolgung ist aus Leistungsgründen begrenzt. Summen und Abdeckung enthalten weiterhin alle zutreffenden Zeilen.",
+    valueCostNoTraceRows: "Keine Nachverfolgungszeilen verfügbar.",
+    valueCostShowMoreTrace: "Weitere Nachverfolgungszeilen anzeigen",
+    valueCostRemaining: "Verbleibend",
+    valueCostUsed: "Verwendet",
+    valueCostInitialWeight: "Anfangsgewicht",
+    valueCostPurchasePrice: "Einkaufspreis",
+    valueCostNotRecorded: "Nicht erfasst",
+    valueCostNotValued: "Nicht bewertet",
+    valueCostSpoolUnavailable: "Rolle nicht verfügbar",
+    valueCostCurrencyMissingShort: "Währung fehlt",
+    valueCostSourceLive: "Live-Überwachung",
+    valueCostSourceManual: "Manueller Auftrag",
+    valueCostStatusFailed: "Fehlgeschlagen",
+    valueCostPrinterReference: "Druckerreferenz",
+    valueCostSpoolReference: "Rollenreferenz",
+    valueCostUsageReference: "Verbrauchsreferenz",
+    valueCostReasonSpoolMissing: "Die referenzierte Rolle fehlt",
+    valueCostReasonRemainingWeightMissing: "Das Restgewicht fehlt",
+    valueCostReasonRemainingWeightInvalid: "Das Restgewicht ist ungültig",
+    valueCostReasonUsedWeightMissing: "Das verwendete Gewicht fehlt",
+    valueCostReasonUsedWeightInvalid: "Das verwendete Gewicht ist ungültig",
+    valueCostReasonMissingInitialWeight: "Das Anfangsgewicht fehlt",
+    valueCostReasonInvalidInitialWeight: "Das Anfangsgewicht muss größer als null sein",
+    valueCostReasonMissingPrice: "Der Einkaufspreis fehlt",
+    valueCostReasonInvalidPrice: "Der Einkaufspreis ist ungültig",
+    valueCostReasonMissingCurrency: "Die Einkaufswährung fehlt",
+    valueCostReasonInvalidCurrency: "Die Einkaufswährung ist ungültig",
+    valueCostReasonCalculationInvalid: "Der Wert konnte nicht berechnet werden",
     perPrinter: "Verbrauch je Drucker",
     perPrinterHint: "Öffne einen Drucker, um den Filamentverbrauch nach Material zu sehen.",
     loadingPrinter: "Druckerverbrauch wird geladen...",
@@ -1147,6 +1578,134 @@ export const deDictionary: DictionaryNode = {
     },
   },
   settings: {
+    filamentDefaultsUnknownWeight: "Unbekanntes Nenngewicht",
+    filamentDefaultsLoadError: "Filamentstandards konnten nicht geladen werden.",
+    filamentDefaultsSaveCurrencyError: "Die Standardwährung konnte nicht gespeichert werden.",
+    filamentDefaultsSaveGroupError: "Der Preis der Filamentgruppe konnte nicht gespeichert werden.",
+    filamentDefaultsApplyError: "Die Filamentpreise konnten nicht angewendet werden.",
+    filamentDefaultsSettingsRepair:
+      "Einige gespeicherte Filamentstandards waren ungültig oder passten nicht mehr zu dieser Bibliothek und wurden ausgeschlossen. Durch Speichern eines gültigen Standards werden die Einstellungen repariert.",
+    filamentDefaultsSettingsRepairReadOnly:
+      "Einige gespeicherte Filamentstandards waren ungültig oder passten nicht mehr zur Host-Bibliothek und wurden ausgeschlossen. Repariere sie in der Desktop-App des Hosts.",
+    filamentDefaultsReceiptBatchLocked: "Vor Gruppenpreisänderungen geschützt",
+    filamentDefaultsReceiptManual: "Muss manuell aktualisiert werden",
+    filamentDefaultsReceiptBorrowed: "Geliehene Rolle wurde nicht geändert",
+    filamentDefaultsReceiptInactive: "Historische Rolle wurde nicht geändert",
+    filamentDefaultsReceiptAlreadyPriced: "Hatte bereits einen Preis",
+    filamentDefaultsReceiptSkipped: "Nicht aktualisiert",
+    filamentDefaultsSelectSpool: "Rolle auswählen",
+    filamentDefaultsSelectHistoricalSpool:
+      "Preis für historische Rolle festlegen und vor späteren Gruppenänderungen schützen",
+    filamentDefaultsHistoricalSelectionHint:
+      "Wird nie automatisch ausgewählt. Der fehlende Preis kann einmal eingetragen werden; danach bleibt die Rolle vor Gruppenänderungen geschützt.",
+    filamentDefaultsBatchLocked: "Für Gruppenpreise gesperrt",
+    filamentDefaultsBorrowed: "Geliehen",
+    filamentDefaultsHistorical: "Historisch",
+    filamentDefaultsCurrentPrice: "Aktueller Preis",
+    filamentDefaultsMissingPrice: "Preis fehlt",
+    filamentDefaultsReceipt: "Letzter Preisaktualisierungsbeleg",
+    filamentDefaultsReceiptHint: "Dieser Beleg bleibt sichtbar, bis du ihn schließt oder eine weitere Preisaktualisierung ausführst.",
+    filamentDefaultsReceiptCommitted: "{updated} aktualisiert · {skipped} nicht aktualisiert",
+    filamentDefaultsReceiptCommittedProtected:
+      "{updated} aktualisiert · {protected} vor späteren Gruppenänderungen geschützt · {skipped} nicht aktualisiert",
+    filamentDefaultsReceiptNotCommitted: "Die Preisaktualisierung wurde nicht gespeichert.",
+    filamentDefaultsDismissReceipt: "Beleg schließen",
+    filamentDefaultsNotUpdated: "Nicht aktualisiert",
+    filamentDefaultsReceiptNoSkips: "Alle ausgewählten geeigneten Rollen wurden aktualisiert.",
+    filamentDefaultsReceiptUpdatedList:
+      "{count, plural, one {# aktualisierte Rolle anzeigen} other {# aktualisierte Rollen anzeigen}}",
+    filamentDefaultsReceiptPriceSetProtected:
+      "Preis festgelegt · Vor späteren Gruppenänderungen geschützt",
+    filamentDefaultsCurrency: "Standard-Kaufwährung",
+    filamentDefaultsCurrencyHint: "Dient als Ausgangswährung für neue Einzelpreise und Standards von Filamentgruppen. Bestehende Kaufdaten werden nicht automatisch geändert.",
+    filamentDefaultsHostOwned: "Verwalte bibliotheksweite Filamentstandards in der Desktop-App des Hosts.",
+    filamentDefaultsCurrencyCode: "Dreibuchstabiger Währungscode",
+    filamentDefaultsCurrencyCodeHint: "Zum Beispiel NOK, EUR oder USD. Beim Speichern dieses Standards werden vorhandene Rollenpreise niemals überschrieben.",
+    filamentDefaultsCurrencyInvalid: "Gib genau drei Buchstaben ein.",
+    filamentDefaultsCurrencyPlaceholder: "NOK",
+    filamentDefaultsSaveCurrency: "Standardwährung speichern",
+    filamentDefaultsGroupPrices: "Preise für Filamentgruppen",
+    filamentDefaultsGroupPricesHint: "Gruppen werden aus Hersteller, Material, Filamentserie und Nenngewicht der Rolle gebildet. Die Farbe teilt keine Preisgruppe. Lieferantenpreise sind nicht fest einprogrammiert.",
+    filamentDefaultsNoSpools: "Für die Gruppenpreisvergabe sind keine Rollen verfügbar.",
+    filamentDefaultsSpools:
+      "{count, plural, one {# Rolle} other {# Rollen}}",
+    filamentDefaultsGroups:
+      "{count, plural, one {# Preisgruppe} other {# Preisgruppen}}",
+    filamentDefaultsWithoutPrice: "ohne Preis",
+    filamentDefaultsWithoutCurrency: "ohne Währung",
+    filamentDefaultsLocked: "gesperrt",
+    filamentDefaultsGroupPrice: "Preis pro Rolle",
+    filamentDefaultsCurrencyCodeShort: "Währung",
+    filamentDefaultsSaveGroupDefault: "Gruppenstandard speichern",
+    filamentDefaultsBatchMode: "Preismodus",
+    filamentDefaultsMissingOnly: "Nur fehlende Preise",
+    filamentDefaultsMissingOnlyHint: "Behält alle vorhandenen Einzelpreise bei.",
+    filamentDefaultsOverwrite: "Ausgewählte Preise aktualisieren",
+    filamentDefaultsOverwriteHint: "Ersetzt vorhandene Einzelpreise nach einer gesonderten Bestätigung.",
+    filamentDefaultsSelectGroup:
+      "{count, plural, one {Die # aktive Rolle auswählen} other {Alle # aktiven Rollen auswählen}}",
+    filamentDefaultsHistoricalSelectionRemoved:
+      "{count, plural, one {# historische Rolle wurde aus der Auswahl entfernt, weil sie beim Überschreiben nicht geändert werden kann.} other {# historische Rollen wurden aus der Auswahl entfernt, weil sie beim Überschreiben nicht geändert werden können.}}",
+    filamentDefaultsHistoricalProtectionHint:
+      "Historische und aufgebrauchte Rollen sind standardmäßig geschützt und ausgeschlossen. Unter Nur fehlende Preise kann eine historische Rolle ohne Preis einzeln ausgewählt werden; ihr Schutz bleibt danach aktiv.",
+    filamentDefaultsSelected:
+      "{count, plural, one {# ausgewählt} other {# ausgewählt}}",
+    filamentDefaultsWillUpdate: "Wird aktualisiert",
+    filamentDefaultsWillUpdateCount:
+      "{count, plural, one {# wird aktualisiert} other {# werden aktualisiert}}",
+    filamentDefaultsOverwritePreview:
+      "{count, plural, one {# vorhandener Preis wird ersetzt} other {# vorhandene Preise werden ersetzt}}, darunter {manual, plural, one {# individuell festgelegter Preis} other {# individuell festgelegte Preise}}.",
+    filamentDefaultsLockedPreview:
+      "{count, plural, one {# ausgewählte gesperrte Rolle wird übersprungen und zur manuellen Bearbeitung im Beleg aufgeführt.} other {# ausgewählte gesperrte Rollen werden übersprungen und zur manuellen Bearbeitung im Beleg aufgeführt.}}",
+    filamentDefaultsHistoricalMissingPreview:
+      "{count, plural, one {# bewusst ausgewählte historische Rolle erhält ihren fehlenden Preis und bleibt vor späteren Gruppenänderungen geschützt.} other {# bewusst ausgewählte historische Rollen erhalten ihren fehlenden Preis und bleiben vor späteren Gruppenänderungen geschützt.}}",
+    filamentDefaultsCurrencyOnlyPreview:
+      "{count, plural, one {# vorhandener Preis bleibt bestehen, während die fehlende Währung ergänzt wird.} other {# vorhandene Preise bleiben bestehen, während die fehlende Währung ergänzt wird.}}",
+    filamentDefaultsManualPreview:
+      "{count, plural, one {# Rolle hat keinen Preis, verwendet aber bereits eine andere Währung. Sie muss manuell bearbeitet werden und wird im Beleg aufgeführt.} other {# Rollen haben keinen Preis, verwenden aber bereits eine andere Währung. Sie müssen manuell bearbeitet werden und werden im Beleg aufgeführt.}}",
+    filamentDefaultsBorrowedPreview:
+      "{count, plural, one {# geliehene Rolle wird nicht geändert.} other {# geliehene Rollen werden nicht geändert.}}",
+    filamentDefaultsReviewOverwrite: "Überschreiben prüfen und bestätigen",
+    filamentDefaultsApplyMissing: "Preis für Rollen ohne Preis festlegen",
+    filamentDefaultsApplyMissingAndProtect:
+      "Fehlende Preise festlegen und historische Rollen schützen",
+    filamentDefaultsConfirmOverwrite: "Überschreiben der Preise bestätigen",
+    filamentDefaultsOverwriteReview: "Prüfung vor dem Überschreiben",
+    filamentDefaultsOverwriteConfirmationWarning:
+      "{count, plural, one {# vorhandener Preis wird ersetzt.} other {# vorhandene Preise werden ersetzt.}} {manual, plural, one {# davon wurde individuell festgelegt.} other {# davon wurden individuell festgelegt.}} Die Sperren der einzelnen Rollen für Gruppenpreise werden dadurch nicht geändert.",
+    filamentDefaultsExistingPrices: "Vorhandene Preise",
+    filamentDefaultsWillSkip: "Wird übersprungen",
+    filamentDefaultsConfirmOverwriteAction:
+      "{count, plural, one {Preisaktualisierung für # Rolle bestätigen} other {Preisaktualisierung für # Rollen bestätigen}}",
+    lowStockThresholds: "Grenzwerte für niedrigen Bestand",
+    lowStockThresholdsHint:
+      "Lege einen Standardwert für die Bibliothek fest und überschreibe ihn nur für Materialien, die einen anderen Nachbestellpunkt benötigen.",
+    lowStockThresholdsReadOnly:
+      "Verwalte diese bibliotheksweiten Grenzwerte in der Desktop-App des Hosts.",
+    lowStockPolicyRepair:
+      "Die gespeicherte Richtlinie für niedrigen Bestand ist beschädigt. Bestand und Statistiken bleiben nicht verfügbar, bis du hier einen gültigen Ersatz speicherst; der unten angezeigte Wert von 200 g ist nur ein Reparaturentwurf.",
+    lowStockDefaultThreshold: "Standardgrenzwert",
+    lowStockMaterialOverrides: "Abweichungen nach Material",
+    lowStockMaterialInheritance:
+      "Materialien ohne eigenen Wert übernehmen den Bibliotheksstandard.",
+    lowStockOverridesDefault: "Überschreibt den Standard",
+    lowStockThresholdGrams: "Grenzwert (g)",
+    lowStockUseDefault: "Standard verwenden",
+    lowStockAllMaterialsInherit:
+      "Alle Materialien verwenden derzeit den Standardgrenzwert.",
+    lowStockMaterial: "Material",
+    lowStockChooseMaterial: "Material auswählen",
+    lowStockNewOverrideThreshold: "Neuer Materialgrenzwert",
+    lowStockSetOverride: "Abweichung festlegen",
+    lowStockSelectedMaterialInheritance:
+      "Ohne eigenen Wert übernimmt dieses Material {count, number} g.",
+    lowStockThresholdValidation:
+      "Gib eine ganze Zahl von 1 bis 100000 g ein.",
+    lowStockSaving: "Grenzwerte werden gespeichert…",
+    lowStockSave: "Grenzwerte speichern",
+    lowStockSaved: "Grenzwerte für niedrigen Bestand gespeichert.",
+    lowStockSaveError:
+      "Grenzwerte für niedrigen Bestand konnten nicht gespeichert werden.",
     "bambuDiscoveryTitle": "Bambu-Drucker suchen",
     "bambuDiscoveryHint": "Kurz auf lokale Bambu-Druckerankündigungen warten. Es wird kein Zugriffscode gesendet.",
     "bambuDiscoveryFind": "Bambu-Drucker suchen",
@@ -1179,6 +1738,7 @@ export const deDictionary: DictionaryNode = {
       "Dieser Build hat keinen öffentlichen Update-Kanal. Suche dort, wo du die App heruntergeladen hast, nach neueren Versionen.",
     viewRelease: "Veröffentlichung ansehen",
     tabGeneral: "Allgemein",
+    tabFilamentDefaults: "Filamentstandards",
     tabLibrary: "Bibliothek & Web-App",
     tabCompanion: "Browserzugriff",
     tabPrinters: "3D-Drucker",
@@ -1188,6 +1748,9 @@ export const deDictionary: DictionaryNode = {
     appearance: "Darstellung",
     language: "Sprache",
     languageHint: "Sprache für alle Hauptansichten auswählen.",
+    languageBeta: "Beta",
+    languageBetaHint:
+      "Betasprachen sind noch nicht vollständig und können teilweise englischen Text anzeigen.",
     light: "Hell",
     dark: "Dunkel",
     auto: "Automatisch (System)",
@@ -1874,7 +2437,7 @@ export const deDictionary: DictionaryNode = {
     inventoryOverviewPrintHint:
       "QR-Etikettenbögen für alle vorhandenen Rollen mit demselben gut lesbaren 60 × 24-mm-Layout wie Einzeletiketten erstellen.",
     inventoryOverviewPrintAction: "Bestandsetikettenbogen erstellen",
-    inventoryOverviewBuilderTitle: "Bestandsetikettenbogen erstellen",
+    inventoryOverviewBuilderTitle: "Etikettenbogen erstellen",
     inventoryOverviewBuilderSubtitle:
       "Papierformat auswählen, Seiten prüfen und eine druckfertige PDF speichern.",
     inventoryOverviewPaperFormat: "Papierformat",

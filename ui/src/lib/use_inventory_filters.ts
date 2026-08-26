@@ -4,6 +4,7 @@ import {
   buildVendorOptions,
   filterInventorySpools,
   groupInventorySpools,
+  type InventoryLocationFilter,
   type InventorySpool,
   type OwnershipFilter,
   type SpoolGroup,
@@ -36,6 +37,8 @@ export function useInventoryFilters(
   const [vendorFilter, setVendorFilter] = useState("ALL");
   const [materialFilter, setMaterialFilter] = useState("ALL");
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [locationFilter, setLocationFilter] =
+    useState<InventoryLocationFilter | null>(null);
   const [inventoryView, setInventoryViewState] = useState<InventoryViewMode>(
     initialPagePreferences.inventoryView,
   );
@@ -84,10 +87,12 @@ export function useInventoryFilters(
         materialFilter,
         vendorFilter,
         lowStockOnly,
+        locationFilterId: locationFilter?.id,
       }),
     [
       deferredSearch,
       lowStockOnly,
+      locationFilter,
       materialFilter,
       ownershipFilter,
       spools,
@@ -106,6 +111,7 @@ export function useInventoryFilters(
     ownershipFilter !== "ALL",
     vendorFilter !== "ALL",
     materialFilter !== "ALL",
+    locationFilter != null,
   ].filter(Boolean).length;
 
   const resetFilters = useCallback(() => {
@@ -115,6 +121,7 @@ export function useInventoryFilters(
     setMaterialFilter("ALL");
     setSearch("");
     setLowStockOnly(false);
+    setLocationFilter(null);
   }, []);
 
   const showLowStockList = useCallback(() => {
@@ -125,14 +132,36 @@ export function useInventoryFilters(
     setMaterialFilter("ALL");
     setSearch("");
     setLowStockOnly(true);
+    setLocationFilter(null);
+  }, []);
+
+  const clearLocationFilter = useCallback(() => {
+    setLocationFilter(null);
+  }, []);
+
+  const showLocationSpools = useCallback((location: InventoryLocationFilter) => {
+    const id = location.id.trim();
+    if (!id) return;
+    setStatusFilter("ALL");
+    setOwnershipFilter("ALL");
+    setVendorFilter("ALL");
+    setMaterialFilter("ALL");
+    setSearch("");
+    setLowStockOnly(false);
+    setLocationFilter({
+      id,
+      name: location.name.trim() || id,
+    });
   }, []);
 
   return {
     activeFilterCount,
     advancedFiltersOpen,
+    clearLocationFilter,
     filteredSpools,
     groupedSpools,
     inventoryView,
+    locationFilter,
     lowStockOnly,
     materialFilter,
     materialOptions,
@@ -148,6 +177,7 @@ export function useInventoryFilters(
     setStatusFilter,
     setVendorFilter,
     showLowStockList,
+    showLocationSpools,
     statusFilter,
     vendorFilter,
     vendorOptions,

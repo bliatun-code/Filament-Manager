@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { useI18n } from "../lib/i18n";
+import { INVENTORY_LOCATION_DATALIST_ID } from "./inventory_location_datalist";
 import {
   inventoryDetailDangerActionButtonClassName,
   inventoryDetailEyebrowClassName,
@@ -23,6 +24,7 @@ type SpoolMaintenancePanelBaseProps = {
 type InventorySpoolTarePanelProps = SpoolMaintenancePanelBaseProps & {
   onChange: (value: string) => void;
   onSave: () => void;
+  showSaveAction?: boolean;
   value: string;
 };
 
@@ -30,6 +32,7 @@ type InventorySpoolHomeLocationPanelProps = SpoolMaintenancePanelBaseProps & {
   assignedToPrinter: boolean;
   onChange: (value: string) => void;
   onSave: () => void;
+  showSaveAction?: boolean;
   value: string;
 };
 
@@ -46,6 +49,7 @@ type InventorySpoolOwnershipPanelProps = SpoolMaintenancePanelBaseProps & {
   onChangeNote: (value: string) => void;
   onChangeType: (value: OwnershipType) => void;
   onSave: () => void;
+  showSaveAction?: boolean;
   ownerNameValue: string;
   typeValue: OwnershipType;
 };
@@ -55,6 +59,7 @@ export function InventorySpoolTarePanel({
   onChange,
   onSave,
   resolvedTheme,
+  showSaveAction = true,
   spoolHexColor,
   value,
 }: InventorySpoolTarePanelProps) {
@@ -89,14 +94,16 @@ export function InventorySpoolTarePanel({
           disabled={disabled}
           aria-describedby={helpId}
         />
-        <button
-          type="button"
-          onClick={onSave}
-          className={inventoryDetailSaveButtonClassName}
-          disabled={disabled}
-        >
-          {t("common.save", "Save")}
-        </button>
+        {showSaveAction ? (
+          <button
+            type="button"
+            onClick={onSave}
+            className={inventoryDetailSaveButtonClassName}
+            disabled={disabled}
+          >
+            {t("common.save", "Save")}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -108,6 +115,7 @@ export function InventorySpoolHomeLocationPanel({
   onChange,
   onSave,
   resolvedTheme,
+  showSaveAction = true,
   spoolHexColor,
   value,
 }: InventorySpoolHomeLocationPanelProps) {
@@ -128,6 +136,7 @@ export function InventorySpoolHomeLocationPanel({
         <input
           id={inputId}
           type="text"
+          list={INVENTORY_LOCATION_DATALIST_ID}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
@@ -135,14 +144,16 @@ export function InventorySpoolHomeLocationPanel({
           disabled={disabled}
           aria-describedby={assignedToPrinter ? helpId : undefined}
         />
-        <button
-          type="button"
-          onClick={onSave}
-          className={inventoryDetailSaveButtonClassName}
-          disabled={disabled}
-        >
-          {t("common.save", "Save")}
-        </button>
+        {showSaveAction ? (
+          <button
+            type="button"
+            onClick={onSave}
+            className={inventoryDetailSaveButtonClassName}
+            disabled={disabled}
+          >
+            {t("common.save", "Save")}
+          </button>
+        ) : null}
       </div>
       {assignedToPrinter ? (
         <div id={helpId} className="mt-2 text-xs text-slate-500 dark:text-slate-400">
@@ -167,6 +178,7 @@ export function InventorySpoolOwnershipPanel({
   onSave,
   ownerNameValue,
   resolvedTheme,
+  showSaveAction = true,
   spoolHexColor,
   typeValue,
 }: InventorySpoolOwnershipPanelProps) {
@@ -265,14 +277,16 @@ export function InventorySpoolOwnershipPanel({
             )}
           </div>
         )}
-        <button
-          type="button"
-          onClick={onSave}
-          className={`mt-3 ${inventoryDetailSaveButtonClassName}`}
-          disabled={disabled}
-        >
-          {t("inventory.saveOwnership", "Save ownership")}
-        </button>
+        {showSaveAction ? (
+          <button
+            type="button"
+            onClick={onSave}
+            className={`mt-3 ${inventoryDetailSaveButtonClassName}`}
+            disabled={disabled}
+          >
+            {t("inventory.saveOwnership", "Save ownership")}
+          </button>
+        ) : null}
       </fieldset>
     </div>
   );

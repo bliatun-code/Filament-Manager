@@ -196,12 +196,18 @@ export function useTrustedLanStatusActions({
   );
 
   const persistTrustedLanConfig = useCallback(
-    async (nextEnabled: boolean, successMessage: string): Promise<boolean> => {
+    async (
+      nextEnabled: boolean,
+      successMessage: string,
+      selectedInterfaceOverride?: TrustedLanInterfaceOption | null,
+    ): Promise<boolean> => {
       if (!tauri) {
         return false;
       }
 
-      if (nextEnabled && !trustedLanSelectedInterfaceOption) {
+      const selectedInterface =
+        selectedInterfaceOverride ?? trustedLanSelectedInterfaceOption;
+      if (nextEnabled && !selectedInterface) {
         setError(buildTrustedLanNoPrivateInterfaceMessage(trustedLanValidationMessageLabels()));
         return false;
       }
@@ -211,8 +217,8 @@ export function useTrustedLanStatusActions({
       try {
         const nextStatus = await updateTrustedLanCompanionConfig({
           enabled: nextEnabled,
-          selected_interface_name: trustedLanSelectedInterfaceOption?.name ?? null,
-          selected_interface_address: trustedLanSelectedInterfaceOption?.address ?? null,
+          selected_interface_name: selectedInterface?.name ?? null,
+          selected_interface_address: selectedInterface?.address ?? null,
           listen_port: parsePositiveInt(trustedLanPortDraft, 4278),
         });
         setTrustedLanStatus(nextStatus);

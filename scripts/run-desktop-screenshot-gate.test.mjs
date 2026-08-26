@@ -47,6 +47,7 @@ import {
   normalizeDesktopVisualQaWindowSize,
   normalizeNativeDesktopWindowFrame,
   normalizeVisualQaLocale,
+  isRetryableDesktopScreenshotCaptureError,
   listAllDesktopWindowsWithNativeHelper,
   parseDesktopVisualQaScenarios,
   parseDesktopScreenInfo,
@@ -1735,7 +1736,8 @@ test("desktop screenshot gate lookup script escapes quoted titles", () => {
     { height: 700, width: 900 },
   );
   assert.match(resizeScript, /Filament \\"Manager\\"/);
-  assert.match(resizeScript, /Inventory \\"Detail\\"/);
+  assert.match(resizeScript, /set appWindow to first window/);
+  assert.doesNotMatch(resizeScript, /Inventory \\"Detail\\"/);
   assert.match(
     resizeScript,
     new RegExp(
@@ -1832,6 +1834,10 @@ test("desktop screenshot gate normalizes visual QA scenarios", () => {
   assert.equal(
     normalizeDesktopVisualQaScenario("general-settings"),
     "settings-general",
+  );
+  assert.equal(
+    normalizeDesktopVisualQaScenario("filament-standards"),
+    "settings-filament-defaults",
   );
   assert.equal(
     normalizeDesktopVisualQaScenario("update-check"),
@@ -2091,6 +2097,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
     "LIBRARY",
   );
   assert.equal(
+    desktopVisualQaScenarioDefinition("filament-defaults").settingsTab,
+    "FILAMENT_DEFAULTS",
+  );
+  assert.equal(
     desktopVisualQaScenarioDefinition("library-role-dialog").settingsTab,
     "LIBRARY",
   );
@@ -2178,6 +2188,10 @@ test("desktop screenshot gate reads scenario metadata from the shared manifest",
 });
 
 test("desktop screenshot gate marks DB-fixture visual states", () => {
+  assert.equal(
+    desktopVisualQaScenarioRequiresDatabaseFixture("filament-defaults"),
+    true,
+  );
   assert.equal(
     desktopVisualQaScenarioRequiresDatabaseFixture("ams-onboarding"),
     true,
@@ -2435,7 +2449,7 @@ test("desktop screenshot gate maps scenario aliases to localized window titles",
 });
 
 test("desktop screenshot gate lets later CLI scenario flags override npm defaults", () => {
-  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 49);
+  assert.equal(parseDesktopVisualQaScenarios(["--scenario", "all"]).length, 51);
   assert.deepEqual(
     parseDesktopVisualQaScenarios([
       "--scenario",
@@ -3334,6 +3348,62 @@ test("desktop screenshot capture targets only the verified CGWindowID", async ()
     secured.some(
       ({ artifactPath, mode }) => artifactPath === result.path && mode === 0o600,
     ),
+  );
+});
+
+test("desktop screenshot capture retries transient WindowServer failures against only the verified CGWindowID", async () => {
+  const calls = [];
+  const waits = [];
+  const expectedBuffer = Buffer.from("retried-exact-window");
+  let attempts = 0;
+  const result = await captureDesktopWindowScreenshot(createMetric().window, {
+    chmodFn: async () => {},
+    execFileFn: async (command, args) => {
+      attempts += 1;
+      calls.push({ args, command });
+      if (attempts < 3) {
+        const error = new Error("Command failed: screencapture");
+        error.stderr = "could not create image from window";
+        throw error;
+      }
+      return { stderr: "", stdout: "" };
+    },
+    mkdirFn: async () => {},
+    outputDir: testOutputDir,
+    readFileFn: async () => expectedBuffer,
+    screenshotCaptureRetryDelayMs: 17,
+    screenshotCaptureWaitFn: async (delayMs) => {
+      waits.push(delayMs);
+    },
+  });
+
+  assert.equal(result.buffer, expectedBuffer);
+  assert.equal(attempts, 3);
+  assert.deepEqual(waits, [17, 17]);
+  assert.ok(
+    calls.every(
+      ({ args, command }) =>
+        command === "/usr/sbin/screencapture" &&
+        args.filter((arg) => arg === "-l67890").length === 1 &&
+        args.every((arg) => !String(arg).startsWith("-R")),
+    ),
+  );
+});
+
+test("desktop screenshot capture classifies only the known transient WindowServer failure as retryable", () => {
+  assert.equal(
+    isRetryableDesktopScreenshotCaptureError(
+      Object.assign(new Error("capture failed"), {
+        stderr: "could not create image from window",
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    isRetryableDesktopScreenshotCaptureError(
+      new Error("CGWindow capture denied"),
+    ),
+    false,
   );
 });
 

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   loadPrinterPageData,
@@ -29,6 +35,7 @@ type UsePrinterPageDataInput = {
   clientReadOnly: boolean;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
+  clientTargetGeneration: number | null;
   supportedPrinterModels: string[];
   loadErrorMessage: string;
   onInteractiveReload: () => void;
@@ -61,6 +68,7 @@ export function usePrinterPageData({
   clientReadOnly,
   clientHostBaseUrl,
   clientLibraryId,
+  clientTargetGeneration,
   supportedPrinterModels,
   loadErrorMessage,
   onInteractiveReload,
@@ -83,41 +91,68 @@ export function usePrinterPageData({
     useState<PrinterSnapshotSource>("LIVE");
   const [clientPrinterUpdatedAt, setClientPrinterUpdatedAt] = useState<string | null>(null);
   const [printerModels, setPrinterModels] = useState<string[]>([]);
-  const reloadInFlightRef = useRef(false);
+  const reloadRequestRef = useRef(0);
   const catalogLoadedRef = useRef(false);
   const revisionTrackerRef = useRef(createLibraryRevisionTracker());
+  const dataSourceIdentity = [
+    librarySyncReady ? "ready" : "unresolved",
+    clientReadOnly ? "client" : "local",
+    clientHostBaseUrl?.trim() ?? "",
+    clientLibraryId?.trim() ?? "",
+    Number.isSafeInteger(clientTargetGeneration)
+      ? String(clientTargetGeneration)
+      : "unresolved-generation",
+  ].join(":");
+  const dataSourceIdentityRef = useRef(dataSourceIdentity);
+
+  useLayoutEffect(() => {
+    dataSourceIdentityRef.current = dataSourceIdentity;
+    reloadRequestRef.current += 1;
+  }, [dataSourceIdentity]);
 
   const performReload = useCallback(async (options?: {
     silent?: boolean;
     refreshCatalog?: boolean;
   }): Promise<{ succeeded: boolean; revisionPollComplete: boolean }> => {
-    if (!tauri || reloadInFlightRef.current) {
+    if (!tauri) {
       return { succeeded: false, revisionPollComplete: false };
     }
-    reloadInFlightRef.current = true;
+    const requestId = reloadRequestRef.current + 1;
+    reloadRequestRef.current = requestId;
+    const requestDataSourceIdentity = dataSourceIdentity;
+    const requestIsCurrent = () =>
+      reloadRequestRef.current === requestId &&
+      dataSourceIdentityRef.current === requestDataSourceIdentity;
     beginRefresh();
     try {
       const loaded = await loadPrinterPageData({
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
         supportedPrinterModels,
       });
       let catalogRefreshComplete = true;
+      let loadedCatalogMasters: MasterCatalogRow[] | null = null;
       if (options?.refreshCatalog || !options?.silent || !catalogLoadedRef.current) {
         try {
-          const loadedCatalogMasters = await loadCatalogMasters({
+          loadedCatalogMasters = await loadCatalogMasters({
             clientReadOnly,
             clientHostBaseUrl,
             clientLibraryId,
             limit: 5000,
           });
-          catalogLoadedRef.current = true;
-          setCatalogMasters(loadedCatalogMasters);
         } catch (catalogLoadError) {
           catalogRefreshComplete = false;
           console.warn("Failed to load master catalog for printer assistance.", catalogLoadError);
         }
+      }
+      if (!requestIsCurrent()) {
+        return { succeeded: false, revisionPollComplete: false };
+      }
+      if (loadedCatalogMasters) {
+        catalogLoadedRef.current = true;
+        setCatalogMasters(loadedCatalogMasters);
       }
       setClientPrinterSource(loaded.source);
       setClientPrinterUpdatedAt(loaded.updatedAt);
@@ -140,17 +175,19 @@ export function usePrinterPageData({
       };
     } catch (loadError) {
       console.error(loadError);
-      failRefresh(loadErrorMessage);
+      if (requestIsCurrent()) {
+        failRefresh(loadErrorMessage);
+      }
       return { succeeded: false, revisionPollComplete: false };
-    } finally {
-      reloadInFlightRef.current = false;
     }
   }, [
     beginRefresh,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     completeRefresh,
+    dataSourceIdentity,
     failRefresh,
     loadErrorMessage,
     onInteractiveReload,
@@ -166,6 +203,9 @@ export function usePrinterPageData({
   }, [performReload]);
 
   const pollPrinterData = useCallback(async () => {
+    const pollDataSourceIdentity = dataSourceIdentity;
+    const pollIsCurrent = () =>
+      dataSourceIdentityRef.current === pollDataSourceIdentity;
     const source = resolveLibraryRevisionSource({
       clientReadOnly,
       clientHostBaseUrl,
@@ -174,6 +214,9 @@ export function usePrinterPageData({
     const revisions = await fetchLibraryDomainRevisionsForSource(source).catch(
       () => null,
     );
+    if (!pollIsCurrent()) {
+      return true;
+    }
 
     if (!source || !revisions) {
       revisionTrackerRef.current = markLibraryRevisionUnavailable(
@@ -204,6 +247,9 @@ export function usePrinterPageData({
       previousTracker.revisions === null ||
       previousTracker.revisions.catalog !== revisions.catalog;
     const outcome = await performReload({ silent: true, refreshCatalog });
+    if (!pollIsCurrent()) {
+      return true;
+    }
     if (outcome.succeeded && outcome.revisionPollComplete) {
       revisionTrackerRef.current = observation.tracker;
       return true;
@@ -218,15 +264,29 @@ export function usePrinterPageData({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    dataSourceIdentity,
     performReload,
   ]);
 
   useEffect(() => {
+    reloadRequestRef.current += 1;
+    revisionTrackerRef.current = createLibraryRevisionTracker();
+    catalogLoadedRef.current = false;
+    setPrinters([]);
+    setSpools([]);
+    setBambuLiveIntegrations({});
+    setCatalogMasters([]);
+    setClientPrinterSource("LIVE");
+    setClientPrinterUpdatedAt(null);
+    setPrinterModels([]);
     if (!tauri || !librarySyncReady) {
       return;
     }
     void reloadData();
-  }, [librarySyncReady, reloadData, tauri]);
+    return () => {
+      reloadRequestRef.current += 1;
+    };
+  }, [dataSourceIdentity, librarySyncReady, reloadData, tauri]);
 
   useDocumentVisiblePolling({
     enabled: tauri && librarySyncReady,

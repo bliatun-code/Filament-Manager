@@ -9,10 +9,12 @@ export function useSettingsInventoryPrintMessages(t: SettingsTranslator) {
       "settings.error.inventoryOverviewPrint",
       "Failed to create inventory label PDF.",
     ),
-    inventoryOverviewPrintDone: t(
-      "settings.inventoryOverviewPrintDone",
-      "Inventory label PDF saved to Downloads: {path}",
-    ),
+    inventoryOverviewPrintDone: (path: string) =>
+      t(
+        "settings.inventoryOverviewPrintDone",
+        "Inventory label PDF saved to Downloads: {path}",
+        { path },
+      ),
   }), [t]);
 
   const settingsInventoryPrintLabels = useCallback(() => ({

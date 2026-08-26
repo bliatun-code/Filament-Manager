@@ -56,7 +56,11 @@ export default function LoansPage() {
     clientHostDeviceName,
     clientHostBaseUrl,
     clientLibraryId,
+    clientTargetGeneration,
+    librarySyncError,
     librarySyncReady,
+    librarySyncResolving,
+    retryLibrarySyncRole,
   } = useLibrarySyncState(tauri);
   const [clientLoanSource, setClientLoanSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
     "LIVE",
@@ -92,6 +96,7 @@ export default function LoansPage() {
         clientReadOnly,
         clientHostBaseUrl,
         clientLibraryId,
+        clientTargetGeneration,
         limit: 2000,
       });
       if (requestId !== reloadRequestRef.current) {
@@ -118,6 +123,7 @@ export default function LoansPage() {
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     completeRefresh,
     failRefresh,
     t,
@@ -348,7 +354,12 @@ export default function LoansPage() {
                 }
                 setShowLoanOutModal(true);
               }}
-              disabled={!tauri || busy || (clientReadOnly && !clientHostWritePaired)}
+              disabled={
+                !tauri ||
+                !librarySyncReady ||
+                busy ||
+                (clientReadOnly && !clientHostWritePaired)
+              }
               variant="primary"
             >
               {t("inventory.loanOutRoll", "Loan out roll")}
@@ -449,7 +460,18 @@ export default function LoansPage() {
           {error}
         </FeedbackBanner>
       ) : null}
-      {loadError ? (
+      {librarySyncError ? (
+        <PageLoadErrorBanner
+          message={t(
+            "errors.libraryRoleLoadFailed",
+            "Could not determine this device's library role. No local data or changes are available until the role is loaded.",
+          )}
+          onRetry={retryLibrarySyncRole}
+          retryDisabled={!tauri || busy}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={librarySyncResolving}
+        />
+      ) : loadError ? (
         <PageLoadErrorBanner
           message={loadError}
           onRetry={() => void reload()}
@@ -502,7 +524,7 @@ export default function LoansPage() {
             </span>
           </div>
 
-          {loading ? (
+          {loading && !librarySyncError ? (
             <div className="text-sm text-slate-500 dark:text-slate-400">
               {t("loans.loading", "Loading loans...")}
             </div>
@@ -533,6 +555,7 @@ export default function LoansPage() {
         clientHostWritePaired={clientHostWritePaired}
         clientHostBaseUrl={clientHostBaseUrl}
         clientLibraryId={clientLibraryId}
+        clientTargetGeneration={clientTargetGeneration}
         onLoanCreated={async () => {
           await reload();
           setInfo(t("inventory.loanCreated", "Loan created."));

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { AppModal } from "./app_modal";
 import {
   inventoryDetailEyebrowClassName,
   inventoryDetailPanelClassName,
+  inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
@@ -12,7 +14,8 @@ import {
 } from "./inventory_modal_chrome";
 import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
 import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
-import { ModalNotice } from "./modal_chrome";
+import { InventorySpoolDetailContextActions } from "./inventory_spool_detail_context_actions";
+import { ModalFooter, ModalNotice } from "./modal_chrome";
 import {
   InventorySpoolDetailHeader,
   InventorySpoolIdentityPanel,
@@ -36,6 +39,33 @@ import type {
 import { inventorySwatchPanelStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "../lib/tauri_client";
+import {
+  purchaseReceiptMetadataKeepsLegacyCurrencylessPrice,
+  type PurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "../lib/purchase_receipt_metadata";
+import { purchaseReceiptMetadataFieldsCopy } from "../lib/purchase_receipt_metadata_copy";
+import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
+import { PurchaseReceiptMetadataFields } from "./purchase_receipt_metadata_fields";
+import { InventoryPurchasePriceProtectionControl } from "./inventory_purchase_price_protection_control";
+
+/*
+ * Keep the legacy exception visible to assistive technology only while the
+ * exact pre-currency price remains unchanged. Validation stays strict as soon
+ * as the user changes that price or enters a new one.
+ */
+function keepsLegacyCurrencylessPurchasePrice(
+  spool: InventorySpool,
+  draft: PurchaseReceiptMetadataDraft,
+): boolean {
+  return purchaseReceiptMetadataKeepsLegacyCurrencylessPrice(
+    {
+      purchase_price: spool.purchasePrice ?? null,
+      purchase_currency: spool.purchaseCurrency ?? null,
+    },
+    draft,
+  );
+}
 
 type InventorySpoolDetailModalProps = {
   assignedSlot: InventorySpoolDetailAssignedSlot | null;
@@ -43,6 +73,7 @@ type InventorySpoolDetailModalProps = {
   confirmDelete: boolean;
   confirmPurge: boolean;
   deterministicLabelPreferences?: boolean;
+  defaultPurchaseCurrency?: string;
   displayTitle: string;
   error: string | null;
   filamentName: string;
@@ -51,6 +82,8 @@ type InventorySpoolDetailModalProps = {
   hasHiddenHistoryRows: boolean;
   hexColor: string;
   historyLoading: boolean;
+  hasCommonChanges: boolean;
+  hasUnsavedChanges: boolean;
   initialLabelPanelOpen?: boolean;
   rfidBindingMeta: { className: string; hint: string; label: string };
   infoMessage: string | null;
@@ -69,19 +102,21 @@ type InventorySpoolDetailModalProps = {
   onChangeOwnerName: (value: string) => void;
   onChangeOwnershipNote: (value: string) => void;
   onChangeOwnershipType: (value: OwnershipType) => void;
+  onChangePurchasePriceBatchLocked: (value: boolean) => void;
+  onChangePurchaseMetadata: (value: PurchaseReceiptMetadataDraft) => void;
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
   onCancelDangerZoneConfirmation: () => void;
   onClose: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
+  onLoadInPrinter: () => void;
+  onLoanOut: () => void;
   onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<void>;
   onPurge: () => void;
   onRefill: () => void;
-  onSaveLocation: () => void;
+  onSaveCommonDetails: () => void;
   onSaveMasterMetadata: () => void;
-  onSaveOwnership: () => void;
-  onSaveTareWeight: () => void;
   onStartRfidCapture: () => void;
   onSubmitWeight: (grams: number) => void;
   onToggleEditUnlocked: () => void;
@@ -94,12 +129,17 @@ type InventorySpoolDetailModalProps = {
   ownershipTypeDraft: OwnershipType;
   ownerContactDraft: string;
   ownerNameDraft: string;
+  purchasePriceBatchLockedDraft: boolean;
+  purchaseMetadataDraft: PurchaseReceiptMetadataDraft;
+  purchaseMetadataErrors: PurchaseReceiptMetadataValidationErrors;
   qrCompanionAvailable: boolean;
   qrDataUrl: string | null;
   qrLoading: boolean;
   qrTarget: string | null;
   resolvedTheme: ResolvedTheme;
   runtimeAvailable: boolean;
+  canLoadInPrinter: boolean;
+  canLoanOut: boolean;
   showRollHistory: boolean;
   spool: InventorySpool | null;
   statusLabel: string;
@@ -118,6 +158,7 @@ export function InventorySpoolDetailModal({
   confirmDelete,
   confirmPurge,
   deterministicLabelPreferences = false,
+  defaultPurchaseCurrency = "",
   displayTitle,
   error,
   filamentName,
@@ -126,6 +167,8 @@ export function InventorySpoolDetailModal({
   hasHiddenHistoryRows,
   hexColor,
   historyLoading,
+  hasCommonChanges,
+  hasUnsavedChanges,
   initialLabelPanelOpen = false,
   rfidBindingMeta,
   infoMessage,
@@ -144,19 +187,21 @@ export function InventorySpoolDetailModal({
   onChangeOwnerName,
   onChangeOwnershipNote,
   onChangeOwnershipType,
+  onChangePurchasePriceBatchLocked,
+  onChangePurchaseMetadata,
   onChangeTare,
   onChangeVendor,
   onCancelDangerZoneConfirmation,
   onClose,
   onDelete,
   onMarkEmpty,
+  onLoadInPrinter,
+  onLoanOut,
   onPrintLabel,
   onPurge,
   onRefill,
-  onSaveLocation,
+  onSaveCommonDetails,
   onSaveMasterMetadata,
-  onSaveOwnership,
-  onSaveTareWeight,
   onStartRfidCapture,
   onSubmitWeight,
   onToggleEditUnlocked,
@@ -169,12 +214,17 @@ export function InventorySpoolDetailModal({
   ownershipTypeDraft,
   ownerContactDraft,
   ownerNameDraft,
+  purchasePriceBatchLockedDraft,
+  purchaseMetadataDraft,
+  purchaseMetadataErrors,
   qrCompanionAvailable,
   qrDataUrl,
   qrLoading,
   qrTarget,
   resolvedTheme,
   runtimeAvailable,
+  canLoadInPrinter,
+  canLoanOut,
   showRollHistory,
   spool,
   statusLabel,
@@ -187,6 +237,7 @@ export function InventorySpoolDetailModal({
   visibleHistoryRows,
 }: InventorySpoolDetailModalProps) {
   const { t } = useI18n();
+  const [labelPanelRequestId, setLabelPanelRequestId] = useState(0);
 
   if (!open || !spool) {
     return null;
@@ -210,6 +261,17 @@ export function InventorySpoolDetailModal({
           spool={spool}
           statusLabel={statusLabel}
           statusTone={statusTone}
+        />
+
+        <InventorySpoolDetailContextActions
+          loadDisabled={!runtimeAvailable || manageBusy || !canLoadInPrinter}
+          loanDisabled={!runtimeAvailable || manageBusy || !canLoanOut}
+          onLoadInPrinter={onLoadInPrinter}
+          onLoanOut={onLoanOut}
+          onPrintLabel={() => setLabelPanelRequestId((current) => current + 1)}
+          printDisabled={
+            !runtimeAvailable || manageBusy || !qrCompanionAvailable || !qrDataUrl
+          }
         />
 
         <div
@@ -245,6 +307,7 @@ export function InventorySpoolDetailModal({
                   deterministicLabelPreferences={deterministicLabelPreferences}
                   loading={qrLoading}
                   initialLabelPanelOpen={initialLabelPanelOpen}
+                  labelPanelRequestId={labelPanelRequestId}
                   onPrintLabel={onPrintLabel}
                   onStartRfidCapture={onStartRfidCapture}
                   resolvedTheme={resolvedTheme}
@@ -287,8 +350,9 @@ export function InventorySpoolDetailModal({
               <InventorySpoolTarePanel
                 disabled={!runtimeAvailable || manageBusy}
                 onChange={onChangeTare}
-                onSave={onSaveTareWeight}
+                onSave={onSaveCommonDetails}
                 resolvedTheme={resolvedTheme}
+                showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 value={tareDraft}
               />
@@ -297,8 +361,9 @@ export function InventorySpoolDetailModal({
                 assignedToPrinter={Boolean(assignedSlot)}
                 disabled={!runtimeAvailable || manageBusy}
                 onChange={onChangeLocation}
-                onSave={onSaveLocation}
+                onSave={onSaveCommonDetails}
                 resolvedTheme={resolvedTheme}
+                showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 value={locationDraft}
               />
@@ -311,11 +376,32 @@ export function InventorySpoolDetailModal({
                 onChangeName={onChangeOwnerName}
                 onChangeNote={onChangeOwnershipNote}
                 onChangeType={onChangeOwnershipType}
-                onSave={onSaveOwnership}
+                onSave={onSaveCommonDetails}
                 ownerNameValue={ownerNameDraft}
                 resolvedTheme={resolvedTheme}
+                showSaveAction={false}
                 spoolHexColor={spool.hexColor}
                 typeValue={ownershipTypeDraft}
+              />
+
+              <PurchaseReceiptMetadataFields
+                copy={purchaseReceiptMetadataFieldsCopy(t)}
+                defaultCurrency={defaultPurchaseCurrency}
+                disabled={!runtimeAvailable || manageBusy}
+                draft={purchaseMetadataDraft}
+                errors={purchaseMetadataErrors}
+                legacyCurrencylessPriceUnchanged={keepsLegacyCurrencylessPurchasePrice(
+                  spool,
+                  purchaseMetadataDraft,
+                )}
+                onChange={onChangePurchaseMetadata}
+                selectedQuantity={1}
+              />
+
+              <InventoryPurchasePriceProtectionControl
+                checked={purchasePriceBatchLockedDraft}
+                disabled={!runtimeAvailable || manageBusy}
+                onChange={onChangePurchasePriceBatchLocked}
               />
 
               <InventorySpoolLostStatusPanel
@@ -368,6 +454,34 @@ export function InventorySpoolDetailModal({
             </div>
           </div>
         </div>
+
+        <ModalFooter className="flex flex-wrap items-center justify-between gap-3 bg-white/95 px-4 py-3 dark:bg-slate-900/95 sm:px-5">
+          <div className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
+            {hasUnsavedChanges
+              ? t("inventory.unsavedChanges", "You have unsaved changes.")
+              : t("inventory.allChangesSaved", "All changes are saved.")}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className={joinClassNames(appSoftButtonClassName, "px-4 py-2 text-sm")}
+              disabled={manageBusy}
+              onClick={onClose}
+            >
+              {t("common.cancel", "Cancel")}
+            </button>
+            <button
+              type="button"
+              className={inventoryDetailSaveButtonClassName}
+              disabled={!runtimeAvailable || manageBusy || !hasCommonChanges}
+              onClick={onSaveCommonDetails}
+            >
+              {manageBusy
+                ? t("inventory.updatingRoll", "Updating selected roll...")
+                : t("inventory.saveRollChanges", "Save roll changes")}
+            </button>
+          </div>
+        </ModalFooter>
       </>
     </AppModal>
   );

@@ -152,16 +152,15 @@ function spoolDetailsInput(
   };
 }
 
-test("updateInventorySpoolDetails routes detail writes to the host", async () => {
-  const calls: Array<{ baseUrl: string; status: string; homeLocation?: string | null }> = [];
+test("updateInventorySpoolDetails delegates target selection to the active-library gateway", async () => {
+  const calls: Array<{ status: string; homeLocation?: string | null }> = [];
 
   await updateInventorySpoolDetails(
     spoolDetailsInput({ home_location: "Shelf 1" }),
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
-      updateHostSpoolDetails: async (baseUrl, _libraryId, input) => {
+      updateActiveLibrarySpoolDetails: async (input) => {
         calls.push({
-          baseUrl,
           status: input.status,
           homeLocation: input.home_location,
         });
@@ -170,8 +169,46 @@ test("updateInventorySpoolDetails routes detail writes to the host", async () =>
   );
 
   assert.deepEqual(calls, [
-    { baseUrl: "http://host", status: "IN_STOCK", homeLocation: "Shelf 1" },
+    { status: "IN_STOCK", homeLocation: "Shelf 1" },
   ]);
+});
+
+test("updateInventorySpoolDetails keeps one public atomic payload in every saved UI mode", async () => {
+  const input = spoolDetailsInput({
+    home_location: "",
+    spool_tare_weight_g: 241,
+    ownership: {
+      ownership_type: "BORROWED_IN",
+      owner_name: "Nora",
+      owner_contact: "nora@example.com",
+      ownership_note: "Return next week",
+    },
+    purchase_metadata: {
+      purchase_price: null,
+      purchase_currency: null,
+      purchase_date: null,
+      batch_code: null,
+      supplier_reference: null,
+    },
+    purchase_price_batch_locked: true,
+  });
+  const gatewayCalls: UpdateSpoolDetailsInput[] = [];
+  const updateThroughGateway = async (gatewayInput: UpdateSpoolDetailsInput) => {
+    gatewayCalls.push(gatewayInput);
+  };
+
+  await updateInventorySpoolDetails(
+    input,
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      updateActiveLibrarySpoolDetails: updateThroughGateway,
+    },
+  );
+  await updateInventorySpoolDetails(input, { clientReadOnly: false }, {
+    updateActiveLibrarySpoolDetails: updateThroughGateway,
+  });
+
+  assert.deepEqual(gatewayCalls, [input, input]);
 });
 
 test("updateInventorySpoolStatus uses the narrow local status command outside client mode", async () => {

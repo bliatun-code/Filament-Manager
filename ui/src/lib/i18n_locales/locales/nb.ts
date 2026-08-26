@@ -12,12 +12,19 @@ export const nbDictionary: DictionaryNode = {
       add: "Legg til",
       all: "Alle",
       active: "Aktiv",
+      actions: "Handlinger",
+      archive: "Arkiver",
+      archived: "Arkivert",
+      create: "Opprett",
       on: "På",
       off: "Av",
       discontinued: "Utgått",
       loading: "Laster...",
       refresh: "Oppdater",
+      rename: "Gi nytt navn",
+      restore: "Gjenopprett",
       save: "Lagre",
+      status: "Status",
       cancel: "Avbryt",
       selected: "Valgt",
       remove: "Fjern",
@@ -39,12 +46,14 @@ export const nbDictionary: DictionaryNode = {
       minutesAgo: "{count} min siden",
       hoursAgo: "{count} t siden",
       daysAgo: "{count} dager siden",
+      optional: "Valgfritt",
     },
     errors: {
       invalidRequest: "Forespørselen kunne ikke fullføres.",
       unauthorized: "Autentisering er påkrevd.",
       forbidden: "Denne handlingen er ikke tillatt.",
       notFound: "Den forespurte posten ble ikke funnet.",
+      unavailable: "Tjenesten er midlertidig utilgjengelig.",
       internal: "Noe gikk galt. Prøv igjen.",
       spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
       loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
@@ -52,6 +61,96 @@ export const nbDictionary: DictionaryNode = {
         "Returner utlånet før du redigerer status eller plassering for denne rullen.",
       spoolStatusEditLimited:
         "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
+      locationHasReferences:
+        "Flytt alle ruller og underlokasjoner før du sletter denne lokasjonen.",
+      locationNameRequired: "Lokasjonsnavn er påkrevd.",
+      locationNameTooLong: "Lokasjonsnavn kan ha maksimalt 120 tegn.",
+      locationNameConflict: "En aktiv lokasjon bruker allerede dette navnet.",
+      locationAlreadyArchived: "Denne lokasjonen er allerede arkivert.",
+      locationNotArchived: "Denne lokasjonen er allerede aktiv.",
+      locationArchived:
+        "Gjenopprett denne lokasjonen før du bruker den eller tilordner ruller til den.",
+      locationMergeSameId: "Velg to forskjellige lokasjoner som skal slås sammen.",
+      locationParentCycle:
+        "En lokasjon kan ikke flyttes under seg selv eller en av underlokasjonene sine.",
+      locationMergeDescendant:
+        "En lokasjon kan ikke slås sammen med en av underlokasjonene sine.",
+      locationSystemOwned:
+        "Denne lokasjonen administreres av printer- eller utlånsflyten.",
+      locationHostUnsupported:
+        "Oppdater verten før du administrerer lokasjonsobjekter.",
+      inventoryBulkInvalidExpectedCount:
+        "Massegjennomgangen er ugyldig. Last inn lageret på nytt og se gjennom handlingen igjen.",
+      inventoryBulkEmptySelection: "Velg minst én rull for massehandlingen.",
+      inventoryBulkInvalidSelection:
+        "De valgte rullene er ugyldige. Tøm utvalget og velg dem på nytt.",
+      inventoryBulkStaleReview:
+        "De valgte rullene er endret. Last inn lageret på nytt og se gjennom massehandlingen igjen.",
+      inventoryBulkInvalidLocationTarget:
+        "Velg en aktiv lagerlokasjon og se gjennom flyttingen på nytt.",
+      inventoryBulkInvalidStatusTarget:
+        "Velg en tillatt lagerstatus og se gjennom handlingen på nytt.",
+      inventoryBulkRemovedSpool:
+        "En valgt rull er fjernet. Last inn lageret på nytt og se gjennom handlingen igjen.",
+      inventoryBulkPrinterSlotControlled:
+        "En valgt rull er lastet i en printer. Bruk printersporhandlingene eller fjern rullen fra utvalget.",
+      inventoryBulkActiveLoan:
+        "En valgt rull har et aktivt utlån. Returner den eller fjern rullen fra utvalget.",
+      loanExpectedReturnInvalid: "Velg en gyldig forventet returdato.",
+      loanMetadataUnsupported:
+        "Oppdater verten før du lagrer kontaktinformasjon eller forventet returdato for utlånet.",
+      loanAlreadyActive: "Denne rullen har allerede et aktivt utlån.",
+      loanAlreadyReturned:
+        "Dette utlånet er allerede returnert med andre returdetaljer.",
+      loanDirectionMismatch: "Bruk returhandlingen for denne utlånsretningen.",
+      borrowedInCannotLend: "En innlånt rull kan ikke lånes ut videre.",
+      inboundLoanRequired:
+        "Denne handlingen er bare tilgjengelig for innlånte ruller.",
+      spoolCommonDetailsHostUnsupported:
+        "Oppdater verten før du lagrer tara eller eierskap sammen med rulldetaljer.",
+      purchaseMetadataHostUnsupported:
+        "Oppdater verten før du lagrer kjøpsdetaljer.",
+      purchasePriceInvalid: "Skriv inn en gyldig kjøpspris som er null eller høyere.",
+      purchaseCurrencyInvalid:
+        "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",
+      purchaseCurrencyRequired:
+        "Kjøpsvaluta er påkrevd når kjøpspris er satt.",
+      purchasePriceRequired:
+        "Kjøpspris er påkrevd når kjøpsvaluta er satt.",
+      purchaseDateInvalid: "Skriv inn en gyldig kjøpsdato.",
+      purchaseBatchCodeTooLong: "Batchkoden for kjøpet er for lang.",
+      purchaseSupplierReferenceTooLong: "Leverandørreferansen er for lang.",
+      purchaseMetadataTypeInvalid:
+        "Kjøpsdetaljene har et ugyldig format. Se gjennom dem og prøv igjen.",
+      purchasePriceProtectionLockInvalid:
+        "Den importerte prisbeskyttelsen må være sann eller usann.",
+      purchasePriceProtectionSourceInvalid:
+        "Den importerte priskilden må være MANUAL, STANDARD_BATCH eller tom.",
+      filamentStandardsHostUnsupported:
+        "Oppdater verten før du bruker filamentstandarder for priser.",
+      filamentStandardsRoleUnresolved:
+        "Vent til bibliotekrollen er ferdig lastet, og prøv på nytt.",
+      libraryRoleLoadFailed:
+        "Kunne ikke fastslå bibliotekrollen til denne enheten. Lokale data og endringer er utilgjengelige til rollen er lastet.",
+      filamentStandardsHostManaged:
+        "Administrer bibliotekets filamentstandarder i skrivebordsappen på verten.",
+      filamentStandardsNotLoaded:
+        "Vent til filamentstandardene er ferdig lastet, og prøv på nytt.",
+      filamentStandardsStaleReview:
+        "De valgte rullene er endret. Se gjennom prisgruppen på nytt.",
+      filamentBatchGroupRequired: "Velg en prisgruppe for filament.",
+      filamentBatchEmptySelection:
+        "Velg minst én rull for denne prisoppdateringen.",
+      filamentBatchInvalidSelection:
+        "De valgte rullene er ugyldige. Se gjennom prisgruppen på nytt.",
+      filamentBatchInvalidHistoricalFill:
+        "Utfylling av manglende pris på en historisk rull er bare tilgjengelig for en eid, historisk rull uten pris i modusen Bare manglende priser.",
+      filamentStandardsCurrencyInvalid:
+        "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",
+      filamentStandardsPriceInvalid:
+        "Skriv inn en gyldig filamentpris som er null eller høyere.",
+      filamentStandardsInvalid:
+        "De lagrede filamentstandardene er ikke lenger gyldige. Last inn på nytt og se gjennom dem.",
       exportInvalidPayload: "Den genererte eksporten er ugyldig.",
       downloadsUnavailable: "Nedlastingsmappen er utilgjengelig.",
       exportWriteFailed: "Eksporten kunne ikke lagres.",
@@ -75,6 +174,47 @@ export const nbDictionary: DictionaryNode = {
       bambuLiveAttentionBody:
         "{name} er ikke lenger Live før du kontrollerer og godkjenner printeridentiteten.",
       openBambuLiveSettings: "Åpne Live-innstillinger",
+      actionRequiredTitle: "Krever handling",
+      actionRequiredHint:
+        "Følg opp forfalte utlån, innkommende kjøp og tillitsproblemer for printere.",
+      actionSnapshotAgeUnknown: "Starttid ukjent · oppdaget i dette øyeblikksbildet",
+      actionCreatedAt: "Opprettet",
+      actionLowStockReason:
+        "{count, plural, one {# rull er} other {# ruller er}} på eller under grensen; laveste nivå er {remaining} av {threshold}.",
+      actionOverdueReason:
+        "Det aktive utlånet til {name} har passert forventet returdato.",
+      actionOnOrderReason:
+        "{count, plural, one {# rull er} other {# ruller er}} bestilt og klar til å mottas fra Innkjøp.",
+      actionPurchaseAdded: "Lagt til i ønskelisten. Åpner Innkjøp.",
+      actionPurchaseReused:
+        "Et åpent kjøp finnes allerede. Gjenbruker det og åpner Innkjøp.",
+      lowStockSuggestionCount:
+        "{count, plural, one {# forslag} other {# forslag}}",
+      lowStockHiddenCount:
+        "{count, plural, one {# skjult} other {# skjulte}}",
+      lowStockSuggestionsTitle: "Forslag ved lav beholdning",
+      lowStockSuggestionsHint:
+        "Valgfrie kjøpsforslag basert på grensene dine for lav beholdning.",
+      hideLowStockSuggestions: "Skjul forslag",
+      showLowStockSuggestions: "Vis forslag",
+      lowStockSuggestionHidden:
+        "Skjulte forslaget for {name} på denne enheten.",
+      lowStockUndo: "Angre",
+      lowStockSuggestionReason:
+        "{count, plural, one {# rull er} other {# ruller er}} på eller under grensen; laveste nivå er {remaining} av {threshold}.",
+      queueLowStockSuggestionAria:
+        "Legg {name} til i ønskelisten eller en bestilling",
+      queueLowStockSuggestion: "Legg til i ønskeliste / bestilling",
+      hideLowStockSuggestionAria:
+        "Skjul forslaget for {name} på denne enheten",
+      hideLowStockSuggestion: "Skjul forslag",
+      noVisibleLowStockSuggestions: "Ingen synlige kjøpsforslag.",
+      openLowStockInventory: "Åpne lager med lav beholdning",
+      lowStockSuggestionsOptional:
+        "Forslagene er valgfrie og kan skjules enkeltvis på denne enheten.",
+      hiddenLowStockSuggestionsTitle: "Skjulte forslag",
+      restoreLowStockSuggestionAria: "Vis forslaget for {name} igjen",
+      restoreLowStockSuggestion: "Vis igjen",
       onboardingInventoryBody:
         "Start med én rull, eller importer et eksisterende lager eller en sikkerhetskopi.",
       onboardingInventoryTitle: "Legg til eller importer lager",
@@ -118,6 +258,9 @@ export const nbDictionary: DictionaryNode = {
       lowStock: "Lav beholdning",
       below20: "Under 20%",
       below200: "Under 200g",
+      atOrBelowThreshold: "På eller under {count, number} g",
+      materialLowStockThresholds: "Grenser per materiale",
+      legacyLowStockFallback: "200 g reserveverdi for eldre vert",
       lowest: "lavest",
       noAlerts: "Ingen varsler",
       monthlyUsage: "Månedlig forbruk",
@@ -260,6 +403,7 @@ export const nbDictionary: DictionaryNode = {
       ownershipUpdated: "Eierskap for filamentet er oppdatert.",
       reference: "Referanse",
       lowStockOnly: "Lav beholdning (1-200 g)",
+      lowStockFilter: "Lav beholdning",
       lowStockActiveBadge: "Lav beholdning aktiv",
       unassigned: "Ikke tildelt",
       workspace: "Arbeidsområde",
@@ -282,12 +426,143 @@ export const nbDictionary: DictionaryNode = {
       noMatch: "Ingen filamenter matcher valgte filtre.",
       noMatchHint: "Prøv å justere søk, status, materiale eller eierskapsfilter.",
       selectedRoll: "Valgt filament",
+      selectedRollActions: "Handlinger for valgt filament",
+      nextStep: "Neste steg",
+      loanOutAction: "Lån ut",
+      loadInPrinter: "Last i skriver",
+      loadInPrinterHint:
+        "Det valgte filamentet er klart. Velg bare printersport; du trenger ikke søke etter filamentet på nytt.",
+      noAvailablePrinterSlots: "Ingen tomme printersport er tilgjengelige.",
+      loadedInPrinter: "Filamentet er lastet i printersportet.",
+      printLabelAction: "Skriv etikett",
+      unsavedChanges: "Du har ulagrede endringer.",
+      allChangesSaved: "Alle endringer er lagret.",
+      discardUnsavedChanges: "Forkaste ulagrede filamentendringer? Endringene går tapt.",
+      rollChangesSaved: "Filamentendringene er lagret.",
       updatingRoll: "Oppdaterer valgt filament...",
       currentStatus: "Nåværende status",
       material: "Materiale",
       remaining: "Gjenværende",
       placement: "Plassering",
       location: "Lokasjon",
+      locationsTitle: "Lokasjoner",
+      locationManagementTitle: "Administrer lokasjoner",
+      locationsHelp:
+        "Opprett og organiser egne lagersteder. Printer- og utlånslokasjoner håndteres automatisk og vises ikke her.",
+      locationCount: "{count, plural, one {# lokasjon} other {# lokasjoner}}",
+      locationActiveCount:
+        "{count, plural, one {# aktiv lokasjon} other {# aktive lokasjoner}}",
+      locationActiveTitle: "Aktive lagersteder",
+      locationPreviousTitle: "Tidligere lokasjoner",
+      locationArchiveHelp:
+        "Arkiverte lokasjoner forsvinner fra nye valg. Tilknyttede ruller beholder samme lokasjons-ID, og gjenoppretting gjør nøyaktig samme lokasjon tilgjengelig igjen.",
+      locationUsageCount:
+        "{count, plural, =0 {Ingen ruller knyttet} one {# rull knyttet} other {# ruller knyttet}}",
+      locationReferenceCount:
+        "{count, plural, =0 {Ingen lagrede tilknytninger} one {# lagret tilknytning} other {# lagrede tilknytninger}}",
+      locationsLegacyHost:
+        "Denne verten er fra før lokasjonsobjekter. Eksisterende plasseringsnavn vises fortsatt, men verten må oppgraderes før lokasjoner kan endres.",
+      locationsOffline:
+        "Viser lagrede lokasjonsdata. Koble til verten igjen før lokasjoner endres.",
+      locationsHostManaged: "Par denne klienten med verten for å administrere lokasjoner.",
+      locationCreate: "Opprett lokasjon",
+      locationNamePlaceholder: "Eksempel: Tørkeboks 2",
+      locationChoose: "Velg lokasjon",
+      locationRename: "Gi lokasjonen nytt navn",
+      locationRenameNamed: "Gi {name} nytt navn",
+      locationArchiveNamed: "Arkiver {name}",
+      locationDeleteNamed: "Slett {name} permanent",
+      locationDeleteAction: "Slett",
+      locationRestoreNamed: "Gjenopprett {name}",
+      locationRestoreNameConflict:
+        "Gi lokasjonen nytt navn før gjenoppretting: en aktiv lokasjon bruker allerede dette navnet.",
+      locationNewName: "Nytt navn",
+      locationArchiveConfirmTitle: "Arkiver {name}?",
+      locationArchiveConfirmDetail:
+        "{count, plural, =0 {Ingen lagrede tilknytninger peker til denne lokasjonen} one {# lagret tilknytning fortsetter å peke til denne lokasjonen} other {# lagrede tilknytninger fortsetter å peke til denne lokasjonen}}. Lokasjonen forsvinner fra nye valg, men kan gjenopprettes senere.",
+      locationArchiveLegacyConfirmDetail:
+        "{count, plural, =0 {Ingen synlige ruller er knyttet til lokasjonen} one {# synlig rull forblir knyttet til lokasjonen} other {# synlige ruller forblir knyttet til lokasjonen}}. Denne verten kan ikke rapportere skjulte hjemme- eller underlokasjonskoblinger. Lokasjonen forsvinner fra nye valg, men kan gjenopprettes senere.",
+      locationArchiveConfirm: "Arkiver lokasjonen",
+      locationDeleteConfirmTitle: "Slett {name} permanent?",
+      locationDeleteConfirmDetail:
+        "Lokasjonen har ingen tilknyttede ruller eller underlokasjoner og kan slettes. Dette kan ikke angres. Historikkhendelser beholdes.",
+      locationDeleteConfirm: "Slett lokasjonen permanent",
+      locationMerge: "Slå sammen lokasjoner",
+      locationMergeAdvanced: "Avansert: slå sammen lokasjoner",
+      locationMergeHelp:
+        "Alle nåværende plasseringer, hjemmeplasseringer og underlokasjoner flyttes til målet. Kilden arkiveres, og alle berørte filamenter får en historikkhendelse.",
+      locationMergeSource: "Kildelokasjon",
+      locationMergeTarget: "Mållokasjon",
+      locationMergeAction: "Slå sammen og arkiver kilden",
+      locationReviewMerge: "Se gjennom sammenslåing",
+      locationMergeConfirmTitle: "Slå sammen {source} inn i {target}?",
+      locationMergeConfirmDetail:
+        "Alle nåværende plasseringer, hjemmeplasseringer og underlokasjoner flyttes til målet, og kilden arkiveres. Dette kan ikke angres automatisk.",
+      locationMergeConfirm: "Bekreft sammenslåing og arkivering",
+      locationType: "Type",
+      locationSystemOwned: "Systemeid",
+      locationGeneric: "Oppbevaring",
+      locationSystemProtected: "Administreres av printer- eller utlånsflyten",
+      locationsEmpty:
+        "Ingen lagrede lokasjoner ennå. Opprett en over, eller skriv inn en ny lokasjon når du registrerer et filament.",
+      locationCreated: "Lokasjonen er opprettet.",
+      locationRenamed: "Lokasjonen har fått nytt navn.",
+      locationArchived: "Lokasjonen er arkivert.",
+      locationDeleted: "Lokasjonen er slettet.",
+      locationRestored: "Lokasjonen er gjenopprettet.",
+      locationsMerged: "Lokasjonene er slått sammen.",
+      labelSheetAllAction: "Lag etikettark for hele lageret",
+      bulkActionsTitle: "Massehandlinger",
+      bulkSelectionModeStart: "Velg flere",
+      bulkSelectionModeDone: "Ferdig",
+      bulkSelectionHint: "Velg ruller for flytting, status, etiketter eller eksport.",
+      bulkCreateLabels:
+        "{count, plural, one {Lag etikettark for # valgt rull} other {Lag etikettark for # valgte ruller}}",
+      bulkMoveAction: "Flytt",
+      bulkStatusAction: "Endre status",
+      bulkMoveTitle: "Flytt valgte ruller",
+      bulkStatusTitle: "Endre status for valgte ruller",
+      bulkNoSelection: "Ingen ruller er valgt",
+      bulkSelectedCount: "{count, plural, one {# rull valgt} other {# ruller valgt}}",
+      bulkSelectedAcrossFilters: "{selected} valgt totalt · {visible} i denne visningen",
+      bulkSelectVisible:
+        "{count, plural, one {Velg # synlig rull} other {Velg # synlige ruller}}",
+      bulkSelectSpool: "Velg {reference}",
+      bulkClearSelection: "Tøm utvalg",
+      bulkReviewMove: "Se gjennom flytting",
+      bulkReviewStatus: "Se gjennom statusendring",
+      bulkReviewTitle: "Se gjennom: {action}",
+      bulkReviewSelected: "{count} valgt",
+      bulkAffected: "Berørte",
+      bulkAffectedCount: "{count} berørt",
+      bulkUnchanged: "Uendret",
+      bulkUnchangedCount: "{count} uendret",
+      bulkTarget: "Mål",
+      bulkReviewTarget: "Mål for {action}: {target}",
+      bulkReviewChanged: "Utvalget eller rulledataene ble endret. Se gjennom handlingen på nytt.",
+      bulkAtomicWarning:
+        "Alle {count} endringer og historikken deres lagres sammen, eller så lagres ingenting.",
+      bulkConfirmAction: "Bekreft {action} for {count}",
+      bulkActiveLoanBlocked:
+        "{count, plural, one {# berørt rull har} other {# berørte ruller har}} et aktivt lån. Returner dem før du endrer plassering eller status.",
+      bulkPrinterSlotBlocked:
+        "{count, plural, one {# berørt rull er} other {# berørte ruller er}} lastet i en printer. Bruk handlingene for printerspor i stedet.",
+      bulkRemovedBlocked:
+        "{count, plural, one {# berørt rull er fjernet} other {# berørte ruller er fjernet}}. Gjenopprett dem før du bruker massehandlinger.",
+      bulkNoChanges: "Den valgte handlingen vil ikke endre noen ruller.",
+      bulkInvalidStatus: "Velg IN_STOCK, EMPTY eller LOST som målstatus.",
+      bulkInvalidLocation: "Velg en aktiv oppbevaringslokasjon.",
+      bulkStaleSelection: "De valgte rullene er endret. Oppdater og se gjennom handlingen på nytt.",
+      bulkLegacyHostUnsupported:
+        "Den tilkoblede verten støtter ikke atomiske massehandlinger. Oppgrader verten og prøv igjen.",
+      bulkMutationDone:
+        "{count, plural, one {# rull ble oppdatert} other {# ruller ble oppdatert}} atomisk.",
+      bulkMutationFailed: "Massehandlingen mislyktes. Ingen delvise endringer ble lagret.",
+      bulkReceiptMismatch:
+        "Verten returnerte et uventet resultat. Oppdater lageret før du prøver igjen.",
+      bulkExportDone:
+        "Eksporterte {count, plural, one {# valgt rull} other {# valgte ruller}} som {format}.",
+      bulkExportFailed: "De valgte rullene kunne ikke eksporteres. Oppdater og prøv igjen.",
       assignedSlotLabel: "Tildelt spor",
       qrCode: "QR-kode",
       qrLabel: "QR",
@@ -477,6 +752,28 @@ export const nbDictionary: DictionaryNode = {
         "Behold planlagte kjøp her, flytt dem til bestilt, og legg dem på lager når de ankommer.",
       addDirectlyToStock: "Legg direkte til lager",
       stockRollNow: "Legg filament på lager nå",
+      purchaseMetadataTitle: "Kjøpsdetaljer",
+      purchaseMetadataApplies:
+        "{count, plural, one {Disse detaljene lagres på dette filamentet.} other {Disse detaljene lagres på hvert av de # mottatte filamentene.}}",
+      purchasePricePerRoll: "Pris per rull",
+      purchasePricePerRollHint: "Oppgi enhetsprisen for én rull, ikke totalsummen.",
+      protectIndividualPriceFromGroupUpdates:
+        "Beskytt individuell pris mot gruppeoppdateringer",
+      protectIndividualPriceFromGroupUpdatesHint:
+        "Manuelle prisendringer på denne rullen fungerer fortsatt. Filamentstandarder hopper over den ved gruppeoppdateringer.",
+      purchaseCurrency: "Valuta",
+      purchaseCurrencyHint: "Bruk en trebokstavskode som NOK eller EUR.",
+      purchaseDate: "Kjøpsdato",
+      purchaseBatchCode: "Batchkode",
+      purchaseSupplierReference: "Leverandørreferanse",
+      purchasePriceInvalid: "Oppgi en endelig numerisk pris.",
+      purchasePriceNegative: "Prisen kan ikke være negativ.",
+      purchaseCurrencyRequired: "Valuta er påkrevd når prisen endres.",
+      purchaseCurrencyInvalid: "Bruk en valutakode på tre bokstaver.",
+      purchaseCurrencyWithoutPrice: "Oppgi en pris eller fjern valutaen.",
+      purchaseDateInvalid: "Oppgi en gyldig kalenderdato.",
+      purchaseBatchCodeTooLong: "Batchkoden er for lang.",
+      purchaseSupplierReferenceTooLong: "Leverandørreferansen er for lang.",
       registerBorrowedIn: "Registrer innlånt filament",
       loanTrackingSubtitle:
         "Lån ut et filament fra lageret. Returer håndteres fra Utlån-siden.",
@@ -495,11 +792,15 @@ export const nbDictionary: DictionaryNode = {
       loanSelectionHelp:
         "Velg et filament på lager, og bekreft deretter hvem som låner det og hvor mye som går ut.",
       loanDetails: "Utlånsdetaljer",
-      loanDetailsHelp: "Bekreft låntaker og utgående vekt før utlånet lagres.",
+      loanDetailsHelp:
+        "Bekreft låntaker, kontaktinformasjon, forventet returdato og utgående vekt før utlånet lagres.",
       maxAvailable: "Maks tilgjengelig",
       noLoanableRolls: "Ingen filamenter er tilgjengelige for utlån akkurat nå.",
       chooseRollToLoan: "Velg et filament som skal lånes ut.",
       borrowerName: "Navn på låntaker",
+      borrowerContactOptional: "Kontaktinformasjon (valgfritt)",
+      borrowerContactPlaceholder: "Telefon, e-post eller brukernavn",
+      expectedReturnDateOptional: "Forventet returdato (valgfritt)",
       outG: "Ut g",
       loanNoteOptional: "Utlånsnotat (valgfritt)",
       loanOutRoll: "Lån ut filament",
@@ -525,6 +826,8 @@ export const nbDictionary: DictionaryNode = {
       refilledAuto: "Rullen ble reaktivert fra ny målt vekt.",
       returnToInventory: "Returner til lager",
       printQr: "Lag QR-etikett",
+      labelSheetInventoryHint:
+        "Trenger du etiketter til flere ruller? Velg «Velg flere» i Lager, eller lag et etikettark for hele lageret fra toppen av siden.",
       labelBuilderTitle: "Lag etikettbilde",
       labelBuilderSubtitle:
         "Velg fysisk størrelse, kontroller forhåndsvisningen og lagre en utskriftsklar PNG.",
@@ -675,6 +978,18 @@ export const nbDictionary: DictionaryNode = {
         usedUp: "Markert tom",
         locationUpdated: "Lokasjon oppdatert",
         detailsUpdated: "Detaljer oppdatert",
+        purchaseReceiptRecorded: "Kjøpsmottak registrert",
+        purchaseMetadataUpdated: "Kjøpsdetaljer oppdatert",
+        purchasePriceStandardApplied: "Gruppepris brukt",
+        purchasePriceStandardAppliedDetail:
+          "Den lagrede gruppeprisen ble brukt på denne rullen.",
+        purchasePriceBatchLockUpdated: "Beskyttelse mot gruppepris endret",
+        purchasePriceBatchProtection: "Beskyttelse mot gruppepris",
+        purchasePriceBatchLockUpdatedDetail:
+          "Beskyttelsen mot gruppepris ble endret for denne rullen.",
+        locationMerged: "Lokasjoner slått sammen",
+        locationMergedDetail:
+          "Denne rullen ble flyttet fordi to lagersteder ble slått sammen.",
         rfidSaved: "RFID lagret",
         assignedToAms: "Tildelt printer-spor",
         printJobRecorded: "Printforbruk logget",
@@ -686,6 +1001,8 @@ export const nbDictionary: DictionaryNode = {
         deleted: "Slettet",
         rfidSavedDetail: "RFID-identiteten ble lagret fra AMS-fangst.",
         addedToLibraryDetail: "Filamentet ble lagt til i lageret.",
+        purchaseReceiptRecordedDetail: "Mottak av kjøpet ble registrert.",
+        purchaseMetadataUpdatedDetail: "Kjøpsdetaljene ble oppdatert.",
       },
       error: {
         add: "Kunne ikke legge til filament.",
@@ -705,6 +1022,7 @@ export const nbDictionary: DictionaryNode = {
         createBambuBatch:
           "Kunne ikke opprette Bambu-kodebatch. Sjekk QR-unikhet og verdier.",
         stockFromWishlist: "Kunne ikke legge filament til lager fra ønskelistepost.",
+        purchaseMetadataInvalid: "Kontroller de markerte kjøpsdetaljene.",
         unlockMetadataFirst: "Lås opp metadata før du redigerer katalogdetaljer.",
         masterFieldsRequired:
           "Leverandør, materiale, filamentnavn og farge er påkrevd for å lagre metadata.",
@@ -719,6 +1037,9 @@ export const nbDictionary: DictionaryNode = {
         outgoingWeightRequiredForUnassign:
           "Oppgi utgående rullvekt før du tar denne rullen ut av sporet.",
         saveRollChanges: "Kunne ikke lagre rullendringer.",
+        loadInPrinter: "Dette filamentet kan ikke lastes i et printersport.",
+        loadInPrinterStale:
+          "Det valgte printersportet er ikke lenger tilgjengelig. Oppdater og velg et annet spor.",
         saveRfid: "Kunne ikke lagre RFID-identiteten.",
         assignFirst: "Tildel rullen til printer-spor først.",
         recordUsage: "Kunne ikke registrere printerforbruk.",
@@ -727,6 +1048,8 @@ export const nbDictionary: DictionaryNode = {
         borrowedInNeedsOwner:
           "Registrering av innlånt filament trenger navn på hvem filamentet er lånt fra.",
         loanGrams: "Utlånsgram må være 0 eller høyere.",
+        expectedReturnInvalid: "Velg en gyldig forventet returdato.",
+        expectedReturnPast: "Forventet returdato kan ikke være før i dag.",
         loanBorrowedIn: "Innlånte filamenter kan ikke lånes ut på nytt.",
         loanOut: "Kunne ikke låne ut rullen.",
         returnedGrams: "Returnerte gram må være 0 eller høyere.",
@@ -762,6 +1085,10 @@ export const nbDictionary: DictionaryNode = {
       statusFilter: "Statusfilter for ønskeliste",
       itemStatusGroup: "Status for {name}",
       qty: "Antall",
+      receivePurchase: "Motta kjøp",
+      receivedQuantity: "Mottatt antall",
+      receiveQuantity:
+        "{count, plural, one {Motta # rull} other {Motta # ruller}}",
       searchQueueLabel: "Søk i kjøpskø",
       searchQueuePlaceholder: "Søk på navn, farge eller leverandør",
       resultCountOne: "treff",
@@ -851,6 +1178,10 @@ export const nbDictionary: DictionaryNode = {
       spool: "Filament",
       spoolId: "Filament-ID",
       borrower: "Låntaker",
+      contact: "Kontakt",
+      expectedReturn: "Forventet retur",
+      dueToday: "Forfaller i dag",
+      overdue: "Forfalt",
       lent: "Utlånt",
       borrowedInAt: "Lånt inn",
       out: "Ut",
@@ -1087,7 +1418,34 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     statistics: {
+      forecastUnavailable: "Ikke nok forbruksdata",
+      forecastDays: "{count, plural, one {# dag} other {# dager}}",
+      consumptionForecast: "Forbruksprognose",
+      consumptionForecastHint:
+        "Et deterministisk estimat basert på eid beholdning og registrert forbruk av eget filament de siste 30 dagene.",
+      forecastDataThrough: "Data til og med {date}",
+      forecastOwnedStock: "Eid beholdning inkludert",
+      forecastUsageBasis: "Registrert forbruk · 30 dager",
+      forecastCoverage: "Estimert dekning",
+      forecastDepletion: "Mulig tomdato",
+      forecastNext30Days: "Estimert forbruk · neste 30 dager",
+      forecastRemaining30Days: "Estimert beholdning etter 30 dager",
+      forecastDailyAverage: "Antatt daglig forbruk",
+      forecastSpoolsIncluded: "Eide ruller inkludert",
+      forecastNeedsUsage:
+        "Registrer forbruk av eget filament før en mulig tomdato kan beregnes.",
+      forecastAssumptions:
+        "Forutsetning: Daglig forbruk forblir lik gjennomsnittet for de siste 30 dagene. Innlånte, tomme, mistede og fjernede ruller er utelatt. Prognosen er kun veiledende og oppretter aldri bestillinger automatisk.",
       desktopOnly: "Statistikk er kun tilgjengelig i desktop-appen.",
+      periodTitle: "Rapporteringsperiode",
+      periodCustom: "Egendefinert intervall",
+      periodStart: "Startdato",
+      periodEnd: "Sluttdato",
+      periodApply: "Bruk intervall",
+      periodDateRequired: "Velg både start- og sluttdato.",
+      periodDateInvalid: "Oppgi gyldige kalenderdatoer.",
+      periodOrderInvalid: "Sluttdato må være lik eller senere enn startdato.",
+      periodDetailsUnavailable: "Totaler og filament- eller printerdetaljer for valgt periode er utilgjengelige i dette vertsøyeblikksbildet. Oppdater eller koble til verten på nytt.",
       clientReadOnlyCached: "Verten er utilgjengelig. Viser sist bufrede statistikkdata.",
       clientReadOnlyOffline:
         "Verten er utilgjengelig, og ingen bufrede statistikkdata er tilgjengelige ennå.",
@@ -1122,6 +1480,72 @@ export const nbDictionary: DictionaryNode = {
       activeAms: "Aktive lastede spor",
       assignedSlots: "Spor med tildelte filamenter",
       currentSnapshot: "Nåværende øyeblikksbilde",
+      valueCost: "Verdi og kostnad",
+      valueCostTitle: "Lagerverdi og materialkostnad",
+      valueCostHint:
+        "Autoritative verdier fra registrerte kjøpsdata. Valutaer og eierskap holdes adskilt, og manglende data vises aldri som null kroner.",
+      valueCostLoading: "Laster verdi- og kostnadsdata...",
+      valueCostHostUpgrade:
+        "Denne verten er fra før verdi- og kostnadsrapportering. Oppdater verten for å se autoritative totaler per valuta og sporingsdetaljer.",
+      valueCostUnavailable: "Verdi- og kostnadsdata er utilgjengelige for denne rapporteringsperioden.",
+      inventoryValue: "Lagerverdi",
+      inventoryValueHint:
+        "Nåverdi for aktive ruller, basert på gjenværende vekt og registrert kjøpspris.",
+      materialCost: "Materialkostnad",
+      materialCostHint:
+        "Kostnad for registrert materialforbruk i valgt rapporteringsperiode.",
+      valueCostCurrencySeparate: "Holdes adskilt per valuta",
+      valueCostOwned: "Eid",
+      valueCostBorrowedIn: "Innlånt",
+      valueCostNoValuedRows: "Ingen verdsatte rader",
+      valueCostNoMonetaryTotals:
+        "Ingen pengesum kan vises før manglende kjøpsdata er lagt til.",
+      valueCostCoverage: "Datadekning",
+      valueCostCoverageRows: "{valued} av {total} rader verdsatt",
+      valueCostNoApplicableRows: "Ingen aktuelle rader",
+      valueCostCoveredWeight: "Kjent vekt verdsatt",
+      valueCostUnvaluedRows: "Rader uten verdi",
+      valueCostWeightUnavailable: "vekt utilgjengelig",
+      valueCostUnknownWeightHint:
+        "Manglende eller ugyldig vekt er utelatt fra vektdekningen og telles ikke som null.",
+      valueCostMissingData: "Hvorfor data mangler",
+      valueCostMissingReasonCount: "{rows} rader · {grams}",
+      openFilamentDefaults: "Åpne filamentstandarder",
+      valueCostCompleteCoverage: "Alle aktuelle rader er verdsatt.",
+      valueCostInventoryTrace: "Spor lagerverdi",
+      valueCostUsageTrace: "Spor materialkostnad",
+      valueCostTraceCount:
+        "Viser {shown} av {returned} tilgjengelige sporingsrader ({total} totalt).",
+      valueCostTraceTruncated:
+        "Sporingen er begrenset av ytelseshensyn. Totaler og dekning inkluderer fortsatt alle aktuelle rader.",
+      valueCostNoTraceRows: "Ingen sporingsrader er tilgjengelige.",
+      valueCostShowMoreTrace: "Vis flere sporingsrader",
+      valueCostRemaining: "Gjenværende",
+      valueCostUsed: "Brukt",
+      valueCostInitialWeight: "Startvekt",
+      valueCostPurchasePrice: "Kjøpspris",
+      valueCostNotRecorded: "Ikke registrert",
+      valueCostNotValued: "Ikke verdsatt",
+      valueCostSpoolUnavailable: "Rull utilgjengelig",
+      valueCostCurrencyMissingShort: "valuta mangler",
+      valueCostSourceLive: "Live-overvåkning",
+      valueCostSourceManual: "Manuell jobb",
+      valueCostStatusFailed: "Feilet",
+      valueCostPrinterReference: "Printerreferanse",
+      valueCostSpoolReference: "Rullreferanse",
+      valueCostUsageReference: "Forbruksreferanse",
+      valueCostReasonSpoolMissing: "Den refererte rullen mangler",
+      valueCostReasonRemainingWeightMissing: "Gjenværende vekt mangler",
+      valueCostReasonRemainingWeightInvalid: "Gjenværende vekt er ugyldig",
+      valueCostReasonUsedWeightMissing: "Brukt vekt mangler",
+      valueCostReasonUsedWeightInvalid: "Brukt vekt er ugyldig",
+      valueCostReasonMissingInitialWeight: "Startvekt mangler",
+      valueCostReasonInvalidInitialWeight: "Startvekt må være større enn null",
+      valueCostReasonMissingPrice: "Kjøpspris mangler",
+      valueCostReasonInvalidPrice: "Kjøpspris er ugyldig",
+      valueCostReasonMissingCurrency: "Kjøpsvaluta mangler",
+      valueCostReasonInvalidCurrency: "Kjøpsvaluta er ugyldig",
+      valueCostReasonCalculationInvalid: "Verdien kunne ikke beregnes",
       failedJobs: "Feilede jobber",
       perPrinter: "Forbruk per printer",
       perPrinterHint: "Åpne en printer for å se filamentforbruk gruppert per materiale.",
@@ -1180,6 +1604,133 @@ export const nbDictionary: DictionaryNode = {
       },
     },
     settings: {
+      filamentDefaultsUnknownWeight: "Ukjent nominell vekt",
+      filamentDefaultsLoadError: "Kunne ikke laste filamentstandardene.",
+      filamentDefaultsSaveCurrencyError: "Kunne ikke lagre standardvalutaen.",
+      filamentDefaultsSaveGroupError: "Kunne ikke lagre prisen for filamentgruppen.",
+      filamentDefaultsApplyError: "Kunne ikke bruke filamentprisene.",
+      filamentDefaultsSettingsRepair:
+        "Noen lagrede filamentstandarder var ugyldige eller passet ikke lenger med biblioteket, og er utelatt. Lagring av en gyldig standard reparerer innstillingene.",
+      filamentDefaultsSettingsRepairReadOnly:
+        "Noen lagrede filamentstandarder var ugyldige eller passet ikke lenger med vertsbiblioteket, og er utelatt. Reparer dem i skrivebordsappen på verten.",
+      filamentDefaultsReceiptBatchLocked: "Beskyttet mot gruppeprising",
+      filamentDefaultsReceiptManual: "Må oppdateres manuelt",
+      filamentDefaultsReceiptBorrowed: "Innlånt rull ble ikke endret",
+      filamentDefaultsReceiptInactive: "Historisk rull ble ikke endret",
+      filamentDefaultsReceiptAlreadyPriced: "Hadde allerede en pris",
+      filamentDefaultsReceiptSkipped: "Ikke oppdatert",
+      filamentDefaultsSelectSpool: "Velg rull",
+      filamentDefaultsSelectHistoricalSpool:
+        "Sett pris på historisk rull og beskytt den mot senere gruppeoppdateringer",
+      filamentDefaultsHistoricalSelectionHint:
+        "Velges aldri automatisk. Den kan få manglende pris én gang og forblir deretter beskyttet mot gruppeoppdateringer.",
+      filamentDefaultsBatchLocked: "Låst for gruppeprising",
+      filamentDefaultsBorrowed: "Innlånt",
+      filamentDefaultsHistorical: "Historisk",
+      filamentDefaultsCurrentPrice: "Nåværende pris",
+      filamentDefaultsMissingPrice: "Mangler pris",
+      filamentDefaultsReceipt: "Kvittering fra siste prisoppdatering",
+      filamentDefaultsReceiptHint: "Kvitteringen blir stående til du lukker den eller kjører en ny prisoppdatering.",
+      filamentDefaultsReceiptCommitted: "{updated} oppdatert · {skipped} ikke oppdatert",
+      filamentDefaultsReceiptCommittedProtected:
+        "{updated} oppdatert · {protected} beskyttet mot senere gruppeoppdateringer · {skipped} ikke oppdatert",
+      filamentDefaultsReceiptNotCommitted: "Prisoppdateringen ble ikke lagret.",
+      filamentDefaultsDismissReceipt: "Lukk kvitteringen",
+      filamentDefaultsNotUpdated: "Ikke oppdatert",
+      filamentDefaultsReceiptNoSkips: "Alle valgte og aktuelle ruller ble oppdatert.",
+      filamentDefaultsReceiptUpdatedList:
+        "{count, plural, one {Vis # oppdatert rull} other {Vis # oppdaterte ruller}}",
+      filamentDefaultsReceiptPriceSetProtected:
+        "Pris satt · Beskyttet mot senere gruppeoppdateringer",
+      filamentDefaultsCurrency: "Standard kjøpsvaluta",
+      filamentDefaultsCurrencyHint: "Brukes som startvaluta for nye individuelle priser og prisgrupper. Eksisterende kjøpsdata endres ikke automatisk.",
+      filamentDefaultsHostOwned: "Administrer bibliotekets filamentstandarder i skrivebordsappen på verten.",
+      filamentDefaultsCurrencyCode: "Valutakode med tre bokstaver",
+      filamentDefaultsCurrencyCodeHint: "For eksempel NOK, EUR eller USD. Når du lagrer standarden, endres aldri eksisterende rullpriser.",
+      filamentDefaultsCurrencyInvalid: "Skriv inn nøyaktig tre bokstaver.",
+      filamentDefaultsCurrencyPlaceholder: "NOK",
+      filamentDefaultsSaveCurrency: "Lagre standardvaluta",
+      filamentDefaultsGroupPrices: "Gruppepriser for filament",
+      filamentDefaultsGroupPricesHint: "Gruppene bygges av leverandør, materiale, filamentserie og nominell rullvekt. Farge deler ikke en prisgruppe. Ingen leverandørpriser er hardkodet.",
+      filamentDefaultsNoSpools: "Ingen ruller er tilgjengelige for gruppeprising.",
+      filamentDefaultsSpools:
+        "{count, plural, one {# rull} other {# ruller}}",
+      filamentDefaultsGroups:
+        "{count, plural, one {# prisgruppe} other {# prisgrupper}}",
+      filamentDefaultsWithoutPrice: "uten pris",
+      filamentDefaultsWithoutCurrency: "uten valuta",
+      filamentDefaultsLocked: "låst",
+      filamentDefaultsGroupPrice: "Pris per rull",
+      filamentDefaultsCurrencyCodeShort: "Valuta",
+      filamentDefaultsSaveGroupDefault: "Lagre gruppestandarden",
+      filamentDefaultsBatchMode: "Prisoppdatering",
+      filamentDefaultsMissingOnly: "Bare manglende priser",
+      filamentDefaultsMissingOnlyHint: "Beholder alle eksisterende individuelle priser.",
+      filamentDefaultsOverwrite: "Oppdater valgte priser",
+      filamentDefaultsOverwriteHint: "Erstatter eksisterende individuelle priser etter en egen bekreftelse.",
+      filamentDefaultsSelectGroup:
+        "{count, plural, one {Velg den # aktive rullen} other {Velg alle # aktive ruller}}",
+      filamentDefaultsHistoricalSelectionRemoved:
+        "{count, plural, one {# historisk rull ble fjernet fra utvalget fordi overskriving ikke kan endre den.} other {# historiske ruller ble fjernet fra utvalget fordi overskriving ikke kan endre dem.}}",
+      filamentDefaultsHistoricalProtectionHint:
+        "Historiske og oppbrukte ruller er beskyttet og fravalgt som standard. Under Bare manglende priser kan en historisk rull uten pris velges enkeltvis; beskyttelsen forblir aktiv etterpå.",
+      filamentDefaultsSelected:
+        "{count, plural, one {# valgt} other {# valgt}}",
+      filamentDefaultsWillUpdate: "Oppdateres",
+      filamentDefaultsWillUpdateCount:
+        "{count, plural, one {# oppdateres} other {# oppdateres}}",
+      filamentDefaultsOverwritePreview:
+        "{count, plural, one {# eksisterende pris blir erstattet} other {# eksisterende priser blir erstattet}}, inkludert {manual, plural, one {# individuelt satt pris} other {# individuelt satte priser}}.",
+      filamentDefaultsLockedPreview:
+        "{count, plural, one {# valgt, låst rull hoppes over og vises i kvitteringen for manuell oppfølging.} other {# valgte, låste ruller hoppes over og vises i kvitteringen for manuell oppfølging.}}",
+      filamentDefaultsHistoricalMissingPreview:
+        "{count, plural, one {# bevisst valgt historisk rull får manglende pris og forblir beskyttet mot senere gruppeoppdateringer.} other {# bevisst valgte historiske ruller får manglende pris og forblir beskyttet mot senere gruppeoppdateringer.}}",
+      filamentDefaultsCurrencyOnlyPreview:
+        "{count, plural, one {# eksisterende pris beholdes mens manglende valuta fylles inn.} other {# eksisterende priser beholdes mens manglende valuta fylles inn.}}",
+      filamentDefaultsManualPreview:
+        "{count, plural, one {# rull mangler pris, men har allerede en annen valuta. Den krever manuell oppfølging og vises i kvitteringen.} other {# ruller mangler pris, men har allerede en annen valuta. De krever manuell oppfølging og vises i kvitteringen.}}",
+      filamentDefaultsBorrowedPreview:
+        "{count, plural, one {# innlånt rull blir ikke endret.} other {# innlånte ruller blir ikke endret.}}",
+      filamentDefaultsReviewOverwrite: "Se gjennom og bekreft overskriving",
+      filamentDefaultsApplyMissing: "Sett pris på ruller uten pris",
+      filamentDefaultsApplyMissingAndProtect:
+        "Sett manglende priser og beskytt historiske ruller",
+      filamentDefaultsConfirmOverwrite: "Bekreft overskriving av priser",
+      filamentDefaultsOverwriteReview: "Gjennomgang før overskriving",
+      filamentDefaultsOverwriteConfirmationWarning:
+        "{count, plural, one {# eksisterende pris blir erstattet.} other {# eksisterende priser blir erstattet.}} {manual, plural, one {# av dem er satt individuelt.} other {# av dem er satt individuelt.}} Dette endrer ikke rullenes lås for gruppeprising.",
+      filamentDefaultsExistingPrices: "Eksisterende priser",
+      filamentDefaultsWillSkip: "Hoppes over",
+      filamentDefaultsConfirmOverwriteAction:
+        "{count, plural, one {Bekreft prisoppdatering av # rull} other {Bekreft prisoppdatering av # ruller}}",
+      lowStockThresholds: "Grenser for lav beholdning",
+      lowStockThresholdsHint:
+        "Angi én standard for biblioteket, og overstyr bare materialer som trenger et annet innkjøpspunkt.",
+      lowStockThresholdsReadOnly:
+        "Administrer disse bibliotekgrensene i skrivebordsappen på verten.",
+      lowStockPolicyRepair:
+        "Den lagrede policyen for lav beholdning er skadet. Lager og statistikk er utilgjengelig til du lagrer en gyldig erstatning her; 200 g nedenfor er bare et reparasjonsutkast.",
+      lowStockDefaultThreshold: "Standardgrense",
+      lowStockMaterialOverrides: "Overstyringer per materiale",
+      lowStockMaterialInheritance:
+        "Materialer uten overstyring arver bibliotekets standardgrense.",
+      lowStockOverridesDefault: "Overstyrer standarden",
+      lowStockThresholdGrams: "Grense (g)",
+      lowStockUseDefault: "Bruk standard",
+      lowStockAllMaterialsInherit:
+        "Alle materialer arver standardgrensen nå.",
+      lowStockMaterial: "Materiale",
+      lowStockChooseMaterial: "Velg materiale",
+      lowStockNewOverrideThreshold: "Ny materialgrense",
+      lowStockSetOverride: "Angi overstyring",
+      lowStockSelectedMaterialInheritance:
+        "Uten en overstyring arver dette materialet {count, number} g.",
+      lowStockThresholdValidation:
+        "Oppgi et heltall fra 1 til 100000 g.",
+      lowStockSaving: "Lagrer grenser …",
+      lowStockSave: "Lagre grenser",
+      lowStockSaved: "Grenser for lav beholdning er lagret.",
+      lowStockSaveError: "Kunne ikke lagre grensene for lav beholdning.",
       "bambuDiscoveryTitle": "Finn Bambu-printer",
       "bambuDiscoveryHint": "Lytt kort etter lokale Bambu-printerannonseringer. Ingen tilgangskode sendes.",
       "bambuDiscoveryFind": "Finn Bambu-printere",
@@ -1212,6 +1763,7 @@ export const nbDictionary: DictionaryNode = {
         "Denne versjonen har ingen offentlig oppdateringskanal. Sjekk kilden du lastet ned appen fra for nyere utgivelser.",
       viewRelease: "Vis utgivelsen",
       tabGeneral: "Generelt",
+      tabFilamentDefaults: "Filamentstandarder",
       tabLibrary: "Bibliotek og webapp",
       tabCompanion: "Nettlesertilgang",
       tabPrinters: "3D-printere",
@@ -1384,6 +1936,9 @@ export const nbDictionary: DictionaryNode = {
       language: "Språk",
       languageHint:
         "Velg appspråk for alle hovedvisninger.",
+      languageBeta: "Beta",
+      languageBetaHint:
+        "Betaspråk er fortsatt under arbeid og kan vise noe tekst på engelsk.",
       appearance: "Utseende",
       light: "Lys",
       dark: "Mørk",
@@ -1750,7 +2305,7 @@ export const nbDictionary: DictionaryNode = {
       inventoryOverviewPrintHint:
         "Lag QR-etikettark for alle ruller du har tilgjengelig, med samme lesbare 60 × 24 mm-layout som enkeltetikettene.",
       inventoryOverviewPrintAction: "Lag etikettark for lageret",
-      inventoryOverviewBuilderTitle: "Lag etikettark for lageret",
+      inventoryOverviewBuilderTitle: "Lag etikettark",
       inventoryOverviewBuilderSubtitle:
         "Velg papirformat, kontroller sidene og lagre en utskriftsklar PDF.",
       inventoryOverviewPaperFormat: "Papirformat",

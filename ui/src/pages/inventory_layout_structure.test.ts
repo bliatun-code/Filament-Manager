@@ -10,6 +10,10 @@ const inventoryControlsSource = readFileSync(
   "ui/src/components/inventory_controls_panel.tsx",
   "utf8",
 );
+const inventoryAddModalSource = readFileSync(
+  "ui/src/components/inventory_add_modal.tsx",
+  "utf8",
+);
 const inventoryPageSource = readFileSync(
   new URL("./inventory.tsx", import.meta.url),
   "utf8",
@@ -28,6 +32,14 @@ const inventoryCatalogReloadSource = readFileSync(
 );
 const inventorySelectedDetailStateSource = readFileSync(
   new URL("../lib/use_inventory_selected_spool_detail_state.ts", import.meta.url),
+  "utf8",
+);
+const inventorySpoolDetailActionsSource = readFileSync(
+  new URL("../lib/use_inventory_spool_detail_actions.ts", import.meta.url),
+  "utf8",
+);
+const inventoryLabelSheetActionSource = readFileSync(
+  new URL("../lib/use_inventory_label_sheet_action.ts", import.meta.url),
   "utf8",
 );
 const inventoryFiltersSource = readFileSync(
@@ -55,6 +67,15 @@ test("inventory header actions stay inside the page header", () => {
   );
 });
 
+test("inventory label sheets preserve lazy QR and label rendering chunks", () => {
+  assert.match(inventoryLabelSheetActionSource, /import\("\.\/spool_qr_artifacts"\)/);
+  assert.match(inventoryLabelSheetActionSource, /import\("\.\/filament_label_print"\)/);
+  assert.doesNotMatch(
+    inventoryLabelSheetActionSource,
+    /import \{ resolveSpoolQrCompanionShellUrl \} from "\.\/spool_qr_artifacts"/,
+  );
+});
+
 test("inventory filters do not own header search and primary actions", () => {
   const headerActionsSource = inventoryControlsSource.slice(
     inventoryControlsSource.indexOf("export function InventoryHeaderActions"),
@@ -73,6 +94,52 @@ test("inventory filters do not own header search and primary actions", () => {
   assert.doesNotMatch(filterPanelSource, /PageHeaderButton/);
 });
 
+test("inventory exposes purchases as a page view and keeps queue management out of add spool", () => {
+  assert.match(inventoryPageWorkspaceSource, /<InventoryWorkspaceNavigation/);
+  assert.match(inventoryPageWorkspaceSource, /activeView === "STOCK"/);
+  assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel \{\.\.\.purchaseQueueProps\} \/>/);
+  assert.match(inventoryPageWorkspaceSource, /id="inventory-purchases-panel"/);
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /id="inventory-purchases-panel"[\s\S]*hidden=\{activeView !== "PURCHASES"\}/,
+  );
+  assert.match(inventoryPageSource, /setActiveWorkspaceView\("PURCHASES"\)/);
+  assert.match(inventoryPageSource, /resetPurchaseQueue\("ON_ORDER"\)/);
+  assert.match(inventoryPageSource, /navigationIntent\.kind === "PURCHASES"/);
+  assert.match(inventoryPageSource, /resetPurchaseQueue\(navigationIntent\.status\)/);
+  assert.doesNotMatch(inventoryAddModalSource, /WishlistQueuePanel/);
+});
+
+test("spool-detail navigation waits for inventory readiness before revealing its target", () => {
+  assert.match(inventoryPageSource, /navigationIntent\.kind === "SPOOL_DETAIL"/);
+  assert.match(inventoryPageSource, /!librarySyncReady \|\| loading/);
+  assert.match(
+    inventoryPageSource,
+    /spools\.find\(\(spool\) => spool\.id === navigationIntent\.spoolId\)/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /resetFilters\(\);[\s\S]*setActiveWorkspaceView\("STOCK"\);[\s\S]*openRollModal\(targetSpool\.id\);[\s\S]*onConsumeNavigationIntent\?\.\(\)/,
+  );
+});
+
+test("inventory exposes managed location objects and autocomplete in one click", () => {
+  assert.match(inventoryPageWorkspaceSource, /id="inventory-locations-panel"/);
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /id="inventory-locations-panel"[\s\S]*hidden=\{activeView !== "LOCATIONS"\}/,
+  );
+  assert.match(inventoryPageWorkspaceSource, /<InventoryLocationManagementPanel/);
+  assert.match(inventoryPageSource, /<InventoryLocationDatalist rows=\{locations\}/);
+  assert.match(inventoryPageSource, /locationPanelProps=\{\{/);
+  assert.match(inventoryPageSource, /onOpenLinkedSpools: openLinkedLocationSpools/);
+  assert.match(
+    inventoryPageSource,
+    /showLocationSpools\(location\);\s*setActiveWorkspaceView\("STOCK"\)/,
+  );
+  assert.match(inventoryPageSource, /totalLocationCount=\{selectableInventoryLocations/);
+});
+
 test("inventory search and filter controls expose accessible names and state", () => {
   assert.match(inventoryControlsSource, /aria-label=\{t\(/);
   assert.match(inventoryControlsSource, /aria-pressed=\{lowStockOnly\}/);
@@ -85,6 +152,14 @@ test("inventory search and filter controls expose accessible names and state", (
   assert.match(inventoryControlsSource, /aria-expanded=\{advancedFiltersOpen\}/);
   assert.match(inventoryControlsSource, /aria-controls="inventory-advanced-filters"/);
   assert.match(inventoryControlsSource, /id="inventory-advanced-filters"/);
+  assert.match(inventoryControlsSource, /onClick=\{onLocationFilterClear\}/);
+  assert.match(inventoryControlsSource, /id="inventory-location-filter-chip"/);
+  assert.match(inventoryControlsSource, /common\.remove/);
+  assert.match(inventoryControlsSource, /locationFilter\.name/);
+  assert.match(
+    inventoryPageSource,
+    /getElementById\("inventory-location-filter-chip"\)\?\.focus\(\)/,
+  );
 });
 
 test("inventory result summary counts all active filters and offers reset", () => {
@@ -93,6 +168,11 @@ test("inventory result summary counts all active filters and offers reset", () =
   assert.match(inventoryControlsSource, /activeFilterCount > 0/);
   assert.match(inventoryControlsSource, /onClick=\{onResetFilters\}/);
   assert.match(inventoryControlsSource, /inventory\.resetFilters/);
+  assert.match(inventoryControlsSource, /aria-expanded=\{bulkSelectionActive\}/);
+  assert.match(inventoryControlsSource, /inventory\.bulkSelectionModeStart/);
+  assert.match(inventoryControlsSource, /inventory\.bulkSelectionModeDone/);
+  assert.match(inventoryPageWorkspaceSource, /bulkActionsProps\.active \? \(/);
+  assert.match(inventoryPageWorkspaceSource, /bulkSelectionTriggerProps\.onActiveChange/);
 });
 
 test("inventory layout preferences stay deterministic in visual QA and separate from filters", () => {
@@ -126,7 +206,7 @@ test("inventory refreshes every page dataset without a persistent header action"
   assert.doesNotMatch(headerActionsSource, /PageRefreshButton/);
   assert.doesNotMatch(headerActionsSource, /onRefresh/);
   assert.match(inventoryPageWorkspaceSource, /PageLoadErrorBanner/);
-  assert.match(inventoryPageSource, /onRetryLoadError=\{refreshInventoryPage\}/);
+  assert.match(inventoryPageSource, /onRetryLoadError=\{retryInventoryPageLoad\}/);
   assert.match(inventoryPageDataSource, /usePageRefreshState/);
   assert.match(refreshSource, /reloadSpools\(reportResult\)/);
   assert.match(refreshSource, /reloadWishlist\(reportResult\)/);
@@ -138,16 +218,102 @@ test("inventory refreshes every page dataset without a persistent header action"
   assert.match(refreshSource, /failRefresh\(/);
 });
 
+test("inventory role resolution stays fail-closed and retryable before enabling writes", () => {
+  assert.match(
+    inventoryPageDataSource,
+    /const \[clientReadOnly, setClientReadOnly\] = useState\(tauriAvailable\)/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /tauriAvailable \? "LOADING" : "READY"/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /setLibrarySyncResolution\("ERROR"\);[\s\S]*failRefresh\(/,
+  );
+  assert.match(inventoryPageDataSource, /const retryLibrarySyncRole = useCallback/);
+  assert.match(
+    inventoryPageSource,
+    /!librarySyncReady \|\| \(clientReadOnly \? !clientHostWritePaired : false\)/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /tauri &&[\s\S]*librarySyncReady &&[\s\S]*\(!clientReadOnly \|\| clientHostWritePaired\)/,
+  );
+});
+
+test("inventory data requests cannot land after a role or target transition", () => {
+  assert.match(inventoryPageDataSource, /type InventoryDataRequestDomain/);
+  assert.match(inventoryPageDataSource, /invalidateInventoryDataRequests\(\)/);
+  assert.match(inventoryPageDataSource, /clearTargetScopedData\(\)/);
+  const targetClearSource = inventoryPageDataSource.slice(
+    inventoryPageDataSource.indexOf("const clearTargetScopedData"),
+    inventoryPageDataSource.indexOf("const resolveLibrarySyncRole"),
+  );
+  assert.match(targetClearSource, /setLocationsLoading\(false\)/);
+  assert.match(targetClearSource, /setWishlistLoading\(false\)/);
+  assert.match(targetClearSource, /setHistoryLoading\(false\)/);
+  assert.match(targetClearSource, /setUsageLoading\(false\)/);
+  assert.match(
+    inventoryPageDataSource,
+    /const requestId = beginDataRequest\("spools"\);[\s\S]*?if \(!dataRequestIsCurrent\("spools", requestId\)\) \{\s*return;/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /const requestId = refreshRequestRef\.current \+ 1;[\s\S]*?if \(refreshRequestRef\.current !== requestId\) \{\s*return;/,
+  );
+  assert.doesNotMatch(inventoryPageDataSource, /refreshInFlightRef/);
+});
+
 test("inventory loaders preserve last-good state on transient failures", () => {
-  assert.doesNotMatch(inventoryPageDataSource, /setWishlistItems\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setActiveLoans\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setPrinterOverview\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setHistoryRows\(\[\]\)/);
-  assert.doesNotMatch(inventoryPageDataSource, /setUsagePoints\(\[\]\)/);
+  const transientLoaderSource = inventoryPageDataSource.slice(
+    inventoryPageDataSource.indexOf("const reloadLocations"),
+    inventoryPageDataSource.indexOf("const refreshInventoryData"),
+  );
+  assert.doesNotMatch(transientLoaderSource, /setWishlistItems\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setActiveLoans\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setPrinterOverview\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setHistoryRows\(\[\]\)/);
+  assert.doesNotMatch(transientLoaderSource, /setUsagePoints\(\[\]\)/);
   assert.doesNotMatch(inventoryCatalogReloadSource, /setMasters\(\[\]\)/);
-  assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current !== selectedSpool\.id/);
+  assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current === selectedSpool\.id/);
   assert.match(inventoryPageSource, /error=\{error\}/);
   assert.match(inventoryPageSource, /loadError=\{loadError\}/);
+});
+
+test("individual price protection stays in the common-detail draft and atomic save", () => {
+  const purchaseFieldsIndex = inventoryDetailModalSource.indexOf(
+    "<PurchaseReceiptMetadataFields",
+  );
+  const protectionIndex = inventoryDetailModalSource.indexOf(
+    "<InventoryPurchasePriceProtectionControl",
+  );
+  const lostStatusIndex = inventoryDetailModalSource.indexOf(
+    "<InventorySpoolLostStatusPanel",
+  );
+
+  assert.ok(purchaseFieldsIndex >= 0 && protectionIndex > purchaseFieldsIndex);
+  assert.ok(lostStatusIndex > protectionIndex);
+  assert.match(
+    inventorySelectedDetailStateSource,
+    /draftBaseline\.common\.purchasePriceBatchLocked/,
+  );
+  assert.match(
+    inventorySelectedDetailStateSource,
+    /setSelectedSpoolPurchasePriceBatchLockedDraft\(false\)/,
+  );
+  assert.match(
+    inventorySpoolDetailActionsSource,
+    /purchase_price_batch_locked: parsed\.value\.purchasePriceBatchLocked/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /onChangePurchasePriceBatchLocked=\{[\s\S]*setSelectedSpoolPurchasePriceBatchLockedDraft/,
+  );
+  assert.match(
+    inventoryPageSource,
+    /purchasePriceBatchLockedDraft=\{selectedSpoolPurchasePriceBatchLockedDraft\}/,
+  );
 });
 
 test("history visual QA waits for rows and targets the modal scroll container", () => {

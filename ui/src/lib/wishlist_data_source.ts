@@ -19,6 +19,7 @@ import {
 } from "./tauri_client";
 import {
   requireClientHostWriteTarget,
+  resolveClientHostCacheTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
 
@@ -26,6 +27,7 @@ export type WishlistDataSourceOptions = {
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
   limit?: number;
 };
 
@@ -239,16 +241,29 @@ export async function loadWishlistItems(
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
   const { clientReadOnly = false, limit = 500 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
+  const cacheTarget = clientReadOnly ? resolveClientHostCacheTarget(options) : null;
 
   if (clientReadOnly) {
     if (!hostTarget) {
-      const cached = await fetchCachedWishlist().catch(() => null);
+      const cached = cacheTarget
+        ? await fetchCachedWishlist(
+            cacheTarget.baseUrl,
+            cacheTarget.libraryId,
+            cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null;
       return cached?.rows ?? [];
     }
     try {
       return await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit);
     } catch (loadError) {
-      const cached = await fetchCachedWishlist().catch(() => null);
+      const cached = cacheTarget
+        ? await fetchCachedWishlist(
+            cacheTarget.baseUrl,
+            cacheTarget.libraryId,
+            cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null;
       if (cached) {
         return cached.rows;
       }

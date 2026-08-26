@@ -15,12 +15,16 @@ import {
   loadAllSpoolRowsWithPageLoader,
   loadSpoolRowsPage,
 } from "./spool_data_source";
-import { resolveClientHostTarget } from "./host_write_target";
+import {
+  resolveClientHostCacheTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 import {
   normalizeSpoolWithMasterRow,
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
 } from "./spool_row_normalization";
+import { resolveSpoolLowStockThreshold } from "./low_stock_policy";
 
 export type InventorySnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
 
@@ -28,6 +32,7 @@ export type InventoryDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 export type InventoryDataLoadResult = {
@@ -75,6 +80,7 @@ function mapSpoolRowsToInventorySpools(rows: SpoolWithMasterRow[]): InventorySpo
 
 export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventorySpool {
   const normalizedRow = normalizeInventorySpoolRow(row);
+  const lowStockThreshold = resolveSpoolLowStockThreshold(normalizedRow);
   const fallbackInitial =
     Number.isFinite(normalizedRow.master.default_weight) && normalizedRow.master.default_weight > 0
       ? normalizedRow.master.default_weight
@@ -92,18 +98,37 @@ export function mapSpoolRowToInventorySpool(row: SpoolWithMasterRow): InventoryS
       normalizedRow.spool.initial_weight_g && normalizedRow.spool.initial_weight_g > 0
         ? normalizedRow.spool.initial_weight_g
         : fallbackInitial,
+    lowStockThresholdGrams: lowStockThreshold.thresholdGrams,
+    lowStockThresholdLegacyFallback: lowStockThreshold.legacyFallback,
     status: normalizedRow.spool.normalized_status ?? "IN_STOCK",
     ownershipType: normalizedRow.spool.ownership_type,
     ownerName: normalizedRow.spool.owner_name ?? null,
     ownerContact: normalizedRow.spool.owner_contact ?? null,
     ownershipNote: normalizedRow.spool.ownership_note ?? null,
     remainingGrams: normalizedRow.spool.remaining_g ?? null,
+    currentWeightGrams: normalizedRow.spool.current_weight_g ?? null,
     spoolTareWeightGrams: normalizedRow.spool.spool_tare_weight_g ?? null,
-    location: normalizedRow.spool.location_id ?? null,
-    homeLocation: normalizedRow.spool.home_location_id ?? null,
+    location:
+      normalizedRow.location_name?.trim() || normalizedRow.spool.location_id || null,
+    locationId: normalizedRow.spool.location_id ?? null,
+    locationType: normalizedRow.location_type ?? null,
+    homeLocation:
+      normalizedRow.home_location_name?.trim() ||
+      normalizedRow.spool.home_location_id ||
+      null,
+    homeLocationId: normalizedRow.spool.home_location_id ?? null,
+    homeLocationType: normalizedRow.home_location_type ?? null,
     qrCode: normalizedRow.spool.qr_code ?? null,
     rfidTag: normalizedRow.spool.rfid_tag ?? null,
     rfidObservedAt: normalizedRow.spool.rfid_observed_at ?? null,
+    purchasePrice: normalizedRow.spool.purchase_price ?? null,
+    purchaseCurrency: normalizedRow.spool.purchase_currency ?? null,
+    purchaseDate: normalizedRow.spool.purchase_date ?? null,
+    batchCode: normalizedRow.spool.batch_code ?? null,
+    supplierReference: normalizedRow.spool.supplier_reference ?? null,
+    purchasePriceBatchLocked:
+      normalizedRow.spool.purchase_price_batch_locked ?? false,
+    purchasePriceSource: normalizedRow.spool.purchase_price_source ?? null,
   };
 }
 
@@ -113,6 +138,9 @@ export async function loadInventorySpools(
 ): Promise<InventoryDataLoadResult> {
   const loadRowsPage = dependencies.loadRowsPage ?? loadSpoolRowsPage;
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
+  const cacheTarget = options.clientReadOnly
+    ? resolveClientHostCacheTarget(options)
+    : null;
 
   try {
     const rows = dependencies.loadRowsPage
@@ -122,8 +150,12 @@ export async function loadInventorySpools(
           loadRowsPage,
         )
       : await loadAllSpoolRows(options);
-    const cached = options.clientReadOnly
-      ? await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null)
+    const cached = cacheTarget
+      ? await fetchCachedSpools(
+          cacheTarget.baseUrl,
+          cacheTarget.libraryId,
+          cacheTarget.targetGeneration,
+        ).catch((): LibrarySyncCachedSpoolList | null => null)
       : null;
     return {
       rows: mapSpoolRowsToInventorySpools(rows),
@@ -136,7 +168,13 @@ export async function loadInventorySpools(
       throw loadError;
     }
 
-    const cached = await fetchCachedSpools().catch((): LibrarySyncCachedSpoolList | null => null);
+    const cached = cacheTarget
+      ? await fetchCachedSpools(
+          cacheTarget.baseUrl,
+          cacheTarget.libraryId,
+          cacheTarget.targetGeneration,
+        ).catch((): LibrarySyncCachedSpoolList | null => null)
+      : null;
     if (cached) {
       return {
         rows: mapSpoolRowsToInventorySpools(cached.rows),

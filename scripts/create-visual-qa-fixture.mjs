@@ -19,6 +19,9 @@ export const VISUAL_QA_SCHEMA_PATH = fileURLToPath(
 export const VISUAL_QA_SCHEMA_MIGRATION_PATH = fileURLToPath(
   new URL("../src/database/migrations/003_library_domain_revisions.sql", import.meta.url),
 );
+export const VISUAL_QA_BASELINE_SCHEMA_VERSION = 1;
+export const VISUAL_QA_BASELINE_SCHEMA_SHA256 =
+  "0d4e28c83c7fcce7b4b57af537c7b5ad340d2ae1cd0f87900c2e629bef2db2b0";
 export const VISUAL_QA_SEED_SHA256 =
   "895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0";
 
@@ -593,7 +596,7 @@ function insertFixtureRows(db, table, rows) {
   }
 }
 
-function verifyFixtureDatabase(db, seed) {
+function verifyFixtureDatabase(db, seed, expectedSchemaVersion) {
   const quickCheck = db.pragma("quick_check", { simple: true });
   if (quickCheck !== "ok") {
     throw new Error(`Generated visual QA fixture failed quick_check: ${quickCheck}`);
@@ -604,10 +607,10 @@ function verifyFixtureDatabase(db, seed) {
       `Generated visual QA fixture has ${foreignKeyIssues.length} foreign-key violation(s).`,
     );
   }
-  const schemaVersion = db.pragma("user_version", { simple: true });
-  if (schemaVersion !== seed.schemaVersion) {
+  const actualSchemaVersion = db.pragma("user_version", { simple: true });
+  if (actualSchemaVersion !== expectedSchemaVersion) {
     throw new Error(
-      `Generated visual QA fixture schema version ${schemaVersion} does not match seed version ${seed.schemaVersion}.`,
+      `Generated visual QA fixture schema version ${actualSchemaVersion} does not match expected version ${expectedSchemaVersion}.`,
     );
   }
   for (const [table, expected] of Object.entries(seed.expectedCounts ?? {})) {
@@ -641,6 +644,25 @@ export function createVisualQaFixture(options = {}) {
   if (seed.fixtureVersion !== 1 || seed.schemaVersion !== 2) {
     throw new Error("Visual QA seed uses an unsupported fixture or schema version.");
   }
+  const expectedSchemaVersion = options.schemaVersion ?? seed.schemaVersion;
+  if (
+    expectedSchemaVersion !== VISUAL_QA_BASELINE_SCHEMA_VERSION &&
+    expectedSchemaVersion !== seed.schemaVersion
+  ) {
+    throw new Error(
+      `Visual QA fixture schema version must be ${VISUAL_QA_BASELINE_SCHEMA_VERSION} or ${seed.schemaVersion}.`,
+    );
+  }
+  const schemaSource = readFileSync(schemaPath, "utf8");
+  if (
+    expectedSchemaVersion === VISUAL_QA_BASELINE_SCHEMA_VERSION &&
+    schemaPath === resolve(VISUAL_QA_SCHEMA_PATH) &&
+    visualQaSeedSha256(schemaSource) !== VISUAL_QA_BASELINE_SCHEMA_SHA256
+  ) {
+    throw new Error(
+      "The historical visual QA baseline schema changed; preserve its reviewed schema before updating the CI upgrade fixture.",
+    );
+  }
 
   for (const protectedSourcePath of [seedPath, schemaPath, VISUAL_QA_SCHEMA_MIGRATION_PATH]) {
     assertVisualQaDatabaseTarget({
@@ -665,16 +687,18 @@ export function createVisualQaFixture(options = {}) {
   try {
     db = openDatabase(outputPath);
     db.pragma("foreign_keys = ON");
-    db.exec(readFileSync(schemaPath, "utf8"));
-    db.exec(readFileSync(VISUAL_QA_SCHEMA_MIGRATION_PATH, "utf8"));
+    db.exec(schemaSource);
+    if (expectedSchemaVersion === seed.schemaVersion) {
+      db.exec(readFileSync(VISUAL_QA_SCHEMA_MIGRATION_PATH, "utf8"));
+    }
     const insertAll = db.transaction(() => {
       for (const [table, rows] of Object.entries(seed.tables ?? {})) {
         insertFixtureRows(db, table, rows);
       }
-      db.pragma(`user_version = ${seed.schemaVersion}`);
+      db.pragma(`user_version = ${expectedSchemaVersion}`);
     });
     insertAll();
-    verifyFixtureDatabase(db, seed);
+    verifyFixtureDatabase(db, seed, expectedSchemaVersion);
   } catch (error) {
     primaryError = error;
     hasPrimaryError = true;
@@ -718,7 +742,7 @@ export function createVisualQaFixture(options = {}) {
   return {
     expectedCounts: seed.expectedCounts,
     outputPath,
-    schemaVersion: seed.schemaVersion,
+    schemaVersion: expectedSchemaVersion,
     seedPath,
   };
 }

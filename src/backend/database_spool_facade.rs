@@ -1,5 +1,6 @@
 use super::database_core::FilamentDatabase;
 use super::database_locations::ensure_location as ensure_location_row;
+use super::database_low_stock_policy::load_low_stock_policy;
 use super::database_result::InventoryResult;
 use super::database_spool_assignment::{
     spool_assigned_to_printer as spool_assigned_to_printer_row,
@@ -35,7 +36,14 @@ impl FilamentDatabase {
         &self,
         spool_id: &str,
     ) -> InventoryResult<Option<SpoolWithMasterRow>> {
-        get_spool_with_master_by_id_row(self.connection(), spool_id)
+        let policy = load_low_stock_policy(self.connection())?;
+        Ok(
+            get_spool_with_master_by_id_row(self.connection(), spool_id)?.map(|mut row| {
+                row.low_stock_threshold_g =
+                    Some(policy.threshold_for_material(&row.master.material));
+                row
+            }),
+        )
     }
 
     pub fn soft_delete_spool(&self, spool_id: &str) -> InventoryResult<()> {
@@ -47,7 +55,7 @@ impl FilamentDatabase {
     }
 
     pub fn ensure_location(&self, name: &str) -> InventoryResult<String> {
-        ensure_location_row(self.connection(), name)
+        self.with_inventory_transaction(|conn| ensure_location_row(conn, name))
     }
 
     pub fn list_spools_with_master(
@@ -55,18 +63,24 @@ impl FilamentDatabase {
         limit: i64,
         offset: i64,
     ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
-        list_spools_with_master_rows(self.connection(), limit, offset)
+        let mut rows = list_spools_with_master_rows(self.connection(), limit, offset)?;
+        apply_low_stock_thresholds(self.connection(), &mut rows)?;
+        Ok(rows)
     }
 
     pub fn list_all_spools_with_master(&self) -> InventoryResult<Vec<SpoolWithMasterRow>> {
-        list_all_spools_with_master_rows(self.connection())
+        let mut rows = list_all_spools_with_master_rows(self.connection())?;
+        apply_low_stock_thresholds(self.connection(), &mut rows)?;
+        Ok(rows)
     }
 
     pub fn list_spools_with_master_by_rfid(
         &self,
         rfid_tag: &str,
     ) -> InventoryResult<Vec<SpoolWithMasterRow>> {
-        list_spools_with_master_by_rfid_rows(self.connection(), rfid_tag)
+        let mut rows = list_spools_with_master_by_rfid_rows(self.connection(), rfid_tag)?;
+        apply_low_stock_thresholds(self.connection(), &mut rows)?;
+        Ok(rows)
     }
 
     pub fn spool_assigned_to_printer(&self, spool_id: &str) -> InventoryResult<bool> {
@@ -80,4 +94,15 @@ impl FilamentDatabase {
     ) -> InventoryResult<bool> {
         spool_assigned_to_specific_printer_row(self.connection(), spool_id, printer_id)
     }
+}
+
+fn apply_low_stock_thresholds(
+    connection: &rusqlite::Connection,
+    rows: &mut [SpoolWithMasterRow],
+) -> InventoryResult<()> {
+    let policy = load_low_stock_policy(connection)?;
+    for row in rows {
+        row.low_stock_threshold_g = Some(policy.threshold_for_material(&row.master.material));
+    }
+    Ok(())
 }

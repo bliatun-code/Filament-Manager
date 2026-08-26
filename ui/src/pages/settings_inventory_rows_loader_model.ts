@@ -8,6 +8,7 @@ export type SettingsInventoryRowsLoadOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 type LoadAllSpoolRows = (

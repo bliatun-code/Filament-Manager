@@ -1,4 +1,13 @@
-import { Suspense, lazy, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  lazy,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   APP_PAGE_LABEL_FALLBACKS,
   APP_PAGE_ORDER,
@@ -24,6 +33,8 @@ import {
 import { prepareDesktopVisualQaWindow } from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import { AppUpdateBanner } from "./components/app_update_banner";
+import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
+import type { FilamentPriceBatchReceipt } from "./lib/settings_filament_defaults_model";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
@@ -62,7 +73,18 @@ export default function App() {
   const [settingsInitialTab, setSettingsInitialTab] =
     useState<SettingsTabKey | null>(() => initialSettingsTabFromUrl());
   const [settingsInitialPrinterId, setSettingsInitialPrinterId] = useState<string | null>(null);
+  const [settingsFilamentDefaultsFocusTarget, setSettingsFilamentDefaultsFocusTarget] =
+    useState<SettingsFilamentDefaultsFocusTarget>(null);
+  const [filamentPriceBatchReceipt, setFilamentPriceBatchReceipt] =
+    useState<FilamentPriceBatchReceipt | null>(null);
   const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
+  const inventoryNavigationGuardRef = useRef<(() => boolean) | null>(null);
+  const handleInventoryNavigationGuardChange = useCallback(
+    (guard: (() => boolean) | null) => {
+      inventoryNavigationGuardRef.current = guard;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined" || !import.meta.env.DEV) {
@@ -185,21 +207,35 @@ export default function App() {
       : null;
 
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
+    if (
+      page !== activePage &&
+      inventoryNavigationGuardRef.current &&
+      !inventoryNavigationGuardRef.current()
+    ) {
+      return;
+    }
     startTransition(() => {
       setInventoryNavigationIntent(nextInventoryIntent);
       if (page !== "settings") {
         setSettingsInitialTab(null);
         setSettingsInitialPrinterId(null);
+        setSettingsFilamentDefaultsFocusTarget(null);
       }
       setActivePage(page);
     });
   };
 
-  const openSettingsTab = (tab: SettingsTabKey) => {
+  const openSettingsTab = (
+    tab: SettingsTabKey,
+    filamentDefaultsFocusTarget: SettingsFilamentDefaultsFocusTarget = null,
+  ) => {
     startTransition(() => {
       setInventoryNavigationIntent(null);
       setSettingsInitialTab(tab);
       setSettingsInitialPrinterId(null);
+      setSettingsFilamentDefaultsFocusTarget(
+        tab === "FILAMENT_DEFAULTS" ? filamentDefaultsFocusTarget : null,
+      );
       setActivePage("settings");
     });
   };
@@ -209,6 +245,7 @@ export default function App() {
       setInventoryNavigationIntent(null);
       setSettingsInitialTab("PRINTERS");
       setSettingsInitialPrinterId(printerId);
+      setSettingsFilamentDefaultsFocusTarget(null);
       setActivePage("settings");
     });
   };
@@ -237,6 +274,14 @@ export default function App() {
                 seq: Date.now(),
               });
             }}
+            onOpenPurchases={(status, notice) => {
+              navigateToPage("inventory", {
+                kind: "PURCHASES",
+                notice,
+                seq: Date.now(),
+                status,
+              });
+            }}
           />
         );
       case "inventory":
@@ -244,6 +289,7 @@ export default function App() {
           <InventoryPage
             navigationIntent={inventoryNavigationIntent}
             onConsumeNavigationIntent={() => setInventoryNavigationIntent(null)}
+            onNavigationGuardChange={handleInventoryNavigationGuardChange}
           />
         );
       case "loans":
@@ -251,12 +297,28 @@ export default function App() {
       case "printers":
         return <PrintersPage />;
       case "statistics":
-        return <StatisticsPage />;
+        return (
+          <StatisticsPage
+            onOpenFilamentDefaults={(target) =>
+              openSettingsTab("FILAMENT_DEFAULTS", target)
+            }
+          />
+        );
       case "settings":
         return (
           <SettingsPage
+            filamentPriceBatchReceipt={filamentPriceBatchReceipt}
+            initialFilamentDefaultsFocusTarget={settingsFilamentDefaultsFocusTarget}
             initialPrinterId={settingsInitialPrinterId}
             initialTab={settingsInitialTab}
+            onFilamentPriceBatchReceiptChange={setFilamentPriceBatchReceipt}
+            onOpenInventorySpoolDetails={(spoolId) => {
+              navigateToPage("inventory", {
+                kind: "SPOOL_DETAIL",
+                seq: Date.now(),
+                spoolId,
+              });
+            }}
           />
         );
       default:
@@ -264,6 +326,7 @@ export default function App() {
           <InventoryPage
             navigationIntent={inventoryNavigationIntent}
             onConsumeNavigationIntent={() => setInventoryNavigationIntent(null)}
+            onNavigationGuardChange={handleInventoryNavigationGuardChange}
           />
         );
     }

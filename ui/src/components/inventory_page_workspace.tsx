@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { lazy, Suspense, type ComponentProps } from "react";
 import { FeedbackBanner } from "./feedback_banner";
 import { InventoryAddModal, type InventoryAddModalProps } from "./inventory_add_modal";
 import {
@@ -6,32 +6,71 @@ import {
   InventoryHeaderActions,
 } from "./inventory_controls_panel";
 import { InventorySpoolCollection } from "./inventory_spool_collection";
+import type { InventoryBulkActionsPanelViewProps } from "./inventory_bulk_actions_panel";
+import { InventoryLocationManagementPanel } from "./inventory_location_management_panel";
+import {
+  InventoryWorkspaceNavigation,
+  type InventoryWorkspaceView,
+} from "./inventory_workspace_navigation";
 import { PageLoadErrorBanner } from "./page_load_error_banner";
+import { WishlistQueuePanel, type WishlistQueuePanelProps } from "./wishlist_queue_panel";
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 
+const InventoryBulkActionsPanelView = lazy(async () => {
+  const module = await import("./inventory_bulk_actions_panel");
+  return { default: module.InventoryBulkActionsPanelView };
+});
+
 type InventoryPageWorkspaceProps = {
+  activeView: InventoryWorkspaceView;
   addModalActive: boolean;
   addModalProps: InventoryAddModalProps;
+  bulkActionsProps: InventoryBulkActionsPanelViewProps;
+  bulkSelectionTriggerProps: Readonly<{
+    active: boolean;
+    disabled: boolean;
+    onActiveChange: (active: boolean) => void;
+  }>;
   clientHostDeviceName: string | null;
   clientInventorySource: string | null;
   clientInventoryUpdatedAt: string | null;
   clientReadOnly: boolean;
-  collectionProps: ComponentProps<typeof InventorySpoolCollection>;
-  controlsProps: ComponentProps<typeof InventoryControlsPanel>;
+  collectionProps: Omit<
+    ComponentProps<typeof InventorySpoolCollection>,
+    | "addSpoolDisabled"
+    | "onAddSpool"
+    | "onResetFilters"
+    | "totalSpoolCount"
+  >;
+  controlsProps: Omit<
+    ComponentProps<typeof InventoryControlsPanel>,
+    | "bulkSelectionActive"
+    | "bulkSelectionDisabled"
+    | "onBulkSelectionActiveChange"
+  >;
   error: string | null;
   headerActionsProps: ComponentProps<typeof InventoryHeaderActions>;
   infoMessage: string | null;
   loadError: string | null;
   loadErrorRetryDisabled: boolean;
   loadErrorRetrying: boolean;
+  locationPanelProps: ComponentProps<typeof InventoryLocationManagementPanel>;
+  onActiveViewChange: (view: InventoryWorkspaceView) => void;
   onRetryLoadError: () => void;
+  purchaseQueueProps: WishlistQueuePanelProps;
   showRollModal: boolean;
+  totalInventoryCount: number;
+  totalLocationCount: number;
+  totalPurchaseCount: number;
 };
 
 export function InventoryPageWorkspace({
+  activeView,
   addModalActive,
   addModalProps,
+  bulkActionsProps,
+  bulkSelectionTriggerProps,
   clientHostDeviceName,
   clientInventorySource,
   clientInventoryUpdatedAt,
@@ -44,8 +83,14 @@ export function InventoryPageWorkspace({
   loadError,
   loadErrorRetryDisabled,
   loadErrorRetrying,
+  locationPanelProps,
+  onActiveViewChange,
   onRetryLoadError,
+  purchaseQueueProps,
   showRollModal,
+  totalInventoryCount,
+  totalLocationCount,
+  totalPurchaseCount,
 }: InventoryPageWorkspaceProps) {
   const { locale, t } = useI18n();
 
@@ -53,18 +98,49 @@ export function InventoryPageWorkspace({
     <>
       <div className="page-header">
         <div className="page-header-copy">
-          <h1 className="page-title">{t("inventory.title", "Spools")}</h1>
+          <h1 className="page-title">
+            {activeView === "PURCHASES"
+              ? t("inventory.wishlistOrders", "Wishlist & orders")
+              : activeView === "LOCATIONS"
+                ? t("inventory.locationsTitle", "Locations")
+              : t("inventory.title", "Spools")}
+          </h1>
           <div className="page-subtitle max-w-2xl">
-            {t(
-              "inventory.subtitle",
-              "Track stock, assignments, loans and weight updates from one clear workspace.",
-            )}
+            {activeView === "PURCHASES"
+              ? t(
+                  "inventory.wishlistQueueHelp",
+                  "Keep planned purchases here, move them to on order, then stock them when they arrive.",
+                )
+              : activeView === "LOCATIONS"
+                ? t(
+                    "inventory.locationsHelp",
+                    "Names can change while immutable IDs keep roll placement and history stable.",
+                  )
+              : t(
+                  "inventory.subtitle",
+                  "Track stock, assignments, loans and weight updates from one clear workspace.",
+                )}
           </div>
         </div>
         <InventoryHeaderActions {...headerActionsProps} />
       </div>
 
-      <InventoryControlsPanel {...controlsProps} />
+      <InventoryWorkspaceNavigation
+        activeView={activeView}
+        inventoryCount={totalInventoryCount}
+        locationCount={totalLocationCount}
+        onViewChange={onActiveViewChange}
+        purchaseCount={totalPurchaseCount}
+      />
+
+      {activeView === "STOCK" ? (
+        <InventoryControlsPanel
+          {...controlsProps}
+          bulkSelectionActive={bulkSelectionTriggerProps.active}
+          bulkSelectionDisabled={bulkSelectionTriggerProps.disabled}
+          onBulkSelectionActiveChange={bulkSelectionTriggerProps.onActiveChange}
+        />
+      ) : null}
 
       {error && !addModalActive ? (
         <FeedbackBanner tone="danger" className="mt-4">
@@ -106,8 +182,58 @@ export function InventoryPageWorkspace({
         </FeedbackBanner>
       ) : null}
 
-      <div className="mt-8">
-        <InventorySpoolCollection {...collectionProps} />
+      <div className={activeView === "STOCK" ? "mt-4" : "mt-8"}>
+        <div
+          id="inventory-stock-panel"
+          role="region"
+          aria-labelledby="inventory-stock-tab"
+          hidden={activeView !== "STOCK"}
+        >
+          {activeView === "STOCK" ? (
+            <>
+            {bulkActionsProps.active ? (
+              <Suspense
+                fallback={
+                  <div className="surface-subtle p-4 text-sm text-slate-600 dark:text-slate-300" role="status">
+                    {t("common.loading", "Loading...")}
+                  </div>
+                }
+              >
+                <InventoryBulkActionsPanelView {...bulkActionsProps} />
+              </Suspense>
+            ) : null}
+            <div className={bulkActionsProps.active ? "mt-4" : undefined}>
+              <InventorySpoolCollection
+                {...collectionProps}
+                addSpoolDisabled={headerActionsProps.primaryActionsDisabled}
+                onAddSpool={headerActionsProps.onAddSpool}
+                onResetFilters={controlsProps.onResetFilters}
+                totalSpoolCount={totalInventoryCount}
+              />
+            </div>
+            </>
+          ) : null}
+        </div>
+        <div
+          id="inventory-purchases-panel"
+          role="region"
+          aria-labelledby="inventory-purchases-tab"
+          hidden={activeView !== "PURCHASES"}
+        >
+          {activeView === "PURCHASES" ? (
+            <WishlistQueuePanel {...purchaseQueueProps} />
+          ) : null}
+        </div>
+        <div
+          id="inventory-locations-panel"
+          role="region"
+          aria-labelledby="inventory-locations-tab"
+          hidden={activeView !== "LOCATIONS"}
+        >
+          {activeView === "LOCATIONS" ? (
+            <InventoryLocationManagementPanel {...locationPanelProps} />
+          ) : null}
+        </div>
 
         <InventoryAddModal {...addModalProps} />
       </div>

@@ -81,13 +81,48 @@ export function validateTranslatorContext(
 ) {
   const errors = [];
   const seen = new Set();
-  if (
-    contextDocument?.schemaVersion !== 1 ||
-    !Array.isArray(contextDocument.messages)
-  ) {
+  if (contextDocument?.schemaVersion !== 1 || !Array.isArray(contextDocument.messages)) {
     return [
       "Translator context must use schemaVersion 1 and a messages array.",
     ];
+  }
+
+  if (
+    contextDocument.groups !== undefined &&
+    !Array.isArray(contextDocument.groups)
+  ) {
+    errors.push("Translator context groups must be an array when provided.");
+    return errors;
+  }
+  if (
+    contextDocument.trivialGroups !== undefined &&
+    !Array.isArray(contextDocument.trivialGroups)
+  ) {
+    errors.push(
+      "Translator context trivialGroups must be an array when provided.",
+    );
+    return errors;
+  }
+
+  function validateSharedFields(entry, label) {
+    if (
+      typeof entry.meaning !== "string" ||
+      entry.meaning.trim().length < 12
+    ) {
+      errors.push(`${label} needs a useful meaning.`);
+    }
+    if (
+      typeof entry.screenshot !== "string" ||
+      !fileExists(resolve(repoRoot, entry.screenshot))
+    ) {
+      errors.push(`${label} references a missing screenshot.`);
+    }
+    if (
+      entry.maxCharacters !== undefined &&
+      (!Number.isInteger(entry.maxCharacters) || entry.maxCharacters < 1)
+    ) {
+      errors.push(`${label} has an invalid maxCharacters value.`);
+    }
   }
 
   for (const [index, message] of contextDocument.messages.entries()) {
@@ -104,26 +139,151 @@ export function validateTranslatorContext(
     if (!dictionaryMap(baseDictionaries[message.surface]).has(message.key)) {
       errors.push(`${label} references unknown key ${identity}.`);
     }
-    if (
-      typeof message.meaning !== "string" ||
-      message.meaning.trim().length < 12
-    ) {
-      errors.push(`${label} needs a useful meaning.`);
+    validateSharedFields(message, label);
+  }
+
+  for (const [index, group] of (contextDocument.groups ?? []).entries()) {
+    const label = `message-context.json groups[${index}]`;
+    if (!Object.hasOwn(baseDictionaries, group.surface)) {
+      errors.push(`${label} has unknown surface ${group.surface}.`);
+      continue;
     }
-    if (
-      typeof message.screenshot !== "string" ||
-      !fileExists(resolve(repoRoot, message.screenshot))
-    ) {
-      errors.push(`${label} references a missing screenshot.`);
+    if (typeof group.keyPrefix !== "string" || !group.keyPrefix.trim()) {
+      errors.push(`${label} needs a non-empty keyPrefix.`);
+      continue;
     }
+    const identity = `${group.surface}:${group.keyPrefix}`;
+    if (seen.has(identity)) {
+      errors.push(`${label} duplicates ${identity}.`);
+    }
+    seen.add(identity);
+    const matches = flattenDictionary(baseDictionaries[group.surface]).some(
+      ([key]) => key.startsWith(group.keyPrefix),
+    );
+    if (!matches) {
+      errors.push(`${label} matches no keys for ${identity}.`);
+    }
+    validateSharedFields(group, label);
+  }
+
+  for (const [index, group] of (
+    contextDocument.trivialGroups ?? []
+  ).entries()) {
+    const label = `message-context.json trivialGroups[${index}]`;
+    if (!Object.hasOwn(baseDictionaries, group.surface)) {
+      errors.push(`${label} has unknown surface ${group.surface}.`);
+      continue;
+    }
+    if (typeof group.keyPrefix !== "string" || !group.keyPrefix.trim()) {
+      errors.push(`${label} needs a non-empty keyPrefix.`);
+      continue;
+    }
+    const identity = `${group.surface}:${group.keyPrefix}`;
+    if (seen.has(identity)) {
+      errors.push(`${label} duplicates ${identity}.`);
+    }
+    seen.add(identity);
     if (
-      message.maxCharacters !== undefined &&
-      (!Number.isInteger(message.maxCharacters) || message.maxCharacters < 1)
+      typeof group.reason !== "string" ||
+      group.reason.trim().length < 12
     ) {
-      errors.push(`${label} has an invalid maxCharacters value.`);
+      errors.push(`${label} needs a useful reason.`);
+    }
+    const matches = flattenDictionary(baseDictionaries[group.surface]).some(
+      ([key]) => key.startsWith(group.keyPrefix),
+    );
+    if (!matches) {
+      errors.push(`${label} matches no keys for ${identity}.`);
     }
   }
   return errors;
+}
+
+export function translatorContextCoverageSnapshot(
+  contextDocument,
+  baseDictionaries,
+) {
+  const exact = new Set(
+    (contextDocument.messages ?? []).map(
+      ({ surface, key }) => `${surface}:${key}`,
+    ),
+  );
+  const prefixes = (contextDocument.groups ?? []).filter(
+    ({ surface, keyPrefix }) =>
+      Object.hasOwn(baseDictionaries, surface) &&
+      typeof keyPrefix === "string" &&
+      keyPrefix.length > 0,
+  );
+  const trivialPrefixes = (contextDocument.trivialGroups ?? []).filter(
+    ({ surface, keyPrefix }) =>
+      Object.hasOwn(baseDictionaries, surface) &&
+      typeof keyPrefix === "string" &&
+      keyPrefix.length > 0,
+  );
+  const uncoveredKeys = Object.entries(baseDictionaries)
+    .flatMap(([surface, dictionary]) =>
+      flattenDictionary(dictionary)
+        .map(([key]) => ({ surface, key }))
+        .filter(({ key }) => {
+          if (exact.has(`${surface}:${key}`)) {
+            return false;
+          }
+          return !prefixes.some(
+            (group) =>
+              group.surface === surface && key.startsWith(group.keyPrefix),
+          ) && !trivialPrefixes.some(
+            (group) =>
+              group.surface === surface && key.startsWith(group.keyPrefix),
+          );
+        })
+        .map(({ key }) => `${surface}:${key}`),
+    )
+    .sort((left, right) => left.localeCompare(right, "en"));
+
+  return {
+    uncoveredKeyCount: uncoveredKeys.length,
+    uncoveredKeyFingerprint: `sha256:${createHash("sha256")
+      .update(JSON.stringify(uncoveredKeys))
+      .digest("hex")}`,
+  };
+}
+
+export function validateTranslatorContextCoverage(
+  contextDocument,
+  baseDictionaries,
+) {
+  const coverage = contextDocument?.coverage;
+  if (
+    coverage?.strategy !== "uncovered-key-delta" ||
+    !Number.isInteger(coverage.reviewedUncoveredKeyCount) ||
+    !/^sha256:[a-f0-9]{64}$/.test(
+      coverage.reviewedUncoveredKeyFingerprint ?? "",
+    )
+  ) {
+    return [
+      "Translator context needs a valid uncovered-key-delta coverage baseline.",
+    ];
+  }
+
+  const snapshot = translatorContextCoverageSnapshot(
+    contextDocument,
+    baseDictionaries,
+  );
+  if (
+    coverage.reviewedUncoveredKeyCount === snapshot.uncoveredKeyCount &&
+    coverage.reviewedUncoveredKeyFingerprint ===
+      snapshot.uncoveredKeyFingerprint
+  ) {
+    return [];
+  }
+
+  return [
+    "Translator context coverage changed: " +
+      `reviewed ${coverage.reviewedUncoveredKeyCount} uncovered keys ` +
+      `(${coverage.reviewedUncoveredKeyFingerprint}), now ` +
+      `${snapshot.uncoveredKeyCount} (${snapshot.uncoveredKeyFingerprint}). ` +
+      "Add exact or prefix context for contextual copy; only refresh the baseline after explicitly reviewing trivial uncovered keys.",
+  ];
 }
 
 export function buildLocalizationReport({
@@ -154,6 +314,12 @@ export function buildLocalizationReport({
       fileExists,
     ),
   );
+  errors.push(
+    ...validateTranslatorContextCoverage(
+      contextDocument,
+      { desktop: sourceDesktop, companion: sourceCompanion },
+    ),
+  );
 
   const localeIds = localeDefinitions.map(({ id }) => id);
   for (const localeId of Object.keys(statusDocument.locales ?? {})) {
@@ -165,7 +331,7 @@ export function buildLocalizationReport({
   }
 
   const localeReports = [];
-  for (const { id, catalogKind } of localeDefinitions) {
+  for (const { id, catalogKind, fallbackLocale } of localeDefinitions) {
     const status = statusDocument.locales?.[id];
     if (!status) {
       errors.push(`locale-status.json is missing source locale ${id}.`);
@@ -205,6 +371,21 @@ export function buildLocalizationReport({
     const keyCoveragePercent =
       ((desktopStats.present + companionStats.present) / total) * 100;
     const maintained = status.releaseStatus === "maintained";
+
+    if (catalogKind === "draft" && status.releaseStatus !== "draft") {
+      errors.push(
+        `${id} uses an English fallback overlay and must remain draft until it has a complete reviewed source catalog.`,
+      );
+    }
+    if (catalogKind === "draft" && !fallbackLocale) {
+      errors.push(`${id} is a draft overlay but has no fallback locale.`);
+    }
+    if (id === sourceLocale && status.releaseStatus !== "canonical") {
+      errors.push(`${id} is the source locale and must be canonical.`);
+    }
+    if (id !== sourceLocale && status.releaseStatus === "canonical") {
+      errors.push(`${id} is not the source locale and cannot be canonical.`);
+    }
 
     if (
       maintained &&

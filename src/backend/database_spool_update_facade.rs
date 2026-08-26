@@ -1,19 +1,55 @@
 use super::database_core::FilamentDatabase;
 use super::database_result::InventoryResult;
+use super::database_spool_price_lock::lock_spool_price_for_historical_status;
 use super::database_spool_updates::{
     set_spool_home_location as set_spool_home_location_row,
-    set_spool_location as set_spool_location_row, update_spool_details as update_spool_details_row,
+    set_spool_location as set_spool_location_row,
+    set_spool_purchase_price_batch_locked as set_spool_purchase_price_batch_locked_row,
+    set_spool_purchase_price_source as set_spool_purchase_price_source_row,
+    update_spool_details as update_spool_details_row,
     update_spool_ownership as update_spool_ownership_row,
     update_spool_ownership_metadata as update_spool_ownership_metadata_row,
+    update_spool_purchase_metadata as update_spool_purchase_metadata_row,
     update_spool_rfid_tag as update_spool_rfid_tag_row,
     update_spool_status as update_spool_status_row,
     update_spool_tare_weight as update_spool_tare_weight_row,
     update_spool_weight as update_spool_weight_row,
 };
+use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 
 impl FilamentDatabase {
+    pub fn set_spool_purchase_price_batch_locked(
+        &self,
+        spool_id: &str,
+        locked: bool,
+    ) -> InventoryResult<()> {
+        set_spool_purchase_price_batch_locked_row(self.connection(), spool_id, locked)
+    }
+
+    pub fn set_spool_purchase_price_source(
+        &self,
+        spool_id: &str,
+        source: Option<&str>,
+    ) -> InventoryResult<()> {
+        set_spool_purchase_price_source_row(self.connection(), spool_id, source)
+    }
+
     pub fn update_spool_status(&self, spool_id: &str, status: &str) -> InventoryResult<()> {
-        update_spool_status_row(self.connection(), spool_id, status)
+        let update = |connection: &rusqlite::Connection| {
+            update_spool_status_row(connection, spool_id, status)?;
+            lock_spool_price_for_historical_status(
+                connection,
+                spool_id,
+                status,
+                "SPOOL_STATUS_UPDATE",
+            )?;
+            Ok(())
+        };
+        if self.connection().is_autocommit() {
+            self.with_inventory_transaction(update)
+        } else {
+            update(self.connection())
+        }
     }
 
     pub fn update_spool_weight(
@@ -58,14 +94,28 @@ impl FilamentDatabase {
         location_id: Option<&str>,
         home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
-        update_spool_details_row(
-            self.connection(),
-            spool_id,
-            qr_code,
-            status,
-            location_id,
-            home_location_id,
-        )
+        let update = |connection: &rusqlite::Connection| {
+            update_spool_details_row(
+                connection,
+                spool_id,
+                qr_code,
+                status,
+                location_id,
+                home_location_id,
+            )?;
+            lock_spool_price_for_historical_status(
+                connection,
+                spool_id,
+                status,
+                "SPOOL_DETAILS_UPDATE",
+            )?;
+            Ok(())
+        };
+        if self.connection().is_autocommit() {
+            self.with_inventory_transaction(update)
+        } else {
+            update(self.connection())
+        }
     }
 
     pub fn set_spool_home_location(
@@ -74,6 +124,14 @@ impl FilamentDatabase {
         home_location_id: Option<&str>,
     ) -> InventoryResult<()> {
         set_spool_home_location_row(self.connection(), spool_id, home_location_id)
+    }
+
+    pub fn update_spool_purchase_metadata(
+        &self,
+        spool_id: &str,
+        metadata: &PurchaseReceiptMetadata,
+    ) -> InventoryResult<()> {
+        update_spool_purchase_metadata_row(self.connection(), spool_id, metadata)
     }
 
     pub fn update_spool_ownership_metadata(

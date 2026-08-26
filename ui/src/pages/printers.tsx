@@ -81,7 +81,11 @@ export default function PrintersPage() {
     clientHostDeviceName,
     clientHostBaseUrl,
     clientLibraryId,
+    clientTargetGeneration,
+    librarySyncError,
     librarySyncReady,
+    librarySyncResolving,
+    retryLibrarySyncRole,
   } = useLibrarySyncState(tauri);
   const supportedPrinterModels = useMemo(
     () => listSupportedPrinterModels(),
@@ -106,6 +110,7 @@ export default function PrintersPage() {
     clientReadOnly,
     clientHostBaseUrl,
     clientLibraryId,
+    clientTargetGeneration,
     supportedPrinterModels,
     loadErrorMessage: t(
       "printers.error.load",
@@ -653,6 +658,7 @@ export default function PrintersPage() {
               onClick={openAddPrinterModal}
               disabled={
                 !tauri ||
+                !librarySyncReady ||
                 busy ||
                 (clientReadOnly ? !clientHostWritePaired : false)
               }
@@ -676,7 +682,18 @@ export default function PrintersPage() {
           {error}
         </FeedbackBanner>
       ) : null}
-      {loadError ? (
+      {librarySyncError ? (
+        <PageLoadErrorBanner
+          message={t(
+            "errors.libraryRoleLoadFailed",
+            "Could not determine this device's library role. No local data or changes are available until the role is loaded.",
+          )}
+          onRetry={retryLibrarySyncRole}
+          retryDisabled={!tauri || busy}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={librarySyncResolving}
+        />
+      ) : loadError ? (
         <PageLoadErrorBanner
           message={loadError}
           onRetry={() => void reloadData()}
@@ -709,7 +726,7 @@ export default function PrintersPage() {
         </FeedbackBanner>
       ) : null}
 
-      {loading ? (
+      {loading && !librarySyncError ? (
         <div className="surface-subtle mt-6 px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
           {t("common.loadingPrinters", "Loading printers...")}
         </div>

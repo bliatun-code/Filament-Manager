@@ -3,8 +3,8 @@ use crate::library_sync_cache_refresh::{
     refresh_library_sync_loan_cache, refresh_library_sync_spool_cache,
 };
 use crate::library_sync_command_support::{
-    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
-    trimmed_non_empty,
+    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
+    save_library_sync_success, trimmed_non_empty,
 };
 use crate::library_sync_host_client::perform_library_sync_host_write;
 use crate::library_sync_models::*;
@@ -24,13 +24,14 @@ fn delete_library_sync_host_spool_blocking(
     input: LibrarySyncDeleteSpoolInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
         &normalized_base_url,
@@ -40,9 +41,9 @@ fn delete_library_sync_host_spool_blocking(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    refresh_library_sync_loan_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool removed.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_loan_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool removed.", None)?;
     Ok(())
 }
 
@@ -60,13 +61,14 @@ fn purge_library_sync_host_spool_blocking(
     input: LibrarySyncDeleteSpoolInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
     }
 
+    let spool_id = encode_library_sync_path_segment(spool_id);
     perform_library_sync_host_write(
         state,
         &normalized_base_url,
@@ -76,8 +78,8 @@ fn purge_library_sync_host_spool_blocking(
         }),
     )?;
 
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    refresh_library_sync_loan_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host spool purged.", None)?;
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_loan_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host spool purged.", None)?;
     Ok(())
 }

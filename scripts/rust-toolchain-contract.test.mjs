@@ -57,7 +57,7 @@ test("the edition migration keeps formatting changes isolated", () => {
 
 test("the repository selects one complete reviewed Rust toolchain", () => {
   assert.match(toolchain, /^\[toolchain\]$/m);
-  assert.match(toolchain, /^channel = "1\.97\.1"$/m);
+  assert.match(toolchain, /^channel = "1\.98\.0"$/m);
   assert.match(toolchain, /^profile = "minimal"$/m);
   assert.match(toolchain, /^components = \["clippy", "rustfmt"\]$/m);
 });
@@ -81,7 +81,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
   const setupSteps = workflows.flatMap(([name, workflow]) =>
     rustSetupSteps(workflow).map((step) => [name, step]),
   );
-  assert.equal(setupSteps.length, 5);
+  assert.equal(setupSteps.length, 7);
 
   for (const [name, step] of setupSteps) {
     assert.match(
@@ -91,7 +91,7 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
     );
     assert.match(
       step,
-      /^          toolchain: 1\.97\.1$/m,
+      /^          toolchain: 1\.98\.0$/m,
       `${name} must install the reviewed Rust release explicitly`,
     );
   }
@@ -125,7 +125,10 @@ test("both required smoke jobs enforce the Rust 1.88 MSRV first", () => {
 });
 
 test("smoke CI installs the components used by the full verification", () => {
-  const ciSteps = rustSetupSteps(workflows[0][1]);
+  const ciWorkflow = workflows[0][1];
+  const ciSteps = ["macos-smoke", "windows-smoke"].flatMap((jobName) =>
+    rustSetupSteps(workflowJob(ciWorkflow, jobName)),
+  );
   assert.equal(ciSteps.length, 2);
   for (const step of ciSteps) {
     assert.match(step, /^          components: clippy,rustfmt$/m);

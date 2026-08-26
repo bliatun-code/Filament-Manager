@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { SettingsLibraryClientPanel } from "./settings_library_client_panel";
+import type { SettingsLibraryClientPanel } from "./settings_library_client_panel";
 
 type SettingsLibraryClientPanelProps = ComponentProps<typeof SettingsLibraryClientPanel>;
 

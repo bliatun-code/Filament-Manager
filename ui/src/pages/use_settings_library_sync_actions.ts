@@ -49,7 +49,11 @@ type UseSettingsLibrarySyncActionsInput = LibrarySyncActionLabels & {
   librarySyncModeDraft: LibrarySyncMode;
   librarySyncPairingDraft: string;
   librarySyncSettings: LibrarySyncSettings | null;
-  persistTrustedLanConfig: (nextEnabled: boolean, successMessage: string) => Promise<boolean>;
+  persistTrustedLanConfig: (
+    nextEnabled: boolean,
+    successMessage: string,
+    selectedInterfaceOverride?: TrustedLanInterfaceOption | null,
+  ) => Promise<boolean>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
   setLibrarySyncBusy: Dispatch<SetStateAction<boolean>>;
@@ -125,15 +129,6 @@ export function useSettingsLibrarySyncActions({
         if (!trustedLanSelectedInterfaceOption) {
           setTrustedLanInterfaceAddressDraft(fallbackInterface.address);
         }
-        setTrustedLanEnabledDraft(true);
-        const hostEnabled = await persistTrustedLanConfig(
-          true,
-          buildTrustedLanConfigMessage("enabled", trustedLanConfigMessageLabels()),
-        );
-        if (!hostEnabled) {
-          setTrustedLanEnabledDraft(Boolean(trustedLanStatus?.enabled));
-          return false;
-        }
       } else if (nextMode === "CLIENT") {
         setTrustedLanEnabledDraft(false);
         const disabled = await persistTrustedLanConfig(
@@ -163,6 +158,23 @@ export function useSettingsLibrarySyncActions({
       if (saved.mode !== "CLIENT") {
         setLibrarySyncValidation(null);
         setLibrarySyncSnapshot(null);
+      }
+      if (nextMode === "HOST") {
+        const selectedInterface =
+          trustedLanSelectedInterfaceOption ?? trustedLanInterfaces[0] ?? null;
+        setTrustedLanEnabledDraft(true);
+        const hostEnabled = await persistTrustedLanConfig(
+          true,
+          buildTrustedLanConfigMessage("enabled", trustedLanConfigMessageLabels()),
+          selectedInterface,
+        );
+        if (!hostEnabled) {
+          // The authoritative role change has already succeeded. Keep that
+          // durable result and surface the web-app startup failure separately
+          // instead of retrying or pretending the device is still a Client.
+          setTrustedLanEnabledDraft(Boolean(trustedLanStatus?.enabled));
+          return true;
+        }
       }
       setInfo(buildLibrarySyncActionMessage("settingsSaved", librarySyncActionMessageLabels()));
       return true;
@@ -329,6 +341,13 @@ export function useSettingsLibrarySyncActions({
       if (!validation.ok || !validation.library_id) {
         throw new Error(validation.message);
       }
+      const disabled = await persistTrustedLanConfig(
+        false,
+        buildTrustedLanConfigMessage("disabled", trustedLanConfigMessageLabels()),
+      );
+      if (!disabled) {
+        return;
+      }
       await saveLibrarySyncSettings(
         buildLibrarySyncPairingSettingsInput({
           deviceName: librarySyncDeviceNameDraft,
@@ -382,6 +401,7 @@ export function useSettingsLibrarySyncActions({
     librarySyncDeviceNameDraft,
     librarySyncPairingDraft,
     librarySyncPairingMessageLabels,
+    persistTrustedLanConfig,
     setError,
     setInfo,
     setLibrarySyncBusy,
@@ -392,6 +412,7 @@ export function useSettingsLibrarySyncActions({
     setLibrarySyncSettings,
     setLibrarySyncValidation,
     tauri,
+    trustedLanConfigMessageLabels,
   ]);
 
   const handleClearLibrarySyncClientAuth = useCallback(async () => {
@@ -479,6 +500,7 @@ export function useSettingsLibrarySyncActions({
       const refreshed = await refreshLibrarySyncSnapshot(
         librarySyncHostBaseUrlDraft,
         librarySyncSettings.library_id,
+        librarySyncSettings.target_generation,
       );
       setLibrarySyncSettings(refreshed.syncSettings);
       setLibrarySyncSnapshot(refreshed.snapshot);

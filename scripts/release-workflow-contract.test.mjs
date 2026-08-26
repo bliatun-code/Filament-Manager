@@ -7,6 +7,18 @@ const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
 const macosDmgSmoke = readFileSync("scripts/smoke-macos-dmg.mjs", "utf8");
+const packagedDesktopE2eRunner = readFileSync(
+  "scripts/run-packaged-desktop-e2e.mjs",
+  "utf8",
+);
+const releaseDatabaseUpgradeSmoke = readFileSync(
+  "scripts/smoke-release-database-upgrade.mjs",
+  "utf8",
+);
+const previousReleaseFixturePreparer = readFileSync(
+  "scripts/prepare-previous-release-upgrade-fixture.mjs",
+  "utf8",
+);
 const macosWindowHelper = readFileSync(
   "scripts/macos-window-info.swift",
   "utf8",
@@ -49,7 +61,7 @@ test("release workflow gates tag and manual installer builds", () => {
   const validationJob = readSection(
     releaseWorkflow,
     "  validate-release:",
-    "  build-macos-dmg:",
+    "  prepare-previous-release-fixture:",
   );
   const macosJob = readSection(
     releaseWorkflow,
@@ -163,12 +175,18 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.doesNotMatch(updateMetadataGate, /workflow_dispatch|SELECTED_PLATFORM/);
   assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
-  assert.match(macosJob, /needs: validate-release/);
+  assert.match(
+    macosJob,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
+  );
   assert.match(
     macosJob,
     /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'macos'/,
   );
-  assert.match(windowsJob, /needs: validate-release/);
+  assert.match(
+    windowsJob,
+    /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
+  );
   assert.match(
     windowsJob,
     /if: github\.event_name == 'push' \|\| github\.event\.inputs\.platform == 'both' \|\| github\.event\.inputs\.platform == 'windows'/,
@@ -334,7 +352,7 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
-    /required_checks=\("macOS Smoke" "Windows Smoke"\)/,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
   );
   assert.equal(
     countOccurrences(requiredChecksStep, "GH_TOKEN: ${{ github.token }}"),
@@ -1166,17 +1184,81 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
   );
 });
 
+test("CI rejects published migration rewrites and exercises both database paths", () => {
+  const migrationJob = readSection(
+    ciWorkflow,
+    "  migration-integrity:",
+    "  macos-smoke:",
+  );
+  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
+  const requiredChecksStep = readSection(
+    publishJob,
+    "      - name: Require successful CI checks",
+    "      - name: Checkout release notes",
+  );
+
+  assert.equal(
+    packageManifest.scripts["check:database-migrations"],
+    "node ./scripts/check-database-migrations.mjs",
+  );
+  assert.match(migrationJob, /name: Database Migration Integrity/);
+  assert.match(migrationJob, /runs-on: ubuntu-latest/);
+  assert.match(migrationJob, /fetch-depth: 0/);
+  assert.match(migrationJob, /persist-credentials: false/);
+  assert.match(
+    migrationJob,
+    /npm run check:database-migrations -- --verify-published-reference/,
+  );
+  assert.match(
+    migrationJob,
+    /node --test \.\/scripts\/check-database-migrations\.test\.mjs/,
+  );
+  assert.match(
+    migrationJob,
+    /cargo test --locked --lib database_schema_setup::tests/,
+  );
+  assertStepOrder(migrationJob, [
+    "Checkout full migration history",
+    "Setup Node",
+    "Reject changes to published migrations",
+    "Test migration manifest behavior",
+    "Setup Rust",
+    "Test clean install and historical upgrades",
+  ]);
+  assert.match(
+    requiredChecksStep,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
+  );
+});
+
 test("CI executes real browser accessibility and sanitized Companion workflows", () => {
+  const sharedContractsJob = readSection(
+    ciWorkflow,
+    "  shared-contracts:",
+    "  migration-integrity:",
+  );
+  const migrationJob = readSection(
+    ciWorkflow,
+    "  migration-integrity:",
+    "  macos-smoke:",
+  );
   const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
   const windowsJobStart = ciWorkflow.indexOf("  windows-smoke:");
   assert.notEqual(windowsJobStart, -1, "Missing workflow section: windows-smoke:");
   const windowsJob = ciWorkflow.slice(windowsJobStart);
 
   assert.equal(
-    ciWorkflow.split("persist-credentials: false").length - 1,
-    2,
-    "every smoke checkout must discard its GitHub credential",
+    (ciWorkflow.match(/uses: actions\/checkout@/g) ?? []).length,
+    4,
+    "CI must check out the repository once in every verification job",
   );
+  for (const job of [sharedContractsJob, migrationJob, macosJob, windowsJob]) {
+    assert.match(
+      job,
+      /uses: actions\/checkout@[^\r\n]+\s+with:\s+(?:[^\r\n]*\r?\n)*?\s+persist-credentials: false/,
+      "every CI checkout must discard its GitHub credential",
+    );
+  }
 
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:app-modal/);
   assert.match(packageManifest.scripts.smoke, /npm run test:a11y:data-backed/);
@@ -1203,6 +1285,172 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
     macosJob,
     /- name: Run data-backed Companion E2E\s+timeout-minutes: 10\s+run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000[ \t]*(?:\r?\n|$)/,
   );
+});
+
+test("macOS CI makes the sanitized database upgrade smoke a release gate", () => {
+  const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
+  const requiredChecksStep = readSection(
+    publishJob,
+    "      - name: Require successful CI checks",
+    "      - name: Checkout release notes",
+  );
+
+  assert.equal(
+    packageManifest.scripts["qa:release:upgrade-ci-fixture"],
+    "node ./scripts/prepare-ci-release-upgrade-fixture.mjs",
+  );
+  assert.equal(
+    packageManifest.scripts["smoke:release:database-upgrade"],
+    "node ./scripts/smoke-release-database-upgrade.mjs",
+  );
+  assert.match(macosJob, /timeout-minutes: 45/);
+  assert.match(
+    macosJob,
+    /- name: Build database upgrade candidate\s+run: cargo build --locked --package bambu-filament-manager/,
+  );
+  assert.match(
+    macosJob,
+    /npm run qa:release:upgrade-ci-fixture --[\s\S]*?--output="\$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"/,
+  );
+  assert.match(
+    macosJob,
+    /npm run smoke:release:database-upgrade --[\s\S]*?--database="\$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"[\s\S]*?--executable=target\/debug\/bambu-filament-manager[\s\S]*?--launch-timeout-ms=120000[\s\S]*?--database-readiness-only/,
+  );
+  assert.match(
+    macosJob,
+    /- name: Upload database upgrade smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn[\s\S]*?retention-days: 7/,
+  );
+  assert.match(
+    requiredChecksStep,
+    /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,
+  );
+  assertStepOrder(macosJob, [
+    "Run full verification",
+    "Run data-backed Companion E2E",
+    "Build database upgrade candidate",
+    "Prepare sanitized historical database fixture",
+    "Exercise database upgrade and restart",
+    "Upload database upgrade smoke logs",
+  ]);
+});
+
+test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
+  const fixtureJob = readSection(
+    releaseWorkflow,
+    "  prepare-previous-release-fixture:",
+    "  build-macos-dmg:",
+  );
+  const macosJob = readSection(
+    releaseWorkflow,
+    "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const windowsJob = readSection(
+    releaseWorkflow,
+    "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+
+  assert.equal(
+    packageManifest.scripts["qa:release:previous-fixture"],
+    "node ./scripts/prepare-previous-release-upgrade-fixture.mjs",
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /PREVIOUS_RELEASE_VERSION = "0\.27\.0"/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /PREVIOUS_RELEASE_SCHEMA_VERSION = 2/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /PREVIOUS_RELEASE_COMMIT =\s*\n\s*"4a1c57a10255c26f70f749fc33ff5ae25e23b1ce"/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /requiresSchemaMigration:[\s\S]*?source\.schemaVersion < expectedCurrentSchemaVersion/,
+  );
+  assert.match(
+    previousReleaseFixturePreparer,
+    /source\.schemaVersion < expectedCurrentSchemaVersion[\s\S]*?"schema-migration"/,
+  );
+
+  assert.match(fixtureJob, /name: Prepare v0\.27 database fixture/);
+  assert.match(fixtureJob, /needs: validate-release/);
+  assert.match(
+    fixtureJob,
+    /ref: 4a1c57a10255c26f70f749fc33ff5ae25e23b1ce/,
+  );
+  assert.match(fixtureJob, /path: previous-release-v0\.27\.0/);
+  assert.match(fixtureJob, /npm --prefix \.\/previous-release-v0\.27\.0 ci/);
+  assert.match(
+    fixtureJob,
+    /npm run qa:release:previous-fixture --[\s\S]*?--source=previous-release-v0\.27\.0[\s\S]*?--database="\$database_path"[\s\S]*?--manifest="\$manifest_path"/,
+  );
+  assert.match(
+    fixtureJob,
+    /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
+  );
+  assert.match(
+    fixtureJob,
+    /name: filament-manager-v0\.27\.0-database-fixture-\$\{\{ github\.run_id \}\}[\s\S]*?if-no-files-found: error[\s\S]*?retention-days: 1/,
+  );
+
+  for (const job of [macosJob, windowsJob]) {
+    assert.match(
+      job,
+      /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
+    );
+    assert.match(job, /- name: Download sanitized v0\.27 fixture/);
+    assert.match(job, /- name: Verify downloaded v0\.27 fixture/);
+    assert.match(
+      job,
+      /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
+    );
+  }
+
+  assert.match(
+    macosJob,
+    /- name: Exercise installed signed application on Apple Silicon[\s\S]*?--upgrade-fixture="\$PREVIOUS_RELEASE_FIXTURE_DIR\/filament-manager-v0\.27\.0\.db"[\s\S]*?--upgrade-source-release=v0\.27\.0/,
+  );
+  assert.match(macosDmgSmoke, /smokeReleaseDatabaseUpgrade/);
+  assert.match(macosDmgSmoke, /allowCurrentSchema: true/);
+  assert.match(macosDmgSmoke, /requireVisibleWindow: false/);
+
+  assert.match(
+    windowsJob,
+    /-UpgradeFixturePath \(Join-Path \$env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0\.27\.0\.db"\)/,
+  );
+  assert.match(windowsJob, /-UpgradeSourceRelease "v0\.27\.0"/);
+  assert.match(windowsMsiSmoke, /\[string\]\$UpgradeFixturePath = ""/);
+  assert.match(windowsMsiSmoke, /\[string\]\$UpgradeSourceRelease = ""/);
+  assert.match(
+    windowsMsiSmoke,
+    /smoke-release-database-upgrade\.mjs[\s\S]*?--database-readiness-only[\s\S]*?--allow-current-schema[\s\S]*?--source-release=\$UpgradeSourceRelease/,
+  );
+  assert.match(
+    releaseDatabaseUpgradeSmoke,
+    /if \(before\.schemaVersion === expectedSchemaVersion && !allowCurrentSchema\)/,
+  );
+  assert.match(
+    releaseDatabaseUpgradeSmoke,
+    /same-schema compatibility from \$\{sourceRelease\}/,
+  );
+
+  assertStepOrder(macosJob, [
+    "Download sanitized v0.27 fixture",
+    "Verify downloaded v0.27 fixture",
+    "Build signed and notarized DMG",
+    "Exercise installed signed application on Apple Silicon",
+  ]);
+  assertStepOrder(windowsJob, [
+    "Download sanitized v0.27 fixture",
+    "Verify downloaded v0.27 fixture",
+    "Build MSI bundle",
+    "Exercise release MSI installation from downloaded artifact",
+  ]);
 });
 
 test("release workflow keeps the protected macOS signing sequence fail-closed", () => {
@@ -1372,4 +1620,63 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     "Exercise installed signed application on Intel",
     "Upload Intel macOS smoke logs",
   ]);
+});
+
+test("CI and release workflows block on the packaged mutating desktop E2E", () => {
+  const ciMacosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const ciWindowsJob = readSection(ciWorkflow, "  windows-smoke:");
+  const releaseMacosJob = readSection(
+    releaseWorkflow,
+    "  build-macos-dmg:",
+    "  smoke-macos-dmg-intel:",
+  );
+  const releaseIntelMacosJob = readSection(
+    releaseWorkflow,
+    "  smoke-macos-dmg-intel:",
+    "  build-windows-msi:",
+  );
+  const releaseWindowsJob = readSection(
+    releaseWorkflow,
+    "  build-windows-msi:",
+    "  generate-release-sbom:",
+  );
+
+  assert.equal(
+    packageManifest.scripts["smoke:release:packaged-desktop-e2e"],
+    "node ./scripts/run-packaged-desktop-e2e.mjs",
+  );
+  assert.match(ciMacosJob, /- name: Build packaged macOS smoke bundle/);
+  assert.match(ciMacosJob, /npm run tauri -- build --debug --bundles dmg/);
+  assert.match(ciMacosJob, /- name: Exercise packaged macOS mutating E2E/);
+  assert.match(ciMacosJob, /--signature-policy=local-adhoc/);
+  assert.match(ciMacosJob, /--packaged-desktop-e2e/);
+  assert.match(
+    ciMacosJob,
+    /- name: Upload packaged macOS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn/,
+  );
+  assert.match(ciWindowsJob, /-RunPackagedDesktopE2E/);
+  assert.match(releaseMacosJob, /--packaged-desktop-e2e/);
+  assert.match(releaseIntelMacosJob, /--packaged-desktop-e2e/);
+  assert.match(releaseWindowsJob, /-RunPackagedDesktopE2E/);
+  assert.equal(
+    countOccurrences(releaseWorkflow, "--packaged-desktop-e2e"),
+    2,
+  );
+  assert.equal(
+    countOccurrences(releaseWorkflow, "-RunPackagedDesktopE2E"),
+    1,
+  );
+
+  assert.match(macosDmgSmoke, /runPackagedDesktopE2e\(\{/);
+  assert.match(windowsMsiSmoke, /function New-PrivateQaDirectory/);
+  assert.match(windowsMsiSmoke, /SetAccessRuleProtection\(\$true, \$false\)/);
+  assert.match(windowsMsiSmoke, /run-packaged-desktop-e2e\.mjs/);
+  assert.match(packagedDesktopE2eRunner, /spawn\(context\.executablePath, \[\], \{/);
+  assert.match(
+    packagedDesktopE2eRunner,
+    /FILAMENT_MANAGER_PACKAGED_DESKTOP_E2E: "1"/,
+  );
+  assert.match(packagedDesktopE2eRunner, /phase,\s*\n\s*runId: context\.runId/);
+  assert.match(packagedDesktopE2eRunner, /inspectPackagedDesktopE2eDatabase/);
+  assert.match(packagedDesktopE2eRunner, /backup_total_rows/);
 });

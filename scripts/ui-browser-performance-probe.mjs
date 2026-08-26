@@ -395,6 +395,62 @@ function dashboardOnHandSpoolCount(spoolRows) {
   }).length;
 }
 
+function statisticsPeriodReport(fixture, period) {
+  const printerUsage = fixture.printerRows.map(({ printer, usage }) => ({
+    printer_id: printer.id,
+    total_jobs: Number(usage?.total_jobs ?? 0),
+    successful_jobs: Number(usage?.successful_jobs ?? 0),
+    failed_jobs: Number(usage?.failed_jobs ?? 0),
+    total_used_g: Number(usage?.total_used_g ?? 0),
+    last_job_at: usage?.last_job_at ?? null,
+  }));
+  const totalUsed = fixture.consumptionRows.reduce(
+    (sum, row) => sum + Number(row.used_grams ?? 0),
+    0,
+  );
+  const borrowedInUsed = fixture.consumptionRows
+    .filter(
+      (row) => String(row.ownership_type).toUpperCase() === "BORROWED_IN",
+    )
+    .reduce((sum, row) => sum + Number(row.used_grams ?? 0), 0);
+  const totalJobs = printerUsage.reduce(
+    (sum, row) => sum + row.total_jobs,
+    0,
+  );
+  const successfulJobs = printerUsage.reduce(
+    (sum, row) => sum + row.successful_jobs,
+    0,
+  );
+  const emptyCoverage = {
+    total_rows: 0,
+    valued_rows: 0,
+    unvalued_rows: 0,
+    covered_grams: 0,
+    uncovered_grams: 0,
+    missing_reasons: [],
+    trace_total_rows: 0,
+    trace_returned_rows: 0,
+    trace_truncated: false,
+  };
+  return {
+    period,
+    total_used_g: totalUsed,
+    owned_used_g: totalUsed - borrowedInUsed,
+    borrowed_in_used_g: borrowedInUsed,
+    total_jobs: totalJobs,
+    successful_jobs: successfulJobs,
+    failed_jobs: Math.max(0, totalJobs - successfulJobs),
+    printer_usage: printerUsage,
+    filament_consumption: fixture.consumptionRows,
+    value_cost: {
+      inventory_value: { totals: [], coverage: { ...emptyCoverage } },
+      material_cost: { totals: [], coverage: { ...emptyCoverage } },
+      inventory_trace: [],
+      material_cost_trace: [],
+    },
+  };
+}
+
 export function buildUiBrowserPerformanceFixture(dbPath) {
   const db = new Database(dbPath, { fileMustExist: true, readonly: true });
   try {
@@ -520,6 +576,15 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
         settings: PERFORMANCE_APP_VERSION,
         statistics: printerRows[0]?.printer.name ?? null,
       },
+      filamentStandards: {
+        settings: {
+          schema_version: 1,
+          default_purchase_currency: "NOK",
+          price_standards: [],
+        },
+        settings_valid: true,
+        groups: [],
+      },
       librarySyncSettings: {
         mode: "STANDALONE",
         device_name: "Visual QA performance fixture",
@@ -597,8 +662,14 @@ export function resolveUiBrowserPerformanceInvoke(
       return fixture.trustedLanStatus;
     case "get_library_domain_revisions":
       return fixture.revisions;
+    case "get_packaged_desktop_e2e_configuration":
+      return null;
+    case "get_filament_standards":
+      return fixture.filamentStandards;
     case "inventory_overview":
       return fixture.overview;
+    case "list_inventory_locations":
+      return [];
     case "list_spools":
       return boundedSlice(fixture.spoolRows, payload, 100);
     case "list_printer_overview":
@@ -649,6 +720,8 @@ export function resolveUiBrowserPerformanceInvoke(
         : fixture.consumptionRows;
       return boundedSlice(rows, payload, 500);
     }
+    case "statistics_period_report":
+      return statisticsPeriodReport(fixture, payload.period);
     case "list_master_catalog": {
       const search = String(payload.search ?? "").trim().toLowerCase();
       const rows = search

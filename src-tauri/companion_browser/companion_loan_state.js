@@ -3,8 +3,9 @@ import {
   normalizeLoanDirection as normalizeLoanDirectionValue,
   normalizeLoanStatus as normalizeLoanStatusValue,
 } from "./companion_domain.js";
+import { LOAN_STATUSES } from "./shared_contracts.generated.js";
 
-const CLOSED_LOAN_STATUSES = new Set(["RETURNED", "LOST", "CANCELLED"]);
+const CLOSED_LOAN_STATUSES = new Set(LOAN_STATUSES.filter((status) => status !== "ACTIVE"));
 
 export function normalizeLoanStatus(row) {
   return normalizeLoanStatusValue(row?.loan?.loan_status, row?.loan?.returned_at);

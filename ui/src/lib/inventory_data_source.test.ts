@@ -32,7 +32,9 @@ function spoolRow(
       home_location_id: null,
       purchase_date: null,
       purchase_price: null,
+      purchase_currency: null,
       batch_code: null,
+      supplier_reference: null,
       rfid_tag: null,
       rfid_observed_at: null,
       created_at: "2026-04-01 10:00:00",
@@ -65,10 +67,16 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
         owner_name: "Ada",
         location_id: "Shelf A",
         rfid_tag: "rfid-1",
+        purchase_price: 249.5,
+        purchase_currency: "NOK",
+        purchase_date: "2026-08-21",
+        batch_code: "LOT-7",
+        supplier_reference: "PO-42",
       },
       { default_weight: 900 },
     ),
   );
+  row.low_stock_threshold_g = 325;
   row.spool.status = "IN_STOCK";
   const mapped = mapSpoolRowToInventorySpool(row);
 
@@ -80,6 +88,13 @@ test("mapSpoolRowToInventorySpool normalizes spool rows for the inventory page",
   assert.equal(mapped.ownerName, "Ada");
   assert.equal(mapped.location, "Shelf A");
   assert.equal(mapped.rfidTag, "rfid-1");
+  assert.equal(mapped.purchasePrice, 249.5);
+  assert.equal(mapped.purchaseCurrency, "NOK");
+  assert.equal(mapped.purchaseDate, "2026-08-21");
+  assert.equal(mapped.batchCode, "LOT-7");
+  assert.equal(mapped.supplierReference, "PO-42");
+  assert.equal(mapped.lowStockThresholdGrams, 325);
+  assert.equal(mapped.lowStockThresholdLegacyFallback, false);
 });
 
 test("mapSpoolRowToInventorySpool falls back to master weight and then 1000g", () => {
@@ -95,11 +110,19 @@ test("mapSpoolRowToInventorySpool falls back to master weight and then 1000g", (
     ).initialWeightGrams,
     1000,
   );
+  const legacy = mapSpoolRowToInventorySpool(spoolRow("legacy-host-spool"));
+  assert.equal(legacy.lowStockThresholdGrams, 200);
+  assert.equal(legacy.lowStockThresholdLegacyFallback, true);
 });
 
 test("loadInventorySpools reports live client rows with cached snapshot timestamp", async () => {
   const result = await loadInventorySpools(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       loadRowsPage: async () => [spoolRow("live-spool", { status: "IN_USE" })],
       fetchCachedSpools: async () => ({
@@ -118,7 +141,12 @@ test("loadInventorySpools reports live client rows with cached snapshot timestam
 
 test("loadInventorySpools falls back to cached client rows when host load fails", async () => {
   const result = await loadInventorySpools(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       loadRowsPage: async () => {
         throw new Error("host unavailable");

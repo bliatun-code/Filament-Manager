@@ -2,12 +2,21 @@ import { useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
+import { PageHeaderButton } from "./page_header_button";
 import { useI18n } from "../lib/i18n";
 import { formatInventoryDisplayTitle } from "../lib/inventory_list_model";
 import { inventorySwatchInsetStyle } from "../lib/inventory_swatch_style";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
+import {
+  emptyPurchaseReceiptMetadataDraft,
+  parsePurchaseReceiptMetadataDraft,
+  purchaseReceiptMetadataHasValues,
+  type PurchaseReceiptMetadata,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "../lib/purchase_receipt_metadata";
+import { WishlistReceiptModal } from "./wishlist_receipt_modal";
 import {
   canStockWishlistItem,
   normalizeWishlistReceiptQuantity,
@@ -17,19 +26,26 @@ import {
   type WishlistStatusFilter,
 } from "../lib/wishlist_data_source";
 
-type WishlistQueuePanelProps = {
+export type WishlistQueuePanelProps = {
+  addPurchaseDisabled: boolean;
   busy: boolean;
   catalogMasterById: Map<string, MasterCatalogRow>;
   confirmWishlistRemoveId: string | null;
+  defaultPurchaseCurrency?: string;
   items: WishlistItemRow[];
   loading: boolean;
   onCancelDeleteItem: () => void;
+  onAddPurchase: () => void;
   onDeleteItem: (itemId: string) => void;
   onFilterChange: (filter: WishlistStatusFilter) => void;
   onQueryChange: (query: string) => void;
   onRequestDeleteItem: (itemId: string) => void;
   onStatusChange: (itemId: string, status: WishlistStatus) => void;
-  onStockItem: (item: WishlistItemRow, quantity: number) => void;
+  onStockItem: (
+    item: WishlistItemRow,
+    quantity: number,
+    purchaseMetadata?: PurchaseReceiptMetadata,
+  ) => Promise<boolean>;
   resolvedTheme: ResolvedTheme;
   query: string;
   summary: WishlistQueueSummary;
@@ -62,12 +78,15 @@ function wishlistQueueActionButtonClassName(tone: WishlistQueueActionTone): stri
 }
 
 export function WishlistQueuePanel({
+  addPurchaseDisabled,
   busy,
   catalogMasterById,
   confirmWishlistRemoveId,
+  defaultPurchaseCurrency = "",
   items,
   loading,
   onCancelDeleteItem,
+  onAddPurchase,
   onDeleteItem,
   onFilterChange,
   onQueryChange,
@@ -83,16 +102,74 @@ export function WishlistQueuePanel({
 }: WishlistQueuePanelProps) {
   const { t } = useI18n();
   const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+  const [receiptItemId, setReceiptItemId] = useState<string | null>(null);
+  const [receiptMetadataDraft, setReceiptMetadataDraft] = useState(
+    emptyPurchaseReceiptMetadataDraft,
+  );
+  const [receiptMetadataErrors, setReceiptMetadataErrors] =
+    useState<PurchaseReceiptMetadataValidationErrors>({});
+  const [receiptSubmitting, setReceiptSubmitting] = useState(false);
+  const receiptItem = items.find((item) => item.id === receiptItemId) ?? null;
+  const receiptQuantityRaw = receiptItem
+    ? receiptQuantities[receiptItem.id] ?? "1"
+    : "1";
+  const receiptQuantity = receiptItem
+    ? normalizeWishlistReceiptQuantity(receiptQuantityRaw, receiptItem.quantity)
+    : 1;
   const resultCount = t(
     "wishlist.resultCount",
     "{count, plural, one {# item} other {# items}}",
     { count: visibleItems.length },
   );
 
+  const openReceipt = (item: WishlistItemRow) => {
+    setReceiptMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+    setReceiptMetadataErrors({});
+    setReceiptItemId(item.id);
+  };
+
+  const closeReceipt = () => {
+    if (busy || receiptSubmitting) {
+      return;
+    }
+    setReceiptItemId(null);
+    setReceiptMetadataErrors({});
+  };
+
+  const confirmReceipt = async () => {
+    if (!receiptItem || busy || receiptSubmitting) {
+      return;
+    }
+    const parsed = parsePurchaseReceiptMetadataDraft(receiptMetadataDraft);
+    if (!parsed.ok) {
+      setReceiptMetadataErrors(parsed.errors);
+      return;
+    }
+    setReceiptMetadataErrors({});
+    setReceiptSubmitting(true);
+    try {
+      const succeeded = await onStockItem(
+        receiptItem,
+        receiptQuantity,
+        purchaseReceiptMetadataHasValues(parsed.value) ? parsed.value : undefined,
+      );
+      if (succeeded) {
+        setReceiptQuantities((current) => ({
+          ...current,
+          [receiptItem.id]: "1",
+        }));
+        setReceiptItemId(null);
+        setReceiptMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+      }
+    } finally {
+      setReceiptSubmitting(false);
+    }
+  };
+
   return (
     <div className="surface-card space-y-4">
       <div className="surface-subtle p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
               {t("inventory.wishlistOrders", "Wishlist & orders")}
@@ -104,6 +181,15 @@ export function WishlistQueuePanel({
               )}
             </div>
           </div>
+          <PageHeaderButton
+            className="w-full shrink-0 sm:w-auto"
+            onClick={onAddPurchase}
+            responsive={false}
+            variant="primary"
+            disabled={addPurchaseDisabled}
+          >
+            {t("inventory.addToWishlist", "Add to wishlist / order")}
+          </PageHeaderButton>
         </div>
         <SegmentedChoiceRow
           className="mt-4"
@@ -173,7 +259,7 @@ export function WishlistQueuePanel({
         </div>
       ) : null}
 
-      <div className="max-h-[28rem] space-y-2 overflow-y-auto overscroll-contain pr-1 lg:max-h-[32rem]">
+      <div className="space-y-2">
         {visibleItems.map((item) => {
           const itemHex = wishlistItemHex(item, catalogMasterById);
           const itemStatus = normalizeWishlistStatus(item.status);
@@ -185,10 +271,6 @@ export function WishlistQueuePanel({
           );
           const confirmingRemove = confirmWishlistRemoveId === item.id;
           const receiptQuantityRaw = receiptQuantities[item.id] ?? "1";
-          const receiptQuantity = normalizeWishlistReceiptQuantity(
-            receiptQuantityRaw,
-            item.quantity,
-          );
           return (
             <div
               key={item.id}
@@ -313,13 +395,7 @@ export function WishlistQueuePanel({
                         <button
                           type="button"
                           className={wishlistQueueActionButtonClassName("stock")}
-                          onClick={() => {
-                            setReceiptQuantities((current) => ({
-                              ...current,
-                              [item.id]: "1",
-                            }));
-                            onStockItem(item, receiptQuantity);
-                          }}
+                          onClick={() => openReceipt(item)}
                           disabled={!tauriAvailable || busy}
                         >
                           {t("inventory.stockRollNow", "Stock roll now")}
@@ -341,6 +417,32 @@ export function WishlistQueuePanel({
           );
         })}
       </div>
+
+      {receiptItem ? (
+        <WishlistReceiptModal
+          busy={busy || receiptSubmitting}
+          defaultPurchaseCurrency={defaultPurchaseCurrency}
+          errors={receiptMetadataErrors}
+          itemTitle={formatInventoryDisplayTitle(
+            receiptItem.material,
+            receiptItem.filament_name,
+            receiptItem.color_name,
+          )}
+          maxQuantity={receiptItem.quantity}
+          metadataDraft={receiptMetadataDraft}
+          onCancel={closeReceipt}
+          onConfirm={confirmReceipt}
+          onMetadataDraftChange={setReceiptMetadataDraft}
+          onQuantityChange={(value) =>
+            setReceiptQuantities((current) => ({
+              ...current,
+              [receiptItem.id]: value,
+            }))
+          }
+          quantity={receiptQuantity}
+          quantityValue={receiptQuantityRaw}
+        />
+      ) : null}
     </div>
   );
 }

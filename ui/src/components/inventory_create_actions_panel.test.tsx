@@ -4,6 +4,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { I18nContext, type I18nContextValue } from "../lib/i18n";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
@@ -11,40 +12,47 @@ import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
 const i18nValue: I18nContextValue = {
   locale: "en",
   setLocale: () => {},
-  t: (_key, fallback = "") => fallback,
+  t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
 };
 
-function renderPanel(initialWeight: string): string {
+function renderPanel({
+  initialWeight = "1000",
+  ownershipType = "BORROWED_IN",
+  purpose = "STOCK",
+}: {
+  initialWeight?: string;
+  ownershipType?: "OWNED" | "BORROWED_IN";
+  purpose?: "STOCK" | "PURCHASE";
+} = {}) {
   return renderToStaticMarkup(
-    React.createElement(
-      I18nContext.Provider,
-      { value: i18nValue },
-      React.createElement(InventoryCreateActionsPanel, {
-        borrowedFromContact: "ada@example.com",
-        borrowedFromName: "Ada",
-        borrowedInNote: "Return next week",
-        disabledCreate: false,
-        disabledWishlistCreate: false,
-        initialWeight,
-        location: "Shelf A",
-        onAddCurrentToWishlist: () => {},
-        onBorrowedFromContactChange: () => {},
-        onBorrowedFromNameChange: () => {},
-        onBorrowedInNoteChange: () => {},
-        onCreateSpool: () => {},
-        onInitialWeightChange: () => {},
-        onLocationChange: () => {},
-        onOwnershipTypeChange: () => {},
-        ownershipType: "BORROWED_IN",
-        selectionSummary: {
-          title: "PLA Basic · Black",
+    <I18nContext.Provider value={i18nValue}>
+      <InventoryCreateActionsPanel
+        borrowedFromContact="ada@example.com"
+        borrowedFromName="Ada"
+        borrowedInNote="Return next week"
+        disabledCreate={false}
+        disabledWishlistCreate={false}
+        initialWeight={initialWeight}
+        location="Shelf A"
+        onAddCurrentToWishlist={() => {}}
+        onBorrowedFromContactChange={() => {}}
+        onBorrowedFromNameChange={() => {}}
+        onBorrowedInNoteChange={() => {}}
+        onCreateSpool={() => {}}
+        onInitialWeightChange={() => {}}
+        onLocationChange={() => {}}
+        onOwnershipTypeChange={() => {}}
+        ownershipType={ownershipType}
+        purpose={purpose}
+        selectionSummary={{
+          title: "PLA Basic · Jade White",
           detail: "Bambu · PLA",
-          hexColor: "#111111",
+          hexColor: "#FFFFFF",
           initialWeightGrams: 1000,
-        },
-        tauriAvailable: true,
-      }),
-    ),
+        }}
+        tauriAvailable
+      />
+    </I18nContext.Provider>,
   );
 }
 
@@ -64,7 +72,7 @@ function assertLabelContainsValue(html: string, label: string, value: string): v
 }
 
 test("InventoryCreateActionsPanel keeps permanent labels on populated stock fields", () => {
-  const html = renderPanel("1000");
+  const html = renderPanel();
 
   for (const [label, value] of [
     ["Borrowed from", "Ada"],
@@ -80,11 +88,29 @@ test("InventoryCreateActionsPanel keeps permanent labels on populated stock fiel
 });
 
 test("InventoryCreateActionsPanel shows accessible validation for invalid start weight", () => {
-  const html = renderPanel("-2.5");
+  const html = renderPanel({ initialWeight: "-2.5" });
 
   assert.match(html, /aria-invalid="true"/);
   assert.match(html, /aria-describedby="[^"]+"/);
   assert.match(html, /role="alert"/);
   assert.match(html, /Weight value is invalid\./);
   assert.match(html, /<button(?=[^>]*disabled="")[^>]*>\s*Register borrowed-in spool/);
+});
+
+test("stock entry only renders inventory registration controls", () => {
+  const html = renderPanel({ ownershipType: "OWNED", purpose: "STOCK" });
+
+  assert.match(html, />Ownership</);
+  assert.match(html, />Initial weight \(g\)</);
+  assert.match(html, />Add spool to inventory<\/button>/);
+  assert.doesNotMatch(html, />Add current selection to wishlist<\/button>/);
+});
+
+test("purchase entry only renders the purchase queue action", () => {
+  const html = renderPanel({ purpose: "PURCHASE" });
+
+  assert.match(html, />Add current selection to wishlist<\/button>/);
+  assert.doesNotMatch(html, />Ownership</);
+  assert.doesNotMatch(html, />Initial weight \(g\)</);
+  assert.doesNotMatch(html, />Add spool to inventory<\/button>/);
 });

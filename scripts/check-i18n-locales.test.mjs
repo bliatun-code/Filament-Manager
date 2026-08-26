@@ -8,6 +8,7 @@ import {
   validateLocaleDictionaries,
   validateLocaleOverlay,
   validateRuntimeTranslationKeys,
+  validateRuntimeTranslationParams,
 } from "./check-i18n-locales.mjs";
 
 test("locale dictionary export names support regional locale identifiers", () => {
@@ -151,4 +152,30 @@ test("runtime key contract reports literals missing from the base dictionary", (
   assert.deepEqual(errors, [
     "ui/src/example.tsx:2:1: unknown translation key common.missing.",
   ]);
+});
+
+test("runtime parameter contract rejects definitely missing message parameters", () => {
+  const source = [
+    `t("common.count", "{count} spools");`,
+    `t("common.owner", "{count} spools for {owner}", { count: 2 });`,
+    `t("common.owner", "{count} spools for {owner}", { count, owner });`,
+    `t("common.owner", "{count} spools for {owner}", dynamicParams);`,
+  ].join("\n");
+  const runtimeKeys = collectLiteralTranslationKeysFromSource(source).map(
+    (entry) => ({ ...entry, location: `source.tsx:${entry.line}:${entry.column}` }),
+  );
+  const errors = validateRuntimeTranslationParams(
+    {
+      common: {
+        count: "{count, plural, one {# spool} other {# spools}}",
+        owner: "{count, plural, one {# spool} other {# spools}} for {owner}",
+      },
+    },
+    runtimeKeys,
+  );
+
+  assert.equal(errors.length, 2);
+  assert.match(errors[0], /provides no message parameters/);
+  assert.match(errors[0], /\{count\}/);
+  assert.match(errors[1], /missing message parameter \{owner\}/);
 });

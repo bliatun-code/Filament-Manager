@@ -11,7 +11,7 @@ license as the project: GNU Affero General Public License v3.0 or later
 ## Development Setup
 
 The workspace supports Rust 1.88 and newer. A checked-in toolchain file selects
-the reviewed Rust 1.97.1 release, including Clippy and rustfmt, for normal local
+the reviewed Rust 1.98.0 release, including Clippy and rustfmt, for normal local
 commands. Install it with `rustup` if your environment does not resolve it
 automatically.
 
@@ -108,6 +108,11 @@ npm run test:companion
 npm run test:rust
 npm run check:contracts
 ```
+
+The blocking performance, backup/upgrade, accessibility, and localization
+thresholds—and the maintainer accountable for each—are listed in
+[the quality-gate contract](docs/QUALITY_GATES.md). Update that contract and its
+executable test in the same change whenever a gate or threshold changes.
 
 ## Local Build And QA Cleanup
 

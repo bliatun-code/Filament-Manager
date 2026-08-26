@@ -1,4 +1,5 @@
 use crate::backend::filament_database::{PrinterRow, SpoolLoanRow};
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::backend::statistics::InventoryOverview;
 use crate::optional_update::OptionalUpdate;
 use crate::printer_settings_commands::BambuLiveIntegrationSettingsEntry;
@@ -94,8 +95,10 @@ pub(crate) struct AcceptBambuLiveWeightEstimateRequest {
 #[derive(Deserialize)]
 pub(crate) struct CreateSpoolLoanRequest {
     pub(crate) borrower_name: String,
+    pub(crate) counterparty_contact: Option<String>,
     pub(crate) grams_out: Option<i64>,
     pub(crate) note: Option<String>,
+    pub(crate) expected_return_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -146,6 +149,8 @@ pub(crate) struct UpdateWishlistItemStatusRequest {
 #[derive(Deserialize)]
 pub(crate) struct ReceiveWishlistItemRequest {
     pub(crate) quantity: i64,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Deserialize)]
@@ -195,6 +200,15 @@ pub(crate) struct UpdateSpoolDetailsRequest {
     pub(crate) location: OptionalUpdate<String>,
     #[serde(default)]
     pub(crate) home_location: OptionalUpdate<String>,
+    pub(crate) spool_tare_weight_g: Option<i64>,
+    pub(crate) ownership: Option<UpdateSpoolOwnershipRequest>,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
+    /// Optional so older Companion clients keep their existing behavior while
+    /// newer clients can explicitly protect an individual spool from price
+    /// standard batches.
+    #[serde(default)]
+    pub(crate) purchase_price_batch_locked: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -212,12 +226,21 @@ pub(crate) struct PairSessionRequest {
 pub(crate) struct CompanionHealthResponse {
     pub(crate) ok: bool,
     pub(crate) api_version: &'static str,
+    pub(crate) capabilities: &'static [&'static str],
     pub(crate) auth_mode: String,
     pub(crate) access_mode: &'static str,
     pub(crate) library_id: String,
     pub(crate) device_name: String,
     pub(crate) sync_mode: String,
 }
+
+pub(crate) const LOAN_METADATA_CAPABILITY: &str = "loan-contact-and-expected-return";
+pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-mutations";
+pub(crate) const INVENTORY_LOCATIONS_CAPABILITY: &str = "inventory-locations-v1";
+pub(crate) const SPOOL_COMMON_DETAILS_V2_CAPABILITY: &str = "spool-common-details-v2";
+pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
+pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
+pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

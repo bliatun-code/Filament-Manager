@@ -1,11 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod active_library_gateway;
 mod app_error;
 mod app_services;
 mod app_storage;
 mod bambu_live;
+mod bambu_live_authority;
 mod bambu_live_matching;
 mod bambu_live_observation;
 mod bambu_live_persistence;
+mod bambu_live_poll_scheduler;
 mod bambu_live_sync;
 mod bambu_live_usage;
 mod bambu_mqtt;
@@ -16,8 +19,10 @@ mod companion_api;
 mod companion_assets;
 mod companion_error;
 mod companion_http;
+mod companion_inventory_bulk_write_api;
 mod companion_inventory_read_api;
 mod companion_library_api;
+mod companion_location_api;
 mod companion_models;
 mod companion_payload;
 mod companion_routes;
@@ -31,10 +36,15 @@ mod desktop_lifecycle;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
+mod inventory_bulk_commands;
+mod inventory_bulk_models;
 mod inventory_command_support;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
+mod inventory_filament_standards_commands;
 mod inventory_loan_commands;
+mod inventory_location_commands;
+mod inventory_location_models;
 mod inventory_maintenance_commands;
 mod inventory_read_commands;
 mod inventory_stats_commands;
@@ -47,7 +57,9 @@ mod library_sync_cache_refresh;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
+mod library_sync_inventory_bulk_write_commands;
 mod library_sync_loan_write_commands;
+mod library_sync_location_commands;
 mod library_sync_models;
 mod library_sync_pairing_commands;
 mod library_sync_printer_write_commands;
@@ -56,10 +68,12 @@ mod library_sync_runtime_auth;
 mod library_sync_settings_commands;
 mod library_sync_snapshot_commands;
 mod library_sync_spool_write_commands;
+mod library_sync_target_guard;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
 mod local_service_advertisement;
 mod optional_update;
+mod packaged_desktop_e2e;
 mod printer_active_commands;
 mod printer_bambu_discovery_commands;
 mod printer_bambu_live_commands;
@@ -330,6 +344,17 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             inventory_read_commands::list_spools,
+            inventory_location_commands::list_inventory_locations,
+            inventory_location_commands::create_inventory_location,
+            inventory_location_commands::rename_inventory_location,
+            inventory_location_commands::archive_inventory_location,
+            inventory_location_commands::restore_inventory_location,
+            inventory_location_commands::delete_inventory_location,
+            inventory_location_commands::merge_inventory_locations,
+            inventory_bulk_commands::execute_inventory_bulk_mutation,
+            inventory_filament_standards_commands::get_filament_standards,
+            inventory_filament_standards_commands::save_filament_standards,
+            inventory_filament_standards_commands::apply_filament_price_batch,
             inventory_read_commands::list_wishlist_items,
             printer_settings_commands::get_printer_settings,
             printer_read_commands::list_printer_overview,
@@ -358,6 +383,9 @@ fn main() {
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
             get_app_version,
+            packaged_desktop_e2e::get_packaged_desktop_e2e_configuration,
+            packaged_desktop_e2e::complete_packaged_desktop_e2e,
+            packaged_desktop_e2e::fail_packaged_desktop_e2e,
             desktop_lifecycle::get_desktop_lifecycle_settings,
             desktop_lifecycle::set_continue_in_background,
             desktop_lifecycle::set_launch_at_login,
@@ -378,17 +406,28 @@ fn main() {
             library_sync_read_commands::fetch_library_sync_wishlist_items,
             library_sync_read_commands::fetch_library_sync_full_backup_json,
             library_sync_cache_commands::fetch_cached_library_sync_spools,
+            library_sync_location_commands::fetch_library_sync_locations,
+            library_sync_location_commands::fetch_cached_library_sync_locations,
             library_sync_cache_commands::save_library_sync_spool_cache,
             library_sync_read_commands::fetch_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_printer_settings,
+            library_sync_read_commands::fetch_library_sync_filament_standards,
             library_sync_cache_commands::fetch_cached_library_sync_printer_overview,
             library_sync_read_commands::fetch_library_sync_loans,
             library_sync_read_commands::fetch_library_sync_filament_consumption,
+            library_sync_read_commands::fetch_library_sync_statistics_period_report,
             library_sync_cache_commands::fetch_cached_library_sync_loans,
             library_sync_cache_commands::fetch_cached_library_sync_wishlist,
             library_sync_pairing_commands::pair_library_sync_host,
             library_sync_settings_commands::clear_library_sync_client_auth,
             library_sync_spool_write_commands::create_library_sync_host_spool,
+            library_sync_location_commands::create_library_sync_host_location,
+            library_sync_location_commands::rename_library_sync_host_location,
+            library_sync_location_commands::archive_library_sync_host_location,
+            library_sync_location_commands::restore_library_sync_host_location,
+            library_sync_location_commands::delete_library_sync_host_location,
+            library_sync_location_commands::merge_library_sync_host_locations,
+            library_sync_inventory_bulk_write_commands::execute_library_sync_host_inventory_bulk_mutation,
             library_sync_wishlist_write_commands::create_library_sync_host_wishlist_item,
             library_sync_printer_write_commands::create_library_sync_host_printer,
             library_sync_printer_write_commands::save_library_sync_host_bambu_live_integration,
@@ -418,6 +457,7 @@ fn main() {
             inventory_update_commands::update_spool_tare_weight,
             inventory_update_commands::update_spool_status,
             inventory_update_commands::update_spool_details,
+            inventory_update_commands::update_active_library_spool_details,
             inventory_update_commands::update_spool_ownership,
             inventory_update_commands::update_spool_rfid_tag,
             inventory_update_commands::update_master_catalog_entry,
@@ -448,6 +488,7 @@ fn main() {
             inventory_maintenance_commands::reset_catalog_data,
             inventory_stats_commands::top_materials,
             inventory_stats_commands::list_filament_consumption,
+            inventory_stats_commands::statistics_period_report,
             document_commands::export_inventory_label_sheet_pdf,
             document_commands::export_label_png,
             external_url_commands::open_external_url,
@@ -467,6 +508,7 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
             Some("dashboard-consumption")
         }
         "inventory-overview" | "inventory" => Some("inventory-overview"),
+        "inventory-locations" | "locations" | "location-management" => Some("inventory-locations"),
         "add-filament" | "inventory-add" => Some("add-filament"),
         "wishlist-queue" | "inventory-wishlist" | "wishlist-orders" | "order-queue" => {
             Some("wishlist-queue")
@@ -514,6 +556,9 @@ fn normalize_visual_qa_scenario(value: &str) -> Option<&'static str> {
         }
         "bambu-batch-add" | "batch-add" | "bambu-batch" => Some("bambu-batch-add"),
         "settings-general" | "general-settings" => Some("settings-general"),
+        "settings-filament-defaults" | "filament-defaults" | "filament-standards" => {
+            Some("settings-filament-defaults")
+        }
         "settings-updates" | "update-check" | "settings-update-check" => Some("settings-updates"),
         "settings-inventory-label-sheet" | "inventory-label-sheet" | "settings-label-sheet" => {
             Some("settings-inventory-label-sheet")

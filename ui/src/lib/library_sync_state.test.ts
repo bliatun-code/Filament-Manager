@@ -33,6 +33,7 @@ test("deriveLibrarySyncPageState maps client sync settings for write-capable pag
     clientHostDeviceName: "Host",
     clientHostBaseUrl: "http://host",
     clientLibraryId: "library-1",
+    clientTargetGeneration: null,
   });
 });
 

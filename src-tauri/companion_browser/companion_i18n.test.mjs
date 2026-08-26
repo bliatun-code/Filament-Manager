@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   readStoredCompanionLocale,
+  requiredCompanionDictionaryLocales,
   resolveInitialCompanionLocale,
   t,
 } from "./companion_i18n.js";
@@ -153,6 +154,33 @@ test("French locale uses complete translated source copy", () => {
     "L’application desktop et SQLite gardent le contrôle.",
   );
   assert.equal(t("fr", "missing.reviewKey", "Repli sûr"), "Repli sûr");
+});
+
+test("purchase receipt fields, validation, and Host-upgrade guidance are localized", () => {
+  const expected = {
+    en: ["Purchase details", "Supplier reference", "Update the Host before saving purchase details."],
+    nb: ["Innkjøpsdetaljer", "Leverandørreferanse", "Oppdater verten før du lagrer innkjøpsdetaljer."],
+    de: ["Kaufdetails", "Lieferantenreferenz", "Aktualisiere den Host, bevor du Kaufdetails speicherst."],
+    fr: ["Détails d’achat", "Référence fournisseur", "Mettez à jour l’hôte avant d’enregistrer les détails d’achat."],
+  };
+
+  for (const [locale, values] of Object.entries(expected)) {
+    assert.equal(t(locale, "purchaseReceipt.title"), values[0]);
+    assert.equal(t(locale, "purchaseReceipt.supplierReference"), values[1]);
+    assert.equal(t(locale, "errors.purchaseMetadataHostUnsupported"), values[2]);
+  }
+});
+
+test("draft locales load and use the English catalog fallback for missing purchase history copy", () => {
+  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es", "en"]);
+  assert.equal(
+    t("es", "purchaseReceipt.historyUpdated", "raw dynamic fallback"),
+    "Purchase details updated",
+  );
+  assert.equal(
+    t("es", "purchaseReceipt.historyRecorded", "raw dynamic fallback"),
+    "Purchase receipt recorded",
+  );
 });
 
 test("French locale applies French zero, one, and other plural categories", () => {

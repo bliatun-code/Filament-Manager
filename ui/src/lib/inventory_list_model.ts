@@ -1,12 +1,11 @@
-import { LOW_STOCK_GRAMS } from "./inventory_constants";
 import {
   formatFilamentDisplayTitle,
   formatSpoolReference,
   normalizeDisplayToken as normalizeSharedDisplayToken,
 } from "./display_format";
 import {
-  isSpoolStatusEmpty,
   isSpoolStatusEmptyOrLost,
+  isSpoolLowStock,
   isBorrowedInOwnership,
   normalizeOwnershipType,
   normalizeSpoolStatus,
@@ -17,7 +16,15 @@ import {
 
 export type StatusFilter = "ALL" | ActiveSpoolStatus;
 export type OwnershipFilter = "ALL" | OwnershipType;
+export type InventoryLocationFilter = Readonly<{
+  id: string;
+  name: string;
+}>;
 export type InventorySemanticTone = "neutral" | "info" | "success" | "warning" | "danger";
+export type InventoryCollectionEmptyState =
+  | "LOADING"
+  | "EMPTY_INVENTORY"
+  | "NO_RESULTS";
 export { normalizeOwnershipType, type OwnershipType, type SpoolStatus };
 
 type TranslateFn = (key: string, fallback?: string) => string;
@@ -31,18 +38,32 @@ export type InventorySpool = {
   colorName: string;
   hexColor?: string | null;
   initialWeightGrams: number;
+  lowStockThresholdGrams?: number;
+  lowStockThresholdLegacyFallback?: boolean;
   status: SpoolStatus;
   ownershipType: OwnershipType;
   ownerName?: string | null;
   ownerContact?: string | null;
   ownershipNote?: string | null;
   remainingGrams?: number | null;
+  currentWeightGrams?: number | null;
   spoolTareWeightGrams?: number | null;
   location?: string | null;
+  locationId?: string | null;
+  locationType?: string | null;
   homeLocation?: string | null;
+  homeLocationId?: string | null;
+  homeLocationType?: string | null;
   qrCode?: string | null;
   rfidTag?: string | null;
   rfidObservedAt?: string | null;
+  purchasePrice?: number | null;
+  purchaseCurrency?: string | null;
+  purchaseDate?: string | null;
+  batchCode?: string | null;
+  supplierReference?: string | null;
+  purchasePriceBatchLocked?: boolean;
+  purchasePriceSource?: string | null;
 };
 
 export type SpoolGroup = {
@@ -176,6 +197,20 @@ export function buildMaterialOptions(spools: InventorySpool[]): string[] {
   return ["ALL", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
 }
 
+export function resolveInventoryCollectionEmptyState(input: {
+  loading: boolean;
+  totalSpoolCount: number;
+  visibleSpoolCount: number;
+}): InventoryCollectionEmptyState | null {
+  if (input.visibleSpoolCount > 0) {
+    return null;
+  }
+  if (input.loading) {
+    return "LOADING";
+  }
+  return input.totalSpoolCount > 0 ? "NO_RESULTS" : "EMPTY_INVENTORY";
+}
+
 export function filterInventorySpools(
   spools: InventorySpool[],
   options: {
@@ -185,24 +220,41 @@ export function filterInventorySpools(
     materialFilter: string;
     vendorFilter: string;
     lowStockOnly: boolean;
+    locationFilterId?: string | null;
   },
 ): InventorySpool[] {
-  const { search, statusFilter, ownershipFilter, materialFilter, vendorFilter, lowStockOnly } = options;
+  const {
+    search,
+    statusFilter,
+    ownershipFilter,
+    materialFilter,
+    vendorFilter,
+    lowStockOnly,
+    locationFilterId,
+  } = options;
   const term = search.trim().toLowerCase();
+  const exactLocationId = locationFilterId?.trim() ?? "";
   return spools.filter((spool) => {
     const statusMatch = isInventorySpoolVisibleForStatusFilter(spool, statusFilter);
     const ownershipMatch = ownershipFilter === "ALL" ? true : spool.ownershipType === ownershipFilter;
     const materialMatch = materialFilter === "ALL" ? true : spool.material === materialFilter;
     const vendorMatch = vendorFilter === "ALL" ? true : spool.vendor === vendorFilter;
     const lowStockMatch = lowStockOnly ? isInventorySpoolLowStockCandidate(spool) : true;
+    const locationMatch =
+      exactLocationId.length === 0 ||
+      [spool.locationId, spool.homeLocationId].some(
+        (locationId) => locationId?.trim() === exactLocationId,
+      );
     const searchMatch =
       term.length === 0
         ? true
         : `${spool.id} ${formatRollReference(spool)} ${spool.material} ${spool.filamentName} ${
             spool.colorName
-          } ${spool.location ?? ""} ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${
-            spool.ownerName ?? ""
-          } ${spool.ownerContact ?? ""} ${
+          } ${spool.location ?? ""} ${spool.homeLocation ?? ""} ${spool.locationId ?? ""} ${
+            spool.homeLocationId ?? ""
+          } ${spool.qrCode ?? ""} ${spool.rfidTag ?? ""} ${spool.ownerName ?? ""} ${
+            spool.ownerContact ?? ""
+          } ${
             isBorrowedInOwnership(spool.ownershipType) ? "borrowed in" : "owned"
           }`
             .toLowerCase()
@@ -213,6 +265,7 @@ export function filterInventorySpools(
       materialMatch &&
       vendorMatch &&
       lowStockMatch &&
+      locationMatch &&
       searchMatch
     );
   });
@@ -223,20 +276,22 @@ export function isInventorySpoolVisibleForStatusFilter(
   statusFilter: StatusFilter,
 ): boolean {
   const normalizedStatus = normalizeStatus(spool.status);
-  return statusFilter === "ALL"
-    ? !isSpoolStatusEmpty(normalizedStatus)
-    : normalizedStatus === statusFilter;
+  return statusFilter === "ALL" || normalizedStatus === statusFilter;
 }
 
 export function isInventorySpoolLowStockCandidate(
-  spool: Pick<InventorySpool, "initialWeightGrams" | "remainingGrams" | "status">,
+  spool: Pick<
+    InventorySpool,
+    "initialWeightGrams" | "lowStockThresholdGrams" | "remainingGrams" | "status"
+  >,
 ): boolean {
-  const normalizedStatus = normalizeStatus(spool.status);
-  const remaining = Math.max(0, spool.remainingGrams ?? spool.initialWeightGrams ?? 0);
-  return (
-    !isSpoolStatusEmptyOrLost(normalizedStatus) &&
-    remaining > 0 &&
-    remaining <= LOW_STOCK_GRAMS
+  return isSpoolLowStock(
+    {
+      status: normalizeStatus(spool.status),
+      remainingGrams: spool.remainingGrams,
+      initialWeightGrams: spool.initialWeightGrams,
+    },
+    spool.lowStockThresholdGrams,
   );
 }
 

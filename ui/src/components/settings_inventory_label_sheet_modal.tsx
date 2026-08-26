@@ -10,7 +10,7 @@ import { settingsActionButtonClass } from "../lib/settings_ui_classes";
 import { AppModal } from "./app_modal";
 import { ModalHeader } from "./modal_chrome";
 
-export type SettingsInventoryLabelSheetModalProps = {
+export type InventoryLabelSheetModalProps = {
   items: InventoryLabelSheetItem[];
   loading: boolean;
   onClose: () => void;
@@ -19,14 +19,14 @@ export type SettingsInventoryLabelSheetModalProps = {
   saving: boolean;
 };
 
-export function SettingsInventoryLabelSheetModal({
+export function InventoryLabelSheetModal({
   items,
   loading,
   onClose,
   onSave,
   open,
   saving,
-}: SettingsInventoryLabelSheetModalProps) {
+}: InventoryLabelSheetModalProps) {
   const { t } = useI18n();
   const [paperId, setPaperId] = useState<InventoryLabelSheetPaperId>("a4");
   const [pageIndex, setPageIndex] = useState(0);
@@ -80,7 +80,7 @@ export function SettingsInventoryLabelSheetModal({
       />
 
       <div
-        id="settings-inventory-label-sheet-builder"
+        id="inventory-label-sheet-builder"
         className="grid min-h-0 gap-5 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]"
       >
         <section aria-label={t("settings.inventoryOverviewPreview", "Sheet preview")}>
@@ -228,3 +228,6 @@ export function SettingsInventoryLabelSheetModal({
     </AppModal>
   );
 }
+
+export type SettingsInventoryLabelSheetModalProps = InventoryLabelSheetModalProps;
+export const SettingsInventoryLabelSheetModal = InventoryLabelSheetModal;

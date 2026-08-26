@@ -1,6 +1,10 @@
 import { isBorrowedInOwnership, normalizeOwnershipType } from "./inventory_domain";
 import type { Locale } from "./i18n";
-import { formatDisplayGrams, formatDisplayPercent } from "./number_display";
+import {
+  formatDisplayGrams,
+  formatDisplayNumber,
+  formatDisplayPercent,
+} from "./number_display";
 import type { SpoolHistoryEventRow } from "./tauri_client";
 
 type TranslateFn = (key: string, fallback: string) => string;
@@ -44,6 +48,103 @@ function payloadNumber(record: Record<string, unknown>, key: string): number | n
   return null;
 }
 
+function payloadBoolean(record: Record<string, unknown>, key: string): boolean | null {
+  const value = record[key];
+  return typeof value === "boolean" ? value : null;
+}
+
+function nestedPayloadRecord(
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | null {
+  return payloadRecord(record[key]);
+}
+
+function purchasePriceText(
+  metadata: Record<string, unknown>,
+  locale: Locale,
+): string | null {
+  const price = payloadNumber(metadata, "purchase_price");
+  const currency = payloadString(metadata, "purchase_currency")?.toUpperCase() ?? null;
+  if (price == null) {
+    return currency;
+  }
+  const priceText = formatDisplayNumber(price, locale, {
+    maximumFractionDigits: 2,
+  });
+  return currency ? `${priceText} ${currency}` : priceText;
+}
+
+function purchaseMetadataSummary(
+  metadata: Record<string, unknown> | null,
+  deps: Pick<InventoryHistoryFormatterDeps, "locale" | "t">,
+): string[] {
+  if (!metadata) {
+    return [];
+  }
+  const { locale, t } = deps;
+  const price = purchasePriceText(metadata, locale);
+  const purchaseDate = payloadString(metadata, "purchase_date");
+  const batchCode = payloadString(metadata, "batch_code");
+  const supplierReference = payloadString(metadata, "supplier_reference");
+  const details: string[] = [];
+  if (price) {
+    details.push(`${t("inventory.purchasePricePerRoll", "Price per roll")}: ${price}`);
+  }
+  if (purchaseDate) {
+    details.push(`${t("inventory.purchaseDate", "Purchase date")}: ${purchaseDate}`);
+  }
+  if (batchCode) {
+    details.push(`${t("inventory.purchaseBatchCode", "Batch code")}: ${batchCode}`);
+  }
+  if (supplierReference) {
+    details.push(
+      `${t("inventory.purchaseSupplierReference", "Supplier reference")}: ${supplierReference}`,
+    );
+  }
+  return details;
+}
+
+function purchaseMetadataChanges(
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null,
+  deps: Pick<InventoryHistoryFormatterDeps, "locale" | "t">,
+): string[] {
+  if (!before || !after) {
+    return [];
+  }
+  const { locale, t } = deps;
+  const missing = "—";
+  const fields = [
+    {
+      label: t("inventory.purchasePricePerRoll", "Price per roll"),
+      before: purchasePriceText(before, locale),
+      after: purchasePriceText(after, locale),
+    },
+    {
+      label: t("inventory.purchaseDate", "Purchase date"),
+      before: payloadString(before, "purchase_date"),
+      after: payloadString(after, "purchase_date"),
+    },
+    {
+      label: t("inventory.purchaseBatchCode", "Batch code"),
+      before: payloadString(before, "batch_code"),
+      after: payloadString(after, "batch_code"),
+    },
+    {
+      label: t("inventory.purchaseSupplierReference", "Supplier reference"),
+      before: payloadString(before, "supplier_reference"),
+      after: payloadString(after, "supplier_reference"),
+    },
+  ];
+  return fields
+    .filter((field) => field.before !== field.after)
+    .map(
+      (field) =>
+        `${field.label}: ${field.before ?? missing} → ${field.after ?? missing}`,
+    );
+}
+
 export function fallbackEventLabel(eventType: string): string {
   return eventType
     .toLowerCase()
@@ -85,6 +186,30 @@ export function formatInventoryHistoryEventType(eventType: string, t: TranslateF
   if (eventType === "DETAILS_UPDATED") {
     return t("inventory.historyEvent.detailsUpdated", "Details updated");
   }
+  if (eventType === "PURCHASE_RECEIPT_RECORDED") {
+    return t(
+      "inventory.historyEvent.purchaseReceiptRecorded",
+      "Purchase receipt recorded",
+    );
+  }
+  if (eventType === "PURCHASE_METADATA_UPDATED") {
+    return t(
+      "inventory.historyEvent.purchaseMetadataUpdated",
+      "Purchase details updated",
+    );
+  }
+  if (eventType === "PURCHASE_PRICE_STANDARD_APPLIED") {
+    return t("inventory.historyEvent.purchasePriceStandardApplied", "Group price applied");
+  }
+  if (eventType === "PURCHASE_PRICE_BATCH_LOCK_UPDATED") {
+    return t(
+      "inventory.historyEvent.purchasePriceBatchLockUpdated",
+      "Group price protection changed",
+    );
+  }
+  if (eventType === "LOCATION_MERGED") {
+    return t("inventory.historyEvent.locationMerged", "Locations merged");
+  }
   if (eventType === "RFID_TAG_UPDATED") {
     return t("inventory.historyEvent.rfidSaved", "RFID saved");
   }
@@ -122,8 +247,130 @@ export function formatInventoryHistoryEventDetails(
   const { t, formatDateTime, formatStatusLabel, locale, printerNameById, slotLabelById } = deps;
   const payload = payloadRecord(event.payload_json);
   if (!payload) {
+    if (event.event_type === "PURCHASE_PRICE_STANDARD_APPLIED") {
+      return t(
+        "inventory.historyEvent.purchasePriceStandardAppliedDetail",
+        "The saved group price was applied to this roll.",
+      );
+    }
+    if (event.event_type === "PURCHASE_PRICE_BATCH_LOCK_UPDATED") {
+      return t(
+        "inventory.historyEvent.purchasePriceBatchLockUpdatedDetail",
+        "Group price protection was changed for this roll.",
+      );
+    }
+    if (event.event_type === "LOCATION_MERGED") {
+      return t(
+        "inventory.historyEvent.locationMergedDetail",
+        "This roll was moved because two storage locations were merged.",
+      );
+    }
     const raw = historyPayloadText(event.payload_json);
     return raw || "—";
+  }
+  if (event.event_type === "PURCHASE_RECEIPT_RECORDED") {
+    const details = purchaseMetadataSummary(
+      nestedPayloadRecord(payload, "purchase_metadata"),
+      deps,
+    );
+    const initialWeight = payloadNumber(payload, "initial_weight_g");
+    if (initialWeight != null) {
+      details.push(
+        `${t("inventory.initialWeight", "Initial weight (g)")}: ${formatDisplayGrams(initialWeight, locale)}`,
+      );
+    }
+    return (
+      details.join(" · ") ||
+      t(
+        "inventory.historyEvent.purchaseReceiptRecordedDetail",
+        "Purchase receipt was recorded.",
+      )
+    );
+  }
+  if (event.event_type === "PURCHASE_METADATA_UPDATED") {
+    const changes = purchaseMetadataChanges(
+      nestedPayloadRecord(payload, "before"),
+      nestedPayloadRecord(payload, "after"),
+      deps,
+    );
+    return (
+      changes.join(" · ") ||
+      t(
+        "inventory.historyEvent.purchaseMetadataUpdatedDetail",
+        "Purchase details were updated.",
+      )
+    );
+  }
+  if (event.event_type === "PURCHASE_PRICE_STANDARD_APPLIED") {
+    const details = purchaseMetadataChanges(
+      nestedPayloadRecord(payload, "before"),
+      nestedPayloadRecord(payload, "after"),
+      deps,
+    );
+    const mode = payloadString(payload, "mode");
+    if (mode) {
+      const modeLabel =
+        mode === "MISSING_ONLY"
+          ? t("settings.filamentDefaultsMissingOnly", "Only missing prices")
+          : mode === "OVERWRITE"
+            ? t("settings.filamentDefaultsOverwrite", "Update selected prices")
+            : null;
+      if (modeLabel) {
+        details.push(
+          `${t("settings.filamentDefaultsBatchMode", "Pricing mode")}: ${modeLabel}`,
+        );
+      }
+    }
+    return (
+      details.join(" · ") ||
+      t(
+        "inventory.historyEvent.purchasePriceStandardAppliedDetail",
+        "The saved group price was applied to this roll.",
+      )
+    );
+  }
+  if (event.event_type === "PURCHASE_PRICE_BATCH_LOCK_UPDATED") {
+    const before = payloadBoolean(payload, "before");
+    const after = payloadBoolean(payload, "after");
+    const details: string[] = [];
+    const booleanLabel = (value: boolean) =>
+      value ? t("common.on", "On") : t("common.off", "Off");
+    const protectionLabel = t(
+      "inventory.historyEvent.purchasePriceBatchProtection",
+      "Group price protection",
+    );
+    if (before != null && after != null && before !== after) {
+      details.push(
+        `${protectionLabel}: ${booleanLabel(before)} → ${booleanLabel(after)}`,
+      );
+    } else if (after != null) {
+      details.push(`${protectionLabel}: ${booleanLabel(after)}`);
+    }
+    const status = payloadString(payload, "status");
+    if (status) {
+      details.push(`${t("inventory.status", "Status")}: ${formatStatusLabel(status)}`);
+    }
+    return (
+      details.join(" · ") ||
+      t(
+        "inventory.historyEvent.purchasePriceBatchLockUpdatedDetail",
+        "Group price protection was changed for this roll.",
+      )
+    );
+  }
+  if (event.event_type === "LOCATION_MERGED") {
+    const sourceName = payloadString(payload, "source_location_name");
+    const targetName = payloadString(payload, "target_location_name");
+    if (sourceName && targetName) {
+      return `${t("inventory.location", "Location")}: ${sourceName} → ${targetName}`;
+    }
+    if (targetName) {
+      return `${t("inventory.location", "Location")}: ${targetName}`;
+    }
+    return t(
+      "inventory.historyEvent.locationMergedDetail",
+      "This roll was moved because two storage locations were merged.",
+    );
   }
   if (event.event_type === "WEIGHT_UPDATED" || event.event_type === "WEIGHT_CORRECTED") {
     const grams = payloadNumber(payload, "grams");

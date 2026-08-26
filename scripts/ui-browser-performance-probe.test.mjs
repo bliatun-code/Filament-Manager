@@ -22,6 +22,15 @@ function fixture() {
       launch_at_login_available: true,
       tray_available: true,
     },
+    filamentStandards: {
+      settings: {
+        schema_version: 1,
+        default_purchase_currency: "NOK",
+        price_standards: [],
+      },
+      settings_valid: true,
+      groups: [],
+    },
     librarySyncSettings: { mode: "STANDALONE" },
     loanRows: [
       {
@@ -134,6 +143,21 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     ),
     null,
   );
+  assert.equal(
+    resolveUiBrowserPerformanceInvoke(
+      data,
+      "get_packaged_desktop_e2e_configuration",
+    ),
+    null,
+  );
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "get_filament_standards"),
+    data.filamentStandards,
+  );
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "list_inventory_locations"),
+    [],
+  );
   assert.deepEqual(
     resolveUiBrowserPerformanceInvoke(data, "list_spools", {
       limit: 1,
@@ -160,6 +184,69 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
       printerId: "printer-b",
     }),
     [data.consumptionRows[1]],
+  );
+  assert.deepEqual(
+    resolveUiBrowserPerformanceInvoke(data, "statistics_period_report", {
+      period: {
+        start_at_utc: "2026-08-01T00:00:00Z",
+        end_at_utc: "2026-09-01T00:00:00Z",
+      },
+    }),
+    {
+      period: {
+        start_at_utc: "2026-08-01T00:00:00Z",
+        end_at_utc: "2026-09-01T00:00:00Z",
+      },
+      total_used_g: 30,
+      owned_used_g: 30,
+      borrowed_in_used_g: 0,
+      total_jobs: 0,
+      successful_jobs: 0,
+      failed_jobs: 0,
+      printer_usage: [
+        {
+          printer_id: "printer-a",
+          total_jobs: 0,
+          successful_jobs: 0,
+          failed_jobs: 0,
+          total_used_g: 0,
+          last_job_at: null,
+        },
+      ],
+      filament_consumption: data.consumptionRows,
+      value_cost: {
+        inventory_value: {
+          totals: [],
+          coverage: {
+            total_rows: 0,
+            valued_rows: 0,
+            unvalued_rows: 0,
+            covered_grams: 0,
+            uncovered_grams: 0,
+            missing_reasons: [],
+            trace_total_rows: 0,
+            trace_returned_rows: 0,
+            trace_truncated: false,
+          },
+        },
+        material_cost: {
+          totals: [],
+          coverage: {
+            total_rows: 0,
+            valued_rows: 0,
+            unvalued_rows: 0,
+            covered_grams: 0,
+            uncovered_grams: 0,
+            missing_reasons: [],
+            trace_total_rows: 0,
+            trace_returned_rows: 0,
+            trace_truncated: false,
+          },
+        },
+        inventory_trace: [],
+        material_cost_trace: [],
+      },
+    },
   );
   assert.deepEqual(
     resolveUiBrowserPerformanceInvoke(data, "check_for_app_update"),

@@ -53,6 +53,10 @@ test("initial page resolver opens the page requested by fixtures and visual QA s
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-replacement"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=printer-slot-clear"), "printers");
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-general"), "settings");
+  assert.equal(
+    resolveInitialPageFromSearch("bfm_visual_qa=settings-filament-defaults"),
+    "settings",
+  );
   assert.equal(resolveInitialPageFromSearch("bfm_visual_qa=settings-library"), "settings");
   assert.equal(
     resolveInitialPageFromSearch("bfm_visual_qa=settings-library-role-change"),

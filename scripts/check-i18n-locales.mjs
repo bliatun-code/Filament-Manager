@@ -4,6 +4,7 @@ import { relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { collectUiSourceFiles } from "./ui-source-utils.mjs";
 import {
+  CATALOG_LOCALES,
   DEFAULT_LOCALE,
   SOURCE_LOCALES,
 } from "../src-tauri/companion_browser/supported_locales.js";
@@ -13,7 +14,7 @@ const require = createRequire(import.meta.url);
 const ts = require(resolve(repoRoot, "ui", "node_modules", "typescript"));
 
 const localeFiles = Object.fromEntries(
-  SOURCE_LOCALES.map(({ id }) => [
+  CATALOG_LOCALES.map(({ id }) => [
     id,
     resolve(
       repoRoot,
@@ -143,6 +144,34 @@ export function collectLiteralTranslationKeysFromSource(
         ts.isStringLiteral(keyArgument) ||
         ts.isNoSubstitutionTemplateLiteral(keyArgument)
       ) {
+        const paramsArgument = node.arguments[2];
+        let staticParamKeys = null;
+        if (paramsArgument && ts.isObjectLiteralExpression(paramsArgument)) {
+          const names = [];
+          let staticallyComplete = true;
+          for (const property of paramsArgument.properties) {
+            if (ts.isSpreadAssignment(property)) {
+              staticallyComplete = false;
+              break;
+            }
+            if (ts.isShorthandPropertyAssignment(property)) {
+              names.push(property.name.text);
+              continue;
+            }
+            if (ts.isPropertyAssignment(property)) {
+              const name = propertyNameText(property.name);
+              if (name) {
+                names.push(name);
+                continue;
+              }
+            }
+            staticallyComplete = false;
+            break;
+          }
+          if (staticallyComplete) {
+            staticParamKeys = names.sort();
+          }
+        }
         const location = sourceFile.getLineAndCharacterOfPosition(
           keyArgument.getStart(sourceFile),
         );
@@ -150,6 +179,10 @@ export function collectLiteralTranslationKeysFromSource(
           key: keyArgument.text,
           line: location.line + 1,
           column: location.character + 1,
+          paramsArgumentPresent:
+            Boolean(paramsArgument) &&
+            !(ts.isIdentifier(paramsArgument) && paramsArgument.text === "undefined"),
+          staticParamKeys,
         });
       }
     }
@@ -167,6 +200,44 @@ export function validateRuntimeTranslationKeys(dictionary, runtimeKeys) {
   return runtimeKeys
     .filter(({ key }) => !dictionaryKeys.has(key))
     .map(({ key, location }) => `${location}: unknown translation key ${key}.`);
+}
+
+export function validateRuntimeTranslationParams(dictionary, runtimeKeys) {
+  const dictionaryEntries = new Map(flattenDictionary(dictionary));
+  const errors = [];
+
+  for (const entry of runtimeKeys) {
+    const template = dictionaryEntries.get(entry.key);
+    if (typeof template !== "string") {
+      continue;
+    }
+    const requiredParams = [...new Set(placeholderTokens(template))];
+    if (requiredParams.length === 0) {
+      continue;
+    }
+    if (!entry.paramsArgumentPresent) {
+      errors.push(
+        `${entry.location}: translation key ${entry.key} requires ${requiredParams
+          .map((name) => `{${name}}`)
+          .join(", ")} but the call provides no message parameters.`,
+      );
+      continue;
+    }
+    if (!Array.isArray(entry.staticParamKeys)) {
+      continue;
+    }
+    const supplied = new Set(entry.staticParamKeys);
+    const missing = requiredParams.filter((name) => !supplied.has(name));
+    if (missing.length > 0) {
+      errors.push(
+        `${entry.location}: translation key ${entry.key} is missing message ${
+          missing.length === 1 ? "parameter" : "parameters"
+        } ${missing.map((name) => `{${name}}`).join(", ")}.`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 function placeholderTokens(value) {
@@ -260,7 +331,7 @@ export function validateLocaleOverlay(
 
 function runI18nLocaleCheck() {
   const dictionaries = Object.fromEntries(
-    SOURCE_LOCALES.map(({ id }) => [
+    CATALOG_LOCALES.map(({ id }) => [
       id,
       readLocaleDictionaryFromSource(
         readFileSync(localeFiles[id], "utf8"),
@@ -274,16 +345,22 @@ function runI18nLocaleCheck() {
   ).flatMap(({ id }) =>
     validateLocaleDictionaries(baseDictionary, dictionaries[id], id),
   );
+  for (const { id } of CATALOG_LOCALES.filter(
+    ({ catalogKind }) => catalogKind === "draft",
+  )) {
+    errors.push(...validateLocaleOverlay(baseDictionary, dictionaries[id], id));
+  }
   const runtimeKeys = collectUiSourceFiles(uiSourceRoot).flatMap((file) =>
     collectLiteralTranslationKeysFromSource(
       readFileSync(file, "utf8"),
       file,
     ).map((entry) => ({
-      key: entry.key,
+      ...entry,
       location: `${relative(repoRoot, file)}:${entry.line}:${entry.column}`,
     })),
   );
   errors.push(...validateRuntimeTranslationKeys(baseDictionary, runtimeKeys));
+  errors.push(...validateRuntimeTranslationParams(baseDictionary, runtimeKeys));
 
   if (errors.length > 0) {
     console.error("UI locale dictionary contract failed:");
