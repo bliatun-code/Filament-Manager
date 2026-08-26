@@ -1,6 +1,7 @@
 use rusqlite::Row;
 
 use super::database_loan_models::{ActiveSpoolLoanRow, SpoolLoanRow};
+use super::database_location_models::canonicalize_location_type;
 use super::database_spool_models::{SpoolRow, SpoolWithMasterRow};
 use super::database_trusted_lan_models::TrustedLanPairedBrowserRow;
 use super::filament_master_models::FilamentMasterSummary;
@@ -54,13 +55,19 @@ pub(crate) fn map_spool_with_master_row(
         default_weight: row.get(30)?,
         vendor: row.get(31)?,
     };
+    let location_type = row
+        .get::<_, Option<String>>(34)?
+        .map(|value| canonicalize_location_type(&value));
+    let home_location_type = row
+        .get::<_, Option<String>>(35)?
+        .map(|value| canonicalize_location_type(&value));
     Ok(SpoolWithMasterRow {
         spool,
         master,
         location_name: row.get(32)?,
         home_location_name: row.get(33)?,
-        location_type: row.get(34)?,
-        home_location_type: row.get(35)?,
+        location_type,
+        home_location_type,
         low_stock_threshold_g: None,
     })
 }

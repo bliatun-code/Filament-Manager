@@ -24,6 +24,11 @@ export function validInventoryLocationName(value: string): boolean {
   return normalized.length > 0 && [...normalized].length <= 120;
 }
 
+export function isUserManagedInventoryLocation(row: InventoryLocationRow): boolean {
+  const locationType = row.location_type.trim().toUpperCase();
+  return locationType === "GENERIC" || locationType === "SHELF";
+}
+
 type ExistingInventoryLocationReference = {
   id?: string | null;
   name?: string | null;
@@ -56,7 +61,7 @@ export function resolveInventoryLocationReferenceForWrite(
   const activeMatches = rows
     .filter(
       (row) =>
-        row.location_type === "GENERIC" &&
+        isUserManagedInventoryLocation(row) &&
         !row.archived_at &&
         (row.id.trim() === normalizedDraft || comparableLocationName(row.name) === normalizedKey),
     )
@@ -68,16 +73,16 @@ export function inventoryLocationActionRows(
   rows: InventoryLocationRow[],
   mutationsAvailable: boolean,
 ): InventoryLocationActionState[] {
-  const activeGenericNames = new Set(
+  const activeUserManagedNames = new Set(
     rows
-      .filter((row) => row.location_type === "GENERIC" && !row.archived_at)
+      .filter((row) => isUserManagedInventoryLocation(row) && !row.archived_at)
       .map((row) => comparableLocationName(row.name)),
   );
 
-  return rows.filter((row) => row.location_type === "GENERIC").map((row) => {
+  return rows.filter(isUserManagedInventoryLocation).map((row) => {
     const archived = Boolean(row.archived_at);
     const restoreBlockedByNameConflict =
-      archived && activeGenericNames.has(comparableLocationName(row.name));
+      archived && activeUserManagedNames.has(comparableLocationName(row.name));
     return {
       ...row,
       activeGeneric: !archived,
@@ -117,6 +122,6 @@ export function validateLocationMerge(
   }
   const byId = new Map(rows.map((row) => [row.id, row]));
   return [byId.get(sourceId), byId.get(targetId)].every(
-    (row) => row?.location_type === "GENERIC" && !row.archived_at,
+    (row) => Boolean(row && isUserManagedInventoryLocation(row) && !row.archived_at),
   );
 }

@@ -20,6 +20,7 @@ import {
   type InventoryLocationRow,
 } from "./tauri_location_client";
 import { resolveClientHostCacheTarget } from "./host_write_target";
+import { isUserManagedInventoryLocation } from "./inventory_location_model";
 
 export type InventoryLocationDataOptions = {
   clientReadOnly: boolean;
@@ -42,9 +43,7 @@ type LocationDataDependencies = {
 };
 
 export function selectableInventoryLocations(rows: InventoryLocationRow[]) {
-  return rows.filter(
-    (row) => row.location_type === "GENERIC" && !row.archived_at,
-  );
+  return rows.filter((row) => isUserManagedInventoryLocation(row) && !row.archived_at);
 }
 
 export function legacyLocationsFromSpools(spools: InventorySpool[]): InventoryLocationRow[] {

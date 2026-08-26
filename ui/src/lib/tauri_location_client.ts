@@ -3,6 +3,7 @@ import { invoke } from "./tauri_invoke";
 export type InventoryLocationRow = {
   id: string;
   name: string;
+  /** GENERIC in current Hosts; older Host/cache payloads may expose legacy SHELF. */
   location_type: string;
   parent_id?: string | null;
   x?: number | null;

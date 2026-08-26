@@ -84,7 +84,7 @@
     {
       "sequence": 4,
       "file": "004_inventory_location_objects.sql",
-      "sha256": "67571f4da70afc1cdaee7b9d377d9a00e9d0cc1fc231582f2d533eb2c525c68e",
+      "sha256": "e13b115bfeb21acc9d0a5d4feafa3669bc666262a5d3a7e6500b4b705e6c9b81",
       "role": "schema-migration",
       "fromSchemaVersion": 2,
       "toSchemaVersion": 3
@@ -100,7 +100,7 @@
     {
       "sequence": 6,
       "file": "006_filament_price_standards.sql",
-      "sha256": "0401db674abfe074e69ebe4ad9cba77006559972b5204c979243cfea52d39d54",
+      "sha256": "ff24cd05f8839ec7c851d1dd8d6c0cd0297c577d8b4119e5bfed068d929597a1",
       "role": "schema-migration",
       "fromSchemaVersion": 4,
       "toSchemaVersion": 5

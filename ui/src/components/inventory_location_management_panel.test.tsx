@@ -43,6 +43,7 @@ const rows = [
   location({
     id: "location-active-2",
     name: "Shelf B",
+    location_type: "SHELF",
     can_delete: true,
     reference_count: 0,
   }),

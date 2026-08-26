@@ -5,6 +5,7 @@ use super::database_catalog_manual::upsert_manual_master;
 use super::database_import::{InventoryImportRow, InventoryImportStats};
 use super::database_loan_create::create_inbound_spool_loan_in_transaction;
 use super::database_loan_queries::spool_has_active_loan;
+use super::database_location_models::is_user_managed_location_type;
 use super::database_locations::{ensure_location, get_location};
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_spool_insert::insert_spool;
@@ -633,7 +634,7 @@ fn resolve_structured_location(
 ) -> InventoryResult<ResolvedStructuredLocation> {
     let normalized_id = normalize_optional_text(id);
     let location_is_managed = normalize_optional_text(location_type)
-        .is_some_and(|kind| !kind.eq_ignore_ascii_case("GENERIC"))
+        .is_some_and(|kind| !is_user_managed_location_type(&kind))
         || status_requires_managed_location;
     if location_is_managed {
         return Ok(ResolvedStructuredLocation { id: None });
@@ -642,10 +643,7 @@ fn resolve_structured_location(
         && let Some(existing) = get_location(conn, id)?
     {
         return Ok(ResolvedStructuredLocation {
-            id: existing
-                .location_type
-                .eq_ignore_ascii_case("GENERIC")
-                .then(|| existing.id.clone()),
+            id: is_user_managed_location_type(&existing.location_type).then(|| existing.id.clone()),
         });
     }
     // Stable ids are meaningful only when they resolve in this database. A
@@ -680,10 +678,9 @@ fn managed_relation_status(conn: &Connection, spool_id: &str) -> InventoryResult
 
 fn resolve_legacy_location(conn: &Connection, reference: &str) -> InventoryResult<Option<String>> {
     if let Some(existing) = get_location(conn, reference)? {
-        return Ok(existing
-            .location_type
-            .eq_ignore_ascii_case("GENERIC")
-            .then(|| existing.id.clone()));
+        return Ok(
+            is_user_managed_location_type(&existing.location_type).then(|| existing.id.clone())
+        );
     }
     // Older exports wrote the opaque database id into the human-readable
     // `location` field. That id is only meaningful in the source database: on

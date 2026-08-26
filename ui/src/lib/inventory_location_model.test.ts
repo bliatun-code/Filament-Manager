@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   inventoryLocationActionRows,
   inventoryLocationUsageById,
+  isUserManagedInventoryLocation,
   normalizeInventoryLocationName,
   resolveInventoryLocationReferenceForWrite,
   validInventoryLocationName,
@@ -30,9 +31,15 @@ test("location drafts normalize whitespace and validate the backend length contr
 });
 
 test("management rows hide system locations and expose only permitted lifecycle actions", () => {
-  const [active, archived] = inventoryLocationActionRows(
+  const [active, legacy, archived] = inventoryLocationActionRows(
     [
       location({ can_delete: true, reference_count: 0 }),
+      location({
+        id: "legacy-shelf",
+        location_type: "SHELF",
+        can_delete: true,
+        reference_count: 0,
+      }),
       location({
         id: "archived",
         name: "Old shelf",
@@ -67,7 +74,12 @@ test("management rows hide system locations and expose only permitted lifecycle 
     },
     { rename: true, archive: false, delete: true, restore: true },
   );
-  assert.deepEqual([active.id, archived.id], ["location-1", "archived"]);
+  assert.equal(isUserManagedInventoryLocation(legacy), true);
+  assert.deepEqual([active.id, legacy.id, archived.id], [
+    "location-1",
+    "legacy-shelf",
+    "archived",
+  ]);
 });
 
 test("delete depends only on authoritative backend eligibility and live mutation access", () => {
@@ -119,10 +131,10 @@ test("location usage counts each roll once across current and home references", 
   ]);
 });
 
-test("merge accepts only two different active generic locations", () => {
+test("merge accepts current and legacy user-managed locations", () => {
   const rows = [
     location({ id: "source" }),
-    location({ id: "target" }),
+    location({ id: "target", location_type: "SHELF" }),
     location({ id: "archived", archived_at: "2026-08-21" }),
     location({ id: "system", location_type: "PRINTER_SLOT" }),
   ];

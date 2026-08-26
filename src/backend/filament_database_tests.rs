@@ -3297,7 +3297,7 @@ fn lightweight_inventory_round_trip_drops_foreign_system_placements() {
             .conn
             .execute_batch(
                 "INSERT INTO inventory_locations (id, name, type)
-                 VALUES ('portable-home', 'Portable shelf', 'GENERIC');
+                 VALUES ('portable-home', 'Portable shelf', 'SHELF');
                  INSERT INTO filament_master_list (
                     id, material, filament_name, color_name, default_weight, vendor,
                     catalog_source, catalog_user_edited

@@ -42,6 +42,7 @@ import {
   type InventorySpool,
 } from "./inventory_list_model";
 import type { InventoryLocationRow } from "./tauri_location_client";
+import { isUserManagedInventoryLocation } from "./inventory_location_model";
 
 type TranslateFn = ReturnType<typeof useI18n>["t"];
 
@@ -302,7 +303,7 @@ export function useInventoryBulkActions({
   const locationTargets = useMemo<InventoryBulkLocationTarget[]>(
     () =>
       locations
-        .filter((location) => location.location_type === "GENERIC")
+        .filter(isUserManagedInventoryLocation)
         .map((location) => ({
           archived: Boolean(location.archived_at),
           id: location.id,

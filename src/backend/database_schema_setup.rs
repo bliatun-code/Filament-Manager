@@ -394,7 +394,7 @@ mod tests {
             (
                 "Shelf A".to_string(),
                 "Shelf A".to_string(),
-                "GENERIC".to_string(),
+                "SHELF".to_string(),
                 "Shelf A".to_string(),
                 "Shelf A".to_string(),
             )
@@ -410,11 +410,11 @@ mod tests {
         assert!(metadata_present);
 
         assert_eq!(
-            ensure_location(&conn, "  shelf   a ").expect("reuse canonicalized shelf"),
+            ensure_location(&conn, "  shelf   a ").expect("reuse legacy shelf"),
             "Shelf A"
         );
         let renamed =
-            rename_location(&conn, "Shelf A", "Archive Shelf").expect("rename canonicalized shelf");
+            rename_location(&conn, "Shelf A", "Archive Shelf").expect("rename legacy shelf");
         assert_eq!(renamed.id, "Shelf A");
         assert_eq!(renamed.name, "Archive Shelf");
         assert!(list_locations(&conn, false)
@@ -506,7 +506,7 @@ mod tests {
     }
 
     #[test]
-    fn version_four_prices_are_backfilled_as_manual_and_batch_lock_defaults_unlocked() {
+    fn version_four_prices_are_backfilled_and_historical_locks_preserve_audit_data() {
         let conn = Connection::open_in_memory().expect("open version-four database");
         conn.execute_batch(CURRENT_SCHEMA_SQL)
             .expect("apply baseline tables");
@@ -523,10 +523,21 @@ mod tests {
                 id, material, filament_name, color_name, default_weight, vendor
              ) VALUES ('price-master', 'PETG', 'Basic', 'Black', 1000, 'eSUN');
              INSERT INTO filament_spools (
-                id, master_id, status, purchase_price, purchase_currency
+                id, master_id, status, purchase_price, purchase_currency, updated_at
              ) VALUES
-                ('priced-spool', 'price-master', 'IN_STOCK', 229.0, 'NOK'),
-                ('unpriced-spool', 'price-master', 'IN_STOCK', NULL, NULL);
+                ('priced-spool', 'price-master', 'IN_STOCK', 229.0, 'NOK', '2026-01-02 03:04:05'),
+                ('unpriced-spool', 'price-master', 'IN_STOCK', NULL, NULL, '2026-01-02 03:04:05'),
+                ('historical-empty', 'price-master', 'EMPTY', NULL, NULL, '2026-01-02 03:04:05'),
+                ('historical-lost', 'price-master', ' lost ', NULL, NULL, '2026-01-02 03:04:05'),
+                ('historical-missing', 'price-master', 'missing', NULL, NULL, '2026-01-02 03:04:05'),
+                ('historical-deleted', 'price-master', 'deleted', NULL, NULL, '2026-01-02 03:04:05'),
+                ('historical-archived', 'price-master', 'archived', NULL, NULL, '2026-01-02 03:04:05');
+             INSERT INTO spool_history_events (
+                id, spool_id, event_type, payload_json, created_at
+             ) VALUES (
+                'preserved-price-history', 'historical-empty', 'MARKED_EMPTY', '{}',
+                '2026-01-02 03:04:05'
+             );
              PRAGMA user_version = 4;",
         )
         .expect("prepare version-four price data");
@@ -551,6 +562,84 @@ mod tests {
             )
             .expect("read unpriced spool migration fields");
         assert_eq!(unpriced, (false, None));
+
+        let spool_states = || {
+            let mut statement = conn
+                .prepare(
+                    "SELECT id, purchase_price_batch_locked, updated_at
+                     FROM filament_spools
+                     ORDER BY id",
+                )
+                .expect("prepare migrated spool state query");
+            statement
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, bool>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                })
+                .expect("query migrated spool states")
+                .collect::<Result<Vec<_>, _>>()
+                .expect("collect migrated spool states")
+        };
+        assert_eq!(
+            spool_states(),
+            vec![
+                (
+                    "historical-archived".to_string(),
+                    true,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+                (
+                    "historical-deleted".to_string(),
+                    true,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+                (
+                    "historical-empty".to_string(),
+                    true,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+                (
+                    "historical-lost".to_string(),
+                    true,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+                (
+                    "historical-missing".to_string(),
+                    true,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+                (
+                    "priced-spool".to_string(),
+                    false,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+                (
+                    "unpriced-spool".to_string(),
+                    false,
+                    "2026-01-02 03:04:05".to_string(),
+                ),
+            ]
+        );
+        let history_counts = || {
+            conn.query_row(
+                "SELECT COUNT(*),
+                        SUM(event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED')
+                 FROM spool_history_events",
+                [],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .expect("read migration history counts")
+        };
+        assert_eq!(history_counts(), (1, 0));
+
+        apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("reapply upgraded price schema");
+        assert_eq!(history_counts(), (1, 0));
+        assert!(spool_states()
+            .iter()
+            .all(|(_, _, updated_at)| updated_at == "2026-01-02 03:04:05"));
         assert_eq!(
             database_schema_version(&conn).expect("read upgraded version"),
             CURRENT_SCHEMA_VERSION

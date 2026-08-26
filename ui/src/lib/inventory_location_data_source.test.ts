@@ -42,9 +42,10 @@ function location(overrides: Partial<InventoryLocationRow> = {}): InventoryLocat
   };
 }
 
-test("autocomplete includes only active generic locations", () => {
+test("autocomplete includes only active user-managed locations", () => {
   const rows = [
     location(),
+    location({ id: "legacy-shelf", name: "Legacy shelf", location_type: "SHELF" }),
     location({ id: "archived", name: "Old shelf", archived_at: "2026-08-21" }),
     location({
       id: "Printer:Studio:slot-1",
@@ -56,6 +57,7 @@ test("autocomplete includes only active generic locations", () => {
 
   assert.deepEqual(selectableInventoryLocations(rows).map((row) => row.id), [
     "location-1",
+    "legacy-shelf",
   ]);
 });
 

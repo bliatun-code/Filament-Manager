@@ -2,12 +2,9 @@ ALTER TABLE inventory_locations ADD COLUMN archived_at TEXT;
 ALTER TABLE inventory_locations ADD COLUMN created_at TEXT;
 ALTER TABLE inventory_locations ADD COLUMN updated_at TEXT;
 
--- SHELF was the legacy user-managed storage type. Canonicalize it without
--- changing any immutable IDs or spool references so generic CRUD and choices
--- keep working after the upgrade.
-UPDATE inventory_locations
-SET type = 'GENERIC'
-WHERE UPPER(TRIM(type)) = 'SHELF';
+-- Preserve the legacy SHELF value. The application treats SHELF and GENERIC
+-- as user-managed storage types, so upgrading does not need to rewrite domain
+-- data in order to expose the newer location-management features.
 
 UPDATE inventory_locations
 SET created_at = COALESCE(created_at, datetime('now')),

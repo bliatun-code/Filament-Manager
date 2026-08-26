@@ -4,7 +4,10 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::json;
 
 use super::database_ids::new_id;
-use super::database_location_models::{InventoryLocationMergeResult, InventoryLocationRow};
+use super::database_location_models::{
+    canonicalize_location_type, is_user_managed_location_type, InventoryLocationMergeResult,
+    InventoryLocationRow,
+};
 use super::database_result::{InventoryError, InventoryResult};
 
 pub(crate) fn normalize_location_name(value: &str) -> InventoryResult<(String, String)> {
@@ -223,7 +226,7 @@ pub(crate) fn delete_location(
     let affected = conn.execute(
         "DELETE FROM inventory_locations
          WHERE id = ?1
-           AND type = 'GENERIC'
+           AND UPPER(TRIM(type)) IN ('GENERIC', 'SHELF')
            AND NOT EXISTS (
              SELECT 1 FROM filament_spools WHERE location_id = ?1
            )
@@ -369,7 +372,7 @@ fn map_location_row(row: &rusqlite::Row<'_>) -> Result<InventoryLocationRow, rus
     Ok(InventoryLocationRow {
         id: row.get(0)?,
         name: row.get(1)?,
-        location_type: location_type.clone(),
+        location_type: canonicalize_location_type(&location_type),
         parent_id: row.get(3)?,
         x: row.get(4)?,
         y: row.get(5)?,
@@ -378,7 +381,7 @@ fn map_location_row(row: &rusqlite::Row<'_>) -> Result<InventoryLocationRow, rus
         created_at: row.get(8)?,
         updated_at: row.get(9)?,
         reference_count: Some(reference_count),
-        can_delete: location_type == "GENERIC" && reference_count == 0,
+        can_delete: is_user_managed_location_type(&location_type) && reference_count == 0,
     })
 }
 
@@ -424,7 +427,7 @@ fn find_active_generic_by_normalized_name(
     let mut statement = conn.prepare(
         "SELECT id, name
          FROM inventory_locations
-         WHERE type = 'GENERIC' AND archived_at IS NULL
+         WHERE UPPER(TRIM(type)) IN ('GENERIC', 'SHELF') AND archived_at IS NULL
          ORDER BY id",
     )?;
     let rows = statement.query_map([], |row| {
@@ -1122,6 +1125,53 @@ mod tests {
         ] {
             assert!(error.to_string().contains("system locations"));
         }
+
+        drop(db);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn legacy_shelf_type_supports_the_full_user_managed_lifecycle() {
+        let (path, db) = open_db("legacy-shelf-lifecycle");
+        db.connection()
+            .execute(
+                "INSERT INTO inventory_locations (
+                    id, name, type, created_at, updated_at
+                 ) VALUES (
+                    'legacy-shelf', 'Legacy shelf', 'SHELF', datetime('now'), datetime('now')
+                 )",
+                [],
+            )
+            .expect("seed legacy shelf");
+
+        let listed = db
+            .list_inventory_locations(false)
+            .expect("list legacy shelf")
+            .into_iter()
+            .find(|row| row.id == "legacy-shelf")
+            .expect("legacy shelf remains visible");
+        assert_eq!(listed.location_type, "GENERIC");
+        assert!(listed.can_delete);
+
+        let renamed = db
+            .rename_inventory_location("legacy-shelf", "Renamed shelf")
+            .expect("rename legacy shelf");
+        assert_eq!(renamed.name, "Renamed shelf");
+        db.archive_inventory_location("legacy-shelf")
+            .expect("archive legacy shelf");
+        db.restore_inventory_location("legacy-shelf")
+            .expect("restore legacy shelf");
+        db.delete_inventory_location("legacy-shelf")
+            .expect("delete unreferenced legacy shelf");
+        let remaining: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM inventory_locations WHERE id = 'legacy-shelf'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("read deleted shelf");
+        assert_eq!(remaining, 0);
 
         drop(db);
         let _ = std::fs::remove_file(path);
