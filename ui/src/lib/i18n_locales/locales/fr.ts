@@ -59,7 +59,7 @@ export const frDictionary: DictionaryNode = {
     loadedSpoolEditBlocked:
       "Modifiez une bobine chargée à l’aide des actions de l’emplacement d’imprimante.",
     loanedSpoolEditBlocked:
-      "Terminez le prêt avant de modifier l’état ou l’emplacement de cette bobine.",
+      "Terminez le prêt sortant actif avant de modifier l’état, l’emplacement ou la propriété de cette bobine.",
     spoolStatusEditLimited:
       "Dans le navigateur, l’état d’une bobine peut uniquement être défini sur En stock, Vide ou Perdue.",
     locationHasReferences:
@@ -535,7 +535,8 @@ export const frDictionary: DictionaryNode = {
     noAvailablePrinterSlots: "Aucun emplacement d’imprimante libre.",
     printLabelAction: "Imprimer l’étiquette",
     unsavedChanges: "Modifications non enregistrées",
-    discardUnsavedChanges: "Abandonner les modifications non enregistrées ?",
+    discardUnsavedChanges:
+      "Abandonner les modifications non enregistrées de la bobine ? Vos modifications seront perdues.",
     allChangesSaved: "Toutes les modifications ont été enregistrées.",
     rollChangesSaved: "Modifications de la bobine enregistrées.",
     labelSheetInventoryHint:

@@ -3496,6 +3496,48 @@ fn lightweight_import_normalizes_or_preserves_relation_owned_statuses() {
             assert_eq!(spool.location_id, None);
         }
 
+        db.import_data_content(
+            r#"[{"spool_id":"orphan-borrowed-lock","material":"PLA","filament_name":"Basic","color_name":"Yellow","status":"IN_STOCK","ownership_type":"OWNED","location":"Original orphan shelf"}]"#,
+        )
+        .map_err(|error| error.to_string())?;
+        db.conn
+            .execute(
+                "UPDATE filament_spools SET status = 'BORROWED' WHERE id = ?1",
+                ["orphan-borrowed-lock"],
+            )
+            .map_err(|error| error.to_string())?;
+        let orphan_before = db
+            .get_spool_by_id("orphan-borrowed-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing orphan BORROWED spool".to_string())?;
+        db.import_data_content(
+            r#"[{"spool_id":"orphan-borrowed-lock","material":"PLA","filament_name":"Basic","color_name":"Yellow","status":"IN_STOCK","ownership_type":"BORROWED_IN","owner_name":"Imported owner","home_location_name":"Imported orphan shelf"}]"#,
+        )
+        .map_err(|error| error.to_string())?;
+        let orphan_after = db
+            .get_spool_by_id("orphan-borrowed-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing orphan BORROWED spool after import".to_string())?;
+        assert_eq!(orphan_after.status, "BORROWED");
+        assert_eq!(orphan_after.ownership_type, orphan_before.ownership_type);
+        assert_eq!(orphan_after.owner_name, orphan_before.owner_name);
+        assert_eq!(orphan_after.location_id, orphan_before.location_id);
+        assert_eq!(
+            orphan_after.home_location_id,
+            orphan_before.home_location_id
+        );
+        let orphan_side_effect_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT
+                    (SELECT COUNT(*) FROM inventory_locations WHERE name = 'Imported orphan shelf')
+                    + (SELECT COUNT(*) FROM spool_loans WHERE spool_id = 'orphan-borrowed-lock')",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(orphan_side_effect_count, 0);
+
         db.conn
             .execute_batch(
                 "INSERT INTO inventory_locations (id, name, type)
@@ -3527,6 +3569,10 @@ fn lightweight_import_normalizes_or_preserves_relation_owned_statuses() {
             "spool_id,material,filament_name,color_name,status,location\ndangling-borrowed,PETG,Basic,Red,ASSIGNED,\n",
         )
         .map_err(|error| error.to_string())?;
+        db.import_data_content(
+            r#"[{"spool_id":"dangling-borrowed","material":"PETG","filament_name":"Basic","color_name":"Red","status":"BORROWED","home_location_name":"Imported loan shelf"}]"#,
+        )
+        .map_err(|error| error.to_string())?;
 
         let assigned = db
             .get_spool_by_id("dangling-assigned")
@@ -3546,6 +3592,15 @@ fn lightweight_import_normalizes_or_preserves_relation_owned_statuses() {
         assert_eq!(borrowed.status, "BORROWED");
         assert_eq!(borrowed.location_id.as_deref(), Some("Loaned to: Grace"));
         assert_eq!(borrowed.home_location_id.as_deref(), Some("relation-home"));
+        let imported_loan_shelf_count: i64 = db
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM inventory_locations WHERE name = 'Imported loan shelf'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(imported_loan_shelf_count, 0);
         Ok(())
     })();
 

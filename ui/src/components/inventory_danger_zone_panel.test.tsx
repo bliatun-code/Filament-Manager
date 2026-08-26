@@ -8,7 +8,10 @@ import {
   InventoryDangerZonePanelView,
   type InventoryDangerZonePanelViewProps,
 } from "./inventory_danger_zone_panel";
-import { requestInventoryDetailDiscard } from "../lib/use_inventory_unsaved_changes_guard";
+import {
+  confirmInventoryDetailDiscard,
+  requestInventoryDetailDiscard,
+} from "../lib/use_inventory_unsaved_changes_guard";
 
 (globalThis as typeof globalThis & { React: typeof React }).React = React;
 
@@ -22,6 +25,7 @@ function viewProps(
   overrides: Partial<InventoryDangerZonePanelViewProps> = {},
 ): InventoryDangerZonePanelViewProps {
   return {
+    cancelDisabled: false,
     confirmDelete: false,
     confirmMarkEmpty: false,
     confirmPurge: false,
@@ -179,6 +183,23 @@ test("EMPTY rolls hide mark-empty while retaining the refill action", () => {
   assert.doesNotMatch(html, /Mark this roll as empty\?/);
 });
 
+test("loaned-out danger actions stay disabled and explain the return requirement", () => {
+  const html = renderView({
+    blockedReason:
+      "Return the loan before editing this roll's status, location, or ownership.",
+    disabled: true,
+  });
+
+  assert.match(html, /role="note"/);
+  assert.match(
+    html,
+    /Return the loan before editing this roll&#x27;s status, location, or ownership\./,
+  );
+  const buttons = [...html.matchAll(/<button[^>]*>/g)].map((match) => match[0]);
+  assert.equal(buttons.length, 3);
+  assert.ok(buttons.every((button) => /\sdisabled(?:=""|(?=[\s>]))/.test(button)));
+});
+
 test("delete and permanent purge render contextual inline confirmations with separate cancel", () => {
   const deleteHtml = renderView({ confirmDelete: true });
   assert.match(deleteHtml, /role="alert"/);
@@ -195,6 +216,15 @@ test("delete and permanent purge render contextual inline confirmations with sep
   assert.match(purgeHtml, />Cancel<\/button>/);
   assert.match(purgeHtml, /border-red-500 bg-red-50/);
   assert.match(purgeHtml, /bg-red-600/);
+});
+
+test("confirmation cancel stays available when a late loan lock disables the destructive action", () => {
+  const tree = InventoryDangerZonePanelView(
+    viewProps({ cancelDisabled: false, confirmDelete: true, disabled: true }),
+  );
+
+  assert.equal(findButton(tree, "Delete from active inventory").props.disabled, true);
+  assert.equal(findButton(tree, "Cancel").props.disabled, false);
 });
 
 test("closing the disclosure cancels local and parent confirmations", () => {
@@ -225,35 +255,26 @@ test("closing the disclosure cancels local and parent confirmations", () => {
 
 test("unsaved detail guard preserves danger state until discard is accepted", () => {
   let discardCount = 0;
-  let promptCount = 0;
+  let confirmationRequestCount = 0;
 
   const blocked = requestInventoryDetailDiscard({
-    confirmDiscard: () => {
-      promptCount += 1;
-      return false;
-    },
     hasUnsavedChanges: true,
-    message: "Discard unsaved roll changes?",
     onDiscard: () => {
       discardCount += 1;
+    },
+    onConfirmationRequired: () => {
+      confirmationRequestCount += 1;
     },
   });
   assert.equal(blocked, false);
-  assert.equal(promptCount, 1);
+  assert.equal(confirmationRequestCount, 1);
   assert.equal(discardCount, 0);
 
-  const accepted = requestInventoryDetailDiscard({
-    confirmDiscard: () => {
-      promptCount += 1;
-      return true;
-    },
-    hasUnsavedChanges: true,
-    message: "Discard unsaved roll changes?",
+  confirmInventoryDetailDiscard({
     onDiscard: () => {
       discardCount += 1;
     },
   });
-  assert.equal(accepted, true);
-  assert.equal(promptCount, 2);
+  assert.equal(confirmationRequestCount, 1);
   assert.equal(discardCount, 1);
 });

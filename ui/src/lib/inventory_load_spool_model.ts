@@ -5,6 +5,7 @@ import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
 export type InventoryLoadSpoolBlockReason =
   | "already-assigned"
+  | "loaned-spool"
   | "occupied-slot"
   | "stale-slot"
   | "unavailable-spool";
@@ -22,9 +23,13 @@ export function availableInventoryLoadSlots(
 export function prepareInventoryLoadSpoolAssignment(input: {
   assignedSlot: InventoryPrinterSlotOption | null;
   availableSlots: InventoryPrinterSlotOption[];
+  loanedOut: boolean;
   selectedSlotId: string;
   spool: InventorySpool;
 }): InventoryLoadSpoolPreparation {
+  if (input.loanedOut) {
+    return { ok: false, reason: "loaned-spool" };
+  }
   if (input.assignedSlot || isSpoolStatusAssigned(input.spool.status)) {
     return { ok: false, reason: "already-assigned" };
   }

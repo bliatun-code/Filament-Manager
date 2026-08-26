@@ -1,10 +1,10 @@
 use super::{
     AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
     CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
-    InventoryEngine, PurchaseReceiptMetadata, ReceiveWishlistItemInput, RecordPrintUsageInput,
-    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
-    UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput, UpdateSpoolRfidTagInput,
-    UpdateWishlistStatusInput, WeightSource,
+    InventoryEngine, PurchaseReceiptMetadata, PurgeSpoolInput, ReceiveWishlistItemInput,
+    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput,
+    UpdateSpoolRfidTagInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
@@ -1084,7 +1084,7 @@ fn create_spool_with_location_persists_location_and_home_location() {
 }
 
 #[test]
-fn delete_spool_clears_printer_slot_assignment() {
+fn delete_spool_clears_printer_slot_assignment_and_remains_purgeable() {
     let db_path = temp_db_path("delete-spool-clears-slot");
 
     let result = (|| -> Result<(), String> {
@@ -1185,17 +1185,31 @@ fn delete_spool_clears_printer_slot_assignment() {
             Some(original_home_location_id.as_str())
         );
 
+        engine
+            .purge_spool(PurgeSpoolInput {
+                spool_id: "spool_1".to_string(),
+                reason: Some("Permanent cleanup after review".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        assert!(engine
+            .db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .is_none());
+
         Ok(())
     })();
 
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
-        panic!("delete_spool_clears_printer_slot_assignment test failed: {message}");
+        panic!(
+            "delete_spool_clears_printer_slot_assignment_and_remains_purgeable failed: {message}"
+        );
     }
 }
 
 #[test]
-fn delete_spool_rejects_active_loan() {
+fn delete_and_purge_spool_reject_active_loan() {
     let db_path = temp_db_path("delete-spool-active-loan");
 
     let result = (|| -> Result<(), String> {
@@ -1238,7 +1252,29 @@ fn delete_spool_rejects_active_loan() {
             spool_id: "spool_1".to_string(),
             reason: Some("Accidental delete attempt".to_string()),
         });
-        assert!(delete_result.is_err());
+        assert!(matches!(
+            delete_result,
+            Err(
+                crate::backend::database_result::InventoryError::InvalidOperation {
+                    code: "inventory.spool.active_loan",
+                    ..
+                }
+            )
+        ));
+
+        let purge_result = engine.purge_spool(PurgeSpoolInput {
+            spool_id: "spool_1".to_string(),
+            reason: Some("Accidental permanent delete attempt".to_string()),
+        });
+        assert!(matches!(
+            purge_result,
+            Err(
+                crate::backend::database_result::InventoryError::InvalidOperation {
+                    code: "inventory.spool.active_loan",
+                    ..
+                }
+            )
+        ));
 
         let stored_spool = engine
             .db
@@ -1266,7 +1302,7 @@ fn delete_spool_rejects_active_loan() {
 
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
-        panic!("delete_spool_rejects_active_loan test failed: {message}");
+        panic!("delete_and_purge_spool_reject_active_loan test failed: {message}");
     }
 }
 
@@ -1874,6 +1910,930 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
     if let Err(message) = result {
         panic!(
             "update_spool_details_syncs_home_location_to_current_location_when_unassigned failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn update_spool_details_blocks_home_location_add_for_outbound_loan_but_allows_receipt_update() {
+    let db_path = temp_db_path("block-outbound-loan-home-location-add");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "loaned_spool_without_home".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "HF".to_string(),
+                color_name: "Green".to_string(),
+                hex_color: Some("#00AE42".to_string()),
+                product_url: None,
+                vendor: Some("Bambu".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("qr-loaned-no-home".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(790),
+                location: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "loaned_spool_without_home".to_string(),
+                borrower_name: "BT Test".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(790),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("loaned_spool_without_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loaned spool".to_string())?;
+        assert_eq!(before.status, "BORROWED");
+        assert_eq!(before.location_id.as_deref(), Some("Loaned to: BT Test"));
+        assert!(before.home_location_id.is_none());
+
+        let error = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: before.id.clone(),
+                qr_code: before.qr_code.clone(),
+                status: before.status.clone(),
+                location: before.location_id.clone(),
+                home_location: Some(Some("Test Shelf".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .expect_err("an outbound-loaned spool must not gain a home location");
+        assert!(matches!(
+            error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let after_rejection = engine
+            .db
+            .get_spool_by_id("loaned_spool_without_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loaned spool after rejected edit".to_string())?;
+        assert_eq!(after_rejection.status, before.status);
+        assert_eq!(after_rejection.location_id, before.location_id);
+        assert_eq!(after_rejection.home_location_id, before.home_location_id);
+        let rolled_back_location_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM inventory_locations WHERE name = 'Test Shelf'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rolled_back_location_count, 0);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: before.id.clone(),
+                qr_code: before.qr_code.clone(),
+                status: before.status.clone(),
+                location: before.location_id.clone(),
+                home_location: None,
+                spool_tare_weight_g: Some(250),
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(349.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-26".to_string()),
+                    batch_code: None,
+                    supplier_reference: Some("receipt-loaned-spool".to_string()),
+                }),
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let after_receipt = engine
+            .db
+            .get_spool_by_id("loaned_spool_without_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loaned spool after receipt edit".to_string())?;
+        assert_eq!(after_receipt.status, before.status);
+        assert_eq!(after_receipt.location_id, before.location_id);
+        assert_eq!(after_receipt.home_location_id, before.home_location_id);
+        assert_eq!(after_receipt.purchase_price, Some(349.0));
+        assert_eq!(after_receipt.purchase_currency.as_deref(), Some("NOK"));
+        assert_eq!(after_receipt.spool_tare_weight_g, Some(250));
+
+        let active_loans = engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.id, loan.id);
+        assert_eq!(active_loans[0].loan.loan_status, "ACTIVE");
+        assert!(active_loans[0].loan.returned_at.is_none());
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_spool_details_blocks_home_location_add_for_outbound_loan_but_allows_receipt_update failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn update_spool_details_blocks_home_location_change_and_clear_until_outbound_loan_returns() {
+    let db_path = temp_db_path("block-outbound-loan-home-location-change-clear");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "loaned_spool_with_home".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "White".to_string(),
+                hex_color: Some("#FFFFFF".to_string()),
+                product_url: None,
+                vendor: Some("Bambu".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("qr-loaned-with-home".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(800),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "loaned_spool_with_home".to_string(),
+                borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(800),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("loaned_spool_with_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loaned spool".to_string())?;
+        assert_eq!(before.status, "BORROWED");
+        assert_eq!(before.location_id.as_deref(), Some("Loaned to: Alice"));
+        assert_eq!(
+            location_name(&engine.db, before.home_location_id.as_deref()).as_deref(),
+            Some("Shelf A")
+        );
+
+        for requested_home_location in [Some(Some("Shelf B".to_string())), Some(None)] {
+            let error = engine
+                .update_spool_details(UpdateSpoolDetailsInput {
+                    spool_id: before.id.clone(),
+                    qr_code: before.qr_code.clone(),
+                    status: before.status.clone(),
+                    location: before.location_id.clone(),
+                    home_location: requested_home_location,
+                    spool_tare_weight_g: None,
+                    ownership: None,
+                    purchase_metadata: None,
+                    purchase_price_batch_locked: None,
+                })
+                .expect_err("an outbound-loaned spool must keep its home location");
+            assert!(matches!(
+                error,
+                crate::backend::database_result::InventoryError::InvalidOperation {
+                    code: "inventory.spool.loaned_edit_blocked",
+                    ..
+                }
+            ));
+        }
+
+        let after_rejections = engine
+            .db
+            .get_spool_by_id("loaned_spool_with_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loaned spool after rejected edits".to_string())?;
+        assert_eq!(after_rejections.status, before.status);
+        assert_eq!(after_rejections.location_id, before.location_id);
+        assert_eq!(after_rejections.home_location_id, before.home_location_id);
+        let active_loans = engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.id, loan.id);
+        assert_eq!(active_loans[0].loan.loan_status, "ACTIVE");
+        assert!(active_loans[0].loan.returned_at.is_none());
+
+        engine
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id,
+                returned_grams: 700,
+                note: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let returned = engine
+            .db
+            .get_spool_by_id("loaned_spool_with_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing returned spool".to_string())?;
+        assert_eq!(returned.status, "IN_STOCK");
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: returned.id.clone(),
+                qr_code: returned.qr_code.clone(),
+                status: returned.status.clone(),
+                location: returned.location_id.clone(),
+                home_location: Some(Some("Shelf B".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let after_return_edit = engine
+            .db
+            .get_spool_by_id("loaned_spool_with_home")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing returned spool after home-location edit".to_string())?;
+        assert_eq!(after_return_edit.status, "IN_STOCK");
+        assert_eq!(
+            after_return_edit.location_id,
+            after_return_edit.home_location_id
+        );
+        assert_eq!(
+            location_name(&engine.db, after_return_edit.home_location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
+        assert!(engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?
+            .is_empty());
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_spool_details_blocks_home_location_change_and_clear_until_outbound_loan_returns failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn active_outbound_loan_blocks_every_manual_status_and_placement_entry_point_atomically() {
+    let db_path = temp_db_path("block-all-outbound-loan-placement-writes");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "loan-lock-printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Loan lock printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "loan_locked_spool".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#0066CC".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("qr-loan-locked-spool".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(900),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "loan_locked_spool".to_string(),
+                borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(900),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("loan_locked_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loan-locked spool".to_string())?;
+        let history_count_before = engine
+            .list_spool_history("loan_locked_spool", 100)
+            .map_err(|error| error.to_string())?
+            .len();
+        let slot_id = "loan-lock-printer_ams_1_slot_1";
+
+        let rejected_status_detail = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: before.id.clone(),
+                qr_code: before.qr_code.clone(),
+                status: "IN_STOCK".to_string(),
+                location: before.location_id.clone(),
+                home_location: Some(before.home_location_id.clone()),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .expect_err("detail update must not change a loaned spool status");
+        assert!(matches!(
+            rejected_status_detail,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_location_detail = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: before.id.clone(),
+                qr_code: before.qr_code.clone(),
+                status: before.status.clone(),
+                location: Some("Shelf B".to_string()),
+                home_location: Some(before.home_location_id.clone()),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .expect_err("detail update must not move a loaned spool");
+        assert!(matches!(
+            rejected_location_detail,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_ownership_detail = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: before.id.clone(),
+                qr_code: before.qr_code.clone(),
+                status: before.status.clone(),
+                location: before.location_id.clone(),
+                home_location: Some(before.home_location_id.clone()),
+                spool_tare_weight_g: None,
+                ownership: Some(UpdateSpoolDetailsOwnershipInput {
+                    ownership_type: "BORROWED_IN".to_string(),
+                    owner_name: Some("External owner".to_string()),
+                    owner_contact: None,
+                    ownership_note: None,
+                }),
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .expect_err("detail update must not change a loaned spool ownership");
+        assert!(matches!(
+            rejected_ownership_detail,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_direct_status = engine
+            .update_spool_status("loan_locked_spool", "EMPTY")
+            .expect_err("direct status update must not change a loaned spool");
+        assert!(matches!(
+            rejected_direct_status,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_direct_location = engine
+            .assign_location("loan_locked_spool", Some("Shelf B"))
+            .expect_err("direct location assignment must not move a loaned spool");
+        assert!(matches!(
+            rejected_direct_location,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_printer_assignment = engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "loan-lock-printer".to_string(),
+                slot_id: slot_id.to_string(),
+                spool_id: Some("loan_locked_spool".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .expect_err("printer assignment must not load a loaned spool");
+        assert!(matches!(
+            rejected_printer_assignment,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let after_rejections = engine
+            .db
+            .get_spool_by_id("loan_locked_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing loan-locked spool after rejections".to_string())?;
+        assert_eq!(after_rejections.status, before.status);
+        assert_eq!(after_rejections.location_id, before.location_id);
+        assert_eq!(after_rejections.home_location_id, before.home_location_id);
+        assert_eq!(after_rejections.current_weight_g, before.current_weight_g);
+        assert_eq!(after_rejections.remaining_g, before.remaining_g);
+        assert_eq!(
+            engine
+                .list_spool_history("loan_locked_spool", 100)
+                .map_err(|error| error.to_string())?
+                .len(),
+            history_count_before
+        );
+        let active_loans = engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.id, loan.id);
+        assert_eq!(active_loans[0].loan.loan_status, "ACTIVE");
+        assert!(active_loans[0].loan.returned_at.is_none());
+        let printer = engine
+            .db
+            .list_printer_overview()
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .find(|row| row.printer.id == "loan-lock-printer")
+            .ok_or_else(|| "missing loan-lock printer".to_string())?;
+        assert!(printer.slots[0].spool_id.is_none());
+        let rolled_back_location_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM inventory_locations WHERE name = 'Shelf B'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rolled_back_location_count, 0);
+
+        engine
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id,
+                returned_grams: 800,
+                note: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .update_spool_status("loan_locked_spool", "LOST")
+            .map_err(|error| error.to_string())?;
+        engine
+            .update_spool_status("loan_locked_spool", "IN_STOCK")
+            .map_err(|error| error.to_string())?;
+        engine
+            .assign_location("loan_locked_spool", Some("Shelf B"))
+            .map_err(|error| error.to_string())?;
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "loan-lock-printer".to_string(),
+                slot_id: slot_id.to_string(),
+                spool_id: Some("loan_locked_spool".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let unlocked = engine
+            .db
+            .get_spool_by_id("loan_locked_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing returned and assigned spool".to_string())?;
+        assert_eq!(unlocked.status, "ASSIGNED");
+        assert_eq!(
+            location_name(&engine.db, unlocked.home_location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
+        assert!(unlocked
+            .location_id
+            .as_deref()
+            .is_some_and(|location| location.starts_with("Printer:")));
+        assert!(engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?
+            .is_empty());
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "active_outbound_loan_blocks_every_manual_status_and_placement_entry_point_atomically failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn active_outbound_loan_blocks_printer_resize_and_delete_atomically() {
+    let db_path = temp_db_path("block-loaned-printer-release");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "loaned-release-printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Loaned release printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(2),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "legacy-assigned-loan".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Green".to_string(),
+                hex_color: Some("#00AA66".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("legacy-assigned-loan-qr".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(900),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let slot_id = "loaned-release-printer_ams_1_slot_2";
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "loaned-release-printer".to_string(),
+                slot_id: slot_id.to_string(),
+                spool_id: Some("legacy-assigned-loan".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let printer_location_id = engine
+            .db
+            .get_spool_by_id("legacy-assigned-loan")
+            .map_err(|error| error.to_string())?
+            .and_then(|spool| spool.location_id)
+            .ok_or_else(|| "expected printer location before loan".to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "legacy-assigned-loan".to_string(),
+                borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(850),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE ams_slots SET spool_id = ?1 WHERE id = ?2",
+                ["legacy-assigned-loan", slot_id],
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools
+                 SET status = 'ASSIGNED', location_id = ?2
+                 WHERE id = ?1",
+                ["legacy-assigned-loan", printer_location_id.as_str()],
+            )
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("legacy-assigned-loan")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy assigned loan".to_string())?;
+
+        let resize_error = engine
+            .create_printer(CreatePrinterInput {
+                id: "loaned-release-printer".to_string(),
+                model: "X1C".to_string(),
+                name: "Changed printer name".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .expect_err("shrinking a slot with an active outbound loan must fail");
+        assert!(matches!(
+            resize_error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let delete_error = engine
+            .delete_printer("loaned-release-printer")
+            .expect_err("deleting a printer with an active outbound loan must fail");
+        assert!(matches!(
+            delete_error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let after = engine
+            .db
+            .get_spool_by_id("legacy-assigned-loan")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy assigned loan after rejected writes".to_string())?;
+        assert_eq!(after.status, before.status);
+        assert_eq!(after.location_id, before.location_id);
+        assert_eq!(after.home_location_id, before.home_location_id);
+
+        let printer = engine
+            .db
+            .get_printer_overview("loaned-release-printer")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "printer was deleted by rejected write".to_string())?;
+        assert_eq!(printer.printer.model, "P1S");
+        assert_eq!(printer.printer.name, "Loaned release printer");
+        let slot = printer
+            .slots
+            .iter()
+            .find(|slot| slot.slot_id == slot_id)
+            .ok_or_else(|| "slot was removed by rejected resize".to_string())?;
+        assert_eq!(slot.spool_id.as_deref(), Some("legacy-assigned-loan"));
+
+        let active_loans = engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.id, loan.id);
+        assert_eq!(active_loans[0].loan.loan_status, "ACTIVE");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "active_outbound_loan_blocks_printer_resize_and_delete_atomically failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn active_outbound_loan_blocks_legacy_printer_usage_and_weight_paths_atomically() {
+    let db_path = temp_db_path("block-legacy-loaned-printer-writes");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "legacy-loan-printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Legacy loan printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "legacy_loaned_printer_spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Black".to_string(),
+                hex_color: Some("#000000".to_string()),
+                product_url: None,
+                vendor: Some("Bambu".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("qr-legacy-loaned-printer".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(600),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "legacy_loaned_printer_spool".to_string(),
+                borrower_name: "Legacy borrower".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(600),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let slot_id = "legacy-loan-printer_ams_1_slot_1";
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE ams_slots SET spool_id = ?1 WHERE id = ?2",
+                ["legacy_loaned_printer_spool", slot_id],
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET status = 'ASSIGNED' WHERE id = ?1",
+                ["legacy_loaned_printer_spool"],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let before = engine
+            .db
+            .get_spool_by_id("legacy_loaned_printer_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy loaned printer spool".to_string())?;
+        assert_eq!(before.status, "ASSIGNED");
+        let history_count_before = engine
+            .list_spool_history("legacy_loaned_printer_spool", 100)
+            .map_err(|error| error.to_string())?
+            .len();
+        let print_job_count_before: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM print_jobs WHERE spool_id = ?1",
+                ["legacy_loaned_printer_spool"],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let weight_reading_count_before: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM weight_readings WHERE spool_id = ?1",
+                ["legacy_loaned_printer_spool"],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        let rejected_print_usage = engine
+            .record_print_usage(RecordPrintUsageInput {
+                printer_id: "legacy-loan-printer".to_string(),
+                spool_id: "legacy_loaned_printer_spool".to_string(),
+                grams: 50,
+                job_name: Some("Must not print".to_string()),
+                success: Some(true),
+            })
+            .expect_err("legacy assigned spool with an active loan must not record usage");
+        assert!(matches!(
+            rejected_print_usage,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_weight_accept = engine
+            .accept_bambu_live_weight_estimate(AcceptBambuLiveWeightEstimateInput {
+                printer_id: "legacy-loan-printer".to_string(),
+                slot_id: slot_id.to_string(),
+                spool_id: "legacy_loaned_printer_spool".to_string(),
+                expected_weight_seen_at: "2026-08-26T20:00:00Z".to_string(),
+                expected_remaining_grams: 500,
+                expected_current_grams: Some(600),
+            })
+            .expect_err("legacy assigned spool with an active loan must not accept AMS weight");
+        assert!(matches!(
+            rejected_weight_accept,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let rejected_slot_clear = engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "legacy-loan-printer".to_string(),
+                slot_id: slot_id.to_string(),
+                spool_id: None,
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .expect_err("clearing a legacy slot must not rewrite an actively loaned spool");
+        assert!(matches!(
+            rejected_slot_clear,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let after = engine
+            .db
+            .get_spool_by_id("legacy_loaned_printer_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy loaned printer spool after rejections".to_string())?;
+        assert_eq!(after.status, before.status);
+        assert_eq!(after.location_id, before.location_id);
+        assert_eq!(after.home_location_id, before.home_location_id);
+        assert_eq!(after.current_weight_g, before.current_weight_g);
+        assert_eq!(after.remaining_g, before.remaining_g);
+        assert_eq!(
+            engine
+                .list_spool_history("legacy_loaned_printer_spool", 100)
+                .map_err(|error| error.to_string())?
+                .len(),
+            history_count_before
+        );
+        let print_job_count_after: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM print_jobs WHERE spool_id = ?1",
+                ["legacy_loaned_printer_spool"],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(print_job_count_after, print_job_count_before);
+        let weight_reading_count_after: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM weight_readings WHERE spool_id = ?1",
+                ["legacy_loaned_printer_spool"],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(weight_reading_count_after, weight_reading_count_before);
+        let printer = engine
+            .db
+            .list_printer_overview()
+            .map_err(|error| error.to_string())?
+            .into_iter()
+            .find(|row| row.printer.id == "legacy-loan-printer")
+            .ok_or_else(|| "missing legacy loan printer".to_string())?;
+        assert_eq!(
+            printer.slots[0].spool_id.as_deref(),
+            Some("legacy_loaned_printer_spool")
+        );
+        let active_loans = engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loans.len(), 1);
+        assert_eq!(active_loans[0].loan.id, loan.id);
+        assert_eq!(active_loans[0].loan.loan_status, "ACTIVE");
+        assert!(active_loans[0].loan.returned_at.is_none());
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "active_outbound_loan_blocks_legacy_printer_usage_and_weight_paths_atomically failed: {message}"
         );
     }
 }
@@ -2886,6 +3846,139 @@ fn update_borrowed_in_spool_updates_spool_and_active_inbound_loan() {
 }
 
 #[test]
+fn update_borrowed_in_spool_rejects_corrupt_outbound_loan_state_atomically() {
+    let db_path = temp_db_path("borrowed-in-edit-outbound-lock");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "corrupt_outbound_borrowed_in".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Orange".to_string(),
+                hex_color: Some("#FF7700".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("corrupt-outbound-borrowed-in-qr".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(900),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "corrupt_outbound_borrowed_in".to_string(),
+                borrower_name: "Alice".to_string(),
+                counterparty_contact: Some("alice@example.test".to_string()),
+                grams_out: Some(850),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools
+                 SET ownership_type = 'BORROWED_IN',
+                     owner_name = 'Legacy owner',
+                     owner_contact = 'legacy@example.test',
+                     ownership_note = 'Legacy note'
+                 WHERE id = ?1",
+                ["corrupt_outbound_borrowed_in"],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let before = engine
+            .db
+            .get_spool_by_id("corrupt_outbound_borrowed_in")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing corrupt outbound spool".to_string())?;
+        let history_count_before = engine
+            .list_spool_history("corrupt_outbound_borrowed_in", 100)
+            .map_err(|error| error.to_string())?
+            .len();
+
+        let standalone_error = engine
+            .update_spool_ownership(UpdateSpoolOwnershipInput {
+                spool_id: "corrupt_outbound_borrowed_in".to_string(),
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: Some("Standalone changed owner".to_string()),
+                owner_contact: Some("standalone@example.test".to_string()),
+                ownership_note: Some("Standalone changed note".to_string()),
+            })
+            .expect_err("standalone ownership must not bypass an outbound loan lock");
+        assert!(matches!(
+            standalone_error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let borrowed_in_error = engine
+            .update_borrowed_in_spool(UpdateBorrowedInSpoolInput {
+                spool_id: "corrupt_outbound_borrowed_in".to_string(),
+                owner_name: "Changed owner".to_string(),
+                owner_contact: Some("changed@example.test".to_string()),
+                ownership_note: Some("Changed note".to_string()),
+            })
+            .expect_err("borrowed-in metadata must not bypass an outbound loan lock");
+        assert!(matches!(
+            borrowed_in_error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let after = engine
+            .db
+            .get_spool_by_id("corrupt_outbound_borrowed_in")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing corrupt outbound spool after rejection".to_string())?;
+        assert_eq!(after.ownership_type, before.ownership_type);
+        assert_eq!(after.owner_name, before.owner_name);
+        assert_eq!(after.owner_contact, before.owner_contact);
+        assert_eq!(after.ownership_note, before.ownership_note);
+        assert_eq!(
+            engine
+                .list_spool_history("corrupt_outbound_borrowed_in", 100)
+                .map_err(|error| error.to_string())?
+                .len(),
+            history_count_before
+        );
+        let active = engine
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active.len(), 1);
+        assert_eq!(active[0].loan.id, loan.id);
+        assert_eq!(active[0].loan.counterparty_name, "Alice");
+        assert_eq!(
+            active[0].loan.counterparty_contact.as_deref(),
+            Some("alice@example.test")
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_borrowed_in_spool_rejects_corrupt_outbound_loan_state_atomically failed: {message}"
+        );
+    }
+}
+
+#[test]
 fn update_spool_ownership_marks_owned_spool_as_borrowed_in() {
     let db_path = temp_db_path("update-owned-to-borrowed-in");
 
@@ -2956,6 +4049,123 @@ fn update_spool_ownership_marks_owned_spool_as_borrowed_in() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("update_spool_ownership_marks_owned_spool_as_borrowed_in failed: {message}");
+    }
+}
+
+#[test]
+fn legacy_borrowed_status_blocks_ownership_and_deletion_without_side_effects() {
+    let db_path = temp_db_path("update-ownership-legacy-borrowed-lock");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "legacy_borrowed_ownership".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Yellow".to_string(),
+                hex_color: Some("#FFCC00".to_string()),
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("legacy-borrowed-ownership-qr".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(900),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET status = 'BORROWED' WHERE id = ?1",
+                ["legacy_borrowed_ownership"],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let before = engine
+            .db
+            .get_spool_by_id("legacy_borrowed_ownership")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy borrowed spool".to_string())?;
+        let history_count_before = engine
+            .list_spool_history("legacy_borrowed_ownership", 100)
+            .map_err(|error| error.to_string())?
+            .len();
+
+        let error = engine
+            .update_spool_ownership(UpdateSpoolOwnershipInput {
+                spool_id: "legacy_borrowed_ownership".to_string(),
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: Some("External owner".to_string()),
+                owner_contact: None,
+                ownership_note: None,
+            })
+            .expect_err("legacy BORROWED status must preserve the outbound-loan lock");
+        assert!(matches!(
+            error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+        for deletion in [
+            engine.delete_spool(DeleteSpoolInput {
+                spool_id: "legacy_borrowed_ownership".to_string(),
+                reason: Some("Rejected legacy-state delete".to_string()),
+            }),
+            engine.purge_spool(PurgeSpoolInput {
+                spool_id: "legacy_borrowed_ownership".to_string(),
+                reason: Some("Rejected legacy-state purge".to_string()),
+            }),
+        ] {
+            assert!(matches!(
+                deletion,
+                Err(
+                    crate::backend::database_result::InventoryError::InvalidOperation {
+                        code: "inventory.spool.active_loan",
+                        ..
+                    }
+                )
+            ));
+        }
+
+        let after = engine
+            .db
+            .get_spool_by_id("legacy_borrowed_ownership")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy borrowed spool after rejection".to_string())?;
+        assert_eq!(after.status, before.status);
+        assert_eq!(after.ownership_type, before.ownership_type);
+        assert_eq!(after.owner_name, before.owner_name);
+        assert_eq!(after.owner_contact, before.owner_contact);
+        assert_eq!(after.ownership_note, before.ownership_note);
+        assert_eq!(
+            engine
+                .list_spool_history("legacy_borrowed_ownership", 100)
+                .map_err(|error| error.to_string())?
+                .len(),
+            history_count_before
+        );
+        assert!(engine
+            .list_spool_loans_for_direction(20, true, None)
+            .map_err(|error| error.to_string())?
+            .is_empty());
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "legacy_borrowed_status_blocks_ownership_and_deletion_without_side_effects failed: {message}"
+        );
     }
 }
 

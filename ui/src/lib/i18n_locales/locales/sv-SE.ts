@@ -65,7 +65,7 @@ export const svSEDictionary: DictionaryNode = {
   "errors": {
     "internal": "Något gick fel. Försök igen.",
     "loadedSpoolEditBlocked": "Använd åtgärderna för skrivarfack för att redigera en laddad rulle.",
-    "loanedSpoolEditBlocked": "Lämna tillbaka lånet innan du redigerar denna rulles status eller plats.",
+    "loanedSpoolEditBlocked": "Avsluta det aktiva utlånet innan du ändrar rullens status, plats eller ägarskap.",
     "spoolActiveLoan": "Returnera det aktiva lånet innan du tar bort denna rulle.",
     "forbidden": "Denna åtgärd är inte tillåten.",
     "notFound": "Den begärda posten hittades inte.",
@@ -653,6 +653,7 @@ export const svSEDictionary: DictionaryNode = {
     "qrTarget": "QR mål",
     "selectedRoll": "Vald rulle",
     "currentStatus": "Aktuell status",
+    "discardUnsavedChanges": "Vill du kasta osparade ändringar för rullen? Dina ändringar går förlorade.",
     "qrTargetCompanionHint": "Denna QR öppnar webbläsaren direkt så länge målet URL fortfarande är tillgänglig.",
     "removeFromSlotOption": "Tom plats (ta bort från nuvarande plats)",
     "keepUnassignedOption": "Ingen plats (behåll otilldelad)",

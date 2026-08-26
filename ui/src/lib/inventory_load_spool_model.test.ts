@@ -39,6 +39,7 @@ test("contextual load keeps the selected spool in the prepared printer assignmen
   const prepared = prepareInventoryLoadSpoolAssignment({
     assignedSlot: null,
     availableSlots: [slot()],
+    loanedOut: false,
     selectedSlotId: "slot-1",
     spool: spool(),
   });
@@ -58,6 +59,7 @@ test("contextual load fails closed for occupied, stale, and unavailable choices"
     prepareInventoryLoadSpoolAssignment({
       assignedSlot: null,
       availableSlots: [slot()],
+      loanedOut: false,
       selectedSlotId: "missing-slot",
       spool: spool(),
     }),
@@ -67,9 +69,20 @@ test("contextual load fails closed for occupied, stale, and unavailable choices"
     prepareInventoryLoadSpoolAssignment({
       assignedSlot: null,
       availableSlots: [slot()],
+      loanedOut: false,
       selectedSlotId: "slot-1",
       spool: spool("BORROWED"),
     }),
     { ok: false, reason: "unavailable-spool" },
+  );
+  assert.deepEqual(
+    prepareInventoryLoadSpoolAssignment({
+      assignedSlot: null,
+      availableSlots: [slot()],
+      loanedOut: true,
+      selectedSlotId: "slot-1",
+      spool: spool("IN_STOCK"),
+    }),
+    { ok: false, reason: "loaned-spool" },
   );
 });

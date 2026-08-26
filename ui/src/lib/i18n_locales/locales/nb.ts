@@ -58,7 +58,7 @@ export const nbDictionary: DictionaryNode = {
       spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
       loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
       loanedSpoolEditBlocked:
-        "Returner utlånet før du redigerer status eller plassering for denne rullen.",
+        "Returner det aktive utlånet før du endrer status, plassering eller eierskap for denne rullen.",
       spoolStatusEditLimited:
         "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
       locationHasReferences:

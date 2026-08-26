@@ -12,6 +12,7 @@ type InventoryDangerZonePanelProps = {
   confirmDelete: boolean;
   confirmPurge: boolean;
   manageBusy: boolean;
+  loanedOut?: boolean;
   onCancelConfirmation: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
@@ -49,6 +50,7 @@ function inventoryDangerZoneButtonClassName(tone: InventoryDangerZoneButtonTone)
 }
 
 function InventoryDangerZoneConfirmation({
+  cancelDisabled,
   cancelLabel,
   confirmDisabled,
   confirmLabel,
@@ -62,6 +64,7 @@ function InventoryDangerZoneConfirmation({
   title,
   tone,
 }: {
+  cancelDisabled: boolean;
   cancelLabel: string;
   confirmDisabled: boolean;
   confirmLabel: string;
@@ -105,7 +108,7 @@ function InventoryDangerZoneConfirmation({
           type="button"
           className={`w-full sm:w-auto ${modalActionButtonClassName("secondary")}`}
           onClick={onCancel}
-          disabled={confirmDisabled}
+          disabled={cancelDisabled}
         >
           {cancelLabel}
         </button>
@@ -115,6 +118,8 @@ function InventoryDangerZoneConfirmation({
 }
 
 export type InventoryDangerZonePanelViewProps = {
+  blockedReason?: string;
+  cancelDisabled: boolean;
   confirmDelete: boolean;
   confirmMarkEmpty: boolean;
   confirmPurge: boolean;
@@ -131,6 +136,8 @@ export type InventoryDangerZonePanelViewProps = {
 };
 
 export function InventoryDangerZonePanelView({
+  blockedReason,
+  cancelDisabled,
   confirmDelete,
   confirmMarkEmpty,
   confirmPurge,
@@ -190,6 +197,11 @@ export function InventoryDangerZonePanelView({
         id="inventory-danger-zone-actions"
         className="grid grid-cols-1 gap-3 border-t border-rose-200/80 px-5 pb-5 pt-4 dark:border-rose-500/30"
       >
+        {blockedReason ? (
+          <div className="text-xs leading-5 text-rose-800/80 dark:text-rose-100/75" role="note">
+            {blockedReason}
+          </div>
+        ) : null}
         {status === "EMPTY" ? (
           <button
             type="button"
@@ -201,6 +213,7 @@ export function InventoryDangerZonePanelView({
           </button>
         ) : confirmMarkEmpty ? (
           <InventoryDangerZoneConfirmation
+            cancelDisabled={cancelDisabled}
             cancelLabel={cancelLabel}
             confirmDisabled={disabled}
             confirmLabel={t("inventory.confirmMarkEmptyAction", "Mark roll as empty")}
@@ -231,6 +244,7 @@ export function InventoryDangerZonePanelView({
 
         {confirmDelete ? (
           <InventoryDangerZoneConfirmation
+            cancelDisabled={cancelDisabled}
             cancelLabel={cancelLabel}
             confirmDisabled={disabled}
             confirmLabel={t("inventory.confirmDeleteAction", "Delete from active inventory")}
@@ -263,6 +277,7 @@ export function InventoryDangerZonePanelView({
 
         {confirmPurge ? (
           <InventoryDangerZoneConfirmation
+            cancelDisabled={cancelDisabled}
             cancelLabel={cancelLabel}
             confirmDisabled={disabled}
             confirmLabel={t("inventory.confirmPurgeAction", "Purge roll permanently")}
@@ -301,6 +316,7 @@ export function InventoryDangerZonePanel({
   confirmDelete,
   confirmPurge,
   manageBusy,
+  loanedOut = false,
   onCancelConfirmation,
   onDelete,
   onMarkEmpty,
@@ -312,7 +328,7 @@ export function InventoryDangerZonePanel({
 }: InventoryDangerZonePanelProps) {
   const { t } = useI18n();
   const [confirmMarkEmpty, setConfirmMarkEmpty] = useState(false);
-  const disabled = !runtimeAvailable || manageBusy;
+  const disabled = !runtimeAvailable || manageBusy || loanedOut;
 
   useEffect(() => {
     setConfirmMarkEmpty(false);
@@ -341,6 +357,15 @@ export function InventoryDangerZonePanel({
 
   return (
     <InventoryDangerZonePanelView
+      blockedReason={
+        loanedOut
+          ? t(
+              "errors.spoolActiveLoan",
+              "Return the active loan before removing this roll.",
+            )
+          : undefined
+      }
+      cancelDisabled={manageBusy}
       confirmDelete={confirmDelete}
       confirmMarkEmpty={confirmMarkEmpty}
       confirmPurge={confirmPurge}

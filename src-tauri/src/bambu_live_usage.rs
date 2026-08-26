@@ -393,6 +393,9 @@ fn sync_live_weight_in_transaction(
         classify_live_weight_update(current, remaining_grams),
         usage_context,
     );
+    if !matches!(decision, LiveWeightDecision::IgnoreUnchanged) {
+        db.ensure_spool_not_outbound_loan_locked(spool_id)?;
+    }
     match decision {
         LiveWeightDecision::IgnoreUnchanged => return Ok(()),
         LiveWeightDecision::IgnoreIncrease { increase_grams } => {

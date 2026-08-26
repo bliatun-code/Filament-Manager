@@ -6,7 +6,6 @@ use crate::backend::inventory_engine::{
     UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput,
     WeightSource,
 };
-use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::catalog_commands::CatalogRefreshResult;
 #[cfg(test)]
 use crate::companion_assets::companion_browser_assets;
@@ -1224,14 +1223,6 @@ pub(super) async fn handle_update_spool_details(
                 .map(|metadata| metadata.normalize_for_edit(&spool.spool))
                 .transpose()
                 .map_err(CompanionApiError::from)?;
-            let purchase_metadata_changes = normalized_purchase_metadata
-                .as_ref()
-                .is_some_and(|metadata| {
-                    metadata != &PurchaseReceiptMetadata::from_spool(&spool.spool)
-                });
-            let purchase_price_batch_lock_changes = payload
-                .purchase_price_batch_locked
-                .is_some_and(|locked| locked != spool.spool.purchase_price_batch_locked);
             let requested_home_location_is_unchanged = match &requested_home_location {
                 Some(value) => value == &spool.spool.home_location_id,
                 None => true,
@@ -1246,14 +1237,15 @@ pub(super) async fn handle_update_spool_details(
                         && LoanDirection::from_raw(Some(&row.loan.loan_direction))
                             == LoanDirection::Outbound
                 });
-            let editing_loan_receipt_only = status == current_status.as_str()
+            let editing_loan_nonplacement_details = status == current_status.as_str()
                 && requested_location == spool.spool.location_id
                 && requested_home_location_is_unchanged
-                && payload.spool_tare_weight_g.is_none()
                 && ownership.is_none()
-                && (purchase_metadata_changes || purchase_price_batch_lock_changes);
+                && (payload.spool_tare_weight_g.is_some()
+                    || normalized_purchase_metadata.is_some()
+                    || payload.purchase_price_batch_locked.is_some());
             if (current_status == SpoolStatus::Borrowed || has_active_outbound_loan)
-                && !editing_loan_receipt_only
+                && !editing_loan_nonplacement_details
             {
                 return Err(CompanionApiError::BadRequest(
                     "Loaned-out spools use the companion loan return flow instead of manual status/location edits"

@@ -16,6 +16,7 @@ type UseInventoryLoadSpoolActionInput = {
   clientLibraryId: string | null;
   clientReadOnly: boolean;
   ensureLocalWriteAllowed: () => boolean;
+  loanedOut: boolean;
   manageBusy: boolean;
   printerSlots: InventoryPrinterSlotOption[];
   reloadPrinterOverview: () => Promise<void>;
@@ -36,6 +37,7 @@ export function useInventoryLoadSpoolAction({
   clientLibraryId,
   clientReadOnly,
   ensureLocalWriteAllowed,
+  loanedOut,
   manageBusy,
   printerSlots,
   reloadPrinterOverview,
@@ -58,6 +60,7 @@ export function useInventoryLoadSpoolAction({
       prepareInventoryLoadSpoolAssignment({
         assignedSlot,
         availableSlots,
+        loanedOut,
         selectedSlotId: availableSlots[0]?.slotId ?? "",
         spool: selectedSpool,
       }).ok,
@@ -71,6 +74,15 @@ export function useInventoryLoadSpoolAction({
       return;
     }
     if (clientReadOnly && !canUseClientHostWrite()) {
+      return;
+    }
+    if (loanedOut) {
+      setError(
+        t(
+          "errors.loanedSpoolEditBlocked",
+          "Return the active outbound loan before changing status, location, or ownership for this roll.",
+        ),
+      );
       return;
     }
     if (!canLoadSelectedSpool) {
@@ -89,6 +101,7 @@ export function useInventoryLoadSpoolAction({
     canUseClientHostWrite,
     clientReadOnly,
     ensureLocalWriteAllowed,
+    loanedOut,
     manageBusy,
     selectedSpool,
     setError,
@@ -112,9 +125,19 @@ export function useInventoryLoadSpoolAction({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
+    if (loanedOut) {
+      setError(
+        t(
+          "errors.loanedSpoolEditBlocked",
+          "Return the active outbound loan before changing status, location, or ownership for this roll.",
+        ),
+      );
+      return;
+    }
     const prepared = prepareInventoryLoadSpoolAssignment({
       assignedSlot,
       availableSlots,
+      loanedOut,
       selectedSlotId: slotId,
       spool: selectedSpool,
     });
@@ -162,6 +185,7 @@ export function useInventoryLoadSpoolAction({
     clientLibraryId,
     clientReadOnly,
     ensureLocalWriteAllowed,
+    loanedOut,
     manageBusy,
     reloadPrinterOverview,
     reloadSpoolDetail,

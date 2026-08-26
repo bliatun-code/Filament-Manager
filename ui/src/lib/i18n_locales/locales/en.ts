@@ -58,7 +58,7 @@ export const enDictionary: DictionaryNode = {
       spoolActiveLoan: "Return the active loan before removing this roll.",
       loadedSpoolEditBlocked: "Use the printer-slot actions to edit a loaded roll.",
       loanedSpoolEditBlocked:
-        "Return the loan before editing this roll's status or location.",
+        "Return the active outgoing loan before changing this roll's status, location, or ownership.",
       spoolStatusEditLimited:
         "Browser edits are limited to in-stock, empty, or lost rolls.",
       locationHasReferences:

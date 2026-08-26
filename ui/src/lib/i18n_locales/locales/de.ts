@@ -58,7 +58,7 @@ export const deDictionary: DictionaryNode = {
     spoolActiveLoan: "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
     loadedSpoolEditBlocked: "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
     loanedSpoolEditBlocked:
-      "Beende die Ausleihe, bevor du Status oder Lagerort dieser Rolle änderst.",
+      "Beende die aktive Ausleihe, bevor du Status, Lagerort oder Eigentum dieser Rolle änderst.",
     spoolStatusEditLimited:
       "Im Browser kann der Rollenstatus nur auf Lagernd, Leer oder Verloren gesetzt werden.",
     locationHasReferences:
@@ -742,7 +742,8 @@ export const deDictionary: DictionaryNode = {
     noAvailablePrinterSlots: "Keine freien Druckerplätze verfügbar.",
     printLabelAction: "Etikett drucken",
     unsavedChanges: "Nicht gespeicherte Änderungen",
-    discardUnsavedChanges: "Nicht gespeicherte Änderungen verwerfen?",
+    discardUnsavedChanges:
+      "Nicht gespeicherte Änderungen an der Rolle verwerfen? Deine Änderungen gehen verloren.",
     allChangesSaved: "Alle Änderungen gespeichert.",
     rollChangesSaved: "Rollenänderungen gespeichert.",
     labelSheetInventoryHint:

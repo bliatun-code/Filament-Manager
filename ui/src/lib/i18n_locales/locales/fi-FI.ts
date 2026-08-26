@@ -65,7 +65,7 @@ export const fiFIDictionary: DictionaryNode = {
   "errors": {
     "internal": "Jotain meni pieleen. Yritä uudelleen.",
     "loadedSpoolEditBlocked": "Muokkaa ladattua rullaa käyttämällä tulostimen lokeron toimintoja.",
-    "loanedSpoolEditBlocked": "Palauta laina ennen tämän rullan tilan tai sijainnin muokkaamista.",
+    "loanedSpoolEditBlocked": "Palauta aktiivisesti ulos lainattu kela ennen kuin muutat sen tilaa, sijaintia tai omistajuutta.",
     "spoolActiveLoan": "Palauta aktiivinen laina ennen tämän rullan poistamista.",
     "forbidden": "Tämä toiminto ei ole sallittu.",
     "notFound": "Pyydettyä tietuetta ei löytynyt.",
@@ -653,6 +653,7 @@ export const fiFIDictionary: DictionaryNode = {
     "qrTarget": "QR tavoite",
     "selectedRoll": "Valittu rulla",
     "currentStatus": "Nykyinen tila",
+    "discardUnsavedChanges": "Hylätäänkö kelan tallentamattomat muutokset? Tekemäsi muutokset menetetään.",
     "qrTargetCompanionHint": "Tämä QR avaa selaimen suoraan niin kauan kuin kohde URL on vielä saatavilla.",
     "removeFromSlotOption": "Tyhjä paikka (poista nykyisestä paikasta)",
     "keepUnassignedOption": "Ei paikkaa (pidä käyttämättömänä)",

@@ -185,7 +185,7 @@ export const itITDictionary: DictionaryNode = {
     loadedSpoolEditBlocked:
       "Utilizzare le azioni stampante-slot per modificare una bobina caricata.",
     loanedSpoolEditBlocked:
-      "Restituisci il prestito prima di modificare lo stato o la posizione di questa bobina.",
+      "Completa la restituzione del prestito attivo in uscita prima di modificare lo stato, la posizione o la proprietà di questa bobina.",
     notFound: "Il record richiesto non è stato trovato.",
     requestFailed: "Impossibile completare la richiesta.",
     spoolActiveLoan:
@@ -383,6 +383,8 @@ export const itITDictionary: DictionaryNode = {
     confirmPurgeAction: "Spurgare la bobina in modo permanente",
     current: "attuale",
     currentStatus: "Stato attuale",
+    discardUnsavedChanges:
+      "Scartare le modifiche non salvate alla bobina? Le modifiche andranno perse.",
     dangerZone: "Zona pericolosa",
     dangerZoneHint:
       "Aprire solo quando è necessario svuotare, rimuovere o spurgare permanentemente questa bobina.",

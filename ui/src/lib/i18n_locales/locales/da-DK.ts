@@ -65,7 +65,7 @@ export const daDKDictionary: DictionaryNode = {
   "errors": {
     "internal": "Noget gik galt. Prøv igen.",
     "loadedSpoolEditBlocked": "Brug printerbakkehandlingerne til at redigere en ilagt rulle.",
-    "loanedSpoolEditBlocked": "Venligst returner lånet, før du redigerer denne rulles status eller placering.",
+    "loanedSpoolEditBlocked": "Afslut det aktive udlån, før du ændrer denne rulles status, placering eller ejerskab.",
     "spoolActiveLoan": "Returner det aktive lån, før du fjerner denne rulle.",
     "forbidden": "Denne handling er ikke tilladt.",
     "notFound": "Den anmodede post blev ikke fundet.",
@@ -653,6 +653,7 @@ export const daDKDictionary: DictionaryNode = {
     "qrTarget": "QR mål",
     "selectedRoll": "Valgt rulle",
     "currentStatus": "Nuværende status",
+    "discardUnsavedChanges": "Vil du kassere ikke-gemte ændringer af rullen? Dine ændringer går tabt.",
     "qrTargetCompanionHint": "Denne QR åbner browseren direkte, så længe målet URL stadig er tilgængelig.",
     "removeFromSlotOption": "Tom plads (fjern fra nuværende plads)",
     "keepUnassignedOption": "Ingen sæde (hold utildelt)",

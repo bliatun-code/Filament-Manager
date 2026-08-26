@@ -51,7 +51,7 @@ export const esDictionary: DictionaryNode = {
     loadedSpoolEditBlocked:
       "Usa las acciones de la ranura de impresora para editar una bobina cargada.",
     loanedSpoolEditBlocked:
-      "Devuelve el préstamo antes de editar el estado o la ubicación de esta bobina.",
+      "Devuelve el préstamo saliente activo antes de cambiar el estado, la ubicación o la propiedad de esta bobina.",
     spoolStatusEditLimited:
       "Desde el navegador solo se pueden marcar bobinas en stock, vacías o perdidas.",
     exportInvalidPayload: "La exportación generada no es válida.",
@@ -272,6 +272,8 @@ export const esDictionary: DictionaryNode = {
     selectedRoll: "Bobina seleccionada",
     updatingRoll: "Actualizando la bobina seleccionada...",
     currentStatus: "Estado actual",
+    discardUnsavedChanges:
+      "¿Descartar los cambios no guardados de la bobina? Se perderán tus cambios.",
     material: "Material",
     remaining: "Restante",
     placement: "Ubicación",

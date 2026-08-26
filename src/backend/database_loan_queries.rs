@@ -3,10 +3,11 @@ use rusqlite::{params, Connection, OptionalExtension};
 use super::database_loan_models::{ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow};
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::{map_active_spool_loan_row, map_spool_loan_row_at};
-use super::inventory_domain::LoanDirection;
+use super::inventory_domain::{LoanDirection, SpoolStatus};
 use super::loan_defaults::{
-    normalize_loan_direction_filter, ACTIVE_LOAN_PREDICATE_SQL, ACTIVE_LOAN_PREDICATE_SQL_L,
-    LOAN_DIRECTION_SELECT_SQL_L, LOAN_STATUS_SELECT_SQL_L, RETURNED_LOAN_PREDICATE_SQL_L,
+    loaned_spool_edit_blocked, normalize_loan_direction_filter, ACTIVE_LOAN_PREDICATE_SQL,
+    ACTIVE_LOAN_PREDICATE_SQL_L, LOAN_DIRECTION_SELECT_SQL_L, LOAN_STATUS_SELECT_SQL_L,
+    RETURNED_LOAN_PREDICATE_SQL_L,
 };
 use super::spool_defaults::normalize_spool_status;
 
@@ -25,6 +26,38 @@ pub(crate) fn spool_has_active_loan(conn: &Connection, spool_id: &str) -> Invent
         )
         .optional()?;
     Ok(exists.is_some())
+}
+
+pub(crate) fn spool_is_outbound_loan_locked(
+    conn: &Connection,
+    spool_id: &str,
+) -> InventoryResult<bool> {
+    let status: Option<String> = conn
+        .query_row(
+            "SELECT status
+             FROM filament_spools
+             WHERE id = ?1
+             LIMIT 1",
+            params![spool_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let status = status.ok_or(InventoryError::NotFound)?;
+    let has_active_outbound_loan =
+        find_active_spool_loan_for_direction(conn, spool_id, LoanDirection::Outbound.as_str())?
+            .is_some();
+    Ok(SpoolStatus::from_raw(Some(&status)) == SpoolStatus::Borrowed || has_active_outbound_loan)
+}
+
+pub(crate) fn ensure_spool_not_outbound_loan_locked(
+    conn: &Connection,
+    spool_id: &str,
+) -> InventoryResult<()> {
+    if spool_is_outbound_loan_locked(conn, spool_id)? {
+        Err(loaned_spool_edit_blocked())
+    } else {
+        Ok(())
+    }
 }
 
 pub(crate) fn list_active_spool_loans(

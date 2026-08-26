@@ -8,6 +8,7 @@ use super::database_loan_models::{
     ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,
 };
 use super::database_loan_queries::{
+    ensure_spool_not_outbound_loan_locked as ensure_spool_not_outbound_loan_locked_row,
     find_active_spool_loan_for_direction as find_active_spool_loan_for_direction_row,
     list_active_spool_loans as list_active_spool_loan_rows,
     list_loan_usage_by_person_for_direction as list_loan_usage_by_person_for_direction_rows,
@@ -73,6 +74,10 @@ impl FilamentDatabase {
 
     pub fn spool_has_active_loan(&self, spool_id: &str) -> InventoryResult<bool> {
         spool_has_active_loan_row(self.connection(), spool_id)
+    }
+
+    pub fn ensure_spool_not_outbound_loan_locked(&self, spool_id: &str) -> InventoryResult<()> {
+        ensure_spool_not_outbound_loan_locked_row(self.connection(), spool_id)
     }
 
     pub fn create_inbound_spool_loan(

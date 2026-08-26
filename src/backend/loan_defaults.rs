@@ -8,6 +8,7 @@ pub(crate) const LOAN_ALREADY_RETURNED_CODE: &str = "loans.already_returned";
 pub(crate) const LOAN_DIRECTION_MISMATCH_CODE: &str = "loans.direction_mismatch";
 pub(crate) const LOAN_BORROWED_IN_CANNOT_LEND_CODE: &str = "loans.borrowed_in_cannot_lend";
 pub(crate) const LOAN_INBOUND_REQUIRED_CODE: &str = "loans.inbound_required";
+pub(crate) const SPOOL_LOANED_EDIT_BLOCKED_CODE: &str = "inventory.spool.loaned_edit_blocked";
 
 pub(crate) fn invalid_loan_operation(
     code: &'static str,
@@ -17,6 +18,13 @@ pub(crate) fn invalid_loan_operation(
         code,
         message: message.into(),
     }
+}
+
+pub(crate) fn loaned_spool_edit_blocked() -> InventoryError {
+    invalid_loan_operation(
+        SPOOL_LOANED_EDIT_BLOCKED_CODE,
+        "Loaned-out spools must be returned before changing their status, placement, or ownership",
+    )
 }
 
 pub(crate) const LOAN_DIRECTION_SELECT_SQL: &str = "CASE

@@ -185,7 +185,7 @@ export const ptBRDictionary: DictionaryNode = {
     loadedSpoolEditBlocked:
       "Use as ações da impressora slot para editar uma bobina carregada.",
     loanedSpoolEditBlocked:
-      "Devolva o empréstimo antes de editar o status ou localização desta bobina.",
+      "Conclua a devolução do empréstimo de saída ativo antes de alterar o status, a localização ou a propriedade desta bobina.",
     notFound: "O registro solicitado não foi encontrado.",
     requestFailed: "A solicitação não pôde ser concluída.",
     spoolActiveLoan: "Devolva o empréstimo ativo antes de retirar esta bobina.",
@@ -380,6 +380,8 @@ export const ptBRDictionary: DictionaryNode = {
     confirmPurgeAction: "Purgue a bobina permanentemente",
     current: "atual",
     currentStatus: "Estado atual",
+    discardUnsavedChanges:
+      "Descartar as alterações não salvas da bobina? Suas alterações serão perdidas.",
     dangerZone: "Zona de perigo",
     dangerZoneHint:
       "Abra somente quando precisar esvaziar, remover ou purgar permanentemente esta bobina.",
