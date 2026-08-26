@@ -12,6 +12,7 @@ type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 export function useSettingsPageTabs(activeTab: SettingsTabKey, t: SettingsTranslator) {
   const settingsPageTabMessageLabels = useCallback(() => ({
     CATALOG: t("settings.tabCatalog", "Filament catalogue"),
+    FILAMENT_DEFAULTS: t("settings.tabFilamentDefaults", "Filament defaults"),
     GENERAL: t("settings.tabGeneral", "General"),
     LIBRARY: t("settings.tabLibrary", "Library & web app"),
     MAINTENANCE: t("settings.tabMaintenance", "Program maintenance"),

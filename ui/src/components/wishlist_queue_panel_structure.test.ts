@@ -13,7 +13,16 @@ test("WishlistQueuePanel shares action button chrome across stock, remove, and c
   assert.match(source, /focus-visible:border-sky-300/);
   assert.match(source, /wishlistQueueActionButtonClassName\("stock"\)/);
   assert.match(source, /normalizeWishlistReceiptQuantity/);
-  assert.match(source, /onStockItem\(item, receiptQuantity\)/);
+  assert.match(source, /onClick=\{\(\) => openReceipt\(item\)\}/);
+  const openReceiptStart = source.indexOf("const openReceipt");
+  const closeReceiptStart = source.indexOf("const closeReceipt");
+  assert.ok(openReceiptStart >= 0 && closeReceiptStart > openReceiptStart);
+  assert.doesNotMatch(
+    source.slice(openReceiptStart, closeReceiptStart),
+    /setReceiptQuantities/,
+  );
+  assert.match(source, /<WishlistReceiptModal/);
+  assert.match(source, /await onStockItem\([\s\S]*receiptQuantity[\s\S]*purchaseReceiptMetadataHasValues/);
   assert.match(source, /wishlistQueueActionButtonClassName\("remove"\)/);
   assert.match(source, /wishlistQueueActionButtonClassName\("danger"\)/);
   assert.doesNotMatch(
@@ -32,5 +41,7 @@ test("WishlistQueuePanel requests removal before invoking delete and offers inli
   assert.match(source, /onClick=\{onCancelDeleteItem\}/);
   assert.match(source, /role="alert"/);
   assert.match(source, /groupAriaLabel=\{t\("wishlist\.itemStatusGroup"/);
-  assert.match(source, /max-h-\[28rem\][^"]*overflow-y-auto[^"]*lg:max-h-\[32rem\]/);
+  assert.match(source, /onClick=\{onAddPurchase\}/);
+  assert.match(source, /addPurchaseDisabled/);
+  assert.doesNotMatch(source, /max-h-\[28rem\]/);
 });

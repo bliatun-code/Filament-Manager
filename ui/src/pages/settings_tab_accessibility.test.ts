@@ -7,6 +7,7 @@ import {
   settingsTabId,
   settingsTabPanelId,
 } from "./settings_tab_accessibility";
+import { settingsRouteOutletGridClass } from "./settings_route_layout";
 
 const navSource = readFileSync(new URL("./settings_tab_nav.tsx", import.meta.url), "utf8");
 const accessibilitySource = readFileSync(
@@ -30,23 +31,46 @@ test("settings tabs and active panel expose matching ARIA relationships", () => 
   assert.match(layoutSource, /<SettingsTabNav label=\{title\}/);
   assert.equal(settingsTabId("GENERAL"), "settings-tab-general");
   assert.equal(settingsTabPanelId("GENERAL"), "settings-panel-general");
+  assert.equal(
+    settingsTabId("FILAMENT_DEFAULTS"),
+    "settings-tab-filament-defaults",
+  );
+  assert.equal(
+    settingsTabPanelId("FILAMENT_DEFAULTS"),
+    "settings-panel-filament-defaults",
+  );
 });
 
 test("settings tabs use balanced responsive columns instead of an orphaned wrapped tab", () => {
   assert.match(
     navSource,
-    /grid grid-cols-2 gap-1\.5 sm:grid-cols-3 min-\[1050px\]:grid-cols-5/,
+    /grid grid-cols-2 gap-1\.5 sm:grid-cols-3 min-\[1050px\]:grid-cols-6/,
   );
   assert.match(navSource, /min-w-0 w-full/);
   assert.doesNotMatch(navSource, /flex flex-wrap gap-1\.5/);
 });
 
+test("compact settings tabs keep two columns at laptop widths", () => {
+  assert.equal(
+    settingsRouteOutletGridClass("FILAMENT_DEFAULTS"),
+    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
+  );
+  assert.equal(
+    settingsRouteOutletGridClass("GENERAL"),
+    "mt-4 grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]",
+  );
+  assert.match(
+    settingsRouteOutletGridClass("PRINTERS"),
+    /xl:grid-cols-\[minmax\(0,1\.2fr\)_minmax\(0,1fr\)\]/,
+  );
+});
+
 test("settings tab keyboard navigation wraps and supports Home and End", () => {
-  assert.equal(resolveSettingsTabNavigationIndex(0, 5, "ArrowRight"), 1);
-  assert.equal(resolveSettingsTabNavigationIndex(4, 5, "ArrowRight"), 0);
-  assert.equal(resolveSettingsTabNavigationIndex(0, 5, "ArrowLeft"), 4);
-  assert.equal(resolveSettingsTabNavigationIndex(3, 5, "Home"), 0);
-  assert.equal(resolveSettingsTabNavigationIndex(1, 5, "End"), 4);
-  assert.equal(resolveSettingsTabNavigationIndex(1, 5, "Enter"), null);
+  assert.equal(resolveSettingsTabNavigationIndex(0, 6, "ArrowRight"), 1);
+  assert.equal(resolveSettingsTabNavigationIndex(5, 6, "ArrowRight"), 0);
+  assert.equal(resolveSettingsTabNavigationIndex(0, 6, "ArrowLeft"), 5);
+  assert.equal(resolveSettingsTabNavigationIndex(3, 6, "Home"), 0);
+  assert.equal(resolveSettingsTabNavigationIndex(1, 6, "End"), 5);
+  assert.equal(resolveSettingsTabNavigationIndex(1, 6, "Enter"), null);
   assert.equal(resolveSettingsTabNavigationIndex(0, 0, "ArrowRight"), null);
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "../lib/i18n";
 import {
   FILAMENT_LABEL_DIMENSION_STEP_MM,
@@ -35,6 +35,7 @@ type InventorySpoolQrRfidPanelProps = {
   deterministicLabelPreferences?: boolean;
   loading: boolean;
   initialLabelPanelOpen?: boolean;
+  labelPanelRequestId?: number;
   onPrintLabel: (labelSize: FilamentLabelSize, pngDataUrl: string) => Promise<void>;
   onStartRfidCapture: () => void;
   resolvedTheme: ResolvedTheme;
@@ -58,6 +59,7 @@ export function InventorySpoolQrRfidPanel({
   deterministicLabelPreferences = false,
   loading,
   initialLabelPanelOpen = false,
+  labelPanelRequestId = 0,
   onPrintLabel,
   onStartRfidCapture,
   resolvedTheme,
@@ -84,6 +86,7 @@ export function InventorySpoolQrRfidPanel({
   } | null>(null);
   const [labelPreviewBusy, setLabelPreviewBusy] = useState(false);
   const [labelExportBusy, setLabelExportBusy] = useState(false);
+  const handledLabelPanelRequestRef = useRef(labelPanelRequestId);
 
   const customDimensions = useMemo(
     () => ({
@@ -152,6 +155,13 @@ export function InventorySpoolQrRfidPanel({
       setLabelPanelOpen(true);
     }
   }, [initialLabelPanelOpen]);
+
+  useEffect(() => {
+    if (labelPanelRequestId > handledLabelPanelRequestRef.current) {
+      handledLabelPanelRequestRef.current = labelPanelRequestId;
+      setLabelPanelOpen(true);
+    }
+  }, [labelPanelRequestId]);
 
   useEffect(() => {
     if (labelPreferences.selectedSize !== "custom" || !customValidation.valid) {
@@ -311,8 +321,8 @@ export function InventorySpoolQrRfidPanel({
       </div>
       <div className="mt-2 text-[11px] leading-5 text-slate-500 dark:text-slate-400">
         {t(
-          "inventory.labelSheetHint",
-          "Need labels for several rolls? Create an inventory label sheet under Settings → General.",
+          "inventory.labelSheetInventoryHint",
+          "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",
         )}
       </div>
       {labelPanelOpen ? (
@@ -466,8 +476,8 @@ export function InventorySpoolQrRfidPanel({
               </div>
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
                 {t(
-                  "inventory.labelSheetHint",
-                  "Need labels for several rolls? Create an inventory label sheet under Settings → General.",
+                  "inventory.labelSheetInventoryHint",
+                  "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",
                 )}
               </div>
               <button

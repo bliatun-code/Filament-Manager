@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+
+import { I18nContext, type I18nContextValue } from "../lib/i18n";
+import type { InventorySpool } from "../lib/inventory_list_model";
+import { InventoryHeaderActions } from "./inventory_controls_panel";
+import { InventoryPurchasePriceProtectionControl } from "./inventory_purchase_price_protection_control";
+import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
+
+(globalThis as typeof globalThis & { React: typeof React }).React = React;
 
 function readComponentSource(fileName: string): string {
   return readFileSync(new URL(`./${fileName}`, import.meta.url), "utf8");
@@ -50,8 +60,7 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(qrRfidPanel, /InventoryDetailTintPanel/);
-  assert.match(qrRfidPanel, /inventory\.labelSheetHint/);
-  assert.match(qrRfidPanel, /Settings → General/);
+  assert.match(qrRfidPanel, /inventory\.labelSheetInventoryHint/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
   assert.match(spoolDetailSummary, /InventoryDetailFactCard/);
   assert.match(rfidCapturePanels, /inventoryDetailSectionLabelClassName/);
@@ -111,4 +120,129 @@ test("inventory detail labels use shared detail typography classes", () => {
     rollHistoryPanel,
     /rounded-lg border border-slate-200 px-2\.5 py-1 text-\[11px\] font-semibold/,
   );
+});
+
+test("multi-roll label workflow is rendered in Inventory and linked from roll detail", () => {
+  const i18nValue: I18nContextValue = {
+    locale: "en",
+    setLocale: () => {},
+    t: (_key, fallback = "") => fallback,
+  };
+  const spool: InventorySpool = {
+    id: "spool-label-placement",
+    masterId: "master-label-placement",
+    vendor: "Bambu Lab",
+    material: "PLA",
+    filamentName: "Basic",
+    colorName: "Blue",
+    initialWeightGrams: 1_000,
+    status: "IN_STOCK",
+    ownershipType: "OWNED",
+  };
+  const noop = () => {};
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nContext.Provider,
+      { value: i18nValue },
+      React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(InventoryHeaderActions, {
+          labelSheetDisabled: false,
+          lowStockOnly: false,
+          onAddSpool: noop,
+          onCreateLabelSheet: noop,
+          onLoanOutRoll: noop,
+          onLowStockOnlyChange: noop,
+          onSearchChange: noop,
+          onStatusFilterChange: noop,
+          primaryActionsDisabled: false,
+          search: "",
+          showStockFilters: true,
+          statusFilter: "ALL",
+        }),
+        React.createElement(InventorySpoolQrRfidPanel, {
+          companionAvailable: true,
+          dataUrl: "data:image/png;base64,AA==",
+          loading: false,
+          onPrintLabel: async () => {},
+          onStartRfidCapture: noop,
+          resolvedTheme: "light",
+          runtimeAvailable: true,
+          spool,
+          supportsRfidCapture: false,
+          target: "http://127.0.0.1/spools/spool-label-placement",
+        }),
+      ),
+    ),
+  );
+
+  assert.match(html, />Create label sheet for all stock<\/button>/);
+  assert.match(
+    html,
+    /Need labels for several rolls\? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header\./,
+  );
+  assert.doesNotMatch(html, /Settings → General/);
+});
+
+test("stock-specific header tools stay out of location management", () => {
+  const noop = () => {};
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nContext.Provider,
+      {
+        value: {
+          locale: "en",
+          setLocale: noop,
+          t: (_key: string, fallback = "") => fallback,
+        },
+      },
+      React.createElement(InventoryHeaderActions, {
+        labelSheetDisabled: false,
+        lowStockOnly: false,
+        onAddSpool: noop,
+        onCreateLabelSheet: noop,
+        onLoanOutRoll: noop,
+        onLowStockOnlyChange: noop,
+        onSearchChange: noop,
+        onStatusFilterChange: noop,
+        primaryActionsDisabled: false,
+        search: "",
+        showStockFilters: false,
+        statusFilter: "ALL",
+      }),
+    ),
+  );
+
+  assert.equal(html, "");
+});
+
+test("individual price protection is a described checkbox and keeps manual edits explicit", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nContext.Provider,
+      {
+        value: {
+          locale: "en",
+          setLocale: () => {},
+          t: (_key: string, fallback = "") => fallback,
+        },
+      },
+      React.createElement(InventoryPurchasePriceProtectionControl, {
+        checked: true,
+        disabled: false,
+        onChange: () => {},
+      }),
+    ),
+  );
+
+  assert.match(html, /type="checkbox"/);
+  assert.match(html, /checked=""/);
+  assert.match(html, /aria-describedby="([^"]+)"/);
+  const describedBy = html.match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(describedBy);
+  assert.match(html, new RegExp(`id="${describedBy}"`));
+  assert.match(html, /Protect individual price from group updates/);
+  assert.match(html, /Manual price edits for this roll still work/);
+  assert.match(html, /Filament defaults will skip it during group updates/);
 });

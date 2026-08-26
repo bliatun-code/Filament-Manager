@@ -1,7 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { SettingsTabKey } from "./settings_page_model";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
-import { isTauri } from "../lib/tauri_client";
+import {
+  isTauri,
+  saveLibrarySyncSettings,
+  type LowStockPolicy,
+} from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryRouteBundle } from "./settings_library_route_bundle";
@@ -20,23 +24,43 @@ import { useSettingsMaintenanceSection } from "./use_settings_maintenance_sectio
 import { useSettingsPrintersSection } from "./use_settings_printers_section";
 import { useSettingsSilentReload } from "./use_settings_silent_reload";
 import { useSettingsMessageGroups } from "./use_settings_message_groups";
+import { useSettingsFilamentDefaults } from "./use_settings_filament_defaults";
 import { useDesktopLifecycleSettings } from "./use_desktop_lifecycle_settings";
 import { isLibrarySyncDeviceNameDirty } from "./settings_library_device_name";
+import type { SettingsFilamentDefaultsFocusTarget } from "../components/settings_filament_defaults_tab";
+import type { FilamentPriceBatchReceipt } from "../lib/settings_filament_defaults_model";
 
 type SettingsPageProps = {
+  filamentPriceBatchReceipt?: FilamentPriceBatchReceipt | null;
+  initialFilamentDefaultsFocusTarget?: SettingsFilamentDefaultsFocusTarget;
   initialPrinterId?: string | null;
   initialTab?: SettingsTabKey | null;
+  onFilamentPriceBatchReceiptChange?: (
+    receipt: FilamentPriceBatchReceipt | null,
+  ) => void;
+  onOpenInventorySpoolDetails?: (spoolId: string) => void;
 };
 
 export default function SettingsPage({
+  filamentPriceBatchReceipt,
+  initialFilamentDefaultsFocusTarget = null,
   initialPrinterId = null,
   initialTab = null,
+  onFilamentPriceBatchReceiptChange,
+  onOpenInventorySpoolDetails = () => undefined,
 }: SettingsPageProps) {
   const tauri = isTauri();
   const desktopVisualQaScenario = resolveDesktopVisualQaScenario();
   const desktopVisualQaScenarioRef = useRef(desktopVisualQaScenario);
   const desktopVisualQaRoleChangeAppliedRef = useRef(false);
+  const reloadFilamentDefaultsRef = useRef<() => Promise<unknown>>(
+    async () => undefined,
+  );
   const reloadSettingsRef = useRef<() => Promise<void>>(async () => undefined);
+  const reloadFilamentDefaultsAfterPageData = useCallback(
+    () => reloadFilamentDefaultsRef.current(),
+    [],
+  );
   const { locale, setLocale, t } = useI18n();
   const { busy, error, info, setBusy, setError, setInfo } = useSettingsFeedbackState();
   const { handleLocaleSelection, handleThemeSelection, themeMode } = useSettingsPreferenceSection({
@@ -192,6 +216,7 @@ export default function SettingsPage({
     settingsClientHostWritePaired,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
     showLibraryClientAdvanced,
     trustedLanActionBusy,
     trustedLanEnabledDraft,
@@ -251,8 +276,6 @@ export default function SettingsPage({
     settingsCatalogResetMessageLabels,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     settingsPrinterMessageLabels,
     settingsSwatchBulkMessageLabels,
@@ -397,6 +420,7 @@ export default function SettingsPage({
     t,
   });
   const reloadSettings = useSettingsPageReload({
+    onDataReloaded: reloadFilamentDefaultsAfterPageData,
     setBambuLiveIntegrations,
     setCatalogMasters,
     setError,
@@ -415,6 +439,8 @@ export default function SettingsPage({
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
+    settingsClientHostWritePaired,
     tauri,
   });
   useEffect(() => {
@@ -428,8 +454,6 @@ export default function SettingsPage({
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
-    handleOpenInventoryLabelSheet,
-    inventoryLabelSheetModalProps,
     settingsMaintenanceRouteProps,
   } = useSettingsMaintenanceSection({
     applicationDiagnosticsEnabled: activeTab === "MAINTENANCE",
@@ -441,8 +465,6 @@ export default function SettingsPage({
     clearBackupValidation,
     lastBackupValidation,
     lastCatalogReset,
-    initialInventoryLabelSheetOpen:
-      desktopVisualQaScenario === "settings-inventory-label-sheet",
     librarySyncModeDraft,
     locale,
     missingSwatchCount,
@@ -467,15 +489,13 @@ export default function SettingsPage({
     settingsClientHostWritePaired,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
     settingsInventoryRows: spoolRows,
     settingsImportMessageLabels,
     settingsInventoryExportMessageLabels,
-    settingsInventoryOverviewPrintMessageLabels,
-    settingsInventoryPrintLabels,
     settingsMaintenanceResetMessageLabels,
     tauri,
     t,
-    trustedLanStatus,
   });
 
   useEffect(() => {
@@ -520,6 +540,59 @@ export default function SettingsPage({
     };
   }, [applicationDiagnosticsStatus]);
 
+  const lowStockMaterialOptions = useMemo(() => {
+    const materials = new Map<string, string>();
+    for (const material of [
+      ...catalogMasters.map((row) => row.material),
+      ...spoolRows.map((row) => row.master.material),
+    ]) {
+      const display = material.trim().replace(/\s+/gu, " ");
+      const key = display.toUpperCase();
+      if (key && !materials.has(key)) {
+        materials.set(key, display);
+      }
+    }
+    return Array.from(materials.values()).sort((left, right) =>
+      left.localeCompare(right),
+    );
+  }, [catalogMasters, spoolRows]);
+
+  const handleSaveLowStockPolicy = useCallback(
+    async (policy: LowStockPolicy) => {
+      if (!tauri || !librarySyncSettings || librarySyncSettings.mode === "CLIENT") {
+        return;
+      }
+      setBusy(true);
+      setError(null);
+      try {
+        const saved = await saveLibrarySyncSettings({
+          ...librarySyncSettings,
+          low_stock_policy: policy,
+        });
+        setLibrarySyncSettings(saved);
+        setInfo(t("settings.lowStockSaved", "Low-stock thresholds saved."));
+      } catch (saveError) {
+        console.error(saveError);
+        setError(
+          t(
+            "settings.lowStockSaveError",
+            "Failed to save low-stock thresholds.",
+          ),
+        );
+      } finally {
+        setBusy(false);
+      }
+    }, [
+      librarySyncSettings,
+      setBusy,
+      setError,
+      setInfo,
+      setLibrarySyncSettings,
+      t,
+      tauri,
+    ],
+  );
+
   const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,
     busy,
@@ -542,6 +615,34 @@ export default function SettingsPage({
     tauri,
     trustedLanInterfaces,
   });
+
+  const handleFilamentDefaultsLoadError = useCallback(
+    (loadError: unknown) => {
+      console.error(loadError);
+      setError(
+        t(
+          "settings.filamentDefaultsLoadError",
+          "Failed to load filament defaults.",
+        ),
+      );
+    },
+    [setError, t],
+  );
+  const filamentDefaults = useSettingsFilamentDefaults({
+    clientHostBaseUrl: settingsClientHostBaseUrl,
+    clientLibraryId: settingsClientLibraryId,
+    clientReadOnly: settingsClientReadOnly,
+    clientTargetGeneration: settingsClientTargetGeneration,
+    clientHostWritePaired: settingsClientHostWritePaired,
+    fallbackSpoolRows: spoolRows,
+    onInventoryChanged: reloadSettings,
+    onLoadError: handleFilamentDefaultsLoadError,
+    roleResolved: librarySyncSettings != null,
+    tauri,
+  });
+  useEffect(() => {
+    reloadFilamentDefaultsRef.current = filamentDefaults.reload;
+  }, [filamentDefaults.reload]);
 
   const {
     closeLibraryRoleChangeModal,
@@ -610,14 +711,12 @@ export default function SettingsPage({
     desktopLifecycleUpdateError: desktopLifecycle.updateError,
     desktopLifecycleUpdating: desktopLifecycle.updating,
     locale,
-    inventoryLabelSheetModalProps,
     tauri,
     themeMode,
     t,
     onLocaleSelection: handleLocaleSelection,
     onContinueInBackground: desktopLifecycle.handleContinueInBackground,
     onLaunchAtLogin: desktopLifecycle.handleLaunchAtLogin,
-    onOpenInventoryLabelSheet: handleOpenInventoryLabelSheet,
     onRetryDesktopLifecycleLoad: desktopLifecycle.handleRetryLoad,
     onThemeSelection: handleThemeSelection,
   });
@@ -713,6 +812,43 @@ export default function SettingsPage({
   });
   const settingsRouteMap = buildSettingsRouteMapProps({
     catalog: settingsCatalogRouteProps,
+    filamentDefaults: {
+      tab: {
+        busy:
+          busy ||
+          filamentDefaults.busy ||
+          librarySyncBusy ||
+          loading,
+        locale,
+        hostUnsupported: filamentDefaults.hostUnsupported,
+        readOnly: !tauri || settingsClientReadOnly,
+        t,
+        lowStock: {
+          busy: busy || librarySyncBusy || loading,
+          materialOptions: lowStockMaterialOptions,
+          policy:
+            librarySyncSettings?.mode === "CLIENT"
+              ? librarySyncSnapshot?.inventory.low_stock_policy
+              : librarySyncSettings?.low_stock_policy,
+          policyValid:
+            librarySyncSettings?.mode === "CLIENT" ||
+            librarySyncSettings?.low_stock_policy_valid !== false,
+          readOnly: !tauri || settingsClientReadOnly,
+          onSave: handleSaveLowStockPolicy,
+        },
+        defaultCurrency: filamentDefaults.defaultCurrency,
+        batchReceipt: filamentPriceBatchReceipt,
+        focusTarget: initialFilamentDefaultsFocusTarget,
+        persistedGroupPrices: filamentDefaults.persistedGroupPrices,
+        settingsValid: filamentDefaults.settingsValid,
+        spoolRows: filamentDefaults.spoolRows,
+        onApplyBatch: filamentDefaults.onApplyBatch,
+        onBatchReceiptChange: onFilamentPriceBatchReceiptChange,
+        onOpenSpoolDetail: onOpenInventorySpoolDetails,
+        onSaveDefaultCurrency: filamentDefaults.onSaveDefaultCurrency,
+        onSaveGroupPrice: filamentDefaults.onSaveGroupPrice,
+      },
+    },
     general: settingsGeneralRouteProps,
     library: settingsLibraryRouteProps,
     maintenance: settingsMaintenanceRouteProps,

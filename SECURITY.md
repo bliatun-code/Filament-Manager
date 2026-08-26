@@ -47,3 +47,30 @@ screenshots, logs, or database exports, remove private LAN addresses, printer
 serials, access codes, pairing links and tokens, full RFID/tray identifiers,
 user names, notes, scannable QR payloads, and any real-world inventory data you
 do not want to publish.
+
+## Trusted-LAN Companion Safeguards
+
+Companion is served directly by the desktop app on the selected private LAN
+interface. It does not trust forwarded-client headers. Host and Origin
+allowlists, pairing sessions, and CSRF checks remain the primary authorization
+boundary.
+
+The HTTP boundary also applies these defense-in-depth controls:
+
+- Every response carries a same-origin Content Security Policy, framing and
+  MIME-sniffing protection, a no-referrer policy, restrictive browser feature
+  permissions, and same-origin opener/resource isolation. Inline scripts are
+  blocked. Inline styles remain allowed because inventory and printer swatches
+  use validated dynamic color styles.
+- Request bodies are buffered only up to 64 KiB and rejected with `413` when
+  larger. Requests are bounded to 30 seconds and return `408` on timeout.
+- Each direct TCP peer receives a bounded token bucket of 240 requests per
+  minute. Pair and renew attempts have a separate limit of 10 per minute.
+  Excess requests return `429` with `Retry-After`.
+- At most 512 peer buckets are retained. Requests without peer metadata and
+  peers beyond that bounded set share a limited fallback bucket; they are never
+  allowed to bypass throttling.
+
+Do not place Companion behind a forwarding proxy without reviewing this trust
+model. Since proxy headers are intentionally ignored, proxied clients share the
+proxy peer's rate limit.

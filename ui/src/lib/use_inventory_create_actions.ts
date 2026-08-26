@@ -10,6 +10,7 @@ import {
   type InventoryCreateSpoolError,
 } from "./inventory_create_model";
 import { formatInventoryDisplayTitle, type OwnershipType } from "./inventory_list_model";
+import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 import {
   createInventorySpoolFromMaster,
   createManualInventorySpool,
@@ -47,6 +48,7 @@ type InventoryCreateActionsInput = {
   newInitialWeight: string;
   newLocation: string;
   newOwnershipType: OwnershipType;
+  onWishlistItemCreated: () => void;
   reloadCatalog: () => Promise<void>;
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
@@ -85,6 +87,7 @@ export function useInventoryCreateActions({
   newInitialWeight,
   newLocation,
   newOwnershipType,
+  onWishlistItemCreated,
   reloadCatalog,
   reloadSpools,
   reloadWishlist,
@@ -333,6 +336,15 @@ export function useInventoryCreateActions({
         hostWriteTarget,
       );
       await reloadWishlist();
+      setInfoMessage(
+        `${t("inventory.wishlistOrders", "Wishlist & orders")}: ${formatInventoryDisplayTitle(
+          currentCreateDraft.material,
+          currentCreateDraft.filament_name,
+          currentCreateDraft.color_name,
+        )}`,
+      );
+      resetAfterCreatedSpool();
+      onWishlistItemCreated();
     } catch (wishlistError) {
       console.error(wishlistError);
       setError(t("wishlist.error.add", "Failed to add wishlist item."));
@@ -387,19 +399,29 @@ export function useInventoryCreateActions({
     }
   }
 
-  async function handleStockFromWishlist(item: WishlistItemRow, quantity: number) {
+  async function handleStockFromWishlist(
+    item: WishlistItemRow,
+    quantity: number,
+    purchaseMetadata?: PurchaseReceiptMetadata,
+  ): Promise<boolean> {
     if (!canStockWishlistItem(item.status)) {
-      return;
+      return false;
     }
     if (!canStartWrite()) {
-      return;
+      return false;
     }
     setConfirmWishlistRemoveId(null);
     setBusy(true);
     setError(null);
     try {
       const receipt = await receiveWishlistEntry(
-        { item_id: item.id, quantity },
+        {
+          item_id: item.id,
+          quantity,
+          ...(purchaseMetadata === undefined
+            ? {}
+            : { purchase_metadata: purchaseMetadata }),
+        },
         hostWriteTarget,
       );
       await reloadSpools();
@@ -414,9 +436,20 @@ export function useInventoryCreateActions({
           item.color_name,
         )}`,
       );
+      return true;
     } catch (stockError) {
       console.error(stockError);
-      setError(t("inventory.error.stockFromWishlist", "Failed to stock roll from wishlist item."));
+      setError(
+        commandErrorText(
+          stockError,
+          t(
+            "inventory.error.stockFromWishlist",
+            "Failed to stock roll from wishlist item.",
+          ),
+          t,
+        ),
+      );
+      return false;
     } finally {
       setBusy(false);
     }

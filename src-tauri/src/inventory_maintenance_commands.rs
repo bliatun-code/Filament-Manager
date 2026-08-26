@@ -1,3 +1,4 @@
+use crate::active_library_gateway::with_authoritative_local_library;
 use crate::app_error::{internal_command_error, inventory_error_to_command_string};
 use crate::backend::database_result::InventoryResult;
 use crate::backend::filament_database::{CatalogResetStats, FilamentDatabase};
@@ -572,7 +573,9 @@ fn reset_app_data_with_under_gate<Output>(
 pub(crate) fn reset_catalog_data(
     state: tauri::State<'_, AppState>,
 ) -> Result<CatalogResetStats, String> {
-    with_inventory(&state, |engine| engine.reset_catalogs())
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.reset_catalogs())
+    })
 }
 
 #[cfg(test)]

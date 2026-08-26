@@ -242,3 +242,36 @@ test("focusable collection keeps a closed details summary but excludes its hidde
 
   assert.deepEqual(companionFocusableElements(container), [summary]);
 });
+
+test("focusable collection excludes a nested summary hidden by an outer closed details", () => {
+  const outerClosedDetails = {
+    closest(selector) {
+      return selector === "details:not([open])" ? this : null;
+    },
+  };
+  const innerClosedDetailsParent = {
+    closest(selector) {
+      return selector === "details:not([open])" ? outerClosedDetails : null;
+    },
+  };
+  const innerClosedDetails = {
+    parentElement: innerClosedDetailsParent,
+  };
+  const hiddenNestedSummary = {
+    tagName: "SUMMARY",
+    parentElement: innerClosedDetails,
+    getAttribute() {
+      return null;
+    },
+    closest(selector) {
+      return selector === "details:not([open])" ? innerClosedDetails : null;
+    },
+  };
+  const container = {
+    querySelectorAll() {
+      return [hiddenNestedSummary];
+    },
+  };
+
+  assert.deepEqual(companionFocusableElements(container), []);
+});

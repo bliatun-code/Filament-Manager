@@ -2013,6 +2013,15 @@ export const ptBRDictionary: DictionaryNode = {
     currentSnapshot: "Instantâneo atual",
     desktopOnly:
       "As estatísticas estão disponíveis na versão do aplicativo desktop.",
+    periodTitle: "Período do relatório",
+    periodCustom: "Intervalo personalizado",
+    periodStart: "Data inicial",
+    periodEnd: "Data final",
+    periodApply: "Aplicar intervalo",
+    periodDateRequired: "Escolha uma data inicial e uma data final.",
+    periodDateInvalid: "Insira datas de calendário válidas.",
+    periodOrderInvalid: "A data final deve ser igual ou posterior à data inicial.",
+    periodDetailsUnavailable: "Os totais e os detalhes de filamento ou impressora do período selecionado não estão disponíveis neste instantâneo do host. Atualize ou reconecte o host.",
     error: {
       load: "Falha ao carregar estatísticas.",
       loadBorrowerBreakdown: "Falha ao carregar detalhamento do mutuário.",

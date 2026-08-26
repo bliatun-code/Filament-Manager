@@ -48,10 +48,14 @@ function OwnershipMetricTile({
 export function StatisticsOwnershipSnapshotPanel({
   locale = "en",
   ownershipOverview,
+  periodDataAvailable,
+  periodLabel,
   t,
 }: {
   locale?: NumberDisplayLocale;
   ownershipOverview: InventoryOverview | null;
+  periodDataAvailable: boolean;
+  periodLabel: string;
   t: TranslateFn;
 }) {
   return (
@@ -65,6 +69,9 @@ export function StatisticsOwnershipSnapshotPanel({
             "statistics.ownershipSnapshotHint",
             "Additive ownership split for on-hand stock and recorded print usage. The headline cards above still show the combined totals.",
           )}
+        </div>
+        <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {periodLabel}
         </div>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
@@ -86,11 +93,15 @@ export function StatisticsOwnershipSnapshotPanel({
         <OwnershipMetricTile
           key={`owned-consumption-${ownershipOverview?.owned_consumption_30d ?? 0}`}
           label={t("statistics.ownedPrintUsage30d", "Recorded print use · owned")}
-          value={formatGrams(
-            ownershipOverview?.owned_consumption_30d ?? 0,
-            "zero",
-            locale,
-          )}
+          value={
+            periodDataAvailable
+              ? formatGrams(
+                  ownershipOverview?.owned_consumption_30d ?? 0,
+                  "zero",
+                  locale,
+                )
+              : "—"
+          }
           ownership="owned"
         />
         <OwnershipMetricTile
@@ -99,11 +110,15 @@ export function StatisticsOwnershipSnapshotPanel({
             "statistics.borrowedInPrintUsage30d",
             "Recorded print use · borrowed from others",
           )}
-          value={formatGrams(
-            ownershipOverview?.borrowed_in_consumption_30d ?? 0,
-            "zero",
-            locale,
-          )}
+          value={
+            periodDataAvailable
+              ? formatGrams(
+                  ownershipOverview?.borrowed_in_consumption_30d ?? 0,
+                  "zero",
+                  locale,
+                )
+              : "—"
+          }
           ownership="borrowed"
         />
         <OwnershipMetricTile
@@ -143,6 +158,9 @@ export function StatisticsPerPrinterUsagePanel({
   locale = "en",
   loading,
   onOpenConsumption,
+  periodLabel,
+  periodUnavailableMessage,
+  printerCount,
   printers,
   resolvedTheme,
   t,
@@ -150,6 +168,9 @@ export function StatisticsPerPrinterUsagePanel({
   locale?: NumberDisplayLocale;
   loading: boolean;
   onOpenConsumption: (printer: PrinterOverviewRow) => void;
+  periodLabel: string;
+  periodUnavailableMessage: string | null;
+  printerCount: number;
   printers: PrinterOverviewRow[];
   resolvedTheme: ResolvedTheme;
   t: TranslateFn;
@@ -167,15 +188,26 @@ export function StatisticsPerPrinterUsagePanel({
               "Open a printer to see filament consumption grouped by material.",
             )}
           </div>
+          <div className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            {periodLabel}
+          </div>
         </div>
-        <div className="count-pill">{printers.length}</div>
+        <div className="count-pill">{printerCount}</div>
       </div>
       {loading ? (
         <div className="mt-4 text-sm text-slate-500">
           {t("statistics.loadingPrinter", "Loading printer usage...")}
         </div>
       ) : null}
-      {!loading && printers.length === 0 ? (
+      {!loading && periodUnavailableMessage ? (
+        <div
+          role="status"
+          className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-100"
+        >
+          {periodUnavailableMessage}
+        </div>
+      ) : null}
+      {!loading && !periodUnavailableMessage && printers.length === 0 ? (
         <StatisticsEmptyState>
           {t("statistics.noPrinterActivity", "No printer activity available yet.")}
         </StatisticsEmptyState>

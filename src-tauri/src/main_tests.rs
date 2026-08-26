@@ -349,6 +349,14 @@ fn visual_qa_scenario_normalizer_accepts_known_stateful_scenarios() {
     use super::normalize_visual_qa_scenario;
 
     assert_eq!(
+        normalize_visual_qa_scenario("location-management"),
+        Some("inventory-locations")
+    );
+    assert_eq!(
+        normalize_visual_qa_scenario("filament-standards"),
+        Some("settings-filament-defaults")
+    );
+    assert_eq!(
         normalize_visual_qa_scenario("dashboard-usage"),
         Some("dashboard-consumption")
     );
@@ -882,6 +890,42 @@ fn trusted_lan_runtime_keeps_enabled_state_from_settings() {
         let runtime = load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
         let snapshot = runtime.snapshot();
         assert!(snapshot.enabled);
+        assert_eq!(snapshot.selected_interface_name.as_deref(), Some("Wi-Fi"));
+        assert_eq!(
+            snapshot.selected_interface_address.as_deref(),
+            Some("192.168.1.50")
+        );
+        assert_eq!(snapshot.listen_port, 4278);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("{error}");
+    }
+}
+
+#[test]
+fn trusted_lan_runtime_stays_disabled_for_client_library_role() {
+    let db_path = temp_db_path("trusted-lan-client-role");
+    let result = (|| -> Result<(), String> {
+        {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            db.apply_schema().map_err(|error| error.to_string())?;
+            db.save_trusted_lan_settings(&TrustedLanSettingsRow {
+                enabled: true,
+                selected_interface_name: Some("Wi-Fi".to_string()),
+                selected_interface_address: Some("192.168.1.50".to_string()),
+                listen_port: 4278,
+            })
+            .map_err(|error| error.to_string())?;
+            db.set_setting("library_sync_mode", "CLIENT")
+                .map_err(|error| error.to_string())?;
+        }
+
+        let runtime = load_trusted_lan_runtime(db_path.to_string_lossy().as_ref())?;
+        let snapshot = runtime.snapshot();
+        assert!(!snapshot.enabled);
         assert_eq!(snapshot.selected_interface_name.as_deref(), Some("Wi-Fi"));
         assert_eq!(
             snapshot.selected_interface_address.as_deref(),

@@ -200,11 +200,7 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
     },
   );
 
-  assert.deepEqual(bootstrapStarted.sort(), [
-    "printer-settings",
-    "settings",
-    "trusted-lan",
-  ]);
+  assert.deepEqual(bootstrapStarted.sort(), ["settings", "trusted-lan"]);
   assert.deepEqual(localStarted, []);
 
   sync.resolve(syncSettings());
@@ -217,6 +213,11 @@ test("dashboard startup has two bounded concurrent dependency waves", async () =
   });
   await flushPromiseContinuations();
 
+  assert.deepEqual(bootstrapStarted.sort(), [
+    "printer-settings",
+    "settings",
+    "trusted-lan",
+  ]);
   assert.deepEqual(localStarted.sort(), [
     "loans",
     "overview",

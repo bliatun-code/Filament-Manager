@@ -209,6 +209,21 @@ test("buildLibrarySyncClientState derives client write and repair state", () => 
   );
 });
 
+test("buildLibrarySyncClientState keeps writes closed until the persisted role resolves", () => {
+  const unresolved = buildLibrarySyncClientState({
+    mode: undefined,
+    hostBaseUrl: undefined,
+    libraryId: undefined,
+    clientAuthPaired: undefined,
+    pairingChecked: undefined,
+    pairingValid: undefined,
+  });
+
+  assert.equal(unresolved.savedMode, "STANDALONE");
+  assert.equal(unresolved.readOnly, true);
+  assert.equal(unresolved.hostWritePaired, false);
+});
+
 test("buildLibrarySyncSaveSettingsInput preserves client auth only for client mode", () => {
   assert.deepEqual(
     buildLibrarySyncSaveSettingsInput({

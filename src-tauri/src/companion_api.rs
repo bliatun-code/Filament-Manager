@@ -3,8 +3,10 @@ use crate::backend::inventory_engine::{
     AcceptBambuLiveWeightEstimateInput, CreateManualSpoolInput, CreatePrinterInput,
     CreateSpoolInput, DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput,
     ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput,
-    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, WeightSource,
+    UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput,
+    WeightSource,
 };
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
 use crate::catalog_commands::CatalogRefreshResult;
 #[cfg(test)]
 use crate::companion_assets::companion_browser_assets;
@@ -35,7 +37,7 @@ use crate::state::AppState;
 use crate::trusted_lan_interfaces::current_trusted_lan_interface_index;
 use axum::body::Body;
 use axum::extract::{Path, State};
-use axum::http::{header::ORIGIN, HeaderMap, Request};
+use axum::http::{header::ORIGIN, HeaderMap, Method, Request};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -297,13 +299,20 @@ async fn run_companion_server(
     let runtime = state.runtime.clone();
     let router = crate::companion_routes::build_router(state);
     let result = if let Some(shutdown_rx) = shutdown_rx {
-        axum::serve(listener, router)
-            .with_graceful_shutdown(async move {
-                let _ = shutdown_rx.await;
-            })
-            .await
+        axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .with_graceful_shutdown(async move {
+            let _ = shutdown_rx.await;
+        })
+        .await
     } else {
-        axum::serve(listener, router).await
+        axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .await
     };
 
     result.map_err(|error| {
@@ -376,33 +385,31 @@ pub(super) async fn handle_pair_session(
             }
 
             let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-            let db = state.open_db()?;
             let pairing_token_hash = hash_secret(pairing_token);
-            let pairing_display_name = db
-                .consume_trusted_lan_pairing(&pairing_token_hash)
-                .map_err(CompanionApiError::from)?
-                .ok_or_else(|| {
-                    CompanionApiError::Unauthorized(
-                        "Pairing link is invalid, expired, or already used".to_string(),
-                    )
-                })?;
             let device_token = random_hex_token(32);
             let device_token_hash = hash_secret(&device_token);
-            let paired_browser = db
-                .create_trusted_lan_paired_browser(
-                    pairing_display_name.as_deref(),
-                    &device_token_hash,
+            state.with_authoritative_db(|db| {
+                let paired_browser = db
+                    .consume_trusted_lan_pairing_and_create_browser(
+                        &pairing_token_hash,
+                        &device_token_hash,
+                        origin.as_deref(),
+                    )
+                    .map_err(CompanionApiError::from)?
+                    .ok_or_else(|| {
+                        CompanionApiError::Unauthorized(
+                            "Pairing link is invalid, expired, or already used".to_string(),
+                        )
+                    })?;
+
+                build_authenticated_session_response(
+                    &state.sessions,
+                    &state.db_path,
+                    Some(paired_browser.id),
+                    Some(&device_token),
                     origin.as_deref(),
                 )
-                .map_err(CompanionApiError::from)?;
-
-            build_authenticated_session_response(
-                &state.sessions,
-                &state.db_path,
-                Some(paired_browser.id),
-                Some(&device_token),
-                origin.as_deref(),
-            )
+            })
         })
         .await
 }
@@ -416,21 +423,23 @@ pub(super) async fn handle_renew_session(
             require_allowed_host(&headers, &state.runtime)?;
             require_allowed_origin(&headers, &state.runtime)?;
 
-            let paired_browser = find_active_trusted_lan_browser(&state.db_path, &headers)?
-                .ok_or_else(|| {
-                    CompanionApiError::Unauthorized(
-                        "Trusted-LAN browser pairing is required".to_string(),
-                    )
-                })?;
-
             let origin = header_string(&headers, ORIGIN).map(|value| value.trim().to_string());
-            build_authenticated_session_response(
-                &state.sessions,
-                &state.db_path,
-                Some(paired_browser.id),
-                None,
-                origin.as_deref(),
-            )
+            state.with_authoritative_db(|_db| {
+                let paired_browser = find_active_trusted_lan_browser(&state.db_path, &headers)?
+                    .ok_or_else(|| {
+                        CompanionApiError::Unauthorized(
+                            "Trusted-LAN browser pairing is required".to_string(),
+                        )
+                    })?;
+
+                build_authenticated_session_response(
+                    &state.sessions,
+                    &state.db_path,
+                    Some(paired_browser.id),
+                    None,
+                    origin.as_deref(),
+                )
+            })
         })
         .await
 }
@@ -577,6 +586,7 @@ pub(super) async fn handle_delete_printer(
             }
             let _credential_mutation =
                 lock_secure_credential_mutation().map_err(CompanionApiError::Internal)?;
+            state.require_authoritative_library_under_gate()?;
 
     let integration = state
         .open_db()?
@@ -667,7 +677,10 @@ pub(super) async fn handle_delete_printer(
         }
     }
 
-    if let Err(error) = state.service.delete_printer(printer_id) {
+    if let Err(error) = state
+        .service
+        .delete_printer_under_authority_gate(printer_id)
+    {
         if let Err(rollback_error) = restore_previous_secret() {
             return Err(CompanionApiError::Internal(format!(
                 "Printer deletion failed: {error:?}. Credential rollback failed: {rollback_error}"
@@ -758,6 +771,8 @@ pub(super) async fn handle_create_owned_spool(
                         purchase_date: None,
                         purchase_price: None,
                         batch_code: None,
+                        purchase_currency: None,
+                        supplier_reference: None,
                     })
                     .map_err(CompanionApiError::from)?;
             } else {
@@ -846,6 +861,8 @@ pub(super) async fn handle_create_borrowed_in_spool(
                         purchase_date: None,
                         purchase_price: None,
                         batch_code: None,
+                        purchase_currency: None,
+                        supplier_reference: None,
                     })
                     .map_err(CompanionApiError::from)?;
                 if location.is_some() {
@@ -857,6 +874,10 @@ pub(super) async fn handle_create_borrowed_in_spool(
                             status: "IN_STOCK".to_string(),
                             location: location.clone(),
                             home_location: Some(location.clone()),
+                            spool_tare_weight_g: None,
+                            ownership: None,
+                            purchase_metadata: None,
+                            purchase_price_batch_locked: None,
                         })
                         .map_err(CompanionApiError::from)?;
                 }
@@ -1148,73 +1169,134 @@ pub(super) async fn handle_update_spool_details(
     state
         .run_blocking("spool details update", move |state| {
             let spool_id = spool_id.trim();
-    if spool_id.is_empty() {
-        return Err(CompanionApiError::BadRequest(
-            "spool_id is required".to_string(),
-        ));
-    }
+            if spool_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_id is required".to_string(),
+                ));
+            }
 
-    let status = payload.status.trim().to_ascii_uppercase();
-    if !matches!(status.as_str(), "IN_STOCK" | "EMPTY" | "LOST") {
-        return Err(CompanionApiError::BadRequest(
-            "Browser status/location edits are limited to IN_STOCK, EMPTY, or LOST".to_string(),
-        ));
-    }
+            let status = payload.status.trim().to_ascii_uppercase();
+            if payload.spool_tare_weight_g.is_some_and(|grams| grams < 0) {
+                return Err(CompanionApiError::BadRequest(
+                    "spool_tare_weight_g must be zero or greater".to_string(),
+                ));
+            }
+            let ownership = payload
+                .ownership
+                .map(|ownership| {
+                    let ownership_type = ownership.ownership_type.trim().to_ascii_uppercase();
+                    if !matches!(ownership_type.as_str(), "OWNED" | "BORROWED_IN") {
+                        return Err(CompanionApiError::BadRequest(
+                            "ownership_type must be OWNED or BORROWED_IN".to_string(),
+                        ));
+                    }
+                    let owner_name = normalize_optional_text(ownership.owner_name.as_deref());
+                    if ownership_type == "BORROWED_IN" && owner_name.is_none() {
+                        return Err(CompanionApiError::BadRequest(
+                            "borrowed-in spools require an owner/counterparty name".to_string(),
+                        ));
+                    }
+                    Ok(UpdateSpoolDetailsOwnershipInput {
+                        ownership_type,
+                        owner_name,
+                        owner_contact: normalize_optional_text(ownership.owner_contact.as_deref()),
+                        ownership_note: normalize_optional_text(ownership.ownership_note.as_deref()),
+                    })
+                })
+                .transpose()?;
 
-    let spool = state
-        .service
-        .get_spool(spool_id)
-        .map_err(CompanionApiError::from)?
-        .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-    let current_status = SpoolStatus::from_raw(Some(&spool.spool.status));
-    if current_status == SpoolStatus::Borrowed {
-        return Err(CompanionApiError::BadRequest(
-            "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
-                .to_string(),
-        ));
-    }
-    let requested_location = match payload.location.as_update() {
-        Some(value) => normalize_optional_text(value.map(String::as_str)),
-        None => spool.spool.location_id.clone(),
-    };
-    let requested_home_location = payload
-        .home_location
-        .as_update()
-        .map(|value| normalize_optional_text(value.map(String::as_str)));
-    let editing_home_location_only = payload.home_location.is_set()
-        && requested_location == spool.spool.location_id
-        && status == current_status.as_str();
-    if (current_status.is_assigned() || state.spool_assigned_to_printer(spool_id)?)
-        && !editing_home_location_only
-    {
-        return Err(CompanionApiError::BadRequest(
-            "Loaded spools use printer-slot actions instead of manual status/location edits"
-                .to_string(),
-        ));
-    }
-    if state
-        .service
-        .list_active_spool_loans()
-        .map_err(CompanionApiError::from)?
-        .into_iter()
-        .any(|row| row.loan.spool_id == spool_id)
-    {
-        return Err(CompanionApiError::BadRequest(
-            "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
-                .to_string(),
-        ));
-    }
-
-    state
-        .service
-        .update_spool_details(UpdateSpoolDetailsInput {
-            spool_id: spool_id.to_string(),
-            qr_code: spool.spool.qr_code.clone(),
-            status,
-            location: requested_location,
-            home_location: requested_home_location,
-        })
-        .map_err(CompanionApiError::from)?;
+            let spool = state
+                .service
+                .get_spool(spool_id)
+                .map_err(CompanionApiError::from)?
+                .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
+            let current_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+            let requested_location = match payload.location.as_update() {
+                Some(value) => normalize_optional_text(value.map(String::as_str)),
+                None => spool.spool.location_id.clone(),
+            };
+            let requested_home_location = payload
+                .home_location
+                .as_update()
+                .map(|value| normalize_optional_text(value.map(String::as_str)));
+            let normalized_purchase_metadata = payload
+                .purchase_metadata
+                .map(|metadata| metadata.normalize_for_edit(&spool.spool))
+                .transpose()
+                .map_err(CompanionApiError::from)?;
+            let purchase_metadata_changes = normalized_purchase_metadata
+                .as_ref()
+                .is_some_and(|metadata| {
+                    metadata != &PurchaseReceiptMetadata::from_spool(&spool.spool)
+                });
+            let purchase_price_batch_lock_changes = payload
+                .purchase_price_batch_locked
+                .is_some_and(|locked| locked != spool.spool.purchase_price_batch_locked);
+            let requested_home_location_is_unchanged = match &requested_home_location {
+                Some(value) => value == &spool.spool.home_location_id,
+                None => true,
+            };
+            let has_active_outbound_loan = state
+                .service
+                .list_active_spool_loans()
+                .map_err(CompanionApiError::from)?
+                .into_iter()
+                .any(|row| {
+                    row.loan.spool_id == spool_id
+                        && LoanDirection::from_raw(Some(&row.loan.loan_direction))
+                            == LoanDirection::Outbound
+                });
+            let editing_loan_receipt_only = status == current_status.as_str()
+                && requested_location == spool.spool.location_id
+                && requested_home_location_is_unchanged
+                && payload.spool_tare_weight_g.is_none()
+                && ownership.is_none()
+                && (purchase_metadata_changes || purchase_price_batch_lock_changes);
+            if (current_status == SpoolStatus::Borrowed || has_active_outbound_loan)
+                && !editing_loan_receipt_only
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Loaned-out spools use the companion loan return flow instead of manual status/location edits"
+                        .to_string(),
+                ));
+            }
+            let editing_nonplacement_details = requested_location == spool.spool.location_id
+                && status == current_status.as_str()
+                && (payload.home_location.is_set()
+                    || payload.spool_tare_weight_g.is_some()
+                    || ownership.is_some()
+                    || normalized_purchase_metadata.is_some()
+                    || payload.purchase_price_batch_locked.is_some());
+            if (current_status.is_assigned() || state.spool_assigned_to_printer(spool_id)?)
+                && !editing_nonplacement_details
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Loaded spools use printer-slot actions instead of manual status/location edits"
+                        .to_string(),
+                ));
+            }
+            if !matches!(status.as_str(), "IN_STOCK" | "EMPTY" | "LOST")
+                && !editing_nonplacement_details
+            {
+                return Err(CompanionApiError::BadRequest(
+                    "Browser status/location edits are limited to IN_STOCK, EMPTY, or LOST"
+                        .to_string(),
+                ));
+            }
+            state
+                .service
+                .update_spool_details(UpdateSpoolDetailsInput {
+                    spool_id: spool_id.to_string(),
+                    qr_code: spool.spool.qr_code.clone(),
+                    status,
+                    location: requested_location,
+                    home_location: requested_home_location,
+                    spool_tare_weight_g: payload.spool_tare_weight_g,
+                    ownership,
+                    purchase_metadata: normalized_purchase_metadata,
+                    purchase_price_batch_locked: payload.purchase_price_batch_locked,
+                })
+                .map_err(CompanionApiError::from)?;
 
             Ok(Json(WriteResponse {
                 ok: true,
@@ -1280,6 +1362,17 @@ pub(super) async fn handle_lend_spool(
                 .lend_spool(LendSpoolInput {
                     spool_id: spool_id.to_string(),
                     borrower_name: borrower_name.to_string(),
+                    counterparty_contact: payload
+                        .counterparty_contact
+                        .as_deref()
+                        .map(str::trim)
+                        .and_then(|value| {
+                            if value.is_empty() {
+                                None
+                            } else {
+                                Some(value.to_string())
+                            }
+                        }),
                     grams_out: payload.grams_out,
                     note: payload.note.as_deref().map(str::trim).and_then(|value| {
                         if value.is_empty() {
@@ -1288,6 +1381,17 @@ pub(super) async fn handle_lend_spool(
                             Some(value.to_string())
                         }
                     }),
+                    expected_return_at: payload
+                        .expected_return_at
+                        .as_deref()
+                        .map(str::trim)
+                        .and_then(|value| {
+                            if value.is_empty() {
+                                None
+                            } else {
+                                Some(value.to_string())
+                            }
+                        }),
                 })
                 .map_err(CompanionApiError::from)?;
 
@@ -1316,21 +1420,6 @@ pub(super) async fn handle_return_spool_loan(
             if payload.returned_grams < 0 {
                 return Err(CompanionApiError::BadRequest(
                     "returned_grams must be zero or greater".to_string(),
-                ));
-            }
-
-            let active_loan = state
-                .service
-                .list_active_spool_loans()
-                .map_err(CompanionApiError::from)?
-                .into_iter()
-                .find(|row| row.loan.id == loan_id)
-                .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
-            if LoanDirection::from_raw(Some(&active_loan.loan.loan_direction))
-                != LoanDirection::Outbound
-            {
-                return Err(CompanionApiError::BadRequest(
-                    "Inbound loan returns stay desktop-first for now".to_string(),
                 ));
             }
 
@@ -1543,6 +1632,8 @@ pub(super) async fn require_companion_session(
     request: Request<Body>,
     next: Next,
 ) -> Response {
+    let revalidate_authority_after_response =
+        request.method() == Method::GET || request.method() == Method::HEAD;
     let headers = request.headers().clone();
     if let Err(error) = require_allowed_host(&headers, &state.runtime) {
         return error.into_response();
@@ -1550,7 +1641,11 @@ pub(super) async fn require_companion_session(
 
     let session = match state
         .run_blocking("session authorization", move |state| {
-            find_active_session(&state.sessions, &state.db_path, &headers)
+            let session = find_active_session(&state.sessions, &state.db_path, &headers)?;
+            if session.is_some() {
+                state.require_bound_authoritative_library()?;
+            }
+            Ok(session)
         })
         .await
     {
@@ -1575,7 +1670,17 @@ pub(super) async fn require_companion_session(
     }
 
     drop(session);
-    next.run(request).await
+    let response = next.run(request).await;
+    if revalidate_authority_after_response
+        && let Err(error) = state
+            .run_blocking("session authority revalidation", move |state| {
+                state.require_bound_authoritative_library()
+            })
+            .await
+    {
+        return error.into_response();
+    }
+    response
 }
 
 pub(super) async fn require_companion_host(

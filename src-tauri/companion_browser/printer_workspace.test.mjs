@@ -52,12 +52,13 @@ function createPrinterRow(overrides = {}) {
   };
 }
 
-function createSelectedSpool() {
+function createSelectedSpool(overrides = {}) {
   return {
     spool: {
       id: "spool-1",
       remaining_g: 720,
       status: "IN_STOCK",
+      ...overrides.spool,
     },
     master: {
       material: "PLA",
@@ -65,7 +66,10 @@ function createSelectedSpool() {
       color_name: "White",
       vendor: "Bambu",
       hex_color: "#ffffff",
+      ...overrides.master,
     },
+    location_name: overrides.location_name ?? null,
+    home_location_name: overrides.home_location_name ?? null,
   };
 }
 
@@ -895,6 +899,33 @@ test("printer workspace renders a direct load picker body for the targeted slot"
   assert.match(html, /printer-picker-row/);
   assert.match(html, /Bambu · #1/);
   assert.doesNotMatch(html, /Tap to load/);
+});
+
+test("printer picker searches and displays location names instead of opaque ids", () => {
+  const html = renderPrinterPickerTaskSheetBody({
+    state: {
+      locale: "en",
+      pendingPrinterSlotTarget: {
+        printerId: "printer-1",
+        printerName: "X1C",
+        slotId: "slot-1",
+        slotIndex: "1",
+      },
+      printerSpoolSearch: "dry box",
+    },
+    printerSpoolOptions: [
+      createSelectedSpool({
+        spool: { location_id: "location_aaaaaaaa" },
+        location_name: "Dry box",
+      }),
+    ],
+    escapeHtml: (value) => String(value ?? ""),
+    formatGrams: (value) => `${value ?? 0} g`,
+  });
+
+  assert.match(html, /data-action="assign-selected-spool"/);
+  assert.match(html, /Dry box/);
+  assert.doesNotMatch(html, />location_aaaaaaaa</);
 });
 
 test("printer workspace renders a dedicated weight task sheet body for loaded slots", () => {

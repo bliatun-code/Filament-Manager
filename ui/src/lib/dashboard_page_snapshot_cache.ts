@@ -8,9 +8,11 @@ import type {
 import type { LibraryRevisionSource } from "./library_domain_revisions";
 import type { TrustedLanCompanionStatus } from "./tauri_client";
 import type { DashboardBambuLiveAttention } from "./dashboard_bambu_live_attention";
+import type { DashboardActionItem } from "./dashboard_action_model";
 
 export type DashboardPageSnapshot = {
   activity: ActivityItem[];
+  actionItems?: DashboardActionItem[];
   bambuLiveAttention?: DashboardBambuLiveAttention[];
   clientHostCompanionTone: "off" | "live" | "warn";
   clientHostDisplayName: string | null;
@@ -21,6 +23,7 @@ export type DashboardPageSnapshot = {
   goalMetrics: DashboardGoalMetrics;
   health: DashboardHealth;
   lastSyncLabel: string;
+  libraryId?: string | null;
   locale: string;
   ownershipLowStock: {
     owned: number;
@@ -50,12 +53,36 @@ let dashboardPageSnapshotGeneration = 0;
 let dashboardPageSnapshotRequestSequence = 0;
 let latestAcceptedDashboardPageSnapshotRequestSequence = 0;
 
+function cloneDashboardActionItem(item: DashboardActionItem): DashboardActionItem {
+  if (item.kind === "LOW_STOCK") {
+    return {
+      ...item,
+      age: { ...item.age },
+      candidate: { ...item.candidate },
+      duplicate: item.duplicate ? { ...item.duplicate } : null,
+      spoolIds: [...item.spoolIds],
+    };
+  }
+  if (item.kind === "OVERDUE_LOAN") {
+    return { ...item, age: { ...item.age } };
+  }
+  if (item.kind === "ON_ORDER") {
+    return { ...item, age: { ...item.age } };
+  }
+  return { ...item, age: { ...item.age } };
+}
+
 function cloneDashboardPageSnapshot(
   snapshot: DashboardPageSnapshot,
 ): DashboardPageSnapshot {
+  const libraryId =
+    typeof snapshot.libraryId === "string" && snapshot.libraryId.trim()
+      ? snapshot.libraryId.trim()
+      : null;
   return {
     ...snapshot,
     activity: snapshot.activity.map((item) => ({ ...item })),
+    actionItems: snapshot.actionItems?.map(cloneDashboardActionItem) ?? [],
     bambuLiveAttention: snapshot.bambuLiveAttention?.map((item) => ({ ...item })) ?? [],
     companionStatus: snapshot.companionStatus
       ? { ...snapshot.companionStatus }
@@ -65,6 +92,7 @@ function cloneDashboardPageSnapshot(
       ...snapshot.health,
       metrics: snapshot.health.metrics.map((metric) => ({ ...metric })),
     },
+    libraryId,
     ownershipLowStock: { ...snapshot.ownershipLowStock },
     ownershipOnHand: { ...snapshot.ownershipOnHand },
     revisionSource: snapshot.revisionSource

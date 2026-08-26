@@ -13,23 +13,36 @@ import { InventorySwatchChip } from "./inventory_swatch_chip";
 import { LoanSwatchCard, LoanSwatchInsetCard } from "./loan_swatch_card";
 import { useResolvedTheme } from "../lib/theme_mode";
 import type { NormalizedLoanDetailsRow } from "../lib/loan_data_source";
+import {
+  formatLoanExpectedReturnDate,
+  loanDueState,
+  localCalendarDate,
+} from "../lib/loan_due_state";
 
 type LoanHistoryCardProps = {
   busy: boolean;
   loan: NormalizedLoanDetailsRow;
   onReturn: (loan: NormalizedLoanDetailsRow) => void;
+  today?: string;
 };
 
 const loanHistoryReturnButtonClassName =
   "shrink-0 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 shadow-sm shadow-emerald-200/25 outline-none transition hover:bg-emerald-100 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none dark:hover:bg-emerald-500/25 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
 
-export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) {
+export function LoanHistoryCard({
+  busy,
+  loan,
+  onReturn,
+  today = localCalendarDate(),
+}: LoanHistoryCardProps) {
   const { locale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
   const isActive = isLoanCurrentlyActive(loan);
   const isInbound = isInboundLoan(loan);
   const loanTitle = compactLoanTitle(loan, t("common.unknown", "Unknown"));
   const referenceLabel = formatLoanReference(loan.loan.spool_id);
+  const expectedReturnAt = loan.loan.expected_return_at?.trim() || null;
+  const dueState = loanDueState(loan, today);
 
   return (
     <LoanSwatchCard swatchColor={loan.hex_color} resolvedTheme={resolvedTheme}>
@@ -67,6 +80,15 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
                     : t("loans.borrower", "Borrower")}
                   : {loan.loan.counterparty_name ?? loan.loan.borrower_name}
                 </span>
+                {dueState === "OVERDUE" ? (
+                  <span className={inlineStatusSignalClass("danger", "text-[10px]")}>
+                    {t("loans.overdue", "Overdue")}
+                  </span>
+                ) : dueState === "DUE_TODAY" ? (
+                  <span className={inlineStatusSignalClass("warning", "text-[10px]")}>
+                    {t("loans.dueToday", "Due today")}
+                  </span>
+                ) : null}
               </div>
             </div>
             {isActive ? (
@@ -120,6 +142,16 @@ export function LoanHistoryCard({ busy, loan, onReturn }: LoanHistoryCardProps) 
           >
             {compactLoanTimestamp(loan.loan.lent_at)}
           </ModalDetailItem>
+          {loan.loan.counterparty_contact?.trim() ? (
+            <ModalDetailItem label={t("loans.contact", "Contact")}>
+              <span className="break-words">{loan.loan.counterparty_contact}</span>
+            </ModalDetailItem>
+          ) : null}
+          {expectedReturnAt ? (
+            <ModalDetailItem label={t("loans.expectedReturn", "Expected return")}>
+              {formatLoanExpectedReturnDate(expectedReturnAt, locale)}
+            </ModalDetailItem>
+          ) : null}
           {!isActive ? (
             <>
               <ModalDetailItem

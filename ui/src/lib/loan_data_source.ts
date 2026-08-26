@@ -25,6 +25,7 @@ import {
 } from "./loan_row_normalization";
 import {
   requireClientHostWriteTarget,
+  resolveClientHostCacheTarget,
   resolveClientHostTarget,
 } from "./host_write_target";
 
@@ -35,6 +36,7 @@ export type LoanDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
   limit?: number;
 };
 
@@ -98,6 +100,7 @@ export async function loadActiveLoanRows(
     clientReadOnly: boolean;
     clientHostBaseUrl?: string | null;
     clientLibraryId?: string | null;
+    clientTargetGeneration?: number | null;
     limit?: number;
   },
   dependencies: ActiveLoanRowsDependencies = {},
@@ -106,6 +109,7 @@ export async function loadActiveLoanRows(
     const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
     const hostTarget = resolveClientHostTarget(options);
+    const cacheTarget = resolveClientHostCacheTarget(options);
     if (hostTarget) {
       try {
         const rows = await fetchHostLoans(
@@ -119,7 +123,13 @@ export async function loadActiveLoanRows(
           .map(mapLoanDetailsToActiveRow);
       } catch (loadError) {
         console.error(loadError);
-        const cached = await fetchCachedLoans().catch(() => null);
+        const cached = cacheTarget
+          ? await fetchCachedLoans(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null;
         if (!cached) {
           throw loadError;
         }
@@ -129,7 +139,13 @@ export async function loadActiveLoanRows(
           .map(mapLoanDetailsToActiveRow);
       }
     }
-    const cached = await fetchCachedLoans().catch(() => null);
+    const cached = cacheTarget
+      ? await fetchCachedLoans(
+          cacheTarget.baseUrl,
+          cacheTarget.libraryId,
+          cacheTarget.targetGeneration,
+        ).catch(() => null)
+      : null;
     return (cached?.rows ?? [])
       .map(normalizeLoanDetailsRow)
       .filter(isActiveOutboundLoan)
@@ -149,10 +165,17 @@ export async function loadLoanRowsPage(
   const listLocalLoans = dependencies.listLocalLoans ?? listSpoolLoans;
   const { clientReadOnly, limit = 2000 } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
+  const cacheTarget = clientReadOnly ? resolveClientHostCacheTarget(options) : null;
 
   if (clientReadOnly) {
     if (!hostTarget) {
-      const cached = await fetchCachedLoans().catch(() => null);
+      const cached = cacheTarget
+        ? await fetchCachedLoans(
+            cacheTarget.baseUrl,
+            cacheTarget.libraryId,
+            cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null;
       if (cached) {
         return {
           rows: cached.rows.map(normalizeLoanDetailsRow),
@@ -171,7 +194,13 @@ export async function loadLoanRowsPage(
     }
     try {
       const rows = await fetchHostLoans(hostTarget.baseUrl, hostTarget.libraryId, limit);
-      const cached = await fetchCachedLoans().catch(() => null);
+      const cached = cacheTarget
+        ? await fetchCachedLoans(
+            cacheTarget.baseUrl,
+            cacheTarget.libraryId,
+            cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null;
       return {
         rows: rows.map(normalizeLoanDetailsRow),
         source: "LIVE",
@@ -180,7 +209,13 @@ export async function loadLoanRowsPage(
       };
     } catch (loadError) {
       try {
-        const cached = await fetchCachedLoans();
+        const cached = cacheTarget
+          ? await fetchCachedLoans(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            )
+          : null;
         if (cached) {
           return {
             rows: cached.rows.map(normalizeLoanDetailsRow),

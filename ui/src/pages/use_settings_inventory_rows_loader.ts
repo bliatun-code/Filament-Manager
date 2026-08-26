@@ -9,6 +9,7 @@ type UseSettingsInventoryRowsLoaderInput = {
   settingsClientHostBaseUrl: string | null;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
+  settingsClientTargetGeneration: number | null;
 };
 
 export function useSettingsInventoryRowsLoader({
@@ -16,6 +17,7 @@ export function useSettingsInventoryRowsLoader({
   settingsClientHostBaseUrl,
   settingsClientLibraryId,
   settingsClientReadOnly,
+  settingsClientTargetGeneration,
 }: UseSettingsInventoryRowsLoaderInput) {
   return useCallback(async (): Promise<NormalizedSpoolWithMasterRow[]> => {
     return loadSettingsInventoryRowsForExport({
@@ -25,6 +27,7 @@ export function useSettingsInventoryRowsLoader({
         clientReadOnly: settingsClientReadOnly,
         clientHostBaseUrl: settingsClientHostBaseUrl,
         clientLibraryId: settingsClientLibraryId,
+        clientTargetGeneration: settingsClientTargetGeneration,
       },
       pageLimit: 200,
     });
@@ -33,5 +36,6 @@ export function useSettingsInventoryRowsLoader({
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
   ]);
 }

@@ -12,13 +12,18 @@ test("headline metrics keep readable card widths before the extra-wide breakpoin
   assert.doesNotMatch(source, /gap-3 md:grid-cols-4/);
 });
 
-test("total consumption is explicitly all-time and every headline card opens details", () => {
+test("period metrics use the selected range while slot count remains a current snapshot", () => {
   assert.match(
     source,
-    /statistics\.totalConsumption[\s\S]*trend=\{t\("statistics\.allTime", "All time"\)\}/,
+    /statistics\.totalConsumption[\s\S]*trend=\{periodRangeLabel\}/,
   );
-  assert.equal((source.match(/actionLabel=\{t\("statistics\.viewDetails"/g) ?? []).length, 4);
-  assert.equal((source.match(/\sopensDialog\s/g) ?? []).length, 4);
+  assert.match(source, /statistics\.loggedJobs[\s\S]*trend=\{periodRangeLabel\}/);
+  assert.match(
+    source,
+    /statistics\.activeAms[\s\S]*trend=\{t\("statistics\.currentSnapshot", "Current snapshot"\)\}/,
+  );
+  assert.match(source, /actionLabel=\{periodReport \? t\("statistics\.viewDetails"/);
+  assert.match(source, /opensDialog=\{periodReport != null\}/);
 });
 
 test("data-backed desktop QA waits for statistics before opening or scrolling", () => {
@@ -29,7 +34,7 @@ test("data-backed desktop QA waits for statistics before opening or scrolling", 
   );
   assert.match(
     source,
-    /statistics-consumption[\s\S]*void openConsumptionModal\(\)/,
+    /statistics-consumption[\s\S]*openConsumptionModal\(\)/,
   );
   assert.match(
     source,

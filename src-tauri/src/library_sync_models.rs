@@ -1,8 +1,9 @@
 use crate::backend::filament_database::{
-    LibraryDomainRevisions, PrinterOverviewRow, SpoolLoanDetailsRow, SpoolWithMasterRow,
-    WishlistItemRow,
+    LibraryDomainRevisions, LowStockPolicy, PrinterOverviewRow, SpoolLoanDetailsRow,
+    SpoolWithMasterRow, WishlistItemRow,
 };
-use crate::backend::statistics::InventoryOverview;
+use crate::backend::purchase_receipt_metadata::PurchaseReceiptMetadata;
+use crate::backend::statistics::{InventoryOverview, StatisticsPeriod};
 use crate::optional_update::OptionalUpdate;
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +14,8 @@ pub(crate) struct SaveLibrarySyncSettingsInput {
     pub(crate) library_id: String,
     pub(crate) host_base_url: Option<String>,
     pub(crate) host_device_name: Option<String>,
+    #[serde(default)]
+    pub(crate) low_stock_policy: Option<LowStockPolicy>,
 }
 
 #[derive(Deserialize)]
@@ -31,7 +34,17 @@ pub(crate) struct LibrarySyncSpoolListInput {
 
 #[derive(Deserialize)]
 pub(crate) struct SaveLibrarySyncSpoolCacheInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: String,
+    pub(crate) target_generation: u64,
     pub(crate) rows: Vec<SpoolWithMasterRow>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncCacheTargetInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: String,
+    pub(crate) target_generation: u64,
 }
 
 #[derive(Deserialize)]
@@ -40,6 +53,13 @@ pub(crate) struct LibrarySyncFilamentConsumptionInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) limit: Option<i64>,
     pub(crate) printer_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub(crate) struct LibrarySyncStatisticsPeriodInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) period: StatisticsPeriod,
 }
 
 #[derive(Deserialize)]
@@ -66,6 +86,14 @@ pub(crate) struct LibrarySyncWeightWriteInput {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct LibrarySyncUpdateSpoolDetailsOwnershipInput {
+    pub(crate) ownership_type: String,
+    pub(crate) owner_name: Option<String>,
+    pub(crate) owner_contact: Option<String>,
+    pub(crate) ownership_note: Option<String>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
@@ -76,6 +104,12 @@ pub(crate) struct LibrarySyncUpdateSpoolDetailsInput {
     pub(crate) location: OptionalUpdate<String>,
     #[serde(default)]
     pub(crate) home_location: OptionalUpdate<String>,
+    pub(crate) spool_tare_weight_g: Option<i64>,
+    pub(crate) ownership: Option<LibrarySyncUpdateSpoolDetailsOwnershipInput>,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
+    #[serde(default)]
+    pub(crate) purchase_price_batch_locked: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -149,8 +183,10 @@ pub(crate) struct LibrarySyncLendSpoolInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) spool_id: String,
     pub(crate) borrower_name: String,
+    pub(crate) counterparty_contact: Option<String>,
     pub(crate) grams_out: i64,
     pub(crate) note: Option<String>,
+    pub(crate) expected_return_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -247,6 +283,8 @@ pub(crate) struct LibrarySyncReceiveWishlistItemInput {
     pub(crate) expected_library_id: Option<String>,
     pub(crate) item_id: String,
     pub(crate) quantity: i64,
+    #[serde(default)]
+    pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
 #[derive(Deserialize)]

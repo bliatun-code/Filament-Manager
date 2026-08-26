@@ -1,4 +1,23 @@
+use crate::backend::database_result::InventoryError;
 use crate::backend::inventory_domain::LoanDirection;
+
+pub(crate) const LOAN_BORROWER_REQUIRED_CODE: &str = "loans.borrower_required";
+pub(crate) const LOAN_COUNTERPARTY_REQUIRED_CODE: &str = "loans.counterparty_required";
+pub(crate) const LOAN_ALREADY_ACTIVE_CODE: &str = "loans.already_active";
+pub(crate) const LOAN_ALREADY_RETURNED_CODE: &str = "loans.already_returned";
+pub(crate) const LOAN_DIRECTION_MISMATCH_CODE: &str = "loans.direction_mismatch";
+pub(crate) const LOAN_BORROWED_IN_CANNOT_LEND_CODE: &str = "loans.borrowed_in_cannot_lend";
+pub(crate) const LOAN_INBOUND_REQUIRED_CODE: &str = "loans.inbound_required";
+
+pub(crate) fn invalid_loan_operation(
+    code: &'static str,
+    message: impl Into<String>,
+) -> InventoryError {
+    InventoryError::InvalidOperation {
+        code,
+        message: message.into(),
+    }
+}
 
 pub(crate) const LOAN_DIRECTION_SELECT_SQL: &str = "CASE
     WHEN REPLACE(REPLACE(UPPER(TRIM(COALESCE(loan_direction, ''))), '-', '_'), ' ', '_') IN ('INBOUND', 'IN_BOUND')

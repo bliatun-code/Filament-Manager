@@ -1,3 +1,4 @@
+use crate::active_library_gateway::require_authoritative_local_library_under_gate;
 use crate::backend::database_result::InventoryError;
 use crate::backend::filament_database::{BambuLiveIntegrationRow, BambuLiveTlsIdentityRow};
 use crate::bambu_live::probe_printer_tls_identity;
@@ -106,6 +107,7 @@ fn save_bambu_live_integration_with_probe(
     probe: impl FnOnce(&str, &str) -> Result<BambuTlsIdentity, String>,
 ) -> Result<(), String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
+    require_authoritative_local_library_under_gate(state)?;
     let mut submitted_access_code = input.access_code.take().map(Zeroizing::new);
     if input.access_code_action != BambuAccessCodeAction::Replace {
         submitted_access_code.take();
@@ -415,6 +417,7 @@ fn delete_bambu_live_integration_for_state(
     printer_id: &str,
 ) -> Result<(), String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
+    require_authoritative_local_library_under_gate(state)?;
     let printer_id = printer_id.trim();
     if printer_id.is_empty() {
         return Err("Printer id is required.".to_string());
@@ -833,6 +836,72 @@ mod tests {
                 .expect("utf8 credential"),
             "access-code"
         );
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn client_mode_rejects_bambu_credential_and_database_mutation_before_probe() {
+        let (state, path) = test_state("client-authority-guard");
+        save_bambu_live_integration_with_probe(
+            &state,
+            save_input(
+                BambuAccessCodeAction::Replace,
+                Some("original-code"),
+                BambuTlsTrustAction::TrustCurrent,
+            ),
+            |_, _| Ok(identity("SERIAL", 'a')),
+        )
+        .expect("save authoritative integration");
+
+        let before = FilamentDatabase::open(&path)
+            .expect("open db")
+            .list_bambu_live_integrations()
+            .expect("list integrations")
+            .pop()
+            .expect("saved integration")
+            .config;
+        let binding_id = before
+            .access_code_binding_id
+            .as_deref()
+            .expect("credential binding");
+        let credential_key =
+            CredentialKey::bambu_access_code("printer_1", binding_id).expect("credential key");
+        FilamentDatabase::open(&path)
+            .expect("open db")
+            .set_setting("library_sync_mode", "CLIENT")
+            .expect("set client mode");
+
+        let error = save_bambu_live_integration_with_probe(
+            &state,
+            save_input(
+                BambuAccessCodeAction::Replace,
+                Some("must-not-persist"),
+                BambuTlsTrustAction::TrustCurrent,
+            ),
+            |_, _| panic!("authority must be checked before the TLS probe"),
+        )
+        .expect_err("client mode must reject local credential mutation");
+
+        assert!(error.contains("common.forbidden"));
+        let after = FilamentDatabase::open(&path)
+            .expect("open db")
+            .list_bambu_live_integrations()
+            .expect("list integrations")
+            .pop()
+            .expect("integration remains")
+            .config;
+        assert_eq!(after, before);
+        assert_eq!(
+            state
+                .credentials
+                .get(&credential_key)
+                .expect("read credential")
+                .expect("credential remains")
+                .expose_utf8()
+                .expect("utf8 credential"),
+            "original-code"
+        );
+
         let _ = std::fs::remove_file(path);
     }
 

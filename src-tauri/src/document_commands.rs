@@ -1,3 +1,4 @@
+use crate::active_library_gateway::require_authoritative_local_library_under_gate;
 use crate::app_error::{
     coded_command_error, document_command_error, document_inventory_error_to_command_string,
 };
@@ -58,6 +59,7 @@ pub(crate) fn import_full_backup_json(
 
 fn import_full_backup_json_inner(state: &AppState, content: String) -> Result<(), String> {
     let _credential_mutation = lock_secure_credential_mutation()?;
+    require_authoritative_local_library_under_gate(state)?;
     retry_pending_full_restore_credential_cleanup(state)?;
     let db = open_exclusive_document_database(&state.db_path)?;
     db.validate_full_backup_json(&content)
@@ -95,8 +97,9 @@ pub(crate) fn import_data_file(
 }
 
 fn import_data_file_inner(state: &AppState, content: String) -> Result<ImportDataStats, String> {
+    let _credential_mutation = lock_secure_credential_mutation()?;
+    require_authoritative_local_library_under_gate(state)?;
     if is_full_backup_candidate(&content) {
-        let _credential_mutation = lock_secure_credential_mutation()?;
         retry_pending_full_restore_credential_cleanup(state)?;
         let db = open_exclusive_document_database(&state.db_path)?;
         db.validate_full_backup_json(&content)
@@ -533,7 +536,9 @@ mod tests {
         let mut settings = db
             .get_library_sync_settings()
             .expect("read library settings");
-        settings.mode = "CLIENT".to_string();
+        // Restore tests need an authoritative local role while still carrying
+        // stale machine-local Client credentials that the restore must purge.
+        settings.mode = "HOST".to_string();
         settings.host_base_url = Some(library_host.to_string());
         db.save_library_sync_settings(&settings)
             .expect("save library settings");
@@ -869,6 +874,35 @@ mod tests {
         if let Err(error) = result {
             panic!("{error}");
         }
+    }
+
+    #[test]
+    fn client_role_rejects_full_and_lightweight_imports_before_local_mutation() {
+        let state = credential_test_state("client-import-authority-guard");
+        let db = FilamentDatabase::open(&state.db_path).expect("open db");
+        db.upsert_printer_with_ams("printer_guard_probe", "Bambu Lab P1S", "Must remain", 1, 4)
+            .expect("seed local shadow");
+        let mut settings = db
+            .get_library_sync_settings()
+            .expect("read library settings");
+        settings.mode = "CLIENT".to_string();
+        db.save_library_sync_settings(&settings)
+            .expect("set Client role");
+        drop(db);
+
+        for result in [
+            import_full_backup_json_inner(&state, empty_full_backup()),
+            import_data_file_inner(&state, r#"{"spools":[]}"#.to_string()).map(|_| ()),
+        ] {
+            let error = result.expect_err("Client import must fail closed");
+            assert!(error.contains("common.forbidden"));
+        }
+        assert!(FilamentDatabase::open(&state.db_path)
+            .expect("reopen db")
+            .printer_exists("printer_guard_probe")
+            .expect("query printer"));
+
+        remove_test_database_and_snapshots(&state);
     }
 
     #[test]

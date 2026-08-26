@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import type { SettingsCatalogTabProps } from "./settings_catalog_tab";
-import { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
-import { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
+import type { SettingsCatalogRefreshPanel } from "./settings_catalog_refresh_panel";
+import type { SettingsMissingSwatchesPanel } from "../components/settings_missing_swatches_panel";
 
 type SettingsCatalogRouteProps = SettingsCatalogTabProps;
 type CatalogRefreshPanelProps = ComponentProps<typeof SettingsCatalogRefreshPanel>;

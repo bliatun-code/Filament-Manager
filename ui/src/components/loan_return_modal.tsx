@@ -27,6 +27,12 @@ import { useResolvedTheme } from "../lib/theme_mode";
 import { isInboundLoan } from "../lib/loan_state";
 import type { NormalizedLoanDetailsRow } from "../lib/loan_data_source";
 import { LoanReturnSummaryCard } from "./loan_return_summary_card";
+import {
+  formatLoanExpectedReturnDate,
+  loanDueState,
+  localCalendarDate,
+} from "../lib/loan_due_state";
+import { inlineStatusSignalClass } from "../lib/chip_styles";
 
 type LoanReturnModalProps = {
   busy: boolean;
@@ -37,6 +43,7 @@ type LoanReturnModalProps = {
   onConfirm: () => void | Promise<void>;
   onGramsChange: (value: string) => void;
   onNoteChange: (value: string) => void;
+  today?: string;
 };
 
 export function LoanReturnModal({
@@ -48,6 +55,7 @@ export function LoanReturnModal({
   onConfirm,
   onGramsChange,
   onNoteChange,
+  today = localCalendarDate(),
 }: LoanReturnModalProps) {
   const { locale, t } = useI18n();
   const resolvedTheme = useResolvedTheme();
@@ -57,6 +65,8 @@ export function LoanReturnModal({
   }
 
   const isInbound = isInboundLoan(loan);
+  const expectedReturnAt = loan.loan.expected_return_at?.trim() || null;
+  const dueState = loanDueState(loan, today);
 
   return (
     <AppModal
@@ -112,6 +122,15 @@ export function LoanReturnModal({
                   : t("loans.borrower", "Borrower")}
                 : {loan.loan.counterparty_name ?? loan.loan.borrower_name}
               </span>
+              {dueState === "OVERDUE" ? (
+                <span className={inlineStatusSignalClass("danger", "text-[10px]")}>
+                  {t("loans.overdue", "Overdue")}
+                </span>
+              ) : dueState === "DUE_TODAY" ? (
+                <span className={inlineStatusSignalClass("warning", "text-[10px]")}>
+                  {t("loans.dueToday", "Due today")}
+                </span>
+              ) : null}
             </div>
           </SwatchSelectionPreviewHeader>
 
@@ -140,6 +159,16 @@ export function LoanReturnModal({
                   locale,
                 )}
               </ModalDetailItem>
+              {loan.loan.counterparty_contact?.trim() ? (
+                <ModalDetailItem label={t("loans.contact", "Contact")}>
+                  <span className="break-words">{loan.loan.counterparty_contact}</span>
+                </ModalDetailItem>
+              ) : null}
+              {expectedReturnAt ? (
+                <ModalDetailItem label={t("loans.expectedReturn", "Expected return")}>
+                  {formatLoanExpectedReturnDate(expectedReturnAt, locale)}
+                </ModalDetailItem>
+              ) : null}
             </ModalDetailGrid>
           </LoanSwatchInsetCard>
         </LoanSwatchCard>

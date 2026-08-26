@@ -1,5 +1,6 @@
 import {
   DEFAULT_LOCALE,
+  fallbackLocaleFor,
   isPseudoLocale,
   normalizeSelectableLocale,
   normalizeSupportedLocale,
@@ -36,8 +37,35 @@ function dictionaryFromModule(locale, module) {
 
 export function requiredCompanionDictionaryLocales(locale) {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  const sourceLocale = sourceLocaleFor(normalizedLocale);
-  return [sourceLocale];
+  const dictionaryLocales = [];
+  const pendingLocales = [normalizedLocale];
+  const visitedLocales = new Set();
+
+  while (pendingLocales.length > 0) {
+    const currentLocale = pendingLocales.shift();
+    if (!currentLocale || visitedLocales.has(currentLocale)) {
+      continue;
+    }
+    visitedLocales.add(currentLocale);
+
+    const sourceLocale = sourceLocaleFor(currentLocale);
+    if (!dictionaryLocales.includes(sourceLocale)) {
+      dictionaryLocales.push(sourceLocale);
+    }
+
+    const fallbackLocale = fallbackLocaleFor(currentLocale);
+    if (fallbackLocale) {
+      pendingLocales.push(fallbackLocale);
+    }
+    if (sourceLocale !== currentLocale) {
+      const sourceFallbackLocale = fallbackLocaleFor(sourceLocale);
+      if (sourceFallbackLocale) {
+        pendingLocales.push(sourceFallbackLocale);
+      }
+    }
+  }
+
+  return dictionaryLocales;
 }
 
 function loadCompanionDictionary(locale, loadModule) {
@@ -174,10 +202,9 @@ export function resolveInitialCompanionLocale(storageRef, navigatorRef) {
 
 export function t(locale, key, fallback = "", params = {}) {
   const normalizedLocale = normalizeCompanionLocale(locale);
-  const localized = lookup(
-    dictionaryCache.get(sourceLocaleFor(normalizedLocale)),
-    key,
-  );
+  const localized = requiredCompanionDictionaryLocales(normalizedLocale)
+    .map((dictionaryLocale) => lookup(dictionaryCache.get(dictionaryLocale), key))
+    .find((value) => typeof value === "string");
   const format = isPseudoLocale(normalizedLocale)
     ? (template) =>
         pseudoLocalizeMessageForLocale(template, params, normalizedLocale)

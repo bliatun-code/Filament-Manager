@@ -1,4 +1,7 @@
-use crate::backend::statistics::{FilamentConsumptionRow, InventoryOverview, MaterialUsageRow};
+use crate::backend::statistics::{
+    FilamentConsumptionRow, InventoryOverview, MaterialUsageRow, StatisticsEngine,
+    StatisticsPeriod, StatisticsPeriodReport,
+};
 use crate::state::AppState;
 use crate::with_stats;
 
@@ -27,4 +30,16 @@ pub(crate) fn list_filament_consumption(
     with_stats(&state, |stats| {
         stats.filament_consumption(capped, printer_id.as_deref())
     })
+}
+
+#[tauri::command]
+pub(crate) fn statistics_period_report(
+    state: tauri::State<'_, AppState>,
+    period: StatisticsPeriod,
+) -> Result<StatisticsPeriodReport, String> {
+    let stats = StatisticsEngine::open(&state.db_path)
+        .map_err(|error| format!("Open statistics database: {error}"))?;
+    stats
+        .period_report(&period)
+        .map_err(|error| format!("Statistics period query: {error}"))
 }

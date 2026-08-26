@@ -291,27 +291,32 @@ async function createManualSpool(page, timeoutMs, record) {
 
 async function verifySpoolInReloadedUi(page, baseUrl, timeoutMs, spoolId, record, weight) {
   await reloadCompanion(page, baseUrl, timeoutMs);
+  return verifySpoolInCurrentUi(page, timeoutMs, spoolId, record, weight, "Reloaded");
+}
+
+async function verifySpoolInCurrentUi(
+  page,
+  timeoutMs,
+  spoolId,
+  record,
+  weight,
+  stateLabel = "Current",
+) {
   await page.locator('input[name="inventory-search"]').fill(record.filamentName);
   const row = page.locator(`[data-action="select-spool"][data-spool-id="${spoolId}"]`);
   await row.waitFor({ state: "visible", timeout: timeoutMs });
   const text = await row.innerText();
   for (const expected of [record.filamentName, record.colorName, record.vendor, `${weight} g`]) {
     if (!text.includes(expected)) {
-      throw new Error(`Reloaded Companion inventory row did not contain ${JSON.stringify(expected)}.`);
+      throw new Error(
+        `${stateLabel} Companion inventory row did not contain ${JSON.stringify(expected)}.`,
+      );
     }
   }
   return row;
 }
 
-async function updateWeight(page, baseUrl, timeoutMs, dbPath, spoolId, record) {
-  const row = await verifySpoolInReloadedUi(
-    page,
-    baseUrl,
-    timeoutMs,
-    spoolId,
-    record,
-    record.initialWeight,
-  );
+async function updateWeight(page, timeoutMs, dbPath, spoolId, record, row) {
   await row.click();
   const readyDetail = page.locator('.detail-modal[aria-busy="false"]');
   await readyDetail.waitFor({ state: "visible", timeout: timeoutMs });
@@ -355,13 +360,15 @@ async function updateWeight(page, baseUrl, timeoutMs, dbPath, spoolId, record) {
     undefined,
     { timeout: timeoutMs },
   );
-  await verifySpoolInReloadedUi(
+  await page.locator('[data-action="close-detail"]').click();
+  await page.locator(".detail-modal").waitFor({ state: "hidden", timeout: timeoutMs });
+  await verifySpoolInCurrentUi(
     page,
-    baseUrl,
     timeoutMs,
     spoolId,
     record,
     record.measuredWeight,
+    "Updated",
   );
   return state;
 }
@@ -379,18 +386,17 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
   await createForm.locator('input[name="borrower-name"]').fill(record.borrower);
   await createForm.locator('textarea[name="loan-note"]').fill(record.loanNote);
   await createForm.locator('button[type="submit"]').click();
+  await createForm.waitFor({ state: "hidden", timeout: timeoutMs });
 
   let state = await waitForDatabaseState(
     dbPath,
     (candidate) => candidate.loan?.loan_status === "ACTIVE",
     { record, timeoutMs },
   );
-  await openCompanion(page, baseUrl, timeoutMs);
-  await page.locator('[data-root-flow="loans"]').click();
   let loanCard = page.locator(".loan-card").filter({ hasText: record.borrower }).first();
   await loanCard.waitFor({ state: "visible", timeout: timeoutMs });
   if (!(await loanCard.innerText()).includes(record.loanNote)) {
-    throw new Error("Reloaded Companion loan card did not preserve the outbound loan note.");
+    throw new Error("Companion loan card did not preserve the outbound loan note.");
   }
 
   await loanCard.locator('[data-action="toggle-loan-return"]').click();
@@ -410,7 +416,15 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
       candidate.history.some((event) => event.event_type === "LOAN_RETURNED"),
     { record, timeoutMs },
   );
-  await openCompanion(page, baseUrl, timeoutMs);
+  await reloadCompanion(page, baseUrl, timeoutMs);
+  await verifySpoolInCurrentUi(
+    page,
+    timeoutMs,
+    spoolId,
+    record,
+    record.returnMeasuredWeight,
+    "Reloaded",
+  );
   await page.locator('[data-root-flow="loans"]').click();
   await page
     .locator('[data-action="set-loan-status"][data-loan-status="RETURNED"]')
@@ -444,7 +458,7 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
     timeoutMs,
   });
   const spoolId = state.spool.id;
-  await verifySpoolInReloadedUi(
+  const persistedRow = await verifySpoolInReloadedUi(
     page,
     options.baseUrl,
     timeoutMs,
@@ -454,11 +468,11 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
   );
   state = await updateWeight(
     page,
-    options.baseUrl,
     timeoutMs,
     options.dbPath,
     spoolId,
     record,
+    persistedRow,
   );
   const persistedWeight = state.spool.remaining_g;
   state = await lendAndReturnSpool(

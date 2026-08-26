@@ -1,3 +1,4 @@
+use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::inventory_engine::{DeleteSpoolInput, PurgeSpoolInput};
 use crate::state::AppState;
 use crate::with_inventory;
@@ -7,7 +8,9 @@ pub(crate) fn delete_spool(
     state: tauri::State<'_, AppState>,
     input: DeleteSpoolInput,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.delete_spool(input))
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.delete_spool(input))
+    })
 }
 
 #[tauri::command]
@@ -15,5 +18,7 @@ pub(crate) fn purge_spool(
     state: tauri::State<'_, AppState>,
     input: PurgeSpoolInput,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.purge_spool(input))
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.purge_spool(input))
+    })
 }

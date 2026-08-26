@@ -126,9 +126,86 @@ jobs:
             fi
           fi
 
+  prepare-previous-release-fixture:
+    name: Prepare v0.27 database fixture
+    needs: validate-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned v0.27.0 source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 4a1c57a10255c26f70f749fc33ff5ae25e23b1ce
+          path: previous-release-v0.27.0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            previous-release-v0.27.0/package-lock.json
+
+      - name: Verify pinned previous-release source
+        run: |
+          set -euo pipefail
+          expected_commit="4a1c57a10255c26f70f749fc33ff5ae25e23b1ce"
+          actual_commit="$(git -C previous-release-v0.27.0 rev-parse HEAD)"
+          actual_version="$(node -p "require('./previous-release-v0.27.0/package.json').version")"
+          if [[ "$actual_commit" != "$expected_commit" ]]; then
+            echo "::error::Expected v0.27.0 commit $expected_commit, found $actual_commit."
+            exit 1
+          fi
+          if [[ "$actual_version" != "0.27.0" ]]; then
+            echo "::error::Expected previous release 0.27.0, found $actual_version."
+            exit 1
+          fi
+
+      - name: Install fixture dependencies
+        run: |
+          npm ci
+          npm --prefix ./previous-release-v0.27.0 ci
+
+      - name: Prepare and verify sanitized v0.27 fixture
+        env:
+          PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
+        run: |
+          set -euo pipefail
+          mkdir -p "$PREVIOUS_RELEASE_FIXTURE_DIR"
+          database_path="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.db"
+          manifest_path="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.json"
+          npm run qa:release:previous-fixture -- \
+            --source=previous-release-v0.27.0 \
+            --database="$database_path" \
+            --manifest="$manifest_path"
+          npm run qa:release:previous-fixture -- \
+            --verify \
+            --database="$database_path" \
+            --manifest="$manifest_path"
+
+      - name: Upload sanitized v0.27 fixture
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-v0.27.0-database-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
   build-macos-dmg:
     name: Build signed macOS DMG
-    needs: validate-release
+    needs:
+      - validate-release
+      - prepare-previous-release-fixture
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'macos'
     environment: macos-release
     runs-on: macos-15
@@ -161,7 +238,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Record build environment
@@ -180,6 +257,22 @@ jobs:
         run: |
           npm ci
           npm --prefix ./ui ci
+
+      - name: Download sanitized v0.27 fixture
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-v0.27.0-database-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
+
+      - name: Verify downloaded v0.27 fixture
+        env:
+          PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
+        run: |
+          set -euo pipefail
+          npm run qa:release:previous-fixture -- \
+            --verify \
+            --database="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.db" \
+            --manifest="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.json"
 
       - name: Validate release version
         run: |
@@ -356,6 +449,7 @@ jobs:
         env:
           EXPECTED_APPLE_TEAM_ID: ${{ vars.EXPECTED_APPLE_TEAM_ID }}
           FILAMENT_MANAGER_MACOS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-macos-dmg-smoke
+          PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
         run: >-
           npm run smoke:macos-dmg --
           "$FILAMENT_MANAGER_DMG_SMOKE_PATH"
@@ -363,6 +457,9 @@ jobs:
           --expected-team-id="$EXPECTED_APPLE_TEAM_ID"
           --launch-timeout-ms=120000
           --signature-policy=release
+          --upgrade-fixture="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.db"
+          --upgrade-source-release=v0.27.0
+          --packaged-desktop-e2e
 
       - name: Upload installed macOS smoke logs
         if: always()
@@ -463,6 +560,7 @@ jobs:
           --expected-team-id="$EXPECTED_APPLE_TEAM_ID"
           --launch-timeout-ms=120000
           --signature-policy=release
+          --packaged-desktop-e2e
 
       - name: Upload Intel macOS smoke logs
         if: always()
@@ -476,7 +574,9 @@ jobs:
 
   build-windows-msi:
     name: Build Windows MSI
-    needs: validate-release
+    needs:
+      - validate-release
+      - prepare-previous-release-fixture
     if: github.event_name == 'push' || github.event.inputs.platform == 'both' || github.event.inputs.platform == 'windows'
     runs-on: windows-2025
     timeout-minutes: 60
@@ -498,13 +598,28 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
 
       - name: Install root dependencies
         run: npm ci
 
       - name: Install UI dependencies
         run: npm --prefix ./ui ci
+
+      - name: Download sanitized v0.27 fixture
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-v0.27.0-database-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
+
+      - name: Verify downloaded v0.27 fixture
+        env:
+          PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
+        run: >-
+          npm run qa:release:previous-fixture --
+          --verify
+          --database="$env:PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.db"
+          --manifest="$env:PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.27.0.json"
 
       - name: Prepare MSI version override
         env:
@@ -597,6 +712,7 @@ jobs:
         env:
           WINDOWS_MSI_CANDIDATE_DIR: ${{ runner.temp }}/filament-manager-windows-release-candidate
           WINDOWS_MSI_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-windows-release-msi-smoke
+          PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.27.0-fixture
         run: |
           $tauriConfig = Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json
           $msiFiles = @(Get-ChildItem -LiteralPath $env:WINDOWS_MSI_CANDIDATE_DIR -Filter "*.msi" -File)
@@ -614,6 +730,9 @@ jobs:
             -ExpectedDatabaseName "filament-manager.db" `
             -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
             -SignaturePolicy "UnsignedRequired" `
+            -UpgradeFixturePath (Join-Path $env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0.27.0.db") `
+            -UpgradeSourceRelease "v0.27.0" `
+            -RunPackagedDesktopE2E `
             -LaunchTimeoutSeconds 120
 
       - name: Upload release MSI smoke logs
@@ -822,7 +941,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          required_checks=("macOS Smoke" "Windows Smoke")
+          required_checks=("Database Migration Integrity" "macOS Smoke" "Windows Smoke")
 
           for check_name in "${required_checks[@]}"; do
             check_runs="$(

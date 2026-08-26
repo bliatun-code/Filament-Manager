@@ -759,6 +759,453 @@ test("submitWishlistStock receives the selected quantity through one atomic endp
   assert.equal(harness.state.statusMessage, "Wishlist spool added to inventory.");
 });
 
+test("submitWishlistStock normalizes one receipt and sends it with the atomic multi-roll receive", async () => {
+  const fetchCalls = [];
+  const harness = createMutationHarness({
+    state: {
+      wishlistItems: [
+        {
+          id: "wish-receipt",
+          status: "ON_ORDER",
+          quantity: 3,
+        },
+      ],
+    },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return {
+        spool_ids: ["spool-1", "spool-2"],
+        remaining_quantity: 1,
+      };
+    },
+  });
+
+  await harness.mutations.submitWishlistStock("wish-receipt", "2", {
+    pricePerRoll: " 249.50 ",
+    currency: " nok ",
+    purchaseDate: "2026-08-21",
+    batchCode: " LOT-7 ",
+    supplierReference: " PO-42 ",
+  });
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/wishlist/wish-receipt/receive",
+      {
+        quantity: 2,
+        purchase_metadata: {
+          purchase_price: 249.5,
+          purchase_currency: "NOK",
+          purchase_date: "2026-08-21",
+          batch_code: "LOT-7",
+          supplier_reference: "PO-42",
+        },
+      },
+    ],
+  ]);
+});
+
+test("submitWishlistStock keeps zero-price receipts and blocks invalid purchase details locally", async () => {
+  const fetchCalls = [];
+  const harness = createMutationHarness({
+    state: {
+      wishlistItems: [{ id: "wish-zero", status: "WISHLIST", quantity: 1 }],
+    },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { spool_ids: ["spool-zero"], remaining_quantity: 0 };
+    },
+  });
+
+  await harness.mutations.submitWishlistStock("wish-zero", "1", {
+    pricePerRoll: "0",
+    currency: "eur",
+    purchaseDate: "",
+    batchCode: "",
+    supplierReference: "",
+  });
+  assert.equal(fetchCalls[0][1].purchase_metadata.purchase_price, 0);
+  assert.equal(fetchCalls[0][1].purchase_metadata.purchase_currency, "EUR");
+
+  fetchCalls.length = 0;
+  await harness.mutations.submitWishlistStock("wish-zero", "1", {
+    pricePerRoll: "10",
+    currency: "",
+    purchaseDate: "2026-02-30",
+    batchCode: "",
+    supplierReference: "",
+  });
+  assert.deepEqual(fetchCalls, []);
+  assert.equal(harness.state.statusTone, "error");
+  assert.equal(harness.state.statusMessage, "Currency is required when the price changes.");
+});
+
+test("submitSpoolDetailsUpdate omits unchanged receipt metadata", async () => {
+  const fetchCalls = [];
+  const spool = {
+    id: "spool-receipt",
+    status: "IN_STOCK",
+    location_id: "Shelf A",
+    home_location_id: "Shelf A",
+    purchase_price: 199,
+    purchase_currency: "EUR",
+    purchase_date: "2026-08-20",
+    batch_code: "LOT-4",
+    supplier_reference: "INVOICE-8",
+  };
+  const harness = createMutationHarness({
+    state: { spools: [{ spool, master: {} }] },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    spool.id,
+    spool.status,
+    spool.location_id,
+    "Shelf B",
+    {
+      pricePerRoll: "0199.00",
+      currency: " eur ",
+      purchaseDate: spool.purchase_date,
+      batchCode: ` ${spool.batch_code} `,
+      supplierReference: spool.supplier_reference,
+    },
+  );
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/spools/spool-receipt/details",
+      {
+        status: "IN_STOCK",
+        location: "Shelf A",
+        home_location: "Shelf B",
+      },
+    ],
+  ]);
+  assert.equal(harness.state.statusMessage, "Home location saved.");
+});
+
+test("submitSpoolDetailsUpdate sends an explicit five-null receipt clear", async () => {
+  const fetchCalls = [];
+  const spool = {
+    id: "spool-clear",
+    status: "IN_STOCK",
+    location_id: null,
+    home_location_id: null,
+    purchase_price: 249.5,
+    purchase_currency: "NOK",
+    purchase_date: "2026-08-21",
+    batch_code: "LOT-7",
+    supplier_reference: "PO-42",
+  };
+  const harness = createMutationHarness({
+    state: { spools: [{ spool, master: {} }] },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    spool.id,
+    spool.status,
+    "",
+    "",
+    {
+      pricePerRoll: "",
+      currency: "",
+      purchaseDate: "",
+      batchCode: "",
+      supplierReference: "",
+    },
+  );
+
+  assert.deepEqual(fetchCalls[0][1].purchase_metadata, {
+    purchase_price: null,
+    purchase_currency: null,
+    purchase_date: null,
+    batch_code: null,
+    supplier_reference: null,
+  });
+  assert.equal(harness.state.statusMessage, "Spool details updated.");
+});
+
+test("submitSpoolDetailsUpdate preserves an unchanged legacy currency-less price only", async () => {
+  const fetchCalls = [];
+  const spool = {
+    id: "spool-legacy",
+    status: "IN_STOCK",
+    location_id: null,
+    home_location_id: null,
+    purchase_price: 199,
+    purchase_currency: null,
+    purchase_date: null,
+    batch_code: null,
+    supplier_reference: null,
+  };
+  const harness = createMutationHarness({
+    state: { spools: [{ spool, master: {} }] },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    spool.id,
+    spool.status,
+    "",
+    "",
+    {
+      pricePerRoll: "199",
+      currency: "",
+      purchaseDate: "",
+      batchCode: "LEGACY-BATCH",
+      supplierReference: "",
+    },
+  );
+  assert.equal(fetchCalls[0][1].purchase_metadata.purchase_price, 199);
+  assert.equal(fetchCalls[0][1].purchase_metadata.purchase_currency, null);
+
+  fetchCalls.length = 0;
+  await harness.mutations.submitSpoolDetailsUpdate(
+    spool.id,
+    spool.status,
+    "",
+    "",
+    {
+      pricePerRoll: "200",
+      currency: "",
+      purchaseDate: "",
+      batchCode: "",
+      supplierReference: "",
+    },
+  );
+  assert.deepEqual(fetchCalls, []);
+  assert.equal(harness.state.statusMessage, "Currency is required when the price changes.");
+});
+
+test("submitSpoolDetailsUpdate preserves ASSIGNED for a selected loaded spool receipt edit", async () => {
+  const fetchCalls = [];
+  const selectedSpool = {
+    id: "spool-loaded",
+    status: "ASSIGNED",
+    location_id: "Printer:Brutus:printer_1_ams_1_slot_2",
+    home_location_id: "Shelf A",
+    purchase_price: null,
+    purchase_currency: null,
+    purchase_date: null,
+    batch_code: null,
+    supplier_reference: null,
+  };
+  const harness = createMutationHarness({
+    state: {
+      selectedDetail: { spool: { spool: selectedSpool, master: {} } },
+      spools: [
+        {
+          spool: { ...selectedSpool, status: "IN_STOCK" },
+          master: {},
+        },
+      ],
+    },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    selectedSpool.id,
+    "ASSIGNED",
+    selectedSpool.location_id,
+    selectedSpool.home_location_id,
+    {
+      pricePerRoll: "",
+      currency: "",
+      purchaseDate: "2026-08-21",
+      batchCode: "",
+      supplierReference: "DELIVERY-9",
+    },
+  );
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/spools/spool-loaded/details",
+      {
+        status: "ASSIGNED",
+        location: "Printer:Brutus:printer_1_ams_1_slot_2",
+        home_location: "Shelf A",
+        purchase_metadata: {
+          purchase_price: null,
+          purchase_currency: null,
+          purchase_date: "2026-08-21",
+          batch_code: null,
+          supplier_reference: "DELIVERY-9",
+        },
+      },
+    ],
+  ]);
+  assert.equal(harness.state.statusMessage, "Spool details updated.");
+});
+
+test("submitSpoolDetailsUpdate sends an exact receipt-only payload for a selected BORROWED spool", async () => {
+  const fetchCalls = [];
+  const selectedSpool = {
+    id: "spool-loaned",
+    status: "BORROWED",
+    location_id: "With Alice",
+    home_location_id: "Shelf A",
+    purchase_price: null,
+    purchase_currency: null,
+    purchase_date: null,
+    batch_code: null,
+    supplier_reference: null,
+  };
+  const harness = createMutationHarness({
+    state: {
+      selectedDetail: { spool: { spool: selectedSpool, master: {} } },
+      spools: [
+        {
+          spool: { ...selectedSpool, status: "IN_STOCK" },
+          master: {},
+        },
+      ],
+    },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    selectedSpool.id,
+    "BORROWED",
+    selectedSpool.location_id,
+    selectedSpool.home_location_id,
+    {
+      pricePerRoll: "249.50",
+      currency: "nok",
+      purchaseDate: "2026-08-21",
+      batchCode: "LOT-7",
+      supplierReference: "PO-42",
+    },
+  );
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/spools/spool-loaned/details",
+      {
+        status: "BORROWED",
+        purchase_metadata: {
+          purchase_price: 249.5,
+          purchase_currency: "NOK",
+          purchase_date: "2026-08-21",
+          batch_code: "LOT-7",
+          supplier_reference: "PO-42",
+        },
+      },
+    ],
+  ]);
+});
+
+test("submitSpoolDetailsUpdate sends an exact five-null clear for a BORROWED spool", async () => {
+  const fetchCalls = [];
+  const spool = {
+    id: "spool-loaned-clear",
+    status: "BORROWED",
+    location_id: "With Alice",
+    home_location_id: "Shelf A",
+    purchase_price: 249.5,
+    purchase_currency: "NOK",
+    purchase_date: "2026-08-21",
+    batch_code: "LOT-7",
+    supplier_reference: "PO-42",
+  };
+  const harness = createMutationHarness({
+    state: { selectedDetail: { spool: { spool, master: {} } } },
+    fetchJson: async (path, init) => {
+      fetchCalls.push([path, JSON.parse(String(init?.body || "{}"))]);
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    spool.id,
+    "BORROWED",
+    spool.location_id,
+    spool.home_location_id,
+    {
+      pricePerRoll: "",
+      currency: "",
+      purchaseDate: "",
+      batchCode: "",
+      supplierReference: "",
+    },
+  );
+
+  assert.deepEqual(fetchCalls, [
+    [
+      "/api/v1/spools/spool-loaned-clear/details",
+      {
+        status: "BORROWED",
+        purchase_metadata: {
+          purchase_price: null,
+          purchase_currency: null,
+          purchase_date: null,
+          batch_code: null,
+          supplier_reference: null,
+        },
+      },
+    ],
+  ]);
+});
+
+test("submitSpoolDetailsUpdate blocks non-receipt BORROWED detail mutations locally", async () => {
+  let fetchCount = 0;
+  const spool = {
+    id: "spool-loaned-guard",
+    status: "BORROWED",
+    location_id: "With Alice",
+    home_location_id: "Shelf A",
+    purchase_price: null,
+    purchase_currency: null,
+    purchase_date: null,
+    batch_code: null,
+    supplier_reference: null,
+  };
+  const harness = createMutationHarness({
+    state: { selectedDetail: { spool: { spool, master: {} } } },
+    fetchJson: async () => {
+      fetchCount += 1;
+      return { ok: true };
+    },
+  });
+
+  await harness.mutations.submitSpoolDetailsUpdate(
+    spool.id,
+    "BORROWED",
+    spool.location_id,
+    "Shelf B",
+    {
+      pricePerRoll: "100",
+      currency: "NOK",
+      purchaseDate: "",
+      batchCode: "",
+      supplierReference: "",
+    },
+  );
+
+  assert.equal(fetchCount, 0);
+  assert.equal(harness.state.statusTone, "error");
+  assert.equal(
+    harness.state.statusMessage,
+    "Loaned-out spools use the companion loan return flow instead of manual status/location edits.",
+  );
+});
+
 test("submitWishlistStock rejects quantities above the remaining wishlist count", async () => {
   let fetchCount = 0;
   const harness = createMutationHarness({

@@ -1,5 +1,6 @@
 import { useId, type CSSProperties } from "react";
 import { inventoryFormControlClassName } from "./form_control_class";
+import { INVENTORY_LOCATION_DATALIST_ID } from "./inventory_location_datalist";
 import { ModalActionButton } from "./modal_action_button";
 import { ModalFactCard, ModalFormField } from "./modal_chrome";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
@@ -29,6 +30,7 @@ type InventoryCreateActionsPanelProps = {
   onOwnershipTypeChange: (value: OwnershipType) => void;
   ownershipType: OwnershipType;
   panelStyle?: CSSProperties;
+  purpose: "STOCK" | "PURCHASE";
   selectionSummary: InventoryCreateSelectionSummary | null;
   tauriAvailable: boolean;
 };
@@ -52,6 +54,7 @@ export function InventoryCreateActionsPanel({
   onOwnershipTypeChange,
   ownershipType,
   panelStyle,
+  purpose,
   selectionSummary,
   tauriAvailable,
 }: InventoryCreateActionsPanelProps) {
@@ -93,131 +96,148 @@ export function InventoryCreateActionsPanel({
         </SwatchSelectionPreviewHeader>
       </div>
 
-      <ModalFactCard
-        padding="none"
-        surface="plain"
-        className="mt-4 border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40"
-      >
-        <SegmentedChoiceRow
-          label={t("inventory.ownership", "Ownership")}
-          value={ownershipType}
-          onChange={onOwnershipTypeChange}
-          options={[
-            {
-              value: "OWNED",
-              label: t("inventory.ownedByUs", "Owned"),
-            },
-            {
-              value: "BORROWED_IN",
-              label: t("inventory.borrowedIn", "Borrowed in"),
-            },
-          ]}
-        />
-        <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
-          {borrowedIn
-            ? t(
-                "inventory.borrowedInHelp",
-                "Register this spool as borrowed from someone else. It can still be used in printers, but it will not appear in loan-out candidates.",
-              )
-            : t("inventory.ownedByUsDetail", "Owned by us")}
+      {purpose === "PURCHASE" ? (
+        <div className="mt-4">
+          <div className="text-xs leading-5 text-slate-600 dark:text-slate-300">
+            {t(
+              "inventory.addToWishlistHelp",
+              "Use the current selection to keep the wishlist → on order → stock workflow.",
+            )}
+          </div>
+          <ModalActionButton
+            className="mt-4"
+            fullWidth
+            size="roomy"
+            variant="solid"
+            style={actionStyle}
+            onClick={onAddCurrentToWishlist}
+            disabled={disabledWishlistCreate}
+          >
+            {t(
+              "inventory.addCurrentSelectionToWishlist",
+              "Add current selection to wishlist",
+            )}
+          </ModalActionButton>
         </div>
-        {borrowedIn ? (
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <ModalFormField label={t("inventory.borrowedFrom", "Borrowed from")}>
+      ) : (
+        <>
+          <ModalFactCard
+            padding="none"
+            surface="plain"
+            className="mt-4 border-slate-200/80 bg-white/65 p-3 dark:border-slate-700/80 dark:bg-slate-950/40"
+          >
+            <SegmentedChoiceRow
+              label={t("inventory.ownership", "Ownership")}
+              value={ownershipType}
+              onChange={onOwnershipTypeChange}
+              options={[
+                {
+                  value: "OWNED",
+                  label: t("inventory.ownedByUs", "Owned"),
+                },
+                {
+                  value: "BORROWED_IN",
+                  label: t("inventory.borrowedIn", "Borrowed in"),
+                },
+              ]}
+            />
+            <div className="mt-2 text-xs leading-5 text-slate-600 dark:text-slate-300">
+              {borrowedIn
+                ? t(
+                    "inventory.borrowedInHelp",
+                    "Register this spool as borrowed from someone else. It can still be used in printers, but it will not appear in loan-out candidates.",
+                  )
+                : t("inventory.ownedByUsDetail", "Owned by us")}
+            </div>
+            {borrowedIn ? (
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <ModalFormField label={t("inventory.borrowedFrom", "Borrowed from")}>
+                  <input
+                    type="text"
+                    value={borrowedFromName}
+                    onChange={(event) => onBorrowedFromNameChange(event.target.value)}
+                    className={`mt-1.5 ${inventoryFormControlClassName}`}
+                    disabled={!tauriAvailable}
+                  />
+                </ModalFormField>
+                <ModalFormField
+                  label={t("inventory.ownerContactOptional", "Owner contact (optional)")}
+                >
+                  <input
+                    type="text"
+                    value={borrowedFromContact}
+                    onChange={(event) => onBorrowedFromContactChange(event.target.value)}
+                    className={`mt-1.5 ${inventoryFormControlClassName}`}
+                    disabled={!tauriAvailable}
+                  />
+                </ModalFormField>
+                <ModalFormField
+                  className="md:col-span-2"
+                  label={t("inventory.borrowedInNoteOptional", "Borrowed-in note (optional)")}
+                >
+                  <input
+                    type="text"
+                    value={borrowedInNote}
+                    onChange={(event) => onBorrowedInNoteChange(event.target.value)}
+                    className={`mt-1.5 ${inventoryFormControlClassName}`}
+                    disabled={!tauriAvailable}
+                  />
+                </ModalFormField>
+              </div>
+            ) : null}
+          </ModalFactCard>
+          <div className="mt-3 grid grid-cols-1 gap-3">
+            <ModalFormField label={t("inventory.initialWeight", "Initial weight (g)")}>
               <input
-                type="text"
-                value={borrowedFromName}
-                onChange={(event) => onBorrowedFromNameChange(event.target.value)}
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                value={initialWeight}
+                onChange={(event) => onInitialWeightChange(event.target.value)}
                 className={`mt-1.5 ${inventoryFormControlClassName}`}
                 disabled={!tauriAvailable}
+                aria-invalid={initialWeightInvalid}
+                aria-describedby={initialWeightInvalid ? initialWeightErrorId : undefined}
               />
+              {initialWeightInvalid ? (
+                <span
+                  id={initialWeightErrorId}
+                  role="alert"
+                  className="mt-1.5 block text-xs font-medium text-rose-700 dark:text-rose-300"
+                >
+                  {t("inventory.error.invalidWeight", "Weight value is invalid.")}
+                </span>
+              ) : null}
             </ModalFormField>
             <ModalFormField
-              label={t("inventory.ownerContactOptional", "Owner contact (optional)")}
+              label={t("inventory.homeLocationOptional", "Home location (optional)")}
             >
               <input
                 type="text"
-                value={borrowedFromContact}
-                onChange={(event) => onBorrowedFromContactChange(event.target.value)}
-                className={`mt-1.5 ${inventoryFormControlClassName}`}
-                disabled={!tauriAvailable}
-              />
-            </ModalFormField>
-            <ModalFormField
-              className="md:col-span-2"
-              label={t("inventory.borrowedInNoteOptional", "Borrowed-in note (optional)")}
-            >
-              <input
-                type="text"
-                value={borrowedInNote}
-                onChange={(event) => onBorrowedInNoteChange(event.target.value)}
+                list={INVENTORY_LOCATION_DATALIST_ID}
+                value={location}
+                onChange={(event) => onLocationChange(event.target.value)}
                 className={`mt-1.5 ${inventoryFormControlClassName}`}
                 disabled={!tauriAvailable}
               />
             </ModalFormField>
           </div>
-        ) : null}
-      </ModalFactCard>
-      <div className="mt-3 grid grid-cols-1 gap-3">
-        <ModalFormField label={t("inventory.initialWeight", "Initial weight (g)")}>
-          <input
-            type="number"
-            min={1}
-            step={1}
-            inputMode="numeric"
-            value={initialWeight}
-            onChange={(event) => onInitialWeightChange(event.target.value)}
-            className={`mt-1.5 ${inventoryFormControlClassName}`}
-            disabled={!tauriAvailable}
-            aria-invalid={initialWeightInvalid}
-            aria-describedby={initialWeightInvalid ? initialWeightErrorId : undefined}
-          />
-          {initialWeightInvalid ? (
-            <span
-              id={initialWeightErrorId}
-              role="alert"
-              className="mt-1.5 block text-xs font-medium text-rose-700 dark:text-rose-300"
-            >
-              {t("inventory.error.invalidWeight", "Weight value is invalid.")}
-            </span>
-          ) : null}
-        </ModalFormField>
-        <ModalFormField
-          label={t("inventory.homeLocationOptional", "Home location (optional)")}
-        >
-          <input
-            type="text"
-            value={location}
-            onChange={(event) => onLocationChange(event.target.value)}
-            className={`mt-1.5 ${inventoryFormControlClassName}`}
-            disabled={!tauriAvailable}
-          />
-        </ModalFormField>
-      </div>
-      <ModalActionButton
-        className="mt-4"
-        fullWidth
-        size="roomy"
-        variant="solid"
-        style={actionStyle}
-        onClick={onCreateSpool}
-        disabled={disabledCreate || initialWeightInvalid}
-      >
-        {borrowedIn
-          ? t("inventory.registerBorrowedIn", "Register borrowed-in spool")
-          : t("inventory.addSpool", "Add spool to inventory")}
-      </ModalActionButton>
-
-      <div className="mt-4 border-t border-slate-200/80 pt-4 dark:border-slate-700/80">
-        <ModalActionButton
-          fullWidth
-          variant="secondary"
-          onClick={onAddCurrentToWishlist}
-          disabled={disabledWishlistCreate}
-        >
-          {t("inventory.addCurrentSelectionToWishlist", "Add current selection to wishlist")}
-        </ModalActionButton>
-      </div>
+          <ModalActionButton
+            className="mt-4"
+            fullWidth
+            size="roomy"
+            variant="solid"
+            style={actionStyle}
+            onClick={onCreateSpool}
+            disabled={disabledCreate || initialWeightInvalid}
+          >
+            {borrowedIn
+              ? t("inventory.registerBorrowedIn", "Register borrowed-in spool")
+              : t("inventory.addSpool", "Add spool to inventory")}
+          </ModalActionButton>
+        </>
+      )}
     </div>
   );
 }

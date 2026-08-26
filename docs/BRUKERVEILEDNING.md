@@ -176,6 +176,19 @@ biblioteket og denne enhetens historikk for validerte sikkerhetskopier. En
 midlertidig nettverks- eller vertsfeil vises derfor ikke som om hele oppsettet
 mangler.
 
+Panelet **Krever handling** er for forfalte utlån, bestilte varer som kan
+mottas, og printere der Bambu Live-identiteten må kontrolleres. Lav beholdning
+ligger ikke lenger som store handlingskort i dette panelet. Den vises i stedet i
+det kompakte, sammenfoldede panelet **Forslag ved lav beholdning** og er fortsatt
+tilgjengelig som måltall og lagerfilter.
+
+Velg **Vis forslag** for å åpne panelet. Der kan du bruke **Legg til i
+ønskeliste / bestilling**, **Åpne lager med lav beholdning** eller **Skjul
+forslag** for en enkelt produktgruppe. Skjuling lagres bare for dette biblioteket
+på denne enheten; den endrer verken beholdningen, grensen for lav beholdning
+eller lagerfilteret. Bruk **Angre** rett etter skjuling, eller åpne **Skjulte
+forslag** og velg **Vis igjen** senere.
+
 Kortet **Månedlig forbruk** måler nøyaktig de siste 30 dagene og viser
 gjennomsnittlig antall gram per dag. Den større grafen **Filamentforbruk** er en
 annen visning: Den dekker inneværende lokale kalendermåned og de elleve
@@ -201,6 +214,10 @@ printeren under **Innstillinger -> 3D-printere** og kontrollere identiteten.
 
 Lager er hovedbildet for filamentruller.
 
+Arbeidsområdet er delt i **Lager**, **Lokasjoner** og **Ønskeliste og
+bestillinger**, slik at rullelisten beholder hovedplassen mens administrasjon
+åpnes ved behov.
+
 Her kan du:
 
 - søke etter materiale, farge, eier, lokasjon eller QR
@@ -220,6 +237,60 @@ Lagerkort grupperer like filamenttyper og farger, men viser fortsatt individuell
 Store filtrerte lager vises trinnvis for å holde visningen responsiv.
 Resultattelleren viser hvor mange ruller som vises av alle treffene; velg **Vis
 mer** for å fortsette. Søk og filtre gjelder fortsatt hele lageret.
+
+Velg **Velg flere** ved resultattelleren når du vil bruke massehandlinger.
+Avkrysningsboksene og den kompakte handlingslinjen vises bare i denne
+valgmodusen. Velg enkeltruller eller alle rullene i det filtrerte resultatet, og
+åpne deretter flytting, status, etiketter eller eksport. Bare den valgte
+flytte- eller statushandlingen åpner innstillingene sine. Velg **Ferdig** for å
+avslutte og tømme utvalget.
+
+Flytting og statusendring viser først en gjennomgang med separate tall for
+valgte, berørte og uendrede ruller. Ved bekreftelse skrives alle berørte ruller
+og historikken deres samlet. Hvis en gjennomgått rull er endret, utlånt, lastet
+i en printer eller fjernet, blir ingen av endringene skrevet. Etikettark og
+CSV-/JSON-eksport bruker nøyaktig de valgte rullene, også når du uttrykkelig har
+valgt en status utenfor lagerbeholdningen. Hvis filtre skjuler deler av
+utvalget, viser handlingslinjen både totalt antall valgte og antallet i den
+gjeldende visningen.
+
+Lagerets CSV-/JSON-format tar med leverandør, nominell/nåværende/gjenstående
+vekt, spolevekt, egne lagersteder, eierskap/eierkontakt og
+innkjøps-/prisbeskyttelse. Det er en lettvektsutveksling av ruller, ikke en full
+sikkerhetskopi: printerspor og den opprinnelige utlånshistorikken følger ikke
+med. Ved import til et annet bibliotek blir en rull som var lastet eller lånt ut
+normalisert til **På lager**, uten å opprette tekniske lokasjoner. En innlånt
+rull beholder derimot eierskap og motpart som en ny, aktiv innlånsrelasjon. Bruk
+full sikkerhetskopi når hele biblioteket med relasjoner og historikk skal flyttes.
+
+Under **Lager → Lokasjoner** administrerer du bare egne lagersteder. Tekniske
+printer- og utlånslokasjoner håndteres automatisk og vises ikke i denne listen.
+Hvert lagersted viser hvor mange ruller som fortsatt er knyttet til det, og kan
+gis nytt navn uten at koblinger eller historikk endres.
+
+Når antallet tilknyttede ruller vises som en lenke, åpner den **Lager** med et
+eksakt filter for lokasjonens uforanderlige ID. Resultatet tar med både ruller
+som står der nå, og ruller som har stedet som hjemmeplassering, selv om en utlånt
+rull for øyeblikket står på en teknisk utlånslokasjon. Filterbrikken viser navnet
+på lagerstedet og kan fjernes for å gå tilbake til resten av lageret. Det vanlige
+søket finner også lokasjonsnavn, men denne lenken unngår tvetydige treff mellom
+steder med lignende navn.
+
+**Arkiver** fjerner lagerstedet fra nye lokasjonsvalg, men sletter det ikke.
+Rullene beholder både nåværende plassering og hjemmeplassering mot den samme
+uforanderlige lokasjons-ID-en. Arkiverte steder ligger derfor sammenfoldet
+under **Tidligere lokasjoner**. **Gjenopprett** gjør nøyaktig den samme
+lokasjonen valgbar igjen; en ny lokasjon med samme navn er et annet objekt og
+overtar ikke de gamle koblingene. Bruk den sammenfoldede avanserte
+sammenslåingen når alle koblinger faktisk skal flyttes til et annet lagersted.
+
+**Slett** vises bare når databasen bekrefter at lagerstedet ikke har noen
+nåværende plasseringer, hjemmeplasseringer eller underlokasjoner. Kontrollen
+omfatter også skjulte eller mykt slettede ruller som fortsatt har lagerstedet
+som hjemmeplassering. Sletting kan brukes direkte på både aktive og arkiverte
+egne lagersteder, kan ikke angres og fjerner lagerstedet permanent. Eksisterende
+historikkhendelser beholdes som historiske spor. Hvis en ny kobling oppstår før
+bekreftelsen, avviser databasen slettingen uten å endre lageret.
 
 Programmet husker kort-/listevisning og om avanserte filtre er åpne på denne
 enheten. Nullstilling av filtre endrer ikke valgt visning. Når du åpner lav
@@ -243,13 +314,16 @@ liggende: Bredden må være minst 20 mm større enn høyden og minst 1,6 ganger
 høyden. Valgt størrelse og de sist gyldige egendefinerte målene huskes lokalt på
 denne enheten, slik at de brukes igjen for andre ruller og i senere økter.
 
-For flere tilgjengelige ruller samtidig bruker du i stedet **Innstillinger →
-Generelt → Lag etikettark for lageret**. Etikettark for lageret bruker alltid
-60 × 24 mm og påvirkes ikke av de lagrede egendefinerte målene.
+For flere ruller samtidig velger du **Velg flere** under **Lager**, merker
+rullene og bruker **Lag etikettark for valgte ruller**. Bruk **Lag etikettark
+for hele lageret** i lagerkontrollene når alle tilgjengelige ruller skal med.
+Etikettark bruker alltid 60 × 24 mm og påvirkes ikke av de lagrede egendefinerte
+målene.
 
-Panelet Ønskeliste og bestillinger har egne statusfiltre og søkefelt. Det viser
-antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt og Mottatt, lagerføre
-en ankommet vare som fysisk rull og fjerne planer som ikke lenger er aktuelle.
+Arbeidsområdet **Lager → Ønskeliste og bestillinger** har egne statusfiltre og
+søkefelt. Det viser antall treff, lar deg flytte kjøp mellom Ønskeliste, Bestilt
+og Mottatt, lagerføre en ankommet vare som fysisk rull og fjerne planer som ikke
+lenger er aktuelle.
 
 ### Utlån
 
@@ -282,7 +356,8 @@ Typisk flyt:
 3. Velg person eller skriv inn låntaker.
 4. Angi hvor mange gram som lånes ut hvis det ikke er hele gjenværende rull.
 5. Legg inn kontakt eller notat ved behov.
-6. Bekreft utlånet.
+6. Angi en valgfri forventet returdato.
+7. Bekreft utlånet.
 
 Når rullen er utlånt:
 
@@ -290,6 +365,13 @@ Når rullen er utlånt:
 - den skjules fra vanlig tilgjengelig lager
 - den kan ikke behandles som ordinært printerklart lager før den er returnert
 - historikken viser hvem som lånte den, når den gikk ut og hvor mye som gikk ut
+
+En forventet returdato må være en gyldig kalenderdato og kan ikke ligge før
+dagens dato når utlånet opprettes. Aktive utlån viser **Forventet retur** og
+merkes **Forfaller i dag** eller **Forfalt** når det er aktuelt. Forfalte utgående
+utlån vises også under **Krever handling** på Oversikt og åpner Utlån for videre
+oppfølging. Returdatoen og kontaktopplysningene beholdes i den returnerte
+historikken.
 
 Ved retur registrerer du hvor mye som kommer tilbake. Programmet kan da beregne differansen som utlånsforbruk dersom mindre kommer tilbake enn det som ble lånt ut. Dette gjør at utlån kan bidra til reelt materialforbruk uten at det blandes sammen med printerforbruk.
 
@@ -358,6 +440,45 @@ Den dekker blant annet:
 
 Forbruk bygges fra manuelle vektoppdateringer og automatiske live-observasjoner når reglene for live-forbruk er oppfylt.
 
+**Rapporteringsperiode** står som standard på **Siste 30 dager**. Du kan velge
+90 dager, **Siste 12 måneder** eller et egendefinert intervall der både start- og
+sluttdatoen er med. Perioden styrer printerknyttet totalforbruk, loggførte og
+feilede jobber, registrert forbruk fordelt på eierskap, detaljer per printer og
+filament og materialkostnad. **Aktive lastede spor** og **Lagerverdi** er derimot
+nåbilder. Utlånspanelene og forbruksprognosen bruker sine egne datagrunnlag og
+endres ikke av periodevelgeren. Hvis en Client er koblet til en eldre Host som
+ikke kan levere perioderapporten, viser programmet en oppdaterings- eller
+tilkoblingsmelding i stedet for å konstruere tall lokalt.
+
+Området **Verdi og kostnad** viser to beslektede, men bevisst adskilte tall:
+
+- **Lagerverdi** er et nåbilde av aktive spoler. For hver spole brukes
+  `gjenværende vekt × innkjøpspris ÷ startvekt`.
+- **Materialkostnad** gjelder valgt rapporteringsperiode. For hver manuelle eller
+  automatiske forbruksrad brukes `brukt vekt × innkjøpspris ÷ startvekt`.
+
+Summer holdes alltid adskilt etter innkjøpsvaluta og mellom eid og innlånt
+beholdning. Filament Manager konverterer ikke valutaer og lager ikke en
+misvisende totalsum på tvers av dem. Rader uten tilstrekkelig pris- eller
+vektgrunnlag behandles ikke som null: dekningspanelet viser hvor mange rader og
+gram som kunne verdsettes, og hvilke felt som mangler eller er ugyldige.
+
+Åpne sporingen for å følge en sum tilbake til spolen og, for materialkostnad,
+forbruks- og printerreferansen. Av hensyn til responsivitet returnerer sporingen
+maksimalt 2 000 deterministisk sorterte rader, som grensesnittet viser i mindre
+bolker. Summer og dekning inkluderer likevel alle aktuelle rader. Når en Client
+er koblet til en Host fra før denne rapporten ble innført, ber den om
+Host-oppgradering i stedet for å anslå verdier lokalt.
+
+**Forbruksprognose** er et deterministisk estimat som alltid bruker eid
+beholdning og registrert forbruk av eget filament de siste 30 dagene, uavhengig
+av valgt rapporteringsperiode. Den viser estimert antall dager med dekning,
+mulig tomdato, forventet forbruk de neste 30 dagene, estimert beholdning etter
+30 dager, antatt dagsforbruk og hvor mange eide ruller som inngår. Innlånte,
+tomme, tapte og fjernede ruller er utelatt. Hvis det ikke finnes nok registrert
+forbruk, vises ingen tomdato. Prognosen er bare veiledende og oppretter aldri
+ønskelisteposter eller bestillinger automatisk.
+
 ### Innstillinger
 
 Innstillinger er delt i flere områder.
@@ -369,14 +490,69 @@ Generelt:
 - valgfri bakgrunnskjøring ved lukking og oppstart ved innlogging
 - tema: Auto, Lys, Mørk
 - språk, valgt fra én kompakt liste
-- etikettark med QR for lageret
+
+Filamentstandarder:
+
+- grenser for lav beholdning, med standardgrense og materialspesifikke unntak
+- én standard kjøpsvaluta med trebokstavskode, for eksempel NOK eller EUR
+- sammenleggbare prisgrupper med antall ruller og prisdekning
+- kontrollert masseprising av et selvvalgt utvalg
+
+Prisgruppene bygges fra lagerets egne masterdata: leverandør, materiale,
+produktserie og nominell rullvekt. Farge deler ikke gruppen. Dermed vises for
+eksempel Bambu Lab PLA Basic og PLA Matte, eller eSUN PLA+ og PLA+HS, som egne
+prisgrupper. Generic og små leverandører følger den samme regelen; en unik
+produktserie blir ganske enkelt en gruppe med én rull. Programmet henter eller
+gjetter ikke en nettpris.
+
+Angi og lagre en pris på gruppen, velg deretter én av to handlinger:
+
+- **Bare manglende priser** beholder alle eksisterende priser. Den setter pris
+  og valuta der begge mangler, og kan fylle inn manglende valuta uten å endre en
+  eksisterende pris. En rull uten pris som allerede har en annen valuta, krever
+  manuell oppfølging.
+- **Oppdater valgte priser** erstatter pris og valuta på de valgte rullene etter
+  en egen gjennomgang som viser hvor mange eksisterende og individuelt satte
+  priser som blir overskrevet.
+
+Du kan fjerne enkeltruller fra utvalget før kjøring. Innlånte ruller endres
+ikke. Historiske ruller, som tomme, tapte eller manglende ruller, er synlige,
+men velges aldri automatisk eller via gruppevalget. I **Bare manglende priser**
+kan du bevisst krysse av historiske ruller som mangler pris, én og én. Pris,
+valuta og beskyttelseslås lagres da samlet; rullen kan ikke senere overskrives
+fra en prisgruppe. Historiske ruller kan ikke velges i **Oppdater valgte
+priser**, og en eksisterende historisk pris endres aldri gjennom denne
+særregelen.
+
+Når en rull får status Tom, Tapt, Mangler eller Arkivert, aktiveres
+prisbeskyttelsen automatisk. Eldre historiske rader får den samme beskyttelsen
+ved oppstart, og låsen beholdes hvis rullen senere aktiveres igjen. Dette sperrer
+gruppeprising, men ikke en bevisst manuell prisendring i rulldetaljene.
+
+Etterpå vises en kvittering med oppdaterte og uendrede ruller. Den historiske
+rullen merkes som beskyttet og kan åpnes direkte i rulldetaljene. Andre rader
+som krever manuell oppfølging kan også åpnes derfra. Hvis en rull endres etter
+gjennomgangen, avbrytes hele operasjonen før første skriving, slik at en gammel
+gjennomgang ikke overskriver nyere data.
+
+I rulldetaljene kan du fortsatt sette en individuell pris. Aktiver **Beskytt
+individuell pris mot gruppeoppdateringer** når standardfanen aldri skal
+overskrive denne rullen. Låsen hindrer begge gruppehandlingene, men sperrer ikke
+manuell redigering. En låst rull blir forklart og lenket i kvitteringen. De gule
+radene for manglende kjøpspris eller kjøpsvaluta i **Statistikk → Verdi og
+kostnad** åpner den relevante kontrollen i Filamentstandarder. En Client viser
+Hostens grupper og standarder skrivebeskyttet; endringene utføres på Hosten.
 
 Desktop-appen og Companion støtter engelsk, norsk bokmål, tysk, fransk,
 spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
 forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
-for hver flate, og engelsk brukes som fallback ved behov. Korrigeringer til
-community-oversettelsene kan foreslås via det egne
+for hver flate, og engelsk er det kanoniske fallback-språket. Norsk bokmål,
+tysk og fransk har komplette kataloger for den gjeldende teksten, men alle
+ikke-engelske språk er fortsatt merket **Beta** frem til en ny språkfaglig
+gjennomgang. De øvrige Beta-katalogene bruker testet engelsk fallback for tekst
+som ennå ikke er oversatt. Korrigeringer til community-oversettelsene kan
+foreslås via det egne
 [skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
 ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
@@ -433,7 +609,9 @@ snarveier fra Oversikt fremdeles åpner riktig fane.
 
 Slik lager du etikettark for rullene som er på lager:
 
-1. Åpne **Innstillinger → Generelt** og velg **Lag etikettark for lageret**.
+1. Åpne **Lager** og velg **Lag etikettark for hele lageret** i
+   lagerkontrollene. For et nøyaktig delutvalg velger du **Velg flere**, merker
+   rullene og bruker **Lag etikettark for valgte ruller**.
 2. Velg A4 eller US Letter.
 3. Kontroller forhåndsvisningen, og bruk sidekontrollene dersom lageret dekker
    flere sider.
@@ -570,10 +748,24 @@ Du kan legge gjeldende katalogvalg i ønskelisten fra Legg til filament. Når va
 
 Bruk statusfanene for å avgrense køen og søkefeltet for å finne et planlagt kjøp
 etter navn, farge eller leverandør. Når en bestilling kommer, velger du hvor mange
-ruller som ble mottatt og trykker **Lagerfør rull nå**. Programmet oppretter
-akkurat dette antallet fysiske ruller, reduserer gjenstående antall og markerer
-ønskelisteraden som Mottatt først når ingenting gjenstår. **Fjern** sletter bare
-ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
+ruller som ble mottatt og trykker **Lagerfør rull nå**. I mottaksdialogen kan du
+også registrere pris per rull, valutakode med tre bokstaver, kjøpsdato, batchkode og
+leverandørreferanse. De samme normaliserte opplysningene lagres på hver rull i
+dette mottaket; prisen er en enhetspris, aldri totalsummen for bestillingen.
+Programmet oppretter det valgte antallet fysiske ruller atomisk, reduserer
+gjenstående antall og markerer ønskelisteraden som Mottatt først når ingenting
+gjenstår. En validerings- eller historikkfeil lar både lager og ønskeliste være
+uendret.
+
+Åpne detaljene for en rull for å rette eller fjerne innkjøpsopplysningene senere.
+Endringen inngår i den samme beskyttede lagringen som de andre rulldetaljene og
+registreres i rullhistorikken. Eldre rader som allerede har pris uten valuta, kan
+beholde nøyaktig samme pris mens andre mottaksfelt endres; endring av prisen krever
+valuta. Lagerets CSV-/JSON-eksport og full backup tar med alle innkjøpsfeltene,
+leverandør, vektdata, spolevekt og prisbeskyttelse.
+Her kan du også beskytte den individuelle prisen mot gruppeoppdateringer fra
+Filamentstandarder; beskyttelsen følger rullen i full backup.
+**Fjern** sletter bare ønskeliste-/bestillingsraden; den sletter ikke en lagerrull.
 
 ### Mangler filamentet?
 
@@ -931,18 +1123,18 @@ nedlasting av en full sikkerhetskopi. Tidspunktet er bare et lokalt
 aktivitetshint; appen leser ikke den nedlastede filen senere, og opplysningen
 blir ikke med i den flyttbare sikkerhetskopien.
 
-Den lokale databasen bruker skjemaversjon 2. Før appen skriver til en eksisterende
+Den lokale databasen bruker skjemaversjon 5. Før appen skriver til en eksisterende
 database ved oppstart, gjennomfører den en skrivebeskyttet kompatibilitetskontroll
 av skjemaet og SQLite `quick_check`. En database med nyere skjema, eller en som
 ikke består integritetskontrollen, stoppes i stedet for å bli overskrevet uten
 varsel.
 
-Før en eksisterende database uten registrert skjemaversjon eller med skjema v1
-oppgraderes automatisk til skjema v2, oppretter og verifiserer appen en lokal
-gjenopprettingskopi. En verifisert kopi opprettes også før full gjenoppretting
-og før lagringsmigreringer som erstatter eller slår sammen en eksisterende
-database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter ikke
-oppgraderingen, gjenopprettingen eller migreringen.
+Før en eksisterende database uten registrert skjemaversjon eller med skjema v1,
+v2, v3 eller v4 oppgraderes automatisk til skjema v5, oppretter og verifiserer appen
+en lokal gjenopprettingskopi. En verifisert kopi opprettes også før full
+gjenoppretting og før lagringsmigreringer som erstatter eller slår sammen en
+eksisterende database. Hvis kopien ikke kan opprettes og verifiseres, fortsetter
+ikke oppgraderingen, gjenopprettingen eller migreringen.
 
 Fullstendige JSON-sikkerhetskopier er laget for å kunne flyttes. De tar med
 bibliotekdata som lager, historikk, katalogdata og printerprofiler, men utelater

@@ -28,13 +28,28 @@ function dictionaryMap(dictionary) {
   return new Map(flattenDictionary(dictionary));
 }
 
-function contextMap(contextDocument) {
-  return new Map(
+function contextIndex(contextDocument) {
+  const exact = new Map(
     (contextDocument.messages ?? []).map((entry) => [
       `${entry.surface}:${entry.key}`,
       entry,
     ]),
   );
+  const groups = [...(contextDocument.groups ?? [])].sort(
+    (left, right) => right.keyPrefix.length - left.keyPrefix.length,
+  );
+  return {
+    forMessage(surface, key) {
+      return (
+        exact.get(`${surface}:${key}`) ??
+        groups.find(
+          (entry) =>
+            entry.surface === surface && key.startsWith(entry.keyPrefix),
+        ) ??
+        {}
+      );
+    },
+  };
 }
 
 export function buildLocalizationReviewRows({
@@ -42,7 +57,7 @@ export function buildLocalizationReviewRows({
   targetDictionaries,
   contextDocument,
 }) {
-  const contexts = contextMap(contextDocument);
+  const contexts = contextIndex(contextDocument);
   const rows = [];
   for (const surface of ["desktop", "companion"]) {
     const source = dictionaryMap(sourceDictionaries[surface]);
@@ -51,7 +66,7 @@ export function buildLocalizationReviewRows({
       const explicitTarget = target.get(key);
       const targetText =
         typeof explicitTarget === "string" ? explicitTarget : sourceText;
-      const context = contexts.get(`${surface}:${key}`) ?? {};
+      const context = contexts.forMessage(surface, key);
       rows.push({
         surface,
         key,

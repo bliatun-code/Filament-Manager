@@ -1,3 +1,4 @@
+use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreateSpoolInput, CreateWishlistItemInput,
 };
@@ -10,7 +11,9 @@ pub(crate) fn create_spool(
     state: tauri::State<'_, AppState>,
     input: CreateSpoolInput,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.create_spool(input))
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.create_spool(input))
+    })
 }
 
 #[tauri::command]
@@ -18,7 +21,9 @@ pub(crate) fn create_wishlist_item(
     state: tauri::State<'_, AppState>,
     input: CreateWishlistItemInput,
 ) -> Result<(), String> {
-    with_inventory(&state, |engine| engine.create_wishlist_item(input))
+    with_authoritative_local_library(&state, || {
+        with_inventory(&state, |engine| engine.create_wishlist_item(input))
+    })
 }
 
 #[tauri::command]

@@ -28,6 +28,8 @@ import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
 
+import { runPackagedDesktopE2e } from "./run-packaged-desktop-e2e.mjs";
+import { smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
 import {
   parseCodesignDetails,
   validateCodesignDetails,
@@ -101,6 +103,9 @@ export function validateMacosDmgSmokeOptions({
   launchTimeoutMs = DEFAULT_LAUNCH_TIMEOUT_MS,
   logDirectory,
   signaturePolicy = DEFAULT_SIGNATURE_POLICY,
+  upgradeFixturePath = null,
+  upgradeSourceRelease = null,
+  runPackagedDesktopE2E = false,
 }) {
   if (typeof dmgPath !== "string" || dmgPath.trim().length === 0) {
     throw new Error("A macOS DMG path is required.");
@@ -123,6 +128,9 @@ export function validateMacosDmgSmokeOptions({
       `Signature policy must be one of: ${[...SIGNATURE_POLICIES].join(", ")}.`,
     );
   }
+  if (typeof runPackagedDesktopE2E !== "boolean") {
+    throw new Error("Packaged desktop E2E selection must be a boolean.");
+  }
   const normalizedExpectedTeamId =
     typeof expectedTeamId === "string" ? expectedTeamId.trim() : "";
   if (signaturePolicy === "release" && !normalizedExpectedTeamId) {
@@ -135,12 +143,31 @@ export function validateMacosDmgSmokeOptions({
       "An expected Apple Team ID cannot be used with the local ad-hoc signature policy.",
     );
   }
+  const normalizedUpgradeFixturePath =
+    typeof upgradeFixturePath === "string" ? upgradeFixturePath.trim() : "";
+  const normalizedUpgradeSourceRelease =
+    typeof upgradeSourceRelease === "string"
+      ? upgradeSourceRelease.trim()
+      : "";
+  if (
+    Boolean(normalizedUpgradeFixturePath) !==
+    Boolean(normalizedUpgradeSourceRelease)
+  ) {
+    throw new Error(
+      "The upgrade fixture path and source release must be provided together.",
+    );
+  }
   return {
     dmgPath: path.resolve(dmgPath),
     expectedTeamId: normalizedExpectedTeamId || null,
     launchTimeoutMs,
     logDirectory: path.resolve(logDirectory),
     signaturePolicy,
+    upgradeFixturePath: normalizedUpgradeFixturePath
+      ? path.resolve(normalizedUpgradeFixturePath)
+      : null,
+    upgradeSourceRelease: normalizedUpgradeSourceRelease || null,
+    runPackagedDesktopE2E,
   };
 }
 
@@ -863,6 +890,9 @@ export async function smokeMacosDmg(options) {
     launchTimeoutMs,
     logDirectory,
     signaturePolicy,
+    upgradeFixturePath,
+    upgradeSourceRelease,
+    runPackagedDesktopE2E: shouldRunPackagedDesktopE2E,
   } = validateMacosDmgSmokeOptions(options);
   if (!existsSync(dmgPath) || statSync(dmgPath).size <= 0) {
     throw new Error(`DMG is missing or empty: ${dmgPath}`);
@@ -968,6 +998,30 @@ export async function smokeMacosDmg(options) {
     }
 
     const executablePath = readBundleExecutable(installedAppPath);
+    let databaseCompatibilityResult = null;
+    if (upgradeFixturePath) {
+      databaseCompatibilityResult = await smokeReleaseDatabaseUpgrade({
+        allowCurrentSchema: true,
+        databasePath: upgradeFixturePath,
+        executablePath,
+        launchTimeoutMs,
+        logDirectory: path.join(logDirectory, "database-compatibility"),
+        requireVisibleWindow: false,
+        sourceRelease: upgradeSourceRelease,
+      });
+    }
+    let packagedDesktopE2eResult = null;
+    if (shouldRunPackagedDesktopE2E) {
+      packagedDesktopE2eResult = await runPackagedDesktopE2e({
+        executablePath,
+        workDirectory: path.join(
+          temporaryDirectory,
+          "packaged-desktop-e2e-work",
+        ),
+        logDirectory: path.join(logDirectory, "packaged-desktop-e2e"),
+        launchTimeoutMs,
+      });
+    }
     const bundlePaths = canonicalPathCandidates(installedAppPath);
     const executablePaths = canonicalPathCandidates(executablePath);
     const expectedProcessName = runCommand("plutil", [
@@ -1126,7 +1180,17 @@ export async function smokeMacosDmg(options) {
 
     result = {
       appName: path.basename(installedAppPath),
+      databaseCompatibility: databaseCompatibilityResult
+        ? {
+            fromSchema: databaseCompatibilityResult.before.schemaVersion,
+            gateMode: databaseCompatibilityResult.gateMode,
+            launches: databaseCompatibilityResult.launchCount,
+            sourceRelease: databaseCompatibilityResult.sourceRelease,
+            toSchema: databaseCompatibilityResult.after.schemaVersion,
+          }
+        : null,
       processId: applicationProcess.processId,
+      packagedDesktopE2e: packagedDesktopE2eResult,
       schemaVersion: databaseResult.schemaVersion,
       signaturePolicy,
       tableCount: databaseResult.tableCount,
@@ -1269,6 +1333,19 @@ export async function smokeMacosDmg(options) {
       `Process ID: ${result.processId}`,
       `Database schema: ${result.schemaVersion}`,
       `Database tables: ${result.tableCount}`,
+      `Previous-release database gate: ${
+        result.databaseCompatibility
+          ? `${result.databaseCompatibility.sourceRelease}, ` +
+            `${result.databaseCompatibility.fromSchema} -> ` +
+            `${result.databaseCompatibility.toSchema}, ` +
+            `${result.databaseCompatibility.launches} launches`
+          : "not requested"
+      }`,
+      `Packaged desktop mutating E2E: ${
+        result.packagedDesktopE2e
+          ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}`
+          : "not requested"
+      }`,
       `Window: ${result.windowTitle || "(untitled)"} ${result.windowWidth}x${result.windowHeight}`,
       "",
     ].join("\n"),
@@ -1283,12 +1360,16 @@ function cliOptions(argv) {
     "--launch-timeout-ms=",
     "--log-dir=",
     "--signature-policy=",
+    "--upgrade-fixture=",
+    "--upgrade-source-release=",
   ];
+  const booleanOptions = new Set(["--packaged-desktop-e2e"]);
   if (
     dmgPaths.length !== 1 ||
     argv.some(
       (argument) =>
         argument.startsWith("--") &&
+        !booleanOptions.has(argument) &&
         !allowedOptionPrefixes.some((prefix) => argument.startsWith(prefix)),
     )
   ) {
@@ -1296,7 +1377,9 @@ function cliOptions(argv) {
       "Usage: node scripts/smoke-macos-dmg.mjs <path-to-dmg> " +
         "--log-dir=<directory> [--expected-team-id=<team-id>] " +
         "[--launch-timeout-ms=90000] " +
-        "[--signature-policy=release|local-adhoc]",
+        "[--signature-policy=release|local-adhoc] " +
+        "[--upgrade-fixture=<sanitized-db> " +
+        "--upgrade-source-release=v0.27.0] [--packaged-desktop-e2e]",
     );
   }
   const expectedTeamId = argv
@@ -1311,6 +1394,12 @@ function cliOptions(argv) {
   const signaturePolicy = argv
     .find((argument) => argument.startsWith("--signature-policy="))
     ?.slice("--signature-policy=".length);
+  const upgradeFixturePath = argv
+    .find((argument) => argument.startsWith("--upgrade-fixture="))
+    ?.slice("--upgrade-fixture=".length);
+  const upgradeSourceRelease = argv
+    .find((argument) => argument.startsWith("--upgrade-source-release="))
+    ?.slice("--upgrade-source-release=".length);
   return {
     dmgPath: dmgPaths[0],
     expectedTeamId,
@@ -1320,6 +1409,9 @@ function cliOptions(argv) {
         : Number.parseInt(timeoutValue, 10),
     logDirectory,
     signaturePolicy,
+    upgradeFixturePath,
+    upgradeSourceRelease,
+    runPackagedDesktopE2E: argv.includes("--packaged-desktop-e2e"),
   };
 }
 

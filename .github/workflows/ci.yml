@@ -16,10 +16,63 @@ permissions:
   contents: read
 
 jobs:
+  shared-contracts:
+    name: Shared Contract Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.98.0
+
+      - name: Reject stale or missing shared contracts
+        run: cargo run --locked --bin generate_shared_contracts -- --check
+
+      - name: Test generator failure behavior and serde contract
+        run: |
+          cargo test --locked --lib shared_contracts::tests
+          cargo test --locked --bin generate_shared_contracts
+
+  migration-integrity:
+    name: Database Migration Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full migration history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Reject changes to published migrations
+        run: npm run check:database-migrations -- --verify-published-reference
+
+      - name: Test migration manifest behavior
+        run: node --test ./scripts/check-database-migrations.test.mjs
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: 1.98.0
+
+      - name: Test clean install and historical upgrades
+        run: cargo test --locked --lib database_schema_setup::tests
+
   macos-smoke:
     name: macOS Smoke
     runs-on: macos-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,7 +101,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           components: clippy,rustfmt
 
       - name: Install root dependencies
@@ -67,6 +120,69 @@ jobs:
       - name: Run data-backed Companion E2E
         timeout-minutes: 10
         run: npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000
+
+      - name: Build database upgrade candidate
+        run: cargo build --locked --package bambu-filament-manager
+
+      - name: Prepare sanitized historical database fixture
+        env:
+          FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH: ${{ runner.temp }}/filament-manager-upgrade-fixture.db
+        run: >-
+          npm run qa:release:upgrade-ci-fixture --
+          --output="$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"
+
+      - name: Exercise database upgrade and restart
+        env:
+          FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH: ${{ runner.temp }}/filament-manager-upgrade-fixture.db
+          FILAMENT_MANAGER_UPGRADE_LOG_DIR: ${{ runner.temp }}/filament-manager-database-upgrade-smoke
+        run: >-
+          npm run smoke:release:database-upgrade --
+          --database="$FILAMENT_MANAGER_UPGRADE_FIXTURE_PATH"
+          --executable=target/debug/bambu-filament-manager
+          --log-dir="$FILAMENT_MANAGER_UPGRADE_LOG_DIR"
+          --launch-timeout-ms=120000
+          --database-readiness-only
+
+      - name: Build packaged macOS smoke bundle
+        run: npm run tauri -- build --debug --bundles dmg
+
+      - name: Exercise packaged macOS mutating E2E
+        env:
+          FILAMENT_MANAGER_PACKAGED_MACOS_SMOKE_LOG_DIR: ${{ runner.temp }}/filament-manager-packaged-macos-smoke
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          candidate_dmgs=(target/debug/bundle/dmg/*.dmg)
+          if [[ ${#candidate_dmgs[@]} -ne 1 ]]; then
+            echo "::error::Expected exactly one packaged debug DMG, found ${#candidate_dmgs[@]}."
+            exit 1
+          fi
+          npm run smoke:macos-dmg -- \
+            "${candidate_dmgs[0]}" \
+            --log-dir="$FILAMENT_MANAGER_PACKAGED_MACOS_SMOKE_LOG_DIR" \
+            --launch-timeout-ms=120000 \
+            --signature-policy=local-adhoc \
+            --packaged-desktop-e2e
+
+      - name: Upload database upgrade smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-database-upgrade-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-database-upgrade-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
+
+      - name: Upload packaged macOS smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-packaged-macos-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-packaged-macos-smoke
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 7
 
   windows-smoke:
     name: Windows Smoke
@@ -106,7 +222,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.97.1
+          toolchain: 1.98.0
           components: clippy,rustfmt
 
       - name: Install root dependencies
@@ -170,6 +286,7 @@ jobs:
             -ExpectedDatabaseName "filament-manager.db" `
             -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
             -SignaturePolicy "UnsignedRequired" `
+            -RunPackagedDesktopE2E `
             -LaunchTimeoutSeconds 90
 
       - name: Upload MSI smoke logs

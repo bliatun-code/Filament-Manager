@@ -23,7 +23,10 @@ import {
   deriveLibrarySyncPageState,
   type LibrarySyncPageState,
 } from "./library_sync_state";
-import { resolveClientHostTarget } from "./host_write_target";
+import {
+  resolveClientHostCacheTarget,
+  resolveClientHostTarget,
+} from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
 
 export type PrinterSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
@@ -33,6 +36,7 @@ export type PrinterDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
   supportedPrinterModels: string[];
 };
 
@@ -40,6 +44,7 @@ export type PrinterOverviewDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 export type PrinterDataLoadResult = {
@@ -141,10 +146,19 @@ export async function loadPrinterOverviewData(
     dependencies.fetchCachedOverview ?? fetchCachedLibrarySyncPrinterOverview;
   const onLoadError = dependencies.onLoadError ?? console.error;
   const hostTarget = options.clientReadOnly ? resolveClientHostTarget(options) : null;
+  const cacheTarget = options.clientReadOnly
+    ? resolveClientHostCacheTarget(options)
+    : null;
 
   if (options.clientReadOnly) {
     if (!hostTarget) {
-      const cached = await fetchCachedOverview().catch(() => null);
+      const cached = cacheTarget
+        ? await fetchCachedOverview(
+            cacheTarget.baseUrl,
+            cacheTarget.libraryId,
+            cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null;
       if (cached?.rows) {
         return {
           printers: cached.rows,
@@ -170,7 +184,13 @@ export async function loadPrinterOverviewData(
       };
     } catch (loadError) {
       onLoadError(loadError);
-      const cached = await fetchCachedOverview().catch(() => null);
+      const cached = cacheTarget
+        ? await fetchCachedOverview(
+            cacheTarget.baseUrl,
+            cacheTarget.libraryId,
+            cacheTarget.targetGeneration,
+          ).catch(() => null)
+        : null;
       if (cached?.rows) {
         return {
           printers: cached.rows,
@@ -212,13 +232,24 @@ export async function loadPrinterPageData(
   const onLoadError = dependencies.onLoadError ?? console.error;
   const { clientReadOnly, clientHostBaseUrl, clientLibraryId, supportedPrinterModels } = options;
   const hostTarget = clientReadOnly ? resolveClientHostTarget(options) : null;
+  const cacheTarget = clientReadOnly ? resolveClientHostCacheTarget(options) : null;
 
   if (clientReadOnly) {
     if (!hostTarget) {
-      const [cachedPrinters, cachedSpools] = await Promise.all([
-        fetchCachedOverview().catch(() => null),
-        fetchCachedSpools().catch(() => null),
-      ]);
+      const [cachedPrinters, cachedSpools] = cacheTarget
+        ? await Promise.all([
+            fetchCachedOverview(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null),
+            fetchCachedSpools(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null),
+          ])
+        : [null, null];
       const printers = cachedPrinters?.rows ?? [];
       const spools = normalizePrinterSpoolRows(cachedSpools?.rows ?? []);
       if (printers.length > 0 || spools.length > 0) {
@@ -254,6 +285,7 @@ export async function loadPrinterPageData(
             clientReadOnly,
             clientHostBaseUrl: hostTarget.baseUrl,
             clientLibraryId: hostTarget.libraryId,
+            clientTargetGeneration: options.clientTargetGeneration,
           },
           dependencies.loadHostSpools,
         ).then(
@@ -264,8 +296,20 @@ export async function loadPrinterPageData(
           (value) => ({ ok: true as const, value }),
           (error) => ({ ok: false as const, error }),
         ),
-        fetchCachedOverview().catch(() => null),
-        fetchCachedSpools().catch(() => null),
+        cacheTarget
+          ? fetchCachedOverview(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
+        cacheTarget
+          ? fetchCachedSpools(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null,
       ]);
 
     if (!overviewResult.ok) {

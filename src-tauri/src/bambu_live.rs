@@ -1,11 +1,13 @@
-use crate::backend::filament_database::{
-    BambuLiveIntegrationEntryRow, BambuLiveObservedStateRow, FilamentDatabase,
+use crate::backend::filament_database::{BambuLiveIntegrationEntryRow, BambuLiveObservedStateRow};
+use crate::bambu_live_authority::{
+    capture_bambu_live_poll_batch, with_current_bambu_live_authority, BambuLivePollAuthority,
 };
 use crate::bambu_live_observation::{
     annotate_capture_poll_metadata, default_offline_state, merge_idle_observation,
     merge_print_payload, now_iso_string, MQTT_BURST_SETTLE_MS, MQTT_TIMEOUT_SECS,
 };
 use crate::bambu_live_persistence::persist_observation;
+use crate::bambu_live_poll_scheduler::run_bounded_blocking_polls;
 use crate::bambu_live_sync::enrich_with_match_status;
 use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
@@ -67,37 +69,35 @@ async fn poll_enabled_integrations(
         return Ok(());
     }
     let load_path = state.db_path.clone();
-    let (credential_profile_id, integrations) = tauri::async_runtime::spawn_blocking(move || {
-        let db = FilamentDatabase::open(&load_path).map_err(|error| error.to_string())?;
-        let credential_profile_id = db
-            .get_or_create_credential_store_profile_id()
-            .map_err(|error| error.to_string())?;
-        let integrations = db
-            .list_bambu_live_integrations()
-            .map_err(|error| error.to_string())?;
-        Ok::<_, String>((credential_profile_id, integrations))
-    })
-    .await
-    .map_err(|join_error| format!("live integration list join failed: {join_error}"))??;
+    let poll_credentials = state.credentials.clone();
+    let Some((authority, poll_credentials, integrations)) =
+        tauri::async_runtime::spawn_blocking(move || {
+            capture_bambu_live_poll_batch(&load_path, &poll_credentials)
+        })
+        .await
+        .map_err(|join_error| format!("live integration list join failed: {join_error}"))??
+    else {
+        return Ok(());
+    };
     let enabled_integrations = integrations
         .into_iter()
         .filter(|entry| entry.config.enabled)
         .collect::<Vec<_>>();
     let poll_path = state.db_path.clone();
-    // Keep the credential namespace immutable for this poll batch. A restore or
-    // reset may switch the app to another library profile while an older TLS
-    // connection is still in flight; that connection must never follow the
-    // mutable app-level profile to a newer secret.
-    let poll_credentials = state
-        .credentials
-        .scoped_to_profile_id(&credential_profile_id)
-        .map_err(|error| error.to_string())?;
     let poll_shutdown = shutdown.clone();
     let errors = run_bounded_blocking_polls(
         enabled_integrations,
         MAX_CONCURRENT_PRINTER_POLLS,
         shutdown.clone(),
-        move |entry| poll_single_integration(&poll_path, &poll_credentials, &poll_shutdown, entry),
+        move |entry| {
+            poll_single_integration(
+                &poll_path,
+                &poll_credentials,
+                &poll_shutdown,
+                &authority,
+                entry,
+            )
+        },
     )
     .await;
     for error in errors {
@@ -106,59 +106,11 @@ async fn poll_enabled_integrations(
     Ok(())
 }
 
-async fn run_bounded_blocking_polls<T, F>(
-    entries: Vec<T>,
-    concurrency_limit: usize,
-    shutdown: tokio::sync::watch::Receiver<bool>,
-    poll: F,
-) -> Vec<String>
-where
-    T: Send + 'static,
-    F: Fn(T) -> Result<(), String> + Clone + Send + 'static,
-{
-    let mut pending = entries.into_iter();
-    let mut polls = tokio::task::JoinSet::new();
-    let concurrency_limit = concurrency_limit.max(1);
-
-    for _ in 0..concurrency_limit {
-        if *shutdown.borrow() {
-            break;
-        }
-        let Some(entry) = pending.next() else {
-            break;
-        };
-        let poll_task = poll.clone();
-        drop(polls.spawn_blocking(move || poll_task(entry)));
-    }
-
-    let mut errors = Vec::new();
-    loop {
-        let next_result = polls.join_next().await;
-        let Some(result) = next_result else {
-            break;
-        };
-        match result {
-            Ok(Ok(())) => {}
-            Ok(Err(error)) => errors.push(error),
-            Err(join_error) => errors.push(format!("poll task failed: {join_error}")),
-        }
-        let next_entry = if *shutdown.borrow() {
-            None
-        } else {
-            pending.next()
-        };
-        if let Some(entry) = next_entry {
-            let poll_task = poll.clone();
-            drop(polls.spawn_blocking(move || poll_task(entry)));
-        }
-    }
-    errors
-}
-
 fn poll_single_integration(
     db_path: &str,
     credentials: &CredentialStore,
     shutdown: &tokio::sync::watch::Receiver<bool>,
+    authority: &BambuLivePollAuthority,
     mut entry: BambuLiveIntegrationEntryRow,
 ) -> Result<(), String> {
     if *shutdown.borrow() {
@@ -181,7 +133,7 @@ fn poll_single_integration(
     let trusted_pin = trusted_pin_from_config(printer_serial, entry.config.tls_identity.as_ref())?;
 
     let previous_state = entry.config.observed_state.clone();
-    let observed = match observe_printer_state(
+    match observe_printer_state(
         host,
         printer_serial,
         trusted_pin.as_ref(),
@@ -191,10 +143,24 @@ fn poll_single_integration(
     ) {
         Ok((raw, tls_identity)) => {
             record_observed_tls_identity(&mut entry, &tls_identity);
-            let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-            let merged = merge_idle_observation(previous_state.as_ref(), raw);
-            enrich_with_match_status(&db, &entry.printer_id, merged)
-                .map_err(|error| error.to_string())?
+            let Some(()) = with_current_bambu_live_authority(db_path, authority, |db| {
+                let merged = merge_idle_observation(previous_state.as_ref(), raw);
+                let observed = enrich_with_match_status(db, &entry.printer_id, merged)
+                    .map_err(|error| error.to_string())?;
+                persist_observation(
+                    db_path,
+                    &entry,
+                    Some(observed.clone()),
+                    None,
+                    entry.config.tls_identity.as_ref(),
+                    previous_state.as_ref(),
+                    Some(&observed),
+                )?;
+                Ok(())
+            })?
+            else {
+                return Ok(());
+            };
         }
         Err(error) => {
             if error.observed_identity.is_none()
@@ -202,16 +168,23 @@ fn poll_single_integration(
                 && !*shutdown.borrow()
                 && claim_auto_recovery_attempt(&entry.printer_id, Instant::now())
             {
-                match try_auto_recover_bambu_live_host(db_path, &entry.printer_id, printer_serial) {
-                    Ok(Some(recovered_host)) => {
+                let recovery = with_current_bambu_live_authority(db_path, authority, |_db| {
+                    Ok(try_auto_recover_bambu_live_host(
+                        db_path,
+                        &entry.printer_id,
+                        printer_serial,
+                    ))
+                })?;
+                match recovery {
+                    Some(Ok(Some(recovered_host))) => {
                         eprintln!(
                             "Automatically recovered Bambu printer {} at {recovered_host}",
                             entry.printer_id
                         );
                         return Ok(());
                     }
-                    Ok(None) => {}
-                    Err(recovery_error) => eprintln!(
+                    Some(Ok(None)) | None => {}
+                    Some(Err(recovery_error)) => eprintln!(
                         "Automatic Bambu address recovery failed for {}: {recovery_error}",
                         entry.printer_id
                     ),
@@ -228,28 +201,20 @@ fn poll_single_integration(
             next.online = false;
             next.mqtt_connected = false;
             next.raw_status_note = Some(error.message.clone());
-            persist_observation(
-                db_path,
-                &entry,
-                Some(next.clone()),
-                Some(error.message),
-                observed_tls_identity,
-                Some(&next),
-                None,
-            )?;
+            with_current_bambu_live_authority(db_path, authority, |_db| {
+                persist_observation(
+                    db_path,
+                    &entry,
+                    Some(next.clone()),
+                    Some(error.message),
+                    observed_tls_identity,
+                    Some(&next),
+                    None,
+                )
+            })?;
             return Ok(());
         }
-    };
-
-    persist_observation(
-        db_path,
-        &entry,
-        Some(observed.clone()),
-        None,
-        entry.config.tls_identity.as_ref(),
-        previous_state.as_ref(),
-        Some(&observed),
-    )?;
+    }
     Ok(())
 }
 

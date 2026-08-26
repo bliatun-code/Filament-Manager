@@ -72,11 +72,15 @@ function isElementUnavailable(element) {
       return true;
     }
     const closedDetails = element.closest("details:not([open])");
-    if (
-      closedDetails &&
-      !(elementTagName(element) === "SUMMARY" && element.parentElement === closedDetails)
-    ) {
-      return true;
+    if (closedDetails) {
+      const isClosedDetailsSummary =
+        elementTagName(element) === "SUMMARY" && element.parentElement === closedDetails;
+      if (!isClosedDetailsSummary) {
+        return true;
+      }
+      if (closedDetails.parentElement?.closest?.("details:not([open])")) {
+        return true;
+      }
     }
   }
   return false;

@@ -18,7 +18,12 @@ import {
   summarizeWishlistQueue,
   updateWishlistEntryStatus,
 } from "./wishlist_data_source";
-import type { CreateWishlistItemInput, MasterCatalogRow, WishlistItemRow } from "./tauri_client";
+import type {
+  CreateWishlistItemInput,
+  MasterCatalogRow,
+  ReceiveWishlistItemInput,
+  WishlistItemRow,
+} from "./tauri_client";
 
 function wishlistItem(id: string): WishlistItemRow {
   return {
@@ -297,7 +302,7 @@ test("loadWishlistItems avoids local fallback when client host details are incom
   assert.deepEqual(rows, []);
 });
 
-test("loadWishlistItems uses cached wishlist when client host details are incomplete", async () => {
+test("loadWishlistItems ignores unscoped cache when client host details are incomplete", async () => {
   const rows = await loadWishlistItems(
     { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
     {
@@ -314,12 +319,17 @@ test("loadWishlistItems uses cached wishlist when client host details are incomp
     },
   );
 
-  assert.deepEqual(rows.map((row) => row.id), ["cached-item"]);
+  assert.deepEqual(rows, []);
 });
 
 test("loadWishlistItems falls back to cached wishlist when host load fails", async () => {
   const rows = await loadWishlistItems(
-    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
     {
       fetchHostWishlist: async () => {
         throw new Error("host wishlist unavailable");
@@ -406,13 +416,20 @@ test("updateWishlistEntryStatus routes status changes to the host", async () => 
 });
 
 test("receiveWishlistEntry uses the same quantity contract for host and local writes", async () => {
-  const hostCalls: Array<{ baseUrl: string; itemId: string; quantity: number }> = [];
+  const hostCalls: Array<{ baseUrl: string; input: ReceiveWishlistItemInput }> = [];
+  const purchaseMetadata = {
+    purchase_price: 249.5,
+    purchase_currency: "NOK",
+    purchase_date: "2026-08-21",
+    batch_code: "LOT-7",
+    supplier_reference: "PO-42",
+  };
   const hostResult = await receiveWishlistEntry(
-    { item_id: "wish-host", quantity: 2 },
+    { item_id: "wish-host", quantity: 2, purchase_metadata: purchaseMetadata },
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
       receiveHostWishlistItem: async (baseUrl, _libraryId, input) => {
-        hostCalls.push({ baseUrl, itemId: input.item_id, quantity: input.quantity });
+        hostCalls.push({ baseUrl, input });
         return {
           spool_ids: ["spool-1", "spool-2"],
           received_quantity: 2,
@@ -423,17 +440,24 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
     },
   );
   assert.deepEqual(hostCalls, [
-    { baseUrl: "http://host", itemId: "wish-host", quantity: 2 },
+    {
+      baseUrl: "http://host",
+      input: {
+        item_id: "wish-host",
+        quantity: 2,
+        purchase_metadata: purchaseMetadata,
+      },
+    },
   ]);
   assert.equal(hostResult.remaining_quantity, 1);
 
-  const localCalls: Array<{ itemId: string; quantity: number }> = [];
+  const localCalls: ReceiveWishlistItemInput[] = [];
   const localResult = await receiveWishlistEntry(
     { item_id: "wish-local", quantity: 1 },
     { clientReadOnly: false },
     {
       receiveLocalWishlistItem: async (input) => {
-        localCalls.push({ itemId: input.item_id, quantity: input.quantity });
+        localCalls.push(input);
         return {
           spool_ids: ["spool-3"],
           received_quantity: 1,
@@ -443,7 +467,7 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
       },
     },
   );
-  assert.deepEqual(localCalls, [{ itemId: "wish-local", quantity: 1 }]);
+  assert.deepEqual(localCalls, [{ item_id: "wish-local", quantity: 1 }]);
   assert.equal(localResult.status, "RECEIVED");
 });
 

@@ -44,6 +44,8 @@ const MACOS_WINDOW_INFO_HELPER_PATH = fileURLToPath(
   new URL("./macos-window-info.swift", import.meta.url),
 );
 const MACOS_SCREENCAPTURE_PATH = "/usr/sbin/screencapture";
+const DEFAULT_SCREENSHOT_CAPTURE_ATTEMPTS = 3;
+const DEFAULT_SCREENSHOT_CAPTURE_RETRY_DELAY_MS = 250;
 const MAX_MACOS_PROCESS_ID = 0x7fffffff;
 const MAX_CG_WINDOW_ID = 0xffffffff;
 export const DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN = 96;
@@ -610,12 +612,10 @@ end tell
 
 export function buildDesktopWindowResizeScript(windowInfo, windowSize) {
   const processName = quoteAppleScriptString(windowInfo?.processName ?? "");
-  const windowTitle = quoteAppleScriptString(windowInfo?.title ?? "");
   const width = Number(windowSize?.width);
   const height = Number(windowSize?.height);
   if (
     !processName ||
-    !windowTitle ||
     !Number.isSafeInteger(width) ||
     !Number.isSafeInteger(height)
   ) {
@@ -626,7 +626,7 @@ export function buildDesktopWindowResizeScript(windowInfo, windowSize) {
   return `
 tell application "System Events"
   tell first application process whose name is "${processName}"
-    set appWindow to first window whose name is "${windowTitle}"
+    set appWindow to first window
     set size of appWindow to {${width}, ${height}}
     set position of appWindow to {${DESKTOP_CAPTURE_EDGE_INSET}, ${DESKTOP_CAPTURE_EDGE_INSET}}
   end tell
@@ -1160,6 +1160,13 @@ function screenshotPath(outputDir, name = "desktop-window") {
   return resolve(outputDir, `${name}.png`);
 }
 
+export function isRetryableDesktopScreenshotCaptureError(error) {
+  const detail = [error?.message, error?.stderr, error?.stdout]
+    .filter(Boolean)
+    .join("\n");
+  return /could not create image from window/i.test(detail);
+}
+
 export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
   if (
     windowInfo?.lookupSource !== "native" ||
@@ -1173,18 +1180,44 @@ export async function captureDesktopWindowScreenshot(windowInfo, options = {}) {
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
   await preparePrivateQaArtifactDirectory(outputDir, options);
   const path = screenshotPath(outputDir, options.name);
-  await execFileWithTimeout(
-    execFileFn,
-    MACOS_SCREENCAPTURE_PATH,
-    ["-x", "-o", `-l${windowInfo.windowId}`, path],
-    {
-      label: "Exact desktop window screenshot capture",
-      timeoutMs:
-        options.screenshotCommandTimeoutMs ??
-        options.desktopCommandTimeoutMs ??
-        8_000,
-    },
-  );
+  const captureArgs = ["-x", "-o", `-l${windowInfo.windowId}`, path];
+  const configuredAttempts = Number(options.screenshotCaptureAttempts);
+  const captureAttempts =
+    Number.isSafeInteger(configuredAttempts) && configuredAttempts > 0
+      ? configuredAttempts
+      : DEFAULT_SCREENSHOT_CAPTURE_ATTEMPTS;
+  const retryDelayMs =
+    Number.isFinite(Number(options.screenshotCaptureRetryDelayMs)) &&
+    Number(options.screenshotCaptureRetryDelayMs) >= 0
+      ? Number(options.screenshotCaptureRetryDelayMs)
+      : DEFAULT_SCREENSHOT_CAPTURE_RETRY_DELAY_MS;
+  const waitFn = options.screenshotCaptureWaitFn ?? wait;
+  for (let attempt = 1; attempt <= captureAttempts; attempt += 1) {
+    try {
+      await execFileWithTimeout(
+        execFileFn,
+        MACOS_SCREENCAPTURE_PATH,
+        captureArgs,
+        {
+          label: "Exact desktop window screenshot capture",
+          timeoutMs:
+            options.screenshotCommandTimeoutMs ??
+            options.desktopCommandTimeoutMs ??
+            8_000,
+        },
+      );
+      break;
+    } catch (error) {
+      if (
+        attempt >= captureAttempts ||
+        !isRetryableDesktopScreenshotCaptureError(error) ||
+        options.shouldAbort?.()
+      ) {
+        throw error;
+      }
+      await waitFn(retryDelayMs);
+    }
+  }
   await securePrivateQaArtifact(path, options);
   return {
     buffer: await (options.readFileFn ?? readFile)(path),

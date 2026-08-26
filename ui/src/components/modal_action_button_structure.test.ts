@@ -61,9 +61,8 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(createActions, /variant="solid"/);
   assert.match(createActions, /size="roomy"/);
   assert.match(createActions, /fullWidth/);
-  assert.match(wishlistAction, /variant="secondary"/);
-  assert.doesNotMatch(wishlistAction, /style=\{actionStyle\}/);
-  assert.doesNotMatch(wishlistAction, /variant="solid"/);
+  assert.match(wishlistAction, /variant="solid"/);
+  assert.match(wishlistAction, /style=\{actionStyle\}/);
   for (const source of [
     addPrinterModal,
     batchModal,

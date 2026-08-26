@@ -1,6 +1,17 @@
 import { invoke } from "./tauri_invoke";
+import type { LowStockPolicy } from "./shared_contracts.generated";
 import type { ActiveSpoolLoanRow } from "./tauri_loan_client";
 import type { ImportDataStats } from "./tauri_maintenance_client";
+import type {
+  InventoryBulkMutationCommand,
+  InventoryBulkMutationReceipt,
+} from "./inventory_bulk_actions_model";
+import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
+
+export type {
+  LowStockMaterialOverride,
+  LowStockPolicy,
+} from "./shared_contracts.generated";
 
 export type SpoolRow = {
   id: string;
@@ -19,6 +30,15 @@ export type SpoolRow = {
   spool_tare_weight_g?: number | null;
   location_id?: string | null;
   home_location_id?: string | null;
+  purchase_price?: number | null;
+  purchase_currency?: string | null;
+  purchase_date?: string | null;
+  batch_code?: string | null;
+  supplier_reference?: string | null;
+  /** Missing on payloads from a Host predating filament price standards. */
+  purchase_price_batch_locked?: boolean;
+  /** MANUAL, STANDARD_BATCH, or missing on legacy/unpriced rows. */
+  purchase_price_source?: string | null;
 };
 
 export type SpoolHistoryEventRow = {
@@ -49,6 +69,16 @@ export type MasterRow = {
 export type SpoolWithMasterRow = {
   spool: SpoolRow;
   master: MasterRow;
+  /** Human-readable label separate from the immutable location id. */
+  location_name?: string | null;
+  /** GENERIC, legacy SHELF, PRINTER_SLOT, or LOAN; missing on older Hosts. */
+  location_type?: string | null;
+  /** Human-readable home-location label separate from its immutable id. */
+  home_location_name?: string | null;
+  /** GENERIC, legacy SHELF, PRINTER_SLOT, or LOAN; missing on older Hosts. */
+  home_location_type?: string | null;
+  /** Missing only when reading a pre-policy Host or cache; consumers must use 200 g. */
+  low_stock_threshold_g?: number | null;
 };
 
 export type CreateSpoolInput = {
@@ -93,6 +123,15 @@ export type UpdateSpoolDetailsInput = {
   status: string;
   location?: string | null;
   home_location?: string | null;
+  spool_tare_weight_g?: number;
+  ownership?: {
+    ownership_type: "OWNED" | "BORROWED_IN" | string;
+    owner_name?: string | null;
+    owner_contact?: string | null;
+    ownership_note?: string | null;
+  };
+  purchase_metadata?: PurchaseReceiptMetadata;
+  purchase_price_batch_locked?: boolean;
 };
 
 export type UpdateSpoolRfidTagInput = {
@@ -129,6 +168,8 @@ export type InventoryOverview = {
   low_stock: number;
   owned_low_stock: number;
   borrowed_in_low_stock: number;
+  /** Optional while clients can still connect to a pre-policy Host. */
+  low_stock_policy?: LowStockPolicy;
   total_consumption_30d: number;
   owned_consumption_30d: number;
   borrowed_in_consumption_30d: number;
@@ -150,8 +191,48 @@ export type CompanionSpoolDetail = {
   active_loan?: ActiveSpoolLoanRow | null;
 };
 
+export type InventoryBulkMutationInput = InventoryBulkMutationCommand;
+export type InventoryBulkMutationResult = InventoryBulkMutationReceipt;
+
 export async function listSpools(limit = 100, offset = 0) {
   return invoke<SpoolWithMasterRow[]>("list_spools", { limit, offset });
+}
+
+export async function executeInventoryBulkMutation(
+  command: InventoryBulkMutationInput,
+) {
+  return invoke<InventoryBulkMutationResult>("execute_inventory_bulk_mutation", {
+    input: command,
+  });
+}
+
+export function buildLibrarySyncHostInventoryBulkMutationPayload(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  command: InventoryBulkMutationInput,
+) {
+  return {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      mutation: command,
+    },
+  };
+}
+
+export async function executeLibrarySyncHostInventoryBulkMutation(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  command: InventoryBulkMutationInput,
+) {
+  return invoke<InventoryBulkMutationResult>(
+    "execute_library_sync_host_inventory_bulk_mutation",
+    buildLibrarySyncHostInventoryBulkMutationPayload(
+      baseUrl,
+      expectedLibraryId,
+      command,
+    ),
+  );
 }
 
 export async function createSpool(input: CreateSpoolInput) {
@@ -254,6 +335,20 @@ export async function updateLibrarySyncHostSpoolDetails(
   expectedLibraryId: string | null | undefined,
   input: UpdateSpoolDetailsInput,
 ) {
+  return invoke<void>("update_library_sync_host_spool_details", {
+    input: buildLibrarySyncHostSpoolDetailsPayload(
+      baseUrl,
+      expectedLibraryId,
+      input,
+    ),
+  });
+}
+
+export function buildLibrarySyncHostSpoolDetailsPayload(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: UpdateSpoolDetailsInput,
+) {
   const payload: Record<string, unknown> = {
     base_url: baseUrl,
     expected_library_id: expectedLibraryId ?? null,
@@ -267,10 +362,22 @@ export async function updateLibrarySyncHostSpoolDetails(
   if (input.home_location !== undefined) {
     payload.home_location = input.home_location;
   }
+  if (input.spool_tare_weight_g !== undefined) {
+    payload.spool_tare_weight_g = input.spool_tare_weight_g;
+  }
+  if (input.ownership !== undefined) {
+    payload.ownership = input.ownership;
+  }
+  // Preserve the nested Option contract: omission means no purchase change,
+  // while an explicit all-null object means clear every purchase field.
+  if (input.purchase_metadata !== undefined) {
+    payload.purchase_metadata = input.purchase_metadata;
+  }
+  if (input.purchase_price_batch_locked !== undefined) {
+    payload.purchase_price_batch_locked = input.purchase_price_batch_locked;
+  }
 
-  return invoke<void>("update_library_sync_host_spool_details", {
-    input: payload,
-  });
+  return payload;
 }
 
 export async function updateLibrarySyncHostSpoolOwnership(

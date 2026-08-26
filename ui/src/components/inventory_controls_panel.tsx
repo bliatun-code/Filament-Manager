@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { neutralChipClass } from "../lib/chip_styles";
 import { useI18n } from "../lib/i18n";
-import type { OwnershipFilter, StatusFilter } from "../lib/inventory_list_model";
+import type {
+  InventoryLocationFilter,
+  OwnershipFilter,
+  StatusFilter,
+} from "../lib/inventory_list_model";
 import type { InventoryViewMode } from "../lib/inventory_page_preferences";
 import { materialTone } from "../lib/material_theme";
 import { PageHeaderButton } from "./page_header_button";
@@ -44,23 +48,31 @@ function InventoryAdvancedFilterRow({
 type InventoryHeaderActionsProps = {
   lowStockOnly: boolean;
   onAddSpool: () => void;
+  onCreateLabelSheet: () => void;
   onLoanOutRoll: () => void;
   onLowStockOnlyChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: StatusFilter) => void;
   primaryActionsDisabled: boolean;
+  labelSheetDisabled: boolean;
   search: string;
+  showStockFilters: boolean;
   statusFilter: StatusFilter;
 };
 
 type InventoryControlsPanelProps = {
   activeFilterCount: number;
   advancedFiltersOpen: boolean;
+  bulkSelectionActive: boolean;
+  bulkSelectionDisabled: boolean;
   inventoryView: InventoryViewMode;
+  locationFilter: InventoryLocationFilter | null;
   materialFilter: string;
   materialOptions: string[];
   onAdvancedFiltersOpenChange: (value: boolean) => void;
+  onBulkSelectionActiveChange: (value: boolean) => void;
   onInventoryViewChange: (value: InventoryViewMode) => void;
+  onLocationFilterClear: () => void;
   onMaterialFilterChange: (value: string) => void;
   onOwnershipFilterChange: (value: OwnershipFilter) => void;
   onResetFilters: () => void;
@@ -103,15 +115,22 @@ function ownershipLabel(ownership: OwnershipFilter, t: ReturnType<typeof useI18n
 export function InventoryHeaderActions({
   lowStockOnly,
   onAddSpool,
+  onCreateLabelSheet,
   onLoanOutRoll,
   onLowStockOnlyChange,
   onSearchChange,
   onStatusFilterChange,
   primaryActionsDisabled,
+  labelSheetDisabled,
   search,
+  showStockFilters,
   statusFilter,
 }: InventoryHeaderActionsProps) {
   const { t } = useI18n();
+
+  if (!showStockFilters) {
+    return null;
+  }
 
   return (
     <div className="page-header-actions">
@@ -128,6 +147,12 @@ export function InventoryHeaderActions({
           disabled={primaryActionsDisabled}
         >
           {t("inventory.loanOutRoll", "Loan out roll")}
+        </PageHeaderButton>
+        <PageHeaderButton
+          onClick={onCreateLabelSheet}
+          disabled={labelSheetDisabled}
+        >
+          {t("inventory.labelSheetAllAction", "Create label sheet for all stock")}
         </PageHeaderButton>
       </div>
       <div className="flex w-full flex-col gap-2 min-[920px]:items-end">
@@ -157,7 +182,7 @@ export function InventoryHeaderActions({
                 onClick={() => onLowStockOnlyChange(!lowStockOnly)}
                 className={neutralChipClass(lowStockOnly, "px-3.5 py-2 text-xs")}
               >
-                {t("inventory.lowStockOnly", "Low stock (<200 g)")}
+                {t("inventory.lowStockFilter", "Low stock")}
               </button>
               {statuses.map((status) => (
                 <button
@@ -165,7 +190,10 @@ export function InventoryHeaderActions({
                   type="button"
                   aria-pressed={statusFilter === status}
                   onClick={() => onStatusFilterChange(status)}
-                  className={neutralChipClass(statusFilter === status, "px-3.5 py-2 text-xs")}
+                  className={neutralChipClass(
+                    statusFilter === status,
+                    "px-3.5 py-2 text-xs",
+                  )}
                 >
                   {statusLabel(status, t)}
                 </button>
@@ -181,11 +209,16 @@ export function InventoryHeaderActions({
 export function InventoryControlsPanel({
   activeFilterCount,
   advancedFiltersOpen,
+  bulkSelectionActive,
+  bulkSelectionDisabled,
   inventoryView,
+  locationFilter,
   materialFilter,
   materialOptions,
   onAdvancedFiltersOpenChange,
+  onBulkSelectionActiveChange,
   onInventoryViewChange,
+  onLocationFilterClear,
   onMaterialFilterChange,
   onOwnershipFilterChange,
   onResetFilters,
@@ -216,8 +249,38 @@ export function InventoryControlsPanel({
                 {activeFilterCount} {t("inventory.activeFilters", "active")}
               </span>
             ) : null}
+            {locationFilter ? (
+              <button
+                id="inventory-location-filter-chip"
+                type="button"
+                aria-label={`${t("common.remove", "Remove")} ${t("inventory.location", "Location")}: ${locationFilter.name}`}
+                onClick={onLocationFilterClear}
+                className={neutralChipClass(
+                  true,
+                  "max-w-full gap-1 px-2.5 py-1 text-[11px]",
+                )}
+              >
+                <span className="truncate">
+                  {t("inventory.location", "Location")}: {locationFilter.name}
+                </span>
+                <span aria-hidden="true">×</span>
+              </button>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2 min-[920px]:justify-end">
+            <button
+              id="inventory-bulk-selection-mode-trigger"
+              type="button"
+              aria-controls="inventory-bulk-actions"
+              aria-expanded={bulkSelectionActive}
+              disabled={bulkSelectionDisabled}
+              onClick={() => onBulkSelectionActiveChange(!bulkSelectionActive)}
+              className={neutralChipClass(bulkSelectionActive, "px-3 py-1.5 text-xs")}
+            >
+              {bulkSelectionActive
+                ? t("inventory.bulkSelectionModeDone", "Done selecting")
+                : t("inventory.bulkSelectionModeStart", "Select multiple")}
+            </button>
             {activeFilterCount > 0 ? (
               <button
                 type="button"

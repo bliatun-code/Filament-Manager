@@ -25,6 +25,8 @@ const COMPANION_BROWSER_CLICK_ROUTER_JS: &str =
 const COMPANION_BROWSER_DATA_CONTROLLER_JS: &str =
     include_str!("../companion_browser/companion_data_controller.js");
 const COMPANION_BROWSER_DOMAIN_JS: &str = include_str!("../companion_browser/companion_domain.js");
+const COMPANION_BROWSER_SHARED_CONTRACTS_JS: &str =
+    include_str!("../companion_browser/shared_contracts.generated.js");
 const COMPANION_BROWSER_DOM_EVENTS_JS: &str =
     include_str!("../companion_browser/companion_dom_events.js");
 const COMPANION_BROWSER_I18N_JS: &str = include_str!("../companion_browser/companion_i18n.js");
@@ -169,6 +171,13 @@ const COMPANION_BROWSER_BASE_ASSETS: &[(&str, CompanionBrowserAsset)] = &[
         CompanionBrowserAsset {
             content_type: "application/javascript; charset=utf-8",
             content: COMPANION_BROWSER_DOMAIN_JS,
+        },
+    ),
+    (
+        "shared_contracts.generated.js",
+        CompanionBrowserAsset {
+            content_type: "application/javascript; charset=utf-8",
+            content: COMPANION_BROWSER_SHARED_CONTRACTS_JS,
         },
     ),
     (

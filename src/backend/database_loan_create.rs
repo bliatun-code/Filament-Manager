@@ -6,8 +6,11 @@ use super::database_result::{InventoryError, InventoryResult};
 use super::database_rows::map_spool_loan_row;
 use super::database_text::normalize_optional_text;
 use super::loan_defaults::{
-    ACTIVE_LOAN_PREDICATE_SQL, LOAN_DIRECTION_SELECT_SQL, LOAN_STATUS_SELECT_SQL,
+    invalid_loan_operation, ACTIVE_LOAN_PREDICATE_SQL, LOAN_ALREADY_ACTIVE_CODE,
+    LOAN_BORROWER_REQUIRED_CODE, LOAN_COUNTERPARTY_REQUIRED_CODE, LOAN_DIRECTION_SELECT_SQL,
+    LOAN_STATUS_SELECT_SQL,
 };
+use super::loan_expected_return::normalize_expected_return_date;
 
 pub(crate) fn create_spool_loan(
     conn: &Connection,
@@ -17,8 +20,15 @@ pub(crate) fn create_spool_loan(
     lent_note: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let tx = conn.unchecked_transaction()?;
-    let loan =
-        create_spool_loan_in_transaction(&tx, spool_id, borrower_name, grams_out, lent_note)?;
+    let loan = create_spool_loan_in_transaction(
+        &tx,
+        spool_id,
+        borrower_name,
+        None,
+        grams_out,
+        lent_note,
+        None,
+    )?;
     tx.commit()?;
     Ok(loan)
 }
@@ -27,15 +37,21 @@ pub(crate) fn create_spool_loan_in_transaction(
     conn: &Connection,
     spool_id: &str,
     borrower_name: &str,
+    counterparty_contact: Option<&str>,
     grams_out: i64,
     lent_note: Option<&str>,
+    expected_return_at: Option<&str>,
 ) -> InventoryResult<SpoolLoanRow> {
     let borrower = borrower_name.trim();
     if borrower.is_empty() {
-        return Err(InventoryError::Db("borrower name is required".to_string()));
+        return Err(invalid_loan_operation(
+            LOAN_BORROWER_REQUIRED_CODE,
+            "borrower name is required",
+        ));
     }
 
     ensure_spool_can_be_loaned(conn, spool_id)?;
+    let expected_return_at = normalize_expected_return_date(expected_return_at)?;
 
     conn.execute(
         "UPDATE ams_slots
@@ -48,17 +64,27 @@ pub(crate) fn create_spool_loan_in_transaction(
     conn.execute(
         "INSERT INTO spool_loans (
             id, spool_id, borrower_name, loan_direction, loan_status, counterparty_name,
-            counterparty_contact, counterparty_note, grams_out, lent_note, lent_at
-        ) VALUES (?1, ?2, ?3, 'OUTBOUND', 'ACTIVE', ?3, NULL, NULL, ?4, ?5, datetime('now'))",
-        params![loan_id, spool_id, borrower, grams_out.max(0), lent_note],
+            counterparty_contact, counterparty_note, grams_out, lent_note, lent_at,
+            expected_return_at
+        ) VALUES (?1, ?2, ?3, 'OUTBOUND', 'ACTIVE', ?3, ?4, NULL, ?5, ?6, datetime('now'), ?7)",
+        params![
+            loan_id,
+            spool_id,
+            borrower,
+            normalize_optional_text(counterparty_contact),
+            grams_out.max(0),
+            normalize_optional_text(lent_note),
+            expected_return_at
+        ],
     )?;
 
     let location = format!("Loaned to: {borrower}");
     conn.execute(
-        "INSERT INTO inventory_locations (id, name, type)
-         VALUES (?1, ?2, 'LOAN')
+        "INSERT INTO inventory_locations (id, name, type, created_at, updated_at)
+         VALUES (?1, ?2, 'LOAN', datetime('now'), datetime('now'))
          ON CONFLICT(id) DO UPDATE SET
-            name = excluded.name",
+            name = excluded.name,
+            updated_at = datetime('now')",
         params![location, location],
     )?;
     conn.execute(
@@ -106,8 +132,9 @@ pub(crate) fn create_inbound_spool_loan_in_transaction(
 ) -> InventoryResult<SpoolLoanRow> {
     let counterparty = counterparty_name.trim();
     if counterparty.is_empty() {
-        return Err(InventoryError::Db(
-            "counterparty name is required".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_COUNTERPARTY_REQUIRED_CODE,
+            "counterparty name is required",
         ));
     }
 
@@ -158,8 +185,9 @@ fn ensure_spool_can_be_loaned(conn: &Connection, spool_id: &str) -> InventoryRes
         )
         .optional()?;
     if already_loaned.is_some() {
-        return Err(InventoryError::Db(
-            "this spool already has an active loan".to_string(),
+        return Err(invalid_loan_operation(
+            LOAN_ALREADY_ACTIVE_CODE,
+            "this spool already has an active loan",
         ));
     }
     Ok(())

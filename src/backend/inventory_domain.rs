@@ -1,4 +1,6 @@
-use serde::{Deserialize, Serialize};
+pub use super::shared_contracts::{LoanDirection, LoanStatus, OwnershipType, SpoolStatus};
+
+pub const LOW_STOCK_THRESHOLD_G: i64 = 200;
 
 fn normalize_domain_token(value: Option<&str>, fallback: &str) -> String {
     value
@@ -9,13 +11,6 @@ fn normalize_domain_token(value: Option<&str>, fallback: &str) -> String {
         .replace(['-', ' '], "_")
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OwnershipType {
-    Owned,
-    BorrowedIn,
-}
-
 impl OwnershipType {
     pub fn from_raw(value: Option<&str>) -> Self {
         match normalize_domain_token(value, "OWNED").as_str() {
@@ -24,28 +19,9 @@ impl OwnershipType {
         }
     }
 
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Owned => "OWNED",
-            Self::BorrowedIn => "BORROWED_IN",
-        }
-    }
-
     pub fn is_borrowed_in(self) -> bool {
         self == Self::BorrowedIn
     }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum SpoolStatus {
-    InStock,
-    Assigned,
-    Borrowed,
-    Empty,
-    Lost,
-    Missing,
-    Deleted,
 }
 
 impl SpoolStatus {
@@ -62,28 +38,23 @@ impl SpoolStatus {
         }
     }
 
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::InStock => "IN_STOCK",
-            Self::Assigned => "ASSIGNED",
-            Self::Borrowed => "BORROWED",
-            Self::Empty => "EMPTY",
-            Self::Lost => "LOST",
-            Self::Missing => "MISSING",
-            Self::Deleted => "DELETED",
-        }
-    }
-
     pub fn is_assigned(self) -> bool {
         self == Self::Assigned
     }
+
+    pub fn is_historical(self) -> bool {
+        matches!(
+            self,
+            Self::Empty | Self::Lost | Self::Missing | Self::Deleted
+        )
+    }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum LoanDirection {
-    Outbound,
-    Inbound,
+/// Classifies both canonical historical statuses and the legacy-only
+/// `ARCHIVED` token without expanding the shared wire enum.
+pub(crate) fn is_historical_spool_status(value: Option<&str>) -> bool {
+    let normalized = normalize_domain_token(value, "IN_STOCK");
+    normalized == "ARCHIVED" || SpoolStatus::from_raw(Some(&normalized)).is_historical()
 }
 
 impl LoanDirection {
@@ -93,22 +64,6 @@ impl LoanDirection {
             _ => Self::Outbound,
         }
     }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Outbound => "OUTBOUND",
-            Self::Inbound => "INBOUND",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum LoanStatus {
-    Active,
-    Returned,
-    Lost,
-    Cancelled,
 }
 
 impl LoanStatus {
@@ -124,15 +79,6 @@ impl LoanStatus {
             "LOST" => Self::Lost,
             "CANCELLED" => Self::Cancelled,
             _ => Self::Active,
-        }
-    }
-
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Active => "ACTIVE",
-            Self::Returned => "RETURNED",
-            Self::Lost => "LOST",
-            Self::Cancelled => "CANCELLED",
         }
     }
 

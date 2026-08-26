@@ -7,6 +7,7 @@ import {
   formatInventoryDisplayTitle,
   formatMasterDisplayTitle,
   formatRollReference,
+  filterInventorySpools,
   inventoryOwnershipTone,
   inventoryStatusTone,
   isInventorySpoolLoanTrackingCandidate,
@@ -14,6 +15,7 @@ import {
   isInventorySpoolVisibleForStatusFilter,
   normalizeDisplayToken,
   remainingBarClass,
+  resolveInventoryCollectionEmptyState,
   spoolRemainingRatio,
   type InventorySpool,
 } from "./inventory_list_model";
@@ -35,6 +37,15 @@ function spool(overrides: Partial<InventorySpool> = {}): InventorySpool {
     ...overrides,
   };
 }
+
+const defaultFilterOptions: Parameters<typeof filterInventorySpools>[1] = {
+  search: "",
+  statusFilter: "ALL",
+  ownershipFilter: "ALL",
+  materialFilter: "ALL",
+  vendorFilter: "ALL",
+  lowStockOnly: false,
+};
 
 test("formatRollReference keeps the short user-facing spool suffix", () => {
   assert.equal(formatRollReference({ id: "spool_1234567890" }), "#567890");
@@ -159,7 +170,9 @@ test("inventory spool status predicates centralize list visibility and low-stock
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "IN_STOCK" }), "ALL"), true);
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "ASSIGNED" }), "ALL"), true);
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "LOST" }), "ALL"), true);
-  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "EMPTY" }), "ALL"), false);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "EMPTY" }), "ALL"), true);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "MISSING" }), "ALL"), true);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "DELETED" }), "ALL"), true);
   assert.equal(
     isInventorySpoolVisibleForStatusFilter(spool({ status: "ASSIGNED" }), "ASSIGNED"),
     true,
@@ -171,10 +184,248 @@ test("inventory spool status predicates centralize list visibility and low-stock
 
   assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 90 })), true);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "ASSIGNED", remainingGrams: 90 })), true);
-  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "BORROWED", remainingGrams: 90 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "BORROWED", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "EMPTY", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ status: "LOST", remainingGrams: 90 })), false);
   assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 0 })), false);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 200 })), true);
+  assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 201 })), false);
+});
+
+test("All status filter returns every normalized inventory status", () => {
+  const rows = [
+    spool({ id: "in-stock", status: "IN_STOCK" }),
+    spool({ id: "assigned", status: "ASSIGNED" }),
+    spool({ id: "borrowed", status: "BORROWED" }),
+    spool({ id: "empty", status: "EMPTY", remainingGrams: 0 }),
+    spool({ id: "lost", status: "LOST" }),
+    spool({ id: "missing", status: "MISSING" }),
+    spool({ id: "deleted", status: "DELETED" }),
+  ];
+
+  assert.deepEqual(
+    filterInventorySpools(rows, defaultFilterOptions).map((row) => row.id),
+    rows.map((row) => row.id),
+  );
+
+  for (const status of ["IN_STOCK", "ASSIGNED", "BORROWED", "EMPTY", "LOST"] as const) {
+    assert.deepEqual(
+      filterInventorySpools(rows, {
+        ...defaultFilterOptions,
+        statusFilter: status,
+      }).map((row) => row.status),
+      [status],
+    );
+  }
+});
+
+test("search, status and low-stock filters compose without widening results", () => {
+  const rows = [
+    spool({
+      id: "ocean-low",
+      colorName: "Ocean Blue",
+      location: "Workshop",
+      qrCode: "QR-OCEAN",
+      remainingGrams: 200,
+      status: "IN_STOCK",
+    }),
+    spool({
+      id: "ocean-high",
+      colorName: "Ocean Blue",
+      remainingGrams: 201,
+      status: "IN_STOCK",
+    }),
+    spool({ id: "assigned-low", remainingGrams: 80, status: "ASSIGNED" }),
+    spool({
+      id: "borrowed-low",
+      ownerName: "Ada Lovelace",
+      remainingGrams: 120,
+      status: "BORROWED",
+    }),
+    spool({ id: "empty-low", remainingGrams: 120, status: "EMPTY" }),
+    spool({ id: "lost-low", remainingGrams: 120, status: "LOST" }),
+    spool({ id: "zero-stock", remainingGrams: 0, status: "IN_STOCK" }),
+  ];
+
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+    }).map((row) => row.id),
+    ["ocean-low", "assigned-low"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      search: "ocean",
+      statusFilter: "IN_STOCK",
+    }).map((row) => row.id),
+    ["ocean-low"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      search: "ada lovelace",
+      statusFilter: "BORROWED",
+    }).map((row) => row.id),
+    [],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      statusFilter: "EMPTY",
+    }),
+    [],
+  );
+});
+
+test("location search and drilldown include home placement while filtering by exact ID", () => {
+  const rows = [
+    spool({
+      id: "shelf-xx",
+      location: "Shelf xx",
+      locationId: "location-xx",
+    }),
+    spool({
+      id: "shelf-xxx",
+      location: "Shelf xxx",
+      locationId: "location-xxx",
+    }),
+    spool({
+      id: "loaned-hakon",
+      location: "Loaned to: Håkon",
+      locationId: "loan-hakon",
+      homeLocation: "Shelf Håkon",
+      homeLocationId: "location-hakon",
+      status: "BORROWED",
+    }),
+  ];
+
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      search: "Shelf Håkon",
+    }).map((row) => row.id),
+    ["loaned-hakon"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      locationFilterId: "location-xx",
+    }).map((row) => row.id),
+    ["shelf-xx"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      locationFilterId: "location-hakon",
+    }).map((row) => row.id),
+    ["loaned-hakon"],
+  );
+});
+
+test("low-stock search and status filters use each material-effective threshold", () => {
+  const rows = [
+    spool({
+      id: "pla-below",
+      material: "PLA",
+      colorName: "Blue",
+      remainingGrams: 299,
+      lowStockThresholdGrams: 300,
+    }),
+    spool({
+      id: "pla-boundary",
+      material: "PLA",
+      colorName: "Blue",
+      remainingGrams: 300,
+      lowStockThresholdGrams: 300,
+      status: "ASSIGNED",
+    }),
+    spool({
+      id: "pla-above",
+      material: "PLA",
+      colorName: "Blue",
+      remainingGrams: 301,
+      lowStockThresholdGrams: 300,
+    }),
+    spool({
+      id: "petg-boundary",
+      material: "PETG",
+      colorName: "Clear",
+      remainingGrams: 150,
+      lowStockThresholdGrams: 150,
+    }),
+    spool({
+      id: "petg-above",
+      material: "PETG",
+      colorName: "Clear",
+      remainingGrams: 151,
+      lowStockThresholdGrams: 150,
+    }),
+  ];
+
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+    }).map((row) => row.id),
+    ["pla-below", "pla-boundary", "petg-boundary"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      search: "blue",
+      statusFilter: "ASSIGNED",
+    }).map((row) => row.id),
+    ["pla-boundary"],
+  );
+  assert.deepEqual(
+    filterInventorySpools(rows, {
+      ...defaultFilterOptions,
+      lowStockOnly: true,
+      materialFilter: "PETG",
+    }).map((row) => row.id),
+    ["petg-boundary"],
+  );
+});
+
+test("inventory collection empty state distinguishes loading, empty data and filtered results", () => {
+  assert.equal(
+    resolveInventoryCollectionEmptyState({
+      loading: true,
+      totalSpoolCount: 0,
+      visibleSpoolCount: 0,
+    }),
+    "LOADING",
+  );
+  assert.equal(
+    resolveInventoryCollectionEmptyState({
+      loading: false,
+      totalSpoolCount: 0,
+      visibleSpoolCount: 0,
+    }),
+    "EMPTY_INVENTORY",
+  );
+  assert.equal(
+    resolveInventoryCollectionEmptyState({
+      loading: false,
+      totalSpoolCount: 8,
+      visibleSpoolCount: 0,
+    }),
+    "NO_RESULTS",
+  );
+  assert.equal(
+    resolveInventoryCollectionEmptyState({
+      loading: true,
+      totalSpoolCount: 8,
+      visibleSpoolCount: 3,
+    }),
+    null,
+  );
 });
 
 test("inventory loan tracking candidates normalize ownership and excluded states", () => {

@@ -5,9 +5,12 @@ use crate::library_sync_host_client::{
     renew_and_cache_library_sync_auth, send_library_sync_request,
 };
 use crate::library_sync_models::{LibrarySyncHostValidationResult, ValidateLibrarySyncHostInput};
+use crate::library_sync_target_guard::{
+    capture_current_library_sync_target_if_matching, with_current_library_sync_target_if_current,
+    LibrarySyncTargetGuard,
+};
 use crate::state::AppState;
 use crate::trusted_lan_health::CompanionHealthCheckResponse;
-use crate::with_inventory;
 use std::time::Duration;
 
 #[tauri::command]
@@ -24,6 +27,11 @@ fn validate_library_sync_host_blocking(
     input: ValidateLibrarySyncHostInput,
 ) -> Result<LibrarySyncHostValidationResult, String> {
     let normalized_base_url = normalize_library_sync_base_url(&input.base_url)?;
+    let validation_target = capture_current_library_sync_target_if_matching(
+        state,
+        &normalized_base_url,
+        input.expected_library_id.as_deref(),
+    )?;
 
     let health_url = format!("{}/api/v1/health", normalized_base_url);
     let response = match send_library_sync_request(
@@ -49,9 +57,13 @@ fn validate_library_sync_host_blocking(
                 sync_mode: None,
                 message: error,
             };
-            with_inventory(state, |engine| {
-                engine.save_library_sync_validation_state(false, Some(&result.message), None)
-            })?;
+            save_validation_if_current(
+                state,
+                validation_target.as_ref(),
+                false,
+                Some(&result.message),
+                None,
+            )?;
             return Ok(result);
         }
     };
@@ -72,9 +84,13 @@ fn validate_library_sync_host_blocking(
             sync_mode: None,
             message: format!("Host check returned {}.", response.status()),
         };
-        with_inventory(state, |engine| {
-            engine.save_library_sync_validation_state(true, Some(&result.message), None)
-        })?;
+        save_validation_if_current(
+            state,
+            validation_target.as_ref(),
+            true,
+            Some(&result.message),
+            None,
+        )?;
         return Ok(result);
     }
 
@@ -116,7 +132,14 @@ fn validate_library_sync_host_blocking(
     let mut pairing_checked = false;
     let mut pairing_valid = false;
 
-    if parsed.ok
+    let pairing_target_current = match validation_target.as_ref() {
+        Some(target) => {
+            with_current_library_sync_target_if_current(state, target, |_| Ok(()))?.is_some()
+        }
+        None => false,
+    };
+    if pairing_target_current
+        && parsed.ok
         && matches_library_id
         && let Some(device_token) =
             load_library_sync_device_token_optional(state, &normalized_base_url)?
@@ -165,12 +188,28 @@ fn validate_library_sync_host_blocking(
         sync_mode: parsed.sync_mode,
         message,
     };
-    with_inventory(state, |engine| {
-        engine.save_library_sync_validation_state(
-            result.reachable,
-            Some(&result.message),
-            result.device_name.as_deref(),
-        )
-    })?;
+    save_validation_if_current(
+        state,
+        validation_target.as_ref(),
+        result.reachable,
+        Some(&result.message),
+        result.device_name.as_deref(),
+    )?;
     Ok(result)
+}
+
+fn save_validation_if_current(
+    state: &AppState,
+    target: Option<&LibrarySyncTargetGuard>,
+    reachable: bool,
+    message: Option<&str>,
+    device_name: Option<&str>,
+) -> Result<(), String> {
+    let Some(target) = target else {
+        return Ok(());
+    };
+    with_current_library_sync_target_if_current(state, target, |engine| {
+        engine.save_library_sync_validation_state(reachable, message, device_name)
+    })?;
+    Ok(())
 }

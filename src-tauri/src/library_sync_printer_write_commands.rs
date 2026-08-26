@@ -4,11 +4,11 @@ use crate::library_sync_cache_refresh::{
     refresh_library_sync_printer_cache, refresh_library_sync_spool_cache,
 };
 use crate::library_sync_command_support::{
-    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
-    save_library_sync_success_without_message, trimmed_non_empty,
+    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
+    save_library_sync_success, save_library_sync_success_without_message, trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
-    perform_library_sync_host_write, perform_library_sync_host_write_and_parse_with_timeout,
+    perform_library_sync_host_write, perform_library_sync_host_write_and_parse,
 };
 use crate::library_sync_models::{
     LibrarySyncAcceptBambuLiveWeightEstimateInput, LibrarySyncAssignPrinterSlotInput,
@@ -18,7 +18,6 @@ use crate::library_sync_models::{
     LibrarySyncUpdateMasterCatalogEntryInput,
 };
 use crate::state::AppState;
-use std::time::Duration;
 
 #[tauri::command]
 pub(crate) async fn assign_library_sync_host_printer_slot(
@@ -35,13 +34,15 @@ fn assign_library_sync_host_printer_slot_blocking(
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
     if printer_id.is_empty() || slot_id.is_empty() {
         return Err("Printer id and slot id are required.".to_string());
     }
+    let printer_id = encode_library_sync_path_segment(printer_id);
+    let slot_id = encode_library_sync_path_segment(slot_id);
 
     perform_library_sync_host_write(
         state,
@@ -55,9 +56,9 @@ fn assign_library_sync_host_printer_slot_blocking(
         }),
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url);
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host printer slot updated.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host printer slot updated.", None)?;
     Ok(())
 }
 
@@ -76,7 +77,7 @@ fn record_library_sync_host_print_usage_blocking(
     input: LibrarySyncRecordPrintUsageInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let printer_id = input.printer_id.trim();
     let spool_id = input.spool_id.trim();
@@ -86,6 +87,8 @@ fn record_library_sync_host_print_usage_blocking(
     if input.grams <= 0 {
         return Err("Used grams must be greater than zero.".to_string());
     }
+    let printer_id = encode_library_sync_path_segment(printer_id);
+    let spool_id = encode_library_sync_path_segment(spool_id);
 
     perform_library_sync_host_write(
         state,
@@ -98,9 +101,9 @@ fn record_library_sync_host_print_usage_blocking(
         }),
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url);
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host print usage recorded.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host print usage recorded.", None)?;
     Ok(())
 }
 
@@ -121,7 +124,7 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
     input: LibrarySyncAcceptBambuLiveWeightEstimateInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
     let printer_id = input.printer_id.trim();
     let slot_id = input.slot_id.trim();
     let spool_id = input.spool_id.trim();
@@ -150,9 +153,9 @@ fn accept_library_sync_host_bambu_live_weight_estimate_blocking(
         ),
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url);
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success_without_message(state, None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success_without_message(state, &target, None)?;
     Ok(())
 }
 
@@ -161,6 +164,9 @@ fn bambu_live_weight_estimate_accept_path(
     slot_id: &str,
     spool_id: &str,
 ) -> String {
+    let printer_id = encode_library_sync_path_segment(printer_id);
+    let slot_id = encode_library_sync_path_segment(slot_id);
+    let spool_id = encode_library_sync_path_segment(spool_id);
     format!(
         "/api/v1/printers/{printer_id}/slots/{slot_id}/spools/{spool_id}/bambu-live-weight-estimate/accept"
     )
@@ -193,7 +199,7 @@ fn create_library_sync_host_printer_blocking(
     input: LibrarySyncCreatePrinterInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let id = input.id.trim();
     let model = input.model.trim();
@@ -215,8 +221,8 @@ fn create_library_sync_host_printer_blocking(
         }),
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host printer saved.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host printer saved.", None)?;
     Ok(())
 }
 
@@ -237,7 +243,7 @@ fn update_library_sync_host_master_catalog_entry_blocking(
     input: LibrarySyncUpdateMasterCatalogEntryInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let master_id = input.master_id.trim();
     let material = input.material.trim();
@@ -250,6 +256,7 @@ fn update_library_sync_host_master_catalog_entry_blocking(
     {
         return Err("Master id, material, filament name and color name are required.".to_string());
     }
+    let master_id = encode_library_sync_path_segment(master_id);
 
     perform_library_sync_host_write(
         state,
@@ -266,7 +273,7 @@ fn update_library_sync_host_master_catalog_entry_blocking(
         }),
     )?;
 
-    save_library_sync_success(state, "Host catalog entry updated.", None)?;
+    save_library_sync_success(state, &target, "Host catalog entry updated.", None)?;
     Ok(())
 }
 
@@ -287,14 +294,14 @@ fn refresh_library_sync_host_vendor_catalog_blocking(
     input: LibrarySyncRefreshCatalogInput,
 ) -> Result<CatalogRefreshResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let vendor = input.vendor.trim();
     if !vendor.eq_ignore_ascii_case("Bambu") && !vendor.eq_ignore_ascii_case("eSUN") {
         return Err("Vendor must be Bambu or eSUN.".to_string());
     }
 
-    let summary = perform_library_sync_host_write_and_parse_with_timeout(
+    let summary = perform_library_sync_host_write_and_parse(
         state,
         &normalized_base_url,
         "/api/v1/catalog/refresh",
@@ -302,10 +309,9 @@ fn refresh_library_sync_host_vendor_catalog_blocking(
             "vendor": vendor,
             "material_types": input.material_types.unwrap_or_default(),
         }),
-        Duration::from_secs(180),
     )?;
 
-    save_library_sync_success(state, "Host catalog refreshed.", None)?;
+    save_library_sync_success(state, &target, "Host catalog refreshed.", None)?;
     Ok(summary)
 }
 
@@ -340,12 +346,13 @@ fn delete_library_sync_host_printer_blocking(
     input: LibrarySyncDeletePrinterInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _) = prepare_library_sync_host_write(&host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
 
     let printer_id = input.printer_id.trim();
     if printer_id.is_empty() {
         return Err("Printer id is required.".to_string());
     }
+    let printer_id = encode_library_sync_path_segment(printer_id);
 
     perform_library_sync_host_write(
         state,
@@ -354,9 +361,9 @@ fn delete_library_sync_host_printer_blocking(
         &serde_json::json!({}),
     )?;
 
-    refresh_library_sync_printer_cache(state, &normalized_base_url);
-    refresh_library_sync_spool_cache(state, &normalized_base_url);
-    save_library_sync_success(state, "Host printer deleted.", None)?;
+    refresh_library_sync_printer_cache(state, &normalized_base_url, &target);
+    refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
+    save_library_sync_success(state, &target, "Host printer deleted.", None)?;
     Ok(())
 }
 
@@ -371,6 +378,10 @@ mod tests {
         assert_eq!(
             bambu_live_weight_estimate_accept_path("printer_1", "slot_1", "spool_1"),
             "/api/v1/printers/printer_1/slots/slot_1/spools/spool_1/bambu-live-weight-estimate/accept"
+        );
+        assert_eq!(
+            bambu_live_weight_estimate_accept_path("printer/&", "slot ?", "legacy/id#%"),
+            "/api/v1/printers/printer%2F%26/slots/slot%20%3F/spools/legacy%2Fid%23%25/bambu-live-weight-estimate/accept"
         );
         assert_eq!(
             bambu_live_weight_estimate_accept_payload("2026-08-12T12:00:00Z", 300, Some(1000),),

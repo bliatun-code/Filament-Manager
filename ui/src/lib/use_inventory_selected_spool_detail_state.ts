@@ -1,10 +1,28 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { InventorySpool } from "./inventory_list_model";
 import type { OwnershipType } from "./inventory_list_model";
 import type { RfidCaptureField } from "./inventory_rfid_capture";
 import type { InventoryDetailVisualFixture } from "./inventory_visual_fixture";
-import { resolveSpoolTareWeight } from "./spool_weight";
+import {
+  buildInventorySpoolDetailDraftBaseline,
+  inventorySpoolCommonDetailsDraftChanged,
+  inventorySpoolMasterMetadataDraftChanged,
+  type InventorySpoolDetailDraftBaseline,
+} from "./inventory_spool_detail_draft_model";
 import type { SpoolHistoryEventRow, SpoolUsagePointRow } from "./tauri_client";
+import {
+  emptyPurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataDraft,
+  type PurchaseReceiptMetadataValidationErrors,
+} from "./purchase_receipt_metadata";
 
 type InventorySelectedSpoolDetailStateInput = {
   closeRfidCaptureModal: () => void;
@@ -52,8 +70,18 @@ export function useInventorySelectedSpoolDetailState({
   const [selectedSpoolOwnerNameDraft, setSelectedSpoolOwnerNameDraft] = useState("");
   const [selectedSpoolOwnerContactDraft, setSelectedSpoolOwnerContactDraft] = useState("");
   const [selectedSpoolOwnershipNoteDraft, setSelectedSpoolOwnershipNoteDraft] = useState("");
+  const [
+    selectedSpoolPurchasePriceBatchLockedDraft,
+    setSelectedSpoolPurchasePriceBatchLockedDraft,
+  ] = useState(false);
+  const [selectedSpoolPurchaseMetadataDraft, setSelectedSpoolPurchaseMetadataDraft] =
+    useState<PurchaseReceiptMetadataDraft>(emptyPurchaseReceiptMetadataDraft);
+  const [selectedSpoolPurchaseMetadataErrors, setSelectedSpoolPurchaseMetadataErrors] =
+    useState<PurchaseReceiptMetadataValidationErrors>({});
   const [showRfidCapturedFields, setShowRfidCapturedFields] = useState(false);
   const [showRollHistory, setShowRollHistory] = useState(false);
+  const [draftBaseline, setDraftBaseline] =
+    useState<InventorySpoolDetailDraftBaseline | null>(null);
   const detailSpoolIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -75,6 +103,10 @@ export function useInventorySelectedSpoolDetailState({
       setSelectedSpoolOwnerNameDraft("");
       setSelectedSpoolOwnerContactDraft("");
       setSelectedSpoolOwnershipNoteDraft("");
+      setSelectedSpoolPurchasePriceBatchLockedDraft(false);
+      setSelectedSpoolPurchaseMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+      setSelectedSpoolPurchaseMetadataErrors({});
+      setDraftBaseline(null);
       closeRfidCaptureModal();
       setSelectedRfidCaptureSlotId(null);
       setRfidCaptureError(null);
@@ -83,26 +115,32 @@ export function useInventorySelectedSpoolDetailState({
       return;
     }
 
-    if (detailSpoolIdRef.current !== selectedSpool.id) {
-      setHistoryRows([]);
-      setUsagePoints([]);
-      detailSpoolIdRef.current = selectedSpool.id;
+    if (detailSpoolIdRef.current === selectedSpool.id) {
+      return;
     }
 
+    const nextBaseline = buildInventorySpoolDetailDraftBaseline(selectedSpool);
+    setHistoryRows([]);
+    setUsagePoints([]);
+    detailSpoolIdRef.current = selectedSpool.id;
+    setDraftBaseline(nextBaseline);
     setMasterEditUnlocked(false);
-    setEditMasterVendor(selectedSpool.vendor);
-    setEditMasterMaterial(selectedSpool.material);
-    setEditMasterFilamentName(selectedSpool.filamentName);
-    setEditMasterColorName(selectedSpool.colorName);
-    setEditMasterHexColor(selectedSpool.hexColor ?? "");
-    setSelectedSpoolLocationDraft(selectedSpool.homeLocation ?? "");
-    setSelectedSpoolTareDraft(
-      String(resolveSpoolTareWeight(selectedSpool.spoolTareWeightGrams, selectedSpool.vendor)),
+    setEditMasterVendor(nextBaseline.master.vendor);
+    setEditMasterMaterial(nextBaseline.master.material);
+    setEditMasterFilamentName(nextBaseline.master.filamentName);
+    setEditMasterColorName(nextBaseline.master.colorName);
+    setEditMasterHexColor(nextBaseline.master.hexColor);
+    setSelectedSpoolLocationDraft(nextBaseline.common.homeLocation);
+    setSelectedSpoolTareDraft(nextBaseline.common.tareWeight);
+    setSelectedSpoolOwnershipDraft(nextBaseline.common.ownershipType);
+    setSelectedSpoolOwnerNameDraft(nextBaseline.common.ownerName);
+    setSelectedSpoolOwnerContactDraft(nextBaseline.common.ownerContact);
+    setSelectedSpoolOwnershipNoteDraft(nextBaseline.common.ownershipNote);
+    setSelectedSpoolPurchasePriceBatchLockedDraft(
+      nextBaseline.common.purchasePriceBatchLocked,
     );
-    setSelectedSpoolOwnershipDraft(selectedSpool.ownershipType);
-    setSelectedSpoolOwnerNameDraft(selectedSpool.ownerName ?? "");
-    setSelectedSpoolOwnerContactDraft(selectedSpool.ownerContact ?? "");
-    setSelectedSpoolOwnershipNoteDraft(selectedSpool.ownershipNote ?? "");
+    setSelectedSpoolPurchaseMetadataDraft(nextBaseline.common.purchaseMetadata);
+    setSelectedSpoolPurchaseMetadataErrors({});
     closeRfidCaptureModal();
     setSelectedRfidCaptureSlotId(null);
     setRfidCaptureError(null);
@@ -148,20 +186,113 @@ export function useInventorySelectedSpoolDetailState({
     setUsagePoints,
   ]);
 
+  const commonDraft = useMemo(
+    () => ({
+      homeLocation: selectedSpoolLocationDraft,
+      ownershipType: selectedSpoolOwnershipDraft,
+      ownerName: selectedSpoolOwnerNameDraft,
+      ownerContact: selectedSpoolOwnerContactDraft,
+      ownershipNote: selectedSpoolOwnershipNoteDraft,
+      purchasePriceBatchLocked: selectedSpoolPurchasePriceBatchLockedDraft,
+      purchaseMetadata: selectedSpoolPurchaseMetadataDraft,
+      tareWeight: selectedSpoolTareDraft,
+    }),
+    [
+      selectedSpoolLocationDraft,
+      selectedSpoolOwnerContactDraft,
+      selectedSpoolOwnerNameDraft,
+      selectedSpoolOwnershipDraft,
+      selectedSpoolOwnershipNoteDraft,
+      selectedSpoolPurchasePriceBatchLockedDraft,
+      selectedSpoolPurchaseMetadataDraft,
+      selectedSpoolTareDraft,
+    ],
+  );
+  const masterDraft = useMemo(
+    () => ({
+      vendor: editMasterVendor,
+      material: editMasterMaterial,
+      filamentName: editMasterFilamentName,
+      colorName: editMasterColorName,
+      hexColor: editMasterHexColor,
+    }),
+    [
+      editMasterColorName,
+      editMasterFilamentName,
+      editMasterHexColor,
+      editMasterMaterial,
+      editMasterVendor,
+    ],
+  );
+  const commonDetailsDirty = Boolean(
+    draftBaseline &&
+      selectedSpool?.id === draftBaseline.spoolId &&
+      inventorySpoolCommonDetailsDraftChanged(draftBaseline.common, commonDraft),
+  );
+  const masterMetadataDirty = Boolean(
+    draftBaseline &&
+      selectedSpool?.id === draftBaseline.spoolId &&
+      inventorySpoolMasterMetadataDraftChanged(draftBaseline.master, masterDraft),
+  );
+
+  const markCommonDetailsSaved = useCallback(() => {
+    setDraftBaseline((current) =>
+      current ? { ...current, common: commonDraft } : current,
+    );
+    setSelectedSpoolPurchaseMetadataErrors({});
+  }, [commonDraft]);
+
+  const markMasterMetadataSaved = useCallback(() => {
+    setDraftBaseline((current) =>
+      current ? { ...current, master: masterDraft } : current,
+    );
+  }, [masterDraft]);
+
+  const resetDetailDrafts = useCallback(() => {
+    if (!draftBaseline) {
+      return;
+    }
+    setEditMasterVendor(draftBaseline.master.vendor);
+    setEditMasterMaterial(draftBaseline.master.material);
+    setEditMasterFilamentName(draftBaseline.master.filamentName);
+    setEditMasterColorName(draftBaseline.master.colorName);
+    setEditMasterHexColor(draftBaseline.master.hexColor);
+    setSelectedSpoolLocationDraft(draftBaseline.common.homeLocation);
+    setSelectedSpoolTareDraft(draftBaseline.common.tareWeight);
+    setSelectedSpoolOwnershipDraft(draftBaseline.common.ownershipType);
+    setSelectedSpoolOwnerNameDraft(draftBaseline.common.ownerName);
+    setSelectedSpoolOwnerContactDraft(draftBaseline.common.ownerContact);
+    setSelectedSpoolOwnershipNoteDraft(draftBaseline.common.ownershipNote);
+    setSelectedSpoolPurchasePriceBatchLockedDraft(
+      draftBaseline.common.purchasePriceBatchLocked,
+    );
+    setSelectedSpoolPurchaseMetadataDraft(draftBaseline.common.purchaseMetadata);
+    setSelectedSpoolPurchaseMetadataErrors({});
+    setMasterEditUnlocked(false);
+  }, [draftBaseline]);
+
   return {
     confirmDelete,
     confirmPurge,
+    commonDetailsDirty,
     editMasterColorName,
     editMasterFilamentName,
     editMasterHexColor,
     editMasterMaterial,
     editMasterVendor,
+    markCommonDetailsSaved,
+    markMasterMetadataSaved,
     masterEditUnlocked,
+    masterMetadataDirty,
+    resetDetailDrafts,
     selectedSpoolLocationDraft,
     selectedSpoolOwnershipDraft,
     selectedSpoolOwnerContactDraft,
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipNoteDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft,
+    selectedSpoolPurchaseMetadataDraft,
+    selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
     setConfirmDelete,
     setConfirmPurge,
@@ -176,6 +307,9 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedSpoolOwnerContactDraft,
     setSelectedSpoolOwnerNameDraft,
     setSelectedSpoolOwnershipNoteDraft,
+    setSelectedSpoolPurchasePriceBatchLockedDraft,
+    setSelectedSpoolPurchaseMetadataDraft,
+    setSelectedSpoolPurchaseMetadataErrors,
     setSelectedSpoolTareDraft,
     setShowRfidCapturedFields,
     setShowRollHistory,

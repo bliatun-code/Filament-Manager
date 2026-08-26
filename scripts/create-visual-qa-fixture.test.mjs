@@ -6,6 +6,8 @@ import test from "node:test";
 import Database from "better-sqlite3";
 
 import {
+  VISUAL_QA_BASELINE_SCHEMA_SHA256,
+  VISUAL_QA_BASELINE_SCHEMA_VERSION,
   VISUAL_QA_SCHEMA_PATH,
   VISUAL_QA_SCHEMA_MIGRATION_PATH,
   VISUAL_QA_SEED_PATH,
@@ -20,6 +22,10 @@ test("committed visual QA seed matches its reviewed content hash", () => {
   const rawSeed = readFileSync(VISUAL_QA_SEED_PATH, "utf8");
   assert.equal(visualQaSeedSha256(rawSeed), VISUAL_QA_SEED_SHA256);
   assert.notEqual(visualQaSeedSha256(`${rawSeed}\n`), VISUAL_QA_SEED_SHA256);
+  assert.equal(
+    visualQaSeedSha256(readFileSync(VISUAL_QA_SCHEMA_PATH, "utf8")),
+    VISUAL_QA_BASELINE_SCHEMA_SHA256,
+  );
 });
 
 test("sanitized visual QA seed generates a healthy deterministic database", () => {
@@ -170,6 +176,46 @@ test("sanitized visual QA seed generates a healthy deterministic database", () =
     }
     if (process.platform !== "win32") {
       assert.equal(statSync(outputPath).mode & 0o777, 0o600);
+    }
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("sanitized visual QA seed can reproduce the historical baseline schema", () => {
+  const directory = mkdtempSync(
+    join(tmpdir(), "filament-manager-baseline-fixture-test-"),
+  );
+  const outputPath = join(directory, "fixture.db");
+  try {
+    const result = createVisualQaFixture({
+      outputPath,
+      schemaVersion: VISUAL_QA_BASELINE_SCHEMA_VERSION,
+    });
+    assert.equal(result.schemaVersion, VISUAL_QA_BASELINE_SCHEMA_VERSION);
+
+    const db = new Database(outputPath, { readonly: true, fileMustExist: true });
+    try {
+      assert.equal(db.pragma("quick_check", { simple: true }), "ok");
+      assert.deepEqual(db.pragma("foreign_key_check"), []);
+      assert.equal(
+        db.pragma("user_version", { simple: true }),
+        VISUAL_QA_BASELINE_SCHEMA_VERSION,
+      );
+      assert.equal(
+        db
+          .prepare(
+            "SELECT COUNT(*) AS count FROM sqlite_master WHERE name = 'library_domain_revisions'",
+          )
+          .get().count,
+        0,
+      );
+      assert.equal(
+        db.prepare("SELECT COUNT(*) AS count FROM filament_spools").get().count,
+        result.expectedCounts.filament_spools,
+      );
+    } finally {
+      db.close();
     }
   } finally {
     rmSync(directory, { force: true, recursive: true });

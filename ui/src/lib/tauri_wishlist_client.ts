@@ -1,4 +1,5 @@
 import { invoke } from "./tauri_invoke";
+import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 
 export type WishlistItemRow = {
   id: string;
@@ -33,6 +34,7 @@ export type UpdateWishlistStatusInput = {
 export type ReceiveWishlistItemInput = {
   item_id: string;
   quantity: number;
+  purchase_metadata?: PurchaseReceiptMetadata;
 };
 
 export type WishlistReceiptResult = {
@@ -83,14 +85,28 @@ export async function receiveLibrarySyncHostWishlistItem(
   expectedLibraryId: string | null | undefined,
   input: ReceiveWishlistItemInput,
 ) {
-  return invoke<WishlistReceiptResult>("receive_library_sync_host_wishlist_item", {
+  return invoke<WishlistReceiptResult>(
+    "receive_library_sync_host_wishlist_item",
+    buildLibrarySyncHostWishlistReceiptPayload(baseUrl, expectedLibraryId, input),
+  );
+}
+
+export function buildLibrarySyncHostWishlistReceiptPayload(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  input: ReceiveWishlistItemInput,
+) {
+  return {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
       item_id: input.item_id,
       quantity: input.quantity,
+      ...(input.purchase_metadata === undefined
+        ? {}
+        : { purchase_metadata: input.purchase_metadata }),
     },
-  });
+  };
 }
 
 export async function updateLibrarySyncHostWishlistItemStatus(

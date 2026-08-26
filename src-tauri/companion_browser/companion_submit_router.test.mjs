@@ -93,13 +93,18 @@ test("submit router dispatches wishlist creation payloads", () => {
   ]);
 });
 
-test("submit router dispatches wishlist receipt quantity", () => {
+test("submit router dispatches wishlist receipt quantity and purchase metadata", () => {
   const calls = [];
   const handled = routeCompanionSubmitAction(
     "wishlist-stock-form",
     createData({
       "wishlist-id": "wish-7",
       "received-quantity": "3",
+      purchase_price: "249.50",
+      purchase_currency: "nok",
+      purchase_date: "2026-08-21",
+      batch_code: "LOT-7",
+      supplier_reference: "PO-42",
     }),
     {
       submitWishlistStock(...args) {
@@ -109,7 +114,17 @@ test("submit router dispatches wishlist receipt quantity", () => {
   );
 
   assert.equal(handled, true);
-  assert.deepEqual(calls, [["wish-7", "3"]]);
+  assert.deepEqual(calls, [[
+    "wish-7",
+    "3",
+    {
+      pricePerRoll: "249.50",
+      currency: "nok",
+      purchaseDate: "2026-08-21",
+      batchCode: "LOT-7",
+      supplierReference: "PO-42",
+    },
+  ]]);
 });
 
 test("submit router shares the same return handler for history and detail return forms", () => {
@@ -183,6 +198,11 @@ test("submit router dispatches spool detail updates for status, current location
       status: "EMPTY",
       location: "Printer:Brutus:printer_1_ams_1_slot_2",
       "home-location": "Archive Bin",
+      purchase_price: "199",
+      purchase_currency: "EUR",
+      purchase_date: "2026-08-20",
+      batch_code: "LOT-4",
+      supplier_reference: "INVOICE-8",
     }),
     {
       submitSpoolDetailsUpdate(...args) {
@@ -197,6 +217,13 @@ test("submit router dispatches spool detail updates for status, current location
     "EMPTY",
     "Printer:Brutus:printer_1_ams_1_slot_2",
     "Archive Bin",
+    {
+      pricePerRoll: "199",
+      currency: "EUR",
+      purchaseDate: "2026-08-20",
+      batchCode: "LOT-4",
+      supplierReference: "INVOICE-8",
+    },
   ]]);
 });
 
@@ -265,6 +292,13 @@ test("submit router still routes detail updates that may later return translated
     "IN_STOCK",
     "Printer:Brutus:printer_1_ams_1_slot_2",
     "Hylle 8",
+    {
+      pricePerRoll: "",
+      currency: "",
+      purchaseDate: "",
+      batchCode: "",
+      supplierReference: "",
+    },
   ]]);
 });
 

@@ -2,13 +2,17 @@ pub use super::database_backup_facade::BackupValidationStats;
 pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
 pub use super::database_core::FilamentDatabase;
 pub use super::database_import::ImportDataStats;
+pub use super::database_inventory_bulk_models::{
+    InventoryBulkMutationInput, InventoryBulkMutationResult, InventoryBulkSpoolPrecondition,
+};
 pub use super::database_library_sync_models::{
-    LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedSnapshotRow,
-    LibrarySyncSettingsRow,
+    LibrarySyncCachedFilamentConsumptionListRow, LibrarySyncCachedLocationListRow,
+    LibrarySyncCachedSnapshotRow, LibrarySyncSettingsRow,
 };
 pub use super::database_loan_models::{
     ActiveSpoolLoanRow, LoanUsageByPersonRow, SpoolLoanDetailsRow, SpoolLoanRow,
 };
+pub use super::database_location_models::{InventoryLocationMergeResult, InventoryLocationRow};
 #[cfg(any(test, feature = "test-support"))]
 pub use super::database_printer_models::PrinterUsageRow;
 pub use super::database_printer_models::{
@@ -28,6 +32,15 @@ pub use super::database_wishlist_models::{WishlistItemRow, WishlistReceiptResult
 pub use super::filament_master_models::FilamentMasterCatalogRow;
 #[cfg(any(test, feature = "test-support"))]
 pub use super::filament_master_models::FilamentMasterSummary;
+pub use super::filament_standards::{
+    FilamentPriceBatchInput, FilamentPriceBatchMode, FilamentPriceBatchReceipt,
+    FilamentPriceBatchSkipReason, FilamentPriceBatchSkippedSpool,
+    FilamentPriceBatchSpoolPrecondition, FilamentPriceBatchUpdatedSpool, FilamentPriceGroup,
+    FilamentPriceGroupSpool, FilamentPriceStandard, FilamentStandardsSettings,
+    FilamentStandardsSnapshot,
+};
+pub use super::low_stock_policy::{LowStockMaterialOverride, LowStockPolicy};
+pub use super::purchase_receipt_metadata::PurchaseReceiptMetadata;
 #[cfg(test)]
 #[path = "filament_database_architecture_tests.rs"]
 mod architecture_tests;

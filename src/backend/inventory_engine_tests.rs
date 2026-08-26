@@ -1,14 +1,16 @@
 use super::{
     AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
     CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
-    InventoryEngine, ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
-    UpdateSpoolRfidTagInput, UpdateWishlistStatusInput, WeightSource,
+    InventoryEngine, PurchaseReceiptMetadata, ReceiveWishlistItemInput, RecordPrintUsageInput,
+    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateSpoolDetailsInput,
+    UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput, UpdateSpoolRfidTagInput,
+    UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::filament_database::{
     BambuLiveIntegrationRow, BambuLiveObservedStateRow, BambuLiveObservedTrayRow, FilamentDatabase,
     ManualMasterInput,
 };
+use rusqlite::OptionalExtension;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -18,6 +20,18 @@ fn temp_db_path(test_name: &str) -> PathBuf {
         .unwrap_or_default()
         .as_nanos();
     std::env::temp_dir().join(format!("filament-manager-engine-{test_name}-{nanos}.db"))
+}
+
+fn location_name(db: &FilamentDatabase, location_id: Option<&str>) -> Option<String> {
+    let location_id = location_id?;
+    db.connection()
+        .query_row(
+            "SELECT name FROM inventory_locations WHERE id = ?1",
+            [location_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .expect("read location display name")
 }
 
 #[test]
@@ -89,7 +103,7 @@ fn create_manual_spool_rolls_back_catalog_location_and_spool_when_history_fails(
             .connection()
             .query_row(
                 "SELECT COUNT(*) FROM inventory_locations
-                 WHERE id = 'Atomic rollback shelf'",
+                 WHERE name = 'Atomic rollback shelf'",
                 [],
                 |row| row.get(0),
             )
@@ -463,6 +477,7 @@ fn empty_status_rolls_back_when_second_history_event_fails() {
             )
             .map_err(|error| error.to_string())?;
         assert_eq!(spool.status, "IN_STOCK");
+        assert!(!spool.purchase_price_batch_locked);
         assert_eq!(history_after, history_before);
         Ok(())
     })();
@@ -565,9 +580,9 @@ fn assign_printer_slot_rolls_back_slot_and_spool_when_history_fails() {
 
         assert!(slot.spool_id.is_none());
         assert_eq!(spool.status, "IN_STOCK");
-        assert_eq!(spool.location_id.as_deref(), Some("Original atomic shelf"));
+        assert_eq!(spool.location_id, spool.home_location_id);
         assert_eq!(
-            spool.home_location_id.as_deref(),
+            location_name(&engine.db, spool.location_id.as_deref()).as_deref(),
             Some("Original atomic shelf")
         );
         assert_eq!(assignment_history_count, 0);
@@ -614,8 +629,10 @@ fn return_spool_loan_rolls_back_loan_weight_and_reading_when_history_fails() {
             .lend_spool(super::LendSpoolInput {
                 spool_id: "atomic_loan_spool".to_string(),
                 borrower_name: "Atomic borrower".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(850),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
         engine
@@ -916,8 +933,10 @@ fn create_manual_borrowed_in_spool_registers_inbound_loan() {
         let lend_result = engine.lend_spool(super::LendSpoolInput {
             spool_id: "borrowed_spool_1".to_string(),
             borrower_name: "Bob".to_string(),
+            counterparty_contact: None,
             grams_out: Some(850),
             note: None,
+            expected_return_at: None,
         });
         assert!(lend_result.is_err());
 
@@ -1038,6 +1057,8 @@ fn create_spool_with_location_persists_location_and_home_location() {
                 purchase_date: None,
                 purchase_price: None,
                 batch_code: None,
+                purchase_currency: None,
+                supplier_reference: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1046,8 +1067,12 @@ fn create_spool_with_location_persists_location_and_home_location() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected created spool".to_string())?;
-        assert_eq!(spool.location_id.as_deref(), Some("Shelf G"));
-        assert_eq!(spool.home_location_id.as_deref(), Some("Shelf G"));
+        assert_eq!(spool.location_id, spool.home_location_id);
+        assert_ne!(spool.location_id.as_deref(), Some("Shelf G"));
+        assert_eq!(
+            location_name(&engine.db, spool.location_id.as_deref()).as_deref(),
+            Some("Shelf G")
+        );
 
         Ok(())
     })();
@@ -1096,6 +1121,12 @@ fn delete_spool_clears_printer_slot_assignment() {
                 location: Some("Shelf".to_string()),
             })
             .map_err(|error| error.to_string())?;
+        let original_home_location_id = engine
+            .db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .and_then(|spool| spool.home_location_id)
+            .ok_or_else(|| "expected original home location".to_string())?;
 
         let slot_id = "printer_1_ams_1_slot_1";
         engine
@@ -1134,6 +1165,8 @@ fn delete_spool_clears_printer_slot_assignment() {
             .ok_or_else(|| "expected soft-deleted spool to remain for history".to_string())?;
         assert_eq!(stored_spool.status, "DELETED");
         assert!(stored_spool.location_id.is_none());
+        assert!(stored_spool.home_location_id.is_none());
+        assert!(stored_spool.purchase_price_batch_locked);
 
         let active_spools = engine
             .list_spools(20, 0)
@@ -1143,7 +1176,14 @@ fn delete_spool_clears_printer_slot_assignment() {
         let history_rows = engine
             .list_spool_history("spool_1", 20)
             .map_err(|error| error.to_string())?;
-        assert!(history_rows.iter().any(|row| row.event_type == "DELETED"));
+        let deleted_event = history_rows
+            .iter()
+            .find(|row| row.event_type == "DELETED")
+            .ok_or_else(|| "expected deleted history event".to_string())?;
+        assert_eq!(
+            deleted_event.payload_json["snapshot"]["home_location_id"].as_str(),
+            Some(original_home_location_id.as_str())
+        );
 
         Ok(())
     })();
@@ -1187,8 +1227,10 @@ fn delete_spool_rejects_active_loan() {
             .lend_spool(super::LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(800),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1301,6 +1343,28 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
         assert_eq!(returned.returned_grams, Some(610));
         assert_eq!(returned.consumed_grams, Some(210));
 
+        let repeated = engine
+            .return_inbound_spool_loan(ReturnSpoolLoanInput {
+                loan_id: returned.id.clone(),
+                returned_grams: 610,
+                note: Some("Owner picked it up".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(repeated.id, returned.id);
+        let conflict = engine
+            .return_inbound_spool_loan(ReturnSpoolLoanInput {
+                loan_id: returned.id.clone(),
+                returned_grams: 609,
+                note: Some("Owner picked it up".to_string()),
+            })
+            .expect_err("different return details must remain a structured conflict");
+        match conflict {
+            crate::backend::database_result::InventoryError::InvalidOperation { code, .. } => {
+                assert_eq!(code, "loans.already_returned")
+            }
+            other => return Err(format!("unexpected return conflict: {other}")),
+        }
+
         let hidden_from_inventory = engine
             .list_spools(20, 0)
             .map_err(|error| error.to_string())?;
@@ -1313,6 +1377,7 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
             .ok_or_else(|| "expected handed-back spool row to remain for history".to_string())?;
         assert_eq!(stored_spool.status, "DELETED");
         assert_eq!(stored_spool.remaining_g, Some(610));
+        assert!(stored_spool.purchase_price_batch_locked);
 
         let qr_lookup = engine
             .find_spool_by_qr("borrowed-qr-2")
@@ -1347,6 +1412,17 @@ fn return_borrowed_in_spool_hands_back_and_hides_from_inventory() {
         assert!(history_rows
             .iter()
             .any(|row| row.event_type == "BORROWED_IN_RETURNED"));
+        assert_eq!(
+            history_rows
+                .iter()
+                .filter(|row| row.event_type == "BORROWED_IN_RETURNED")
+                .count(),
+            1
+        );
+        assert!(history_rows.iter().any(|row| {
+            row.event_type == "PURCHASE_PRICE_BATCH_LOCK_UPDATED"
+                && row.payload_json["source"] == "INBOUND_LOAN_RETURN"
+        }));
 
         Ok(())
     })();
@@ -1616,8 +1692,11 @@ fn assign_printer_slot_derives_manual_clear_cache_suppression_on_host() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected restored spool".to_string())?;
-        assert_eq!(restored_spool.location_id.as_deref(), Some("Shelf B"));
-        assert_eq!(restored_spool.home_location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(restored_spool.location_id, restored_spool.home_location_id);
+        assert_eq!(
+            location_name(&engine.db, restored_spool.location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
 
         Ok(())
     })();
@@ -1716,8 +1795,11 @@ fn assign_printer_slot_derives_manual_reassignment_cache_suppression_on_host() {
             .get_spool_by_id("spool_old")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected previous spool".to_string())?;
-        assert_eq!(old_spool.location_id.as_deref(), Some("Shelf C"));
-        assert_eq!(old_spool.home_location_id.as_deref(), Some("Shelf C"));
+        assert_eq!(old_spool.location_id, old_spool.home_location_id);
+        assert_eq!(
+            location_name(&engine.db, old_spool.location_id.as_deref()).as_deref(),
+            Some("Shelf C")
+        );
 
         Ok(())
     })();
@@ -1767,6 +1849,10 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
                 status: "IN_STOCK".to_string(),
                 location: None,
                 home_location: Some(Some("Shelf D".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1775,8 +1861,11 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected updated spool".to_string())?;
-        assert_eq!(spool.home_location_id.as_deref(), Some("Shelf D"));
-        assert_eq!(spool.location_id.as_deref(), Some("Shelf D"));
+        assert_eq!(spool.home_location_id, spool.location_id);
+        assert_eq!(
+            location_name(&engine.db, spool.location_id.as_deref()).as_deref(),
+            Some("Shelf D")
+        );
 
         Ok(())
     })();
@@ -1785,6 +1874,180 @@ fn update_spool_details_syncs_home_location_to_current_location_when_unassigned(
     if let Err(message) = result {
         panic!(
             "update_spool_details_syncs_home_location_to_current_location_when_unassigned failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn archived_location_stays_visible_on_spool_and_unchanged_detail_save_preserves_id() {
+    let db_path = temp_db_path("archived-location-detail-save");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "archived-location-spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#3366ff".to_string()),
+                product_url: None,
+                vendor: Some("Manual".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Archive Shelf".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("archived-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool before archive".to_string())?;
+        let location_id = before
+            .location_id
+            .clone()
+            .ok_or_else(|| "missing location id".to_string())?;
+        engine
+            .db
+            .archive_inventory_location(&location_id)
+            .map_err(|error| error.to_string())?;
+
+        let displayed = engine
+            .db
+            .get_spool_with_master_by_id("archived-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool detail".to_string())?;
+        assert_eq!(displayed.location_name.as_deref(), Some("Archive Shelf"));
+        assert_eq!(
+            displayed.spool.location_id.as_deref(),
+            Some(location_id.as_str())
+        );
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "archived-location-spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: Some("Archive Shelf".to_string()),
+                home_location: Some(Some("Archive Shelf".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let after = engine
+            .db
+            .get_spool_by_id("archived-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after save".to_string())?;
+        assert_eq!(after.location_id.as_deref(), Some(location_id.as_str()));
+        assert_eq!(
+            after.home_location_id.as_deref(),
+            Some(location_id.as_str())
+        );
+
+        let assignment_error = engine
+            .assign_location("archived-location-spool", Some(&location_id))
+            .expect_err("archived id must not be assignable as a new choice");
+        assert!(assignment_error.to_string().contains("Archived locations"));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "archived_location_stays_visible_on_spool_and_unchanged_detail_save_preserves_id failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn stale_location_name_after_rename_preserves_id_when_detail_write_uses_reference() {
+    let db_path = temp_db_path("renamed-location-stale-detail-save");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "renamed-location-spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: Some("#3366ff".to_string()),
+                product_url: None,
+                vendor: Some("Manual".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Old Shelf Name".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("renamed-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool before rename".to_string())?;
+        let location_id = before
+            .location_id
+            .clone()
+            .ok_or_else(|| "missing location id".to_string())?;
+        engine
+            .db
+            .rename_inventory_location(&location_id, "New Shelf Name")
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "renamed-location-spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: Some(location_id.clone()),
+                home_location: Some(Some(location_id.clone())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let after = engine
+            .db
+            .get_spool_by_id("renamed-location-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after stale detail save".to_string())?;
+        assert_eq!(after.location_id.as_deref(), Some(location_id.as_str()));
+        assert_eq!(
+            after.home_location_id.as_deref(),
+            Some(location_id.as_str())
+        );
+        let locations = engine
+            .db
+            .list_inventory_locations(true)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(locations.len(), 1);
+        assert_eq!(locations[0].id, location_id);
+        assert_eq!(locations[0].name, "New Shelf Name");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "stale_location_name_after_rename_preserves_id_when_detail_write_uses_reference failed: {message}"
         );
     }
 }
@@ -1832,6 +2095,10 @@ fn update_spool_details_keeps_active_inbound_location_while_updating_home_locati
                 status: borrowed_before.status.clone(),
                 location: None,
                 home_location: Some(Some("Owner Shelf".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1840,11 +2107,15 @@ fn update_spool_details_keeps_active_inbound_location_while_updating_home_locati
             .get_spool_by_id("borrowed_spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected updated borrowed-in spool".to_string())?;
+        assert_eq!(borrowed_after.location_id, borrowed_before.location_id);
         assert_eq!(
-            borrowed_after.home_location_id.as_deref(),
+            location_name(&engine.db, borrowed_after.home_location_id.as_deref()).as_deref(),
             Some("Owner Shelf")
         );
-        assert_eq!(borrowed_after.location_id.as_deref(), Some("Shelf B"));
+        assert_eq!(
+            location_name(&engine.db, borrowed_after.location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
 
         Ok(())
     })();
@@ -1921,6 +2192,10 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
                 status: assigned_before.status.clone(),
                 location: assigned_before.location_id.clone(),
                 home_location: Some(Some("Shelf F".to_string())),
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1929,7 +2204,10 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "expected updated spool".to_string())?;
-        assert_eq!(spool.home_location_id.as_deref(), Some("Shelf F"));
+        assert_eq!(
+            location_name(&engine.db, spool.home_location_id.as_deref()).as_deref(),
+            Some("Shelf F")
+        );
         assert!(spool
             .location_id
             .as_deref()
@@ -1943,6 +2221,581 @@ fn update_spool_details_keeps_printer_location_while_updating_home_location() {
         panic!(
             "update_spool_details_keeps_printer_location_while_updating_home_location failed: {message}"
         );
+    }
+}
+
+#[test]
+fn update_spool_details_saves_common_fields_atomically() {
+    let db_path = temp_db_path("save-common-spool-details-atomically");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "spool_common_1".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "White".to_string(),
+                hex_color: Some("#FFFFFF".to_string()),
+                product_url: None,
+                vendor: Some("Bambu Lab".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("qr-common-1".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Shelf A".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+
+        let before_failed = engine
+            .db
+            .get_spool_by_id("spool_common_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool before failed common save".to_string())?;
+
+        let failed = engine.update_spool_details(UpdateSpoolDetailsInput {
+            spool_id: "spool_common_1".to_string(),
+            qr_code: Some("qr-common-1".to_string()),
+            status: "IN_STOCK".to_string(),
+            location: Some("Shelf A".to_string()),
+            home_location: Some(Some("Shelf B".to_string())),
+            spool_tare_weight_g: Some(275),
+            ownership: Some(UpdateSpoolDetailsOwnershipInput {
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+            }),
+            purchase_metadata: None,
+            purchase_price_batch_locked: None,
+        });
+        assert!(failed.is_err());
+
+        let after_failed = engine
+            .db
+            .get_spool_by_id("spool_common_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after failed common save".to_string())?;
+        assert_eq!(
+            after_failed.home_location_id,
+            before_failed.home_location_id
+        );
+        assert_eq!(after_failed.location_id, before_failed.location_id);
+        assert_eq!(
+            location_name(&engine.db, after_failed.location_id.as_deref()).as_deref(),
+            Some("Shelf A")
+        );
+        assert_eq!(
+            after_failed.spool_tare_weight_g,
+            before_failed.spool_tare_weight_g
+        );
+        assert_eq!(after_failed.ownership_type, "OWNED");
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "spool_common_1".to_string(),
+                qr_code: Some("qr-common-1".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: Some("Shelf A".to_string()),
+                home_location: Some(Some("Shelf B".to_string())),
+                spool_tare_weight_g: Some(275),
+                ownership: Some(UpdateSpoolDetailsOwnershipInput {
+                    ownership_type: "BORROWED_IN".to_string(),
+                    owner_name: Some("Ada".to_string()),
+                    owner_contact: Some("ada@example.test".to_string()),
+                    ownership_note: Some("Return next month".to_string()),
+                }),
+                purchase_metadata: None,
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let saved = engine
+            .db
+            .get_spool_by_id("spool_common_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "expected spool after common save".to_string())?;
+        assert_eq!(saved.home_location_id, saved.location_id);
+        assert_eq!(
+            location_name(&engine.db, saved.location_id.as_deref()).as_deref(),
+            Some("Shelf B")
+        );
+        assert_eq!(saved.spool_tare_weight_g, Some(275));
+        assert_eq!(saved.ownership_type, "BORROWED_IN");
+        assert_eq!(saved.owner_name.as_deref(), Some("Ada"));
+        let active = engine
+            .list_spool_loans_for_direction(20, false, Some("INBOUND"))
+            .map_err(|error| error.to_string())?;
+        assert!(active.iter().any(|row| {
+            row.loan.spool_id == "spool_common_1" && row.loan.loan_direction == "INBOUND"
+        }));
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("update_spool_details_saves_common_fields_atomically failed: {message}");
+    }
+}
+
+#[test]
+fn update_spool_details_preserves_legacy_price_and_records_purchase_history() {
+    let db_path = temp_db_path("update-purchase-metadata-legacy");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "legacy_purchase_spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Gray".to_string(),
+                hex_color: None,
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("legacy-purchase-qr".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools
+                 SET purchase_price = 150.0, purchase_currency = NULL
+                 WHERE id = 'legacy_purchase_spool'",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "legacy_purchase_spool".to_string(),
+                qr_code: Some("legacy-purchase-qr".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(150.0),
+                    purchase_currency: None,
+                    purchase_date: Some("2026-08-01".to_string()),
+                    batch_code: Some(" legacy-batch ".to_string()),
+                    supplier_reference: Some(" po-legacy ".to_string()),
+                }),
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let legacy_saved = engine
+            .db
+            .get_spool_by_id("legacy_purchase_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy purchase spool".to_string())?;
+        assert_eq!(legacy_saved.purchase_price, Some(150.0));
+        assert_eq!(legacy_saved.purchase_currency, None);
+        assert_eq!(legacy_saved.batch_code.as_deref(), Some("legacy-batch"));
+        assert_eq!(
+            legacy_saved.supplier_reference.as_deref(),
+            Some("po-legacy")
+        );
+
+        let rejected = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "legacy_purchase_spool".to_string(),
+                qr_code: Some("legacy-purchase-qr".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(151.0),
+                    purchase_currency: None,
+                    purchase_date: Some("2026-08-01".to_string()),
+                    batch_code: Some("should-not-save".to_string()),
+                    supplier_reference: None,
+                }),
+                purchase_price_batch_locked: None,
+            })
+            .expect_err("changed legacy price without currency should fail");
+        match rejected {
+            crate::backend::database_result::InventoryError::InvalidOperation { code, .. } => {
+                assert_eq!(code, "purchase_metadata.currency_required")
+            }
+            other => return Err(format!("unexpected error: {other}")),
+        }
+        let after_rejected = engine
+            .db
+            .get_spool_by_id("legacy_purchase_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after rejected edit".to_string())?;
+        assert_eq!(after_rejected.purchase_price, Some(150.0));
+        assert_eq!(after_rejected.batch_code.as_deref(), Some("legacy-batch"));
+
+        let revision_before_purchase_only_update: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT revision FROM library_domain_revisions WHERE domain = 'inventory'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "legacy_purchase_spool".to_string(),
+                qr_code: Some("legacy-purchase-qr".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(151.0),
+                    purchase_currency: Some(" usd ".to_string()),
+                    purchase_date: Some("2026-08-02".to_string()),
+                    batch_code: Some("new-batch".to_string()),
+                    supplier_reference: Some("invoice-9".to_string()),
+                }),
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let saved = engine
+            .db
+            .get_spool_by_id("legacy_purchase_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing edited purchase spool".to_string())?;
+        assert_eq!(saved.purchase_price, Some(151.0));
+        assert_eq!(saved.purchase_currency.as_deref(), Some("USD"));
+        let revision_after_purchase_only_update: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT revision FROM library_domain_revisions WHERE domain = 'inventory'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            revision_after_purchase_only_update,
+            revision_before_purchase_only_update + 1,
+            "a receipt-only edit should update the spool exactly once"
+        );
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "legacy_purchase_spool".to_string(),
+                qr_code: Some("legacy-purchase-qr".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(151.0),
+                    purchase_currency: Some("USD".to_string()),
+                    purchase_date: Some("2026-08-02".to_string()),
+                    batch_code: Some("new-batch".to_string()),
+                    supplier_reference: Some("invoice-9".to_string()),
+                }),
+                purchase_price_batch_locked: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let revision_after_idempotent_save: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT revision FROM library_domain_revisions WHERE domain = 'inventory'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            revision_after_idempotent_save, revision_after_purchase_only_update,
+            "an identical detail save must not advance the inventory revision"
+        );
+        let history = engine
+            .list_spool_history("legacy_purchase_spool", 20)
+            .map_err(|error| error.to_string())?;
+        let purchase_events = history
+            .iter()
+            .filter(|event| event.event_type == "PURCHASE_METADATA_UPDATED")
+            .collect::<Vec<_>>();
+        assert_eq!(purchase_events.len(), 2);
+        assert!(purchase_events.iter().any(|event| {
+            event.payload_json["before"]["purchase_price"] == serde_json::json!(150.0)
+                && event.payload_json["before"]["purchase_currency"].is_null()
+                && event.payload_json["after"]["purchase_currency"] == serde_json::json!("USD")
+        }));
+        assert_eq!(
+            history
+                .iter()
+                .filter(|event| event.event_type == "DETAILS_UPDATED")
+                .count(),
+            0,
+            "receipt-only and idempotent saves must not create misleading detail history"
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("update_spool_details_preserves_legacy_price_and_records_purchase_history failed: {message}");
+    }
+}
+
+#[test]
+fn update_spool_details_marks_manual_prices_and_saves_batch_lock_atomically() {
+    let db_path = temp_db_path("update-purchase-price-batch-lock");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "manual_price_lock_spool".to_string(),
+                material: "PLA".to_string(),
+                filament_name: "Manual price lock".to_string(),
+                color_name: "Black".to_string(),
+                hex_color: None,
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: None,
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "manual_price_lock_spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(249.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-25".to_string()),
+                    batch_code: None,
+                    supplier_reference: None,
+                }),
+                purchase_price_batch_locked: Some(true),
+            })
+            .map_err(|error| error.to_string())?;
+        let saved = engine
+            .db
+            .get_spool_by_id("manual_price_lock_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing manually priced spool".to_string())?;
+        assert_eq!(saved.purchase_price, Some(249.0));
+        assert_eq!(saved.purchase_price_source.as_deref(), Some("MANUAL"));
+        assert!(saved.purchase_price_batch_locked);
+        let history = engine
+            .list_spool_history("manual_price_lock_spool", 20)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            history
+                .iter()
+                .filter(|event| event.event_type == "PURCHASE_PRICE_BATCH_LOCK_UPDATED")
+                .count(),
+            1
+        );
+
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_price_lock_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced price lock history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+        let failed = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "manual_price_lock_spool".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(259.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-25".to_string()),
+                    batch_code: None,
+                    supplier_reference: None,
+                }),
+                purchase_price_batch_locked: Some(false),
+            })
+            .expect_err("lock history failure must roll back price and lock together");
+        assert!(failed
+            .to_string()
+            .contains("forced price lock history failure"));
+        let rolled_back = engine
+            .db
+            .get_spool_by_id("manual_price_lock_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after lock rollback".to_string())?;
+        assert_eq!(rolled_back.purchase_price, Some(249.0));
+        assert_eq!(rolled_back.purchase_price_source.as_deref(), Some("MANUAL"));
+        assert!(rolled_back.purchase_price_batch_locked);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "update_spool_details_marks_manual_prices_and_saves_batch_lock_atomically failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn update_spool_details_rolls_back_common_and_purchase_fields_when_history_fails() {
+    let db_path = temp_db_path("update-purchase-metadata-rollback");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_manual_spool(CreateManualSpoolInput {
+                id: "purchase_rollback_spool".to_string(),
+                material: "PETG".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Blue".to_string(),
+                hex_color: None,
+                product_url: None,
+                vendor: Some("Generic".to_string()),
+                default_weight_g: Some(1000),
+                qr_code: Some("purchase-rollback-before".to_string()),
+                status: Some("IN_STOCK".to_string()),
+                ownership_type: Some("OWNED".to_string()),
+                owner_name: None,
+                owner_contact: None,
+                ownership_note: None,
+                initial_weight_g: Some(1000),
+                location: Some("Shelf Before".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let before = engine
+            .db
+            .get_spool_by_id("purchase_rollback_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing rollback spool".to_string())?;
+        let history_before: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events WHERE spool_id = 'purchase_rollback_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_purchase_metadata_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'PURCHASE_METADATA_UPDATED'
+                 BEGIN
+                   SELECT RAISE(ABORT, 'forced purchase history failure');
+                 END;",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "purchase_rollback_spool".to_string(),
+                qr_code: Some("purchase-rollback-after".to_string()),
+                status: "IN_STOCK".to_string(),
+                location: Some("Shelf After".to_string()),
+                home_location: Some(Some("Shelf After".to_string())),
+                spool_tare_weight_g: Some(275),
+                ownership: None,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(299.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-21".to_string()),
+                    batch_code: Some("rollback-batch".to_string()),
+                    supplier_reference: Some("rollback-ref".to_string()),
+                }),
+                purchase_price_batch_locked: None,
+            })
+            .expect_err("forced history failure should abort detail save");
+        assert!(error
+            .to_string()
+            .contains("forced purchase history failure"));
+
+        let after = engine
+            .db
+            .get_spool_by_id("purchase_rollback_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing spool after rollback".to_string())?;
+        assert_eq!(after.qr_code, before.qr_code);
+        assert_eq!(after.location_id, before.location_id);
+        assert_eq!(after.home_location_id, before.home_location_id);
+        assert_eq!(after.spool_tare_weight_g, before.spool_tare_weight_g);
+        assert_eq!(after.purchase_price, None);
+        assert_eq!(after.purchase_currency, None);
+        assert_eq!(after.supplier_reference, None);
+        let history_after: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events WHERE spool_id = 'purchase_rollback_spool'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_after, history_before);
+        let rolled_back_location_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM inventory_locations WHERE name = 'Shelf After'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rolled_back_location_count, 0);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("update_spool_details_rolls_back_common_and_purchase_fields_when_history_fails failed: {message}");
     }
 }
 
@@ -2237,6 +3090,13 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_partial_1".to_string(),
                 quantity: 2,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(249.5),
+                    purchase_currency: Some(" nok ".to_string()),
+                    purchase_date: Some("2026-08-20".to_string()),
+                    batch_code: Some(" batch-a ".to_string()),
+                    supplier_reference: Some(" po-100 ".to_string()),
+                }),
             })
             .map_err(|error| error.to_string())?;
         assert_eq!(partial.received_quantity, 2);
@@ -2257,17 +3117,55 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
             row.spool.master_id == master_id
                 && row.spool.initial_weight_g == Some(850)
                 && row.spool.spool_tare_weight_g == Some(224)
+                && row.spool.purchase_price == Some(249.5)
+                && row.spool.purchase_currency.as_deref() == Some("NOK")
+                && row.spool.purchase_date.as_deref() == Some("2026-08-20")
+                && row.spool.batch_code.as_deref() == Some("batch-a")
+                && row.spool.supplier_reference.as_deref() == Some("po-100")
         }));
+        for spool_id in &partial.spool_ids {
+            let history = engine
+                .list_spool_history(spool_id, 20)
+                .map_err(|error| error.to_string())?;
+            let receipt = history
+                .iter()
+                .find(|event| event.event_type == "PURCHASE_RECEIPT_RECORDED")
+                .ok_or_else(|| format!("missing receipt history for {spool_id}"))?;
+            assert_eq!(
+                receipt.payload_json["purchase_metadata"]["purchase_price"],
+                serde_json::json!(249.5)
+            );
+            assert_eq!(
+                receipt.payload_json["purchase_metadata"]["purchase_currency"],
+                "NOK"
+            );
+            assert_eq!(receipt.payload_json["initial_weight_g"], 850);
+        }
 
         let complete = engine
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_partial_1".to_string(),
                 quantity: 1,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(199.0),
+                    purchase_currency: Some("EUR".to_string()),
+                    purchase_date: Some("2026-08-21".to_string()),
+                    batch_code: Some("batch-b".to_string()),
+                    supplier_reference: Some("invoice-22".to_string()),
+                }),
             })
             .map_err(|error| error.to_string())?;
         assert_eq!(complete.received_quantity, 1);
         assert_eq!(complete.remaining_quantity, 0);
         assert_eq!(complete.status, "RECEIVED");
+        let final_spool = engine
+            .db
+            .get_spool_by_id(&complete.spool_ids[0])
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing final receipt spool".to_string())?;
+        assert_eq!(final_spool.purchase_price, Some(199.0));
+        assert_eq!(final_spool.purchase_currency.as_deref(), Some("EUR"));
+        assert_eq!(final_spool.batch_code.as_deref(), Some("batch-b"));
         assert_eq!(
             engine
                 .list_spools(10, 0)
@@ -2285,6 +3183,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_partial_1".to_string(),
                 quantity: 1,
+                purchase_metadata: None,
             })
             .is_err());
         assert!(engine
@@ -2327,9 +3226,11 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
             .db
             .connection()
             .execute_batch(
-                "CREATE TRIGGER fail_second_wishlist_receipt_spool
-                 BEFORE INSERT ON filament_spools
-                 WHEN (SELECT COUNT(*) FROM filament_spools) >= 1
+                "CREATE TRIGGER fail_second_wishlist_receipt_history
+                 BEFORE INSERT ON spool_history_events
+                 WHEN NEW.event_type = 'PURCHASE_RECEIPT_RECORDED'
+                  AND (SELECT COUNT(*) FROM spool_history_events
+                       WHERE event_type = 'PURCHASE_RECEIPT_RECORDED') >= 1
                  BEGIN
                    SELECT RAISE(ABORT, 'forced receipt failure');
                  END;",
@@ -2340,6 +3241,13 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_rollback_1".to_string(),
                 quantity: 2,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(99.0),
+                    purchase_currency: Some("NOK".to_string()),
+                    purchase_date: Some("2026-08-21".to_string()),
+                    batch_code: None,
+                    supplier_reference: Some("rollback-po".to_string()),
+                }),
             })
             .is_err());
         assert!(engine
@@ -2351,6 +3259,14 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
             .map_err(|error| error.to_string())?;
         assert_eq!(wishlist[0].quantity, 2);
         assert_eq!(wishlist[0].status, "WISHLIST");
+        let history_count: i64 = engine
+            .db
+            .connection()
+            .query_row("SELECT COUNT(*) FROM spool_history_events", [], |row| {
+                row.get(0)
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_count, 0);
 
         Ok(())
     })();
@@ -2358,6 +3274,72 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("receive_wishlist_item_rolls_back_spools_and_quantity_together failed: {message}");
+    }
+}
+
+#[test]
+fn receive_wishlist_item_rejects_invalid_metadata_without_side_effects() {
+    let db_path = temp_db_path("wishlist-invalid-receipt-metadata");
+
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        engine
+            .create_wishlist_item(CreateWishlistItemInput {
+                id: "wish_invalid_metadata".to_string(),
+                master_id: None,
+                material: "PLA".to_string(),
+                filament_name: "Basic".to_string(),
+                color_name: "Black".to_string(),
+                vendor: Some("Generic".to_string()),
+                quantity: Some(1),
+                note: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let error = engine
+            .receive_wishlist_item(ReceiveWishlistItemInput {
+                item_id: "wish_invalid_metadata".to_string(),
+                quantity: 1,
+                purchase_metadata: Some(PurchaseReceiptMetadata {
+                    purchase_price: Some(100.0),
+                    ..Default::default()
+                }),
+            })
+            .expect_err("price without currency should fail");
+        match error {
+            crate::backend::database_result::InventoryError::InvalidOperation { code, .. } => {
+                assert_eq!(code, "purchase_metadata.currency_required")
+            }
+            other => return Err(format!("unexpected error: {other}")),
+        }
+
+        assert!(engine
+            .list_spools(10, 0)
+            .map_err(|error| error.to_string())?
+            .is_empty());
+        let wishlist = engine
+            .list_wishlist_items(10)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(wishlist[0].quantity, 1);
+        assert_eq!(wishlist[0].status, "WISHLIST");
+        let history_count: i64 = engine
+            .db
+            .connection()
+            .query_row("SELECT COUNT(*) FROM spool_history_events", [], |row| {
+                row.get(0)
+            })
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_count, 0);
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "receive_wishlist_item_rejects_invalid_metadata_without_side_effects failed: {message}"
+        );
     }
 }
 
@@ -2778,6 +3760,287 @@ fn accept_bambu_live_weight_estimate_rejects_offline_or_disconnected_state() {
         if let Err(message) = result {
             panic!("{scenario} failed: {message}");
         }
+    }
+}
+
+#[test]
+fn historical_status_transitions_lock_batch_price_and_detail_reactivation_preserves_lock() {
+    let db_path = temp_db_path("historical-status-price-lock");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.connection()
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES (
+                    'historical-lock-master', 'PLA', 'Basic', 'Black', 1000, 'Generic'
+                 );
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price_batch_locked
+                 ) VALUES
+                    ('direct-history-lock', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 500, 500, 0),
+                    ('detail-history-lock', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 500, 500, 0),
+                    ('legacy-archived-reactivation', 'historical-lock-master', 'ARCHIVED', 'OWNED', 1000, 500, 500, 1),
+                    ('borrowed-is-not-history', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 500, 500, 0),
+                    ('print-history-lock', 'historical-lock-master', 'IN_STOCK', 'OWNED', 1000, 50, 50, 0);",
+            )
+            .map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        engine
+            .update_spool_status("direct-history-lock", "LOST")
+            .map_err(|error| error.to_string())?;
+        let direct = engine
+            .db
+            .get_spool_by_id("direct-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing direct-transition spool".to_string())?;
+        assert_eq!(direct.status, "LOST");
+        assert!(direct.purchase_price_batch_locked);
+
+        engine
+            .update_spool_status("borrowed-is-not-history", "BORROWED")
+            .map_err(|error| error.to_string())?;
+        let borrowed = engine
+            .db
+            .get_spool_by_id("borrowed-is-not-history")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing borrowed spool".to_string())?;
+        assert!(!borrowed.purchase_price_batch_locked);
+
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "historical-lock-printer".to_string(),
+                model: "P1S".to_string(),
+                name: "Historical lock printer".to_string(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: "historical-lock-printer".to_string(),
+                slot_id: "historical-lock-printer_ams_1_slot_1".to_string(),
+                spool_id: Some("print-history-lock".to_string()),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|error| error.to_string())?;
+        engine
+            .record_print_usage(RecordPrintUsageInput {
+                printer_id: "historical-lock-printer".to_string(),
+                spool_id: "print-history-lock".to_string(),
+                grams: 50,
+                job_name: Some("Use the remainder".to_string()),
+                success: Some(true),
+            })
+            .map_err(|error| error.to_string())?;
+        let printed_empty = engine
+            .db
+            .get_spool_by_id("print-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing print-empty spool".to_string())?;
+        assert_eq!(printed_empty.status, "EMPTY");
+        assert!(printed_empty.purchase_price_batch_locked);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "detail-history-lock".to_string(),
+                qr_code: None,
+                status: "EMPTY".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: Some(false),
+            })
+            .map_err(|error| error.to_string())?;
+        let historical = engine
+            .db
+            .get_spool_by_id("detail-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing historical detail spool".to_string())?;
+        assert_eq!(historical.status, "EMPTY");
+        assert!(historical.purchase_price_batch_locked);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "detail-history-lock".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: Some(false),
+            })
+            .map_err(|error| error.to_string())?;
+        let reactivated = engine
+            .db
+            .get_spool_by_id("detail-history-lock")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing reactivated detail spool".to_string())?;
+        assert_eq!(reactivated.status, "IN_STOCK");
+        assert!(reactivated.purchase_price_batch_locked);
+
+        engine
+            .update_spool_details(UpdateSpoolDetailsInput {
+                spool_id: "legacy-archived-reactivation".to_string(),
+                qr_code: None,
+                status: "IN_STOCK".to_string(),
+                location: None,
+                home_location: None,
+                spool_tare_weight_g: None,
+                ownership: None,
+                purchase_metadata: None,
+                purchase_price_batch_locked: Some(false),
+            })
+            .map_err(|error| error.to_string())?;
+        let legacy_reactivated = engine
+            .db
+            .get_spool_by_id("legacy-archived-reactivation")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing legacy archived spool".to_string())?;
+        assert_eq!(legacy_reactivated.status, "IN_STOCK");
+        assert!(legacy_reactivated.purchase_price_batch_locked);
+
+        let mut statement = engine
+            .db
+            .connection()
+            .prepare(
+                "SELECT spool_id, json_extract(payload_json, '$.source')
+                 FROM spool_history_events
+                 WHERE event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'
+                 ORDER BY spool_id",
+            )
+            .map_err(|error| error.to_string())?;
+        let lock_events = statement
+            .query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|error| error.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            lock_events,
+            vec![
+                (
+                    "detail-history-lock".to_string(),
+                    "SPOOL_DETAILS_UPDATE".to_string()
+                ),
+                (
+                    "direct-history-lock".to_string(),
+                    "SPOOL_STATUS_UPDATE".to_string()
+                ),
+                (
+                    "print-history-lock".to_string(),
+                    "PRINT_JOB_USAGE".to_string()
+                ),
+            ]
+        );
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "historical_status_transitions_lock_batch_price_and_detail_reactivation_preserves_lock failed: {message}"
+        );
+    }
+}
+
+#[test]
+fn zero_gram_outbound_return_locks_price_and_reactivation_keeps_it_locked() {
+    let db_path = temp_db_path("zero-return-price-lock");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.connection()
+            .execute_batch(
+                "INSERT INTO filament_master_list (
+                    id, material, filament_name, color_name, default_weight, vendor
+                 ) VALUES ('zero-return-master', 'PETG', 'Basic', 'Blue', 1000, 'Generic');
+                 INSERT INTO filament_spools (
+                    id, master_id, status, ownership_type, initial_weight_g,
+                    current_weight_g, remaining_g, purchase_price_batch_locked
+                 ) VALUES (
+                    'zero-return-spool', 'zero-return-master', 'IN_STOCK', 'OWNED',
+                    1000, 500, 500, 0
+                 );",
+            )
+            .map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+
+        let loan = engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: "zero-return-spool".to_string(),
+                borrower_name: "No filament left".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(500),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        let borrowed = engine
+            .db
+            .get_spool_by_id("zero-return-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing borrowed spool".to_string())?;
+        assert_eq!(borrowed.status, "BORROWED");
+        assert!(!borrowed.purchase_price_batch_locked);
+
+        engine
+            .return_spool_loan(ReturnSpoolLoanInput {
+                loan_id: loan.id,
+                returned_grams: 0,
+                note: Some("Used completely".to_string()),
+            })
+            .map_err(|error| error.to_string())?;
+        let returned = engine
+            .db
+            .get_spool_by_id("zero-return-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing returned spool".to_string())?;
+        assert_eq!(returned.status, "EMPTY");
+        assert!(returned.purchase_price_batch_locked);
+
+        engine
+            .update_spool_status("zero-return-spool", "IN_STOCK")
+            .map_err(|error| error.to_string())?;
+        let reactivated = engine
+            .db
+            .get_spool_by_id("zero-return-spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing reactivated spool".to_string())?;
+        assert_eq!(reactivated.status, "IN_STOCK");
+        assert!(reactivated.purchase_price_batch_locked);
+
+        let source: String = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT json_extract(payload_json, '$.source')
+                 FROM spool_history_events
+                 WHERE spool_id = 'zero-return-spool'
+                   AND event_type = 'PURCHASE_PRICE_BATCH_LOCK_UPDATED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(source, "OUTBOUND_LOAN_RETURN");
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "zero_gram_outbound_return_locks_price_and_reactivation_keeps_it_locked failed: {message}"
+        );
     }
 }
 

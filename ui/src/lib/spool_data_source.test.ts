@@ -189,12 +189,16 @@ test("loadAllSpoolRows saves one complete client cache after all pages load", as
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
     },
     2,
     {
       loadPage: async (_options, limit, offset) =>
         [row("spool-1"), row("spool-2"), row("spool-3")].slice(offset, offset + limit),
-      saveClientCache: async (loadedRows) => {
+      saveClientCache: async (loadedRows, baseUrl, libraryId, targetGeneration) => {
+        assert.equal(baseUrl, "http://host");
+        assert.equal(libraryId, "library-1");
+        assert.equal(targetGeneration, 7);
         cachedRowIds.push(loadedRows.map((entry) => entry.spool.id));
       },
     },
@@ -211,6 +215,7 @@ test("loadAllSpoolRows keeps live client rows when refreshing the cache fails", 
       clientReadOnly: true,
       clientHostBaseUrl: "http://host",
       clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
     },
     2,
     {
@@ -235,6 +240,7 @@ test("loadAllSpoolRows never replaces the client cache after an incomplete page 
           clientReadOnly: true,
           clientHostBaseUrl: "http://host",
           clientLibraryId: "library-1",
+          clientTargetGeneration: 7,
         },
         2,
         {

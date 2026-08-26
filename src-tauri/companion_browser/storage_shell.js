@@ -21,6 +21,7 @@ import {
   renderSelectionBanner,
   renderSegmentedControl,
   renderSwatchListRow,
+  renderPurchaseReceiptMetadataFields,
   renderSwatchSelectionCard,
   renderSwatchSurface,
 } from "./shell_chrome.js";
@@ -221,27 +222,44 @@ export function renderAddFilamentTaskSheetBody(state, busy, escapeHtml) {
               item.status !== "RECEIVED"
                 ? `<form class="wishlist-receipt-form" data-action="wishlist-stock-form" data-form-key="wishlist-stock:${escapeHtml(item.id)}">
                     <input name="wishlist-id" type="hidden" value="${escapeHtml(item.id)}" />
-                    <label class="wishlist-receipt-quantity">
-                      <span class="sr-only">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>
-                      <input
-                        class="weight-input"
-                        name="received-quantity"
-                        type="number"
-                        min="1"
-                        max="${escapeHtml(String(Math.max(1, Number(item.quantity) || 1)))}"
-                        step="1"
-                        value="1"
-                        aria-label="${escapeHtml(t(locale, "storage.quantity", "Qty"))}"
-                        ${busy ? "disabled" : ""}
-                      />
-                    </label>
-                    ${renderCompanionActionButton({
-                      disabled: busy,
-                      swatch: true,
-                      escapeHtml,
-                      label: t(locale, "storage.stockNow", "Stock now"),
-                      type: "submit",
-                    })}
+                    <div class="wishlist-receipt-primary">
+                      <label class="wishlist-receipt-quantity">
+                        <span class="sr-only">${escapeHtml(t(locale, "storage.quantity", "Qty"))}</span>
+                        <input
+                          class="weight-input"
+                          name="received-quantity"
+                          type="number"
+                          min="1"
+                          max="${escapeHtml(String(Math.max(1, Number(item.quantity) || 1)))}"
+                          step="1"
+                          value="1"
+                          aria-label="${escapeHtml(t(locale, "storage.quantity", "Qty"))}"
+                          ${busy ? "disabled" : ""}
+                        />
+                      </label>
+                      ${renderCompanionActionButton({
+                        disabled: busy,
+                        swatch: true,
+                        escapeHtml,
+                        label: t(locale, "storage.stockNow", "Stock now"),
+                        type: "submit",
+                      })}
+                    </div>
+                    <details class="wishlist-receipt-details" data-collapsible="wishlist-receipt:${escapeHtml(item.id)}">
+                      <summary>${escapeHtml(
+                        t(
+                          locale,
+                          "purchaseReceipt.optionalSummary",
+                          "Purchase details (optional)",
+                        ),
+                      )}</summary>
+                      ${renderPurchaseReceiptMetadataFields({
+                        locale,
+                        escapeHtml,
+                        busy,
+                        context: "wishlist",
+                      })}
+                    </details>
                   </form>`
                 : ""
             }
@@ -640,14 +658,17 @@ function renderSelectedSpoolHiddenBanner(
     selectedSpool.master.color_name,
     locale,
   );
+  const locationId = selectedSpool.spool.location_id || "";
   const homeLocationId = selectedSpool.spool.home_location_id || "";
+  const locationLabel = selectedSpool.location_name || locationId;
+  const homeLocationLabel = selectedSpool.home_location_name || homeLocationId;
   const summaryItems = [
     formatRollReference(selectedSpool.spool, locale),
     formatGrams(selectedSpool.spool.remaining_g),
-    selectedSpool.spool.location_id ? formatPlacementLabel(selectedSpool.spool.location_id, locale) : "",
+    locationLabel ? formatPlacementLabel(locationLabel, locale) : "",
     homeLocationId &&
-    homeLocationId !== selectedSpool.spool.location_id
-      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(homeLocationId, locale)}`
+    homeLocationId !== locationId
+      ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(homeLocationLabel, locale)}`
       : "",
   ].filter(Boolean);
   return renderSelectionBanner({
@@ -731,9 +752,11 @@ function renderSpoolRows(options) {
         .filter(Boolean)
         .join(" · ");
       const metaBits = [
-        row.spool.location_id ? formatPlacementLabel(row.spool.location_id, locale) : "",
+        row.spool.location_id
+          ? formatPlacementLabel(row.location_name || row.spool.location_id, locale)
+          : "",
         row.spool.home_location_id && row.spool.home_location_id !== row.spool.location_id
-          ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.spool.home_location_id, locale)}`
+          ? `${t(locale, "storage.homeLocationShort", "Home")}: ${formatPlacementLabel(row.home_location_name || row.spool.home_location_id, locale)}`
           : "",
         row.spool.owner_name
           ? t(locale, "loans.borrowedFrom", "Borrowed from {name}", { name: row.spool.owner_name })

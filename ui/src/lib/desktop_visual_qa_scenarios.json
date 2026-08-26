@@ -39,6 +39,13 @@
       "category": "overview"
     },
     {
+      "id": "inventory-locations",
+      "aliases": ["locations", "location-management"],
+      "page": "inventory",
+      "category": "overview",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "add-filament",
       "aliases": ["inventory-add"],
       "page": "inventory",
@@ -191,6 +198,14 @@
       "category": "settings"
     },
     {
+      "id": "settings-filament-defaults",
+      "aliases": ["filament-defaults", "filament-standards"],
+      "page": "settings",
+      "settingsTab": "FILAMENT_DEFAULTS",
+      "category": "settings",
+      "requiresDatabaseFixture": true
+    },
+    {
       "id": "settings-updates",
       "aliases": ["update-check", "settings-update-check"],
       "page": "settings",
@@ -201,8 +216,7 @@
     {
       "id": "settings-inventory-label-sheet",
       "aliases": ["inventory-label-sheet", "settings-label-sheet"],
-      "page": "settings",
-      "settingsTab": "GENERAL",
+      "page": "inventory",
       "category": "modal"
     },
     {

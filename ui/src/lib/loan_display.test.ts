@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   compactLoanTimestamp,
   compactLoanTitle,
+  filterLoans,
   formatGrams,
   formatLoanReference,
   toMeasuredTotalWeight,
@@ -71,4 +72,16 @@ test("loan display formats timestamps, grams, and measured totals", () => {
   assert.equal(formatGrams(null), "0 g");
   assert.equal(toMeasuredTotalWeight(row, row.loan.grams_out), 830);
   assert.equal(toReturnedFilamentWeight(row, 760), 560);
+});
+
+test("loan search includes optional contact information", () => {
+  const row = loanRow({
+    loan: {
+      ...loanRow().loan,
+      counterparty_contact: "ada@example.test",
+    },
+  });
+
+  assert.deepEqual(filterLoans([row], "ALL", "ALL", "example.test"), [row]);
+  assert.deepEqual(filterLoans([row], "ALL", "ALL", "not-present"), []);
 });

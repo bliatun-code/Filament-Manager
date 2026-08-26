@@ -6,9 +6,25 @@ const source = readFileSync(
   new URL("./dashboard.tsx", import.meta.url),
   "utf8",
 );
+const actionPanelSource = readFileSync(
+  new URL("../components/dashboard_action_panel.tsx", import.meta.url),
+  "utf8",
+);
+const lowStockPanelSource = readFileSync(
+  new URL("../components/dashboard_low_stock_panel.tsx", import.meta.url),
+  "utf8",
+);
+const lowStockPreferencesSource = readFileSync(
+  new URL("../lib/dashboard_low_stock_preferences.ts", import.meta.url),
+  "utf8",
+);
 const appSource = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
 const inventorySource = readFileSync(
   new URL("./inventory.tsx", import.meta.url),
+  "utf8",
+);
+const dashboardDataHookSource = readFileSync(
+  new URL("./use_dashboard_page_data.ts", import.meta.url),
   "utf8",
 );
 const settingsSource = readFileSync(
@@ -43,8 +59,11 @@ test("empty dashboard action opens the real add-spool workflow", () => {
 });
 
 test("Bambu Live attention opens the affected printer in Settings", () => {
-  assert.match(source, /bambuLiveAttention\.map/);
-  assert.match(source, /onOpenBambuLiveSettings\?\.\(attention\.printerId\)/);
+  assert.match(source, /<DashboardActionPanel/);
+  assert.match(
+    actionPanelSource,
+    /onOpenBambuLiveSettings\?\.\(item\.printerId\)/,
+  );
   assert.match(appSource, /setSettingsInitialTab\("PRINTERS"\)/);
   assert.match(appSource, /setSettingsInitialPrinterId\(printerId\)/);
   assert.match(settingsSource, /initialPrinterId/);
@@ -74,7 +93,71 @@ test("annual consumption visual QA scrolls the real populated panel into view", 
 
 test("dashboard overview visual QA waits for the rendered Bambu Live attention action", () => {
   assert.match(source, /desktopVisualQaScenario !== "dashboard-overview"/);
-  assert.match(source, /bambuLiveAttention\.length === 0/);
+  assert.match(source, /item\.kind === "BAMBU_TRUST"/);
+  assert.match(source, /!hasBambuLiveAction/);
   assert.match(source, /DESKTOP_VISUAL_QA_DASHBOARD_ATTENTION_READINESS_TOKEN/);
-  assert.match(source, /data-testid="dashboard-bambu-live-attention"/);
+  assert.match(actionPanelSource, /data-testid="dashboard-action-required"/);
+});
+
+test("dashboard separates advisory low stock from mandatory actions below the headline stats", () => {
+  assert.match(
+    source,
+    /item is DashboardLowStockAction => item\.kind === "LOW_STOCK"/,
+  );
+  assert.match(
+    source,
+    /Exclude<DashboardActionItem, DashboardLowStockAction>[\s\S]*item\.kind !== "LOW_STOCK"/,
+  );
+  assert.match(source, /items=\{priorityActionItems\}/);
+  assert.match(source, /items=\{lowStockActionItems\}/);
+  assert.ok(
+    source.indexOf("min-[720px]:grid-cols-2 xl:grid-cols-4") <
+      source.indexOf("<DashboardLowStockPanel"),
+  );
+  assert.match(lowStockPanelSource, /defaultExpanded = false/);
+  assert.match(lowStockPanelSource, /aria-expanded=\{expanded\}/);
+  assert.match(lowStockPanelSource, /hidden=\{!expanded\}/);
+  assert.doesNotMatch(lowStockPanelSource, /aria-live=/);
+  assert.doesNotMatch(lowStockPanelSource, /amber/);
+  assert.doesNotMatch(actionPanelSource, /item\.kind === "LOW_STOCK"/);
+});
+
+test("dashboard stores low-stock visibility locally per library and bypasses it for visual QA", () => {
+  assert.match(source, /libraryId,/);
+  assert.match(
+    source,
+    /readDashboardLowStockPreferences\(\{[\s\S]*deterministic: deterministicDashboardPreferences,[\s\S]*libraryId/,
+  );
+  assert.match(
+    source,
+    /addHiddenDashboardLowStockProductKey\([\s\S]*item\.candidate\.productKey/,
+  );
+  assert.match(
+    source,
+    /removeHiddenDashboardLowStockProductKey\([\s\S]*item\.candidate\.productKey/,
+  );
+  assert.match(
+    source,
+    /const deterministicDashboardPreferences = desktopVisualQaScenario != null/,
+  );
+  assert.match(
+    lowStockPreferencesSource,
+    /DASHBOARD_LOW_STOCK_PREFERENCES_STORAGE_KEY_PREFIX/,
+  );
+  assert.match(lowStockPreferencesSource, /if \(deterministic \|\| !key\)/);
+});
+
+test("dashboard purchase actions use an explicit guard-preserving inventory intent", () => {
+  assert.match(source, /onOpenPurchases=\{onOpenPurchases\}/);
+  assert.match(appSource, /kind: "PURCHASES"/);
+  assert.match(inventorySource, /navigationIntent\.kind === "PURCHASES"/);
+  assert.match(inventorySource, /resetPurchaseQueue\(navigationIntent\.status\)/);
+  assert.match(inventorySource, /openPurchaseQueue\(\)/);
+  assert.match(inventorySource, /navigationIntent\.notice === "REUSED"/);
+  assert.match(inventorySource, /dashboard\.actionPurchaseReused/);
+  assert.match(source, /await refreshDashboard\(\)/);
+  assert.match(
+    dashboardDataHookSource,
+    /LIBRARY_REVISION_DOMAINS\.wishlist/,
+  );
 });

@@ -160,6 +160,7 @@ pub(crate) fn ensure_full_backup_rows_are_importable(
     parsed: &ParsedFullBackup,
     schema_sql: &str,
 ) -> InventoryResult<()> {
+    ensure_full_backup_purchase_metadata_types_are_valid(parsed)?;
     let scratch = rusqlite::Connection::open_in_memory()?;
     scratch.execute_batch(schema_sql)?;
     scratch.execute_batch("PRAGMA foreign_keys = OFF; BEGIN IMMEDIATE;")?;
@@ -178,6 +179,101 @@ pub(crate) fn ensure_full_backup_rows_are_importable(
             Ok(())
         }
     }
+}
+
+fn ensure_full_backup_purchase_metadata_types_are_valid(
+    parsed: &ParsedFullBackup,
+) -> InventoryResult<()> {
+    let Some(rows) = parsed.tables.get("filament_spools") else {
+        return Ok(());
+    };
+    for (row_index, row) in rows.iter().enumerate() {
+        let _ = backup_optional_price(row, "purchase_price", row_index)?;
+        for field in [
+            "purchase_currency",
+            "purchase_date",
+            "batch_code",
+            "supplier_reference",
+        ] {
+            let _ = backup_optional_text(row, field, row_index)?;
+        }
+        let _ = backup_optional_batch_lock(row, row_index)?;
+        if let Some(source) = backup_optional_text(row, "purchase_price_source", row_index)?
+            && !matches!(source.as_str(), "MANUAL" | "STANDARD_BATCH")
+        {
+            return Err(invalid_backup_purchase_field(
+                row_index,
+                "purchase_price_source",
+                "must be `MANUAL`, `STANDARD_BATCH`, or null",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn backup_optional_batch_lock(
+    row: &Map<String, Value>,
+    row_index: usize,
+) -> InventoryResult<Option<bool>> {
+    match row.get("purchase_price_batch_locked") {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Bool(value)) => Ok(Some(*value)),
+        Some(Value::Number(value))
+            if value.as_i64().is_some_and(|value| matches!(value, 0 | 1)) =>
+        {
+            Ok(Some(value.as_i64() == Some(1)))
+        }
+        Some(_) => Err(invalid_backup_purchase_field(
+            row_index,
+            "purchase_price_batch_locked",
+            "must be 0, 1, a boolean, or null",
+        )),
+    }
+}
+
+fn backup_optional_price(
+    row: &Map<String, Value>,
+    field: &str,
+    row_index: usize,
+) -> InventoryResult<Option<f64>> {
+    match row.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Number(value)) => value.as_f64().map(Some).ok_or_else(|| {
+            invalid_backup_purchase_field(row_index, field, "must be a finite number or null")
+        }),
+        Some(_) => Err(invalid_backup_purchase_field(
+            row_index,
+            field,
+            "must be a number or null",
+        )),
+    }
+}
+
+fn backup_optional_text(
+    row: &Map<String, Value>,
+    field: &str,
+    row_index: usize,
+) -> InventoryResult<Option<String>> {
+    match row.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        Some(_) => Err(invalid_backup_purchase_field(
+            row_index,
+            field,
+            "must be a string or null",
+        )),
+    }
+}
+
+fn invalid_backup_purchase_field(
+    row_index: usize,
+    field: &str,
+    expectation: &str,
+) -> InventoryError {
+    InventoryError::Db(format!(
+        "Backup row {} for `filament_spools` field `{field}` {expectation}",
+        row_index + 1
+    ))
 }
 
 pub(crate) fn insert_portable_full_backup_rows(

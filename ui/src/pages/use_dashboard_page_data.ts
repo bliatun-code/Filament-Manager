@@ -12,6 +12,7 @@ import {
 } from "../lib/dashboard_model";
 import { loadDashboardData } from "../lib/dashboard_data_source";
 import type { DashboardBambuLiveAttention } from "../lib/dashboard_bambu_live_attention";
+import type { DashboardActionItem } from "../lib/dashboard_action_model";
 import {
   createDashboardHostConnectionState,
   isDashboardHostFailureInGrace,
@@ -215,6 +216,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
   const [activity, setActivity] = useState<ActivityItem[]>(
     () => initialSnapshot?.activity ?? createEmptyActivity(t),
   );
+  const [actionItems, setActionItems] = useState<DashboardActionItem[]>(
+    () => initialSnapshot?.actionItems ?? [],
+  );
   const [bambuLiveAttention, setBambuLiveAttention] = useState<
     DashboardBambuLiveAttention[]
   >(() => initialSnapshot?.bambuLiveAttention ?? []);
@@ -253,6 +257,9 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     () =>
       initialSnapshot?.lastSyncLabel ??
       t("dashboard.syncedFromDb", "Synced from local DB"),
+  );
+  const [libraryId, setLibraryId] = useState<string | null>(
+    () => initialSnapshot?.libraryId ?? null,
   );
   const [companionStatus, setCompanionStatus] =
     useState<TrustedLanCompanionStatus | null>(
@@ -369,6 +376,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         const cacheAccepted = writeDashboardPageSnapshot(
           {
             activity: loaded.derived.activity,
+            actionItems: loaded.actionItems,
             bambuLiveAttention: loaded.bambuLiveAttention,
             clientHostCompanionTone: loaded.clientHostCompanionTone,
             clientHostDisplayName: loaded.clientHostDisplayName,
@@ -379,6 +387,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
             goalMetrics: loaded.derived.goalMetrics,
             health: loaded.derived.health,
             lastSyncLabel: nextLastSyncLabel,
+            libraryId: loaded.libraryId,
             locale,
             ownershipLowStock: loaded.derived.ownershipLowStock,
             ownershipOnHand: loaded.derived.ownershipOnHand,
@@ -404,6 +413,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         usageCalendarMonthRef.current = dashboardCalendarMonthKey();
 
         setDashboardSyncMode(loaded.syncMode);
+        setActionItems(loaded.actionItems);
         setBambuLiveAttention(loaded.bambuLiveAttention);
         setCompanionStatus(loaded.trustedLan);
         setClientHostCompanionTone(loaded.clientHostCompanionTone);
@@ -420,6 +430,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
         setOwnershipLowStock(loaded.derived.ownershipLowStock);
         setGoalMetrics(loaded.derived.goalMetrics);
         setHealth(loaded.derived.health);
+        setLibraryId(loaded.libraryId);
         setLastSyncLabel(nextLastSyncLabel);
         completeRefresh();
         if (!loaded.revisionPollComplete) {
@@ -754,6 +765,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
 
   return {
     activity,
+    actionItems,
     bambuLiveAttention,
     clientHostCompanionTone,
     clientHostDisplayName,
@@ -765,6 +777,7 @@ export function useDashboardPageData(t: TranslateFn, locale: string) {
     goalMetrics,
     health,
     lastSyncLabel,
+    libraryId,
     loading,
     ownershipLowStock,
     ownershipOnHand,

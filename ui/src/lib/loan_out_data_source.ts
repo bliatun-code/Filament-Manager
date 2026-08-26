@@ -12,6 +12,7 @@ import {
   loadSpoolRowsPage,
 } from "./spool_data_source";
 import { sortSpoolsAlphabetically } from "./spool_sort";
+import { resolveClientHostCacheTarget } from "./host_write_target";
 import {
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
@@ -22,6 +23,7 @@ type LoanOutDataSourceOptions = {
   clientReadOnly: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 type LoanOutDataSourceDependencies = {
@@ -89,6 +91,9 @@ export async function loadLoanableSpoolCandidates(
 ): Promise<LoanableSpool[]> {
   const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
   const loadPrinterOverview = dependencies.loadPrinterOverview ?? loadPrinterOverviewData;
+  const cacheTarget = options.clientReadOnly
+    ? resolveClientHostCacheTarget(options)
+    : null;
   const [spoolRows, printerOverview] = await Promise.all([
     (dependencies.loadSpoolRows
       ? loadAllSpoolRowsWithPageLoader(
@@ -99,9 +104,18 @@ export async function loadLoanableSpoolCandidates(
       : loadAllSpoolRows(options)
     ).catch(async (loadError) => {
       if (options.clientReadOnly) {
-        const cached = await fetchCachedSpools().catch(() => null);
+        const cached = cacheTarget
+          ? await fetchCachedSpools(
+              cacheTarget.baseUrl,
+              cacheTarget.libraryId,
+              cacheTarget.targetGeneration,
+            ).catch(() => null)
+          : null;
         if (cached) {
           return cached.rows;
+        }
+        if (!cacheTarget) {
+          return [];
         }
       }
       throw loadError;

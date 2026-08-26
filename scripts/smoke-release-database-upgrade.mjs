@@ -358,8 +358,11 @@ function applicationWindowIsVisible(processId, moduleCachePath) {
   return macosWindowOutputHasProcessId(result.stdout, processId);
 }
 
-export function assertReleaseUpgradeSmokePlatform(platform = process.platform) {
-  if (platform !== "darwin") {
+export function assertReleaseUpgradeSmokePlatform(
+  platform = process.platform,
+  { requireVisibleWindow = true } = {},
+) {
+  if (requireVisibleWindow && platform !== "darwin") {
     throw new Error(
       "The release database-upgrade smoke currently requires macOS window " +
         "inspection. Windows release readiness is verified by the installed-MSI smoke.",
@@ -368,11 +371,14 @@ export function assertReleaseUpgradeSmokePlatform(platform = process.platform) {
 }
 
 export function validateReleaseDatabaseUpgradeSmokeOptions({
+  allowCurrentSchema = false,
   databasePath,
   executablePath,
   launchCount = DEFAULT_LAUNCH_COUNT,
   launchTimeoutMs = DEFAULT_LAUNCH_TIMEOUT_MS,
   logDirectory,
+  requireVisibleWindow = true,
+  sourceRelease = null,
 }) {
   for (const [label, value] of [
     ["database", databasePath],
@@ -396,24 +402,48 @@ export function validateReleaseDatabaseUpgradeSmokeOptions({
         `to ${MAXIMUM_LAUNCH_TIMEOUT_MS} milliseconds.`,
     );
   }
+  if (typeof requireVisibleWindow !== "boolean") {
+    throw new Error("Visible-window readiness must be a boolean.");
+  }
+  if (typeof allowCurrentSchema !== "boolean") {
+    throw new Error("Current-schema compatibility must be a boolean.");
+  }
+  const normalizedSourceRelease =
+    typeof sourceRelease === "string" ? sourceRelease.trim() : "";
+  if (allowCurrentSchema && !normalizedSourceRelease) {
+    throw new Error(
+      "A source release is required when current-schema compatibility is allowed.",
+    );
+  }
+  if (!allowCurrentSchema && normalizedSourceRelease) {
+    throw new Error(
+      "A source release can only be used with current-schema compatibility.",
+    );
+  }
   return {
+    allowCurrentSchema,
     databasePath: path.resolve(databasePath),
     executablePath: path.resolve(executablePath),
     launchCount,
     launchTimeoutMs,
     logDirectory: path.resolve(logDirectory),
+    requireVisibleWindow,
+    sourceRelease: normalizedSourceRelease || null,
   };
 }
 
 export async function smokeReleaseDatabaseUpgrade(options) {
-  assertReleaseUpgradeSmokePlatform();
   const {
+    allowCurrentSchema,
     databasePath,
     executablePath,
     launchCount,
     launchTimeoutMs,
     logDirectory,
+    requireVisibleWindow,
+    sourceRelease,
   } = validateReleaseDatabaseUpgradeSmokeOptions(options);
+  assertReleaseUpgradeSmokePlatform(process.platform, { requireVisibleWindow });
   for (const [label, filePath] of [
     ["Database", databasePath],
     ["Executable", executablePath],
@@ -428,12 +458,22 @@ export async function smokeReleaseDatabaseUpgrade(options) {
   assertSanitizedReleaseUpgradeFixture(databasePath);
   const before = snapshotReleaseUpgradeDatabase(databasePath);
   const expectedSchemaVersion = currentSchemaVersion();
-  if (before.schemaVersion >= expectedSchemaVersion) {
+  if (before.schemaVersion > expectedSchemaVersion) {
+    throw new Error(
+      `Compatibility fixture schema ${before.schemaVersion} is newer than ` +
+        `current schema ${expectedSchemaVersion}.`,
+    );
+  }
+  if (before.schemaVersion === expectedSchemaVersion && !allowCurrentSchema) {
     throw new Error(
       `Upgrade fixture schema ${before.schemaVersion} must be older than ` +
         `current schema ${expectedSchemaVersion}.`,
     );
   }
+  const gateMode =
+    before.schemaVersion < expectedSchemaVersion
+      ? "schema migration"
+      : `same-schema compatibility from ${sourceRelease}`;
 
   mkdirSync(logDirectory, { mode: 0o700, recursive: true });
   const moduleCachePath = path.join(
@@ -461,7 +501,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       });
       const deadline = Date.now() + launchTimeoutMs;
       let after = null;
-      let visibleWindow = false;
+      let visibleWindow = !requireVisibleWindow;
       let lastError = null;
       while (Date.now() < deadline) {
         if (childState.error) {
@@ -489,10 +529,12 @@ export async function smokeReleaseDatabaseUpgrade(options) {
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
         }
-        visibleWindow = applicationWindowIsVisible(
-          childProcessId,
-          moduleCachePath,
-        );
+        if (requireVisibleWindow) {
+          visibleWindow = applicationWindowIsVisible(
+            childProcessId,
+            moduleCachePath,
+          );
+        }
         if (after?.schemaVersion === expectedSchemaVersion && visibleWindow && !lastError) {
           break;
         }
@@ -539,9 +581,12 @@ export async function smokeReleaseDatabaseUpgrade(options) {
     path.join(logDirectory, "upgrade-summary.txt"),
     [
       "Release database upgrade smoke passed.",
+      `Gate mode: ${gateMode}`,
+      `Source release: ${sourceRelease ?? "historical schema fixture"}`,
       `Source schema: ${before.schemaVersion}`,
       `Current schema: ${finalSnapshot.schemaVersion}`,
       `Launches: ${launchCount}`,
+      `Readiness: ${requireVisibleWindow ? "database and visible window" : "database"}`,
       `Preserved domain tables: ${Object.keys(before.counts).length}`,
       `Value-digested tables: ${Object.keys(before.valueDigests).length}`,
       `Protected settings: ${Object.keys(before.protectedValues.settings).length}`,
@@ -557,8 +602,10 @@ export async function smokeReleaseDatabaseUpgrade(options) {
   return {
     after: finalSnapshot,
     before,
+    gateMode,
     launchCount,
     launchResults,
+    sourceRelease,
   };
 }
 
@@ -578,12 +625,15 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
   if (
     argv.some(
       (argument) =>
+        argument !== "--database-readiness-only" &&
+        argument !== "--allow-current-schema" &&
         ![
           "--database=",
           "--executable=",
           "--launch-count=",
           "--launch-timeout-ms=",
           "--log-dir=",
+          "--source-release=",
         ].some((prefix) => argument.startsWith(prefix)),
     )
   ) {
@@ -591,12 +641,14 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
       "Usage: node scripts/smoke-release-database-upgrade.mjs " +
         "--database=<sanitized-copy> --executable=<release-binary> " +
         "--log-dir=<private-directory> [--launch-count=2] " +
-        "[--launch-timeout-ms=90000]",
+        "[--launch-timeout-ms=90000] [--database-readiness-only] " +
+        "[--allow-current-schema --source-release=v0.27.0]",
     );
   }
   const launchCount = optionValue("--launch-count");
   const launchTimeoutMs = optionValue("--launch-timeout-ms");
   return {
+    allowCurrentSchema: argv.includes("--allow-current-schema"),
     databasePath: optionValue("--database"),
     executablePath: optionValue("--executable"),
     launchCount:
@@ -608,6 +660,8 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
         ? DEFAULT_LAUNCH_TIMEOUT_MS
         : parseCliInteger(launchTimeoutMs, "Launch timeout"),
     logDirectory: optionValue("--log-dir"),
+    requireVisibleWindow: !argv.includes("--database-readiness-only"),
+    sourceRelease: optionValue("--source-release"),
   };
 }
 

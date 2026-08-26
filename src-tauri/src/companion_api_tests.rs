@@ -1,6 +1,6 @@
 use super::{
     companion_browser_assets, companion_service_instance_name, hash_secret,
-    shutdown_trusted_lan_server, CompanionApiState,
+    require_companion_session, shutdown_trusted_lan_server, CompanionApiState,
 };
 use crate::app_services::CompanionService;
 use crate::backend::filament_database::{BambuLiveIntegrationRow, FilamentDatabase};
@@ -8,20 +8,26 @@ use crate::backend::inventory_engine::{
     CreateManualSpoolInput, CreatePrinterInput, InventoryEngine, LendSpoolInput,
 };
 use crate::bambu_live_observation::{default_offline_state, merge_tray_payload};
-use crate::companion_http::COMPANION_CSRF_HEADER;
+use crate::companion_http::{
+    CompanionHttpSecurityConfig, COMPANION_CSRF_HEADER, COMPANION_REQUEST_BODY_LIMIT_BYTES,
+};
 use crate::companion_payload::{build_companion_spool_qr_payload, build_qr_svg};
-use crate::companion_routes::build_router;
+use crate::companion_routes::{build_router, build_router_for_test};
 use crate::companion_session::{COMPANION_SESSION_COOKIE, COMPANION_TRUSTED_LAN_DEVICE_COOKIE};
 use crate::credential_store::{CredentialKey, CredentialStore, SecretValue};
 use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
 use crate::state::{AppState, CompanionRuntimeState, TrustedLanCompanionRuntime};
 use axum::body::{to_bytes, Body};
+use axum::extract::ConnectInfo;
 use axum::http::{header::SET_COOKIE, HeaderMap, Request, StatusCode};
+use axum::{middleware, routing::get, Router};
 use flate2::read::GzDecoder;
 use std::collections::HashMap;
 use std::io::Read;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 
 fn temp_db_path(test_name: &str) -> PathBuf {
@@ -298,6 +304,52 @@ fn assert_no_store(headers: &HeaderMap) {
     );
 }
 
+fn assert_security_headers(headers: &HeaderMap) {
+    let csp = headers
+        .get(axum::http::header::CONTENT_SECURITY_POLICY)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default();
+    assert!(csp.contains("default-src 'self'"), "unexpected CSP: {csp}");
+    assert!(csp.contains("script-src 'self'"), "unexpected CSP: {csp}");
+    assert!(
+        !csp.contains("script-src 'self' 'unsafe-inline'"),
+        "inline scripts must remain blocked: {csp}"
+    );
+    assert!(
+        csp.contains("style-src 'self' 'unsafe-inline'"),
+        "dynamic swatch styles must remain supported: {csp}"
+    );
+    assert!(
+        csp.contains("frame-ancestors 'none'"),
+        "unexpected CSP: {csp}"
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::X_CONTENT_TYPE_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("nosniff")
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::X_FRAME_OPTIONS)
+            .and_then(|value| value.to_str().ok()),
+        Some("DENY")
+    );
+    assert_eq!(
+        headers
+            .get(axum::http::header::REFERRER_POLICY)
+            .and_then(|value| value.to_str().ok()),
+        Some("no-referrer")
+    );
+    assert_eq!(
+        headers
+            .get("cross-origin-resource-policy")
+            .and_then(|value| value.to_str().ok()),
+        Some("same-origin")
+    );
+    assert!(headers.get("permissions-policy").is_some());
+}
+
 struct AuthenticatedTestSession {
     session_cookie: String,
     csrf_token: String,
@@ -469,6 +521,219 @@ fn extract_wishlist_item_id(body_text: &str, filament_name: &str) -> Result<Stri
         .and_then(|value| value.as_str())
         .map(|value| value.to_string())
         .ok_or_else(|| "missing wishlist item id".to_string())
+}
+
+#[tokio::test]
+async fn companion_http_applies_security_headers_to_successes_and_errors() {
+    let db_path = temp_db_path("security-headers");
+    let router = build_router(test_state(&db_path));
+
+    let shell = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/companion")
+                .header("host", "127.0.0.1:4278")
+                .body(Body::empty())
+                .expect("build shell request"),
+        )
+        .await
+        .expect("serve companion shell");
+    assert_eq!(shell.status(), StatusCode::OK);
+    assert_security_headers(shell.headers());
+
+    let rejected_host = router
+        .oneshot(
+            Request::builder()
+                .uri("/companion")
+                .header("host", "attacker.invalid:4278")
+                .body(Body::empty())
+                .expect("build rejected host request"),
+        )
+        .await
+        .expect("reject companion host");
+    assert_eq!(rejected_host.status(), StatusCode::FORBIDDEN);
+    assert_security_headers(rejected_host.headers());
+    assert_no_store(rejected_host.headers());
+}
+
+#[tokio::test]
+async fn companion_http_rejects_request_bodies_above_the_explicit_limit() {
+    let db_path = temp_db_path("body-limit");
+    let router = build_router(test_state(&db_path));
+    let oversized_body = vec![b' '; COMPANION_REQUEST_BODY_LIMIT_BYTES + 1];
+
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/pair")
+                .header("content-type", "application/json")
+                .header("host", "127.0.0.1:4278")
+                .header("origin", "http://127.0.0.1:4278")
+                .body(Body::from(oversized_body))
+                .expect("build oversized request"),
+        )
+        .await
+        .expect("reject oversized request");
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    assert_security_headers(response.headers());
+    assert_no_store(response.headers());
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("read body-limit response");
+    assert!(String::from_utf8_lossy(&body).contains("\"code\":\"common.invalid_request\""));
+}
+
+#[tokio::test]
+async fn companion_http_rate_limits_each_tcp_peer_independently() {
+    let db_path = temp_db_path("rate-limit");
+    let security_config = CompanionHttpSecurityConfig::for_test(
+        COMPANION_REQUEST_BODY_LIMIT_BYTES,
+        Duration::from_secs(1),
+        Duration::from_secs(60),
+        2,
+        10,
+    );
+    let router = build_router_for_test(test_state(&db_path), security_config);
+    let first_peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)), 51000);
+    let second_peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 11)), 51001);
+
+    for expected_status in [
+        StatusCode::OK,
+        StatusCode::OK,
+        StatusCode::TOO_MANY_REQUESTS,
+    ] {
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/companion")
+                    .header("host", "127.0.0.1:4278")
+                    .extension(ConnectInfo(first_peer))
+                    .body(Body::empty())
+                    .expect("build rate-limit request"),
+            )
+            .await
+            .expect("serve rate-limit request");
+        assert_eq!(response.status(), expected_status);
+        if expected_status == StatusCode::TOO_MANY_REQUESTS {
+            assert!(response
+                .headers()
+                .get(axum::http::header::RETRY_AFTER)
+                .is_some());
+            assert_security_headers(response.headers());
+            assert_no_store(response.headers());
+        }
+    }
+
+    let other_peer = router
+        .oneshot(
+            Request::builder()
+                .uri("/companion")
+                .header("host", "127.0.0.1:4278")
+                .extension(ConnectInfo(second_peer))
+                .body(Body::empty())
+                .expect("build second-peer request"),
+        )
+        .await
+        .expect("serve second-peer request");
+    assert_eq!(other_peer.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn companion_http_applies_a_stricter_limit_to_authentication_attempts() {
+    let db_path = temp_db_path("auth-rate-limit");
+    let security_config = CompanionHttpSecurityConfig::for_test(
+        COMPANION_REQUEST_BODY_LIMIT_BYTES,
+        Duration::from_secs(1),
+        Duration::from_secs(60),
+        10,
+        1,
+    );
+    let router = build_router_for_test(test_state(&db_path), security_config);
+    let peer = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 12)), 51002);
+
+    let first_attempt = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/pair")
+                .header("content-type", "application/json")
+                .header("host", "127.0.0.1:4278")
+                .header("origin", "http://127.0.0.1:4278")
+                .extension(ConnectInfo(peer))
+                .body(Body::from(r#"{"pairing_token":""}"#))
+                .expect("build first auth request"),
+        )
+        .await
+        .expect("serve first auth request");
+    assert_eq!(first_attempt.status(), StatusCode::BAD_REQUEST);
+
+    let limited_attempt = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/pair")
+                .header("content-type", "application/json")
+                .header("host", "127.0.0.1:4278")
+                .header("origin", "http://127.0.0.1:4278")
+                .extension(ConnectInfo(peer))
+                .body(Body::from(r#"{"pairing_token":""}"#))
+                .expect("build limited auth request"),
+        )
+        .await
+        .expect("rate limit auth request");
+    assert_eq!(limited_attempt.status(), StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
+async fn companion_http_times_out_slow_requests_with_the_api_error_contract() {
+    let db_path = temp_db_path("request-timeout");
+    let result = async {
+        seed_db(&db_path)?;
+        let state = qa_test_state(&db_path);
+        let pairing_router = build_router(state.clone());
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&pairing_router, &db_path).await?;
+        let security_config = CompanionHttpSecurityConfig::for_test(
+            COMPANION_REQUEST_BODY_LIMIT_BYTES,
+            Duration::from_millis(10),
+            Duration::from_secs(60),
+            100,
+            10,
+        );
+        let timeout_router = build_router_for_test(state, security_config);
+
+        let response = timeout_router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1?history_limit=4&usage_limit=4")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header("x-companion-qa-delay-ms", "40")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+        assert_security_headers(response.headers());
+        assert_no_store(response.headers());
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        assert!(String::from_utf8_lossy(&body).contains("\"code\":\"common.unavailable\""));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_http_times_out_slow_requests_with_the_api_error_contract: {message}");
+    }
 }
 
 #[tokio::test]
@@ -690,6 +955,35 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             .map_err(|error| error.to_string())?;
         assert_eq!(clear_slot.status(), StatusCode::OK);
 
+        let invalid_lend_date = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/lend")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"borrower_name":"Alice","grams_out":690,"expected_return_at":"2026-02-29"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(invalid_lend_date.status(), StatusCode::BAD_REQUEST);
+        let invalid_lend_date_body = to_bytes(invalid_lend_date.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let invalid_lend_date_json: serde_json::Value =
+            serde_json::from_slice(&invalid_lend_date_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            invalid_lend_date_json.get("code").and_then(|value| value.as_str()),
+            Some("loans.expected_return_invalid")
+        );
+
         let lend_spool = router
             .clone()
             .oneshot(
@@ -702,7 +996,7 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
                     .body(Body::from(
-                        r#"{"borrower_name":"Alice","grams_out":690,"note":"Prototype batch"}"#,
+                        r#"{"borrower_name":"Alice","counterparty_contact":"alice@example.test","grams_out":690,"note":"Prototype batch","expected_return_at":"2026-09-05"}"#,
                     ))
                     .map_err(|error| error.to_string())?,
             )
@@ -716,7 +1010,9 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
         let lend_text = String::from_utf8(lend_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(lend_text.contains("\"message\":\"Spool loan created\""));
         assert!(lend_text.contains("\"borrower_name\":\"Alice\""));
+        assert!(lend_text.contains("\"counterparty_contact\":\"alice@example.test\""));
         assert!(lend_text.contains("\"grams_out\":690"));
+        assert!(lend_text.contains("\"expected_return_at\":\"2026-09-05\""));
         let loan_id = extract_loan_id(&lend_text)?;
 
         let active_loans_after_lend = router
@@ -742,6 +1038,10 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             extract_active_loan_ids(&active_loans_after_lend_text)?,
             vec![loan_id.clone()]
         );
+        assert!(active_loans_after_lend_text
+            .contains("\"counterparty_contact\":\"alice@example.test\""));
+        assert!(active_loans_after_lend_text
+            .contains("\"expected_return_at\":\"2026-09-05\""));
 
         let history_after_lend = router
             .clone()
@@ -765,6 +1065,10 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             extract_loan_statuses(&history_after_lend_text)?,
             vec!["ACTIVE".to_string()]
         );
+        assert!(history_after_lend_text
+            .contains("\"counterparty_contact\":\"alice@example.test\""));
+        assert!(history_after_lend_text
+            .contains("\"expected_return_at\":\"2026-09-05\""));
 
         let borrowed_detail = router
             .clone()
@@ -816,6 +1120,57 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             String::from_utf8(return_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(return_text.contains("\"message\":\"Spool loan returned\""));
         assert!(return_text.contains("\"returned_grams\":660"));
+
+        let repeated_return = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/loans/{loan_id}/return"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"returned_grams":660,"note":"Returned after prototype"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(repeated_return.status(), StatusCode::OK);
+
+        let conflicting_return = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/loans/{loan_id}/return"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"returned_grams":659,"note":"Returned after prototype"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(conflicting_return.status(), StatusCode::BAD_REQUEST);
+        let conflicting_return_body = to_bytes(conflicting_return.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let conflicting_return_json: serde_json::Value =
+            serde_json::from_slice(&conflicting_return_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            conflicting_return_json
+                .get("code")
+                .and_then(|value| value.as_str()),
+            Some("loans.already_returned")
+        );
 
         let returned_detail = router
             .clone()
@@ -886,6 +1241,16 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
             extract_loan_statuses(&history_after_return_text)?,
             vec!["RETURNED".to_string()]
         );
+        let service = CompanionService::new(db_path.to_string_lossy().to_string());
+        assert_eq!(
+            service
+                .list_spool_history("spool_1", 100)
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .filter(|row| row.event_type == "LOAN_RETURNED")
+                .count(),
+            1
+        );
 
         Ok::<(), String>(())
     }
@@ -894,6 +1259,201 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_pairs_session_and_requires_csrf_for_writes failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_client_role_rejects_protected_reads_and_writes_without_mutating_local_shadow_data(
+) {
+    let db_path = temp_db_path("client-role-authority-gate");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+
+        let before = {
+            let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+            let spool = db
+                .get_spool_by_id("spool_1")
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "spool_1 missing before Client-role request".to_string())?;
+            db.set_setting("library_sync_mode", "CLIENT")
+                .map_err(|error| error.to_string())?;
+            db.create_trusted_lan_pairing(
+                Some("Rejected Client browser"),
+                &hash_secret("client-role-pairing"),
+                600,
+            )
+            .map_err(|error| error.to_string())?;
+            (spool.current_weight_g, spool.remaining_g)
+        };
+
+        let health = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/health")
+                    .header("host", "127.0.0.1:4278")
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(health.status(), StatusCode::OK);
+
+        let rejected_pair = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/auth/pair")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .body(Body::from(r#"{"pairing_token":"client-role-pairing"}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_pair.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+        let rejected_read = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_read.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let rejected_read_body = to_bytes(rejected_read.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        assert!(String::from_utf8_lossy(&rejected_read_body)
+            .contains("\"code\":\"common.unavailable\""));
+
+        let rejected_write = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/weight")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, csrf_token)
+                    .body(Body::from(r#"{"grams":123}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rejected_write.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let after = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after rejected Client-role write".to_string())?;
+        assert_eq!((after.current_weight_g, after.remaining_g), before);
+        assert!(
+            db.consume_trusted_lan_pairing_and_create_browser(
+                &hash_secret("client-role-pairing"),
+                &hash_secret("post-rejection-device"),
+                None,
+            )
+            .map_err(|error| error.to_string())?
+            .is_some(),
+            "rejected Client-role pairing must not consume its token"
+        );
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_client_role_rejects_protected_reads_and_writes_without_mutating_local_shadow_data failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn in_flight_companion_get_discards_local_response_after_host_becomes_client() {
+    let db_path = temp_db_path("in-flight-client-role-read");
+    let result = async {
+        seed_db(&db_path)?;
+        let state = test_state(&db_path);
+        let pairing_router = build_router(state.clone());
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&pairing_router, &db_path).await?;
+
+        let handler_entered = Arc::new(tokio::sync::Notify::new());
+        let release_handler = Arc::new(tokio::sync::Notify::new());
+        let entered_for_handler = handler_entered.clone();
+        let release_for_handler = release_handler.clone();
+        let protected_router = Router::new()
+            .route(
+                "/slow-local-read",
+                get(move || {
+                    let entered = entered_for_handler.clone();
+                    let release = release_for_handler.clone();
+                    async move {
+                        entered.notify_one();
+                        release.notified().await;
+                        "local-shadow-data"
+                    }
+                }),
+            )
+            .route_layer(middleware::from_fn_with_state(
+                state,
+                require_companion_session,
+            ));
+
+        let request = Request::builder()
+            .uri("/slow-local-read")
+            .header("host", "127.0.0.1:4278")
+            .header("cookie", format!("bfm_companion_session={session_cookie}"))
+            .body(Body::empty())
+            .map_err(|error| error.to_string())?;
+        let response_task = tokio::spawn(protected_router.oneshot(request));
+        handler_entered.notified().await;
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.set_setting("library_sync_mode", "CLIENT")
+            .map_err(|error| error.to_string())?;
+        drop(db);
+        release_handler.notify_one();
+
+        let response = response_task
+            .await
+            .map_err(|error| error.to_string())?
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let body_text = String::from_utf8_lossy(&body);
+        assert!(body_text.contains("\"code\":\"common.unavailable\""));
+        assert!(!body_text.contains("local-shadow-data"));
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "in_flight_companion_get_discards_local_response_after_host_becomes_client failed: {message}"
+        );
     }
 }
 
@@ -1122,6 +1682,42 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .get("device_name")
             .and_then(|value| value.as_str())
             .is_some());
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("loan-contact-and-expected-return") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("inventory-bulk-mutations") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("spool-common-details-v2") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("purchase-receipt-metadata") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("statistics-value-cost-report") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("filament-price-standards-v1") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -1237,8 +1833,10 @@ async fn companion_api_library_reads_require_an_active_session() {
             "/api/v1/library/spools?limit=10&offset=0",
             "/api/v1/library/printers",
             "/api/v1/library/printer-settings",
+            "/api/v1/library/filament-standards",
             "/api/v1/library/loans?limit=10",
             "/api/v1/library/statistics/filament-consumption?limit=10",
+            "/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z",
             "/api/v1/library/catalog/masters?limit=10",
             "/api/v1/library/wishlist?limit=10",
         ];
@@ -1322,6 +1920,84 @@ async fn companion_api_library_reads_require_an_active_session() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_library_reads_require_an_active_session failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_statistics_period_report_validates_and_echoes_half_open_contract() {
+    let db_path = temp_db_path("statistics-period-report");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession { session_cookie, .. } =
+            pair_test_session(&router, &db_path).await?;
+
+        let valid = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/statistics/period-report?start_at_utc=2026-08-01T00%3A00%3A00Z&end_at_utc=2026-08-02T00%3A00%3A00Z")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(valid.status(), StatusCode::OK);
+        assert_no_store(valid.headers());
+        let body = to_bytes(valid.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let report: serde_json::Value =
+            serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            report["period"]["start_at_utc"],
+            "2026-08-01T00:00:00Z"
+        );
+        assert_eq!(
+            report["period"]["end_at_utc"],
+            "2026-08-02T00:00:00Z"
+        );
+        assert_eq!(report["total_used_g"], 0);
+        assert_eq!(report["printer_usage"].as_array().map(Vec::len), Some(1));
+        let value_cost = report
+            .get("value_cost")
+            .expect("a modern Host must include the value/cost report");
+        assert!(value_cost.is_object());
+        assert!(value_cost["inventory_value"]["coverage"]["missing_reasons"].is_array());
+        assert!(value_cost["material_cost"]["coverage"]["missing_reasons"].is_array());
+        assert!(value_cost["inventory_trace"].is_array());
+        assert!(value_cost["material_cost_trace"].is_array());
+
+        let reversed = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/statistics/period-report?start_at_utc=2026-08-02T00%3A00%3A00Z&end_at_utc=2026-08-01T00%3A00%3A00Z")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(reversed.status(), StatusCode::BAD_REQUEST);
+        let body = to_bytes(reversed.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let error: serde_json::Value =
+            serde_json::from_slice(&body).map_err(|error| error.to_string())?;
+        assert_eq!(error["code"], "common.invalid_request");
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_statistics_period_report_validates_and_echoes_half_open_contract failed: {message}"
+        );
     }
 }
 
@@ -1427,11 +2103,20 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
     let db_path = temp_db_path("trusted-lan-library-snapshot");
     let result = async {
         seed_db(&db_path)?;
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.set_setting(
+            "low_stock_policy_json",
+            r#"{"default_threshold_g":225,"material_overrides":[{"material_key":"ignored","material":" pla ","threshold_g":300}]}"#,
+        )
+        .map_err(|error| error.to_string())?;
+        db.update_spool_weight("spool_1", Some(300), Some(300))
+            .map_err(|error| error.to_string())?;
         let router = build_router(test_state(&db_path));
         let AuthenticatedTestSession { session_cookie, .. } =
             pair_test_session(&router, &db_path).await?;
 
         let snapshot_response = router
+            .clone()
             .oneshot(
                 Request::builder()
                     .uri("/api/v1/library/snapshot")
@@ -1498,9 +2183,51 @@ async fn companion_api_library_snapshot_exposes_host_summary() {
                 .get("inventory")
                 .and_then(|value| value.get("low_stock"))
                 .and_then(|value| value.as_i64()),
-            Some(0)
+            Some(1)
+        );
+        assert_eq!(
+            snapshot_json
+                .get("inventory")
+                .and_then(|value| value.get("low_stock_policy"))
+                .and_then(|value| value.get("default_threshold_g"))
+                .and_then(|value| value.as_i64()),
+            Some(225)
+        );
+        assert_eq!(
+            snapshot_json
+                .get("inventory")
+                .and_then(|value| value.get("low_stock_policy"))
+                .and_then(|value| value.get("material_overrides"))
+                .and_then(|value| value.get(0))
+                .and_then(|value| value.get("material_key"))
+                .and_then(|value| value.as_str()),
+            Some("PLA")
         );
 
+        let inventory_response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/inventory/spools?limit=10&offset=0")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(inventory_response.status(), StatusCode::OK);
+        let inventory_body = to_bytes(inventory_response.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let inventory_json: serde_json::Value =
+            serde_json::from_slice(&inventory_body).map_err(|error| error.to_string())?;
+        assert!(inventory_json
+            .as_array()
+            .is_some_and(|rows| rows.iter().all(|row| {
+                row.get("low_stock_threshold_g")
+                    .and_then(|value| value.as_i64())
+                    == Some(300)
+            })));
         Ok::<(), String>(())
     }
     .await;
@@ -2497,7 +3224,7 @@ async fn companion_api_registers_owned_catalog_spool() {
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
-        assert!(detail_text.contains("\"location_id\":\"Shelf B\""));
+        assert!(detail_text.contains("\"location_name\":\"Shelf B\""));
         assert!(detail_text.contains("\"remaining_g\":900"));
         assert!(detail_text.contains("\"qr_code\":\"QR-CAT-1\""));
 
@@ -2787,6 +3514,141 @@ async fn companion_api_creates_and_updates_wishlist_item() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(error) = result {
         panic!("companion_api_creates_and_updates_wishlist_item failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
+    let db_path = temp_db_path("wishlist-receipt-metadata");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+
+        let create_item = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/wishlist")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"material":"PETG","filament_name":"Receipt metadata","color_name":"Blue","vendor":"Bambu","quantity":2}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(create_item.status(), StatusCode::OK);
+
+        let wishlist = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/wishlist?limit=20")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        let wishlist_body = to_bytes(wishlist.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let wishlist_text =
+            String::from_utf8(wishlist_body.to_vec()).map_err(|error| error.to_string())?;
+        let item_id = extract_wishlist_item_id(&wishlist_text, "Receipt metadata")?;
+
+        let invalid = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"quantity":1,"purchase_metadata":{"purchase_price":249.5}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+        let invalid_body = to_bytes(invalid.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let invalid_json: serde_json::Value =
+            serde_json::from_slice(&invalid_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            invalid_json.get("code").and_then(|value| value.as_str()),
+            Some("purchase_metadata.currency_required")
+        );
+
+        let receive = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/wishlist/{item_id}/receive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"quantity":2,"purchase_metadata":{"purchase_price":249.5,"purchase_currency":"nok","purchase_date":"2026-08-21","batch_code":" batch-7 ","supplier_reference":" po-19 "}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(receive.status(), StatusCode::OK);
+        let receive_body = to_bytes(receive.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let receipt: serde_json::Value =
+            serde_json::from_slice(&receive_body).map_err(|error| error.to_string())?;
+        let spool_ids = receipt
+            .get("spool_ids")
+            .and_then(|value| value.as_array())
+            .ok_or_else(|| "receipt spool_ids missing".to_string())?;
+        assert_eq!(spool_ids.len(), 2);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        for spool_id in spool_ids {
+            let spool_id = spool_id
+                .as_str()
+                .ok_or_else(|| "receipt spool id was not a string".to_string())?;
+            let spool = db
+                .get_spool_by_id(spool_id)
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| format!("received spool {spool_id} missing"))?;
+            assert_eq!(spool.purchase_price, Some(249.5));
+            assert_eq!(spool.purchase_currency.as_deref(), Some("NOK"));
+            assert_eq!(spool.purchase_date.as_deref(), Some("2026-08-21"));
+            assert_eq!(spool.batch_code.as_deref(), Some("batch-7"));
+            assert_eq!(spool.supplier_reference.as_deref(), Some("po-19"));
+        }
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_applies_receipt_metadata_to_every_received_spool failed: {message}");
     }
 }
 
@@ -3116,8 +3978,10 @@ async fn companion_api_rejects_spool_delete_with_active_loan() {
             .lend_spool(LendSpoolInput {
                 spool_id: "spool_1".to_string(),
                 borrower_name: "Alice".to_string(),
+                counterparty_contact: None,
                 grams_out: Some(800),
                 note: None,
+                expected_return_at: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -3225,7 +4089,7 @@ async fn companion_api_registers_borrowed_in_spool() {
         assert!(detail_text.contains("\"owner_name\":\"Carla\""));
         assert!(detail_text.contains("\"remaining_g\":860"));
         assert!(detail_text.contains("\"loan_direction\":\"INBOUND\""));
-        assert!(detail_text.contains("\"location_id\":\"Borrowed Shelf\""));
+        assert!(detail_text.contains("\"location_name\":\"Borrowed Shelf\""));
 
         let default_loans = router
             .clone()
@@ -3494,7 +4358,9 @@ async fn companion_api_updates_spool_status_and_location() {
                     .header("origin", "http://127.0.0.1:4278")
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
-                    .body(Body::from(r#"{"status":"LOST","location":"Archive Bin"}"#))
+                    .body(Body::from(
+                        r#"{"status":"LOST","location":"Archive Bin","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"},"purchase_price_batch_locked":true}"#,
+                    ))
                     .map_err(|error| error.to_string())?,
             )
             .await
@@ -3528,7 +4394,11 @@ async fn companion_api_updates_spool_status_and_location() {
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"status\":\"LOST\""));
-        assert!(detail_text.contains("\"location_id\":\"Archive Bin\""));
+        assert!(detail_text.contains("\"location_name\":\"Archive Bin\""));
+        assert!(detail_text.contains("\"home_location_name\":\"Shelf C\""));
+        assert!(detail_text.contains("\"spool_tare_weight_g\":245"));
+        assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
+        assert!(detail_text.contains("\"purchase_price_batch_locked\":true"));
         assert!(detail_text.contains("\"qr_code\":\"qr-1\""));
         assert!(detail_text.contains("\"event_type\":\"DETAILS_UPDATED\""));
 
@@ -3539,6 +4409,332 @@ async fn companion_api_updates_spool_status_and_location() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("companion_api_updates_spool_status_and_location failed: {message}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_updates_and_explicitly_clears_spool_receipt_metadata() {
+    let db_path = temp_db_path("spool-receipt-metadata");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+
+        let update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":199.0,"purchase_currency":"eur","purchase_date":"2026-08-20","batch_code":"lot-4","supplier_reference":"invoice-8"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let spool = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after metadata update".to_string())?;
+        assert_eq!(spool.purchase_price, Some(199.0));
+        assert_eq!(spool.purchase_currency.as_deref(), Some("EUR"));
+        assert_eq!(spool.purchase_date.as_deref(), Some("2026-08-20"));
+        assert_eq!(spool.batch_code.as_deref(), Some("lot-4"));
+        assert_eq!(spool.supplier_reference.as_deref(), Some("invoice-8"));
+        drop(db);
+
+        let invalid = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":200.0}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(invalid.status(), StatusCode::BAD_REQUEST);
+        let invalid_body = to_bytes(invalid.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let invalid_json: serde_json::Value =
+            serde_json::from_slice(&invalid_body).map_err(|error| error.to_string())?;
+        assert_eq!(
+            invalid_json.get("code").and_then(|value| value.as_str()),
+            Some("purchase_metadata.currency_required")
+        );
+
+        let clear = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":null,"purchase_currency":null,"purchase_date":null,"batch_code":null,"supplier_reference":null}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(clear.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let spool = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after metadata clear".to_string())?;
+        assert_eq!(spool.purchase_price, None);
+        assert_eq!(spool.purchase_currency, None);
+        assert_eq!(spool.purchase_date, None);
+        assert_eq!(spool.batch_code, None);
+        assert_eq!(spool.supplier_reference, None);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_updates_and_explicitly_clears_spool_receipt_metadata failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement() {
+    let db_path = temp_db_path("borrowed-spool-receipt-only");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+        let service = CompanionService::new(db_path.to_string_lossy().to_string());
+
+        service
+            .lend_spool(LendSpoolInput {
+                spool_id: "spool_1".to_string(),
+                borrower_name: "Alice".to_string(),
+                counterparty_contact: Some("alice@example.test".to_string()),
+                grams_out: Some(800),
+                note: Some("Prototype run".to_string()),
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+
+        let baseline_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after lend".to_string())?
+            .spool;
+        assert_eq!(baseline_spool.status, "BORROWED");
+        let baseline_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(baseline_loans.len(), 1);
+        let baseline_loan = serde_json::to_value(&baseline_loans[0].loan)
+            .map_err(|error| error.to_string())?;
+
+        let update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        serde_json::json!({
+                            "status": "BORROWED",
+                            "location": baseline_spool.location_id.clone(),
+                            "home_location": baseline_spool.home_location_id.clone(),
+                            "purchase_metadata": {
+                                "purchase_price": 249.5,
+                                "purchase_currency": "nok",
+                                "purchase_date": "2026-08-21",
+                                "batch_code": "LOT-7",
+                                "supplier_reference": "PO-42"
+                            }
+                        })
+                        .to_string(),
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update.status(), StatusCode::OK);
+
+        let updated_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after receipt update".to_string())?
+            .spool;
+        assert_eq!(updated_spool.status, baseline_spool.status);
+        assert_eq!(updated_spool.location_id, baseline_spool.location_id);
+        assert_eq!(updated_spool.home_location_id, baseline_spool.home_location_id);
+        assert_eq!(
+            updated_spool.spool_tare_weight_g,
+            baseline_spool.spool_tare_weight_g
+        );
+        assert_eq!(updated_spool.ownership_type, baseline_spool.ownership_type);
+        assert_eq!(updated_spool.owner_name, baseline_spool.owner_name);
+        assert_eq!(updated_spool.owner_contact, baseline_spool.owner_contact);
+        assert_eq!(updated_spool.ownership_note, baseline_spool.ownership_note);
+        assert_eq!(updated_spool.purchase_price, Some(249.5));
+        assert_eq!(updated_spool.purchase_currency.as_deref(), Some("NOK"));
+        assert_eq!(updated_spool.purchase_date.as_deref(), Some("2026-08-21"));
+        assert_eq!(updated_spool.batch_code.as_deref(), Some("LOT-7"));
+        assert_eq!(updated_spool.supplier_reference.as_deref(), Some("PO-42"));
+        let updated_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(updated_loans.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&updated_loans[0].loan)
+                .map_err(|error| error.to_string())?,
+            baseline_loan
+        );
+
+        let placement_mutation = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"BORROWED","location":"Shelf B","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"},"purchase_metadata":{"purchase_price":250.0,"purchase_currency":"NOK"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(placement_mutation.status(), StatusCode::BAD_REQUEST);
+
+        let status_mutation = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"IN_STOCK","purchase_metadata":{"purchase_price":250.0,"purchase_currency":"NOK"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(status_mutation.status(), StatusCode::BAD_REQUEST);
+
+        let clear = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"BORROWED","purchase_metadata":{"purchase_price":null,"purchase_currency":null,"purchase_date":null,"batch_code":null,"supplier_reference":null}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(clear.status(), StatusCode::OK);
+
+        let cleared_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after receipt clear".to_string())?
+            .spool;
+        assert_eq!(cleared_spool.status, baseline_spool.status);
+        assert_eq!(cleared_spool.location_id, baseline_spool.location_id);
+        assert_eq!(cleared_spool.home_location_id, baseline_spool.home_location_id);
+        assert_eq!(
+            cleared_spool.spool_tare_weight_g,
+            baseline_spool.spool_tare_weight_g
+        );
+        assert_eq!(cleared_spool.ownership_type, baseline_spool.ownership_type);
+        assert_eq!(cleared_spool.owner_name, baseline_spool.owner_name);
+        assert_eq!(cleared_spool.owner_contact, baseline_spool.owner_contact);
+        assert_eq!(cleared_spool.ownership_note, baseline_spool.ownership_note);
+        assert_eq!(cleared_spool.purchase_price, None);
+        assert_eq!(cleared_spool.purchase_currency, None);
+        assert_eq!(cleared_spool.purchase_date, None);
+        assert_eq!(cleared_spool.batch_code, None);
+        assert_eq!(cleared_spool.supplier_reference, None);
+        let cleared_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(cleared_loans.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&cleared_loans[0].loan)
+                .map_err(|error| error.to_string())?,
+            baseline_loan
+        );
+        assert_eq!(
+            service
+                .list_spool_history("spool_1", 100)
+                .map_err(|error| error.to_string())?
+                .into_iter()
+                .filter(|event| event.event_type == "PURCHASE_METADATA_UPDATED")
+                .count(),
+            2
+        );
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement failed: {message}"
+        );
     }
 }
 
@@ -3611,7 +4807,7 @@ async fn companion_api_preserves_location_when_status_update_omits_location() {
         let detail_text =
             String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
         assert!(detail_text.contains("\"status\":\"LOST\""));
-        assert!(detail_text.contains("\"location_id\":\"Shelf A\""));
+        assert!(detail_text.contains("\"location_name\":\"Shelf A\""));
 
         Ok::<(), String>(())
     }
@@ -3709,7 +4905,7 @@ async fn companion_api_clears_location_when_status_update_sends_null_location() 
 }
 
 #[tokio::test]
-async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
+async fn companion_api_allows_common_details_but_rejects_placement_edits_for_loaded_spools() {
     let db_path = temp_db_path("spool-details-reject-loaded");
     let result = async {
         seed_db(&db_path)?;
@@ -3761,6 +4957,48 @@ async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
             .map_err(|error| error.to_string())?;
         assert_eq!(assign.status(), StatusCode::OK);
 
+        let common_update = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"status":"ASSIGNED","home_location":"Shelf C","spool_tare_weight_g":247,"ownership":{"ownership_type":"OWNED"}}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(common_update.status(), StatusCode::OK);
+
+        let detail = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/spools/spool_1")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(detail.status(), StatusCode::OK);
+        let detail_body = to_bytes(detail.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let detail_text =
+            String::from_utf8(detail_body.to_vec()).map_err(|error| error.to_string())?;
+        assert!(detail_text.contains("\"status\":\"ASSIGNED\""));
+        assert!(detail_text.contains("\"home_location_name\":\"Shelf C\""));
+        assert!(detail_text.contains("\"spool_tare_weight_g\":247"));
+
         let update = router
             .clone()
             .oneshot(
@@ -3794,7 +5032,7 @@ async fn companion_api_rejects_status_and_location_edits_for_loaded_spools() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!(
-            "companion_api_rejects_status_and_location_edits_for_loaded_spools failed: {message}"
+            "companion_api_allows_common_details_but_rejects_placement_edits_for_loaded_spools failed: {message}"
         );
     }
 }
@@ -4331,12 +5569,458 @@ async fn companion_api_rejects_invalid_browser_lend_request() {
     }
 }
 
+#[tokio::test]
+async fn companion_api_location_lifecycle_merge_revision_and_spool_names_are_consistent() {
+    let db_path = temp_db_path("location-lifecycle");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+        let revision_before = FilamentDatabase::open(&db_path)
+            .map_err(|error| error.to_string())?
+            .library_domain_revisions()
+            .map_err(|error| error.to_string())?
+            .inventory;
+
+        let create_source = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/locations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"name":" Source   Shelf ","parent_id":null}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(create_source.status(), StatusCode::OK);
+        let source: serde_json::Value = serde_json::from_slice(
+            &to_bytes(create_source.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let source_id = source["id"]
+            .as_str()
+            .ok_or_else(|| "source id missing".to_string())?
+            .to_string();
+        assert!(source_id.starts_with("location_"));
+
+        let create_target = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/locations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(r#"{"name":"Target Shelf","parent_id":null}"#))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(create_target.status(), StatusCode::OK);
+        let target: serde_json::Value = serde_json::from_slice(
+            &to_bytes(create_target.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let target_id = target["id"]
+            .as_str()
+            .ok_or_else(|| "target id missing".to_string())?
+            .to_string();
+
+        let rename = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{source_id}/rename"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(
+                        r#"{{"location_id":"{source_id}","name":"Renamed Source"}}"#
+                    )))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(rename.status(), StatusCode::OK);
+        let renamed: serde_json::Value = serde_json::from_slice(
+            &to_bytes(rename.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(renamed["id"], source_id);
+        assert_eq!(renamed["name"], "Renamed Source");
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.connection()
+            .execute(
+                "UPDATE filament_spools
+                 SET location_id = ?1, home_location_id = ?1
+                 WHERE id = 'spool_1'",
+                [&source_id],
+            )
+            .map_err(|error| error.to_string())?;
+        drop(db);
+
+        let merge = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/locations/merge")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(
+                        r#"{{"source_id":"{source_id}","target_id":"{target_id}"}}"#
+                    )))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(merge.status(), StatusCode::OK);
+        let merge_result: serde_json::Value = serde_json::from_slice(
+            &to_bytes(merge.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(merge_result["affected_spools"], 1);
+
+        let referenced_delete = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{target_id}/delete"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{target_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(referenced_delete.status(), StatusCode::BAD_REQUEST);
+        let referenced_delete_error: serde_json::Value = serde_json::from_slice(
+            &to_bytes(referenced_delete.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(
+            referenced_delete_error["code"],
+            "inventory.location.has_references"
+        );
+
+        let delete_merged_source = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{source_id}/delete"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{source_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(delete_merged_source.status(), StatusCode::OK);
+        let deleted_source: serde_json::Value = serde_json::from_slice(
+            &to_bytes(delete_merged_source.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(deleted_source["id"], source_id);
+        assert_eq!(deleted_source["reference_count"], 0);
+        assert_eq!(deleted_source["can_delete"], true);
+
+        let spools = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/spools?limit=10&offset=0")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(spools.status(), StatusCode::OK);
+        let spools_json: serde_json::Value = serde_json::from_slice(
+            &to_bytes(spools.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let moved = spools_json
+            .as_array()
+            .and_then(|rows| rows.iter().find(|row| row["spool"]["id"] == "spool_1"))
+            .ok_or_else(|| "moved spool missing".to_string())?;
+        assert_eq!(moved["spool"]["location_id"], target_id);
+        assert_eq!(moved["location_name"], "Target Shelf");
+
+        let archive = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{target_id}/archive"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{target_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(archive.status(), StatusCode::OK);
+
+        let active = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/library/locations")
+                    .header("host", "127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .body(Body::empty())
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        let active_json: serde_json::Value = serde_json::from_slice(
+            &to_bytes(active.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert!(active_json
+            .as_array()
+            .is_some_and(|rows| rows.iter().all(|row| row["id"] != target_id)));
+
+        let restore = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!("/api/v1/locations/{target_id}/restore"))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(format!(r#"{{"location_id":"{target_id}"}}"#)))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(restore.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        assert!(
+            db.library_domain_revisions()
+                .map_err(|error| error.to_string())?
+                .inventory
+                > revision_before
+        );
+        let history_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id = 'spool_1' AND event_type = 'LOCATION_MERGED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_count, 1);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_location_lifecycle_merge_revision_and_spool_names_are_consistent failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn companion_api_executes_one_atomic_inventory_bulk_request() {
+    let db_path = temp_db_path("inventory-bulk-mutation");
+    let result = async {
+        seed_db(&db_path)?;
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let preconditions = ["spool_1", "spool_2"]
+            .into_iter()
+            .map(|spool_id| {
+                let spool = db
+                    .get_spool_by_id(spool_id)
+                    .map_err(|error| error.to_string())?
+                    .ok_or_else(|| format!("missing seeded spool {spool_id}"))?;
+                Ok(serde_json::json!({
+                    "spool_id": spool.id,
+                    "expected_status": spool.status,
+                    "expected_location_id": spool.location_id,
+                    "expected_home_location_id": spool.home_location_id,
+                    "expected_active_loan": false,
+                    "expected_assigned_to_printer": false,
+                }))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        drop(db);
+
+        let payload = serde_json::json!({
+            "action": "STATUS",
+            "expected_affected_count": 2,
+            "spools": preconditions,
+            "target_status": "EMPTY",
+        });
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/inventory/bulk-mutations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(payload.to_string()))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(response.status(), StatusCode::OK);
+        let receipt: serde_json::Value = serde_json::from_slice(
+            &to_bytes(response.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert_eq!(receipt["affected_count"], 2);
+        assert_eq!(receipt["committed"], true);
+        assert_eq!(receipt["history_spool_count"], 2);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        for spool_id in ["spool_1", "spool_2"] {
+            let spool = db
+                .get_spool_by_id(spool_id)
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| format!("missing mutated spool {spool_id}"))?;
+            assert_eq!(spool.status, "EMPTY");
+            let history_count: i64 = db
+                .connection()
+                .query_row(
+                    "SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = ?1 AND event_type = 'STATUS_UPDATED'",
+                    [spool_id],
+                    |row| row.get(0),
+                )
+                .map_err(|error| error.to_string())?;
+            assert_eq!(history_count, 1);
+        }
+        drop(db);
+
+        let stale = router
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/inventory/bulk-mutations")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(payload.to_string()))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(stale.status(), StatusCode::BAD_REQUEST);
+        let stale_error: serde_json::Value = serde_json::from_slice(
+            &to_bytes(stale.into_body(), usize::MAX)
+                .await
+                .map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        assert!(stale_error["code"]
+            .as_str()
+            .is_some_and(|code| code.starts_with("inventory.bulk.")));
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let history_count: i64 = db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM spool_history_events
+                 WHERE spool_id IN ('spool_1', 'spool_2') AND event_type = 'STATUS_UPDATED'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(history_count, 2);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("companion_api_executes_one_atomic_inventory_bulk_request failed: {message}");
+    }
+}
+
 #[test]
 fn async_companion_handlers_keep_blocking_io_behind_the_executor() {
     let sources = [
         include_str!("companion_api.rs"),
+        include_str!("companion_inventory_bulk_write_api.rs"),
         include_str!("companion_inventory_read_api.rs"),
         include_str!("companion_library_api.rs"),
+        include_str!("companion_location_api.rs"),
         include_str!("companion_wishlist_write_api.rs"),
     ];
     let blocking_io_markers = [

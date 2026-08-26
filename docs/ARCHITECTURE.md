@@ -19,6 +19,18 @@ The Tauri crate must not include backend files through cross-tree `#[path]`
 attributes. Add a backend module to `src/backend/mod.rs` and expose only the
 smallest API the adapter needs.
 
+## Presentation Layers
+
+The React desktop UI and the browser Companion remain separate presentation
+layers. They share Rust-owned business authority and generated wire contracts,
+while their Tauri and same-origin HTTP adapters, navigation, state, and rendering
+remain surface-specific. Pure models are shared only when their inputs, outputs,
+and behavior are genuinely identical and adapter-free.
+
+The measured alternatives, bundle and overlap baselines, security constraints,
+and concrete re-evaluation triggers are recorded in
+[`ADR_REACT_COMPANION_CONSOLIDATION.md`](ADR_REACT_COMPANION_CONSOLIDATION.md).
+
 ## Desktop Background Lifecycle
 
 `src-tauri/src/desktop_lifecycle.rs` owns the macOS menu-bar and Windows system-
@@ -178,6 +190,16 @@ Compound detail and statistics responses use one deferred SQLite read
 transaction. Every query contributing to a response therefore observes the
 same database snapshot, even if another connection commits while the response
 is being assembled.
+
+The statistics value/cost report is calculated only in Rust from recorded
+weights, purchase price, and purchase currency. Inventory value uses the
+current active-spool snapshot, while material cost uses the report's half-open
+UTC period. Amounts remain partitioned by currency and ownership; missing or
+invalid input contributes to explicit row and weight coverage instead of a
+zero value. Trace payloads are deterministically capped at 2,000 rows, but the
+totals and coverage stream every matching row inside the same read transaction.
+The additive nullable report field lets a newer Client expose an older Host as
+unavailable without introducing a divergent local calculation.
 
 The inventory-overview contract keeps rolling usage distinct from its existing
 30-day totals. Its twelve-month series contains the current local calendar

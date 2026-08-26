@@ -37,6 +37,7 @@ export function StatisticsMetricDetailModal({
   loggedPrinterRows,
   metricModalKind,
   onClose,
+  periodLabel,
   resolvedTheme,
   setSlotOwnershipFilter,
   slotOwnershipFilter,
@@ -50,6 +51,7 @@ export function StatisticsMetricDetailModal({
   loggedPrinterRows: PrinterOverviewRow[];
   metricModalKind: MetricModalKind;
   onClose: () => void;
+  periodLabel: string;
   resolvedTheme: ResolvedTheme;
   setSlotOwnershipFilter: (filter: OwnershipFilter) => void;
   slotOwnershipFilter: OwnershipFilter;
@@ -70,6 +72,12 @@ export function StatisticsMetricDetailModal({
         closeLabel={t("common.close", "Close")}
         className="-mx-5 -mt-5"
       />
+
+      {metricModalKind !== "ACTIVE_SLOTS" ? (
+        <div className="mt-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {periodLabel}
+        </div>
+      ) : null}
 
       {metricModalKind === "LOGGED_JOBS" ? (
         loggedPrinterRows.length === 0 ? (

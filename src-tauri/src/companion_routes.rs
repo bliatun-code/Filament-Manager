@@ -1,11 +1,21 @@
 use crate::companion_api::*;
-use crate::companion_http::apply_companion_cache_policy;
+use crate::companion_http::{
+    apply_companion_cache_policy, apply_companion_security_headers, enforce_companion_body_limit,
+    enforce_companion_rate_limit, enforce_companion_request_timeout, CompanionHttpSecurity,
+    CompanionHttpSecurityConfig,
+};
+use crate::companion_inventory_bulk_write_api::handle_execute_inventory_bulk_mutation;
 use crate::companion_inventory_read_api::{
     handle_find_spool_by_qr, handle_get_spool_detail, handle_list_active_spool_loans,
     handle_list_catalog_masters, handle_list_printer_overview, handle_list_spool_loans,
     handle_list_spools, handle_list_wishlist_items, handle_spool_qr_image_svg,
 };
 use crate::companion_library_api::*;
+use crate::companion_location_api::{
+    handle_archive_location, handle_create_location, handle_delete_location,
+    handle_list_library_locations, handle_list_locations, handle_merge_locations,
+    handle_rename_location, handle_restore_location,
+};
 use crate::companion_state::CompanionApiState;
 use crate::companion_wishlist_write_api::{
     handle_create_wishlist_item, handle_delete_wishlist_item, handle_receive_wishlist_item,
@@ -16,15 +26,36 @@ use axum::routing::{get, post};
 use axum::Router;
 
 pub(super) fn build_router(state: CompanionApiState) -> Router {
+    build_router_with_security_config(state, CompanionHttpSecurityConfig::production())
+}
+
+#[cfg(test)]
+pub(super) fn build_router_for_test(
+    state: CompanionApiState,
+    security_config: CompanionHttpSecurityConfig,
+) -> Router {
+    build_router_with_security_config(state, security_config)
+}
+
+fn build_router_with_security_config(
+    state: CompanionApiState,
+    security_config: CompanionHttpSecurityConfig,
+) -> Router {
     let host_validation_state = state.clone();
+    let http_security = CompanionHttpSecurity::new(security_config);
     let protected = Router::new()
         .route("/library/revisions", get(handle_library_domain_revisions))
         .route("/library/snapshot", get(handle_library_snapshot))
         .route("/library/spools", get(handle_library_spools))
+        .route("/library/locations", get(handle_list_library_locations))
         .route("/library/printers", get(handle_library_printers))
         .route(
             "/library/printer-settings",
             get(handle_library_printer_settings),
+        )
+        .route(
+            "/library/filament-standards",
+            get(handle_library_filament_standards),
         )
         .route("/library/loans", get(handle_library_loans))
         .route(
@@ -32,11 +63,38 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
             get(handle_library_filament_consumption),
         )
         .route(
+            "/library/statistics/period-report",
+            get(handle_library_statistics_period_report),
+        )
+        .route(
             "/library/catalog/masters",
             get(handle_library_catalog_masters),
         )
         .route("/library/wishlist", get(handle_library_wishlist_items))
         .route("/inventory/spools", get(handle_list_spools))
+        .route(
+            "/inventory/bulk-mutations",
+            post(handle_execute_inventory_bulk_mutation),
+        )
+        .route("/locations", get(handle_list_locations))
+        .route("/locations", post(handle_create_location))
+        .route("/locations/merge", post(handle_merge_locations))
+        .route(
+            "/locations/{location_id}/rename",
+            post(handle_rename_location),
+        )
+        .route(
+            "/locations/{location_id}/archive",
+            post(handle_archive_location),
+        )
+        .route(
+            "/locations/{location_id}/restore",
+            post(handle_restore_location),
+        )
+        .route(
+            "/locations/{location_id}/delete",
+            post(handle_delete_location),
+        )
         .route("/backup/full", get(handle_export_full_backup))
         .route("/catalog/masters", get(handle_list_catalog_masters))
         .route("/catalog/refresh", post(handle_refresh_vendor_catalog))
@@ -145,8 +203,21 @@ pub(super) fn build_router(state: CompanionApiState) -> Router {
         .with_state(state)
         .nest("/api/v1", protected)
         .layer(middleware::from_fn_with_state(
+            http_security.clone(),
+            enforce_companion_body_limit,
+        ))
+        .layer(middleware::from_fn_with_state(
             host_validation_state,
             require_companion_host,
         ))
+        .layer(middleware::from_fn_with_state(
+            http_security.clone(),
+            enforce_companion_rate_limit,
+        ))
+        .layer(middleware::from_fn_with_state(
+            http_security,
+            enforce_companion_request_timeout,
+        ))
         .layer(middleware::from_fn(apply_companion_cache_policy))
+        .layer(middleware::from_fn(apply_companion_security_headers))
 }

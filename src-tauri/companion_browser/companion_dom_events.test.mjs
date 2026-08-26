@@ -344,6 +344,11 @@ test("submit handler dispatches spool detail updates from the detail form", () =
         "spool-id": "spool-12",
         status: "EMPTY",
         location: "Archive Bin",
+        purchase_price: "120",
+        purchase_currency: "NOK",
+        purchase_date: "2026-08-21",
+        batch_code: "LOT-12",
+        supplier_reference: "PO-12",
       }[name] ?? "";
     },
   };
@@ -373,7 +378,19 @@ test("submit handler dispatches spool detail updates from the detail form", () =
 
   assert.equal(handled, true);
   assert.equal(prevented, true);
-  assert.deepEqual(calls, [["spool-12", "EMPTY", "Archive Bin", ""]]);
+  assert.deepEqual(calls, [[
+    "spool-12",
+    "EMPTY",
+    "Archive Bin",
+    "",
+    {
+      pricePerRoll: "120",
+      currency: "NOK",
+      purchaseDate: "2026-08-21",
+      batchCode: "LOT-12",
+      supplierReference: "PO-12",
+    },
+  ]]);
 });
 
 test("installCompanionDomEvents registers the expected document and root listeners", () => {
