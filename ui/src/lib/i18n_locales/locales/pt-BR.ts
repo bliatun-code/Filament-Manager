@@ -1097,6 +1097,7 @@ export const ptBRDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "O endereço salvo pode ser recuperado depois que a identidade desta impressora for confiável.",
     "bambuDiscoveryDifferentPrinter": "Esta não é a impressora salva. Você só pode usá-la para uma nova configuração.",
     "bambuDiscoveryRecovered": "O endereço salvo da impressora ao vivo foi recuperado.",
+    "bambuDiscoveryAutoFilled": "Uma impressora Bambu foi encontrada. O endereço IP e o número de série foram preenchidos automaticamente. Nenhum código de acesso foi alterado ou enviado. Digite o código de acesso e verifique a identidade da impressora antes de salvar.",
     "bambuDiscoveryFailed": "Não foi possível encontrar impressoras Bambu nesta rede.",
     "bambuLiveRecoveryFailed": "Não foi possível recuperar o endereço salvo da impressora ao vivo.",
     updates: "Atualizações",

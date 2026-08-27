@@ -1737,6 +1737,7 @@ export const enDictionary: DictionaryNode = {
       "bambuDiscoveryRecoveryHint": "The saved address can be recovered after this printer identity is trusted.",
       "bambuDiscoveryDifferentPrinter": "This is not the saved printer. You can use it only for a new setup.",
       "bambuDiscoveryRecovered": "Recovered the saved live printer address.",
+      "bambuDiscoveryAutoFilled": "Found one Bambu printer. Its IP address and serial were filled in automatically. No access code was changed or sent. Enter the access code, then check the printer identity before saving.",
       "bambuDiscoveryFailed": "Could not find Bambu printers on this network.",
       "bambuLiveRecoveryFailed": "Could not recover the saved live printer address.",
       updates: "Updates",

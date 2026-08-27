@@ -894,6 +894,7 @@ export const nlNLDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Het opgeslagen adres kan worden hersteld nadat de identiteit van deze printer is vertrouwd.",
     "bambuDiscoveryDifferentPrinter": "Dit is niet de opgeslagen printer. Je kunt deze alleen gebruiken voor een nieuwe configuratie.",
     "bambuDiscoveryRecovered": "Het opgeslagen live-printeradres is hersteld.",
+    "bambuDiscoveryAutoFilled": "Er is één Bambu-printer gevonden. Het IP-adres en serienummer zijn automatisch ingevuld. Er is geen toegangscode gewijzigd of verzonden. Voer de toegangscode in en controleer daarna de printeridentiteit voordat u opslaat.",
     "bambuDiscoveryFailed": "Kon geen Bambu-printers vinden op dit netwerk.",
     "bambuLiveRecoveryFailed": "Kon het opgeslagen live-printeradres niet herstellen.",
     "updates": "Updates",

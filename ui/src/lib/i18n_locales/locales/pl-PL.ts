@@ -894,6 +894,7 @@ export const plPLDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Zapisany adres można odzyskać po zaufaniu tożsamości tej drukarki.",
     "bambuDiscoveryDifferentPrinter": "To nie jest zapisana drukarka. Możesz jej użyć tylko do nowej konfiguracji.",
     "bambuDiscoveryRecovered": "Odzyskano zapisany adres drukarki na żywo.",
+    "bambuDiscoveryAutoFilled": "Znaleziono jedną drukarkę Bambu. Jej adres IP i numer seryjny zostały uzupełnione automatycznie. Nie zmieniono ani nie wysłano żadnego kodu dostępu. Wprowadź kod dostępu, a następnie sprawdź tożsamość drukarki przed zapisaniem.",
     "bambuDiscoveryFailed": "Nie udało się znaleźć drukarek Bambu w tej sieci.",
     "bambuLiveRecoveryFailed": "Nie udało się odzyskać zapisanego adresu drukarki na żywo.",
     "updates": "Aktualizacje",

@@ -237,7 +237,10 @@ reviewed network budget, but they do not run on the UI invoke path.
 
 ## Bambu Live Boundaries
 
-Passive local discovery is a convenience path, not printer authentication. An
+Passive local discovery is a convenience path, not printer authentication. The
+listener joins the Bambu SSDP multicast group on each selected private IPv4
+interface and treats UDP 1990 and 2021 as independent best-effort announcement
+ports, so another application owning one port does not disable discovery. An
 untrusted advertised address and serial may fill a setup form, but a saved
 printer address may change only after the stored serial and SPKI pin verify the
 candidate over TLS. Discovery and recovery never read or send an access code.

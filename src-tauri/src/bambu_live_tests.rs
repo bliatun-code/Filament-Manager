@@ -1,7 +1,7 @@
 use super::{
     capture_bambu_live_poll_batch, claim_auto_recovery_attempt, is_live_print_running,
-    merge_tray_payload, run_bounded_blocking_polls, run_live_observer,
-    with_current_bambu_live_authority, AUTO_RECOVERY_COOLDOWN,
+    merge_tray_payload, run_bambu_live_auto_recovery_after_discovery, run_bounded_blocking_polls,
+    run_live_observer, with_current_bambu_live_authority, AUTO_RECOVERY_COOLDOWN,
 };
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentDatabase, FilamentMasterSummary, ManualMasterInput,
@@ -42,6 +42,74 @@ fn automatic_address_recovery_attempts_are_rate_limited_per_printer() {
         printer_id,
         started + AUTO_RECOVERY_COOLDOWN,
     ));
+}
+
+#[test]
+fn automatic_address_recovery_revalidates_authority_after_discovery() {
+    let db_path = temp_db_path("auto-recovery-authority-change");
+    let db = FilamentDatabase::open(&db_path).expect("open Host recovery database");
+    db.apply_schema().expect("apply Host recovery schema");
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("load standalone role");
+    settings.mode = "HOST".to_string();
+    db.save_library_sync_settings(&settings)
+        .expect("save Host role");
+    drop(db);
+
+    let (authority, _, _) = capture_bambu_live_poll_batch(
+        db_path.to_string_lossy().as_ref(),
+        &CredentialStore::in_memory(),
+    )
+    .expect("capture Host poll")
+    .expect("Host role should produce a poll batch");
+
+    let tls_probe_and_recovery_ran = AtomicBool::new(false);
+    let outcome = run_bambu_live_auto_recovery_after_discovery(
+        db_path.to_string_lossy().as_ref(),
+        &authority,
+        "printer_1",
+        "SERIAL",
+        |_| {
+            let db = FilamentDatabase::open(&db_path)
+                .map_err(|error| format!("reopen Host recovery database: {error}"))?;
+            let mut settings = db
+                .get_library_sync_settings()
+                .map_err(|error| format!("reload Host role: {error}"))?;
+            settings.mode = "CLIENT".to_string();
+            settings.host_base_url = Some("http://replacement-host.local:4278".to_string());
+            db.save_library_sync_settings(&settings)
+                .map_err(|error| format!("switch to Client during discovery: {error}"))?;
+            Ok(vec!["192.168.86.44".to_string()])
+        },
+        |recovery_db_path, _, _| {
+            tls_probe_and_recovery_ran.store(true, Ordering::SeqCst);
+            FilamentDatabase::open(recovery_db_path)
+                .map_err(|error| format!("open stale recovery database: {error}"))?
+                .set_setting("stale_auto_recovery_write", "mutated")
+                .map_err(|error| format!("write stale recovery marker: {error}"))?;
+            Ok(Some("192.168.86.44".to_string()))
+        },
+    )
+    .expect("stale auto-recovery should be discarded cleanly");
+
+    assert!(outcome.is_none());
+    assert!(!tls_probe_and_recovery_ran.load(Ordering::SeqCst));
+
+    let db = FilamentDatabase::open(&db_path).expect("verify Client role");
+    assert_eq!(
+        db.get_library_sync_settings()
+            .expect("read final library role")
+            .mode,
+        "CLIENT"
+    );
+    assert_eq!(
+        db.get_setting("stale_auto_recovery_write")
+            .expect("read stale recovery marker"),
+        None
+    );
+    drop(db);
+    let _ = std::fs::remove_file(db_path);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

@@ -13,7 +13,9 @@ use crate::bambu_mqtt::{
     build_connect_packet, build_subscribe_packet, parse_publish_payload, read_mqtt_packet,
 };
 use crate::credential_store::{CredentialKey, CredentialStore};
-use crate::printer_bambu_discovery_commands::try_auto_recover_bambu_live_host;
+use crate::printer_bambu_discovery_commands::{
+    discover_bambu_live_recovery_hosts, try_auto_recover_bambu_live_host_from_hosts,
+};
 use crate::state::AppState;
 use std::collections::HashMap;
 use std::io::Write;
@@ -168,13 +170,14 @@ fn poll_single_integration(
                 && !*shutdown.borrow()
                 && claim_auto_recovery_attempt(&entry.printer_id, Instant::now())
             {
-                let recovery = with_current_bambu_live_authority(db_path, authority, |_db| {
-                    Ok(try_auto_recover_bambu_live_host(
-                        db_path,
-                        &entry.printer_id,
-                        printer_serial,
-                    ))
-                })?;
+                let recovery = run_bambu_live_auto_recovery_after_discovery(
+                    db_path,
+                    authority,
+                    &entry.printer_id,
+                    printer_serial,
+                    discover_bambu_live_recovery_hosts,
+                    try_auto_recover_bambu_live_host_from_hosts,
+                )?;
                 match recovery {
                     Some(Ok(Some(recovered_host))) => {
                         eprintln!(
@@ -216,6 +219,34 @@ fn poll_single_integration(
         }
     }
     Ok(())
+}
+
+fn run_bambu_live_auto_recovery_after_discovery<Discover, Recover>(
+    db_path: &str,
+    authority: &BambuLivePollAuthority,
+    printer_id: &str,
+    printer_serial: &str,
+    discover: Discover,
+    recover: Recover,
+) -> Result<Option<Result<Option<String>, String>>, String>
+where
+    Discover: FnOnce(&str) -> Result<Vec<String>, String>,
+    Recover: FnOnce(&str, &str, &[String]) -> Result<Option<String>, String>,
+{
+    // Discovery can wait several seconds for LAN announcements. It must not
+    // hold the credential/authority mutation gate while no protected state is
+    // being read or changed.
+    let matching_hosts = match discover(printer_serial) {
+        Ok(matching_hosts) => matching_hosts,
+        Err(error) => return Ok(Some(Err(error))),
+    };
+
+    // Revalidate the exact library authority captured for this poll before a
+    // candidate is TLS-probed and conditionally persisted. The recovery path
+    // still proves the saved serial and SPKI and uses its SQLite CAS update.
+    with_current_bambu_live_authority(db_path, authority, |_db| {
+        Ok(recover(db_path, printer_id, &matching_hosts))
+    })
 }
 
 fn claim_auto_recovery_attempt(printer_id: &str, now: Instant) -> bool {

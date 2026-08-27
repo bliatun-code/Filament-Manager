@@ -894,6 +894,7 @@ export const zhCNDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "信任这台打印机的身份后，可以恢复已保存的地址。",
     "bambuDiscoveryDifferentPrinter": "这不是已保存的打印机。它只能用于新的设置。",
     "bambuDiscoveryRecovered": "已恢复已保存的实时打印机地址。",
+    "bambuDiscoveryAutoFilled": "找到一台 Bambu 打印机。已自动填写其 IP 地址和序列号。访问码未被更改或发送。请输入访问码，然后在保存前检查打印机身份。",
     "bambuDiscoveryFailed": "无法在此网络上找到 Bambu 打印机。",
     "bambuLiveRecoveryFailed": "无法恢复已保存的实时打印机地址。",
     "updates": "更新",

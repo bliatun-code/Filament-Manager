@@ -115,11 +115,13 @@ Release notes:
   printer is added. It can still be skipped and configured later. An enabled
   integration without trusted TLS identity stays offline and shows a clickable
   Dashboard warning that opens that printer's Live settings for review.
-- Passive Bambu printer discovery can identify a local printer by its announced
-  serial number. It assists first-time Live setup and can automatically recover
-  a DHCP-changed printer address in the background only after the saved serial
-  and public-key pin match again. Recovery is credential-free and never sends
-  the access code; the same guarded recovery also remains available manually.
+- Passive Bambu printer discovery listens on both current announcement ports
+  and can identify a local printer by its announced serial number even while
+  Bambu Studio is open. One unambiguous result fills the Live host and serial
+  automatically. The same discovery engine can recover a DHCP-changed printer
+  address in the background only after the saved serial and public-key pin
+  match again. Recovery is credential-free and never sends the access code;
+  the same guarded recovery also remains available manually.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, including
   validated custom landscape dimensions remembered on the device. Matching A4

@@ -894,6 +894,7 @@ export const trTRDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Kaydedilen adres, bu yazıcının kimliğine güvenildikten sonra kurtarılabilir.",
     "bambuDiscoveryDifferentPrinter": "Bu, kaydedilen yazıcı değil. Yalnızca yeni bir kurulum için kullanabilirsiniz.",
     "bambuDiscoveryRecovered": "Kaydedilen canlı yazıcı adresi kurtarıldı.",
+    "bambuDiscoveryAutoFilled": "Bir Bambu yazıcı bulundu. IP adresi ve seri numarası otomatik olarak dolduruldu. Hiçbir erişim kodu değiştirilmedi veya gönderilmedi. Erişim kodunu girin, ardından kaydetmeden önce yazıcı kimliğini kontrol edin.",
     "bambuDiscoveryFailed": "Bu ağda Bambu yazıcılar bulunamadı.",
     "bambuLiveRecoveryFailed": "Kaydedilen canlı yazıcı adresi kurtarılamadı.",
     "updates": "Güncellemeler",

@@ -155,21 +155,25 @@ fn recover_bambu_live_host_at_path(
     })
 }
 
-pub(crate) fn try_auto_recover_bambu_live_host(
+pub(crate) fn discover_bambu_live_recovery_hosts(
+    printer_serial: &str,
+) -> Result<Vec<String>, String> {
+    let candidates = discover_bambu_printers_on_private_networks()?;
+    Ok(matching_discovery_hosts(candidates, printer_serial))
+}
+
+pub(crate) fn try_auto_recover_bambu_live_host_from_hosts(
     db_path: &str,
     printer_id: &str,
-    printer_serial: &str,
+    matching_hosts: &[String],
 ) -> Result<Option<String>, String> {
-    let candidates = discover_bambu_printers_on_private_networks()?;
-    let matching_hosts = matching_discovery_hosts(candidates, printer_serial);
-
     for host in matching_hosts {
         let input = RecoverBambuLiveHostInput {
             printer_id: printer_id.to_string(),
             host: host.clone(),
         };
         match recover_bambu_live_host_at_path(db_path, input, probe_printer_tls_identity) {
-            Ok(_) => return Ok(Some(host)),
+            Ok(_) => return Ok(Some(host.clone())),
             Err(error) => {
                 eprintln!("Ignored discovered Bambu address {host} for {printer_id}: {error}")
             }

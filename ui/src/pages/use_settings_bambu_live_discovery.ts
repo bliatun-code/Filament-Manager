@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { toErrorMessage } from "../lib/error_text";
 import { useI18n } from "../lib/i18n";
 import {
@@ -10,10 +10,14 @@ import {
   type BambuTlsTrustState,
   type TrustedLanInterfaceOption,
 } from "../lib/tauri_client";
+import { chooseBambuDiscoveryAutoFillCandidate } from "./settings_bambu_live_discovery_model";
 
 type UseSettingsBambuLiveDiscoveryInput = {
   busy: boolean;
+  editBambuLiveHost: string;
   editBambuLivePrinterSerial: string;
+  editBambuLiveTlsCertificateFingerprint: string | null;
+  editBambuLiveTlsSpkiFingerprint: string | null;
   editBambuLiveTlsTrustState: BambuTlsTrustState;
   editPrinterDirty: boolean;
   editPrinterId: string | null;
@@ -39,7 +43,10 @@ function samePrinterSerial(left: string, right: string) {
 
 export function useSettingsBambuLiveDiscovery({
   busy,
+  editBambuLiveHost,
   editBambuLivePrinterSerial,
+  editBambuLiveTlsCertificateFingerprint,
+  editBambuLiveTlsSpkiFingerprint,
   editBambuLiveTlsTrustState,
   editPrinterDirty,
   editPrinterId,
@@ -63,6 +70,20 @@ export function useSettingsBambuLiveDiscovery({
   const [hasScanned, setHasScanned] = useState(false);
   const [interfaceAddress, setInterfaceAddress] = useState("");
   const [scanning, setScanning] = useState(false);
+  const setupDraftRef = useRef({
+    host: editBambuLiveHost,
+    printerSerial: editBambuLivePrinterSerial,
+    tlsCertificateFingerprint: editBambuLiveTlsCertificateFingerprint,
+    tlsSpkiFingerprint: editBambuLiveTlsSpkiFingerprint,
+    tlsTrustState: editBambuLiveTlsTrustState,
+  });
+  setupDraftRef.current = {
+    host: editBambuLiveHost,
+    printerSerial: editBambuLivePrinterSerial,
+    tlsCertificateFingerprint: editBambuLiveTlsCertificateFingerprint,
+    tlsSpkiFingerprint: editBambuLiveTlsSpkiFingerprint,
+    tlsTrustState: editBambuLiveTlsTrustState,
+  };
 
   useEffect(() => {
     setInterfaceAddress((current) => {
@@ -93,8 +114,22 @@ export function useSettingsBambuLiveDiscovery({
     setError(null);
     setInfo(null);
     try {
-      setCandidates(await discoverBambuLivePrinters(interfaceAddress));
+      const discoveredCandidates = await discoverBambuLivePrinters(interfaceAddress);
+      setCandidates(discoveredCandidates);
       setHasScanned(true);
+      const autoFillCandidate = chooseBambuDiscoveryAutoFillCandidate(
+        discoveredCandidates,
+        setupDraftRef.current,
+      );
+      if (autoFillCandidate) {
+        handleUseForSetup(autoFillCandidate);
+        setInfo(
+          t(
+            "settings.bambuDiscoveryAutoFilled",
+            "Found one Bambu printer. Its IP address and serial were filled in automatically. No access code was changed or sent. Enter the access code, then check the printer identity before saving.",
+          ),
+        );
+      }
     } catch (scanError) {
       console.error(scanError);
       setError(

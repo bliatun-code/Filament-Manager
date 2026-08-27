@@ -1254,6 +1254,7 @@ export const esDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "La dirección guardada puede recuperarse después de confiar en la identidad de esta impresora.",
     "bambuDiscoveryDifferentPrinter": "Esta no es la impresora guardada. Solo puedes usarla para una nueva configuración.",
     "bambuDiscoveryRecovered": "Se recuperó la dirección de la impresora en vivo guardada.",
+    "bambuDiscoveryAutoFilled": "Se encontró una impresora Bambu. Su dirección IP y número de serie se completaron automáticamente. No se cambió ni envió ningún código de acceso. Introduce el código de acceso y comprueba la identidad de la impresora antes de guardar.",
     "bambuDiscoveryFailed": "No se pudieron encontrar impresoras Bambu en esta red.",
     "bambuLiveRecoveryFailed": "No se pudo recuperar la dirección de la impresora en vivo guardada.",
     updates: "Actualizaciones",

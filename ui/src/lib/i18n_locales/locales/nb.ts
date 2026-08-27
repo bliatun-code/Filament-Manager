@@ -1743,6 +1743,7 @@ export const nbDictionary: DictionaryNode = {
       "bambuDiscoveryRecoveryHint": "Den lagrede adressen kan gjenopprettes etter at denne printeridentiteten er godkjent.",
       "bambuDiscoveryDifferentPrinter": "Dette er ikke den lagrede printeren. Du kan bare bruke den til et nytt oppsett.",
       "bambuDiscoveryRecovered": "Lagret live-printeradresse er gjenopprettet.",
+      "bambuDiscoveryAutoFilled": "Fant én Bambu-printer. IP-adresse og serienummer ble fylt inn automatisk. Ingen tilgangskode ble endret eller sendt. Skriv inn tilgangskoden, og kontroller deretter printeridentiteten før du lagrer.",
       "bambuDiscoveryFailed": "Kunne ikke finne Bambu-printere på dette nettverket.",
       "bambuLiveRecoveryFailed": "Kunne ikke gjenopprette lagret live-printeradresse.",
       updates: "Oppdateringer",

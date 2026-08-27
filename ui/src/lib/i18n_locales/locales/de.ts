@@ -1719,6 +1719,7 @@ export const deDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Die gespeicherte Adresse kann wiederhergestellt werden, nachdem dieser Druckeridentität vertraut wurde.",
     "bambuDiscoveryDifferentPrinter": "Dies ist nicht der gespeicherte Drucker. Du kannst ihn nur für eine neue Einrichtung verwenden.",
     "bambuDiscoveryRecovered": "Die gespeicherte Live-Druckeradresse wurde wiederhergestellt.",
+    "bambuDiscoveryAutoFilled": "Ein Bambu-Drucker wurde gefunden. IP-Adresse und Seriennummer wurden automatisch ausgefüllt. Es wurde kein Zugangscode geändert oder gesendet. Geben Sie den Zugangscode ein und prüfen Sie anschließend vor dem Speichern die Druckeridentität.",
     "bambuDiscoveryFailed": "Auf diesem Netzwerk konnten keine Bambu-Drucker gefunden werden.",
     "bambuLiveRecoveryFailed": "Die gespeicherte Live-Druckeradresse konnte nicht wiederhergestellt werden.",
     updates: "Updates",

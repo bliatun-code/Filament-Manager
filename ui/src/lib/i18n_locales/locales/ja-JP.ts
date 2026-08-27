@@ -894,6 +894,7 @@ export const jaJPDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "このプリンターのIDが信頼されると、保存済みアドレスを復元できます。",
     "bambuDiscoveryDifferentPrinter": "これは保存済みのプリンターではありません。新しい設定にのみ使用できます。",
     "bambuDiscoveryRecovered": "保存済みのライブプリンターアドレスを復元しました。",
+    "bambuDiscoveryAutoFilled": "Bambuプリンターが1台見つかりました。IPアドレスとシリアル番号を自動入力しました。アクセスコードは変更も送信もされていません。アクセスコードを入力し、保存する前にプリンターIDを確認してください。",
     "bambuDiscoveryFailed": "このネットワークでBambuプリンターを見つけられませんでした。",
     "bambuLiveRecoveryFailed": "保存済みのライブプリンターアドレスを復元できませんでした。",
     "updates": "アップデート",

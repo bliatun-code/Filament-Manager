@@ -1047,6 +1047,7 @@ export const fiFIDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Tallennettu osoite voidaan palauttaa, kun tämän tulostimen identiteettiin luotetaan.",
     "bambuDiscoveryDifferentPrinter": "Tämä ei ole tallennettu tulostin. Voit käyttää sitä vain uuteen määritykseen.",
     "bambuDiscoveryRecovered": "Tallennettu live-tulostinosoite palautettiin.",
+    "bambuDiscoveryAutoFilled": "Yksi Bambu-tulostin löytyi. Sen IP-osoite ja sarjanumero täytettiin automaattisesti. Pääsykoodia ei muutettu eikä lähetetty. Anna pääsykoodi ja tarkista sitten tulostimen identiteetti ennen tallennusta.",
     "bambuDiscoveryFailed": "Bambu-tulostimia ei löytynyt tästä verkosta.",
     "bambuLiveRecoveryFailed": "Tallennettua live-tulostinosoitetta ei voitu palauttaa.",
     "updates": "Päivitykset",

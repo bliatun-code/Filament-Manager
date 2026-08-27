@@ -872,9 +872,12 @@ Hvis du ikke kjenner host eller serienummer, legger du først til printeren uten
 Live og åpner deretter kortet under **Innstillinger -> 3D-printere**. Aktiver
 Live og velg **Finn Bambu-printere** på det private LAN-grensesnittet som når
 printeren. Den korte passive skanningen viser lokalt annonserte printernavn,
-serienumre og adresser. Velg **Bruk til oppsett** for å fylle host og
-serienummer inn i det ulagrede skjemaet, og fullfør samme identitetskontroll før
-du lagrer.
+serienumre og adresser. Når søket finner nøyaktig én printer for et nytt
+oppsett, fylles host og serienummer automatisk inn i det ulagrede skjemaet uten
+å endre noe som allerede er skrevet i tilgangskodefeltet. Hvis flere printere
+blir funnet, velger du **Bruk til oppsett** ved riktig printer. Skriv deretter
+inn tilgangskoden og fullfør den samme eksplisitte identitetskontrollen før du
+lagrer.
 
 Live Bambu status er lokal og leser printerdata fra samme nettverk. Den bør konfigureres på host-maskinen når du bruker Vert/Klient-oppsett.
 
@@ -915,7 +918,7 @@ samsvare over TLS. Tilgangskoden blir aldri lest eller sendt.
 Hvis automatisk gjenoppretting ikke finner og verifiserer printeren, åpner du
 det lagrede kortet under **Innstillinger -> 3D-printere** og bruker **Finn
 Bambu-printere** på det private LAN-grensesnittet. Skanningen lytter etter
-lokale printerannonser i opptil ti sekunder og viser annonsert serienummer, slik
+lokale printerannonser i opptil tolv sekunder og viser annonsert serienummer, slik
 at du kan skille ellers like printere fra hverandre.
 
 For en lagret printer uten andre ulagrede endringer er **Gjenopprett lagret

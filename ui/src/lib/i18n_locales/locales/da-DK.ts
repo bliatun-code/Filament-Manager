@@ -1047,6 +1047,7 @@ export const daDKDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Den gemte adresse kan gendannes, efter at denne printeridentitet er godkendt.",
     "bambuDiscoveryDifferentPrinter": "Dette er ikke den gemte printer. Du kan kun bruge den til en ny opsætning.",
     "bambuDiscoveryRecovered": "Den gemte live-printeradresse er gendannet.",
+    "bambuDiscoveryAutoFilled": "Der blev fundet én Bambu-printer. Dens IP-adresse og serienummer blev udfyldt automatisk. Ingen adgangskode blev ændret eller sendt. Indtast adgangskoden, og kontrollér derefter printerens identitet, før du gemmer.",
     "bambuDiscoveryFailed": "Kunne ikke finde Bambu-printere på dette netværk.",
     "bambuLiveRecoveryFailed": "Kunne ikke gendanne den gemte live-printeradresse.",
     "updates": "Opdateringer",

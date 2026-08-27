@@ -1047,6 +1047,7 @@ export const huHUDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "A mentett cím a nyomtatóazonosság megbízhatóvá tétele után állítható helyre.",
     "bambuDiscoveryDifferentPrinter": "Ez nem a mentett nyomtató. Csak új beállításhoz használható.",
     "bambuDiscoveryRecovered": "A mentett élő nyomtatócím helyreállítva.",
+    "bambuDiscoveryAutoFilled": "Egy Bambu nyomtatót találtunk. Az IP-címét és sorozatszámát automatikusan kitöltöttük. Hozzáférési kód nem változott és nem lett elküldve. Adja meg a hozzáférési kódot, majd mentés előtt ellenőrizze a nyomtató identitását.",
     "bambuDiscoveryFailed": "Nem találhatók Bambu nyomtatók ezen a hálózaton.",
     "bambuLiveRecoveryFailed": "Nem állítható helyre a mentett élő nyomtatócím.",
     "updates": "Frissítések",

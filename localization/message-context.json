@@ -215,6 +215,12 @@
     },
     {
       "surface": "desktop",
+      "key": "settings.bambuDiscoveryAutoFilled",
+      "meaning": "Success message shown only when one unambiguous discovery result fills an otherwise blank, unpaired Bambu Live draft with the printer IP address and serial number. It confirms that no access code was changed or sent, then directs the user to enter the access code and review the TLS identity before saving.",
+      "screenshot": "docs/screenshots/settings-printer-editor.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.companionTitle",
       "meaning": "Filament Manager's trusted-LAN browser interface. Companion is a product feature name, not a person.",
       "screenshot": "docs/screenshots/settings-library.jpg"

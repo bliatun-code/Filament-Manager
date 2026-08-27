@@ -1047,6 +1047,7 @@ export const svSEDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Den sparade adressen kan återställas när den här skrivarens identitet är betrodd.",
     "bambuDiscoveryDifferentPrinter": "Det här är inte den sparade skrivaren. Du kan bara använda den för en ny konfiguration.",
     "bambuDiscoveryRecovered": "Den sparade live-skrivaradressen har återställts.",
+    "bambuDiscoveryAutoFilled": "En Bambu-skrivare hittades. IP-adress och serienummer fylldes i automatiskt. Ingen åtkomstkod ändrades eller skickades. Ange åtkomstkoden och kontrollera sedan skrivarens identitet innan du sparar.",
     "bambuDiscoveryFailed": "Det gick inte att hitta Bambu-skrivare på det här nätverket.",
     "bambuLiveRecoveryFailed": "Det gick inte att återställa den sparade live-skrivaradressen.",
     "updates": "Uppdateringar",

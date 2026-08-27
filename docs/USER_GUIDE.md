@@ -861,8 +861,11 @@ If you do not know the host or serial, add the printer without Live, then open
 its card in **Settings -> 3D printers**. Enable Live and choose **Find Bambu
 printers** on the private LAN interface that reaches the printer. The short
 passive scan shows locally announced printer names, serials, and addresses.
-Choose **Use for setup** to fill the host and serial into the unsaved form,
-then complete the same identity review before saving.
+When exactly one printer is found for a new setup, its host and serial are
+filled into the unsaved form automatically without changing anything already
+entered in the access-code field. If several printers are found, choose **Use
+for setup** beside the intended printer. Then enter the access code and
+complete the same explicit identity review before saving.
 
 Live Bambu status is local and reads printer data on the same network. It should be configured on the host machine when using a Host/Client setup.
 
@@ -900,7 +903,7 @@ pin to match over TLS. It never reads or sends the access code.
 
 If automatic recovery cannot find and verify the printer, open its saved card
 in **Settings -> 3D printers** and use **Find Bambu printers** on the private
-LAN interface. The scan listens for local printer announcements for up to ten
+LAN interface. The scan listens for local printer announcements for up to twelve
 seconds and displays the announced serial number, so you can distinguish
 otherwise similar printers.
 

@@ -894,6 +894,7 @@ export const csCZDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Uloženou adresu lze obnovit poté, co je identita této tiskárny důvěryhodná.",
     "bambuDiscoveryDifferentPrinter": "Toto není uložená tiskárna. Můžete ji použít pouze pro nové nastavení.",
     "bambuDiscoveryRecovered": "Uložená adresa živé tiskárny byla obnovena.",
+    "bambuDiscoveryAutoFilled": "Byla nalezena jedna tiskárna Bambu. Její IP adresa a sériové číslo byly vyplněny automaticky. Žádný přístupový kód nebyl změněn ani odeslán. Zadejte přístupový kód a před uložením ověřte identitu tiskárny.",
     "bambuDiscoveryFailed": "Na této síti se nepodařilo najít tiskárny Bambu.",
     "bambuLiveRecoveryFailed": "Uloženou adresu živé tiskárny se nepodařilo obnovit.",
     "updates": "Aktualizace",

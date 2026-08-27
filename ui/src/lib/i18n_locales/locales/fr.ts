@@ -1760,6 +1760,7 @@ export const frDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "L’adresse enregistrée peut être récupérée une fois que l’identité de cette imprimante est approuvée.",
     "bambuDiscoveryDifferentPrinter": "Ce n’est pas l’imprimante enregistrée. Vous pouvez uniquement l’utiliser pour une nouvelle configuration.",
     "bambuDiscoveryRecovered": "L’adresse de l’imprimante en direct enregistrée a été récupérée.",
+    "bambuDiscoveryAutoFilled": "Une imprimante Bambu a été trouvée. Son adresse IP et son numéro de série ont été renseignés automatiquement. Aucun code d’accès n’a été modifié ni envoyé. Saisissez le code d’accès, puis vérifiez l’identité de l’imprimante avant d’enregistrer.",
     "bambuDiscoveryFailed": "Impossible de trouver des imprimantes Bambu sur ce réseau.",
     "bambuLiveRecoveryFailed": "Impossible de récupérer l’adresse de l’imprimante en direct enregistrée.",
     updates: "Mises à jour",

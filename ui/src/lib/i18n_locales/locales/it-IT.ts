@@ -1105,6 +1105,7 @@ export const itITDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "L’indirizzo salvato può essere recuperato dopo che l’identità di questa stampante è stata considerata attendibile.",
     "bambuDiscoveryDifferentPrinter": "Questa non è la stampante salvata. Puoi usarla solo per una nuova configurazione.",
     "bambuDiscoveryRecovered": "L’indirizzo salvato della stampante live è stato recuperato.",
+    "bambuDiscoveryAutoFilled": "È stata trovata una stampante Bambu. L’indirizzo IP e il numero di serie sono stati compilati automaticamente. Nessun codice di accesso è stato modificato o inviato. Inserisci il codice di accesso, quindi verifica l’identità della stampante prima di salvare.",
     "bambuDiscoveryFailed": "Non è stato possibile trovare stampanti Bambu su questa rete.",
     "bambuLiveRecoveryFailed": "Non è stato possibile recuperare l’indirizzo salvato della stampante live.",
     updates: "Aggiornamenti",

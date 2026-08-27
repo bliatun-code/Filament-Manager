@@ -894,6 +894,7 @@ export const koKRDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "이 프린터의 ID를 신뢰한 후 저장된 주소를 복구할 수 있습니다.",
     "bambuDiscoveryDifferentPrinter": "저장된 프린터가 아닙니다. 새 설정에만 사용할 수 있습니다.",
     "bambuDiscoveryRecovered": "저장된 라이브 프린터 주소를 복구했습니다.",
+    "bambuDiscoveryAutoFilled": "Bambu 프린터 한 대를 찾았습니다. IP 주소와 일련번호를 자동으로 입력했습니다. 액세스 코드는 변경되거나 전송되지 않았습니다. 액세스 코드를 입력한 다음 저장하기 전에 프린터 ID를 확인하세요.",
     "bambuDiscoveryFailed": "이 네트워크에서 Bambu 프린터를 찾을 수 없습니다.",
     "bambuLiveRecoveryFailed": "저장된 라이브 프린터 주소를 복구할 수 없습니다.",
     "updates": "업데이트",

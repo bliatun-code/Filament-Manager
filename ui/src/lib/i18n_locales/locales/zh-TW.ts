@@ -894,6 +894,7 @@ export const zhTWDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "信任此印表機的身分後，可以還原已儲存的位址。",
     "bambuDiscoveryDifferentPrinter": "這不是已儲存的印表機。它只能用於新的設定。",
     "bambuDiscoveryRecovered": "已還原已儲存的即時印表機位址。",
+    "bambuDiscoveryAutoFilled": "找到一台 Bambu 印表機。已自動填入其 IP 位址和序號。存取碼未被變更或傳送。請輸入存取碼，然後在儲存前檢查印表機身分。",
     "bambuDiscoveryFailed": "無法在此網路上找到 Bambu 印表機。",
     "bambuLiveRecoveryFailed": "無法還原已儲存的即時印表機位址。",
     "updates": "更新",
