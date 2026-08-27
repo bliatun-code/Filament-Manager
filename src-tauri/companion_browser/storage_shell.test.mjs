@@ -61,6 +61,8 @@ test("storage shell keeps search and primary actions close to the spool list", (
   assert.match(html, /Inventory/);
   assert.match(html, /Add spool/);
   assert.doesNotMatch(html, /Scan QR/);
+  assert.doesNotMatch(html, /data-action="start-loan-(?:picker|create)"/);
+  assert.doesNotMatch(html, />Lend spool</);
   assert.match(html, /data-action="select-spool"/);
   assert.doesNotMatch(html, /Selected spool/);
   assert.match(html, /Browse inventory and open the spool you need\./);

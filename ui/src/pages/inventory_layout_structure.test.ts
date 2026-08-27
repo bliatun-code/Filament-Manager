@@ -46,6 +46,11 @@ const inventoryFiltersSource = readFileSync(
   new URL("../lib/use_inventory_filters.ts", import.meta.url),
   "utf8",
 );
+const inventoryDetailContextActionsSource = readFileSync(
+  new URL("../components/inventory_spool_detail_context_actions.tsx", import.meta.url),
+  "utf8",
+);
+const loansPageSource = readFileSync(new URL("./loans.tsx", import.meta.url), "utf8");
 
 test("inventory header actions stay inside the page header", () => {
   const headerIndex = inventoryPageWorkspaceSource.indexOf('<div className="page-header">');
@@ -92,6 +97,17 @@ test("inventory filters do not own header search and primary actions", () => {
   assert.doesNotMatch(filterPanelSource, /page-header-actions/);
   assert.doesNotMatch(filterPanelSource, /page-header-search/);
   assert.doesNotMatch(filterPanelSource, /PageHeaderButton/);
+});
+
+test("inventory header leaves loan creation to the loans page and spool detail", () => {
+  const headerActionsSource = inventoryControlsSource.slice(
+    inventoryControlsSource.indexOf("export function InventoryHeaderActions"),
+    inventoryControlsSource.indexOf("export function InventoryControlsPanel"),
+  );
+
+  assert.doesNotMatch(headerActionsSource, /onLoanOutRoll|inventory\.loanOutRoll/);
+  assert.match(loansPageSource, /inventory\.loanOutRoll/);
+  assert.match(inventoryDetailContextActionsSource, /inventory\.loanOutAction/);
 });
 
 test("inventory exposes purchases as a page view and keeps queue management out of add spool", () => {

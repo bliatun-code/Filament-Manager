@@ -49,7 +49,6 @@ type InventoryHeaderActionsProps = {
   lowStockOnly: boolean;
   onAddSpool: () => void;
   onCreateLabelSheet: () => void;
-  onLoanOutRoll: () => void;
   onLowStockOnlyChange: (value: boolean) => void;
   onSearchChange: (value: string) => void;
   onStatusFilterChange: (value: StatusFilter) => void;
@@ -116,7 +115,6 @@ export function InventoryHeaderActions({
   lowStockOnly,
   onAddSpool,
   onCreateLabelSheet,
-  onLoanOutRoll,
   onLowStockOnlyChange,
   onSearchChange,
   onStatusFilterChange,
@@ -141,12 +139,6 @@ export function InventoryHeaderActions({
           disabled={primaryActionsDisabled}
         >
           {t("inventory.addSpoolAction", "Add spool")}
-        </PageHeaderButton>
-        <PageHeaderButton
-          onClick={onLoanOutRoll}
-          disabled={primaryActionsDisabled}
-        >
-          {t("inventory.loanOutRoll", "Loan out roll")}
         </PageHeaderButton>
         <PageHeaderButton
           onClick={onCreateLabelSheet}

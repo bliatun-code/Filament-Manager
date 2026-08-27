@@ -1502,7 +1502,6 @@ export default function InventoryPage({
           lowStockOnly,
           onAddSpool: () => openAddModal(),
           onCreateLabelSheet: () => void openInventoryLabelSheet(),
-          onLoanOutRoll: openLoanTrackingModal,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,
