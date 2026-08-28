@@ -13,6 +13,7 @@ import {
   DEFAULT_LOCALE,
 } from "../src-tauri/companion_browser/supported_locales.js";
 import {
+  validateDictionaryMessageFormats,
   validateLocaleDictionaries,
   validateLocaleOverlay,
 } from "./check-i18n-locales.mjs";
@@ -38,6 +39,134 @@ export const companionLocaleRustRegistryFile = resolve(
   "companion_locale_assets.generated.rs",
 );
 
+function isPlainDictionaryObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function companionDictionaryValueType(value) {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (typeof value !== "object") {
+    return typeof value;
+  }
+  let constructorName = null;
+  try {
+    const prototype = Object.getPrototypeOf(value);
+    const constructor = prototype
+      ? Object.getOwnPropertyDescriptor(prototype, "constructor")?.value
+      : null;
+    constructorName = typeof constructor === "function" ? constructor.name : null;
+  } catch {
+    return "uninspectable object";
+  }
+  return constructorName && constructorName !== "Object"
+    ? `object (${constructorName})`
+    : "object";
+}
+
+function validateCompanionDictionaryNode(value, path, ancestors) {
+  if (typeof value === "string") {
+    return [];
+  }
+  if (!isPlainDictionaryObject(value)) {
+    return [
+      `${path} must be a string leaf or nested object; received ${companionDictionaryValueType(value)}.`,
+    ];
+  }
+  if (ancestors.has(value)) {
+    return [`${path} contains a cyclic object.`];
+  }
+
+  const ownKeys = Reflect.ownKeys(value);
+  if (ownKeys.length === 0) {
+    return [`${path} must not be an empty object.`];
+  }
+
+  const errors = [];
+  const nestedAncestors = new Set(ancestors).add(value);
+  for (const key of ownKeys) {
+    if (typeof key !== "string") {
+      errors.push(`${path} contains a non-string translation key.`);
+      continue;
+    }
+    const keyPath = key ? `${path}.${key}` : `${path}.<empty>`;
+    if (!key || key.includes(".")) {
+      errors.push(
+        `${keyPath} has an invalid translation key segment; segments must be non-empty and cannot contain dots.`,
+      );
+      continue;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor?.enumerable || !("value" in descriptor)) {
+      errors.push(
+        `${keyPath} must be an enumerable data property in the catalog.`,
+      );
+      continue;
+    }
+    errors.push(
+      ...validateCompanionDictionaryNode(
+        descriptor.value,
+        keyPath,
+        nestedAncestors,
+      ),
+    );
+  }
+  return errors;
+}
+
+export function validateCompanionDictionaryShape(dictionary, locale) {
+  if (!isPlainDictionaryObject(dictionary)) {
+    return [
+      `${locale} must contain an object dictionary; received ${companionDictionaryValueType(dictionary)}.`,
+    ];
+  }
+  return validateCompanionDictionaryNode(dictionary, locale, new Set());
+}
+
+export function validateCompanionDictionariesShape(dictionaries) {
+  if (!isPlainDictionaryObject(dictionaries)) {
+    return [
+      `Companion dictionaries must be an object keyed by locale; received ${companionDictionaryValueType(dictionaries)}.`,
+    ];
+  }
+  const localeKeys = Reflect.ownKeys(dictionaries);
+  if (localeKeys.length === 0) {
+    return ["Companion dictionaries must contain at least one locale."];
+  }
+
+  const errors = [];
+  for (const locale of localeKeys) {
+    if (typeof locale !== "string") {
+      errors.push("Companion dictionary map contains a non-string locale key.");
+      continue;
+    }
+    const localeLabel = locale || "<empty locale>";
+    if (!locale) {
+      errors.push("Companion dictionary map contains an empty locale key.");
+      continue;
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(dictionaries, locale);
+    if (!descriptor?.enumerable || !("value" in descriptor)) {
+      errors.push(
+        `${localeLabel} must be an enumerable data property in Companion dictionaries.`,
+      );
+      continue;
+    }
+    errors.push(
+      ...validateCompanionDictionaryShape(descriptor.value, localeLabel),
+    );
+  }
+  return errors;
+}
+
 export function companionLocaleAssetName(locale) {
   return `companion_locale_${locale}.js`;
 }
@@ -45,10 +174,26 @@ export function companionLocaleAssetName(locale) {
 export function readCompanionLocaleCatalog(
   catalogFile = companionLocaleCatalogFile,
 ) {
-  const document = JSON.parse(readFileSync(catalogFile, "utf8"));
-  if (document?.schemaVersion !== 1 || !document.dictionaries) {
+  let document;
+  try {
+    document = JSON.parse(readFileSync(catalogFile, "utf8"));
+  } catch (error) {
+    throw new Error(
+      `${catalogFile} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (!isPlainDictionaryObject(document)) {
+    throw new Error(`${catalogFile} must contain a JSON object.`);
+  }
+  if (document.schemaVersion !== 1 || !("dictionaries" in document)) {
     throw new Error(
       `${catalogFile} must use schemaVersion 1 and contain dictionaries.`,
+    );
+  }
+  const shapeErrors = validateCompanionDictionariesShape(document.dictionaries);
+  if (shapeErrors.length > 0) {
+    throw new Error(
+      `${catalogFile} has an invalid Companion dictionary structure:\n${shapeErrors.join("\n")}`,
     );
   }
   return document.dictionaries;
@@ -59,34 +204,37 @@ export function validateCompanionLocaleCatalog(
   localeDefinitions = CATALOG_LOCALES,
 ) {
   const expected = localeDefinitions.map(({ id }) => id).sort();
-  const actual = Object.keys(dictionaries ?? {}).sort();
+  const shapeErrors = validateCompanionDictionariesShape(dictionaries);
+  if (shapeErrors.length > 0) {
+    return shapeErrors;
+  }
+  const actual = Object.keys(dictionaries).sort();
   const errors = [];
   if (JSON.stringify(expected) !== JSON.stringify(actual)) {
     errors.push(
       `Catalog locales ${actual.join(", ")} do not match manifest locales ${expected.join(", ")}.`,
     );
   }
-  for (const locale of expected) {
-    const dictionary = dictionaries?.[locale];
-    if (!dictionary || typeof dictionary !== "object" || Array.isArray(dictionary)) {
-      errors.push(`${locale} must contain an object dictionary.`);
-    }
+  if (errors.length > 0) {
+    return errors;
   }
-  const baseDictionary = dictionaries?.[DEFAULT_LOCALE];
-  if (baseDictionary && typeof baseDictionary === "object") {
-    for (const locale of expected) {
-      if (locale !== DEFAULT_LOCALE && dictionaries?.[locale]) {
-        const definition = localeDefinitions.find(({ id }) => id === locale);
-        errors.push(
-          ...(definition?.catalogKind === "draft"
-            ? validateLocaleOverlay(baseDictionary, dictionaries[locale], locale)
-            : validateLocaleDictionaries(
-                baseDictionary,
-                dictionaries[locale],
-                locale,
-              )),
-        );
-      }
+
+  const baseDictionary = dictionaries[DEFAULT_LOCALE];
+  errors.push(
+    ...validateDictionaryMessageFormats(baseDictionary, DEFAULT_LOCALE),
+  );
+  for (const locale of expected) {
+    if (locale !== DEFAULT_LOCALE) {
+      const definition = localeDefinitions.find(({ id }) => id === locale);
+      errors.push(
+        ...(definition?.catalogKind === "draft"
+          ? validateLocaleOverlay(baseDictionary, dictionaries[locale], locale)
+          : validateLocaleDictionaries(
+              baseDictionary,
+              dictionaries[locale],
+              locale,
+            )),
+      );
     }
   }
   return errors;
@@ -120,6 +268,10 @@ function companionDictionaryLiteral(value) {
 }
 
 export function companionLocaleModuleSource(locale, dictionary) {
+  const shapeErrors = validateCompanionDictionaryShape(dictionary, locale);
+  if (shapeErrors.length > 0) {
+    throw new Error(shapeErrors.join("\n"));
+  }
   return [
     "// Generated by scripts/generate-companion-locales.mjs.",
     "// Edit localization/companion-dictionaries.json, then regenerate.",
@@ -177,8 +329,20 @@ export function checkGeneratedCompanionLocales({
   registryFile = companionLocaleRustRegistryFile,
   localeDefinitions = CATALOG_LOCALES,
 } = {}) {
-  const dictionaries = readCompanionLocaleCatalog(catalogFile);
+  let dictionaries;
+  try {
+    dictionaries = readCompanionLocaleCatalog(catalogFile);
+  } catch (error) {
+    return {
+      dictionaries: null,
+      errors: [error instanceof Error ? error.message : String(error)],
+      files: new Map(),
+    };
+  }
   const errors = validateCompanionLocaleCatalog(dictionaries, localeDefinitions);
+  if (errors.length > 0) {
+    return { dictionaries, errors, files: new Map() };
+  }
   const expectedFiles = generatedCompanionLocaleFiles(
     dictionaries,
     localeDefinitions,
@@ -243,26 +407,32 @@ export function writeGeneratedCompanionLocales({
 
 function run() {
   const checkOnly = process.argv.includes("--check");
-  if (checkOnly) {
-    const { errors, files } = checkGeneratedCompanionLocales();
-    if (errors.length > 0) {
-      console.error("Generated Companion locale contract failed:");
-      for (const error of errors) {
-        console.error(`  - ${error}`);
+  try {
+    if (checkOnly) {
+      const { errors, files } = checkGeneratedCompanionLocales();
+      if (errors.length > 0) {
+        console.error("Generated Companion locale contract failed:");
+        for (const error of errors) {
+          console.error(`  - ${error}`);
+        }
+        process.exitCode = 1;
+        return;
       }
-      process.exitCode = 1;
+      console.log(
+        `Generated Companion locale contract ok (${files.size} locale modules).`,
+      );
       return;
     }
-    console.log(
-      `Generated Companion locale contract ok (${files.size} locale modules).`,
-    );
-    return;
-  }
 
-  const files = writeGeneratedCompanionLocales();
-  console.log(
-    `Generated ${files.size} Companion locale modules in ${basename(companionLocaleOutputRoot)}.`,
-  );
+    const files = writeGeneratedCompanionLocales();
+    console.log(
+      `Generated ${files.size} Companion locale modules in ${basename(companionLocaleOutputRoot)}.`,
+    );
+  } catch (error) {
+    console.error("Generated Companion locale contract failed:");
+    console.error(`  - ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -21,7 +21,9 @@ use crate::backend::printer_slot_live_mapping::{
 };
 use crate::backend::statistics::InventoryOverview;
 use crate::catalog_commands::{
+    audit_bambu_catalog_source_blocking, audit_esun_catalog_source_blocking,
     refresh_bambu_catalog_blocking, refresh_esun_catalog_blocking, CatalogRefreshResult,
+    CatalogSourceAuditResult,
 };
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use serde::{Deserialize, Serialize};
@@ -140,6 +142,14 @@ impl CompanionService {
         self.with_authoritative_write(|| {
             refresh_bambu_catalog_blocking(&self.db_path, material_types, None)
         })
+    }
+
+    pub fn audit_bambu_catalog_source(&self) -> Result<CatalogSourceAuditResult, String> {
+        self.with_authoritative_write(|| audit_bambu_catalog_source_blocking(None))
+    }
+
+    pub fn audit_esun_catalog_source(&self) -> Result<CatalogSourceAuditResult, String> {
+        self.with_authoritative_write(|| audit_esun_catalog_source_blocking(None))
     }
 
     pub fn refresh_esun_catalog(

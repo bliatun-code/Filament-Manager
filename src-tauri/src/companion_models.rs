@@ -179,6 +179,11 @@ pub(crate) struct RefreshVendorCatalogRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct AuditVendorCatalogRequest {
+    pub(crate) vendor: String,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct UpdateBorrowedInSpoolRequest {
     pub(crate) owner_name: String,
     pub(crate) owner_contact: Option<String>,
@@ -241,6 +246,7 @@ pub(crate) const SPOOL_COMMON_DETAILS_V2_CAPABILITY: &str = "spool-common-detail
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
 pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
+pub(crate) const VENDOR_CATALOG_DISCOVERY_CAPABILITY: &str = "vendor-catalog-discovery-v1";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

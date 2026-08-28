@@ -1,8 +1,8 @@
 # Localization review checklist
 
 Use this checklist for community corrections or complete native review of any
-registered locale. All non-English locales are currently published
-community-review candidates. Norwegian Bokmål, German, and French retain a
+registered locale. All non-English locales are currently published as complete
+community translations. Norwegian Bokmål, German, and French retain a
 named review record for an earlier source fingerprint and require a renewed
 handoff before maintained status. This checklist supplements the canonical
 terminology and workflow in
@@ -12,7 +12,7 @@ reviewer or record approval by itself.
 ## Before review
 
 - For a maintained locale, confirm whether it is stale against the new English
-  source fingerprint. For a community-review candidate, record the exact source
+  source fingerprint. For a community translation, record the exact source
   fingerprint used for the review.
 - Run `npm run report:i18n` and record the current combined English source
   fingerprint.
@@ -22,6 +22,9 @@ reviewer or record approval by itself.
   reviewer confirmation that the term, product name, acronym or format should
   remain identical to English.
 - Review only against artifacts produced from the same fingerprint.
+- Confirm that the locale has a `releaseQaAudits` record for the current source,
+  complete catalog-set and runtime-contract fingerprints; do not reuse evidence
+  from older catalog copy or a localization runtime.
 - Keep product names and protocol acronyms such as Bambu Lab, eSUN, AMS, RFID,
   MQTT, QR, CSV, JSON and AGPL unchanged unless the product itself localizes
   them.
@@ -75,13 +78,20 @@ Replace `<locale>` with the registered locale ID, for example `de`, `fr`,
 ```sh
 npm run report:i18n
 npm run export:i18n-review -- --locale <locale>
-node scripts/run-desktop-screenshot-gate.mjs --launch --locale <locale> --profile rich --scenario all
+node scripts/run-desktop-visual-matrix.mjs
 node scripts/run-companion-screenshot-gate.mjs --launch --locale <locale> --profile rich
 npm run verify
 ```
 
 The screenshot gates must use their temporary database copy. Do not run the
 Companion screenshot gate against the live library without `--launch`.
+The desktop matrix gives every selectable locale one data-backed smoke and keeps
+the representative scenario/width regressions. Run the Companion command once
+for each affected locale; it is a representative per-locale gate, not an
+implicit 21-language matrix. Record `artifactQa` and
+`runtimeQa` only after the matching fingerprint completes the machine-verifiable
+catalog and runtime gates. Record screenshot results separately from their
+actual run; neither kind of evidence is native-language review.
 
 ## Approval
 
@@ -92,8 +102,8 @@ After corrections and a final clean QA run:
 - Set `reviewedSourceFingerprint` to the exact fingerprint that was reviewed.
 - Change `releaseStatus` to `maintained` only in the reviewed release change.
   Locale selectability is a separate product decision and may already be true
-  for a published community-review candidate.
-- Re-run readiness, both visual matrices and full verification after the status
-  change.
+  for a published community translation.
+- Re-run readiness, the desktop matrix, the Companion visual gate, and full
+  verification after the status change.
 - Do not approve a stale fingerprint or infer native approval from automated
   tests, machine translation, public availability, or visual layout checks.

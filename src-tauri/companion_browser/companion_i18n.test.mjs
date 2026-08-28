@@ -171,15 +171,15 @@ test("purchase receipt fields, validation, and Host-upgrade guidance are localiz
   }
 });
 
-test("draft locales load and use the English catalog fallback for missing purchase history copy", () => {
-  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es", "en"]);
+test("complete catalogs localize purchase history without an English overlay", () => {
+  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es"]);
   assert.equal(
     t("es", "purchaseReceipt.historyUpdated", "raw dynamic fallback"),
-    "Purchase details updated",
+    "Datos de compra actualizados",
   );
   assert.equal(
     t("es", "purchaseReceipt.historyRecorded", "raw dynamic fallback"),
-    "Purchase receipt recorded",
+    "Compra registrada",
   );
 });
 
@@ -189,7 +189,7 @@ test("French locale applies French zero, one, and other plural categories", () =
   assert.equal(t("fr", "nav.spoolCount", "", { count: 2 }), "2 bobines");
 });
 
-test("complete Spanish draft translates shell and workflow copy", () => {
+test("complete Spanish catalog translates shell and workflow copy", () => {
   assert.equal(t("es", "nav.storage"), "Inventario");
   assert.equal(t("es", "settings.title"), "Ajustes");
   assert.equal(t("es", "nav.spoolCount", "", { count: 1 }), "1 bobina");
@@ -211,7 +211,7 @@ test("complete Spanish draft translates shell and workflow copy", () => {
   );
 });
 
-test("complete Brazilian Portuguese draft translates shell and workflow copy", () => {
+test("complete Brazilian Portuguese catalog translates shell and workflow copy", () => {
   assert.equal(t("pt-BR", "nav.storage"), "Inventário");
   assert.equal(t("pt-BR", "settings.title"), "Configurações");
   assert.equal(t("pt-BR", "nav.spoolCount", "", { count: 1 }), "1 bobina");
@@ -230,7 +230,7 @@ test("complete Brazilian Portuguese draft translates shell and workflow copy", (
   );
 });
 
-test("complete Italian draft translates shell and workflow copy", () => {
+test("complete Italian catalog translates shell and workflow copy", () => {
   assert.equal(t("it-IT", "nav.storage"), "Inventario");
   assert.equal(t("it-IT", "settings.title"), "Impostazioni");
   assert.equal(t("it-IT", "nav.spoolCount", "", { count: 1 }), "1 bobina");
@@ -249,7 +249,7 @@ test("complete Italian draft translates shell and workflow copy", () => {
   );
 });
 
-test("complete Polish draft translates shell and plural workflow copy", () => {
+test("complete Polish catalog translates shell and plural workflow copy", () => {
   assert.equal(t("pl-PL", "nav.storage"), "Magazyn");
   assert.equal(t("pl-PL", "settings.title"), "Ustawienia");
   assert.equal(t("pl-PL", "nav.spoolCount", "", { count: 1 }), "1 szpula");
@@ -258,7 +258,7 @@ test("complete Polish draft translates shell and plural workflow copy", () => {
   assert.equal(t("pl-PL", "printers.toolhead"), "Głowica narzędziowa");
 });
 
-test("complete Dutch draft translates shell and workflow copy", () => {
+test("complete Dutch catalog translates shell and workflow copy", () => {
   assert.equal(t("nl-NL", "nav.storage"), "Voorraad");
   assert.equal(t("nl-NL", "settings.title"), "Instellingen");
   assert.equal(t("nl-NL", "nav.spoolCount", "", { count: 1 }), "1 spoel");
@@ -267,7 +267,7 @@ test("complete Dutch draft translates shell and workflow copy", () => {
   assert.equal(t("nl-NL", "detail.saveWeight"), "Gewicht opslaan");
 });
 
-test("complete Czech draft translates shell and plural workflow copy", () => {
+test("complete Czech catalog translates shell and plural workflow copy", () => {
   assert.equal(t("cs-CZ", "nav.storage"), "Sklad");
   assert.equal(t("cs-CZ", "settings.title"), "Nastavení");
   assert.equal(t("cs-CZ", "nav.spoolCount", "", { count: 1 }), "1 cívka");
@@ -277,7 +277,7 @@ test("complete Czech draft translates shell and plural workflow copy", () => {
   assert.equal(t("cs-CZ", "detail.saveWeight"), "Uložit hmotnost");
 });
 
-test("complete Simplified Chinese draft translates shell and workflow copy", () => {
+test("complete Simplified Chinese catalog translates shell and workflow copy", () => {
   assert.equal(t("zh-CN", "nav.storage"), "库存");
   assert.equal(t("zh-CN", "settings.title"), "设置");
   assert.equal(t("zh-CN", "nav.spoolCount", "", { count: 1 }), "1 个线轴");
@@ -286,7 +286,7 @@ test("complete Simplified Chinese draft translates shell and workflow copy", () 
   assert.equal(t("zh-CN", "detail.saveWeight"), "保存重量");
 });
 
-test("complete Japanese draft translates shell and workflow copy", () => {
+test("complete Japanese catalog translates shell and workflow copy", () => {
   assert.equal(t("ja-JP", "nav.storage"), "在庫");
   assert.equal(t("ja-JP", "settings.title"), "設定");
   assert.equal(t("ja-JP", "nav.spoolCount", "", { count: 1 }), "1 個のスプール");
@@ -295,7 +295,7 @@ test("complete Japanese draft translates shell and workflow copy", () => {
   assert.equal(t("ja-JP", "detail.saveWeight"), "重量を保存");
 });
 
-test("complete Korean draft translates shell and workflow copy", () => {
+test("complete Korean catalog translates shell and workflow copy", () => {
   assert.equal(t("ko-KR", "nav.storage"), "재고");
   assert.equal(t("ko-KR", "settings.title"), "설정");
   assert.equal(t("ko-KR", "nav.spoolCount", "", { count: 1 }), "1개 스풀");
@@ -304,7 +304,7 @@ test("complete Korean draft translates shell and workflow copy", () => {
   assert.equal(t("ko-KR", "detail.saveWeight"), "무게 저장");
 });
 
-test("complete Traditional Chinese draft translates shell and workflow copy", () => {
+test("complete Traditional Chinese catalog translates shell and workflow copy", () => {
   assert.equal(t("zh-TW", "nav.storage"), "庫存");
   assert.equal(t("zh-TW", "settings.title"), "設定");
   assert.equal(t("zh-TW", "nav.spoolCount", "", { count: 1 }), "1 捲線材");
@@ -313,7 +313,7 @@ test("complete Traditional Chinese draft translates shell and workflow copy", ()
   assert.equal(t("zh-TW", "detail.saveWeight"), "儲存重量");
 });
 
-test("complete Turkish draft translates shell and workflow copy", () => {
+test("complete Turkish catalog translates shell and workflow copy", () => {
   assert.equal(t("tr-TR", "nav.storage"), "Envanter");
   assert.equal(t("tr-TR", "settings.title"), "Ayarlar");
   assert.equal(t("tr-TR", "nav.spoolCount", "", { count: 1 }), "1 makara");
@@ -322,7 +322,7 @@ test("complete Turkish draft translates shell and workflow copy", () => {
   assert.equal(t("tr-TR", "detail.saveWeight"), "Ağırlığı kaydet");
 });
 
-test("complete Ukrainian draft translates shell and plural workflow copy", () => {
+test("complete Ukrainian catalog translates shell and plural workflow copy", () => {
   assert.equal(t("uk-UA", "nav.storage"), "Склад");
   assert.equal(t("uk-UA", "settings.title"), "Налаштування");
   assert.equal(t("uk-UA", "nav.spoolCount", "", { count: 1 }), "1 котушка");
@@ -332,7 +332,7 @@ test("complete Ukrainian draft translates shell and plural workflow copy", () =>
   assert.equal(t("uk-UA", "detail.saveWeight"), "Зберегти вагу");
 });
 
-test("complete Russian draft translates shell and plural workflow copy", () => {
+test("complete Russian catalog translates shell and plural workflow copy", () => {
   assert.equal(t("ru-RU", "nav.storage"), "Склад");
   assert.equal(t("ru-RU", "settings.title"), "Настройки");
   assert.equal(t("ru-RU", "nav.spoolCount", "", { count: 1 }), "1 катушка");
@@ -342,7 +342,7 @@ test("complete Russian draft translates shell and plural workflow copy", () => {
   assert.equal(t("ru-RU", "detail.saveWeight"), "Сохранить вес");
 });
 
-test("complete Hungarian draft translates shell and plural workflow copy", () => {
+test("complete Hungarian catalog translates shell and plural workflow copy", () => {
   assert.equal(t("hu-HU", "nav.storage"), "Készlet");
   assert.equal(t("hu-HU", "settings.title"), "Beállítások");
   assert.equal(t("hu-HU", "nav.spoolCount", "", { count: 1 }), "1 tekercs");
@@ -351,7 +351,7 @@ test("complete Hungarian draft translates shell and plural workflow copy", () =>
   assert.equal(t("hu-HU", "detail.saveWeight"), "Súly mentése");
 });
 
-test("complete Swedish draft translates shell and plural workflow copy", () => {
+test("complete Swedish catalog translates shell and plural workflow copy", () => {
   assert.equal(t("sv-SE", "nav.storage"), "Lager");
   assert.equal(t("sv-SE", "settings.title"), "Inställningar");
   assert.equal(t("sv-SE", "nav.spoolCount", "", { count: 1 }), "1 rulle");
@@ -360,7 +360,7 @@ test("complete Swedish draft translates shell and plural workflow copy", () => {
   assert.equal(t("sv-SE", "detail.saveWeight"), "Spara vikt");
 });
 
-test("complete Danish draft translates shell and plural workflow copy", () => {
+test("complete Danish catalog translates shell and plural workflow copy", () => {
   assert.equal(t("da-DK", "nav.storage"), "Lager");
   assert.equal(t("da-DK", "settings.title"), "Indstillinger");
   assert.equal(t("da-DK", "nav.spoolCount", "", { count: 1 }), "1 rulle");
@@ -369,7 +369,7 @@ test("complete Danish draft translates shell and plural workflow copy", () => {
   assert.equal(t("da-DK", "detail.saveWeight"), "Gem vægt");
 });
 
-test("complete Finnish draft translates shell and plural workflow copy", () => {
+test("complete Finnish catalog translates shell and plural workflow copy", () => {
   assert.equal(t("fi-FI", "nav.storage"), "Varasto");
   assert.equal(t("fi-FI", "settings.title"), "Asetukset");
   assert.equal(t("fi-FI", "nav.spoolCount", "", { count: 1 }), "1 rulla");

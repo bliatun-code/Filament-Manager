@@ -23,9 +23,11 @@ import {
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
 import {
+  isInventorySpoolLoanedOut,
   isInventorySpoolLoanTrackingCandidate,
   type InventoryLocationFilter,
 } from "../lib/inventory_list_model";
+import { isOutboundLoanDirection } from "../lib/inventory_domain";
 import {
   archiveLocationForInventory,
   createLocationForInventory,
@@ -575,13 +577,15 @@ export default function InventoryPage({
   }, [cancelDangerZoneConfirmation, closeRollModal, resetDetailDrafts]);
 
   const hasUnsavedDetailChanges = commonDetailsDirty || masterMetadataDirty;
-  const closeSelectedSpoolDetailModal = useInventoryUnsavedChangesGuard({
+  const {
+    cancelDiscardConfirmation: cancelSelectedSpoolDiscardConfirmation,
+    confirmDiscard: confirmSelectedSpoolDiscard,
+    discardConfirmationOpen: selectedSpoolDiscardConfirmationOpen,
+    requestDiscard: closeSelectedSpoolDetailModal,
+    requestDiscardThen: closeSelectedSpoolDetailModalThen,
+  } = useInventoryUnsavedChangesGuard({
     active: showRollModal,
     hasUnsavedChanges: hasUnsavedDetailChanges,
-    message: t(
-      "inventory.discardUnsavedChanges",
-      "Discard unsaved roll changes? Your edits will be lost.",
-    ),
     onDiscard: discardSelectedSpoolDetail,
     onNavigationGuardChange,
   });
@@ -601,6 +605,19 @@ export default function InventoryPage({
   const activeLoanSpoolIds = useMemo(
     () => new Set(activeLoans.map((loan) => loan.loan.spool_id)),
     [activeLoans],
+  );
+  const activeOutboundLoanSpoolIds = useMemo(
+    () =>
+      new Set(
+        activeLoans
+          .filter((loan) => isOutboundLoanDirection(loan.loan.loan_direction))
+          .map((loan) => loan.loan.spool_id),
+      ),
+    [activeLoans],
+  );
+  const selectedSpoolLoanedOut = isInventorySpoolLoanedOut(
+    selectedSpool,
+    activeOutboundLoanSpoolIds,
   );
 
   const { printerNameById, printerSlotBySpoolId, printerSlotOptions, slotLabelById } =
@@ -682,31 +699,34 @@ export default function InventoryPage({
   });
 
   const selectRollForManage = useCallback((spoolId: string) => {
+    const openSelectedRoll = () => {
+      setActiveWorkspaceView("STOCK");
+      if (clientReadOnly && !clientHostWritePaired) {
+        setInfoMessage(
+          t(
+            "inventory.clientReadOnlyManage",
+            "This device is connected as a client. You can review the roll here, and paired host actions will stay limited and explicit.",
+          ),
+        );
+      } else {
+        setInfoMessage(null);
+      }
+      switchToManageMode();
+      setShowRollHistory(false);
+      openRollModal(spoolId);
+    };
     if (
       showRollModal &&
       selectedSpoolId !== spoolId &&
-      !closeSelectedSpoolDetailModal()
+      !closeSelectedSpoolDetailModalThen(openSelectedRoll)
     ) {
       return;
     }
-    setActiveWorkspaceView("STOCK");
-    if (clientReadOnly && !clientHostWritePaired) {
-      setInfoMessage(
-        t(
-          "inventory.clientReadOnlyManage",
-          "This device is connected as a client. You can review the roll here, and paired host actions will stay limited and explicit.",
-        ),
-      );
-    } else {
-      setInfoMessage(null);
-    }
-    switchToManageMode();
-    setShowRollHistory(false);
-    openRollModal(spoolId);
+    openSelectedRoll();
   }, [
     clientHostWritePaired,
     clientReadOnly,
-    closeSelectedSpoolDetailModal,
+    closeSelectedSpoolDetailModalThen,
     openRollModal,
     selectedSpoolId,
     setShowRollHistory,
@@ -752,6 +772,7 @@ export default function InventoryPage({
     clientLibraryId,
     clientReadOnly,
     ensureLocalWriteAllowed,
+    loanedOut: selectedSpoolLoanedOut,
     manageBusy,
     printerSlots: printerSlotOptions,
     reloadPrinterOverview,
@@ -883,6 +904,7 @@ export default function InventoryPage({
     selectedSpool,
     selectedSpoolAssignedSlot,
     selectedSpoolLocationDraft,
+    selectedSpoolLoanedOut,
     selectedSpoolOwnerContactDraft,
     selectedSpoolOwnerNameDraft,
     selectedSpoolOwnershipDraft,
@@ -1298,6 +1320,7 @@ export default function InventoryPage({
             deterministicLabelPreferences={desktopVisualQaScenario === "selected-roll-label"}
             displayTitle={selectedSpoolDisplayTitle}
             defaultPurchaseCurrency={defaultPurchaseCurrency}
+            discardConfirmationOpen={selectedSpoolDiscardConfirmationOpen}
             error={error}
             filamentName={editMasterFilamentName}
             formatHistoryEventDetails={formatHistoryEventDetails}
@@ -1309,6 +1332,7 @@ export default function InventoryPage({
             historyLoading={historyLoading}
             initialLabelPanelOpen={desktopVisualQaScenario === "selected-roll-label"}
             infoMessage={infoMessage}
+            homeLocationLocked={selectedSpoolLoanedOut}
             locationDraft={selectedSpoolLocationDraft}
             locationValue={selectedSpoolLocationValue}
             manageBusy={manageBusy}
@@ -1331,7 +1355,9 @@ export default function InventoryPage({
             onChangeTare={setSelectedSpoolTareDraft}
             onChangeVendor={setEditMasterVendor}
             onCancelDangerZoneConfirmation={cancelDangerZoneConfirmation}
+            onCancelDiscardConfirmation={cancelSelectedSpoolDiscardConfirmation}
             onClose={closeSelectedSpoolDetailModal}
+            onConfirmDiscard={confirmSelectedSpoolDiscard}
             onDelete={handleDeleteSelected}
             onLoadInPrinter={openLoadSpoolModal}
             onLoanOut={() => openLoanTrackingModal(selectedSpool)}
@@ -1476,7 +1502,6 @@ export default function InventoryPage({
           lowStockOnly,
           onAddSpool: () => openAddModal(),
           onCreateLabelSheet: () => void openInventoryLabelSheet(),
-          onLoanOutRoll: openLoanTrackingModal,
           onLowStockOnlyChange: setLowStockOnly,
           onSearchChange: setSearch,
           onStatusFilterChange: setStatusFilter,

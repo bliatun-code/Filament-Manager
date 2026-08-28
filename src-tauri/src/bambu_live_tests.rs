@@ -1,7 +1,7 @@
 use super::{
     capture_bambu_live_poll_batch, claim_auto_recovery_attempt, is_live_print_running,
-    merge_tray_payload, run_bounded_blocking_polls, run_live_observer,
-    with_current_bambu_live_authority, AUTO_RECOVERY_COOLDOWN,
+    merge_tray_payload, run_bambu_live_auto_recovery_after_discovery, run_bounded_blocking_polls,
+    run_live_observer, with_current_bambu_live_authority, AUTO_RECOVERY_COOLDOWN,
 };
 use crate::backend::filament_database::{
     BambuLiveObservedTrayRow, FilamentDatabase, FilamentMasterSummary, ManualMasterInput,
@@ -42,6 +42,74 @@ fn automatic_address_recovery_attempts_are_rate_limited_per_printer() {
         printer_id,
         started + AUTO_RECOVERY_COOLDOWN,
     ));
+}
+
+#[test]
+fn automatic_address_recovery_revalidates_authority_after_discovery() {
+    let db_path = temp_db_path("auto-recovery-authority-change");
+    let db = FilamentDatabase::open(&db_path).expect("open Host recovery database");
+    db.apply_schema().expect("apply Host recovery schema");
+    let mut settings = db
+        .get_library_sync_settings()
+        .expect("load standalone role");
+    settings.mode = "HOST".to_string();
+    db.save_library_sync_settings(&settings)
+        .expect("save Host role");
+    drop(db);
+
+    let (authority, _, _) = capture_bambu_live_poll_batch(
+        db_path.to_string_lossy().as_ref(),
+        &CredentialStore::in_memory(),
+    )
+    .expect("capture Host poll")
+    .expect("Host role should produce a poll batch");
+
+    let tls_probe_and_recovery_ran = AtomicBool::new(false);
+    let outcome = run_bambu_live_auto_recovery_after_discovery(
+        db_path.to_string_lossy().as_ref(),
+        &authority,
+        "printer_1",
+        "SERIAL",
+        |_| {
+            let db = FilamentDatabase::open(&db_path)
+                .map_err(|error| format!("reopen Host recovery database: {error}"))?;
+            let mut settings = db
+                .get_library_sync_settings()
+                .map_err(|error| format!("reload Host role: {error}"))?;
+            settings.mode = "CLIENT".to_string();
+            settings.host_base_url = Some("http://replacement-host.local:4278".to_string());
+            db.save_library_sync_settings(&settings)
+                .map_err(|error| format!("switch to Client during discovery: {error}"))?;
+            Ok(vec!["192.168.86.44".to_string()])
+        },
+        |recovery_db_path, _, _| {
+            tls_probe_and_recovery_ran.store(true, Ordering::SeqCst);
+            FilamentDatabase::open(recovery_db_path)
+                .map_err(|error| format!("open stale recovery database: {error}"))?
+                .set_setting("stale_auto_recovery_write", "mutated")
+                .map_err(|error| format!("write stale recovery marker: {error}"))?;
+            Ok(Some("192.168.86.44".to_string()))
+        },
+    )
+    .expect("stale auto-recovery should be discarded cleanly");
+
+    assert!(outcome.is_none());
+    assert!(!tls_probe_and_recovery_ran.load(Ordering::SeqCst));
+
+    let db = FilamentDatabase::open(&db_path).expect("verify Client role");
+    assert_eq!(
+        db.get_library_sync_settings()
+            .expect("read final library role")
+            .mode,
+        "CLIENT"
+    );
+    assert_eq!(
+        db.get_setting("stale_auto_recovery_write")
+            .expect("read stale recovery marker"),
+        None
+    );
+    drop(db);
+    let _ = std::fs::remove_file(db_path);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -2799,6 +2867,204 @@ fn live_weight_sync_rolls_back_all_usage_and_weight_writes_on_late_event_failure
     let _ = std::fs::remove_file(&db_path);
     if let Err(message) = result {
         panic!("live_weight_sync_rolls_back_all_usage_and_weight_writes_on_late_event_failure failed: {message}");
+    }
+}
+
+#[test]
+fn live_weight_sync_rejects_legacy_assigned_spool_with_active_outbound_loan_atomically() {
+    let db_path = temp_db_path("legacy-assigned-active-outbound-live-weight");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        db.upsert_printer_with_ams("printer_1", "Bambu Lab P1S", "Brutus", 1, 1)
+            .map_err(|error| error.to_string())?;
+        let master_id = db
+            .upsert_manual_master(ManualMasterInput {
+                material: "PLA",
+                filament_name: "Basic",
+                color_name: "Black",
+                hex_color: Some("#111111"),
+                product_url: None,
+                vendor: Some("Bambu"),
+                default_weight: Some(1000),
+            })
+            .map_err(|error| error.to_string())?;
+        db.insert_spool(&SpoolRow {
+            id: "legacy_loaned_spool".to_string(),
+            master_id,
+            qr_code: None,
+            rfid_tag: Some("legacy-loaned-rfid".to_string()),
+            rfid_observed_at: None,
+            status: "IN_STOCK".to_string(),
+            ownership_type: "OWNED".to_string(),
+            owner_name: None,
+            owner_contact: None,
+            ownership_note: None,
+            initial_weight_g: Some(1000),
+            current_weight_g: Some(1000),
+            remaining_g: Some(1000),
+            spool_tare_weight_g: None,
+            location_id: None,
+            home_location_id: None,
+            purchase_date: None,
+            purchase_price: None,
+            batch_code: None,
+            last_used_at: None,
+            purchase_currency: None,
+            supplier_reference: None,
+            purchase_price_batch_locked: false,
+            purchase_price_source: None,
+        })
+        .map_err(|error| error.to_string())?;
+        db.assign_spool_to_ams_slot(
+            "printer_1",
+            "printer_1_ams_1_slot_1",
+            Some("legacy_loaned_spool"),
+            None,
+            None,
+            false,
+        )
+        .map_err(|error| error.to_string())?;
+        db.connection()
+            .execute(
+                "INSERT INTO spool_loans (
+                    id, spool_id, borrower_name, loan_direction, loan_status, grams_out
+                 ) VALUES (
+                    'legacy-outbound-loan', 'legacy_loaned_spool', 'Alice',
+                    'OUTBOUND', 'ACTIVE', 1000
+                 )",
+                [],
+            )
+            .map_err(|error| error.to_string())?;
+
+        let before = db
+            .get_spool_by_id("legacy_loaned_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "legacy loaned spool missing before live sync".to_string())?;
+        assert_eq!(before.status, "ASSIGNED");
+        let before_counts: (i64, i64, i64, i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT
+                    (SELECT COUNT(*) FROM weight_readings
+                     WHERE spool_id = 'legacy_loaned_spool'),
+                    (SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = 'legacy_loaned_spool'),
+                    (SELECT COUNT(*) FROM printer_live_events
+                     WHERE payload_json LIKE '%legacy_loaned_spool%'),
+                    (SELECT COUNT(*) FROM printer_live_usage_sessions),
+                    (SELECT COUNT(*) FROM printer_live_usage_session_spools
+                     WHERE spool_id = 'legacy_loaned_spool')",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .map_err(|error| error.to_string())?;
+
+        let observed_at = super::now_iso_string();
+        let mut observed = super::default_offline_state();
+        observed.online = true;
+        observed.mqtt_connected = true;
+        observed.last_seen_at = Some(observed_at.clone());
+        observed.trays = vec![BambuLiveObservedTrayRow {
+            ams_index: None,
+            tray_index: 0,
+            loaded: true,
+            filament_type: Some("PLA".to_string()),
+            filament_name: Some("Basic".to_string()),
+            color_hex: Some("#111111".to_string()),
+            tray_weight_g: Some(1000),
+            remaining_percent: Some(90),
+            remaining_grams: Some(900),
+            last_weight_seen_at: Some(observed_at.clone()),
+            observed_rfid_tag: None,
+            tray_uuid: Some("legacy-loaned-rfid".to_string()),
+            chip_id: None,
+            tray_info_idx: None,
+            tray_id_name: None,
+            nozzle_temp_min_c: None,
+            nozzle_temp_max_c: None,
+            last_identity_seen_at: Some(observed_at),
+            last_empty_seen_at: None,
+            empty_observation_count: Some(0),
+            matched_inventory_spool_id: None,
+            matched_inventory_mode: None,
+            match_status: None,
+            match_note: None,
+        }];
+
+        let error = crate::bambu_live_sync::enrich_with_match_status(&db, "printer_1", observed)
+            .expect_err("live weight sync must reject an actively loaned legacy assignment");
+        assert!(matches!(
+            error,
+            crate::backend::database_result::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            }
+        ));
+
+        let after = db
+            .get_spool_by_id("legacy_loaned_spool")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "legacy loaned spool missing after rejected live sync".to_string())?;
+        assert_eq!(after.status, before.status);
+        assert_eq!(after.location_id, before.location_id);
+        assert_eq!(after.home_location_id, before.home_location_id);
+        assert_eq!(after.current_weight_g, before.current_weight_g);
+        assert_eq!(after.remaining_g, before.remaining_g);
+        let after_counts: (i64, i64, i64, i64, i64) = db
+            .connection()
+            .query_row(
+                "SELECT
+                    (SELECT COUNT(*) FROM weight_readings
+                     WHERE spool_id = 'legacy_loaned_spool'),
+                    (SELECT COUNT(*) FROM spool_history_events
+                     WHERE spool_id = 'legacy_loaned_spool'),
+                    (SELECT COUNT(*) FROM printer_live_events
+                     WHERE payload_json LIKE '%legacy_loaned_spool%'),
+                    (SELECT COUNT(*) FROM printer_live_usage_sessions),
+                    (SELECT COUNT(*) FROM printer_live_usage_session_spools
+                     WHERE spool_id = 'legacy_loaned_spool')",
+                [],
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                    ))
+                },
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(after_counts, before_counts);
+        let active_loan: (String, Option<String>, Option<i64>) = db
+            .connection()
+            .query_row(
+                "SELECT loan_status, returned_at, returned_grams
+                 FROM spool_loans
+                 WHERE id = 'legacy-outbound-loan'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(active_loan, ("ACTIVE".to_string(), None, None));
+
+        Ok(())
+    })();
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "live_weight_sync_rejects_legacy_assigned_spool_with_active_outbound_loan_atomically failed: {message}"
+        );
     }
 }
 

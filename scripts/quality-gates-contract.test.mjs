@@ -49,6 +49,7 @@ test("blocking quality gates retain named ownership and measurable thresholds", 
   assert.match(qualityGates, /SQLite `quick_check` is `ok`/);
   assert.match(qualityGates, /zero axe violations/);
   assert.match(qualityGates, /100% key and placeholder coverage/);
+  assert.match(qualityGates, /zero English catalog-overlay fallback/);
   assert.match(qualityGates, /at least 95% translation signal/);
 
   assert.match(performanceBaseline, /10,000 spools/);
@@ -79,6 +80,18 @@ test("required platform jobs keep every documented gate blocking", () => {
     packageManifest.scripts["check:contracts"],
     /npm run check:shared-contracts/,
   );
+  for (const command of [
+    "npm run check:i18n-fallbacks",
+    "npm run check:i18n-locales",
+    "npm run check:companion-i18n",
+    "npm run check:i18n-ui-copy",
+    "npm run check:i18n-readiness",
+  ]) {
+    assert.match(
+      packageManifest.scripts["check:contracts"],
+      new RegExp(command.replaceAll(" ", "\\s+")),
+    );
+  }
 
   const sharedContractsJob = section(
     ciWorkflow,

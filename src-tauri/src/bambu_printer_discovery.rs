@@ -3,13 +3,40 @@ use socket2::{Domain, Protocol, Socket, Type};
 use std::collections::BTreeMap;
 use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+use std::thread;
 use std::time::{Duration, Instant};
 
-const BAMBU_DISCOVERY_PORT: u16 = 2021;
-const DISCOVERY_WINDOW: Duration = Duration::from_secs(9);
-const READ_TIMEOUT: Duration = Duration::from_millis(500);
+const BAMBU_BROADCAST_PORT: u16 = 2021;
+const BAMBU_MULTICAST_PORT: u16 = 1990;
+const SSDP_MULTICAST_ADDRESS: Ipv4Addr = Ipv4Addr::new(239, 255, 255, 250);
+const DISCOVERY_WINDOW: Duration = Duration::from_secs(12);
+const SOCKET_POLL_INTERVAL: Duration = Duration::from_millis(50);
 const MAX_PACKET_BYTES: usize = 8 * 1024;
 const BAMBU_PRINTER_DEVICE_TYPE: &str = "urn:bambulab-com:device:3dprinter:1";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DiscoveryListenerKind {
+    Multicast,
+    Broadcast,
+}
+
+impl DiscoveryListenerKind {
+    const ALL: [Self; 2] = [Self::Multicast, Self::Broadcast];
+
+    fn port(self) -> u16 {
+        match self {
+            Self::Multicast => BAMBU_MULTICAST_PORT,
+            Self::Broadcast => BAMBU_BROADCAST_PORT,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Multicast => "multicast",
+            Self::Broadcast => "broadcast",
+        }
+    }
+}
 
 /// A Bambu printer that announced itself on the selected private network.
 ///
@@ -41,12 +68,9 @@ pub(crate) fn discover_bambu_printers(
     interface_address: &str,
 ) -> Result<Vec<BambuPrinterDiscoveryCandidate>, String> {
     let network = selected_private_network(interface_address)?;
-    let socket = bind_bambu_discovery_socket()?;
-    socket
-        .set_read_timeout(Some(READ_TIMEOUT))
-        .map_err(|error| format!("Could not prepare Bambu discovery: {error}"))?;
+    let sockets = bind_bambu_discovery_sockets(&[network])?;
 
-    discover_bambu_printers_from_socket(&socket, &[network], DISCOVERY_WINDOW)
+    discover_bambu_printers_from_sockets(&sockets, &[network], DISCOVERY_WINDOW)
 }
 
 pub(crate) fn discover_bambu_printers_on_private_networks(
@@ -58,11 +82,8 @@ pub(crate) fn discover_bambu_printers_on_private_networks(
                 .to_string(),
         );
     }
-    let socket = bind_bambu_discovery_socket()?;
-    socket
-        .set_read_timeout(Some(READ_TIMEOUT))
-        .map_err(|error| format!("Could not prepare Bambu discovery: {error}"))?;
-    discover_bambu_printers_from_socket(&socket, &networks, DISCOVERY_WINDOW)
+    let sockets = bind_bambu_discovery_sockets(&networks)?;
+    discover_bambu_printers_from_sockets(&sockets, &networks, DISCOVERY_WINDOW)
 }
 
 fn selected_private_network(interface_address: &str) -> Result<PrivateIpv4Network, String> {
@@ -102,58 +123,156 @@ fn private_ipv4_networks() -> Result<Vec<PrivateIpv4Network>, String> {
         .collect())
 }
 
-fn bind_bambu_discovery_socket() -> Result<UdpSocket, String> {
+fn bind_bambu_discovery_sockets(networks: &[PrivateIpv4Network]) -> Result<Vec<UdpSocket>, String> {
+    available_discovery_sockets(|kind| bind_bambu_discovery_socket(kind, networks))
+}
+
+fn available_discovery_sockets(
+    mut open: impl FnMut(DiscoveryListenerKind) -> Result<UdpSocket, String>,
+) -> Result<Vec<UdpSocket>, String> {
+    let mut sockets = Vec::with_capacity(DiscoveryListenerKind::ALL.len());
+    let mut failures = Vec::new();
+    for kind in DiscoveryListenerKind::ALL {
+        match open(kind) {
+            Ok(socket) => sockets.push(socket),
+            Err(error) => failures.push(format!("{} UDP {}: {error}", kind.label(), kind.port())),
+        }
+    }
+
+    if sockets.is_empty() {
+        return Err(format!(
+            "Could not open a Bambu discovery listener ({}). Close another printer-discovery app or check local-network access, then try again.",
+            failures.join("; ")
+        ));
+    }
+    for failure in failures {
+        eprintln!("Bambu discovery is continuing without {failure}");
+    }
+    Ok(sockets)
+}
+
+fn bind_bambu_discovery_socket(
+    kind: DiscoveryListenerKind,
+    networks: &[PrivateIpv4Network],
+) -> Result<UdpSocket, String> {
     let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP))
         .map_err(|error| format!("Could not open the Bambu discovery listener: {error}"))?;
     socket
         .set_reuse_address(true)
         .map_err(|error| format!("Could not share the Bambu discovery listener: {error}"))?;
-    // Bambu Studio may already be listening for the same broadcast. macOS and
-    // Linux need SO_REUSEPORT as well in order to observe that traffic beside
-    // another local listener. Windows uses SO_REUSEADDR for this socket mode.
+    // Share with listeners that also opt into port reuse. If another process
+    // owns one port exclusively, the independent listener on the other Bambu
+    // discovery port remains available.
     #[cfg(unix)]
     socket
         .set_reuse_port(true)
         .map_err(|error| format!("Could not share the Bambu discovery listener: {error}"))?;
+    if kind == DiscoveryListenerKind::Broadcast {
+        socket
+            .set_broadcast(true)
+            .map_err(|error| format!("Could not prepare the Bambu discovery listener: {error}"))?;
+    }
     socket
-        .set_broadcast(true)
-        .map_err(|error| format!("Could not prepare the Bambu discovery listener: {error}"))?;
+        .bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, kind.port()).into())
+        .map_err(|error| format!("could not bind: {error}"))?;
+
+    let mut joined = false;
+    let mut failures = Vec::new();
+    for network in networks {
+        match socket.join_multicast_v4(&SSDP_MULTICAST_ADDRESS, &network.address) {
+            Ok(()) => joined = true,
+            Err(error) => failures.push(format!("{}: {error}", network.address)),
+        }
+    }
+    if !joined && kind == DiscoveryListenerKind::Multicast {
+        return Err(format!(
+            "could not join {SSDP_MULTICAST_ADDRESS} on a selected interface ({})",
+            failures.join("; ")
+        ));
+    }
+    for failure in failures {
+        eprintln!(
+            "Bambu {} discovery skipped multicast interface {failure}",
+            kind.label()
+        );
+    }
+    if !joined && kind == DiscoveryListenerKind::Broadcast {
+        eprintln!(
+            "Bambu broadcast discovery is continuing without a multicast membership on UDP {}",
+            kind.port()
+        );
+    }
+
+    let socket: UdpSocket = socket.into();
     socket
-        .bind(&SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, BAMBU_DISCOVERY_PORT).into())
-        .map_err(|error| {
-            format!(
-                "Could not listen for Bambu printer announcements on UDP port {BAMBU_DISCOVERY_PORT}: {error}. Close another printer-discovery app and try again."
-            )
-        })?;
-    Ok(socket.into())
+        .set_nonblocking(true)
+        .map_err(|error| format!("could not prepare nonblocking reads: {error}"))?;
+    Ok(socket)
 }
 
-fn discover_bambu_printers_from_socket(
-    socket: &UdpSocket,
+fn discover_bambu_printers_from_sockets(
+    sockets: &[UdpSocket],
     networks: &[PrivateIpv4Network],
     window: Duration,
 ) -> Result<Vec<BambuPrinterDiscoveryCandidate>, String> {
     let deadline = Instant::now() + window;
     let mut buffer = [0_u8; MAX_PACKET_BYTES];
     let mut candidates = BTreeMap::<(String, String), BambuPrinterDiscoveryCandidate>::new();
+    let mut active = vec![true; sockets.len()];
+    let mut failures = Vec::new();
 
     while Instant::now() < deadline {
-        match socket.recv_from(&mut buffer) {
-            Ok((received, remote)) => {
-                let SocketAddr::V4(remote) = remote else {
-                    continue;
-                };
-                if let Some(candidate) =
-                    parse_bambu_discovery_packet(&buffer[..received], *remote.ip(), networks)
-                {
-                    candidates.insert(
-                        (candidate.printer_serial.clone(), candidate.host.clone()),
-                        candidate,
-                    );
+        let mut received_any = false;
+        for (index, socket) in sockets.iter().enumerate() {
+            if !active[index] {
+                continue;
+            }
+            loop {
+                if Instant::now() >= deadline {
+                    break;
+                }
+                match socket.recv_from(&mut buffer) {
+                    Ok((received, remote)) => {
+                        received_any = true;
+                        let SocketAddr::V4(remote) = remote else {
+                            continue;
+                        };
+                        if let Some(candidate) = parse_bambu_discovery_packet(
+                            &buffer[..received],
+                            *remote.ip(),
+                            networks,
+                        ) {
+                            candidates.insert(
+                                (candidate.printer_serial.clone(), candidate.host.clone()),
+                                candidate,
+                            );
+                        }
+                    }
+                    Err(error) if error.kind() == ErrorKind::Interrupted => continue,
+                    Err(error) if error.kind() == ErrorKind::WouldBlock => break,
+                    Err(error) => {
+                        active[index] = false;
+                        failures.push(error.to_string());
+                        break;
+                    }
                 }
             }
-            Err(error) if matches!(error.kind(), ErrorKind::TimedOut | ErrorKind::WouldBlock) => {}
-            Err(error) => return Err(format!("Bambu printer discovery stopped: {error}")),
+        }
+
+        if active.iter().all(|is_active| !is_active) {
+            if candidates.is_empty() {
+                return Err(format!(
+                    "Bambu printer discovery stopped: {}",
+                    failures.join("; ")
+                ));
+            }
+            break;
+        }
+        if !received_any {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if !remaining.is_zero() {
+                thread::sleep(SOCKET_POLL_INTERVAL.min(remaining));
+            }
         }
     }
 
@@ -191,9 +310,9 @@ fn parse_bambu_discovery_packet(
         return None;
     }
     if start_line.to_ascii_uppercase().starts_with("NOTIFY")
-        && !headers
+        && headers
             .get("nts")
-            .is_some_and(|value| value.eq_ignore_ascii_case("ssdp:alive"))
+            .is_some_and(|value| !value.eq_ignore_ascii_case("ssdp:alive"))
     {
         return None;
     }
@@ -255,8 +374,11 @@ fn ipv4_to_u32(address: Ipv4Addr) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_bambu_discovery_packet, BambuPrinterDiscoveryCandidate, PrivateIpv4Network};
-    use std::net::Ipv4Addr;
+    use super::{
+        available_discovery_sockets, parse_bambu_discovery_packet, BambuPrinterDiscoveryCandidate,
+        DiscoveryListenerKind, PrivateIpv4Network,
+    };
+    use std::net::{Ipv4Addr, UdpSocket};
 
     const NETWORK: PrivateIpv4Network = PrivateIpv4Network {
         address: Ipv4Addr::new(192, 168, 86, 25),
@@ -295,6 +417,35 @@ mod tests {
                 host: "192.168.86.22".to_string(),
                 printer_serial: "01P00A412500321".to_string(),
                 model: Some("P1S".to_string()),
+                name: Some("Brutus".to_string()),
+            })
+        );
+    }
+
+    #[test]
+    fn parses_current_multicast_notify_shape_without_an_nts_header() {
+        let input = packet(
+            "NOTIFY * HTTP/1.1",
+            &[
+                ("HOST", "239.255.255.250:1900"),
+                ("Cache-Control", "max-age=1800"),
+                ("Location", "192.168.86.22"),
+                ("NT", "urn:bambulab-com:device:3dprinter:1"),
+                ("USN", "01P00A412500321"),
+                ("Server", "Buildroot UPnP/1.0 ssdpd/1.8"),
+                ("DevModel.bambu.com", "C12"),
+                ("DevName.bambu.com", "Brutus"),
+                ("DevSignal.bambu.com", "-42"),
+                ("DevConnect.bambu.com", "lan"),
+            ],
+        );
+
+        assert_eq!(
+            parse_bambu_discovery_packet(&input, Ipv4Addr::new(192, 168, 86, 22), &[NETWORK]),
+            Some(BambuPrinterDiscoveryCandidate {
+                host: "192.168.86.22".to_string(),
+                printer_serial: "01P00A412500321".to_string(),
+                model: Some("C12".to_string()),
                 name: Some("Brutus".to_string()),
             })
         );
@@ -341,7 +492,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_packets_outside_the_selected_network_or_without_alive_signal() {
+    fn rejects_packets_outside_the_selected_network_or_with_an_explicit_non_alive_signal() {
         let valid = packet(
             "NOTIFY * HTTP/1.1",
             &[
@@ -402,5 +553,34 @@ mod tests {
             &[NETWORK],
         )
         .is_none());
+    }
+
+    #[test]
+    fn listener_setup_keeps_the_other_port_when_one_is_unavailable() {
+        for unavailable in DiscoveryListenerKind::ALL {
+            let mut attempted = Vec::new();
+            let sockets = available_discovery_sockets(|kind| {
+                attempted.push(kind);
+                if kind == unavailable {
+                    Err("address already in use".to_string())
+                } else {
+                    UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).map_err(|error| error.to_string())
+                }
+            })
+            .expect("the available discovery port should keep discovery running");
+
+            assert_eq!(attempted, DiscoveryListenerKind::ALL);
+            assert_eq!(sockets.len(), 1);
+        }
+    }
+
+    #[test]
+    fn listener_setup_reports_both_ports_when_neither_is_available() {
+        let error =
+            available_discovery_sockets(|kind| Err(format!("{} unavailable", kind.label())))
+                .expect_err("discovery requires at least one listener");
+
+        assert!(error.contains("multicast UDP 1990"));
+        assert!(error.contains("broadcast UDP 2021"));
     }
 }

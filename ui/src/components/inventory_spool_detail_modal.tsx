@@ -3,7 +3,6 @@ import { AppModal } from "./app_modal";
 import {
   inventoryDetailEyebrowClassName,
   inventoryDetailPanelClassName,
-  inventoryDetailSaveButtonClassName,
 } from "./inventory_detail_panel_class";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import { InventoryDangerZonePanel } from "./inventory_danger_zone_panel";
@@ -15,7 +14,7 @@ import {
 import { InventoryRollHistoryPanel } from "./inventory_roll_history_panel";
 import { InventorySpoolQrRfidPanel } from "./inventory_spool_qr_rfid_panel";
 import { InventorySpoolDetailContextActions } from "./inventory_spool_detail_context_actions";
-import { ModalFooter, ModalNotice } from "./modal_chrome";
+import { ModalNotice } from "./modal_chrome";
 import {
   InventorySpoolDetailHeader,
   InventorySpoolIdentityPanel,
@@ -45,9 +44,9 @@ import {
   type PurchaseReceiptMetadataValidationErrors,
 } from "../lib/purchase_receipt_metadata";
 import { purchaseReceiptMetadataFieldsCopy } from "../lib/purchase_receipt_metadata_copy";
-import { appSoftButtonClassName, joinClassNames } from "./ui_class_names";
 import { PurchaseReceiptMetadataFields } from "./purchase_receipt_metadata_fields";
 import { InventoryPurchasePriceProtectionControl } from "./inventory_purchase_price_protection_control";
+import { InventorySpoolDetailFooter } from "./inventory_spool_detail_footer";
 
 /*
  * Keep the legacy exception visible to assistive technology only while the
@@ -74,6 +73,7 @@ type InventorySpoolDetailModalProps = {
   confirmPurge: boolean;
   deterministicLabelPreferences?: boolean;
   defaultPurchaseCurrency?: string;
+  discardConfirmationOpen: boolean;
   displayTitle: string;
   error: string | null;
   filamentName: string;
@@ -86,6 +86,7 @@ type InventorySpoolDetailModalProps = {
   hasUnsavedChanges: boolean;
   initialLabelPanelOpen?: boolean;
   rfidBindingMeta: { className: string; hint: string; label: string };
+  homeLocationLocked: boolean;
   infoMessage: string | null;
   locationDraft: string;
   locationValue: string;
@@ -107,7 +108,9 @@ type InventorySpoolDetailModalProps = {
   onChangeTare: (value: string) => void;
   onChangeVendor: (value: string) => void;
   onCancelDangerZoneConfirmation: () => void;
+  onCancelDiscardConfirmation: () => void;
   onClose: () => void;
+  onConfirmDiscard: () => void;
   onDelete: () => void;
   onMarkEmpty: () => void;
   onLoadInPrinter: () => void;
@@ -159,6 +162,7 @@ export function InventorySpoolDetailModal({
   confirmPurge,
   deterministicLabelPreferences = false,
   defaultPurchaseCurrency = "",
+  discardConfirmationOpen,
   displayTitle,
   error,
   filamentName,
@@ -171,6 +175,7 @@ export function InventorySpoolDetailModal({
   hasUnsavedChanges,
   initialLabelPanelOpen = false,
   rfidBindingMeta,
+  homeLocationLocked,
   infoMessage,
   locationDraft,
   locationValue,
@@ -192,7 +197,9 @@ export function InventorySpoolDetailModal({
   onChangeTare,
   onChangeVendor,
   onCancelDangerZoneConfirmation,
+  onCancelDiscardConfirmation,
   onClose,
+  onConfirmDiscard,
   onDelete,
   onMarkEmpty,
   onLoadInPrinter,
@@ -359,7 +366,8 @@ export function InventorySpoolDetailModal({
 
               <InventorySpoolHomeLocationPanel
                 assignedToPrinter={Boolean(assignedSlot)}
-                disabled={!runtimeAvailable || manageBusy}
+                disabled={!runtimeAvailable || manageBusy || homeLocationLocked}
+                loanedOut={homeLocationLocked}
                 onChange={onChangeLocation}
                 onSave={onSaveCommonDetails}
                 resolvedTheme={resolvedTheme}
@@ -370,7 +378,8 @@ export function InventorySpoolDetailModal({
 
               <InventorySpoolOwnershipPanel
                 contactValue={ownerContactDraft}
-                disabled={!runtimeAvailable || manageBusy}
+                disabled={!runtimeAvailable || manageBusy || homeLocationLocked}
+                loanedOut={homeLocationLocked}
                 noteValue={ownershipNoteDraft}
                 onChangeContact={onChangeOwnerContact}
                 onChangeName={onChangeOwnerName}
@@ -405,7 +414,8 @@ export function InventorySpoolDetailModal({
               />
 
               <InventorySpoolLostStatusPanel
-                disabled={!runtimeAvailable || manageBusy}
+                disabled={!runtimeAvailable || manageBusy || homeLocationLocked}
+                loanedOut={homeLocationLocked}
                 onToggle={onToggleLostStatus}
                 resolvedTheme={resolvedTheme}
                 spoolHexColor={spool.hexColor}
@@ -442,6 +452,7 @@ export function InventorySpoolDetailModal({
                 confirmDelete={confirmDelete}
                 confirmPurge={confirmPurge}
                 manageBusy={manageBusy}
+                loanedOut={homeLocationLocked}
                 onCancelConfirmation={onCancelDangerZoneConfirmation}
                 onDelete={onDelete}
                 onMarkEmpty={onMarkEmpty}
@@ -455,33 +466,17 @@ export function InventorySpoolDetailModal({
           </div>
         </div>
 
-        <ModalFooter className="flex flex-wrap items-center justify-between gap-3 bg-white/95 px-4 py-3 dark:bg-slate-900/95 sm:px-5">
-          <div className="text-xs text-slate-500 dark:text-slate-400" aria-live="polite">
-            {hasUnsavedChanges
-              ? t("inventory.unsavedChanges", "You have unsaved changes.")
-              : t("inventory.allChangesSaved", "All changes are saved.")}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className={joinClassNames(appSoftButtonClassName, "px-4 py-2 text-sm")}
-              disabled={manageBusy}
-              onClick={onClose}
-            >
-              {t("common.cancel", "Cancel")}
-            </button>
-            <button
-              type="button"
-              className={inventoryDetailSaveButtonClassName}
-              disabled={!runtimeAvailable || manageBusy || !hasCommonChanges}
-              onClick={onSaveCommonDetails}
-            >
-              {manageBusy
-                ? t("inventory.updatingRoll", "Updating selected roll...")
-                : t("inventory.saveRollChanges", "Save roll changes")}
-            </button>
-          </div>
-        </ModalFooter>
+        <InventorySpoolDetailFooter
+          discardConfirmationOpen={discardConfirmationOpen}
+          hasCommonChanges={hasCommonChanges}
+          hasUnsavedChanges={hasUnsavedChanges}
+          manageBusy={manageBusy}
+          onCancel={onClose}
+          onCancelDiscardConfirmation={onCancelDiscardConfirmation}
+          onConfirmDiscard={onConfirmDiscard}
+          onSaveCommonDetails={onSaveCommonDetails}
+          runtimeAvailable={runtimeAvailable}
+        />
       </>
     </AppModal>
   );

@@ -30,6 +30,7 @@ type InventorySpoolTarePanelProps = SpoolMaintenancePanelBaseProps & {
 
 type InventorySpoolHomeLocationPanelProps = SpoolMaintenancePanelBaseProps & {
   assignedToPrinter: boolean;
+  loanedOut?: boolean;
   onChange: (value: string) => void;
   onSave: () => void;
   showSaveAction?: boolean;
@@ -37,6 +38,7 @@ type InventorySpoolHomeLocationPanelProps = SpoolMaintenancePanelBaseProps & {
 };
 
 type InventorySpoolLostStatusPanelProps = SpoolMaintenancePanelBaseProps & {
+  loanedOut?: boolean;
   onToggle: () => void;
   status: SpoolStatus;
 };
@@ -44,6 +46,7 @@ type InventorySpoolLostStatusPanelProps = SpoolMaintenancePanelBaseProps & {
 type InventorySpoolOwnershipPanelProps = SpoolMaintenancePanelBaseProps & {
   contactValue: string;
   noteValue: string;
+  loanedOut?: boolean;
   onChangeContact: (value: string) => void;
   onChangeName: (value: string) => void;
   onChangeNote: (value: string) => void;
@@ -112,6 +115,7 @@ export function InventorySpoolTarePanel({
 export function InventorySpoolHomeLocationPanel({
   assignedToPrinter,
   disabled,
+  loanedOut = false,
   onChange,
   onSave,
   resolvedTheme,
@@ -142,7 +146,7 @@ export function InventorySpoolHomeLocationPanel({
           placeholder={t("inventory.homeLocationOptional", "Home location (optional)")}
           className={`w-full ${inventoryDetailFormControlClassName}`}
           disabled={disabled}
-          aria-describedby={assignedToPrinter ? helpId : undefined}
+          aria-describedby={assignedToPrinter || loanedOut ? helpId : undefined}
         />
         {showSaveAction ? (
           <button
@@ -155,7 +159,14 @@ export function InventorySpoolHomeLocationPanel({
           </button>
         ) : null}
       </div>
-      {assignedToPrinter ? (
+      {loanedOut ? (
+        <div id={helpId} className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          {t(
+            "errors.loanedSpoolEditBlocked",
+            "Return the loan before editing this roll's status, location, or ownership.",
+          )}
+        </div>
+      ) : assignedToPrinter ? (
         <div id={helpId} className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           {t(
             "inventory.homeLocationHintWhileAssigned",
@@ -170,6 +181,7 @@ export function InventorySpoolHomeLocationPanel({
 export function InventorySpoolOwnershipPanel({
   contactValue,
   disabled,
+  loanedOut = false,
   noteValue,
   onChangeContact,
   onChangeName,
@@ -190,6 +202,7 @@ export function InventorySpoolOwnershipPanel({
   const ownerContactId = `${fieldIdPrefix}-owner-contact`;
   const ownershipNoteId = `${fieldIdPrefix}-note`;
   const ownedHelpId = `${fieldIdPrefix}-owned-help`;
+  const loanedHelpId = `${fieldIdPrefix}-loaned-help`;
 
   return (
     <div
@@ -198,7 +211,7 @@ export function InventorySpoolOwnershipPanel({
     >
       <fieldset
         className="min-w-0 border-0 p-0"
-        aria-describedby={borrowed ? undefined : ownedHelpId}
+        aria-describedby={loanedOut ? loanedHelpId : borrowed ? undefined : ownedHelpId}
       >
         <legend className={inventoryDetailEyebrowClassName}>
           {t("inventory.editOwnership", "Ownership")}
@@ -266,7 +279,7 @@ export function InventorySpoolOwnershipPanel({
               />
             </label>
           </div>
-        ) : (
+        ) : !loanedOut ? (
           <div
             id={ownedHelpId}
             className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"
@@ -276,7 +289,18 @@ export function InventorySpoolOwnershipPanel({
               "Owned rolls stay in your inventory and can be loaned out later.",
             )}
           </div>
-        )}
+        ) : null}
+        {loanedOut ? (
+          <div
+            id={loanedHelpId}
+            className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400"
+          >
+            {t(
+              "errors.loanedSpoolEditBlocked",
+              "Return the loan before editing this roll's status, location, or ownership.",
+            )}
+          </div>
+        ) : null}
         {showSaveAction ? (
           <button
             type="button"
@@ -294,12 +318,15 @@ export function InventorySpoolOwnershipPanel({
 
 export function InventorySpoolLostStatusPanel({
   disabled,
+  loanedOut = false,
   onToggle,
   resolvedTheme,
   spoolHexColor,
   status,
 }: InventorySpoolLostStatusPanelProps) {
   const { t } = useI18n();
+  const generatedId = useId().replace(/:/g, "");
+  const helpId = `inventory-spool-lost-status-${generatedId}-help`;
 
   return (
     <div
@@ -314,11 +341,20 @@ export function InventorySpoolLostStatusPanel({
         className={`mt-3 ${inventoryDetailDangerActionButtonClassName}`}
         onClick={onToggle}
         disabled={disabled}
+        aria-describedby={loanedOut ? helpId : undefined}
       >
         {status === "LOST"
           ? t("inventory.markFound", "Mark as found (in stock)")
           : t("inventory.markLost", "Mark as lost")}
       </button>
+      {loanedOut ? (
+        <div id={helpId} className="sr-only">
+          {t(
+            "errors.loanedSpoolEditBlocked",
+            "Return the loan before editing this roll's status, location, or ownership.",
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

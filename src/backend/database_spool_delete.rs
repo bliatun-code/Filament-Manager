@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
+use super::database_loan_queries::spool_is_outbound_loan_locked;
 use super::database_result::require_rows;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_spool_price_lock::lock_spool_price_for_historical_status;
@@ -16,25 +17,7 @@ pub(crate) fn soft_delete_spool_in_transaction(
     conn: &Connection,
     spool_id: &str,
 ) -> InventoryResult<()> {
-    let active_loan_exists: Option<i64> = conn
-        .query_row(
-            &format!(
-                "SELECT 1
-             FROM spool_loans
-             WHERE spool_id = ?1
-               AND {ACTIVE_LOAN_PREDICATE_SQL}
-             LIMIT 1"
-            ),
-            params![spool_id],
-            |row| row.get(0),
-        )
-        .optional()?;
-    if active_loan_exists.is_some() {
-        return Err(InventoryError::InvalidOperation {
-            code: "inventory.spool.active_loan",
-            message: "spool has an active loan; return it before deleting".to_string(),
-        });
-    }
+    ensure_spool_has_no_active_loan(conn, spool_id)?;
 
     let affected = conn.execute(
         "UPDATE filament_spools
@@ -58,6 +41,35 @@ pub(crate) fn soft_delete_spool_in_transaction(
     Ok(())
 }
 
+fn ensure_spool_has_no_active_loan(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
+    if spool_is_outbound_loan_locked(conn, spool_id)? {
+        return Err(InventoryError::InvalidOperation {
+            code: "inventory.spool.active_loan",
+            message: "spool has an active loan; return it before deleting".to_string(),
+        });
+    }
+    let active_loan_exists: Option<i64> = conn
+        .query_row(
+            &format!(
+                "SELECT 1
+             FROM spool_loans
+             WHERE spool_id = ?1
+               AND {ACTIVE_LOAN_PREDICATE_SQL}
+             LIMIT 1"
+            ),
+            params![spool_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if active_loan_exists.is_some() {
+        return Err(InventoryError::InvalidOperation {
+            code: "inventory.spool.active_loan",
+            message: "spool has an active loan; return it before deleting".to_string(),
+        });
+    }
+    Ok(())
+}
+
 pub(crate) fn purge_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
     let tx = conn.unchecked_transaction()?;
     let exists: Option<i64> = tx
@@ -73,6 +85,7 @@ pub(crate) fn purge_spool(conn: &Connection, spool_id: &str) -> InventoryResult<
     if exists.is_none() {
         return Err(InventoryError::NotFound);
     }
+    ensure_spool_has_no_active_loan(&tx, spool_id)?;
 
     tx.execute(
         "UPDATE ams_slots

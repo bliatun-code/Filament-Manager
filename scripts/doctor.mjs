@@ -84,7 +84,7 @@ const sqlite = run("sqlite3", ["--version"]);
 printLine(`- sqlite3 cli: ${sqlite.ok ? sqlite.stdout : "not available"}`);
 if (!sqlite.ok) {
   warnings.push(
-    "sqlite3 CLI is missing. Scraper needs better-sqlite3 to succeed without it.",
+    "sqlite3 CLI is missing. Visual-QA database tooling needs better-sqlite3 to succeed without it.",
   );
 }
 
@@ -105,12 +105,12 @@ if (!betterSqliteReady && betterSqliteReason) {
 }
 if (!betterSqliteReady && !sqlite.ok) {
   errors.push(
-    "Neither better-sqlite3 nor sqlite3 CLI is available. Scraper cannot write the database.",
+    "Neither better-sqlite3 nor sqlite3 CLI is available. Database-backed development and QA tools cannot run.",
   );
 }
 if (!betterSqliteReady && sqlite.ok) {
   warnings.push(
-    "Scraper will use sqlite3 CLI fallback for DB writes. For native mode, run `npm rebuild better-sqlite3`.",
+    "Visual-QA database tooling will use the sqlite3 CLI fallback. For native mode, run `npm rebuild better-sqlite3`.",
   );
 }
 

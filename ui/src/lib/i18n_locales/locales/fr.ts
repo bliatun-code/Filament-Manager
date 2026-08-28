@@ -59,7 +59,7 @@ export const frDictionary: DictionaryNode = {
     loadedSpoolEditBlocked:
       "Modifiez une bobine chargée à l’aide des actions de l’emplacement d’imprimante.",
     loanedSpoolEditBlocked:
-      "Terminez le prêt avant de modifier l’état ou l’emplacement de cette bobine.",
+      "Terminez le prêt sortant actif avant de modifier l’état, l’emplacement ou la propriété de cette bobine.",
     spoolStatusEditLimited:
       "Dans le navigateur, l’état d’une bobine peut uniquement être défini sur En stock, Vide ou Perdue.",
     locationHasReferences:
@@ -535,7 +535,8 @@ export const frDictionary: DictionaryNode = {
     noAvailablePrinterSlots: "Aucun emplacement d’imprimante libre.",
     printLabelAction: "Imprimer l’étiquette",
     unsavedChanges: "Modifications non enregistrées",
-    discardUnsavedChanges: "Abandonner les modifications non enregistrées ?",
+    discardUnsavedChanges:
+      "Abandonner les modifications non enregistrées de la bobine ? Vos modifications seront perdues.",
     allChangesSaved: "Toutes les modifications ont été enregistrées.",
     rollChangesSaved: "Modifications de la bobine enregistrées.",
     labelSheetInventoryHint:
@@ -610,7 +611,7 @@ export const frDictionary: DictionaryNode = {
     visualFixtureLoaded: "Données de test du détail de stock chargées.",
     noMatchHint: "Modifiez la recherche ou les filtres d’état, de matériau ou de propriété.",
     updatingRoll: "Mise à jour de la bobine sélectionnée…",
-    placement: "Placement",
+    placement: "Emplacement",
     assignedSlotLabel: "Emplacement affecté",
     qrCode: "Code QR",
     qrCompanionLinkLabel: "Lien Companion",
@@ -669,7 +670,7 @@ export const frDictionary: DictionaryNode = {
     catalogMatchCountSingular: "{count} résultat",
     catalogMatchCountPlural: "{count} résultats",
     catalogMatchCount: "{count, plural, one {# résultat} other {# résultats}}",
-    searchVendorCatalog: "Rechercher un matériau, filament ou une couleur {{vendor}}",
+    searchVendorCatalog: "Rechercher un matériau, filament ou une couleur {vendor}",
     catalogRefreshFilter: "Actualisation et filtre du catalogue",
     catalogSelection: "Sélection du catalogue",
     noCatalogMatches: "Aucune entrée du catalogue ne correspond aux filtres actuels.",
@@ -1264,7 +1265,7 @@ export const frDictionary: DictionaryNode = {
     liveTelemetryPrinting: "Impression",
     liveTelemetryPreparing: "Préparation",
     liveTelemetryPaused: "En pause",
-    liveTelemetryActive: "Active",
+    liveTelemetryActive: "Actif",
     liveTelemetryIdle: "Inactive",
     liveTelemetryNozzle: "Buse",
     liveTelemetryBed: "Plateau",
@@ -1759,6 +1760,7 @@ export const frDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "L’adresse enregistrée peut être récupérée une fois que l’identité de cette imprimante est approuvée.",
     "bambuDiscoveryDifferentPrinter": "Ce n’est pas l’imprimante enregistrée. Vous pouvez uniquement l’utiliser pour une nouvelle configuration.",
     "bambuDiscoveryRecovered": "L’adresse de l’imprimante en direct enregistrée a été récupérée.",
+    "bambuDiscoveryAutoFilled": "Une imprimante Bambu a été trouvée. Son adresse IP et son numéro de série ont été renseignés automatiquement. Aucun code d’accès n’a été modifié ni envoyé. Saisissez le code d’accès, puis vérifiez l’identité de l’imprimante avant d’enregistrer.",
     "bambuDiscoveryFailed": "Impossible de trouver des imprimantes Bambu sur ce réseau.",
     "bambuLiveRecoveryFailed": "Impossible de récupérer l’adresse de l’imprimante en direct enregistrée.",
     updates: "Mises à jour",
@@ -1790,9 +1792,6 @@ export const frDictionary: DictionaryNode = {
     appearance: "Apparence",
     language: "Langue",
     languageHint: "Choisissez la langue de toutes les vues principales.",
-    languageBeta: "Bêta",
-    languageBetaHint:
-      "Les langues bêta sont encore incomplètes et peuvent afficher une partie du texte en anglais.",
     light: "Clair",
     dark: "Sombre",
     auto: "Automatique (système)",
@@ -1928,7 +1927,7 @@ export const frDictionary: DictionaryNode = {
     libraryTabTitle: "Bibliothèque et web app",
     libraryTabHint: "",
     libraryRoleLabel: "Rôle de la bibliothèque",
-    libraryWebappLabel: "Web app",
+    libraryWebappLabel: "Application web",
     libraryWebappRunsOnHost: "Exécutée sur l’hôte",
     libraryWebappRunning: "Active",
     libraryWebappToggle: "Activer la web app",
@@ -2285,7 +2284,7 @@ export const frDictionary: DictionaryNode = {
     inventoryImportDone: "Import du stock terminé.",
     librarySyncImportedOnClientHint:
       "Cet appareil est prêt à devenir le prochain hôte. Vérifiez le rôle de la bibliothèque avant de prendre le relais.",
-    importSource: "Source",
+    importSource: "Source de l’import",
     importDetectedInventoryCsv: "CSV du stock",
     importDetectedInventoryJson: "JSON du stock",
     backupValidationDone: "Validation de la sauvegarde terminée.",
@@ -2332,14 +2331,29 @@ export const frDictionary: DictionaryNode = {
       "Ce client affiche le catalogue de l’hôte. Les corrections de couleurs et les actualisations des fabricants sont enregistrées sur l’hôte.",
     catalogRefreshTitle: "Mises à jour des catalogues fabricants",
     catalogRefreshHelp:
-      "Choisissez un fabricant et actualisez uniquement les familles de matériaux qui nécessitent de nouveaux produits. Un audit complet est plus lent et peut classer les produits non retrouvés comme historiques.",
+      "Détectez les types de matériaux actuellement disponibles, puis actualisez un seul type à la fois. La détection n’importe rien et ne modifie jamais l’état du cycle de vie.",
+    discoverCatalogMaterials: "Détecter les matériaux disponibles",
+    discoveringCatalogMaterials: "Recherche des matériaux disponibles",
+    availableCatalogMaterials: "Matériaux disponibles",
+    catalogDiscoveryHelp:
+      "Interroge la boutique du fabricant avec une petite requête en lecture seule. Rien n’est importé et l’état du cycle de vie du catalogue n’est pas modifié.",
+    catalogDiscoveryEmpty:
+      "Aucun type de matériau n’a encore été détecté. Vérifiez la source du fabricant pour créer la liste.",
+    catalogDiscoverySuccess:
+      "{count} types de matériaux peuvent être actualisés.",
+    selectOneMaterial: "Sélectionnez un type de matériau à actualiser.",
+    refreshSelectedMaterial: "Actualiser {material}",
+    catalogAuditBambuFailed:
+      "Impossible de détecter les matériaux Bambu disponibles. La liste précédente a été conservée.",
+    catalogAuditEsunFailed:
+      "Impossible de détecter les matériaux eSUN disponibles. La liste précédente a été conservée.",
     catalogRefreshClientHostOnly:
       "Les mises à jour des fabricants sont envoyées à l’hôte. Ce client continue d’afficher et de modifier le catalogue partagé de l’hôte.",
-    catalogAllTypes: "Audit complet du fabricant",
+    catalogAllTypes: "Détecter les matériaux",
     discoveredMaterials: "Matériaux détectés",
     refreshCurrentVendor: "Actualiser le catalogue du fabricant actuel",
-    runFullVendorAudit: "Lancer l’audit complet du fabricant",
-    refreshSelectedMaterials: "Actualiser les matériaux sélectionnés",
+    runFullVendorAudit: "Détecter les matériaux disponibles",
+    refreshSelectedMaterials: "Actualiser le matériau sélectionné",
     hideRefreshLog: "Masquer le journal d’actualisation",
     swatchQuality: "Qualité des couleurs",
     swatchQualityHelp:
@@ -2448,7 +2462,7 @@ export const frDictionary: DictionaryNode = {
     bambuLiveFieldChanges: "Modifications",
     bambuLiveFieldChangeCadence: "Intervalle moyen de modification",
     bambuLiveFieldRecentValues: "Valeurs récentes",
-    bambuLiveCandidateCount: "candidates",
+    bambuLiveCandidateCount: "candidats",
     bambuLiveCandidateRfidSaved: "RFID enregistrée",
     bambuLiveCandidateNoRfidSaved: "Aucune RFID enregistrée",
     bambuLiveCaptureWaiting:

@@ -9,8 +9,11 @@ type MissingSwatchesPanelProps = ComponentProps<typeof SettingsMissingSwatchesPa
 
 type BuildCatalogRefreshPanelPropsInput = Omit<
   CatalogRefreshPanelProps,
-  "onRefreshVendorCatalog"
+  "onAuditVendorCatalog" | "onRefreshVendorCatalog"
 > & {
+  onAuditVendorCatalog: (
+    ...args: Parameters<CatalogRefreshPanelProps["onAuditVendorCatalog"]>
+  ) => Promise<void> | void;
   onRefreshVendorCatalog: (
     ...args: Parameters<CatalogRefreshPanelProps["onRefreshVendorCatalog"]>
   ) => Promise<void> | void;
@@ -49,6 +52,8 @@ export function buildSettingsCatalogRouteProps({
     },
     refreshPanel: {
       ...refreshPanel,
+      onAuditVendorCatalog: (...args) =>
+        void refreshPanel.onAuditVendorCatalog(...args),
       onRefreshVendorCatalog: (...args) =>
         void refreshPanel.onRefreshVendorCatalog(...args),
     },

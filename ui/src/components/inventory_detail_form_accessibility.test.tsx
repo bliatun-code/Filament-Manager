@@ -7,6 +7,7 @@ import { I18nContext, type I18nContextValue } from "../lib/i18n";
 import { InventoryCatalogMetadataPanel } from "./inventory_catalog_metadata_panel";
 import {
   InventorySpoolHomeLocationPanel,
+  InventorySpoolLostStatusPanel,
   InventorySpoolOwnershipPanel,
   InventorySpoolTarePanel,
 } from "./inventory_spool_maintenance_panels";
@@ -144,6 +145,82 @@ test("spool maintenance fields use labels, fieldset context, and existing help t
     html,
     new RegExp(`id="${locationId}"[^>]*aria-describedby="${locationId}-help"`),
   );
+});
+
+test("loaned-out home location is disabled and explains that return is required", () => {
+  const html = renderWithI18n(
+    <InventorySpoolHomeLocationPanel
+      assignedToPrinter={false}
+      disabled
+      loanedOut
+      onChange={() => {}}
+      onSave={() => {}}
+      resolvedTheme="dark"
+      spoolHexColor="#00AE42"
+      value="Shelf 4"
+    />,
+  );
+
+  const locationId = labelTargetIds(html)[0];
+  assert.ok(locationId);
+  assert.match(html, new RegExp(`id="${locationId}"[^>]*disabled=""`));
+  assert.match(html, new RegExp(`id="${locationId}"[^>]*aria-describedby="${locationId}-help"`));
+  assert.match(
+    html,
+    /Return the loan before editing this roll&#x27;s status, location, or ownership\./,
+  );
+});
+
+test("loaned-out status action is disabled and points to the return flow", () => {
+  const html = renderWithI18n(
+    <InventorySpoolLostStatusPanel
+      disabled
+      loanedOut
+      onToggle={() => {}}
+      resolvedTheme="dark"
+      spoolHexColor="#00AE42"
+      status="BORROWED"
+    />,
+  );
+
+  const button = html.match(/<button[^>]*>Mark as lost<\/button>/)?.[0];
+  assert.ok(button);
+  assert.match(button, /disabled=""/);
+  const helpId = button.match(/aria-describedby="([^"]+)"/)?.[1];
+  assert.ok(helpId);
+  assert.ok(html.includes(`id="${helpId}"`));
+  assert.match(
+    html,
+    /Return the loan before editing this roll&#x27;s status, location, or ownership\./,
+  );
+});
+
+test("loaned-out ownership controls are disabled until the return flow completes", () => {
+  const html = renderWithI18n(
+    <InventorySpoolOwnershipPanel
+      contactValue=""
+      disabled
+      loanedOut
+      noteValue=""
+      onChangeContact={() => {}}
+      onChangeName={() => {}}
+      onChangeNote={() => {}}
+      onChangeType={() => {}}
+      onSave={() => {}}
+      ownerNameValue=""
+      resolvedTheme="dark"
+      spoolHexColor="#00AE42"
+      typeValue="OWNED"
+    />,
+  );
+
+  assert.match(html, /<fieldset[^>]*aria-describedby="([^"]+-loaned-help)"/);
+  assert.equal((html.match(/<button[^>]*disabled=""/g) ?? []).length, 3);
+  assert.match(
+    html,
+    /Return the loan before editing this roll&#x27;s status, location, or ownership\./,
+  );
+  assert.doesNotMatch(html, /Owned rolls stay in your inventory/);
 });
 
 test("owned-spool help describes the ownership fieldset", () => {

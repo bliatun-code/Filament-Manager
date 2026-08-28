@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use rusqlite::{params, Connection};
 
 use super::bambu_live_settings::bambu_live_integration_setting_key;
+use super::database_loan_queries::ensure_spool_not_outbound_loan_locked;
 use super::database_result::require_rows;
 use super::database_result::{InventoryError, InventoryResult};
 use super::printer_slot_location::PRINTER_SLOT_LOCATION_PREDICATE_SQL;
@@ -207,6 +208,7 @@ pub(crate) fn delete_printer(conn: &Connection, printer_id: &str) -> InventoryRe
 }
 
 fn release_printer_spool(conn: &Connection, spool_id: &str) -> InventoryResult<()> {
+    ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
     let sql = format!(
         "UPDATE filament_spools
              SET status = CASE WHEN {SPOOL_STATUS_ASSIGNED_PREDICATE_SQL} THEN 'IN_STOCK' ELSE status END,

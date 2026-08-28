@@ -394,8 +394,11 @@ unsaved model, capacity, name, or Bambu Live changes.
 
 ### Filament Catalogue
 
-Catalogue settings group vendor catalogues, material filters, missing swatches,
-and refresh/maintenance actions.
+Catalogue settings use a lightweight, read-only discovery to list the material
+types currently available from a vendor. Discovery imports nothing and changes
+no lifecycle state; refreshes then run for one selected material type at a time
+without automatically marking older entries as discontinued. Missing-swatch
+maintenance remains separate.
 
 ![Settings catalogue](screenshots/settings-catalog.jpg)
 

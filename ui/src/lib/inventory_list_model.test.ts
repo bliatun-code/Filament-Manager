@@ -10,6 +10,7 @@ import {
   filterInventorySpools,
   inventoryOwnershipTone,
   inventoryStatusTone,
+  isInventorySpoolLoanedOut,
   isInventorySpoolLoanTrackingCandidate,
   isInventorySpoolLowStockCandidate,
   isInventorySpoolVisibleForStatusFilter,
@@ -56,6 +57,19 @@ test("normalizeDisplayToken trims empty placement text", () => {
   assert.equal(normalizeDisplayToken(" Shelf A "), "Shelf A");
   assert.equal(normalizeDisplayToken(" "), null);
   assert.equal(normalizeDisplayToken(null), null);
+});
+
+test("loaned-out policy covers canonical status and authoritative outbound loan ids", () => {
+  assert.equal(isInventorySpoolLoanedOut(null, new Set()), false);
+  assert.equal(isInventorySpoolLoanedOut(spool({ status: "BORROWED" }), new Set()), true);
+  assert.equal(
+    isInventorySpoolLoanedOut(spool({ status: "IN_STOCK" }), new Set(["spool_1"])),
+    true,
+  );
+  assert.equal(
+    isInventorySpoolLoanedOut(spool({ status: "IN_STOCK" }), new Set(["another-spool"])),
+    false,
+  );
 });
 
 test("formatInventoryDisplayTitle removes immediate duplicate display tokens", () => {

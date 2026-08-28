@@ -11,18 +11,22 @@ type TranslateFn = (key: string, fallback?: string) => string;
 
 type UseSettingsCatalogSectionStateInput = {
   catalogMasters: MasterCatalogRow[];
+  catalogSourceCacheScope: string | null;
   tauri: boolean;
   t: TranslateFn;
 };
 
 export function useSettingsCatalogSectionState({
   catalogMasters,
+  catalogSourceCacheScope,
   tauri,
   t,
 }: UseSettingsCatalogSectionStateInput) {
   const swatchDrafts = useSettingsSwatchDrafts();
   const swatchState = useSettingsSwatchState();
-  const refreshMaterials = useSettingsCatalogRefreshMaterials();
+  const refreshMaterials = useSettingsCatalogRefreshMaterials({
+    cacheScope: catalogSourceCacheScope,
+  });
   const refreshState = useSettingsCatalogRefreshState();
   const refreshResult = useSettingsCatalogRefreshResult();
   const refreshProgress = useSettingsCatalogRefreshProgress({
@@ -30,10 +34,12 @@ export function useSettingsCatalogSectionState({
     tauri,
   });
   const derivedState = useSettingsCatalogDerivedState({
-    bambuRefreshMaterials: refreshMaterials.bambuRefreshMaterials,
+    bambuDiscoveredMaterials: refreshMaterials.bambuDiscoveredMaterials,
+    bambuRefreshMaterial: refreshMaterials.bambuRefreshMaterial,
     catalogMasters,
     catalogVendor: refreshMaterials.catalogVendor,
-    esunRefreshMaterials: refreshMaterials.esunRefreshMaterials,
+    esunDiscoveredMaterials: refreshMaterials.esunDiscoveredMaterials,
+    esunRefreshMaterial: refreshMaterials.esunRefreshMaterial,
     swatchVendorFilter: swatchState.swatchVendorFilter,
   });
 

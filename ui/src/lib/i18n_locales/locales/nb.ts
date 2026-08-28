@@ -58,7 +58,7 @@ export const nbDictionary: DictionaryNode = {
       spoolActiveLoan: "Returner det aktive utlånet før du fjerner denne rullen.",
       loadedSpoolEditBlocked: "Bruk printersporthandlingene for å redigere en lastet rull.",
       loanedSpoolEditBlocked:
-        "Returner utlånet før du redigerer status eller plassering for denne rullen.",
+        "Returner det aktive utlånet før du endrer status, plassering eller eierskap for denne rullen.",
       spoolStatusEditLimited:
         "Nettleseren kan bare redigere ruller som er på lager, tomme eller mistet.",
       locationHasReferences:
@@ -625,7 +625,7 @@ export const nbDictionary: DictionaryNode = {
       catalogMatchCountPlural: "{count} treff",
       catalogMatchCount:
         "{count, plural, one {# treff} other {# treff}}",
-      searchVendorCatalog: "Søk etter {{vendor}}-materiale, filament eller farge",
+      searchVendorCatalog: "Søk etter {vendor}-materiale, filament eller farge",
       catalogRefreshFilter: "Katalogoppdatering og filtrering",
       catalogSelection: "Katalogvalg",
       noCatalogMatches: "Ingen katalogoppføringer matcher valgte leverandørfiltre.",
@@ -639,7 +639,7 @@ export const nbDictionary: DictionaryNode = {
         "Bruk den lokale katalogen under for å legge filament direkte på lager, i ønskelisten eller i bestillingskøen.",
       selectionPreview: "Valgt oppføring",
       noSelectionPreview: "Velg en katalograd eller fyll inn manuelle detaljer før lagring.",
-      bambuCodeLabel: "Filament Code",
+      bambuCodeLabel: "Filamentkode",
       bambuCodeHelp:
         "Bruk den femsifrede koden som står som Filament Code på Bambu-etiketten.",
       bambuCodeSingleMatch: "Én aktiv Bambu-katalogoppføring matcher og er valgt.",
@@ -655,7 +655,7 @@ export const nbDictionary: DictionaryNode = {
       bambuCodeBoxLabelTitle: "Eskeetikett",
       bambuCodeBoxLabelHint: "Finn dette feltet på eskeetiketten.",
       bambuBatchHeaderAction: "Batch legg inn fra esker",
-      bambuBatchHeaderActionShort: "Batch",
+      bambuBatchHeaderActionShort: "Parti",
       bambuBatchModalEyebrow: "Bambu-esker",
       bambuBatchModalTitle: "Batch legg inn fra esker",
       bambuBatchModalSubtitle:
@@ -1185,7 +1185,7 @@ export const nbDictionary: DictionaryNode = {
       lent: "Utlånt",
       borrowedInAt: "Lånt inn",
       out: "Ut",
-      startWeight: "Start",
+      startWeight: "Startvekt",
       in: "Inn",
       back: "Tilbake",
       returned: "Returnert",
@@ -1743,6 +1743,7 @@ export const nbDictionary: DictionaryNode = {
       "bambuDiscoveryRecoveryHint": "Den lagrede adressen kan gjenopprettes etter at denne printeridentiteten er godkjent.",
       "bambuDiscoveryDifferentPrinter": "Dette er ikke den lagrede printeren. Du kan bare bruke den til et nytt oppsett.",
       "bambuDiscoveryRecovered": "Lagret live-printeradresse er gjenopprettet.",
+      "bambuDiscoveryAutoFilled": "Fant én Bambu-printer. IP-adresse og serienummer ble fylt inn automatisk. Ingen tilgangskode ble endret eller sendt. Skriv inn tilgangskoden, og kontroller deretter printeridentiteten før du lagrer.",
       "bambuDiscoveryFailed": "Kunne ikke finne Bambu-printere på dette nettverket.",
       "bambuLiveRecoveryFailed": "Kunne ikke gjenopprette lagret live-printeradresse.",
       updates: "Oppdateringer",
@@ -1805,7 +1806,7 @@ export const nbDictionary: DictionaryNode = {
       help: "Hjelp",
       helpHint:
         "Åpne den visuelle product touren for skjermbilder av hovedflytene i desktop og Companion, eller bruk tekstmanualen for stegvis forklaring.",
-      productTour: "Product tour",
+      productTour: "Produktomvisning",
       userManual: "Brukermanual",
       libraryTabTitle: "Bibliotek og webapp",
       libraryTabHint: "",
@@ -1936,9 +1937,6 @@ export const nbDictionary: DictionaryNode = {
       language: "Språk",
       languageHint:
         "Velg appspråk for alle hovedvisninger.",
-      languageBeta: "Beta",
-      languageBetaHint:
-        "Betaspråk er fortsatt under arbeid og kan vise noe tekst på engelsk.",
       appearance: "Utseende",
       light: "Lys",
       dark: "Mørk",
@@ -2335,14 +2333,29 @@ export const nbDictionary: DictionaryNode = {
         "Denne klienten viser vertens katalog. Swatch-rettelser og leverandøroppdateringer lagres på verten.",
       catalogRefreshTitle: "Oppdatering av leverandørkatalog",
       catalogRefreshHelp:
-        "Velg leverandør og oppdater bare materialfamiliene som trenger nye produkter. Full leverandøraudit er tregere og kan merke produkter som ikke sees som historiske.",
+        "Finn hvilke materialtyper som er tilgjengelige nå, og oppdater deretter én materialtype om gangen. Søket importerer ingenting og endrer aldri livssyklusstatus.",
+      discoverCatalogMaterials: "Finn tilgjengelige materialtyper",
+      discoveringCatalogMaterials: "Finner tilgjengelige materialtyper",
+      availableCatalogMaterials: "Tilgjengelige materialtyper",
+      catalogDiscoveryHelp:
+        "Kontrollerer leverandørens nettbutikk med en liten, skrivebeskyttet forespørsel. Ingenting importeres, og katalogens livssyklusstatus endres ikke.",
+      catalogDiscoveryEmpty:
+        "Ingen materialtyper er funnet ennå. Kontroller leverandørkilden for å opprette listen.",
+      catalogDiscoverySuccess:
+        "{count} materialtyper er tilgjengelige for oppdatering.",
+      selectOneMaterial: "Velg én materialtype som skal oppdateres.",
+      refreshSelectedMaterial: "Oppdater {material}",
+      catalogAuditBambuFailed:
+        "Kunne ikke finne tilgjengelige Bambu-materialer. Den forrige listen ble beholdt.",
+      catalogAuditEsunFailed:
+        "Kunne ikke finne tilgjengelige eSUN-materialer. Den forrige listen ble beholdt.",
       catalogRefreshClientHostOnly:
         "Leverandøroppdateringer sendes til verten. Denne klienten viser og redigerer fortsatt den delte vertskatalogen.",
-      catalogAllTypes: "Full leverandøraudit",
+      catalogAllTypes: "Finn materialtyper",
       discoveredMaterials: "Oppdagede materialer",
       refreshCurrentVendor: "Oppdater valgt leverandørkatalog",
-      runFullVendorAudit: "Kjør full leverandøraudit",
-      refreshSelectedMaterials: "Oppdater valgte materialtyper",
+      runFullVendorAudit: "Finn tilgjengelige materialtyper",
+      refreshSelectedMaterials: "Oppdater valgt materialtype",
       hideRefreshLog: "Skjul oppdateringslogg",
       swatchQuality: "Swatch-kvalitet",
       swatchQualityHelp:

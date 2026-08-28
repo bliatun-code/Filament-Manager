@@ -295,7 +295,7 @@ function BatchReceiptCard({
               ? protectedCount > 0
                 ? t(
                     "settings.filamentDefaultsReceiptCommittedProtected",
-                    `${receipt.updated.length} updated · ${protectedCount} protected from later group updates · ${receipt.skipped.length} not updated`,
+                    "{updated} updated · {protected} protected from later group updates · {skipped} not updated",
                     {
                       updated: receipt.updated.length,
                       protected: protectedCount,
@@ -304,7 +304,7 @@ function BatchReceiptCard({
                   )
                 : t(
                   "settings.filamentDefaultsReceiptCommitted",
-                  `${receipt.updated.length} updated · ${receipt.skipped.length} not updated`,
+                  "{updated} updated · {skipped} not updated",
                   {
                     updated: receipt.updated.length,
                     skipped: receipt.skipped.length,

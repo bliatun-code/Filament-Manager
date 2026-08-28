@@ -83,6 +83,17 @@ export function normalizeStatus(status: string): SpoolStatus {
   return normalizeSpoolStatus(status);
 }
 
+export function isInventorySpoolLoanedOut(
+  spool: Pick<InventorySpool, "id" | "status"> | null,
+  activeOutboundLoanSpoolIds: ReadonlySet<string>,
+): boolean {
+  return Boolean(
+    spool &&
+      (normalizeSpoolStatus(spool.status) === "BORROWED" ||
+        activeOutboundLoanSpoolIds.has(spool.id)),
+  );
+}
+
 export function formatInventoryStatusLabel(t: TranslateFn, statusRaw: string): string {
   const status = normalizeStatus(statusRaw);
   if (status === "IN_STOCK") {

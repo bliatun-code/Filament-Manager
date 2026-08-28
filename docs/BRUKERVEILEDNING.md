@@ -547,15 +547,15 @@ Desktop-appen og Companion støtter engelsk, norsk bokmål, tysk, fransk,
 spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
 forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
-for hver flate, og engelsk er det kanoniske fallback-språket. Norsk bokmål,
-tysk og fransk har komplette kataloger for den gjeldende teksten, men alle
-ikke-engelske språk er fortsatt merket **Beta** frem til en ny språkfaglig
-gjennomgang. De øvrige Beta-katalogene bruker testet engelsk fallback for tekst
-som ennå ikke er oversatt. Korrigeringer til community-oversettelsene kan
-foreslås via det egne
+for hver flate. Alle valgbare språk har komplette kataloger for både desktop og
+Companion og vises uten Beta-merking. Engelsk er fortsatt kanonisk kildespråk og
+en siste inline-sikring ved kjørefeil, men publiserte kataloger kan ikke være
+avhengige av manglende engelske rader. Korrigeringer til
+community-oversettelsene kan foreslås via det egne
 [skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
-ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
+ikke-engelske katalogene får community-rettelser og faktisk språkfaglig
+gjennomgang.
 
 De to valgene under **Innstillinger → Generelt → Bakgrunnskjøring** aktiveres
 hver for seg. Aktiver **Fortsett å kjøre når jeg lukker vinduet** for å skjule
@@ -645,9 +645,11 @@ Filamentkatalog:
 
 - katalogoversikt
 - katalogoppdatering for Bambu og eSUN
-- separat leverandøraudit og oppdatering av valgte materialer
+- lett, skrivebeskyttet discovery som finner tilgjengelige materialtyper uten å importere noe
+- oppdatering av én valgt materialtype om gangen
+- ingen automatisk utgått- eller livssyklusmarkering fra discovery eller oppdatering
 - farge-/swatch-data
-- håndtering av katalogelementer som ikke lenger finnes i import
+- eldre og forhandler-tilgjengelige katalogelementer beholdes søkbare
 
 Programvedlikehold:
 
@@ -872,9 +874,12 @@ Hvis du ikke kjenner host eller serienummer, legger du først til printeren uten
 Live og åpner deretter kortet under **Innstillinger -> 3D-printere**. Aktiver
 Live og velg **Finn Bambu-printere** på det private LAN-grensesnittet som når
 printeren. Den korte passive skanningen viser lokalt annonserte printernavn,
-serienumre og adresser. Velg **Bruk til oppsett** for å fylle host og
-serienummer inn i det ulagrede skjemaet, og fullfør samme identitetskontroll før
-du lagrer.
+serienumre og adresser. Når søket finner nøyaktig én printer for et nytt
+oppsett, fylles host og serienummer automatisk inn i det ulagrede skjemaet uten
+å endre noe som allerede er skrevet i tilgangskodefeltet. Hvis flere printere
+blir funnet, velger du **Bruk til oppsett** ved riktig printer. Skriv deretter
+inn tilgangskoden og fullfør den samme eksplisitte identitetskontrollen før du
+lagrer.
 
 Live Bambu status er lokal og leser printerdata fra samme nettverk. Den bør konfigureres på host-maskinen når du bruker Vert/Klient-oppsett.
 
@@ -915,7 +920,7 @@ samsvare over TLS. Tilgangskoden blir aldri lest eller sendt.
 Hvis automatisk gjenoppretting ikke finner og verifiserer printeren, åpner du
 det lagrede kortet under **Innstillinger -> 3D-printere** og bruker **Finn
 Bambu-printere** på det private LAN-grensesnittet. Skanningen lytter etter
-lokale printerannonser i opptil ti sekunder og viser annonsert serienummer, slik
+lokale printerannonser i opptil tolv sekunder og viser annonsert serienummer, slik
 at du kan skille ellers like printere fra hverandre.
 
 For en lagret printer uten andre ulagrede endringer er **Gjenopprett lagret
@@ -1074,7 +1079,7 @@ Programmet støtter:
 - eSUN-katalog
 - generisk/manuell registrering
 - swatch/fargedata
-- discontinued-markering når import ikke lenger finner gamle Bambu-elementer
+- bevaring av eldre katalogelementer uten automatisk utgått-markering
 
 Katalogelementer er maler. En fysisk rull er en egen lagerpost basert på en katalogmal eller manuell registrering.
 
@@ -1082,9 +1087,23 @@ Programmet leveres med en lokal seed-katalog for kjente filamenter. Den gjør at
 
 Katalogreparasjon gjenoppretter den innebygde seed-katalogen og fjerner bare ubrukte ikke-seedede katalograder. Ruller på lager, ønskelistekoblinger, utlån, printerdata, RFID, plasseringer og historikk skal bevares.
 
-Leverandøraudit kontrollerer hva Bambu- eller eSUN-kilden rapporterer nå.
-Oppdatering av valgte materialer bruker katalogendringene du velger. Dermed kan
-du vurdere leverandørendringer før lokal katalogmetadata erstattes.
+**Finn tilgjengelige materialtyper** gjør en liten, avgrenset og
+skrivebeskyttet kontroll av nettbutikken til Bambu eller eSUN. Kontrollen
+importerer ingen produkter og endrer verken katalogmetadata eller
+livssyklusstatus. Hvis kilden er blokkert, tom eller ufullstendig, beholdes den
+forrige listen over tilgjengelige materialtyper.
+
+For Bambu leser dette søket bare den komplette, paginerte katalogoversikten og
+åpner ingen produktsider. Når du etterpå oppdaterer én valgt materialfamilie,
+leser programmet offentlig produktmetadata bare for produktene i den familien.
+Forespørslene er sekvensielle, har en fast sikkerhetsgrense og gjentas ikke
+automatisk ved feil eller sperre.
+
+Etter et vellykket søk velger du nøyaktig én materialtype og oppdaterer den.
+Større vedlikehold deles dermed i små, forsiktige forespørsler. Verken søket
+eller materialoppdateringen markerer automatisk produkter som utgått eller
+historiske; eldre produkter forblir søkbare for ruller som fortsatt finnes hos
+brukeren eller i forhandlerleddet.
 
 I Klient-modus ber desktop-appen om opptil 5 000 katalograder fra Verten i
 stedet for å avkorte listen ved 1 000. Valgfritt serversøk sendes videre til

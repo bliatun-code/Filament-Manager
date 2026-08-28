@@ -58,7 +58,7 @@ export const deDictionary: DictionaryNode = {
     spoolActiveLoan: "Beende die aktive Ausleihe, bevor du diese Rolle entfernst.",
     loadedSpoolEditBlocked: "Bearbeite eine geladene Rolle über die Druckerplatz-Aktionen.",
     loanedSpoolEditBlocked:
-      "Beende die Ausleihe, bevor du Status oder Lagerort dieser Rolle änderst.",
+      "Beende die aktive Ausleihe, bevor du Status, Lagerort oder Eigentum dieser Rolle änderst.",
     spoolStatusEditLimited:
       "Im Browser kann der Rollenstatus nur auf Lagernd, Leer oder Verloren gesetzt werden.",
     locationHasReferences:
@@ -578,7 +578,7 @@ export const deDictionary: DictionaryNode = {
     catalogMatchCountSingular: "{count} Treffer",
     catalogMatchCountPlural: "{count} Treffer",
     catalogMatchCount: "{count, plural, one {# Treffer} other {# Treffer}}",
-    searchVendorCatalog: "Material, Filament oder Farbe von {{vendor}} suchen",
+    searchVendorCatalog: "Material, Filament oder Farbe von {vendor} suchen",
     catalogRefreshFilter: "Katalogaktualisierung & Filter",
     catalogSelection: "Katalogauswahl",
     noCatalogMatches: "Keine Katalogeinträge entsprechen den aktuellen Herstellerfiltern.",
@@ -742,7 +742,8 @@ export const deDictionary: DictionaryNode = {
     noAvailablePrinterSlots: "Keine freien Druckerplätze verfügbar.",
     printLabelAction: "Etikett drucken",
     unsavedChanges: "Nicht gespeicherte Änderungen",
-    discardUnsavedChanges: "Nicht gespeicherte Änderungen verwerfen?",
+    discardUnsavedChanges:
+      "Nicht gespeicherte Änderungen an der Rolle verwerfen? Deine Änderungen gehen verloren.",
     allChangesSaved: "Alle Änderungen gespeichert.",
     rollChangesSaved: "Rollenänderungen gespeichert.",
     labelSheetInventoryHint:
@@ -1142,7 +1143,7 @@ export const deDictionary: DictionaryNode = {
     returnAction: "Zurückgeben",
     handBackAction: "Zurückreichen",
     returnDialogTitle: "Ausgeliehene Rolle zurückgeben",
-    confirmReturnAction: "Rückgabe bestätigen",
+    confirmReturnAction: "Rücknahme bestätigen",
     consumed: "Verbraucht",
     usageByPerson: "Verbrauch nach Person",
     clientReadOnlyBanner: "Dieses Gerät ist als Client verbunden. Ausleihänderungen bleiben auf dem Host.",
@@ -1186,7 +1187,7 @@ export const deDictionary: DictionaryNode = {
     handBackDialogHint:
       "Beim Zurückreichen wird die geliehene Rolle aus dem aktiven Bestand entfernt; der Ausleihverlauf bleibt erhalten.",
     handBackDialogWeightLabel: "Zurückgereichtes Gesamtgewicht inkl. Rolle (g)",
-    confirmHandBackAction: "Rückgabe bestätigen",
+    confirmHandBackAction: "Zurückgabe bestätigen",
     returnedGrams: "Zurückgegebene Gramm",
     usageHint: "Zeigt aktive ausgehende Ausleihen und den Materialverbrauch je Person.",
     noUsageByPerson: "Noch keine Verbrauchsdaten nach Person.",
@@ -1718,9 +1719,10 @@ export const deDictionary: DictionaryNode = {
     "bambuDiscoveryRecoveryHint": "Die gespeicherte Adresse kann wiederhergestellt werden, nachdem dieser Druckeridentität vertraut wurde.",
     "bambuDiscoveryDifferentPrinter": "Dies ist nicht der gespeicherte Drucker. Du kannst ihn nur für eine neue Einrichtung verwenden.",
     "bambuDiscoveryRecovered": "Die gespeicherte Live-Druckeradresse wurde wiederhergestellt.",
+    "bambuDiscoveryAutoFilled": "Ein Bambu-Drucker wurde gefunden. IP-Adresse und Seriennummer wurden automatisch ausgefüllt. Es wurde kein Zugangscode geändert oder gesendet. Geben Sie den Zugangscode ein und prüfen Sie anschließend vor dem Speichern die Druckeridentität.",
     "bambuDiscoveryFailed": "Auf diesem Netzwerk konnten keine Bambu-Drucker gefunden werden.",
     "bambuLiveRecoveryFailed": "Die gespeicherte Live-Druckeradresse konnte nicht wiederhergestellt werden.",
-    updates: "Updates",
+    updates: "Aktualisierungen",
     updateCheckHint:
       "Wenn aktiviert, wird GitHub automatisch höchstens einmal täglich geprüft. Download und Installation bleiben manuell.",
     automaticUpdateChecks: "Automatisch prüfen",
@@ -1748,9 +1750,6 @@ export const deDictionary: DictionaryNode = {
     appearance: "Darstellung",
     language: "Sprache",
     languageHint: "Sprache für alle Hauptansichten auswählen.",
-    languageBeta: "Beta",
-    languageBetaHint:
-      "Betasprachen sind noch nicht vollständig und können teilweise englischen Text anzeigen.",
     light: "Hell",
     dark: "Dunkel",
     auto: "Automatisch (System)",
@@ -2094,14 +2093,29 @@ export const deDictionary: DictionaryNode = {
       "Dieser Client zeigt den Host-Katalog. Farbmusterkorrekturen und Herstelleraktualisierungen werden auf dem Host gespeichert.",
     catalogRefreshTitle: "Herstellerkatalog aktualisieren",
     catalogRefreshHelp:
-      "Wähle Hersteller und Materialfamilien mit neuen Produkten. Eine vollständige Herstellerprüfung dauert länger und kann nicht gefundene Produkte als historisch markieren.",
+      "Ermittle die derzeit verfügbaren Materialtypen und aktualisiere anschließend jeweils einen Materialtyp. Die Ermittlung importiert nichts und ändert niemals den Lebenszyklusstatus.",
+    discoverCatalogMaterials: "Verfügbare Materialien ermitteln",
+    discoveringCatalogMaterials: "Verfügbare Materialien werden ermittelt",
+    availableCatalogMaterials: "Verfügbare Materialien",
+    catalogDiscoveryHelp:
+      "Prüft den Shop des Herstellers mit einer kleinen, schreibgeschützten Anfrage. Es wird nichts importiert und kein Lebenszyklusstatus im Katalog geändert.",
+    catalogDiscoveryEmpty:
+      "Es wurden noch keine Materialtypen ermittelt. Prüfe die Herstellerquelle, um die Liste zu erstellen.",
+    catalogDiscoverySuccess:
+      "{count} Materialtypen können aktualisiert werden.",
+    selectOneMaterial: "Wähle einen Materialtyp zum Aktualisieren aus.",
+    refreshSelectedMaterial: "{material} aktualisieren",
+    catalogAuditBambuFailed:
+      "Verfügbare Bambu-Materialien konnten nicht ermittelt werden. Die bisherige Liste wurde beibehalten.",
+    catalogAuditEsunFailed:
+      "Verfügbare eSUN-Materialien konnten nicht ermittelt werden. Die bisherige Liste wurde beibehalten.",
     catalogRefreshClientHostOnly:
       "Herstelleraktualisierungen werden an den Host gesendet. Dieser Client zeigt und bearbeitet weiterhin den gemeinsamen Host-Katalog.",
-    catalogAllTypes: "Vollständige Herstellerprüfung",
+    catalogAllTypes: "Materialien ermitteln",
     discoveredMaterials: "Gefundene Materialien",
     refreshCurrentVendor: "Aktuellen Herstellerkatalog aktualisieren",
-    runFullVendorAudit: "Vollständige Herstellerprüfung ausführen",
-    refreshSelectedMaterials: "Ausgewählte Materialien aktualisieren",
+    runFullVendorAudit: "Verfügbare Materialien ermitteln",
+    refreshSelectedMaterials: "Ausgewähltes Material aktualisieren",
     hideRefreshLog: "Aktualisierungsprotokoll ausblenden",
     swatchQuality: "Farbmusterqualität",
     swatchQualityHelp:

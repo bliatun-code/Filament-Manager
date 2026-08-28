@@ -99,7 +99,7 @@ export function SettingsLowStockPanel({
   );
   const thresholdError = t(
     "settings.lowStockThresholdValidation",
-    `Enter a whole number from ${LOW_STOCK_THRESHOLD_MIN_G} to ${LOW_STOCK_THRESHOLD_MAX_G} g.`,
+    "Enter a whole number from 1 to 100000 g.",
   );
 
   function selectMaterial(materialKey: string) {

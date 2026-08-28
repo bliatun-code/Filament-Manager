@@ -370,6 +370,7 @@ mod tests {
                     "create_library_sync_host_printer",
                     "update_library_sync_host_master_catalog_entry",
                     "refresh_library_sync_host_vendor_catalog",
+                    "audit_library_sync_host_vendor_catalog",
                     "delete_library_sync_host_printer",
                 ][..],
             ),

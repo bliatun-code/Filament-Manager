@@ -35,6 +35,7 @@ import type { SettingsTabKey } from "./pages/settings_page_model";
 import { AppUpdateBanner } from "./components/app_update_banner";
 import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
 import type { FilamentPriceBatchReceipt } from "./lib/settings_filament_defaults_model";
+import type { InventoryNavigationGuard } from "./lib/use_inventory_unsaved_changes_guard";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
@@ -78,9 +79,9 @@ export default function App() {
   const [filamentPriceBatchReceipt, setFilamentPriceBatchReceipt] =
     useState<FilamentPriceBatchReceipt | null>(null);
   const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
-  const inventoryNavigationGuardRef = useRef<(() => boolean) | null>(null);
+  const inventoryNavigationGuardRef = useRef<InventoryNavigationGuard | null>(null);
   const handleInventoryNavigationGuardChange = useCallback(
-    (guard: (() => boolean) | null) => {
+    (guard: InventoryNavigationGuard | null) => {
       inventoryNavigationGuardRef.current = guard;
     },
     [],
@@ -207,22 +208,25 @@ export default function App() {
       : null;
 
   const navigateToPage = (page: PageKey, nextInventoryIntent: InventoryNavigationIntent = null) => {
+    const completeNavigation = () => {
+      startTransition(() => {
+        setInventoryNavigationIntent(nextInventoryIntent);
+        if (page !== "settings") {
+          setSettingsInitialTab(null);
+          setSettingsInitialPrinterId(null);
+          setSettingsFilamentDefaultsFocusTarget(null);
+        }
+        setActivePage(page);
+      });
+    };
     if (
       page !== activePage &&
       inventoryNavigationGuardRef.current &&
-      !inventoryNavigationGuardRef.current()
+      !inventoryNavigationGuardRef.current(completeNavigation)
     ) {
       return;
     }
-    startTransition(() => {
-      setInventoryNavigationIntent(nextInventoryIntent);
-      if (page !== "settings") {
-        setSettingsInitialTab(null);
-        setSettingsInitialPrinterId(null);
-        setSettingsFilamentDefaultsFocusTarget(null);
-      }
-      setActivePage(page);
-    });
+    completeNavigation();
   };
 
   const openSettingsTab = (

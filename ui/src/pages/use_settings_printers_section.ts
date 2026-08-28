@@ -134,7 +134,10 @@ export function useSettingsPrintersSection({
   } = useSettingsBambuLiveDiscovery({
     acceptRecoveredBambuLiveHost,
     busy,
+    editBambuLiveHost,
     editBambuLivePrinterSerial,
+    editBambuLiveTlsCertificateFingerprint,
+    editBambuLiveTlsSpkiFingerprint,
     editBambuLiveTlsTrustState,
     editPrinterDirty,
     editPrinterId,

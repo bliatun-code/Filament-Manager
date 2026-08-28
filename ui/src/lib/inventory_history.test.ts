@@ -148,8 +148,8 @@ test("price-standard, price-protection and location-merge history stay semantic 
   );
   assert.equal(
     formatInventoryHistoryEventType("PURCHASE_PRICE_STANDARD_APPLIED", translate("es")),
-    "Group price applied",
-    "draft locales inherit new history copy from the maintained English dictionary",
+    "Precio de grupo aplicado",
+    "published locales provide their own current history copy",
   );
 
   const norwegianDeps = {

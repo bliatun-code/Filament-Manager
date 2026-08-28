@@ -1718,6 +1718,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("filament-price-standards-v1") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("vendor-catalog-discovery-v1") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -3130,6 +3136,51 @@ async fn companion_api_rejects_invalid_catalog_refresh_vendor() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(error) = result {
         panic!("companion_api_rejects_invalid_catalog_refresh_vendor failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_requires_exactly_one_catalog_refresh_material() {
+    let db_path = temp_db_path("catalog-refresh-one-material");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        for body in [
+            r#"{"vendor":"Bambu","material_types":[]}"#,
+            r#"{"vendor":"eSUN","material_types":["PLA","PETG"]}"#,
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/v1/catalog/refresh")
+                        .header("content-type", "application/json")
+                        .header("host", "127.0.0.1:4278")
+                        .header("origin", "http://127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .header(COMPANION_CSRF_HEADER, &csrf_token)
+                        .body(Body::from(body))
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("companion_api_requires_exactly_one_catalog_refresh_material failed: {error}");
     }
 }
 
@@ -4626,6 +4677,125 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
             baseline_loan
         );
 
+        let update_safe_nonplacement_details = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        serde_json::json!({
+                            "status": "BORROWED",
+                            "location": baseline_spool.location_id.clone(),
+                            "home_location": baseline_spool.home_location_id.clone(),
+                            "spool_tare_weight_g": 245,
+                            "purchase_metadata": {
+                                "purchase_price": 249.5,
+                                "purchase_currency": "NOK",
+                                "purchase_date": "2026-08-21",
+                                "batch_code": "LOT-7",
+                                "supplier_reference": "PO-42"
+                            },
+                            "purchase_price_batch_locked": true
+                        })
+                        .to_string(),
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(update_safe_nonplacement_details.status(), StatusCode::OK);
+
+        let details_updated_spool = service
+            .get_spool("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after non-placement update".to_string())?
+            .spool;
+        assert_eq!(details_updated_spool.status, baseline_spool.status);
+        assert_eq!(
+            details_updated_spool.location_id,
+            baseline_spool.location_id
+        );
+        assert_eq!(
+            details_updated_spool.home_location_id,
+            baseline_spool.home_location_id
+        );
+        assert_eq!(details_updated_spool.spool_tare_weight_g, Some(245));
+        assert_eq!(
+            details_updated_spool.ownership_type,
+            baseline_spool.ownership_type
+        );
+        assert_eq!(details_updated_spool.owner_name, baseline_spool.owner_name);
+        assert_eq!(details_updated_spool.owner_contact, baseline_spool.owner_contact);
+        assert_eq!(details_updated_spool.ownership_note, baseline_spool.ownership_note);
+        assert_eq!(details_updated_spool.purchase_price, Some(249.5));
+        assert_eq!(
+            details_updated_spool.purchase_currency.as_deref(),
+            Some("NOK")
+        );
+        assert_eq!(
+            details_updated_spool.purchase_date.as_deref(),
+            Some("2026-08-21")
+        );
+        assert_eq!(details_updated_spool.batch_code.as_deref(), Some("LOT-7"));
+        assert_eq!(
+            details_updated_spool.supplier_reference.as_deref(),
+            Some("PO-42")
+        );
+        assert!(details_updated_spool.purchase_price_batch_locked);
+        let details_updated_loans = service
+            .list_active_spool_loans()
+            .map_err(|error| error.to_string())?;
+        assert_eq!(details_updated_loans.len(), 1);
+        assert_eq!(
+            serde_json::to_value(&details_updated_loans[0].loan)
+                .map_err(|error| error.to_string())?,
+            baseline_loan
+        );
+
+        let ownership_mutation = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        serde_json::json!({
+                            "status": "BORROWED",
+                            "location": baseline_spool.location_id.clone(),
+                            "home_location": baseline_spool.home_location_id.clone(),
+                            "ownership": {
+                                "ownership_type": "BORROWED_IN",
+                                "owner_name": "External owner"
+                            }
+                        })
+                        .to_string(),
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(ownership_mutation.status(), StatusCode::BAD_REQUEST);
+        let ownership_error_body = to_bytes(ownership_mutation.into_body(), usize::MAX)
+            .await
+            .map_err(|error| error.to_string())?;
+        let ownership_error: serde_json::Value = serde_json::from_slice(&ownership_error_body)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            ownership_error["code"],
+            "inventory.spool.loaned_edit_blocked"
+        );
+
         let placement_mutation = router
             .clone()
             .oneshot(
@@ -4694,10 +4864,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
         assert_eq!(cleared_spool.status, baseline_spool.status);
         assert_eq!(cleared_spool.location_id, baseline_spool.location_id);
         assert_eq!(cleared_spool.home_location_id, baseline_spool.home_location_id);
-        assert_eq!(
-            cleared_spool.spool_tare_weight_g,
-            baseline_spool.spool_tare_weight_g
-        );
+        assert_eq!(cleared_spool.spool_tare_weight_g, Some(245));
         assert_eq!(cleared_spool.ownership_type, baseline_spool.ownership_type);
         assert_eq!(cleared_spool.owner_name, baseline_spool.owner_name);
         assert_eq!(cleared_spool.owner_contact, baseline_spool.owner_contact);
@@ -4707,6 +4874,7 @@ async fn companion_api_edits_borrowed_receipt_without_mutating_loan_or_placement
         assert_eq!(cleared_spool.purchase_date, None);
         assert_eq!(cleared_spool.batch_code, None);
         assert_eq!(cleared_spool.supplier_reference, None);
+        assert!(cleared_spool.purchase_price_batch_locked);
         let cleared_loans = service
             .list_active_spool_loans()
             .map_err(|error| error.to_string())?;

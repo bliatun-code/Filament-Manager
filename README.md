@@ -115,11 +115,13 @@ Release notes:
   printer is added. It can still be skipped and configured later. An enabled
   integration without trusted TLS identity stays offline and shows a clickable
   Dashboard warning that opens that printer's Live settings for review.
-- Passive Bambu printer discovery can identify a local printer by its announced
-  serial number. It assists first-time Live setup and can automatically recover
-  a DHCP-changed printer address in the background only after the saved serial
-  and public-key pin match again. Recovery is credential-free and never sends
-  the access code; the same guarded recovery also remains available manually.
+- Passive Bambu printer discovery listens on both current announcement ports
+  and can identify a local printer by its announced serial number even while
+  Bambu Studio is open. One unambiguous result fills the Live host and serial
+  automatically. The same discovery engine can recover a DHCP-changed printer
+  address in the background only after the saved serial and public-key pin
+  match again. Recovery is credential-free and never sends the access code;
+  the same guarded recovery also remains available manually.
 - QR/RFID support for robust spool lookup and safer automatic AMS matching.
 - Print-ready QR labels for individual rolls as 300-DPI PNG files, including
   validated custom landscape dimensions remembered on the device. Matching A4
@@ -180,17 +182,18 @@ Filament Manager can be used in 21 languages:
 - Simplified Chinese, Traditional Chinese, Japanese, and Korean.
 - Ukrainian, Russian, and Hungarian.
 
-Language is selected from one compact list under **Settings → General**. English
-remains the canonical fallback. Norwegian Bokmål, German, and French ship
-complete catalogs for the current copy, but every non-English locale remains
-clearly marked Beta until it receives a fresh native-language review. Other
-Beta catalogs use tested English fallback for copy still awaiting translation.
-All selectable locales pass key, parameter, plural, accessibility, and visual
-QA contracts. Corrections and current-catalog native review are welcome through
-the dedicated
+Language is selected from one compact list under **Settings → General**. Every
+selectable language ships complete desktop and Companion catalogs without a
+Beta label. English remains the canonical source and emergency inline fallback,
+but published locale catalogs cannot depend on missing English rows. All
+selectable locales pass key, parameter, plural, message-format, and runtime
+loading contracts. Visual and accessibility checks remain separate release
+gates. Corrections and current-catalog native review are welcome through the
+dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set is intentionally stable while these
-20 non-English catalogs receive actual community and native-language review.
+20 non-English catalogs receive community corrections and native-language
+review.
 
 ## License
 
@@ -212,7 +215,6 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
   crate with platform-neutral domain and SQLite behavior.
 - `src-tauri/`: Tauri shell, Rust commands, Companion server, Bambu Live
   transport/sync, trusted-LAN, storage startup, and desktop integration.
-- `src/scraper/`: TypeScript catalog scraper utilities.
 - `ui/`: React desktop UI, UI models, tests, and styling.
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
 - `docs/`: user-facing guides.
@@ -230,7 +232,7 @@ Bambu Live boundaries.
 - Rust 1.88 or newer for Tauri builds; `rust-toolchain.toml` selects the
   reviewed Rust 1.98.0 toolchain through rustup
 - Xcode app + Command Line Tools for macOS builds
-- `sqlite3` CLI recommended for scraper fallback behavior
+- `sqlite3` CLI is optional as a fallback for visual-QA database tooling
 - Current macOS DMG: Apple Silicon or Intel and macOS 11.0 Big Sur or newer
 
 The project uses the local Tauri CLI from npm dependencies through
@@ -545,32 +547,16 @@ installations need one manual bridge upgrade before automatic notifications can
 work. See [Update Metadata Channel](docs/UPDATE_CHANNEL.md) for the fail-safe
 contract and publication choices.
 
-## Catalog Scraping
+## Catalog Updates
 
-Safe Bambu catalog refresh from the scraper:
-
-```bash
-FILAMENT_MANAGER_DB_PATH=./data/filament-manager.db npm run scrape:auto:safe
-```
-
-Manual scraper run:
-
-```bash
-BAMBU_BASE_URL=https://eu.store.bambulab.com \
-BAMBU_COLLECTION=bambu-lab-3d-printer-filament \
-FILAMENT_MANAGER_DB_PATH=./data/filament-manager.db \
-npm run scrape
-```
-
-Optional tuning:
-
-- `BAMBU_VERBOSE=1`
-- `BAMBU_FETCH_RETRIES=2`
-- `BAMBU_TIMEOUT_MS=20000`
-- `BAMBU_PRODUCT_DELAY_MS=200`
-- `BAMBU_MATERIAL_TYPES=PLA,PETG` to refresh a smaller material slice
-- `BAMBU_DB_PATH` is still accepted as a legacy alias for
-  `FILAMENT_MANAGER_DB_PATH`
+Update supported vendor catalogs only from **Settings → Filament catalog** in
+the desktop app. First select a vendor and choose **Discover available
+materials**. This makes a small, bounded, read-only storefront check and only
+refreshes the list of material types currently available from that source; it
+does not import products or change catalog lifecycle state. Then select exactly
+one discovered material type and refresh it. The app deliberately avoids
+full-catalog batch downloads and does not expose a parallel command-line
+scraper.
 
 Catalog data is stored in SQLite in `filament_master_list`. The app ships with
 a sanitized, case-normalized seed catalog in
@@ -580,14 +566,17 @@ find through resellers. The seed is deduplicated by material, filament name, and
 color name after normalization, and contains only master catalog metadata, never
 spool, loan, printer, RFID, location, or usage history.
 
-The Settings UI can still refresh supported Bambu and eSUN catalog data. The
-normal path is to refresh selected material families when new products appear;
-a full vendor audit is heavier and may mark products that are no longer visible
-at the manufacturer as historical/discontinued. Filtered material refreshes
-skip discontinued marking to avoid hiding untouched families. Bambu refreshes
-discover the material families exposed by the current store and show them in the
-refresh summary, so larger catalog maintenance can be split into lower-traffic
-material runs. Bambu color swatches prefer the local official hex table before
+The Settings UI uses a lightweight discovery step for supported Bambu and eSUN
+catalog sources. Discovery makes a small, bounded, read-only request to the
+vendor storefront. It imports nothing, changes no catalog lifecycle state, and
+keeps the previous material list if the source is blocked or inconclusive. After
+a successful discovery, choose exactly one available material type to refresh;
+larger catalog maintenance is intentionally split into lower-traffic runs.
+Neither discovery nor a selected-material refresh automatically marks catalog
+entries as historical/discontinued, so older and reseller-only products remain
+searchable. Bambu discovery reads only the complete, bounded collection listing;
+only a selected family opens its public product metadata, without retries.
+Bambu color swatches prefer the local official hex table before
 falling back to name-based color estimates. Swatches remain backward compatible
 with single `#RRGGBB` values, and can also store `multi(#RRGGBB,#RRGGBB,...)`
 for hard segmented multi-colour rolls or `gradient(#RRGGBB,#RRGGBB,...)` for
@@ -623,9 +612,10 @@ smooth transition rolls.
 
 The project is configured to keep working when upstream dependencies change:
 
-- `better-sqlite3` is optional; scraper code can fall back to the `sqlite3` CLI.
-- Auto-scrape detects working Bambu store/collection paths dynamically.
-- Scraper network calls use retry and timeout controls.
+- Vendor discovery and one-material refreshes use bounded request budgets and
+  keep existing catalog data unchanged when a source is blocked or inconclusive.
+- Visual-QA database tooling can fall back to the `sqlite3` CLI when
+  `better-sqlite3` is unavailable.
 - Tauri configuration uses the v2 schema with explicit capabilities.
 - Local wrapper scripts keep CI and developer commands consistent.
 

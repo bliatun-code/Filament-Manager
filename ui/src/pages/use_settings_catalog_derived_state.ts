@@ -6,34 +6,42 @@ import {
 } from "./settings_catalog_model";
 
 type UseSettingsCatalogDerivedStateOptions = {
-  bambuRefreshMaterials: string[];
+  bambuDiscoveredMaterials: string[];
+  bambuRefreshMaterial: string | null;
   catalogMasters: MasterCatalogRow[];
   catalogVendor: SettingsCatalogVendor;
-  esunRefreshMaterials: string[];
+  esunDiscoveredMaterials: string[];
+  esunRefreshMaterial: string | null;
   swatchVendorFilter: string;
 };
 
 export function useSettingsCatalogDerivedState({
-  bambuRefreshMaterials,
+  bambuDiscoveredMaterials,
+  bambuRefreshMaterial,
   catalogMasters,
   catalogVendor,
-  esunRefreshMaterials,
+  esunDiscoveredMaterials,
+  esunRefreshMaterial,
   swatchVendorFilter,
 }: UseSettingsCatalogDerivedStateOptions) {
   const catalogState = useMemo(
     () =>
       buildSettingsCatalogState({
-        bambuRefreshMaterials,
+        bambuDiscoveredMaterials,
+        bambuRefreshMaterial,
         catalogMasters,
         catalogVendor,
-        esunRefreshMaterials,
+        esunDiscoveredMaterials,
+        esunRefreshMaterial,
         swatchVendorFilter,
       }),
     [
-      bambuRefreshMaterials,
+      bambuDiscoveredMaterials,
+      bambuRefreshMaterial,
       catalogMasters,
       catalogVendor,
-      esunRefreshMaterials,
+      esunDiscoveredMaterials,
+      esunRefreshMaterial,
       swatchVendorFilter,
     ],
   );
@@ -41,7 +49,7 @@ export function useSettingsCatalogDerivedState({
   return {
     activeCatalogMasterCount: catalogState.activeCatalogMasterCount,
     activeCatalogMaterialOptions: catalogState.activeCatalogMaterialOptions,
-    activeCatalogRefreshMaterials: catalogState.activeCatalogRefreshMaterials,
+    activeCatalogRefreshMaterial: catalogState.activeCatalogRefreshMaterial,
     missingSwatchMasters: catalogState.missingSwatchMasters,
     swatchVendorOptions: catalogState.swatchVendorOptions,
     visibleMissingSwatchMasters: catalogState.visibleMissingSwatchMasters,

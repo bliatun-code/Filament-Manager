@@ -541,15 +541,15 @@ The desktop app and Companion support English, Norwegian Bokmål, German,
 French, Spanish, Brazilian Portuguese, Italian, Polish, Dutch, Czech,
 Simplified Chinese, Traditional Chinese, Japanese, Korean, Turkish, Ukrainian,
 Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
-stored locally for each surface. English remains the canonical fallback.
-Norwegian Bokmål, German, and French have complete catalogs for the current
-copy, but every non-English language remains marked **Beta** until a fresh
-native-language review. The other Beta catalogs use tested English fallback for
-copy that is not yet translated. Corrections to community translations can be
+stored locally for each surface. Every selectable language has complete desktop
+and Companion catalogs and is presented without a Beta label. English remains
+the canonical source and emergency inline fallback, but published catalogs may
+not rely on missing English rows. Corrections to community translations can be
 proposed through the dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set stays fixed while the existing
-non-English catalogs receive community and native-language review.
+non-English catalogs continue to receive community corrections and
+native-language review.
 
 The two controls under **Settings → General → Background operation** are
 separate opt-in settings. Enable **Continue running when I close the window**
@@ -635,9 +635,11 @@ Filament catalog:
 
 - catalog overview
 - catalog refresh for Bambu and eSUN
-- separate vendor audit and selected-material update actions
+- lightweight, read-only discovery of available material types without imports
+- refresh of exactly one selected material type at a time
+- no automatic discontinued or lifecycle marking from discovery or refresh
 - color/swatch data
-- handling catalog items that are no longer found during import
+- older and reseller-available catalog entries remain searchable
 
 Program maintenance:
 
@@ -861,8 +863,11 @@ If you do not know the host or serial, add the printer without Live, then open
 its card in **Settings -> 3D printers**. Enable Live and choose **Find Bambu
 printers** on the private LAN interface that reaches the printer. The short
 passive scan shows locally announced printer names, serials, and addresses.
-Choose **Use for setup** to fill the host and serial into the unsaved form,
-then complete the same identity review before saving.
+When exactly one printer is found for a new setup, its host and serial are
+filled into the unsaved form automatically without changing anything already
+entered in the access-code field. If several printers are found, choose **Use
+for setup** beside the intended printer. Then enter the access code and
+complete the same explicit identity review before saving.
 
 Live Bambu status is local and reads printer data on the same network. It should be configured on the host machine when using a Host/Client setup.
 
@@ -900,7 +905,7 @@ pin to match over TLS. It never reads or sends the access code.
 
 If automatic recovery cannot find and verify the printer, open its saved card
 in **Settings -> 3D printers** and use **Find Bambu printers** on the private
-LAN interface. The scan listens for local printer announcements for up to ten
+LAN interface. The scan listens for local printer announcements for up to twelve
 seconds and displays the announced serial number, so you can distinguish
 otherwise similar printers.
 
@@ -1061,7 +1066,7 @@ The app supports:
 - eSUN catalog
 - generic/manual registration
 - swatch/color data
-- discontinued marking when old Bambu items are no longer found during import
+- preservation of older catalog entries without automatic discontinued marking
 
 Catalog entries are templates. A physical spool is a separate inventory record based on a catalog entry or manual registration.
 
@@ -1069,10 +1074,22 @@ The app ships with a local seed catalog for known filament. This keeps older rol
 
 Catalog repair restores the bundled seed catalog and removes only unused non-seeded catalog rows. Inventory spools, wishlist links, loans, printer data, RFID, locations, and history should be preserved.
 
-Vendor audit checks what the upstream Bambu or eSUN source currently reports.
-Updating selected materials applies chosen catalog changes deliberately. This
-separation lets you review a vendor change before replacing local catalog
-metadata.
+**Discover available materials** performs a small, bounded, read-only check of
+the Bambu or eSUN storefront. It imports no products and changes neither catalog
+metadata nor lifecycle status. If the source is blocked, empty, or
+inconclusive, the previous list of available material types is kept.
+
+For Bambu, discovery reads only the complete paginated collection listing and
+opens no product pages. When you subsequently refresh one selected material
+family, the app reads public product metadata only for products in that family.
+Requests are sequential, have a fixed safety budget, and are not retried
+automatically after an error or blocking response.
+
+After a successful discovery, select exactly one material type and refresh it.
+Larger maintenance is therefore split into small, cautious requests. Neither
+discovery nor the material refresh automatically marks products as historical
+or discontinued; older products remain searchable for rolls that users already
+own or can still obtain through resellers.
 
 In Client mode, the desktop app requests up to 5,000 catalog rows from the Host
 instead of truncating the list at 1,000. Optional server-side search is forwarded

@@ -1,10 +1,17 @@
 import { type Dispatch, type SetStateAction } from "react";
-import { refreshManagedVendorCatalog } from "../lib/catalog_writes";
+import {
+  auditManagedVendorCatalog,
+  refreshManagedVendorCatalog,
+} from "../lib/catalog_writes";
 import { toErrorMessage } from "../lib/error_text";
-import type { CatalogRefreshResult } from "../lib/tauri_client";
+import type {
+  CatalogRefreshResult,
+  CatalogSourceAuditResult,
+} from "../lib/tauri_client";
 import type { NumberDisplayLocale } from "../lib/number_display";
 import {
   buildSettingsCatalogRefreshFallbackErrorMessage,
+  buildSettingsCatalogAuditFallbackErrorMessage,
   buildSettingsCatalogRefreshPreparingMessage,
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogRefreshZeroImportMessage,
@@ -18,8 +25,9 @@ type UseSettingsCatalogRefreshActionsInput = {
   busy: boolean;
   catalogRefreshBusy: boolean;
   completeCatalogRefreshResult: (summary: CatalogRefreshResult) => void;
+  completeCatalogSourceAuditResult: (summary: CatalogSourceAuditResult) => void;
   failCatalogRefreshResult: (message: string) => void;
-  getCatalogRefreshMaterials: (vendor: SettingsCatalogVendor) => string[];
+  getCatalogRefreshMaterial: (vendor: SettingsCatalogVendor) => string | null;
   locale: NumberDisplayLocale;
   reloadSettings: () => Promise<void>;
   setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
@@ -29,7 +37,13 @@ type UseSettingsCatalogRefreshActionsInput = {
   setCatalogRefreshVendor: Dispatch<SetStateAction<SettingsCatalogVendor>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
-  settingsCatalogRefreshMessageLabels: () => SettingsCatalogRefreshMessageLabels;
+  saveDiscoveredCatalogMaterials: (
+    vendor: SettingsCatalogVendor,
+    materials: string[],
+  ) => boolean;
+  settingsCatalogRefreshMessageLabels: (
+    params?: { count?: number },
+  ) => SettingsCatalogRefreshMessageLabels;
   settingsCatalogRefreshSummaryLabels: () => SettingsCatalogRefreshSummaryLabels;
   settingsClientHostBaseUrl: string | null;
   settingsClientLibraryId: string | null;
@@ -43,8 +57,9 @@ export function useSettingsCatalogRefreshActions({
   busy,
   catalogRefreshBusy,
   completeCatalogRefreshResult,
+  completeCatalogSourceAuditResult,
   failCatalogRefreshResult,
-  getCatalogRefreshMaterials,
+  getCatalogRefreshMaterial,
   locale,
   reloadSettings,
   setCatalogRefreshBusy,
@@ -54,6 +69,7 @@ export function useSettingsCatalogRefreshActions({
   setCatalogRefreshVendor,
   setError,
   setInfo,
+  saveDiscoveredCatalogMaterials,
   settingsCatalogRefreshMessageLabels,
   settingsCatalogRefreshSummaryLabels,
   settingsClientHostBaseUrl,
@@ -62,25 +78,79 @@ export function useSettingsCatalogRefreshActions({
   swatchBusy,
   tauri,
 }: UseSettingsCatalogRefreshActionsInput) {
-  async function handleRefreshVendorCatalog(vendor: SettingsCatalogVendor) {
-    if (!tauri || busy || swatchBusy || catalogRefreshBusy) {
-      return;
-    }
-    const materialTypes = getCatalogRefreshMaterials(vendor);
+  function beginCatalogOperation(
+    vendor: SettingsCatalogVendor,
+    phase: string,
+    message: string,
+  ) {
     setCatalogRefreshVendor(vendor);
-    setCatalogRefreshPhase("PREPARE");
-    setCatalogRefreshProgressMessage(
-      buildSettingsCatalogRefreshPreparingMessage(vendor, settingsCatalogRefreshMessageLabels()),
-    );
+    setCatalogRefreshPhase(phase);
+    setCatalogRefreshProgressMessage(message);
     setCatalogRefreshStartedAt(Date.now());
     setCatalogRefreshBusy(true);
     beginCatalogRefreshResult();
     setError(null);
     setInfo(null);
+  }
+
+  async function handleAuditVendorCatalog(vendor: SettingsCatalogVendor) {
+    if (!tauri || busy || swatchBusy || catalogRefreshBusy) {
+      return;
+    }
+    const labels = settingsCatalogRefreshMessageLabels();
+    beginCatalogOperation(vendor, "DISCOVER", labels.discoveringCatalogMaterials);
+    try {
+      const summary = await auditManagedVendorCatalog(vendor, {
+        clientReadOnly: settingsClientReadOnly,
+        clientHostBaseUrl: settingsClientHostBaseUrl,
+        clientLibraryId: settingsClientLibraryId,
+      });
+      if (summary.discovered_materials.length === 0) {
+        throw new Error(
+          buildSettingsCatalogAuditFallbackErrorMessage(vendor, labels),
+        );
+      }
+      if (!saveDiscoveredCatalogMaterials(vendor, summary.discovered_materials)) {
+        throw new Error("The catalog target changed while source discovery was running.");
+      }
+      completeCatalogSourceAuditResult(summary);
+      setInfo(
+        settingsCatalogRefreshMessageLabels({
+          count: summary.discovered_materials.length,
+        }).catalogDiscoverySuccess,
+      );
+    } catch (auditError) {
+      console.error(auditError);
+      const fallbackMessage = buildSettingsCatalogAuditFallbackErrorMessage(vendor, labels);
+      const technicalMessage = toErrorMessage(auditError, fallbackMessage);
+      failCatalogRefreshResult(technicalMessage);
+      setError(fallbackMessage);
+    } finally {
+      setCatalogRefreshBusy(false);
+      setCatalogRefreshStartedAt(null);
+    }
+  }
+
+  async function handleRefreshVendorCatalog(vendor: SettingsCatalogVendor) {
+    if (!tauri || busy || swatchBusy || catalogRefreshBusy) {
+      return;
+    }
+    const materialType = getCatalogRefreshMaterial(vendor);
+    if (!materialType) {
+      return;
+    }
+    beginCatalogOperation(
+      vendor,
+      "PREPARE",
+      buildSettingsCatalogRefreshPreparingMessage(
+        vendor,
+        settingsCatalogRefreshMessageLabels(),
+      ),
+    );
     try {
       const summary = await refreshManagedVendorCatalog(
         vendor,
-        materialTypes,
+        materialType,
         {
           clientReadOnly: settingsClientReadOnly,
           clientHostBaseUrl: settingsClientHostBaseUrl,
@@ -120,5 +190,5 @@ export function useSettingsCatalogRefreshActions({
     }
   }
 
-  return { handleRefreshVendorCatalog };
+  return { handleAuditVendorCatalog, handleRefreshVendorCatalog };
 }

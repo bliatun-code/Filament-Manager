@@ -58,7 +58,7 @@ export const enDictionary: DictionaryNode = {
       spoolActiveLoan: "Return the active loan before removing this roll.",
       loadedSpoolEditBlocked: "Use the printer-slot actions to edit a loaded roll.",
       loanedSpoolEditBlocked:
-        "Return the loan before editing this roll's status or location.",
+        "Return the active outgoing loan before changing this roll's status, location, or ownership.",
       spoolStatusEditLimited:
         "Browser edits are limited to in-stock, empty, or lost rolls.",
       locationHasReferences:
@@ -624,7 +624,7 @@ export const enDictionary: DictionaryNode = {
       catalogMatchCountPlural: "{count} matches",
       catalogMatchCount:
         "{count, plural, one {# match} other {# matches}}",
-      searchVendorCatalog: "Search {{vendor}} material, filament or color",
+      searchVendorCatalog: "Search {vendor} material, filament or color",
       catalogRefreshFilter: "Catalog refresh & filter",
       catalogSelection: "Catalog selection",
       noCatalogMatches: "No catalog entries match the current vendor filters.",
@@ -1737,6 +1737,7 @@ export const enDictionary: DictionaryNode = {
       "bambuDiscoveryRecoveryHint": "The saved address can be recovered after this printer identity is trusted.",
       "bambuDiscoveryDifferentPrinter": "This is not the saved printer. You can use it only for a new setup.",
       "bambuDiscoveryRecovered": "Recovered the saved live printer address.",
+      "bambuDiscoveryAutoFilled": "Found one Bambu printer. Its IP address and serial were filled in automatically. No access code was changed or sent. Enter the access code, then check the printer identity before saving.",
       "bambuDiscoveryFailed": "Could not find Bambu printers on this network.",
       "bambuLiveRecoveryFailed": "Could not recover the saved live printer address.",
       updates: "Updates",
@@ -1924,9 +1925,6 @@ export const enDictionary: DictionaryNode = {
       librarySyncDeviceNameSaved: "Device name saved.",
       language: "Language",
       languageHint: "Choose app language for all main views.",
-      languageBeta: "Beta",
-      languageBetaHint:
-        "Beta languages are still being completed and may show some text in English.",
       appearance: "Appearance",
       light: "Light",
       dark: "Dark",
@@ -2321,14 +2319,29 @@ export const enDictionary: DictionaryNode = {
         "This client shows the host catalog. Swatch fixes and vendor catalog refreshes are saved on the host.",
       catalogRefreshTitle: "Vendor catalog updates",
       catalogRefreshHelp:
-        "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
+        "Discover which material types are currently available, then refresh one material type at a time. Discovery imports nothing and never changes lifecycle status.",
+      discoverCatalogMaterials: "Discover available materials",
+      discoveringCatalogMaterials: "Discovering available materials",
+      availableCatalogMaterials: "Available materials",
+      catalogDiscoveryHelp:
+        "Checks the vendor storefront with a small, read-only request. It imports nothing and does not change catalog lifecycle status.",
+      catalogDiscoveryEmpty:
+        "No material types have been discovered yet. Check the vendor source to create the list.",
+      catalogDiscoverySuccess:
+        "{count} material types are available for refresh.",
+      selectOneMaterial: "Select one material type to refresh.",
+      refreshSelectedMaterial: "Refresh {material}",
+      catalogAuditBambuFailed:
+        "Could not discover available Bambu materials. The previous list was kept.",
+      catalogAuditEsunFailed:
+        "Could not discover available eSUN materials. The previous list was kept.",
       catalogRefreshClientHostOnly:
         "Vendor catalog updates are sent to the host. This client still shows and edits the shared host catalog.",
-      catalogAllTypes: "Full vendor audit",
+      catalogAllTypes: "Discover materials",
       discoveredMaterials: "Discovered materials",
       refreshCurrentVendor: "Refresh current vendor catalog",
-      runFullVendorAudit: "Run full vendor audit",
-      refreshSelectedMaterials: "Refresh selected materials",
+      runFullVendorAudit: "Discover available materials",
+      refreshSelectedMaterials: "Refresh selected material",
       hideRefreshLog: "Hide refresh log",
       swatchQuality: "Swatch quality",
       swatchQualityHelp:

@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
+use super::database_loan_queries::ensure_spool_not_outbound_loan_locked;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_text::normalize_optional_text;
 use super::printer_slot_location::{
@@ -56,6 +57,12 @@ pub(crate) fn assign_spool_to_ams_slot_in_transaction(
 
     if let Some(candidate_spool_id) = spool_id {
         ensure_spool_exists(conn, candidate_spool_id)?;
+        ensure_spool_not_outbound_loan_locked(conn, candidate_spool_id)?;
+    }
+    if let Some(previous_spool_id) = previous_spool_id.as_deref()
+        && Some(previous_spool_id) != spool_id
+    {
+        ensure_spool_not_outbound_loan_locked(conn, previous_spool_id)?;
     }
 
     conn.execute(

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildSettingsCatalogAuditFallbackErrorMessage,
   buildSettingsCatalogRefreshSuccessMessage,
   buildSettingsCatalogRefreshFallbackErrorMessage,
   buildSettingsCatalogRefreshPreparingMessage,
@@ -15,7 +16,7 @@ import {
   resolveSettingsSwatchHex,
   settingsCatalogRefreshSummaryGridClass,
   settingsCatalogRefreshSummaryHasFetchDetails,
-  toggleSettingsCatalogRefreshMaterial,
+  selectSettingsCatalogRefreshMaterial,
 } from "./settings_catalog_model";
 import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
 
@@ -44,7 +45,8 @@ function refreshResult(overrides: Partial<CatalogRefreshResult> = {}): CatalogRe
 
 test("settings catalog state groups vendor catalogs and material filters", () => {
   const state = buildSettingsCatalogState({
-    bambuRefreshMaterials: ["PLA"],
+    bambuDiscoveredMaterials: ["PLA", " PETG ", "PLA"],
+    bambuRefreshMaterial: "PLA",
     catalogMasters: [
       catalogMaster({ id: "bambu-pla", material: "PLA", vendor: "Bambu Lab" }),
       catalogMaster({ id: "bambu-petg", material: " PETG ", vendor: "Bambu Lab" }),
@@ -52,7 +54,8 @@ test("settings catalog state groups vendor catalogs and material filters", () =>
       catalogMaster({ id: "other", material: "ASA", vendor: "Other" }),
     ],
     catalogVendor: "Bambu",
-    esunRefreshMaterials: ["ABS"],
+    esunDiscoveredMaterials: ["ABS"],
+    esunRefreshMaterial: "ABS",
     swatchVendorFilter: "ALL",
   });
 
@@ -60,79 +63,21 @@ test("settings catalog state groups vendor catalogs and material filters", () =>
     state.bambuCatalogMasters.map((master) => master.id),
     ["bambu-pla", "bambu-petg"],
   );
-  assert.deepEqual(state.bambuCatalogMaterialOptions, [
-    "ABS",
-    "ASA",
-    "BVOH",
-    "EVA",
-    "HIPS",
-    "PA",
-    "PA6",
-    "PAHT",
-    "PC",
-    "PCTG",
-    "PE",
-    "PET",
-    "PETG",
-    "PHA",
-    "PLA",
-    "PP",
-    "PPA",
-    "PPS",
-    "PVA",
-    "Support for PLA",
-    "Support for PLA/PETG",
-    "TPU",
-  ]);
+  assert.deepEqual(state.bambuCatalogMaterialOptions, ["PETG", "PLA"]);
   assert.deepEqual(
     state.esunCatalogMasters.map((master) => master.id),
     ["esun-abs"],
   );
-  assert.deepEqual(state.esunCatalogMaterialOptions, [
-    "ABS",
-    "ASA",
-    "HIPS",
-    "PA",
-    "PA12",
-    "PAHT",
-    "PC",
-    "PET",
-    "PETG",
-    "PLA",
-    "PVA",
-    "TPU",
-  ]);
+  assert.deepEqual(state.esunCatalogMaterialOptions, ["ABS"]);
   assert.equal(state.activeCatalogMasterCount, 2);
-  assert.deepEqual(state.activeCatalogMaterialOptions, [
-    "ABS",
-    "ASA",
-    "BVOH",
-    "EVA",
-    "HIPS",
-    "PA",
-    "PA6",
-    "PAHT",
-    "PC",
-    "PCTG",
-    "PE",
-    "PET",
-    "PETG",
-    "PHA",
-    "PLA",
-    "PP",
-    "PPA",
-    "PPS",
-    "PVA",
-    "Support for PLA",
-    "Support for PLA/PETG",
-    "TPU",
-  ]);
-  assert.deepEqual(state.activeCatalogRefreshMaterials, ["PLA"]);
+  assert.deepEqual(state.activeCatalogMaterialOptions, ["PETG", "PLA"]);
+  assert.equal(state.activeCatalogRefreshMaterial, "PLA");
 });
 
 test("settings catalog state tracks missing swatches and visible vendor count", () => {
   const state = buildSettingsCatalogState({
-    bambuRefreshMaterials: [],
+    bambuDiscoveredMaterials: [],
+    bambuRefreshMaterial: null,
     catalogMasters: [
       catalogMaster({ id: "bambu-missing", hex_color: "", vendor: "Bambu Lab" }),
       catalogMaster({ id: "bambu-ok", hex_color: "#112233", vendor: "Bambu Lab" }),
@@ -145,7 +90,8 @@ test("settings catalog state tracks missing swatches and visible vendor count", 
       catalogMaster({ id: "other-missing", hex_color: null, vendor: "Other" }),
     ],
     catalogVendor: "eSUN",
-    esunRefreshMaterials: ["ABS"],
+    esunDiscoveredMaterials: ["ABS"],
+    esunRefreshMaterial: "ABS",
     swatchVendorFilter: "esun",
   });
 
@@ -160,7 +106,7 @@ test("settings catalog state tracks missing swatches and visible vendor count", 
   );
   assert.equal(state.visibleMissingSwatchVendorCount, 1);
   assert.equal(state.activeCatalogMasterCount, 1);
-  assert.deepEqual(state.activeCatalogRefreshMaterials, ["ABS"]);
+  assert.equal(state.activeCatalogRefreshMaterial, "ABS");
 });
 
 test("settings swatch drafts normalize saved colors and suggest missing swatches", () => {
@@ -201,16 +147,9 @@ test("settings swatch hex resolves draft values before fallback suggestions", ()
   assert.equal(resolveSettingsSwatchHex({ master, swatchDraftById: {} }), "#F97316");
 });
 
-test("settings catalog material toggles are immutable and symmetric", () => {
-  const existing = ["ABS", "PLA"];
-
-  assert.deepEqual(toggleSettingsCatalogRefreshMaterial(existing, "PETG"), [
-    "ABS",
-    "PLA",
-    "PETG",
-  ]);
-  assert.deepEqual(toggleSettingsCatalogRefreshMaterial(existing, "ABS"), ["PLA"]);
-  assert.deepEqual(existing, ["ABS", "PLA"]);
+test("settings catalog material selection always resolves to one normalized value", () => {
+  assert.equal(selectSettingsCatalogRefreshMaterial(" PETG "), "PETG");
+  assert.equal(selectSettingsCatalogRefreshMaterial(""), null);
 });
 
 test("settings catalog refresh summary presentation detects optional fetch details", () => {
@@ -250,6 +189,10 @@ test("settings catalog refresh success message keeps the compact summary stable"
 
 test("settings catalog refresh vendor messages follow the selected vendor", () => {
   const labels = {
+    auditBambuFailed: "Bambu source audit failed.",
+    auditEsunFailed: "eSUN source audit failed.",
+    catalogDiscoverySuccess: "Found 3 material types.",
+    discoveringCatalogMaterials: "Finding material types...",
     refreshBambuFailed: "Catalog refresh failed.",
     refreshEsunFailed: "eSUN catalog refresh failed.",
     refreshPreparingBambu: "Preparing Bambu catalog refresh...",
@@ -277,6 +220,29 @@ test("settings catalog refresh vendor messages follow the selected vendor", () =
     buildSettingsCatalogRefreshFallbackErrorMessage("eSUN", labels),
     labels.refreshEsunFailed,
   );
+  assert.equal(
+    buildSettingsCatalogAuditFallbackErrorMessage("Bambu", labels),
+    labels.auditBambuFailed,
+  );
+  assert.equal(
+    buildSettingsCatalogAuditFallbackErrorMessage("eSUN", labels),
+    labels.auditEsunFailed,
+  );
+});
+
+test("settings catalog ignores a stale selected material outside the discovery cache", () => {
+  const state = buildSettingsCatalogState({
+    bambuDiscoveredMaterials: ["PLA"],
+    bambuRefreshMaterial: "ABS",
+    catalogMasters: [],
+    catalogVendor: "Bambu",
+    esunDiscoveredMaterials: [],
+    esunRefreshMaterial: null,
+    swatchVendorFilter: "ALL",
+  });
+
+  assert.equal(state.activeCatalogRefreshMaterial, null);
+  assert.deepEqual(state.activeCatalogMaterialOptions, ["PLA"]);
 });
 
 test("settings swatch bulk result message reports no updated rows as an error", () => {

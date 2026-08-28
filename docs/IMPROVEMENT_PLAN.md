@@ -5,7 +5,7 @@
 | Planstatus | Påbegynt |
 | Planperiode | 12 uker |
 | Oppstart | 2026-08-21 |
-| Sist oppdatert | 2026-08-26 |
+| Sist oppdatert | 2026-08-28 |
 | Eier | Prosjektteamet |
 
 ## Mål
@@ -166,6 +166,12 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Fremdriftslogg
 
+### 2026-08-28
+
+- Alle 21 valgbare appspråk har nå komplette desktop- og Companion-kataloger uten Beta-merking eller avhengighet til engelsk katalog-overlay. Nye språk må være skjult som utkast til begge kataloger har 100 prosent nøkkel- og parameterdekning, minst 95 prosent oversettelsessignal og bestått QA; GitHub-skjemaet og pull requests er den løpende kanalen for språkforbedringer, mens `maintained` fortsatt krever navngitt morsmålsreview mot gjeldende kildefingeravtrykk.
+- Leverandørkatalogen bruker nå en separat, skrivebeskyttet kildekontroll som bare finner materialtypene nettbutikken kan levere komplette data for. En oppdatering krever nøyaktig én valgt materialtype, har et fast og lite forespørselsbudsjett, prøver ikke på nytt ved blokkering og endrer aldri livssyklusstatus for produkter som ikke blir sett. Desktop, Client og Host deler den samme capability-beskyttede kontrakten, og en mislykket kontroll beholder den forrige materiallisten.
+- Bambu-katalogkilden er flyttet fra det utgåtte Shopify-endepunktet til leverandørens nåværende Next/RSC-katalog. Discovery leser hele den paginerte oversikten innen en fast side- og forespørselsgrense uten produktdetaljer; oppdatering leser deretter JSON-LD bare for én valgt materialfamilie. Ufullstendige sider, duplikater, formatendringer og sperresvar avviser hele snapshotet uten katalogskriv eller automatisk utgått-markering. Den parallelle CLI-scraperen er fjernet, slik at Innstillinger-flyten er eneste nettbaserte katalogskriver.
+
 ### 2026-08-26
 
 - Inventory og Filamentstandarder avklarer nå Standalone-, Host- og Client-rollen før muterende handlinger aktiveres. Midlertidige rolle- og nettverksfeil gir en synlig, gjenopprettbar lesetilstand uten lokal reserveendring.
@@ -176,7 +182,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 - Historiske, tomme, tapte, manglende, slettede og legacy-arkiverte ruller får automatisk batchprislås ved overgang, import og startup-reparasjon. Direkte manuell prissetting er fortsatt tillatt, men historiske detaljer kan ikke låse opp rullen eller bli med i en senere gruppeoverskriving.
 - Full backup-restore reparerer historisk prislås og skriver revisjonshendelsen inne i samme transaksjon før validering og commit; reaktiveringsimport kan ikke omgå en tidligere historisk lås med eksplisitt `false`.
 - Lavlagerpolicyen oppdaterer inventory-revisjonen nøyaktig én gang ved en reell semantisk endring eller reparasjon av korrupt policy, og ikke ved no-op eller rene synkroniseringsinnstillinger.
-- Norsk, engelsk, tysk og fransk har komplett vedlikeholdt tekst for de nye flatene. De øvrige delvise språkene er tydelig merket Beta og bruker testet engelsk fallback i både desktop og Companion; kontekst-, parameter-, plural- og tilgjengelighetsportene er utvidet.
+- Norsk, engelsk, tysk og fransk fikk komplett tekst for de nye flatene. De øvrige katalogene var på dette tidspunktet fortsatt delvise og brukte testet engelsk fallback i både desktop og Companion; kontekst-, parameter-, plural- og tilgjengelighetsportene ble samtidig utvidet.
 - Filamentstandard-, ønskeliste- og importfeil bruker nå stabile feilkoder gjennom desktop og Companion. Eldre Host, foreldede prisgrupper og ugyldig prisbeskyttelse/priskilde viser handlingsrettet lokalisert tekst uten å eksponere rå backendmeldinger.
 - Dashboard, Settings, Inventory, Printers og utlånsdialogen avviser foreldede svar etter rolle- eller målbytte. Rolleoppslag feiler lukket, lokale printerhemmeligheter blandes aldri inn i Client-visning, målbundet utlånscache fungerer offline, og alle mellomliggende lasteflagg nullstilles ved overgang.
 - Dynamiske Host-stier og queryverdier kodes med én RFC 3986-hjelper. Ikke-idempotente Host-skriv sendes nøyaktig én gang og venter på et definitivt svar; eldre Host avviser sammensatte detaljendringer før første skriv, og identiske lånereturer lager ikke dobbel vekt eller historikk.

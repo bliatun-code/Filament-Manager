@@ -97,6 +97,7 @@ fn build_router_with_security_config(
         )
         .route("/backup/full", get(handle_export_full_backup))
         .route("/catalog/masters", get(handle_list_catalog_masters))
+        .route("/catalog/audit", post(handle_audit_vendor_catalog))
         .route("/catalog/refresh", post(handle_refresh_vendor_catalog))
         .route(
             "/catalog/masters/{master_id}/details",

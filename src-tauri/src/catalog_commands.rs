@@ -1,14 +1,14 @@
 use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::{
     self,
-    filament_database::{FilamentDatabase, ManualMasterInput},
+    filament_database::{FilamentDatabase, SourceCatalogEntryInput},
     vendor_lookup::{EsunProductDetail, EsunSearchResult},
 };
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct CatalogRefreshResult {
     imported: i64,
     detected_store: Option<String>,
@@ -21,11 +21,96 @@ pub(crate) struct CatalogRefreshResult {
     output: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct CatalogSourceAuditResult {
+    vendor: String,
+    detected_store: String,
+    detected_collection: Option<String>,
+    discovered_materials: Vec<String>,
+    products_discovered: i64,
+    detail_fetches: i64,
+    output: String,
+}
+
 #[derive(Serialize, Clone)]
 pub(crate) struct CatalogRefreshProgressEvent {
     vendor: String,
     phase: String,
     message: String,
+}
+
+#[tauri::command]
+pub(crate) async fn audit_bambu_catalog_source(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<CatalogSourceAuditResult, String> {
+    let state = state.inner().clone();
+    let app_for_worker = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        with_authoritative_local_library(&state, || {
+            audit_bambu_catalog_source_blocking(Some(&app_for_worker))
+        })
+    })
+    .await
+    .map_err(|error| format!("Catalog source audit task failed: {error}"))?
+}
+
+#[tauri::command]
+pub(crate) async fn audit_esun_catalog_source(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<CatalogSourceAuditResult, String> {
+    let state = state.inner().clone();
+    let app_for_worker = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        with_authoritative_local_library(&state, || {
+            audit_esun_catalog_source_blocking(Some(&app_for_worker))
+        })
+    })
+    .await
+    .map_err(|error| format!("Catalog source audit task failed: {error}"))?
+}
+
+pub(crate) fn audit_bambu_catalog_source_blocking(
+    app: Option<&tauri::AppHandle>,
+) -> Result<CatalogSourceAuditResult, String> {
+    emit_catalog_refresh_progress(
+        app,
+        "Bambu",
+        "DISCOVER",
+        "Checking which Bambu material types are available...",
+    );
+    let discovery = backend::bambu_lookup::discover_bambu_catalog_source()?;
+    Ok(CatalogSourceAuditResult {
+        vendor: "Bambu".to_string(),
+        detected_store: discovery.detected_store,
+        detected_collection: Some(discovery.detected_collection),
+        discovered_materials: discovery.discovered_materials,
+        products_discovered: discovery.products_discovered,
+        detail_fetches: discovery.detail_fetches,
+        output: discovery.output,
+    })
+}
+
+pub(crate) fn audit_esun_catalog_source_blocking(
+    app: Option<&tauri::AppHandle>,
+) -> Result<CatalogSourceAuditResult, String> {
+    emit_catalog_refresh_progress(
+        app,
+        "eSUN",
+        "DISCOVER",
+        "Checking which eSUN material types are available...",
+    );
+    let discovery = backend::vendor_lookup::discover_esun_catalog_source()?;
+    Ok(CatalogSourceAuditResult {
+        vendor: "eSUN".to_string(),
+        detected_store: discovery.detected_store,
+        detected_collection: Some(discovery.detected_collection),
+        discovered_materials: discovery.discovered_materials,
+        products_discovered: discovery.products_discovered,
+        detail_fetches: discovery.detail_fetches,
+        output: discovery.output,
+    })
 }
 
 #[tauri::command]
@@ -179,16 +264,14 @@ pub(crate) fn refresh_bambu_catalog_blocking(
     material_types: Option<Vec<String>>,
     app: Option<&tauri::AppHandle>,
 ) -> Result<CatalogRefreshResult, String> {
-    let material_types = normalize_material_filters(material_types);
+    let material_types = require_single_material_filter(material_types)?;
     let refresh_started_at = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         db.ensure_catalog_lifecycle_columns()
             .map_err(|error| format!("{:?}", error))?;
         db.sqlite_now().map_err(|error| format!("{:?}", error))?
     };
-    let (known_bambu_entries, stale_before) = if material_types.is_empty() {
-        (None, None)
-    } else {
+    let (known_bambu_entries, stale_before) = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         let rows = db
             .list_master_catalog(100_000, None)
@@ -227,19 +310,11 @@ pub(crate) fn refresh_bambu_catalog_blocking(
         app,
         "Bambu",
         "FETCH",
-        if material_types.is_empty() {
-            "Fetching Bambu product catalog..."
-        } else {
-            "Fetching filtered Bambu product catalog..."
-        },
+        "Fetching one Bambu material family...",
     );
 
     let snapshot = match backend::bambu_lookup::refresh_bambu_catalog_snapshot(
-        if material_types.is_empty() {
-            None
-        } else {
-            Some(material_types.clone())
-        },
+        Some(material_types.clone()),
         known_bambu_entries,
         stale_before.as_deref(),
     ) {
@@ -261,59 +336,41 @@ pub(crate) fn refresh_bambu_catalog_blocking(
         }
     };
 
+    backend::bambu_lookup::validate_bambu_refresh_snapshot_for_mutation(&snapshot)?;
+
     emit_catalog_refresh_progress(
         app,
         "Bambu",
         "IMPORT",
         "Importing Bambu catalog into local database...",
     );
-    let (imported, skipped_invalid_entries, skipped_invalid_samples) = {
+    let source_entries: Vec<SourceCatalogEntryInput<'_>> = snapshot
+        .entries
+        .iter()
+        .map(|entry| SourceCatalogEntryInput {
+            material: &entry.material,
+            filament_name: &entry.filament_name,
+            color_name: &entry.color_name,
+            hex_color: entry.hex_color.as_deref(),
+            product_url: &entry.product_url,
+            default_weight: entry.default_weight_g,
+        })
+        .collect();
+    let import_stats = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-        let mut processed = 0i64;
-        let mut skipped_invalid = 0i64;
-        let mut skipped_samples: Vec<String> = Vec::new();
-        for entry in &snapshot.entries {
-            let material = entry.material.trim();
-            let filament_name = entry.filament_name.trim();
-            let color_name = entry.color_name.trim();
-            if material.is_empty() || filament_name.is_empty() || color_name.is_empty() {
-                skipped_invalid += 1;
-                if skipped_samples.len() < 8 {
-                    skipped_samples.push(format!(
-                        "material='{}' filament='{}' color='{}' url='{}'",
-                        material, filament_name, color_name, entry.product_url
-                    ));
-                }
-                continue;
-            }
-            db.upsert_manual_master(ManualMasterInput {
-                material,
-                filament_name,
-                color_name,
-                hex_color: entry.hex_color.as_deref(),
-                product_url: Some(&entry.product_url),
-                vendor: Some("Bambu"),
-                default_weight: Some(entry.default_weight_g),
-            })
-            .map_err(|error| format!("{:?}", error))?;
-            processed += 1;
-            if processed % 25 == 0 {
-                emit_catalog_refresh_progress(
-                    app,
-                    "Bambu",
-                    "IMPORT",
-                    &format!(
-                        "Importing Bambu catalog into local database... {processed}/{}",
-                        snapshot.entries.len()
-                    ),
-                );
-            }
-        }
-        (processed, skipped_invalid, skipped_samples)
+        db.import_source_vendor_catalog(
+            "Bambu",
+            &material_types[0],
+            &refresh_started_at,
+            &source_entries,
+        )
+        .map_err(|error| format!("{:?}", error))?
     };
+    let imported = import_stats.imported_count();
+    let reactivated_count = import_stats.reactivated_count;
 
     let mut output = format!(
-        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nReused cached products: {}\nDetail fetches: {}\nAnti-bot blocks: {}\nImported {} entries.\nSkipped invalid entries: {}\n",
+        "Detected store: {}\nDetected collection: {}\nProducts discovered: {}\nProducts detailed: {}\nReused cached products: {}\nDetail fetches: {}\nAnti-bot blocks: {}\nImported {} entries.\nSkipped user-edited entries: {}\nSkipped vendor conflicts: {}\n",
         snapshot.detected_store,
         snapshot.detected_collection,
         snapshot.products_discovered,
@@ -322,7 +379,8 @@ pub(crate) fn refresh_bambu_catalog_blocking(
         snapshot.detail_fetches,
         snapshot.anti_bot_blocks,
         imported,
-        skipped_invalid_entries
+        import_stats.skipped_user_edited_count,
+        import_stats.skipped_vendor_conflict_count,
     );
     if !material_types.is_empty() {
         output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
@@ -341,58 +399,14 @@ pub(crate) fn refresh_bambu_catalog_blocking(
         output.push_str(&snapshot.warnings.join("\n"));
         output.push('\n');
     }
-    if !skipped_invalid_samples.is_empty() {
-        output.push_str("\nInvalid rows (sample):\n");
-        for sample in &skipped_invalid_samples {
-            output.push_str("- ");
-            output.push_str(sample);
-            output.push('\n');
-        }
-    }
-
-    let skip_discontinued_reason = if material_types.is_empty() {
-        detect_bambu_skip_discontinued_reason(&output, imported)
-    } else {
-        Some(format!(
-            "material-filtered refresh ({})",
-            material_types.join(", ")
-        ))
-    };
-    let (reactivated_count, discontinued_count) = if let Some(reason) = &skip_discontinued_reason {
-        emit_catalog_refresh_progress(
-            app,
-            "Bambu",
-            "DISCONTINUED",
-            &format!(
-                "Skipping Bambu discontinued update ({reason}). Previous flags are preserved."
-            ),
-        );
-        (0, 0)
-    } else {
-        emit_catalog_refresh_progress(
-            app,
-            "Bambu",
-            "DISCONTINUED",
-            "Applying Bambu discontinued/reactivated status...",
-        );
-        let stats = {
-            let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-            db.apply_bambu_discontinued_rules(&refresh_started_at)
-                .map_err(|error| format!("{:?}", error))?
-        };
-        (stats.reactivated_count, stats.discontinued_count)
-    };
+    let discontinued_count = 0;
     output.push_str("\nCatalog lifecycle update:\nVendor: Bambu\n");
     if !material_types.is_empty() {
         output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
     }
-    if let Some(reason) = skip_discontinued_reason {
-        output.push_str(&format!(
-            "Discontinued handling: skipped ({reason})\nPrevious discontinued flags were preserved.\n"
-        ));
-    } else {
-        output.push_str("Discontinued handling: applied\n");
-    }
+    output.push_str(
+        "Discontinued handling: disabled for targeted refreshes. Unseen catalog rows were preserved.\n",
+    );
     output.push_str(&format!(
         "Reactivated: {}\nMarked discontinued: {}\n",
         reactivated_count, discontinued_count
@@ -416,7 +430,7 @@ pub(crate) fn refresh_esun_catalog_blocking(
     material_types: Option<Vec<String>>,
     app: Option<&tauri::AppHandle>,
 ) -> Result<CatalogRefreshResult, String> {
-    let material_types = normalize_material_filters(material_types);
+    let material_types = require_single_material_filter(material_types)?;
     let refresh_started_at = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         db.ensure_catalog_lifecycle_columns()
@@ -425,9 +439,7 @@ pub(crate) fn refresh_esun_catalog_blocking(
     };
 
     emit_catalog_refresh_progress(app, "eSUN", "FETCH", "Fetching eSUN product catalog...");
-    let (known_esun_entries, stale_before) = if material_types.is_empty() {
-        (None, None)
-    } else {
+    let (known_esun_entries, stale_before) = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
         let rows = db
             .list_master_catalog(100_000, None)
@@ -462,11 +474,7 @@ pub(crate) fn refresh_esun_catalog_blocking(
         (Some(entries), Some(stale_before))
     };
     let snapshot = match backend::vendor_lookup::refresh_esun_catalog_snapshot(
-        if material_types.is_empty() {
-            None
-        } else {
-            Some(material_types.clone())
-        },
+        Some(material_types.clone()),
         known_esun_entries,
         stale_before.as_deref(),
     ) {
@@ -494,80 +502,34 @@ pub(crate) fn refresh_esun_catalog_blocking(
         "IMPORT",
         "Importing eSUN catalog into local database...",
     );
-    let imported = {
+    let source_entries: Vec<SourceCatalogEntryInput<'_>> = snapshot
+        .entries
+        .iter()
+        .map(|entry| SourceCatalogEntryInput {
+            material: &entry.material,
+            filament_name: &entry.filament_name,
+            color_name: &entry.color_name,
+            hex_color: entry.hex_color.as_deref(),
+            product_url: &entry.product_url,
+            default_weight: entry.default_weight_g,
+        })
+        .collect();
+    let import_stats = {
         let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-        let mut processed = 0i64;
-        for entry in &snapshot.entries {
-            db.upsert_manual_master(ManualMasterInput {
-                material: &entry.material,
-                filament_name: &entry.filament_name,
-                color_name: &entry.color_name,
-                hex_color: entry.hex_color.as_deref(),
-                product_url: Some(&entry.product_url),
-                vendor: Some("eSUN"),
-                default_weight: Some(entry.default_weight_g),
-            })
-            .map_err(|error| format!("{:?}", error))?;
-            processed += 1;
-            if processed % 25 == 0 {
-                emit_catalog_refresh_progress(
-                    app,
-                    "eSUN",
-                    "IMPORT",
-                    &format!(
-                        "Importing eSUN catalog into local database... {processed}/{}",
-                        snapshot.entries.len()
-                    ),
-                );
-            }
-        }
-        processed
-    };
-
-    emit_catalog_refresh_progress(
-        app,
-        "eSUN",
-        "CLEANUP",
-        "Normalizing existing eSUN colors in local catalog...",
-    );
-    let cleanup_stats = {
-        let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-        db.normalize_esun_catalog_colors()
-            .map_err(|error| format!("{:?}", error))?
-    };
-
-    let skip_discontinued_reason = if !material_types.is_empty() {
-        Some(format!(
-            "material-filtered refresh ({})",
-            material_types.join(", ")
-        ))
-    } else if snapshot.detected_store != "https://esun3dstore.com" {
-        Some("fallback source was used".to_string())
-    } else if !snapshot.warnings.is_empty() {
-        Some("refresh had warnings/errors from source".to_string())
-    } else {
-        None
-    };
-    let should_apply_discontinued = skip_discontinued_reason.is_none();
-    let (reactivated_count, discontinued_count) = if should_apply_discontinued {
-        emit_catalog_refresh_progress(
-            app,
+        db.import_source_vendor_catalog(
             "eSUN",
-            "DISCONTINUED",
-            "Applying eSUN discontinued/reactivated status...",
-        );
-        let stats = {
-            let db = FilamentDatabase::open(db_path).map_err(|error| error.to_string())?;
-            db.apply_vendor_discontinued_rules("eSUN", &refresh_started_at)
-                .map_err(|error| format!("{:?}", error))?
-        };
-        (stats.reactivated_count, stats.discontinued_count)
-    } else {
-        (0, 0)
+            &material_types[0],
+            &refresh_started_at,
+            &source_entries,
+        )
+        .map_err(|error| format!("{:?}", error))?
     };
+    let imported = import_stats.imported_count();
+    let reactivated_count = import_stats.reactivated_count;
+    let discontinued_count = 0;
 
     let mut output = format!(
-        "Detected store: {}\nDetected collection: {}\nHandles discovered: {}\nProducts processed: {}\nSkipped non-filament: {}\nReused cached products: {}\nDetail fetches: {}\nImported {} entries.\n",
+        "Detected store: {}\nDetected collection: {}\nHandles discovered: {}\nProducts processed: {}\nSkipped non-filament: {}\nReused cached products: {}\nDetail fetches: {}\nImported {} entries.\nSkipped user-edited entries: {}\nSkipped vendor conflicts: {}\n",
         snapshot.detected_store,
         snapshot.detected_collection,
         snapshot.handles_found,
@@ -575,7 +537,9 @@ pub(crate) fn refresh_esun_catalog_blocking(
         snapshot.skipped_non_filament,
         snapshot.reused_cached_products,
         snapshot.detail_fetches,
-        imported
+        imported,
+        import_stats.skipped_user_edited_count,
+        import_stats.skipped_vendor_conflict_count,
     );
     if !material_types.is_empty() {
         output.push_str(&format!("Material filter: {}\n", material_types.join(", ")));
@@ -585,21 +549,9 @@ pub(crate) fn refresh_esun_catalog_blocking(
         output.push_str(&snapshot.warnings.join("\n"));
     }
     output.push_str("\n\nCatalog lifecycle update:\nVendor: eSUN\n");
-    output.push_str(&format!(
-        "Local color normalization:\nScanned: {}\nNormalized: {}\nMerged duplicates: {}\nSkipped vendor conflicts: {}\n",
-        cleanup_stats.scanned_count,
-        cleanup_stats.normalized_count,
-        cleanup_stats.merged_count,
-        cleanup_stats.skipped_conflicts
-    ));
-    if let Some(reason) = skip_discontinued_reason {
-        output.push_str(&format!(
-            "Discontinued handling: skipped ({})\nPrevious discontinued flags were preserved.\n",
-            reason
-        ));
-    } else {
-        output.push_str("Discontinued handling: applied\n");
-    }
+    output.push_str(
+        "Discontinued handling: disabled for targeted refreshes. Unseen catalog rows were preserved.\n",
+    );
     output.push_str(&format!(
         "Reactivated: {}\nMarked discontinued: {}\n",
         reactivated_count, discontinued_count
@@ -609,7 +561,7 @@ pub(crate) fn refresh_esun_catalog_blocking(
         imported,
         detected_store: Some(snapshot.detected_store),
         detected_collection: Some(snapshot.detected_collection),
-        discovered_materials: None,
+        discovered_materials: Some(material_types),
         reactivated_count,
         discontinued_count,
         reused_cached_products: Some(snapshot.reused_cached_products),
@@ -628,6 +580,19 @@ fn normalize_material_filters(material_types: Option<Vec<String>>) -> Vec<String
     values.sort();
     values.dedup();
     values
+}
+
+fn require_single_material_filter(
+    material_types: Option<Vec<String>>,
+) -> Result<Vec<String>, String> {
+    let values = normalize_material_filters(material_types);
+    if values.len() != 1 {
+        return Err(
+            "Choose exactly one material type. Source discovery is a separate operation."
+                .to_string(),
+        );
+    }
+    Ok(values)
 }
 
 fn emit_catalog_refresh_progress(
@@ -658,60 +623,6 @@ pub(crate) fn esun_search_filaments(
 #[tauri::command]
 pub(crate) fn esun_fetch_product_detail(handle: String) -> Result<EsunProductDetail, String> {
     backend::vendor_lookup::fetch_esun_product_detail(&handle)
-}
-
-fn detect_bambu_skip_discontinued_reason(output: &str, imported: i64) -> Option<String> {
-    if imported <= 0 {
-        return Some("no rows imported".to_string());
-    }
-
-    let lowered = output.to_lowercase();
-    let anti_bot_signals = [
-        "429 too many requests",
-        "access denied",
-        "captcha",
-        "cloudflare",
-    ];
-    if anti_bot_signals
-        .iter()
-        .any(|signal| lowered.contains(signal))
-    {
-        return Some("anti-bot/rate-limit responses detected".to_string());
-    }
-
-    if let Some(blocks) = extract_prefixed_line(output, "Anti-bot blocks:")
-        .and_then(|value| value.parse::<i64>().ok())
-        && blocks > 0
-    {
-        return Some("anti-bot/rate-limit responses detected".to_string());
-    }
-
-    if lowered.contains("refresh quality: partial") {
-        return Some("refresh had warnings/errors from source".to_string());
-    }
-
-    if lowered.contains("scraper warning:") {
-        return Some("scraper reported partial refresh warnings".to_string());
-    }
-
-    if lowered.contains("no products found for any base url") {
-        return Some("source returned no products".to_string());
-    }
-
-    None
-}
-
-fn extract_prefixed_line(stdout: &str, prefix: &str) -> Option<String> {
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-        if let Some(value) = trimmed.strip_prefix(prefix) {
-            let value = value.trim();
-            if !value.is_empty() {
-                return Some(value.to_string());
-            }
-        }
-    }
-    None
 }
 
 #[cfg(test)]

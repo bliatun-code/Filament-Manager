@@ -4,7 +4,7 @@ use super::database_catalog_inputs::ManualMasterInput;
 use super::database_catalog_manual::upsert_manual_master;
 use super::database_import::{InventoryImportRow, InventoryImportStats};
 use super::database_loan_create::create_inbound_spool_loan_in_transaction;
-use super::database_loan_queries::spool_has_active_loan;
+use super::database_loan_queries::{spool_has_active_loan, spool_is_outbound_loan_locked};
 use super::database_location_models::is_user_managed_location_type;
 use super::database_locations::{ensure_location, get_location};
 use super::database_result::{InventoryError, InventoryResult};
@@ -85,10 +85,16 @@ fn import_inventory_spools_rows_in_transaction(
             .map(|_| spool_has_active_loan(conn, normalized.spool_id))
             .transpose()?
             .unwrap_or(false);
+        let existing_outbound_loan_locked = existing_spool
+            .as_ref()
+            .map(|_| spool_is_outbound_loan_locked(conn, normalized.spool_id))
+            .transpose()?
+            .unwrap_or(false);
+        let existing_ownership_locked = existing_has_active_loan || existing_outbound_loan_locked;
         let resolved_ownership = resolve_imported_ownership(
             row,
             existing_spool.as_ref(),
-            existing_has_active_loan,
+            existing_ownership_locked,
             index,
         )?;
         let resolved_locations = resolve_imported_locations(
@@ -97,8 +103,12 @@ fn import_inventory_spools_rows_in_transaction(
             normalized.status.as_str(),
             existing_spool.as_ref(),
             existing_managed_status.as_deref(),
+            existing_outbound_loan_locked,
         )?;
-        if let Some(status) = existing_managed_status {
+        if existing_outbound_loan_locked {
+            normalized.status =
+                normalize_spool_status(existing_spool.as_ref().map(|spool| spool.status.as_str()));
+        } else if let Some(status) = existing_managed_status {
             // The local AMS slot or active outbound loan is authoritative.
             // A lightweight inventory file cannot replace that relation.
             normalized.status = status;
@@ -462,7 +472,7 @@ struct ResolvedImportedOwnership {
 fn resolve_imported_ownership(
     row: &InventoryImportRow,
     existing_spool: Option<&SpoolRow>,
-    existing_has_active_loan: bool,
+    existing_ownership_locked: bool,
     index: usize,
 ) -> InventoryResult<ResolvedImportedOwnership> {
     let existing_ownership_type = existing_spool
@@ -476,10 +486,10 @@ fn resolve_imported_ownership(
         || row.owner_contact.is_some()
         || row.ownership_note.is_some();
 
-    // Active local loan relations are authoritative. A lightweight inventory
-    // file contains no loan ids or lifecycle history and must not rewrite the
-    // ownership fields out from under that relation.
-    if existing_has_active_loan {
+    // Active local loan relations and fail-closed legacy BORROWED states are
+    // authoritative. A lightweight inventory file contains no loan ids or
+    // lifecycle history and must not rewrite ownership out from under them.
+    if existing_ownership_locked {
         return Ok(ResolvedImportedOwnership {
             ownership_type: existing_ownership_type,
             owner_name: existing_owner_name,
@@ -529,7 +539,17 @@ fn resolve_imported_locations(
     status: &str,
     existing_spool: Option<&SpoolRow>,
     existing_managed_status: Option<&str>,
+    existing_outbound_loan_locked: bool,
 ) -> InventoryResult<ResolvedImportedLocations> {
+    if existing_outbound_loan_locked {
+        let existing = existing_spool.expect("loan lock requires an existing spool");
+        return Ok(ResolvedImportedLocations {
+            location_id: existing.location_id.clone(),
+            home_location_id: existing.home_location_id.clone(),
+            update_location_id: false,
+            update_home_location_id: false,
+        });
+    }
     if existing_managed_status.is_some() {
         let existing = existing_spool.expect("managed status requires an existing spool");
         let home_location_id = if row.has_home_location {

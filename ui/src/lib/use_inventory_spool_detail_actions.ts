@@ -64,6 +64,7 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   selectedSpool: InventorySpool | null;
   selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
   selectedSpoolLocationDraft: string;
+  selectedSpoolLoanedOut: boolean;
   selectedSpoolOwnerContactDraft: string;
   selectedSpoolOwnerNameDraft: string;
   selectedSpoolOwnershipDraft: OwnershipType;
@@ -136,6 +137,7 @@ export function useInventorySpoolDetailActions({
   selectedSpool,
   selectedSpoolAssignedSlot,
   selectedSpoolLocationDraft,
+  selectedSpoolLoanedOut,
   selectedSpoolOwnerContactDraft,
   selectedSpoolOwnerNameDraft,
   selectedSpoolOwnershipDraft,
@@ -308,27 +310,37 @@ export function useInventorySpoolDetailActions({
     }
     setSelectedSpoolPurchaseMetadataErrors({});
 
+    const homeLocationChanged =
+      (selectedSpool.homeLocation ?? "").trim() !==
+      (parsed.value.homeLocation ?? "");
+    const ownershipChanged =
+      selectedSpool.ownershipType !== parsed.value.ownershipType ||
+      (isBorrowedInOwnership(parsed.value.ownershipType) &&
+        ((selectedSpool.ownerName ?? "").trim() !== parsed.value.ownerName ||
+          (selectedSpool.ownerContact ?? "").trim() !==
+            (parsed.value.ownerContact ?? "") ||
+          (selectedSpool.ownershipNote ?? "").trim() !==
+            (parsed.value.ownershipNote ?? "")));
+    if (selectedSpoolLoanedOut && (homeLocationChanged || ownershipChanged)) {
+      setError(
+        t(
+          "errors.loanedSpoolEditBlocked",
+          "Return the loan before editing this roll's status, location, or ownership.",
+        ),
+      );
+      return;
+    }
+
     setConfirmDelete(false);
     setConfirmPurge(false);
     setManageBusy(true);
     setError(null);
     try {
-      const homeLocationChanged =
-        (selectedSpool.homeLocation ?? "").trim() !==
-        (parsed.value.homeLocation ?? "");
       const tareWeightChanged =
         parsed.value.tareWeightGrams !== selectedSpoolResolvedTare;
       const purchasePriceBatchLockChanged =
         parsed.value.purchasePriceBatchLocked !==
         (selectedSpool.purchasePriceBatchLocked ?? false);
-      const ownershipChanged =
-        selectedSpool.ownershipType !== parsed.value.ownershipType ||
-        (isBorrowedInOwnership(parsed.value.ownershipType) &&
-          ((selectedSpool.ownerName ?? "").trim() !== parsed.value.ownerName ||
-            (selectedSpool.ownerContact ?? "").trim() !==
-              (parsed.value.ownerContact ?? "") ||
-            (selectedSpool.ownershipNote ?? "").trim() !==
-              (parsed.value.ownershipNote ?? "")));
       await updateInventorySpoolDetails(
         {
           spool_id: selectedSpool.id,

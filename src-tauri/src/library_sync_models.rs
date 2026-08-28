@@ -220,6 +220,13 @@ pub(crate) struct LibrarySyncRefreshCatalogInput {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct LibrarySyncAuditCatalogInput {
+    pub(crate) base_url: String,
+    pub(crate) expected_library_id: Option<String>,
+    pub(crate) vendor: String,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct LibrarySyncWishlistListInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,

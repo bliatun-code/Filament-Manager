@@ -11,6 +11,7 @@ use crate::backend::database_loan_create::{
     create_inbound_spool_loan_in_transaction, create_spool_loan_in_transaction,
 };
 use crate::backend::database_loan_queries::{
+    ensure_spool_not_outbound_loan_locked,
     find_active_spool_loan_for_direction as find_active_spool_loan_for_direction_row,
     spool_has_active_loan as spool_has_active_loan_row,
 };
@@ -847,6 +848,11 @@ impl InventoryEngine {
         let status_kind = SpoolStatus::from_raw(Some(status));
         let normalized_status = status_kind.as_str();
         self.db.with_inventory_transaction(|conn| {
+            let existing_spool =
+                get_spool_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
+            if SpoolStatus::from_raw(Some(&existing_spool.status)) != status_kind {
+                ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
+            }
             if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, spool_id)? {
                 return Err(InventoryError::Db(
                     "assign spool to a printer slot before setting ASSIGNED".to_string(),
@@ -883,6 +889,7 @@ impl InventoryEngine {
         location_id: Option<&str>,
     ) -> InventoryResult<()> {
         self.db.with_inventory_transaction(|conn| {
+            ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
             let resolved = match location_id {
                 Some(value) if !value.trim().is_empty() => {
                     Some(resolve_active_generic_location_reference(conn, value)?)
@@ -922,11 +929,6 @@ impl InventoryEngine {
         let requested_purchase_metadata = input.purchase_metadata;
         let requested_purchase_price_batch_locked = input.purchase_price_batch_locked;
         self.db.with_inventory_transaction(|conn| {
-            if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, &input.spool_id)? {
-                return Err(InventoryError::Db(
-                    "assign spool to a printer slot before setting ASSIGNED".to_string(),
-                ));
-            }
             let existing_spool =
                 get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
             let normalized_purchase_metadata = requested_purchase_metadata
@@ -947,6 +949,29 @@ impl InventoryEngine {
                 Some(_) => None,
                 None => existing_spool.home_location_id.clone(),
             };
+            let ownership_changed = ownership.as_ref().is_some_and(
+                |(ownership_type, owner_name, owner_contact, ownership_note)| {
+                    OwnershipType::from_raw(Some(&existing_spool.ownership_type)) != *ownership_type
+                        || normalize_optional_input_text(existing_spool.owner_name.as_deref())
+                            != *owner_name
+                        || normalize_optional_input_text(existing_spool.owner_contact.as_deref())
+                            != *owner_contact
+                        || normalize_optional_input_text(existing_spool.ownership_note.as_deref())
+                            != *ownership_note
+                },
+            );
+            let placement_or_status_changed = SpoolStatus::from_raw(Some(&existing_spool.status))
+                != status_kind
+                || resolved_location != existing_spool.location_id
+                || resolved_home_location != existing_spool.home_location_id;
+            if placement_or_status_changed || ownership_changed {
+                ensure_spool_not_outbound_loan_locked(conn, &input.spool_id)?;
+            }
+            if status_kind.is_assigned() && !spool_assigned_to_printer_row(conn, &input.spool_id)? {
+                return Err(InventoryError::Db(
+                    "assign spool to a printer slot before setting ASSIGNED".to_string(),
+                ));
+            }
             let should_preserve_current_location =
                 spool_assigned_to_printer_row(conn, &input.spool_id)?
                     || has_active_loan
@@ -1112,6 +1137,7 @@ impl InventoryEngine {
                     "this flow only supports borrowed-in spools",
                 ));
             }
+            ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
 
             update_spool_ownership_metadata_row(
                 conn,
@@ -1157,6 +1183,15 @@ impl InventoryEngine {
         let previous_ownership_type_kind =
             OwnershipType::from_raw(Some(&spool.spool.ownership_type));
         let previous_ownership_type = previous_ownership_type_kind.as_str().to_string();
+        let ownership_changed = previous_ownership_type_kind != next_ownership_type_kind
+            || normalize_optional_input_text(spool.spool.owner_name.as_deref()) != owner_name
+            || normalize_optional_input_text(spool.spool.owner_contact.as_deref()) != owner_contact
+            || normalize_optional_input_text(spool.spool.ownership_note.as_deref())
+                != ownership_note;
+        if !ownership_changed {
+            return Ok(());
+        }
+        ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
 
         if next_ownership_type_kind.is_borrowed_in() {
             let owner_name = owner_name.ok_or_else(|| {
@@ -1252,19 +1287,6 @@ impl InventoryEngine {
                 }),
             )?;
             return Ok(());
-        }
-
-        if find_active_spool_loan_for_direction_row(
-            conn,
-            spool_id,
-            LoanDirection::Outbound.as_str(),
-        )?
-        .is_some()
-        {
-            return Err(invalid_loan_operation(
-                LOAN_ALREADY_ACTIVE_CODE,
-                "return loaned-out spool before changing ownership",
-            ));
         }
 
         let active_inbound = find_active_spool_loan_for_direction_row(
@@ -1547,6 +1569,7 @@ impl InventoryEngine {
                         .to_string(),
                 ));
             }
+            ensure_spool_not_outbound_loan_locked(conn, &input.spool_id)?;
 
             let spool =
                 get_spool_by_id_row(conn, &input.spool_id)?.ok_or(InventoryError::NotFound)?;
@@ -1645,6 +1668,7 @@ impl InventoryEngine {
             }
 
             let spool = get_spool_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
+            ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
             let current_grams = spool.remaining_g.or(spool.current_weight_g);
             let setting = get_setting_row(conn, &bambu_live_integration_setting_key(printer_id))?
                 .ok_or_else(|| {

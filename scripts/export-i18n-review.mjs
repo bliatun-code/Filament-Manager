@@ -149,7 +149,7 @@ export function exportLocalizationReview({ locale, outputPath }) {
   const definition = CATALOG_LOCALES.find(({ id }) => id === locale);
   if (!definition || locale === DEFAULT_LOCALE) {
     throw new Error(
-      `Choose a non-source catalog locale: ${CATALOG_LOCALES.map(({ id }) => id)
+      `Choose a non-English catalog locale: ${CATALOG_LOCALES.map(({ id }) => id)
         .filter((id) => id !== DEFAULT_LOCALE)
         .join(", ")}.`,
     );
