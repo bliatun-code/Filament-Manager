@@ -182,17 +182,18 @@ Filament Manager can be used in 21 languages:
 - Simplified Chinese, Traditional Chinese, Japanese, and Korean.
 - Ukrainian, Russian, and Hungarian.
 
-Language is selected from one compact list under **Settings → General**. English
-remains the canonical fallback. Norwegian Bokmål, German, and French ship
-complete catalogs for the current copy, but every non-English locale remains
-clearly marked Beta until it receives a fresh native-language review. Other
-Beta catalogs use tested English fallback for copy still awaiting translation.
-All selectable locales pass key, parameter, plural, accessibility, and visual
-QA contracts. Corrections and current-catalog native review are welcome through
-the dedicated
+Language is selected from one compact list under **Settings → General**. Every
+selectable language ships complete desktop and Companion catalogs without a
+Beta label. English remains the canonical source and emergency inline fallback,
+but published locale catalogs cannot depend on missing English rows. All
+selectable locales pass key, parameter, plural, message-format, and runtime
+loading contracts. Visual and accessibility checks remain separate release
+gates. Corrections and current-catalog native review are welcome through the
+dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set is intentionally stable while these
-20 non-English catalogs receive actual community and native-language review.
+20 non-English catalogs receive community corrections and native-language
+review.
 
 ## License
 

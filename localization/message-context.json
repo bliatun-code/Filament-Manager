@@ -745,12 +745,6 @@
       "screenshot": "docs/screenshots/settings-general.jpg"
     },
     {
-      "surface": "desktop",
-      "keyPrefix": "settings.languageBeta",
-      "meaning": "Beta-language label and explanation that an incomplete locale can still display some English fallback text.",
-      "screenshot": "docs/screenshots/settings-general.jpg"
-    },
-    {
       "surface": "companion",
       "keyPrefix": "errors.purchaseMetadata",
       "meaning": "Browser Companion capability error requiring a newer Host before purchase metadata can be saved.",

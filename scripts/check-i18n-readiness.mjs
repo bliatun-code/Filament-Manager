@@ -11,6 +11,7 @@ import {
   flattenDictionary,
   localeDictionaryExportName,
   readLocaleDictionaryFromSource,
+  validateDictionaryMessageFormats,
   validateLocaleDictionaries,
   validateLocaleOverlay,
 } from "./check-i18n-locales.mjs";
@@ -27,6 +28,35 @@ const desktopLocaleRoot = resolve(
   "i18n_locales",
   "locales",
 );
+
+export const RUNTIME_QA_CONTRACT_FILES = Object.freeze([
+  "scripts/check-i18n-fallbacks.mjs",
+  "scripts/check-i18n-locales.mjs",
+  "scripts/check-i18n-locales.test.mjs",
+  "scripts/check-i18n-ui-copy.mjs",
+  "scripts/check-i18n-ui-copy.test.mjs",
+  "scripts/check-companion-i18n.mjs",
+  "scripts/check-companion-i18n.test.mjs",
+  "scripts/check-i18n-readiness.mjs",
+  "scripts/check-i18n-readiness.test.mjs",
+  "scripts/companion-i18n-lazy-loading.test.mjs",
+  "scripts/generate-companion-locales.mjs",
+  "scripts/generate-companion-locales.test.mjs",
+  "scripts/preload-companion-locales.mjs",
+  "scripts/quality-gates-contract.test.mjs",
+  "scripts/ui-source-utils.mjs",
+  "src-tauri/companion_browser/companion_i18n.js",
+  "src-tauri/companion_browser/companion_i18n.test.mjs",
+  "src-tauri/companion_browser/locale_format.js",
+  "src-tauri/companion_browser/locale_format.test.mjs",
+  "src-tauri/companion_browser/message_format.js",
+  "src-tauri/companion_browser/message_format.test.mjs",
+  "src-tauri/companion_browser/supported_locales.js",
+  "src-tauri/companion_browser/supported_locales.test.mjs",
+  "ui/src/lib/i18n.test.ts",
+  "ui/src/lib/i18n_provider.tsx",
+  "ui/src/lib/i18n_locales/load_dictionary.ts",
+]);
 
 function readJson(file) {
   return JSON.parse(readFileSync(file, "utf8"));
@@ -48,6 +78,54 @@ export function catalogFingerprint(desktopDictionary, companionDictionary) {
     `${surfaceA}:${keyA}`.localeCompare(`${surfaceB}:${keyB}`, "en"),
   );
   return `sha256:${createHash("sha256").update(JSON.stringify(rows)).digest("hex")}`;
+}
+
+export function catalogSetFingerprint(
+  desktopDictionaries,
+  companionDictionaries,
+) {
+  const rows = [
+    ...Object.entries(desktopDictionaries).flatMap(([locale, dictionary]) =>
+      flattenDictionary(dictionary).map(([key, value]) => [
+        locale,
+        "desktop",
+        key,
+        value,
+      ]),
+    ),
+    ...Object.entries(companionDictionaries).flatMap(([locale, dictionary]) =>
+      flattenDictionary(dictionary).map(([key, value]) => [
+        locale,
+        "companion",
+        key,
+        value,
+      ]),
+    ),
+  ].sort(([localeA, surfaceA, keyA], [localeB, surfaceB, keyB]) =>
+    `${localeA}:${surfaceA}:${keyA}`.localeCompare(
+      `${localeB}:${surfaceB}:${keyB}`,
+      "en",
+    ),
+  );
+  return `sha256:${createHash("sha256").update(JSON.stringify(rows)).digest("hex")}`;
+}
+
+export function runtimeQaContractFingerprint(sources) {
+  const rows = Object.entries(sources).sort(([left], [right]) =>
+    left.localeCompare(right, "en"),
+  );
+  return `sha256:${createHash("sha256").update(JSON.stringify(rows)).digest("hex")}`;
+}
+
+export function currentRuntimeQaContractFingerprint() {
+  return runtimeQaContractFingerprint(
+    Object.fromEntries(
+      RUNTIME_QA_CONTRACT_FILES.map((path) => [
+        path,
+        readFileSync(resolve(repoRoot, path), "utf8"),
+      ]),
+    ),
+  );
 }
 
 function dictionaryMap(dictionary) {
@@ -293,8 +371,21 @@ export function buildLocalizationReport({
   desktopDictionaries,
   companionDictionaries,
   fileExists = existsSync,
+  runtimeQaFingerprint = currentRuntimeQaContractFingerprint(),
 }) {
   const errors = [];
+  if (statusDocument.schemaVersion !== 4) {
+    errors.push("locale-status.json must use schemaVersion 4.");
+  }
+  if (
+    typeof statusDocument.minimumDistinctTranslationPercent !== "number" ||
+    statusDocument.minimumDistinctTranslationPercent < 0 ||
+    statusDocument.minimumDistinctTranslationPercent > 100
+  ) {
+    errors.push(
+      "locale-status.json minimumDistinctTranslationPercent must be between 0 and 100.",
+    );
+  }
   const sourceLocale = statusDocument.sourceLocale;
   if (sourceLocale !== DEFAULT_LOCALE) {
     errors.push(`locale-status.json sourceLocale must be ${DEFAULT_LOCALE}.`);
@@ -303,10 +394,27 @@ export function buildLocalizationReport({
   const sourceCompanion = companionDictionaries[sourceLocale];
   if (!sourceDesktop || !sourceCompanion) {
     errors.push(`Missing source dictionaries for ${sourceLocale}.`);
-    return { sourceFingerprint: null, locales: [], errors };
+    return {
+      sourceFingerprint: null,
+      catalogSetFingerprint: null,
+      runtimeQaFingerprint,
+      locales: [],
+      errors,
+    };
   }
 
   const sourceFingerprint = catalogFingerprint(sourceDesktop, sourceCompanion);
+  const currentCatalogSetFingerprint = catalogSetFingerprint(
+    desktopDictionaries,
+    companionDictionaries,
+  );
+  errors.push(
+    ...validateDictionaryMessageFormats(sourceDesktop, `${sourceLocale} desktop`),
+    ...validateDictionaryMessageFormats(
+      sourceCompanion,
+      `${sourceLocale} companion`,
+    ),
+  );
   errors.push(
     ...validateTranslatorContext(
       contextDocument,
@@ -322,6 +430,49 @@ export function buildLocalizationReport({
   );
 
   const localeIds = localeDefinitions.map(({ id }) => id);
+  const releaseQaAudits = statusDocument.releaseQaAudits;
+  if (!Array.isArray(releaseQaAudits)) {
+    errors.push("locale-status.json releaseQaAudits must be an array.");
+  }
+  for (const [index, audit] of (releaseQaAudits ?? []).entries()) {
+    const label = `locale-status.json releaseQaAudits[${index}]`;
+    if (!/^sha256:[a-f0-9]{64}$/.test(audit?.sourceFingerprint ?? "")) {
+      errors.push(`${label} needs a valid sourceFingerprint.`);
+    }
+    if (!/^sha256:[a-f0-9]{64}$/.test(audit?.catalogSetFingerprint ?? "")) {
+      errors.push(`${label} needs a valid catalogSetFingerprint.`);
+    }
+    if (
+      !/^sha256:[a-f0-9]{64}$/.test(
+        audit?.runtimeContractFingerprint ?? "",
+      )
+    ) {
+      errors.push(`${label} needs a valid runtimeContractFingerprint.`);
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(audit?.verifiedAt ?? "")) {
+      errors.push(`${label} needs verifiedAt in YYYY-MM-DD format.`);
+    }
+    if (audit?.artifactQa !== "passed") {
+      errors.push(`${label} artifactQa must be passed.`);
+    }
+    if (audit?.runtimeQa !== "passed") {
+      errors.push(`${label} runtimeQa must be passed.`);
+    }
+    if (!Array.isArray(audit?.locales) || audit.locales.length === 0) {
+      errors.push(`${label} needs at least one locale.`);
+      continue;
+    }
+    const seenAuditLocales = new Set();
+    for (const localeId of audit.locales) {
+      if (!localeIds.includes(localeId)) {
+        errors.push(`${label} contains unknown locale ${localeId}.`);
+      }
+      if (seenAuditLocales.has(localeId)) {
+        errors.push(`${label} contains duplicate locale ${localeId}.`);
+      }
+      seenAuditLocales.add(localeId);
+    }
+  }
   for (const localeId of Object.keys(statusDocument.locales ?? {})) {
     if (!localeIds.includes(localeId)) {
       errors.push(
@@ -331,7 +482,12 @@ export function buildLocalizationReport({
   }
 
   const localeReports = [];
-  for (const { id, catalogKind, fallbackLocale } of localeDefinitions) {
+  for (const {
+    id,
+    catalogKind,
+    fallbackLocale,
+    selectable,
+  } of localeDefinitions) {
     const status = statusDocument.locales?.[id];
     if (!status) {
       errors.push(`locale-status.json is missing source locale ${id}.`);
@@ -371,6 +527,29 @@ export function buildLocalizationReport({
     const keyCoveragePercent =
       ((desktopStats.present + companionStats.present) / total) * 100;
     const maintained = status.releaseStatus === "maintained";
+    const published = selectable === true;
+    const publishedStatus = ["community", "maintained"].includes(
+      status.releaseStatus,
+    );
+    const completeCatalog = catalogKind === "source";
+    const releaseQaCurrent = (releaseQaAudits ?? []).some(
+      (audit) =>
+        audit?.sourceFingerprint === sourceFingerprint &&
+        audit?.catalogSetFingerprint === currentCatalogSetFingerprint &&
+        audit?.runtimeContractFingerprint === runtimeQaFingerprint &&
+        audit?.artifactQa === "passed" &&
+        audit?.runtimeQa === "passed" &&
+        Array.isArray(audit?.locales) &&
+        audit.locales.includes(id),
+    );
+
+    if (
+      !["canonical", "draft", "community", "maintained"].includes(
+        status.releaseStatus,
+      )
+    ) {
+      errors.push(`${id} has unsupported releaseStatus ${status.releaseStatus}.`);
+    }
 
     if (catalogKind === "draft" && status.releaseStatus !== "draft") {
       errors.push(
@@ -380,11 +559,35 @@ export function buildLocalizationReport({
     if (catalogKind === "draft" && !fallbackLocale) {
       errors.push(`${id} is a draft overlay but has no fallback locale.`);
     }
+    if (catalogKind === "draft" && published) {
+      errors.push(
+        `${id} is selectable but still uses a partial draft catalog. Complete both catalogs before publishing it.`,
+      );
+    }
+    if (completeCatalog && fallbackLocale) {
+      errors.push(
+        `${id} has a complete source catalog and must not use a catalog fallback.`,
+      );
+    }
     if (id === sourceLocale && status.releaseStatus !== "canonical") {
       errors.push(`${id} is the source locale and must be canonical.`);
     }
     if (id !== sourceLocale && status.releaseStatus === "canonical") {
       errors.push(`${id} is not the source locale and cannot be canonical.`);
+    }
+    if (id !== sourceLocale && publishedStatus && !published) {
+      errors.push(
+        `${id} is marked ${status.releaseStatus} but is not selectable. Community and maintained locales must be published.`,
+      );
+    }
+    if (
+      id !== sourceLocale &&
+      completeCatalog &&
+      !["community", "maintained"].includes(status.releaseStatus)
+    ) {
+      errors.push(
+        `${id} has a complete source catalog and must be community or maintained.`,
+      );
     }
 
     if (
@@ -401,19 +604,25 @@ export function buildLocalizationReport({
         `${id} is stale: reviewed ${status.reviewedSourceFingerprint}, source is ${sourceFingerprint}.`,
       );
     }
-    if (maintained && keyCoveragePercent < 100) {
+    if ((published || publishedStatus) && keyCoveragePercent < 100) {
       errors.push(
-        `${id} key coverage is ${keyCoveragePercent.toFixed(2)}%; maintained requires 100%.`,
+        `${id} key coverage is ${keyCoveragePercent.toFixed(2)}%; published locales require 100%.`,
       );
     }
     if (
-      maintained &&
+      (published || publishedStatus) &&
+      id !== sourceLocale &&
       distinctTranslationPercent <
         statusDocument.minimumDistinctTranslationPercent
     ) {
       errors.push(
         `${id} translation signal is ${distinctTranslationPercent.toFixed(2)}%; ` +
-          `maintained requires ${statusDocument.minimumDistinctTranslationPercent}%.`,
+          `published locales require ${statusDocument.minimumDistinctTranslationPercent}%.`,
+      );
+    }
+    if (published && !releaseQaCurrent) {
+      errors.push(
+        `${id} is published without artifact and runtime QA evidence for source ${sourceFingerprint}, catalog set ${currentCatalogSetFingerprint}, and runtime contract ${runtimeQaFingerprint}.`,
       );
     }
 
@@ -425,12 +634,19 @@ export function buildLocalizationReport({
       distinctTranslationPercent,
       desktop: desktopStats,
       companion: companionStats,
+      releaseQaCurrent,
       stale:
         maintained && status.reviewedSourceFingerprint !== sourceFingerprint,
     });
   }
 
-  return { sourceFingerprint, locales: localeReports, errors };
+  return {
+    sourceFingerprint,
+    catalogSetFingerprint: currentCatalogSetFingerprint,
+    runtimeQaFingerprint,
+    locales: localeReports,
+    errors,
+  };
 }
 
 function loadProjectReport() {
@@ -456,6 +672,8 @@ function loadProjectReport() {
 function run() {
   const report = loadProjectReport();
   console.log(`Localization source fingerprint: ${report.sourceFingerprint}`);
+  console.log(`Localization catalog-set fingerprint: ${report.catalogSetFingerprint}`);
+  console.log(`Localization runtime QA fingerprint: ${report.runtimeQaFingerprint}`);
   for (const locale of report.locales) {
     console.log(
       `${locale.id}: ${locale.releaseStatus}, keys ${locale.keyCoveragePercent.toFixed(2)}%, ` +

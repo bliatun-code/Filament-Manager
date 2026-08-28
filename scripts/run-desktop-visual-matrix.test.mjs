@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { CATALOG_LOCALES } from "../src-tauri/companion_browser/supported_locales.js";
 
 import {
   assertDesktopVisualQaMatrixPlatform,
@@ -15,14 +16,24 @@ import {
 
 const sourceDatabasePath = join(tmpdir(), "desktop-visual-matrix-library.db");
 
-test("desktop visual matrix keeps the sparse width and locale coverage", () => {
-  assert.deepEqual(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX, [
+test("desktop visual matrix keeps regression entries and covers every selectable locale", () => {
+  assert.deepEqual(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX.slice(0, 5), [
     { height: 500, locale: "zh-CN", scenario: "add-filament", width: 900 },
     { locale: "de", scenario: "dashboard-onboarding", width: 900 },
     { locale: "fr", scenario: "settings-general", width: 1050 },
     { locale: "nb", scenario: "selected-roll", width: 1200 },
     { locale: "en", scenario: "statistics-overview", width: 1500 },
   ]);
+  assert.deepEqual(
+    new Set(DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX.map(({ locale }) => locale)),
+    new Set(
+      CATALOG_LOCALES.filter(({ selectable }) => selectable).map(({ id }) => id),
+    ),
+  );
+  assert.equal(
+    DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX.length,
+    CATALOG_LOCALES.filter(({ selectable }) => selectable).length,
+  );
 });
 
 test("desktop visual matrix keeps Add filament in a low-window regression entry", () => {
@@ -48,7 +59,7 @@ test("desktop visual matrix keeps genuine live telemetry explicitly opt-in", () 
   });
   assert.equal(
     desktopVisualQaMatrixEntries({ sourcePath: sourceDatabasePath }).length,
-    5,
+    CATALOG_LOCALES.filter(({ selectable }) => selectable).length,
   );
   assert.deepEqual(
     desktopVisualQaMatrixEntries({
@@ -117,7 +128,7 @@ test("desktop visual matrix runs each entry in order with isolated launches", as
     },
   );
 
-  assert.equal(results.length, 6);
+  assert.equal(results.length, DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX.length + 1);
   assert.deepEqual(
     calls.map(({ options }) => [
       options.windowSize.width,

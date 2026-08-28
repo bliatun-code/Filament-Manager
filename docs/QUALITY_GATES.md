@@ -15,7 +15,7 @@ not be weakened merely to make a change pass.
 | Performance | `@bliatun-code` (performance gate owner) | The deterministic 10,000-spool, concurrency, timeout, render-window, lazy-loading, and bundle contracts pass with zero failures. Production JavaScript chunks remain within the committed byte budgets in [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md). | `npm run test:performance:bundle` and `npm run test:performance` | `npm run verify` on macOS and Windows |
 | Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. The installed DMG and MSI must pass the mutating spool/loan/printer/full-backup E2E across a restart. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, `npm run smoke:release:database-upgrade -- ...`, and `npm run smoke:release:packaged-desktop-e2e -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade and mutating packaged-app smokes in required platform jobs |
 | Accessibility | `@bliatun-code` (accessibility gate owner) | All six data-backed main pages have zero axe violations for WCAG 2.0 A/AA, 2.1 A/AA, and 2.2 AA and emit zero browser errors. The shared modal passes keyboard focus, Escape/focus return, and 200% zoom without page-level horizontal overflow. | `npm run test:a11y:app-modal` and `npm run test:a11y:data-backed` | `npm run verify` on macOS and Windows |
-| Localization | `@bliatun-code` (localization gate owner) | Published catalogs keep 100% key and placeholder coverage, zero unknown literal keys, and at least 95% translation signal. A locale described as maintained also needs a named native reviewer and a reviewed fingerprint matching the current English source. | `npm run check:i18n-readiness` and `npm run check:contracts` | `npm run verify` on macOS and Windows |
+| Localization | `@bliatun-code` (localization gate owner) | Every selectable catalog keeps 100% key and placeholder coverage, zero English catalog-overlay fallback, zero unknown literal keys, at least 95% translation signal, and current fingerprint-bound artifact and runtime QA evidence. A locale described as maintained also needs a named native reviewer and a reviewed fingerprint matching the current English source. | `npm run check:i18n-readiness`, `npm run qa:visual:desktop:matrix`, and `npm run check:contracts` | `npm run verify` on macOS and Windows; screenshot results are recorded from their actual release-gate runs |
 
 ## Performance authority
 
@@ -83,9 +83,22 @@ There are currently no committed exceptions.
 
 English is the canonical source. The detailed publication, stale-fingerprint,
 native-review, and string-freeze rules are in
-[LOCALIZATION.md](LOCALIZATION.md). Completeness and translation signal do not
-substitute for native review: an unowned locale may remain a community-review
-candidate, but it cannot be labelled maintained.
+[LOCALIZATION.md](LOCALIZATION.md). A selectable language must have complete
+desktop and Companion catalogs without relying on an English catalog overlay.
+Completeness and translation signal do not substitute for native review: an
+unowned locale may remain a community translation, but it cannot be labelled
+maintained.
+Readiness also requires every selectable locale to be covered by a passed
+`releaseQaAudits` record for the current English source, complete catalog-set and
+runtime-contract fingerprints. Artifact QA
+means complete desktop/Companion catalog generation and compilation; runtime QA
+means key, placeholder, message-format, loading and runtime contract checks.
+The runtime fingerprint includes the formatter, loaders, locale registry,
+generator, localization gates and their contract tests, so changing those files
+automatically expires older evidence.
+The per-locale desktop matrix and representative Companion screenshot gate stay
+separate release checks so the ledger cannot imply that an unrun or blocked
+screen capture passed. None of these checks is native-language review.
 
 ## Wiring and change control
 

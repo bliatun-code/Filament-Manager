@@ -145,6 +145,7 @@ export function collectLiteralTranslationKeysFromSource(
         ts.isNoSubstitutionTemplateLiteral(keyArgument)
       ) {
         const paramsArgument = node.arguments[2];
+        const fallbackArgument = node.arguments[1];
         let staticParamKeys = null;
         if (paramsArgument && ts.isObjectLiteralExpression(paramsArgument)) {
           const names = [];
@@ -183,6 +184,18 @@ export function collectLiteralTranslationKeysFromSource(
             Boolean(paramsArgument) &&
             !(ts.isIdentifier(paramsArgument) && paramsArgument.text === "undefined"),
           staticParamKeys,
+          fallbackText:
+            fallbackArgument &&
+            (ts.isStringLiteral(fallbackArgument) ||
+              ts.isNoSubstitutionTemplateLiteral(fallbackArgument))
+              ? fallbackArgument.text
+              : null,
+          fallbackArgumentPresent:
+            Boolean(fallbackArgument) &&
+            !(
+              ts.isIdentifier(fallbackArgument) &&
+              fallbackArgument.text === "undefined"
+            ),
         });
       }
     }
@@ -241,10 +254,281 @@ export function validateRuntimeTranslationParams(dictionary, runtimeKeys) {
 }
 
 function placeholderTokens(value) {
-  return Array.from(
-    value.matchAll(/\{([A-Za-z0-9_]+)\s*(?:[,}])/g),
-    (match) => match[1],
-  ).sort();
+  const argumentNames = new Set();
+  validateMessageFragment(String(value ?? ""), 0, argumentNames);
+  return [...argumentNames].sort();
+}
+
+const MESSAGE_ARGUMENT_NAME = /^[A-Za-z0-9_]+$/;
+const MESSAGE_ARGUMENT_TYPES = new Set([
+  "number",
+  "date",
+  "time",
+  "select",
+  "plural",
+  "selectordinal",
+]);
+const PLURAL_SELECTORS = new Set([
+  "zero",
+  "one",
+  "two",
+  "few",
+  "many",
+  "other",
+]);
+const EXACT_PLURAL_SELECTOR = /^=-?(?:0|[1-9]\d*)(?:\.\d+)?$/;
+
+function isCanonicalExactPluralSelector(selector) {
+  if (!EXACT_PLURAL_SELECTOR.test(selector)) {
+    return false;
+  }
+  const numericValue = Number(selector.slice(1));
+  return Number.isFinite(numericValue) && `=${numericValue}` === selector;
+}
+
+function matchingMessageBrace(source, startIndex) {
+  let depth = 0;
+  for (let index = startIndex; index < source.length; index += 1) {
+    if (source[index] === "{") {
+      depth += 1;
+    } else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return -1;
+}
+
+function splitMessageArgument(content) {
+  const parts = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < content.length && parts.length < 2; index += 1) {
+    if (content[index] === "{") {
+      depth += 1;
+    } else if (content[index] === "}") {
+      depth -= 1;
+    } else if (content[index] === "," && depth === 0) {
+      parts.push(content.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  parts.push(content.slice(start).trim());
+  return parts;
+}
+
+function validateMessageOptions(style, type, sourceOffset, argumentNames) {
+  const errors = [];
+  const options = new Set();
+  let index = 0;
+
+  if (type === "plural" || type === "selectordinal") {
+    const offsetMatch = style.match(/^offset:\s*(\d+)(?:\s+|$)/);
+    if (offsetMatch) {
+      index = offsetMatch[0].length;
+    } else if (style.startsWith("offset:")) {
+      errors.push(`at index ${sourceOffset}: invalid plural offset`);
+      return errors;
+    }
+  }
+
+  while (index < style.length) {
+    while (index < style.length && /[\s,]/.test(style[index])) {
+      index += 1;
+    }
+    if (index >= style.length) {
+      break;
+    }
+
+    const keyStart = index;
+    while (index < style.length && !/[\s{]/.test(style[index])) {
+      index += 1;
+    }
+    const key = style.slice(keyStart, index);
+    while (index < style.length && /\s/.test(style[index])) {
+      index += 1;
+    }
+    if (!key || style[index] !== "{") {
+      errors.push(
+        `at index ${sourceOffset + keyStart}: invalid ${type} branch`,
+      );
+      return errors;
+    }
+    if (
+      type !== "select" &&
+      !PLURAL_SELECTORS.has(key) &&
+      !isCanonicalExactPluralSelector(key)
+    ) {
+      errors.push(
+        `at index ${sourceOffset + keyStart}: invalid ${type} selector ${JSON.stringify(key)}`,
+      );
+    }
+    if (options.has(key)) {
+      errors.push(
+        `at index ${sourceOffset + keyStart}: duplicate ${type} selector ${JSON.stringify(key)}`,
+      );
+    }
+    options.add(key);
+
+    const branchEnd = matchingMessageBrace(style, index);
+    if (branchEnd < 0) {
+      errors.push(
+        `at index ${sourceOffset + index}: unbalanced ${type} branch`,
+      );
+      return errors;
+    }
+    errors.push(
+      ...validateMessageFragment(
+        style.slice(index + 1, branchEnd),
+        sourceOffset + index + 1,
+        argumentNames,
+      ),
+    );
+    index = branchEnd + 1;
+  }
+
+  if (options.size === 0) {
+    errors.push(`at index ${sourceOffset}: ${type} has no branches`);
+  } else if (!options.has("other")) {
+    errors.push(
+      `at index ${sourceOffset}: ${type} is missing the required "other" branch`,
+    );
+  }
+  return errors;
+}
+
+function validateMessageArgument(content, sourceOffset, argumentNames) {
+  const parts = splitMessageArgument(content);
+  const name = parts[0] ?? "";
+  if (!MESSAGE_ARGUMENT_NAME.test(name)) {
+    return [
+      `at index ${sourceOffset}: invalid message argument name ${JSON.stringify(name)}`,
+    ];
+  }
+  argumentNames.add(name);
+  if (parts.length === 1) {
+    return [];
+  }
+
+  const type = parts[1] ?? "";
+  if (!MESSAGE_ARGUMENT_TYPES.has(type)) {
+    return [
+      `at index ${sourceOffset}: unsupported message argument type ${JSON.stringify(type)}`,
+    ];
+  }
+  const style = parts[2] ?? "";
+  if (type === "select" || type === "plural" || type === "selectordinal") {
+    if (!style) {
+      return [`at index ${sourceOffset}: ${type} has no branches`];
+    }
+    return validateMessageOptions(
+      style,
+      type,
+      sourceOffset + content.indexOf(style),
+      argumentNames,
+    );
+  }
+  if (style) {
+    return [
+      `at index ${sourceOffset}: ${type} styles are not supported by the runtime`,
+    ];
+  }
+  return [];
+}
+
+function validateMessageFragment(
+  source,
+  sourceOffset = 0,
+  argumentNames = new Set(),
+) {
+  const errors = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    if (source[cursor] === "}") {
+      errors.push(`at index ${sourceOffset + cursor}: unexpected closing brace`);
+      cursor += 1;
+      continue;
+    }
+    if (source[cursor] !== "{") {
+      cursor += 1;
+      continue;
+    }
+
+    const close = matchingMessageBrace(source, cursor);
+    if (close < 0) {
+      errors.push(`at index ${sourceOffset + cursor}: unbalanced opening brace`);
+      break;
+    }
+    errors.push(
+      ...validateMessageArgument(
+        source.slice(cursor + 1, close),
+        sourceOffset + cursor + 1,
+        argumentNames,
+      ),
+    );
+    cursor = close + 1;
+  }
+  return errors;
+}
+
+export function validateMessageFormatSyntax(value) {
+  return validateMessageFragment(String(value ?? ""));
+}
+
+export function validateDictionaryMessageFormats(dictionary, locale = "en") {
+  return flattenDictionary(dictionary).flatMap(([key, value]) =>
+    validateMessageFormatSyntax(value).map(
+      (error) => `${locale}.${key} has invalid message format: ${error}.`,
+    ),
+  );
+}
+
+export function validateRuntimeTranslationFallbacks(dictionary, runtimeKeys) {
+  const dictionaryEntries = new Map(flattenDictionary(dictionary));
+  const errors = [];
+
+  for (const entry of runtimeKeys) {
+    if (
+      entry.fallbackArgumentPresent &&
+      typeof entry.fallbackText !== "string"
+    ) {
+      errors.push(
+        `${entry.location}: inline fallback for ${entry.key} must be a string literal or a template literal without substitutions.`,
+      );
+      continue;
+    }
+    if (typeof entry.fallbackText !== "string") {
+      continue;
+    }
+    for (const error of validateMessageFormatSyntax(entry.fallbackText)) {
+      errors.push(
+        `${entry.location}: inline fallback for ${entry.key} has invalid message format: ${error}.`,
+      );
+    }
+
+    const template = dictionaryEntries.get(entry.key);
+    if (typeof template !== "string") {
+      continue;
+    }
+    const placeholderDiff = compareSets(
+      placeholderTokens(template),
+      placeholderTokens(entry.fallbackText),
+    );
+    for (const missing of placeholderDiff.missingFromRight) {
+      errors.push(
+        `${entry.location}: inline fallback for ${entry.key} is missing placeholder {${missing}}.`,
+      );
+    }
+    for (const extra of placeholderDiff.extraInRight) {
+      errors.push(
+        `${entry.location}: inline fallback for ${entry.key} has extra placeholder {${extra}}.`,
+      );
+    }
+  }
+
+  return errors;
 }
 
 function compareSets(leftValues, rightValues) {
@@ -269,6 +553,10 @@ export function validateLocaleDictionaries(
   );
   const errors = [];
 
+  errors.push(
+    ...validateDictionaryMessageFormats(targetDictionary, targetLocale),
+  );
+
   for (const key of missingFromRight) {
     errors.push(`${targetLocale} is missing translation key ${key}.`);
   }
@@ -279,6 +567,10 @@ export function validateLocaleDictionaries(
   for (const [key, baseValue] of baseEntries) {
     const targetValue = targetEntries.get(key);
     if (typeof targetValue !== "string") {
+      continue;
+    }
+    if (baseValue.trim().length > 0 && targetValue.trim().length === 0) {
+      errors.push(`${targetLocale}.${key} has an empty translation.`);
       continue;
     }
     const basePlaceholders = placeholderTokens(baseValue);
@@ -306,10 +598,18 @@ export function validateLocaleOverlay(
   const targetEntries = new Map(flattenDictionary(targetDictionary));
   const errors = [];
 
+  errors.push(
+    ...validateDictionaryMessageFormats(targetDictionary, targetLocale),
+  );
+
   for (const [key, targetValue] of targetEntries) {
     const baseValue = baseEntries.get(key);
     if (typeof baseValue !== "string") {
       errors.push(`${targetLocale} has unknown translation key ${key}.`);
+      continue;
+    }
+    if (baseValue.trim().length > 0 && targetValue.trim().length === 0) {
+      errors.push(`${targetLocale}.${key} has an empty translation.`);
       continue;
     }
     const placeholderDiff = compareSets(
@@ -340,11 +640,14 @@ function runI18nLocaleCheck() {
     ]),
   );
   const baseDictionary = dictionaries[DEFAULT_LOCALE];
-  const errors = SOURCE_LOCALES.filter(
+  const errors = [
+    ...validateDictionaryMessageFormats(baseDictionary, DEFAULT_LOCALE),
+  ];
+  errors.push(...SOURCE_LOCALES.filter(
     ({ id }) => id !== DEFAULT_LOCALE,
   ).flatMap(({ id }) =>
     validateLocaleDictionaries(baseDictionary, dictionaries[id], id),
-  );
+  ));
   for (const { id } of CATALOG_LOCALES.filter(
     ({ catalogKind }) => catalogKind === "draft",
   )) {
@@ -361,6 +664,7 @@ function runI18nLocaleCheck() {
   );
   errors.push(...validateRuntimeTranslationKeys(baseDictionary, runtimeKeys));
   errors.push(...validateRuntimeTranslationParams(baseDictionary, runtimeKeys));
+  errors.push(...validateRuntimeTranslationFallbacks(baseDictionary, runtimeKeys));
 
   if (errors.length > 0) {
     console.error("UI locale dictionary contract failed:");

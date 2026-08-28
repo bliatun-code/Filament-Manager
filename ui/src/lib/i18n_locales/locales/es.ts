@@ -12,12 +12,19 @@ export const esDictionary: DictionaryNode = {
     add: "Añadir",
     all: "Todo",
     active: "Activo",
+    actions: "Acciones",
+    archive: "Archivar",
+    archived: "Archivado",
+    create: "Crear",
     on: "Activado",
     off: "Desactivado",
     discontinued: "Descatalogado",
     loading: "Cargando...",
     refresh: "Actualizar",
+    rename: "Cambiar nombre",
+    restore: "Restaurar",
     save: "Guardar",
+    status: "Estado",
     cancel: "Cancelar",
     selected: "Seleccionado",
     remove: "Eliminar",
@@ -39,12 +46,14 @@ export const esDictionary: DictionaryNode = {
     minutesAgo: "hace {count} min",
     hoursAgo: "hace {count} h",
     daysAgo: "hace {count} días",
+    optional: "Opcional",
   },
   errors: {
     invalidRequest: "No se pudo completar la solicitud.",
     unauthorized: "Se requiere autenticación.",
     forbidden: "Esta acción no está permitida.",
     notFound: "No se encontró el registro solicitado.",
+    unavailable: "El servicio no está disponible temporalmente.",
     internal: "Algo salió mal. Inténtalo de nuevo.",
     spoolActiveLoan:
       "Devuelve el préstamo activo antes de eliminar esta bobina.",
@@ -54,6 +63,100 @@ export const esDictionary: DictionaryNode = {
       "Devuelve el préstamo saliente activo antes de cambiar el estado, la ubicación o la propiedad de esta bobina.",
     spoolStatusEditLimited:
       "Desde el navegador solo se pueden marcar bobinas en stock, vacías o perdidas.",
+    locationHasReferences:
+      "Mueve todas las bobinas y ubicaciones secundarias antes de eliminar esta ubicación.",
+    locationNameRequired: "El nombre de la ubicación es obligatorio.",
+    locationNameTooLong:
+      "Los nombres de ubicación pueden tener un máximo de 120 caracteres.",
+    locationNameConflict: "Ya hay una ubicación activa con este nombre.",
+    locationAlreadyArchived: "Esta ubicación ya está archivada.",
+    locationNotArchived: "Esta ubicación ya está activa.",
+    locationArchived:
+      "Restaura esta ubicación antes de usarla o de asignarle bobinas.",
+    locationMergeSameId: "Elige dos ubicaciones distintas para combinarlas.",
+    locationParentCycle:
+      "Una ubicación no puede moverse debajo de sí misma ni de una de sus ubicaciones descendientes.",
+    locationMergeDescendant:
+      "Una ubicación no puede combinarse con una de sus ubicaciones descendientes.",
+    locationSystemOwned:
+      "Esta ubicación está gestionada por el flujo de impresoras o préstamos.",
+    locationHostUnsupported:
+      "Actualiza el host antes de gestionar objetos de ubicación.",
+    inventoryBulkInvalidExpectedCount:
+      "La revisión masiva no es válida. Vuelve a cargar el inventario y revisa de nuevo la acción.",
+    inventoryBulkEmptySelection:
+      "Selecciona al menos una bobina para la acción masiva.",
+    inventoryBulkInvalidSelection:
+      "Las bobinas seleccionadas no son válidas. Borra la selección y vuelve a elegirlas.",
+    inventoryBulkStaleReview:
+      "Las bobinas seleccionadas han cambiado. Vuelve a cargar el inventario y revisa de nuevo la acción masiva.",
+    inventoryBulkInvalidLocationTarget:
+      "Elige una ubicación de inventario activa y revisa de nuevo el traslado.",
+    inventoryBulkInvalidStatusTarget:
+      "Elige un estado de inventario permitido y revisa de nuevo la acción.",
+    inventoryBulkRemovedSpool:
+      "Se eliminó una bobina seleccionada. Vuelve a cargar el inventario y revisa de nuevo la acción.",
+    inventoryBulkPrinterSlotControlled:
+      "Hay una bobina seleccionada cargada en una impresora. Usa las acciones de la ranura de impresora o quítala de la selección.",
+    inventoryBulkActiveLoan:
+      "Hay una bobina seleccionada con un préstamo activo. Devuélvela o quítala de la selección.",
+    loanExpectedReturnInvalid: "Elige una fecha prevista de devolución válida.",
+    loanMetadataUnsupported:
+      "Actualiza el host antes de guardar los datos de contacto del préstamo o una fecha prevista de devolución.",
+    loanAlreadyActive: "Esta bobina ya tiene un préstamo activo.",
+    loanAlreadyReturned:
+      "Este préstamo ya se devolvió con otros datos de devolución.",
+    loanDirectionMismatch:
+      "Usa la acción de devolución correspondiente a la dirección de este préstamo.",
+    borrowedInCannotLend: "Una bobina prestada no puede volver a prestarse.",
+    inboundLoanRequired:
+      "Esta acción solo está disponible para bobinas recibidas en préstamo.",
+    spoolCommonDetailsHostUnsupported:
+      "Actualiza el host antes de guardar la tara o la propiedad junto con los detalles de la bobina.",
+    purchaseMetadataHostUnsupported:
+      "Actualiza el host antes de guardar los detalles de compra.",
+    purchasePriceInvalid: "Introduce un precio de compra válido de cero o más.",
+    purchaseCurrencyInvalid:
+      "Introduce una moneda de compra válida de tres letras.",
+    purchaseCurrencyRequired:
+      "La moneda de compra es obligatoria cuando se indica un precio de compra.",
+    purchasePriceRequired:
+      "El precio de compra es obligatorio cuando se indica una moneda de compra.",
+    purchaseDateInvalid: "Introduce una fecha de compra válida.",
+    purchaseBatchCodeTooLong: "El código de lote de compra es demasiado largo.",
+    purchaseSupplierReferenceTooLong:
+      "La referencia del proveedor es demasiado larga.",
+    purchaseMetadataTypeInvalid:
+      "Los detalles de compra tienen un formato no válido. Revísalos e inténtalo de nuevo.",
+    purchasePriceProtectionLockInvalid:
+      "El valor importado de protección del precio debe ser true o false.",
+    purchasePriceProtectionSourceInvalid:
+      "La fuente de precio importada debe ser MANUAL, STANDARD_BATCH o estar vacía.",
+    filamentStandardsHostUnsupported:
+      "Actualiza el host antes de usar los estándares de precios de filamento.",
+    filamentStandardsRoleUnresolved:
+      "Espera a que termine de cargarse el rol de la biblioteca e inténtalo de nuevo.",
+    libraryRoleLoadFailed:
+      "No se pudo determinar el rol de biblioteca de este dispositivo. Los datos locales y los cambios no estarán disponibles hasta que se cargue el rol.",
+    filamentStandardsHostManaged:
+      "Gestiona los valores predeterminados de filamento de toda la biblioteca en la aplicación de escritorio del host.",
+    filamentStandardsNotLoaded:
+      "Espera a que terminen de cargarse los estándares de filamento e inténtalo de nuevo.",
+    filamentStandardsStaleReview:
+      "Las bobinas seleccionadas han cambiado. Revisa de nuevo el grupo de precios de filamento.",
+    filamentBatchGroupRequired: "Elige un grupo de precios de filamento.",
+    filamentBatchEmptySelection:
+      "Selecciona al menos una bobina para esta actualización de precios.",
+    filamentBatchInvalidSelection:
+      "Las bobinas seleccionadas no son válidas. Revisa de nuevo el grupo de precios de filamento.",
+    filamentBatchInvalidHistoricalFill:
+      "Solo se puede completar un precio histórico que falta para una bobina histórica propia y sin precio en el modo Solo precios que faltan.",
+    filamentStandardsCurrencyInvalid:
+      "Introduce una moneda de compra válida de tres letras.",
+    filamentStandardsPriceInvalid:
+      "Introduce un precio de filamento válido de cero o más.",
+    filamentStandardsInvalid:
+      "Los estándares de filamento guardados ya no son válidos. Vuelve a cargarlos y revísalos.",
     exportInvalidPayload: "La exportación generada no es válida.",
     downloadsUnavailable: "La carpeta Descargas no está disponible.",
     exportWriteFailed: "No se pudo guardar la exportación.",
@@ -198,6 +301,52 @@ export const esDictionary: DictionaryNode = {
       "Los totales de titulares anteriores aún combinan todos los rollos físicos, mientras que las reglas de resumen específicas de propiedad continúan evolucionando.",
     synced: "Sincronizado",
     syncedFromDb: "Sincronizado desde la base de datos local",
+    actionRequiredTitle: "Requiere atención",
+    actionRequiredHint:
+      "Revisa los préstamos vencidos, las compras entrantes y los problemas de confianza de las impresoras.",
+    actionSnapshotAgeUnknown:
+      "Hora de inicio desconocida · detectado en esta instantánea",
+    actionCreatedAt: "Creado",
+    actionLowStockReason:
+      "{count, plural, one {# bobina} other {# bobinas}} en el umbral o por debajo; el nivel más bajo es {remaining} de {threshold}.",
+    actionOverdueReason:
+      "El préstamo activo a {name} ha superado la fecha prevista de devolución.",
+    actionOnOrderReason:
+      "{count, plural, one {Hay # bobina} other {Hay # bobinas}} en pedido y listas para recibirse desde Compras.",
+    actionPurchaseAdded:
+      "Se añadió a la lista de deseos. Abriendo Compras.",
+    actionPurchaseReused:
+      "Ya existe una compra abierta. Se reutilizará y se abrirá Compras.",
+    lowStockSuggestionCount:
+      "{count, plural, one {# sugerencia} other {# sugerencias}}",
+    lowStockHiddenCount:
+      "{count, plural, one {# oculta} other {# ocultas}}",
+    lowStockSuggestionsTitle: "Sugerencias por existencias bajas",
+    lowStockSuggestionsHint:
+      "Sugerencias de compra opcionales basadas en tus umbrales de existencias bajas.",
+    hideLowStockSuggestions: "Ocultar sugerencias",
+    showLowStockSuggestions: "Mostrar sugerencias",
+    lowStockSuggestionHidden:
+      "Se ocultó la sugerencia de {name} en este dispositivo.",
+    lowStockUndo: "Deshacer",
+    lowStockSuggestionReason:
+      "{count, plural, one {# bobina} other {# bobinas}} en el umbral o por debajo; el nivel más bajo es {remaining} de {threshold}.",
+    queueLowStockSuggestionAria:
+      "Añadir {name} a la lista de deseos o a un pedido",
+    queueLowStockSuggestion: "Añadir a la lista de deseos / pedido",
+    hideLowStockSuggestionAria:
+      "Ocultar la sugerencia de {name} en este dispositivo",
+    hideLowStockSuggestion: "Ocultar sugerencia",
+    noVisibleLowStockSuggestions: "No hay sugerencias de compra visibles.",
+    openLowStockInventory: "Abrir inventario con existencias bajas",
+    lowStockSuggestionsOptional:
+      "Estas sugerencias son opcionales y pueden ocultarse en este dispositivo.",
+    hiddenLowStockSuggestionsTitle: "Sugerencias ocultas",
+    restoreLowStockSuggestionAria: "Volver a mostrar la sugerencia de {name}",
+    restoreLowStockSuggestion: "Volver a mostrar",
+    atOrBelowThreshold: "En {count, number} g o menos",
+    materialLowStockThresholds: "Umbrales por material",
+    legacyLowStockFallback: "Valor alternativo de 200 g para hosts antiguos",
   },
   inventory: {
     title: "Bobinas",
@@ -328,7 +477,7 @@ export const esDictionary: DictionaryNode = {
     catalogMatchCountPlural: "{count} coincidencias",
     catalogMatchCount:
       "{count, plural, one {# coincidencia} other {# coincidencias}}",
-    searchVendorCatalog: "Buscar material, filamento o color de {{vendor}}",
+    searchVendorCatalog: "Buscar material, filamento o color de {vendor}",
     catalogRefreshFilter: "Actualización y filtro del catálogo",
     catalogSelection: "Selección del catálogo",
     noCatalogMatches: "No hay entradas que coincidan con los filtros actuales.",
@@ -339,7 +488,7 @@ export const esDictionary: DictionaryNode = {
     selectionPreview: "Vista previa de la selección",
     noSelectionPreview:
       "Elige una fila del catálogo o introduce los datos manualmente.",
-    bambuCodeLabel: "Filament Code",
+    bambuCodeLabel: "Código de filamento",
     bambuCodeHelp:
       "Usa el código de cinco cifras indicado como Filament Code en la caja Bambu.",
     bambuCodeSingleMatch:
@@ -695,6 +844,175 @@ export const esDictionary: DictionaryNode = {
       "Al cambiar el rollo, el peso saliente registra el uso vinculado a la impresora antes de la reasignación. El peso entrante es opcional.",
     swatchColorPicker: "Selector de color de muestra",
     visualFixtureLoaded: "Accesorio de detalle de inventario cargado.",
+    lowStockFilter: "Existencias bajas",
+    selectedRollActions: "Acciones de la bobina seleccionada",
+    nextStep: "Siguiente paso",
+    loanOutAction: "Prestar",
+    loadInPrinter: "Cargar en impresora",
+    loadInPrinterHint:
+      "La bobina seleccionada está lista. Elige únicamente la ranura de la impresora; no es necesario buscar otra bobina.",
+    noAvailablePrinterSlots: "No hay ranuras de impresora vacías disponibles.",
+    loadedInPrinter: "Bobina cargada en la ranura de la impresora.",
+    printLabelAction: "Imprimir etiqueta",
+    unsavedChanges: "Tienes cambios sin guardar.",
+    allChangesSaved: "Todos los cambios están guardados.",
+    rollChangesSaved: "Cambios de la bobina guardados.",
+    locationsTitle: "Ubicaciones",
+    locationManagementTitle: "Gestionar ubicaciones",
+    locationsHelp:
+      "Gestiona tus ubicaciones de almacenamiento. Las ubicaciones de impresora y préstamo se gestionan automáticamente y no aparecen en esta lista.",
+    locationCount:
+      "{count, plural, one {# ubicación} other {# ubicaciones}}",
+    locationActiveCount:
+      "{count, plural, one {# ubicación activa} other {# ubicaciones activas}}",
+    locationActiveTitle: "Ubicaciones de almacenamiento activas",
+    locationPreviousTitle: "Ubicaciones anteriores",
+    locationArchiveHelp:
+      "Las ubicaciones archivadas desaparecen de las nuevas opciones. Las bobinas vinculadas conservan el mismo ID de ubicación y, al restaurarla, esa misma ubicación vuelve a estar disponible.",
+    locationUsageCount:
+      "{count, plural, =0 {Ninguna bobina vinculada} one {# bobina vinculada} other {# bobinas vinculadas}}",
+    locationReferenceCount:
+      "{count, plural, =0 {Ningún vínculo guardado} one {# vínculo guardado} other {# vínculos guardados}}",
+    locationsLegacyHost:
+      "Este host es anterior a los objetos de ubicación. Los nombres de ubicación existentes siguen visibles, pero debes actualizar el host antes de cambiar ubicaciones.",
+    locationsOffline:
+      "Se muestran los datos de ubicación guardados. Vuelve a conectar con el host antes de cambiar ubicaciones.",
+    locationsHostManaged:
+      "Empareja este cliente con el host para gestionar las ubicaciones de la biblioteca.",
+    locationCreate: "Crear ubicación",
+    locationNamePlaceholder: "Ejemplo: Caja seca 2",
+    locationChoose: "Elegir ubicación",
+    locationRename: "Cambiar nombre de la ubicación",
+    locationRenameNamed: "Cambiar nombre de {name}",
+    locationArchiveNamed: "Archivar {name}",
+    locationDeleteNamed: "Eliminar {name} permanentemente",
+    locationDeleteAction: "Eliminar",
+    locationRestoreNamed: "Restaurar {name}",
+    locationRestoreNameConflict:
+      "Cámbiale el nombre antes de restaurarla: ya hay una ubicación activa con este nombre.",
+    locationNewName: "Nombre nuevo",
+    locationArchiveConfirmTitle: "¿Archivar {name}?",
+    locationArchiveConfirmDetail:
+      "{count, plural, =0 {Ningún vínculo guardado apunta a esta ubicación} one {# vínculo guardado seguirá apuntando a esta ubicación} other {# vínculos guardados seguirán apuntando a esta ubicación}}. La ubicación desaparecerá de las nuevas opciones, pero podrás restaurarla más adelante.",
+    locationArchiveLegacyConfirmDetail:
+      "{count, plural, =0 {No hay bobinas visibles vinculadas} one {# bobina visible seguirá vinculada} other {# bobinas visibles seguirán vinculadas}}. Este host no puede informar de ubicaciones habituales ni vínculos secundarios ocultos. La ubicación desaparecerá de las nuevas opciones, pero podrás restaurarla más adelante.",
+    locationArchiveConfirm: "Archivar ubicación",
+    locationDeleteConfirmTitle: "¿Eliminar {name} permanentemente?",
+    locationDeleteConfirmDetail:
+      "Esta ubicación no tiene bobinas ni ubicaciones secundarias vinculadas y puede eliminarse. Esta acción no se puede deshacer. Los eventos del historial se conservarán.",
+    locationDeleteConfirm: "Eliminar ubicación permanentemente",
+    locationMerge: "Combinar ubicaciones",
+    locationMergeAdvanced: "Avanzado: combinar ubicaciones",
+    locationMergeHelp:
+      "Todas las referencias actuales, habituales y secundarias se trasladan al destino. El origen se archiva y cada bobina afectada recibe un evento en el historial.",
+    locationMergeSource: "Ubicación de origen",
+    locationMergeTarget: "Ubicación de destino",
+    locationMergeAction: "Combinar y archivar origen",
+    locationReviewMerge: "Revisar combinación",
+    locationMergeConfirmTitle: "¿Combinar {source} con {target}?",
+    locationMergeConfirmDetail:
+      "Todas las referencias actuales, habituales y secundarias se trasladan al destino y el origen se archiva. Esta acción no se puede deshacer automáticamente.",
+    locationMergeConfirm: "Confirmar combinación y archivado",
+    locationType: "Tipo",
+    locationSystemOwned: "Propiedad del sistema",
+    locationGeneric: "Almacenamiento",
+    locationSystemProtected: "Gestionada por el flujo de impresora o préstamo",
+    locationsEmpty:
+      "Aún no hay ubicaciones guardadas. Crea una arriba o escribe una ubicación nueva al registrar una bobina.",
+    locationCreated: "Ubicación creada.",
+    locationRenamed: "Nombre de la ubicación cambiado.",
+    locationArchived: "Ubicación archivada.",
+    locationDeleted: "Ubicación eliminada.",
+    locationRestored: "Ubicación restaurada.",
+    locationsMerged: "Ubicaciones combinadas.",
+    labelSheetAllAction: "Crear hoja de etiquetas para todo el stock",
+    bulkActionsTitle: "Acciones en lote",
+    bulkSelectionModeStart: "Seleccionar varias",
+    bulkSelectionModeDone: "Terminar selección",
+    bulkSelectionHint:
+      "Selecciona bobinas para moverlas, cambiar su estado, crear etiquetas o exportarlas.",
+    bulkCreateLabels:
+      "{count, plural, one {Crear hoja de etiquetas para # bobina seleccionada} other {Crear hoja de etiquetas para # bobinas seleccionadas}}",
+    bulkMoveAction: "Mover",
+    bulkStatusAction: "Cambiar estado",
+    bulkMoveTitle: "Mover las bobinas seleccionadas",
+    bulkStatusTitle: "Cambiar el estado seleccionado",
+    bulkNoSelection: "No hay bobinas seleccionadas",
+    bulkSelectedCount:
+      "{count, plural, one {# bobina seleccionada} other {# bobinas seleccionadas}}",
+    bulkSelectedAcrossFilters:
+      "{selected} seleccionadas en total · {visible} en esta vista",
+    bulkSelectVisible:
+      "{count, plural, one {Seleccionar # bobina visible} other {Seleccionar # bobinas visibles}}",
+    bulkSelectSpool: "Seleccionar {reference}",
+    bulkClearSelection: "Borrar selección",
+    bulkReviewMove: "Revisar traslado",
+    bulkReviewStatus: "Revisar cambio de estado",
+    bulkReviewTitle: "Revisar: {action}",
+    bulkReviewSelected: "{count} seleccionadas",
+    bulkAffected: "Afectadas",
+    bulkAffectedCount: "{count} afectadas",
+    bulkUnchanged: "Sin cambios",
+    bulkUnchangedCount: "{count} sin cambios",
+    bulkTarget: "Destino",
+    bulkReviewTarget: "Destino de {action}: {target}",
+    bulkReviewChanged:
+      "La selección o los datos de las bobinas han cambiado. Revisa de nuevo la acción.",
+    bulkAtomicWarning:
+      "Los {count} cambios y su historial se confirman juntos, o no se escribe ninguno.",
+    bulkConfirmAction: "Confirmar {action} para {count}",
+    bulkActiveLoanBlocked:
+      "{count, plural, one {# bobina afectada tiene} other {# bobinas afectadas tienen}} un préstamo activo. Devuélvela antes de cambiar la ubicación o el estado.",
+    bulkPrinterSlotBlocked:
+      "{count, plural, one {# bobina afectada está} other {# bobinas afectadas están}} cargada en una impresora. Usa las acciones de la ranura de impresora.",
+    bulkRemovedBlocked:
+      "{count, plural, one {# bobina afectada está eliminada} other {# bobinas afectadas están eliminadas}}. Restáuralas antes de usar acciones en lote.",
+    bulkNoChanges: "La acción seleccionada no cambiaría ninguna bobina.",
+    bulkInvalidStatus: "Elige IN_STOCK, EMPTY o LOST como estado de destino.",
+    bulkInvalidLocation: "Elige una ubicación de almacenamiento activa.",
+    bulkStaleSelection:
+      "Las bobinas seleccionadas han cambiado. Actualiza y revisa de nuevo la acción.",
+    bulkLegacyHostUnsupported:
+      "El host conectado no admite acciones en lote atómicas sobre el inventario. Actualiza el host y vuelve a intentarlo.",
+    bulkMutationDone:
+      "{count, plural, one {# bobina actualizada} other {# bobinas actualizadas}} de forma atómica.",
+    bulkMutationFailed:
+      "La acción en lote ha fallado. No se ha escrito ningún cambio parcial.",
+    bulkReceiptMismatch:
+      "El host devolvió un resultado inesperado para la acción en lote. Actualiza el inventario antes de volver a intentarlo.",
+    bulkExportDone:
+      "Se exportaron {count, plural, one {# bobina seleccionada} other {# bobinas seleccionadas}} como {format}.",
+    bulkExportFailed:
+      "No se pudieron exportar las bobinas seleccionadas. Actualiza y vuelve a intentarlo.",
+    purchaseMetadataTitle: "Datos de compra",
+    purchaseMetadataApplies:
+      "{count, plural, one {Estos datos se guardan en esta bobina.} other {Estos datos se guardan en cada una de las # bobinas recibidas.}}",
+    purchasePricePerRoll: "Precio por bobina",
+    purchasePricePerRollHint:
+      "Introduce el precio unitario de una bobina, no el total del pedido.",
+    protectIndividualPriceFromGroupUpdates:
+      "Proteger el precio individual frente a actualizaciones del grupo",
+    protectIndividualPriceFromGroupUpdatesHint:
+      "Los cambios manuales de precio de esta bobina seguirán funcionando. Los valores predeterminados de filamento la omitirán durante las actualizaciones de grupo.",
+    purchaseCurrency: "Moneda",
+    purchaseCurrencyHint: "Usa un código de tres letras, como NOK o EUR.",
+    purchaseDate: "Fecha de compra",
+    purchaseBatchCode: "Código de lote",
+    purchaseSupplierReference: "Referencia del proveedor",
+    purchasePriceInvalid: "Introduce un precio numérico finito.",
+    purchasePriceNegative: "El precio no puede ser negativo.",
+    purchaseCurrencyRequired: "La moneda es obligatoria cuando cambia el precio.",
+    purchaseCurrencyInvalid: "Usa un código de moneda de tres letras.",
+    purchaseCurrencyWithoutPrice: "Introduce un precio o borra la moneda.",
+    purchaseDateInvalid: "Introduce una fecha válida del calendario.",
+    purchaseBatchCodeTooLong: "El código de lote es demasiado largo.",
+    purchaseSupplierReferenceTooLong:
+      "La referencia del proveedor es demasiado larga.",
+    borrowerContactOptional: "Información de contacto (opcional)",
+    borrowerContactPlaceholder: "Teléfono, correo electrónico o usuario",
+    expectedReturnDateOptional: "Fecha prevista de devolución (opcional)",
+    labelSheetInventoryHint:
+      "¿Necesitas etiquetas para varias bobinas? Elige «Seleccionar varias» en Inventario o crea una hoja de etiquetas para todo el stock desde la cabecera.",
     error: {
       add: "No se pudo agregar el filamento.",
       assignFirst: "Primero asigne el rollo a una ranura de la impresora.",
@@ -760,6 +1078,13 @@ export const esDictionary: DictionaryNode = {
       updateOwnership: "No se pudo actualizar la propiedad del rollo.",
       updateTareWeight: "No se pudo actualizar el peso del rollo vacío.",
       updateWeight: "No se pudo actualizar el peso.",
+      purchaseMetadataInvalid: "Revisa los datos de compra resaltados.",
+      loadInPrinter: "Esta bobina no se puede cargar en una ranura de impresora.",
+      loadInPrinterStale:
+        "La ranura de impresora seleccionada ya no está disponible. Actualiza y elige otra ranura.",
+      expectedReturnInvalid: "Elige una fecha prevista de devolución válida.",
+      expectedReturnPast:
+        "La fecha prevista de devolución no puede ser anterior a hoy.",
     },
     historyEvent: {
       addedToLibrary: "Agregado a la biblioteca",
@@ -780,6 +1105,21 @@ export const esDictionary: DictionaryNode = {
       usedUp: "Marcado vacío",
       weightCorrected: "Peso corregido",
       weightUpdated: "Peso actualizado",
+      purchaseReceiptRecorded: "Compra registrada",
+      purchaseMetadataUpdated: "Datos de compra actualizados",
+      purchasePriceStandardApplied: "Precio de grupo aplicado",
+      purchasePriceStandardAppliedDetail:
+        "El precio de grupo guardado se aplicó a esta bobina.",
+      purchasePriceBatchLockUpdated:
+        "Protección frente al precio de grupo modificada",
+      purchasePriceBatchProtection: "Protección frente al precio de grupo",
+      purchasePriceBatchLockUpdatedDetail:
+        "Se modificó la protección frente al precio de grupo de esta bobina.",
+      locationMerged: "Ubicaciones combinadas",
+      locationMergedDetail:
+        "Esta bobina se movió porque se combinaron dos ubicaciones de almacenamiento.",
+      purchaseReceiptRecordedDetail: "Se registró la compra.",
+      purchaseMetadataUpdatedDetail: "Se actualizaron los datos de compra.",
     },
     labelProfile: {
       compact: "Compacto",
@@ -812,6 +1152,10 @@ export const esDictionary: DictionaryNode = {
     confirmRemoveTitle: "¿Eliminar {name} de la cola de compra?",
     confirmRemoveHint:
       "Esto elimina la entrada de la cola, no las bobinas del inventario.",
+    receivePurchase: "Recibir compra",
+    receivedQuantity: "Cantidad recibida",
+    receiveQuantity:
+      "{count, plural, one {Recibir # bobina} other {Recibir # bobinas}}",
 
     addMissingFilamentManual: "¿Falta el filamento? Agréguelo manualmente",
     catalog: "Catálogo",
@@ -887,6 +1231,10 @@ export const esDictionary: DictionaryNode = {
     usageByPerson: "Consumo por persona",
     noUsageByPerson: "Aún no hay datos de consumo por persona.",
     csvExported: "CSV de préstamos exportado.",
+    contact: "Contacto",
+    expectedReturn: "Devolución prevista",
+    dueToday: "Vence hoy",
+    overdue: "Vencido",
 
     back: "Atrás",
     borrowedGrams: "Prestado",
@@ -1234,6 +1582,91 @@ export const esDictionary: DictionaryNode = {
       "El desglose detallado está disponible en el host.",
     failureRate: "Tasa de fallos",
     completed: "Completados",
+    forecastUnavailable: "No hay suficientes datos de consumo",
+    forecastDays: "{count, plural, one {# día} other {# días}}",
+    consumptionForecast: "Previsión de consumo",
+    consumptionForecastHint:
+      "Una estimación determinista basada en el stock propio y el consumo propio registrado durante los últimos 30 días.",
+    forecastDataThrough: "Datos hasta {date}",
+    forecastOwnedStock: "Stock propio incluido",
+    forecastUsageBasis: "Consumo registrado · 30 días",
+    forecastCoverage: "Cobertura estimada",
+    forecastDepletion: "Posible agotamiento",
+    forecastNext30Days: "Consumo estimado · próximos 30 días",
+    forecastRemaining30Days: "Stock estimado después de 30 días",
+    forecastDailyAverage: "Consumo diario supuesto",
+    forecastSpoolsIncluded: "Bobinas propias incluidas",
+    forecastNeedsUsage:
+      "Registra el consumo de filamento propio antes de poder estimar una fecha de agotamiento.",
+    forecastAssumptions:
+      "Supuesto: el consumo diario se mantiene igual al promedio de los últimos 30 días. Se excluyen las bobinas prestadas por terceros, vacías, perdidas y eliminadas. Esta previsión es informativa y nunca crea pedidos automáticamente.",
+    valueCost: "Valor y coste",
+    valueCostTitle: "Valor del inventario y coste del material",
+    valueCostHint:
+      "Valores fiables procedentes de los datos de compra registrados. Las monedas y los tipos de propiedad se mantienen separados, y los datos ausentes nunca se muestran como cero.",
+    valueCostLoading: "Cargando datos de valor y coste...",
+    valueCostHostUpgrade:
+      "Este host es anterior a los informes de valor y coste. Actualízalo para ver totales fiables separados por moneda y datos de seguimiento.",
+    valueCostUnavailable:
+      "Los datos de valor y coste no están disponibles para este periodo del informe.",
+    inventoryValue: "Valor del inventario",
+    inventoryValueHint:
+      "Valor actual de las bobinas activas, basado en el peso restante y el precio de compra registrado.",
+    materialCost: "Coste del material",
+    materialCostHint:
+      "Coste del consumo de material registrado durante el periodo del informe seleccionado.",
+    valueCostCurrencySeparate: "Separado por moneda",
+    valueCostOwned: "Propias",
+    valueCostBorrowedIn: "Prestadas por terceros",
+    valueCostNoValuedRows: "No hay filas valoradas",
+    valueCostNoMonetaryTotals:
+      "No se puede mostrar ningún total monetario hasta que se añadan los datos de compra que faltan.",
+    valueCostCoverage: "Cobertura de datos",
+    valueCostCoverageRows: "{valued} de {total} filas valoradas",
+    valueCostNoApplicableRows: "No hay filas aplicables",
+    valueCostCoveredWeight: "Peso conocido valorado",
+    valueCostUnvaluedRows: "Filas sin valor",
+    valueCostWeightUnavailable: "peso no disponible",
+    valueCostUnknownWeightHint:
+      "El peso ausente o no válido se excluye de la cobertura de peso y no se cuenta como cero.",
+    valueCostMissingData: "Por qué faltan datos",
+    valueCostMissingReasonCount: "{rows} filas · {grams}",
+    openFilamentDefaults: "Abrir valores predeterminados de filamento",
+    valueCostCompleteCoverage: "Todas las filas aplicables están valoradas.",
+    valueCostInventoryTrace: "Rastrear el valor del inventario",
+    valueCostUsageTrace: "Rastrear el coste del material",
+    valueCostTraceCount:
+      "Se muestran {shown} de {returned} filas de seguimiento disponibles ({total} en total).",
+    valueCostTraceTruncated:
+      "El seguimiento está limitado por motivos de rendimiento. Los totales y la cobertura siguen incluyendo todas las filas aplicables.",
+    valueCostNoTraceRows: "No hay filas de seguimiento disponibles.",
+    valueCostShowMoreTrace: "Mostrar más filas de seguimiento",
+    valueCostRemaining: "Restante",
+    valueCostUsed: "Consumido",
+    valueCostInitialWeight: "Peso inicial",
+    valueCostPurchasePrice: "Precio de compra",
+    valueCostNotRecorded: "No registrado",
+    valueCostNotValued: "Sin valorar",
+    valueCostSpoolUnavailable: "Bobina no disponible",
+    valueCostCurrencyMissingShort: "falta la moneda",
+    valueCostSourceLive: "Supervisión en directo",
+    valueCostSourceManual: "Trabajo manual",
+    valueCostStatusFailed: "Fallido",
+    valueCostPrinterReference: "Referencia de la impresora",
+    valueCostSpoolReference: "Referencia de la bobina",
+    valueCostUsageReference: "Referencia de consumo",
+    valueCostReasonSpoolMissing: "Falta la bobina referenciada",
+    valueCostReasonRemainingWeightMissing: "Falta el peso restante",
+    valueCostReasonRemainingWeightInvalid: "El peso restante no es válido",
+    valueCostReasonUsedWeightMissing: "Falta el peso consumido",
+    valueCostReasonUsedWeightInvalid: "El peso consumido no es válido",
+    valueCostReasonMissingInitialWeight: "Falta el peso inicial",
+    valueCostReasonInvalidInitialWeight: "El peso inicial debe ser mayor que cero",
+    valueCostReasonMissingPrice: "Falta el precio de compra",
+    valueCostReasonInvalidPrice: "El precio de compra no es válido",
+    valueCostReasonMissingCurrency: "Falta la moneda de compra",
+    valueCostReasonInvalidCurrency: "La moneda de compra no es válida",
+    valueCostReasonCalculationInvalid: "No se pudo calcular el valor",
     error: {
       load: "No se pudieron cargar las estadísticas.",
       loadFilamentBreakdown: "No se pudo cargar el desglose de filamentos.",
@@ -2109,6 +2542,149 @@ export const esDictionary: DictionaryNode = {
     updatingSwatches: "Actualizando muestras...",
     vendors: "Vendedores",
     visibleMissing: "faltantes visibles",
+    filamentDefaultsUnknownWeight: "Peso nominal desconocido",
+    filamentDefaultsLoadError:
+      "No se pudieron cargar los valores predeterminados de filamento.",
+    filamentDefaultsSaveCurrencyError:
+      "No se pudo guardar la moneda predeterminada.",
+    filamentDefaultsSaveGroupError:
+      "No se pudo guardar el precio del grupo de filamentos.",
+    filamentDefaultsApplyError: "No se pudieron aplicar los precios de filamento.",
+    filamentDefaultsSettingsRepair:
+      "Algunos estándares de filamento guardados no eran válidos o ya no coincidían con esta biblioteca y se han excluido. Al guardar un valor predeterminado válido se reparará la configuración almacenada.",
+    filamentDefaultsSettingsRepairReadOnly:
+      "Algunos estándares de filamento guardados no eran válidos o ya no coincidían con la biblioteca del host y se han excluido. Repáralos en la aplicación de escritorio del host.",
+    filamentDefaultsReceiptBatchLocked: "Protegida frente a precios en lote",
+    filamentDefaultsReceiptManual: "Debe actualizarse manualmente",
+    filamentDefaultsReceiptBorrowed: "La bobina prestada no se modificó",
+    filamentDefaultsReceiptInactive: "La bobina histórica no se modificó",
+    filamentDefaultsReceiptAlreadyPriced: "Ya tenía precio",
+    filamentDefaultsReceiptSkipped: "No actualizada",
+    filamentDefaultsSelectSpool: "Seleccionar bobina",
+    filamentDefaultsSelectHistoricalSpool:
+      "Establecer el precio de una bobina histórica y protegerla de futuras actualizaciones del grupo",
+    filamentDefaultsHistoricalSelectionHint:
+      "Nunca se selecciona automáticamente. Puede recibir una vez el precio que le falta y después seguirá protegida frente a actualizaciones del grupo.",
+    filamentDefaultsBatchLocked: "Bloqueada para precios en lote",
+    filamentDefaultsBorrowed: "Prestada",
+    filamentDefaultsHistorical: "Histórica",
+    filamentDefaultsCurrentPrice: "Precio actual",
+    filamentDefaultsMissingPrice: "Falta el precio",
+    filamentDefaultsReceipt: "Último comprobante de precios",
+    filamentDefaultsReceiptHint:
+      "Este comprobante permanece aquí hasta que lo descartes o ejecutes otra actualización de precios.",
+    filamentDefaultsReceiptCommitted:
+      "{updated} actualizadas · {skipped} no actualizadas",
+    filamentDefaultsReceiptCommittedProtected:
+      "{updated} actualizadas · {protected} protegidas frente a futuras actualizaciones del grupo · {skipped} no actualizadas",
+    filamentDefaultsReceiptNotCommitted:
+      "La operación de precios no se confirmó.",
+    filamentDefaultsDismissReceipt: "Descartar comprobante",
+    filamentDefaultsNotUpdated: "No actualizada",
+    filamentDefaultsReceiptNoSkips:
+      "Se actualizaron todas las bobinas seleccionadas que cumplían los requisitos.",
+    filamentDefaultsReceiptUpdatedList:
+      "{count, plural, one {Mostrar # bobina actualizada} other {Mostrar # bobinas actualizadas}}",
+    filamentDefaultsReceiptPriceSetProtected:
+      "Precio establecido · Protegida frente a futuras actualizaciones del grupo",
+    filamentDefaultsCurrency: "Moneda de compra predeterminada",
+    filamentDefaultsCurrencyHint:
+      "Se usa como moneda inicial para los nuevos precios individuales y los valores predeterminados de los grupos de filamentos. Los datos de compra existentes no se modifican automáticamente.",
+    filamentDefaultsHostOwned:
+      "Gestiona los valores predeterminados de filamento de toda la biblioteca en la aplicación de escritorio del host.",
+    filamentDefaultsCurrencyCode: "Código de moneda de tres letras",
+    filamentDefaultsCurrencyCodeHint:
+      "Por ejemplo, NOK, EUR o USD. Guardar este valor predeterminado nunca modifica los precios existentes de las bobinas.",
+    filamentDefaultsCurrencyInvalid: "Introduce exactamente tres letras.",
+    filamentDefaultsCurrencyPlaceholder: "NOK",
+    filamentDefaultsSaveCurrency: "Guardar moneda predeterminada",
+    filamentDefaultsGroupPrices: "Precios de grupos de filamentos",
+    filamentDefaultsGroupPricesHint:
+      "Los grupos se crean a partir del fabricante, el material, la serie del filamento y el peso nominal de la bobina. El color no divide un grupo de precios. No se incorpora ningún precio de proveedor en el código.",
+    filamentDefaultsNoSpools:
+      "No hay bobinas disponibles para establecer precios por grupo.",
+    filamentDefaultsSpools:
+      "{count, plural, one {# bobina} other {# bobinas}}",
+    filamentDefaultsGroups:
+      "{count, plural, one {# grupo de precios} other {# grupos de precios}}",
+    filamentDefaultsWithoutPrice: "sin precio",
+    filamentDefaultsWithoutCurrency: "sin moneda",
+    filamentDefaultsLocked: "bloqueadas",
+    filamentDefaultsGroupPrice: "Precio por bobina",
+    filamentDefaultsCurrencyCodeShort: "Moneda",
+    filamentDefaultsSaveGroupDefault: "Guardar valor predeterminado del grupo",
+    filamentDefaultsBatchMode: "Modo de precios",
+    filamentDefaultsMissingOnly: "Solo precios ausentes",
+    filamentDefaultsMissingOnlyHint:
+      "Conserva todos los precios individuales existentes.",
+    filamentDefaultsOverwrite: "Actualizar los precios seleccionados",
+    filamentDefaultsOverwriteHint:
+      "Sustituye los precios individuales existentes después de una confirmación independiente.",
+    filamentDefaultsSelectGroup:
+      "{count, plural, one {Seleccionar la # bobina activa} other {Seleccionar las # bobinas activas}}",
+    filamentDefaultsHistoricalSelectionRemoved:
+      "{count, plural, one {Se quitó # bobina histórica de la selección porque la sobrescritura no puede modificarla.} other {Se quitaron # bobinas históricas de la selección porque la sobrescritura no puede modificarlas.}}",
+    filamentDefaultsHistoricalProtectionHint:
+      "Las bobinas históricas y agotadas están protegidas y se excluyen de forma predeterminada. En «Solo precios ausentes», se puede seleccionar individualmente una bobina histórica sin precio; su protección seguirá activada después.",
+    filamentDefaultsSelected:
+      "{count, plural, one {# seleccionada} other {# seleccionadas}}",
+    filamentDefaultsWillUpdate: "Se actualizarán",
+    filamentDefaultsWillUpdateCount:
+      "{count, plural, one {# se actualizará} other {# se actualizarán}}",
+    filamentDefaultsOverwritePreview:
+      "{count, plural, one {Se sustituirá # precio existente} other {Se sustituirán # precios existentes}}, incluidos {manual, plural, one {# precio establecido individualmente} other {# precios establecidos individualmente}}.",
+    filamentDefaultsLockedPreview:
+      "{count, plural, one {Se omitirá # bobina bloqueada seleccionada y aparecerá en el comprobante para su seguimiento manual.} other {Se omitirán # bobinas bloqueadas seleccionadas y aparecerán en el comprobante para su seguimiento manual.}}",
+    filamentDefaultsHistoricalMissingPreview:
+      "{count, plural, one {La # bobina histórica seleccionada expresamente recibirá el precio que le falta y seguirá protegida frente a futuras actualizaciones del grupo.} other {Las # bobinas históricas seleccionadas expresamente recibirán el precio que les falta y seguirán protegidas frente a futuras actualizaciones del grupo.}}",
+    filamentDefaultsCurrencyOnlyPreview:
+      "{count, plural, one {Se conserva # precio existente y se añade la moneda que falta.} other {Se conservan # precios existentes y se añade la moneda que falta.}}",
+    filamentDefaultsManualPreview:
+      "{count, plural, one {# bobina no tiene precio, pero ya usa otra moneda. Requiere seguimiento manual y aparecerá en el comprobante.} other {# bobinas no tienen precio, pero ya usan otra moneda. Requieren seguimiento manual y aparecerán en el comprobante.}}",
+    filamentDefaultsBorrowedPreview:
+      "{count, plural, one {# bobina prestada no se modificará.} other {# bobinas prestadas no se modificarán.}}",
+    filamentDefaultsReviewOverwrite: "Revisar y confirmar la sobrescritura",
+    filamentDefaultsApplyMissing: "Asignar precio a bobinas sin precio",
+    filamentDefaultsApplyMissingAndProtect:
+      "Establecer los precios ausentes y proteger las bobinas históricas",
+    filamentDefaultsConfirmOverwrite: "Confirmar sobrescritura de precios",
+    filamentDefaultsOverwriteReview: "Revisión de la sobrescritura",
+    filamentDefaultsOverwriteConfirmationWarning:
+      "{count, plural, one {Se sustituirá # precio existente.} other {Se sustituirán # precios existentes.}} {manual, plural, one {# se estableció individualmente.} other {# se establecieron individualmente.}} Esto no modifica los bloqueos de precios en lote de cada bobina.",
+    filamentDefaultsExistingPrices: "Precios existentes",
+    filamentDefaultsWillSkip: "Se omitirán",
+    filamentDefaultsConfirmOverwriteAction:
+      "{count, plural, one {Confirmar actualización de precio para # bobina} other {Confirmar actualización de precios para # bobinas}}",
+    lowStockThresholds: "Umbrales de existencias bajas",
+    lowStockThresholdsHint:
+      "Establece un valor predeterminado para la biblioteca y sustitúyelo solo en los materiales que necesiten otro punto de reposición.",
+    lowStockThresholdsReadOnly:
+      "Gestiona estos umbrales para toda la biblioteca en la aplicación de escritorio del host.",
+    lowStockPolicyRepair:
+      "La política de existencias bajas guardada está dañada. El inventario y las estadísticas no estarán disponibles hasta que guardes aquí una sustitución válida; el valor de 200 g que aparece abajo solo es un borrador de reparación.",
+    lowStockDefaultThreshold: "Umbral predeterminado",
+    lowStockMaterialOverrides: "Valores específicos por material",
+    lowStockMaterialInheritance:
+      "Los materiales sin un valor específico heredan el umbral predeterminado de la biblioteca.",
+    lowStockOverridesDefault: "Sustituye el valor predeterminado",
+    lowStockThresholdGrams: "Umbral (g)",
+    lowStockUseDefault: "Usar valor predeterminado",
+    lowStockAllMaterialsInherit:
+      "Actualmente, todos los materiales heredan el umbral predeterminado.",
+    lowStockMaterial: "Material",
+    lowStockChooseMaterial: "Elegir material",
+    lowStockNewOverrideThreshold: "Nuevo umbral específico",
+    lowStockSetOverride: "Establecer valor específico",
+    lowStockSelectedMaterialInheritance:
+      "Sin un valor específico, este material hereda {count, number} g.",
+    lowStockThresholdValidation:
+      "Introduce un número entero entre 1 y 100000 g.",
+    lowStockSaving: "Guardando umbrales…",
+    lowStockSave: "Guardar umbrales",
+    lowStockSaved: "Umbrales de existencias bajas guardados.",
+    lowStockSaveError:
+      "No se pudieron guardar los umbrales de existencias bajas.",
+    tabFilamentDefaults: "Valores predeterminados de filamento",
     error: {
       addPrinter: "No se pudo agregar la impresora.",
       bambuLiveFieldsRequired:

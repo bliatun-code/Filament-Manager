@@ -5,7 +5,10 @@ import { pathToFileURL } from "node:url";
 import {
   validateLocaleDictionaries,
   validateLocaleOverlay,
+  validateDictionaryMessageFormats,
+  validateRuntimeTranslationFallbacks,
   validateRuntimeTranslationKeys,
+  validateRuntimeTranslationParams,
 } from "./check-i18n-locales.mjs";
 import {
   checkGeneratedCompanionLocales,
@@ -62,11 +65,59 @@ export function collectLiteralCompanionTranslationKeys(source, fileName = "sourc
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "t") {
       const keyArgument = node.arguments[1];
       if (ts.isStringLiteral(keyArgument) || ts.isNoSubstitutionTemplateLiteral(keyArgument)) {
+        const paramsArgument = node.arguments[3];
+        const fallbackArgument = node.arguments[2];
+        let staticParamKeys = null;
+        if (paramsArgument && ts.isObjectLiteralExpression(paramsArgument)) {
+          const names = [];
+          let staticallyComplete = true;
+          for (const property of paramsArgument.properties) {
+            if (ts.isSpreadAssignment(property)) {
+              staticallyComplete = false;
+              break;
+            }
+            if (ts.isShorthandPropertyAssignment(property)) {
+              names.push(property.name.text);
+              continue;
+            }
+            if (ts.isPropertyAssignment(property)) {
+              const name =
+                ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)
+                  ? property.name.text
+                  : null;
+              if (name) {
+                names.push(name);
+                continue;
+              }
+            }
+            staticallyComplete = false;
+            break;
+          }
+          if (staticallyComplete) {
+            staticParamKeys = names.sort();
+          }
+        }
         const location = sourceFile.getLineAndCharacterOfPosition(keyArgument.getStart(sourceFile));
         keys.push({
           key: keyArgument.text,
           line: location.line + 1,
           column: location.character + 1,
+          paramsArgumentPresent:
+            Boolean(paramsArgument) &&
+            !(ts.isIdentifier(paramsArgument) && paramsArgument.text === "undefined"),
+          staticParamKeys,
+          fallbackArgumentPresent:
+            Boolean(fallbackArgument) &&
+            !(
+              ts.isIdentifier(fallbackArgument) &&
+              fallbackArgument.text === "undefined"
+            ),
+          fallbackText:
+            fallbackArgument &&
+            (ts.isStringLiteral(fallbackArgument) ||
+              ts.isNoSubstitutionTemplateLiteral(fallbackArgument))
+              ? fallbackArgument.text
+              : null,
         });
       }
     }
@@ -75,6 +126,15 @@ export function collectLiteralCompanionTranslationKeys(source, fileName = "sourc
 
   visit(sourceFile);
   return keys;
+}
+
+export function validateCompanionTranslationFallbacks(runtimeKeys) {
+  return runtimeKeys
+    .filter(({ fallbackArgumentPresent }) => !fallbackArgumentPresent)
+    .map(
+      ({ key, location }) =>
+        `${location}: Companion translation key ${key} has no inline fallback.`,
+    );
 }
 
 export function collectAppErrorTranslationKeys(
@@ -145,6 +205,9 @@ function runCompanionI18nCheck() {
     );
   }
   const baseDictionary = dictionaries[DEFAULT_LOCALE];
+  errors.push(
+    ...validateDictionaryMessageFormats(baseDictionary, DEFAULT_LOCALE),
+  );
   for (const { id } of SOURCE_LOCALES) {
     if (id !== DEFAULT_LOCALE && dictionaries[id]) {
       errors.push(...validateLocaleDictionaries(baseDictionary, dictionaries[id], id));
@@ -158,14 +221,21 @@ function runCompanionI18nCheck() {
     .flatMap((entry) => {
       const file = resolve(companionRoot, entry.name);
       return collectLiteralCompanionTranslationKeys(readFileSync(file, "utf8"), file).map(
-        ({ key, line, column }) => ({
-          key,
-          location: `${relative(repoRoot, file)}:${line}:${column}`,
+        (entry) => ({
+          ...entry,
+          location: `${relative(repoRoot, file)}:${entry.line}:${entry.column}`,
         }),
       );
     });
-  runtimeKeys.push(...collectAppErrorTranslationKeys());
-  errors.push(...validateRuntimeTranslationKeys(baseDictionary, runtimeKeys));
+  errors.push(
+    ...validateRuntimeTranslationKeys(baseDictionary, [
+      ...runtimeKeys,
+      ...collectAppErrorTranslationKeys(),
+    ]),
+  );
+  errors.push(...validateRuntimeTranslationParams(baseDictionary, runtimeKeys));
+  errors.push(...validateRuntimeTranslationFallbacks(baseDictionary, runtimeKeys));
+  errors.push(...validateCompanionTranslationFallbacks(runtimeKeys));
   const backendCodes = [
     resolve(repoRoot, "src", "backend"),
     resolve(repoRoot, "src-tauri", "src"),

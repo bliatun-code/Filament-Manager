@@ -547,15 +547,15 @@ Desktop-appen og Companion støtter engelsk, norsk bokmål, tysk, fransk,
 spansk, brasiliansk portugisisk, italiensk, polsk, nederlandsk, tsjekkisk,
 forenklet kinesisk, tradisjonell kinesisk, japansk, koreansk, tyrkisk,
 ukrainsk, russisk, ungarsk, svensk, dansk og finsk. Språkvalget lagres lokalt
-for hver flate, og engelsk er det kanoniske fallback-språket. Norsk bokmål,
-tysk og fransk har komplette kataloger for den gjeldende teksten, men alle
-ikke-engelske språk er fortsatt merket **Beta** frem til en ny språkfaglig
-gjennomgang. De øvrige Beta-katalogene bruker testet engelsk fallback for tekst
-som ennå ikke er oversatt. Korrigeringer til community-oversettelsene kan
-foreslås via det egne
+for hver flate. Alle valgbare språk har komplette kataloger for både desktop og
+Companion og vises uten Beta-merking. Engelsk er fortsatt kanonisk kildespråk og
+en siste inline-sikring ved kjørefeil, men publiserte kataloger kan ikke være
+avhengige av manglende engelske rader. Korrigeringer til
+community-oversettelsene kan foreslås via det egne
 [skjemaet for oversettelsesfeil](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 eller pull requests på GitHub. Språklisten holdes nå fast mens de eksisterende
-ikke-engelske katalogene får faktisk språkfaglig gjennomgang.
+ikke-engelske katalogene får community-rettelser og faktisk språkfaglig
+gjennomgang.
 
 De to valgene under **Innstillinger → Generelt → Bakgrunnskjøring** aktiveres
 hver for seg. Aktiver **Fortsett å kjøre når jeg lukker vinduet** for å skjule

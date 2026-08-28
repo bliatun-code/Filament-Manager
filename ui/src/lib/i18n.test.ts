@@ -8,6 +8,7 @@ import {
   persistLocale,
   resolveInitialLocale,
 } from "./i18n";
+import { SELECTABLE_LOCALES } from "../../../src-tauri/companion_browser/supported_locales.js";
 
 function withGlobalValue<T>(
   key: "localStorage" | "navigator" | "window",
@@ -30,16 +31,18 @@ function withGlobalValue<T>(
   }
 }
 
-test("resolveInitialLocale uses stored supported locale", () => {
-  const storage = {
-    getItem: () => "nb",
-  };
+test("resolveInitialLocale accepts every selectable locale from storage", () => {
+  for (const { id } of SELECTABLE_LOCALES) {
+    const storage = {
+      getItem: () => id,
+    };
 
-  const locale = withGlobalValue("localStorage", storage, () =>
-    resolveInitialLocale(),
-  );
+    const locale = withGlobalValue("localStorage", storage, () =>
+      resolveInitialLocale(),
+    );
 
-  assert.equal(locale, "nb");
+    assert.equal(locale, id);
+  }
 });
 
 test("resolveInitialLocale migrates stored regional and legacy aliases", () => {
@@ -94,7 +97,7 @@ test("resolveInitialLocale accepts the QA-only pseudo locale from screenshot URL
   assert.equal(cjkLocale, "zh-XB");
 });
 
-test("resolveInitialLocale accepts hidden Brazilian Portuguese only through a QA URL", () => {
+test("resolveInitialLocale resolves Brazilian Portuguese from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=pt-BR" } };
   const locale = withGlobalValue("window", windowRef, () =>
     resolveInitialLocale(),
@@ -102,7 +105,7 @@ test("resolveInitialLocale accepts hidden Brazilian Portuguese only through a QA
   assert.equal(locale, "pt-BR");
 });
 
-test("resolveInitialLocale accepts hidden Italian only through a QA URL", () => {
+test("resolveInitialLocale resolves Italian from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=it-IT" } };
   const locale = withGlobalValue("window", windowRef, () =>
     resolveInitialLocale(),
@@ -110,7 +113,7 @@ test("resolveInitialLocale accepts hidden Italian only through a QA URL", () => 
   assert.equal(locale, "it-IT");
 });
 
-test("resolveInitialLocale accepts hidden Polish only through a QA URL", () => {
+test("resolveInitialLocale resolves Polish from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=pl-PL" } };
   const locale = withGlobalValue("window", windowRef, () =>
     resolveInitialLocale(),
@@ -118,79 +121,79 @@ test("resolveInitialLocale accepts hidden Polish only through a QA URL", () => {
   assert.equal(locale, "pl-PL");
 });
 
-test("resolveInitialLocale accepts hidden Dutch only through a QA URL", () => {
+test("resolveInitialLocale resolves Dutch from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=nl-NL" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "nl-NL");
 });
 
-test("resolveInitialLocale accepts hidden Czech only through a QA URL", () => {
+test("resolveInitialLocale resolves Czech from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=cs-CZ" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "cs-CZ");
 });
 
-test("resolveInitialLocale accepts hidden Simplified Chinese only through a QA URL", () => {
+test("resolveInitialLocale resolves Simplified Chinese from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=zh-CN" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "zh-CN");
 });
 
-test("resolveInitialLocale accepts hidden Japanese only through a QA URL", () => {
+test("resolveInitialLocale resolves Japanese from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=ja-JP" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "ja-JP");
 });
 
-test("resolveInitialLocale accepts hidden Korean only through a QA URL", () => {
+test("resolveInitialLocale resolves Korean from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=ko-KR" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "ko-KR");
 });
 
-test("resolveInitialLocale accepts hidden Traditional Chinese only through a QA URL", () => {
+test("resolveInitialLocale resolves Traditional Chinese from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=zh-TW" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "zh-TW");
 });
 
-test("resolveInitialLocale accepts hidden Turkish only through a QA URL", () => {
+test("resolveInitialLocale resolves Turkish from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=tr-TR" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "tr-TR");
 });
 
-test("resolveInitialLocale accepts hidden Ukrainian only through a QA URL", () => {
+test("resolveInitialLocale resolves Ukrainian from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=uk-UA" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "uk-UA");
 });
 
-test("resolveInitialLocale accepts hidden Russian only through a QA URL", () => {
+test("resolveInitialLocale resolves Russian from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=ru-RU" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "ru-RU");
 });
 
-test("resolveInitialLocale accepts hidden Hungarian only through a QA URL", () => {
+test("resolveInitialLocale resolves Hungarian from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=hu-HU" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "hu-HU");
 });
 
-test("resolveInitialLocale accepts hidden Swedish only through a QA URL", () => {
+test("resolveInitialLocale resolves Swedish from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=sv-SE" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "sv-SE");
 });
 
-test("resolveInitialLocale accepts hidden Danish only through a QA URL", () => {
+test("resolveInitialLocale resolves Danish from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=da-DK" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "da-DK");
 });
 
-test("resolveInitialLocale accepts hidden Finnish only through a QA URL", () => {
+test("resolveInitialLocale resolves Finnish from a QA URL", () => {
   const windowRef = { location: { search: "?bfm_locale=fi-FI" } };
   const locale = withGlobalValue("window", windowRef, () => resolveInitialLocale());
   assert.equal(locale, "fi-FI");
@@ -393,7 +396,7 @@ test("locale dictionaries lazy-load and cache supported locales", async () => {
   );
   assert.equal(
     lookup(portugueseDictionary, "loans.confirmReturnAction"),
-    "Confirmar devolução",
+    "Confirmar retorno do rolo cedido",
   );
   assert.equal(
     lookup(portugueseDictionary, "inventory.bambuBatchCameraAction"),

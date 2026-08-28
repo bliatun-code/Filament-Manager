@@ -625,7 +625,7 @@ export const nbDictionary: DictionaryNode = {
       catalogMatchCountPlural: "{count} treff",
       catalogMatchCount:
         "{count, plural, one {# treff} other {# treff}}",
-      searchVendorCatalog: "Søk etter {{vendor}}-materiale, filament eller farge",
+      searchVendorCatalog: "Søk etter {vendor}-materiale, filament eller farge",
       catalogRefreshFilter: "Katalogoppdatering og filtrering",
       catalogSelection: "Katalogvalg",
       noCatalogMatches: "Ingen katalogoppføringer matcher valgte leverandørfiltre.",
@@ -639,7 +639,7 @@ export const nbDictionary: DictionaryNode = {
         "Bruk den lokale katalogen under for å legge filament direkte på lager, i ønskelisten eller i bestillingskøen.",
       selectionPreview: "Valgt oppføring",
       noSelectionPreview: "Velg en katalograd eller fyll inn manuelle detaljer før lagring.",
-      bambuCodeLabel: "Filament Code",
+      bambuCodeLabel: "Filamentkode",
       bambuCodeHelp:
         "Bruk den femsifrede koden som står som Filament Code på Bambu-etiketten.",
       bambuCodeSingleMatch: "Én aktiv Bambu-katalogoppføring matcher og er valgt.",
@@ -655,7 +655,7 @@ export const nbDictionary: DictionaryNode = {
       bambuCodeBoxLabelTitle: "Eskeetikett",
       bambuCodeBoxLabelHint: "Finn dette feltet på eskeetiketten.",
       bambuBatchHeaderAction: "Batch legg inn fra esker",
-      bambuBatchHeaderActionShort: "Batch",
+      bambuBatchHeaderActionShort: "Parti",
       bambuBatchModalEyebrow: "Bambu-esker",
       bambuBatchModalTitle: "Batch legg inn fra esker",
       bambuBatchModalSubtitle:
@@ -1185,7 +1185,7 @@ export const nbDictionary: DictionaryNode = {
       lent: "Utlånt",
       borrowedInAt: "Lånt inn",
       out: "Ut",
-      startWeight: "Start",
+      startWeight: "Startvekt",
       in: "Inn",
       back: "Tilbake",
       returned: "Returnert",
@@ -1806,7 +1806,7 @@ export const nbDictionary: DictionaryNode = {
       help: "Hjelp",
       helpHint:
         "Åpne den visuelle product touren for skjermbilder av hovedflytene i desktop og Companion, eller bruk tekstmanualen for stegvis forklaring.",
-      productTour: "Product tour",
+      productTour: "Produktomvisning",
       userManual: "Brukermanual",
       libraryTabTitle: "Bibliotek og webapp",
       libraryTabHint: "",
@@ -1937,9 +1937,6 @@ export const nbDictionary: DictionaryNode = {
       language: "Språk",
       languageHint:
         "Velg appspråk for alle hovedvisninger.",
-      languageBeta: "Beta",
-      languageBetaHint:
-        "Betaspråk er fortsatt under arbeid og kan vise noe tekst på engelsk.",
       appearance: "Utseende",
       light: "Lys",
       dark: "Mørk",

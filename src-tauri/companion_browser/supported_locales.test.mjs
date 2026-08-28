@@ -95,44 +95,56 @@ test("locale registry owns format, guide, and native-label metadata", () => {
     CATALOG_LOCALES.map(({ id }) => id),
     ["en", "nb", "de", "fr", "es", "pt-BR", "it-IT", "pl-PL", "nl-NL", "cs-CZ", "zh-CN", "ja-JP", "ko-KR", "zh-TW", "tr-TR", "uk-UA", "ru-RU", "hu-HU", "sv-SE", "da-DK", "fi-FI"],
   );
+  for (const definition of SELECTABLE_LOCALES) {
+    assert.equal(
+      definition.catalogKind,
+      "source",
+      `${definition.id} must have a complete source catalog before it is selectable`,
+    );
+    assert.equal(
+      definition.fallbackLocale,
+      null,
+      `${definition.id} must not depend on an English catalog overlay`,
+    );
+  }
   assert.equal(sourceLocaleFor("de-DE"), "de");
   assert.equal(fallbackLocaleFor("de"), null);
   assert.equal(sourceLocaleFor("fr-FR"), "fr");
   assert.equal(fallbackLocaleFor("fr"), null);
   assert.equal(sourceLocaleFor("es-ES"), "es");
-  assert.equal(fallbackLocaleFor("es"), "en");
+  assert.equal(fallbackLocaleFor("es"), null);
   assert.equal(sourceLocaleFor("pt-BR"), "pt-BR");
-  assert.equal(fallbackLocaleFor("pt-BR"), "en");
+  assert.equal(fallbackLocaleFor("pt-BR"), null);
   assert.equal(sourceLocaleFor("it"), "it-IT");
-  assert.equal(fallbackLocaleFor("it-IT"), "en");
+  assert.equal(fallbackLocaleFor("it-IT"), null);
   assert.equal(sourceLocaleFor("pl"), "pl-PL");
-  assert.equal(fallbackLocaleFor("pl-PL"), "en");
+  assert.equal(fallbackLocaleFor("pl-PL"), null);
   assert.equal(sourceLocaleFor("nl"), "nl-NL");
-  assert.equal(fallbackLocaleFor("nl-NL"), "en");
+  assert.equal(fallbackLocaleFor("nl-NL"), null);
   assert.equal(sourceLocaleFor("cs"), "cs-CZ");
-  assert.equal(fallbackLocaleFor("cs-CZ"), "en");
+  assert.equal(fallbackLocaleFor("cs-CZ"), null);
   assert.equal(sourceLocaleFor("zh"), "zh-CN");
-  assert.equal(fallbackLocaleFor("zh-CN"), "en");
+  assert.equal(fallbackLocaleFor("zh-CN"), null);
   assert.equal(sourceLocaleFor("ja"), "ja-JP");
-  assert.equal(fallbackLocaleFor("ja-JP"), "en");
+  assert.equal(fallbackLocaleFor("ja-JP"), null);
   assert.equal(sourceLocaleFor("ko"), "ko-KR");
-  assert.equal(fallbackLocaleFor("ko-KR"), "en");
+  assert.equal(fallbackLocaleFor("ko-KR"), null);
   assert.equal(sourceLocaleFor("zh-Hant"), "zh-TW");
-  assert.equal(fallbackLocaleFor("zh-TW"), "en");
+  assert.equal(fallbackLocaleFor("zh-TW"), null);
   assert.equal(sourceLocaleFor("tr"), "tr-TR");
-  assert.equal(fallbackLocaleFor("tr-TR"), "en");
+  assert.equal(fallbackLocaleFor("tr-TR"), null);
   assert.equal(sourceLocaleFor("uk"), "uk-UA");
-  assert.equal(fallbackLocaleFor("uk-UA"), "en");
+  assert.equal(fallbackLocaleFor("uk-UA"), null);
   assert.equal(sourceLocaleFor("ru"), "ru-RU");
-  assert.equal(fallbackLocaleFor("ru-RU"), "en");
+  assert.equal(fallbackLocaleFor("ru-RU"), null);
   assert.equal(sourceLocaleFor("hu"), "hu-HU");
-  assert.equal(fallbackLocaleFor("hu-HU"), "en");
+  assert.equal(fallbackLocaleFor("hu-HU"), null);
   assert.equal(sourceLocaleFor("sv"), "sv-SE");
-  assert.equal(fallbackLocaleFor("sv-SE"), "en");
+  assert.equal(fallbackLocaleFor("sv-SE"), null);
   assert.equal(sourceLocaleFor("da"), "da-DK");
-  assert.equal(fallbackLocaleFor("da-DK"), "en");
+  assert.equal(fallbackLocaleFor("da-DK"), null);
   assert.equal(sourceLocaleFor("fi"), "fi-FI");
-  assert.equal(fallbackLocaleFor("fi-FI"), "en");
+  assert.equal(fallbackLocaleFor("fi-FI"), null);
   assert.equal(sourceLocaleFor("en-XA"), "en");
   assert.equal(sourceLocaleFor("ar-XB"), "en");
   assert.equal(sourceLocaleFor("zh-XB"), "en");

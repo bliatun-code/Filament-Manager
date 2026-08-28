@@ -624,7 +624,7 @@ export const enDictionary: DictionaryNode = {
       catalogMatchCountPlural: "{count} matches",
       catalogMatchCount:
         "{count, plural, one {# match} other {# matches}}",
-      searchVendorCatalog: "Search {{vendor}} material, filament or color",
+      searchVendorCatalog: "Search {vendor} material, filament or color",
       catalogRefreshFilter: "Catalog refresh & filter",
       catalogSelection: "Catalog selection",
       noCatalogMatches: "No catalog entries match the current vendor filters.",
@@ -1925,9 +1925,6 @@ export const enDictionary: DictionaryNode = {
       librarySyncDeviceNameSaved: "Device name saved.",
       language: "Language",
       languageHint: "Choose app language for all main views.",
-      languageBeta: "Beta",
-      languageBetaHint:
-        "Beta languages are still being completed and may show some text in English.",
       appearance: "Appearance",
       light: "Light",
       dark: "Dark",

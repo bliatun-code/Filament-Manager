@@ -541,15 +541,15 @@ The desktop app and Companion support English, Norwegian Bokmål, German,
 French, Spanish, Brazilian Portuguese, Italian, Polish, Dutch, Czech,
 Simplified Chinese, Traditional Chinese, Japanese, Korean, Turkish, Ukrainian,
 Russian, Hungarian, Swedish, Danish, and Finnish. The selected language is
-stored locally for each surface. English remains the canonical fallback.
-Norwegian Bokmål, German, and French have complete catalogs for the current
-copy, but every non-English language remains marked **Beta** until a fresh
-native-language review. The other Beta catalogs use tested English fallback for
-copy that is not yet translated. Corrections to community translations can be
+stored locally for each surface. Every selectable language has complete desktop
+and Companion catalogs and is presented without a Beta label. English remains
+the canonical source and emergency inline fallback, but published catalogs may
+not rely on missing English rows. Corrections to community translations can be
 proposed through the dedicated
 [translation correction form](https://github.com/bliatun-code/Filament-Manager/issues/new?template=translation.yml)
 or pull requests. The current language set stays fixed while the existing
-non-English catalogs receive community and native-language review.
+non-English catalogs continue to receive community corrections and
+native-language review.
 
 The two controls under **Settings → General → Background operation** are
 separate opt-in settings. Enable **Continue running when I close the window**

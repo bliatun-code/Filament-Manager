@@ -1,7 +1,40 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 4,
   "sourceLocale": "en",
   "minimumDistinctTranslationPercent": 95,
+  "releaseQaAudits": [
+    {
+      "sourceFingerprint": "sha256:1136ae6209ba266e2a3fc20810e894b70081d17041577b2af71aac3d42af81ec",
+      "catalogSetFingerprint": "sha256:a6fc3282b95bddd7f7850449afcb635d933a5319f104e9329158e38c1c505f14",
+      "runtimeContractFingerprint": "sha256:3b49cbbc40f312f0cd2923fb293eaba1e83f05edaf472afd021c6ff940fe4fd7",
+      "verifiedAt": "2026-08-28",
+      "artifactQa": "passed",
+      "runtimeQa": "passed",
+      "locales": [
+        "en",
+        "nb",
+        "de",
+        "fr",
+        "es",
+        "pt-BR",
+        "it-IT",
+        "pl-PL",
+        "nl-NL",
+        "cs-CZ",
+        "zh-CN",
+        "ja-JP",
+        "ko-KR",
+        "zh-TW",
+        "tr-TR",
+        "uk-UA",
+        "ru-RU",
+        "hu-HU",
+        "sv-SE",
+        "da-DK",
+        "fi-FI"
+      ]
+    }
+  ],
   "locales": {
     "en": {
       "releaseStatus": "canonical",
@@ -10,121 +43,121 @@
       "reviewedSourceFingerprint": "canonical"
     },
     "nb": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": "@bliatun-code",
       "reviewedAt": "2026-07-22",
       "reviewedSourceFingerprint": "sha256:b2a017e647cf4fbd8883172cecc975f7471e8177513df513e1707e74c66321a3"
     },
     "de": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": "@bliatun-code",
       "reviewedAt": "2026-07-22",
       "reviewedSourceFingerprint": "sha256:b2a017e647cf4fbd8883172cecc975f7471e8177513df513e1707e74c66321a3"
     },
     "fr": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": "@bliatun-code",
       "reviewedAt": "2026-07-22",
       "reviewedSourceFingerprint": "sha256:b2a017e647cf4fbd8883172cecc975f7471e8177513df513e1707e74c66321a3"
     },
     "es": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "pt-BR": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "it-IT": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "pl-PL": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "nl-NL": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "cs-CZ": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "zh-CN": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "ja-JP": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "ko-KR": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "zh-TW": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "tr-TR": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "uk-UA": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "ru-RU": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "hu-HU": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "sv-SE": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "da-DK": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null
     },
     "fi-FI": {
-      "releaseStatus": "draft",
+      "releaseStatus": "community",
       "nativeReviewer": null,
       "reviewedAt": null,
       "reviewedSourceFingerprint": null

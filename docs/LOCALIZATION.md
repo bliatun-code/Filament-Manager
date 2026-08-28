@@ -1,25 +1,44 @@
 # Localization workflow
 
 English is the canonical source language. All 20 non-English catalogs are
-complete and published as community-review candidates, so the desktop app and
-Companion currently offer 21 languages in the same compact selector. Norwegian
-Bokmål, German, and French retain their prior named-review record, but must be
-reviewed against the current source fingerprint before returning to maintained
-status. English remains the runtime fallback. Generated pseudo-locales are QA
-tools and must never appear as user choices.
+complete and published as community translations, so the desktop app and
+Companion offer 21 languages in the same compact selector without Beta labels.
+Norwegian Bokmål, German, and French retain their prior named-review record, but
+must be reviewed against the current source fingerprint before returning to
+maintained status. Inline English fallbacks remain an emergency runtime guard;
+published locale catalogs are not allowed to depend on them. Generated
+pseudo-locales are QA tools and must never appear as user choices.
 
 `catalogKind`, `selectable`, and `releaseStatus` describe different concerns:
 
 - `selectable` controls whether users can choose the language.
-- `catalogKind: "draft"` permits fallback overlays and keeps a catalog eligible
-  for community correction; it does not by itself mean that the locale is
-  hidden.
+- `catalogKind: "source"` means a checked-in catalog with full key and
+  placeholder parity. `catalogKind: "draft"` is reserved for a non-selectable,
+  incomplete development overlay over English.
+- `releaseStatus: "community"` means the complete catalog is published and can
+  receive corrections without claiming named native approval.
 - `releaseStatus: "maintained"` records named native review against a specific
   English source fingerprint.
 
-All non-English locales are currently published community-review candidates.
-Their catalogs and automated visual QA are complete, but availability must not
-be described as named native approval against the current source fingerprint.
+`releaseQaAudits` is the separate release-evidence ledger. Each record names the
+exact English source fingerprint, the complete desktop/Companion catalog-set
+fingerprint, the runtime QA contract fingerprint, the locales covered, the
+verification date, and passed artifact and runtime QA.
+`artifactQa: "passed"` means every covered
+desktop and Companion catalog generated and compiled successfully.
+`runtimeQa: "passed"` means every covered catalog passed key, placeholder,
+message-format, loading and runtime contract checks. A change to the formatter,
+locale loader, registry, generator, localization checks or their tests changes
+the runtime fingerprint and invalidates older evidence automatically. Any
+translation change in any locale likewise changes the catalog-set fingerprint.
+These
+fields are machine-verifiable release engineering evidence, not native-language
+approval. Screenshot gates remain a separate release check and must be reported
+from their actual run; they are never inferred from this ledger.
+
+All non-English locales are currently published community translations. Their
+catalogs and automated structural QA are complete, but availability must not be
+described as named native approval against the current source fingerprint.
 
 ## Canonical terminology
 
@@ -49,12 +68,13 @@ paths, identifiers, and URLs are user data and must not be translated.
 
 ## Translation change workflow
 
-New languages start as `catalogKind: "draft"`, `selectable: false`, and use
-sparse dictionaries layered over English. While incomplete, they are available
-to explicit QA only and the operating-system language must not activate them
-automatically. Publishing a completed locale as a community-review candidate is
-an explicit release decision after full catalog, artifact, and visual QA. A
-locale becomes `maintained` only after named native review.
+New languages start as `catalogKind: "draft"`, `releaseStatus: "draft"`,
+`selectable: false`, and use sparse dictionaries layered over English. While
+incomplete, they are available to explicit QA only and the operating-system
+language must not activate them automatically. Publishing requires full desktop
+and Companion key parity, no catalog fallback, at least the configured
+translation signal, current fingerprint-bound artifact QA, and visual QA. The locale then becomes a
+`community` translation; it becomes `maintained` only after named native review.
 
 1. Update English source strings first. Use parameterized messages instead of
    building sentences from translated fragments.
@@ -64,12 +84,18 @@ locale becomes `maintained` only after named native review.
    plural/select syntax.
 4. Update translator context when a new short label, overloaded term, or strict
    width constraint is introduced.
-5. Run the full data-backed desktop and Companion visual matrices, then
-   `npm run verify` before exposing a new community-review candidate.
-6. For maintained status, a named native reviewer checks the glossary, main
+5. Run `npm run verify`, the full data-backed desktop locale matrix, and the
+   representative Companion screenshot gate for every affected locale before
+   publishing a new community translation.
+6. Record a passed `releaseQaAudits` entry for the exact source, catalog-set and
+   runtime contract fingerprints and
+   only the locales actually exercised by the artifact and runtime gates. Keep
+   the screenshot results with the release evidence instead of encoding an
+   unverified visual pass in this file.
+7. For maintained status, a named native reviewer checks the glossary, main
    workflows, safety/error copy, long strings, dates, numbers, plurals, labels,
    and documentation links.
-7. After native approval, update the locale's `nativeReviewer`, `reviewedAt`,
+8. After native approval, update the locale's `nativeReviewer`, `reviewedAt`,
    and `reviewedSourceFingerprint` in `localization/locale-status.json`, then
    repeat the release checks.
 
@@ -101,20 +127,33 @@ Every locale marked `maintained` must have one named native reviewer or
 maintainer in `localization/locale-status.json`. Norwegian Bokmål, German, and
 French retain a named review of an earlier source fingerprint and are candidates
 until that handoff is repeated for the current catalog. A locale without an
-owner can be selectable as a clearly described community-review candidate, but
-is not eligible for `maintained` status.
+owner can be selectable as a community translation, but is not eligible for
+`maintained` status.
 
 A maintained locale becomes stale whenever its reviewed source fingerprint no
 longer matches the combined English desktop and Companion catalogs. Stale
-locales fail `check:i18n-readiness`; they may use English runtime fallback during
-development, but must not ship as fully supported. Release readiness requires:
+locales fail `check:i18n-readiness`. Every selectable locale—community or
+maintained—must pass the completeness gates below; only non-selectable draft
+locales may use an English catalog overlay during development. Release readiness
+requires:
 
 - 100% key and placeholder coverage for actions, errors, confirmations, and
   safety-critical text;
 - at least 95% overall translation signal, with unchanged technical terms
   reviewed explicitly;
 - zero unknown literal keys and a current source fingerprint;
-- named native approval and passed data-backed visual/artifact QA.
+- passed fingerprint-bound artifact/runtime QA, plus the data-backed visual
+  gates for release candidates.
+
+Readiness rejects a selectable locale when no passed `releaseQaAudits` record
+covers that locale and the current source, complete catalog-set and
+runtime-contract fingerprints. Old records may remain as history, but they
+cannot authorize changed catalog copy, formatter, loader, registry, generator or localization
+gate. This intentionally does not imply that a native speaker reviewed the
+language.
+
+Promotion from `community` to `maintained` additionally requires named native
+approval against the current source fingerprint.
 
 ## Collaboration model
 
@@ -144,9 +183,9 @@ interfaces.
 Use [`localization/REVIEW_CHECKLIST.md`](../localization/REVIEW_CHECKLIST.md) for
 both focused community corrections and a complete native review. Norwegian
 Bokmål, German, and French retain their previous reviewed fingerprint; repeat
-the handoff before promoting them against the current source. Community review
-candidates remain selectable while retaining their review-candidate status and
-English fallback contract.
+the handoff before promoting them against the current source. Community
+translations remain selectable with complete catalogs while their wording is
+improved through the correction form and pull requests.
 
 The complete English user guide is the documented fallback for languages that
 do not yet have a reviewed locale-specific guide. Translated guides follow real

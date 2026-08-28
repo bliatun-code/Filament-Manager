@@ -10,13 +10,27 @@ import {
   runDesktopScreenshotGateWithLaunchRetry,
 } from "./run-desktop-screenshot-gate.mjs";
 import { cleanupVisualQaDatabase } from "./visual-qa-db.mjs";
+import { CATALOG_LOCALES } from "../src-tauri/companion_browser/supported_locales.js";
 
-export const DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX = Object.freeze([
+const DESKTOP_VISUAL_QA_REGRESSION_ENTRIES = Object.freeze([
   Object.freeze({ height: 500, locale: "zh-CN", scenario: "add-filament", width: 900 }),
   Object.freeze({ locale: "de", scenario: "dashboard-onboarding", width: 900 }),
   Object.freeze({ locale: "fr", scenario: "settings-general", width: 1050 }),
   Object.freeze({ locale: "nb", scenario: "selected-roll", width: 1200 }),
   Object.freeze({ locale: "en", scenario: "statistics-overview", width: 1500 }),
+]);
+
+const regressionLocales = new Set(
+  DESKTOP_VISUAL_QA_REGRESSION_ENTRIES.map(({ locale }) => locale),
+);
+
+export const DESKTOP_VISUAL_QA_WIDTH_LOCALE_MATRIX = Object.freeze([
+  ...DESKTOP_VISUAL_QA_REGRESSION_ENTRIES,
+  ...CATALOG_LOCALES.filter(
+    ({ id, selectable }) => selectable && !regressionLocales.has(id),
+  ).map(({ id }) =>
+    Object.freeze({ locale: id, scenario: "settings-general", width: 1200 }),
+  ),
 ]);
 
 export const DESKTOP_VISUAL_QA_LIVE_PRINTER_ENTRY = Object.freeze({

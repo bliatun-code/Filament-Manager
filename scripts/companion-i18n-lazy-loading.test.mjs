@@ -12,11 +12,11 @@ import {
 } from "../src-tauri/companion_browser/companion_i18n.js";
 import { companionLocaleAssetName } from "./generate-companion-locales.mjs";
 
-// Draft locales load their reviewed overlay plus English so missing keys never
-// become raw UI copy. Keep the complete synchronous lookup chain bounded.
+// Published locales load one complete catalog. Inline fallbacks remain the
+// final guard for genuinely unknown future keys. Keep the lookup chain bounded.
 const MAX_INITIAL_TRANSLATION_BYTES = 76 * 1024;
 
-test("Companion locale loading fetches the selected source and configured fallback only", async () => {
+test("Companion locale loading fetches one complete selected catalog", async () => {
   const requested = [];
   const loadModule = async (locale) => {
     requested.push(locale);
@@ -34,11 +34,11 @@ test("Companion locale loading fetches the selected source and configured fallba
   assert.deepEqual(requested, ["nb"]);
   assert.equal(t("nb", "nav.storage"), "nb inventory");
 
-  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es", "en"]);
+  assert.deepEqual(requiredCompanionDictionaryLocales("es"), ["es"]);
   await loadCompanionLocale("es", { loadModule });
-  assert.deepEqual(requested, ["nb", "es", "en"]);
+  assert.deepEqual(requested, ["nb", "es"]);
   assert.equal(t("es", "nav.storage"), "es inventory");
-  assert.equal(t("es", "fallbackOnly"), "English fallback");
+  assert.equal(t("es", "fallbackOnly", "Safe fallback"), "Safe fallback");
   assert.equal(t("es", "missing.key", "Safe fallback"), "Safe fallback");
 
   assert.deepEqual(requiredCompanionDictionaryLocales("en-XA"), ["en"]);
