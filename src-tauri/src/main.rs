@@ -34,6 +34,7 @@ mod credential_profile_migration;
 mod credential_store;
 mod desktop_lifecycle;
 mod desktop_visual_qa_theme;
+mod desktop_window_theme;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
@@ -385,6 +386,7 @@ fn main() {
             printer_danger_zone_commands::delete_printer,
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
+            desktop_window_theme::set_native_window_theme,
             get_app_version,
             packaged_desktop_e2e::get_packaged_desktop_e2e_configuration,
             packaged_desktop_e2e::complete_packaged_desktop_e2e,

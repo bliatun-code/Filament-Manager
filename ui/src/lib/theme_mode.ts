@@ -5,18 +5,33 @@ export const THEME_MODES = ["auto", "light", "dark", "bambu", "prusa"] as const;
 
 export type ThemeMode = (typeof THEME_MODES)[number];
 export type ResolvedTheme = "light" | "dark";
+export type NativeWindowColor = readonly [number, number, number, number];
+
+export type NativeWindowTheme = {
+  appearance: ResolvedTheme | null;
+  backgroundColor: NativeWindowColor | null;
+};
 
 export type ThemeDefinition = {
   id: ThemeMode;
   colorScheme: ResolvedTheme | "system";
+  nativeWindowBackground: NativeWindowColor | null;
 };
 
 export const THEME_DEFINITIONS: Readonly<Record<ThemeMode, ThemeDefinition>> = {
-  auto: { id: "auto", colorScheme: "system" },
-  light: { id: "light", colorScheme: "light" },
-  dark: { id: "dark", colorScheme: "dark" },
-  bambu: { id: "bambu", colorScheme: "dark" },
-  prusa: { id: "prusa", colorScheme: "dark" },
+  auto: { id: "auto", colorScheme: "system", nativeWindowBackground: null },
+  light: { id: "light", colorScheme: "light", nativeWindowBackground: null },
+  dark: { id: "dark", colorScheme: "dark", nativeWindowBackground: null },
+  bambu: {
+    id: "bambu",
+    colorScheme: "dark",
+    nativeWindowBackground: [3, 18, 18, 255],
+  },
+  prusa: {
+    id: "prusa",
+    colorScheme: "dark",
+    nativeWindowBackground: [24, 16, 15, 255],
+  },
 };
 
 const STORAGE_KEY = "bfm-theme-mode";
@@ -104,6 +119,14 @@ function ensureMediaListener() {
 
 export function getResolvedTheme(mode: ThemeMode = getThemeMode()): ResolvedTheme {
   return resolveThemeMode(mode);
+}
+
+export function getNativeWindowTheme(mode: ThemeMode = getThemeMode()): NativeWindowTheme {
+  const definition = THEME_DEFINITIONS[mode];
+  return {
+    appearance: definition.colorScheme === "system" ? null : definition.colorScheme,
+    backgroundColor: definition.nativeWindowBackground,
+  };
 }
 
 export function getThemeMode(): ThemeMode {

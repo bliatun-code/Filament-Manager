@@ -54,3 +54,11 @@ test("the native tray menu follows the selected interface language", () => {
   assert.match(appSource, /settings\.backgroundTrayQuit/);
   assert.match(appSource, /\[locale, t\]/);
 });
+
+test("native desktop theme updates are serialized so the latest selection wins", () => {
+  assert.match(appSource, /setNativeWindowTheme\(getNativeWindowTheme\(themeMode\)\)/);
+  assert.match(
+    appSource,
+    /desktopThemeSyncQueue = desktopThemeSyncQueue\.then\(\(\) =>\s*syncDesktopTheme/,
+  );
+});

@@ -22,12 +22,18 @@ import {
 import { trustedReleaseUrl } from "./lib/app_update_check";
 import { useAppUpdateContext } from "./lib/app_update_context";
 import { useI18n } from "./lib/i18n";
-import { getResolvedTheme, getThemeMode, onThemeModeChange } from "./lib/theme_mode";
+import {
+  getNativeWindowTheme,
+  getResolvedTheme,
+  getThemeMode,
+  onThemeModeChange,
+} from "./lib/theme_mode";
 import {
   isTauri,
   openExternalUrl,
   setDesktopTrayMenuLabels,
   setDockIconTheme,
+  setNativeWindowTheme,
   setWindowTitle,
 } from "./lib/tauri_client";
 import {
@@ -147,14 +153,17 @@ export default function App() {
       return;
     }
 
-    const syncDockIcon = async () => {
-      const themeMode = getThemeMode();
-      const resolvedMode = getResolvedTheme(themeMode);
-      setResolvedTheme(resolvedMode);
+    const syncDesktopTheme = async (
+      themeMode: ReturnType<typeof getThemeMode>,
+      resolvedMode: ReturnType<typeof getResolvedTheme>,
+    ) => {
       try {
-        await setDockIconTheme(resolvedMode);
+        await Promise.all([
+          setDockIconTheme(resolvedMode),
+          setNativeWindowTheme(getNativeWindowTheme(themeMode)),
+        ]);
       } catch (error) {
-        console.error("Failed to sync dock icon theme", error);
+        console.error("Failed to sync native desktop theme", error);
       }
       if (
         import.meta.env.DEV &&
@@ -173,9 +182,19 @@ export default function App() {
       }
     };
 
-    void syncDockIcon();
+    let desktopThemeSyncQueue = Promise.resolve();
+    const queueDesktopThemeSync = () => {
+      const themeMode = getThemeMode();
+      const resolvedMode = getResolvedTheme(themeMode);
+      setResolvedTheme(resolvedMode);
+      desktopThemeSyncQueue = desktopThemeSyncQueue.then(() =>
+        syncDesktopTheme(themeMode, resolvedMode),
+      );
+    };
+
+    queueDesktopThemeSync();
     return onThemeModeChange(() => {
-      void syncDockIcon();
+      queueDesktopThemeSync();
     });
   }, []);
 

@@ -144,6 +144,15 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     null,
   );
   assert.equal(
+    resolveUiBrowserPerformanceInvoke(data, "set_native_window_theme", {
+      input: {
+        appearance: "dark",
+        backgroundColor: [3, 18, 18, 255],
+      },
+    }),
+    null,
+  );
+  assert.equal(
     resolveUiBrowserPerformanceInvoke(
       data,
       "get_packaged_desktop_e2e_configuration",

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getNativeWindowTheme,
   getThemeMode,
   isThemeMode,
   resolveThemeMode,
@@ -97,6 +98,29 @@ test("theme registry distinguishes selected modes from resolved color schemes", 
   assert.equal(resolveThemeMode("prusa", false), "dark");
   assert.equal(isThemeMode("bambu"), true);
   assert.equal(isThemeMode("sepia"), false);
+});
+
+test("native window theme keeps system modes native and gives brand themes opaque titlebars", () => {
+  assert.deepEqual(getNativeWindowTheme("auto"), {
+    appearance: null,
+    backgroundColor: null,
+  });
+  assert.deepEqual(getNativeWindowTheme("light"), {
+    appearance: "light",
+    backgroundColor: null,
+  });
+  assert.deepEqual(getNativeWindowTheme("dark"), {
+    appearance: "dark",
+    backgroundColor: null,
+  });
+  assert.deepEqual(getNativeWindowTheme("bambu"), {
+    appearance: "dark",
+    backgroundColor: [3, 18, 18, 255],
+  });
+  assert.deepEqual(getNativeWindowTheme("prusa"), {
+    appearance: "dark",
+    backgroundColor: [24, 16, 15, 255],
+  });
 });
 
 test("getThemeMode restores stored branded themes", () => {
