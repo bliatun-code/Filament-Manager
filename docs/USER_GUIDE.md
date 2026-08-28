@@ -635,9 +635,11 @@ Filament catalog:
 
 - catalog overview
 - catalog refresh for Bambu and eSUN
-- separate vendor audit and selected-material update actions
+- lightweight, read-only discovery of available material types without imports
+- refresh of exactly one selected material type at a time
+- no automatic discontinued or lifecycle marking from discovery or refresh
 - color/swatch data
-- handling catalog items that are no longer found during import
+- older and reseller-available catalog entries remain searchable
 
 Program maintenance:
 
@@ -1064,7 +1066,7 @@ The app supports:
 - eSUN catalog
 - generic/manual registration
 - swatch/color data
-- discontinued marking when old Bambu items are no longer found during import
+- preservation of older catalog entries without automatic discontinued marking
 
 Catalog entries are templates. A physical spool is a separate inventory record based on a catalog entry or manual registration.
 
@@ -1072,10 +1074,16 @@ The app ships with a local seed catalog for known filament. This keeps older rol
 
 Catalog repair restores the bundled seed catalog and removes only unused non-seeded catalog rows. Inventory spools, wishlist links, loans, printer data, RFID, locations, and history should be preserved.
 
-Vendor audit checks what the upstream Bambu or eSUN source currently reports.
-Updating selected materials applies chosen catalog changes deliberately. This
-separation lets you review a vendor change before replacing local catalog
-metadata.
+**Discover available materials** performs a small, bounded, read-only check of
+the Bambu or eSUN storefront. It imports no products and changes neither catalog
+metadata nor lifecycle status. If the source is blocked, empty, or
+inconclusive, the previous list of available material types is kept.
+
+After a successful discovery, select exactly one material type and refresh it.
+Larger maintenance is therefore split into small, cautious requests. Neither
+discovery nor the material refresh automatically marks products as historical
+or discontinued; older products remain searchable for rolls that users already
+own or can still obtain through resellers.
 
 In Client mode, the desktop app requests up to 5,000 catalog rows from the Host
 instead of truncating the list at 1,000. Optional server-side search is forwarded

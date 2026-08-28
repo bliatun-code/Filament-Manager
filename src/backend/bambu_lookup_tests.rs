@@ -1,10 +1,31 @@
 use super::{
-    append_known_entries_for_product_url, bambu_material_families, build_known_entry_lookup,
-    decode_js_string_literal, discovered_materials_from_names, extract_product_list,
-    infer_material, normalize_material_filters, official_bambu_hex_codes, resolve_bambu_hex,
-    BambuCatalogEntry, BambuKnownCatalogEntry,
+    bambu_material_families, bambu_response_is_blocking,
+    discover_bambu_material_channels_with_fetch, infer_material, normalize_material_filters,
+    official_bambu_hex_codes, refresh_bambu_catalog_snapshot_from_source_with_fetch,
+    require_single_material_filter, resolve_bambu_hex,
+    validate_bambu_refresh_snapshot_for_mutation, BambuCatalogEntry, BambuCatalogRefreshSnapshot,
+    DetectStoreResult, DiscoveryHttpResponse, DISCOVERY_MAX_PAGES_PER_STORE,
+    TARGETED_REFRESH_MAX_PAGES, USER_AGENT,
 };
 use std::collections::HashSet;
+
+fn discovery_response(status: u16, products: &[(&str, &str)]) -> DiscoveryHttpResponse {
+    DiscoveryHttpResponse {
+        status,
+        body: serde_json::json!({
+            "products": products
+                .iter()
+                .map(|(handle, title)| serde_json::json!({
+                    "handle": handle,
+                    "title": title,
+                    "options": [{"name": "Color"}],
+                    "variants": [{"id": 1, "option1": "Red"}],
+                }))
+                .collect::<Vec<_>>(),
+        })
+        .to_string(),
+    }
+}
 
 #[test]
 fn infer_material_uses_prefixes() {
@@ -27,65 +48,6 @@ fn infer_material_uses_prefixes() {
         "Support for PLA/PETG"
     );
     assert_eq!(infer_material("Custom Blend"), "CUSTOM");
-}
-
-#[test]
-fn discovered_materials_from_bambu_product_names_are_sorted_and_complete() {
-    let values = discovered_materials_from_names(
-        [
-            "PLA Basic",
-            "PETG HF",
-            "ABS-GF",
-            "TPU for AMS",
-            "PA6-CF",
-            "PAHT-CF",
-            "PA-CF",
-            "PPA-CF",
-            "PET-CF",
-            "PCTG",
-            "PC FR",
-            "PP",
-            "PE Support",
-            "PPS-CF",
-            "PVA",
-            "BVOH Support",
-            "EVA",
-            "HIPS",
-            "PHA",
-            "ASA Aero",
-            "Support for PLA",
-            "Support for PLA/PETG",
-            "PLA Basic",
-        ]
-        .into_iter(),
-    );
-    assert_eq!(
-        values,
-        vec![
-            "ABS".to_string(),
-            "ASA".to_string(),
-            "BVOH".to_string(),
-            "EVA".to_string(),
-            "HIPS".to_string(),
-            "PA".to_string(),
-            "PA6".to_string(),
-            "PAHT".to_string(),
-            "PC".to_string(),
-            "PCTG".to_string(),
-            "PE".to_string(),
-            "PET".to_string(),
-            "PETG".to_string(),
-            "PHA".to_string(),
-            "PLA".to_string(),
-            "PP".to_string(),
-            "PPA".to_string(),
-            "PPS".to_string(),
-            "PVA".to_string(),
-            "Support for PLA".to_string(),
-            "Support for PLA/PETG".to_string(),
-            "TPU".to_string(),
-        ]
-    );
 }
 
 #[test]
@@ -251,73 +213,391 @@ fn resolve_bambu_hex_prefers_official_color_tables() {
 }
 
 #[test]
-fn decode_js_string_literal_handles_common_escape_sequences() {
-    let decoded = decode_js_string_literal("hello\\nworld\\u0021");
-    assert_eq!(decoded, "hello\nworld!");
+fn source_discovery_uses_bounded_collection_pages_without_detail_fetches() {
+    let base_urls = vec!["https://store.example".to_string()];
+    let mut requested_urls = Vec::new();
+    let pages = [
+        discovery_response(
+            200,
+            &[
+                ("pla-basic", "PLA Basic"),
+                ("petg-hf", "PETG HF"),
+                ("abs", "ABS"),
+            ],
+        ),
+        discovery_response(200, &[]),
+    ];
+    let mut page_index = 0usize;
+
+    let result =
+        discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |url| {
+            requested_urls.push(url.to_string());
+            let response = pages
+                .get(page_index)
+                .cloned()
+                .ok_or_else(|| "unexpected request".to_string())?;
+            page_index += 1;
+            Ok(response)
+        })
+        .expect("complete discovery");
+
+    assert_eq!(
+        requested_urls,
+        [
+            "https://store.example/collections/filament/products.json?limit=250&page=1",
+            "https://store.example/collections/filament/products.json?limit=250&page=2",
+        ]
+    );
+    assert_eq!(result.detected_store, "https://store.example");
+    assert_eq!(result.detected_collection, "filament");
+    assert_eq!(result.products_discovered, 3);
+    assert_eq!(result.discovered_materials, ["ABS", "PETG", "PLA"]);
+    assert_eq!(result.detail_fetches, 0);
+    assert!(result.output.contains("Discovery quality: complete"));
 }
 
 #[test]
-fn extract_product_list_reads_product_list_array() {
-    let decoded = r#"{"productList":[{"name":"PLA Basic - Red","seoCode":"pla-basic-red","mediaFiles":["https://example.com/a.png"]}]}"#;
-    let entries = extract_product_list(decoded);
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].name, "PLA Basic - Red");
-    assert_eq!(entries[0].seo_code, "pla-basic-red");
+fn source_discovery_excludes_unknown_and_incompletely_decodable_channels() {
+    let base_urls = vec!["https://store.example".to_string()];
+    let pages = [
+        DiscoveryHttpResponse {
+            status: 200,
+            body: serde_json::json!({
+                "products": [
+                    {
+                        "handle": "abs",
+                        "title": "ABS",
+                        "options": [{"name": "Color"}],
+                        "variants": [{"id": 1, "option1": "Black"}]
+                    },
+                    {
+                        "handle": "pla-basic",
+                        "title": "PLA Basic",
+                        "options": [{"name": "Color"}],
+                        "variants": [{"id": 2, "option1": "Red"}]
+                    },
+                    {"handle": "pla-broken", "title": "PLA Broken"},
+                    {"handle": "hotend", "title": "Hotend Assembly - Stainless Steel"}
+                ]
+            })
+            .to_string(),
+        },
+        discovery_response(200, &[]),
+    ];
+    let mut page_index = 0usize;
+
+    let result = discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |_| {
+        let response = pages
+            .get(page_index)
+            .cloned()
+            .ok_or_else(|| "unexpected request".to_string())?;
+        page_index += 1;
+        Ok(response)
+    })
+    .expect("one fully decodable material remains");
+
+    assert_eq!(result.products_discovered, 4);
+    assert_eq!(result.discovered_materials, ["ABS"]);
 }
 
 #[test]
-fn extract_product_list_handles_utf8_prefix_content() {
-    let decoded = r#"🎉 header {"productList":[{"name":"ABS - Orange","seoCode":"abs-orange","mediaFiles":["https://example.com/b.png"]}]}"#;
-    let entries = extract_product_list(decoded);
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].name, "ABS - Orange");
+fn source_discovery_rejects_a_200_challenge_without_trying_another_store() {
+    let base_urls = vec![
+        "https://blocked.example".to_string(),
+        "https://unused.example".to_string(),
+    ];
+    let mut requests = 0usize;
+
+    let error = discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |_| {
+        requests += 1;
+        Ok(DiscoveryHttpResponse {
+            status: 200,
+            body: "<html><title>Just a moment...</title><div>cf-chl-widget</div></html>"
+                .to_string(),
+        })
+    })
+    .expect_err("challenge must be inconclusive");
+
+    assert_eq!(requests, 1);
+    assert!(error.contains("challenge page"));
+    assert!(error.contains("left unchanged"));
 }
 
 #[test]
-fn append_known_entries_for_product_url_reuses_cached_bambu_rows() {
-    let lookup = build_known_entry_lookup(vec![BambuKnownCatalogEntry {
-        entry: BambuCatalogEntry {
+fn source_discovery_rejects_duplicate_or_no_growth_pagination() {
+    let base_urls = vec!["https://store.example".to_string()];
+    let pages = [
+        discovery_response(200, &[("pla-basic", "PLA Basic")]),
+        discovery_response(200, &[("PLA-BASIC", "PLA Basic")]),
+    ];
+    let mut page_index = 0usize;
+
+    let error = discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |_| {
+        let response = pages
+            .get(page_index)
+            .cloned()
+            .ok_or_else(|| "unexpected request".to_string())?;
+        page_index += 1;
+        Ok(response)
+    })
+    .expect_err("duplicate pagination must be inconclusive");
+
+    assert!(error.contains("repeated product"));
+    assert!(error.contains("page 2"));
+}
+
+#[test]
+fn source_discovery_rejects_empty_and_unterminated_collections() {
+    let base_urls = vec!["https://store.example".to_string()];
+    let empty_error =
+        discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |_| {
+            Ok(discovery_response(200, &[]))
+        })
+        .expect_err("empty first page must be inconclusive");
+    assert!(empty_error.contains("empty collection"));
+
+    let mut request_count = 0usize;
+    let unterminated_error =
+        discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |_| {
+            request_count += 1;
+            let handle = format!("pla-{request_count}");
+            let body = serde_json::json!({
+                "products": [{"handle": handle, "title": "PLA Basic"}],
+            })
+            .to_string();
+            Ok(DiscoveryHttpResponse { status: 200, body })
+        })
+        .expect_err("unterminated pagination must be inconclusive");
+
+    assert_eq!(request_count, DISCOVERY_MAX_PAGES_PER_STORE);
+    assert!(unterminated_error.contains("page safety budget"));
+}
+
+#[test]
+fn source_discovery_can_move_to_one_available_store_within_the_global_budget() {
+    let base_urls = vec![
+        "https://missing.example".to_string(),
+        "https://working.example".to_string(),
+    ];
+    let mut requests = Vec::new();
+
+    let result =
+        discover_bambu_material_channels_with_fetch(&base_urls, "filament", false, |url| {
+            requests.push(url.to_string());
+            if url.starts_with("https://missing.example") {
+                return Ok(DiscoveryHttpResponse {
+                    status: 404,
+                    body: String::new(),
+                });
+            }
+            if url.ends_with("page=1") {
+                return Ok(discovery_response(200, &[("petg-hf", "PETG HF")]));
+            }
+            Ok(discovery_response(200, &[]))
+        })
+        .expect("second store should complete discovery");
+
+    assert_eq!(requests.len(), 3);
+    assert_eq!(result.detected_store, "https://working.example");
+    assert_eq!(result.discovered_materials, ["PETG"]);
+}
+
+#[test]
+fn targeted_refresh_requires_exactly_one_known_material_family() {
+    assert!(require_single_material_filter(None).is_err());
+    assert!(require_single_material_filter(Some(vec!["PLA".into(), "PETG".into()])).is_err());
+    assert!(require_single_material_filter(Some(vec!["Hotend".into()])).is_err());
+    assert_eq!(
+        require_single_material_filter(Some(vec![" pla ".into()])).expect("known material"),
+        "PLA"
+    );
+}
+
+#[test]
+fn targeted_refresh_reads_only_complete_collection_json_for_one_material() {
+    let source = DetectStoreResult {
+        base_url: "https://store.example".to_string(),
+        handle: "filament".to_string(),
+    };
+    let pages = [
+        discovery_response(200, &[("pla-basic", "PLA Basic"), ("petg-hf", "PETG HF")]),
+        discovery_response(200, &[]),
+    ];
+    let mut page_index = 0usize;
+    let mut requested_urls = Vec::new();
+
+    let snapshot =
+        refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |url| {
+            requested_urls.push(url.to_string());
+            let response = pages
+                .get(page_index)
+                .cloned()
+                .ok_or_else(|| "unexpected request".to_string())?;
+            page_index += 1;
+            Ok(response)
+        })
+        .expect("complete targeted refresh");
+
+    assert_eq!(
+        requested_urls,
+        [
+            "https://store.example/collections/filament/products.json?limit=250&page=1",
+            "https://store.example/collections/filament/products.json?limit=250&page=2",
+        ]
+    );
+    assert_eq!(snapshot.entries.len(), 1);
+    assert_eq!(snapshot.entries[0].material, "PLA");
+    assert_eq!(snapshot.discovered_materials, ["PETG", "PLA"]);
+    assert_eq!(snapshot.products_discovered, 2);
+    assert_eq!(snapshot.products_detailed, 0);
+    assert_eq!(snapshot.detail_fetches, 0);
+    assert_eq!(snapshot.reused_cached_products, 0);
+    assert!(!snapshot.partial);
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&snapshot).is_ok());
+}
+
+#[test]
+fn targeted_refresh_fails_closed_for_challenge_duplicate_and_incomplete_family() {
+    let source = DetectStoreResult {
+        base_url: "https://store.example".to_string(),
+        handle: "filament".to_string(),
+    };
+    let challenge =
+        refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |_| {
+            Ok(DiscoveryHttpResponse {
+                status: 200,
+                body: "<html><title>Just a moment...</title><div>captcha</div></html>".into(),
+            })
+        })
+        .expect_err("challenge must fail closed");
+    assert!(challenge.contains("challenge page"));
+
+    let duplicate_pages = [
+        discovery_response(200, &[("pla-basic", "PLA Basic")]),
+        discovery_response(200, &[("PLA-BASIC", "PLA Basic")]),
+    ];
+    let mut duplicate_page = 0usize;
+    let duplicate =
+        refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |_| {
+            let response = duplicate_pages[duplicate_page].clone();
+            duplicate_page += 1;
+            Ok(response)
+        })
+        .expect_err("duplicate pagination must fail closed");
+    assert!(duplicate.contains("repeated product"));
+
+    let incomplete_pages = [
+        DiscoveryHttpResponse {
+            status: 200,
+            body: serde_json::json!({
+                "products": [{"handle": "pla-broken", "title": "PLA Broken"}]
+            })
+            .to_string(),
+        },
+        discovery_response(200, &[]),
+    ];
+    let mut incomplete_page = 0usize;
+    let incomplete =
+        refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |_| {
+            let response = incomplete_pages[incomplete_page].clone();
+            incomplete_page += 1;
+            Ok(response)
+        })
+        .expect_err("incomplete selected family must fail closed");
+    assert!(incomplete.contains("could not completely decode"));
+}
+
+#[test]
+fn targeted_refresh_rejects_unterminated_collection_at_fixed_page_budget() {
+    let source = DetectStoreResult {
+        base_url: "https://store.example".to_string(),
+        handle: "filament".to_string(),
+    };
+    let mut request_count = 0usize;
+    let error =
+        refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, "PLA", false, |_| {
+            request_count += 1;
+            let handle = format!("pla-{request_count}");
+            Ok(discovery_response(200, &[(handle.as_str(), "PLA Basic")]))
+        })
+        .expect_err("unterminated collection must fail closed");
+
+    assert_eq!(request_count, TARGETED_REFRESH_MAX_PAGES);
+    assert!(error.contains("page safety budget"));
+}
+
+#[test]
+fn blocking_detection_and_user_agent_cover_catalog_contract() {
+    assert!(bambu_response_is_blocking(403, "{}"));
+    assert!(bambu_response_is_blocking(429, "{}"));
+    assert!(bambu_response_is_blocking(503, "{}"));
+    assert!(bambu_response_is_blocking(
+        200,
+        "<html>Verify you are human</html>"
+    ));
+    assert!(bambu_response_is_blocking(
+        200,
+        "<html>Access denied</html>"
+    ));
+    assert!(bambu_response_is_blocking(
+        200,
+        "<!doctype html><title>Store unavailable</title>"
+    ));
+    assert!(!bambu_response_is_blocking(200, r#"{"products":[]}"#));
+    assert_eq!(
+        USER_AGENT,
+        "BambuFilamentManager/0.28.0 (+local catalog maintenance)"
+    );
+}
+
+#[test]
+fn refresh_snapshot_mutation_guard_rejects_partial_blocked_and_empty_results() {
+    let complete = BambuCatalogRefreshSnapshot {
+        entries: vec![BambuCatalogEntry {
             material: "PLA".to_string(),
             filament_name: "PLA Basic".to_string(),
             color_name: "Red".to_string(),
             hex_color: Some("#ff0000".to_string()),
             image_url: None,
-            product_url: "https://store.bambulab.com/products/pla-basic-red?variant=1".to_string(),
+            product_url: "https://store.example/products/pla-basic".to_string(),
             default_weight_g: 1000,
-        },
-        last_seen_at: Some("2026-04-12 10:00:00".to_string()),
-    }]);
-    let mut entries = Vec::new();
-    assert!(append_known_entries_for_product_url(
-        "https://store.bambulab.com/products/pla-basic-red?variant=1",
-        &lookup,
-        None,
-        &mut entries,
-    ));
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].filament_name, "PLA Basic");
-}
+        }],
+        detected_store: "https://store.example".to_string(),
+        detected_collection: "filament".to_string(),
+        discovered_materials: vec!["PLA".to_string()],
+        warnings: Vec::new(),
+        anti_bot_blocks: 0,
+        products_discovered: 1,
+        products_detailed: 0,
+        reused_cached_products: 0,
+        detail_fetches: 0,
+        partial: false,
+    };
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&complete).is_ok());
 
-#[test]
-fn append_known_entries_for_product_url_skips_stale_bambu_rows() {
-    let lookup = build_known_entry_lookup(vec![BambuKnownCatalogEntry {
-        entry: BambuCatalogEntry {
-            material: "PLA".to_string(),
-            filament_name: "PLA Basic".to_string(),
-            color_name: "Red".to_string(),
-            hex_color: Some("#ff0000".to_string()),
-            image_url: None,
-            product_url: "https://store.bambulab.com/products/pla-basic-red".to_string(),
-            default_weight_g: 1000,
-        },
-        last_seen_at: Some("2026-03-01 10:00:00".to_string()),
-    }]);
-    let mut entries = Vec::new();
-    assert!(!append_known_entries_for_product_url(
-        "https://store.bambulab.com/products/pla-basic-red",
-        &lookup,
-        Some("2026-04-01 00:00:00"),
-        &mut entries,
-    ));
-    assert!(entries.is_empty());
+    let mut partial = complete.clone();
+    partial.partial = true;
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&partial).is_err());
+
+    let mut blocked = complete.clone();
+    blocked.anti_bot_blocks = 1;
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&blocked).is_err());
+
+    let mut legacy = complete.clone();
+    legacy.products_detailed = 1;
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&legacy).is_err());
+
+    let mut multiple_materials = complete.clone();
+    let mut petg = multiple_materials.entries[0].clone();
+    petg.material = "PETG".to_string();
+    multiple_materials.entries.push(petg);
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&multiple_materials).is_err());
+
+    let mut duplicate = complete.clone();
+    duplicate.entries.push(duplicate.entries[0].clone());
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&duplicate).is_err());
+
+    let mut empty = complete;
+    empty.entries.clear();
+    assert!(validate_bambu_refresh_snapshot_for_mutation(&empty).is_err());
 }

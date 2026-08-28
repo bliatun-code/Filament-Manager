@@ -4,9 +4,9 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const DEFAULT_BASE_URLS: [&str; 3] = [
     "https://us.store.bambulab.com",
@@ -15,16 +15,16 @@ const DEFAULT_BASE_URLS: [&str; 3] = [
 ];
 const DEFAULT_COLLECTION_HANDLE: &str = "bambu-lab-3d-printer-filament";
 const DEFAULT_WEIGHT_G: i64 = 1000;
-const USER_AGENT: &str = "BambuFilamentManager/1.0";
+const USER_AGENT: &str = "BambuFilamentManager/0.28.0 (+local catalog maintenance)";
 const REQUEST_TIMEOUT_SECS: u64 = 20;
-const MAX_FETCH_RETRIES: usize = 2;
-const PRODUCT_FETCH_RETRIES: usize = 1;
-const PRODUCT_REQUEST_DELAY_MS: u64 = 850;
-const PRODUCT_REQUEST_DELAY_JITTER_MS: u64 = 450;
-const PRODUCT_ANTIBOT_COOLDOWN_MS: u64 = 3500;
-const MAX_CONSECUTIVE_ANTIBOT: usize = 4;
-const MAX_DETECT_PROBES: usize = 3;
-const DETECT_RETRY_JITTER_MS: u64 = 250;
+const CATALOG_MIN_REQUEST_INTERVAL: Duration = Duration::from_secs(2);
+const CATALOG_BLOCK_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+const DISCOVERY_MAX_PAGES_PER_STORE: usize = 4;
+const DISCOVERY_MAX_REQUESTS: usize = 6;
+const DISCOVERY_PAGE_DELAY_MS: u64 = 350;
+const DISCOVERY_PAGE_DELAY_JITTER_MS: u64 = 250;
+const TARGETED_REFRESH_MAX_PAGES: usize = 4;
+const TARGETED_REFRESH_MAX_REQUESTS: usize = 4;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BambuCatalogEntry {
@@ -58,22 +58,43 @@ pub struct BambuCatalogRefreshSnapshot {
     pub partial: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct BambuCatalogSourceDiscovery {
+    pub detected_store: String,
+    pub detected_collection: String,
+    pub products_discovered: i64,
+    pub discovered_materials: Vec<String>,
+    pub detail_fetches: i64,
+    pub output: String,
+}
+
+#[derive(Clone, Debug)]
+struct DiscoveryHttpResponse {
+    status: u16,
+    body: String,
+}
+
+#[derive(Clone, Debug)]
+enum DiscoveryAttemptError {
+    Inconclusive(String),
+    Unavailable(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct DetectStoreResult {
     base_url: String,
     handle: String,
 }
 
-#[derive(Deserialize)]
-struct ShopifyCollectionsResponse {
-    collections: Option<Vec<ShopifyCollection>>,
+static LAST_DISCOVERED_SOURCE: OnceLock<Mutex<Option<DetectStoreResult>>> = OnceLock::new();
+
+#[derive(Debug, Default)]
+struct BambuCatalogRequestGate {
+    last_request_finished: Option<Instant>,
+    blocked_until: Option<Instant>,
 }
 
-#[derive(Deserialize)]
-struct ShopifyCollection {
-    handle: Option<String>,
-    title: Option<String>,
-}
+static BAMBU_CATALOG_REQUEST_GATE: OnceLock<Mutex<BambuCatalogRequestGate>> = OnceLock::new();
 
 #[derive(Clone, Deserialize)]
 struct ShopifyImage {
@@ -107,114 +128,572 @@ struct ShopifyProductsResponse {
     products: Option<Vec<ShopifyProduct>>,
 }
 
-#[derive(Clone)]
-struct ProductSummary {
-    name: String,
-    seo_code: String,
-    media_files: Vec<String>,
-}
-
-#[derive(Clone)]
-struct ColorOption {
-    color_name: String,
-    image_url: Option<String>,
-}
-
-#[derive(Clone)]
-struct ProductsPageResult {
-    products: Vec<ShopifyProduct>,
-    anti_bot_blocked: bool,
-    request_failed: bool,
-}
-
-struct FetchResult {
-    base_url: String,
-    products: Vec<ShopifyProduct>,
-    discovered_materials: Vec<String>,
-    products_discovered: i64,
-}
-
-struct NextStoreResult {
-    base_url: String,
-    entries: Vec<BambuCatalogEntry>,
-    discovered_materials: Vec<String>,
-    warnings: Vec<String>,
-    anti_bot_blocks: i64,
-    products_discovered: i64,
-    products_detailed: i64,
-    reused_cached_products: i64,
-    detail_fetches: i64,
-    partial: bool,
-}
-
 pub fn refresh_bambu_catalog_snapshot(
     material_filters: Option<Vec<String>>,
-    known_entries: Option<Vec<BambuKnownCatalogEntry>>,
-    stale_before: Option<&str>,
+    _known_entries: Option<Vec<BambuKnownCatalogEntry>>,
+    _stale_before: Option<&str>,
 ) -> Result<BambuCatalogRefreshSnapshot, String> {
     let client = build_client()?;
-    let filters = normalize_material_filters(material_filters);
-    let known_entries_by_product_url = build_known_entry_lookup(known_entries.unwrap_or_default());
-    let detected = detect_store(&client)?;
-
-    if let Some(result) =
-        fetch_all_products(&client, &detected.base_url, &detected.handle, &filters)?
-    {
-        let mut entries = Vec::new();
-        for product in &result.products {
-            entries.extend(extract_colors(product, &result.base_url));
+    let material = require_single_material_filter(material_filters)?;
+    let request_gate =
+        BAMBU_CATALOG_REQUEST_GATE.get_or_init(|| Mutex::new(BambuCatalogRequestGate::default()));
+    let mut request_gate = request_gate
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    ensure_bambu_catalog_gate_ready(&mut request_gate)?;
+    let source = match last_discovered_source() {
+        Some(source) => source,
+        None => {
+            let discovery = discover_bambu_catalog_source_with_client(&client, &mut request_gate)?;
+            DetectStoreResult {
+                base_url: discovery.detected_store,
+                handle: discovery.detected_collection,
+            }
         }
-        return Ok(BambuCatalogRefreshSnapshot {
-            entries: dedupe_entries(entries),
-            detected_store: result.base_url,
-            detected_collection: detected.handle,
-            discovered_materials: result.discovered_materials,
-            warnings: Vec::new(),
-            anti_bot_blocks: 0,
-            products_discovered: result.products_discovered,
-            products_detailed: 0,
-            reused_cached_products: 0,
-            detail_fetches: 0,
-            partial: false,
-        });
+    };
+
+    refresh_bambu_catalog_snapshot_from_source_with_fetch(&source, &material, false, |url| {
+        fetch_bambu_catalog_page_under_gate(&client, &mut request_gate, url)
+    })
+}
+
+fn source_cache() -> &'static Mutex<Option<DetectStoreResult>> {
+    LAST_DISCOVERED_SOURCE.get_or_init(|| Mutex::new(None))
+}
+
+fn remember_discovered_source(source: DetectStoreResult) {
+    let mut cached = source_cache()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    *cached = Some(source);
+}
+
+fn last_discovered_source() -> Option<DetectStoreResult> {
+    source_cache()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()
+}
+
+fn require_single_material_filter(material_filters: Option<Vec<String>>) -> Result<String, String> {
+    let filters = normalize_material_filters(material_filters);
+    if filters.len() != 1 {
+        return Err(
+            "Bambu refresh requires exactly one material family; catalog mutation was skipped."
+                .to_string(),
+        );
+    }
+    let material = filters
+        .into_iter()
+        .next()
+        .expect("one filter was validated");
+    if !is_known_bambu_material(&material) {
+        return Err(format!(
+            "Bambu refresh does not recognize material family {material}; catalog mutation was skipped."
+        ));
+    }
+    Ok(material)
+}
+
+fn refresh_bambu_catalog_snapshot_from_source_with_fetch<F>(
+    source: &DetectStoreResult,
+    material: &str,
+    pause_between_pages: bool,
+    mut fetch: F,
+) -> Result<BambuCatalogRefreshSnapshot, String>
+where
+    F: FnMut(&str) -> Result<DiscoveryHttpResponse, String>,
+{
+    let products =
+        fetch_complete_bambu_collection_with_fetch(source, pause_between_pages, &mut fetch)?;
+    let discovered_materials = usable_materials_from_products(&products, &source.base_url);
+    let selected_products: Vec<&ShopifyProduct> = products
+        .iter()
+        .filter(|product| infer_material(&product.title).eq_ignore_ascii_case(material))
+        .collect();
+    if selected_products.is_empty() {
+        return Err(format!(
+            "Bambu refresh found no products for selected material family {material}; catalog mutation was skipped."
+        ));
     }
 
-    if let Some(next_result) = fetch_next_store_entries(
-        &client,
-        &detected.base_url,
-        &detected.handle,
-        &filters,
-        &known_entries_by_product_url,
-        stale_before,
-    )? {
-        return Ok(BambuCatalogRefreshSnapshot {
-            entries: next_result.entries,
-            detected_store: next_result.base_url,
-            detected_collection: detected.handle,
-            discovered_materials: next_result.discovered_materials,
-            warnings: next_result.warnings,
-            anti_bot_blocks: next_result.anti_bot_blocks,
-            products_discovered: next_result.products_discovered,
-            products_detailed: next_result.products_detailed,
-            reused_cached_products: next_result.reused_cached_products,
-            detail_fetches: next_result.detail_fetches,
-            partial: next_result.partial,
-        });
+    let mut entries = Vec::new();
+    for product in selected_products {
+        let product_entries = extract_colors(product, &source.base_url);
+        if product_entries.is_empty() {
+            return Err(format!(
+                "Bambu refresh could not completely decode selected product '{}'; catalog mutation was skipped.",
+                product.handle
+            ));
+        }
+        entries.extend(product_entries);
+    }
+    let entries = ensure_unique_entries(entries)?;
+    if entries.is_empty() {
+        return Err(format!(
+            "Bambu refresh produced no entries for selected material family {material}; catalog mutation was skipped."
+        ));
     }
 
     Ok(BambuCatalogRefreshSnapshot {
-        entries: Vec::new(),
-        detected_store: detected.base_url,
-        detected_collection: detected.handle,
-        discovered_materials: Vec::new(),
-        warnings: vec!["No products found for any base URL.".to_string()],
+        entries,
+        detected_store: source.base_url.clone(),
+        detected_collection: source.handle.clone(),
+        discovered_materials,
+        warnings: Vec::new(),
         anti_bot_blocks: 0,
-        products_discovered: 0,
+        products_discovered: products.len() as i64,
         products_detailed: 0,
         reused_cached_products: 0,
         detail_fetches: 0,
-        partial: true,
+        partial: false,
     })
+}
+
+/// Discovers the material families currently exposed by the Bambu storefront.
+///
+/// This operation is intentionally read-only and bounded. It only reads the
+/// Shopify collection product listing, never opens individual product pages,
+/// and returns an error whenever the listing cannot be proven complete.
+pub fn discover_bambu_catalog_source() -> Result<BambuCatalogSourceDiscovery, String> {
+    let client = build_client()?;
+    let request_gate =
+        BAMBU_CATALOG_REQUEST_GATE.get_or_init(|| Mutex::new(BambuCatalogRequestGate::default()));
+    let mut request_gate = request_gate
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    ensure_bambu_catalog_gate_ready(&mut request_gate)?;
+    discover_bambu_catalog_source_with_client(&client, &mut request_gate)
+}
+
+fn discover_bambu_catalog_source_with_client(
+    client: &Client,
+    request_gate: &mut BambuCatalogRequestGate,
+) -> Result<BambuCatalogSourceDiscovery, String> {
+    let collection_handle = env::var("BAMBU_COLLECTION")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| DEFAULT_COLLECTION_HANDLE.to_string());
+    let base_urls = discovery_base_urls();
+
+    let discovery = discover_bambu_material_channels_with_fetch(
+        &base_urls,
+        &collection_handle,
+        false,
+        |url| fetch_bambu_catalog_page_under_gate(client, request_gate, url),
+    )?;
+    remember_discovered_source(DetectStoreResult {
+        base_url: discovery.detected_store.clone(),
+        handle: discovery.detected_collection.clone(),
+    });
+    Ok(discovery)
+}
+
+fn fetch_complete_bambu_collection_with_fetch<F>(
+    source: &DetectStoreResult,
+    pause_between_pages: bool,
+    fetch: &mut F,
+) -> Result<Vec<ShopifyProduct>, String>
+where
+    F: FnMut(&str) -> Result<DiscoveryHttpResponse, String>,
+{
+    let mut products = Vec::new();
+    let mut seen_handles = HashSet::new();
+    for (request_index, page) in (1..=TARGETED_REFRESH_MAX_PAGES).enumerate() {
+        if request_index >= TARGETED_REFRESH_MAX_REQUESTS {
+            return Err(format!(
+                "Bambu refresh stopped after its {TARGETED_REFRESH_MAX_REQUESTS}-request safety budget; catalog mutation was skipped."
+            ));
+        }
+        if pause_between_pages && page > 1 {
+            sleep_with_jitter(DISCOVERY_PAGE_DELAY_MS, DISCOVERY_PAGE_DELAY_JITTER_MS);
+        }
+
+        let url = format!(
+            "{}/collections/{}/products.json?limit=250&page={page}",
+            source.base_url, source.handle
+        );
+        let response = fetch(&url).map_err(|error| {
+            format!(
+                "Bambu refresh lost its collection listing at page {page} ({error}); catalog mutation was skipped."
+            )
+        })?;
+        if body_looks_like_anti_bot_challenge(&response.body) {
+            return Err(
+                "Bambu refresh encountered a challenge page; catalog mutation was skipped."
+                    .to_string(),
+            );
+        }
+        if is_anti_bot_or_rate_limited(response.status) {
+            return Err(format!(
+                "Bambu refresh was blocked or rate-limited (HTTP {}); catalog mutation was skipped.",
+                response.status
+            ));
+        }
+        if !(200..300).contains(&response.status) {
+            return Err(format!(
+                "Bambu refresh received HTTP {} at collection page {page}; catalog mutation was skipped.",
+                response.status
+            ));
+        }
+
+        let parsed: ShopifyProductsResponse = serde_json::from_str(&response.body).map_err(|_| {
+            format!(
+                "Bambu refresh received invalid collection JSON at page {page}; catalog mutation was skipped."
+            )
+        })?;
+        let page_products = parsed.products.ok_or_else(|| {
+            format!(
+                "Bambu refresh response omitted the product list at page {page}; catalog mutation was skipped."
+            )
+        })?;
+        if page_products.is_empty() {
+            if page == 1 {
+                return Err(
+                    "Bambu refresh found an empty collection; catalog mutation was skipped."
+                        .to_string(),
+                );
+            }
+            return Ok(products);
+        }
+
+        for product in page_products {
+            let handle = product.handle.trim();
+            let title = product.title.trim();
+            if handle.is_empty() || title.is_empty() {
+                return Err(format!(
+                    "Bambu refresh received an invalid product summary at page {page}; catalog mutation was skipped."
+                ));
+            }
+            if !seen_handles.insert(handle.to_ascii_lowercase()) {
+                return Err(format!(
+                    "Bambu refresh pagination repeated product '{handle}' at page {page}; catalog mutation was skipped."
+                ));
+            }
+            products.push(product);
+        }
+    }
+
+    Err(format!(
+        "Bambu refresh did not reach the end of the collection within its {TARGETED_REFRESH_MAX_PAGES}-page safety budget; catalog mutation was skipped."
+    ))
+}
+
+/// Rejects snapshots that are unsafe to import. Callers can use this guard
+/// before any catalog mutation.
+pub fn validate_bambu_refresh_snapshot_for_mutation(
+    snapshot: &BambuCatalogRefreshSnapshot,
+) -> Result<(), String> {
+    if snapshot.partial {
+        return Err("Bambu refresh was partial; catalog mutation was skipped.".to_string());
+    }
+    if snapshot.anti_bot_blocks > 0 {
+        return Err(
+            "Bambu refresh encountered anti-bot or rate-limit responses; catalog mutation was skipped."
+                .to_string(),
+        );
+    }
+    if !snapshot.warnings.is_empty() {
+        return Err(
+            "Bambu refresh returned source warnings; catalog mutation was skipped.".to_string(),
+        );
+    }
+    if snapshot.products_discovered <= 0 || snapshot.entries.is_empty() {
+        return Err(
+            "Bambu refresh returned no usable products; catalog mutation was skipped.".to_string(),
+        );
+    }
+    if snapshot.products_detailed != 0
+        || snapshot.detail_fetches != 0
+        || snapshot.reused_cached_products != 0
+    {
+        return Err(
+            "Bambu refresh used a legacy detail or cached-product path; catalog mutation was skipped."
+                .to_string(),
+        );
+    }
+    let mut materials = HashSet::new();
+    let mut entry_keys = HashSet::new();
+    for entry in &snapshot.entries {
+        materials.insert(entry.material.trim().to_uppercase());
+        let key = format!(
+            "{}::{}::{}",
+            entry.material.trim().to_uppercase(),
+            entry.filament_name.trim().to_lowercase(),
+            entry.color_name.trim().to_lowercase()
+        );
+        if !entry_keys.insert(key) {
+            return Err(
+                "Bambu refresh returned duplicate catalog entries; catalog mutation was skipped."
+                    .to_string(),
+            );
+        }
+    }
+    if materials.len() != 1 || materials.contains("") {
+        return Err(
+            "Bambu refresh returned more than one material family; catalog mutation was skipped."
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn discovery_base_urls() -> Vec<String> {
+    let explicit_base = env::var("BAMBU_BASE_URL")
+        .ok()
+        .map(|value| normalize_base_url(&value))
+        .filter(|value| !value.is_empty());
+    if let Some(base_url) = explicit_base {
+        return vec![base_url];
+    }
+
+    DEFAULT_BASE_URLS
+        .iter()
+        .map(|value| normalize_base_url(value))
+        .collect()
+}
+
+fn ensure_bambu_catalog_gate_ready(gate: &mut BambuCatalogRequestGate) -> Result<(), String> {
+    let now = Instant::now();
+    if let Some(blocked_until) = gate.blocked_until {
+        if blocked_until > now {
+            let remaining = blocked_until
+                .saturating_duration_since(now)
+                .as_secs()
+                .max(1);
+            return Err(format!(
+                "Bambu catalog access is cooling down after a blocking response; try again in about {remaining} seconds. No request was sent."
+            ));
+        }
+        gate.blocked_until = None;
+    }
+    Ok(())
+}
+
+fn fetch_bambu_catalog_page_under_gate(
+    client: &Client,
+    gate: &mut BambuCatalogRequestGate,
+    url: &str,
+) -> Result<DiscoveryHttpResponse, String> {
+    ensure_bambu_catalog_gate_ready(gate)?;
+    if let Some(last_request_finished) = gate.last_request_finished {
+        let elapsed = last_request_finished.elapsed();
+        if elapsed < CATALOG_MIN_REQUEST_INTERVAL {
+            thread::sleep(CATALOG_MIN_REQUEST_INTERVAL - elapsed);
+        }
+    }
+
+    let response = match client
+        .get(url)
+        .header("Accept", "application/json")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .send()
+    {
+        Ok(response) => response,
+        Err(error) => {
+            gate.last_request_finished = Some(Instant::now());
+            return Err(format!("request failed without retry: {error}"));
+        }
+    };
+    let status = response.status().as_u16();
+    let body = match response.text() {
+        Ok(body) => body,
+        Err(error) => {
+            gate.last_request_finished = Some(Instant::now());
+            return Err(format!("response could not be read without retry: {error}"));
+        }
+    };
+    gate.last_request_finished = Some(Instant::now());
+    if bambu_response_is_blocking(status, &body) {
+        gate.blocked_until = Some(Instant::now() + CATALOG_BLOCK_COOLDOWN);
+    }
+    Ok(DiscoveryHttpResponse { status, body })
+}
+
+fn bambu_response_is_blocking(status: u16, body: &str) -> bool {
+    matches!(status, 403 | 429 | 503) || body_looks_like_anti_bot_challenge(body)
+}
+
+fn discover_bambu_material_channels_with_fetch<F>(
+    base_urls: &[String],
+    collection_handle: &str,
+    pause_between_pages: bool,
+    mut fetch: F,
+) -> Result<BambuCatalogSourceDiscovery, String>
+where
+    F: FnMut(&str) -> Result<DiscoveryHttpResponse, String>,
+{
+    if base_urls.is_empty() {
+        return Err("Bambu material discovery has no storefront candidates.".to_string());
+    }
+    if collection_handle.trim().is_empty() {
+        return Err("Bambu material discovery has no collection handle.".to_string());
+    }
+
+    let mut request_count = 0usize;
+    let mut unavailable_reasons = Vec::new();
+    for base_url in base_urls {
+        match discover_bambu_material_channels_from_store(
+            base_url,
+            collection_handle,
+            &mut request_count,
+            pause_between_pages,
+            &mut fetch,
+        ) {
+            Ok(snapshot) => return Ok(snapshot),
+            Err(DiscoveryAttemptError::Inconclusive(message)) => return Err(message),
+            Err(DiscoveryAttemptError::Unavailable(message)) => {
+                unavailable_reasons.push(message);
+            }
+        }
+    }
+
+    Err(format!(
+        "Bambu material discovery was inconclusive: no storefront returned a complete collection listing. {}",
+        unavailable_reasons.join(" ")
+    ))
+}
+
+fn discover_bambu_material_channels_from_store<F>(
+    base_url: &str,
+    collection_handle: &str,
+    request_count: &mut usize,
+    pause_between_pages: bool,
+    fetch: &mut F,
+) -> Result<BambuCatalogSourceDiscovery, DiscoveryAttemptError>
+where
+    F: FnMut(&str) -> Result<DiscoveryHttpResponse, String>,
+{
+    let mut seen_handles = HashSet::new();
+    let mut products_discovered: Vec<ShopifyProduct> = Vec::new();
+
+    for page in 1..=DISCOVERY_MAX_PAGES_PER_STORE {
+        if *request_count >= DISCOVERY_MAX_REQUESTS {
+            return Err(DiscoveryAttemptError::Inconclusive(format!(
+                "Bambu material discovery stopped after its {DISCOVERY_MAX_REQUESTS}-request safety budget. Previous channels were left unchanged."
+            )));
+        }
+        if pause_between_pages && page > 1 {
+            sleep_with_jitter(DISCOVERY_PAGE_DELAY_MS, DISCOVERY_PAGE_DELAY_JITTER_MS);
+        }
+
+        let url = format!(
+            "{base_url}/collections/{collection_handle}/products.json?limit=250&page={page}"
+        );
+        *request_count += 1;
+        let response = fetch(&url).map_err(|error| {
+            let message = format!("{base_url}: {error}");
+            if page == 1 {
+                DiscoveryAttemptError::Unavailable(message)
+            } else {
+                DiscoveryAttemptError::Inconclusive(format!(
+                    "Bambu material discovery lost pagination at page {page} ({message}). Previous channels were left unchanged."
+                ))
+            }
+        })?;
+
+        if body_looks_like_anti_bot_challenge(&response.body) {
+            return Err(DiscoveryAttemptError::Inconclusive(format!(
+                "Bambu material discovery encountered a challenge page at {base_url}. Previous channels were left unchanged."
+            )));
+        }
+        if is_anti_bot_or_rate_limited(response.status) {
+            return Err(DiscoveryAttemptError::Inconclusive(format!(
+                "Bambu material discovery was blocked or rate-limited at {base_url} (HTTP {}). Previous channels were left unchanged.",
+                response.status
+            )));
+        }
+        if !(200..300).contains(&response.status) {
+            let message = format!("{base_url}: HTTP {}", response.status);
+            if page == 1 {
+                return Err(DiscoveryAttemptError::Unavailable(message));
+            }
+            return Err(DiscoveryAttemptError::Inconclusive(format!(
+                "Bambu material discovery received an incomplete listing at page {page} ({message}). Previous channels were left unchanged."
+            )));
+        }
+
+        let parsed: ShopifyProductsResponse = serde_json::from_str(&response.body).map_err(|_| {
+            DiscoveryAttemptError::Inconclusive(format!(
+                "Bambu material discovery received invalid collection JSON from {base_url}. Previous channels were left unchanged."
+            ))
+        })?;
+        let products = parsed.products.ok_or_else(|| {
+            DiscoveryAttemptError::Inconclusive(format!(
+                "Bambu material discovery response from {base_url} omitted the product list. Previous channels were left unchanged."
+            ))
+        })?;
+
+        if products.is_empty() {
+            if page == 1 {
+                return Err(DiscoveryAttemptError::Inconclusive(format!(
+                    "Bambu material discovery found an empty collection at {base_url}. Previous channels were left unchanged."
+                )));
+            }
+            let discovered_materials =
+                usable_materials_from_products(&products_discovered, base_url);
+            if discovered_materials.is_empty() {
+                return Err(DiscoveryAttemptError::Inconclusive(format!(
+                    "Bambu material discovery could not infer material families at {base_url}. Previous channels were left unchanged."
+                )));
+            }
+            let output = format!(
+                "Detected store: {base_url}\nDetected collection: {collection_handle}\nProducts discovered: {}\nDetail fetches: 0\nDiscovered materials: {}\nDiscovery quality: complete\n",
+                seen_handles.len(),
+                discovered_materials.join(", ")
+            );
+            return Ok(BambuCatalogSourceDiscovery {
+                detected_store: base_url.to_string(),
+                detected_collection: collection_handle.to_string(),
+                products_discovered: seen_handles.len() as i64,
+                discovered_materials,
+                detail_fetches: 0,
+                output,
+            });
+        }
+
+        for product in products {
+            let handle = product.handle.trim();
+            let title = product.title.trim();
+            if handle.is_empty() || title.is_empty() {
+                return Err(DiscoveryAttemptError::Inconclusive(format!(
+                    "Bambu material discovery received an invalid product summary from {base_url}. Previous channels were left unchanged."
+                )));
+            }
+            if !seen_handles.insert(handle.to_ascii_lowercase()) {
+                return Err(DiscoveryAttemptError::Inconclusive(format!(
+                    "Bambu material discovery pagination repeated product '{handle}' at page {page}. Previous channels were left unchanged."
+                )));
+            }
+            products_discovered.push(product);
+        }
+    }
+
+    Err(DiscoveryAttemptError::Inconclusive(format!(
+        "Bambu material discovery did not reach the end of the collection within its {DISCOVERY_MAX_PAGES_PER_STORE}-page safety budget. Previous channels were left unchanged."
+    )))
+}
+
+fn body_looks_like_anti_bot_challenge(body: &str) -> bool {
+    let lowered = body.to_ascii_lowercase();
+    [
+        "attention required",
+        "access denied",
+        "captcha",
+        "cf-chl-",
+        "cf-mitigated",
+        "challenge-platform",
+        "cloudflare",
+        "just a moment",
+        "rate limit",
+        "too many requests",
+        "verify you are human",
+        "<!doctype html",
+        "<html",
+    ]
+    .iter()
+    .any(|signal| lowered.contains(signal))
 }
 
 fn build_client() -> Result<Client, String> {
@@ -238,216 +717,8 @@ fn sleep_with_jitter(base_ms: u64, jitter_ms: u64) {
     thread::sleep(Duration::from_millis(base_ms.saturating_add(jitter)));
 }
 
-fn fetch_text_with_status(
-    client: &Client,
-    url: &str,
-    accept: &str,
-    retries: usize,
-    backoff_base_ms: u64,
-    backoff_cap_ms: u64,
-    jitter_ms: u64,
-) -> Option<(u16, String)> {
-    for attempt in 0..=retries {
-        let response = client
-            .get(url)
-            .header("Accept", accept)
-            .header("Accept-Language", "en-US,en;q=0.9")
-            .send();
-
-        match response {
-            Ok(response) => {
-                let status = response.status().as_u16();
-                let body = response.text().unwrap_or_default();
-                if (status == 429 || status >= 500) && attempt < retries {
-                    let base = if status == 429 {
-                        backoff_base_ms.max(1_800)
-                    } else {
-                        backoff_base_ms.max(700)
-                    };
-                    let wait_ms = (base.saturating_mul((attempt + 1) as u64)).min(backoff_cap_ms);
-                    sleep_with_jitter(wait_ms, jitter_ms.max(DETECT_RETRY_JITTER_MS));
-                    continue;
-                }
-                return Some((status, body));
-            }
-            Err(_) => {
-                if attempt < retries {
-                    let wait_ms =
-                        (backoff_base_ms.saturating_mul((attempt + 1) as u64)).min(backoff_cap_ms);
-                    sleep_with_jitter(wait_ms, jitter_ms.max(DETECT_RETRY_JITTER_MS));
-                    continue;
-                }
-                return None;
-            }
-        }
-    }
-
-    None
-}
-
-fn fetch_json_collections(client: &Client, base_url: &str) -> Option<Vec<ShopifyCollection>> {
-    let url = format!("{base_url}/collections.json?limit=250");
-    let (status, body) = fetch_text_with_status(
-        client,
-        &url,
-        "application/json",
-        MAX_FETCH_RETRIES,
-        800,
-        12_000,
-        DETECT_RETRY_JITTER_MS,
-    )?;
-    if !(200..300).contains(&status) {
-        return None;
-    }
-    let parsed: ShopifyCollectionsResponse = serde_json::from_str(&body).ok()?;
-    parsed.collections
-}
-
-fn score_collection(handle: &str, title: &str) -> i32 {
-    let handle = handle.to_lowercase();
-    let title = title.to_lowercase();
-    let mut score = 0;
-    if handle.contains(DEFAULT_COLLECTION_HANDLE) {
-        score += 10;
-    }
-    if handle.contains("filament") {
-        score += 6;
-    }
-    if title.contains("filament") {
-        score += 4;
-    }
-    if handle.contains("bambu") {
-        score += 2;
-    }
-    if title.contains("bambu") {
-        score += 2;
-    }
-    if title.contains("spool") {
-        score += 1;
-    }
-    score
-}
-
 fn is_anti_bot_or_rate_limited(status: u16) -> bool {
     status == 429 || status == 403 || status == 503
-}
-
-fn probe_collection(client: &Client, base_url: &str, handle: &str) -> bool {
-    let url = format!("{base_url}/collections/{handle}/products.json?limit=1");
-    if let Some((status, body)) = fetch_text_with_status(
-        client,
-        &url,
-        "application/json",
-        MAX_FETCH_RETRIES,
-        800,
-        12_000,
-        DETECT_RETRY_JITTER_MS,
-    ) && (200..300).contains(&status)
-    {
-        if let Ok(parsed) = serde_json::from_str::<ShopifyProductsResponse>(&body) {
-            return parsed.products.is_some();
-        }
-        return false;
-    }
-
-    let html_url = format!("{base_url}/collections/{handle}");
-    if let Some((status, body)) = fetch_text_with_status(
-        client,
-        &html_url,
-        "text/html,application/json",
-        MAX_FETCH_RETRIES,
-        800,
-        12_000,
-        DETECT_RETRY_JITTER_MS,
-    ) && (200..300).contains(&status)
-    {
-        return body.contains("productList");
-    }
-
-    false
-}
-
-fn detect_store(client: &Client) -> Result<DetectStoreResult, String> {
-    let explicit_base = env::var("BAMBU_BASE_URL")
-        .ok()
-        .map(|value| normalize_base_url(&value));
-    let explicit_handle = env::var("BAMBU_COLLECTION").ok();
-
-    let mut base_urls: Vec<String> = Vec::new();
-    if let Some(base) = explicit_base.clone() {
-        base_urls.push(base);
-    }
-    for candidate in DEFAULT_BASE_URLS
-        .iter()
-        .map(|value| normalize_base_url(value))
-    {
-        if !base_urls.iter().any(|existing| existing == &candidate) {
-            base_urls.push(candidate);
-        }
-    }
-
-    for base_url in &base_urls {
-        if let Some(handle) = explicit_handle.as_deref()
-            && probe_collection(client, base_url, handle)
-        {
-            return Ok(DetectStoreResult {
-                base_url: base_url.clone(),
-                handle: handle.to_string(),
-            });
-        }
-
-        if let Some(collections) = fetch_json_collections(client, base_url) {
-            let mut scored: Vec<(String, i32)> = collections
-                .into_iter()
-                .filter_map(|collection| {
-                    let handle = collection.handle?;
-                    let title = collection.title.unwrap_or_default();
-                    let score = score_collection(&handle, &title);
-                    if score > 0 {
-                        Some((handle, score))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            scored.sort_by_key(|entry| std::cmp::Reverse(entry.1));
-
-            let mut candidate_handles: Vec<String> =
-                scored.into_iter().map(|entry| entry.0).collect();
-            candidate_handles.push(DEFAULT_COLLECTION_HANDLE.to_string());
-            candidate_handles.dedup();
-
-            for (index, handle) in candidate_handles.iter().enumerate() {
-                if index >= MAX_DETECT_PROBES {
-                    return Ok(DetectStoreResult {
-                        base_url: base_url.clone(),
-                        handle: handle.clone(),
-                    });
-                }
-                if probe_collection(client, base_url, handle) {
-                    return Ok(DetectStoreResult {
-                        base_url: base_url.clone(),
-                        handle: handle.clone(),
-                    });
-                }
-            }
-        }
-    }
-
-    let fallback_base = explicit_base
-        .or_else(|| {
-            base_urls
-                .iter()
-                .find(|url| url.contains("eu.store.bambulab.com"))
-                .cloned()
-        })
-        .or_else(|| base_urls.first().cloned())
-        .ok_or_else(|| "Could not determine Bambu store URL".to_string())?;
-
-    Ok(DetectStoreResult {
-        base_url: fallback_base,
-        handle: explicit_handle.unwrap_or_else(|| DEFAULT_COLLECTION_HANDLE.to_string()),
-    })
 }
 
 fn normalize_material_filters(material_filters: Option<Vec<String>>) -> Vec<String> {
@@ -462,17 +733,73 @@ fn normalize_material_filters(material_filters: Option<Vec<String>>) -> Vec<Stri
     values
 }
 
-fn matches_material_filter(material: &str, filters: &[String]) -> bool {
-    filters.is_empty()
-        || filters
-            .iter()
-            .any(|value| value == material.trim().to_uppercase().as_str())
+fn is_known_bambu_material(material: &str) -> bool {
+    bambu_material_families()
+        .iter()
+        .any(|family| family.material.eq_ignore_ascii_case(material.trim()))
 }
 
-fn discovered_materials_from_names<'a>(names: impl Iterator<Item = &'a str>) -> Vec<String> {
-    let mut materials: Vec<String> = names.map(infer_material).collect();
+/// Returns only material families whose complete set of collection summaries
+/// can be converted to catalog entries. This keeps accessories, unknown titles,
+/// and partially described products from becoming permanently dead UI channels.
+fn usable_materials_from_products(products: &[ShopifyProduct], base_url: &str) -> Vec<String> {
+    #[derive(Default)]
+    struct MaterialQuality {
+        usable: bool,
+        entry_keys: HashSet<String>,
+    }
+
+    let mut quality_by_material: HashMap<String, MaterialQuality> = HashMap::new();
+    for product in products {
+        let material = infer_material(&product.title);
+        if !is_known_bambu_material(&material) {
+            continue;
+        }
+
+        let material_key = material.to_uppercase();
+        let quality = quality_by_material
+            .entry(material_key)
+            .or_insert_with(|| MaterialQuality {
+                usable: true,
+                entry_keys: HashSet::new(),
+            });
+        if !quality.usable {
+            continue;
+        }
+
+        let entries = extract_colors(product, base_url);
+        if entries.is_empty()
+            || entries
+                .iter()
+                .any(|entry| !entry.material.eq_ignore_ascii_case(&material))
+        {
+            quality.usable = false;
+            continue;
+        }
+        for entry in entries {
+            let key = format!(
+                "{}::{}::{}",
+                entry.material.trim().to_uppercase(),
+                entry.filament_name.trim().to_lowercase(),
+                entry.color_name.trim().to_lowercase()
+            );
+            if !quality.entry_keys.insert(key) {
+                quality.usable = false;
+                break;
+            }
+        }
+    }
+
+    let mut materials: Vec<String> = bambu_material_families()
+        .iter()
+        .filter(|family| {
+            quality_by_material
+                .get(&family.material.to_uppercase())
+                .is_some_and(|quality| quality.usable && !quality.entry_keys.is_empty())
+        })
+        .map(|family| family.material.clone())
+        .collect();
     materials.sort();
-    materials.dedup();
     materials
 }
 
@@ -795,669 +1122,25 @@ fn extract_colors(product: &ShopifyProduct, base_url: &str) -> Vec<BambuCatalogE
         .collect()
 }
 
-fn dedupe_entries(entries: Vec<BambuCatalogEntry>) -> Vec<BambuCatalogEntry> {
-    let mut unique: HashMap<String, BambuCatalogEntry> = HashMap::new();
-    for entry in entries {
+fn ensure_unique_entries(
+    entries: Vec<BambuCatalogEntry>,
+) -> Result<Vec<BambuCatalogEntry>, String> {
+    let mut seen = HashSet::new();
+    for entry in &entries {
         let key = format!(
             "{}::{}::{}",
-            entry.material, entry.filament_name, entry.color_name
+            entry.material.trim().to_uppercase(),
+            entry.filament_name.trim().to_lowercase(),
+            entry.color_name.trim().to_lowercase()
         );
-        unique.insert(key, entry);
-    }
-    unique.into_values().collect()
-}
-
-fn build_known_entry_lookup(
-    entries: Vec<BambuKnownCatalogEntry>,
-) -> HashMap<String, Vec<BambuKnownCatalogEntry>> {
-    let mut lookup = HashMap::new();
-    for entry in entries {
-        let key = normalize_catalog_product_url(&entry.entry.product_url);
-        if key.is_empty() {
-            continue;
-        }
-        lookup.entry(key).or_insert_with(Vec::new).push(entry);
-    }
-    lookup
-}
-
-fn append_known_entries_for_product_url(
-    product_url: &str,
-    known_entries_by_product_url: &HashMap<String, Vec<BambuKnownCatalogEntry>>,
-    stale_before: Option<&str>,
-    entries: &mut Vec<BambuCatalogEntry>,
-) -> bool {
-    let normalized = normalize_catalog_product_url(product_url);
-    let Some(known_entries) = known_entries_by_product_url.get(&normalized) else {
-        return false;
-    };
-    if known_entries
-        .iter()
-        .any(|known| is_known_entry_stale(known, stale_before))
-    {
-        return false;
-    }
-    let before = entries.len();
-    entries.extend(known_entries.iter().map(|known| known.entry.clone()));
-    entries.len() > before
-}
-
-fn is_known_entry_stale(entry: &BambuKnownCatalogEntry, stale_before: Option<&str>) -> bool {
-    match (entry.last_seen_at.as_deref(), stale_before) {
-        (Some(last_seen_at), Some(cutoff)) => last_seen_at < cutoff,
-        (None, Some(_)) => true,
-        _ => false,
-    }
-}
-
-fn normalize_catalog_product_url(url: &str) -> String {
-    let trimmed = url.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    match Url::parse(trimmed) {
-        Ok(mut parsed) => {
-            parsed.set_fragment(None);
-            parsed.to_string()
-        }
-        Err(_) => trimmed.to_string(),
-    }
-}
-
-fn fetch_products_page(
-    client: &Client,
-    base_url: &str,
-    collection_handle: &str,
-    page: usize,
-) -> ProductsPageResult {
-    let endpoints = [
-        format!("{base_url}/collections/{collection_handle}/products.json?limit=250&page={page}"),
-        format!("{base_url}/collections/{collection_handle}/products.json?limit=250"),
-    ];
-
-    let mut anti_bot_blocked = false;
-    let mut request_failed = false;
-
-    for endpoint in endpoints {
-        let response = fetch_text_with_status(
-            client,
-            &endpoint,
-            "application/json",
-            MAX_FETCH_RETRIES,
-            800,
-            12_000,
-            PRODUCT_REQUEST_DELAY_JITTER_MS,
-        );
-
-        let Some((status, body)) = response else {
-            request_failed = true;
-            continue;
-        };
-
-        if !(200..300).contains(&status) {
-            if is_anti_bot_or_rate_limited(status) {
-                anti_bot_blocked = true;
-            }
-            continue;
-        }
-
-        match serde_json::from_str::<ShopifyProductsResponse>(&body) {
-            Ok(parsed) => {
-                return ProductsPageResult {
-                    products: parsed.products.unwrap_or_default(),
-                    anti_bot_blocked,
-                    request_failed,
-                }
-            }
-            Err(_) => {
-                request_failed = true;
-            }
+        if !seen.insert(key) {
+            return Err(
+                "Bambu refresh returned duplicate catalog entries; catalog mutation was skipped."
+                    .to_string(),
+            );
         }
     }
-
-    ProductsPageResult {
-        products: Vec::new(),
-        anti_bot_blocked,
-        request_failed,
-    }
-}
-
-fn fetch_all_products(
-    client: &Client,
-    base_url: &str,
-    collection_handle: &str,
-    filters: &[String],
-) -> Result<Option<FetchResult>, String> {
-    let mut products = Vec::new();
-    let mut discovered_material_names = Vec::new();
-    let mut page = 1usize;
-    let mut has_page_failure_signals = false;
-
-    loop {
-        let page_result = fetch_products_page(client, base_url, collection_handle, page);
-        if page_result.products.is_empty() {
-            if page_result.request_failed || page_result.anti_bot_blocked {
-                has_page_failure_signals = true;
-            }
-            break;
-        }
-
-        for product in page_result.products {
-            discovered_material_names.push(product.title.clone());
-            if matches_material_filter(&infer_material(&product.title), filters) {
-                products.push(product);
-            }
-        }
-
-        page += 1;
-    }
-
-    if products.is_empty() {
-        return Ok(None);
-    }
-
-    if has_page_failure_signals {
-        return Ok(None);
-    }
-
-    Ok(Some(FetchResult {
-        base_url: base_url.to_string(),
-        products,
-        discovered_materials: discovered_materials_from_names(
-            discovered_material_names.iter().map(|name| name.as_str()),
-        ),
-        products_discovered: discovered_material_names.len() as i64,
-    }))
-}
-
-fn extract_raw_js_string(source: &str, start_index: usize) -> (String, usize) {
-    let bytes = source.as_bytes();
-    let mut i = start_index;
-    while i < bytes.len() {
-        if bytes[i] == b'"' {
-            let mut backslashes = 0usize;
-            let mut j = i;
-            while j > start_index && bytes[j - 1] == b'\\' {
-                backslashes += 1;
-                j -= 1;
-            }
-            if backslashes.is_multiple_of(2) {
-                return (source[start_index..i].to_string(), i);
-            }
-        }
-        i += 1;
-    }
-    (source[start_index..].to_string(), source.len())
-}
-
-fn decode_js_string_literal(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    let chars: Vec<char> = value.chars().collect();
-    let mut i = 0usize;
-
-    while i < chars.len() {
-        let ch = chars[i];
-        if ch != '\\' {
-            out.push(ch);
-            i += 1;
-            continue;
-        }
-
-        if i + 1 >= chars.len() {
-            out.push('\\');
-            break;
-        }
-
-        let next = chars[i + 1];
-        match next {
-            '\n' => {
-                i += 2;
-            }
-            '\r' => {
-                i += if i + 2 < chars.len() && chars[i + 2] == '\n' {
-                    3
-                } else {
-                    2
-                };
-            }
-            'n' => {
-                out.push('\n');
-                i += 2;
-            }
-            'r' => {
-                out.push('\r');
-                i += 2;
-            }
-            't' => {
-                out.push('\t');
-                i += 2;
-            }
-            'b' => {
-                out.push('\u{0008}');
-                i += 2;
-            }
-            'f' => {
-                out.push('\u{000C}');
-                i += 2;
-            }
-            'v' => {
-                out.push('\u{000B}');
-                i += 2;
-            }
-            '\\' | '"' | '\'' => {
-                out.push(next);
-                i += 2;
-            }
-            '0' => {
-                out.push('\0');
-                i += 2;
-            }
-            'x' => {
-                if i + 3 < chars.len() {
-                    let hex: String = chars[i + 2..=i + 3].iter().collect();
-                    if let Ok(code) = u8::from_str_radix(&hex, 16) {
-                        out.push(code as char);
-                        i += 4;
-                        continue;
-                    }
-                }
-                out.push('x');
-                i += 2;
-            }
-            'u' => {
-                if i + 2 < chars.len() && chars[i + 2] == '{' {
-                    let mut end = i + 3;
-                    while end < chars.len() && chars[end] != '}' {
-                        end += 1;
-                    }
-                    if end < chars.len() {
-                        let hex: String = chars[i + 3..end].iter().collect();
-                        if let Ok(code) = u32::from_str_radix(&hex, 16)
-                            && let Some(decoded) = char::from_u32(code)
-                        {
-                            out.push(decoded);
-                            i = end + 1;
-                            continue;
-                        }
-                    }
-                    out.push('u');
-                    i += 2;
-                } else if i + 5 < chars.len() {
-                    let hex: String = chars[i + 2..=i + 5].iter().collect();
-                    if let Ok(code) = u16::from_str_radix(&hex, 16)
-                        && let Some(decoded) = char::from_u32(code as u32)
-                    {
-                        out.push(decoded);
-                        i += 6;
-                        continue;
-                    }
-                    out.push('u');
-                    i += 2;
-                } else {
-                    out.push('u');
-                    i += 2;
-                }
-            }
-            _ => {
-                out.push(next);
-                i += 2;
-            }
-        }
-    }
-
-    out
-}
-
-fn extract_next_data_payload(html: &str) -> String {
-    let marker = "<script id=\"__NEXT_DATA__\" type=\"application/json\">";
-    let Some(start) = html.find(marker) else {
-        return String::new();
-    };
-    let json_start = start + marker.len();
-    let Some(end) = html[json_start..].find("</script>") else {
-        return String::new();
-    };
-    let raw = html[json_start..json_start + end].trim();
-    if raw.is_empty() {
-        return String::new();
-    }
-
-    serde_json::from_str::<serde_json::Value>(raw)
-        .ok()
-        .and_then(|value| serde_json::to_string(&value).ok())
-        .unwrap_or_else(|| raw.to_string())
-}
-
-fn decode_next_payload(html: &str) -> String {
-    let marker = "self.__next_f.push([1,\"";
-    let mut index = 0usize;
-    let mut parts: Vec<String> = Vec::new();
-
-    while let Some(start_rel) = html[index..].find(marker) {
-        let start = index + start_rel + marker.len();
-        let (raw, end_index) = extract_raw_js_string(html, start);
-        parts.push(decode_js_string_literal(&raw));
-        index = end_index.saturating_add(1);
-    }
-
-    let mut combined = parts.join("");
-    if !combined.contains("\"productList\"") {
-        let next_data = extract_next_data_payload(html);
-        if !next_data.is_empty() {
-            combined.push_str(&next_data);
-        }
-    }
-
-    combined
-}
-
-fn find_matching_bracket_bytes(
-    text: &str,
-    start: usize,
-    open_char: u8,
-    close_char: u8,
-) -> Option<usize> {
-    let bytes = text.as_bytes();
-    if start >= bytes.len() {
-        return None;
-    }
-
-    let mut level = 0i32;
-    let mut in_string = false;
-    let mut escaped = false;
-
-    for (i, ch) in bytes.iter().enumerate().skip(start) {
-        if escaped {
-            escaped = false;
-            continue;
-        }
-        if *ch == b'\\' {
-            escaped = true;
-            continue;
-        }
-        if *ch == b'"' {
-            in_string = !in_string;
-            continue;
-        }
-        if in_string {
-            continue;
-        }
-        if *ch == open_char {
-            level += 1;
-        } else if *ch == close_char {
-            level -= 1;
-            if level == 0 {
-                return Some(i);
-            }
-        }
-    }
-
-    None
-}
-
-fn extract_product_list(decoded: &str) -> Vec<ProductSummary> {
-    let Some(index) = decoded.find("\"productList\"") else {
-        return Vec::new();
-    };
-    let Some(list_start_rel) = decoded[index..].find('[') else {
-        return Vec::new();
-    };
-    let list_start = index + list_start_rel;
-    let Some(list_end) = find_matching_bracket_bytes(decoded, list_start, b'[', b']') else {
-        return Vec::new();
-    };
-
-    let list_json = &decoded[list_start..=list_end];
-
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(list_json) else {
-        return Vec::new();
-    };
-
-    let Some(array) = value.as_array() else {
-        return Vec::new();
-    };
-
-    array
-        .iter()
-        .filter_map(|item| {
-            let name = item.get("name")?.as_str()?.to_string();
-            let seo_code = item.get("seoCode")?.as_str()?.to_string();
-            let media_files = item
-                .get("mediaFiles")
-                .and_then(|value| value.as_array())
-                .map(|values| {
-                    values
-                        .iter()
-                        .filter_map(|value| value.as_str().map(|entry| entry.to_string()))
-                        .collect::<Vec<String>>()
-                })
-                .unwrap_or_default();
-            Some(ProductSummary {
-                name,
-                seo_code,
-                media_files,
-            })
-        })
-        .collect()
-}
-
-fn extract_color_options(decoded: &str) -> Vec<ColorOption> {
-    let needle = "{\"propertyKey\":\"Color\"";
-    let mut index = 0usize;
-    let mut options: HashMap<String, Option<String>> = HashMap::new();
-
-    while let Some(start_rel) = decoded[index..].find(needle) {
-        let start = index + start_rel;
-        let Some(end) = find_matching_bracket_bytes(decoded, start, b'{', b'}') else {
-            break;
-        };
-        let obj_text = &decoded[start..=end];
-
-        if let Ok(value) = serde_json::from_str::<serde_json::Value>(obj_text)
-            && let Some(color_name_raw) =
-                value.get("propertyValue").and_then(|entry| entry.as_str())
-        {
-            let color_name = color_name_raw.trim();
-            if color_name.is_empty() {
-                index = end.saturating_add(1);
-                continue;
-            }
-            let image_url = value
-                .get("colorUrl")
-                .and_then(|entry| entry.as_str())
-                .map(|entry| entry.to_string());
-            options.insert(color_name.to_string(), image_url);
-        }
-
-        index = end.saturating_add(1);
-    }
-
-    options
-        .into_iter()
-        .map(|(color_name, image_url)| ColorOption {
-            color_name,
-            image_url,
-        })
-        .collect()
-}
-
-fn build_fallback_entry(product: &ProductSummary, base_url: &str) -> BambuCatalogEntry {
-    BambuCatalogEntry {
-        material: infer_material(&product.name),
-        filament_name: product.name.clone(),
-        color_name: "Standard".to_string(),
-        hex_color: resolve_bambu_hex(&product.name, "Standard"),
-        image_url: normalize_maybe_url(
-            product.media_files.first().map(|value| value.as_str()),
-            base_url,
-        ),
-        product_url: format!("{base_url}/products/{}", product.seo_code),
-        default_weight_g: DEFAULT_WEIGHT_G,
-    }
-}
-
-fn fetch_next_store_entries(
-    client: &Client,
-    base_url: &str,
-    collection_handle: &str,
-    filters: &[String],
-    known_entries_by_product_url: &HashMap<String, Vec<BambuKnownCatalogEntry>>,
-    stale_before: Option<&str>,
-) -> Result<Option<NextStoreResult>, String> {
-    let collection_url = format!("{base_url}/collections/{collection_handle}");
-    let Some((status, html)) = fetch_text_with_status(
-        client,
-        &collection_url,
-        "text/html,application/json",
-        MAX_FETCH_RETRIES,
-        800,
-        12_000,
-        PRODUCT_REQUEST_DELAY_JITTER_MS,
-    ) else {
-        return Ok(None);
-    };
-    if !(200..300).contains(&status) {
-        return Ok(None);
-    }
-
-    let decoded = decode_next_payload(&html);
-    let products = extract_product_list(&decoded);
-    if products.is_empty() {
-        return Ok(None);
-    }
-    let discovered_materials =
-        discovered_materials_from_names(products.iter().map(|product| product.name.as_str()));
-
-    let mut entries: Vec<BambuCatalogEntry> = Vec::new();
-    let mut warnings: HashSet<String> = HashSet::new();
-    let mut anti_bot_blocks = 0i64;
-    let mut products_detailed = 0i64;
-    let mut reused_cached_products = 0i64;
-    let mut detail_fetches = 0i64;
-    let mut stop_detailed_fetch = false;
-    let mut consecutive_anti_bot_blocks = 0usize;
-
-    for (index, product) in products.iter().enumerate() {
-        let material = infer_material(&product.name);
-        if !matches_material_filter(&material, filters) {
-            continue;
-        }
-
-        if index > 0 && PRODUCT_REQUEST_DELAY_MS > 0 {
-            sleep_with_jitter(PRODUCT_REQUEST_DELAY_MS, PRODUCT_REQUEST_DELAY_JITTER_MS);
-        }
-
-        if stop_detailed_fetch {
-            entries.push(build_fallback_entry(product, base_url));
-            continue;
-        }
-
-        let product_url = format!("{base_url}/products/{}", product.seo_code);
-        if append_known_entries_for_product_url(
-            &product_url,
-            known_entries_by_product_url,
-            stale_before,
-            &mut entries,
-        ) {
-            reused_cached_products += 1;
-            continue;
-        }
-        let product_response = fetch_text_with_status(
-            client,
-            &product_url,
-            "text/html,application/json",
-            PRODUCT_FETCH_RETRIES,
-            1800,
-            18_000,
-            PRODUCT_REQUEST_DELAY_JITTER_MS,
-        );
-
-        let Some((product_status, product_html)) = product_response else {
-            consecutive_anti_bot_blocks = 0;
-            warnings.insert("Some product detail pages could not be fetched.".to_string());
-            entries.push(build_fallback_entry(product, base_url));
-            continue;
-        };
-
-        if !(200..300).contains(&product_status) {
-            if is_anti_bot_or_rate_limited(product_status) {
-                anti_bot_blocks += 1;
-                consecutive_anti_bot_blocks += 1;
-                warnings.insert(
-                    "Product detail lookups hit anti-bot/rate-limit responses.".to_string(),
-                );
-                sleep_with_jitter(PRODUCT_ANTIBOT_COOLDOWN_MS, PRODUCT_REQUEST_DELAY_JITTER_MS);
-                if consecutive_anti_bot_blocks >= MAX_CONSECUTIVE_ANTIBOT {
-                    stop_detailed_fetch = true;
-                    warnings.insert(format!(
-                        "Stopped detailed product lookup early after {} consecutive anti-bot responses.",
-                        MAX_CONSECUTIVE_ANTIBOT
-                    ));
-                }
-            } else {
-                consecutive_anti_bot_blocks = 0;
-                warnings.insert("Some product detail pages could not be fetched.".to_string());
-            }
-            entries.push(build_fallback_entry(product, base_url));
-            continue;
-        }
-
-        products_detailed += 1;
-        detail_fetches += 1;
-        consecutive_anti_bot_blocks = 0;
-        let product_decoded = decode_next_payload(&product_html);
-        let colors = extract_color_options(&product_decoded);
-
-        if colors.is_empty() {
-            entries.push(BambuCatalogEntry {
-                material,
-                filament_name: product.name.clone(),
-                color_name: "Standard".to_string(),
-                hex_color: resolve_bambu_hex(&product.name, "Standard"),
-                image_url: normalize_maybe_url(
-                    product.media_files.first().map(|value| value.as_str()),
-                    base_url,
-                ),
-                product_url,
-                default_weight_g: DEFAULT_WEIGHT_G,
-            });
-            continue;
-        }
-
-        for color in colors {
-            entries.push(BambuCatalogEntry {
-                material: material.clone(),
-                filament_name: product.name.clone(),
-                color_name: color.color_name.clone(),
-                hex_color: resolve_bambu_hex(&product.name, &color.color_name),
-                image_url: normalize_maybe_url(
-                    color
-                        .image_url
-                        .as_deref()
-                        .or_else(|| product.media_files.first().map(|value| value.as_str())),
-                    base_url,
-                ),
-                product_url: product_url.clone(),
-                default_weight_g: DEFAULT_WEIGHT_G,
-            });
-        }
-    }
-
-    let warning_list: Vec<String> = warnings.into_iter().collect();
-    let partial = !warning_list.is_empty();
-
-    Ok(Some(NextStoreResult {
-        base_url: base_url.to_string(),
-        entries: dedupe_entries(entries),
-        discovered_materials,
-        warnings: warning_list,
-        anti_bot_blocks,
-        products_discovered: products.len() as i64,
-        products_detailed,
-        reused_cached_products,
-        detail_fetches,
-        partial,
-    }))
+    Ok(entries)
 }
 
 #[cfg(test)]

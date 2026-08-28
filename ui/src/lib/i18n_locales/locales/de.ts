@@ -2096,14 +2096,29 @@ export const deDictionary: DictionaryNode = {
       "Dieser Client zeigt den Host-Katalog. Farbmusterkorrekturen und Herstelleraktualisierungen werden auf dem Host gespeichert.",
     catalogRefreshTitle: "Herstellerkatalog aktualisieren",
     catalogRefreshHelp:
-      "Wähle Hersteller und Materialfamilien mit neuen Produkten. Eine vollständige Herstellerprüfung dauert länger und kann nicht gefundene Produkte als historisch markieren.",
+      "Ermittle die derzeit verfügbaren Materialtypen und aktualisiere anschließend jeweils einen Materialtyp. Die Ermittlung importiert nichts und ändert niemals den Lebenszyklusstatus.",
+    discoverCatalogMaterials: "Verfügbare Materialien ermitteln",
+    discoveringCatalogMaterials: "Verfügbare Materialien werden ermittelt",
+    availableCatalogMaterials: "Verfügbare Materialien",
+    catalogDiscoveryHelp:
+      "Prüft den Shop des Herstellers mit einer kleinen, schreibgeschützten Anfrage. Es wird nichts importiert und kein Lebenszyklusstatus im Katalog geändert.",
+    catalogDiscoveryEmpty:
+      "Es wurden noch keine Materialtypen ermittelt. Prüfe die Herstellerquelle, um die Liste zu erstellen.",
+    catalogDiscoverySuccess:
+      "{count} Materialtypen können aktualisiert werden.",
+    selectOneMaterial: "Wähle einen Materialtyp zum Aktualisieren aus.",
+    refreshSelectedMaterial: "{material} aktualisieren",
+    catalogAuditBambuFailed:
+      "Verfügbare Bambu-Materialien konnten nicht ermittelt werden. Die bisherige Liste wurde beibehalten.",
+    catalogAuditEsunFailed:
+      "Verfügbare eSUN-Materialien konnten nicht ermittelt werden. Die bisherige Liste wurde beibehalten.",
     catalogRefreshClientHostOnly:
       "Herstelleraktualisierungen werden an den Host gesendet. Dieser Client zeigt und bearbeitet weiterhin den gemeinsamen Host-Katalog.",
-    catalogAllTypes: "Vollständige Herstellerprüfung",
+    catalogAllTypes: "Materialien ermitteln",
     discoveredMaterials: "Gefundene Materialien",
     refreshCurrentVendor: "Aktuellen Herstellerkatalog aktualisieren",
-    runFullVendorAudit: "Vollständige Herstellerprüfung ausführen",
-    refreshSelectedMaterials: "Ausgewählte Materialien aktualisieren",
+    runFullVendorAudit: "Verfügbare Materialien ermitteln",
+    refreshSelectedMaterials: "Ausgewähltes Material aktualisieren",
     hideRefreshLog: "Aktualisierungsprotokoll ausblenden",
     swatchQuality: "Farbmusterqualität",
     swatchQualityHelp:

@@ -2334,14 +2334,29 @@ export const frDictionary: DictionaryNode = {
       "Ce client affiche le catalogue de l’hôte. Les corrections de couleurs et les actualisations des fabricants sont enregistrées sur l’hôte.",
     catalogRefreshTitle: "Mises à jour des catalogues fabricants",
     catalogRefreshHelp:
-      "Choisissez un fabricant et actualisez uniquement les familles de matériaux qui nécessitent de nouveaux produits. Un audit complet est plus lent et peut classer les produits non retrouvés comme historiques.",
+      "Détectez les types de matériaux actuellement disponibles, puis actualisez un seul type à la fois. La détection n’importe rien et ne modifie jamais l’état du cycle de vie.",
+    discoverCatalogMaterials: "Détecter les matériaux disponibles",
+    discoveringCatalogMaterials: "Recherche des matériaux disponibles",
+    availableCatalogMaterials: "Matériaux disponibles",
+    catalogDiscoveryHelp:
+      "Interroge la boutique du fabricant avec une petite requête en lecture seule. Rien n’est importé et l’état du cycle de vie du catalogue n’est pas modifié.",
+    catalogDiscoveryEmpty:
+      "Aucun type de matériau n’a encore été détecté. Vérifiez la source du fabricant pour créer la liste.",
+    catalogDiscoverySuccess:
+      "{count} types de matériaux peuvent être actualisés.",
+    selectOneMaterial: "Sélectionnez un type de matériau à actualiser.",
+    refreshSelectedMaterial: "Actualiser {material}",
+    catalogAuditBambuFailed:
+      "Impossible de détecter les matériaux Bambu disponibles. La liste précédente a été conservée.",
+    catalogAuditEsunFailed:
+      "Impossible de détecter les matériaux eSUN disponibles. La liste précédente a été conservée.",
     catalogRefreshClientHostOnly:
       "Les mises à jour des fabricants sont envoyées à l’hôte. Ce client continue d’afficher et de modifier le catalogue partagé de l’hôte.",
-    catalogAllTypes: "Audit complet du fabricant",
+    catalogAllTypes: "Détecter les matériaux",
     discoveredMaterials: "Matériaux détectés",
     refreshCurrentVendor: "Actualiser le catalogue du fabricant actuel",
-    runFullVendorAudit: "Lancer l’audit complet du fabricant",
-    refreshSelectedMaterials: "Actualiser les matériaux sélectionnés",
+    runFullVendorAudit: "Détecter les matériaux disponibles",
+    refreshSelectedMaterials: "Actualiser le matériau sélectionné",
     hideRefreshLog: "Masquer le journal d’actualisation",
     swatchQuality: "Qualité des couleurs",
     swatchQualityHelp:

@@ -2336,14 +2336,29 @@ export const nbDictionary: DictionaryNode = {
         "Denne klienten viser vertens katalog. Swatch-rettelser og leverandøroppdateringer lagres på verten.",
       catalogRefreshTitle: "Oppdatering av leverandørkatalog",
       catalogRefreshHelp:
-        "Velg leverandør og oppdater bare materialfamiliene som trenger nye produkter. Full leverandøraudit er tregere og kan merke produkter som ikke sees som historiske.",
+        "Finn hvilke materialtyper som er tilgjengelige nå, og oppdater deretter én materialtype om gangen. Søket importerer ingenting og endrer aldri livssyklusstatus.",
+      discoverCatalogMaterials: "Finn tilgjengelige materialtyper",
+      discoveringCatalogMaterials: "Finner tilgjengelige materialtyper",
+      availableCatalogMaterials: "Tilgjengelige materialtyper",
+      catalogDiscoveryHelp:
+        "Kontrollerer leverandørens nettbutikk med en liten, skrivebeskyttet forespørsel. Ingenting importeres, og katalogens livssyklusstatus endres ikke.",
+      catalogDiscoveryEmpty:
+        "Ingen materialtyper er funnet ennå. Kontroller leverandørkilden for å opprette listen.",
+      catalogDiscoverySuccess:
+        "{count} materialtyper er tilgjengelige for oppdatering.",
+      selectOneMaterial: "Velg én materialtype som skal oppdateres.",
+      refreshSelectedMaterial: "Oppdater {material}",
+      catalogAuditBambuFailed:
+        "Kunne ikke finne tilgjengelige Bambu-materialer. Den forrige listen ble beholdt.",
+      catalogAuditEsunFailed:
+        "Kunne ikke finne tilgjengelige eSUN-materialer. Den forrige listen ble beholdt.",
       catalogRefreshClientHostOnly:
         "Leverandøroppdateringer sendes til verten. Denne klienten viser og redigerer fortsatt den delte vertskatalogen.",
-      catalogAllTypes: "Full leverandøraudit",
+      catalogAllTypes: "Finn materialtyper",
       discoveredMaterials: "Oppdagede materialer",
       refreshCurrentVendor: "Oppdater valgt leverandørkatalog",
-      runFullVendorAudit: "Kjør full leverandøraudit",
-      refreshSelectedMaterials: "Oppdater valgte materialtyper",
+      runFullVendorAudit: "Finn tilgjengelige materialtyper",
+      refreshSelectedMaterials: "Oppdater valgt materialtype",
       hideRefreshLog: "Skjul oppdateringslogg",
       swatchQuality: "Swatch-kvalitet",
       swatchQualityHelp:

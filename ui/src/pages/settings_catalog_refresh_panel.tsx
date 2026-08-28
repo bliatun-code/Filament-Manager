@@ -13,18 +13,21 @@ import {
   chipButtonClass,
   settingsActionButtonClass,
 } from "../lib/settings_ui_classes";
-import type { CatalogRefreshResult } from "../lib/tauri_client";
+import type {
+  CatalogRefreshResult,
+  CatalogSourceAuditResult,
+} from "../lib/tauri_client";
 import {
   settingsCatalogRefreshSummaryGridClass,
   type SettingsCatalogVendor,
 } from "./settings_catalog_model";
 
-type TranslateFn = (key: string, fallback: string) => string;
+type TranslateFn = ReturnType<typeof useI18n>["t"];
 
 type SettingsCatalogRefreshPanelProps = {
   activeCatalogMasterCount: number;
   activeCatalogMaterialOptions: string[];
-  activeCatalogRefreshMaterials: string[];
+  activeCatalogRefreshMaterial: string | null;
   busy: boolean;
   catalogCount: number;
   catalogRefreshBusy: boolean;
@@ -33,6 +36,7 @@ type SettingsCatalogRefreshPanelProps = {
   catalogRefreshPhase: string;
   catalogRefreshProgressMessage: string;
   catalogRefreshSummary: CatalogRefreshResult | null;
+  catalogSourceAuditSummary: CatalogSourceAuditResult | null;
   catalogRefreshVendor: SettingsCatalogVendor;
   catalogVendor: SettingsCatalogVendor;
   showCatalogRefreshLog: boolean;
@@ -40,17 +44,17 @@ type SettingsCatalogRefreshPanelProps = {
   swatchBusy: boolean;
   tauri: boolean;
   t: TranslateFn;
-  onClearCatalogRefreshMaterials: (vendor: SettingsCatalogVendor) => void;
+  onAuditVendorCatalog: (vendor: SettingsCatalogVendor) => void;
   onRefreshVendorCatalog: (vendor: SettingsCatalogVendor) => void;
   onSetCatalogVendor: (vendor: SettingsCatalogVendor) => void;
   onToggleCatalogRefreshLog: () => void;
-  onToggleCatalogRefreshMaterial: (vendor: SettingsCatalogVendor, material: string) => void;
+  onSelectCatalogRefreshMaterial: (vendor: SettingsCatalogVendor, material: string) => void;
 };
 
 export function SettingsCatalogRefreshPanel({
   activeCatalogMasterCount,
   activeCatalogMaterialOptions,
-  activeCatalogRefreshMaterials,
+  activeCatalogRefreshMaterial,
   busy,
   catalogCount,
   catalogRefreshBusy,
@@ -59,6 +63,7 @@ export function SettingsCatalogRefreshPanel({
   catalogRefreshPhase,
   catalogRefreshProgressMessage,
   catalogRefreshSummary,
+  catalogSourceAuditSummary,
   catalogRefreshVendor,
   catalogVendor,
   showCatalogRefreshLog,
@@ -66,28 +71,29 @@ export function SettingsCatalogRefreshPanel({
   swatchBusy,
   tauri,
   t,
-  onClearCatalogRefreshMaterials,
+  onAuditVendorCatalog,
   onRefreshVendorCatalog,
   onSetCatalogVendor,
   onToggleCatalogRefreshLog,
-  onToggleCatalogRefreshMaterial,
+  onSelectCatalogRefreshMaterial,
 }: SettingsCatalogRefreshPanelProps) {
   const { locale } = useI18n();
-  const refreshActionLabel =
-    activeCatalogRefreshMaterials.length === 0
-      ? t("settings.runFullVendorAudit", "Run full vendor audit")
-      : `${t("settings.refreshSelectedMaterials", "Refresh selected materials")} (${formatDisplayInteger(
-          activeCatalogRefreshMaterials.length,
-          locale,
-        )})`;
+  const refreshActionLabel = activeCatalogRefreshMaterial
+    ? t(
+        "settings.refreshSelectedMaterial",
+        "Refresh {material}",
+        { material: activeCatalogRefreshMaterial },
+      )
+    : t("settings.selectOneMaterial", "Select one material type");
+  const discovering = catalogRefreshBusy && catalogRefreshPhase === "DISCOVER";
 
   return (
     <SettingsSectionPanel className="mt-4">
       <SettingsSectionHeader
         eyebrow={t("settings.catalogRefreshTitle", "Vendor catalog updates")}
         description={t(
-          "settings.catalogRefreshHelp",
-          "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
+          "settings.catalogDiscoveryHelp",
+          "Check the store to update which material types can be fetched. This check does not download products or change the filament catalog.",
         )}
         status={
           <div className={inlineStatusSignalClass("neutral", "text-sm")}>
@@ -103,9 +109,8 @@ export function SettingsCatalogRefreshPanel({
               label={t("inventory.materialGroup", "Material")}
               value={activeCatalogMaterialOptions.length}
               hint={
-                activeCatalogRefreshMaterials.length > 0
-                  ? activeCatalogRefreshMaterials.join(", ")
-                  : t("settings.catalogAllTypes", "Full vendor audit")
+                activeCatalogRefreshMaterial ??
+                t("settings.selectOneMaterial", "Select one material type")
               }
             />
           </>
@@ -144,38 +149,62 @@ export function SettingsCatalogRefreshPanel({
 
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                {t("inventory.materialGroup", "Material")}
+                {t("settings.availableCatalogMaterials", "Available for refresh")}
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onClearCatalogRefreshMaterials(catalogVendor)}
-                  className={chipButtonClass(activeCatalogRefreshMaterials.length === 0)}
-                >
-                  {t("settings.catalogAllTypes", "Full vendor audit")}
-                </button>
                 {activeCatalogMaterialOptions.map((material) => (
                   <button
                     key={`${catalogVendor}-${material}`}
                     type="button"
-                    onClick={() => onToggleCatalogRefreshMaterial(catalogVendor, material)}
-                    className={chipButtonClass(activeCatalogRefreshMaterials.includes(material))}
+                    onClick={() => onSelectCatalogRefreshMaterial(catalogVendor, material)}
+                    className={chipButtonClass(activeCatalogRefreshMaterial === material)}
+                    aria-pressed={activeCatalogRefreshMaterial === material}
                   >
                     {material}
                   </button>
                 ))}
               </div>
+              {activeCatalogMaterialOptions.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                  {t(
+                    "settings.catalogDiscoveryEmpty",
+                    "No checked material types yet. Check the vendor source to create the list.",
+                  )}
+                </p>
+              ) : null}
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className={settingsActionButtonClass("accent")}
-              onClick={() => onRefreshVendorCatalog(catalogVendor)}
+              className={settingsActionButtonClass()}
+              onClick={() => onAuditVendorCatalog(catalogVendor)}
               disabled={!tauri || busy || swatchBusy || catalogRefreshBusy}
             >
-              {catalogRefreshBusy && catalogRefreshVendor === catalogVendor
+              {discovering && catalogRefreshVendor === catalogVendor
+                ? t(
+                    "settings.discoveringCatalogMaterials",
+                    "Finding available material types...",
+                  )
+                : t(
+                    "settings.discoverCatalogMaterials",
+                    "Find available material types",
+                  )}
+            </button>
+            <button
+              type="button"
+              className={settingsActionButtonClass("accent")}
+              onClick={() => onRefreshVendorCatalog(catalogVendor)}
+              disabled={
+                !tauri ||
+                busy ||
+                swatchBusy ||
+                catalogRefreshBusy ||
+                !activeCatalogRefreshMaterial
+              }
+            >
+              {catalogRefreshBusy && !discovering && catalogRefreshVendor === catalogVendor
                 ? t("wishlist.refreshing", "Refreshing")
                 : refreshActionLabel}
             </button>
@@ -276,6 +305,35 @@ export function SettingsCatalogRefreshPanel({
                 {catalogRefreshSummary.discovered_materials.join(", ")}
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {catalogSourceAuditSummary ? (
+          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 shadow-sm shadow-emerald-200/30 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-100 dark:shadow-none">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SettingsMetricTile
+                label={t("settings.discoveredMaterials", "Discovered materials")}
+                value={catalogSourceAuditSummary.discovered_materials.length}
+                className="border-emerald-200/80 bg-white/75 text-inherit dark:border-emerald-400/30 dark:bg-emerald-950/20"
+              />
+              <SettingsMetricTile
+                label={t("settings.detailFetches", "Detail fetches")}
+                value={catalogSourceAuditSummary.detail_fetches}
+                className="border-emerald-200/80 bg-white/75 text-inherit dark:border-emerald-400/30 dark:bg-emerald-950/20"
+              />
+            </div>
+            <div className="mt-3 text-xs text-emerald-800 dark:text-emerald-200">
+              {catalogSourceAuditSummary.detected_store}
+              {catalogSourceAuditSummary.detected_collection
+                ? ` / ${catalogSourceAuditSummary.detected_collection}`
+                : ""}
+            </div>
+            <div className="mt-2 text-xs text-emerald-800 dark:text-emerald-200">
+              <span className="font-semibold">
+                {t("settings.availableCatalogMaterials", "Available for refresh")}:
+              </span>{" "}
+              {catalogSourceAuditSummary.discovered_materials.join(", ")}
+            </div>
           </div>
         ) : null}
 

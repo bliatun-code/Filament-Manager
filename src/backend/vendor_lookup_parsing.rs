@@ -1,5 +1,27 @@
 use std::collections::HashSet;
 
+pub(super) const ESUN_OFFICIAL_MATERIAL_FAMILIES: &[&str] = &[
+    "TPU", "TPE", "PVA", "PLA", "PETG", "PET", "PEEK", "PEBA", "PC", "PA12", "PA", "HIPS", "ASA",
+    "ABS",
+];
+
+const ESUN_MATERIAL_MATCH_ORDER: &[&str] = &[
+    "PETG", "PEEK", "PEBA", "PA12", "HIPS", "TPU", "TPE", "PVA", "PLA", "PET", "ASA", "ABS", "PC",
+    "PA",
+];
+
+pub(super) fn normalize_material_filters(material_filters: Option<Vec<String>>) -> Vec<String> {
+    let mut values = material_filters
+        .unwrap_or_default()
+        .into_iter()
+        .map(|value| value.trim().to_ascii_uppercase())
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>();
+    values.sort();
+    values.dedup();
+    values
+}
+
 pub(super) fn find_matching_bracket(
     text: &str,
     start: usize,
@@ -63,16 +85,6 @@ pub(super) fn extract_attr_value(tag: &str, attr: &str) -> Option<String> {
     Some(tag[start..start + end].to_string())
 }
 
-pub(super) fn extract_tag_content(html: &str, tag: &str) -> Option<String> {
-    let open_token = format!("<{tag}");
-    let open_index = find_ascii_case_insensitive(html, &open_token)?;
-    let content_start = open_index + html[open_index..].find('>')? + 1;
-    let close_token = format!("</{tag}>");
-    let content_end =
-        content_start + find_ascii_case_insensitive(&html[content_start..], &close_token)?;
-    Some(html[content_start..content_end].to_string())
-}
-
 pub(super) fn find_ascii_case_insensitive(haystack: &str, needle: &str) -> Option<usize> {
     if needle.is_empty() || haystack.len() < needle.len() {
         return None;
@@ -121,34 +133,62 @@ pub(super) fn normalize_whitespace(value: &str) -> String {
 }
 
 pub(super) fn looks_like_filament(title_lower: &str) -> bool {
-    if title_lower.contains("swatch") || title_lower.contains("sample book") {
+    if title_lower.contains("swatch")
+        || title_lower.contains("sample book")
+        || title_lower.contains("resin")
+    {
         return false;
     }
     title_lower.contains("filament") || title_lower.contains("refilament")
 }
 
 pub(super) fn infer_material(title: &str) -> String {
-    let rules = [
-        ("PLA", "PLA"),
-        ("PETG", "PETG"),
-        ("ABS", "ABS"),
-        ("TPU", "TPU"),
-        ("ASA", "ASA"),
-        ("PA12", "PA12"),
-        ("PAHT", "PAHT"),
-        ("PA", "PA"),
-        ("PET", "PET"),
-        ("PC", "PC"),
-        ("PVA", "PVA"),
-        ("HIPS", "HIPS"),
-    ];
-    let upper = title.to_uppercase();
-    for (needle, material) in rules {
-        if upper.contains(needle) {
-            return material.to_string();
+    if is_esun_resin_product(title) {
+        return "UNKNOWN".to_string();
+    }
+
+    let upper = title.to_ascii_uppercase();
+    for token in upper.split(|ch: char| !ch.is_ascii_alphanumeric()) {
+        if token.is_empty() {
+            continue;
+        }
+        for material in ESUN_MATERIAL_MATCH_ORDER {
+            if token == *material
+                || token
+                    .strip_prefix('E')
+                    .is_some_and(|remainder| remainder == *material)
+            {
+                return (*material).to_string();
+            }
+        }
+
+        // eSUN groups these nylon product names under the official PA family.
+        if matches!(token, "PAHT" | "EPAHT" | "PA6" | "EPA6") {
+            return "PA".to_string();
         }
     }
     "UNKNOWN".to_string()
+}
+
+pub(super) fn is_esun_resin_product(title: &str) -> bool {
+    title.to_ascii_lowercase().contains("resin")
+}
+
+pub(super) fn is_supported_esun_material(material: &str) -> bool {
+    ESUN_OFFICIAL_MATERIAL_FAMILIES
+        .iter()
+        .any(|supported| supported.eq_ignore_ascii_case(material.trim()))
+}
+
+pub(super) fn sort_esun_material_families(mut materials: Vec<String>) -> Vec<String> {
+    materials.sort_by_key(|material| {
+        ESUN_OFFICIAL_MATERIAL_FAMILIES
+            .iter()
+            .position(|supported| supported.eq_ignore_ascii_case(material))
+            .unwrap_or(usize::MAX)
+    });
+    materials.dedup_by(|left, right| left.eq_ignore_ascii_case(right));
+    materials
 }
 
 pub(super) fn infer_filament_name(title: &str) -> String {
@@ -213,49 +253,6 @@ pub(super) fn normalize_esun_swatch_value(value: &str) -> Option<String> {
     normalize_hex(value).or_else(|| format_esun_swatch_colors(extract_css_hex_tokens(value)))
 }
 
-pub(super) fn extract_esun_swatch_color(value: &str) -> Option<String> {
-    let inline_colors = extract_inline_hex_colors(value);
-    if !inline_colors.is_empty() {
-        return format_esun_swatch_colors(inline_colors);
-    }
-    format_esun_swatch_colors(extract_class_hex_colors(value))
-}
-
-fn extract_inline_hex_colors(value: &str) -> Vec<String> {
-    let mut colors = Vec::new();
-    for marker in ["background-color:", "background:"] {
-        let mut cursor = 0usize;
-        while let Some(marker_index_rel) = value[cursor..].find(marker) {
-            let marker_index = cursor + marker_index_rel;
-            let rest = &value[marker_index + marker.len()..];
-            let fragment_end = rest
-                .find(['"', '\'', '<', '>'])
-                .unwrap_or(rest.len())
-                .min(160);
-            colors.extend(extract_css_hex_tokens(&rest[..fragment_end]));
-            cursor = marker_index + marker.len();
-        }
-    }
-    dedupe_hex_colors(colors)
-}
-
-fn extract_class_hex_colors(value: &str) -> Vec<String> {
-    let marker = "item-color-";
-    let mut colors = Vec::new();
-    let mut cursor = 0usize;
-    while let Some(marker_index_rel) = value[cursor..].find(marker) {
-        let start = cursor + marker_index_rel + marker.len();
-        let rest = &value[start..];
-        let fragment_end = rest
-            .find(['"', '\'', '<', '>', ' '])
-            .unwrap_or(rest.len())
-            .min(120);
-        colors.extend(extract_css_hex_tokens(&rest[..fragment_end]));
-        cursor = start;
-    }
-    dedupe_hex_colors(colors)
-}
-
 fn extract_css_hex_tokens(value: &str) -> Vec<String> {
     value
         .split(|ch: char| !(ch.is_ascii_hexdigit() || ch == '#'))
@@ -281,10 +278,6 @@ fn dedupe_hex_colors(colors: Vec<String>) -> Vec<String> {
         }
     }
     deduped
-}
-
-pub(super) fn is_esun_bundle_color_option(color_name: &str, block: &str) -> bool {
-    color_name.contains('+') || block.to_ascii_lowercase().contains("bundle-package")
 }
 
 pub(super) fn normalize_url(url: &str) -> String {

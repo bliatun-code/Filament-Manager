@@ -1,4 +1,5 @@
-use crate::catalog_commands::CatalogRefreshResult;
+use crate::catalog_commands::{CatalogRefreshResult, CatalogSourceAuditResult};
+use crate::companion_models::VENDOR_CATALOG_DISCOVERY_CAPABILITY;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::{
     refresh_library_sync_printer_cache, refresh_library_sync_spool_cache,
@@ -12,10 +13,10 @@ use crate::library_sync_host_client::{
 };
 use crate::library_sync_models::{
     LibrarySyncAcceptBambuLiveWeightEstimateInput, LibrarySyncAssignPrinterSlotInput,
-    LibrarySyncCreatePrinterInput, LibrarySyncDeleteBambuLiveIntegrationInput,
-    LibrarySyncDeletePrinterInput, LibrarySyncRecordPrintUsageInput,
-    LibrarySyncRefreshCatalogInput, LibrarySyncSaveBambuLiveIntegrationInput,
-    LibrarySyncUpdateMasterCatalogEntryInput,
+    LibrarySyncAuditCatalogInput, LibrarySyncCreatePrinterInput,
+    LibrarySyncDeleteBambuLiveIntegrationInput, LibrarySyncDeletePrinterInput,
+    LibrarySyncRecordPrintUsageInput, LibrarySyncRefreshCatalogInput,
+    LibrarySyncSaveBambuLiveIntegrationInput, LibrarySyncUpdateMasterCatalogEntryInput,
 };
 use crate::state::AppState;
 
@@ -301,18 +302,80 @@ fn refresh_library_sync_host_vendor_catalog_blocking(
         return Err("Vendor must be Bambu or eSUN.".to_string());
     }
 
+    let mut material_types: Vec<String> = input
+        .material_types
+        .unwrap_or_default()
+        .into_iter()
+        .map(|value| value.trim().to_uppercase())
+        .filter(|value| !value.is_empty())
+        .collect();
+    material_types.sort();
+    material_types.dedup();
+    if material_types.len() != 1 {
+        return Err("Choose exactly one material type for catalog refresh.".to_string());
+    }
+
     let summary = perform_library_sync_host_write_and_parse(
         state,
         &normalized_base_url,
         "/api/v1/catalog/refresh",
         &serde_json::json!({
             "vendor": vendor,
-            "material_types": input.material_types.unwrap_or_default(),
+            "material_types": material_types,
         }),
     )?;
 
     save_library_sync_success(state, &target, "Host catalog refreshed.", None)?;
     Ok(summary)
+}
+
+#[tauri::command]
+pub(crate) async fn audit_library_sync_host_vendor_catalog(
+    state: tauri::State<'_, AppState>,
+    input: LibrarySyncAuditCatalogInput,
+) -> Result<CatalogSourceAuditResult, String> {
+    let state = state.inner().clone();
+    run_library_sync_blocking(move || {
+        audit_library_sync_host_vendor_catalog_blocking(&state, input)
+    })
+    .await
+}
+
+fn audit_library_sync_host_vendor_catalog_blocking(
+    state: &AppState,
+    input: LibrarySyncAuditCatalogInput,
+) -> Result<CatalogSourceAuditResult, String> {
+    let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
+    let (normalized_base_url, health, target) =
+        prepare_library_sync_host_write(state, &host_input)?;
+    require_vendor_catalog_discovery_capability(&health.capabilities)?;
+
+    let vendor = input.vendor.trim();
+    if !vendor.eq_ignore_ascii_case("Bambu") && !vendor.eq_ignore_ascii_case("eSUN") {
+        return Err("Vendor must be Bambu or eSUN.".to_string());
+    }
+
+    let summary = perform_library_sync_host_write_and_parse(
+        state,
+        &normalized_base_url,
+        "/api/v1/catalog/audit",
+        &serde_json::json!({ "vendor": vendor }),
+    )?;
+    save_library_sync_success(state, &target, "Host catalog source checked.", None)?;
+    Ok(summary)
+}
+
+fn require_vendor_catalog_discovery_capability(capabilities: &[String]) -> Result<(), String> {
+    if capabilities
+        .iter()
+        .any(|capability| capability == VENDOR_CATALOG_DISCOVERY_CAPABILITY)
+    {
+        return Ok(());
+    }
+    Err(
+        "The Host must be updated before it can safely discover vendor catalog materials."
+            .to_string(),
+    )
 }
 
 #[tauri::command]
@@ -371,7 +434,9 @@ fn delete_library_sync_host_printer_blocking(
 mod tests {
     use super::{
         bambu_live_weight_estimate_accept_path, bambu_live_weight_estimate_accept_payload,
+        require_vendor_catalog_discovery_capability,
     };
+    use crate::companion_models::VENDOR_CATALOG_DISCOVERY_CAPABILITY;
 
     #[test]
     fn accepted_ams_weight_host_request_uses_companion_path_and_optimistic_snapshot_payload() {
@@ -391,5 +456,14 @@ mod tests {
                 "expected_current_grams": 1000,
             })
         );
+    }
+
+    #[test]
+    fn catalog_discovery_fails_closed_against_legacy_host() {
+        assert!(require_vendor_catalog_discovery_capability(&[]).is_err());
+        assert!(require_vendor_catalog_discovery_capability(&[
+            VENDOR_CATALOG_DISCOVERY_CAPABILITY.to_string()
+        ])
+        .is_ok());
     }
 }

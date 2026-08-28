@@ -1,5 +1,8 @@
 pub use super::database_backup_facade::BackupValidationStats;
-pub use super::database_catalog_inputs::{ManualMasterInput, MasterCatalogUpdateInput};
+pub use super::database_catalog_inputs::{
+    ManualMasterInput, MasterCatalogUpdateInput, SourceCatalogEntryInput,
+};
+pub use super::database_catalog_source::SourceCatalogImportStats;
 pub use super::database_core::FilamentDatabase;
 pub use super::database_import::ImportDataStats;
 pub use super::database_inventory_bulk_models::{

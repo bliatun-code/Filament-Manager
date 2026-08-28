@@ -110,12 +110,15 @@ test("settings catalog and maintenance panels use shared section chrome", () => 
   }
 });
 
-test("settings catalog uses an indeterminate progress signal and scoped refresh action", () => {
+test("settings catalog uses discovery before a single-material refresh", () => {
   assert.match(catalogRefreshPanelSource, /role="progressbar"/);
   assert.match(catalogRefreshPanelSource, /aria-label=\{catalogRefreshProgressMessage\}/);
   assert.doesNotMatch(catalogRefreshPanelSource, /w-2\/3 animate-pulse/);
-  assert.match(catalogRefreshPanelSource, /settings\.runFullVendorAudit/);
-  assert.match(catalogRefreshPanelSource, /settings\.refreshSelectedMaterials/);
+  assert.match(catalogRefreshPanelSource, /settings\.discoverCatalogMaterials/);
+  assert.match(catalogRefreshPanelSource, /settings\.refreshSelectedMaterial/);
+  assert.match(catalogRefreshPanelSource, /!activeCatalogRefreshMaterial/);
+  assert.doesNotMatch(catalogRefreshPanelSource, /settings\.runFullVendorAudit/);
+  assert.doesNotMatch(catalogRefreshPanelSource, /settings\.catalogAllTypes/);
 });
 
 test("settings swatch visual QA waits for data and scrolls a permanent target", () => {

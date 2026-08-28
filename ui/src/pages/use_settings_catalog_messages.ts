@@ -4,7 +4,24 @@ import type { useI18n } from "../lib/i18n";
 type SettingsTranslator = ReturnType<typeof useI18n>["t"];
 
 export function useSettingsCatalogMessages(t: SettingsTranslator) {
-  const settingsCatalogRefreshMessageLabels = useCallback(() => ({
+  const settingsCatalogRefreshMessageLabels = useCallback((params?: { count?: number }) => ({
+    auditBambuFailed: t(
+      "settings.catalogAuditBambuFailed",
+      "Could not check the Bambu store. The previous material list was kept.",
+    ),
+    auditEsunFailed: t(
+      "settings.catalogAuditEsunFailed",
+      "Could not check the eSUN store. The previous material list was kept.",
+    ),
+    catalogDiscoverySuccess: t(
+      "settings.catalogDiscoverySuccess",
+      "Found {count} material types. The filament catalog was not changed.",
+      { count: params?.count ?? 0 },
+    ),
+    discoveringCatalogMaterials: t(
+      "settings.discoveringCatalogMaterials",
+      "Finding available material types...",
+    ),
     refreshBambuFailed: t("wishlist.error.refreshBambu", "Catalog refresh failed."),
     refreshEsunFailed: t("wishlist.error.refreshEsun", "eSUN catalog refresh failed."),
     refreshPreparingBambu: t(

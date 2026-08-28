@@ -645,9 +645,11 @@ Filamentkatalog:
 
 - katalogoversikt
 - katalogoppdatering for Bambu og eSUN
-- separat leverandøraudit og oppdatering av valgte materialer
+- lett, skrivebeskyttet discovery som finner tilgjengelige materialtyper uten å importere noe
+- oppdatering av én valgt materialtype om gangen
+- ingen automatisk utgått- eller livssyklusmarkering fra discovery eller oppdatering
 - farge-/swatch-data
-- håndtering av katalogelementer som ikke lenger finnes i import
+- eldre og forhandler-tilgjengelige katalogelementer beholdes søkbare
 
 Programvedlikehold:
 
@@ -1077,7 +1079,7 @@ Programmet støtter:
 - eSUN-katalog
 - generisk/manuell registrering
 - swatch/fargedata
-- discontinued-markering når import ikke lenger finner gamle Bambu-elementer
+- bevaring av eldre katalogelementer uten automatisk utgått-markering
 
 Katalogelementer er maler. En fysisk rull er en egen lagerpost basert på en katalogmal eller manuell registrering.
 
@@ -1085,9 +1087,17 @@ Programmet leveres med en lokal seed-katalog for kjente filamenter. Den gjør at
 
 Katalogreparasjon gjenoppretter den innebygde seed-katalogen og fjerner bare ubrukte ikke-seedede katalograder. Ruller på lager, ønskelistekoblinger, utlån, printerdata, RFID, plasseringer og historikk skal bevares.
 
-Leverandøraudit kontrollerer hva Bambu- eller eSUN-kilden rapporterer nå.
-Oppdatering av valgte materialer bruker katalogendringene du velger. Dermed kan
-du vurdere leverandørendringer før lokal katalogmetadata erstattes.
+**Finn tilgjengelige materialtyper** gjør en liten, avgrenset og
+skrivebeskyttet kontroll av nettbutikken til Bambu eller eSUN. Kontrollen
+importerer ingen produkter og endrer verken katalogmetadata eller
+livssyklusstatus. Hvis kilden er blokkert, tom eller ufullstendig, beholdes den
+forrige listen over tilgjengelige materialtyper.
+
+Etter et vellykket søk velger du nøyaktig én materialtype og oppdaterer den.
+Større vedlikehold deles dermed i små, forsiktige forespørsler. Verken søket
+eller materialoppdateringen markerer automatisk produkter som utgått eller
+historiske; eldre produkter forblir søkbare for ruller som fortsatt finnes hos
+brukeren eller i forhandlerleddet.
 
 I Klient-modus ber desktop-appen om opptil 5 000 katalograder fra Verten i
 stedet for å avkorte listen ved 1 000. Valgfritt serversøk sendes videre til

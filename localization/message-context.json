@@ -221,6 +221,66 @@
     },
     {
       "surface": "desktop",
+      "key": "settings.discoverCatalogMaterials",
+      "meaning": "Button that performs a lightweight, read-only storefront discovery of available material types. It must not imply product import, a full vendor audit, or catalog lifecycle changes.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.discoveringCatalogMaterials",
+      "meaning": "Progress label while the lightweight, read-only material-type discovery is running.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.availableCatalogMaterials",
+      "meaning": "Heading for material types that the latest conclusive storefront discovery found available for a subsequent, separately selected refresh.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogDiscoveryHelp",
+      "meaning": "Explains that discovery uses a small, read-only storefront request, imports nothing, and changes no catalog lifecycle state.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogDiscoveryEmpty",
+      "meaning": "Empty state shown before this library has a successful material discovery. It invites the user to check the vendor source and does not describe a failed request.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogDiscoverySuccess",
+      "meaning": "Successful discovery summary. {count} is the number of available material types and must remain unchanged.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.selectOneMaterial",
+      "meaning": "Validation guidance requiring exactly one material type for a catalog refresh, keeping network traffic intentionally bounded.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.refreshSelectedMaterial",
+      "meaning": "Button that refreshes exactly one selected material type. {material} is a vendor material name and must remain unchanged.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogAuditBambuFailed",
+      "meaning": "Fail-closed Bambu storefront discovery error. No products or lifecycle states changed, and the previous available-material list was retained.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "settings.catalogAuditEsunFailed",
+      "meaning": "Fail-closed eSUN storefront discovery error. No products or lifecycle states changed, and the previous available-material list was retained.",
+      "screenshot": "docs/screenshots/settings-catalog.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "settings.companionTitle",
       "meaning": "Filament Manager's trusted-LAN browser interface. Companion is a product feature name, not a person.",
       "screenshot": "docs/screenshots/settings-library.jpg"

@@ -6,7 +6,7 @@ use crate::backend::inventory_engine::{
     UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput,
     WeightSource,
 };
-use crate::catalog_commands::CatalogRefreshResult;
+use crate::catalog_commands::{CatalogRefreshResult, CatalogSourceAuditResult};
 #[cfg(test)]
 use crate::companion_assets::companion_browser_assets;
 use crate::companion_assets::{cached_companion_browser_asset, COMPANION_BROWSER_HTML};
@@ -523,12 +523,54 @@ pub(super) async fn handle_refresh_vendor_catalog(
     }
 
     let material_types = payload.material_types;
+    let mut normalized_materials: Vec<String> = material_types
+        .unwrap_or_default()
+        .into_iter()
+        .map(|value| value.trim().to_uppercase())
+        .filter(|value| !value.is_empty())
+        .collect();
+    normalized_materials.sort();
+    normalized_materials.dedup();
+    if normalized_materials.len() != 1 {
+        return Err(CompanionApiError::BadRequest(
+            "exactly one material type is required for catalog refresh".to_string(),
+        ));
+    }
     let result = state
         .run_blocking("catalog refresh", move |state| {
             if vendor == "bambu" {
-                state.service.refresh_bambu_catalog(material_types)
+                state
+                    .service
+                    .refresh_bambu_catalog(Some(normalized_materials))
             } else {
-                state.service.refresh_esun_catalog(material_types)
+                state
+                    .service
+                    .refresh_esun_catalog(Some(normalized_materials))
+            }
+            .map_err(CompanionApiError::Internal)
+        })
+        .await?;
+
+    Ok(Json(result))
+}
+
+pub(super) async fn handle_audit_vendor_catalog(
+    State(state): State<CompanionApiState>,
+    Json(payload): Json<AuditVendorCatalogRequest>,
+) -> Result<Json<CatalogSourceAuditResult>, CompanionApiError> {
+    let vendor = payload.vendor.trim().to_ascii_lowercase();
+    if vendor != "bambu" && vendor != "esun" {
+        return Err(CompanionApiError::BadRequest(
+            "vendor must be Bambu or eSUN".to_string(),
+        ));
+    }
+
+    let result = state
+        .run_blocking("catalog source audit", move |state| {
+            if vendor == "bambu" {
+                state.service.audit_bambu_catalog_source()
+            } else {
+                state.service.audit_esun_catalog_source()
             }
             .map_err(CompanionApiError::Internal)
         })

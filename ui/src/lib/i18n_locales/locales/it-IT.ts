@@ -1364,11 +1364,26 @@ export const itITDictionary: DictionaryNode = {
     bambuLiveWaitingForStatusBurst:
       "Connesso, in attesa del prossimo burst di stato MQTT.",
     cachedReused: "Riutilizzato nella cache",
-    catalogAllTypes: "Audit completo del fornitore",
+    catalogAllTypes: "Trova materiali",
     catalogRefreshClientHostOnly:
       "Gli aggiornamenti del catalogo del fornitore vengono inviati a host. Questo client mostra e modifica ancora il catalogo host condiviso.",
     catalogRefreshHelp:
-      "Scegli il fornitore e aggiorna solo le famiglie di materiali che necessitano di nuovi prodotti. Una verifica completa del fornitore è più lenta e potrebbe contrassegnare prodotti mai visti come storici.",
+      "Trova i tipi di materiale attualmente disponibili, quindi aggiornane uno alla volta. La ricerca non importa nulla e non modifica mai lo stato del ciclo di vita.",
+    discoverCatalogMaterials: "Trova materiali disponibili",
+    discoveringCatalogMaterials: "Ricerca dei materiali disponibili",
+    availableCatalogMaterials: "Materiali disponibili",
+    catalogDiscoveryHelp:
+      "Controlla il negozio del fornitore con una piccola richiesta di sola lettura. Non importa nulla e non modifica lo stato del ciclo di vita del catalogo.",
+    catalogDiscoveryEmpty:
+      "Non è stato ancora trovato alcun tipo di materiale. Controlla la fonte del fornitore per creare l’elenco.",
+    catalogDiscoverySuccess:
+      "Sono disponibili {count} tipi di materiale da aggiornare.",
+    selectOneMaterial: "Seleziona un tipo di materiale da aggiornare.",
+    refreshSelectedMaterial: "Aggiorna {material}",
+    catalogAuditBambuFailed:
+      "Impossibile trovare i materiali Bambu disponibili. È stato mantenuto l’elenco precedente.",
+    catalogAuditEsunFailed:
+      "Impossibile trovare i materiali eSUN disponibili. È stato mantenuto l’elenco precedente.",
     catalogRefreshTitle: "Aggiornamenti del catalogo dei fornitori",
     catalogResetDone: "Riparazione del catalogo effettuata",
     catalogTabClientHelp:
@@ -1758,7 +1773,7 @@ export const itITDictionary: DictionaryNode = {
     reactivated: "riattivato",
     reconfigure: "Riconfigurare",
     refreshCurrentVendor: "Aggiorna il catalogo del fornitore corrente",
-    refreshSelectedMaterials: "Aggiorna i materiali selezionati",
+    refreshSelectedMaterials: "Aggiorna il materiale selezionato",
     remaining: "rimanente",
     removed: "RIMOSSO",
     removedPrinter: "Stampante rimossa",
@@ -1782,7 +1797,7 @@ export const itITDictionary: DictionaryNode = {
     resetHint:
       "Il ripristino dell'app cancella l'inventario, la cronologia delle statistiche, le assegnazioni delle stampanti, la lista dei desideri e i browser associati a LAN attendibili.",
     resetSectionTitle: "Riparazione e pulizia",
-    runFullVendorAudit: "Esegui un audit completo del fornitore",
+    runFullVendorAudit: "Trova materiali disponibili",
     saveReconfigure: "Salva modifiche",
     selectPrinterModel: "Seleziona il modello della stampante",
     showObservedDetails: "Mostra i dettagli osservati e acquisisci",

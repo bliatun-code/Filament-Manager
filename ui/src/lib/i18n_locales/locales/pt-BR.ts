@@ -1357,11 +1357,26 @@ export const ptBRDictionary: DictionaryNode = {
     bambuLiveWaitingForStatusBurst:
       "Conectado, aguardando a próxima explosão de status MQTT.",
     cachedReused: "Reutilizado em cache",
-    catalogAllTypes: "Auditoria completa do fornecedor",
+    catalogAllTypes: "Descobrir materiais",
     catalogRefreshClientHostOnly:
       "As atualizações do catálogo do fornecedor são enviadas para host. Este cliente ainda mostra e edita o catálogo host compartilhado.",
     catalogRefreshHelp:
-      "Escolha o fornecedor e atualize apenas as famílias de materiais que necessitam de novos produtos. Uma auditoria completa do fornecedor é mais lenta e pode marcar produtos não vistos como históricos.",
+      "Descubra os tipos de material disponíveis no momento e atualize um tipo por vez. A descoberta não importa nada nem altera o estado do ciclo de vida.",
+    discoverCatalogMaterials: "Descobrir materiais disponíveis",
+    discoveringCatalogMaterials: "Descobrindo materiais disponíveis",
+    availableCatalogMaterials: "Materiais disponíveis",
+    catalogDiscoveryHelp:
+      "Verifica a loja do fornecedor com uma pequena solicitação somente leitura. Não importa nada nem altera o estado do ciclo de vida do catálogo.",
+    catalogDiscoveryEmpty:
+      "Nenhum tipo de material foi descoberto ainda. Verifique a fonte do fornecedor para criar a lista.",
+    catalogDiscoverySuccess:
+      "Há {count} tipos de material disponíveis para atualização.",
+    selectOneMaterial: "Selecione um tipo de material para atualizar.",
+    refreshSelectedMaterial: "Atualizar {material}",
+    catalogAuditBambuFailed:
+      "Não foi possível descobrir os materiais Bambu disponíveis. A lista anterior foi mantida.",
+    catalogAuditEsunFailed:
+      "Não foi possível descobrir os materiais eSUN disponíveis. A lista anterior foi mantida.",
     catalogRefreshTitle: "Atualizações do catálogo do fornecedor",
     catalogResetDone: "Reparo de catálogo feito",
     catalogTabClientHelp:
@@ -1741,7 +1756,7 @@ export const ptBRDictionary: DictionaryNode = {
     reactivated: "reativado",
     reconfigure: "Reconfigurar",
     refreshCurrentVendor: "Atualizar catálogo de fornecedores atual",
-    refreshSelectedMaterials: "Atualizar materiais selecionados",
+    refreshSelectedMaterials: "Atualizar o material selecionado",
     remaining: "restante",
     removed: "Removido",
     removedPrinter: "Impressora removida",
@@ -1764,7 +1779,7 @@ export const ptBRDictionary: DictionaryNode = {
     resetHint:
       "A redefinição do aplicativo limpa inventário, histórico de estatísticas, atribuições de impressoras, lista de desejos e navegadores emparelhados com LAN confiável.",
     resetSectionTitle: "Reparação e limpeza",
-    runFullVendorAudit: "Execute uma auditoria completa do fornecedor",
+    runFullVendorAudit: "Descobrir materiais disponíveis",
     saveReconfigure: "Salvar alterações",
     selectPrinterModel: "Selecione o modelo da impressora",
     showObservedDetails: "Mostrar detalhes observados e captura",

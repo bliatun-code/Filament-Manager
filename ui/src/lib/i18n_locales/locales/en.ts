@@ -2322,14 +2322,29 @@ export const enDictionary: DictionaryNode = {
         "This client shows the host catalog. Swatch fixes and vendor catalog refreshes are saved on the host.",
       catalogRefreshTitle: "Vendor catalog updates",
       catalogRefreshHelp:
-        "Choose vendor and refresh only the material families that need new products. A full vendor audit is slower and may mark unseen products as historical.",
+        "Discover which material types are currently available, then refresh one material type at a time. Discovery imports nothing and never changes lifecycle status.",
+      discoverCatalogMaterials: "Discover available materials",
+      discoveringCatalogMaterials: "Discovering available materials",
+      availableCatalogMaterials: "Available materials",
+      catalogDiscoveryHelp:
+        "Checks the vendor storefront with a small, read-only request. It imports nothing and does not change catalog lifecycle status.",
+      catalogDiscoveryEmpty:
+        "No material types have been discovered yet. Check the vendor source to create the list.",
+      catalogDiscoverySuccess:
+        "{count} material types are available for refresh.",
+      selectOneMaterial: "Select one material type to refresh.",
+      refreshSelectedMaterial: "Refresh {material}",
+      catalogAuditBambuFailed:
+        "Could not discover available Bambu materials. The previous list was kept.",
+      catalogAuditEsunFailed:
+        "Could not discover available eSUN materials. The previous list was kept.",
       catalogRefreshClientHostOnly:
         "Vendor catalog updates are sent to the host. This client still shows and edits the shared host catalog.",
-      catalogAllTypes: "Full vendor audit",
+      catalogAllTypes: "Discover materials",
       discoveredMaterials: "Discovered materials",
       refreshCurrentVendor: "Refresh current vendor catalog",
-      runFullVendorAudit: "Run full vendor audit",
-      refreshSelectedMaterials: "Refresh selected materials",
+      runFullVendorAudit: "Discover available materials",
+      refreshSelectedMaterials: "Refresh selected material",
       hideRefreshLog: "Hide refresh log",
       swatchQuality: "Swatch quality",
       swatchQualityHelp:

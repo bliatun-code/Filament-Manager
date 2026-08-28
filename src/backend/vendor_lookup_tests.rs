@@ -1,225 +1,269 @@
-use std::collections::HashSet;
-
 use super::{
-    append_known_entries_for_product_url, build_known_entry_lookup, dedupe_site_listing_candidates,
-    esun_material_source_paths, esun_material_source_urls, extract_site_listing_candidates,
-    filter_product_urls_by_material_hints, infer_material, matches_listing_candidate_material,
-    normalize_esun_swatch_value, parse_esun_site_product_colors, EsunCatalogEntry,
-    EsunKnownCatalogEntry, EsunSiteListingCandidate, ESUN_FILTERED_DETAIL_FETCH_BUDGET,
+    build_esun_scoped_snapshot, build_esun_source_discovery, infer_material, is_anti_bot_response,
+    normalize_esun_swatch_value, parse_esun_graphql_catalog_response,
+    validate_esun_graphql_http_response, validate_single_esun_material_filter,
+    EsunGraphqlHttpError, ESUN_DISCOVERY_QUERY, ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION,
+    ESUN_MAGENTO_GRAPHQL_URL, ESUN_SCOPED_CATALOG_QUERY, ESUN_USER_AGENT,
 };
 
+const COMPLETE_MAGENTO_FIXTURE: &str = r##"
+{
+  "data": {
+    "categoryList": [
+      {
+        "url_key": "filaments",
+        "products": {
+          "total_count": 4,
+          "page_info": {
+            "current_page": 1,
+            "total_pages": 1,
+            "page_size": 200
+          },
+          "items": [
+            {
+              "__typename": "ConfigurableProduct",
+              "uid": "pla-uid",
+              "sku": "PLA-HS",
+              "name": "eSUN ePLA+HS Filament",
+              "url_key": "epla-hs-product",
+              "url_suffix": "",
+              "image": { "url": "https://www.esun3d.com/media/pla.jpg" },
+              "configurable_options": [
+                {
+                  "attribute_code": "color",
+                  "label": "Color",
+                  "values": [
+                    { "label": "White", "swatch_data": { "value": "#ffffff" } },
+                    { "label": "Black", "swatch_data": { "value": "#000000" } }
+                  ]
+                }
+              ]
+            },
+            {
+              "__typename": "SimpleProduct",
+              "uid": "petg-uid",
+              "sku": "PETG-HS",
+              "name": "eSUN ePETG+HS Filament",
+              "url_key": "epetg-hs-product",
+              "url_suffix": null,
+              "image": { "url": "https://www.esun3d.com/media/petg.jpg" },
+              "configurable_options": []
+            },
+            {
+              "__typename": "SimpleProduct",
+              "uid": "pa12-uid",
+              "sku": "PA12-CF",
+              "name": "eSUN ePA12-CF Filament",
+              "url_key": "epa12-cf-product",
+              "url_suffix": "",
+              "configurable_options": []
+            },
+            {
+              "__typename": "SimpleProduct",
+              "uid": "resin-uid",
+              "sku": "RESIN-ABS",
+              "name": "eSUN eResin ABS Pro",
+              "url_key": "eresin-abs-product",
+              "url_suffix": "",
+              "configurable_options": []
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+"##;
+
 #[test]
-fn esun_material_source_paths_map_core_materials_to_scoped_pages() {
+fn esun_graphql_operations_are_one_bounded_request_against_official_category() {
+    assert_eq!(ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION, 1);
+    assert_eq!(ESUN_MAGENTO_GRAPHQL_URL, "https://www.esun3d.com/graphql");
+    assert!(ESUN_USER_AGENT.starts_with("BambuFilamentManager/"));
+    assert!(!ESUN_USER_AGENT.contains("Mozilla"));
+    for query in [ESUN_DISCOVERY_QUERY, ESUN_SCOPED_CATALOG_QUERY] {
+        assert!(query.contains("categoryList"));
+        assert!(query.contains("url_key: { eq: \"filaments\" }"));
+        assert!(query.contains("pageSize: $pageSize"));
+        assert!(query.contains("currentPage: 1"));
+        assert!(query.contains("__typename"));
+    }
+}
+
+#[test]
+fn discovery_uses_complete_listing_without_fetching_details_or_resin() {
+    let products =
+        parse_esun_graphql_catalog_response(COMPLETE_MAGENTO_FIXTURE).expect("valid fixture");
+    let discovery = build_esun_source_discovery(&products).expect("discovery");
+
+    assert_eq!(discovery.products_discovered, 4);
+    assert_eq!(discovery.detail_fetches, 0);
     assert_eq!(
-        esun_material_source_paths("PLA"),
-        &["/general-materials/", "/aesthetic-materials/"]
+        discovery.discovered_materials,
+        vec!["PLA".to_string(), "PETG".to_string(), "PA12".to_string()]
     );
+    assert!(discovery.output.contains("one bounded request"));
+}
+
+#[test]
+fn scoped_refresh_filters_one_exact_material_and_reads_magento_swatches() {
+    let products =
+        parse_esun_graphql_catalog_response(COMPLETE_MAGENTO_FIXTURE).expect("valid fixture");
+    let snapshot = build_esun_scoped_snapshot(products, "PLA").expect("PLA snapshot");
+
+    assert_eq!(snapshot.handles_found, 1);
+    assert_eq!(snapshot.products_processed, 1);
+    assert_eq!(snapshot.detail_fetches, 0);
+    assert_eq!(snapshot.entries.len(), 2);
+    assert!(snapshot.entries.iter().all(|entry| entry.material == "PLA"));
+    assert_eq!(snapshot.entries[0].color_name, "White");
+    assert_eq!(snapshot.entries[0].hex_color.as_deref(), Some("#FFFFFF"));
     assert_eq!(
-        esun_material_source_paths("TPU"),
-        &["/flexibility-elasticity/"]
-    );
-    assert_eq!(
-        esun_material_source_paths("ABS"),
-        &["/engineering-materials/"]
+        snapshot.entries[0].product_url,
+        "https://www.esun3d.com/epla-hs-product"
     );
 }
 
 #[test]
-fn infer_material_covers_supported_esun_refresh_filters() {
-    assert_eq!(infer_material("eSUN PLA+ Filament"), "PLA");
-    assert_eq!(infer_material("eSUN ePA12-CF Filament"), "PA12");
-    assert_eq!(infer_material("eSUN PAHT-CF Filament"), "PAHT");
-    assert_eq!(infer_material("eSUN PVA Water Soluble Filament"), "PVA");
-    assert_eq!(infer_material("eSUN HIPS Filament"), "HIPS");
+fn scoped_refresh_requires_exactly_one_supported_material_before_network_work() {
+    assert!(validate_single_esun_material_filter(&[]).is_err());
+    assert!(
+        validate_single_esun_material_filter(&["PLA".to_string(), "PETG".to_string()]).is_err()
+    );
+    assert!(validate_single_esun_material_filter(&["PAHT".to_string()]).is_err());
+    assert_eq!(
+        validate_single_esun_material_filter(&["PEEK".to_string()]).expect("supported"),
+        "PEEK"
+    );
 }
 
 #[test]
-fn esun_material_source_urls_dedupes_shared_pages() {
-    let urls = esun_material_source_urls(&["PLA".to_string(), "PETG".to_string()]);
-    assert_eq!(
-        urls,
-        vec![
-            "https://www.esun3d.com/general-materials/".to_string(),
-            "https://www.esun3d.com/aesthetic-materials/".to_string(),
+fn graphql_parser_fails_closed_on_partial_or_empty_catalogs() {
+    let partial = r#"
+      {"data":{"categoryList":[{"url_key":"filaments","products":{
+        "total_count":2,
+        "page_info":{"current_page":1,"total_pages":1,"page_size":200},
+        "items":[{"uid":"one","sku":"ONE","name":"ePLA Filament","url_key":"epla-product","url_suffix":""}]
+      }}]}}
+    "#;
+    let empty = r#"
+      {"data":{"categoryList":[{"url_key":"filaments","products":{
+        "total_count":0,
+        "page_info":{"current_page":1,"total_pages":0,"page_size":200},
+        "items":[]
+      }}]}}
+    "#;
+
+    assert!(parse_esun_graphql_catalog_response(partial)
+        .expect_err("partial must fail")
+        .contains("partial catalog"));
+    assert!(parse_esun_graphql_catalog_response(empty)
+        .expect_err("empty must fail")
+        .contains("zero filament products"));
+}
+
+#[test]
+fn scoped_refresh_rejects_configurable_products_without_color_options() {
+    let response = r#"
+      {"data":{"categoryList":[{"url_key":"filaments","products":{
+        "total_count":1,
+        "page_info":{"current_page":1,"total_pages":1,"page_size":200},
+        "items":[{
+          "__typename":"ConfigurableProduct",
+          "uid":"pla-one",
+          "sku":"PLA-ONE",
+          "name":"eSUN ePLA Filament",
+          "url_key":"epla-one",
+          "url_suffix":"",
+          "configurable_options":[]
+        }]
+      }}]}}
+    "#;
+    let products = parse_esun_graphql_catalog_response(response).expect("complete listing");
+
+    let error = build_esun_scoped_snapshot(products, "PLA")
+        .expect_err("missing configurable colors must fail closed");
+    assert!(error.contains("omitted the color options"));
+}
+
+#[test]
+fn graphql_parser_rejects_duplicate_product_identities_and_urls() {
+    let duplicate = r#"
+      {"data":{"categoryList":[{"url_key":"filaments","products":{
+        "total_count":2,
+        "page_info":{"current_page":1,"total_pages":1,"page_size":200},
+        "items":[
+          {"__typename":"SimpleProduct","uid":"same","sku":"ONE","name":"ePLA Filament","url_key":"epla","url_suffix":""},
+          {"__typename":"SimpleProduct","uid":"same","sku":"TWO","name":"ePETG Filament","url_key":"epetg","url_suffix":""}
         ]
-    );
+      }}]}}
+    "#;
+
+    assert!(parse_esun_graphql_catalog_response(duplicate)
+        .expect_err("duplicate identity must fail")
+        .contains("duplicate product identities"));
 }
 
 #[test]
-fn filter_product_urls_by_material_hints_keeps_only_matching_material_candidates() {
-    let urls = vec![
-        "https://www.esun3d.com/pla-pro-product/".to_string(),
-        "https://www.esun3d.com/petg-product/".to_string(),
-        "https://www.esun3d.com/eabs-cf-product/".to_string(),
-        "https://www.esun3d.com/etpu-95a-product/".to_string(),
+fn graphql_parser_fails_closed_on_reported_errors() {
+    let response = r#"{
+      "errors":[{"message":"The request was rejected"}],
+      "data":null
+    }"#;
+
+    let error = parse_esun_graphql_catalog_response(response).expect_err("errors must fail");
+    assert!(error.contains("The request was rejected"));
+    assert!(error.contains("local catalog data stays unchanged"));
+}
+
+#[test]
+fn http_validation_treats_html_challenges_and_rate_limits_as_blocking() {
+    assert!(matches!(
+        validate_esun_graphql_http_response(
+            200,
+            "text/html; charset=utf-8",
+            "<!doctype html><title>Just a moment</title>"
+        ),
+        Err(EsunGraphqlHttpError::Blocked(_))
+    ));
+    assert!(matches!(
+        validate_esun_graphql_http_response(429, "application/json", "{}"),
+        Err(EsunGraphqlHttpError::Blocked(_))
+    ));
+    assert!(matches!(
+        validate_esun_graphql_http_response(503, "application/json", "{}"),
+        Err(EsunGraphqlHttpError::Blocked(_))
+    ));
+    assert!(validate_esun_graphql_http_response(200, "application/json", "{}").is_ok());
+    assert!(is_anti_bot_response(200, "<html>access denied</html>"));
+    assert!(is_anti_bot_response(200, "verify you are human"));
+    assert!(is_anti_bot_response(403, ""));
+}
+
+#[test]
+fn material_inference_covers_all_official_families_longest_first() {
+    let cases = [
+        ("eSUN eTPU-95A Filament", "TPU"),
+        ("eSUN TPE Filament", "TPE"),
+        ("eSUN PVA Water Soluble Support for PLA", "PVA"),
+        ("eSUN ePLA+HS Filament", "PLA"),
+        ("eSUN ePETG+HS Filament", "PETG"),
+        ("eSUN PET-CF Filament", "PET"),
+        ("eSUN ePEEK Filament", "PEEK"),
+        ("eSUN PEBA Filament", "PEBA"),
+        ("eSUN PC-ABS Filament", "PC"),
+        ("eSUN ePA12-CF Filament", "PA12"),
+        ("eSUN ePA-CF Filament", "PA"),
+        ("eSUN HIPS Filament", "HIPS"),
+        ("eSUN eASA Filament", "ASA"),
+        ("eSUN ABS+ Filament", "ABS"),
     ];
 
-    let filtered = filter_product_urls_by_material_hints(urls, &["ABS".to_string()]);
-    assert_eq!(
-        filtered,
-        vec!["https://www.esun3d.com/eabs-cf-product/".to_string()]
-    );
-}
-
-#[test]
-fn extract_site_listing_candidates_preserves_title_hints() {
-    let html = r#"
-        <a href="/pla-pro-product/"><span>PLA+</span></a>
-        <a href="/petg-product/" title="PETG">ignored</a>
-    "#;
-    let candidates = extract_site_listing_candidates(html);
-    assert_eq!(
-        candidates,
-        vec![
-            EsunSiteListingCandidate {
-                product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
-                title_hint: Some("PLA+".to_string()),
-            },
-            EsunSiteListingCandidate {
-                product_url: "https://www.esun3d.com/petg-product/".to_string(),
-                title_hint: Some("PETG".to_string()),
-            },
-        ]
-    );
-}
-
-#[test]
-fn dedupe_site_listing_candidates_keeps_best_title_hint() {
-    let deduped = dedupe_site_listing_candidates(vec![
-        EsunSiteListingCandidate {
-            product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
-            title_hint: Some("PLA".to_string()),
-        },
-        EsunSiteListingCandidate {
-            product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
-            title_hint: Some("PLA Pro Filament".to_string()),
-        },
-    ]);
-    assert_eq!(
-        deduped,
-        vec![EsunSiteListingCandidate {
-            product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
-            title_hint: Some("PLA Pro Filament".to_string()),
-        }]
-    );
-}
-
-#[test]
-fn matches_listing_candidate_material_uses_title_hint_before_detail() {
-    let candidate = EsunSiteListingCandidate {
-        product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
-        title_hint: Some("PLA+".to_string()),
-    };
-    assert!(matches_listing_candidate_material(
-        &candidate,
-        &["PLA".to_string()]
-    ));
-    assert!(!matches_listing_candidate_material(
-        &candidate,
-        &["ABS".to_string()]
-    ));
-}
-
-#[test]
-fn append_known_entries_for_product_url_reuses_cached_catalog_rows() {
-    let lookup = build_known_entry_lookup(vec![EsunKnownCatalogEntry {
-        entry: EsunCatalogEntry {
-            material: "PLA".to_string(),
-            filament_name: "PLA+".to_string(),
-            color_name: "White".to_string(),
-            hex_color: Some("#ffffff".to_string()),
-            image_url: None,
-            product_url: "https://www.esun3d.com/pla-pro-product/?utm=1".to_string(),
-            default_weight_g: 1000,
-        },
-        last_seen_at: Some("2026-04-12 10:00:00".to_string()),
-    }]);
-    let mut entries = Vec::new();
-    let mut keys = HashSet::new();
-    assert!(append_known_entries_for_product_url(
-        "https://www.esun3d.com/pla-pro-product/",
-        &lookup,
-        None,
-        &mut entries,
-        &mut keys,
-    ));
-    assert_eq!(entries.len(), 1);
-    assert_eq!(entries[0].filament_name, "PLA+");
-}
-
-#[test]
-fn append_known_entries_for_product_url_skips_stale_cache_rows() {
-    let lookup = build_known_entry_lookup(vec![EsunKnownCatalogEntry {
-        entry: EsunCatalogEntry {
-            material: "PLA".to_string(),
-            filament_name: "PLA+".to_string(),
-            color_name: "White".to_string(),
-            hex_color: Some("#ffffff".to_string()),
-            image_url: None,
-            product_url: "https://www.esun3d.com/pla-pro-product/".to_string(),
-            default_weight_g: 1000,
-        },
-        last_seen_at: Some("2026-03-01 10:00:00".to_string()),
-    }]);
-    let mut entries = Vec::new();
-    let mut keys = HashSet::new();
-    assert!(!append_known_entries_for_product_url(
-        "https://www.esun3d.com/pla-pro-product/",
-        &lookup,
-        Some("2026-04-01 00:00:00"),
-        &mut entries,
-        &mut keys,
-    ));
-    assert!(entries.is_empty());
-}
-
-#[test]
-fn filtered_detail_fetch_budget_is_small_and_explicit() {
-    assert_eq!(ESUN_FILTERED_DETAIL_FETCH_BUDGET, 18);
-}
-
-#[test]
-fn parse_esun_site_product_colors_preserves_magic_multi_color_swatches() {
-    let html = r##"
-        <label class="attr-color-item">
-          <p>GOLD PINK</p>
-          <a class="cloud-zoom-gallery item" href="https://cdnus.globalso.com/esun3d/PLA-Silk-Magic-GOLD-PINK.jpg">
-            <!--<span class="color-item-btn"><i class="item-btn-bg item-color-e68e5c;ec578e" style="background-color:#e68e5c;ec578e"></i></span>-->
-            <div class="color-columns">
-              <div style="background:#e68e5c;"></div>
-              <div style="background:#ec578e;"></div>
-            </div>
-          </a>
-        </label>
-    "##;
-
-    let colors = parse_esun_site_product_colors(html);
-
-    assert_eq!(colors.len(), 1);
-    assert_eq!(colors[0].color_name, "GOLD PINK");
-    assert_eq!(
-        colors[0].hex_color.as_deref(),
-        Some("multi(#E68E5C,#EC578E)")
-    );
-}
-
-#[test]
-fn parse_esun_site_product_colors_skips_magic_bundle_package_options() {
-    let html = r##"
-        <label class="attr-color-item">
-          <p>BLACK PURPLE+BLACK GOLD+BLACK GREEN+BLACK RED</p>
-          <a class="cloud-zoom-gallery item" href="https://cdnus.globalso.com/esun3d/PLA-silk-magic-Bundle-Package-BLACK-PURPLE+BLACK-GOLD+BLACK-GREEN+BLACK-RED-.jpg">
-            <div class="color-columns">
-              <div style="background:#361e40;"></div>
-              <div style="background:#552531;"></div>
-              <div style="background:#1a2e25;"></div>
-              <div style="background:#6c5e37;"></div>
-            </div>
-          </a>
-        </label>
-    "##;
-
-    assert!(parse_esun_site_product_colors(html).is_empty());
+    for (title, expected) in cases {
+        assert_eq!(infer_material(title), expected, "{title}");
+    }
+    assert_eq!(infer_material("eSUN eResin ABS Pro"), "UNKNOWN");
+    assert_eq!(infer_material("eSUN PAHT-CF Filament"), "PA");
 }
 
 #[test]

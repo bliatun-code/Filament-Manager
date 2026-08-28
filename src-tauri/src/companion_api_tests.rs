@@ -1718,6 +1718,12 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("filament-price-standards-v1") })));
+        assert!(host_health_json
+            .get("capabilities")
+            .and_then(|value| value.as_array())
+            .is_some_and(|values| values
+                .iter()
+                .any(|value| { value.as_str() == Some("vendor-catalog-discovery-v1") })));
 
         let removed_bootstrap_route = router
             .oneshot(
@@ -3130,6 +3136,51 @@ async fn companion_api_rejects_invalid_catalog_refresh_vendor() {
     let _ = std::fs::remove_file(&db_path);
     if let Err(error) = result {
         panic!("companion_api_rejects_invalid_catalog_refresh_vendor failed: {error}");
+    }
+}
+
+#[tokio::test]
+async fn companion_api_requires_exactly_one_catalog_refresh_material() {
+    let db_path = temp_db_path("catalog-refresh-one-material");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+            ..
+        } = pair_test_session(&router, &db_path).await?;
+
+        for body in [
+            r#"{"vendor":"Bambu","material_types":[]}"#,
+            r#"{"vendor":"eSUN","material_types":["PLA","PETG"]}"#,
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/v1/catalog/refresh")
+                        .header("content-type", "application/json")
+                        .header("host", "127.0.0.1:4278")
+                        .header("origin", "http://127.0.0.1:4278")
+                        .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                        .header(COMPANION_CSRF_HEADER, &csrf_token)
+                        .body(Body::from(body))
+                        .map_err(|error| error.to_string())?,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(error) = result {
+        panic!("companion_api_requires_exactly_one_catalog_refresh_material failed: {error}");
     }
 }
 

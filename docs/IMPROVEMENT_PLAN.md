@@ -5,7 +5,7 @@
 | Planstatus | Påbegynt |
 | Planperiode | 12 uker |
 | Oppstart | 2026-08-21 |
-| Sist oppdatert | 2026-08-26 |
+| Sist oppdatert | 2026-08-28 |
 | Eier | Prosjektteamet |
 
 ## Mål
@@ -165,6 +165,10 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 5-artifakt for Windows; den tidligere lokale macOS-kjøringen på schema 4 er bestått.
 
 ## Fremdriftslogg
+
+### 2026-08-28
+
+- Leverandørkatalogen bruker nå en separat, skrivebeskyttet kildekontroll som bare finner materialtypene nettbutikken kan levere komplette data for. En oppdatering krever nøyaktig én valgt materialtype, har et fast og lite forespørselsbudsjett, prøver ikke på nytt ved blokkering og endrer aldri livssyklusstatus for produkter som ikke blir sett. Desktop, Client og Host deler den samme capability-beskyttede kontrakten, og en mislykket kontroll beholder den forrige materiallisten.
 
 ### 2026-08-26
 

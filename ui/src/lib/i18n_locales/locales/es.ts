@@ -2028,11 +2028,26 @@ export const esDictionary: DictionaryNode = {
     bambuLiveTrayLoaded: "Cargado",
     bambuLiveWaitingForStatusBurst:
       "Conectado, esperando la próxima ráfaga de estado MQTT.",
-    catalogAllTypes: "Auditoría completa de proveedores",
+    catalogAllTypes: "Buscar materiales",
     catalogRefreshClientHostOnly:
       "Las actualizaciones del catálogo de proveedores se envían al host. Este cliente todavía muestra y edita el catálogo de hosts compartidos.",
     catalogRefreshHelp:
-      "Elige un proveedor y actualiza solo las familias de materiales que necesiten productos nuevos. Una auditoría completa es más lenta y puede marcar como históricos los productos que ya no aparezcan.",
+      "Busca los tipos de material disponibles y actualiza solo uno cada vez. La búsqueda no importa nada ni cambia el estado del ciclo de vida.",
+    discoverCatalogMaterials: "Buscar materiales disponibles",
+    discoveringCatalogMaterials: "Buscando materiales disponibles",
+    availableCatalogMaterials: "Materiales disponibles",
+    catalogDiscoveryHelp:
+      "Consulta la tienda del proveedor con una pequeña solicitud de solo lectura. No importa nada ni cambia el estado del ciclo de vida del catálogo.",
+    catalogDiscoveryEmpty:
+      "Todavía no se ha encontrado ningún tipo de material. Consulta la fuente del proveedor para crear la lista.",
+    catalogDiscoverySuccess:
+      "Hay {count} tipos de material disponibles para actualizar.",
+    selectOneMaterial: "Selecciona un tipo de material para actualizar.",
+    refreshSelectedMaterial: "Actualizar {material}",
+    catalogAuditBambuFailed:
+      "No se pudieron buscar los materiales Bambu disponibles. Se conservó la lista anterior.",
+    catalogAuditEsunFailed:
+      "No se pudieron buscar los materiales eSUN disponibles. Se conservó la lista anterior.",
     catalogRefreshTitle: "Actualizaciones del catálogo de proveedores",
     catalogTabClientHelp:
       "Este cliente muestra el catálogo de hosts. Las correcciones de muestras y las actualizaciones del catálogo de proveedores se guardan en el host.",
@@ -2070,10 +2085,10 @@ export const esDictionary: DictionaryNode = {
     noMissingSwatches: "No faltan muestras para llenar.",
     reactivated: "reactivado",
     refreshCurrentVendor: "Actualizar el catálogo de proveedores actual",
-    refreshSelectedMaterials: "Actualizar materiales seleccionados",
+    refreshSelectedMaterials: "Actualizar el material seleccionado",
     remaining: "restante",
     removed: "Remoto",
-    runFullVendorAudit: "Ejecute una auditoría completa de proveedores",
+    runFullVendorAudit: "Buscar materiales disponibles",
     skipped: "saltado",
     swatchBulkDone: "Actualización masiva de muestras completada",
     swatchBulkNoneUpdated:

@@ -582,14 +582,15 @@ find through resellers. The seed is deduplicated by material, filament name, and
 color name after normalization, and contains only master catalog metadata, never
 spool, loan, printer, RFID, location, or usage history.
 
-The Settings UI can still refresh supported Bambu and eSUN catalog data. The
-normal path is to refresh selected material families when new products appear;
-a full vendor audit is heavier and may mark products that are no longer visible
-at the manufacturer as historical/discontinued. Filtered material refreshes
-skip discontinued marking to avoid hiding untouched families. Bambu refreshes
-discover the material families exposed by the current store and show them in the
-refresh summary, so larger catalog maintenance can be split into lower-traffic
-material runs. Bambu color swatches prefer the local official hex table before
+The Settings UI uses a lightweight discovery step for supported Bambu and eSUN
+catalog sources. Discovery makes a small, bounded, read-only request to the
+vendor storefront. It imports nothing, changes no catalog lifecycle state, and
+keeps the previous material list if the source is blocked or inconclusive. After
+a successful discovery, choose exactly one available material type to refresh;
+larger catalog maintenance is intentionally split into lower-traffic runs.
+Neither discovery nor a selected-material refresh automatically marks catalog
+entries as historical/discontinued, so older and reseller-only products remain
+searchable. Bambu color swatches prefer the local official hex table before
 falling back to name-based color estimates. Swatches remain backward compatible
 with single `#RRGGBB` values, and can also store `multi(#RRGGBB,#RRGGBB,...)`
 for hard segmented multi-colour rolls or `gradient(#RRGGBB,#RRGGBB,...)` for

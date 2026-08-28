@@ -64,6 +64,16 @@ export type CatalogRefreshResult = {
   output: string;
 };
 
+export type CatalogSourceAuditResult = {
+  vendor: string;
+  detected_store: string;
+  detected_collection?: string | null;
+  discovered_materials: string[];
+  products_discovered: number;
+  detail_fetches: number;
+  output: string;
+};
+
 export type CatalogResetStats = {
   removed_count: number;
   remaining_count: number;
@@ -92,6 +102,14 @@ export async function refreshEsunCatalog(materialTypes?: string[]) {
   });
 }
 
+export async function auditBambuCatalogSource() {
+  return invoke<CatalogSourceAuditResult>("audit_bambu_catalog_source");
+}
+
+export async function auditEsunCatalogSource() {
+  return invoke<CatalogSourceAuditResult>("audit_esun_catalog_source");
+}
+
 export async function refreshLibrarySyncHostVendorCatalog(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
@@ -104,6 +122,20 @@ export async function refreshLibrarySyncHostVendorCatalog(
       expected_library_id: expectedLibraryId ?? null,
       vendor,
       material_types: materialTypes && materialTypes.length > 0 ? materialTypes : [],
+    },
+  });
+}
+
+export async function auditLibrarySyncHostVendorCatalog(
+  baseUrl: string,
+  expectedLibraryId: string | null | undefined,
+  vendor: string,
+) {
+  return invoke<CatalogSourceAuditResult>("audit_library_sync_host_vendor_catalog", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId ?? null,
+      vendor,
     },
   });
 }

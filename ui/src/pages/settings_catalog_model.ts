@@ -8,46 +8,24 @@ import {
   type NumberDisplayLocale,
 } from "../lib/number_display";
 import type { CatalogRefreshResult, MasterCatalogRow } from "../lib/tauri_client";
-import bambuMaterialFamiliesJson from "../../../src/data/bambu_material_families.json?raw";
 
 export type SettingsCatalogVendor = "Bambu" | "eSUN";
 
-type BambuMaterialFamily = {
-  material?: unknown;
-};
-
-type BambuMaterialFamilySource = string | BambuMaterialFamily[];
-
-const DEFAULT_BAMBU_REFRESH_MATERIALS = parseBambuMaterialFamilies(
-  bambuMaterialFamiliesJson as unknown as BambuMaterialFamilySource,
-);
-
-const DEFAULT_ESUN_REFRESH_MATERIALS = [
-  "ABS",
-  "ASA",
-  "HIPS",
-  "PA",
-  "PA12",
-  "PAHT",
-  "PC",
-  "PET",
-  "PETG",
-  "PLA",
-  "PVA",
-  "TPU",
-];
-
 export function buildSettingsCatalogState({
-  bambuRefreshMaterials,
+  bambuDiscoveredMaterials,
+  bambuRefreshMaterial,
   catalogMasters,
   catalogVendor,
-  esunRefreshMaterials,
+  esunDiscoveredMaterials,
+  esunRefreshMaterial,
   swatchVendorFilter,
 }: {
-  bambuRefreshMaterials: string[];
+  bambuDiscoveredMaterials: string[];
+  bambuRefreshMaterial: string | null;
   catalogMasters: MasterCatalogRow[];
   catalogVendor: SettingsCatalogVendor;
-  esunRefreshMaterials: string[];
+  esunDiscoveredMaterials: string[];
+  esunRefreshMaterial: string | null;
   swatchVendorFilter: string;
 }) {
   const missingSwatchMasters = catalogMasters.filter(
@@ -69,19 +47,22 @@ export function buildSettingsCatalogState({
   const esunCatalogMasters = catalogMasters.filter((master) =>
     master.vendor.toLowerCase().includes("esun"),
   );
-  const bambuCatalogMaterialOptions = materialOptionsForVendor(
-    "Bambu",
-    bambuCatalogMasters,
-  );
-  const esunCatalogMaterialOptions = materialOptionsForVendor("eSUN", esunCatalogMasters);
+  const bambuCatalogMaterialOptions = uniqueSortedStrings(bambuDiscoveredMaterials);
+  const esunCatalogMaterialOptions = uniqueSortedStrings(esunDiscoveredMaterials);
+  const activeCatalogMaterialOptions =
+    catalogVendor === "Bambu" ? bambuCatalogMaterialOptions : esunCatalogMaterialOptions;
+  const requestedCatalogRefreshMaterial =
+    catalogVendor === "Bambu" ? bambuRefreshMaterial : esunRefreshMaterial;
 
   return {
     activeCatalogMasterCount:
       catalogVendor === "Bambu" ? bambuCatalogMasters.length : esunCatalogMasters.length,
-    activeCatalogMaterialOptions:
-      catalogVendor === "Bambu" ? bambuCatalogMaterialOptions : esunCatalogMaterialOptions,
-    activeCatalogRefreshMaterials:
-      catalogVendor === "Bambu" ? bambuRefreshMaterials : esunRefreshMaterials,
+    activeCatalogMaterialOptions,
+    activeCatalogRefreshMaterial:
+      requestedCatalogRefreshMaterial &&
+      activeCatalogMaterialOptions.includes(requestedCatalogRefreshMaterial)
+        ? requestedCatalogRefreshMaterial
+        : null,
     bambuCatalogMasters,
     bambuCatalogMaterialOptions,
     esunCatalogMasters,
@@ -119,13 +100,9 @@ export function resolveSettingsSwatchHex({
   return normalizeSwatchValue(master.hex_color, { uppercase: true }) ?? suggestHexFromColor(master);
 }
 
-export function toggleSettingsCatalogRefreshMaterial(
-  materials: string[],
-  material: string,
-): string[] {
-  return materials.includes(material)
-    ? materials.filter((item) => item !== material)
-    : [...materials, material];
+export function selectSettingsCatalogRefreshMaterial(material: string): string | null {
+  const normalized = material.trim();
+  return normalized || null;
 }
 
 export function settingsCatalogRefreshSummaryHasFetchDetails(
@@ -164,6 +141,10 @@ export function buildSettingsCatalogRefreshSuccessMessage(
 }
 
 export type SettingsCatalogRefreshMessageLabels = {
+  auditBambuFailed: string;
+  auditEsunFailed: string;
+  catalogDiscoverySuccess: string;
+  discoveringCatalogMaterials: string;
   refreshBambuFailed: string;
   refreshEsunFailed: string;
   refreshPreparingBambu: string;
@@ -171,6 +152,13 @@ export type SettingsCatalogRefreshMessageLabels = {
   zeroBambu: string;
   zeroEsun: string;
 };
+
+export function buildSettingsCatalogAuditFallbackErrorMessage(
+  vendor: SettingsCatalogVendor,
+  labels: Pick<SettingsCatalogRefreshMessageLabels, "auditBambuFailed" | "auditEsunFailed">,
+): string {
+  return vendor === "Bambu" ? labels.auditBambuFailed : labels.auditEsunFailed;
+}
 
 export function buildSettingsCatalogRefreshPreparingMessage(
   vendor: SettingsCatalogVendor,
@@ -264,29 +252,8 @@ export function buildSettingsSwatchBulkResultMessage(
   };
 }
 
-function materialOptionsForVendor(
-  vendor: SettingsCatalogVendor,
-  masters: MasterCatalogRow[],
-): string[] {
-  const defaultMaterials =
-    vendor === "Bambu" ? DEFAULT_BAMBU_REFRESH_MATERIALS : DEFAULT_ESUN_REFRESH_MATERIALS;
-  return uniqueSortedStrings(
-    [
-      ...defaultMaterials,
-      ...masters.map((master) => master.material.trim()).filter((value) => value.length > 0),
-    ],
-  );
-}
-
 function uniqueSortedStrings(values: string[]): string[] {
-  return Array.from(new Set(values)).sort((left, right) => left.localeCompare(right));
-}
-
-function parseBambuMaterialFamilies(raw: BambuMaterialFamilySource): string[] {
-  const parsed = typeof raw === "string" ? (JSON.parse(raw) as BambuMaterialFamily[]) : raw;
-  return uniqueSortedStrings(
-    parsed
-      .map((family) => (typeof family.material === "string" ? family.material.trim() : ""))
-      .filter((material) => material.length > 0),
-  );
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)),
+  ).sort((left, right) => left.localeCompare(right));
 }

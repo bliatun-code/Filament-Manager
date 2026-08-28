@@ -23,7 +23,9 @@ type UseSettingsCatalogSectionInput = {
   reloadSettings: () => Promise<void>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
-  settingsCatalogRefreshMessageLabels: () => SettingsCatalogRefreshMessageLabels;
+  settingsCatalogRefreshMessageLabels: (
+    params?: { count?: number },
+  ) => SettingsCatalogRefreshMessageLabels;
   settingsCatalogRefreshSummaryLabels: () => SettingsCatalogRefreshSummaryLabels;
   settingsSwatchBulkMessageLabels: () => SettingsSwatchBulkMessageLabels;
   settingsSwatchErrorMessageLabels: () => SettingsSwatchErrorMessageLabels;
@@ -55,13 +57,16 @@ export function useSettingsCatalogSection({
 }: UseSettingsCatalogSectionInput) {
   const catalogSectionState = useSettingsCatalogSectionState({
     catalogMasters,
+    catalogSourceCacheScope: settingsClientReadOnly
+      ? settingsClientLibraryId
+      : "local",
     tauri,
     t,
   });
   const {
     activeCatalogMasterCount,
     activeCatalogMaterialOptions,
-    activeCatalogRefreshMaterials,
+    activeCatalogRefreshMaterial,
     beginCatalogRefreshResult,
     catalogRefreshBusy,
     catalogRefreshElapsedSeconds,
@@ -69,13 +74,14 @@ export function useSettingsCatalogSection({
     catalogRefreshPhase,
     catalogRefreshProgressMessage,
     catalogRefreshSummary,
+    catalogSourceAuditSummary,
     catalogRefreshVendor,
     catalogVendor,
-    clearCatalogRefreshMaterials,
     completeCatalogRefreshResult,
+    completeCatalogSourceAuditResult,
     confirmBulkSwatch,
     failCatalogRefreshResult,
-    getCatalogRefreshMaterials,
+    getCatalogRefreshMaterial,
     missingSwatchMasters,
     setCatalogRefreshBusy,
     setCatalogRefreshPhase,
@@ -92,7 +98,8 @@ export function useSettingsCatalogSection({
     swatchVendorFilter,
     swatchVendorOptions,
     toggleCatalogRefreshLog,
-    toggleCatalogRefreshMaterial,
+    saveDiscoveredCatalogMaterials,
+    selectCatalogRefreshMaterial,
     updateSwatchDraft,
     visibleMissingSwatchMasters,
     visibleMissingSwatchVendorCount,
@@ -105,30 +112,33 @@ export function useSettingsCatalogSection({
     visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
   });
 
-  const { handleRefreshVendorCatalog } = useSettingsCatalogRefreshActions({
-    beginCatalogRefreshResult,
-    busy,
-    catalogRefreshBusy,
-    completeCatalogRefreshResult,
-    failCatalogRefreshResult,
-    getCatalogRefreshMaterials,
-    locale,
-    reloadSettings,
-    setCatalogRefreshBusy,
-    setCatalogRefreshPhase,
-    setCatalogRefreshProgressMessage,
-    setCatalogRefreshStartedAt,
-    setCatalogRefreshVendor,
-    setError,
-    setInfo,
-    settingsCatalogRefreshMessageLabels,
-    settingsCatalogRefreshSummaryLabels,
-    settingsClientHostBaseUrl,
-    settingsClientLibraryId,
-    settingsClientReadOnly,
-    swatchBusy,
-    tauri,
-  });
+  const { handleAuditVendorCatalog, handleRefreshVendorCatalog } =
+    useSettingsCatalogRefreshActions({
+      beginCatalogRefreshResult,
+      busy,
+      catalogRefreshBusy,
+      completeCatalogRefreshResult,
+      completeCatalogSourceAuditResult,
+      failCatalogRefreshResult,
+      getCatalogRefreshMaterial,
+      locale,
+      reloadSettings,
+      setCatalogRefreshBusy,
+      setCatalogRefreshPhase,
+      setCatalogRefreshProgressMessage,
+      setCatalogRefreshStartedAt,
+      setCatalogRefreshVendor,
+      setError,
+      setInfo,
+      saveDiscoveredCatalogMaterials,
+      settingsCatalogRefreshMessageLabels,
+      settingsCatalogRefreshSummaryLabels,
+      settingsClientHostBaseUrl,
+      settingsClientLibraryId,
+      settingsClientReadOnly,
+      swatchBusy,
+      tauri,
+    });
 
   const { handleBulkAutoFillMissingSwatches, handleSaveMissingSwatch } =
     useSettingsSwatchActions({
@@ -185,7 +195,7 @@ export function useSettingsCatalogSection({
     refreshPanel: {
       activeCatalogMasterCount,
       activeCatalogMaterialOptions,
-      activeCatalogRefreshMaterials,
+      activeCatalogRefreshMaterial,
       busy,
       catalogCount: catalogMasters.length,
       catalogRefreshBusy,
@@ -194,6 +204,7 @@ export function useSettingsCatalogSection({
       catalogRefreshPhase,
       catalogRefreshProgressMessage,
       catalogRefreshSummary,
+      catalogSourceAuditSummary,
       catalogRefreshVendor,
       catalogVendor,
       showCatalogRefreshLog,
@@ -201,11 +212,11 @@ export function useSettingsCatalogSection({
       swatchBusy,
       tauri,
       t,
-      onClearCatalogRefreshMaterials: clearCatalogRefreshMaterials,
+      onAuditVendorCatalog: handleAuditVendorCatalog,
       onRefreshVendorCatalog: handleRefreshVendorCatalog,
       onSetCatalogVendor: setCatalogVendor,
       onToggleCatalogRefreshLog: toggleCatalogRefreshLog,
-      onToggleCatalogRefreshMaterial: toggleCatalogRefreshMaterial,
+      onSelectCatalogRefreshMaterial: selectCatalogRefreshMaterial,
     },
   });
 
