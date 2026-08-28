@@ -91,13 +91,13 @@ type InventoryRfidCaptureActionsProps = {
 
 function inventoryRfidCaptureSlotButtonClassName(active: boolean): string {
   const base =
-    "rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+    "app-control-focus rounded-lg border px-3 py-2 text-left text-sm font-semibold outline-none transition";
 
   if (active) {
-    return `${base} border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-400/50 dark:bg-sky-500/15 dark:text-sky-200`;
+    return `${base} app-modal-selected-control`;
   }
 
-  return `${base} border-slate-200 text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-950/70`;
+  return `${base} app-soft-control border-slate-200 text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-950/70`;
 }
 
 export function InventoryRfidCaptureHeader({
@@ -383,8 +383,8 @@ export function InventoryRfidCapturedFieldsPanel({
   });
 
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-700">
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 text-xs dark:border-slate-700">
+    <div className="app-modal-inset mt-4 rounded-xl border">
+      <div className="app-modal-divider flex items-center justify-between gap-3 border-b px-4 py-3 text-xs">
         <div className="font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
           {t("inventory.rfidCapturedFields", "Captured slot fields")}
         </div>
@@ -405,7 +405,7 @@ export function InventoryRfidCapturedFieldsPanel({
         <div className="max-h-80 overflow-auto">
           {fields.length > 0 ? (
             <table className="min-w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/60">
+              <thead className="app-modal-toolbar">
                 <tr>
                   <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">
                     {t("inventory.field", "Field")}
@@ -421,7 +421,7 @@ export function InventoryRfidCapturedFieldsPanel({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950/40">
+              <tbody className="app-modal-divider divide-y">
                 {fields.map((field) => (
                   <tr key={field.path}>
                     <td className="px-4 py-2 font-mono text-slate-700 dark:text-slate-200">

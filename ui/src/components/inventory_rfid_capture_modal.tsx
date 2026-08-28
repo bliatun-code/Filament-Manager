@@ -98,7 +98,7 @@ export function InventoryRfidCaptureModal({
       zIndex={60}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-slate-200/80 px-5 py-4 dark:border-slate-800/70 sm:px-6">
+        <div className="app-modal-header shrink-0 border-b px-5 py-4 sm:px-6">
           <InventoryRfidCaptureHeader
             displayTitle={displayTitle}
             matchMeta={matchMeta}
@@ -131,8 +131,8 @@ export function InventoryRfidCaptureModal({
             </ModalNotice>
           ) : null}
 
-          <details className="mt-4 rounded-xl border border-slate-200 bg-white/60 dark:border-slate-700 dark:bg-slate-950/25">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-300 dark:text-slate-100 dark:hover:bg-slate-900/60 dark:focus-visible:ring-sky-400/60">
+          <details className="app-modal-inset mt-4 rounded-xl border">
+            <summary className="app-control-focus cursor-pointer px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition dark:text-slate-100">
               <span className="block">
                 {t("inventory.rfidTechnicalDetails", "Technical details")}
               </span>
@@ -143,7 +143,7 @@ export function InventoryRfidCaptureModal({
                 )}
               </span>
             </summary>
-            <div className="border-t border-slate-200 px-4 pb-4 dark:border-slate-700">
+            <div className="app-modal-divider border-t px-4 pb-4">
               <InventoryRfidCaptureDiagnostics
                 clientReadOnly={clientReadOnly}
                 lastSlotDataAt={lastSlotDataAt}
@@ -165,7 +165,7 @@ export function InventoryRfidCaptureModal({
           </details>
         </ModalBody>
 
-        <ModalFooter className="px-5 py-4 sm:px-6">
+        <ModalFooter className="app-modal-footer-surface px-5 py-4 sm:px-6">
           <InventoryRfidCaptureActions
             canSave={canSave}
             manageBusy={manageBusy}

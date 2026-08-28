@@ -40,7 +40,7 @@ const modalFactCardPaddingClass: Record<ModalFactCardPadding, string> = {
 };
 
 const modalFactCardSurfaceClass: Record<ModalFactCardSurface, string> = {
-  neutral: "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/60",
+  neutral: "app-modal-inset",
   plain: "",
 };
 
@@ -55,7 +55,7 @@ const modalNoticeToneClass: Record<ModalNoticeTone, string> = {
   info:
     "border-sky-200/85 bg-sky-50/92 text-sky-900 dark:border-sky-400/40 dark:bg-sky-500/14 dark:text-sky-100",
   neutral:
-    "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200",
+    "app-modal-inset text-slate-700 dark:text-slate-200",
   success:
     "border-emerald-200/85 bg-emerald-50/92 text-emerald-900 dark:border-emerald-400/40 dark:bg-emerald-500/14 dark:text-emerald-100",
   warning:
@@ -158,7 +158,7 @@ export function ModalFooter({
       {...divProps}
       className={joinClassNames(
         shrink ? "shrink-0" : "",
-        border ? "border-t border-slate-200/80 dark:border-slate-800/70" : "",
+        border ? "app-modal-divider border-t" : "",
         className,
       )}
     >
@@ -317,7 +317,7 @@ export function ModalHeader({
   return (
     <div
       className={joinClassNames(
-        "border-b border-slate-200/80 bg-white/92 px-5 py-4 dark:border-slate-800/70 dark:bg-slate-950/55 sm:px-6",
+        "app-modal-header border-b px-5 py-4 sm:px-6",
         className,
       )}
     >

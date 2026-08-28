@@ -40,7 +40,9 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonClass, /appControlFocusClassName/);
   assert.match(actionButtonClass, /joinClassNames/);
   assert.match(actionButtonClass, /variant === "primary"/);
+  assert.match(actionButtonClass, /app-modal-primary-action/);
   assert.match(actionButtonClass, /variant === "solid"/);
+  assert.match(actionButtonClass, /app-primary-action/);
   assert.match(actionButtonClass, /variant === "success"/);
   assert.match(actionButtonClass, /variant === "danger"/);
   assert.match(actionButtonClass, /variant === "dangerQuiet"/);

@@ -209,7 +209,7 @@ export function InventoryAddModal({
           }
           closeLabel={t("common.close", "Close")}
           onClose={onClose}
-          className="sticky top-0 z-10 bg-white/88 backdrop-blur-xl dark:bg-slate-950/88"
+          className="sticky top-0 z-10 backdrop-blur-xl"
           aside={
             purpose === "STOCK" ? (
               <ModalHeaderActionButton

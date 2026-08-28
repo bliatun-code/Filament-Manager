@@ -41,7 +41,7 @@ function segmentedChoiceButtonClass(
     sizeClasses,
     appControlFocusClassName,
     active
-      ? "bg-slate-900 text-white shadow-sm shadow-slate-900/10 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
+      ? "app-selected-control dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
       : "text-slate-600 hover:bg-white/85 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900/80 dark:hover:text-slate-100",
   );
 }

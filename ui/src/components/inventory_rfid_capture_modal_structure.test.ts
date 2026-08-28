@@ -50,7 +50,11 @@ test("InventoryRfidCapture panels use the shared modal breakpoint language", () 
   assert.match(panelsSource, /inventoryRfidCaptureSlotButtonClassName/);
   assert.match(panelsSource, /formatRfidCapturedFieldsStatus/);
   assert.match(panelsSource, /capturedFieldsStatus/);
-  assert.match(panelsSource, /focus-visible:border-sky-300/);
+  assert.match(panelsSource, /app-control-focus/);
+  assert.match(panelsSource, /app-modal-selected-control/);
+  assert.match(modalSource, /app-modal-header/);
+  assert.match(modalSource, /app-modal-inset/);
+  assert.match(modalSource, /app-modal-footer-surface/);
   assert.doesNotMatch(panelsSource, /loading \? t\("common\.loading"/);
   assert.doesNotMatch(
     panelsSource,

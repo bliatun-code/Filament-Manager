@@ -4,7 +4,7 @@ export function neutralChipClass(
 ): string {
   return `rounded-lg border ${sizeClasses} font-semibold transition ${
     active
-      ? "border-slate-800 bg-slate-800 text-white shadow-sm shadow-slate-300/35 dark:border-slate-500 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
+      ? "app-selected-control dark:border-slate-500 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
       : "border-slate-300 bg-slate-100 text-slate-700 hover:border-slate-400 hover:bg-white dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900/75"
   }`;
 }

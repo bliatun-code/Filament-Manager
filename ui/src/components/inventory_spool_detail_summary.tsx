@@ -59,7 +59,7 @@ export function InventorySpoolDetailHeader({
   const currentMaterialTone = materialTone(spool.material);
 
   return (
-    <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-200/80 bg-white/88 px-5 py-4 backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-950/88 sm:px-6">
+    <div className="app-modal-header sticky top-0 z-10 flex items-start justify-between gap-4 border-b px-5 py-4 backdrop-blur-xl sm:px-6">
       <SwatchSelectionPreviewHeader
         className="min-w-0 flex-1"
         eyebrow={t("inventory.selectedRoll", "Selected roll")}

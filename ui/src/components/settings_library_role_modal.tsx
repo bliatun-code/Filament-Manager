@@ -260,7 +260,7 @@ export function SettingsLibraryRoleModal({
 
         <ModalFooter
           shrink={false}
-          className="sticky -bottom-5 z-10 -mx-5 -mb-5 flex flex-wrap justify-end gap-2 bg-white/95 px-5 pb-5 pt-4 shadow-[0_-12px_24px_-18px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:bg-slate-900/95"
+          className="app-modal-footer-surface sticky -bottom-5 z-10 -mx-5 -mb-5 flex flex-wrap justify-end gap-2 px-5 pb-5 pt-4 shadow-[0_-12px_24px_-18px_rgba(15,23,42,0.45)] backdrop-blur-xl"
         >
           <button
             type="button"

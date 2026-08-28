@@ -12,6 +12,7 @@ test("SegmentedChoiceRow exposes pressed state and keyboard focus treatment", ()
   assert.match(source, /segmentedChoiceGroupClass\(groupClassName\)/);
   assert.match(source, /appControlFocusClassName/);
   assert.match(source, /appControlDisabledClassName/);
+  assert.match(source, /app-selected-control/);
   assert.match(source, /joinClassNames/);
   assert.doesNotMatch(
     source,

@@ -20,7 +20,7 @@ export function InventorySpoolDetailContextActions({
 }: InventorySpoolDetailContextActionsProps) {
   const { t } = useI18n();
   return (
-    <div className="border-b border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-800/70 dark:bg-slate-950/35 sm:px-5">
+    <div className="app-modal-toolbar border-b px-4 py-3 sm:px-5">
       <div
         className="flex flex-wrap items-center gap-2"
         role="toolbar"

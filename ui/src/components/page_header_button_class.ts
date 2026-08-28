@@ -13,7 +13,7 @@ export function pageHeaderButtonClassName(
   if (variant === "primary") {
     return joinClassNames(
       base,
-      "border-slate-950 bg-slate-950 text-white shadow-sm shadow-slate-500/20 hover:bg-slate-800 dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950 dark:shadow-none dark:hover:bg-white",
+      "app-primary-action dark:border-slate-100 dark:bg-slate-100 dark:text-slate-950 dark:shadow-none dark:hover:bg-white",
     );
   }
 

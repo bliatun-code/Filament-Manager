@@ -16,7 +16,7 @@ export const appControlDisabledClassName =
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 export const appSoftControlChromeClassName =
-  "rounded-lg border border-slate-200/80 bg-white/85 text-slate-700 shadow-sm shadow-slate-200/25 backdrop-blur-sm hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-800/70";
+  "app-soft-control rounded-lg border border-slate-200/80 bg-white/85 text-slate-700 shadow-sm shadow-slate-200/25 backdrop-blur-sm hover:bg-slate-50 dark:border-slate-700/80 dark:bg-slate-900/80 dark:text-slate-200 dark:shadow-none dark:hover:bg-slate-800/70";
 
 export const appSoftButtonClassName = joinClassNames(
   "inline-flex items-center justify-center font-semibold outline-none transition",

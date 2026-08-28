@@ -34,6 +34,7 @@ test("inventory workspace exposes stock, locations and purchases as one-click vi
 
   assert.match(html, /role="group"/);
   assert.match(html, /id="inventory-stock-tab"[^>]*aria-pressed="true"/);
+  assert.match(html, /id="inventory-stock-tab"[^>]*app-selected-control/);
   assert.match(html, /id="inventory-purchases-tab"[^>]*aria-pressed="false"/);
   assert.match(html, /id="inventory-locations-tab"[^>]*aria-pressed="false"/);
   assert.match(html, />Inventory</);

@@ -329,7 +329,7 @@ export function InventorySpoolQrRfidPanel({
         <AppModal
           zIndex={80}
           onBackdropClose={() => setLabelPanelOpen(false)}
-          panelClassName="flex max-h-[calc(100dvh-3rem)] w-[min(92vw,58rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          panelClassName="app-modal-panel flex max-h-[calc(100dvh-3rem)] w-[min(92vw,58rem)] flex-col overflow-hidden rounded-2xl border"
         >
           <ModalHeader
             eyebrow={t("inventory.qrLabel", "QR label")}
@@ -375,8 +375,8 @@ export function InventorySpoolQrRfidPanel({
                     aria-pressed={labelPreferences.selectedSize === profile.id}
                     className={`rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                       labelPreferences.selectedSize === profile.id
-                        ? "border-sky-500 bg-sky-50 text-slate-950 dark:bg-sky-950/50 dark:text-white"
-                        : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
+                        ? "app-modal-selected-control"
+                        : "app-soft-control border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
                     }`}
                     onClick={() => selectLabelSize(profile.id)}
                   >
@@ -393,8 +393,8 @@ export function InventorySpoolQrRfidPanel({
                   aria-pressed={labelPreferences.selectedSize === "custom"}
                   className={`rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
                     labelPreferences.selectedSize === "custom"
-                      ? "border-sky-500 bg-sky-50 text-slate-950 dark:bg-sky-950/50 dark:text-white"
-                      : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
+                      ? "app-modal-selected-control"
+                      : "app-soft-control border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
                   }`}
                   onClick={() => selectLabelSize("custom")}
                 >

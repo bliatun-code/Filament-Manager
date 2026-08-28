@@ -23,6 +23,8 @@ test("AppModal owns dialog naming, focus lifecycle, trapping and Escape close", 
   assert.match(appModalFocus, /resolveAppModalTabTarget/);
   assert.match(appModalFocus, /"summary"/);
   assert.match(appModal, /if \(event\.key === "Escape"\)/);
+  assert.match(appModal, /app-modal-overlay/);
+  assert.match(appModal, /app-modal-panel/);
   assert.match(appModal, /if \(onBackdropClose\)/);
   assert.match(appModalContext, /AppModalTitleIdContext/);
   assert.match(appModalContext, /useAppModalTitleId/);
@@ -66,5 +68,8 @@ test("generic modal panels stay within the dynamic viewport and scroll from a vi
     inventoryModalChrome,
     /max-h-\[min\(calc\(100dvh-3rem\),58rem\)\]/,
   );
+  assert.match(inventoryModalChrome, /app-modal-overlay/);
+  assert.match(inventoryModalChrome, /app-modal-panel/);
+  assert.doesNotMatch(inventoryModalChrome, /dark:bg-slate-9/);
   assert.doesNotMatch(inventoryModalChrome, /92vh/);
 });

@@ -38,8 +38,10 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(detailPanelClasses, /inventoryDetailLabelClassName/);
   assert.match(detailPanelClasses, /inventoryDetailSectionLabelClassName/);
   assert.match(detailPanelClasses, /inventoryDetailSaveButtonClassName/);
+  assert.match(detailPanelClasses, /app-primary-action/);
   assert.match(detailPanelClasses, /inventoryPanelToggleButtonClassName/);
-  assert.match(detailPanelClasses, /focus-visible:border-sky-300/);
+  assert.match(detailPanelClasses, /app-control-focus/);
+  assert.match(detailPanelClasses, /app-modal-control/);
   assert.match(catalogMetadataPanel, /inventoryDetailCompactActionButtonClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailCompactFormControlClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailEyebrowClassName/);

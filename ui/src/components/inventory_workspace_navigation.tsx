@@ -14,7 +14,7 @@ function inventoryWorkspaceTabClassName(active: boolean): string {
   const base =
     "flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-sky-300 dark:focus-visible:ring-sky-500/50 sm:flex-none sm:min-w-52";
   return active
-    ? `${base} bg-slate-950 text-white shadow-sm dark:bg-slate-100 dark:text-slate-950`
+    ? `${base} app-selected-control dark:bg-slate-100 dark:text-slate-950 dark:shadow-none`
     : `${base} text-slate-600 hover:bg-white/80 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white`;
 }
 
