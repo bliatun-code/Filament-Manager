@@ -597,6 +597,9 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     static TEST_DATABASE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+    // The process-global credential gate is shared with parallel tests, and a
+    // released reset can still queue behind slower Windows SQLite work.
+    const CONCURRENT_RESET_COMPLETION_TIMEOUT: Duration = Duration::from_secs(10);
 
     fn test_state() -> AppState {
         test_state_with_credentials(CredentialStore::in_memory())
@@ -896,9 +899,10 @@ mod tests {
 
         start.wait();
         assert!(
-            completed_rx
-                .recv_timeout(Duration::from_millis(200))
-                .is_err(),
+            matches!(
+                completed_rx.recv_timeout(Duration::from_millis(200)),
+                Err(mpsc::RecvTimeoutError::Timeout)
+            ),
             "reset switched credential profiles while pairing still owned the mutation gate"
         );
 
@@ -919,10 +923,16 @@ mod tests {
             .expect("complete pairing runtime mutation");
         drop(pairing_mutation);
 
-        completed_rx
-            .recv_timeout(Duration::from_secs(2))
-            .expect("reset completed after pairing")
-            .expect("reset result");
+        let reset_result = match completed_rx.recv_timeout(CONCURRENT_RESET_COMPLETION_TIMEOUT) {
+            Ok(result) => result,
+            Err(mpsc::RecvTimeoutError::Timeout) => panic!(
+                "reset did not complete within {CONCURRENT_RESET_COMPLETION_TIMEOUT:?} after the pairing mutation gate was released; possible deadlock"
+            ),
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("reset worker exited without reporting a result")
+            }
+        };
+        reset_result.expect("reset result");
         reset.join().expect("join reset");
 
         assert_ne!(
