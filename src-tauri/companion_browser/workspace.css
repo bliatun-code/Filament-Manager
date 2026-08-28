@@ -102,6 +102,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.segmented-control[data-columns="5"] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .root-flow-button,
 .segment-button {
   border: 0;
@@ -495,6 +499,11 @@
   overflow: visible;
   text-overflow: clip;
   line-height: 1.25;
+}
+
+.segmented-control.settings-theme-control {
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(7.25rem, 1fr));
 }
 
 .settings-license-links {
@@ -1321,8 +1330,12 @@
   box-shadow: 0 18px 48px -30px rgba(15, 23, 42, 0.28);
 }
 
+:root[data-theme-mode="dark"] .phone-bottom-nav {
+  background: rgba(13, 23, 39, 0.94);
+  box-shadow: none;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root[data-theme-mode="dark"] .phone-bottom-nav,
   :root:not([data-theme-mode]) .phone-bottom-nav,
   :root[data-theme-mode="auto"] .phone-bottom-nav {
     background: rgba(13, 23, 39, 0.94);

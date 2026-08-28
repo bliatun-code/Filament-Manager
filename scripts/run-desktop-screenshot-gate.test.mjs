@@ -20,6 +20,7 @@ import {
   DESKTOP_DARK_THEME_MAX_LUMA_MEAN,
   DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN,
   DESKTOP_VISUAL_QA_READINESS_PREFIX,
+  DESKTOP_VISUAL_QA_THEME_PREFIX,
   DESKTOP_VISUAL_QA_STATIC_SETTLE_MS,
   DEFAULT_WINDOW_COMMAND_TIMEOUT_MS,
   DEFAULT_NATIVE_WINDOW_COMMAND_TIMEOUT_MS,
@@ -32,6 +33,7 @@ import {
   desktopVisualQaExpectedWindowTitles,
   desktopVisualQaOutputHasReadinessToken,
   desktopVisualQaReadinessMarker,
+  desktopVisualQaThemeEvidenceMatches,
   desktopVisualQaScenarioDefinition,
   desktopVisualQaScenarioReadiness,
   desktopVisualQaScenarioRequiresDatabaseFixture,
@@ -50,6 +52,7 @@ import {
   isRetryableDesktopScreenshotCaptureError,
   listAllDesktopWindowsWithNativeHelper,
   parseDesktopVisualQaScenarios,
+  parseDesktopVisualQaThemeEvidence,
   parseDesktopScreenInfo,
   parseDesktopWindowList,
   parseDesktopWindowInfo,
@@ -71,6 +74,7 @@ import {
   validateDesktopWindowSize,
   waitForDesktopWindow,
   waitForDesktopVisualQaReadiness,
+  waitForDesktopVisualQaThemeEvidence,
 } from "./run-desktop-screenshot-gate.mjs";
 
 const testOutputDir = path.join(tmpdir(), "visual-qa");
@@ -1957,6 +1961,8 @@ test("desktop screenshot gate normalizes supported theme overrides", () => {
   assert.equal(normalizeDesktopVisualQaTheme("light"), "light");
   assert.equal(normalizeDesktopVisualQaTheme(" DARK "), "dark");
   assert.equal(normalizeDesktopVisualQaTheme("Auto"), "auto");
+  assert.equal(normalizeDesktopVisualQaTheme("Bambu"), "bambu");
+  assert.equal(normalizeDesktopVisualQaTheme(" PRUSA "), "prusa");
   assert.throws(() => normalizeDesktopVisualQaTheme(""), /theme is required/);
   assert.throws(
     () => normalizeDesktopVisualQaTheme("sepia"),
@@ -2334,6 +2340,46 @@ test("desktop readiness polling succeeds on a bounded token and otherwise times 
     false,
   );
   assert.equal(timeoutClock.now(), 30);
+});
+
+test("desktop brand theme evidence requires the selected theme, dark resolution, and official accent", async () => {
+  assert.equal(
+    DESKTOP_VISUAL_QA_THEME_PREFIX,
+    "FILAMENT_MANAGER_VISUAL_QA_THEME:",
+  );
+  const bambuOutput =
+    "building\nFILAMENT_MANAGER_VISUAL_QA_THEME:bambu:dark:#00AE42\nrunning\n";
+  assert.deepEqual(parseDesktopVisualQaThemeEvidence(bambuOutput), {
+    accent: "#00AE42",
+    resolvedTheme: "dark",
+    selectedTheme: "bambu",
+  });
+  assert.equal(desktopVisualQaThemeEvidenceMatches(bambuOutput, "bambu"), true);
+  assert.equal(desktopVisualQaThemeEvidenceMatches(bambuOutput, "prusa"), false);
+  assert.equal(
+    desktopVisualQaThemeEvidenceMatches(
+      "FILAMENT_MANAGER_VISUAL_QA_THEME:bambu:dark:#FD5000\n",
+      "bambu",
+    ),
+    false,
+  );
+
+  const clock = createFakeClock();
+  let output = "building\n";
+  assert.equal(
+    await waitForDesktopVisualQaThemeEvidence({
+      intervalMs: 10,
+      nowFn: clock.now,
+      readOutput: () => output,
+      themeMode: "prusa",
+      timeoutMs: 30,
+      waitFn: async (intervalMs) => {
+        await clock.wait(intervalMs);
+        output += "FILAMENT_MANAGER_VISUAL_QA_THEME:prusa:dark:#FD5000\n";
+      },
+    }),
+    true,
+  );
 });
 
 test("desktop screenshot gate maps scenario aliases to localized window titles", () => {
@@ -2741,6 +2787,51 @@ test("desktop screenshot theme validation uses modal-tolerant light and dark bou
     ),
     [],
   );
+  for (const brandTheme of ["bambu", "prusa"]) {
+    const accent = brandTheme === "bambu" ? "#00AE42" : "#FD5000";
+    assert.deepEqual(
+      validateDesktopScreenshotTheme(
+        createMetric({
+          screenshotPixels: { lumaMean: DESKTOP_DARK_THEME_MAX_LUMA_MEAN - 0.1 },
+          themeEvidence: {
+            accent,
+            resolvedTheme: "dark",
+            selectedTheme: brandTheme,
+          },
+        }),
+        brandTheme,
+      ),
+      [],
+    );
+    assert.match(
+      validateDesktopScreenshotTheme(
+        createMetric({
+          screenshotPixels: { lumaMean: DESKTOP_DARK_THEME_MAX_LUMA_MEAN },
+          themeEvidence: {
+            accent,
+            resolvedTheme: "dark",
+            selectedTheme: brandTheme,
+          },
+        }),
+        brandTheme,
+      )[0],
+      new RegExp(`${brandTheme} theme screenshot is too light`),
+    );
+  }
+
+  const evidenceErrors = validateDesktopScreenshotTheme(
+    createMetric({
+      themeEvidence: {
+        accent: "#FD5000",
+        resolvedTheme: "light",
+        selectedTheme: "dark",
+      },
+    }),
+    "bambu",
+  );
+  assert.ok(evidenceErrors.some((error) => error.includes("selected theme dark instead of bambu")));
+  assert.ok(evidenceErrors.some((error) => error.includes("resolved theme light instead of dark")));
+  assert.ok(evidenceErrors.some((error) => error.includes("instead of #00AE42")));
 });
 
 test("desktop screenshot metric validation accepts retina desktop captures", () => {

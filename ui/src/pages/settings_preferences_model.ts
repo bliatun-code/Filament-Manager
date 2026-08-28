@@ -14,10 +14,22 @@ type TranslateFn = (
 ) => string;
 
 export function buildSettingsThemeSelectionMessage(
-  mode: ThemeMode,
+  modeLabel: string,
   labels: Pick<SettingsPreferenceMessageLabels, "themeSetTo">,
 ): string {
-  return `${labels.themeSetTo} ${mode}.`;
+  return `${labels.themeSetTo} ${modeLabel}.`;
+}
+
+export function settingsThemeModeLabel(mode: ThemeMode, t: TranslateFn): string {
+  const labels: Record<ThemeMode, [string, string]> = {
+    auto: ["settings.auto", "Auto (system)"],
+    light: ["settings.light", "Light"],
+    dark: ["settings.dark", "Dark"],
+    bambu: ["settings.bambuTheme", "Bambu"],
+    prusa: ["settings.prusaTheme", "Prusa"],
+  };
+  const [key, fallback] = labels[mode];
+  return t(key, fallback);
 }
 
 export function buildSettingsLocaleSelectionMessage(

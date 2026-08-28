@@ -14,10 +14,127 @@
     --app-control-border-light: rgba(71, 85, 105, 0.68);
     --app-control-focus-light: rgb(3, 105, 161);
     --app-control-focus-halo-light: rgba(14, 165, 233, 0.18);
+    --app-theme-accent: rgb(2, 132, 199);
+    --app-theme-accent-soft: rgba(14, 165, 233, 0.14);
+    --app-theme-selection: rgba(14, 165, 233, 0.24);
+    --app-theme-focus-outline: rgba(2, 132, 199, 0.58);
+    --app-theme-focus-halo: rgba(14, 165, 233, 0.14);
+    --app-theme-page-background:
+      linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(237, 245, 253, 0.96) 38%, rgba(226, 237, 249, 1) 100%),
+      linear-gradient(135deg, rgba(14, 165, 233, 0.045) 0%, rgba(16, 185, 129, 0.025) 44%, rgba(245, 158, 11, 0.035) 100%);
+    --app-theme-surface-border: rgba(71, 85, 105, 0.42);
+    --app-theme-surface-background: rgba(255, 255, 255, 0.96);
+    --app-theme-surface-shadow:
+      0 18px 38px -30px rgba(30, 41, 59, 0.44),
+      0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    --app-theme-surface-compact-border: rgba(71, 85, 105, 0.4);
+    --app-theme-surface-compact-shadow:
+      0 16px 32px -28px rgba(30, 41, 59, 0.38),
+      0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    --app-theme-subtle-border: rgba(100, 116, 139, 0.4);
+    --app-theme-subtle-background: rgba(240, 247, 254, 0.94);
+    --app-theme-subtle-shadow:
+      0 10px 22px -20px rgba(30, 41, 59, 0.34),
+      0 1px 0 rgba(255, 255, 255, 0.72) inset;
+    --app-theme-nav-border: rgba(71, 85, 105, 0.38);
+    --app-theme-nav-background: rgba(252, 253, 255, 0.96);
+    --app-theme-nav-shadow: 0 14px 30px -26px rgba(30, 41, 59, 0.46);
+    --app-theme-nav-list-border: rgba(71, 85, 105, 0.32);
+    --app-theme-nav-list-background: rgba(255, 255, 255, 0.9);
+    --app-theme-nav-active-border: rgba(51, 65, 85, 0.46);
+    --app-theme-nav-active-background: rgba(255, 255, 255, 0.98);
+    --app-theme-nav-active-text: rgb(2, 6, 23);
+    --app-theme-nav-active-shadow: 0 10px 20px -16px rgba(30, 41, 59, 0.46);
+    --app-theme-nav-hover-border: rgba(148, 163, 184, 0.3);
+    --app-theme-nav-hover-background: rgba(255, 255, 255, 0.74);
+    --app-theme-nav-focus-outline: rgb(2, 132, 199);
+    --app-theme-nav-focus-halo: rgba(14, 165, 233, 0.2);
+    --app-theme-nav-active-focus-shadow:
+      0 10px 20px -16px rgba(51, 65, 85, 0.32),
+      0 0 0 4px rgba(14, 165, 233, 0.2);
   }
 
   html.dark {
     color-scheme: dark;
+    --app-theme-page-background: linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(10, 18, 32, 0.99) 44%, rgba(3, 8, 18, 1) 100%);
+    --app-theme-surface-border: rgba(51, 65, 85, 0.7);
+    --app-theme-surface-background: rgba(15, 23, 42, 0.75);
+    --app-theme-surface-shadow: none;
+    --app-theme-surface-compact-border: rgba(51, 65, 85, 0.7);
+    --app-theme-surface-compact-shadow: none;
+    --app-theme-subtle-border: rgba(51, 65, 85, 0.7);
+    --app-theme-subtle-background: rgba(15, 23, 42, 0.6);
+    --app-theme-subtle-shadow: none;
+    --app-theme-nav-border: rgba(30, 41, 59, 0.8);
+    --app-theme-nav-background: rgba(2, 6, 23, 0.85);
+    --app-theme-nav-shadow: none;
+    --app-theme-nav-list-border: rgba(30, 41, 59, 0.9);
+    --app-theme-nav-list-background: rgba(2, 6, 23, 0.4);
+    --app-theme-nav-active-border: rgba(71, 85, 105, 0.86);
+    --app-theme-nav-active-background: rgba(30, 41, 59, 0.88);
+    --app-theme-nav-active-text: rgb(248, 250, 252);
+    --app-theme-nav-active-shadow: none;
+    --app-theme-nav-hover-border: rgba(51, 65, 85, 0.8);
+    --app-theme-nav-hover-background: rgba(15, 23, 42, 0.7);
+    --app-theme-nav-focus-outline: rgb(125, 211, 252);
+    --app-theme-nav-focus-halo: rgba(56, 189, 248, 0.24);
+    --app-theme-nav-active-focus-shadow: 0 0 0 4px rgba(56, 189, 248, 0.24);
+  }
+
+  html[data-theme="bambu"] {
+    --app-theme-accent: rgb(0, 174, 66);
+    --app-theme-accent-soft: rgba(0, 174, 66, 0.18);
+    --app-theme-selection: rgba(0, 174, 66, 0.32);
+    --app-theme-focus-outline: rgba(59, 231, 123, 0.86);
+    --app-theme-focus-halo: rgba(0, 174, 66, 0.24);
+    --app-theme-page-background:
+      radial-gradient(circle at 88% 0%, rgba(0, 174, 66, 0.18), transparent 36%),
+      linear-gradient(180deg, rgb(10, 27, 24) 0%, rgb(6, 18, 20) 44%, rgb(3, 10, 14) 100%);
+    --app-theme-surface-border: rgba(44, 112, 77, 0.72);
+    --app-theme-surface-background: rgba(9, 29, 28, 0.82);
+    --app-theme-surface-compact-border: rgba(40, 102, 71, 0.7);
+    --app-theme-subtle-border: rgba(38, 92, 68, 0.76);
+    --app-theme-subtle-background: rgba(8, 34, 31, 0.7);
+    --app-theme-nav-border: rgba(0, 174, 66, 0.38);
+    --app-theme-nav-background: rgba(3, 18, 18, 0.9);
+    --app-theme-nav-list-border: rgba(28, 86, 61, 0.78);
+    --app-theme-nav-list-background: rgba(3, 21, 20, 0.74);
+    --app-theme-nav-active-border: rgba(69, 224, 125, 0.68);
+    --app-theme-nav-active-background: rgba(0, 174, 66, 0.2);
+    --app-theme-nav-active-text: rgb(236, 253, 245);
+    --app-theme-nav-hover-border: rgba(38, 135, 83, 0.8);
+    --app-theme-nav-hover-background: rgba(0, 174, 66, 0.1);
+    --app-theme-nav-focus-outline: rgb(74, 222, 128);
+    --app-theme-nav-focus-halo: rgba(0, 174, 66, 0.26);
+    --app-theme-nav-active-focus-shadow: 0 0 0 4px rgba(0, 174, 66, 0.26);
+  }
+
+  html[data-theme="prusa"] {
+    --app-theme-accent: rgb(253, 80, 0);
+    --app-theme-accent-soft: rgba(253, 80, 0, 0.18);
+    --app-theme-selection: rgba(253, 80, 0, 0.32);
+    --app-theme-focus-outline: rgba(255, 132, 76, 0.9);
+    --app-theme-focus-halo: rgba(253, 80, 0, 0.24);
+    --app-theme-page-background:
+      radial-gradient(circle at 88% 0%, rgba(253, 80, 0, 0.2), transparent 36%),
+      linear-gradient(180deg, rgb(31, 22, 19) 0%, rgb(20, 16, 16) 46%, rgb(10, 10, 12) 100%);
+    --app-theme-surface-border: rgba(119, 72, 53, 0.76);
+    --app-theme-surface-background: rgba(34, 25, 23, 0.82);
+    --app-theme-surface-compact-border: rgba(105, 65, 49, 0.72);
+    --app-theme-subtle-border: rgba(94, 61, 48, 0.8);
+    --app-theme-subtle-background: rgba(39, 27, 24, 0.72);
+    --app-theme-nav-border: rgba(253, 80, 0, 0.4);
+    --app-theme-nav-background: rgba(24, 16, 15, 0.92);
+    --app-theme-nav-list-border: rgba(111, 61, 44, 0.82);
+    --app-theme-nav-list-background: rgba(31, 20, 18, 0.76);
+    --app-theme-nav-active-border: rgba(255, 137, 82, 0.72);
+    --app-theme-nav-active-background: rgba(253, 80, 0, 0.22);
+    --app-theme-nav-active-text: rgb(255, 247, 237);
+    --app-theme-nav-hover-border: rgba(170, 75, 39, 0.82);
+    --app-theme-nav-hover-background: rgba(253, 80, 0, 0.11);
+    --app-theme-nav-focus-outline: rgb(255, 137, 82);
+    --app-theme-nav-focus-halo: rgba(253, 80, 0, 0.28);
+    --app-theme-nav-active-focus-shadow: 0 0 0 4px rgba(253, 80, 0, 0.28);
   }
 
   html,
@@ -30,20 +147,17 @@
 
   body {
     @apply bg-slate-100 text-slate-900;
-    background-image:
-      linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(237, 245, 253, 0.96) 38%, rgba(226, 237, 249, 1) 100%),
-      linear-gradient(135deg, rgba(14, 165, 233, 0.045) 0%, rgba(16, 185, 129, 0.025) 44%, rgba(245, 158, 11, 0.035) 100%);
+    background-image: var(--app-theme-page-background);
     transition: background-color 180ms ease, color 180ms ease;
   }
 
   html.dark body {
     @apply bg-slate-900 text-slate-100;
-    background-image:
-      linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(10, 18, 32, 0.99) 44%, rgba(3, 8, 18, 1) 100%);
+    background-image: var(--app-theme-page-background);
   }
 
   ::selection {
-    background: rgba(14, 165, 233, 0.24);
+    background: var(--app-theme-selection);
   }
 
   button,
@@ -62,9 +176,9 @@
   }
 
   :focus-visible {
-    outline: 2px solid rgba(2, 132, 199, 0.58);
+    outline: 2px solid var(--app-theme-focus-outline);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.14);
+    box-shadow: 0 0 0 4px var(--app-theme-focus-halo);
   }
 
   * {
@@ -211,11 +325,9 @@
 
   .surface-card {
     @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
-    border-color: rgba(71, 85, 105, 0.42);
-    background-color: rgba(255, 255, 255, 0.96);
-    box-shadow:
-      0 18px 38px -30px rgba(30, 41, 59, 0.44),
-      0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border-color: var(--app-theme-surface-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-shadow);
   }
 
   .content-section {
@@ -228,46 +340,47 @@
 
   .surface-card-compact {
     @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
-    border-color: rgba(71, 85, 105, 0.4);
-    background-color: rgba(255, 255, 255, 0.96);
-    box-shadow:
-      0 16px 32px -28px rgba(30, 41, 59, 0.38),
-      0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    border-color: var(--app-theme-surface-compact-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-compact-shadow);
   }
 
   .surface-subtle {
     @apply rounded-lg border dark:border-slate-700/70 dark:bg-slate-900/60 dark:shadow-none;
-    border-color: rgba(100, 116, 139, 0.4);
-    background-color: rgba(240, 247, 254, 0.94);
-    box-shadow:
-      0 10px 22px -20px rgba(30, 41, 59, 0.34),
-      0 1px 0 rgba(255, 255, 255, 0.72) inset;
+    border-color: var(--app-theme-subtle-border);
+    background-color: var(--app-theme-subtle-background);
+    box-shadow: var(--app-theme-subtle-shadow);
   }
 
-  html.dark .surface-card,
+  html.dark .surface-card {
+    border-color: var(--app-theme-surface-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-shadow);
+  }
+
   html.dark .surface-card-compact {
-    border-color: rgba(51, 65, 85, 0.7);
-    background-color: rgba(15, 23, 42, 0.75);
-    box-shadow: none;
+    border-color: var(--app-theme-surface-compact-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-compact-shadow);
   }
 
   html.dark .surface-subtle {
-    border-color: rgba(51, 65, 85, 0.7);
-    background-color: rgba(15, 23, 42, 0.6);
-    box-shadow: none;
+    border-color: var(--app-theme-subtle-border);
+    background-color: var(--app-theme-subtle-background);
+    box-shadow: var(--app-theme-subtle-shadow);
   }
 
   .app-nav {
     @apply sticky top-0 z-20 border-b px-4 py-2.5 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85 sm:px-6;
-    border-color: rgba(71, 85, 105, 0.38);
-    background-color: rgba(252, 253, 255, 0.96);
-    box-shadow: 0 14px 30px -26px rgba(30, 41, 59, 0.46);
+    border-color: var(--app-theme-nav-border);
+    background-color: var(--app-theme-nav-background);
+    box-shadow: var(--app-theme-nav-shadow);
   }
 
   html.dark .app-nav {
-    border-color: rgba(30, 41, 59, 0.8);
-    background-color: rgba(2, 6, 23, 0.85);
-    box-shadow: none;
+    border-color: var(--app-theme-nav-border);
+    background-color: var(--app-theme-nav-background);
+    box-shadow: var(--app-theme-nav-shadow);
   }
 
   .app-nav-inner {
@@ -285,8 +398,8 @@
 
   .app-nav-list {
     @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-lg border p-1 dark:border-slate-800/90 dark:bg-slate-950/40;
-    border-color: rgba(71, 85, 105, 0.32);
-    background-color: rgba(255, 255, 255, 0.9);
+    border-color: var(--app-theme-nav-list-border);
+    background-color: var(--app-theme-nav-list-background);
   }
 
   .app-nav-button {
@@ -294,34 +407,33 @@
   }
 
   .app-nav-button:focus-visible {
-    outline: 2px solid rgb(2 132 199);
+    outline: 2px solid var(--app-theme-nav-focus-outline);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2);
+    box-shadow: 0 0 0 4px var(--app-theme-nav-focus-halo);
   }
 
   .app-nav-button-active {
     @apply text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:shadow-none;
-    border: 1px solid rgba(51, 65, 85, 0.46);
-    background-color: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 10px 20px -16px rgba(30, 41, 59, 0.46);
+    border: 1px solid var(--app-theme-nav-active-border);
+    background-color: var(--app-theme-nav-active-background);
+    color: var(--app-theme-nav-active-text);
+    box-shadow: var(--app-theme-nav-active-shadow);
   }
 
   .app-nav-button-active:focus-visible {
-    box-shadow:
-      0 10px 20px -16px rgba(51, 65, 85, 0.32),
-      0 0 0 4px rgba(14, 165, 233, 0.2);
+    box-shadow: var(--app-theme-nav-active-focus-shadow);
   }
 
   html.dark .app-nav-button-active {
-    border-color: rgba(71, 85, 105, 0.86);
-    background-color: rgba(30, 41, 59, 0.88);
-    color: rgb(248 250 252);
-    box-shadow: none;
+    border-color: var(--app-theme-nav-active-border);
+    background-color: var(--app-theme-nav-active-background);
+    color: var(--app-theme-nav-active-text);
+    box-shadow: var(--app-theme-nav-active-shadow);
   }
 
   html.dark .app-nav-button-active:focus-visible {
-    outline-color: rgb(125 211 252);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.24);
+    outline-color: var(--app-theme-nav-focus-outline);
+    box-shadow: var(--app-theme-nav-active-focus-shadow);
   }
 
   .app-nav-button-idle {
@@ -330,17 +442,50 @@
   }
 
   .app-nav-button-idle:hover {
-    border-color: rgba(148, 163, 184, 0.3);
-    background-color: rgba(255, 255, 255, 0.74);
+    border-color: var(--app-theme-nav-hover-border);
+    background-color: var(--app-theme-nav-hover-background);
   }
 
   html.dark .app-nav-button-idle:hover {
-    border-color: rgba(51, 65, 85, 0.8);
-    background-color: rgba(15, 23, 42, 0.7);
+    border-color: var(--app-theme-nav-hover-border);
+    background-color: var(--app-theme-nav-hover-background);
   }
 
   html.dark .app-nav-list {
-    background-color: rgba(2, 6, 23, 0.4);
+    border-color: var(--app-theme-nav-list-border);
+    background-color: var(--app-theme-nav-list-background);
+  }
+
+  .theme-brand-choice {
+    @apply flex min-w-0 items-center gap-3 rounded-lg border px-3 py-2 text-slate-700 outline-none transition dark:text-slate-200;
+    border-color: var(--app-theme-subtle-border);
+    background-color: var(--app-theme-subtle-background);
+  }
+
+  .theme-brand-choice:hover {
+    border-color: var(--app-theme-nav-hover-border);
+    background-color: var(--app-theme-nav-hover-background);
+  }
+
+  .theme-brand-choice-active {
+    border-color: var(--app-theme-nav-active-border);
+    background-color: var(--app-theme-nav-active-background);
+    color: var(--app-theme-nav-active-text);
+    box-shadow: inset 0 0 0 1px var(--app-theme-accent-soft);
+  }
+
+  .theme-brand-choice-swatch {
+    @apply h-7 w-7 shrink-0 rounded-full border border-white/30 shadow-sm;
+  }
+
+  .theme-brand-choice-bambu .theme-brand-choice-swatch {
+    background-color: rgb(0, 174, 66);
+    box-shadow: 0 0 0 3px rgba(0, 174, 66, 0.16);
+  }
+
+  .theme-brand-choice-prusa .theme-brand-choice-swatch {
+    background-color: rgb(253, 80, 0);
+    box-shadow: 0 0 0 3px rgba(253, 80, 0, 0.16);
   }
 
   html:not(.dark) .bg-white {

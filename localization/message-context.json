@@ -487,6 +487,30 @@
       "screenshot": "docs/screenshots/settings-general.jpg"
     },
     {
+      "surface": "desktop",
+      "keyPrefix": "settings.bambuTheme",
+      "meaning": "Bambu-inspired appearance choice and its concise description; preserve the Bambu brand name and describe a vivid green workshop without implying official affiliation.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
+      "keyPrefix": "settings.prusaTheme",
+      "meaning": "Prusa-inspired appearance choice and its concise description; preserve the Prusa brand name and describe a warm orange workshop without implying official affiliation.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "settings.bambuTheme",
+      "meaning": "Bambu-inspired appearance choice and its concise description; preserve the Bambu brand name and describe a vivid green workshop without implying official affiliation.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+    },
+    {
+      "surface": "companion",
+      "keyPrefix": "settings.prusaTheme",
+      "meaning": "Prusa-inspired appearance choice and its concise description; preserve the Prusa brand name and describe a warm orange workshop without implying official affiliation.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+    },
+    {
       "surface": "companion",
       "keyPrefix": "errors.location",
       "meaning": "Browser Companion error for deleting a storage location that still has roll or child-location references.",

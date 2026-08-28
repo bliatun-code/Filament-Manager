@@ -1,14 +1,33 @@
 import { useEffect, useState } from "react";
 import { DESKTOP_VISUAL_QA_QUERY_KEY } from "./desktop_visual_qa_scenario";
 
-export type ThemeMode = "light" | "dark" | "auto";
+export const THEME_MODES = ["auto", "light", "dark", "bambu", "prusa"] as const;
+
+export type ThemeMode = (typeof THEME_MODES)[number];
 export type ResolvedTheme = "light" | "dark";
+
+export type ThemeDefinition = {
+  id: ThemeMode;
+  colorScheme: ResolvedTheme | "system";
+};
+
+export const THEME_DEFINITIONS: Readonly<Record<ThemeMode, ThemeDefinition>> = {
+  auto: { id: "auto", colorScheme: "system" },
+  light: { id: "light", colorScheme: "light" },
+  dark: { id: "dark", colorScheme: "dark" },
+  bambu: { id: "bambu", colorScheme: "dark" },
+  prusa: { id: "prusa", colorScheme: "dark" },
+};
 
 const STORAGE_KEY = "bfm-theme-mode";
 const CHANGE_EVENT = "bfm-theme-mode-change";
 const DESKTOP_VISUAL_QA_THEME_QUERY_KEY = "bfm_visual_qa_theme";
 
 let mediaListenerAttached = false;
+
+export function isThemeMode(value: unknown): value is ThemeMode {
+  return typeof value === "string" && THEME_MODES.some((mode) => mode === value);
+}
 
 function desktopVisualQaThemeMode(): ThemeMode | null {
   try {
@@ -22,7 +41,7 @@ function desktopVisualQaThemeMode(): ThemeMode | null {
     const requestedMode = String(params.get(DESKTOP_VISUAL_QA_THEME_QUERY_KEY) ?? "")
       .trim()
       .toLowerCase();
-    if (requestedMode === "light" || requestedMode === "dark" || requestedMode === "auto") {
+    if (isThemeMode(requestedMode)) {
       return requestedMode;
     }
     return "dark";
@@ -38,14 +57,28 @@ function resolveSystemDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-function applyResolvedTheme(mode: ThemeMode) {
+export function resolveThemeMode(
+  mode: ThemeMode,
+  systemDark: boolean = resolveSystemDark(),
+): ResolvedTheme {
+  const configuredScheme = THEME_DEFINITIONS[mode].colorScheme;
+  if (configuredScheme === "system") {
+    return systemDark ? "dark" : "light";
+  }
+  return configuredScheme;
+}
+
+function applyThemeMode(mode: ThemeMode) {
   if (typeof document === "undefined") {
     return;
   }
   const root = document.documentElement;
-  const dark = mode === "dark" || (mode === "auto" && resolveSystemDark());
-  root.classList.toggle("dark", dark);
+  const resolvedTheme = resolveThemeMode(mode);
+  root.classList.toggle("dark", resolvedTheme === "dark");
+  root.dataset.theme = mode;
   root.dataset.themeMode = mode;
+  root.dataset.resolvedTheme = resolvedTheme;
+  root.style.colorScheme = resolvedTheme;
 }
 
 function ensureMediaListener() {
@@ -61,7 +94,7 @@ function ensureMediaListener() {
   }
   const onChange = () => {
     if (getThemeMode() === "auto") {
-      applyResolvedTheme("auto");
+      applyThemeMode("auto");
       window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: "auto" }));
     }
   };
@@ -70,10 +103,7 @@ function ensureMediaListener() {
 }
 
 export function getResolvedTheme(mode: ThemeMode = getThemeMode()): ResolvedTheme {
-  if (typeof document !== "undefined") {
-    return document.documentElement.classList.contains("dark") ? "dark" : "light";
-  }
-  return mode === "dark" ? "dark" : "light";
+  return resolveThemeMode(mode);
 }
 
 export function getThemeMode(): ThemeMode {
@@ -89,7 +119,7 @@ export function getThemeMode(): ThemeMode {
   } catch {
     stored = null;
   }
-  if (stored === "light" || stored === "dark" || stored === "auto") {
+  if (isThemeMode(stored)) {
     return stored;
   }
   return "auto";
@@ -103,7 +133,7 @@ export function setThemeMode(mode: ThemeMode) {
   } catch {
     // Theme persistence is best-effort; the active document theme still updates.
   }
-  applyResolvedTheme(mode);
+  applyThemeMode(mode);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: mode }));
   }
@@ -112,7 +142,7 @@ export function setThemeMode(mode: ThemeMode) {
 export function onThemeModeChange(handler: (mode: ThemeMode) => void): () => void {
   const listener = (event: Event) => {
     const detail = (event as CustomEvent<ThemeMode>).detail;
-    if (detail === "light" || detail === "dark" || detail === "auto") {
+    if (isThemeMode(detail)) {
       handler(detail);
       return;
     }
@@ -144,5 +174,5 @@ export function useResolvedTheme(): ResolvedTheme {
 
 export function initThemeMode() {
   ensureMediaListener();
-  applyResolvedTheme(getThemeMode());
+  applyThemeMode(getThemeMode());
 }

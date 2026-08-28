@@ -1930,6 +1930,10 @@ export const enDictionary: DictionaryNode = {
       dark: "Dark",
       auto: "Auto (system)",
       autoHint: "Auto follows your system light/dark preference.",
+      bambuTheme: "Bambu",
+      bambuThemeHelp: "Vivid green workshop",
+      prusaTheme: "Prusa",
+      prusaThemeHelp: "Warm orange workshop",
       companionTitle: "Local browser companion",
       companionHelp:
         "Open the same-machine browser shell served by the desktop app. This stays limited to inventory overview, direct spool links, manual borrowed-in registration/editing/hand-back, printer overview, outbound loan review/history with direct return, spool detail, narrow status/location updates, manual weight update, basic printer-slot assignment/clear, and selected-spool outbound loan creation while desktop remains the source of truth.",

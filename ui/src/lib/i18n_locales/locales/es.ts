@@ -2099,6 +2099,10 @@ export const esDictionary: DictionaryNode = {
     auto: "Automático (sistema)",
     autoHint:
       "El modo automático sigue la preferencia clara u oscura del sistema.",
+    bambuTheme: "Bambu",
+    bambuThemeHelp: "Taller verde vibrante",
+    prusaTheme: "Prusa",
+    prusaThemeHelp: "Taller naranja cálido",
     printerModel: "Modelo de impresora",
     selectPrinterModel: "Seleccionar modelo de impresora",
     printerName: "Nombre de la impresora",

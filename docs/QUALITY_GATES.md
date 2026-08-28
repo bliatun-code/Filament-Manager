@@ -75,6 +75,13 @@ is zero violations, not a severity-filtered allowance. The focused modal gate
 covers behavior that a static scan cannot prove: initial focus, wrapped tab
 order, Escape, focus restoration, scroll reachability, and layout at 200% zoom.
 
+The desktop and Companion screenshot gates accept Auto, Light, Dark, Bambu, and
+Prusa as explicit theme inputs. A theme-model or palette change must exercise a
+representative desktop and Companion capture for every affected theme, verify
+the resolved light/dark contrast contract, and retain the fixture's exact
+filament, material, and status swatches. A decorative accent is never allowed
+to redefine data colors merely to make a themed capture look consistent.
+
 An accessibility exception must identify a standards-based reason, include a
 bounded removal date, and be approved by the named accessibility gate owner.
 There are currently no committed exceptions.

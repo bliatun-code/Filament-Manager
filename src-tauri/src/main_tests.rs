@@ -591,6 +591,8 @@ fn visual_qa_theme_normalizer_accepts_only_supported_modes() {
     assert_eq!(normalize_visual_qa_theme("light"), Some("light"));
     assert_eq!(normalize_visual_qa_theme(" DARK "), Some("dark"));
     assert_eq!(normalize_visual_qa_theme("Auto"), Some("auto"));
+    assert_eq!(normalize_visual_qa_theme("Bambu"), Some("bambu"));
+    assert_eq!(normalize_visual_qa_theme(" PRUSA "), Some("prusa"));
     assert_eq!(normalize_visual_qa_theme(""), None);
     assert_eq!(normalize_visual_qa_theme("sepia"), None);
 }

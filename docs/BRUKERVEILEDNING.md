@@ -488,8 +488,24 @@ Generelt:
 - programversjon
 - automatiske oppdateringsvarsler og beholdt manuell oppdateringssjekk
 - valgfri bakgrunnskjøring ved lukking og oppstart ved innlogging
-- tema: Auto, Lys, Mørk
+- tema: Auto, Lys, Mørk, Bambu, Prusa
 - språk, valgt fra én kompakt liste
+
+**Auto** følger fortsatt operativsystemet, mens **Lys** og **Mørk** beholder det
+eksisterende nøytrale uttrykket. **Bambu** og **Prusa** er lekne, uoffisielle og
+mørkbaserte hyllester med gjenkjennelige grønne eller oransje detaljer; de
+innebærer ingen tilknytning til eller godkjenning fra produsentene. Fargene
+bygger på Bambu Labs publiserte [Bambu Green
+`#00AE42`](https://us.store.bambulab.com/products/abs-filament?variant=40475105460360)
+og Prusas publiserte [medieressurser og
+profilmanual](https://www.prusa3d.com/page/media-assets_987/), der Prusa Orange
+er definert som `#FD5000`.
+
+Desktop-appen og Companion lagrer temavalget lokalt og uavhengig på hver enhet
+eller i hver nettleser. Et valg på den ene flaten endrer derfor ikke den andre.
+Temafargene brukes på programskallet, kontroller, markering og fokus. Fargene
+for filamenter, materialmerker, statuser og andre lagerprøver er fortsatt
+datastyrte og erstattes aldri av valgt tema.
 
 Filamentstandarder:
 

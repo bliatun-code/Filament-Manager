@@ -7,6 +7,7 @@
   --bg-glow-primary: rgba(255, 255, 255, 0.62);
   --bg-glow-secondary: rgba(58, 92, 132, 0.11);
   --bg-glow-tertiary: rgba(36, 99, 235, 0.06);
+  --hero-glow: rgba(104, 159, 214, 0.18);
   --surface: rgba(250, 253, 255, 0.98);
   --surface-strong: rgba(255, 255, 255, 0.98);
   --surface-muted: rgba(230, 239, 250, 0.98);
@@ -218,6 +219,75 @@
     --printer-surface-ambient: rgba(2, 6, 23, 0.52);
     --printer-surface-inset: rgba(255, 255, 255, 0.03);
   }
+}
+
+/*
+ * Brand themes deliberately inherit the complete, tested dark token set via
+ * data-theme-mode="dark". Only shell-level semantic tokens are replaced here;
+ * filament --swatch-* and printer --brand-* variables stay data-driven.
+ */
+:root[data-theme="bambu"] {
+  --bg-top: #071a13;
+  --bg-bottom: #020c09;
+  --bg-glow-primary: rgba(0, 174, 66, 0.2);
+  --bg-glow-secondary: rgba(52, 211, 153, 0.11);
+  --bg-glow-tertiary: rgba(218, 255, 232, 0.035);
+  --hero-glow: rgba(0, 174, 66, 0.22);
+  --surface: rgba(7, 26, 19, 0.9);
+  --surface-strong: #0d2a20;
+  --surface-muted: rgba(22, 61, 45, 0.84);
+  --surface-panel: rgba(10, 35, 26, 0.94);
+  --border: rgba(92, 201, 133, 0.28);
+  --border-strong: rgba(105, 226, 151, 0.5);
+  --form-control-border: #3f8b5c;
+  --text: #f2fff6;
+  --text-muted: #b5d8c1;
+  --muted: #b5d8c1;
+  --accent: #00ae42;
+  --accent-contrast: #02150a;
+  --accent-soft: rgba(0, 174, 66, 0.22);
+  --focus-ring: #61e396;
+  --focus-ring-shadow: rgba(0, 174, 66, 0.28);
+  --info: #75dcca;
+  --info-soft: rgba(117, 220, 202, 0.12);
+  --info-border: rgba(117, 220, 202, 0.3);
+  --shadow: 0 18px 40px -30px rgba(0, 174, 66, 0.42);
+  --panel: rgba(10, 35, 26, 0.94);
+  --input-bg: #0d2a20;
+  --overlay-backdrop-strong: rgba(2, 12, 9, 0.76);
+  --overlay-backdrop-soft: rgba(2, 12, 9, 0.56);
+}
+
+:root[data-theme="prusa"] {
+  --bg-top: #24120a;
+  --bg-bottom: #100805;
+  --bg-glow-primary: rgba(253, 80, 0, 0.2);
+  --bg-glow-secondary: rgba(128, 130, 133, 0.11);
+  --bg-glow-tertiary: rgba(255, 236, 226, 0.035);
+  --hero-glow: rgba(253, 80, 0, 0.22);
+  --surface: rgba(35, 17, 10, 0.9);
+  --surface-strong: #30170d;
+  --surface-muted: rgba(77, 38, 22, 0.84);
+  --surface-panel: rgba(43, 21, 12, 0.94);
+  --border: rgba(224, 119, 70, 0.3);
+  --border-strong: rgba(255, 138, 84, 0.52);
+  --form-control-border: #d15a22;
+  --text: #fff7f2;
+  --text-muted: #dec2b4;
+  --muted: #dec2b4;
+  --accent: #fd5000;
+  --accent-contrast: #1b0800;
+  --accent-soft: rgba(253, 80, 0, 0.22);
+  --focus-ring: #ff9868;
+  --focus-ring-shadow: rgba(253, 80, 0, 0.28);
+  --info: #a9cbea;
+  --info-soft: rgba(169, 203, 234, 0.12);
+  --info-border: rgba(169, 203, 234, 0.28);
+  --shadow: 0 18px 40px -30px rgba(253, 80, 0, 0.4);
+  --panel: rgba(43, 21, 12, 0.94);
+  --input-bg: #30170d;
+  --overlay-backdrop-strong: rgba(16, 8, 5, 0.76);
+  --overlay-backdrop-soft: rgba(16, 8, 5, 0.56);
 }
 
 * {

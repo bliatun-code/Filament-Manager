@@ -33,6 +33,7 @@ mod credential_migration;
 mod credential_profile_migration;
 mod credential_store;
 mod desktop_lifecycle;
+mod desktop_visual_qa_theme;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
@@ -393,6 +394,7 @@ fn main() {
             desktop_lifecycle::set_launch_at_login,
             desktop_lifecycle::set_desktop_tray_menu_labels,
             signal_desktop_visual_qa_readiness,
+            desktop_visual_qa_theme::signal_desktop_visual_qa_theme,
             prepare_desktop_visual_qa_window,
             app_error::application_diagnostics::get_application_diagnostics,
             app_error::application_diagnostics::get_sanitized_support_bundle_json,
@@ -688,6 +690,8 @@ fn normalize_visual_qa_theme(value: &str) -> Option<&'static str> {
         "light" => Some("light"),
         "dark" => Some("dark"),
         "auto" => Some("auto"),
+        "bambu" => Some("bambu"),
+        "prusa" => Some("prusa"),
         _ => None,
     }
 }

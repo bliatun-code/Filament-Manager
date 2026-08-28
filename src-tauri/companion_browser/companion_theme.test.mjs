@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 
 import {
   applyCompanionThemeMode,
+  companionThemeBaseMode,
+  COMPANION_THEME_OPTIONS,
   normalizeHex,
+  normalizeThemeMode,
+  persistCompanionThemeMode,
   printerBrandCssVars,
   readCompanionMediaQuery,
   readStoredCompanionThemeMode,
@@ -89,7 +93,8 @@ test("swatch and printer css vars serialize into inline style strings", () => {
   assert.match(swatchCssStyle("#123456"), /--swatch-action-start:rgb\(/);
   assert.match(swatchCssStyle("#123456"), /--swatch-action-contrast:#FFFFFF/);
   assert.match(swatchCssStyle("#FFFFFF"), /--swatch-action-contrast:#0F172A/);
-  assert.match(styleObjectToString(printerBrandCssVars("Bambu X1 Carbon")), /--brand-rgb:0 177 64/);
+  assert.match(styleObjectToString(printerBrandCssVars("Bambu X1 Carbon")), /--brand-rgb:0 174 66/);
+  assert.match(styleObjectToString(printerBrandCssVars("Original Prusa MK4")), /--brand-rgb:253 80 0/);
 });
 
 test("swatch action gradients keep WCAG text contrast across real and sampled colors", () => {
@@ -141,9 +146,95 @@ test("applyCompanionThemeMode updates root attributes and resolves dark mode", (
   );
 
   assert.equal(resolved, "dark");
+  assert.equal(root.dataset.theme, "dark");
   assert.equal(root.dataset.themeMode, "dark");
+  assert.equal(root.dataset.resolvedTheme, "dark");
   assert.equal(root.style.colorScheme, "dark");
   assert.deepEqual(root.classList.toggled, [["dark", true]]);
+});
+
+test("auto and light keep their existing base modes while exposing resolved theme state", () => {
+  const cases = [
+    { mode: "auto", systemDark: false, resolved: "light" },
+    { mode: "auto", systemDark: true, resolved: "dark" },
+    { mode: "light", systemDark: true, resolved: "light" },
+  ];
+
+  for (const { mode, systemDark, resolved } of cases) {
+    const root = {
+      dataset: {},
+      style: {},
+      classList: {
+        toggled: [],
+        toggle(name, value) {
+          this.toggled.push([name, value]);
+        },
+      },
+    };
+
+    assert.equal(
+      applyCompanionThemeMode(
+        mode,
+        { documentElement: root },
+        { matchMedia: () => ({ matches: systemDark }) },
+      ),
+      resolved,
+    );
+    assert.equal(root.dataset.theme, mode);
+    assert.equal(root.dataset.themeMode, mode);
+    assert.equal(root.dataset.resolvedTheme, resolved);
+    assert.equal(root.style.colorScheme, resolved);
+    assert.deepEqual(root.classList.toggled, [["dark", resolved === "dark"]]);
+  }
+});
+
+test("brand themes use a dark base while preserving the selected theme identity", () => {
+  assert.deepEqual(
+    COMPANION_THEME_OPTIONS.map(({ id }) => id),
+    ["auto", "light", "dark", "bambu", "prusa"],
+  );
+  assert.equal(normalizeThemeMode(" Bambu "), "bambu");
+  assert.equal(normalizeThemeMode("prusa"), "prusa");
+  assert.equal(companionThemeBaseMode("bambu"), "dark");
+  assert.equal(companionThemeBaseMode("light"), "light");
+  assert.equal(
+    resolveCompanionTheme("prusa", {
+      matchMedia() {
+        return { matches: false };
+      },
+    }),
+    "dark",
+  );
+
+  for (const theme of ["bambu", "prusa"]) {
+    const root = {
+      dataset: {},
+      style: {
+        "--swatch-rgb": "18 52 86",
+        "--swatch-solid": "#123456",
+      },
+      classList: {
+        toggled: [],
+        toggle(name, value) {
+          this.toggled.push([name, value]);
+        },
+      },
+    };
+    const resolved = applyCompanionThemeMode(
+      theme,
+      { documentElement: root },
+      { matchMedia: () => ({ matches: false }) },
+    );
+
+    assert.equal(resolved, "dark");
+    assert.equal(root.dataset.theme, theme);
+    assert.equal(root.dataset.themeMode, "dark");
+    assert.equal(root.dataset.resolvedTheme, "dark");
+    assert.equal(root.style.colorScheme, "dark");
+    assert.equal(root.style["--swatch-rgb"], "18 52 86");
+    assert.equal(root.style["--swatch-solid"], "#123456");
+    assert.deepEqual(root.classList.toggled, [["dark", true]]);
+  }
 });
 
 test("readStoredCompanionThemeMode falls back to auto", () => {
@@ -158,10 +249,42 @@ test("readStoredCompanionThemeMode falls back to auto", () => {
   assert.equal(
     readStoredCompanionThemeMode("theme-key", {
       getItem() {
+        return "bambu";
+      },
+    }),
+    "bambu",
+  );
+  assert.equal(
+    readStoredCompanionThemeMode("theme-key", {
+      getItem() {
         return "unknown";
       },
     }),
     "auto",
+  );
+});
+
+test("persistCompanionThemeMode stores normalized standard and brand themes", () => {
+  const values = [];
+  const storage = {
+    setItem(key, value) {
+      values.push([key, value]);
+    },
+  };
+
+  assert.equal(persistCompanionThemeMode("theme-key", " PRUSA ", storage), "prusa");
+  assert.equal(persistCompanionThemeMode("theme-key", "unknown", storage), "auto");
+  assert.deepEqual(values, [
+    ["theme-key", "prusa"],
+    ["theme-key", "auto"],
+  ]);
+  assert.equal(
+    persistCompanionThemeMode("theme-key", "bambu", {
+      setItem() {
+        throw new Error("storage denied");
+      },
+    }),
+    "bambu",
   );
 });
 

@@ -1482,6 +1482,10 @@ export const ptBRDictionary: DictionaryNode = {
     autofillVisibleSwatches:
       "Preencher automaticamente amostras ausentes visíveis",
     autoHint: "Auto segue a preferência claro/escuro do seu sistema.",
+    bambuTheme: "Bambu",
+    bambuThemeHelp: "Oficina verde vibrante",
+    prusaTheme: "Prusa",
+    prusaThemeHelp: "Oficina laranja acolhedora",
     backupDescription:
       "Exporte um backup JSON completo com inventário, histórico e impressoras configuradas.",
     backupExported:

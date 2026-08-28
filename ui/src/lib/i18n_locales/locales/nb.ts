@@ -1942,6 +1942,10 @@ export const nbDictionary: DictionaryNode = {
       dark: "Mørk",
       auto: "Auto (system)",
       autoHint: "Auto følger systemets lys/mørk-preferanse.",
+      bambuTheme: "Bambu",
+      bambuThemeHelp: "Livlig grønt verksted",
+      prusaTheme: "Prusa",
+      prusaThemeHelp: "Varmt oransje verksted",
       companionTitle: "Lokal nettleserkompanjong",
       companionHelp:
         "Åpne samme-maskin-nettleserskallet som serveres av desktop-appen. Dette holder seg foreløpig til lageroversikt, direkte filamentlenker, manuell registrering/redigering/tilbakelevering av innlånte filamenter, printeroversikt, utlånsoversikt og historikk med direkte retur, filamentdetaljer, smale status-/lokasjonsoppdateringer, manuell vektoppdatering, grunnleggende printer-spor-tildeling/rydding og valgt-filament-utlån mens desktop fortsatt er kilden til sannhet.",

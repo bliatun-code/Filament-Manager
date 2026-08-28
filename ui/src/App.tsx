@@ -22,7 +22,7 @@ import {
 import { trustedReleaseUrl } from "./lib/app_update_check";
 import { useAppUpdateContext } from "./lib/app_update_context";
 import { useI18n } from "./lib/i18n";
-import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
+import { getResolvedTheme, getThemeMode, onThemeModeChange } from "./lib/theme_mode";
 import {
   isTauri,
   openExternalUrl,
@@ -30,7 +30,10 @@ import {
   setDockIconTheme,
   setWindowTitle,
 } from "./lib/tauri_client";
-import { prepareDesktopVisualQaWindow } from "./lib/tauri_visual_qa_client";
+import {
+  prepareDesktopVisualQaWindow,
+  signalDesktopVisualQaTheme,
+} from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import { AppUpdateBanner } from "./components/app_update_banner";
 import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
@@ -145,18 +148,28 @@ export default function App() {
     }
 
     const syncDockIcon = async () => {
-      const mode = getThemeMode();
-      const resolvedMode =
-        mode === "auto"
-          ? document.documentElement.classList.contains("dark")
-            ? "dark"
-            : "light"
-          : mode;
+      const themeMode = getThemeMode();
+      const resolvedMode = getResolvedTheme(themeMode);
       setResolvedTheme(resolvedMode);
       try {
         await setDockIconTheme(resolvedMode);
       } catch (error) {
         console.error("Failed to sync dock icon theme", error);
+      }
+      if (
+        import.meta.env.DEV &&
+        typeof window !== "undefined" &&
+        desktopVisualQaInitialPage(window.location.search) &&
+        (themeMode === "bambu" || themeMode === "prusa")
+      ) {
+        const accent = getComputedStyle(document.documentElement)
+          .getPropertyValue("--app-theme-accent")
+          .trim();
+        try {
+          await signalDesktopVisualQaTheme(themeMode, "dark", accent);
+        } catch (error) {
+          console.error("Failed to report desktop visual QA theme", error);
+        }
       }
     };
 

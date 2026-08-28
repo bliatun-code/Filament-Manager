@@ -85,25 +85,64 @@ export function SettingsGeneralTab({
       >
         <div className="surface-subtle p-3">
           <div
-            className="flex flex-wrap gap-2"
+            className="space-y-3"
             role="group"
             aria-label={t("settings.appearance", "Appearance")}
           >
-            {(["auto", "light", "dark"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={themeMode === mode}
-                onClick={() => onThemeSelection(mode)}
-                className={chipButtonClass(themeMode === mode)}
-              >
-                {mode === "auto"
-                  ? t("settings.auto", "Auto (system)")
-                  : mode === "light"
-                    ? t("settings.light", "Light")
-                    : t("settings.dark", "Dark")}
-              </button>
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {(["auto", "light", "dark"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={themeMode === mode}
+                  onClick={() => onThemeSelection(mode)}
+                  className={chipButtonClass(themeMode === mode)}
+                >
+                  {mode === "auto"
+                    ? t("settings.auto", "Auto (system)")
+                    : mode === "light"
+                      ? t("settings.light", "Light")
+                      : t("settings.dark", "Dark")}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(["bambu", "prusa"] as const).map((mode) => {
+                const bambu = mode === "bambu";
+                const label = bambu
+                  ? t("settings.bambuTheme", "Bambu")
+                  : t("settings.prusaTheme", "Prusa");
+                const help = bambu
+                  ? t(
+                      "settings.bambuThemeHelp",
+                      "A playful dark theme inspired by Bambu green.",
+                    )
+                  : t(
+                      "settings.prusaThemeHelp",
+                      "A colorful dark theme inspired by Prusa orange.",
+                    );
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={themeMode === mode}
+                    onClick={() => onThemeSelection(mode)}
+                    className={`theme-brand-choice theme-brand-choice-${mode} ${
+                      themeMode === mode ? "theme-brand-choice-active" : ""
+                    }`}
+                  >
+                    <span className="theme-brand-choice-swatch" aria-hidden="true" />
+                    <span className="min-w-0 text-left">
+                      <span className="block text-sm font-semibold">{label}</span>
+                      <span className="mt-0.5 block text-xs font-normal leading-5 opacity-80">
+                        {help}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </SettingsSurfaceCard>

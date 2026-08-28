@@ -135,6 +135,10 @@ Release notes:
   current user signs in. Companion, Host/LAN reconciliation, mDNS, and Bambu
   Live usage monitoring continue while the window is hidden; Open/Quit restore
   or stop the single running instance through localized native menus.
+- Appearance choices preserve the existing Auto, Light, and Dark modes and add
+  playful, unofficial dark-based Bambu and Prusa themes. Desktop and Companion
+  keep their theme preferences locally and independently; filament, material,
+  and status swatches remain data colors instead of being recolored by a theme.
 - On macOS and Windows, Companion advertises one stable `.local` address through
   mDNS. New browser and desktop pairings and new QR labels use this address, so
   DHCP address changes do not break them. The library-bound name uses the short,

@@ -1,11 +1,54 @@
 export const COMPANION_THEME_STORAGE_KEY = "bfm-companion-theme-mode";
 
+export const COMPANION_BRAND_THEME_ACCENTS = Object.freeze({
+  bambu: "#00AE42",
+  prusa: "#FD5000",
+});
+
+export const COMPANION_THEME_OPTIONS = Object.freeze([
+  Object.freeze({
+    id: "auto",
+    labelKey: "settings.auto",
+    labelFallback: "Auto",
+    helpKey: "settings.autoHelp",
+    helpFallback: "Follow device",
+  }),
+  Object.freeze({
+    id: "light",
+    labelKey: "settings.light",
+    labelFallback: "Light",
+    helpKey: "settings.lightHelp",
+    helpFallback: "Bright surfaces",
+  }),
+  Object.freeze({
+    id: "dark",
+    labelKey: "settings.dark",
+    labelFallback: "Dark",
+    helpKey: "settings.darkHelp",
+    helpFallback: "Low-light friendly",
+  }),
+  Object.freeze({
+    id: "bambu",
+    labelKey: "settings.bambuTheme",
+    labelFallback: "Bambu",
+    helpKey: "settings.bambuThemeHelp",
+    helpFallback: "Vivid green workshop",
+  }),
+  Object.freeze({
+    id: "prusa",
+    labelKey: "settings.prusaTheme",
+    labelFallback: "Prusa",
+    helpKey: "settings.prusaThemeHelp",
+    helpFallback: "Warm orange workshop",
+  }),
+]);
+
 const SWATCH_FALLBACK = "#CBD5E1";
 const SWATCH_ACTION_CONTRAST_TARGET = 4.55;
-const VALID_THEME_MODES = new Set(["light", "dark", "auto"]);
+const VALID_THEME_MODES = new Set(COMPANION_THEME_OPTIONS.map(({ id }) => id));
+const DARK_BASED_THEME_MODES = new Set(["bambu", "prusa"]);
 const PRINTER_BRAND_HEX = {
-  bambu: "#00B140",
-  prusa: "#F97316",
+  ...COMPANION_BRAND_THEME_ACCENTS,
   generic: "#CBD5E1",
 };
 
@@ -77,9 +120,17 @@ export function resolveCompanionTheme(mode, windowRef = window) {
   if (normalized === "light" || normalized === "dark") {
     return normalized;
   }
+  if (DARK_BASED_THEME_MODES.has(normalized)) {
+    return "dark";
+  }
   return readCompanionMediaQuery(windowRef, "(prefers-color-scheme: dark)")?.matches
     ? "dark"
     : "light";
+}
+
+export function companionThemeBaseMode(mode) {
+  const normalized = normalizeThemeMode(mode);
+  return DARK_BASED_THEME_MODES.has(normalized) ? "dark" : normalized;
 }
 
 export function applyCompanionThemeMode(mode, documentRef = document, windowRef = window) {
@@ -87,7 +138,12 @@ export function applyCompanionThemeMode(mode, documentRef = document, windowRef 
   const resolved = resolveCompanionTheme(normalized, windowRef);
   const root = documentRef?.documentElement;
   if (root) {
-    root.dataset.themeMode = normalized;
+    // data-theme is the selected visual theme. data-theme-mode intentionally
+    // remains light/dark/auto compatible so existing layout and swatch styling
+    // keeps working while brand themes layer their own semantic tokens on top.
+    root.dataset.theme = normalized;
+    root.dataset.themeMode = companionThemeBaseMode(normalized);
+    root.dataset.resolvedTheme = resolved;
     root.style.colorScheme = resolved;
     root.classList.toggle("dark", resolved === "dark");
   }
@@ -115,6 +171,17 @@ export function readStoredCompanionThemeMode(storageKey, storageRef) {
   } catch {
     return "auto";
   }
+}
+
+export function persistCompanionThemeMode(storageKey, mode, storageRef) {
+  const normalized = normalizeThemeMode(mode);
+  try {
+    storageRef?.setItem?.(storageKey, normalized);
+  } catch {
+    // Browser storage is best-effort; callers still keep the normalized value
+    // in memory for the current session.
+  }
+  return normalized;
 }
 
 export function normalizeHex(raw) {

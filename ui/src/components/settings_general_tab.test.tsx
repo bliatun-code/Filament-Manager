@@ -139,7 +139,11 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   assert.ok(html.indexOf("Appearance") < html.indexOf("Program"));
   assert.ok(html.indexOf("Language") < html.indexOf("Program"));
   assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 1);
-  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 2);
+  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 4);
+  assert.match(html, /theme-brand-choice-bambu/);
+  assert.match(html, /A playful dark theme inspired by Bambu green/);
+  assert.match(html, /theme-brand-choice-prusa/);
+  assert.match(html, /A colorful dark theme inspired by Prusa orange/);
   assert.match(languageSelect, /<option value="de">Deutsch<\/option>/);
   assert.match(languageSelect, /<option value="fr">Français<\/option>/);
   assert.match(languageSelect, /<option value="es">Español<\/option>/);

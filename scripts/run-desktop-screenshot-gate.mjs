@@ -35,6 +35,12 @@ export const DESKTOP_CAPTURE_POSITION_TOLERANCE = 12;
 export const DESKTOP_VISUAL_QA_STATIC_SETTLE_MS = 3_500;
 export const DESKTOP_VISUAL_QA_READINESS_PREFIX =
   "FILAMENT_MANAGER_VISUAL_QA_READY:";
+export const DESKTOP_VISUAL_QA_THEME_PREFIX =
+  "FILAMENT_MANAGER_VISUAL_QA_THEME:";
+export const DESKTOP_BRAND_THEME_EVIDENCE = Object.freeze({
+  bambu: Object.freeze({ accent: "#00AE42", resolvedTheme: "dark" }),
+  prusa: Object.freeze({ accent: "#FD5000", resolvedTheme: "dark" }),
+});
 const VISUAL_QA_SCENARIO_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_SCENARIO";
 const VISUAL_QA_LOCALE_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_LOCALE";
 const VISUAL_QA_THEME_ENV_VAR = "FILAMENT_MANAGER_VISUAL_QA_THEME";
@@ -309,17 +315,19 @@ export function normalizeDesktopVisualQaTheme(value) {
   if (
     normalized === "light" ||
     normalized === "dark" ||
-    normalized === "auto"
+    normalized === "auto" ||
+    normalized === "bambu" ||
+    normalized === "prusa"
   ) {
     return normalized;
   }
   if (!normalized) {
     throw new Error(
-      'Desktop visual QA theme is required. Use "light", "dark", or "auto".',
+      'Desktop visual QA theme is required. Use "light", "dark", "auto", "bambu", or "prusa".',
     );
   }
   throw new Error(
-    `Unknown desktop visual QA theme "${value}". Use "light", "dark", or "auto".`,
+    `Unknown desktop visual QA theme "${value}". Use "light", "dark", "auto", "bambu", or "prusa".`,
   );
 }
 
@@ -457,6 +465,63 @@ export async function waitForDesktopVisualQaReadiness(options = {}) {
       return false;
     }
     if (desktopVisualQaOutputHasReadinessToken(readOutput(), options.token)) {
+      return true;
+    }
+    if (nowFn() - startedAt >= timeoutMs) {
+      break;
+    }
+    await waitFn(intervalMs);
+  }
+
+  return false;
+}
+
+export function parseDesktopVisualQaThemeEvidence(output) {
+  const lines = String(output ?? "").split(/\r?\n/).reverse();
+  for (const line of lines) {
+    const match = line
+      .trim()
+      .match(/^FILAMENT_MANAGER_VISUAL_QA_THEME:(bambu|prusa):(dark):(#[0-9A-F]{6})$/);
+    if (match) {
+      return {
+        accent: match[3],
+        resolvedTheme: match[2],
+        selectedTheme: match[1],
+      };
+    }
+  }
+  return null;
+}
+
+export function desktopVisualQaThemeEvidenceMatches(output, themeMode) {
+  const expected = DESKTOP_BRAND_THEME_EVIDENCE[themeMode];
+  if (!expected) {
+    return true;
+  }
+  const evidence = parseDesktopVisualQaThemeEvidence(output);
+  return Boolean(
+    evidence &&
+      evidence.selectedTheme === themeMode &&
+      evidence.resolvedTheme === expected.resolvedTheme &&
+      evidence.accent === expected.accent,
+  );
+}
+
+export async function waitForDesktopVisualQaThemeEvidence(options = {}) {
+  const timeoutMs = options.timeoutMs ?? 10_000;
+  const intervalMs = options.intervalMs ?? 250;
+  const nowFn = options.nowFn ?? Date.now;
+  const waitFn = options.waitFn ?? wait;
+  const readOutput = options.readOutput ?? (() => "");
+  const startedAt = nowFn();
+  let isFirstAttempt = true;
+
+  while (isFirstAttempt || nowFn() - startedAt <= timeoutMs) {
+    isFirstAttempt = false;
+    if (options.shouldAbort?.()) {
+      return false;
+    }
+    if (desktopVisualQaThemeEvidenceMatches(readOutput(), options.themeMode)) {
       return true;
     }
     if (nowFn() - startedAt >= timeoutMs) {
@@ -1323,26 +1388,50 @@ export function validateDesktopScreenshotMetrics(metric, minimums = {}) {
 }
 
 export function validateDesktopScreenshotTheme(metric, themeMode) {
-  if (themeMode !== "light" && themeMode !== "dark") {
+  const resolvedTheme =
+    themeMode === "bambu" || themeMode === "prusa" ? "dark" : themeMode;
+  if (resolvedTheme !== "light" && resolvedTheme !== "dark") {
     return [];
+  }
+  const errors = [];
+  const expectedBrandEvidence = DESKTOP_BRAND_THEME_EVIDENCE[themeMode];
+  if (expectedBrandEvidence) {
+    if (!metric?.themeEvidence) {
+      errors.push(`Desktop ${themeMode} theme verification is missing runtime theme evidence.`);
+    } else {
+      if (metric.themeEvidence.selectedTheme !== themeMode) {
+        errors.push(
+          `Desktop selected theme ${metric.themeEvidence.selectedTheme ?? "<missing>"} instead of ${themeMode}.`,
+        );
+      }
+      if (metric.themeEvidence.resolvedTheme !== expectedBrandEvidence.resolvedTheme) {
+        errors.push(
+          `Desktop ${themeMode} resolved theme ${metric.themeEvidence.resolvedTheme ?? "<missing>"} instead of ${expectedBrandEvidence.resolvedTheme}.`,
+        );
+      }
+      if (metric.themeEvidence.accent !== expectedBrandEvidence.accent) {
+        errors.push(
+          `Desktop ${themeMode} rendered accent ${metric.themeEvidence.accent ?? "<missing>"} instead of ${expectedBrandEvidence.accent}.`,
+        );
+      }
+    }
   }
   const lumaMean = Number(metric?.screenshotPixels?.lumaMean);
   if (!Number.isFinite(lumaMean)) {
-    return [
-      `Desktop ${themeMode} theme verification is missing screenshot luminance.`,
-    ];
+    errors.push(`Desktop ${themeMode} theme verification is missing screenshot luminance.`);
+    return errors;
   }
-  if (themeMode === "light" && lumaMean < DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN) {
-    return [
+  if (resolvedTheme === "light" && lumaMean < DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN) {
+    errors.push(
       `Desktop light theme screenshot is too dark (mean luminance ${lumaMean.toFixed(1)}, expected at least ${DESKTOP_LIGHT_THEME_MIN_LUMA_MEAN}).`,
-    ];
+    );
   }
-  if (themeMode === "dark" && lumaMean >= DESKTOP_DARK_THEME_MAX_LUMA_MEAN) {
-    return [
-      `Desktop dark theme screenshot is too light (mean luminance ${lumaMean.toFixed(1)}, expected below ${DESKTOP_DARK_THEME_MAX_LUMA_MEAN}).`,
-    ];
+  if (resolvedTheme === "dark" && lumaMean >= DESKTOP_DARK_THEME_MAX_LUMA_MEAN) {
+    errors.push(
+      `Desktop ${themeMode} theme screenshot is too light (mean luminance ${lumaMean.toFixed(1)}, expected below ${DESKTOP_DARK_THEME_MAX_LUMA_MEAN}).`,
+    );
   }
-  return [];
+  return errors;
 }
 
 export function validateDesktopWindowSize(metric, windowSize, tolerance = 2) {
@@ -1395,6 +1484,7 @@ export async function runDesktopScreenshotGate(options = {}) {
   const metric = {
     screenshot: screenshot.path,
     screenshotPixels,
+    themeEvidence: options.themeEvidence ?? null,
     window,
   };
   const errors = [
@@ -1832,6 +1922,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
   let keepApp = false;
   let result = null;
   let primaryError = null;
+  let themeEvidence = null;
   try {
     let lastWindowLookupError = null;
     const recordLookupAttempt = (attempt) => {
@@ -1930,6 +2021,26 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
       }
     }
 
+    if (result == null && DESKTOP_BRAND_THEME_EVIDENCE[options.themeMode]) {
+      const themeEvidenceReached = await waitForDesktopVisualQaThemeEvidence({
+        intervalMs: options.themeEvidencePollMs ?? 250,
+        nowFn: options.themeEvidenceNowFn,
+        readOutput: () => outputTail,
+        shouldAbort: launchStopped,
+        themeMode: options.themeMode,
+        timeoutMs: options.themeEvidenceTimeoutMs ?? 10_000,
+        waitFn: options.themeEvidenceWaitFn,
+      });
+      themeEvidence = parseDesktopVisualQaThemeEvidence(outputTail);
+      if (!themeEvidenceReached && launchStopped()) {
+        result = stoppedLaunchResult("desktop theme evidence wait");
+      } else if (!themeEvidenceReached) {
+        throw new Error(
+          `Desktop visual QA did not receive verified ${options.themeMode} runtime theme evidence before capture.`,
+        );
+      }
+    }
+
     if (result == null && options.captureDelayMs) {
       await wait(options.captureDelayMs);
     }
@@ -1941,6 +2052,7 @@ export async function runLaunchedDesktopScreenshotGate(options = {}) {
     if (result == null) {
       const gateResult = await desktopScreenshotGateFn({
         ...options,
+        themeEvidence,
         window,
       });
       result = launchStopped()

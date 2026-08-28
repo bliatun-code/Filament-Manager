@@ -3,6 +3,7 @@ import type { Locale, useI18n } from "../lib/i18n";
 import {
   buildSettingsLocaleSelectionMessage,
   buildSettingsThemeSelectionMessage,
+  settingsThemeModeLabel,
 } from "./settings_preferences_model";
 
 type SettingsTranslator = ReturnType<typeof useI18n>["t"];
@@ -28,7 +29,12 @@ export function useSettingsPreferenceActions({
 
   function handleThemeSelection(mode: ThemeMode) {
     updateThemeMode(mode);
-    setInfo(buildSettingsThemeSelectionMessage(mode, settingsPreferenceMessageLabels()));
+    setInfo(
+      buildSettingsThemeSelectionMessage(
+        settingsThemeModeLabel(mode, t),
+        settingsPreferenceMessageLabels(),
+      ),
+    );
   }
 
   function handleLocaleSelection(nextLocale: Locale) {
