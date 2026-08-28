@@ -214,7 +214,6 @@ available to its users. See [LICENSE](LICENSE) for the full license text and
   crate with platform-neutral domain and SQLite behavior.
 - `src-tauri/`: Tauri shell, Rust commands, Companion server, Bambu Live
   transport/sync, trusted-LAN, storage startup, and desktop integration.
-- `src/scraper/`: TypeScript catalog scraper utilities.
 - `ui/`: React desktop UI, UI models, tests, and styling.
 - `scripts/`: local validation, Tauri wrapper, and contract checks.
 - `docs/`: user-facing guides.
@@ -232,7 +231,7 @@ Bambu Live boundaries.
 - Rust 1.88 or newer for Tauri builds; `rust-toolchain.toml` selects the
   reviewed Rust 1.98.0 toolchain through rustup
 - Xcode app + Command Line Tools for macOS builds
-- `sqlite3` CLI recommended for scraper fallback behavior
+- `sqlite3` CLI is optional as a fallback for visual-QA database tooling
 - Current macOS DMG: Apple Silicon or Intel and macOS 11.0 Big Sur or newer
 
 The project uses the local Tauri CLI from npm dependencies through
@@ -547,32 +546,16 @@ installations need one manual bridge upgrade before automatic notifications can
 work. See [Update Metadata Channel](docs/UPDATE_CHANNEL.md) for the fail-safe
 contract and publication choices.
 
-## Catalog Scraping
+## Catalog Updates
 
-Safe Bambu catalog refresh from the scraper:
-
-```bash
-FILAMENT_MANAGER_DB_PATH=./data/filament-manager.db npm run scrape:auto:safe
-```
-
-Manual scraper run:
-
-```bash
-BAMBU_BASE_URL=https://eu.store.bambulab.com \
-BAMBU_COLLECTION=bambu-lab-3d-printer-filament \
-FILAMENT_MANAGER_DB_PATH=./data/filament-manager.db \
-npm run scrape
-```
-
-Optional tuning:
-
-- `BAMBU_VERBOSE=1`
-- `BAMBU_FETCH_RETRIES=2`
-- `BAMBU_TIMEOUT_MS=20000`
-- `BAMBU_PRODUCT_DELAY_MS=200`
-- `BAMBU_MATERIAL_TYPES=PLA,PETG` to refresh a smaller material slice
-- `BAMBU_DB_PATH` is still accepted as a legacy alias for
-  `FILAMENT_MANAGER_DB_PATH`
+Update supported vendor catalogs only from **Settings → Filament catalog** in
+the desktop app. First select a vendor and choose **Discover available
+materials**. This makes a small, bounded, read-only storefront check and only
+refreshes the list of material types currently available from that source; it
+does not import products or change catalog lifecycle state. Then select exactly
+one discovered material type and refresh it. The app deliberately avoids
+full-catalog batch downloads and does not expose a parallel command-line
+scraper.
 
 Catalog data is stored in SQLite in `filament_master_list`. The app ships with
 a sanitized, case-normalized seed catalog in
@@ -590,7 +573,9 @@ a successful discovery, choose exactly one available material type to refresh;
 larger catalog maintenance is intentionally split into lower-traffic runs.
 Neither discovery nor a selected-material refresh automatically marks catalog
 entries as historical/discontinued, so older and reseller-only products remain
-searchable. Bambu color swatches prefer the local official hex table before
+searchable. Bambu discovery reads only the complete, bounded collection listing;
+only a selected family opens its public product metadata, without retries.
+Bambu color swatches prefer the local official hex table before
 falling back to name-based color estimates. Swatches remain backward compatible
 with single `#RRGGBB` values, and can also store `multi(#RRGGBB,#RRGGBB,...)`
 for hard segmented multi-colour rolls or `gradient(#RRGGBB,#RRGGBB,...)` for
@@ -626,9 +611,10 @@ smooth transition rolls.
 
 The project is configured to keep working when upstream dependencies change:
 
-- `better-sqlite3` is optional; scraper code can fall back to the `sqlite3` CLI.
-- Auto-scrape detects working Bambu store/collection paths dynamically.
-- Scraper network calls use retry and timeout controls.
+- Vendor discovery and one-material refreshes use bounded request budgets and
+  keep existing catalog data unchanged when a source is blocked or inconclusive.
+- Visual-QA database tooling can fall back to the `sqlite3` CLI when
+  `better-sqlite3` is unavailable.
 - Tauri configuration uses the v2 schema with explicit capabilities.
 - Local wrapper scripts keep CI and developer commands consistent.
 

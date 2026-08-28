@@ -1093,6 +1093,12 @@ importerer ingen produkter og endrer verken katalogmetadata eller
 livssyklusstatus. Hvis kilden er blokkert, tom eller ufullstendig, beholdes den
 forrige listen over tilgjengelige materialtyper.
 
+For Bambu leser dette søket bare den komplette, paginerte katalogoversikten og
+åpner ingen produktsider. Når du etterpå oppdaterer én valgt materialfamilie,
+leser programmet offentlig produktmetadata bare for produktene i den familien.
+Forespørslene er sekvensielle, har en fast sikkerhetsgrense og gjentas ikke
+automatisk ved feil eller sperre.
+
 Etter et vellykket søk velger du nøyaktig én materialtype og oppdaterer den.
 Større vedlikehold deles dermed i små, forsiktige forespørsler. Verken søket
 eller materialoppdateringen markerer automatisk produkter som utgått eller

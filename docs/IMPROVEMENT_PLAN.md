@@ -169,6 +169,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 ### 2026-08-28
 
 - Leverandørkatalogen bruker nå en separat, skrivebeskyttet kildekontroll som bare finner materialtypene nettbutikken kan levere komplette data for. En oppdatering krever nøyaktig én valgt materialtype, har et fast og lite forespørselsbudsjett, prøver ikke på nytt ved blokkering og endrer aldri livssyklusstatus for produkter som ikke blir sett. Desktop, Client og Host deler den samme capability-beskyttede kontrakten, og en mislykket kontroll beholder den forrige materiallisten.
+- Bambu-katalogkilden er flyttet fra det utgåtte Shopify-endepunktet til leverandørens nåværende Next/RSC-katalog. Discovery leser hele den paginerte oversikten innen en fast side- og forespørselsgrense uten produktdetaljer; oppdatering leser deretter JSON-LD bare for én valgt materialfamilie. Ufullstendige sider, duplikater, formatendringer og sperresvar avviser hele snapshotet uten katalogskriv eller automatisk utgått-markering. Den parallelle CLI-scraperen er fjernet, slik at Innstillinger-flyten er eneste nettbaserte katalogskriver.
 
 ### 2026-08-26
 

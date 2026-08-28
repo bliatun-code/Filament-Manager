@@ -1079,6 +1079,12 @@ the Bambu or eSUN storefront. It imports no products and changes neither catalog
 metadata nor lifecycle status. If the source is blocked, empty, or
 inconclusive, the previous list of available material types is kept.
 
+For Bambu, discovery reads only the complete paginated collection listing and
+opens no product pages. When you subsequently refresh one selected material
+family, the app reads public product metadata only for products in that family.
+Requests are sequential, have a fixed safety budget, and are not retried
+automatically after an error or blocking response.
+
 After a successful discovery, select exactly one material type and refresh it.
 Larger maintenance is therefore split into small, cautious requests. Neither
 discovery nor the material refresh automatically marks products as historical
