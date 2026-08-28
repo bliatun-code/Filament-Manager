@@ -22,10 +22,13 @@ test("inventory detail labels use shared detail typography classes", () => {
   const detailModal = readComponentSource("inventory_spool_detail_modal.tsx");
   const detailFactCard = readComponentSource("inventory_detail_fact_card.tsx");
   const maintenancePanels = readComponentSource("inventory_spool_maintenance_panels.tsx");
+  const purchaseReceiptFields = readComponentSource("purchase_receipt_metadata_fields.tsx");
   const qrRfidPanel = readComponentSource("inventory_spool_qr_rfid_panel.tsx");
   const rfidCapturePanels = readComponentSource("inventory_rfid_capture_panels.tsx");
+  const rollUsageChart = readComponentSource("roll_usage_chart.tsx");
   const rollHistoryPanel = readComponentSource("inventory_roll_history_panel.tsx");
   const spoolDetailSummary = readComponentSource("inventory_spool_detail_summary.tsx");
+  const weightInput = readComponentSource("weight_input.tsx");
   const rawEyebrowClass =
     /text-xs uppercase tracking-\[0\.2em\] text-slate-500 dark:text-slate-400/;
 
@@ -39,6 +42,8 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(detailPanelClasses, /inventoryDetailSectionLabelClassName/);
   assert.match(detailPanelClasses, /inventoryDetailSaveButtonClassName/);
   assert.match(detailPanelClasses, /app-primary-action/);
+  assert.doesNotMatch(detailPanelClasses, /app-soft-control[^"\n]*(?:bg-white|bg-slate)/);
+  assert.doesNotMatch(detailPanelClasses, /app-primary-action[^"\n]*dark:bg-slate/);
   assert.match(detailPanelClasses, /inventoryPanelToggleButtonClassName/);
   assert.match(detailPanelClasses, /app-control-focus/);
   assert.match(detailPanelClasses, /app-modal-control/);
@@ -46,25 +51,57 @@ test("inventory detail labels use shared detail typography classes", () => {
   assert.match(catalogMetadataPanel, /inventoryDetailCompactFormControlClassName/);
   assert.match(catalogMetadataPanel, /inventoryDetailEyebrowClassName/);
   assert.match(detailFactCard, /inventoryDetailFactCardClassName/);
+  assert.match(detailFactCard, /app-modal-inset-soft/);
   assert.match(detailFactCard, /inventoryDetailTintPanelClassName/);
+  assert.match(detailFactCard, /app-modal-inset-soft rounded-xl border/);
   assert.match(detailFactCard, /function InventoryDetailTintPanel/);
   assert.match(detailFactCard, /inventoryDetailLabelClassName/);
   assert.match(detailFactCard, /joinClassNames/);
   assert.match(catalogMetadataPanel, /InventoryDetailTintPanel/);
+  assert.match(catalogMetadataPanel, /app-soft-control/);
+  assert.match(
+    catalogMetadataPanel,
+    /type="color"(?:(?!\/>)[\s\S])*?className="[^"]*app-modal-control app-control-focus/,
+  );
+  assert.doesNotMatch(
+    catalogMetadataPanel,
+    /type="color"(?:(?!\/>)[\s\S])*?className="[^"]*(?:border-slate|bg-white)/,
+  );
+  assert.match(catalogMetadataPanel, /inventorySwatchInsetStyle/);
   assert.match(detailModal, /inventoryDetailEyebrowClassName/);
+  assert.match(detailModal, /inventorySwatchPanelStyle/);
   assert.match(maintenancePanels, /inventoryDetailEyebrowClassName/);
   assert.match(maintenancePanels, /inventoryDetailDangerActionButtonClassName/);
   assert.match(maintenancePanels, /inventoryDetailFormControlClassName/);
   assert.match(maintenancePanels, /inventoryDetailSaveButtonClassName/);
   assert.match(maintenancePanels, /SegmentedChoiceRow/);
+  assert.match(maintenancePanels, /inventorySwatchPanelStyle/);
   assert.match(maintenancePanels, /groupClassName="w-full"/);
   assert.match(maintenancePanels, /optionSizeClassName="flex-1 justify-center px-3 py-2 text-sm"/);
   assert.match(qrRfidPanel, /inventoryDetailActionButtonClassName/);
   assert.match(qrRfidPanel, /inventoryDetailEyebrowClassName/);
   assert.match(qrRfidPanel, /InventoryDetailTintPanel/);
+  assert.match(qrRfidPanel, /app-modal-inset-soft/);
+  assert.match(qrRfidPanel, /app-modal-inset/);
+  assert.match(qrRfidPanel, /inventorySwatchInsetStyle/);
+  assert.match(qrRfidPanel, /bg-white object-contain/);
+  assert.doesNotMatch(qrRfidPanel, /app-soft-control[^"\n]*(?:bg-white|bg-slate)/);
   assert.match(qrRfidPanel, /inventory\.labelSheetInventoryHint/);
   assert.match(rollHistoryPanel, /inventoryDetailEyebrowClassName/);
+  assert.match(rollHistoryPanel, /app-modal-inset-soft/);
+  assert.match(rollHistoryPanel, /var\(--app-theme-accent\)/);
+  assert.match(rollHistoryPanel, /var\(--app-theme-accent-soft\)/);
+  assert.doesNotMatch(rollHistoryPanel, /bg-slate-400/);
+  assert.match(rollHistoryPanel, /inventorySwatchPanelStyle/);
+  assert.match(rollUsageChart, /app-modal-inset-soft/);
+  assert.match(rollUsageChart, /var\(--app-theme-accent\)/);
+  assert.doesNotMatch(rollUsageChart, /bg-white\/70/);
+  assert.doesNotMatch(rollUsageChart, /dark:text-sky/);
+  assert.match(purchaseReceiptFields, /app-modal-inset/);
   assert.match(spoolDetailSummary, /InventoryDetailFactCard/);
+  assert.match(spoolDetailSummary, /inventorySwatchInsetStyle/);
+  assert.match(weightInput, /app-control-focus/);
+  assert.match(weightInput, /app-accent-control/);
   assert.match(rfidCapturePanels, /inventoryDetailSectionLabelClassName/);
   assert.match(rfidCapturePanels, /inventoryPanelToggleButtonClassName/);
   assert.match(rollHistoryPanel, /inventoryPanelToggleButtonClassName/);
@@ -82,6 +119,7 @@ test("inventory detail labels use shared detail typography classes", () => {
     /rounded-xl border border-slate-200 bg-slate-50 p-4/,
   );
   assert.doesNotMatch(detailModal, rawEyebrowClass);
+  assert.doesNotMatch(detailFactCard, /border-slate-200 bg-slate-50/);
   assert.doesNotMatch(maintenancePanels, rawEyebrowClass);
   assert.doesNotMatch(
     maintenancePanels,
@@ -237,6 +275,7 @@ test("individual price protection is a described checkbox and keeps manual edits
   );
 
   assert.match(html, /type="checkbox"/);
+  assert.match(html, /class="app-accent-control [^"]*"/);
   assert.match(html, /checked=""/);
   assert.match(html, /aria-describedby="([^"]+)"/);
   const describedBy = html.match(/aria-describedby="([^"]+)"/)?.[1];

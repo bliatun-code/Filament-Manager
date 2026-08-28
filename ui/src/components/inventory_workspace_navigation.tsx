@@ -12,10 +12,14 @@ type InventoryWorkspaceNavigationProps = {
 
 function inventoryWorkspaceTabClassName(active: boolean): string {
   const base =
-    "flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-sky-300 dark:focus-visible:ring-sky-500/50 sm:flex-none sm:min-w-52";
+    "app-control-focus flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border px-4 py-3 text-left text-sm font-semibold outline-none transition sm:flex-none sm:min-w-52";
   return active
-    ? `${base} app-selected-control dark:bg-slate-100 dark:text-slate-950 dark:shadow-none`
-    : `${base} text-slate-600 hover:bg-white/80 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/80 dark:hover:text-white`;
+    ? `${base} app-selected-control`
+    : `${base} app-soft-control`;
+}
+
+function inventoryWorkspaceCountClassName(active: boolean): string {
+  return `count-pill tabular-nums ${active ? "app-selected-count" : "app-idle-count"}`;
 }
 
 export function InventoryWorkspaceNavigation({
@@ -42,7 +46,9 @@ export function InventoryWorkspaceNavigation({
         onClick={() => onViewChange("STOCK")}
       >
         <span>{t("nav.inventory", "Inventory")}</span>
-        <span className="count-pill tabular-nums">{inventoryCount}</span>
+        <span className={inventoryWorkspaceCountClassName(activeView === "STOCK")}>
+          {inventoryCount}
+        </span>
       </button>
       <button
         type="button"
@@ -53,7 +59,9 @@ export function InventoryWorkspaceNavigation({
         onClick={() => onViewChange("LOCATIONS")}
       >
         <span>{t("inventory.locationsTitle", "Locations")}</span>
-        <span className="count-pill tabular-nums">{locationCount}</span>
+        <span className={inventoryWorkspaceCountClassName(activeView === "LOCATIONS")}>
+          {locationCount}
+        </span>
       </button>
       <button
         type="button"
@@ -64,7 +72,9 @@ export function InventoryWorkspaceNavigation({
         onClick={() => onViewChange("PURCHASES")}
       >
         <span>{t("inventory.wishlistOrders", "Wishlist & orders")}</span>
-        <span className="count-pill tabular-nums">{purchaseCount}</span>
+        <span className={inventoryWorkspaceCountClassName(activeView === "PURCHASES")}>
+          {purchaseCount}
+        </span>
       </button>
     </div>
   );

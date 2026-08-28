@@ -17,16 +17,16 @@ export const inventoryDetailCompactFormControlClassName =
   "app-modal-control app-control-focus w-full rounded border px-2 py-1 text-xs text-slate-900 outline-none transition dark:text-slate-100";
 
 export const inventoryDetailSaveButtonClassName =
-  "app-primary-action app-control-focus rounded-xl px-4 py-2 text-sm font-semibold outline-none transition disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white";
+  "app-primary-action app-control-focus rounded-xl px-4 py-2 text-sm font-semibold outline-none transition disabled:opacity-50";
 
 export const inventoryDetailCompactActionButtonClassName =
-  "app-soft-control app-control-focus rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/70";
+  "app-soft-control app-control-focus rounded-lg border px-3 py-1.5 text-xs font-semibold outline-none transition disabled:opacity-50";
 
 export const inventoryDetailActionButtonClassName =
-  "app-soft-control app-control-focus w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/60";
+  "app-soft-control app-control-focus w-full rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition disabled:opacity-50";
 
 export const inventoryDetailDangerActionButtonClassName =
   "app-control-focus w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 outline-none transition hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25";
 
 export const inventoryPanelToggleButtonClassName =
-  "app-soft-control app-control-focus rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 outline-none transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/60";
+  "app-soft-control app-control-focus rounded-lg border px-2.5 py-1 text-[11px] font-semibold outline-none transition";

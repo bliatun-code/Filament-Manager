@@ -1,4 +1,5 @@
 import {
+  appControlGroupClassName,
   appControlDisabledClassName,
   appControlFocusClassName,
   joinClassNames,
@@ -27,7 +28,8 @@ export type SegmentedChoiceRowProps<T extends string> = {
 
 function segmentedChoiceGroupClass(className = ""): string {
   return joinClassNames(
-    "inline-flex flex-wrap gap-1 rounded-2xl border border-slate-200/85 bg-white/72 p-1 shadow-sm shadow-slate-900/5 dark:border-slate-700 dark:bg-slate-950/55 dark:shadow-none",
+    appControlGroupClassName,
+    "inline-flex flex-wrap gap-1 rounded-2xl border p-1",
     className,
   );
 }
@@ -37,20 +39,20 @@ function segmentedChoiceButtonClass(
   sizeClasses = "px-3 py-2 text-xs",
 ): string {
   return joinClassNames(
-    "inline-flex items-center gap-2 rounded-xl font-semibold outline-none transition",
+    "inline-flex items-center gap-2 rounded-xl border font-semibold outline-none transition",
     sizeClasses,
     appControlFocusClassName,
     active
-      ? "app-selected-control dark:bg-slate-100 dark:text-slate-900 dark:shadow-none"
-      : "text-slate-600 hover:bg-white/85 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900/80 dark:hover:text-slate-100",
+      ? "app-selected-control"
+      : "app-soft-control",
   );
 }
 
 function segmentedChoiceCountClass(active: boolean): string {
-  return `rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+  return `rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${
     active
-      ? "bg-white/15 text-white dark:bg-slate-900/15 dark:text-slate-900"
-      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+      ? "app-selected-count"
+      : "app-idle-count"
   }`;
 }
 

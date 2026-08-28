@@ -97,7 +97,7 @@ function inventoryRfidCaptureSlotButtonClassName(active: boolean): string {
     return `${base} app-modal-selected-control`;
   }
 
-  return `${base} app-soft-control border-slate-200 text-slate-700 hover:bg-white dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-950/70`;
+  return `${base} app-soft-control`;
 }
 
 export function InventoryRfidCaptureHeader({

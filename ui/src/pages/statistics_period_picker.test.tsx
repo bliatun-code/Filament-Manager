@@ -48,6 +48,19 @@ test("period picker exposes every required preset and the applied range", () => 
   assert.match(html, /aria-expanded="false"[^>]*>Custom range<\/button>/);
   assert.match(html, /Selected:/);
   assert.doesNotMatch(html, /type="date"/);
+
+  const selectedPreset = html.match(
+    /<button[^>]*aria-pressed="true"[^>]*>Last 30 days<\/button>/,
+  )?.[0];
+  const idlePreset = html.match(
+    /<button[^>]*aria-pressed="false"[^>]*>90 d<\/button>/,
+  )?.[0];
+  assert.ok(selectedPreset);
+  assert.ok(idlePreset);
+  assert.match(selectedPreset, /app-selected-control/);
+  assert.doesNotMatch(selectedPreset, /app-soft-control/);
+  assert.match(idlePreset, /app-soft-control/);
+  assert.doesNotMatch(idlePreset, /app-selected-control/);
 });
 
 test("custom editor keeps permanent date labels and inclusive ordering constraints", () => {

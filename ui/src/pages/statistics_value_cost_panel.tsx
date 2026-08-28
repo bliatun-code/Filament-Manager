@@ -141,7 +141,7 @@ export function InventoryValueTraceCard({
   const hasAmount = row.amount != null && Boolean(row.purchase_currency?.trim());
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-950/45">
+    <li className="surface-subtle p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50" title={title}>
@@ -155,7 +155,7 @@ export function InventoryValueTraceCard({
           </div>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          <span className="surface-subtle rounded-full px-2 py-1">
             {formatInventoryStatusLabel(t, row.status)}
           </span>
           <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200">
@@ -218,7 +218,7 @@ export function MaterialCostTraceCard({
   const hasAmount = row.amount != null && Boolean(row.purchase_currency?.trim());
 
   return (
-    <li className="rounded-lg border border-slate-200 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-950/45">
+    <li className="surface-subtle p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50" title={title}>
@@ -236,12 +236,12 @@ export function MaterialCostTraceCard({
           </div>
         </div>
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          <span className="surface-subtle rounded-full px-2 py-1">
             {row.source === "LIVE"
               ? t("statistics.valueCostSourceLive", "Live monitoring")
               : t("statistics.valueCostSourceManual", "Manual job")}
           </span>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+          <span className="surface-subtle rounded-full px-2 py-1">
             {traceStatusLabel(t, row.status)}
           </span>
           <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-sky-800 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200">

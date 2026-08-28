@@ -80,7 +80,7 @@ export function InventoryLoadSpoolModal({
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
                     selected
                       ? "app-modal-selected-control"
-                      : "app-soft-control border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                      : "app-soft-control"
                   }`}
                 >
                   <input

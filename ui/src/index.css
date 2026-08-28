@@ -19,6 +19,12 @@
     --app-theme-selection: rgba(14, 165, 233, 0.24);
     --app-theme-focus-outline: rgba(2, 132, 199, 0.58);
     --app-theme-focus-halo: rgba(14, 165, 233, 0.14);
+    --app-theme-control-border: rgba(71, 85, 105, 0.68);
+    --app-theme-control-background: rgba(255, 255, 255, 0.94);
+    --app-theme-control-hover-background: rgb(248, 250, 252);
+    --app-theme-control-text: rgb(51, 65, 85);
+    --app-theme-control-placeholder: rgb(100, 116, 139);
+    --app-theme-control-shadow: 0 10px 22px -20px rgba(30, 41, 59, 0.34);
     --app-theme-primary-action-border: rgb(29, 59, 84);
     --app-theme-primary-action-background: rgb(35, 70, 99);
     --app-theme-primary-action-hover-background: rgb(45, 86, 120);
@@ -39,6 +45,7 @@
     --app-theme-modal-divider: rgba(203, 213, 225, 0.82);
     --app-theme-modal-inset-border: rgba(203, 213, 225, 0.9);
     --app-theme-modal-inset-background: rgba(248, 250, 252, 0.9);
+    --app-theme-modal-inset-soft-background: rgba(248, 250, 252, 0.58);
     --app-theme-modal-control-border: rgba(203, 213, 225, 0.94);
     --app-theme-modal-control-background: rgb(255, 255, 255);
     --app-theme-modal-action-border: rgb(2, 132, 199);
@@ -49,6 +56,12 @@
     --app-theme-modal-selection-background: rgb(240, 249, 255);
     --app-theme-modal-selection-hover-background: rgb(224, 242, 254);
     --app-theme-modal-selection-text: rgb(3, 105, 161);
+    --app-theme-data-card-base: rgba(252, 254, 255, 0.95);
+    --app-theme-data-panel-base: rgba(252, 254, 255, 0.96);
+    --app-theme-data-inset-base: rgba(253, 254, 255, 0.97);
+    --app-theme-data-ambient-shadow: rgba(148, 163, 184, 0.08);
+    --app-theme-data-inset-highlight: rgba(255, 255, 255, 0.8);
+    --app-theme-data-neutral-border: rgba(71, 85, 105, 0.68);
     --app-theme-page-background:
       linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(237, 245, 253, 0.96) 38%, rgba(226, 237, 249, 1) 100%),
       linear-gradient(135deg, rgba(14, 165, 233, 0.045) 0%, rgba(16, 185, 129, 0.025) 44%, rgba(245, 158, 11, 0.035) 100%);
@@ -86,6 +99,22 @@
 
   html.dark {
     color-scheme: dark;
+    --app-theme-control-border: rgba(71, 85, 105, 0.9);
+    --app-theme-control-background: rgba(15, 23, 42, 0.76);
+    --app-theme-control-hover-background: rgba(30, 41, 59, 0.88);
+    --app-theme-control-text: rgb(226, 232, 240);
+    --app-theme-control-placeholder: rgb(148, 163, 184);
+    --app-theme-control-shadow: none;
+    --app-theme-primary-action-border: rgb(241, 245, 249);
+    --app-theme-primary-action-background: rgb(241, 245, 249);
+    --app-theme-primary-action-hover-background: rgb(255, 255, 255);
+    --app-theme-primary-action-text: rgb(15, 23, 42);
+    --app-theme-primary-action-shadow: none;
+    --app-theme-selected-control-border: rgb(241, 245, 249);
+    --app-theme-selected-control-background: rgb(241, 245, 249);
+    --app-theme-selected-control-hover-background: rgb(255, 255, 255);
+    --app-theme-selected-control-text: rgb(15, 23, 42);
+    --app-theme-selected-control-shadow: none;
     --app-theme-modal-overlay-background: rgba(0, 0, 0, 0.5);
     --app-theme-modal-panel-border: rgba(51, 65, 85, 0.72);
     --app-theme-modal-panel-background: rgba(15, 23, 42, 0.96);
@@ -96,6 +125,7 @@
     --app-theme-modal-divider: rgba(51, 65, 85, 0.78);
     --app-theme-modal-inset-border: rgba(51, 65, 85, 0.76);
     --app-theme-modal-inset-background: rgba(2, 6, 23, 0.38);
+    --app-theme-modal-inset-soft-background: rgba(2, 6, 23, 0.24);
     --app-theme-modal-control-border: rgba(71, 85, 105, 0.9);
     --app-theme-modal-control-background: rgba(2, 6, 23, 0.68);
     --app-theme-modal-action-border: rgb(56, 189, 248);
@@ -106,6 +136,12 @@
     --app-theme-modal-selection-background: rgba(14, 165, 233, 0.16);
     --app-theme-modal-selection-hover-background: rgba(14, 165, 233, 0.22);
     --app-theme-modal-selection-text: rgb(186, 230, 253);
+    --app-theme-data-card-base: rgb(10, 17, 31);
+    --app-theme-data-panel-base: rgb(8, 15, 29);
+    --app-theme-data-inset-base: rgb(13, 21, 39);
+    --app-theme-data-ambient-shadow: rgba(2, 6, 23, 0.5);
+    --app-theme-data-inset-highlight: rgba(255, 255, 255, 0.03);
+    --app-theme-data-neutral-border: rgba(100, 116, 139, 0.42);
     --app-theme-page-background: linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(10, 18, 32, 0.99) 44%, rgba(3, 8, 18, 1) 100%);
     --app-theme-surface-border: rgba(51, 65, 85, 0.7);
     --app-theme-surface-background: rgba(15, 23, 42, 0.75);
@@ -137,6 +173,22 @@
     --app-theme-selection: rgba(0, 174, 66, 0.32);
     --app-theme-focus-outline: rgba(59, 231, 123, 0.86);
     --app-theme-focus-halo: rgba(0, 174, 66, 0.24);
+    --app-theme-control-border: rgba(58, 140, 98, 0.88);
+    --app-theme-control-background: rgba(4, 20, 20, 0.92);
+    --app-theme-control-hover-background: rgba(10, 42, 37, 0.96);
+    --app-theme-control-text: rgb(226, 232, 240);
+    --app-theme-control-placeholder: rgb(148, 163, 184);
+    --app-theme-control-shadow: none;
+    --app-theme-primary-action-border: rgb(69, 224, 125);
+    --app-theme-primary-action-background: rgb(4, 122, 58);
+    --app-theme-primary-action-hover-background: rgb(3, 107, 51);
+    --app-theme-primary-action-text: rgb(255, 255, 255);
+    --app-theme-primary-action-shadow: 0 10px 20px -16px rgba(0, 174, 66, 0.68);
+    --app-theme-selected-control-border: rgb(69, 224, 125);
+    --app-theme-selected-control-background: rgb(6, 60, 28);
+    --app-theme-selected-control-hover-background: rgb(7, 75, 34);
+    --app-theme-selected-control-text: rgb(236, 253, 245);
+    --app-theme-selected-control-shadow: inset 0 0 0 1px rgba(69, 224, 125, 0.12);
     --app-theme-modal-overlay-background: rgba(0, 0, 0, 0.54);
     --app-theme-modal-panel-border: rgba(44, 112, 77, 0.82);
     --app-theme-modal-panel-background: rgba(7, 26, 25, 0.98);
@@ -147,7 +199,8 @@
     --app-theme-modal-divider: rgba(38, 92, 68, 0.86);
     --app-theme-modal-inset-border: rgba(38, 92, 68, 0.84);
     --app-theme-modal-inset-background: rgba(5, 23, 22, 0.9);
-    --app-theme-modal-control-border: rgba(48, 108, 80, 0.92);
+    --app-theme-modal-inset-soft-background: rgba(4, 24, 22, 0.42);
+    --app-theme-modal-control-border: rgba(58, 140, 98, 0.88);
     --app-theme-modal-control-background: rgba(4, 20, 20, 0.9);
     --app-theme-modal-action-border: rgb(34, 197, 94);
     --app-theme-modal-action-background: rgb(4, 122, 58);
@@ -157,6 +210,12 @@
     --app-theme-modal-selection-background: rgba(0, 174, 66, 0.2);
     --app-theme-modal-selection-hover-background: rgba(0, 174, 66, 0.27);
     --app-theme-modal-selection-text: rgb(220, 252, 231);
+    --app-theme-data-card-base: rgb(5, 23, 22);
+    --app-theme-data-panel-base: rgb(4, 20, 20);
+    --app-theme-data-inset-base: rgb(6, 27, 25);
+    --app-theme-data-ambient-shadow: rgba(0, 8, 7, 0.5);
+    --app-theme-data-inset-highlight: rgba(167, 243, 208, 0.035);
+    --app-theme-data-neutral-border: rgba(58, 140, 98, 0.46);
     --app-theme-page-background:
       radial-gradient(circle at 88% 0%, rgba(0, 174, 66, 0.18), transparent 36%),
       linear-gradient(180deg, rgb(10, 27, 24) 0%, rgb(6, 18, 20) 44%, rgb(3, 10, 14) 100%);
@@ -185,6 +244,22 @@
     --app-theme-selection: rgba(253, 80, 0, 0.32);
     --app-theme-focus-outline: rgba(255, 132, 76, 0.9);
     --app-theme-focus-halo: rgba(253, 80, 0, 0.24);
+    --app-theme-control-border: rgba(166, 89, 61, 0.9);
+    --app-theme-control-background: rgba(25, 17, 16, 0.94);
+    --app-theme-control-hover-background: rgba(46, 29, 25, 0.97);
+    --app-theme-control-text: rgb(226, 232, 240);
+    --app-theme-control-placeholder: rgb(148, 163, 184);
+    --app-theme-control-shadow: none;
+    --app-theme-primary-action-border: rgb(255, 137, 82);
+    --app-theme-primary-action-background: rgb(179, 58, 0);
+    --app-theme-primary-action-hover-background: rgb(153, 47, 0);
+    --app-theme-primary-action-text: rgb(255, 255, 255);
+    --app-theme-primary-action-shadow: 0 10px 20px -16px rgba(253, 80, 0, 0.7);
+    --app-theme-selected-control-border: rgb(255, 137, 82);
+    --app-theme-selected-control-background: rgb(81, 36, 17);
+    --app-theme-selected-control-hover-background: rgb(103, 43, 18);
+    --app-theme-selected-control-text: rgb(255, 247, 237);
+    --app-theme-selected-control-shadow: inset 0 0 0 1px rgba(255, 137, 82, 0.14);
     --app-theme-modal-overlay-background: rgba(0, 0, 0, 0.54);
     --app-theme-modal-panel-border: rgba(119, 72, 53, 0.84);
     --app-theme-modal-panel-background: rgba(32, 24, 22, 0.98);
@@ -195,7 +270,8 @@
     --app-theme-modal-divider: rgba(94, 61, 48, 0.88);
     --app-theme-modal-inset-border: rgba(94, 61, 48, 0.86);
     --app-theme-modal-inset-background: rgba(28, 19, 18, 0.92);
-    --app-theme-modal-control-border: rgba(112, 69, 53, 0.94);
+    --app-theme-modal-inset-soft-background: rgba(32, 21, 19, 0.44);
+    --app-theme-modal-control-border: rgba(166, 89, 61, 0.9);
     --app-theme-modal-control-background: rgba(25, 17, 16, 0.92);
     --app-theme-modal-action-border: rgb(251, 146, 60);
     --app-theme-modal-action-background: rgb(179, 58, 0);
@@ -205,6 +281,12 @@
     --app-theme-modal-selection-background: rgba(253, 80, 0, 0.2);
     --app-theme-modal-selection-hover-background: rgba(253, 80, 0, 0.27);
     --app-theme-modal-selection-text: rgb(255, 237, 213);
+    --app-theme-data-card-base: rgb(30, 21, 19);
+    --app-theme-data-panel-base: rgb(27, 19, 18);
+    --app-theme-data-inset-base: rgb(35, 24, 21);
+    --app-theme-data-ambient-shadow: rgba(10, 5, 4, 0.5);
+    --app-theme-data-inset-highlight: rgba(255, 237, 213, 0.035);
+    --app-theme-data-neutral-border: rgba(166, 89, 61, 0.46);
     --app-theme-page-background:
       radial-gradient(circle at 88% 0%, rgba(253, 80, 0, 0.2), transparent 36%),
       linear-gradient(180deg, rgb(31, 22, 19) 0%, rgb(20, 16, 16) 46%, rgb(10, 10, 12) 100%);
@@ -328,6 +410,11 @@
     background-color: var(--app-theme-modal-inset-background);
   }
 
+  .app-modal-inset-soft {
+    border-color: var(--app-theme-modal-inset-border);
+    background-color: var(--app-theme-modal-inset-soft-background);
+  }
+
   .app-modal-control {
     border-color: var(--app-theme-modal-control-border);
     background-color: var(--app-theme-modal-control-background);
@@ -353,17 +440,126 @@
     background-color: var(--app-theme-modal-selection-hover-background);
   }
 
+  .app-form-control,
+  .app-soft-control {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  .app-form-control::placeholder {
+    color: var(--app-theme-control-placeholder);
+  }
+
+  .app-soft-control:hover:not(:disabled) {
+    background-color: var(--app-theme-control-hover-background);
+  }
+
+  .app-control-group {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  .app-primary-action {
+    border-color: var(--app-theme-primary-action-border);
+    background-color: var(--app-theme-primary-action-background);
+    color: var(--app-theme-primary-action-text);
+    box-shadow: var(--app-theme-primary-action-shadow);
+  }
+
+  .app-primary-action:hover:not(:disabled) {
+    background-color: var(--app-theme-primary-action-hover-background);
+  }
+
+  .app-accent-action {
+    border-color: var(--app-theme-modal-action-border);
+    background-color: var(--app-theme-modal-action-background);
+    color: var(--app-theme-modal-action-text);
+  }
+
+  .app-accent-action:hover:not(:disabled) {
+    background-color: var(--app-theme-modal-action-hover-background);
+  }
+
+  .app-accent-control {
+    accent-color: var(--app-theme-accent);
+  }
+
+  html.dark .app-primary-action {
+    border-color: var(--app-theme-primary-action-border);
+    background-color: var(--app-theme-primary-action-background);
+    color: var(--app-theme-primary-action-text);
+    box-shadow: var(--app-theme-primary-action-shadow);
+  }
+
+  html.dark .app-primary-action:hover:not(:disabled) {
+    background-color: var(--app-theme-primary-action-hover-background);
+  }
+
+  .app-selected-control {
+    border-color: var(--app-theme-selected-control-border);
+    background-color: var(--app-theme-selected-control-background);
+    color: var(--app-theme-selected-control-text);
+    box-shadow: var(--app-theme-selected-control-shadow);
+  }
+
+  .app-selected-control:hover:not(:disabled) {
+    background-color: var(--app-theme-selected-control-hover-background);
+  }
+
+  html.dark .app-selected-control {
+    border-color: var(--app-theme-selected-control-border);
+    background-color: var(--app-theme-selected-control-background);
+    color: var(--app-theme-selected-control-text);
+    box-shadow: var(--app-theme-selected-control-shadow);
+  }
+
+  html.dark .app-selected-control:hover:not(:disabled) {
+    background-color: var(--app-theme-selected-control-hover-background);
+  }
+
+  .app-selected-count {
+    border-color: color-mix(in srgb, currentColor 24%, transparent);
+    background-color: color-mix(in srgb, currentColor 14%, transparent);
+    color: inherit;
+  }
+
+  .app-idle-count {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-hover-background);
+    color: var(--app-theme-control-placeholder);
+  }
+
+  html.dark .app-form-control,
+  html.dark .app-soft-control,
+  html[data-theme="bambu"] .app-form-control,
+  html[data-theme="prusa"] .app-form-control,
   html[data-theme="bambu"] .app-soft-control,
-  html[data-theme="prusa"] .app-soft-control,
+  html[data-theme="prusa"] .app-soft-control {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
   html[data-theme="bambu"] .app-modal-control,
   html[data-theme="prusa"] .app-modal-control {
     border-color: var(--app-theme-modal-control-border);
     background-color: var(--app-theme-modal-control-background);
   }
 
+  html.dark .app-form-control::placeholder,
+  html[data-theme="bambu"] .app-form-control::placeholder,
+  html[data-theme="prusa"] .app-form-control::placeholder {
+    color: var(--app-theme-control-placeholder);
+  }
+
+  html.dark .app-soft-control:hover:not(:disabled),
   html[data-theme="bambu"] .app-soft-control:hover:not(:disabled),
   html[data-theme="prusa"] .app-soft-control:hover:not(:disabled) {
-    background-color: var(--app-theme-modal-toolbar-background);
+    background-color: var(--app-theme-control-hover-background);
   }
 
   html[data-theme="bambu"] .app-control-focus:focus-visible,
@@ -374,28 +570,6 @@
     outline: 2px solid var(--app-theme-focus-outline) !important;
     outline-offset: 2px;
     box-shadow: 0 0 0 4px var(--app-theme-focus-halo) !important;
-  }
-
-  html:not(.dark) .app-primary-action {
-    border-color: var(--app-theme-primary-action-border);
-    background-color: var(--app-theme-primary-action-background);
-    color: var(--app-theme-primary-action-text);
-    box-shadow: var(--app-theme-primary-action-shadow);
-  }
-
-  html:not(.dark) .app-primary-action:hover:not(:disabled) {
-    background-color: var(--app-theme-primary-action-hover-background);
-  }
-
-  html:not(.dark) .app-selected-control {
-    border-color: var(--app-theme-selected-control-border);
-    background-color: var(--app-theme-selected-control-background);
-    color: var(--app-theme-selected-control-text);
-    box-shadow: var(--app-theme-selected-control-shadow);
-  }
-
-  html:not(.dark) .app-selected-control:hover:not(:disabled) {
-    background-color: var(--app-theme-selected-control-hover-background);
   }
 
   html:not(.dark) .app-form-control,
@@ -456,19 +630,21 @@
 
   .page-header-search {
     @apply w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-400;
-    border-color: rgba(71, 85, 105, 0.46);
-    box-shadow:
-      0 12px 26px -22px rgba(30, 41, 59, 0.42),
-      0 1px 0 rgba(255, 255, 255, 0.92) inset;
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  .page-header-search::placeholder {
+    color: var(--app-theme-control-placeholder);
   }
 
   .page-header-filter-surface {
     @apply w-full rounded-lg border px-3 py-2 dark:border-slate-700/70 dark:bg-slate-900/60 dark:shadow-none min-[920px]:w-auto;
-    background: rgba(255, 255, 255, 0.93);
-    border-color: rgba(100, 116, 139, 0.48);
-    box-shadow:
-      0 16px 34px -28px rgba(15, 23, 42, 0.32),
-      0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    border-color: var(--app-theme-control-border);
+    background: var(--app-theme-control-background);
+    box-shadow: var(--app-theme-control-shadow);
   }
 
   .page-header-action-grid {
@@ -488,15 +664,15 @@
   }
 
   html.dark .page-header-filter-surface {
-    border-color: rgba(51, 65, 85, 0.7);
-    background: rgba(15, 23, 42, 0.6);
-    box-shadow: none;
+    border-color: var(--app-theme-control-border);
+    background: var(--app-theme-control-background);
+    box-shadow: var(--app-theme-control-shadow);
   }
 
   html.dark .page-header-filter-surface .bg-white\/85 {
-    border-color: rgba(51, 65, 85, 0.75) !important;
-    background-color: rgba(2, 6, 23, 0.45) !important;
-    box-shadow: none !important;
+    border-color: var(--app-theme-control-border) !important;
+    background-color: var(--app-theme-control-background) !important;
+    box-shadow: var(--app-theme-control-shadow) !important;
   }
 
   @media (min-width: 1100px) {
@@ -518,7 +694,14 @@
   }
 
   html.dark .page-header-search {
-    box-shadow: none;
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  html.dark .page-header-search::placeholder {
+    color: var(--app-theme-control-placeholder);
   }
 
   .surface-card {
@@ -534,6 +717,21 @@
 
   .count-pill {
     @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-slate-300 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none;
+  }
+
+  html[data-theme="bambu"] .count-pill,
+  html[data-theme="prusa"] .count-pill {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  html[data-theme="bambu"] .app-selected-control .count-pill,
+  html[data-theme="prusa"] .app-selected-control .count-pill {
+    border-color: color-mix(in srgb, currentColor 28%, transparent);
+    background-color: color-mix(in srgb, currentColor 14%, transparent);
+    color: inherit;
   }
 
   .surface-card-compact {

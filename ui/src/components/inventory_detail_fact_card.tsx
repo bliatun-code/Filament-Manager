@@ -3,10 +3,10 @@ import { inventoryDetailLabelClassName } from "./inventory_detail_panel_class";
 import { joinClassNames } from "./ui_class_names";
 
 export const inventoryDetailFactCardClassName =
-  "rounded-xl border border-white/70 bg-white/70 px-3.5 py-3 shadow-sm shadow-slate-900/5 dark:border-white/10 dark:bg-slate-950/25 dark:shadow-none";
+  "app-modal-inset-soft rounded-xl border px-3.5 py-3 shadow-sm dark:shadow-none";
 
 export const inventoryDetailTintPanelClassName =
-  "rounded-xl border border-slate-200 bg-slate-50";
+  "app-modal-inset-soft rounded-xl border";
 
 type InventoryDetailTintPanelProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;

@@ -9,6 +9,7 @@ import {
 } from "../lib/statistics_period_model";
 import {
   statisticsFilterButtonClass,
+  statisticsFilterButtonChromeClass,
   statisticsFilterInputClass,
 } from "./statistics_view_helpers";
 
@@ -52,7 +53,7 @@ export function StatisticsPeriodPicker({
   const validationId = useId();
   const dateRange = formatStatisticsPeriodRange(state, locale);
   const presetButtonClass = (selected: boolean) =>
-    `${statisticsFilterButtonClass} ${selected ? "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-400/40 dark:bg-sky-500/10 dark:text-sky-200" : ""}`;
+    `${selected ? "app-selected-control" : "app-soft-control"} ${statisticsFilterButtonChromeClass}`;
 
   return (
     <section className="surface-subtle mt-4 p-3.5" aria-labelledby={titleId}>

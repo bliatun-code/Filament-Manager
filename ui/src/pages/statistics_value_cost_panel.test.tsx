@@ -257,6 +257,9 @@ test("inventory trace labels missing remaining weight instead of showing zero", 
   assert.match(html, /Not valued/);
   assert.match(html, /Remaining weight is missing/);
   assert.match(html, /Spool reference: spool-1/);
+  assert.equal((html.match(/surface-subtle/g) ?? []).length, 2);
+  assert.match(html, /bg-sky-50/);
+  assert.doesNotMatch(html, /dark:bg-slate-950\/45/);
   assert.doesNotMatch(html, />0 g</);
 });
 
@@ -291,5 +294,8 @@ test("usage trace makes missing spool, ownership and used weight explicit", () =
   assert.match(html, /The referenced spool is missing/);
   assert.match(html, /Used weight is missing/);
   assert.match(html, /Usage reference: usage-legacy/);
+  assert.equal((html.match(/surface-subtle/g) ?? []).length, 3);
+  assert.match(html, /bg-sky-50/);
+  assert.doesNotMatch(html, /dark:bg-slate-950\/45/);
   assert.doesNotMatch(html, />0 g</);
 });

@@ -120,11 +120,11 @@ test("SettingsGeneralTab exposes license and source links", () => {
   assert.doesNotMatch(html, /Create inventory label sheet/);
   assert.match(
     html,
-    /class="[^"]*border-slate-200[^"]*bg-white[^"]*text-slate-700[^"]*"[^>]*>Product tour/,
+    /class="[^"]*app-soft-control[^"]*"[^>]*>Product tour/,
   );
   assert.doesNotMatch(
     html,
-    /class="[^"]*border-indigo-200[^"]*bg-indigo-50[^"]*"[^>]*>Product tour/,
+    /class="[^"]*app-(?:primary-action|selected-control)[^"]*"[^>]*>Product tour/,
   );
   assert.doesNotMatch(html, /View release/);
 });

@@ -25,7 +25,7 @@ export function modalActionButtonClassName(
     return `${base} app-modal-primary-action`;
   }
   if (variant === "solid") {
-    return `${base} app-primary-action dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white`;
+    return `${base} app-primary-action`;
   }
   if (variant === "success") {
     return `${base} border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm shadow-emerald-200/25 hover:bg-emerald-100 dark:border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-200 dark:shadow-none dark:hover:bg-emerald-500/25`;
@@ -34,11 +34,11 @@ export function modalActionButtonClassName(
     return `${base} border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25`;
   }
   if (variant === "dangerQuiet") {
-    return `${base} border-rose-200 bg-white text-rose-600 hover:bg-rose-50 dark:border-rose-400/35 dark:bg-slate-950/55 dark:text-rose-200 dark:hover:bg-rose-500/10`;
+    return `${base} border-rose-200 bg-rose-50/70 text-rose-600 hover:bg-rose-100 dark:border-rose-400/35 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15`;
   }
   if (variant === "critical") {
     return `${base} border-red-400 bg-red-600 text-white hover:bg-red-700 dark:border-red-400/45 dark:bg-red-500/85 dark:text-white dark:hover:bg-red-500`;
   }
 
-  return `${base} border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/60`;
+  return `${base} app-soft-control`;
 }

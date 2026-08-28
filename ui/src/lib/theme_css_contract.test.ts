@@ -22,6 +22,35 @@ function cssBlock(selector: string): string {
   assert.fail(`unterminated selector ${selector}`);
 }
 
+function cssRuleDeclarations(selector: string): string {
+  const matches: string[] = [];
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = rulePattern.exec(css)) !== null) {
+    const selectors = match[1]
+      .split(",")
+      .map((candidate) => candidate.trim());
+    if (selectors.includes(selector)) {
+      matches.push(match[2]);
+    }
+  }
+
+  assert.ok(matches.length > 0, `expected generic CSS selector ${selector}`);
+  return matches.join("\n");
+}
+
+function assertRuleUsesVariables(selector: string, variables: readonly string[]): void {
+  const declarations = cssRuleDeclarations(selector);
+  for (const variable of variables) {
+    assert.match(
+      declarations,
+      new RegExp(`var\\(--${variable}\\)`),
+      `${selector} must use --${variable}`,
+    );
+  }
+}
+
 type Rgb = readonly [number, number, number];
 
 function cssRgbVariable(block: string, variable: string): Rgb {
@@ -94,11 +123,120 @@ test("light theme filled controls use accessible navy semantic tokens", () => {
       `expected AAA white-text contrast for ${background.join(", ")}`,
     );
   }
+});
 
-  assert.match(css, /html:not\(\.dark\) \.app-primary-action \{/);
-  assert.match(css, /html:not\(\.dark\) \.app-selected-control \{/);
-  assert.doesNotMatch(css, /html\.dark \.app-primary-action \{/);
-  assert.doesNotMatch(css, /html\.dark \.app-selected-control \{/);
+test("every desktop theme defines shared control, action, selection, and data-surface tokens", () => {
+  const selectors = [
+    ":root",
+    "html.dark",
+    'html[data-theme="bambu"]',
+    'html[data-theme="prusa"]',
+  ];
+  const variables = [
+    "app-theme-control-border",
+    "app-theme-control-background",
+    "app-theme-control-hover-background",
+    "app-theme-control-text",
+    "app-theme-control-placeholder",
+    "app-theme-control-shadow",
+    "app-theme-primary-action-border",
+    "app-theme-primary-action-background",
+    "app-theme-primary-action-hover-background",
+    "app-theme-primary-action-text",
+    "app-theme-primary-action-shadow",
+    "app-theme-selected-control-border",
+    "app-theme-selected-control-background",
+    "app-theme-selected-control-hover-background",
+    "app-theme-selected-control-text",
+    "app-theme-selected-control-shadow",
+    "app-theme-modal-inset-soft-background",
+    "app-theme-data-card-base",
+    "app-theme-data-panel-base",
+    "app-theme-data-inset-base",
+    "app-theme-data-ambient-shadow",
+    "app-theme-data-inset-highlight",
+    "app-theme-data-neutral-border",
+  ];
+
+  for (const selector of selectors) {
+    const block = cssBlock(selector);
+    for (const variable of variables) {
+      assert.match(
+        block,
+        new RegExp(`--${variable}:`),
+        `${selector} is missing --${variable}`,
+      );
+    }
+  }
+});
+
+test("generic control selectors consume the shared theme tokens", () => {
+  assertRuleUsesVariables(".app-primary-action", [
+    "app-theme-primary-action-border",
+    "app-theme-primary-action-background",
+    "app-theme-primary-action-text",
+    "app-theme-primary-action-shadow",
+  ]);
+  assertRuleUsesVariables(".app-primary-action:hover:not(:disabled)", [
+    "app-theme-primary-action-hover-background",
+  ]);
+  assertRuleUsesVariables(".app-accent-action", [
+    "app-theme-modal-action-border",
+    "app-theme-modal-action-background",
+    "app-theme-modal-action-text",
+  ]);
+  assertRuleUsesVariables(".app-accent-action:hover:not(:disabled)", [
+    "app-theme-modal-action-hover-background",
+  ]);
+  assertRuleUsesVariables(".app-accent-control", ["app-theme-accent"]);
+  assertRuleUsesVariables(".app-selected-control", [
+    "app-theme-selected-control-border",
+    "app-theme-selected-control-background",
+    "app-theme-selected-control-text",
+    "app-theme-selected-control-shadow",
+  ]);
+  assertRuleUsesVariables(".app-selected-control:hover:not(:disabled)", [
+    "app-theme-selected-control-hover-background",
+  ]);
+  assertRuleUsesVariables(".app-form-control", [
+    "app-theme-control-border",
+    "app-theme-control-background",
+    "app-theme-control-text",
+    "app-theme-control-shadow",
+  ]);
+  assertRuleUsesVariables(".app-form-control::placeholder", [
+    "app-theme-control-placeholder",
+  ]);
+  assertRuleUsesVariables(".app-soft-control", [
+    "app-theme-control-border",
+    "app-theme-control-background",
+    "app-theme-control-text",
+    "app-theme-control-shadow",
+  ]);
+  assertRuleUsesVariables(".app-soft-control:hover:not(:disabled)", [
+    "app-theme-control-hover-background",
+  ]);
+  assertRuleUsesVariables(".app-control-group", [
+    "app-theme-control-border",
+    "app-theme-control-background",
+    "app-theme-control-shadow",
+  ]);
+});
+
+test("brand theme action and selected-control tokens keep readable text contrast", () => {
+  for (const theme of ["bambu", "prusa"]) {
+    const block = cssBlock(`html[data-theme="${theme}"]`);
+    for (const kind of ["primary-action", "selected-control"]) {
+      const text = cssRgbVariable(block, `app-theme-${kind}-text`);
+      for (const state of ["background", "hover-background"]) {
+        const background = cssRgbVariable(block, `app-theme-${kind}-${state}`);
+        assert.ok(
+          contrastRatio(background, text) >= 4.5,
+          `${theme} ${kind} ${state} contrast must be at least 4.5:1`,
+        );
+      }
+    }
+  }
 });
 
 test("every desktop theme defines semantic modal chrome and actions", () => {
@@ -118,6 +256,7 @@ test("every desktop theme defines semantic modal chrome and actions", () => {
     "app-theme-modal-divider",
     "app-theme-modal-inset-border",
     "app-theme-modal-inset-background",
+    "app-theme-modal-inset-soft-background",
     "app-theme-modal-control-border",
     "app-theme-modal-control-background",
     "app-theme-modal-action-border",

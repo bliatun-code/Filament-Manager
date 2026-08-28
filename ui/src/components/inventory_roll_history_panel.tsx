@@ -67,7 +67,7 @@ export function InventoryRollHistoryPanel({
             {t("inventory.rollHistory", "Roll history")}
           </div>
           {!historyLoading ? (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+            <span className="app-modal-inset-soft rounded-full border px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:text-slate-300">
               {historyEventCountLabel}
             </span>
           ) : null}
@@ -107,7 +107,7 @@ export function InventoryRollHistoryPanel({
           {!historyLoading && displayedHistoryRows.length > 0 ? (
             <ol
               id="inventory-roll-history-list"
-              className="overflow-hidden rounded-lg border border-slate-200/80 bg-white/50 divide-y divide-slate-200/80 dark:border-slate-700 dark:bg-slate-950/35 dark:divide-slate-700"
+              className="app-modal-inset-soft app-modal-divider overflow-hidden rounded-lg border divide-y"
             >
               {displayedHistoryRows.map((event) => (
                 <li
@@ -116,7 +116,11 @@ export function InventoryRollHistoryPanel({
                 >
                   <span
                     aria-hidden="true"
-                    className="mt-1.5 h-2 w-2 rounded-full bg-slate-400 ring-4 ring-slate-100 dark:bg-slate-500 dark:ring-slate-800"
+                    className="mt-1.5 h-2 w-2 rounded-full"
+                    style={{
+                      backgroundColor: "var(--app-theme-accent)",
+                      boxShadow: "0 0 0 4px var(--app-theme-accent-soft)",
+                    }}
                   />
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">

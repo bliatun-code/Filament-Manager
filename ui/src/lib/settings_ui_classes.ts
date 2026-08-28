@@ -19,24 +19,24 @@ export const settingsTinyLabelClass =
   "text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400";
 
 export const settingsFormControlClass =
-  "app-form-control app-control-focus w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus:border-indigo-400/50 dark:focus:ring-indigo-500/20";
+  "app-form-control app-control-focus w-full rounded-xl border px-3 py-2 text-sm outline-none transition";
 
 export const settingsTextInputClass = settingsFormControlClass;
 
 export const settingsCompactSelectClass =
-  "app-form-control app-control-focus rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200";
+  "app-form-control app-control-focus rounded-lg border px-2 py-1 text-xs outline-none transition disabled:opacity-50";
 
 export const settingsCompactFormControlClass =
-  "app-form-control app-control-focus rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 outline-none transition focus-visible:border-sky-300/70 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-form-control app-control-focus rounded-xl border px-3 py-2 text-xs outline-none transition disabled:opacity-50";
 
 export const settingsValueBoxClass =
-  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-200";
+  "app-form-control rounded-xl border px-3 py-2 text-sm";
 
 export function tabButtonClass(active: boolean): string {
   if (active) {
-    return "rounded-lg border border-slate-300/80 bg-white/88 px-3.5 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-slate-300/20 outline-none transition focus-visible:border-sky-300/80 dark:border-slate-500/70 dark:bg-slate-800/86 dark:text-slate-50 dark:shadow-none";
+    return "app-selected-control app-control-focus rounded-lg border px-3.5 py-2 text-sm font-semibold outline-none transition";
   }
-  return "rounded-lg border border-transparent px-3.5 py-2 text-sm font-semibold text-slate-600 outline-none transition hover:border-slate-300/70 hover:bg-white/66 hover:text-slate-900 focus-visible:border-sky-300/70 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-900/62 dark:hover:text-slate-50";
+  return "app-soft-control app-control-focus rounded-lg border px-3.5 py-2 text-sm font-semibold outline-none transition";
 }
 
 export function chipButtonClass(active: boolean): string {
@@ -109,12 +109,12 @@ export function settingsActionButtonClass(
         ? "px-4 py-3 text-sm"
         : "px-3 py-2 text-sm";
   const base =
-    `inline-flex items-center justify-center rounded-lg border ${sizeClass} font-semibold outline-none transition focus-visible:border-sky-300/70 disabled:opacity-50`;
+    `app-control-focus inline-flex items-center justify-center rounded-lg border ${sizeClass} font-semibold outline-none transition disabled:opacity-50`;
   if (variant === "accent") {
-    return `${base} border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/40 dark:bg-indigo-500/15 dark:text-indigo-200 dark:hover:bg-indigo-500/25`;
+    return `${base} app-accent-action`;
   }
   if (variant === "primary") {
-    return `${base} border-indigo-300 bg-indigo-500 text-white shadow-sm shadow-indigo-900/20 hover:bg-indigo-600 dark:border-indigo-400/40 dark:bg-indigo-400 dark:text-slate-950 dark:hover:bg-indigo-300`;
+    return `${base} app-primary-action`;
   }
   if (variant === "warning") {
     return `${base} border-amber-300 bg-amber-500 text-slate-950 shadow-sm shadow-amber-900/20 hover:bg-amber-400 dark:border-amber-400/40 dark:bg-amber-400 dark:hover:bg-amber-300`;
@@ -128,5 +128,5 @@ export function settingsActionButtonClass(
   if (variant === "dangerQuiet") {
     return `${base} border-rose-200 bg-transparent text-rose-700 hover:border-rose-300 hover:bg-rose-50 dark:border-rose-500/50 dark:text-rose-300 dark:hover:border-rose-400/70 dark:hover:bg-rose-500/10`;
   }
-  return `${base} border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-200 dark:hover:bg-slate-900/80`;
+  return `${base} app-soft-control`;
 }

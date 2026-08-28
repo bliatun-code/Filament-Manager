@@ -116,7 +116,7 @@ export function RollUsageChart({
     <div className="mt-3 space-y-3">
       <svg
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className="w-full rounded-lg border border-slate-300/70 bg-white/70 text-slate-700 shadow-inner shadow-slate-200/35 dark:border-slate-700 dark:bg-slate-950/40 dark:text-sky-300 dark:shadow-none"
+        className="app-modal-inset-soft w-full rounded-lg border text-[var(--app-theme-accent)] shadow-inner dark:shadow-none"
         role="img"
         aria-label={t("chart.rollUsageAria", "Roll usage chart")}
       >

@@ -41,11 +41,18 @@ test("modal action buttons share secondary and primary chrome", () => {
   assert.match(actionButtonClass, /joinClassNames/);
   assert.match(actionButtonClass, /variant === "primary"/);
   assert.match(actionButtonClass, /app-modal-primary-action/);
+  assert.match(actionButtonClass, /app-soft-control/);
+  assert.doesNotMatch(actionButtonClass, /app-soft-control[^`\n]*dark:bg-slate/);
   assert.match(actionButtonClass, /variant === "solid"/);
   assert.match(actionButtonClass, /app-primary-action/);
+  assert.doesNotMatch(
+    actionButtonClass,
+    /app-primary-action[^`\n]*dark:(?:border|bg|text)-slate/,
+  );
   assert.match(actionButtonClass, /variant === "success"/);
   assert.match(actionButtonClass, /variant === "danger"/);
   assert.match(actionButtonClass, /variant === "dangerQuiet"/);
+  assert.doesNotMatch(actionButtonClass, /dark:bg-slate/);
   assert.match(actionButtonClass, /variant === "critical"/);
   assert.match(actionButtonClass, /size === "roomy" \? "px-4 py-3" : "px-4 py-2"/);
   assert.match(actionButtonComponent, /function ModalActionButton/);
