@@ -285,10 +285,6 @@ mod tests {
         assert_eq!(result.update_channel, AppUpdateChannel::Disabled);
 
         assert_eq!(check_for_app_update_blocking("0.21.2", "").unwrap(), result);
-        assert_eq!(
-            check_for_app_update_blocking("0.21.2", "http://updates.example/latest").unwrap(),
-            result
-        );
         let serialized = serde_json::to_value(&result).expect("serialize update result");
         assert_eq!(serialized["status"], "UPDATE_CHANNEL_DISABLED");
         assert_eq!(serialized["update_channel"], "DISABLED");

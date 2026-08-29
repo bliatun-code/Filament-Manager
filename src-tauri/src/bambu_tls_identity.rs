@@ -1,4 +1,3 @@
-use native_tls::Certificate;
 use sha2::{Digest, Sha256};
 use std::fmt;
 use std::fmt::Write as _;
@@ -151,17 +150,6 @@ impl fmt::Display for BambuTlsConnectGateError {
             }
         }
     }
-}
-
-pub(crate) fn identity_from_peer_certificate(
-    peer_certificate: Option<&Certificate>,
-) -> Result<BambuTlsIdentity, String> {
-    let certificate = peer_certificate
-        .ok_or_else(|| "TLS peer did not provide a leaf certificate".to_string())?;
-    let der = certificate
-        .to_der()
-        .map_err(|error| format!("failed to read TLS peer leaf certificate: {error}"))?;
-    identity_from_leaf_der(&der)
 }
 
 pub(crate) fn identity_from_leaf_der(leaf_der: &[u8]) -> Result<BambuTlsIdentity, String> {

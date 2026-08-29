@@ -1,7 +1,7 @@
 use crate::active_library_gateway::with_authoritative_local_library;
 use crate::backend::filament_database::BambuLiveTlsIdentityRow;
 use crate::bambu_live::tls_identity::{assess_trust, BambuTlsIdentity, BambuTlsTrustDecision};
-use crate::bambu_live::{probe_printer_tls_identity, trusted_pin_from_config};
+use crate::bambu_live::{probe_printer_tls_identity_with_pin, trusted_pin_from_config};
 use crate::bambu_live_observation::now_iso_string;
 use crate::bambu_printer_discovery::{
     discover_bambu_printers, discover_bambu_printers_on_private_networks,
@@ -57,7 +57,7 @@ pub(crate) async fn recover_bambu_live_host(
 ) -> Result<BambuLiveHostRecovery, String> {
     let state = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        recover_bambu_live_host_with_probe(&state, input, probe_printer_tls_identity)
+        recover_bambu_live_host_with_probe(&state, input, probe_printer_tls_identity_with_pin)
     })
     .await
     .map_err(|_| "Bambu printer address recovery did not complete.".to_string())?
@@ -66,7 +66,11 @@ pub(crate) async fn recover_bambu_live_host(
 fn recover_bambu_live_host_with_probe(
     state: &AppState,
     input: RecoverBambuLiveHostInput,
-    probe: impl FnOnce(&str, &str) -> Result<BambuTlsIdentity, String>,
+    probe: impl FnOnce(
+        &str,
+        &str,
+        &crate::bambu_live::tls_identity::BambuTlsPin,
+    ) -> Result<BambuTlsIdentity, String>,
 ) -> Result<BambuLiveHostRecovery, String> {
     with_authoritative_local_library(state, || {
         recover_bambu_live_host_at_path(&state.db_path, input, probe)
@@ -76,7 +80,11 @@ fn recover_bambu_live_host_with_probe(
 fn recover_bambu_live_host_at_path(
     db_path: &str,
     input: RecoverBambuLiveHostInput,
-    probe: impl FnOnce(&str, &str) -> Result<BambuTlsIdentity, String>,
+    probe: impl FnOnce(
+        &str,
+        &str,
+        &crate::bambu_live::tls_identity::BambuTlsPin,
+    ) -> Result<BambuTlsIdentity, String>,
 ) -> Result<BambuLiveHostRecovery, String> {
     let printer_id = input.printer_id.trim().to_string();
     if printer_id.is_empty() {
@@ -113,10 +121,10 @@ fn recover_bambu_live_host_at_path(
             .to_string()
     })?;
 
-    // `probe_printer_tls_identity` performs only a TLS handshake and extracts
-    // the peer certificate. Do not add credential-store or MQTT work above
-    // this trust gate.
-    let observed = probe(&host, &printer_serial)?;
+    // The saved SPKI is enforced by the TLS verifier during the handshake and
+    // checked again below before the address is persisted. No credential-store
+    // or MQTT work belongs above this trust gate.
+    let observed = probe(&host, &printer_serial, &trusted_pin)?;
     let observed = match assess_trust(&printer_serial, Some(&trusted_pin), &observed)? {
         BambuTlsTrustDecision::Trusted { observed, .. } => observed,
         BambuTlsTrustDecision::Changed { change, .. } => {
@@ -172,7 +180,7 @@ pub(crate) fn try_auto_recover_bambu_live_host_from_hosts(
             printer_id: printer_id.to_string(),
             host: host.clone(),
         };
-        match recover_bambu_live_host_at_path(db_path, input, probe_printer_tls_identity) {
+        match recover_bambu_live_host_at_path(db_path, input, probe_printer_tls_identity_with_pin) {
             Ok(_) => return Ok(Some(host.clone())),
             Err(error) => {
                 eprintln!("Ignored discovered Bambu address {host} for {printer_id}: {error}")
@@ -357,9 +365,10 @@ mod tests {
                 printer_id: "printer_1".to_string(),
                 host: "192.168.86.44".to_string(),
             },
-            |host, serial| {
+            |host, serial, trusted_pin| {
                 assert_eq!(host, "192.168.86.44");
                 assert_eq!(serial, "SERIAL");
+                assert_eq!(trusted_pin.spki_sha256(), "a".repeat(64));
                 Ok(identity("SERIAL", 'a'))
             },
         )
@@ -407,7 +416,7 @@ mod tests {
                 printer_id: "printer_1".to_string(),
                 host: "192.168.86.44".to_string(),
             },
-            |_, _| Ok(identity("OTHER", 'b')),
+            |_, _, _| Ok(identity("OTHER", 'b')),
         )
         .expect_err("foreign printer must not replace saved host");
         assert!(error.contains("did not match"));
@@ -433,7 +442,7 @@ mod tests {
                 printer_id: "printer_1".to_string(),
                 host: "8.8.8.8".to_string(),
             },
-            |_, _| panic!("public address must be rejected before probing"),
+            |_, _, _| panic!("public address must be rejected before probing"),
         )
         .expect_err("public host must fail");
         assert!(error.contains("private IPv4"));
@@ -453,7 +462,7 @@ mod tests {
                 printer_id: "printer_1".to_string(),
                 host: "192.168.86.44".to_string(),
             },
-            move |_, _| {
+            move |_, _, _| {
                 let mut newer = trusted_config("192.168.86.30");
                 newer.tls_identity = Some(BambuLiveTlsIdentityRow {
                     trusted_spki_sha256: Some("b".repeat(64)),

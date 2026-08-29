@@ -1354,17 +1354,20 @@ mod tests {
                         continue;
                     }
                     let raw = std::fs::read(&artifact_path).map_err(|error| error.to_string())?;
-                    for secret in [
-                        "snapshot-bambu-secret",
-                        "snapshot-session-secret",
-                        "snapshot-device-secret",
-                        "snapshot-csrf-secret",
-                        "snapshot-legacy-printer-secret",
+                    for (credential_kind, marker) in [
+                        ("Bambu access code", "snapshot-bambu-secret"),
+                        ("library session identifier", "snapshot-session-secret"),
+                        ("library device token", "snapshot-device-secret"),
+                        ("library CSRF token", "snapshot-csrf-secret"),
+                        (
+                            "legacy printer access token",
+                            "snapshot-legacy-printer-secret",
+                        ),
                     ] {
                         assert!(
-                            !raw.windows(secret.len())
-                                .any(|window| window == secret.as_bytes()),
-                            "{secret} remained in {}",
+                            !raw.windows(marker.len())
+                                .any(|window| window == marker.as_bytes()),
+                            "recovery snapshot retained {credential_kind} in SQLite artifact {}",
                             artifact_path.display()
                         );
                     }

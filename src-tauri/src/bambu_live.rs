@@ -38,11 +38,12 @@ mod live_security;
 #[cfg(test)]
 pub(crate) use live_security::format_mqtt_connect_errors_for_platform;
 use live_security::{
-    format_mqtt_connect_errors, has_live_observation, identity_probe_tls_connector,
-    is_mqtt_read_timeout, record_observed_tls_identity, run_after_trusted_identity,
-    BambuLivePollError,
+    connect_printer_tls, format_mqtt_connect_errors, has_live_observation, is_mqtt_read_timeout,
+    peer_leaf_der, record_observed_tls_identity, run_after_trusted_identity, BambuLivePollError,
 };
-pub(crate) use live_security::{probe_printer_tls_identity, trusted_pin_from_config};
+pub(crate) use live_security::{
+    probe_printer_tls_identity, probe_printer_tls_identity_with_pin, trusted_pin_from_config,
+};
 
 pub async fn run_live_observer(state: AppState, mut shutdown: tokio::sync::watch::Receiver<bool>) {
     loop {
@@ -288,25 +289,13 @@ fn observe_printer_state(
             ))
         })?;
 
-    let connector = identity_probe_tls_connector().map_err(BambuLivePollError::without_identity)?;
-    let mut stream = connector.connect(host, tcp_stream).map_err(|error| {
-        BambuLivePollError::without_identity(format!("failed to establish TLS session: {error}"))
-    })?;
-    let peer_certificate = stream.peer_certificate().map_err(|error| {
-        BambuLivePollError::without_identity(format!(
-            "failed to read printer TLS certificate: {error}"
-        ))
-    })?;
-    let peer_certificate = peer_certificate.ok_or_else(|| {
-        BambuLivePollError::without_identity(
-            "printer TLS session did not provide a leaf certificate".to_string(),
-        )
-    })?;
-    let peer_leaf_der = peer_certificate.to_der().map_err(|error| {
-        BambuLivePollError::without_identity(format!(
-            "failed to read printer TLS certificate: {error}"
-        ))
-    })?;
+    let mut stream = connect_printer_tls(tcp_stream, printer_serial, trusted_pin).map_err(
+        |error| match error.observed_identity {
+            Some(observed) => BambuLivePollError::with_identity(error.message, observed),
+            None => BambuLivePollError::without_identity(error.message),
+        },
+    )?;
+    let peer_leaf_der = peer_leaf_der(&stream).map_err(BambuLivePollError::without_identity)?;
     let observed_identity =
         tls_identity::identity_from_leaf_der(&peer_leaf_der).map_err(|error| {
             BambuLivePollError::without_identity(format!(
