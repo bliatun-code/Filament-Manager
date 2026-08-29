@@ -11,22 +11,22 @@ export const inventoryDetailSectionLabelClassName =
   "text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400";
 
 export const inventoryDetailFormControlClassName =
-  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-modal-control app-control-focus rounded-xl border px-3 py-2 text-sm text-slate-700 shadow-sm outline-none transition dark:text-slate-100";
 
 export const inventoryDetailCompactFormControlClassName =
-  "w-full rounded border border-slate-200 px-2 py-1 text-xs text-slate-900 outline-none transition focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-modal-control app-control-focus w-full rounded border px-2 py-1 text-xs text-slate-900 outline-none transition dark:text-slate-100";
 
 export const inventoryDetailSaveButtonClassName =
-  "rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-slate-300/30 outline-none transition hover:bg-slate-800 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:shadow-none dark:hover:bg-white dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-primary-action app-control-focus rounded-xl px-4 py-2 text-sm font-semibold outline-none transition disabled:opacity-50";
 
 export const inventoryDetailCompactActionButtonClassName =
-  "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-slate-900/70 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-soft-control app-control-focus rounded-lg border px-3 py-1.5 text-xs font-semibold outline-none transition disabled:opacity-50";
 
 export const inventoryDetailActionButtonClassName =
-  "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800/60 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-soft-control app-control-focus w-full rounded-lg border px-3 py-2 text-sm font-semibold outline-none transition disabled:opacity-50";
 
 export const inventoryDetailDangerActionButtonClassName =
-  "w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 outline-none transition hover:bg-rose-100 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 disabled:opacity-50 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-control-focus w-full rounded-lg border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 outline-none transition hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/40 dark:bg-rose-500/15 dark:text-rose-200 dark:hover:bg-rose-500/25";
 
 export const inventoryPanelToggleButtonClassName =
-  "rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 outline-none transition hover:bg-slate-50 focus-visible:border-sky-300 focus-visible:ring-2 focus-visible:ring-sky-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/60 dark:focus-visible:border-sky-400/60 dark:focus-visible:ring-sky-500/20";
+  "app-soft-control app-control-focus rounded-lg border px-2.5 py-1 text-[11px] font-semibold outline-none transition";

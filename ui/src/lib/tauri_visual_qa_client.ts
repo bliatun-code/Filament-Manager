@@ -7,3 +7,15 @@ export async function prepareDesktopVisualQaWindow(): Promise<void> {
 export async function signalDesktopVisualQaReadiness(token: string): Promise<void> {
   await invoke<void>("signal_desktop_visual_qa_readiness", { token });
 }
+
+export async function signalDesktopVisualQaTheme(
+  selectedTheme: "bambu" | "prusa",
+  resolvedTheme: "dark",
+  accent: string,
+): Promise<void> {
+  await invoke<void>("signal_desktop_visual_qa_theme", {
+    accent,
+    resolvedTheme,
+    selectedTheme,
+  });
+}

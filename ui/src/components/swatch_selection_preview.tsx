@@ -23,7 +23,7 @@ function previewSwatchClassName(
   if (hasSwatch) {
     return `${base} border-slate-600/70 shadow-black/5 dark:border-white/10 dark:shadow-none`;
   }
-  return `${base} border-dashed border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900`;
+  return `${base} app-modal-inset-soft border-dashed`;
 }
 
 export function SwatchSelectionPreviewHeader({
@@ -47,7 +47,7 @@ export function SwatchSelectionPreviewHeader({
   return (
     <div className={["flex items-start gap-3", className ?? ""].filter(Boolean).join(" ")}>
       {size === "large" ? (
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-slate-600/70 bg-white/65 p-2 shadow-sm shadow-slate-200/25 dark:border-white/10 dark:bg-slate-950/35 dark:shadow-none">
+        <span className="app-modal-inset-soft flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border p-2 shadow-sm dark:shadow-none">
           {swatch}
         </span>
       ) : (

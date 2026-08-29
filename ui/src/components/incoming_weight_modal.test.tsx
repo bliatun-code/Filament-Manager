@@ -63,7 +63,7 @@ test("IncomingWeightModal presents explicit secondary cancel and primary save ac
   assert.match(html, />Save<\/button>/);
   assert.ok(html.indexOf(">Cancel</button>") < html.indexOf(">Save</button>"));
   assert.match(html, /grid grid-cols-2 gap-3/);
-  assert.match(html, /bg-slate-900[^"]*text-white/);
+  assert.match(html, /app-primary-action/);
   assert.doesNotMatch(html, /background-image:/);
 });
 

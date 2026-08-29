@@ -1796,6 +1796,10 @@ export const frDictionary: DictionaryNode = {
     dark: "Sombre",
     auto: "Automatique (système)",
     autoHint: "Le mode automatique suit la préférence claire/sombre du système.",
+    bambuTheme: "Bambu",
+    bambuThemeHelp: "Atelier vert éclatant",
+    prusaTheme: "Prusa",
+    prusaThemeHelp: "Atelier orange chaleureux",
     program: "Programme",
     backgroundOperation: "Fonctionnement en arrière-plan",
     backgroundOperationHint:

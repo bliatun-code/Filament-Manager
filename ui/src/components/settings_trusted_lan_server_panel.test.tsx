@@ -76,7 +76,8 @@ test("network editor replaces summary cards and keeps save as the only accent ac
   assert.match(html, /Network interface \(IP\)[\s\S]*<select/);
   assert.match(html, /Web app port[\s\S]*type="number"/);
   assert.match(html, /type="submit"/);
-  assert.equal((html.match(/border-indigo-200/g) ?? []).length, 1);
+  assert.equal((html.match(/app-accent-action/g) ?? []).length, 1);
+  assert.doesNotMatch(html, /app-selected-control/);
   assert.doesNotMatch(html, /Stable local address/);
   assert.doesNotMatch(html, /Current direct address/);
 });

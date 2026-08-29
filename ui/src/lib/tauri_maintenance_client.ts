@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "./tauri_invoke";
+import type { NativeWindowTheme } from "./theme_mode";
 
 export type BackupValidationStats = {
   format: string;
@@ -122,6 +123,10 @@ export async function validateFullBackupJson(content: string) {
 
 export async function setDockIconTheme(theme: "light" | "dark") {
   return invoke<void>("set_dock_icon_theme", { theme });
+}
+
+export async function setNativeWindowTheme(input: NativeWindowTheme) {
+  return invoke<void>("set_native_window_theme", { input });
 }
 
 function openInBrowser(url: string) {

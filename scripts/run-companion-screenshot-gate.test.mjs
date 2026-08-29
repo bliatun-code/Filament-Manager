@@ -14,7 +14,9 @@ import {
   COMPANION_SCREENSHOT_VIEWPORTS,
   formatCompanionScreenshotGateReport,
   formatLaunchedCompanionScreenshotGateReport,
+  companionScreenshotColorScheme,
   normalizeCompanionScreenshotLocale,
+  normalizeCompanionScreenshotTheme,
   POSIX_PROCESS_GROUP_KILL_GRACE_MS,
   POSIX_PROCESS_GROUP_TERM_GRACE_MS,
   resolveCompanionQaLoopbackBaseUrl,
@@ -32,6 +34,60 @@ const testOutputDir = path.join(tmpdir(), "visual-qa");
 const testProjectDir = path.join(tmpdir(), "filament manager project");
 const testSourceDatabasePath = path.join(tmpdir(), "source.db");
 const testVisualDatabasePath = path.join(tmpdir(), "visual.db");
+
+test("companion screenshot gate recognizes standard and brand themes", () => {
+  assert.equal(normalizeCompanionScreenshotTheme("light"), "light");
+  assert.equal(normalizeCompanionScreenshotTheme(" DARK "), "dark");
+  assert.equal(normalizeCompanionScreenshotTheme("Auto"), "auto");
+  assert.equal(normalizeCompanionScreenshotTheme("Bambu"), "bambu");
+  assert.equal(normalizeCompanionScreenshotTheme(" PRUSA "), "prusa");
+  assert.equal(companionScreenshotColorScheme("light"), "light");
+  assert.equal(companionScreenshotColorScheme("auto"), undefined);
+  assert.equal(companionScreenshotColorScheme("bambu"), "light");
+  assert.equal(companionScreenshotColorScheme("prusa"), "light");
+  assert.throws(() => normalizeCompanionScreenshotTheme(""), /theme is required/);
+  assert.throws(
+    () => normalizeCompanionScreenshotTheme("sepia"),
+    /Unknown Companion screenshot theme/,
+  );
+});
+
+test("companion screenshot metrics prove the selected brand profile and accent", () => {
+  for (const [theme, accent] of [
+    ["bambu", "#00AE42"],
+    ["prusa", "#FD5000"],
+  ]) {
+    assert.deepEqual(
+      validateCompanionScreenshotMetrics([
+        createMetric({
+          theme: {
+            accent,
+            baseMode: "dark",
+            requested: theme,
+            resolved: "dark",
+            selected: theme,
+          },
+        }),
+      ]),
+      [],
+    );
+  }
+
+  const errors = validateCompanionScreenshotMetrics([
+    createMetric({
+      theme: {
+        accent: "#F3F7FB",
+        baseMode: "dark",
+        requested: "bambu",
+        resolved: "light",
+        selected: "dark",
+      },
+    }),
+  ]);
+  assert.ok(errors.some((error) => error.includes("selected theme dark instead of bambu")));
+  assert.ok(errors.some((error) => error.includes("resolved theme light instead of dark")));
+  assert.ok(errors.some((error) => error.includes("instead of #00AE42")));
+});
 
 test("POSIX process-group termination keeps bounded runner headroom", () => {
   assert.equal(POSIX_PROCESS_GROUP_TERM_GRACE_MS, 3_000);
@@ -110,6 +166,14 @@ function createMetric(overrides = {}) {
       width: 390,
     },
     textOverflow: [],
+    theme: {
+      accent: "#f3f7fb",
+      baseMode: "dark",
+      requested: "dark",
+      resolved: "dark",
+      selected: "dark",
+      ...overrides.theme,
+    },
     title: "Filament Manager Companion",
     url: "http://127.0.0.1:4278/companion",
     viewport: {

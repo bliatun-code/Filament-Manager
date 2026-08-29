@@ -26,6 +26,7 @@ import {
   applyCompanionThemeMode,
   COMPANION_THEME_STORAGE_KEY,
   normalizeThemeMode,
+  persistCompanionThemeMode,
   readCompanionMediaQuery,
   readStoredCompanionThemeMode,
   resolveCompanionTheme,
@@ -209,7 +210,7 @@ function setThemeMode(nextMode) {
   state.themeMode = normalizedMode;
   state.resolvedTheme = applyCompanionThemeMode(normalizedMode, document, window);
   syncCompanionIconLinks(state.resolvedTheme);
-  persistCompanionPreference(THEME_STORAGE_KEY, normalizedMode);
+  persistCompanionThemeMode(THEME_STORAGE_KEY, normalizedMode, readBrowserStorage());
   render();
 }
 

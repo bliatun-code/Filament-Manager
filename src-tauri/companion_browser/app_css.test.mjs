@@ -46,6 +46,30 @@ function hexToRgb(hex) {
   return [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16));
 }
 
+function extractCssBlock(source, selector) {
+  const selectorIndex = source.indexOf(selector);
+  assert.notEqual(selectorIndex, -1, `expected selector ${selector}`);
+  const openingBrace = source.indexOf("{", selectorIndex);
+  let depth = 0;
+  for (let index = openingBrace; index < source.length; index += 1) {
+    if (source[index] === "{") {
+      depth += 1;
+    } else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(openingBrace + 1, index);
+      }
+    }
+  }
+  assert.fail(`unterminated selector ${selector}`);
+}
+
+function readHexToken(block, token) {
+  const match = block.match(new RegExp(`${token}:\\s*(#[0-9a-f]{6})`, "i"));
+  assert.ok(match, `expected ${token} to be an opaque hex token`);
+  return match[1];
+}
+
 test("loaded printer slot cards keep their swatch surface treatment", () => {
   const css = readCssBundle();
 
@@ -122,6 +146,41 @@ test("companion shell defines reusable status and panel surface tokens", () => {
   assert.match(css, /\.inline-signal\[data-tone="warning"\]\s*\{[\s\S]*color: var\(--warning\);/);
   assert.match(css, /\.printer-live-strip\s*\{[\s\S]*color: var\(--muted\);/);
   assert.match(css, /\.task-sheet\.add-filament-sheet \.task-sheet-header\s*\{[\s\S]*var\(--surface-panel\)/);
+});
+
+test("brand themes keep AA text contrast without replacing filament swatch tokens", () => {
+  const css = readCssBundle();
+  const themes = [
+    {
+      selector: ':root[data-theme="bambu"]',
+      accent: "#00ae42",
+    },
+    {
+      selector: ':root[data-theme="prusa"]',
+      accent: "#fd5000",
+    },
+  ];
+
+  for (const { selector, accent } of themes) {
+    const block = extractCssBlock(css, selector);
+    const background = readHexToken(block, "--bg-top");
+    const surface = readHexToken(block, "--surface-strong");
+    const text = readHexToken(block, "--text");
+    const mutedText = readHexToken(block, "--text-muted");
+    const accentColor = readHexToken(block, "--accent");
+    const accentContrast = readHexToken(block, "--accent-contrast");
+    const controlBorder = readHexToken(block, "--form-control-border");
+
+    assert.equal(accentColor.toLowerCase(), accent);
+    assert.ok(contrastRatio(hexToRgb(text), hexToRgb(background)) >= 4.5);
+    assert.ok(contrastRatio(hexToRgb(mutedText), hexToRgb(surface)) >= 4.5);
+    assert.ok(contrastRatio(hexToRgb(accentColor), hexToRgb(accentContrast)) >= 4.5);
+    assert.ok(contrastRatio(hexToRgb(controlBorder), hexToRgb(surface)) >= 3);
+    assert.doesNotMatch(block, /--swatch-/);
+    assert.doesNotMatch(block, /--brand-rgb/);
+  }
+
+  assert.match(css, /radial-gradient\(circle at top right, var\(--hero-glow\), transparent 34%\)/);
 });
 
 test("companion controls use shared focus and radius primitives", () => {
@@ -278,6 +337,21 @@ test("phone CSS keeps root headers secondary, task sheets scrollable, and modal 
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-actions > \.companion-link-button,[\s\S]*\.selection-banner-actions > \.companion-link-button\s*\{\s*width: 100%;/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*\.detail-actions > :not\(button\):not\(\.companion-link-button\),[\s\S]*\.selection-banner-actions > :not\(button\):not\(\.companion-link-button\),/);
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*:root\[data-theme-mode="light"\] \.phone-bottom-nav\s*\{[\s\S]*background: rgba\(248, 251, 255, 0\.98\);/);
+  const phoneNavIndex = css.indexOf(".phone-bottom-nav {");
+  const explicitDarkPhoneNavIndex = css.indexOf(
+    ':root[data-theme-mode="dark"] .phone-bottom-nav {',
+    phoneNavIndex,
+  );
+  const systemDarkPhoneNavIndex = css.indexOf(
+    "@media (prefers-color-scheme: dark)",
+    phoneNavIndex,
+  );
+  assert.ok(phoneNavIndex >= 0, "expected the phone bottom navigation styles");
+  assert.ok(
+    explicitDarkPhoneNavIndex > phoneNavIndex &&
+      explicitDarkPhoneNavIndex < systemDarkPhoneNavIndex,
+    "explicit dark and dark-based brand themes must not depend on the OS color scheme",
+  );
   assert.match(css, /@media \(max-width: 767px\) and \(prefers-color-scheme: light\)[\s\S]*:root\[data-theme-mode="auto"\] \.swatch-surface\s*\{[\s\S]*--swatch-surface-top: 0\.24;/);
   assert.match(css, /:root\[data-theme-mode="light"\] \.list-row\.swatch-surface[\s\S]*inset 3px 0 0 rgb\(var\(--swatch-rgb\) \/ 0\.56\)/);
   assert.match(css, /:root\[data-theme-mode="light"\] \.printer-board\.printer-brand-surface[\s\S]*inset 3px 0 0 rgb\(var\(--brand-rgb\) \/ 0\.5\)/);

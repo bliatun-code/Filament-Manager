@@ -181,7 +181,7 @@ export function SlotCatalogOnboardingModal({
           <ModalFactCard
             padding="none"
             surface="plain"
-            className="border-slate-200/90 bg-white/75 p-4 dark:border-slate-700/80 dark:bg-slate-950/45"
+            className="app-modal-inset p-4"
           >
             <SegmentedChoiceRow
               label={t("inventory.ownership", "Ownership")}

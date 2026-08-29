@@ -48,7 +48,7 @@ export function InventorySpoolDetailFooter({
   }, [discardConfirmationOpen, manageBusy]);
 
   return (
-    <ModalFooter className="flex flex-wrap items-center justify-between gap-3 bg-white/95 px-4 py-3 dark:bg-slate-900/95 sm:px-5">
+    <ModalFooter className="app-modal-footer-surface flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
       {discardConfirmationOpen ? (
         <ModalNotice
           className="w-full"

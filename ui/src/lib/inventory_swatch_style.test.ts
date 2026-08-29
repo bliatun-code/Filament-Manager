@@ -33,11 +33,17 @@ function rgbaContrastAgainstWhite(raw: string): number {
 
 test("inventorySwatchBorderColor keeps neutral and edge contrast fallbacks", () => {
   assert.equal(inventorySwatchBorderColor(null, "light"), "rgba(71, 85, 105, 0.68)");
-  assert.equal(inventorySwatchBorderColor(null, "dark"), "rgba(203, 213, 225, 0.4)");
+  assert.equal(
+    inventorySwatchBorderColor(null, "dark"),
+    "var(--app-theme-data-neutral-border)",
+  );
   assert.equal(inventorySwatchBorderColor("#FFFFFF", "light"), "rgba(71, 85, 105, 0.68)");
   assert.equal(inventorySwatchBorderColor("#FFFFFF", "dark"), "rgba(255, 255, 255, 0.4)");
   assert.equal(inventorySwatchBorderColor("#000000", "light"), "rgba(71, 85, 105, 0.68)");
-  assert.equal(inventorySwatchBorderColor("#000000", "dark"), "rgba(148, 163, 184, 0.34)");
+  assert.equal(
+    inventorySwatchBorderColor("#000000", "dark"),
+    "var(--app-theme-data-neutral-border)",
+  );
   assert.equal(inventorySwatchBorderColor("#2563EB", "light"), "rgba(71, 85, 105, 0.68)");
   assert.equal(inventorySwatchBorderColor("#2563EB", "dark"), "rgba(37, 99, 235, 0.4)");
 });
@@ -52,12 +58,17 @@ test("inventory swatch surfaces preserve theme-specific base surfaces", () => {
   const lightCard = inventorySwatchCardStyle("#2563EB", "light");
   const lightWhitePanel = inventorySwatchPanelStyle("#FFFFFF", "light");
 
-  assert.equal(lightCard.backgroundColor, "rgba(252, 254, 255, 0.95)");
+  assert.equal(lightCard.backgroundColor, "var(--app-theme-data-card-base)");
   assert.equal(lightCard.borderColor, "rgba(37, 99, 235, 0.28)");
   assert.equal(lightWhitePanel.borderColor, "rgba(148, 163, 184, 0.34)");
   assert.equal(
     inventorySwatchPanelStyle("#2563EB", "dark").backgroundColor,
-    "rgb(8, 15, 29)",
+    "var(--app-theme-data-panel-base)",
+  );
+  assert.match(lightCard.backgroundImage, /rgba\(37, 99, 235, 0\.125\)/);
+  assert.match(
+    inventorySwatchPanelStyle("#2563EB", "dark").backgroundImage,
+    /rgba\(37, 99, 235, 0\.34\)/,
   );
 });
 

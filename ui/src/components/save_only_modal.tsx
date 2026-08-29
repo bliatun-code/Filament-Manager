@@ -41,10 +41,10 @@ export function SaveOnlyModal({
       closeOnBackdrop={Boolean(activeCancelHandler)}
       onBackdropClose={activeCancelHandler}
       zIndex={zIndex}
-      panelClassName="max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border border-slate-200/90 bg-white/95 p-0 shadow-2xl shadow-slate-300/18 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/90 dark:shadow-black/38"
+      panelClassName="app-modal-panel max-h-[calc(100dvh-3rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-xl border p-0 backdrop-blur-xl"
     >
       <>
-        <div className="border-b border-slate-200/80 bg-slate-50/95 px-5 py-4 dark:border-slate-700/80 dark:bg-slate-950/90">
+        <div className="app-modal-header border-b px-5 py-4">
           {swatchColor ? (
             <SwatchSelectionPreviewHeader
               eyebrow={t("common.save", "Save")}
@@ -77,10 +77,10 @@ export function SaveOnlyModal({
           )}
         </div>
 
-        <div className="bg-white/95 px-5 py-5 dark:bg-slate-900/90">{children}</div>
+        <div className="px-5 py-5">{children}</div>
 
         <ModalFooter
-          className={`bg-slate-50/95 px-5 py-4 dark:bg-slate-950/90 ${
+          className={`app-modal-footer-surface px-5 py-4 ${
             onCancel ? "grid grid-cols-2 gap-3" : ""
           }`}
         >

@@ -1161,7 +1161,7 @@ export function SettingsFilamentDefaultsTab({
             ariaLabel={t("settings.filamentDefaultsConfirmOverwrite", "Confirm price overwrite")}
             closeOnBackdrop
             onBackdropClose={() => setPendingOverwrite(null)}
-            panelClassName="max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl dark:border-slate-700/70 dark:bg-slate-900/95"
+            panelClassName="app-modal-panel max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-2xl border p-5"
           >
             <div className="space-y-4">
               <div>

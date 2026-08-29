@@ -14,6 +14,10 @@ real inventory library is opened or modified. Names, identifiers, QR targets,
 counts, swatches, loans, printer assignments, and live observations shown here
 are synthetic.
 
+The screenshot gates can select Auto, Light, Dark, Bambu, or Prusa explicitly.
+Bambu and Prusa are dark-based presentation palettes; captures in either theme
+must preserve the fixture's filament, material, and status swatches exactly.
+
 The v0.22.0 refresh regenerated Dashboard, Add Filament, Program and update
 check, Bambu Live security setup, and Unsaved Printer Changes on 2026-07-29
 from fixture seed SHA-256
@@ -294,9 +298,11 @@ material consumed outside printer sessions.
 
 ### General
 
-Appearance and language controls, plus the separate opt-in settings for
-continuing in the menu bar or system tray after the window closes and starting
-hidden when the current user signs in.
+Appearance controls include Auto, Light, Dark, Bambu, and Prusa. The two
+brand-inspired choices are playful, unofficial dark-based homages, while data
+swatches retain their inventory meaning. The tab also contains language and the
+separate opt-in settings for continuing in the menu bar or system tray after
+the window closes and starting hidden when the current user signs in.
 
 ![Settings General tab with background-operation controls](screenshots/settings-general.jpg)
 

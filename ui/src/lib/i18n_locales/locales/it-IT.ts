@@ -1443,6 +1443,10 @@ export const itITDictionary: DictionaryNode = {
     autofillVisibleSwatches:
       "Compila automaticamente i campioni mancanti visibili",
     autoHint: "Auto segue la preferenza chiaro/scuro del tuo sistema.",
+    bambuTheme: "Bambu",
+    bambuThemeHelp: "Officina verde vivace",
+    prusaTheme: "Prusa",
+    prusaThemeHelp: "Officina arancione calda",
     backupDescription:
       "Esporta un backup JSON completo con inventario, cronologia e stampanti configurate.",
     backupExported:

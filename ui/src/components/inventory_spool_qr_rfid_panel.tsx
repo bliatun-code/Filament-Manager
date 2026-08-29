@@ -47,7 +47,7 @@ type InventorySpoolQrRfidPanelProps = {
 };
 
 const qrRfidInfoBoxClassName =
-  "rounded-lg border border-slate-200/80 bg-white/80 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900/60";
+  "app-modal-inset-soft rounded-lg border px-3 py-2 text-xs";
 
 function parseCustomDimensionDraft(value: string): number {
   return value.trim() ? Number(value) : Number.NaN;
@@ -329,7 +329,7 @@ export function InventorySpoolQrRfidPanel({
         <AppModal
           zIndex={80}
           onBackdropClose={() => setLabelPanelOpen(false)}
-          panelClassName="flex max-h-[calc(100dvh-3rem)] w-[min(92vw,58rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+          panelClassName="app-modal-panel flex max-h-[calc(100dvh-3rem)] w-[min(92vw,58rem)] flex-col overflow-hidden rounded-2xl border"
         >
           <ModalHeader
             eyebrow={t("inventory.qrLabel", "QR label")}
@@ -342,7 +342,7 @@ export function InventorySpoolQrRfidPanel({
             onClose={() => setLabelPanelOpen(false)}
           />
           <div id="inventory-label-builder" className="grid min-h-0 gap-5 overflow-y-auto p-5 md:grid-cols-[minmax(0,1.35fr)_minmax(16rem,0.65fr)]">
-            <div className="flex min-h-64 items-center rounded-xl border border-slate-200 bg-slate-100 p-5 dark:border-slate-700 dark:bg-slate-950/60">
+            <div className="app-modal-inset flex min-h-64 items-center rounded-xl border p-5">
               {currentLabelPreview ? (
                 <img
                   src={currentLabelPreview}
@@ -373,10 +373,10 @@ export function InventorySpoolQrRfidPanel({
                     key={profile.id}
                     type="button"
                     aria-pressed={labelPreferences.selectedSize === profile.id}
-                    className={`rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                    className={`app-control-focus rounded-lg border px-3 py-2.5 text-left text-sm outline-none transition ${
                       labelPreferences.selectedSize === profile.id
-                        ? "border-sky-500 bg-sky-50 text-slate-950 dark:bg-sky-950/50 dark:text-white"
-                        : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
+                        ? "app-modal-selected-control"
+                        : "app-soft-control"
                     }`}
                     onClick={() => selectLabelSize(profile.id)}
                   >
@@ -391,10 +391,10 @@ export function InventorySpoolQrRfidPanel({
                 <button
                   type="button"
                   aria-pressed={labelPreferences.selectedSize === "custom"}
-                  className={`rounded-lg border px-3 py-2.5 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
+                  className={`app-control-focus rounded-lg border px-3 py-2.5 text-left text-sm outline-none transition ${
                     labelPreferences.selectedSize === "custom"
-                      ? "border-sky-500 bg-sky-50 text-slate-950 dark:bg-sky-950/50 dark:text-white"
-                      : "border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-200"
+                      ? "app-modal-selected-control"
+                      : "app-soft-control"
                   }`}
                   onClick={() => selectLabelSize("custom")}
                 >
@@ -408,7 +408,7 @@ export function InventorySpoolQrRfidPanel({
               </div>
               {labelPreferences.selectedSize === "custom" ? (
                 <div
-                  className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950/40"
+                  className="app-modal-inset mt-3 rounded-xl border p-3"
                   role="group"
                   aria-label={t("inventory.labelProfile.custom", "Custom")}
                 >
@@ -474,7 +474,7 @@ export function InventorySpoolQrRfidPanel({
                       "The PNG is rendered at 300 DPI for predictable physical sizing.",
                     )}
               </div>
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs leading-5 text-slate-600 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
+              <div className="app-modal-inset mt-3 rounded-lg border px-3 py-2.5 text-xs leading-5 text-slate-600 dark:text-slate-300">
                 {t(
                   "inventory.labelSheetInventoryHint",
                   "Need labels for several rolls? Choose “Select multiple” in Inventory, or create a label sheet for all stock from the header.",

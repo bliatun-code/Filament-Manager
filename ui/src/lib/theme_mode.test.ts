@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getThemeMode, setThemeMode } from "./theme_mode";
+import {
+  getNativeWindowTheme,
+  getThemeMode,
+  isThemeMode,
+  resolveThemeMode,
+  setThemeMode,
+  THEME_MODES,
+} from "./theme_mode";
 
 function withLocalStorage<T>(storage: unknown, run: () => T): T {
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
@@ -39,6 +46,23 @@ function withWindowSearch<T>(search: string, run: () => T): T {
   }
 }
 
+function withDocument<T>(documentValue: unknown, run: () => T): T {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "document");
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: documentValue,
+  });
+  try {
+    return run();
+  } finally {
+    if (descriptor) {
+      Object.defineProperty(globalThis, "document", descriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "document");
+    }
+  }
+}
+
 test("getThemeMode returns stored supported mode", () => {
   const mode = withLocalStorage({ getItem: () => "dark" }, () => getThemeMode());
 
@@ -54,7 +78,7 @@ test("getThemeMode keeps dark as the desktop visual QA default", () => {
 });
 
 test("getThemeMode honors supported desktop visual QA theme overrides", () => {
-  for (const theme of ["light", "dark", "auto"] as const) {
+  for (const theme of THEME_MODES) {
     const mode = withWindowSearch(
       `?bfm_visual_qa=add-filament&bfm_visual_qa_theme=${theme}`,
       () => withLocalStorage({ getItem: () => "light" }, () => getThemeMode()),
@@ -62,6 +86,89 @@ test("getThemeMode honors supported desktop visual QA theme overrides", () => {
 
     assert.equal(mode, theme);
   }
+});
+
+test("theme registry distinguishes selected modes from resolved color schemes", () => {
+  assert.deepEqual(THEME_MODES, ["auto", "light", "dark", "bambu", "prusa"]);
+  assert.equal(resolveThemeMode("auto", false), "light");
+  assert.equal(resolveThemeMode("auto", true), "dark");
+  assert.equal(resolveThemeMode("light", true), "light");
+  assert.equal(resolveThemeMode("dark", false), "dark");
+  assert.equal(resolveThemeMode("bambu", false), "dark");
+  assert.equal(resolveThemeMode("prusa", false), "dark");
+  assert.equal(isThemeMode("bambu"), true);
+  assert.equal(isThemeMode("sepia"), false);
+});
+
+test("native window theme keeps system modes native and gives brand themes opaque titlebars", () => {
+  assert.deepEqual(getNativeWindowTheme("auto"), {
+    appearance: null,
+    backgroundColor: null,
+  });
+  assert.deepEqual(getNativeWindowTheme("light"), {
+    appearance: "light",
+    backgroundColor: null,
+  });
+  assert.deepEqual(getNativeWindowTheme("dark"), {
+    appearance: "dark",
+    backgroundColor: null,
+  });
+  assert.deepEqual(getNativeWindowTheme("bambu"), {
+    appearance: "dark",
+    backgroundColor: [3, 18, 18, 255],
+  });
+  assert.deepEqual(getNativeWindowTheme("prusa"), {
+    appearance: "dark",
+    backgroundColor: [24, 16, 15, 255],
+  });
+});
+
+test("getThemeMode restores stored branded themes", () => {
+  for (const theme of ["bambu", "prusa"] as const) {
+    const mode = withLocalStorage({ getItem: () => theme }, () => getThemeMode());
+    assert.equal(mode, theme);
+  }
+});
+
+test("setThemeMode exposes selected and resolved themes without dropping dark compatibility", () => {
+  const classNames = new Set<string>();
+  const dataset: Record<string, string> = {};
+  const style: Record<string, string> = {};
+  const documentValue = {
+    documentElement: {
+      classList: {
+        toggle: (name: string, enabled: boolean) => {
+          if (enabled) {
+            classNames.add(name);
+          } else {
+            classNames.delete(name);
+          }
+        },
+      },
+      dataset,
+      style,
+    },
+  };
+
+  withDocument(documentValue, () => {
+    withLocalStorage({ setItem: () => {} }, () => setThemeMode("bambu"));
+  });
+
+  assert.equal(classNames.has("dark"), true);
+  assert.equal(dataset.theme, "bambu");
+  assert.equal(dataset.themeMode, "bambu");
+  assert.equal(dataset.resolvedTheme, "dark");
+  assert.equal(style.colorScheme, "dark");
+
+  withDocument(documentValue, () => {
+    withLocalStorage({ setItem: () => {} }, () => setThemeMode("light"));
+  });
+
+  assert.equal(classNames.has("dark"), false);
+  assert.equal(dataset.theme, "light");
+  assert.equal(dataset.themeMode, "light");
+  assert.equal(dataset.resolvedTheme, "light");
+  assert.equal(style.colorScheme, "light");
 });
 
 test("getThemeMode rejects invalid desktop visual QA theme overrides", () => {

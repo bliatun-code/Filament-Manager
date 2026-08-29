@@ -66,7 +66,7 @@ export function InventoryLabelSheetModal({
     <AppModal
       zIndex={80}
       onBackdropClose={onClose}
-      panelClassName="flex max-h-[calc(100dvh-3rem)] w-[min(94vw,72rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+      panelClassName="app-modal-panel flex max-h-[calc(100dvh-3rem)] w-[min(94vw,72rem)] flex-col overflow-hidden rounded-2xl border"
     >
       <ModalHeader
         eyebrow={t("settings.inventoryOverviewPrint", "Inventory label sheets")}

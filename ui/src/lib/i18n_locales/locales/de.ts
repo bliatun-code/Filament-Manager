@@ -1754,6 +1754,10 @@ export const deDictionary: DictionaryNode = {
     dark: "Dunkel",
     auto: "Automatisch (System)",
     autoHint: "Automatisch folgt der Hell-/Dunkel-Einstellung des Systems.",
+    bambuTheme: "Bambu",
+    bambuThemeHelp: "Werkstatt in lebendigem Grün",
+    prusaTheme: "Prusa",
+    prusaThemeHelp: "Werkstatt in warmem Orange",
     program: "Programm",
     backgroundOperation: "Hintergrundbetrieb",
     backgroundOperationHint:

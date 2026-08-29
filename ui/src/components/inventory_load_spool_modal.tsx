@@ -46,7 +46,7 @@ export function InventoryLoadSpoolModal({
       closeOnBackdrop
       onBackdropClose={busy ? undefined : onClose}
       overlayClassName={inventoryModalOverlayClassName}
-      panelClassName="flex max-h-[calc(100dvh-3rem)] w-[min(92vw,34rem)] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+      panelClassName="app-modal-panel flex max-h-[calc(100dvh-3rem)] w-[min(92vw,34rem)] flex-col overflow-hidden rounded-2xl border"
     >
       <ModalHeader
         eyebrow={t("inventory.placement", "Placement")}
@@ -79,8 +79,8 @@ export function InventoryLoadSpoolModal({
                   key={slot.slotId}
                   className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition ${
                     selected
-                      ? "border-sky-500 bg-sky-50 text-slate-950 dark:bg-sky-950/40 dark:text-white"
-                      : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                      ? "app-modal-selected-control"
+                      : "app-soft-control"
                   }`}
                 >
                   <input
@@ -100,7 +100,7 @@ export function InventoryLoadSpoolModal({
           </fieldset>
         )}
       </div>
-      <ModalFooter className="flex items-center justify-end gap-3 px-5 py-4">
+      <ModalFooter className="app-modal-footer-surface flex items-center justify-end gap-3 px-5 py-4">
         <button
           type="button"
           className={`${appSoftButtonClassName} px-4 py-2 text-sm`}

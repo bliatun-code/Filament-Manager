@@ -15,15 +15,34 @@ import {
 import {
   buildSettingsLocaleSelectionMessage,
   buildSettingsThemeSelectionMessage,
+  settingsThemeModeLabel,
 } from "./settings_preferences_model";
 
-test("buildSettingsThemeSelectionMessage formats the selected mode", () => {
+test("buildSettingsThemeSelectionMessage formats the localized selected mode", () => {
   assert.equal(
-    buildSettingsThemeSelectionMessage("auto", {
+    buildSettingsThemeSelectionMessage("Auto (system)", {
       themeSetTo: "Theme mode set to",
     }),
-    "Theme mode set to auto.",
+    "Theme mode set to Auto (system).",
   );
+});
+
+test("settingsThemeModeLabel uses translated standard and brand theme labels", () => {
+  const translated = {
+    "settings.auto": "Automatisk",
+    "settings.bambuTheme": "Bambu",
+    "settings.dark": "Mørk",
+    "settings.light": "Lys",
+    "settings.prusaTheme": "Prusa",
+  } as const;
+  const t = (key: string, fallback = "") =>
+    translated[key as keyof typeof translated] ?? fallback;
+
+  assert.equal(settingsThemeModeLabel("auto", t), "Automatisk");
+  assert.equal(settingsThemeModeLabel("light", t), "Lys");
+  assert.equal(settingsThemeModeLabel("dark", t), "Mørk");
+  assert.equal(settingsThemeModeLabel("bambu", t), "Bambu");
+  assert.equal(settingsThemeModeLabel("prusa", t), "Prusa");
 });
 
 function dictionaryTranslator(locale: Locale, dictionary: DictionaryNode) {

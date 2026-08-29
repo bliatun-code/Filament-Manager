@@ -71,7 +71,7 @@ export function PurchaseReceiptMetadataFields({
 
   return (
     <fieldset
-      className="rounded-2xl border border-slate-200 bg-white/70 p-4 dark:border-slate-700 dark:bg-slate-950/35"
+      className="app-modal-inset rounded-2xl border p-4"
       aria-describedby={summaryId}
       disabled={disabled}
     >

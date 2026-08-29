@@ -64,7 +64,7 @@ export function WeightInput({
               max={max}
               value={displayValue}
               onChange={(event) => handleChange(Number(event.target.value))}
-              className="mt-3 w-full accent-slate-900 outline-none focus-visible:ring-2 focus-visible:ring-sky-100 dark:accent-slate-100 dark:focus-visible:ring-sky-500/20"
+              className="app-accent-control app-control-focus mt-3 w-full outline-none"
             />
           </label>
           <label htmlFor={numberId} className="block">

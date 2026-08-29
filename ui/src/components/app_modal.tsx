@@ -36,10 +36,10 @@ export function AppModal({
   );
   const overlayClasses =
     overlayClassName ??
-    "fixed inset-0 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-md dark:bg-black/50";
+    "app-modal-overlay fixed inset-0 flex items-center justify-center px-4 py-6 backdrop-blur-md";
   const panelClasses =
     panelClassName ??
-    "max-h-[calc(100dvh-3rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-2xl shadow-slate-300/25 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/92 dark:shadow-black/45";
+    "app-modal-panel max-h-[calc(100dvh-3rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border p-5 backdrop-blur-xl";
 
   useEffect(() => {
     const panel = panelRef.current;

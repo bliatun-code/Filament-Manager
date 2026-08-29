@@ -482,8 +482,25 @@ General:
 - app version
 - automatic update notifications and a retained manual update check
 - optional close-to-tray background operation and launch at login
-- theme: Auto, Light, Dark
+- theme: Auto, Light, Dark, Bambu, Prusa
 - language, selected from one compact list
+
+**Auto** continues to follow the operating system, while **Light** and **Dark**
+retain the existing neutral appearance. **Bambu** and **Prusa** are playful,
+unofficial dark-based homages that add recognizable green or orange accents;
+they do not imply affiliation with or endorsement by either manufacturer. The
+palette references are Bambu Lab's published [Bambu Green
+`#00AE42`](https://us.store.bambulab.com/products/abs-filament?variant=40475105460360)
+and Prusa's published [brand assets and brand
+manual](https://www.prusa3d.com/page/media-assets_987/), which define Prusa
+Orange as `#FD5000`.
+
+The desktop app and Companion store their theme choices locally and
+independently on each device or browser, so changing one surface does not
+change the other. Theme accents style the application shell, controls,
+selection, and focus states. Filament colors, material badges, status colors,
+and other inventory swatches remain data-driven and are never replaced by the
+selected theme.
 
 Filament defaults:
 

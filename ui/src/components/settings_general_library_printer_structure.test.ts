@@ -37,7 +37,8 @@ test("library role confirmation keeps its actions visible while migration steps 
   const source = readComponentSource("settings_library_role_modal.tsx");
 
   assert.match(source, /sticky -bottom-5 z-10 -mx-5 -mb-5/);
-  assert.match(source, /bg-white\/95[^"]*backdrop-blur-xl[^"]*dark:bg-slate-900\/95/);
+  assert.match(source, /app-modal-footer-surface[^"]*backdrop-blur-xl/);
+  assert.doesNotMatch(source, /bg-white\/95|dark:bg-slate-900\/95/);
   assert.match(source, /disabled=\{!tauri \|\| librarySyncBusy \|\| !roleChangeState\.ready\}/);
 });
 

@@ -22,15 +22,24 @@ import {
 import { trustedReleaseUrl } from "./lib/app_update_check";
 import { useAppUpdateContext } from "./lib/app_update_context";
 import { useI18n } from "./lib/i18n";
-import { getThemeMode, onThemeModeChange } from "./lib/theme_mode";
+import {
+  getNativeWindowTheme,
+  getResolvedTheme,
+  getThemeMode,
+  onThemeModeChange,
+} from "./lib/theme_mode";
 import {
   isTauri,
   openExternalUrl,
   setDesktopTrayMenuLabels,
   setDockIconTheme,
+  setNativeWindowTheme,
   setWindowTitle,
 } from "./lib/tauri_client";
-import { prepareDesktopVisualQaWindow } from "./lib/tauri_visual_qa_client";
+import {
+  prepareDesktopVisualQaWindow,
+  signalDesktopVisualQaTheme,
+} from "./lib/tauri_visual_qa_client";
 import type { SettingsTabKey } from "./pages/settings_page_model";
 import { AppUpdateBanner } from "./components/app_update_banner";
 import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
@@ -144,25 +153,48 @@ export default function App() {
       return;
     }
 
-    const syncDockIcon = async () => {
-      const mode = getThemeMode();
-      const resolvedMode =
-        mode === "auto"
-          ? document.documentElement.classList.contains("dark")
-            ? "dark"
-            : "light"
-          : mode;
-      setResolvedTheme(resolvedMode);
+    const syncDesktopTheme = async (
+      themeMode: ReturnType<typeof getThemeMode>,
+      resolvedMode: ReturnType<typeof getResolvedTheme>,
+    ) => {
       try {
-        await setDockIconTheme(resolvedMode);
+        await Promise.all([
+          setDockIconTheme(resolvedMode),
+          setNativeWindowTheme(getNativeWindowTheme(themeMode)),
+        ]);
       } catch (error) {
-        console.error("Failed to sync dock icon theme", error);
+        console.error("Failed to sync native desktop theme", error);
+      }
+      if (
+        import.meta.env.DEV &&
+        typeof window !== "undefined" &&
+        desktopVisualQaInitialPage(window.location.search) &&
+        (themeMode === "bambu" || themeMode === "prusa")
+      ) {
+        const accent = getComputedStyle(document.documentElement)
+          .getPropertyValue("--app-theme-accent")
+          .trim();
+        try {
+          await signalDesktopVisualQaTheme(themeMode, "dark", accent);
+        } catch (error) {
+          console.error("Failed to report desktop visual QA theme", error);
+        }
       }
     };
 
-    void syncDockIcon();
+    let desktopThemeSyncQueue = Promise.resolve();
+    const queueDesktopThemeSync = () => {
+      const themeMode = getThemeMode();
+      const resolvedMode = getResolvedTheme(themeMode);
+      setResolvedTheme(resolvedMode);
+      desktopThemeSyncQueue = desktopThemeSyncQueue.then(() =>
+        syncDesktopTheme(themeMode, resolvedMode),
+      );
+    };
+
+    queueDesktopThemeSync();
     return onThemeModeChange(() => {
-      void syncDockIcon();
+      queueDesktopThemeSync();
     });
   }, []);
 

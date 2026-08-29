@@ -18,6 +18,12 @@ import {
   normalizeSupportedLocale,
 } from "../src-tauri/companion_browser/supported_locales.js";
 import {
+  COMPANION_BRAND_THEME_ACCENTS,
+  COMPANION_THEME_OPTIONS,
+  companionThemeBaseMode,
+  normalizeThemeMode,
+} from "../src-tauri/companion_browser/companion_theme.js";
+import {
   APP_DB_PATH_ENV_VAR,
   assertVisualQaLaunchUsesCopy,
   cleanupVisualQaDatabase,
@@ -75,6 +81,36 @@ function parseBooleanArg(argv, name) {
 
 export function normalizeCompanionScreenshotLocale(value) {
   return normalizeSupportedLocale(value, DEFAULT_LOCALE);
+}
+
+export function normalizeCompanionScreenshotTheme(value) {
+  const requested = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  const supported = new Set(COMPANION_THEME_OPTIONS.map(({ id }) => id));
+  if (supported.has(requested)) {
+    return normalizeThemeMode(requested);
+  }
+  if (!requested) {
+    throw new Error(
+      'Companion screenshot theme is required. Use "light", "dark", "auto", "bambu", or "prusa".',
+    );
+  }
+  throw new Error(
+    `Unknown Companion screenshot theme "${value}". Use "light", "dark", "auto", "bambu", or "prusa".`,
+  );
+}
+
+export function companionScreenshotColorScheme(themeMode) {
+  const normalized = normalizeCompanionScreenshotTheme(themeMode);
+  if (normalized === "bambu" || normalized === "prusa") {
+    // Brand themes are intentionally dark regardless of the device preference.
+    // Exercise them against a light OS in visual QA so accidental reliance on a
+    // prefers-color-scheme: dark rule cannot pass unnoticed.
+    return "light";
+  }
+  const baseMode = companionThemeBaseMode(normalized);
+  return baseMode === "auto" ? undefined : baseMode;
 }
 
 function routeUrl(baseUrl, route) {
@@ -417,6 +453,40 @@ export function validateCompanionScreenshotMetrics(metrics, minimums = {}) {
 
   for (const entry of metrics) {
     const prefix = entry.name || "scenario";
+    const requestedTheme = normalizeThemeMode(entry.theme?.requested);
+    const expectedBaseMode = companionThemeBaseMode(requestedTheme);
+    const expectedResolvedTheme = expectedBaseMode === "auto"
+      ? null
+      : expectedBaseMode;
+    if (entry.theme?.selected !== requestedTheme) {
+      errors.push(
+        `${prefix} selected theme ${entry.theme?.selected ?? "<missing>"} instead of ${requestedTheme}`,
+      );
+    }
+    if (
+      entry.theme?.baseMode !== expectedBaseMode
+    ) {
+      errors.push(
+        `${prefix} exposed base theme ${entry.theme?.baseMode ?? "<missing>"} instead of ${expectedBaseMode}`,
+      );
+    }
+    if (
+      expectedResolvedTheme &&
+      entry.theme?.resolved !== expectedResolvedTheme
+    ) {
+      errors.push(
+        `${prefix} resolved theme ${entry.theme?.resolved ?? "<missing>"} instead of ${expectedResolvedTheme}`,
+      );
+    }
+    const expectedAccent = COMPANION_BRAND_THEME_ACCENTS[requestedTheme];
+    if (
+      expectedAccent &&
+      String(entry.theme?.accent ?? "").trim().toUpperCase() !== expectedAccent
+    ) {
+      errors.push(
+        `${prefix} rendered accent ${entry.theme?.accent ?? "<missing>"} instead of ${expectedAccent}`,
+      );
+    }
     if (entry.pairingScreen) {
       errors.push(`${prefix} rendered the trusted-LAN pairing screen`);
     }
@@ -602,6 +672,7 @@ async function readPageMetrics(page, scenario) {
   const scenarioSummary = {
     expectations: scenario.expectations,
     name: scenario.name,
+    requestedTheme: scenario.requestedTheme,
   };
   return page.evaluate((scenario) => {
     const visible = (element) => {
@@ -699,6 +770,8 @@ async function readPageMetrics(page, scenario) {
         ? document.querySelector(".task-sheet-shell:not(.task-sheet-shell-wide)")
         : null;
     const contentOverlayRect = contentOverlayElement?.getBoundingClientRect?.() ?? null;
+    const root = document.documentElement;
+    const rootStyle = getComputedStyle(root);
     return {
       appChildren: document.querySelector("#app")?.children.length ?? 0,
       accessibility: {
@@ -766,6 +839,13 @@ async function readPageMetrics(page, scenario) {
           };
         }),
       textOverflow,
+      theme: {
+        accent: rootStyle.getPropertyValue("--accent").trim(),
+        baseMode: root.dataset.themeMode ?? null,
+        requested: scenario.requestedTheme ?? null,
+        resolved: root.dataset.resolvedTheme ?? null,
+        selected: root.dataset.theme ?? null,
+      },
       title: document.title,
       url: location.href,
       viewport: {
@@ -946,7 +1026,10 @@ async function runScenarioOnPage(page, scenario, outputDir, timeoutMs, options =
   try {
     await scenario.prepare?.(page, timeoutMs);
     await page.waitForTimeout(250);
-    const metrics = await readPageMetrics(page, scenario);
+    const metrics = await readPageMetrics(page, {
+      ...scenario,
+      requestedTheme: options.themeMode,
+    });
     const path = screenshotPath(outputDir, scenario.name);
     const screenshotBuffer = await page.screenshot({ path, fullPage: false });
     await securePrivateQaArtifact(path, options);
@@ -1064,7 +1147,7 @@ export async function runCompanionScreenshotGate(options = {}) {
 
   const timeoutMs = options.timeoutMs ?? 8_000;
   const outputDir = resolve(options.outputDir ?? DEFAULT_OUTPUT_DIR);
-  const themeMode = options.themeMode ?? "dark";
+  const themeMode = normalizeCompanionScreenshotTheme(options.themeMode ?? "dark");
   const locale = normalizeCompanionScreenshotLocale(options.locale);
   await preparePrivateQaArtifactDirectory(outputDir, options);
 
@@ -1079,7 +1162,7 @@ export async function runCompanionScreenshotGate(options = {}) {
     // the deterministic QA matrix below the unchanged production request limit, while the reset
     // below gives every capture the same inventory starting surface.
     context = await browser.newContext({
-      colorScheme: themeMode === "dark" ? "dark" : undefined,
+      colorScheme: companionScreenshotColorScheme(themeMode),
       locale: intlLocaleFor(locale),
       viewport: initialViewport,
     });
@@ -1645,7 +1728,9 @@ async function runCli() {
     serverPollMs: parseIntegerArg(argv, "--server-poll-ms", 500),
     sourcePath,
     startupTimeoutMs: parseIntegerArg(argv, "--startup-timeout-ms", 45_000),
-    themeMode: parseArgValue(argv, "--theme") ?? "dark",
+    themeMode: normalizeCompanionScreenshotTheme(
+      parseArgValue(argv, "--theme") ?? "dark",
+    ),
     timeoutMs,
   };
 

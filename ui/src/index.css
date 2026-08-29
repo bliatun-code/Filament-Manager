@@ -14,10 +14,299 @@
     --app-control-border-light: rgba(71, 85, 105, 0.68);
     --app-control-focus-light: rgb(3, 105, 161);
     --app-control-focus-halo-light: rgba(14, 165, 233, 0.18);
+    --app-theme-accent: rgb(2, 132, 199);
+    --app-theme-accent-soft: rgba(14, 165, 233, 0.14);
+    --app-theme-selection: rgba(14, 165, 233, 0.24);
+    --app-theme-focus-outline: rgba(2, 132, 199, 0.58);
+    --app-theme-focus-halo: rgba(14, 165, 233, 0.14);
+    --app-theme-control-border: rgba(71, 85, 105, 0.68);
+    --app-theme-control-background: rgba(255, 255, 255, 0.94);
+    --app-theme-control-hover-background: rgb(248, 250, 252);
+    --app-theme-control-text: rgb(51, 65, 85);
+    --app-theme-control-placeholder: rgb(100, 116, 139);
+    --app-theme-control-shadow: 0 10px 22px -20px rgba(30, 41, 59, 0.34);
+    --app-theme-primary-action-border: rgb(29, 59, 84);
+    --app-theme-primary-action-background: rgb(35, 70, 99);
+    --app-theme-primary-action-hover-background: rgb(45, 86, 120);
+    --app-theme-primary-action-text: rgb(255, 255, 255);
+    --app-theme-primary-action-shadow: 0 10px 20px -16px rgba(35, 70, 99, 0.74);
+    --app-theme-selected-control-border: rgb(33, 66, 93);
+    --app-theme-selected-control-background: rgb(41, 79, 112);
+    --app-theme-selected-control-hover-background: rgb(45, 86, 120);
+    --app-theme-selected-control-text: rgb(255, 255, 255);
+    --app-theme-selected-control-shadow: 0 9px 18px -15px rgba(41, 79, 112, 0.7);
+    --app-theme-modal-overlay-background: rgba(15, 23, 42, 0.3);
+    --app-theme-modal-panel-border: rgba(203, 213, 225, 0.9);
+    --app-theme-modal-panel-background: rgba(255, 255, 255, 0.96);
+    --app-theme-modal-panel-shadow: 0 25px 50px -12px rgba(71, 85, 105, 0.25);
+    --app-theme-modal-header-background: rgba(252, 253, 255, 0.96);
+    --app-theme-modal-toolbar-background: rgba(248, 250, 252, 0.88);
+    --app-theme-modal-footer-background: rgba(252, 253, 255, 0.97);
+    --app-theme-modal-divider: rgba(203, 213, 225, 0.82);
+    --app-theme-modal-inset-border: rgba(203, 213, 225, 0.9);
+    --app-theme-modal-inset-background: rgba(248, 250, 252, 0.9);
+    --app-theme-modal-inset-soft-background: rgba(248, 250, 252, 0.58);
+    --app-theme-modal-control-border: rgba(203, 213, 225, 0.94);
+    --app-theme-modal-control-background: rgb(255, 255, 255);
+    --app-theme-modal-action-border: rgb(2, 132, 199);
+    --app-theme-modal-action-background: rgb(3, 105, 161);
+    --app-theme-modal-action-hover-background: rgb(7, 89, 133);
+    --app-theme-modal-action-text: rgb(255, 255, 255);
+    --app-theme-modal-selection-border: rgb(14, 165, 233);
+    --app-theme-modal-selection-background: rgb(240, 249, 255);
+    --app-theme-modal-selection-hover-background: rgb(224, 242, 254);
+    --app-theme-modal-selection-text: rgb(3, 105, 161);
+    --app-theme-data-card-base: rgba(252, 254, 255, 0.95);
+    --app-theme-data-panel-base: rgba(252, 254, 255, 0.96);
+    --app-theme-data-inset-base: rgba(253, 254, 255, 0.97);
+    --app-theme-data-ambient-shadow: rgba(148, 163, 184, 0.08);
+    --app-theme-data-inset-highlight: rgba(255, 255, 255, 0.8);
+    --app-theme-data-neutral-border: rgba(71, 85, 105, 0.68);
+    --app-theme-page-background:
+      linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(237, 245, 253, 0.96) 38%, rgba(226, 237, 249, 1) 100%),
+      linear-gradient(135deg, rgba(14, 165, 233, 0.045) 0%, rgba(16, 185, 129, 0.025) 44%, rgba(245, 158, 11, 0.035) 100%);
+    --app-theme-surface-border: rgba(71, 85, 105, 0.42);
+    --app-theme-surface-background: rgba(255, 255, 255, 0.96);
+    --app-theme-surface-shadow:
+      0 18px 38px -30px rgba(30, 41, 59, 0.44),
+      0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    --app-theme-surface-compact-border: rgba(71, 85, 105, 0.4);
+    --app-theme-surface-compact-shadow:
+      0 16px 32px -28px rgba(30, 41, 59, 0.38),
+      0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    --app-theme-subtle-border: rgba(100, 116, 139, 0.4);
+    --app-theme-subtle-background: rgba(240, 247, 254, 0.94);
+    --app-theme-subtle-shadow:
+      0 10px 22px -20px rgba(30, 41, 59, 0.34),
+      0 1px 0 rgba(255, 255, 255, 0.72) inset;
+    --app-theme-nav-border: rgba(71, 85, 105, 0.38);
+    --app-theme-nav-background: rgba(252, 253, 255, 0.96);
+    --app-theme-nav-shadow: 0 14px 30px -26px rgba(30, 41, 59, 0.46);
+    --app-theme-nav-list-border: rgba(71, 85, 105, 0.32);
+    --app-theme-nav-list-background: rgba(255, 255, 255, 0.9);
+    --app-theme-nav-active-border: rgba(51, 65, 85, 0.46);
+    --app-theme-nav-active-background: rgba(255, 255, 255, 0.98);
+    --app-theme-nav-active-text: rgb(2, 6, 23);
+    --app-theme-nav-active-shadow: 0 10px 20px -16px rgba(30, 41, 59, 0.46);
+    --app-theme-nav-hover-border: rgba(148, 163, 184, 0.3);
+    --app-theme-nav-hover-background: rgba(255, 255, 255, 0.74);
+    --app-theme-nav-focus-outline: rgb(2, 132, 199);
+    --app-theme-nav-focus-halo: rgba(14, 165, 233, 0.2);
+    --app-theme-nav-active-focus-shadow:
+      0 10px 20px -16px rgba(51, 65, 85, 0.32),
+      0 0 0 4px rgba(14, 165, 233, 0.2);
   }
 
   html.dark {
     color-scheme: dark;
+    --app-theme-control-border: rgba(71, 85, 105, 0.9);
+    --app-theme-control-background: rgba(15, 23, 42, 0.76);
+    --app-theme-control-hover-background: rgba(30, 41, 59, 0.88);
+    --app-theme-control-text: rgb(226, 232, 240);
+    --app-theme-control-placeholder: rgb(148, 163, 184);
+    --app-theme-control-shadow: none;
+    --app-theme-primary-action-border: rgb(241, 245, 249);
+    --app-theme-primary-action-background: rgb(241, 245, 249);
+    --app-theme-primary-action-hover-background: rgb(255, 255, 255);
+    --app-theme-primary-action-text: rgb(15, 23, 42);
+    --app-theme-primary-action-shadow: none;
+    --app-theme-selected-control-border: rgb(241, 245, 249);
+    --app-theme-selected-control-background: rgb(241, 245, 249);
+    --app-theme-selected-control-hover-background: rgb(255, 255, 255);
+    --app-theme-selected-control-text: rgb(15, 23, 42);
+    --app-theme-selected-control-shadow: none;
+    --app-theme-modal-overlay-background: rgba(0, 0, 0, 0.5);
+    --app-theme-modal-panel-border: rgba(51, 65, 85, 0.72);
+    --app-theme-modal-panel-background: rgba(15, 23, 42, 0.96);
+    --app-theme-modal-panel-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.46);
+    --app-theme-modal-header-background: rgba(2, 6, 23, 0.88);
+    --app-theme-modal-toolbar-background: rgba(2, 6, 23, 0.58);
+    --app-theme-modal-footer-background: rgba(15, 23, 42, 0.97);
+    --app-theme-modal-divider: rgba(51, 65, 85, 0.78);
+    --app-theme-modal-inset-border: rgba(51, 65, 85, 0.76);
+    --app-theme-modal-inset-background: rgba(2, 6, 23, 0.38);
+    --app-theme-modal-inset-soft-background: rgba(2, 6, 23, 0.24);
+    --app-theme-modal-control-border: rgba(71, 85, 105, 0.9);
+    --app-theme-modal-control-background: rgba(2, 6, 23, 0.68);
+    --app-theme-modal-action-border: rgb(56, 189, 248);
+    --app-theme-modal-action-background: rgb(3, 105, 161);
+    --app-theme-modal-action-hover-background: rgb(7, 89, 133);
+    --app-theme-modal-action-text: rgb(255, 255, 255);
+    --app-theme-modal-selection-border: rgba(56, 189, 248, 0.58);
+    --app-theme-modal-selection-background: rgba(14, 165, 233, 0.16);
+    --app-theme-modal-selection-hover-background: rgba(14, 165, 233, 0.22);
+    --app-theme-modal-selection-text: rgb(186, 230, 253);
+    --app-theme-data-card-base: rgb(10, 17, 31);
+    --app-theme-data-panel-base: rgb(8, 15, 29);
+    --app-theme-data-inset-base: rgb(13, 21, 39);
+    --app-theme-data-ambient-shadow: rgba(2, 6, 23, 0.5);
+    --app-theme-data-inset-highlight: rgba(255, 255, 255, 0.03);
+    --app-theme-data-neutral-border: rgba(100, 116, 139, 0.42);
+    --app-theme-page-background: linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(10, 18, 32, 0.99) 44%, rgba(3, 8, 18, 1) 100%);
+    --app-theme-surface-border: rgba(51, 65, 85, 0.7);
+    --app-theme-surface-background: rgba(15, 23, 42, 0.75);
+    --app-theme-surface-shadow: none;
+    --app-theme-surface-compact-border: rgba(51, 65, 85, 0.7);
+    --app-theme-surface-compact-shadow: none;
+    --app-theme-subtle-border: rgba(51, 65, 85, 0.7);
+    --app-theme-subtle-background: rgba(15, 23, 42, 0.6);
+    --app-theme-subtle-shadow: none;
+    --app-theme-nav-border: rgba(30, 41, 59, 0.8);
+    --app-theme-nav-background: rgba(2, 6, 23, 0.85);
+    --app-theme-nav-shadow: none;
+    --app-theme-nav-list-border: rgba(30, 41, 59, 0.9);
+    --app-theme-nav-list-background: rgba(2, 6, 23, 0.4);
+    --app-theme-nav-active-border: rgba(71, 85, 105, 0.86);
+    --app-theme-nav-active-background: rgba(30, 41, 59, 0.88);
+    --app-theme-nav-active-text: rgb(248, 250, 252);
+    --app-theme-nav-active-shadow: none;
+    --app-theme-nav-hover-border: rgba(51, 65, 85, 0.8);
+    --app-theme-nav-hover-background: rgba(15, 23, 42, 0.7);
+    --app-theme-nav-focus-outline: rgb(125, 211, 252);
+    --app-theme-nav-focus-halo: rgba(56, 189, 248, 0.24);
+    --app-theme-nav-active-focus-shadow: 0 0 0 4px rgba(56, 189, 248, 0.24);
+  }
+
+  html[data-theme="bambu"] {
+    --app-theme-accent: rgb(0, 174, 66);
+    --app-theme-accent-soft: rgba(0, 174, 66, 0.18);
+    --app-theme-selection: rgba(0, 174, 66, 0.32);
+    --app-theme-focus-outline: rgba(59, 231, 123, 0.86);
+    --app-theme-focus-halo: rgba(0, 174, 66, 0.24);
+    --app-theme-control-border: rgba(58, 140, 98, 0.88);
+    --app-theme-control-background: rgba(4, 20, 20, 0.92);
+    --app-theme-control-hover-background: rgba(10, 42, 37, 0.96);
+    --app-theme-control-text: rgb(226, 232, 240);
+    --app-theme-control-placeholder: rgb(148, 163, 184);
+    --app-theme-control-shadow: none;
+    --app-theme-primary-action-border: rgb(69, 224, 125);
+    --app-theme-primary-action-background: rgb(4, 122, 58);
+    --app-theme-primary-action-hover-background: rgb(3, 107, 51);
+    --app-theme-primary-action-text: rgb(255, 255, 255);
+    --app-theme-primary-action-shadow: 0 10px 20px -16px rgba(0, 174, 66, 0.68);
+    --app-theme-selected-control-border: rgb(69, 224, 125);
+    --app-theme-selected-control-background: rgb(6, 60, 28);
+    --app-theme-selected-control-hover-background: rgb(7, 75, 34);
+    --app-theme-selected-control-text: rgb(236, 253, 245);
+    --app-theme-selected-control-shadow: inset 0 0 0 1px rgba(69, 224, 125, 0.12);
+    --app-theme-modal-overlay-background: rgba(0, 0, 0, 0.54);
+    --app-theme-modal-panel-border: rgba(44, 112, 77, 0.82);
+    --app-theme-modal-panel-background: rgba(7, 26, 25, 0.98);
+    --app-theme-modal-panel-shadow: 0 25px 54px -16px rgba(0, 0, 0, 0.62);
+    --app-theme-modal-header-background: rgba(3, 18, 18, 0.98);
+    --app-theme-modal-toolbar-background: rgba(8, 34, 31, 0.95);
+    --app-theme-modal-footer-background: rgba(5, 24, 23, 0.98);
+    --app-theme-modal-divider: rgba(38, 92, 68, 0.86);
+    --app-theme-modal-inset-border: rgba(38, 92, 68, 0.84);
+    --app-theme-modal-inset-background: rgba(5, 23, 22, 0.9);
+    --app-theme-modal-inset-soft-background: rgba(4, 24, 22, 0.42);
+    --app-theme-modal-control-border: rgba(58, 140, 98, 0.88);
+    --app-theme-modal-control-background: rgba(4, 20, 20, 0.9);
+    --app-theme-modal-action-border: rgb(34, 197, 94);
+    --app-theme-modal-action-background: rgb(4, 122, 58);
+    --app-theme-modal-action-hover-background: rgb(3, 107, 51);
+    --app-theme-modal-action-text: rgb(255, 255, 255);
+    --app-theme-modal-selection-border: rgba(74, 222, 128, 0.62);
+    --app-theme-modal-selection-background: rgba(0, 174, 66, 0.2);
+    --app-theme-modal-selection-hover-background: rgba(0, 174, 66, 0.27);
+    --app-theme-modal-selection-text: rgb(220, 252, 231);
+    --app-theme-data-card-base: rgb(5, 23, 22);
+    --app-theme-data-panel-base: rgb(4, 20, 20);
+    --app-theme-data-inset-base: rgb(6, 27, 25);
+    --app-theme-data-ambient-shadow: rgba(0, 8, 7, 0.5);
+    --app-theme-data-inset-highlight: rgba(167, 243, 208, 0.035);
+    --app-theme-data-neutral-border: rgba(58, 140, 98, 0.46);
+    --app-theme-page-background:
+      radial-gradient(circle at 88% 0%, rgba(0, 174, 66, 0.18), transparent 36%),
+      linear-gradient(180deg, rgb(10, 27, 24) 0%, rgb(6, 18, 20) 44%, rgb(3, 10, 14) 100%);
+    --app-theme-surface-border: rgba(44, 112, 77, 0.72);
+    --app-theme-surface-background: rgba(9, 29, 28, 0.82);
+    --app-theme-surface-compact-border: rgba(40, 102, 71, 0.7);
+    --app-theme-subtle-border: rgba(38, 92, 68, 0.76);
+    --app-theme-subtle-background: rgba(8, 34, 31, 0.7);
+    --app-theme-nav-border: rgba(0, 174, 66, 0.38);
+    --app-theme-nav-background: rgba(3, 18, 18, 0.9);
+    --app-theme-nav-list-border: rgba(28, 86, 61, 0.78);
+    --app-theme-nav-list-background: rgba(3, 21, 20, 0.74);
+    --app-theme-nav-active-border: rgba(69, 224, 125, 0.68);
+    --app-theme-nav-active-background: rgba(0, 174, 66, 0.2);
+    --app-theme-nav-active-text: rgb(236, 253, 245);
+    --app-theme-nav-hover-border: rgba(38, 135, 83, 0.8);
+    --app-theme-nav-hover-background: rgba(0, 174, 66, 0.1);
+    --app-theme-nav-focus-outline: rgb(74, 222, 128);
+    --app-theme-nav-focus-halo: rgba(0, 174, 66, 0.26);
+    --app-theme-nav-active-focus-shadow: 0 0 0 4px rgba(0, 174, 66, 0.26);
+  }
+
+  html[data-theme="prusa"] {
+    --app-theme-accent: rgb(253, 80, 0);
+    --app-theme-accent-soft: rgba(253, 80, 0, 0.18);
+    --app-theme-selection: rgba(253, 80, 0, 0.32);
+    --app-theme-focus-outline: rgba(255, 132, 76, 0.9);
+    --app-theme-focus-halo: rgba(253, 80, 0, 0.24);
+    --app-theme-control-border: rgba(166, 89, 61, 0.9);
+    --app-theme-control-background: rgba(25, 17, 16, 0.94);
+    --app-theme-control-hover-background: rgba(46, 29, 25, 0.97);
+    --app-theme-control-text: rgb(226, 232, 240);
+    --app-theme-control-placeholder: rgb(148, 163, 184);
+    --app-theme-control-shadow: none;
+    --app-theme-primary-action-border: rgb(255, 137, 82);
+    --app-theme-primary-action-background: rgb(179, 58, 0);
+    --app-theme-primary-action-hover-background: rgb(153, 47, 0);
+    --app-theme-primary-action-text: rgb(255, 255, 255);
+    --app-theme-primary-action-shadow: 0 10px 20px -16px rgba(253, 80, 0, 0.7);
+    --app-theme-selected-control-border: rgb(255, 137, 82);
+    --app-theme-selected-control-background: rgb(81, 36, 17);
+    --app-theme-selected-control-hover-background: rgb(103, 43, 18);
+    --app-theme-selected-control-text: rgb(255, 247, 237);
+    --app-theme-selected-control-shadow: inset 0 0 0 1px rgba(255, 137, 82, 0.14);
+    --app-theme-modal-overlay-background: rgba(0, 0, 0, 0.54);
+    --app-theme-modal-panel-border: rgba(119, 72, 53, 0.84);
+    --app-theme-modal-panel-background: rgba(32, 24, 22, 0.98);
+    --app-theme-modal-panel-shadow: 0 25px 54px -16px rgba(0, 0, 0, 0.62);
+    --app-theme-modal-header-background: rgba(24, 16, 15, 0.98);
+    --app-theme-modal-toolbar-background: rgba(39, 27, 24, 0.96);
+    --app-theme-modal-footer-background: rgba(30, 21, 20, 0.98);
+    --app-theme-modal-divider: rgba(94, 61, 48, 0.88);
+    --app-theme-modal-inset-border: rgba(94, 61, 48, 0.86);
+    --app-theme-modal-inset-background: rgba(28, 19, 18, 0.92);
+    --app-theme-modal-inset-soft-background: rgba(32, 21, 19, 0.44);
+    --app-theme-modal-control-border: rgba(166, 89, 61, 0.9);
+    --app-theme-modal-control-background: rgba(25, 17, 16, 0.92);
+    --app-theme-modal-action-border: rgb(251, 146, 60);
+    --app-theme-modal-action-background: rgb(179, 58, 0);
+    --app-theme-modal-action-hover-background: rgb(153, 47, 0);
+    --app-theme-modal-action-text: rgb(255, 255, 255);
+    --app-theme-modal-selection-border: rgba(255, 137, 82, 0.66);
+    --app-theme-modal-selection-background: rgba(253, 80, 0, 0.2);
+    --app-theme-modal-selection-hover-background: rgba(253, 80, 0, 0.27);
+    --app-theme-modal-selection-text: rgb(255, 237, 213);
+    --app-theme-data-card-base: rgb(30, 21, 19);
+    --app-theme-data-panel-base: rgb(27, 19, 18);
+    --app-theme-data-inset-base: rgb(35, 24, 21);
+    --app-theme-data-ambient-shadow: rgba(10, 5, 4, 0.5);
+    --app-theme-data-inset-highlight: rgba(255, 237, 213, 0.035);
+    --app-theme-data-neutral-border: rgba(166, 89, 61, 0.46);
+    --app-theme-page-background:
+      radial-gradient(circle at 88% 0%, rgba(253, 80, 0, 0.2), transparent 36%),
+      linear-gradient(180deg, rgb(31, 22, 19) 0%, rgb(20, 16, 16) 46%, rgb(10, 10, 12) 100%);
+    --app-theme-surface-border: rgba(119, 72, 53, 0.76);
+    --app-theme-surface-background: rgba(34, 25, 23, 0.82);
+    --app-theme-surface-compact-border: rgba(105, 65, 49, 0.72);
+    --app-theme-subtle-border: rgba(94, 61, 48, 0.8);
+    --app-theme-subtle-background: rgba(39, 27, 24, 0.72);
+    --app-theme-nav-border: rgba(253, 80, 0, 0.4);
+    --app-theme-nav-background: rgba(24, 16, 15, 0.92);
+    --app-theme-nav-list-border: rgba(111, 61, 44, 0.82);
+    --app-theme-nav-list-background: rgba(31, 20, 18, 0.76);
+    --app-theme-nav-active-border: rgba(255, 137, 82, 0.72);
+    --app-theme-nav-active-background: rgba(253, 80, 0, 0.22);
+    --app-theme-nav-active-text: rgb(255, 247, 237);
+    --app-theme-nav-hover-border: rgba(170, 75, 39, 0.82);
+    --app-theme-nav-hover-background: rgba(253, 80, 0, 0.11);
+    --app-theme-nav-focus-outline: rgb(255, 137, 82);
+    --app-theme-nav-focus-halo: rgba(253, 80, 0, 0.28);
+    --app-theme-nav-active-focus-shadow: 0 0 0 4px rgba(253, 80, 0, 0.28);
   }
 
   html,
@@ -30,20 +319,17 @@
 
   body {
     @apply bg-slate-100 text-slate-900;
-    background-image:
-      linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(237, 245, 253, 0.96) 38%, rgba(226, 237, 249, 1) 100%),
-      linear-gradient(135deg, rgba(14, 165, 233, 0.045) 0%, rgba(16, 185, 129, 0.025) 44%, rgba(245, 158, 11, 0.035) 100%);
+    background-image: var(--app-theme-page-background);
     transition: background-color 180ms ease, color 180ms ease;
   }
 
   html.dark body {
     @apply bg-slate-900 text-slate-100;
-    background-image:
-      linear-gradient(180deg, rgba(18, 26, 42, 0.98) 0%, rgba(10, 18, 32, 0.99) 44%, rgba(3, 8, 18, 1) 100%);
+    background-image: var(--app-theme-page-background);
   }
 
   ::selection {
-    background: rgba(14, 165, 233, 0.24);
+    background: var(--app-theme-selection);
   }
 
   button,
@@ -62,9 +348,9 @@
   }
 
   :focus-visible {
-    outline: 2px solid rgba(2, 132, 199, 0.58);
+    outline: 2px solid var(--app-theme-focus-outline);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.14);
+    box-shadow: 0 0 0 4px var(--app-theme-focus-halo);
   }
 
   * {
@@ -86,6 +372,206 @@
 }
 
 @layer components {
+  .app-modal-overlay {
+    background-color: var(--app-theme-modal-overlay-background);
+  }
+
+  .app-modal-panel {
+    border-color: var(--app-theme-modal-panel-border);
+    background-color: var(--app-theme-modal-panel-background);
+    box-shadow: var(--app-theme-modal-panel-shadow);
+  }
+
+  .app-modal-header {
+    border-color: var(--app-theme-modal-divider);
+    background-color: var(--app-theme-modal-header-background);
+  }
+
+  .app-modal-toolbar {
+    border-color: var(--app-theme-modal-divider);
+    background-color: var(--app-theme-modal-toolbar-background);
+  }
+
+  .app-modal-footer-surface {
+    border-color: var(--app-theme-modal-divider);
+    background-color: var(--app-theme-modal-footer-background);
+  }
+
+  .app-modal-divider {
+    border-color: var(--app-theme-modal-divider);
+  }
+
+  .app-modal-divider.divide-y > :not(:last-child) {
+    border-color: var(--app-theme-modal-divider);
+  }
+
+  .app-modal-inset {
+    border-color: var(--app-theme-modal-inset-border);
+    background-color: var(--app-theme-modal-inset-background);
+  }
+
+  .app-modal-inset-soft {
+    border-color: var(--app-theme-modal-inset-border);
+    background-color: var(--app-theme-modal-inset-soft-background);
+  }
+
+  .app-modal-control {
+    border-color: var(--app-theme-modal-control-border);
+    background-color: var(--app-theme-modal-control-background);
+  }
+
+  .app-modal-primary-action {
+    border-color: var(--app-theme-modal-action-border);
+    background-color: var(--app-theme-modal-action-background);
+    color: var(--app-theme-modal-action-text);
+  }
+
+  .app-modal-primary-action:hover:not(:disabled) {
+    background-color: var(--app-theme-modal-action-hover-background);
+  }
+
+  .app-modal-selected-control {
+    border-color: var(--app-theme-modal-selection-border);
+    background-color: var(--app-theme-modal-selection-background);
+    color: var(--app-theme-modal-selection-text);
+  }
+
+  .app-modal-selected-control:hover:not(:disabled) {
+    background-color: var(--app-theme-modal-selection-hover-background);
+  }
+
+  .app-form-control,
+  .app-soft-control {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  .app-form-control::placeholder {
+    color: var(--app-theme-control-placeholder);
+  }
+
+  .app-soft-control:hover:not(:disabled) {
+    background-color: var(--app-theme-control-hover-background);
+  }
+
+  .app-control-group {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  .app-primary-action {
+    border-color: var(--app-theme-primary-action-border);
+    background-color: var(--app-theme-primary-action-background);
+    color: var(--app-theme-primary-action-text);
+    box-shadow: var(--app-theme-primary-action-shadow);
+  }
+
+  .app-primary-action:hover:not(:disabled) {
+    background-color: var(--app-theme-primary-action-hover-background);
+  }
+
+  .app-accent-action {
+    border-color: var(--app-theme-modal-action-border);
+    background-color: var(--app-theme-modal-action-background);
+    color: var(--app-theme-modal-action-text);
+  }
+
+  .app-accent-action:hover:not(:disabled) {
+    background-color: var(--app-theme-modal-action-hover-background);
+  }
+
+  .app-accent-control {
+    accent-color: var(--app-theme-accent);
+  }
+
+  html.dark .app-primary-action {
+    border-color: var(--app-theme-primary-action-border);
+    background-color: var(--app-theme-primary-action-background);
+    color: var(--app-theme-primary-action-text);
+    box-shadow: var(--app-theme-primary-action-shadow);
+  }
+
+  html.dark .app-primary-action:hover:not(:disabled) {
+    background-color: var(--app-theme-primary-action-hover-background);
+  }
+
+  .app-selected-control {
+    border-color: var(--app-theme-selected-control-border);
+    background-color: var(--app-theme-selected-control-background);
+    color: var(--app-theme-selected-control-text);
+    box-shadow: var(--app-theme-selected-control-shadow);
+  }
+
+  .app-selected-control:hover:not(:disabled) {
+    background-color: var(--app-theme-selected-control-hover-background);
+  }
+
+  html.dark .app-selected-control {
+    border-color: var(--app-theme-selected-control-border);
+    background-color: var(--app-theme-selected-control-background);
+    color: var(--app-theme-selected-control-text);
+    box-shadow: var(--app-theme-selected-control-shadow);
+  }
+
+  html.dark .app-selected-control:hover:not(:disabled) {
+    background-color: var(--app-theme-selected-control-hover-background);
+  }
+
+  .app-selected-count {
+    border-color: color-mix(in srgb, currentColor 24%, transparent);
+    background-color: color-mix(in srgb, currentColor 14%, transparent);
+    color: inherit;
+  }
+
+  .app-idle-count {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-hover-background);
+    color: var(--app-theme-control-placeholder);
+  }
+
+  html.dark .app-form-control,
+  html.dark .app-soft-control,
+  html[data-theme="bambu"] .app-form-control,
+  html[data-theme="prusa"] .app-form-control,
+  html[data-theme="bambu"] .app-soft-control,
+  html[data-theme="prusa"] .app-soft-control {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  html[data-theme="bambu"] .app-modal-control,
+  html[data-theme="prusa"] .app-modal-control {
+    border-color: var(--app-theme-modal-control-border);
+    background-color: var(--app-theme-modal-control-background);
+  }
+
+  html.dark .app-form-control::placeholder,
+  html[data-theme="bambu"] .app-form-control::placeholder,
+  html[data-theme="prusa"] .app-form-control::placeholder {
+    color: var(--app-theme-control-placeholder);
+  }
+
+  html.dark .app-soft-control:hover:not(:disabled),
+  html[data-theme="bambu"] .app-soft-control:hover:not(:disabled),
+  html[data-theme="prusa"] .app-soft-control:hover:not(:disabled) {
+    background-color: var(--app-theme-control-hover-background);
+  }
+
+  html[data-theme="bambu"] .app-control-focus:focus-visible,
+  html[data-theme="bambu"] .app-control-focus-subtle:focus-visible,
+  html[data-theme="prusa"] .app-control-focus:focus-visible,
+  html[data-theme="prusa"] .app-control-focus-subtle:focus-visible {
+    border-color: var(--app-theme-focus-outline) !important;
+    outline: 2px solid var(--app-theme-focus-outline) !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--app-theme-focus-halo) !important;
+  }
+
   html:not(.dark) .app-form-control,
   html:not(.dark) .page-header-search {
     border-color: var(--app-control-border-light) !important;
@@ -144,19 +630,21 @@
 
   .page-header-search {
     @apply w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 dark:border-slate-600 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder:text-slate-400;
-    border-color: rgba(71, 85, 105, 0.46);
-    box-shadow:
-      0 12px 26px -22px rgba(30, 41, 59, 0.42),
-      0 1px 0 rgba(255, 255, 255, 0.92) inset;
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  .page-header-search::placeholder {
+    color: var(--app-theme-control-placeholder);
   }
 
   .page-header-filter-surface {
     @apply w-full rounded-lg border px-3 py-2 dark:border-slate-700/70 dark:bg-slate-900/60 dark:shadow-none min-[920px]:w-auto;
-    background: rgba(255, 255, 255, 0.93);
-    border-color: rgba(100, 116, 139, 0.48);
-    box-shadow:
-      0 16px 34px -28px rgba(15, 23, 42, 0.32),
-      0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    border-color: var(--app-theme-control-border);
+    background: var(--app-theme-control-background);
+    box-shadow: var(--app-theme-control-shadow);
   }
 
   .page-header-action-grid {
@@ -176,15 +664,15 @@
   }
 
   html.dark .page-header-filter-surface {
-    border-color: rgba(51, 65, 85, 0.7);
-    background: rgba(15, 23, 42, 0.6);
-    box-shadow: none;
+    border-color: var(--app-theme-control-border);
+    background: var(--app-theme-control-background);
+    box-shadow: var(--app-theme-control-shadow);
   }
 
   html.dark .page-header-filter-surface .bg-white\/85 {
-    border-color: rgba(51, 65, 85, 0.75) !important;
-    background-color: rgba(2, 6, 23, 0.45) !important;
-    box-shadow: none !important;
+    border-color: var(--app-theme-control-border) !important;
+    background-color: var(--app-theme-control-background) !important;
+    box-shadow: var(--app-theme-control-shadow) !important;
   }
 
   @media (min-width: 1100px) {
@@ -206,16 +694,21 @@
   }
 
   html.dark .page-header-search {
-    box-shadow: none;
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  html.dark .page-header-search::placeholder {
+    color: var(--app-theme-control-placeholder);
   }
 
   .surface-card {
     @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
-    border-color: rgba(71, 85, 105, 0.42);
-    background-color: rgba(255, 255, 255, 0.96);
-    box-shadow:
-      0 18px 38px -30px rgba(30, 41, 59, 0.44),
-      0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    border-color: var(--app-theme-surface-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-shadow);
   }
 
   .content-section {
@@ -226,48 +719,64 @@
     @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-slate-300 bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:border-slate-600 dark:bg-slate-900/75 dark:text-slate-200 dark:shadow-none;
   }
 
+  html[data-theme="bambu"] .count-pill,
+  html[data-theme="prusa"] .count-pill {
+    border-color: var(--app-theme-control-border);
+    background-color: var(--app-theme-control-background);
+    color: var(--app-theme-control-text);
+    box-shadow: var(--app-theme-control-shadow);
+  }
+
+  html[data-theme="bambu"] .app-selected-control .count-pill,
+  html[data-theme="prusa"] .app-selected-control .count-pill {
+    border-color: color-mix(in srgb, currentColor 28%, transparent);
+    background-color: color-mix(in srgb, currentColor 14%, transparent);
+    color: inherit;
+  }
+
   .surface-card-compact {
     @apply rounded-lg border p-4 backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/75 dark:shadow-none;
-    border-color: rgba(71, 85, 105, 0.4);
-    background-color: rgba(255, 255, 255, 0.96);
-    box-shadow:
-      0 16px 32px -28px rgba(30, 41, 59, 0.38),
-      0 1px 0 rgba(255, 255, 255, 0.88) inset;
+    border-color: var(--app-theme-surface-compact-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-compact-shadow);
   }
 
   .surface-subtle {
     @apply rounded-lg border dark:border-slate-700/70 dark:bg-slate-900/60 dark:shadow-none;
-    border-color: rgba(100, 116, 139, 0.4);
-    background-color: rgba(240, 247, 254, 0.94);
-    box-shadow:
-      0 10px 22px -20px rgba(30, 41, 59, 0.34),
-      0 1px 0 rgba(255, 255, 255, 0.72) inset;
+    border-color: var(--app-theme-subtle-border);
+    background-color: var(--app-theme-subtle-background);
+    box-shadow: var(--app-theme-subtle-shadow);
   }
 
-  html.dark .surface-card,
+  html.dark .surface-card {
+    border-color: var(--app-theme-surface-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-shadow);
+  }
+
   html.dark .surface-card-compact {
-    border-color: rgba(51, 65, 85, 0.7);
-    background-color: rgba(15, 23, 42, 0.75);
-    box-shadow: none;
+    border-color: var(--app-theme-surface-compact-border);
+    background-color: var(--app-theme-surface-background);
+    box-shadow: var(--app-theme-surface-compact-shadow);
   }
 
   html.dark .surface-subtle {
-    border-color: rgba(51, 65, 85, 0.7);
-    background-color: rgba(15, 23, 42, 0.6);
-    box-shadow: none;
+    border-color: var(--app-theme-subtle-border);
+    background-color: var(--app-theme-subtle-background);
+    box-shadow: var(--app-theme-subtle-shadow);
   }
 
   .app-nav {
     @apply sticky top-0 z-20 border-b px-4 py-2.5 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85 sm:px-6;
-    border-color: rgba(71, 85, 105, 0.38);
-    background-color: rgba(252, 253, 255, 0.96);
-    box-shadow: 0 14px 30px -26px rgba(30, 41, 59, 0.46);
+    border-color: var(--app-theme-nav-border);
+    background-color: var(--app-theme-nav-background);
+    box-shadow: var(--app-theme-nav-shadow);
   }
 
   html.dark .app-nav {
-    border-color: rgba(30, 41, 59, 0.8);
-    background-color: rgba(2, 6, 23, 0.85);
-    box-shadow: none;
+    border-color: var(--app-theme-nav-border);
+    background-color: var(--app-theme-nav-background);
+    box-shadow: var(--app-theme-nav-shadow);
   }
 
   .app-nav-inner {
@@ -285,8 +794,8 @@
 
   .app-nav-list {
     @apply flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-lg border p-1 dark:border-slate-800/90 dark:bg-slate-950/40;
-    border-color: rgba(71, 85, 105, 0.32);
-    background-color: rgba(255, 255, 255, 0.9);
+    border-color: var(--app-theme-nav-list-border);
+    background-color: var(--app-theme-nav-list-background);
   }
 
   .app-nav-button {
@@ -294,34 +803,33 @@
   }
 
   .app-nav-button:focus-visible {
-    outline: 2px solid rgb(2 132 199);
+    outline: 2px solid var(--app-theme-nav-focus-outline);
     outline-offset: 2px;
-    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2);
+    box-shadow: 0 0 0 4px var(--app-theme-nav-focus-halo);
   }
 
   .app-nav-button-active {
     @apply text-slate-950 shadow-sm dark:bg-slate-100 dark:text-slate-900 dark:shadow-none;
-    border: 1px solid rgba(51, 65, 85, 0.46);
-    background-color: rgba(255, 255, 255, 0.98);
-    box-shadow: 0 10px 20px -16px rgba(30, 41, 59, 0.46);
+    border: 1px solid var(--app-theme-nav-active-border);
+    background-color: var(--app-theme-nav-active-background);
+    color: var(--app-theme-nav-active-text);
+    box-shadow: var(--app-theme-nav-active-shadow);
   }
 
   .app-nav-button-active:focus-visible {
-    box-shadow:
-      0 10px 20px -16px rgba(51, 65, 85, 0.32),
-      0 0 0 4px rgba(14, 165, 233, 0.2);
+    box-shadow: var(--app-theme-nav-active-focus-shadow);
   }
 
   html.dark .app-nav-button-active {
-    border-color: rgba(71, 85, 105, 0.86);
-    background-color: rgba(30, 41, 59, 0.88);
-    color: rgb(248 250 252);
-    box-shadow: none;
+    border-color: var(--app-theme-nav-active-border);
+    background-color: var(--app-theme-nav-active-background);
+    color: var(--app-theme-nav-active-text);
+    box-shadow: var(--app-theme-nav-active-shadow);
   }
 
   html.dark .app-nav-button-active:focus-visible {
-    outline-color: rgb(125 211 252);
-    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.24);
+    outline-color: var(--app-theme-nav-focus-outline);
+    box-shadow: var(--app-theme-nav-active-focus-shadow);
   }
 
   .app-nav-button-idle {
@@ -330,17 +838,50 @@
   }
 
   .app-nav-button-idle:hover {
-    border-color: rgba(148, 163, 184, 0.3);
-    background-color: rgba(255, 255, 255, 0.74);
+    border-color: var(--app-theme-nav-hover-border);
+    background-color: var(--app-theme-nav-hover-background);
   }
 
   html.dark .app-nav-button-idle:hover {
-    border-color: rgba(51, 65, 85, 0.8);
-    background-color: rgba(15, 23, 42, 0.7);
+    border-color: var(--app-theme-nav-hover-border);
+    background-color: var(--app-theme-nav-hover-background);
   }
 
   html.dark .app-nav-list {
-    background-color: rgba(2, 6, 23, 0.4);
+    border-color: var(--app-theme-nav-list-border);
+    background-color: var(--app-theme-nav-list-background);
+  }
+
+  .theme-brand-choice {
+    @apply flex min-w-0 items-center gap-3 rounded-lg border px-3 py-2 text-slate-700 outline-none transition dark:text-slate-200;
+    border-color: var(--app-theme-subtle-border);
+    background-color: var(--app-theme-subtle-background);
+  }
+
+  .theme-brand-choice:hover {
+    border-color: var(--app-theme-nav-hover-border);
+    background-color: var(--app-theme-nav-hover-background);
+  }
+
+  .theme-brand-choice-active {
+    border-color: var(--app-theme-nav-active-border);
+    background-color: var(--app-theme-nav-active-background);
+    color: var(--app-theme-nav-active-text);
+    box-shadow: inset 0 0 0 1px var(--app-theme-accent-soft);
+  }
+
+  .theme-brand-choice-swatch {
+    @apply h-7 w-7 shrink-0 rounded-full border border-white/30 shadow-sm;
+  }
+
+  .theme-brand-choice-bambu .theme-brand-choice-swatch {
+    background-color: rgb(0, 174, 66);
+    box-shadow: 0 0 0 3px rgba(0, 174, 66, 0.16);
+  }
+
+  .theme-brand-choice-prusa .theme-brand-choice-swatch {
+    background-color: rgb(253, 80, 0);
+    box-shadow: 0 0 0 3px rgba(253, 80, 0, 0.16);
   }
 
   html:not(.dark) .bg-white {

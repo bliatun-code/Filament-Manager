@@ -104,7 +104,7 @@ test("printers shell renders a focused printer roster plus active board", () => 
   assert.match(html, /Slot 2/);
   assert.match(html, /1 loaded · 1 open/);
   assert.match(html, /printer-brand-surface/);
-  assert.match(html, /--brand-rgb:0 177 64/);
+  assert.match(html, /--brand-rgb:0 174 66/);
   assert.match(html, /slot-card-loaded swatch-surface/);
   assert.doesNotMatch(html, /data-action="select-printer"/);
   assert.match(multiHtml, /data-action="select-printer"/);

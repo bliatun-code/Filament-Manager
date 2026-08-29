@@ -33,6 +33,8 @@ mod credential_migration;
 mod credential_profile_migration;
 mod credential_store;
 mod desktop_lifecycle;
+mod desktop_visual_qa_theme;
+mod desktop_window_theme;
 mod document_commands;
 mod external_url_commands;
 mod inventory_activity_commands;
@@ -384,6 +386,7 @@ fn main() {
             printer_danger_zone_commands::delete_printer,
             printer_active_commands::set_active_printer,
             set_dock_icon_theme,
+            desktop_window_theme::set_native_window_theme,
             get_app_version,
             packaged_desktop_e2e::get_packaged_desktop_e2e_configuration,
             packaged_desktop_e2e::complete_packaged_desktop_e2e,
@@ -393,6 +396,7 @@ fn main() {
             desktop_lifecycle::set_launch_at_login,
             desktop_lifecycle::set_desktop_tray_menu_labels,
             signal_desktop_visual_qa_readiness,
+            desktop_visual_qa_theme::signal_desktop_visual_qa_theme,
             prepare_desktop_visual_qa_window,
             app_error::application_diagnostics::get_application_diagnostics,
             app_error::application_diagnostics::get_sanitized_support_bundle_json,
@@ -688,6 +692,8 @@ fn normalize_visual_qa_theme(value: &str) -> Option<&'static str> {
         "light" => Some("light"),
         "dark" => Some("dark"),
         "auto" => Some("auto"),
+        "bambu" => Some("bambu"),
+        "prusa" => Some("prusa"),
         _ => None,
     }
 }

@@ -79,10 +79,10 @@ export function InventoryCatalogMetadataPanel({
         </div>
         <button
           type="button"
-          className={`rounded border px-2 py-1 text-[10px] font-semibold ${
+          className={`app-control-focus rounded border px-2 py-1 text-[10px] font-semibold outline-none transition disabled:opacity-50 ${
             editUnlocked
               ? "border-amber-300 bg-amber-50 text-amber-700"
-              : "border-slate-200 bg-white text-slate-700"
+              : "app-soft-control"
           }`}
           onClick={onToggleEditUnlocked}
           disabled={disabled}
@@ -188,7 +188,7 @@ export function InventoryCatalogMetadataPanel({
                     type="color"
                     value={toSwatchColor(hexColor)}
                     onChange={(event) => onChangeHexColor(event.target.value)}
-                    className="h-7 w-10 rounded border border-slate-200 bg-white p-0.5"
+                    className="app-modal-control app-control-focus h-7 w-10 rounded border p-0.5 outline-none"
                     aria-describedby={helpId}
                     disabled={disabled}
                   />

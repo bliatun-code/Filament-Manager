@@ -13,7 +13,9 @@ test("PageHeaderButton owns page header action chrome", () => {
   assert.match(classSource, /PageHeaderButtonVariant = "primary" \| "secondary" \| "soft"/);
   assert.match(classSource, /appControlFocusClassName/);
   assert.match(classSource, /variant === "primary"/);
+  assert.match(classSource, /app-primary-action/);
   assert.match(classSource, /variant === "soft"/);
+  assert.match(classSource, /app-soft-control/);
   assert.doesNotMatch(cssSource, /header-button-primary/);
   assert.doesNotMatch(cssSource, /header-button-secondary/);
 });

@@ -1,8 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { loadCompanionLocale } from "./companion_i18n.js";
 import { createInitialCompanionState } from "./session_state.js";
 import { renderSettingsShell } from "./settings_shell.js";
+
+await Promise.all([loadCompanionLocale("en"), loadCompanionLocale("nb")]);
 
 function renderShell(overrides = {}) {
   const state = {
@@ -29,6 +32,11 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.match(html, /Settings/);
   assert.match(html, /Appearance/);
   assert.match(html, /data-action="set-theme-mode"/);
+  assert.equal((html.match(/data-action="set-theme-mode"/g) ?? []).length, 5);
+  assert.match(html, /data-theme-mode="bambu"/);
+  assert.match(html, /Vivid green workshop/);
+  assert.match(html, /data-theme-mode="prusa"/);
+  assert.match(html, /Warm orange workshop/);
   assert.match(html, /Connection/);
   assert.match(html, /Following device · Light/);
   assert.match(
@@ -50,6 +58,19 @@ test("settings shell renders session metrics and current session actions", () =>
   assert.doesNotMatch(html, /Forget token/);
   assert.doesNotMatch(html, /Desktop-owned SQLite/);
   assert.doesNotMatch(html, /Loopback API/);
+});
+
+test("settings shell marks a brand theme as selected and renders its fallback summary", () => {
+  const html = renderShell({
+    state: {
+      themeMode: "bambu",
+      resolvedTheme: "dark",
+    },
+  });
+
+  assert.match(html, /data-theme-mode="bambu" data-active="true"/);
+  assert.match(html, /Bambu mode/);
+  assert.doesNotMatch(html, /Following device · Dark/);
 });
 
 test("settings shell exposes AGPL license and source links", () => {

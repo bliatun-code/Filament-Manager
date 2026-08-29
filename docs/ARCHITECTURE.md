@@ -31,6 +31,23 @@ The measured alternatives, bundle and overlap baselines, security constraints,
 and concrete re-evaluation triggers are recorded in
 [`ADR_REACT_COMPANION_CONSOLIDATION.md`](ADR_REACT_COMPANION_CONSOLIDATION.md).
 
+## Theme Model
+
+Desktop and Companion keep separate, device-local theme preferences because
+they are independent presentation surfaces. The selected theme identity is
+kept separate from its resolved color scheme: Auto resolves from the operating
+system, Light and Dark retain their existing schemes, and the Bambu and Prusa
+themes resolve to Dark before applying their additional semantic accent and
+surface tokens. This lets binary light/dark behavior such as native icons and
+contrast handling remain stable as new palettes are added.
+
+Theme tokens may style the application shell, navigation, controls, selection,
+and focus states. Runtime filament swatches, material colors, status colors,
+inventory surfaces derived from them, and their contrast values are data
+semantics; they must not inherit or be replaced by decorative theme accents.
+New themes therefore need both palette contrast coverage and regression
+coverage proving that representative data swatches are unchanged.
+
 ## Desktop Background Lifecycle
 
 `src-tauri/src/desktop_lifecycle.rs` owns the macOS menu-bar and Windows system-

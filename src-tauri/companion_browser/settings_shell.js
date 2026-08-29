@@ -1,5 +1,6 @@
 import { t } from "./companion_i18n.js";
 import { SELECTABLE_LOCALES } from "./supported_locales.js";
+import { COMPANION_THEME_OPTIONS } from "./companion_theme.js";
 import {
   renderCompanionActionButton,
   renderCompanionActionLink,
@@ -18,11 +19,18 @@ export function renderSettingsShell(options) {
   const locale = state.locale || "en";
   const themeMode = String(state.themeMode || "auto").trim().toLowerCase();
   const resolvedTheme = String(state.resolvedTheme || "light").trim().toLowerCase();
+  const selectedTheme =
+    COMPANION_THEME_OPTIONS.find(({ id }) => id === themeMode) ?? COMPANION_THEME_OPTIONS[0];
+  const selectedThemeLabel = t(
+    locale,
+    selectedTheme.labelKey,
+    selectedTheme.labelFallback,
+  );
   const themeSummary =
     themeMode === "auto"
       ? `${t(locale, "settings.followDevice", "Following device")} · ${t(locale, `settings.${resolvedTheme}`, resolvedTheme)}`
       : t(locale, "settings.modeSummary", "{mode} mode", {
-          mode: t(locale, `settings.${themeMode}`, themeMode),
+          mode: selectedThemeLabel,
         });
   const connectionSummary =
     connectionSummaryOption ||
@@ -66,13 +74,13 @@ export function renderSettingsShell(options) {
               activeValue: themeMode,
               ariaLabel: t(locale, "settings.themeMode", "Theme mode"),
               className: "settings-theme-control",
-              columns: 3,
+              columns: COMPANION_THEME_OPTIONS.length,
               escapeHtml,
-              items: [
-                { value: "auto", label: t(locale, "settings.auto", "Auto"), meta: t(locale, "settings.autoHelp", "Follow device") },
-                { value: "light", label: t(locale, "settings.light", "Light"), meta: t(locale, "settings.lightHelp", "Bright surfaces") },
-                { value: "dark", label: t(locale, "settings.dark", "Dark"), meta: t(locale, "settings.darkHelp", "Low-light friendly") },
-              ],
+              items: COMPANION_THEME_OPTIONS.map((theme) => ({
+                value: theme.id,
+                label: t(locale, theme.labelKey, theme.labelFallback),
+                meta: t(locale, theme.helpKey, theme.helpFallback),
+              })),
               valueAttribute: "data-theme-mode",
             })}
             <div class="meta-line">${escapeHtml(themeSummary)}</div>

@@ -143,7 +143,7 @@ test("SlotCatalogOnboardingModal renders the owned catalog onboarding save path"
   assert.doesNotMatch(html, /<button(?=[^>]*disabled="")[^>]*>\s*Add \+ save RFID/);
   const saveButton = html.match(/<button[^>]*>\s*Add \+ save RFID\s*<\/button>/)?.[0];
   assert.ok(saveButton);
-  assert.match(saveButton, /bg-sky-600/);
+  assert.match(saveButton, /app-modal-primary-action/);
   assert.doesNotMatch(saveButton, /style=/);
 });
 

@@ -5,6 +5,7 @@ import {
   modalActionButtonClassName,
   type ModalActionButtonVariant,
 } from "./modal_action_button_class";
+import { appControlFocusClassName } from "./ui_class_names";
 
 type TranslateFn = (key: string, fallback?: string) => string;
 
@@ -168,7 +169,7 @@ export function InventoryDangerZonePanelView({
       onToggle={handleToggle}
     >
       <summary
-        className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-2xl p-5 outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+        className={`flex cursor-pointer list-none items-start justify-between gap-4 rounded-2xl p-5 outline-none ${appControlFocusClassName}`}
         aria-controls="inventory-danger-zone-actions"
       >
         <span>

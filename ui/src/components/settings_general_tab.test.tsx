@@ -120,11 +120,11 @@ test("SettingsGeneralTab exposes license and source links", () => {
   assert.doesNotMatch(html, /Create inventory label sheet/);
   assert.match(
     html,
-    /class="[^"]*border-slate-200[^"]*bg-white[^"]*text-slate-700[^"]*"[^>]*>Product tour/,
+    /class="[^"]*app-soft-control[^"]*"[^>]*>Product tour/,
   );
   assert.doesNotMatch(
     html,
-    /class="[^"]*border-indigo-200[^"]*bg-indigo-50[^"]*"[^>]*>Product tour/,
+    /class="[^"]*app-(?:primary-action|selected-control)[^"]*"[^>]*>Product tour/,
   );
   assert.doesNotMatch(html, /View release/);
 });
@@ -139,7 +139,11 @@ test("SettingsGeneralTab exposes selected theme and language choices", () => {
   assert.ok(html.indexOf("Appearance") < html.indexOf("Program"));
   assert.ok(html.indexOf("Language") < html.indexOf("Program"));
   assert.equal((html.match(/aria-pressed="true"/g) ?? []).length, 1);
-  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 2);
+  assert.equal((html.match(/aria-pressed="false"/g) ?? []).length, 4);
+  assert.match(html, /theme-brand-choice-bambu/);
+  assert.match(html, /A playful dark theme inspired by Bambu green/);
+  assert.match(html, /theme-brand-choice-prusa/);
+  assert.match(html, /A colorful dark theme inspired by Prusa orange/);
   assert.match(languageSelect, /<option value="de">Deutsch<\/option>/);
   assert.match(languageSelect, /<option value="fr">Français<\/option>/);
   assert.match(languageSelect, /<option value="es">Español<\/option>/);
