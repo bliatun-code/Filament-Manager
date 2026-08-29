@@ -55,6 +55,15 @@ interface. It does not trust forwarded-client headers. Host and Origin
 allowlists, pairing sessions, and CSRF checks remain the primary authorization
 boundary.
 
+Trusted-LAN Companion currently uses plain HTTP. This provides no transport
+confidentiality or integrity: a party able to observe or alter traffic on that
+LAN could read or modify pairing/session material and inventory data. Run it
+only on a private network whose participants you trust. Never expose the
+Companion port through router/NAT forwarding, public DNS, an untrusted VPN, or
+a forwarding proxy to an untrusted network. Credential-bearing desktop sync
+accepts HTTPS, or plain HTTP only for the Host's normalized stable `.local`
+Companion address.
+
 The HTTP boundary also applies these defense-in-depth controls:
 
 - Every response carries a same-origin Content Security Policy, framing and
@@ -72,5 +81,6 @@ The HTTP boundary also applies these defense-in-depth controls:
   allowed to bypass throttling.
 
 Do not place Companion behind a forwarding proxy without reviewing this trust
-model. Since proxy headers are intentionally ignored, proxied clients share the
-proxy peer's rate limit.
+model, and never use one to extend the plain-HTTP service onto an untrusted
+network. Since proxy headers are intentionally ignored, proxied clients share
+the proxy peer's rate limit.

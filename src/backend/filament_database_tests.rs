@@ -5145,23 +5145,26 @@ fn portable_full_backup_excludes_and_rejects_device_credentials() {
         let exported = source
             .export_full_backup_json()
             .map_err(|error| error.to_string())?;
-        for secret in [
-            "legacy-token",
-            "session-secret",
-            "device-secret",
-            "csrf-secret",
-            "bambu-secret",
-            "SERIAL-SECRET",
-            "pairing-secret-hash",
-            "browser-secret-hash",
-            "queued-secret",
-            "credential_profile_11111111111111111111111111111111",
-            "192.168.1.42",
-            "192.168.1.50",
+        for (sensitive_field, marker) in [
+            ("legacy printer access token", "legacy-token"),
+            ("library session identifier", "session-secret"),
+            ("library device token", "device-secret"),
+            ("library CSRF token", "csrf-secret"),
+            ("Bambu access code", "bambu-secret"),
+            ("printer serial number", "SERIAL-SECRET"),
+            ("pairing token hash", "pairing-secret-hash"),
+            ("browser device token hash", "browser-secret-hash"),
+            ("queued synchronization payload", "queued-secret"),
+            (
+                "credential-store profile identifier",
+                "credential_profile_11111111111111111111111111111111",
+            ),
+            ("trusted LAN interface address", "192.168.1.42"),
+            ("Bambu printer address", "192.168.1.50"),
         ] {
             assert!(
-                !exported.contains(secret),
-                "portable backup leaked device-local value: {secret}"
+                !exported.contains(marker),
+                "portable backup retained prohibited device-local field: {sensitive_field}"
             );
         }
 

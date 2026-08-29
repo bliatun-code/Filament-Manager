@@ -14,14 +14,15 @@ serde_json = { workspace = true }
 rusqlite = { workspace = true }
 axum = "0.8.9"
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "time", "sync"] }
-open = { version = "5.4.0", features = ["shellexecute-on-windows"] }
+open = { version = "5.4.2", features = ["shellexecute-on-windows"] }
 reqwest = { workspace = true }
 rand = { workspace = true }
 if-addrs = "0.15.0"
 sha2 = "0.11.0"
 qrcode = "0.14.1"
 base64 = { version = "0.23.0", default-features = false, features = ["std"] }
-native-tls = "0.2.18"
+rustls = "0.23.43"
+rustls-webpki = "0.103.15"
 x509-parser = { version = "0.18.1", default-features = false }
 time = { workspace = true }
 url = "2.5.8"

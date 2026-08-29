@@ -261,17 +261,26 @@ fn assert_legacy_database_credentials_sanitized(
             continue;
         }
         let raw = std::fs::read(&artifact_path).map_err(|error| error.to_string())?;
-        for secret in [
-            format!("legacy-bambu-{secret_suffix}"),
-            format!("legacy-printer-token-{secret_suffix}"),
-            format!("legacy-session-{secret_suffix}"),
-            format!("legacy-device-{secret_suffix}"),
-            format!("legacy-csrf-{secret_suffix}"),
+        for (credential_kind, marker) in [
+            ("Bambu access code", format!("legacy-bambu-{secret_suffix}")),
+            (
+                "legacy printer access token",
+                format!("legacy-printer-token-{secret_suffix}"),
+            ),
+            (
+                "library session identifier",
+                format!("legacy-session-{secret_suffix}"),
+            ),
+            (
+                "library device token",
+                format!("legacy-device-{secret_suffix}"),
+            ),
+            ("library CSRF token", format!("legacy-csrf-{secret_suffix}")),
         ] {
             assert!(
-                !raw.windows(secret.len())
-                    .any(|window| window == secret.as_bytes()),
-                "{secret} remained in {}",
+                !raw.windows(marker.len())
+                    .any(|window| window == marker.as_bytes()),
+                "legacy database retained {credential_kind} in SQLite artifact {}",
                 artifact_path.display()
             );
         }

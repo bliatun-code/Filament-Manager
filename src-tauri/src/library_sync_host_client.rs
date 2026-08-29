@@ -174,6 +174,57 @@ fn shared_library_sync_http_client(
         .map_err(|error| format!("Failed to prepare {operation} client: {error}"))
 }
 
+fn ensure_library_sync_credential_transport(base_url: &str) -> Result<(), String> {
+    #[cfg(test)]
+    {
+        // Integration tests use an in-process plain-HTTP listener on loopback. Production callers
+        // never receive this exception; keep the policy function independently testable with the
+        // production value below.
+        ensure_library_sync_credential_transport_with_policy(base_url, true)
+    }
+    #[cfg(not(test))]
+    {
+        ensure_library_sync_credential_transport_with_policy(base_url, false)
+    }
+}
+
+fn ensure_library_sync_credential_transport_with_policy(
+    base_url: &str,
+    allow_test_loopback: bool,
+) -> Result<(), String> {
+    let normalized = normalize_library_sync_base_url(base_url)?;
+    if normalized != base_url {
+        return Err("Credential-bearing desktop sync requires a normalized Host URL.".to_string());
+    }
+
+    let parsed = reqwest::Url::parse(&normalized)
+        .map_err(|error| format!("Host URL is invalid: {error}"))?;
+    if parsed.scheme() == "https" {
+        return Ok(());
+    }
+
+    let hostname = parsed
+        .host_str()
+        .ok_or_else(|| "Host URL is missing a hostname.".to_string())?
+        .to_ascii_lowercase();
+    if parsed.scheme() == "http" && hostname.ends_with(".local") {
+        return Ok(());
+    }
+    if allow_test_loopback
+        && parsed.scheme() == "http"
+        && hostname
+            .parse::<IpAddr>()
+            .is_ok_and(|address| address.is_loopback())
+    {
+        return Ok(());
+    }
+
+    Err(
+        "Credential-bearing desktop sync requires HTTPS or the Host's stable .local Companion address."
+            .to_string(),
+    )
+}
+
 /// Sends one private-LAN request without using a proxy. Stable `.local` names never enter the
 /// system resolver: a shared mDNS daemon resolves them to private IPv4 addresses and each route
 /// pins those addresses while the URL, `Host`, TLS name, and `Origin` stay on the stable hostname.
@@ -890,6 +941,7 @@ pub(crate) fn pair_library_sync_host_session(
     base_url: &str,
     pairing_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
     let request_url = format!("{base_url}/api/v1/auth/pair");
     let request_body = serde_json::json!({ "pairing_token": pairing_token }).to_string();
@@ -952,6 +1004,7 @@ pub(crate) fn renew_library_sync_host_session(
     base_url: &str,
     device_token: &str,
 ) -> Result<LibrarySyncAuthenticatedSessionState, String> {
+    ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(None, Some(device_token))
         .ok_or_else(|| "Host session renewal requires a paired device token.".to_string())?;
@@ -1316,6 +1369,7 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     base_url: &str,
     path: &str,
 ) -> Result<T, String> {
+    ensure_library_sync_credential_transport(base_url)?;
     let target = capture_library_sync_target(state, base_url, None)?;
     let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
 
@@ -1379,6 +1433,7 @@ pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
     csrf_token: &str,
     payload: &T,
 ) -> Result<reqwest::blocking::Response, String> {
+    ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
     let cookie_header = build_library_sync_cookie_header(Some(session_id), Some(device_token))
         .ok_or_else(|| "Desktop sync write is missing session cookies.".to_string())?;
@@ -1656,7 +1711,8 @@ pub(crate) fn build_library_sync_cookie_header(
 mod tests {
     use super::{
         build_library_sync_cookie_header, current_or_renewed_library_sync_auth,
-        current_or_renewed_library_sync_auth_with, extract_cookie_value_from_set_cookie,
+        current_or_renewed_library_sync_auth_with,
+        ensure_library_sync_credential_transport_with_policy, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
         library_sync_http_client_builder, load_library_sync_device_token,
         load_library_sync_device_token_optional, parse_library_sync_health_response,
@@ -1770,6 +1826,43 @@ mod tests {
             library_sync_host_header_value("http://[::1]:4278").unwrap(),
             "[::1]:4278"
         );
+    }
+
+    #[test]
+    fn credential_transport_accepts_https_and_normalized_stable_local_http() {
+        for base_url in [
+            "https://sync.example.test",
+            "https://192.0.2.10:4278",
+            "http://fm-a1b2c3d4.local:4278",
+        ] {
+            assert!(
+                ensure_library_sync_credential_transport_with_policy(base_url, false).is_ok(),
+                "expected credential transport to accept {base_url}"
+            );
+        }
+    }
+
+    #[test]
+    fn credential_transport_rejects_untrusted_or_unnormalized_http_origins() {
+        for base_url in [
+            "http://sync.example.test:4278",
+            "http://192.168.1.50:4278",
+            "http://fm-a1b2c3d4.local.evil:4278",
+            "http://fm-a1b2c3d4.local:4278/",
+            " HTTP://FM-A1B2C3D4.LOCAL:4278 ",
+        ] {
+            assert!(
+                ensure_library_sync_credential_transport_with_policy(base_url, false).is_err(),
+                "expected credential transport to reject {base_url:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn credential_transport_loopback_exception_is_test_only_and_explicit() {
+        let loopback = "http://127.0.0.1:4278";
+        assert!(ensure_library_sync_credential_transport_with_policy(loopback, false).is_err());
+        assert!(ensure_library_sync_credential_transport_with_policy(loopback, true).is_ok());
     }
 
     #[test]
@@ -2907,7 +3000,7 @@ mod tests {
             )
             .expect("seed failed write route");
 
-        let request_url = "http://write-host.local:4278/api/v1/snapshot";
+        let request_url = "https://write-host.local:4278/api/v1/snapshot";
         let result = send_mdns_local_request_with(
             &transport,
             "write-host.local",
@@ -2968,7 +3061,7 @@ mod tests {
             |client| {
                 request_builds.fetch_add(1, Ordering::SeqCst);
                 client
-                    .get("http://protected-host.local:4278/api/v1/library/snapshot")
+                    .get("https://protected-host.local:4278/api/v1/library/snapshot")
                     .header(COOKIE, "bfm_companion_session=secret-session")
             },
         );
@@ -3085,7 +3178,7 @@ mod tests {
 
     #[test]
     fn warm_runtime_auth_does_not_require_another_credential_store_read() {
-        let host = "http://host.local:4278";
+        let host = "https://host.local:4278";
         let state = credential_test_state(host);
         state
             .library_sync_auth
@@ -3107,7 +3200,7 @@ mod tests {
     #[test]
     fn concurrent_unauthorized_wave_renews_the_failed_session_once() {
         const REQUEST_COUNT: usize = 8;
-        let host = "http://host.local:4278";
+        let host = "https://host.local:4278";
         let state = credential_test_state(host);
         store_library_sync_device_token(&state, host, "device-token").expect("store device token");
         state
@@ -3168,7 +3261,7 @@ mod tests {
     #[test]
     fn failed_unauthorized_wave_attempts_one_renewal_and_allows_a_later_retry() {
         const REQUEST_COUNT: usize = 8;
-        let host = "http://host.local:4278";
+        let host = "https://host.local:4278";
         let state = credential_test_state(host);
         store_library_sync_device_token(&state, host, "device-token").expect("store device token");
         state
@@ -3255,7 +3348,7 @@ mod tests {
 
     #[test]
     fn unauthorized_renewal_cooldown_preserves_pairing_repair_classification() {
-        let host = "http://host.local:4278";
+        let host = "https://host.local:4278";
         let state = credential_test_state(host);
         store_library_sync_device_token(&state, host, "device-token").expect("store device token");
         state
@@ -3296,7 +3389,7 @@ mod tests {
 
     #[test]
     fn transport_url_digits_do_not_misclassify_renewal_as_unauthorized() {
-        let host = "http://host401.local:4010";
+        let host = "https://host401.local:4010";
         let state = credential_test_state(host);
         store_library_sync_device_token(&state, host, "device-token").expect("store device token");
         state
@@ -3325,7 +3418,7 @@ mod tests {
 
     #[test]
     fn reset_waits_for_in_flight_renewal_and_clears_the_renewed_session() {
-        let host = "http://host.local:4278";
+        let host = "https://host.local:4278";
         let state = credential_test_state(host);
         store_library_sync_device_token(&state, host, "device-token").expect("store device token");
 
