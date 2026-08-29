@@ -19,6 +19,7 @@ fn normalize_native_appearance(value: Option<&str>) -> Result<Option<Theme>, Str
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn uses_transparent_title_bar(background_color: Option<[u8; 4]>) -> bool {
     background_color.is_some()
 }
