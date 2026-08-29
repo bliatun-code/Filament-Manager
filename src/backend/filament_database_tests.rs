@@ -18,9 +18,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const LEGACY_INIT_MIGRATION_SQL: &str = include_str!("../database/migrations/001_init.sql");
 const LEGACY_SYNC_QUEUE_MIGRATION_SQL: &str =
     include_str!("../database/migrations/002_sync_queue.sql");
-const EXPECTED_SEEDED_CATALOG_COUNT: i64 = 1106;
-const EXPECTED_BAMBU_SEEDED_COUNT: i64 = 316;
-const EXPECTED_ESUN_SEEDED_COUNT: i64 = 783;
+const EXPECTED_SEEDED_CATALOG_COUNT: i64 = 1607;
+const EXPECTED_BAMBU_SEEDED_COUNT: i64 = 382;
+const EXPECTED_ESUN_SEEDED_COUNT: i64 = 1218;
 
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()

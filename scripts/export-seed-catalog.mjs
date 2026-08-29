@@ -100,7 +100,7 @@ export function exportSeedCatalog(argv = process.argv.slice(2)) {
   const dbPath = argv[0] ?? resolveDefaultSeedCatalogDatabasePath();
   const outputPath =
     argv[1] ?? path.join("src", "data", "seed_filament_catalog.json");
-  const version = argv[2] ?? "2026.06.17-local-1106";
+  const requestedVersion = argv[2];
 
   const db = new Database(dbPath, { readonly: true });
   let rows;
@@ -146,9 +146,19 @@ export function exportSeedCatalog(argv = process.argv.slice(2)) {
       .filter((entry) => entry.material && entry.filament_name && entry.color_name),
   );
 
+  const generatedAt = new Date().toISOString().slice(0, 10);
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(entries))
+    .digest("hex")
+    .slice(0, 8);
+  const version =
+    requestedVersion ??
+    `${generatedAt.replaceAll("-", ".")}-local-${entries.length}-${contentHash}`;
+
   const payload = {
     version,
-    generated_at: new Date().toISOString().slice(0, 10),
+    generated_at: generatedAt,
     description:
       "Sanitized master filament catalog seed generated from the local Filament Manager catalog. Contains only vendor/material/name/color/swatch/default-weight/catalog URL metadata; no spool, loan, printer, RFID, location, or user history data.",
     entries,

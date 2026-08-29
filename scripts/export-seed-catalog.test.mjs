@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { posix, win32 } from "node:path";
@@ -194,5 +195,49 @@ test("seed catalog export handles portable paths and releases its database", () 
   assert.equal(payload.version, "portable-test");
   assert.equal(payload.entries.length, 1);
   assert.equal(payload.entries[0].vendor, "Generic");
+  assert.doesNotThrow(() => rmSync(fixtureDirectory, { force: true, recursive: true }));
+});
+
+test("seed catalog export derives a current default version from its output", () => {
+  const fixtureDirectory = mkdtempSync(path.join(tmpdir(), "seed-version-export-"));
+  const dbPath = path.join(fixtureDirectory, "source.db");
+  const outputPath = path.join(fixtureDirectory, "catalog.json");
+  const db = new Database(dbPath);
+  db.exec(`
+    CREATE TABLE filament_master_list (
+      material TEXT,
+      filament_name TEXT,
+      color_name TEXT,
+      hex_color TEXT,
+      product_url TEXT,
+      default_weight INTEGER,
+      vendor TEXT,
+      is_discontinued INTEGER
+    );
+    INSERT INTO filament_master_list VALUES (
+      'PETG', 'Basic', 'Blue', '#0000FF', NULL, 1000, 'Generic', 0
+    );
+  `);
+  db.close();
+
+  const originalLog = console.log;
+  try {
+    console.log = () => {};
+    exportSeedCatalog([dbPath, outputPath]);
+  } finally {
+    console.log = originalLog;
+  }
+
+  const payload = JSON.parse(readFileSync(outputPath, "utf8"));
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(payload.entries))
+    .digest("hex")
+    .slice(0, 8);
+  assert.equal(
+    payload.version,
+    `${payload.generated_at.replaceAll("-", ".")}-local-${payload.entries.length}-${contentHash}`,
+  );
+  assert.match(payload.version, /^\d{4}\.\d{2}\.\d{2}-local-1-[a-f0-9]{8}$/);
   assert.doesNotThrow(() => rmSync(fixtureDirectory, { force: true, recursive: true }));
 });
