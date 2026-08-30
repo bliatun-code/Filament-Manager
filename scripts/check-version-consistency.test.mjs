@@ -86,3 +86,21 @@ test("rejects a mismatched release notes heading", (t) => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /release notes heading is # Filament Manager v0\.22\.1/);
 });
+
+test("rejects retaining more than three release notes", (t) => {
+  const result = runFixture(t, {
+    "RELEASE_NOTES_v0.20.0.md": "# Filament Manager v0.20.0\n",
+    "RELEASE_NOTES_v0.21.0.md": "# Filament Manager v0.21.0\n",
+    "RELEASE_NOTES_v0.22.0.md": "# Filament Manager v0.22.0\n",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /release notes retention has 4 files, expected at most 3/);
+});
+
+test("rejects README links to release notes that are no longer retained", (t) => {
+  const result = runFixture(t, {
+    "README.md": `Release notes:\n\n- [${tag}](RELEASE_NOTES_${tag}.md)\n- [v0.22.0](RELEASE_NOTES_v0.22.0.md)\n\n- Current version: \`${version}\`\n`,
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /README links to missing release notes file RELEASE_NOTES_v0\.22\.0\.md/);
+});

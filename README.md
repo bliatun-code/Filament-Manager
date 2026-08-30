@@ -59,20 +59,10 @@ Release notes:
 - [v0.29.0](RELEASE_NOTES_v0.29.0.md)
 - [v0.28.0](RELEASE_NOTES_v0.28.0.md)
 - [v0.27.0](RELEASE_NOTES_v0.27.0.md)
-- [v0.26.0](RELEASE_NOTES_v0.26.0.md)
-- [v0.25.0](RELEASE_NOTES_v0.25.0.md)
-- [v0.24.0](RELEASE_NOTES_v0.24.0.md)
-- [v0.23.0](RELEASE_NOTES_v0.23.0.md)
-- [v0.22.1](RELEASE_NOTES_v0.22.1.md)
-- [v0.22.0](RELEASE_NOTES_v0.22.0.md)
-- [v0.21.2](RELEASE_NOTES_v0.21.2.md)
-- [v0.21.1](RELEASE_NOTES_v0.21.1.md)
-- [v0.21.0](RELEASE_NOTES_v0.21.0.md)
-- [v0.20.2](RELEASE_NOTES_v0.20.2.md)
-- [v0.20.1](RELEASE_NOTES_v0.20.1.md)
-- [v0.19.0](RELEASE_NOTES_v0.19.0.md)
-- [v0.18.0](RELEASE_NOTES_v0.18.0.md)
-- [v0.17.0](RELEASE_NOTES_v0.17.0.md)
+
+The repository keeps the three most recent release-note files. Older notes
+remain available in the [v0.29.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.29.0),
+and published release tags are retained.
 
 ## Feature Overview
 
