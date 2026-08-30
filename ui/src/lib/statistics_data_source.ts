@@ -43,7 +43,7 @@ import {
 } from "./host_write_target";
 import { firstDefinedTimestamp } from "./source_timestamps";
 
-export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
+export type StatisticsSnapshotSource = "LIVE" | "CACHED" | "PARTIAL" | "OFFLINE";
 export type StatisticsPeriodDataStatus = "AVAILABLE" | "LEGACY_HOST" | "UNAVAILABLE";
 export type StatisticsLibrarySyncState = LibrarySyncPageState;
 export type { NormalizedLoanDetailsRow } from "./loan_row_normalization";
@@ -315,15 +315,33 @@ export async function loadStatisticsData(
     const hasLiveOverview =
       snapshotResult.ok ||
       (spoolsResult.ok && derivedOverview != null);
+    const allHostSlicesLoaded =
+      hasLiveOverview &&
+      printersResult.ok &&
+      loansResult.ok &&
+      spoolsResult.ok &&
+      periodReportResult.ok;
+    const anyHostSliceLoaded =
+      snapshotResult.ok ||
+      printersResult.ok ||
+      loansResult.ok ||
+      spoolsResult.ok ||
+      periodReportResult.ok;
+    const anyCachedSliceAvailable = Boolean(
+      cachedPrinters || cachedLoans || cachedSpools,
+    );
 
-    if (resolvedOverview || resolvedPrinters.length > 0 || resolvedLoans.length > 0) {
-      const source =
-        hasLiveOverview &&
-        printersResult.ok &&
-        loansResult.ok &&
-        spoolsResult.ok &&
-        periodReportResult.ok
-          ? "LIVE"
+    // Empty arrays and a period-only report are still successful snapshots.
+    // Availability must be based on the request outcome, not row counts, or a
+    // valid empty library is indistinguishable from an unreachable Host.
+    if (anyHostSliceLoaded || anyCachedSliceAvailable) {
+      // Keep CACHED for a wholly unavailable Host. A mixed response is PARTIAL,
+      // even when one failed slice was recovered from cache, so the UI never
+      // describes live/degraded data as a complete cached snapshot.
+      const source: StatisticsSnapshotSource = allHostSlicesLoaded
+        ? "LIVE"
+        : anyHostSliceLoaded
+          ? "PARTIAL"
           : "CACHED";
       const liveUpdatedAt = firstDefinedTimestamp(
         resolvedSnapshot?.captured_at,

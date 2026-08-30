@@ -11,6 +11,7 @@ import {
   filterWishlistQueueItems,
   listWishlistCatalogMastersByVendor,
   loadWishlistItems,
+  loadWishlistItemsSnapshot,
   normalizeWishlistReceiptQuantity,
   normalizeWishlistStatus,
   receiveWishlistEntry,
@@ -57,6 +58,18 @@ test("loadWishlistItems uses host wishlist in client mode", async () => {
 
   assert.deepEqual(calls, [{ baseUrl: "http://host", libraryId: "library-1", limit: 500 }]);
   assert.deepEqual(rows.map((row) => row.id), ["host-item"]);
+});
+
+test("loadWishlistItemsSnapshot reports a live host snapshot", async () => {
+  const result = await loadWishlistItemsSnapshot(
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      fetchHostWishlist: async () => [wishlistItem("host-item")],
+    },
+  );
+
+  assert.equal(result.source, "LIVE");
+  assert.deepEqual(result.rows.map((row) => row.id), ["host-item"]);
 });
 
 test("filterWishlistItems applies the queue status filter", () => {
@@ -302,6 +315,22 @@ test("loadWishlistItems avoids local fallback when client host details are incom
   assert.deepEqual(rows, []);
 });
 
+test("loadWishlistItemsSnapshot reports offline when client host details are incomplete", async () => {
+  const result = await loadWishlistItemsSnapshot(
+    { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
+    {
+      fetchHostWishlist: async () => {
+        throw new Error("host wishlist should not load without a complete target");
+      },
+      listLocalWishlist: async () => {
+        throw new Error("local wishlist should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(result, { rows: [], source: "OFFLINE" });
+});
+
 test("loadWishlistItems ignores unscoped cache when client host details are incomplete", async () => {
   const rows = await loadWishlistItems(
     { clientReadOnly: true, clientHostBaseUrl: "", clientLibraryId: "library-1" },
@@ -345,6 +374,69 @@ test("loadWishlistItems falls back to cached wishlist when host load fails", asy
   );
 
   assert.deepEqual(rows.map((row) => row.id), ["cached-item"]);
+});
+
+test("loadWishlistItemsSnapshot identifies cached fallback rows", async () => {
+  const result = await loadWishlistItemsSnapshot(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
+    {
+      fetchHostWishlist: async () => {
+        throw new Error("host wishlist unavailable");
+      },
+      fetchCachedWishlist: async () => ({
+        captured_at: "cached-at",
+        rows: [wishlistItem("cached-item")],
+      }),
+    },
+  );
+
+  assert.equal(result.source, "CACHED");
+  assert.deepEqual(result.rows.map((row) => row.id), ["cached-item"]);
+});
+
+test("loadWishlistItemsSnapshot reports offline instead of throwing without a cache", async () => {
+  const result = await loadWishlistItemsSnapshot(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+      clientTargetGeneration: 7,
+    },
+    {
+      fetchHostWishlist: async () => {
+        throw new Error("host wishlist unavailable");
+      },
+      fetchCachedWishlist: async () => null,
+    },
+  );
+
+  assert.deepEqual(result, { rows: [], source: "OFFLINE" });
+});
+
+test("loadWishlistItems preserves its legacy host failure behavior without a cache", async () => {
+  await assert.rejects(
+    () =>
+      loadWishlistItems(
+        {
+          clientReadOnly: true,
+          clientHostBaseUrl: "http://host",
+          clientLibraryId: "library-1",
+          clientTargetGeneration: 7,
+        },
+        {
+          fetchHostWishlist: async () => {
+            throw new Error("host wishlist unavailable");
+          },
+          fetchCachedWishlist: async () => null,
+        },
+      ),
+    /host wishlist unavailable/,
+  );
 });
 
 function wishlistInput(overrides: Partial<CreateWishlistItemInput> = {}): CreateWishlistItemInput {

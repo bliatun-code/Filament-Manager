@@ -44,6 +44,28 @@ test("poll refreshes retain good snapshots and retry transient failures", () => 
     source,
     /if \(hostUnsupported \|\| !options\.preserveSnapshotOnFailure\) \{[\s\S]*setSnapshot\(null\)/,
   );
+  assert.match(
+    source,
+    /setLoadFailedState\(\{[\s\S]*value: clientReadOnly && !hostUnsupported/,
+  );
+  assert.match(
+    source,
+    /const retryLoad = useCallback\([\s\S]*preserveSnapshotOnFailure: true/,
+  );
+  assert.match(settingsPageSource, /loadFailed: filamentDefaults\.loadFailed/);
+  assert.match(settingsPageSource, /onReload: filamentDefaults\.retryLoad/);
+});
+
+test("a missing client Host target is guidance state rather than a retryable load failure", () => {
+  assert.match(
+    source,
+    /const hostTargetMissing =\s*tauri &&\s*roleResolved &&\s*clientReadOnly/,
+  );
+  assert.match(
+    source,
+    /if \(hostTargetMissing\) \{[\s\S]*setSnapshot\(null\);[\s\S]*setLoadFailedState\(\{ dataSourceKey, value: false \}\);[\s\S]*return null;/,
+  );
+  assert.match(settingsPageSource, /hostTargetMissing: filamentDefaults\.hostTargetMissing/);
 });
 
 test("filament standards fail closed without local fallback while the role is unresolved", () => {

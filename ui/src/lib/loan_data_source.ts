@@ -47,10 +47,20 @@ export type LoanDataLoadResult = {
   usedFallback: boolean;
 };
 
+export type ActiveLoanRowsLoadResult = {
+  rows: NormalizedActiveLoanRow[];
+  source: LoanSnapshotSource;
+};
+
 type ActiveLoanRowsDependencies = {
   fetchHostLoans?: typeof fetchLibrarySyncLoans;
   fetchCachedLoans?: typeof fetchCachedLibrarySyncLoans;
   listLocalActiveLoans?: typeof listActiveSpoolLoans;
+};
+
+type ActiveLoanRowsInternalLoadResult = {
+  result: ActiveLoanRowsLoadResult;
+  loadError: unknown | null;
 };
 
 type LoanRowsPageDependencies = {
@@ -95,16 +105,17 @@ function mapLoanDetailsToActiveRow(row: SpoolLoanDetailsRow): NormalizedActiveLo
   };
 }
 
-export async function loadActiveLoanRows(
-  options: {
-    clientReadOnly: boolean;
-    clientHostBaseUrl?: string | null;
-    clientLibraryId?: string | null;
-    clientTargetGeneration?: number | null;
-    limit?: number;
-  },
+function mapLoanDetailsToActiveRows(rows: SpoolLoanDetailsRow[]): NormalizedActiveLoanRow[] {
+  return rows
+    .map(normalizeLoanDetailsRow)
+    .filter(isActiveOutboundLoan)
+    .map(mapLoanDetailsToActiveRow);
+}
+
+async function loadActiveLoanRowsInternal(
+  options: LoanDataSourceOptions,
   dependencies: ActiveLoanRowsDependencies = {},
-): Promise<NormalizedActiveLoanRow[]> {
+): Promise<ActiveLoanRowsInternalLoadResult> {
   if (options.clientReadOnly) {
     const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
     const fetchCachedLoans = dependencies.fetchCachedLoans ?? fetchCachedLibrarySyncLoans;
@@ -117,10 +128,13 @@ export async function loadActiveLoanRows(
           hostTarget.libraryId,
           options.limit ?? 2000,
         );
-        return rows
-          .map(normalizeLoanDetailsRow)
-          .filter(isActiveOutboundLoan)
-          .map(mapLoanDetailsToActiveRow);
+        return {
+          result: {
+            rows: mapLoanDetailsToActiveRows(rows),
+            source: "LIVE",
+          },
+          loadError: null,
+        };
       } catch (loadError) {
         console.error(loadError);
         const cached = cacheTarget
@@ -131,12 +145,21 @@ export async function loadActiveLoanRows(
             ).catch(() => null)
           : null;
         if (!cached) {
-          throw loadError;
+          return {
+            result: {
+              rows: [],
+              source: "OFFLINE",
+            },
+            loadError,
+          };
         }
-        return cached.rows
-          .map(normalizeLoanDetailsRow)
-          .filter(isActiveOutboundLoan)
-          .map(mapLoanDetailsToActiveRow);
+        return {
+          result: {
+            rows: mapLoanDetailsToActiveRows(cached.rows),
+            source: "CACHED",
+          },
+          loadError: null,
+        };
       }
     }
     const cached = cacheTarget
@@ -146,14 +169,41 @@ export async function loadActiveLoanRows(
           cacheTarget.targetGeneration,
         ).catch(() => null)
       : null;
-    return (cached?.rows ?? [])
-      .map(normalizeLoanDetailsRow)
-      .filter(isActiveOutboundLoan)
-      .map(mapLoanDetailsToActiveRow);
+    return {
+      result: {
+        rows: mapLoanDetailsToActiveRows(cached?.rows ?? []),
+        source: cached ? "CACHED" : "OFFLINE",
+      },
+      loadError: null,
+    };
   }
 
   const listLocalActiveLoans = dependencies.listLocalActiveLoans ?? listActiveSpoolLoans;
-  return (await listLocalActiveLoans()).map(normalizeActiveLoanRow);
+  return {
+    result: {
+      rows: (await listLocalActiveLoans()).map(normalizeActiveLoanRow),
+      source: "LIVE",
+    },
+    loadError: null,
+  };
+}
+
+export async function loadActiveLoanRowsSnapshot(
+  options: LoanDataSourceOptions,
+  dependencies: ActiveLoanRowsDependencies = {},
+): Promise<ActiveLoanRowsLoadResult> {
+  return (await loadActiveLoanRowsInternal(options, dependencies)).result;
+}
+
+export async function loadActiveLoanRows(
+  options: LoanDataSourceOptions,
+  dependencies: ActiveLoanRowsDependencies = {},
+): Promise<NormalizedActiveLoanRow[]> {
+  const { result, loadError } = await loadActiveLoanRowsInternal(options, dependencies);
+  if (loadError) {
+    throw loadError;
+  }
+  return result.rows;
 }
 
 export async function loadLoanRowsPage(

@@ -13,13 +13,19 @@ import { formatMasterDisplayTitle } from "../lib/inventory_list_model";
 import { inventoryCatalogRowStyle } from "../lib/inventory_swatch_style";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
+import type { InventoryCatalogLoadState } from "../lib/use_inventory_catalog_reload";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
-import { ModalFormField } from "./modal_chrome";
+import {
+  ModalFormField,
+  ModalHeaderActionButton,
+  ModalNotice,
+} from "./modal_chrome";
 
 type InventoryStockSourcePanelProps = {
   activeCatalogMasters: MasterCatalogRow[];
   autoFocusCatalogSearch?: boolean;
+  catalogLoadState: InventoryCatalogLoadState;
   catalogQuery: string;
   createMode: InventoryCreateMode;
   isCatalogCreateMode: boolean;
@@ -35,6 +41,7 @@ type InventoryStockSourcePanelProps = {
   onManualHexColorChange: (value: string) => void;
   onManualMaterialChange: (value: string) => void;
   onManualVendorChange: (value: string) => void;
+  onRetryCatalog: () => void;
   onSelectCatalogMaster: (master: MasterCatalogRow) => void;
   onUseManualFromCatalog: () => void;
   resolvedTheme: ResolvedTheme;
@@ -59,6 +66,7 @@ const inventoryStockManualFallbackButtonClassName =
 export function InventoryStockSourcePanel({
   activeCatalogMasters,
   autoFocusCatalogSearch = true,
+  catalogLoadState,
   catalogQuery,
   createMode,
   isCatalogCreateMode,
@@ -74,6 +82,7 @@ export function InventoryStockSourcePanel({
   onManualHexColorChange,
   onManualMaterialChange,
   onManualVendorChange,
+  onRetryCatalog,
   onSelectCatalogMaster,
   onUseManualFromCatalog,
   resolvedTheme,
@@ -89,6 +98,9 @@ export function InventoryStockSourcePanel({
     "{count, plural, one {# match} other {# matches}}",
     { count: activeCatalogMasters.length },
   );
+  const catalogLoading =
+    catalogLoadState === "IDLE" || catalogLoadState === "LOADING";
+  const catalogReady = catalogLoadState === "READY";
 
   return (
     <div className="surface-card space-y-4">
@@ -116,7 +128,7 @@ export function InventoryStockSourcePanel({
                 },
               ]}
             />
-            {isCatalogCreateMode ? (
+            {isCatalogCreateMode && catalogReady ? (
               <span
                 className={semanticChipClass(
                   "neutral",
@@ -146,7 +158,7 @@ export function InventoryStockSourcePanel({
                     : t("wishlist.searchEsun", "Search eSUN material/color")
                 }
                 className="page-header-search !w-full"
-                disabled={!tauriAvailable}
+                disabled={!tauriAvailable || !catalogReady}
               />
             </div>
           ) : null}
@@ -156,7 +168,33 @@ export function InventoryStockSourcePanel({
       {isCatalogCreateMode ? (
         <div className="space-y-3">
           <div className="max-h-[22rem] space-y-1.5 overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white p-1.5 dark:border-slate-700 dark:bg-slate-950/70 lg:max-h-[26rem]">
-            {activeCatalogMasters.map((master) => {
+            {catalogLoading ? (
+              <div
+                aria-live="polite"
+                className="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400"
+                role="status"
+              >
+                {t("common.loading", "Loading...")}
+              </div>
+            ) : null}
+
+            {catalogLoadState === "ERROR" ? (
+              <ModalNotice className="m-1" role="alert" tone="danger">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    {t("errors.requestFailed", "The request could not be completed.")}
+                  </span>
+                  <ModalHeaderActionButton
+                    className="shrink-0"
+                    onClick={onRetryCatalog}
+                  >
+                    {t("common.refresh", "Refresh")}
+                  </ModalHeaderActionButton>
+                </div>
+              </ModalNotice>
+            ) : null}
+
+            {catalogReady ? activeCatalogMasters.map((master) => {
               const selected = selectedCatalogMasterId === master.id;
               return (
                 <button
@@ -206,9 +244,9 @@ export function InventoryStockSourcePanel({
                   ) : null}
                 </button>
               );
-            })}
+            }) : null}
 
-            {activeCatalogMasters.length === 0 ? (
+            {catalogReady && activeCatalogMasters.length === 0 ? (
               <div className="px-2 py-4 text-xs text-slate-500 dark:text-slate-400">
                 {t(
                   "inventory.noCatalogMatches",

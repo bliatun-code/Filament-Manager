@@ -60,6 +60,44 @@ test("a completed settings data reload also refreshes filament standards", () =>
   assert.ok(revisionCommitIndex > standardsReloadIndex);
 });
 
+test("a failed secondary filament-default refresh preserves loaded settings and role", () => {
+  const secondaryTryIndex = source.indexOf(
+    "let secondaryReloadComplete = true;",
+  );
+  const standardsReloadIndex = source.indexOf(
+    "await onDataReloaded?.();",
+    secondaryTryIndex,
+  );
+  const secondaryCatchIndex = source.indexOf(
+    "} catch (secondaryLoadError) {",
+    standardsReloadIndex,
+  );
+  const currentRequestCheckIndex = source.indexOf(
+    "if (!requestIsCurrent()) {",
+    secondaryCatchIndex,
+  );
+  const secondaryFailureBlock = source.slice(
+    secondaryCatchIndex,
+    currentRequestCheckIndex,
+  );
+
+  assert.ok(secondaryTryIndex > source.indexOf("setLibrarySyncSettings(pageData.librarySyncSettings);"));
+  assert.ok(standardsReloadIndex > secondaryTryIndex);
+  assert.ok(secondaryCatchIndex > standardsReloadIndex);
+  assert.ok(currentRequestCheckIndex > secondaryCatchIndex);
+  assert.match(secondaryFailureBlock, /console\.warn/);
+  assert.match(secondaryFailureBlock, /secondaryReloadComplete = false/);
+  assert.doesNotMatch(secondaryFailureBlock, /setLibrarySyncSettings\(null\)/);
+  assert.doesNotMatch(secondaryFailureBlock, /setError\(/);
+});
+
+test("an incomplete secondary refresh keeps revision polling in fallback mode", () => {
+  assert.match(
+    source,
+    /observedTracker &&\s*pageData\.revisionPollComplete &&\s*secondaryReloadComplete/,
+  );
+});
+
 test("silent settings polling gates full reads on a library revision signal", () => {
   assert.match(source, /fetchLibraryDomainRevisionsForSource/);
   assert.match(source, /SETTINGS_REVISION_DOMAINS/);

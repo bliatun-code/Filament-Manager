@@ -48,3 +48,23 @@ test("data-backed desktop QA waits for statistics before opening or scrolling", 
     /statistics-borrower[\s\S]*DESKTOP_VISUAL_QA_BORROWER_NAME[\s\S]*void openBorrowerModal\(borrower, "OUTBOUND"\)/,
   );
 });
+
+test("cached statistics use one settled Host warning", () => {
+  assert.match(
+    source,
+    /shouldShowClientSnapshotWarning\(\{[\s\S]*initialLoadSettled: !loading/,
+  );
+  assert.match(source, /\{clientHostWarningVisible && !error \? \(/);
+  assert.match(source, /<PageDataFallbackBanner/);
+  assert.match(source, /clientStatsSource === "PARTIAL" \? "CACHED" : clientStatsSource/);
+  assert.match(source, /clientStatsSource === "PARTIAL"[\s\S]*errors\.requestFailed/);
+  assert.match(
+    source,
+    /clientStatsSource === "CACHED" \|\| clientStatsSource === "PARTIAL"[\s\S]*periodStatus !== "AVAILABLE"[\s\S]*statistics\.periodDetailsUnavailable/,
+  );
+  assert.match(
+    source,
+    /!loading && tauri && clientStatsSource === "LIVE" && periodStatus !== "AVAILABLE"/,
+  );
+  assert.match(source, /onRetry=\{\(\) => void reloadData\(\)\}/);
+});

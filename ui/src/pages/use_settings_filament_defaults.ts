@@ -94,6 +94,19 @@ export function useSettingsFilamentDefaults({
     hostUnsupportedState.dataSourceKey === dataSourceKey
       ? hostUnsupportedState.value
       : false;
+  const [loadFailedState, setLoadFailedState] = useState<{
+    dataSourceKey: string;
+    value: boolean;
+  }>(() => ({ dataSourceKey, value: false }));
+  const loadFailed =
+    loadFailedState.dataSourceKey === dataSourceKey
+      ? loadFailedState.value
+      : false;
+  const hostTargetMissing =
+    tauri &&
+    roleResolved &&
+    clientReadOnly &&
+    (!clientHostBaseUrl?.trim() || !clientLibraryId?.trim());
   const requestGenerationRef = useRef(0);
 
   const loadSnapshot = useCallback(
@@ -103,6 +116,7 @@ export function useSettingsFilamentDefaults({
       if (!tauri) {
         setSnapshot(null);
         setHostUnsupportedState({ dataSourceKey, value: false });
+        setLoadFailedState({ dataSourceKey, value: false });
         setLoading(false);
         return null;
       }
@@ -112,24 +126,34 @@ export function useSettingsFilamentDefaults({
         // pending or has failed.
         setSnapshot(null);
         setHostUnsupportedState({ dataSourceKey, value: false });
+        setLoadFailedState({ dataSourceKey, value: false });
+        setLoading(false);
+        return null;
+      }
+      if (hostTargetMissing) {
+        // Missing Host coordinates are a configuration state, not a failed
+        // request. Keep the section fail-closed and let it point the user to
+        // client pairing instead of offering a retry that cannot succeed.
+        setSnapshot(null);
+        setHostUnsupportedState({ dataSourceKey, value: false });
+        setLoadFailedState({ dataSourceKey, value: false });
         setLoading(false);
         return null;
       }
       setLoading(true);
       try {
         const next = clientReadOnly
-          ? clientHostBaseUrl?.trim() && clientLibraryId?.trim()
-            ? await fetchLibrarySyncFilamentStandards(
-                clientHostBaseUrl,
-                clientLibraryId,
-              )
-            : null
+          ? await fetchLibrarySyncFilamentStandards(
+              clientHostBaseUrl ?? "",
+              clientLibraryId ?? "",
+            )
           : await getFilamentStandards();
         if (requestGenerationRef.current !== requestGeneration) {
           return null;
         }
         setSnapshot(next);
         setHostUnsupportedState({ dataSourceKey, value: false });
+        setLoadFailedState({ dataSourceKey, value: false });
         return next;
       } catch (error) {
         if (requestGenerationRef.current !== requestGeneration) {
@@ -148,6 +172,10 @@ export function useSettingsFilamentDefaults({
         } else if (!options.preserveSnapshotOnFailure) {
           setHostUnsupportedState({ dataSourceKey, value: false });
         }
+        setLoadFailedState({
+          dataSourceKey,
+          value: clientReadOnly && !hostUnsupported,
+        });
         if (!clientReadOnly) {
           onLoadError(error);
         } else {
@@ -168,6 +196,7 @@ export function useSettingsFilamentDefaults({
       clientLibraryId,
       clientReadOnly,
       dataSourceKey,
+      hostTargetMissing,
       onLoadError,
       roleResolved,
       setSnapshot,
@@ -188,6 +217,10 @@ export function useSettingsFilamentDefaults({
         preserveSnapshotOnFailure: true,
         propagateFailure: true,
       }),
+    [loadSnapshot],
+  );
+  const retryLoad = useCallback(
+    () => loadSnapshot({ preserveSnapshotOnFailure: true }),
     [loadSnapshot],
   );
 
@@ -260,6 +293,8 @@ export function useSettingsFilamentDefaults({
   return {
     busy: loading,
     hostUnsupported,
+    hostTargetMissing,
+    loadFailed,
     defaultCurrency:
       snapshot?.settings.default_purchase_currency ??
       emptyFilamentStandardsSettings().default_purchase_currency ??
@@ -271,5 +306,6 @@ export function useSettingsFilamentDefaults({
     onSaveDefaultCurrency,
     onSaveGroupPrice,
     reload,
+    retryLoad,
   };
 }

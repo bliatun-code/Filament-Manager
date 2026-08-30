@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import type { InventoryCreateMode } from "../lib/inventory_create_model";
+import type { InventoryCatalogLoadState } from "../lib/use_inventory_catalog_reload";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { InventoryStockSourcePanel } from "./inventory_stock_source_panel";
 import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
@@ -56,6 +57,7 @@ function renderPanel(options: {
   manualMaterial?: string;
   manualVendor?: string;
   selectedMasterId?: string | null;
+  catalogLoadState?: InventoryCatalogLoadState;
   locale?: Locale;
 }) {
   const masters = options.masters ?? [master()];
@@ -69,6 +71,7 @@ function renderPanel(options: {
       { value: i18nValue(options.locale ?? "en") },
       React.createElement(InventoryStockSourcePanel, {
         activeCatalogMasters: masters,
+        catalogLoadState: options.catalogLoadState ?? "READY",
         catalogQuery,
         createMode: options.mode,
         isCatalogCreateMode: options.mode !== "manual",
@@ -84,6 +87,7 @@ function renderPanel(options: {
         onManualHexColorChange: () => {},
         onManualMaterialChange: () => {},
         onManualVendorChange: () => {},
+        onRetryCatalog: () => {},
         onSelectCatalogMaster: () => {},
         onUseManualFromCatalog: () => {},
         resolvedTheme: "light",
@@ -93,6 +97,36 @@ function renderPanel(options: {
     ),
   );
 }
+
+test("InventoryStockSourcePanel distinguishes lazy catalog loading from an empty catalog", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    masters: [],
+    catalogLoadState: "LOADING",
+    selectedMasterId: null,
+  });
+
+  assert.match(html, /role="status"/);
+  assert.match(html, /Loading\.\.\./);
+  assert.doesNotMatch(html, /No catalog entries match the current vendor filters\./);
+  assert.doesNotMatch(html, /0 matches/);
+  assert.match(html, /type="search"[^>]*disabled=""/);
+});
+
+test("InventoryStockSourcePanel keeps a failed lazy catalog load retryable in place", () => {
+  const html = renderPanel({
+    mode: "bambu",
+    masters: [],
+    catalogLoadState: "ERROR",
+    selectedMasterId: null,
+  });
+
+  assert.match(html, /role="alert"/);
+  assert.match(html, /The request could not be completed\./);
+  assert.match(html, />Refresh<\/button>/);
+  assert.doesNotMatch(html, /No catalog entries match the current vendor filters\./);
+  assert.doesNotMatch(html, /0 matches/);
+});
 
 test("InventoryStockSourcePanel keeps Bambu search directly above the catalog list", () => {
   const html = renderPanel({

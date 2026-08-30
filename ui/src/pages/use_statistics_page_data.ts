@@ -14,6 +14,7 @@ import type {
   NormalizedLoanDetailsRow,
   NormalizedSpoolWithMasterRow,
   StatisticsPeriodDataStatus,
+  StatisticsSnapshotSource,
 } from "../lib/statistics_data_source";
 
 type Translate = I18nContextValue["t"];
@@ -49,9 +50,8 @@ export function useStatisticsPageData({
   const [clientHostDeviceName, setClientHostDeviceName] = useState<string | null>(null);
   const [clientHostBaseUrl, setClientHostBaseUrl] = useState<string | null>(null);
   const [clientLibraryId, setClientLibraryId] = useState<string | null>(null);
-  const [clientStatsSource, setClientStatsSource] = useState<"LIVE" | "CACHED" | "OFFLINE">(
-    "OFFLINE",
-  );
+  const [clientStatsSource, setClientStatsSource] =
+    useState<StatisticsSnapshotSource>("OFFLINE");
   const [clientStatisticsUpdatedAt, setClientStatisticsUpdatedAt] = useState<string | null>(null);
   const [periodReport, setPeriodReport] = useState<StatisticsPeriodReport | null>(null);
   const [periodStatus, setPeriodStatus] =

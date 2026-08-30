@@ -3,8 +3,88 @@ import test from "node:test";
 
 import {
   createPageRefreshState,
+  isClientCompositeSnapshotPartial,
+  isClientSnapshotFallback,
   reducePageRefreshState,
+  shouldShowClientSnapshotWarning,
 } from "./page_refresh_state";
+
+test("client Host warnings stay hidden until the initial load settles", () => {
+  for (const source of ["UNRESOLVED", "LIVE", "CACHED", "OFFLINE"] as const) {
+    assert.equal(
+      shouldShowClientSnapshotWarning({
+        clientReadOnly: true,
+        initialLoadSettled: false,
+        source,
+      }),
+      false,
+    );
+  }
+});
+
+test("only settled cached and offline client snapshots show a Host warning", () => {
+  assert.equal(isClientSnapshotFallback("UNRESOLVED"), false);
+  assert.equal(isClientSnapshotFallback("LIVE"), false);
+  assert.equal(isClientSnapshotFallback("CACHED"), true);
+  assert.equal(isClientSnapshotFallback("OFFLINE"), true);
+
+  for (const source of ["CACHED", "OFFLINE"] as const) {
+    assert.equal(
+      shouldShowClientSnapshotWarning({
+        clientReadOnly: true,
+        initialLoadSettled: true,
+        source,
+      }),
+      true,
+    );
+  }
+  assert.equal(
+    shouldShowClientSnapshotWarning({
+      clientReadOnly: false,
+      initialLoadSettled: true,
+      source: "OFFLINE",
+    }),
+    false,
+  );
+});
+
+test("composite client snapshots identify stale or unavailable secondary slices", () => {
+  assert.equal(
+    isClientCompositeSnapshotPartial({
+      primarySource: "LIVE",
+      secondarySources: ["LIVE", "CACHED"],
+    }),
+    true,
+  );
+  assert.equal(
+    isClientCompositeSnapshotPartial({
+      primarySource: "LIVE",
+      secondarySources: ["LIVE", "OFFLINE"],
+    }),
+    true,
+  );
+  assert.equal(
+    isClientCompositeSnapshotPartial({
+      primarySource: "CACHED",
+      secondarySources: ["LIVE", "CACHED"],
+    }),
+    false,
+  );
+  assert.equal(
+    isClientCompositeSnapshotPartial({
+      primarySource: "CACHED",
+      secondarySources: ["CACHED", "OFFLINE"],
+    }),
+    true,
+  );
+  assert.equal(
+    isClientCompositeSnapshotPartial({
+      primarySource: "OFFLINE",
+      secondarySources: ["CACHED", "OFFLINE"],
+    }),
+    false,
+  );
+});
 
 test("a refresh after successful data keeps the previous data visible", () => {
   const initial = createPageRefreshState(true);

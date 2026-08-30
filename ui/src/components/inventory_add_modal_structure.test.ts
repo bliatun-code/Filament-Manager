@@ -39,6 +39,22 @@ test("InventoryAddModal wires the separate Bambu batch modal from existing workf
   assert.match(source, /onRowSelectionChange=\{onBambuBatchRowSelectionChange\}/);
   assert.match(source, /autoOpenBambuBatch/);
   assert.match(source, /openBambuBatchModal\(\)/);
+  assert.match(source, /catalogLoadState !== "READY"/);
+  assert.match(source, /disabled=\{catalogLoadState !== "READY"\}/);
+  assert.match(
+    source,
+    /if \(catalogLoadState !== "READY"\) \{\s*setBambuBatchModalOpen\(false\);/,
+  );
+  assert.match(source, /catalogLoadState=\{catalogLoadState\}/);
+  assert.match(source, /onRetryCatalog=\{onRetryCatalog\}/);
+  const readinessGuardIndex = source.indexOf(
+    'catalogLoadState !== "READY"',
+    source.indexOf("useEffect"),
+  );
+  const autoOpenIndex = source.indexOf("openBambuBatchModal();", readinessGuardIndex);
+  const markOpenedIndex = source.indexOf("setAutoOpenedBambuBatch(true);", autoOpenIndex);
+  assert.ok(readinessGuardIndex < autoOpenIndex);
+  assert.ok(autoOpenIndex < markOpenedIndex);
 });
 
 test("InventoryAddModal separates stock registration from purchase entry", () => {

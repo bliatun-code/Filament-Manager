@@ -31,6 +31,13 @@ export type WishlistDataSourceOptions = {
   limit?: number;
 };
 
+export type WishlistSnapshotSource = "LIVE" | "CACHED" | "OFFLINE";
+
+export type WishlistItemsLoadResult = {
+  rows: WishlistItemRow[];
+  source: WishlistSnapshotSource;
+};
+
 export type WishlistStatus = "WISHLIST" | "ON_ORDER" | "RECEIVED";
 export type WishlistStatusFilter = "ALL" | WishlistStatus;
 export type WishlistCatalogFilter = "ALL" | "ACTIVE" | "DISCONTINUED";
@@ -78,6 +85,11 @@ type WishlistDataSourceDependencies = {
 
 const missingWishlistHostTargetMessage =
   "Host connection details are missing for this wishlist action.";
+
+type WishlistItemsInternalLoadResult = {
+  result: WishlistItemsLoadResult;
+  loadError: unknown | null;
+};
 
 export function filterWishlistItems(
   items: WishlistItemRow[],
@@ -232,10 +244,10 @@ export function buildWishlistDraft(input: WishlistDraftInput): WishlistDraft | n
   };
 }
 
-export async function loadWishlistItems(
+async function loadWishlistItemsInternal(
   options: WishlistDataSourceOptions = {},
   dependencies: WishlistDataSourceDependencies = {},
-): Promise<WishlistItemRow[]> {
+): Promise<WishlistItemsInternalLoadResult> {
   const fetchCachedWishlist = dependencies.fetchCachedWishlist ?? fetchCachedLibrarySyncWishlist;
   const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
@@ -252,10 +264,22 @@ export async function loadWishlistItems(
             cacheTarget.targetGeneration,
           ).catch(() => null)
         : null;
-      return cached?.rows ?? [];
+      return {
+        result: {
+          rows: cached?.rows ?? [],
+          source: cached ? "CACHED" : "OFFLINE",
+        },
+        loadError: null,
+      };
     }
     try {
-      return await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit);
+      return {
+        result: {
+          rows: await fetchHostWishlist(hostTarget.baseUrl, hostTarget.libraryId, limit),
+          source: "LIVE",
+        },
+        loadError: null,
+      };
     } catch (loadError) {
       const cached = cacheTarget
         ? await fetchCachedWishlist(
@@ -265,13 +289,49 @@ export async function loadWishlistItems(
           ).catch(() => null)
         : null;
       if (cached) {
-        return cached.rows;
+        return {
+          result: {
+            rows: cached.rows,
+            source: "CACHED",
+          },
+          loadError: null,
+        };
       }
-      throw loadError;
+      return {
+        result: {
+          rows: [],
+          source: "OFFLINE",
+        },
+        loadError,
+      };
     }
   }
 
-  return listLocalWishlist(limit);
+  return {
+    result: {
+      rows: await listLocalWishlist(limit),
+      source: "LIVE",
+    },
+    loadError: null,
+  };
+}
+
+export async function loadWishlistItemsSnapshot(
+  options: WishlistDataSourceOptions = {},
+  dependencies: WishlistDataSourceDependencies = {},
+): Promise<WishlistItemsLoadResult> {
+  return (await loadWishlistItemsInternal(options, dependencies)).result;
+}
+
+export async function loadWishlistItems(
+  options: WishlistDataSourceOptions = {},
+  dependencies: WishlistDataSourceDependencies = {},
+): Promise<WishlistItemRow[]> {
+  const { result, loadError } = await loadWishlistItemsInternal(options, dependencies);
+  if (loadError) {
+    throw loadError;
+  }
+  return result.rows;
 }
 
 export async function createWishlistEntry(

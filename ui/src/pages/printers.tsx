@@ -7,6 +7,7 @@ import {
 import { FeedbackBanner } from "../components/feedback_banner";
 import { AddPrinterModal } from "../components/add_printer_modal";
 import { IncomingWeightModal } from "../components/incoming_weight_modal";
+import { PageDataFallbackBanner } from "../components/page_data_fallback_banner";
 import { PageHeaderButton } from "../components/page_header_button";
 import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { PrinterOverviewCard } from "../components/printer_overview_card";
@@ -23,6 +24,7 @@ import {
 } from "../lib/desktop_visual_qa_readiness";
 import { findPrinterSlotById } from "../lib/printer_slot_model";
 import { derivePrinterSlotDisplayState } from "../lib/printer_slot_display";
+import { shouldShowClientSnapshotWarning } from "../lib/page_refresh_state";
 import { useResolvedTheme } from "../lib/theme_mode";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
 import { listSupportedPrinterModels } from "../lib/printer_profiles";
@@ -117,6 +119,11 @@ export default function PrintersPage() {
       "Failed to load printer overview.",
     ),
     onInteractiveReload: handleInteractiveReload,
+  });
+  const clientHostWarningVisible = shouldShowClientSnapshotWarning({
+    clientReadOnly,
+    initialLoadSettled: librarySyncReady && !loading,
+    source: clientPrinterSource,
   });
   const desktopVisualQaHasFreshPrinterTelemetry = useMemo(
     () =>
@@ -708,22 +715,28 @@ export default function PrintersPage() {
         </FeedbackBanner>
       ) : null}
 
-      {clientReadOnly && clientPrinterSource !== "LIVE" ? (
-        <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostDeviceName ? `${clientHostDeviceName}. ` : null}
-          {clientPrinterSource === "CACHED"
-            ? t(
-                "printers.clientReadOnlyCached",
-                "Host unavailable. Showing the last cached printer snapshot.",
-              )
-            : t(
-                "printers.clientReadOnlyOffline",
-                "Host unavailable and no cached printer snapshot is available yet.",
-              )}
-          {clientPrinterUpdatedAt
-            ? ` ${t("printers.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientPrinterUpdatedAt, locale)}.`
-            : null}
-        </FeedbackBanner>
+      {clientHostWarningVisible && !librarySyncError && !loadError ? (
+        <PageDataFallbackBanner
+          message={`${clientHostDeviceName ? `${clientHostDeviceName}. ` : ""}${
+            clientPrinterSource === "CACHED"
+              ? t(
+                  "printers.clientReadOnlyCached",
+                  "Host unavailable. Showing the last cached printer snapshot.",
+                )
+              : t(
+                  "printers.clientReadOnlyOffline",
+                  "Host unavailable and no cached printer snapshot is available yet.",
+                )
+          }${
+            clientPrinterUpdatedAt
+              ? ` ${t("printers.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientPrinterUpdatedAt, locale)}.`
+              : ""
+          }`}
+          onRetry={() => void reloadData()}
+          retryDisabled={!tauri || busy || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
 
       {loading && !librarySyncError ? (
