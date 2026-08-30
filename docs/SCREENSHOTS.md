@@ -1,71 +1,13 @@
 # Screenshot Tour
 
-This page is a visual product tour for Filament Manager. It complements the
-text guides by showing the main desktop workflows and the Companion webapp on
-wide, tablet, and phone screens.
+Explore the main Filament Manager desktop workflows and the Companion webapp
+on wide, tablet, and phone screens.
 
 The Companion/webapp server must be enabled, and the desktop app needs to stay
 running for Companion to work from a phone, tablet, or workshop browser.
 
-Most current captures were produced from the current UI in the English dark
-theme with the committed, production-shaped, sanitized QA fixture. Every
-desktop and Companion capture launches against a temporary database copy; no
-real inventory library is opened or modified. Names, identifiers, QR targets,
-counts, swatches, loans, printer assignments, and live observations shown here
-are synthetic.
-
-The screenshot gates can select Auto, Light, Dark, Bambu, or Prusa explicitly.
-Bambu and Prusa are dark-based presentation palettes; captures in either theme
-must preserve the fixture's filament, material, and status swatches exactly.
-
-The v0.22.0 refresh regenerated Dashboard, Add Filament, Program and update
-check, Bambu Live security setup, and Unsaved Printer Changes on 2026-07-29
-from fixture seed SHA-256
-`81832c22714d81c227ac53875b928b66d564e006d7f9e414fc2e6c4a95629970`.
-The v0.22.1 candidate refreshed the Program and update-notification capture on
-2026-07-30 from fixture seed SHA-256
-`02920bf05064bd1ff74d546e26d2f1ea4c5acd0454d951a9ea386662d9b69c19`.
-The v0.23.0 refresh regenerated the General, Program and update notification,
-Library & web app network, Bambu discovery, and printer overview captures from
-fixture seed SHA-256
-`895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`.
-The v0.25.0 refresh regenerated Dashboard and Add Printer and added the
-twelve-month Dashboard consumption capture on 2026-08-12. Surrounding app
-data comes from the same sanitized fixture seed SHA-256
-`895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`;
-the chart itself uses an explicitly synthetic, time-relative visual-QA series
-so its twelve-month window stays representative as the calendar advances.
-The General settings capture was refreshed on 2026-08-15 to show the new
-background-operation and launch-at-login controls, using the same sanitized
-fixture seed SHA-256.
-The Bambu security setup uses only a synthetic loopback test interface and no
-host, serial, access code, or trusted fingerprint. The printer overview uses
-fresh synthetic Bambu telemetry; its desktop gate waits for rendered telemetry
-and refuses to create an image when that readiness signal is absent.
-The v0.26.0 refresh added the AMS weight-estimate capture on 2026-08-12. It uses
-a separate, time-relative sanitized fixture and is captured only after the
-estimate card has rendered from a fresh exact-RFID observation.
-The v0.27.0 refresh regenerated General settings, the AMS weight-estimate
-dialog, the individual custom-label preview, and the fixed inventory label
-sheet on 2026-08-15. The settings capture isolates desktop lifecycle state from
-the real user profile; the label captures use deterministic synthetic data and
-cover both the new custom-size UI and the shared QR renderer.
-The v0.28.0 refresh regenerated the complete documented desktop and Companion
-tour on 2026-08-26 after the Inventory, Dashboard, Statistics, and Settings
-workspaces were reorganized. It adds dedicated captures for stable location
-management and Filament defaults/group pricing. All v0.28 images use the same
-committed sanitized seed, temporary migrated database copies, the English dark
-theme, and deterministic 1,200 × 800 desktop or named responsive Companion
-viewports.
-
-The v0.29.0 refresh regenerated Inventory, General settings, and Filament
-Catalogue on 2026-08-30. Inventory no longer shows the removed header-level
-loan action, General reports version 0.29.0, and Catalogue shows lightweight
-vendor discovery plus one-family-at-a-time refresh. The full-size images and
-thumbnails passed the desktop screenshot gate at 1,200 × 800 using the English
-dark theme, a temporary migrated database copy, and sanitized fixture seed
-SHA-256
-`895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`.
+All names, identifiers, QR targets, counts, loans, printer assignments, and
+live observations shown in the tour are synthetic.
 
 ## Quick Preview
 
