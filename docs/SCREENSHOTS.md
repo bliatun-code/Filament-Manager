@@ -58,6 +58,15 @@ committed sanitized seed, temporary migrated database copies, the English dark
 theme, and deterministic 1,200 × 800 desktop or named responsive Companion
 viewports.
 
+The v0.29.0 refresh regenerated Inventory, General settings, and Filament
+Catalogue on 2026-08-30. Inventory no longer shows the removed header-level
+loan action, General reports version 0.29.0, and Catalogue shows lightweight
+vendor discovery plus one-family-at-a-time refresh. The full-size images and
+thumbnails passed the desktop screenshot gate at 1,200 × 800 using the English
+dark theme, a temporary migrated database copy, and sanitized fixture seed
+SHA-256
+`895204e37483af1e195cd21db69f956a9669d1e5677eaf69a4396f518358ead0`.
+
 ## Quick Preview
 
 <p align="center">

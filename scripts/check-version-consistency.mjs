@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 const repoRoot = resolve(".");
 const appPackagePath = resolve(repoRoot, "package.json");
 const packageLockPath = resolve(repoRoot, "package-lock.json");
+const coreCargoTomlPath = resolve(repoRoot, "Cargo.toml");
 const cargoTomlPath = resolve(repoRoot, "src-tauri", "Cargo.toml");
 const cargoLockPath = resolve(repoRoot, "Cargo.lock");
 const tauriConfigPath = resolve(repoRoot, "src-tauri", "tauri.conf.json");
@@ -32,6 +33,7 @@ const releaseTag = `v${appVersion}`;
 const releaseNotesFilename = `RELEASE_NOTES_${releaseTag}.md`;
 const releaseNotesPath = resolve(repoRoot, releaseNotesFilename);
 const packageLock = readJson(packageLockPath);
+const coreCargoToml = readText(coreCargoTomlPath);
 const cargoToml = readText(cargoTomlPath);
 const cargoLock = readText(cargoLockPath);
 const tauriConfig = readJson(tauriConfigPath);
@@ -40,7 +42,19 @@ const readme = readText(readmePath);
 const versions = [
   ["package-lock root version", packageLock.version],
   ["package-lock package version", packageLock.packages?.[""]?.version],
+  [
+    "core Cargo.toml package version",
+    requireMatch("core Cargo.toml package version", coreCargoToml, /^version = "([^"]+)"$/m),
+  ],
   ["Cargo.toml package version", requireMatch("Cargo.toml package version", cargoToml, /^version = "([^"]+)"$/m)],
+  [
+    "Cargo.lock filament-manager-core package version",
+    requireMatch(
+      "Cargo.lock filament-manager-core package version",
+      cargoLock,
+      /\[\[package\]\]\r?\nname = "filament-manager-core"\r?\nversion = "([^"]+)"/,
+    ),
+  ],
   [
     "Cargo.lock package version",
     requireMatch(

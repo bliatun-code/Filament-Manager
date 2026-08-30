@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, HashSet};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use super::app_metadata::APP_VERSION;
 use super::database_result::{InventoryError, InventoryResult};
 use super::database_schema::{
     ensure_database_quick_check, ensure_no_foreign_key_violations, table_columns,
@@ -399,7 +400,7 @@ pub(crate) fn export_full_backup_content(conn: &rusqlite::Connection) -> Invento
     );
     root.insert(
         "app_version".to_string(),
-        Value::String(env!("CARGO_PKG_VERSION").to_string()),
+        Value::String(APP_VERSION.to_string()),
     );
     root.insert("exported_at".to_string(), Value::String(exported_at));
     root.insert("tables".to_string(), Value::Object(tables));

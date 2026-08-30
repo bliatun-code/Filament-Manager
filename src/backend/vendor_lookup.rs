@@ -7,6 +7,7 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::backend::app_metadata::CATALOG_USER_AGENT;
 use crate::backend::vendor_lookup_parsing::*;
 
 const ESUN_STORE_BASE_URL: &str = "https://esun3dstore.com";
@@ -90,7 +91,7 @@ query EsunFilamentMaterial($pageSize: Int!) {
   }
 }
 "#;
-const ESUN_USER_AGENT: &str = "BambuFilamentManager/0.28.0 (+local catalog maintenance)";
+const ESUN_USER_AGENT: &str = CATALOG_USER_AGENT;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EsunSearchResult {

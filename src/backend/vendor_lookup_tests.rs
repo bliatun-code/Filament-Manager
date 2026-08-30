@@ -79,7 +79,13 @@ const COMPLETE_MAGENTO_FIXTURE: &str = r##"
 fn esun_graphql_operations_are_one_bounded_request_against_official_category() {
     assert_eq!(ESUN_GRAPHQL_MAX_REQUESTS_PER_OPERATION, 1);
     assert_eq!(ESUN_MAGENTO_GRAPHQL_URL, "https://www.esun3d.com/graphql");
-    assert!(ESUN_USER_AGENT.starts_with("BambuFilamentManager/"));
+    assert_eq!(
+        ESUN_USER_AGENT,
+        format!(
+            "BambuFilamentManager/{} (+local catalog maintenance)",
+            crate::backend::app_metadata::APP_VERSION
+        )
+    );
     assert!(!ESUN_USER_AGENT.contains("Mozilla"));
     for query in [ESUN_DISCOVERY_QUERY, ESUN_SCOPED_CATALOG_QUERY] {
         assert!(query.contains("categoryList"));

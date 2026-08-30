@@ -120,7 +120,7 @@ test("macOS installed DMG smoke requires complete previous-release fixture ident
         dmgPath: "candidate.dmg",
         expectedTeamId: "ABCDE12345",
         logDirectory: "logs",
-        upgradeFixturePath: "v0.27.0.db",
+        upgradeFixturePath: "v0.28.0.db",
       }),
     /fixture path and source release must be provided together/,
   );
@@ -128,11 +128,11 @@ test("macOS installed DMG smoke requires complete previous-release fixture ident
     dmgPath: "candidate.dmg",
     expectedTeamId: "ABCDE12345",
     logDirectory: "logs",
-    upgradeFixturePath: "v0.27.0.db",
-    upgradeSourceRelease: "v0.27.0",
+    upgradeFixturePath: "v0.28.0.db",
+    upgradeSourceRelease: "v0.28.0",
   });
-  assert.equal(options.upgradeFixturePath, path.resolve("v0.27.0.db"));
-  assert.equal(options.upgradeSourceRelease, "v0.27.0");
+  assert.equal(options.upgradeFixturePath, path.resolve("v0.28.0.db"));
+  assert.equal(options.upgradeSourceRelease, "v0.28.0");
 });
 
 test("macOS installed DMG smoke requires the expected release Team ID", () => {

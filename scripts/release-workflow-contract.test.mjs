@@ -19,6 +19,9 @@ const previousReleaseFixturePreparer = readFileSync(
   "scripts/prepare-previous-release-upgrade-fixture.mjs",
   "utf8",
 );
+const databaseMigrationManifest = JSON.parse(
+  readFileSync("src/database/migrations/manifest.json", "utf8"),
+);
 const macosWindowHelper = readFileSync(
   "scripts/macos-window-info.swift",
   "utf8",
@@ -1335,7 +1338,7 @@ test("macOS CI makes the sanitized database upgrade smoke a release gate", () =>
   ]);
 });
 
-test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
+test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
   const fixtureJob = readSection(
     releaseWorkflow,
     "  prepare-previous-release-fixture:",
@@ -1358,16 +1361,21 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
   );
   assert.match(
     previousReleaseFixturePreparer,
-    /PREVIOUS_RELEASE_VERSION = "0\.27\.0"/,
+    /PREVIOUS_RELEASE_VERSION = "0\.28\.0"/,
   );
   assert.match(
     previousReleaseFixturePreparer,
-    /PREVIOUS_RELEASE_SCHEMA_VERSION = 2/,
+    /PREVIOUS_RELEASE_SCHEMA_VERSION = 5/,
   );
   assert.match(
     previousReleaseFixturePreparer,
-    /PREVIOUS_RELEASE_COMMIT =\s*\n\s*"4a1c57a10255c26f70f749fc33ff5ae25e23b1ce"/,
+    /PREVIOUS_RELEASE_COMMIT =\s*\n\s*"76cba513eadd5137d6703f9abd1c0452531ef788"/,
   );
+  assert.equal(databaseMigrationManifest.publishedThroughSequence, 6);
+  assert.deepEqual(databaseMigrationManifest.publishedReference, {
+    ref: "v0.28.0",
+    commit: "76cba513eadd5137d6703f9abd1c0452531ef788",
+  });
   assert.match(
     previousReleaseFixturePreparer,
     /requiresSchemaMigration:[\s\S]*?source\.schemaVersion < expectedCurrentSchemaVersion/,
@@ -1377,17 +1385,17 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
     /source\.schemaVersion < expectedCurrentSchemaVersion[\s\S]*?"schema-migration"/,
   );
 
-  assert.match(fixtureJob, /name: Prepare v0\.27 database fixture/);
+  assert.match(fixtureJob, /name: Prepare v0\.28 database fixture/);
   assert.match(fixtureJob, /needs: validate-release/);
   assert.match(
     fixtureJob,
-    /ref: 4a1c57a10255c26f70f749fc33ff5ae25e23b1ce/,
+    /ref: 76cba513eadd5137d6703f9abd1c0452531ef788/,
   );
-  assert.match(fixtureJob, /path: previous-release-v0\.27\.0/);
-  assert.match(fixtureJob, /npm --prefix \.\/previous-release-v0\.27\.0 ci/);
+  assert.match(fixtureJob, /path: previous-release-v0\.28\.0/);
+  assert.match(fixtureJob, /npm --prefix \.\/previous-release-v0\.28\.0 ci/);
   assert.match(
     fixtureJob,
-    /npm run qa:release:previous-fixture --[\s\S]*?--source=previous-release-v0\.27\.0[\s\S]*?--database="\$database_path"[\s\S]*?--manifest="\$manifest_path"/,
+    /npm run qa:release:previous-fixture --[\s\S]*?--source=previous-release-v0\.28\.0[\s\S]*?--database="\$database_path"[\s\S]*?--manifest="\$manifest_path"/,
   );
   assert.match(
     fixtureJob,
@@ -1395,7 +1403,7 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
   );
   assert.match(
     fixtureJob,
-    /name: filament-manager-v0\.27\.0-database-fixture-\$\{\{ github\.run_id \}\}[\s\S]*?if-no-files-found: error[\s\S]*?retention-days: 1/,
+    /name: filament-manager-v0\.28\.0-database-fixture-\$\{\{ github\.run_id \}\}[\s\S]*?if-no-files-found: error[\s\S]*?retention-days: 1/,
   );
 
   for (const job of [macosJob, windowsJob]) {
@@ -1403,8 +1411,8 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
       job,
       /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
     );
-    assert.match(job, /- name: Download sanitized v0\.27 fixture/);
-    assert.match(job, /- name: Verify downloaded v0\.27 fixture/);
+    assert.match(job, /- name: Download sanitized v0\.28 fixture/);
+    assert.match(job, /- name: Verify downloaded v0\.28 fixture/);
     assert.match(
       job,
       /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
@@ -1413,7 +1421,7 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
 
   assert.match(
     macosJob,
-    /- name: Exercise installed signed application on Apple Silicon[\s\S]*?--upgrade-fixture="\$PREVIOUS_RELEASE_FIXTURE_DIR\/filament-manager-v0\.27\.0\.db"[\s\S]*?--upgrade-source-release=v0\.27\.0/,
+    /- name: Exercise installed signed application on Apple Silicon[\s\S]*?--upgrade-fixture="\$PREVIOUS_RELEASE_FIXTURE_DIR\/filament-manager-v0\.28\.0\.db"[\s\S]*?--upgrade-source-release=v0\.28\.0/,
   );
   assert.match(macosDmgSmoke, /smokeReleaseDatabaseUpgrade/);
   assert.match(macosDmgSmoke, /allowCurrentSchema: true/);
@@ -1421,9 +1429,9 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
 
   assert.match(
     windowsJob,
-    /-UpgradeFixturePath \(Join-Path \$env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0\.27\.0\.db"\)/,
+    /-UpgradeFixturePath \(Join-Path \$env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0\.28\.0\.db"\)/,
   );
-  assert.match(windowsJob, /-UpgradeSourceRelease "v0\.27\.0"/);
+  assert.match(windowsJob, /-UpgradeSourceRelease "v0\.28\.0"/);
   assert.match(windowsMsiSmoke, /\[string\]\$UpgradeFixturePath = ""/);
   assert.match(windowsMsiSmoke, /\[string\]\$UpgradeSourceRelease = ""/);
   assert.match(
@@ -1440,14 +1448,14 @@ test("packaged releases preserve pinned v0.27 data on DMG and MSI", () => {
   );
 
   assertStepOrder(macosJob, [
-    "Download sanitized v0.27 fixture",
-    "Verify downloaded v0.27 fixture",
+    "Download sanitized v0.28 fixture",
+    "Verify downloaded v0.28 fixture",
     "Build signed and notarized DMG",
     "Exercise installed signed application on Apple Silicon",
   ]);
   assertStepOrder(windowsJob, [
-    "Download sanitized v0.27 fixture",
-    "Verify downloaded v0.27 fixture",
+    "Download sanitized v0.28 fixture",
+    "Verify downloaded v0.28 fixture",
     "Build MSI bundle",
     "Exercise release MSI installation from downloaded artifact",
   ]);

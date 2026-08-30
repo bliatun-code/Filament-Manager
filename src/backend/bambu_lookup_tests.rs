@@ -772,7 +772,10 @@ fn blocking_detection_is_specific_and_covers_cooldown_statuses() {
     ));
     assert_eq!(
         USER_AGENT,
-        "BambuFilamentManager/0.28.0 (+local catalog maintenance)"
+        format!(
+            "BambuFilamentManager/{} (+local catalog maintenance)",
+            crate::backend::app_metadata::APP_VERSION
+        )
     );
 }
 

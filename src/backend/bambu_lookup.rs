@@ -10,6 +10,8 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::backend::app_metadata::CATALOG_USER_AGENT;
+
 const DEFAULT_BASE_URLS: [&str; 3] = [
     "https://us.store.bambulab.com",
     "https://eu.store.bambulab.com",
@@ -17,7 +19,7 @@ const DEFAULT_BASE_URLS: [&str; 3] = [
 ];
 const DEFAULT_COLLECTION_HANDLE: &str = "bambu-lab-3d-printer-filament";
 const DEFAULT_WEIGHT_G: i64 = 1000;
-const USER_AGENT: &str = "BambuFilamentManager/0.28.0 (+local catalog maintenance)";
+const USER_AGENT: &str = CATALOG_USER_AGENT;
 const REQUEST_TIMEOUT_SECS: u64 = 20;
 const MAX_RESPONSE_BYTES: u64 = 4 * 1024 * 1024;
 const CATALOG_MIN_REQUEST_INTERVAL: Duration = Duration::from_secs(2);

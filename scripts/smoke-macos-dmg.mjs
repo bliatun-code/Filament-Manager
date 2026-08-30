@@ -1379,7 +1379,7 @@ function cliOptions(argv) {
         "[--launch-timeout-ms=90000] " +
         "[--signature-policy=release|local-adhoc] " +
         "[--upgrade-fixture=<sanitized-db> " +
-        "--upgrade-source-release=v0.27.0] [--packaged-desktop-e2e]",
+        "--upgrade-source-release=v0.28.0] [--packaged-desktop-e2e]",
     );
   }
   const expectedTeamId = argv
