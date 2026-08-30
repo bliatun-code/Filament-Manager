@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 const repoRoot = resolve(".");
@@ -11,6 +11,7 @@ const cargoTomlPath = resolve(repoRoot, "src-tauri", "Cargo.toml");
 const cargoLockPath = resolve(repoRoot, "Cargo.lock");
 const tauriConfigPath = resolve(repoRoot, "src-tauri", "tauri.conf.json");
 const readmePath = resolve(repoRoot, "README.md");
+const releaseNotesDirectory = resolve(repoRoot, "docs", "releases");
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -31,7 +32,23 @@ function requireMatch(label, source, pattern) {
 const appVersion = readJson(appPackagePath).version;
 const releaseTag = `v${appVersion}`;
 const releaseNotesFilename = `RELEASE_NOTES_${releaseTag}.md`;
-const releaseNotesPath = resolve(repoRoot, releaseNotesFilename);
+const releaseNotesRelativePath = `docs/releases/${releaseNotesFilename}`;
+const releaseNotesPath = resolve(releaseNotesDirectory, releaseNotesFilename);
+const retainedReleaseNotes = (existsSync(releaseNotesDirectory)
+  ? readdirSync(releaseNotesDirectory, { withFileTypes: true })
+  : []
+)
+  .filter(
+    (entry) => entry.isFile() && /^RELEASE_NOTES_v\d+\.\d+\.\d+\.md$/.test(entry.name),
+  )
+  .map((entry) => entry.name)
+  .sort();
+const rootReleaseNotes = readdirSync(repoRoot, { withFileTypes: true })
+  .filter(
+    (entry) => entry.isFile() && /^RELEASE_NOTES_v\d+\.\d+\.\d+\.md$/.test(entry.name),
+  )
+  .map((entry) => entry.name)
+  .sort();
 const packageLock = readJson(packageLockPath);
 const coreCargoToml = readText(coreCargoTomlPath);
 const cargoToml = readText(cargoTomlPath);
@@ -70,6 +87,36 @@ const documentationVersions = [
   ["README current version", requireMatch("README current version", readme, /Current version: `([^`]+)`/)],
 ];
 const mismatches = [];
+if (rootReleaseNotes.length > 0) {
+  mismatches.push(
+    `release notes must live under docs/releases, not the repository root: ${rootReleaseNotes.join(", ")}`,
+  );
+}
+if (retainedReleaseNotes.length > 3) {
+  mismatches.push(
+    `release notes retention has ${retainedReleaseNotes.length} files, expected at most 3: ${retainedReleaseNotes.join(", ")}`,
+  );
+}
+
+const readmeReleaseNotes = new Set(
+  Array.from(
+    readme.matchAll(
+      /^- \[v\d+\.\d+\.\d+\]\(docs\/releases\/(RELEASE_NOTES_v\d+\.\d+\.\d+\.md)\)$/gm,
+    ),
+    (match) => match[1],
+  ),
+);
+for (const filename of retainedReleaseNotes) {
+  if (!readmeReleaseNotes.has(filename)) {
+    mismatches.push(`README release notes link is missing for ${filename}`);
+  }
+}
+for (const filename of readmeReleaseNotes) {
+  if (!retainedReleaseNotes.includes(filename)) {
+    mismatches.push(`README links to missing release notes file ${filename}`);
+  }
+}
+
 for (const [label, version] of versions) {
   if (version !== appVersion) {
     mismatches.push(`${label} is ${version ?? "missing"}, expected ${appVersion}`);
@@ -81,13 +128,13 @@ for (const [label, version] of documentationVersions) {
   }
 }
 
-const expectedReleaseNotesLink = `- [${releaseTag}](${releaseNotesFilename})`;
+const expectedReleaseNotesLink = `- [${releaseTag}](${releaseNotesRelativePath})`;
 if (!readme.split(/\r?\n/).includes(expectedReleaseNotesLink)) {
   mismatches.push(`README release notes link is missing, expected ${expectedReleaseNotesLink}`);
 }
 
 if (!existsSync(releaseNotesPath)) {
-  mismatches.push(`release notes file ${releaseNotesFilename} is missing`);
+  mismatches.push(`release notes file ${releaseNotesRelativePath} is missing`);
 } else {
   const releaseNotesHeading = readText(releaseNotesPath).split(/\r?\n/, 1)[0];
   const expectedReleaseNotesHeading = `# Filament Manager ${releaseTag}`;

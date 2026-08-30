@@ -17,8 +17,8 @@ function writeFixture(root, overrides = {}) {
     "src-tauri/Cargo.toml": `[package]\nversion = "${version}"\n`,
     "Cargo.lock": `[[package]]\nname = "bambu-filament-manager"\nversion = "${version}"\n\n[[package]]\nname = "filament-manager-core"\nversion = "${version}"\n`,
     "src-tauri/tauri.conf.json": `${JSON.stringify({ version }, null, 2)}\n`,
-    "README.md": `Release notes:\n\n- [${tag}](RELEASE_NOTES_${tag}.md)\n\n- Current version: \`${version}\`\n`,
-    [`RELEASE_NOTES_${tag}.md`]: `# Filament Manager ${tag}\n\nRelease date: 2026-08-10\n`,
+    "README.md": `Release notes:\n\n- [${tag}](docs/releases/RELEASE_NOTES_${tag}.md)\n\n- Current version: \`${version}\`\n`,
+    [`docs/releases/RELEASE_NOTES_${tag}.md`]: `# Filament Manager ${tag}\n\nRelease date: 2026-08-10\n`,
     ...overrides,
   };
 
@@ -68,9 +68,12 @@ test("rejects a stale locked core crate version", (t) => {
 });
 
 test("rejects a missing versioned release notes file", (t) => {
-  const result = runFixture(t, { [`RELEASE_NOTES_${tag}.md`]: null });
+  const result = runFixture(t, { [`docs/releases/RELEASE_NOTES_${tag}.md`]: null });
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /release notes file RELEASE_NOTES_v0\.23\.0\.md is missing/);
+  assert.match(
+    result.stderr,
+    /release notes file docs\/releases\/RELEASE_NOTES_v0\.23\.0\.md is missing/,
+  );
 });
 
 test("rejects a missing README release notes link", (t) => {
@@ -81,8 +84,34 @@ test("rejects a missing README release notes link", (t) => {
 
 test("rejects a mismatched release notes heading", (t) => {
   const result = runFixture(t, {
-    [`RELEASE_NOTES_${tag}.md`]: "# Filament Manager v0.22.1\n",
+    [`docs/releases/RELEASE_NOTES_${tag}.md`]: "# Filament Manager v0.22.1\n",
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /release notes heading is # Filament Manager v0\.22\.1/);
+});
+
+test("rejects retaining more than three release notes", (t) => {
+  const result = runFixture(t, {
+    "docs/releases/RELEASE_NOTES_v0.20.0.md": "# Filament Manager v0.20.0\n",
+    "docs/releases/RELEASE_NOTES_v0.21.0.md": "# Filament Manager v0.21.0\n",
+    "docs/releases/RELEASE_NOTES_v0.22.0.md": "# Filament Manager v0.22.0\n",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /release notes retention has 4 files, expected at most 3/);
+});
+
+test("rejects README links to release notes that are no longer retained", (t) => {
+  const result = runFixture(t, {
+    "README.md": `Release notes:\n\n- [${tag}](docs/releases/RELEASE_NOTES_${tag}.md)\n- [v0.22.0](docs/releases/RELEASE_NOTES_v0.22.0.md)\n\n- Current version: \`${version}\`\n`,
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /README links to missing release notes file RELEASE_NOTES_v0\.22\.0\.md/);
+});
+
+test("rejects release notes at the repository root", (t) => {
+  const result = runFixture(t, {
+    "RELEASE_NOTES_v0.22.0.md": "# Filament Manager v0.22.0\n",
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /release notes must live under docs\/releases/);
 });

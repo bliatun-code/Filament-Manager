@@ -1014,7 +1014,7 @@ jobs:
         run: |
           set -euo pipefail
           package_version="$(node -p "require('./package.json').version")"
-          notes_path="RELEASE_NOTES_v${package_version}.md"
+          notes_path="docs/releases/RELEASE_NOTES_v${package_version}.md"
           if [[ "$RELEASE_TAG" != "v$package_version" || ! -f "$notes_path" ]]; then
             echo "::error::Release tag, package version and release notes must match."
             exit 1
