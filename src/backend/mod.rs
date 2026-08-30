@@ -1,3 +1,4 @@
+pub(crate) mod app_metadata;
 pub mod bambu_live_settings;
 pub mod bambu_lookup;
 pub mod database_backup;

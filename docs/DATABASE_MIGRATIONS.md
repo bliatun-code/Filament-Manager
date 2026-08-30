@@ -12,7 +12,7 @@ migration.
 - The schema-0 entrypoint and its five `database_*_schema.rs` helper files are
   the rest of that same frozen baseline. The manifest locks the exact
   `apply_structural_baseline` function, every helper file, and the complete set
-  of `ensure_*` calls against v0.27.0. This prevents clean installs from gaining
+  of `ensure_*` calls against v0.28.0. This prevents clean installs from gaining
   unversioned DDL that versioned upgrades would skip.
 - `001_init.sql` and `002_sync_queue.sql` reconstruct old databases that were
   released before `PRAGMA user_version` was authoritative. They remain locked

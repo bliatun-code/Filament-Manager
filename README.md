@@ -56,6 +56,7 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.29.0](RELEASE_NOTES_v0.29.0.md)
 - [v0.28.0](RELEASE_NOTES_v0.28.0.md)
 - [v0.27.0](RELEASE_NOTES_v0.27.0.md)
 - [v0.26.0](RELEASE_NOTES_v0.26.0.md)
@@ -152,9 +153,15 @@ Release notes:
   fallback.
 - Host/client library mode for sharing one desktop-owned library with other
   authenticated desktop installations. A client Dashboard paints its last-good
-  cached view first, including cached consumption, then refreshes from the host
-  in the background.
-- Catalog refresh and maintenance for Bambu and eSUN filament data.
+  cached view first, including cached consumption, then refreshes from the Host
+  in the background. Initial role and data resolution does not flash a false
+  Host-unavailable state, and cached, partial, or offline pages use one shared
+  retryable fallback message.
+- Catalog refresh and maintenance for Bambu and eSUN filament data starts with
+  lightweight read-only discovery of the currently available material
+  families. One selected family is refreshed at a time; blocked, incomplete, or
+  changed vendor sources preserve local data and never mark unseen rows
+  discontinued automatically.
 - Portable full JSON backups that omit device-local credentials and pairing
   state. Backup v1 includes schema/app metadata while remaining compatible with
   older v1 files that lack it; backups from a newer schema are rejected before
@@ -366,7 +373,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.28.0_universal.dmg \
+  /path/to/Filament\ Manager_0.29.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -418,10 +425,11 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.28.0`
+- Current version: `0.29.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`
+  - root `Cargo.toml` for the shared core crate
   - `src-tauri/Cargo.toml`
   - `Cargo.lock`
   - `src-tauri/tauri.conf.json`

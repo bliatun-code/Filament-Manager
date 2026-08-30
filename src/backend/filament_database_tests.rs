@@ -4,6 +4,7 @@ use super::{
     ManualMasterInput, MasterCatalogUpdateInput, SpoolRow, TrustedLanSettingsRow,
     FULL_BACKUP_TABLES, RESET_APP_STATE_TABLES,
 };
+use crate::backend::app_metadata::APP_VERSION;
 use crate::backend::database_schema::{
     ensure_no_foreign_key_violations, table_has_column, CURRENT_SCHEMA_VERSION,
 };
@@ -4443,7 +4444,7 @@ fn full_backup_export_includes_schema_and_app_version_metadata() {
             backup
                 .get("app_version")
                 .and_then(serde_json::Value::as_str),
-            Some(env!("CARGO_PKG_VERSION"))
+            Some(APP_VERSION)
         );
 
         Ok(())

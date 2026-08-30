@@ -642,7 +642,7 @@ export function parseReleaseDatabaseUpgradeSmokeCliOptions(argv) {
         "--database=<sanitized-copy> --executable=<release-binary> " +
         "--log-dir=<private-directory> [--launch-count=2] " +
         "[--launch-timeout-ms=90000] [--database-readiness-only] " +
-        "[--allow-current-schema --source-release=v0.27.0]",
+        "[--allow-current-schema --source-release=v0.28.0]",
     );
   }
   const launchCount = optionValue("--launch-count");

@@ -25,11 +25,11 @@ import {
 } from "./release-upgrade-fixture-contract.mjs";
 import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 
-export const PREVIOUS_RELEASE_VERSION = "0.27.0";
+export const PREVIOUS_RELEASE_VERSION = "0.28.0";
 export const PREVIOUS_RELEASE_REF = `v${PREVIOUS_RELEASE_VERSION}`;
 export const PREVIOUS_RELEASE_COMMIT =
-  "4a1c57a10255c26f70f749fc33ff5ae25e23b1ce";
-export const PREVIOUS_RELEASE_SCHEMA_VERSION = 2;
+  "76cba513eadd5137d6703f9abd1c0452531ef788";
+export const PREVIOUS_RELEASE_SCHEMA_VERSION = 5;
 
 const MANIFEST_FORMAT_VERSION = 1;
 
@@ -103,10 +103,18 @@ function inspectPreviousReleaseSource(sourcePath) {
     "scripts",
     "create-visual-qa-fixture.mjs",
   );
+  const migrationManifestPath = path.join(
+    sourcePath,
+    "src",
+    "database",
+    "migrations",
+    "manifest.json",
+  );
   for (const [filePath, label] of [
     [packagePath, "Previous-release package manifest"],
     [schemaPath, "Previous-release Rust database schema"],
     [generatorPath, "Previous-release fixture generator"],
+    [migrationManifestPath, "Previous-release migration manifest"],
   ]) {
     assertRegularFile(filePath, label);
   }
@@ -121,10 +129,58 @@ function inspectPreviousReleaseSource(sourcePath) {
   if (schemaVersion !== PREVIOUS_RELEASE_SCHEMA_VERSION) {
     throw new Error(
       `${PREVIOUS_RELEASE_REF} schema contract changed: expected ` +
-        `${PREVIOUS_RELEASE_SCHEMA_VERSION}, found ${schemaVersion}.`,
+      `${PREVIOUS_RELEASE_SCHEMA_VERSION}, found ${schemaVersion}.`,
     );
   }
-  return { generatorPath, schemaVersion };
+  const migrationManifest = readJson(
+    migrationManifestPath,
+    "previous-release migration manifest",
+  );
+  if (
+    migrationManifest.currentSchemaVersion !== schemaVersion ||
+    !Array.isArray(migrationManifest.migrations)
+  ) {
+    throw new Error(
+      `${PREVIOUS_RELEASE_REF} migration manifest must end at schema ` +
+        `${schemaVersion}.`,
+    );
+  }
+  const structuralMigrations = migrationManifest.migrations
+    .filter((migration) => migration?.role === "schema-migration")
+    .map((migration) => {
+      const migrationPath = path.join(
+        sourcePath,
+        "src",
+        "database",
+        "migrations",
+        String(migration.file),
+      );
+      assertRegularFile(
+        migrationPath,
+        `Previous-release migration ${String(migration.file)}`,
+      );
+      const sql = readFileSync(migrationPath, "utf8");
+      if (
+        !Number.isSafeInteger(migration.fromSchemaVersion) ||
+        !Number.isSafeInteger(migration.toSchemaVersion) ||
+        migration.toSchemaVersion !== migration.fromSchemaVersion + 1 ||
+        !/^[0-9a-f]{64}$/.test(String(migration.sha256)) ||
+        sha256File(migrationPath) !== migration.sha256
+      ) {
+        throw new Error(
+          `${PREVIOUS_RELEASE_REF} migration ${String(
+            migration.file,
+          )} failed its sequence or SHA-256 contract.`,
+        );
+      }
+      return {
+        file: String(migration.file),
+        fromSchemaVersion: migration.fromSchemaVersion,
+        sql,
+        toSchemaVersion: migration.toSchemaVersion,
+      };
+    });
+  return { generatorPath, schemaVersion, structuralMigrations };
 }
 
 function runPreviousReleaseFixtureGenerator({ generatorPath, outputPath, sourcePath }) {
@@ -146,6 +202,10 @@ function runPreviousReleaseFixtureGenerator({ generatorPath, outputPath, sourceP
       `exit ${String(result.status)}`;
     throw new Error(`Could not generate ${PREVIOUS_RELEASE_REF} fixture: ${detail}`);
   }
+  assertRegularFile(
+    outputPath,
+    `${PREVIOUS_RELEASE_REF} generated fixture database`,
+  );
 }
 
 function inspectFixtureSchema(databasePath) {
@@ -155,6 +215,57 @@ function inspectFixtureSchema(databasePath) {
   });
   try {
     return Number(database.pragma("user_version", { simple: true }));
+  } finally {
+    database.close();
+  }
+}
+
+function upgradeGeneratedFixtureToPreviousReleaseSchema(
+  databasePath,
+  { schemaVersion, structuralMigrations },
+) {
+  const database = new Database(databasePath, { fileMustExist: true });
+  try {
+    const migrate = database.transaction(() => {
+      let generatedSchemaVersion = Number(
+        database.pragma("user_version", { simple: true }),
+      );
+      if (generatedSchemaVersion > schemaVersion) {
+        throw new Error(
+          `${PREVIOUS_RELEASE_REF} generated fixture schema ` +
+            `${generatedSchemaVersion} is newer than its code schema ` +
+            `${schemaVersion}.`,
+        );
+      }
+      for (const migration of structuralMigrations ?? []) {
+        if (migration.toSchemaVersion <= generatedSchemaVersion) {
+          continue;
+        }
+        if (migration.fromSchemaVersion !== generatedSchemaVersion) {
+          throw new Error(
+            `No ${PREVIOUS_RELEASE_REF} fixture migration path from schema ` +
+              `${generatedSchemaVersion} before ${migration.file}.`,
+          );
+        }
+        database.exec(migration.sql);
+        generatedSchemaVersion = migration.toSchemaVersion;
+        database.pragma(`user_version = ${generatedSchemaVersion}`);
+      }
+      if (generatedSchemaVersion !== schemaVersion) {
+        throw new Error(
+          `${PREVIOUS_RELEASE_REF} generated fixture schema ` +
+            `${generatedSchemaVersion} does not match its code schema ` +
+            `${schemaVersion}.`,
+        );
+      }
+    });
+    migrate();
+    const quickCheck = database.pragma("quick_check", { simple: true });
+    if (quickCheck !== "ok") {
+      throw new Error(
+        `${PREVIOUS_RELEASE_REF} generated fixture failed SQLite quick_check.`,
+      );
+    }
   } finally {
     database.close();
   }
@@ -197,6 +308,7 @@ export async function preparePreviousReleaseUpgradeFixture(
       outputPath: sourceFixturePath,
       sourcePath,
     });
+    upgradeGeneratedFixtureToPreviousReleaseSchema(sourceFixturePath, source);
     const generatedSchemaVersion = inspectFixtureSchema(sourceFixturePath);
     if (generatedSchemaVersion !== source.schemaVersion) {
       throw new Error(
@@ -334,7 +446,7 @@ function parseCliOptions(argv) {
     throw new Error(
       "Usage: node scripts/prepare-previous-release-upgrade-fixture.mjs " +
         "--database=<output> --manifest=<output> " +
-        "[--source=<v0.27.0-checkout> | --verify]",
+        "[--source=<v0.28.0-checkout> | --verify]",
     );
   }
   return {

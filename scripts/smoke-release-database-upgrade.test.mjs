@@ -136,10 +136,10 @@ test("release database upgrade smoke normalizes accepted paths", () => {
     executablePath: "candidate",
     logDirectory: "logs",
     requireVisibleWindow: false,
-    sourceRelease: "v0.27.0",
+    sourceRelease: "v0.28.0",
   });
   assert.equal(compatibilityOptions.allowCurrentSchema, true);
-  assert.equal(compatibilityOptions.sourceRelease, "v0.27.0");
+  assert.equal(compatibilityOptions.sourceRelease, "v0.28.0");
 });
 
 test("release database upgrade CLI parses integers without partial coercion", () => {
@@ -161,11 +161,11 @@ test("release database upgrade CLI parses integers without partial coercion", ()
     ...requiredArguments,
     "--database-readiness-only",
     "--allow-current-schema",
-    "--source-release=v0.27.0",
+    "--source-release=v0.28.0",
   ]);
   assert.equal(databaseReadinessOptions.requireVisibleWindow, false);
   assert.equal(databaseReadinessOptions.allowCurrentSchema, true);
-  assert.equal(databaseReadinessOptions.sourceRelease, "v0.27.0");
+  assert.equal(databaseReadinessOptions.sourceRelease, "v0.28.0");
   assert.throws(
     () =>
       parseReleaseDatabaseUpgradeSmokeCliOptions([
