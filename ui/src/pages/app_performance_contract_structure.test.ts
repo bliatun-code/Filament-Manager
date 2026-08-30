@@ -167,8 +167,9 @@ test("inventory page refresh does not serialize independent page reads", () => {
 
   assert.match(
     refreshSource,
-    /const refreshes = \[\s*reloadSpools\(reportResult\),\s*reloadWishlist\(reportResult\),\s*reloadActiveLoans\(reportResult\),\s*reloadPrinterOverview\(reportResult\),\s*reloadCatalog\(reportResult\),\s*\];/,
+    /const refreshes = \[\s*reloadSpools\(reportResult\),\s*reloadWishlist\(reportResult\),\s*reloadActiveLoans\(reportResult\),\s*reloadPrinterOverview\(reportResult\),\s*\];/,
   );
+  assert.doesNotMatch(refreshSource, /reloadCatalog\(reportResult\)/);
   assert.match(refreshSource, /await Promise\.all\(refreshes\)/);
   assert.doesNotMatch(refreshSource, /\bsetTimeout\s*\(/);
 });

@@ -18,6 +18,7 @@ import {
   buildInventoryCreateSelectionSummary,
   type InventoryCreateMode,
 } from "../lib/inventory_create_model";
+import type { InventoryCatalogLoadState } from "../lib/use_inventory_catalog_reload";
 import type { OwnershipType } from "../lib/inventory_list_model";
 import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow } from "../lib/tauri_client";
@@ -34,6 +35,7 @@ export type InventoryAddModalProps = {
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
+  catalogLoadState: InventoryCatalogLoadState;
   catalogMasterById: Map<string, MasterCatalogRow>;
   catalogQuery: string;
   createMode: InventoryCreateMode;
@@ -69,6 +71,7 @@ export type InventoryAddModalProps = {
   onManualMaterialChange: (value: string) => void;
   onManualVendorChange: (value: string) => void;
   onOwnershipTypeChange: (value: OwnershipType) => void;
+  onRetryCatalog: () => void;
   onSelectCatalogMaster: (master: MasterCatalogRow) => void;
   onUseManualFromCatalog: () => void;
   open: boolean;
@@ -76,6 +79,7 @@ export type InventoryAddModalProps = {
   panelStyle?: CSSProperties;
   purpose: InventoryEntryPurpose;
   resolvedTheme: ResolvedTheme;
+  returnFocusElement?: HTMLElement | null;
   selectedCatalogMasterId: string | null;
   tauriAvailable: boolean;
 };
@@ -90,6 +94,7 @@ export function InventoryAddModal({
   borrowedFromContact,
   borrowedFromName,
   borrowedInNote,
+  catalogLoadState,
   catalogMasterById,
   catalogQuery,
   createMode,
@@ -125,6 +130,7 @@ export function InventoryAddModal({
   onManualMaterialChange,
   onManualVendorChange,
   onOwnershipTypeChange,
+  onRetryCatalog,
   onSelectCatalogMaster,
   onUseManualFromCatalog,
   open,
@@ -132,6 +138,7 @@ export function InventoryAddModal({
   panelStyle,
   purpose,
   resolvedTheme,
+  returnFocusElement,
   selectedCatalogMasterId,
   tauriAvailable,
 }: InventoryAddModalProps) {
@@ -154,11 +161,14 @@ export function InventoryAddModal({
   });
 
   const openBambuBatchModal = useCallback(() => {
+    if (catalogLoadState !== "READY") {
+      return;
+    }
     if (createMode !== "bambu") {
       onCreateModeChange("bambu");
     }
     setBambuBatchModalOpen(true);
-  }, [createMode, onCreateModeChange]);
+  }, [catalogLoadState, createMode, onCreateModeChange]);
 
   useEffect(() => {
     if (!open) {
@@ -166,12 +176,28 @@ export function InventoryAddModal({
       setAutoOpenedBambuBatch(false);
       return;
     }
-    if (!autoOpenBambuBatch || autoOpenedBambuBatch) {
+    if (
+      !autoOpenBambuBatch ||
+      autoOpenedBambuBatch ||
+      catalogLoadState !== "READY"
+    ) {
       return;
     }
     openBambuBatchModal();
     setAutoOpenedBambuBatch(true);
-  }, [autoOpenBambuBatch, autoOpenedBambuBatch, open, openBambuBatchModal]);
+  }, [
+    autoOpenBambuBatch,
+    autoOpenedBambuBatch,
+    catalogLoadState,
+    open,
+    openBambuBatchModal,
+  ]);
+
+  useEffect(() => {
+    if (catalogLoadState !== "READY") {
+      setBambuBatchModalOpen(false);
+    }
+  }, [catalogLoadState]);
 
   if (!open) {
     return null;
@@ -183,6 +209,7 @@ export function InventoryAddModal({
       onBackdropClose={onClose}
       overlayClassName={inventoryModalOverlayClassName}
       panelClassName={inventoryWideModalPanelClassName}
+      returnFocusElement={returnFocusElement}
     >
       <>
         <ModalHeader
@@ -214,6 +241,7 @@ export function InventoryAddModal({
             purpose === "STOCK" ? (
               <ModalHeaderActionButton
                 onClick={openBambuBatchModal}
+                disabled={catalogLoadState !== "READY"}
                 aria-label={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
                 title={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
               >
@@ -249,6 +277,7 @@ export function InventoryAddModal({
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
                 autoFocusCatalogSearch
+                catalogLoadState={catalogLoadState}
                 catalogQuery={catalogQuery}
                 createMode={createMode}
                 isCatalogCreateMode={isCatalogCreateMode}
@@ -264,6 +293,7 @@ export function InventoryAddModal({
                 onManualHexColorChange={onManualHexColorChange}
                 onManualMaterialChange={onManualMaterialChange}
                 onManualVendorChange={onManualVendorChange}
+                onRetryCatalog={onRetryCatalog}
                 onSelectCatalogMaster={onSelectCatalogMaster}
                 onUseManualFromCatalog={onUseManualFromCatalog}
                 resolvedTheme={resolvedTheme}

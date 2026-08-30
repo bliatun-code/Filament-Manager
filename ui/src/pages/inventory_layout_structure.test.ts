@@ -30,6 +30,10 @@ const inventoryCatalogReloadSource = readFileSync(
   new URL("../lib/use_inventory_catalog_reload.ts", import.meta.url),
   "utf8",
 );
+const inventoryAddWorkflowSource = readFileSync(
+  new URL("../lib/use_inventory_add_workflow.ts", import.meta.url),
+  "utf8",
+);
 const inventorySelectedDetailStateSource = readFileSync(
   new URL("../lib/use_inventory_selected_spool_detail_state.ts", import.meta.url),
   "utf8",
@@ -79,6 +83,27 @@ test("inventory label sheets preserve lazy QR and label rendering chunks", () =>
     inventoryLabelSheetActionSource,
     /import \{ resolveSpoolQrCompanionShellUrl \} from "\.\/spool_qr_artifacts"/,
   );
+});
+
+test("inventory add workflow stays out of the initial inventory bundle", () => {
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /import type \{ InventoryAddModalProps \} from "\.\/inventory_add_modal"/,
+  );
+  assert.match(inventoryPageWorkspaceSource, /import\("\.\/inventory_add_modal"\)/);
+  assert.doesNotMatch(
+    inventoryPageWorkspaceSource,
+    /import \{ InventoryAddModal, type InventoryAddModalProps \}/,
+  );
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /addModalActive \? \([\s\S]*<InventoryAddModalBoundary/,
+  );
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /<Suspense[\s\S]*fallback=\{[\s\S]*<AppModal[\s\S]*role="status"[\s\S]*<InventoryAddModalView/,
+  );
+  assert.match(inventoryPageWorkspaceSource, /returnFocusElement=\{returnFocusElement\}/);
 });
 
 test("inventory filters do not own header search and primary actions", () => {
@@ -149,6 +174,7 @@ test("inventory exposes managed location objects and autocomplete in one click",
   assert.match(inventoryPageSource, /<InventoryLocationDatalist rows=\{locations\}/);
   assert.match(inventoryPageSource, /locationPanelProps=\{\{/);
   assert.match(inventoryPageSource, /onOpenLinkedSpools: openLinkedLocationSpools/);
+  assert.match(inventoryPageSource, /onReload: \(\) => reloadLocations\(\)/);
   assert.match(
     inventoryPageSource,
     /showLocationSpools\(location\);\s*setActiveWorkspaceView\("STOCK"\)/,
@@ -209,14 +235,15 @@ test("inventory layout preferences stay deterministic in visual QA and separate 
   assert.doesNotMatch(lowStockSource, /writeInventoryPagePreferences/);
 });
 
-test("inventory refreshes every page dataset without a persistent header action", () => {
+test("inventory refreshes page data without eagerly loading the add-flow catalog", () => {
   const headerActionsSource = inventoryControlsSource.slice(
     inventoryControlsSource.indexOf("export function InventoryHeaderActions"),
     inventoryControlsSource.indexOf("export function InventoryControlsPanel"),
   );
+  const refreshStart = inventoryPageDataSource.indexOf("const refreshInventoryData");
   const refreshSource = inventoryPageDataSource.slice(
-    inventoryPageDataSource.indexOf("const refreshInventoryData"),
-    inventoryPageDataSource.indexOf("return {"),
+    refreshStart,
+    inventoryPageDataSource.indexOf("\n  return {", refreshStart),
   );
 
   assert.doesNotMatch(headerActionsSource, /PageRefreshButton/);
@@ -228,10 +255,89 @@ test("inventory refreshes every page dataset without a persistent header action"
   assert.match(refreshSource, /reloadWishlist\(reportResult\)/);
   assert.match(refreshSource, /reloadActiveLoans\(reportResult\)/);
   assert.match(refreshSource, /reloadPrinterOverview\(reportResult\)/);
-  assert.match(refreshSource, /reloadCatalog\(reportResult\)/);
+  assert.doesNotMatch(refreshSource, /reloadCatalog\(reportResult\)/);
+  assert.match(
+    inventoryCatalogReloadSource,
+    /!showAddModal[\s\S]*sidePanelMode !== "ADD"[\s\S]*void reloadCatalog\(\)/,
+  );
   assert.match(refreshSource, /reloadSpoolDetail\(selectedSpoolId, reportResult\)/);
+  assert.match(refreshSource, /const expectedDomains: InventoryDataRequestDomain\[\]/);
+  assert.match(refreshSource, /expectedDomains\.push\("detail"\)/);
+  assert.match(refreshSource, /const missingDomains = expectedDomains\.filter/);
+  assert.match(refreshSource, /resolution === "SUPERSEDED"/);
   assert.match(refreshSource, /completeRefresh\(\)/);
   assert.match(refreshSource, /failRefresh\(/);
+});
+
+test("catalog-backed create actions wait for the current catalog request", () => {
+  assert.match(
+    inventoryAddWorkflowSource,
+    /const catalogSelectionUnavailable =[\s\S]*isCatalogCreateMode && catalogLoadState !== "READY"/,
+  );
+  assert.match(
+    inventoryAddWorkflowSource,
+    /const disableCreate =[\s\S]*catalogSelectionUnavailable \|\|[\s\S]*isInventoryCreateDisabled/,
+  );
+  assert.match(
+    inventoryAddWorkflowSource,
+    /const disableWishlistCreate =[\s\S]*catalogSelectionUnavailable/,
+  );
+  assert.match(
+    inventoryAddWorkflowSource,
+    /disabledBambuBatchCreate:[\s\S]*catalogLoadState !== "READY" \|\| bambuBatchCreateState\.disabled/,
+  );
+});
+
+test("inventory Host feedback waits for a settled role and initial load", () => {
+  assert.match(inventoryPageDataSource, /useState<ClientSnapshotSource>\("UNRESOLVED"\)/);
+  assert.match(inventoryPageDataSource, /setClientInventorySource\("UNRESOLVED"\)/);
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /shouldShowClientSnapshotWarning\(\{[\s\S]*clientReadOnly,[\s\S]*initialLoadSettled: librarySyncReady && !loading/,
+  );
+  assert.match(inventoryPageDataSource, /isClientCompositeSnapshotPartial/);
+  assert.match(inventoryPageDataSource, /clientInventoryDomainSourcesRef/);
+  assert.match(inventoryPageDataSource, /recordClientInventoryDomainSource/);
+  assert.match(inventoryPageDataSource, /new Map<InventoryDataRequestDomain, InventoryReloadResolution>/);
+  assert.match(
+    inventoryPageDataSource,
+    /setClientInventoryPartial\([\s\S]*primarySource: clientInventorySourceRef\.current,[\s\S]*secondarySources/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /clientInventorySourceRef\.current = "UNRESOLVED";[\s\S]*beginRefresh\(\)/,
+  );
+  assert.match(
+    inventoryPageDataSource,
+    /result\.source === "OFFLINE"[\s\S]*setSpools\(result\.rows\)/,
+  );
+  assert.match(
+    inventoryPageWorkspaceSource,
+    /showOfflineSourceWarning=\{[\s\S]*clientReadOnly &&[\s\S]*!clientDataWarningVisible &&[\s\S]*!loadError &&[\s\S]*librarySyncReady &&[\s\S]*!loading/,
+  );
+  assert.match(inventoryPageWorkspaceSource, /clientPartialWarningVisible/);
+  assert.match(inventoryPageWorkspaceSource, /!loadError && \(clientHostWarningVisible \|\| clientPartialWarningVisible\)/);
+  assert.match(inventoryPageWorkspaceSource, /<PageDataFallbackBanner/);
+  assert.match(inventoryPageWorkspaceSource, /onRetry=\{onRetryLoadError\}/);
+});
+
+test("loan client fallback completes cleanly and uses only settled Host feedback", () => {
+  const reloadSource = loansPageSource.slice(
+    loansPageSource.indexOf("const reload = useCallback"),
+    loansPageSource.indexOf("useEffect(() =>", loansPageSource.indexOf("const reload = useCallback")),
+  );
+  assert.doesNotMatch(reloadSource, /result\.source === "OFFLINE"[\s\S]*failRefresh/);
+  assert.match(reloadSource, /setLoans\(result\.rows\);[\s\S]*completeRefresh\(\)/);
+  assert.match(
+    loansPageSource,
+    /shouldShowClientSnapshotWarning\(\{[\s\S]*initialLoadSettled: librarySyncReady && !loading/,
+  );
+  assert.match(loansPageSource, /<PageDataFallbackBanner/);
+  assert.match(
+    loansPageSource,
+    /clientHostWarningVisible && !librarySyncError && !loadError/,
+  );
+  assert.match(loansPageSource, /onRetry=\{\(\) => void reload\(\)\}/);
 });
 
 test("inventory role resolution stays fail-closed and retryable before enabling writes", () => {
@@ -272,7 +378,7 @@ test("inventory data requests cannot land after a role or target transition", ()
   assert.match(targetClearSource, /setUsageLoading\(false\)/);
   assert.match(
     inventoryPageDataSource,
-    /const requestId = beginDataRequest\("spools"\);[\s\S]*?if \(!dataRequestIsCurrent\("spools", requestId\)\) \{\s*return;/,
+    /const requestId = beginDataRequest\("spools"\);[\s\S]*?if \(!dataRequestIsCurrent\("spools", requestId\)\) \{[\s\S]*?"SUPERSEDED"[\s\S]*?return;/,
   );
   assert.match(
     inventoryPageDataSource,
@@ -281,16 +387,43 @@ test("inventory data requests cannot land after a role or target transition", ()
   assert.doesNotMatch(inventoryPageDataSource, /refreshInFlightRef/);
 });
 
-test("inventory loaders preserve last-good state on transient failures", () => {
+test("inventory loaders clear unavailable client-only state without clearing local failures", () => {
   const transientLoaderSource = inventoryPageDataSource.slice(
     inventoryPageDataSource.indexOf("const reloadLocations"),
     inventoryPageDataSource.indexOf("const refreshInventoryData"),
   );
-  assert.doesNotMatch(transientLoaderSource, /setWishlistItems\(\[\]\)/);
-  assert.doesNotMatch(transientLoaderSource, /setActiveLoans\(\[\]\)/);
-  assert.doesNotMatch(transientLoaderSource, /setPrinterOverview\(\[\]\)/);
-  assert.doesNotMatch(transientLoaderSource, /setHistoryRows\(\[\]\)/);
-  assert.doesNotMatch(transientLoaderSource, /setUsagePoints\(\[\]\)/);
+  assert.match(
+    transientLoaderSource,
+    /if \(clientReadOnly\) \{[\s\S]*?if \(reportResult\) \{\s*setLocations\(\[\]\);\s*\}[\s\S]*?setLocationMutationsSupported\(false\);[\s\S]*?setLocationSource\("OFFLINE"\);/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /loadWishlistItemsSnapshot[\s\S]*result\.source === "OFFLINE" && !reportResult[\s\S]*recordClientInventoryDomainSource\("wishlist", "OFFLINE"\)[\s\S]*setWishlistItems\(result\.rows\)[\s\S]*recordClientInventoryDomainSource\("wishlist", result\.source\)/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /loadActiveLoanRowsSnapshot[\s\S]*result\.source === "OFFLINE" && !reportResult[\s\S]*recordClientInventoryDomainSource\("loans", "OFFLINE"\)[\s\S]*setActiveLoans\(result\.rows\)[\s\S]*recordClientInventoryDomainSource\("loans", result\.source\)/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /overview\.source === "OFFLINE"[\s\S]*setPrinterOverview\(\[\]\)[\s\S]*reportResult\?\.\("printers", "OFFLINE"\)/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /if \(reportResult && clientReadOnly\) \{\s*setHistoryRows\(\[\]\);\s*setUsagePoints\(\[\]\);\s*\}[\s\S]*?recordClientInventoryDomainSource\("detail", "OFFLINE"\)[\s\S]*?reportResult\?\.\("detail", clientReadOnly \? "OFFLINE" : "ERROR"\)/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /result\.source === "OFFLINE" && !reportResult[\s\S]*Keep their last-good rows[\s\S]*return;/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /const hasLastGoodSnapshot =[\s\S]*clientInventorySourceRef\.current === "LIVE"[\s\S]*clientInventorySourceRef\.current === "CACHED"[\s\S]*result\.source === "OFFLINE" && !reportResult && hasLastGoodSnapshot[\s\S]*\? "CACHED"/,
+  );
+  assert.match(
+    transientLoaderSource,
+    /setLocationMutationsSupported\(false\);[\s\S]*setLocationSource\("OFFLINE"\);[\s\S]*recordClientInventoryDomainSource\("locations", "OFFLINE"\)/,
+  );
   assert.doesNotMatch(inventoryCatalogReloadSource, /setMasters\(\[\]\)/);
   assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current === selectedSpool\.id/);
   assert.match(inventoryPageSource, /error=\{error\}/);

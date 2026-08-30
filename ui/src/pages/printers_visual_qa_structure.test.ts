@@ -25,6 +25,19 @@ test("printer page keeps its header action aligned until the compact card breakp
   );
 });
 
+test("client printer fallback waits for settled data and stays retryable", () => {
+  assert.match(
+    pageSource,
+    /shouldShowClientSnapshotWarning\(\{[\s\S]*initialLoadSettled: librarySyncReady && !loading/,
+  );
+  assert.match(
+    pageSource,
+    /clientHostWarningVisible && !librarySyncError && !loadError/,
+  );
+  assert.match(pageSource, /<PageDataFallbackBanner/);
+  assert.match(pageSource, /onRetry=\{\(\) => void reloadData\(\)\}/);
+});
+
 test("add-printer visual QA waits for loaded desktop data and opens the real modal", () => {
   assert.match(pageSource, /desktopVisualQaScenario === "add-printer"/);
   assert.match(

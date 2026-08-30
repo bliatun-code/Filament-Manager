@@ -821,6 +821,8 @@ export default function SettingsPage({
           loading,
         locale,
         hostUnsupported: filamentDefaults.hostUnsupported,
+        hostTargetMissing: filamentDefaults.hostTargetMissing,
+        loadFailed: filamentDefaults.loadFailed,
         readOnly: !tauri || settingsClientReadOnly,
         t,
         lowStock: {
@@ -845,6 +847,7 @@ export default function SettingsPage({
         onApplyBatch: filamentDefaults.onApplyBatch,
         onBatchReceiptChange: onFilamentPriceBatchReceiptChange,
         onOpenSpoolDetail: onOpenInventorySpoolDetails,
+        onReload: filamentDefaults.retryLoad,
         onSaveDefaultCurrency: filamentDefaults.onSaveDefaultCurrency,
         onSaveGroupPrice: filamentDefaults.onSaveGroupPrice,
       },

@@ -58,12 +58,16 @@ function renderTab({
   batchReceipt,
   locale = "en",
   hostUnsupported = false,
+  hostTargetMissing = false,
+  loadFailed = false,
   readOnly = false,
   settingsValid = true,
 }: {
   batchReceipt?: FilamentPriceBatchReceipt | null;
   locale?: Locale;
   hostUnsupported?: boolean;
+  hostTargetMissing?: boolean;
+  loadFailed?: boolean;
   readOnly?: boolean;
   settingsValid?: boolean;
 } = {}) {
@@ -72,6 +76,8 @@ function renderTab({
     <SettingsFilamentDefaultsTab
       busy={false}
       hostUnsupported={hostUnsupported}
+      hostTargetMissing={hostTargetMissing}
+      loadFailed={loadFailed}
       locale={locale}
       batchReceipt={batchReceipt}
       readOnly={readOnly}
@@ -118,6 +124,7 @@ function renderTab({
         skipped: [],
       })}
       onOpenSpoolDetail={() => {}}
+      onReload={() => {}}
     />,
   );
 }
@@ -186,6 +193,25 @@ test("older Hosts expose the localized upgrade warning while fallback rows remai
     /Mettez à jour l’hôte avant d’utiliser les valeurs de tarification des filaments/,
   );
   assert.match(french, /PLA Basic/);
+});
+
+test("a client filament-default load failure stays scoped and retryable", () => {
+  const html = renderTab({ loadFailed: true, readOnly: true });
+
+  assert.match(html, /Failed to load filament defaults/);
+  assert.match(html, /<button[^>]*type="button"[^>]*>Refresh<\/button>/);
+  assert.doesNotMatch(html, /Update the Host before using filament pricing standards/);
+  assert.match(html, /PLA Basic/);
+});
+
+test("a client without a Host target gets scoped pairing guidance without a useless retry", () => {
+  const html = renderTab({ hostTargetMissing: true, readOnly: true });
+
+  assert.match(html, /Host connection details are missing for this client device/);
+  assert.match(html, /Start with a short-lived pairing link from the host/);
+  assert.doesNotMatch(html, /<button[^>]*type="button"[^>]*>Refresh<\/button>/);
+  assert.doesNotMatch(html, /Failed to load filament defaults/);
+  assert.match(html, /PLA Basic/);
 });
 
 test("invalid or orphaned saved standards expose the repair state", () => {

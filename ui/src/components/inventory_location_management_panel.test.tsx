@@ -76,22 +76,33 @@ const rows = [
 function renderPanel(
   source: "LIVE" | "CACHED" | "LEGACY_HOST" | "OFFLINE",
   mutationsSupported: boolean,
+  {
+    canMutate = true,
+    loading = false,
+    showOfflineSourceWarning,
+  }: {
+    canMutate?: boolean;
+    loading?: boolean;
+    showOfflineSourceWarning?: boolean;
+  } = {},
 ) {
   return renderToStaticMarkup(
     <I18nContext.Provider value={i18nValue}>
       <InventoryLocationManagementPanel
         busy={false}
-        canMutate
-        loading={false}
+        canMutate={canMutate}
+        loading={loading}
         mutationsSupported={mutationsSupported}
         onArchive={async () => true}
         onCreate={async () => true}
         onDelete={async () => true}
         onOpenLinkedSpools={() => {}}
         onMerge={async () => true}
+        onReload={() => {}}
         onRename={async () => true}
         onRestore={async () => true}
         rows={rows}
+        showOfflineSourceWarning={showOfflineSourceWarning}
         source={source}
         usageByLocationId={new Map([
           ["location-active", 2],
@@ -259,7 +270,26 @@ test("legacy and cached Host states explain read-only compatibility without enab
 
   const cachedHtml = renderPanel("CACHED", false);
   assert.match(cachedHtml, /Reconnect to the Host/);
+  assert.match(cachedHtml, /<button[^>]*>Refresh<\/button>/);
   assert.doesNotMatch(cachedHtml, /Host predates location objects/);
+});
+
+test("location-only fallback retry is disabled while locations reload", () => {
+  const html = renderPanel("OFFLINE", false, { loading: true });
+
+  assert.match(html, /Reconnect to the Host/);
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /<button[^>]*disabled[^>]*>Refresh<\/button>/);
+});
+
+test("suppressed offline feedback does not fall through to a misleading pairing notice", () => {
+  const html = renderPanel("OFFLINE", false, {
+    canMutate: false,
+    showOfflineSourceWarning: false,
+  });
+
+  assert.doesNotMatch(html, /Reconnect to the Host/);
+  assert.doesNotMatch(html, /Pair this client with the Host/);
 });
 
 test("large system location sets never inflate the management surface", () => {
@@ -282,6 +312,7 @@ test("large system location sets never inflate the management surface", () => {
         onDelete={async () => true}
         onOpenLinkedSpools={() => {}}
         onMerge={async () => true}
+        onReload={() => {}}
         onRename={async () => true}
         onRestore={async () => true}
         rows={[location(), ...systemRows]}

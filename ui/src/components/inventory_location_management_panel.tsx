@@ -194,9 +194,11 @@ type InventoryLocationManagementPanelProps = {
   onDelete: (locationId: string) => Promise<boolean>;
   onOpenLinkedSpools: (location: InventoryLocationFilter) => void;
   onMerge: (sourceId: string, targetId: string) => Promise<boolean>;
+  onReload: () => Promise<unknown> | unknown;
   onRename: (locationId: string, name: string) => Promise<boolean>;
   onRestore: (locationId: string) => Promise<boolean>;
   rows: InventoryLocationRow[];
+  showOfflineSourceWarning?: boolean;
   source: "LIVE" | "CACHED" | "LEGACY_HOST" | "OFFLINE";
   usageByLocationId: ReadonlyMap<string, number>;
 };
@@ -232,9 +234,11 @@ export function InventoryLocationManagementPanel({
   onDelete,
   onOpenLinkedSpools,
   onMerge,
+  onReload,
   onRename,
   onRestore,
   rows,
+  showOfflineSourceWarning = true,
   source,
   usageByLocationId,
 }: InventoryLocationManagementPanelProps) {
@@ -527,12 +531,28 @@ export function InventoryLocationManagementPanel({
           )}
         </FeedbackBanner>
       ) : source !== "LIVE" ? (
-        <FeedbackBanner tone="warning" className="mb-4">
-          {t(
-            "inventory.locationsOffline",
-            "Showing saved location data. Reconnect to the Host before changing locations.",
-          )}
-        </FeedbackBanner>
+        showOfflineSourceWarning ? (
+          <FeedbackBanner tone="warning" className="mb-4">
+            <div className="flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
+              <span>
+                {t(
+                  "inventory.locationsOffline",
+                  "Showing saved location data. Reconnect to the Host before changing locations.",
+                )}
+              </span>
+              <PageHeaderButton
+                aria-busy={loading}
+                className="shrink-0"
+                disabled={busy || loading}
+                onClick={() => void onReload()}
+                responsive={false}
+                variant="soft"
+              >
+                {t("common.refresh", "Refresh")}
+              </PageHeaderButton>
+            </div>
+          </FeedbackBanner>
+        ) : null
       ) : !canMutate ? (
         <FeedbackBanner tone="neutral" className="mb-4">
           {t(

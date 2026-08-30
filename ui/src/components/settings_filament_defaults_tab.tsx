@@ -55,6 +55,8 @@ export type SettingsFilamentDefaultsFocusTarget =
 export type SettingsFilamentDefaultsTabProps = {
   busy: boolean;
   hostUnsupported: boolean;
+  hostTargetMissing: boolean;
+  loadFailed: boolean;
   locale: Locale;
   readOnly: boolean;
   t: TranslateFn;
@@ -74,6 +76,7 @@ export type SettingsFilamentDefaultsTabProps = {
     request: FilamentPriceBatchRequest,
   ) => Promise<FilamentPriceBatchReceipt> | FilamentPriceBatchReceipt;
   onOpenSpoolDetail: (spoolId: string) => void;
+  onReload: () => Promise<unknown> | unknown;
 };
 
 type GroupPriceDraft = {
@@ -409,6 +412,8 @@ function BatchReceiptCard({
 export function SettingsFilamentDefaultsTab({
   busy,
   hostUnsupported,
+  hostTargetMissing,
+  loadFailed,
   locale,
   readOnly,
   t,
@@ -424,6 +429,7 @@ export function SettingsFilamentDefaultsTab({
   onSaveGroupPrice,
   onApplyBatch,
   onOpenSpoolDetail,
+  onReload,
 }: SettingsFilamentDefaultsTabProps) {
   const categories = useMemo(() => buildFilamentPriceGroups(spoolRows), [spoolRows]);
   const groups = useMemo(() => allFilamentPriceGroups(categories), [categories]);
@@ -703,7 +709,42 @@ export function SettingsFilamentDefaultsTab({
 
   return (
     <>
-      {hostUnsupported ? (
+      {loadFailed ? (
+        <SettingsNotice className="lg:col-span-2" tone="warning">
+          <div className="flex flex-col gap-2 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
+            <span>
+              {t(
+                "settings.filamentDefaultsLoadError",
+                "Failed to load filament defaults.",
+              )}
+            </span>
+            <button
+              aria-busy={busy}
+              className={settingsActionButtonClass("warningQuiet", "compact")}
+              disabled={busy}
+              onClick={() => void onReload()}
+              type="button"
+            >
+              {t("common.refresh", "Refresh")}
+            </button>
+          </div>
+        </SettingsNotice>
+      ) : hostTargetMissing ? (
+        <SettingsNotice className="lg:col-span-2" tone="warning">
+          <p>
+            {t(
+              "inventory.clientHostUnavailable",
+              "Host connection details are missing for this client device.",
+            )}
+          </p>
+          <p className="mt-1">
+            {t(
+              "settings.librarySyncClientPairingFlowHint",
+              "Start with a short-lived pairing link from the host. The client uses that link to detect, verify and connect to the correct host automatically.",
+            )}
+          </p>
+        </SettingsNotice>
+      ) : hostUnsupported ? (
         <SettingsNotice className="lg:col-span-2" tone="warning">
           {t(
             "errors.filamentStandardsHostUnsupported",

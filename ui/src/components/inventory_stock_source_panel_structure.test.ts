@@ -36,3 +36,11 @@ test("InventoryStockSourcePanel starts catalog entry in the named search field",
   assert.match(source, /wishlist\.searchEsun/);
   assert.match(source, /max-h-\[22rem\][^"]*overflow-y-auto[^"]*lg:max-h-\[26rem\]/);
 });
+
+test("InventoryStockSourcePanel does not confuse lazy loading failures with no matches", () => {
+  assert.match(source, /catalogLoadState === "IDLE" \|\| catalogLoadState === "LOADING"/);
+  assert.match(source, /catalogLoadState === "ERROR"/);
+  assert.match(source, /onClick=\{onRetryCatalog\}/);
+  assert.match(source, /errors\.requestFailed/);
+  assert.match(source, /catalogReady && activeCatalogMasters\.length === 0/);
+});

@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { StatCard } from "../components/dashboard_widgets";
 import { FeedbackBanner } from "../components/feedback_banner";
+import { PageDataFallbackBanner } from "../components/page_data_fallback_banner";
 import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { formatDateTime } from "../lib/date_time";
 import {
@@ -75,6 +76,7 @@ import { StatisticsPeriodPicker } from "./statistics_period_picker";
 import { StatisticsValueCostPanel } from "./statistics_value_cost_panel";
 import type { StatisticsFilamentDefaultsTarget } from "../lib/statistics_value_cost_model";
 import { useStatisticsPageData } from "./use_statistics_page_data";
+import { shouldShowClientSnapshotWarning } from "../lib/page_refresh_state";
 
 function loanPartyName(row: NormalizedLoanDetailsRow): string {
   return (row.loan.counterparty_name ?? "").trim() || row.loan.borrower_name;
@@ -127,6 +129,11 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
   );
   const [borrowerModalDirection, setBorrowerModalDirection] =
     useState<LoanDirection>("OUTBOUND");
+  const clientHostWarningVisible = shouldShowClientSnapshotWarning({
+    clientReadOnly,
+    initialLoadSettled: !loading,
+    source: clientStatsSource === "PARTIAL" ? "CACHED" : clientStatsSource,
+  });
   const [metricModalKind, setMetricModalKind] = useState<MetricModalKind | null>(null);
   const [slotOwnershipFilter, setSlotOwnershipFilter] = useState<OwnershipFilter>("ALL");
   const [loanUsageListFilter, setLoanUsageListFilter] =
@@ -476,17 +483,20 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
           retrying={refreshing}
         />
       ) : null}
-      {clientReadOnly && clientStatsSource !== "LIVE" ? (
-        <FeedbackBanner tone="warning" className="mt-4">
-          {[
-            clientHostDeviceName
-              ? `${clientHostDeviceName}. `
-              : "",
+      {clientHostWarningVisible && !error ? (
+        <PageDataFallbackBanner
+          message={[
+            clientHostDeviceName ? `${clientHostDeviceName}. ` : "",
             clientStatsSource === "CACHED"
               ? t(
                   "statistics.clientReadOnlyCached",
                   "Host unavailable. Showing the last cached statistics snapshot.",
                 )
+              : clientStatsSource === "PARTIAL"
+                ? t(
+                    "errors.requestFailed",
+                    "The request could not be completed.",
+                  )
               : t(
                   "statistics.clientReadOnlyOffline",
                   "Host unavailable and no cached statistics snapshot is available yet.",
@@ -494,10 +504,21 @@ export default function StatisticsPage({ onOpenFilamentDefaults }: StatisticsPag
             clientStatisticsUpdatedAt
               ? ` ${t("statistics.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientStatisticsUpdatedAt, locale)}.`
               : "",
+            (clientStatsSource === "CACHED" || clientStatsSource === "PARTIAL") &&
+            periodStatus !== "AVAILABLE"
+              ? ` ${t(
+                  "statistics.periodDetailsUnavailable",
+                  "Selected-period totals and filament or printer details are unavailable from this host snapshot. Update or reconnect the host.",
+                )}`
+              : "",
           ].join("")}
-        </FeedbackBanner>
+          onRetry={() => void reloadData()}
+          retryDisabled={!tauri || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
-      {!loading && tauri && periodStatus !== "AVAILABLE" ? (
+      {!loading && tauri && clientStatsSource === "LIVE" && periodStatus !== "AVAILABLE" ? (
         <FeedbackBanner tone="warning" className="mt-4">
           {t(
             "statistics.periodDetailsUnavailable",

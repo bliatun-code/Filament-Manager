@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   lendInventorySpool,
   loadActiveLoanRows,
+  loadActiveLoanRowsSnapshot,
   loadLoanRowsPage,
   normalizeLoanDetailsRow,
   returnInventoryLoan,
@@ -79,6 +80,19 @@ test("loadActiveLoanRows returns no local active loans in client mode", async ()
   );
 
   assert.deepEqual(rows, []);
+});
+
+test("loadActiveLoanRowsSnapshot reports offline without a complete client target", async () => {
+  const result = await loadActiveLoanRowsSnapshot(
+    { clientReadOnly: true },
+    {
+      listLocalActiveLoans: async () => {
+        throw new Error("local active loans should not load in client mode");
+      },
+    },
+  );
+
+  assert.deepEqual(result, { rows: [], source: "OFFLINE" });
 });
 
 test("loadActiveLoanRows reuses cached active outbound loans in client mode", async () => {
@@ -162,6 +176,31 @@ test("loadActiveLoanRows uses live host loans when a client target is complete",
   assert.deepEqual(rows.map((row) => row.loan.spool_id), ["active-outbound"]);
 });
 
+test("loadActiveLoanRowsSnapshot identifies live active outbound loans", async () => {
+  const result = await loadActiveLoanRowsSnapshot(
+    {
+      clientReadOnly: true,
+      clientHostBaseUrl: "http://host",
+      clientLibraryId: "library-1",
+    },
+    {
+      fetchHostLoans: async () => [
+        loanDetailsRow("active-outbound"),
+        {
+          ...loanDetailsRow("active-inbound"),
+          loan: {
+            ...loanDetailsRow("active-inbound").loan,
+            loan_direction: "INBOUND",
+          },
+        },
+      ],
+    },
+  );
+
+  assert.equal(result.source, "LIVE");
+  assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["active-outbound"]);
+});
+
 test("loadActiveLoanRows falls back to cached client loans when live host loans fail", async () => {
   const originalConsoleError = console.error;
   console.error = () => {};
@@ -188,6 +227,60 @@ test("loadActiveLoanRows falls back to cached client loans when live host loans 
     );
 
     assert.deepEqual(rows.map((row) => row.loan.spool_id), ["cached-outbound"]);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("loadActiveLoanRowsSnapshot identifies cached active outbound loans", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadActiveLoanRowsSnapshot(
+      {
+        clientReadOnly: true,
+        clientHostBaseUrl: "http://host",
+        clientLibraryId: "library-1",
+        clientTargetGeneration: 7,
+      },
+      {
+        fetchHostLoans: async () => {
+          throw new Error("host unavailable");
+        },
+        fetchCachedLoans: async () => ({
+          captured_at: "cached-at",
+          rows: [loanDetailsRow("cached-outbound")],
+        }),
+      },
+    );
+
+    assert.equal(result.source, "CACHED");
+    assert.deepEqual(result.rows.map((row) => row.loan.spool_id), ["cached-outbound"]);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("loadActiveLoanRowsSnapshot reports offline instead of throwing without a cache", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadActiveLoanRowsSnapshot(
+      {
+        clientReadOnly: true,
+        clientHostBaseUrl: "http://host",
+        clientLibraryId: "library-1",
+        clientTargetGeneration: 7,
+      },
+      {
+        fetchHostLoans: async () => {
+          throw new Error("host unavailable");
+        },
+        fetchCachedLoans: async () => null,
+      },
+    );
+
+    assert.deepEqual(result, { rows: [], source: "OFFLINE" });
   } finally {
     console.error = originalConsoleError;
   }

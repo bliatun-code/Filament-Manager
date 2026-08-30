@@ -111,6 +111,7 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientHostDeviceName,
     clientHostWritePaired,
+    clientInventoryPartial,
     clientInventorySource,
     clientInventoryUpdatedAt,
     clientLibraryId,
@@ -131,6 +132,7 @@ export default function InventoryPage({
     refreshInventoryData,
     refreshing,
     reloadActiveLoans,
+    reloadLocations,
     reloadPrinterOverview,
     retryLibrarySyncRole,
     reloadSpoolDetail,
@@ -400,15 +402,14 @@ export default function InventoryPage({
     if (!tauri || !librarySyncReady) {
       return;
     }
-    void refreshInventoryData({ reloadCatalog });
-  }, [librarySyncReady, refreshInventoryData, reloadCatalog, tauri]);
+    void refreshInventoryData();
+  }, [librarySyncReady, refreshInventoryData, tauri]);
 
   const refreshInventoryPage = useCallback(() => {
     void refreshInventoryData({
-      reloadCatalog,
       selectedSpoolId: showRollModal ? selectedSpoolId : null,
     });
-  }, [refreshInventoryData, reloadCatalog, selectedSpoolId, showRollModal]);
+  }, [refreshInventoryData, selectedSpoolId, showRollModal]);
 
   const retryInventoryPageLoad = useCallback(() => {
     if (!librarySyncReady) {
@@ -1438,9 +1439,12 @@ export default function InventoryPage({
         bulkActionsProps={inventoryBulkActionsProps}
         bulkSelectionTriggerProps={inventoryBulkSelectionTriggerProps}
         clientHostDeviceName={clientHostDeviceName}
+        clientInventoryPartial={clientInventoryPartial}
         clientInventorySource={clientInventorySource}
         clientInventoryUpdatedAt={clientInventoryUpdatedAt}
         clientReadOnly={clientReadOnly}
+        librarySyncReady={librarySyncReady}
+        loading={loading}
         collectionProps={{
           ...inventoryBulkCollectionProps,
           filteredSpools,
@@ -1488,6 +1492,7 @@ export default function InventoryPage({
           onDelete: deleteLocation,
           onOpenLinkedSpools: openLinkedLocationSpools,
           onMerge: mergeLocations,
+          onReload: () => reloadLocations(),
           onRename: renameLocation,
           onRestore: restoreLocation,
           rows: locations,

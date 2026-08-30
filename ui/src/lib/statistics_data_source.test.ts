@@ -431,7 +431,7 @@ test("loadStatisticsData ignores unscoped cached client loan details", async () 
   assert.equal(cachedLoan.loan.loan_status, "active");
 });
 
-test("loadStatisticsData keeps partial client host data and cache when host calls fail", async () => {
+test("loadStatisticsData marks mixed live and cached client data as partial", async () => {
   const originalConsoleError = console.error;
   console.error = () => {};
   try {
@@ -484,7 +484,7 @@ test("loadStatisticsData keeps partial client host data and cache when host call
     assert.deepEqual(hostSpoolCalls, [
       { clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     ]);
-    assert.equal(result.source, "CACHED");
+    assert.equal(result.source, "PARTIAL");
     assert.equal(result.updatedAt, "printer-cache");
     assert.equal(result.overview?.total_spools, 1);
     assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
@@ -494,6 +494,144 @@ test("loadStatisticsData keeps partial client host data and cache when host call
       "host-consumption",
     ]);
     assert.equal(result.periodStatus, "AVAILABLE");
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("loadStatisticsData reserves cached source for a fully unavailable Host", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-1",
+        target_generation: 7,
+      }),
+      reportingPeriod,
+      {
+        fetchHostSnapshot: async () => {
+          throw new Error("snapshot unavailable");
+        },
+        fetchHostPrinterOverview: async () => {
+          throw new Error("printer overview unavailable");
+        },
+        fetchHostLoans: async () => {
+          throw new Error("loans unavailable");
+        },
+        loadHostSpools: async () => {
+          throw new Error("spools unavailable");
+        },
+        fetchHostPeriodReport: async () => {
+          throw new Error("period report unavailable");
+        },
+        fetchCachedPrinterOverview: async () => ({
+          captured_at: "printer-cache",
+          rows: [printerRow("cached-printer")],
+        }),
+        fetchCachedLoans: async () => ({
+          captured_at: "loan-cache",
+          rows: [loanRow("cached-loan")],
+        }),
+        fetchCachedSpools: async () => ({
+          captured_at: "spool-cache",
+          rows: [spoolRow("cached-spool")],
+        }),
+      },
+    );
+
+    assert.equal(result.source, "CACHED");
+    assert.equal(result.updatedAt, "spool-cache");
+    assert.equal(result.periodStatus, "UNAVAILABLE");
+    assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("loadStatisticsData preserves a live period report when every other Host slice fails", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const livePeriodReport = periodReport({ total_used_g: 123 });
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-1",
+        target_generation: 7,
+      }),
+      reportingPeriod,
+      {
+        fetchHostSnapshot: async () => {
+          throw new Error("snapshot unavailable");
+        },
+        fetchHostPrinterOverview: async () => {
+          throw new Error("printers unavailable");
+        },
+        fetchHostLoans: async () => {
+          throw new Error("loans unavailable");
+        },
+        loadHostSpools: async () => {
+          throw new Error("spools unavailable");
+        },
+        fetchHostPeriodReport: async () => livePeriodReport,
+        fetchCachedPrinterOverview: async () => null,
+        fetchCachedLoans: async () => null,
+        fetchCachedSpools: async () => null,
+      },
+    );
+
+    assert.equal(result.source, "PARTIAL");
+    assert.equal(result.periodStatus, "AVAILABLE");
+    assert.equal(result.periodReport?.total_used_g, 123);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
+
+test("loadStatisticsData treats an empty cached slice as an available cached snapshot", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    const result = await loadStatisticsData(
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-1",
+        target_generation: 7,
+      }),
+      reportingPeriod,
+      {
+        fetchHostSnapshot: async () => {
+          throw new Error("snapshot unavailable");
+        },
+        fetchHostPrinterOverview: async () => {
+          throw new Error("printers unavailable");
+        },
+        fetchHostLoans: async () => {
+          throw new Error("loans unavailable");
+        },
+        loadHostSpools: async () => {
+          throw new Error("spools unavailable");
+        },
+        fetchHostPeriodReport: async () => {
+          throw new Error("period unavailable");
+        },
+        fetchCachedPrinterOverview: async () => ({
+          captured_at: "empty-cache",
+          rows: [],
+        }),
+        fetchCachedLoans: async () => null,
+        fetchCachedSpools: async () => null,
+      },
+    );
+
+    assert.equal(result.source, "CACHED");
+    assert.equal(result.updatedAt, "empty-cache");
+    assert.deepEqual(result.printers, []);
   } finally {
     console.error = originalConsoleError;
   }
@@ -583,7 +721,7 @@ test("loadStatisticsData distinguishes a period report failure from an older hos
       },
     );
 
-    assert.equal(result.source, "CACHED");
+    assert.equal(result.source, "PARTIAL");
     assert.equal(result.periodStatus, "UNAVAILABLE");
     assert.equal(result.periodReport, null);
   } finally {
@@ -631,7 +769,7 @@ test("loadStatisticsData timestamps the fallback slice when snapshot is live", a
       },
     );
 
-    assert.equal(result.source, "CACHED");
+    assert.equal(result.source, "PARTIAL");
     assert.equal(result.updatedAt, "printer-cache");
     assert.deepEqual(result.printers.map((row) => row.printer.id), ["cached-printer"]);
     assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["live-spool"]);
@@ -640,7 +778,7 @@ test("loadStatisticsData timestamps the fallback slice when snapshot is live", a
   }
 });
 
-test("loadStatisticsData marks cached spool fallback as cached statistics", async () => {
+test("loadStatisticsData marks mixed cached spool and live data as partial", async () => {
   const originalConsoleError = console.error;
   console.error = () => {};
   try {
@@ -671,7 +809,7 @@ test("loadStatisticsData marks cached spool fallback as cached statistics", asyn
       },
     );
 
-    assert.equal(result.source, "CACHED");
+    assert.equal(result.source, "PARTIAL");
     assert.equal(result.updatedAt, "spool-cache");
     assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["cached-spool"]);
     assert.deepEqual(result.printers.map((row) => row.printer.id), ["live-printer"]);

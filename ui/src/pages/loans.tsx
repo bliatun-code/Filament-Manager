@@ -7,6 +7,7 @@ import { FeedbackBanner } from "../components/feedback_banner";
 import { LoanHistoryCard } from "../components/loan_history_card";
 import { LoanOutModal } from "../components/loan_out_modal";
 import { LoanReturnModal } from "../components/loan_return_modal";
+import { PageDataFallbackBanner } from "../components/page_data_fallback_banner";
 import { PageHeaderButton } from "../components/page_header_button";
 import { PageLoadErrorBanner } from "../components/page_load_error_banner";
 import { neutralChipClass } from "../lib/chip_styles";
@@ -22,7 +23,10 @@ import {
 } from "../lib/loan_display";
 import { buildLoansCsv } from "../lib/loan_export";
 import { isInboundLoan, isLoanCurrentlyActive, isOutboundLoan } from "../lib/loan_state";
-import { usePageRefreshState } from "../lib/page_refresh_state";
+import {
+  shouldShowClientSnapshotWarning,
+  usePageRefreshState,
+} from "../lib/page_refresh_state";
 import {
   loadLoanRowsPage,
   returnInventoryLoan,
@@ -107,11 +111,9 @@ export default function LoansPage() {
         setClientLoanUpdatedAt(result.updatedAt);
       }
       setLoans(result.rows);
-      if (clientReadOnly && result.source === "OFFLINE") {
-        failRefresh(t("loans.error.load", "Failed to load loan data."));
-      } else {
-        completeRefresh();
-      }
+      // OFFLINE is a settled client fallback. The dedicated Host warning
+      // explains it without layering a generic page error on top.
+      completeRefresh();
     } catch (loadError) {
       console.error(loadError);
       if (requestId === reloadRequestRef.current) {
@@ -164,6 +166,11 @@ export default function LoansPage() {
     () => filterLoans(loans, directionFilter, filter, deferredSearch),
     [deferredSearch, directionFilter, filter, loans],
   );
+  const clientHostWarningVisible = shouldShowClientSnapshotWarning({
+    clientReadOnly,
+    initialLoadSettled: librarySyncReady && !loading,
+    source: clientLoanSource,
+  });
 
   async function handleExportCsv() {
     if (!tauri || busy) {
@@ -480,24 +487,28 @@ export default function LoansPage() {
           retrying={refreshing}
         />
       ) : null}
-      {clientReadOnly && clientLoanSource !== "LIVE" ? (
-        <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostDeviceName
-            ? `${clientHostDeviceName}. `
-            : null}
-          {clientLoanSource === "CACHED"
-            ? t(
-                "loans.clientReadOnlyCached",
-                "Host unavailable. Showing the last cached loan snapshot.",
-              )
-            : t(
-                "loans.clientReadOnlyOffline",
-                "Host unavailable and no cached loan snapshot is available yet.",
-              )}
-          {clientLoanUpdatedAt
-            ? ` ${t("loans.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientLoanUpdatedAt, locale)}.`
-            : null}
-        </FeedbackBanner>
+      {clientHostWarningVisible && !librarySyncError && !loadError ? (
+        <PageDataFallbackBanner
+          message={`${clientHostDeviceName ? `${clientHostDeviceName}. ` : ""}${
+            clientLoanSource === "CACHED"
+              ? t(
+                  "loans.clientReadOnlyCached",
+                  "Host unavailable. Showing the last cached loan snapshot.",
+                )
+              : t(
+                  "loans.clientReadOnlyOffline",
+                  "Host unavailable and no cached loan snapshot is available yet.",
+                )
+          }${
+            clientLoanUpdatedAt
+              ? ` ${t("loans.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientLoanUpdatedAt, locale)}.`
+              : ""
+          }`}
+          onRetry={() => void reload()}
+          retryDisabled={!tauri || busy || loading}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={refreshing}
+        />
       ) : null}
       {info ? (
         <FeedbackBanner tone="success" className="mt-4">

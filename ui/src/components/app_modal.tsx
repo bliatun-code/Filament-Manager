@@ -16,6 +16,7 @@ type AppModalProps = {
   onBackdropClose?: () => void;
   overlayClassName?: string;
   panelClassName?: string;
+  returnFocusElement?: HTMLElement | null;
 };
 
 export function AppModal({
@@ -26,13 +27,16 @@ export function AppModal({
   onBackdropClose,
   overlayClassName,
   panelClassName,
+  returnFocusElement,
 }: AppModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(
-    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null,
+    returnFocusElement === undefined
+      ? typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+      : returnFocusElement,
   );
   const overlayClasses =
     overlayClassName ??

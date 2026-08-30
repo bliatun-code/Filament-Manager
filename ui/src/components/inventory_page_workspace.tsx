@@ -1,6 +1,7 @@
-import { lazy, Suspense, type ComponentProps } from "react";
+import { lazy, Suspense, useState, type ComponentProps } from "react";
+import { AppModal } from "./app_modal";
 import { FeedbackBanner } from "./feedback_banner";
-import { InventoryAddModal, type InventoryAddModalProps } from "./inventory_add_modal";
+import type { InventoryAddModalProps } from "./inventory_add_modal";
 import {
   InventoryControlsPanel,
   InventoryHeaderActions,
@@ -9,18 +10,76 @@ import { InventorySpoolCollection } from "./inventory_spool_collection";
 import type { InventoryBulkActionsPanelViewProps } from "./inventory_bulk_actions_panel";
 import { InventoryLocationManagementPanel } from "./inventory_location_management_panel";
 import {
+  inventoryModalOverlayClassName,
+  inventoryWideModalPanelClassName,
+} from "./inventory_modal_chrome";
+import {
   InventoryWorkspaceNavigation,
   type InventoryWorkspaceView,
 } from "./inventory_workspace_navigation";
+import { PageDataFallbackBanner } from "./page_data_fallback_banner";
 import { PageLoadErrorBanner } from "./page_load_error_banner";
 import { WishlistQueuePanel, type WishlistQueuePanelProps } from "./wishlist_queue_panel";
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
+import {
+  shouldShowClientSnapshotWarning,
+  type ClientSnapshotSource,
+} from "../lib/page_refresh_state";
 
 const InventoryBulkActionsPanelView = lazy(async () => {
   const module = await import("./inventory_bulk_actions_panel");
   return { default: module.InventoryBulkActionsPanelView };
 });
+
+const InventoryAddModalView = lazy(async () => {
+  const module = await import("./inventory_add_modal");
+  return { default: module.InventoryAddModal };
+});
+
+function InventoryAddModalBoundary({
+  loadingLabel,
+  modalProps,
+  title,
+}: {
+  loadingLabel: string;
+  modalProps: InventoryAddModalProps;
+  title: string;
+}) {
+  const [returnFocusElement] = useState<HTMLElement | null>(() =>
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
+
+  return (
+    <Suspense
+      fallback={
+        <AppModal
+          ariaLabel={title}
+          closeOnBackdrop
+          onBackdropClose={modalProps.onClose}
+          overlayClassName={inventoryModalOverlayClassName}
+          panelClassName={inventoryWideModalPanelClassName}
+          returnFocusElement={returnFocusElement}
+        >
+          <div
+            aria-live="polite"
+            className="flex min-h-48 items-center justify-center p-6 text-sm text-slate-600 dark:text-slate-300"
+            role="status"
+          >
+            {loadingLabel}
+          </div>
+        </AppModal>
+      }
+    >
+      <InventoryAddModalView
+        {...modalProps}
+        returnFocusElement={returnFocusElement}
+      />
+    </Suspense>
+  );
+}
 
 type InventoryPageWorkspaceProps = {
   activeView: InventoryWorkspaceView;
@@ -33,7 +92,8 @@ type InventoryPageWorkspaceProps = {
     onActiveChange: (active: boolean) => void;
   }>;
   clientHostDeviceName: string | null;
-  clientInventorySource: string | null;
+  clientInventoryPartial: boolean;
+  clientInventorySource: ClientSnapshotSource;
   clientInventoryUpdatedAt: string | null;
   clientReadOnly: boolean;
   collectionProps: Omit<
@@ -55,6 +115,8 @@ type InventoryPageWorkspaceProps = {
   loadError: string | null;
   loadErrorRetryDisabled: boolean;
   loadErrorRetrying: boolean;
+  librarySyncReady: boolean;
+  loading: boolean;
   locationPanelProps: ComponentProps<typeof InventoryLocationManagementPanel>;
   onActiveViewChange: (view: InventoryWorkspaceView) => void;
   onRetryLoadError: () => void;
@@ -72,6 +134,7 @@ export function InventoryPageWorkspace({
   bulkActionsProps,
   bulkSelectionTriggerProps,
   clientHostDeviceName,
+  clientInventoryPartial,
   clientInventorySource,
   clientInventoryUpdatedAt,
   clientReadOnly,
@@ -83,6 +146,8 @@ export function InventoryPageWorkspace({
   loadError,
   loadErrorRetryDisabled,
   loadErrorRetrying,
+  librarySyncReady,
+  loading,
   locationPanelProps,
   onActiveViewChange,
   onRetryLoadError,
@@ -93,6 +158,15 @@ export function InventoryPageWorkspace({
   totalPurchaseCount,
 }: InventoryPageWorkspaceProps) {
   const { locale, t } = useI18n();
+  const clientHostWarningVisible = shouldShowClientSnapshotWarning({
+    clientReadOnly,
+    initialLoadSettled: librarySyncReady && !loading,
+    source: clientInventorySource,
+  });
+  const clientPartialWarningVisible =
+    clientReadOnly && librarySyncReady && !loading && clientInventoryPartial;
+  const clientDataWarningVisible =
+    !loadError && (clientHostWarningVisible || clientPartialWarningVisible);
 
   return (
     <>
@@ -164,22 +238,34 @@ export function InventoryPageWorkspace({
         </FeedbackBanner>
       ) : null}
 
-      {clientReadOnly && clientInventorySource !== "LIVE" ? (
-        <FeedbackBanner tone="warning" className="mt-4">
-          {clientHostDeviceName ? `${clientHostDeviceName}. ` : null}
-          {clientInventorySource === "CACHED"
-            ? t(
-                "inventory.clientReadOnlyCached",
-                "Host unavailable. Showing the last cached inventory snapshot.",
-              )
-            : t(
-                "inventory.clientReadOnlyOffline",
-                "Host unavailable and no cached inventory snapshot is available yet.",
-              )}
-          {clientInventoryUpdatedAt
-            ? ` ${t("inventory.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientInventoryUpdatedAt, locale)}.`
-            : null}
-        </FeedbackBanner>
+      {clientDataWarningVisible ? (
+        <PageDataFallbackBanner
+          message={`${clientHostDeviceName ? `${clientHostDeviceName}. ` : ""}${
+            clientHostWarningVisible && clientInventorySource === "CACHED"
+              ? t(
+                  "inventory.clientReadOnlyCached",
+                  "Host unavailable. Showing the last cached inventory snapshot.",
+                )
+              : clientHostWarningVisible
+                ? t(
+                  "inventory.clientReadOnlyOffline",
+                  "Host unavailable and no cached inventory snapshot is available yet.",
+                )
+                : t("errors.requestFailed", "The request could not be completed.")
+          }${
+            clientHostWarningVisible && clientInventoryUpdatedAt
+              ? ` ${t("inventory.clientReadOnlyUpdated", "Updated")}: ${formatDateTime(clientInventoryUpdatedAt, locale)}.`
+              : ""
+          }${
+            clientHostWarningVisible && clientPartialWarningVisible
+              ? ` ${t("errors.requestFailed", "The request could not be completed.")}`
+              : ""
+          }`}
+          onRetry={onRetryLoadError}
+          retryDisabled={loadErrorRetryDisabled}
+          retryLabel={t("common.refresh", "Refresh")}
+          retrying={loadErrorRetrying}
+        />
       ) : null}
 
       <div className={activeView === "STOCK" ? "mt-4" : "mt-8"}>
@@ -231,11 +317,30 @@ export function InventoryPageWorkspace({
           hidden={activeView !== "LOCATIONS"}
         >
           {activeView === "LOCATIONS" ? (
-            <InventoryLocationManagementPanel {...locationPanelProps} />
+            <InventoryLocationManagementPanel
+              {...locationPanelProps}
+              showOfflineSourceWarning={
+                clientReadOnly &&
+                !clientDataWarningVisible &&
+                !loadError &&
+                librarySyncReady &&
+                !loading
+              }
+            />
           ) : null}
         </div>
 
-        <InventoryAddModal {...addModalProps} />
+        {addModalActive ? (
+          <InventoryAddModalBoundary
+            loadingLabel={t("common.loading", "Loading...")}
+            modalProps={addModalProps}
+            title={
+              addModalProps.purpose === "PURCHASE"
+                ? t("inventory.addToWishlist", "Add to wishlist / order")
+                : t("inventory.addFilament", "Add filament")
+            }
+          />
+        ) : null}
       </div>
     </>
   );

@@ -203,12 +203,29 @@ export function useSettingsPageReload({
         setLibrarySyncValidation(null);
         setSwatchDraftById(pageData.swatchDraftById);
       }
-      await onDataReloaded?.();
+      let secondaryReloadComplete = true;
+      try {
+        await onDataReloaded?.();
+      } catch (secondaryLoadError) {
+        // The base settings payload above is already valid and may contain the
+        // client's cached Host data. A Host-dependent secondary section must
+        // not turn that successful load into an unknown library role or a
+        // page-wide load failure while the Host is temporarily unavailable.
+        console.warn(
+          "Settings filament defaults unavailable after the base settings load.",
+          secondaryLoadError,
+        );
+        secondaryReloadComplete = false;
+      }
       if (!requestIsCurrent()) {
         return;
       }
       if (options?.revisionCheck) {
-        if (observedTracker && pageData.revisionPollComplete) {
+        if (
+          observedTracker &&
+          pageData.revisionPollComplete &&
+          secondaryReloadComplete
+        ) {
           revisionTrackerRef.current = observedTracker;
         } else {
           revisionTrackerRef.current = markLibraryRevisionUnavailable(

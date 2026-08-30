@@ -167,18 +167,19 @@ export function useInventoryAddWorkflow({
     setSidePanelMode("MANAGE");
   }, []);
 
-  const { reloadCatalog } = useInventoryCatalogReload({
-    applyCatalogDefaults,
-    clientHostBaseUrl,
-    clientLibraryId,
-    clientReadOnly,
-    librarySyncReady,
-    reloadWishlist,
-    setMasters,
-    showAddModal,
-    sidePanelMode,
-    tauriAvailable,
-  });
+  const { catalogLoadState, reloadCatalog, resetCatalogLoadState } =
+    useInventoryCatalogReload({
+      applyCatalogDefaults,
+      clientHostBaseUrl,
+      clientLibraryId,
+      clientReadOnly,
+      librarySyncReady,
+      reloadWishlist,
+      setMasters,
+      showAddModal,
+      sidePanelMode,
+      tauriAvailable,
+    });
 
   const catalogMasterById = useMemo(
     () => new Map(masters.map((master) => [master.id, master])),
@@ -188,10 +189,16 @@ export function useInventoryAddWorkflow({
   const finishPurchaseEntry = useCallback(() => {
     setShowAddModal(false);
     setSidePanelMode("MANAGE");
+    resetCatalogLoadState();
     resetBorrowedInDraft();
     resetWishlistQueue("WISHLIST");
     onOpenPurchaseQueue();
-  }, [onOpenPurchaseQueue, resetBorrowedInDraft, resetWishlistQueue]);
+  }, [
+    onOpenPurchaseQueue,
+    resetBorrowedInDraft,
+    resetCatalogLoadState,
+    resetWishlistQueue,
+  ]);
 
   const {
     currentCreateDraft,
@@ -250,6 +257,7 @@ export function useInventoryAddWorkflow({
     }
     setEntryPurpose(options.purpose ?? "STOCK");
     setSidePanelMode("ADD");
+    resetCatalogLoadState();
     resetBorrowedInDraft();
     setShowAddModal(true);
   }, [
@@ -257,6 +265,7 @@ export function useInventoryAddWorkflow({
     clientReadOnly,
     ensureLocalWriteAllowed,
     resetBorrowedInDraft,
+    resetCatalogLoadState,
   ]);
 
   const openPurchaseModal = useCallback(() => {
@@ -266,21 +275,26 @@ export function useInventoryAddWorkflow({
   const closeAddModal = useCallback(() => {
     setShowAddModal(false);
     setSidePanelMode("MANAGE");
+    resetCatalogLoadState();
     resetBorrowedInDraft();
-  }, [resetBorrowedInDraft]);
+  }, [resetBorrowedInDraft, resetCatalogLoadState]);
 
-  const disableCreate = isInventoryCreateDisabled({
-    tauriAvailable,
-    busy,
-    mode: createMode,
-    selectedBambuMaster,
-    selectedEsunMaster,
-    manualFilamentName,
-    manualColorName,
-    initialWeightRaw: newInitialWeight,
-    ownershipType: newOwnershipType,
-    borrowedFromName,
-  });
+  const catalogSelectionUnavailable =
+    isCatalogCreateMode && catalogLoadState !== "READY";
+  const disableCreate =
+    catalogSelectionUnavailable ||
+    isInventoryCreateDisabled({
+      tauriAvailable,
+      busy,
+      mode: createMode,
+      selectedBambuMaster,
+      selectedEsunMaster,
+      manualFilamentName,
+      manualColorName,
+      initialWeightRaw: newInitialWeight,
+      ownershipType: newOwnershipType,
+      borrowedFromName,
+    });
 
   const currentCreatePanelStyle = inventoryCreatePreviewPanelStyle(
     currentCreateSwatchHex,
@@ -289,7 +303,8 @@ export function useInventoryAddWorkflow({
   const currentCreateActionStyle = currentCreateSwatchHex
     ? inventorySwatchActionButtonStyle(currentCreateSwatchHex, resolvedTheme)
     : undefined;
-  const disableWishlistCreate = !tauriAvailable || busy || !currentCreateDraft;
+  const disableWishlistCreate =
+    !tauriAvailable || busy || catalogSelectionUnavailable || !currentCreateDraft;
   const newSpoolBorrowedIn = isBorrowedInOwnership(newOwnershipType);
   const bambuBatchCreateState = buildBambuFilamentCodeBatchCreateState({
     batch: bambuCodeBatch,
@@ -310,10 +325,12 @@ export function useInventoryAddWorkflow({
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,
+    catalogLoadState,
     catalogMasterById,
     catalogQuery,
     createMode,
-    disabledBambuBatchCreate: bambuBatchCreateState.disabled,
+    disabledBambuBatchCreate:
+      catalogLoadState !== "READY" || bambuBatchCreateState.disabled,
     disabledCreate: disableCreate,
     disabledWishlistCreate: disableWishlistCreate,
     error,
@@ -345,6 +362,9 @@ export function useInventoryAddWorkflow({
     onManualMaterialChange: setManualMaterial,
     onManualVendorChange: setManualVendor,
     onOwnershipTypeChange: setNewOwnershipType,
+    onRetryCatalog: () => {
+      void reloadCatalog();
+    },
     onSelectCatalogMaster: selectCatalogMaster,
     onUseManualFromCatalog: useManualFromCatalog,
     open: addModalActive,

@@ -1,5 +1,40 @@
 import { useCallback, useReducer } from "react";
 
+export type ClientSnapshotSource = "UNRESOLVED" | "LIVE" | "CACHED" | "OFFLINE";
+export type ResolvedClientSnapshotSource = Exclude<ClientSnapshotSource, "UNRESOLVED">;
+
+export function isClientSnapshotFallback(source: ClientSnapshotSource): boolean {
+  return source === "CACHED" || source === "OFFLINE";
+}
+
+export function shouldShowClientSnapshotWarning({
+  clientReadOnly,
+  initialLoadSettled,
+  source,
+}: {
+  clientReadOnly: boolean;
+  initialLoadSettled: boolean;
+  source: ClientSnapshotSource;
+}): boolean {
+  return clientReadOnly && initialLoadSettled && isClientSnapshotFallback(source);
+}
+
+export function isClientCompositeSnapshotPartial({
+  primarySource,
+  secondarySources,
+}: {
+  primarySource: ClientSnapshotSource;
+  secondarySources: readonly ResolvedClientSnapshotSource[];
+}): boolean {
+  if (primarySource === "LIVE") {
+    return secondarySources.some((source) => source !== "LIVE");
+  }
+  if (primarySource === "CACHED") {
+    return secondarySources.some((source) => source === "OFFLINE");
+  }
+  return false;
+}
+
 export type PageRefreshState = {
   error: string | null;
   hasSuccessfulData: boolean;
