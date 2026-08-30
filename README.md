@@ -56,9 +56,9 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
-- [v0.29.0](RELEASE_NOTES_v0.29.0.md)
-- [v0.28.0](RELEASE_NOTES_v0.28.0.md)
-- [v0.27.0](RELEASE_NOTES_v0.27.0.md)
+- [v0.29.0](docs/releases/RELEASE_NOTES_v0.29.0.md)
+- [v0.28.0](docs/releases/RELEASE_NOTES_v0.28.0.md)
+- [v0.27.0](docs/releases/RELEASE_NOTES_v0.27.0.md)
 
 The repository keeps the three most recent release-note files. Older notes
 remain available in the [v0.29.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.29.0),
@@ -424,7 +424,8 @@ download and checksum flow.
   - `Cargo.lock`
   - `src-tauri/tauri.conf.json`
   - this README current version
-  - the matching versioned release notes file and README release-notes link
+  - the matching versioned release notes file under `docs/releases/` and its
+    README link
 
 The version guard is included in:
 

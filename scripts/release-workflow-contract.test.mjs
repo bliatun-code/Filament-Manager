@@ -412,6 +412,10 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   assert.match(
     publishJob,
+    /notes_path="docs\/releases\/RELEASE_NOTES_v\$\{package_version\}\.md"/,
+  );
+  assert.match(
+    publishJob,
     /release_asset_paths=\("\$FILAMENT_MANAGER_RELEASE_ASSET_DIR"\/\*\)[\s\S]*?for asset_path in "\$\{release_asset_paths\[@\]\}"[\s\S]*?--fail-with-body[\s\S]*?--location[\s\S]*?--data-binary "@\$asset_path"[\s\S]*?https:\/\/uploads\.github\.com\/repos\/\$GITHUB_REPOSITORY\/releases\/\$draft_release_id\/assets\?name=\$encoded_asset_name/,
   );
   assert.match(publishJob, /jq -rn --arg value "\$asset_name" '\$value \| @uri'/);
