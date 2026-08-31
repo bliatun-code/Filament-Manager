@@ -27,12 +27,33 @@ export const COMPANION_E2E_RECORD = {
   initialWeight: 913,
   loanNote: "Companion data E2E loan",
   location: "QA Shelf",
+  loanWeight: 730,
   material: "PLA",
   measuredWeight: 777,
   returnMeasuredWeight: 900,
   returnNote: "Companion data E2E return",
   vendor: "Fixture Works",
 };
+
+export const COMPANION_E2E_PRINTER_TARGET = Object.freeze({
+  printerId: "qa_printer_bambu",
+  printerName: "Atlas QA",
+  slotId: "qa_bambu_slot_4",
+  slotIndex: "4",
+});
+
+export const COMPANION_E2E_WISHLIST_RECEIPT = Object.freeze({
+  colorName: "Ocean Teal",
+  filamentName: "PETG+",
+  initialQuantity: 3,
+  itemId: "visual_qa_wishlist_on_order",
+  material: "PETG",
+  receivedQuantity: 1,
+  remainingQuantity: 2,
+  spoolWeight: 1000,
+  status: "ON_ORDER",
+  vendor: "eSUN",
+});
 
 const companionPageErrors = new WeakMap();
 
@@ -98,27 +119,33 @@ export async function findAvailableCompanionDataE2ePort(
 export function readCompanionDataE2eState(dbPath, record = COMPANION_E2E_RECORD) {
   const db = new Database(dbPath, { readonly: true, fileMustExist: true });
   try {
-    const spool = db
+    const spoolMatches = db
       .prepare(
         `SELECT
            spool.id,
+           spool.initial_weight_g,
            spool.current_weight_g,
            spool.remaining_g,
            spool.status,
+           spool.ownership_type,
            master.material,
            master.filament_name,
            master.color_name,
-           master.vendor
+           master.vendor,
+           location.name AS location_name,
+           home_location.name AS home_location_name
          FROM filament_spools AS spool
          JOIN filament_master_list AS master ON master.id = spool.master_id
+         LEFT JOIN inventory_locations AS location ON location.id = spool.location_id
+         LEFT JOIN inventory_locations AS home_location ON home_location.id = spool.home_location_id
          WHERE master.vendor = ?
            AND master.material = ?
            AND master.filament_name = ?
            AND master.color_name = ?
-         ORDER BY spool.created_at DESC, spool.id DESC
-         LIMIT 1`,
+         ORDER BY spool.created_at DESC, spool.id DESC`,
       )
-      .get(record.vendor, record.material, record.filamentName, record.colorName) ?? null;
+      .all(record.vendor, record.material, record.filamentName, record.colorName);
+    const spool = spoolMatches[0] ?? null;
     const history = spool
       ? db
           .prepare(
@@ -129,18 +156,117 @@ export function readCompanionDataE2eState(dbPath, record = COMPANION_E2E_RECORD)
           )
           .all(spool.id)
       : [];
-    const loan = spool
+    const loanMatches = spool
       ? db
           .prepare(
             `SELECT *
              FROM spool_loans
              WHERE spool_id = ? AND borrower_name = ?
-             ORDER BY lent_at DESC, id DESC
+             ORDER BY lent_at DESC, id DESC`,
+          )
+          .all(spool.id, record.borrower)
+      : [];
+    const loan = loanMatches[0] ?? null;
+    const printerAssignment = spool
+      ? db
+          .prepare(
+            `SELECT
+               slot.id AS slot_id,
+               slot.slot_index,
+               unit.printer_id,
+               printer.name AS printer_name,
+               slot.spool_id
+             FROM ams_slots AS slot
+             JOIN ams_units AS unit ON unit.id = slot.ams_id
+             JOIN printers AS printer ON printer.id = unit.printer_id
+             WHERE slot.spool_id = ?
+             ORDER BY printer.name ASC, slot.slot_index ASC, slot.id ASC
              LIMIT 1`,
           )
-          .get(spool.id, record.borrower) ?? null
+          .get(spool.id) ?? null
       : null;
-    return { history, loan, spool };
+    const printerAssignments = db
+      .prepare(
+        `SELECT
+           slot.id AS slot_id,
+           slot.slot_index,
+           unit.printer_id,
+           printer.name AS printer_name,
+           slot.spool_id
+         FROM ams_slots AS slot
+         JOIN ams_units AS unit ON unit.id = slot.ams_id
+         JOIN printers AS printer ON printer.id = unit.printer_id
+         ORDER BY printer.name ASC, slot.slot_index ASC, slot.id ASC`,
+      )
+      .all();
+    const wishlistItem = db
+      .prepare(
+        `SELECT id, master_id, material, filament_name, color_name, vendor, status, quantity
+         FROM wishlist_items
+         WHERE id = ?`,
+      )
+      .get(COMPANION_E2E_WISHLIST_RECEIPT.itemId) ?? null;
+    const wishlistSpools = wishlistItem?.master_id
+      ? db
+          .prepare(
+            `SELECT
+               spool.id,
+               spool.current_weight_g,
+               spool.remaining_g,
+               spool.status,
+               master.material,
+               master.filament_name,
+               master.color_name,
+               master.vendor
+             FROM filament_spools AS spool
+             JOIN filament_master_list AS master ON master.id = spool.master_id
+             WHERE spool.master_id = ?
+             ORDER BY spool.created_at ASC, spool.id ASC`,
+          )
+          .all(wishlistItem.master_id)
+      : [];
+    const wishlistReceiptEvents = wishlistItem?.master_id
+      ? db
+          .prepare(
+            `SELECT event.spool_id, event.payload_json
+             FROM spool_history_events AS event
+             JOIN filament_spools AS spool ON spool.id = event.spool_id
+             WHERE spool.master_id = ?
+               AND event.event_type = 'PURCHASE_RECEIPT_RECORDED'
+             ORDER BY event.created_at ASC, event.id ASC`,
+          )
+          .all(wishlistItem.master_id)
+          .map((event) => ({
+            ...event,
+            payload: JSON.parse(event.payload_json),
+          }))
+      : [];
+    return {
+      history,
+      loan,
+      loanMatches,
+      printerAssignment,
+      printerAssignments,
+      spool,
+      spoolMatches,
+      wishlistItem,
+      wishlistReceiptEvents,
+      wishlistSpools,
+    };
+  } finally {
+    db.close();
+  }
+}
+
+function readCompanionInventoryMutationSnapshot(dbPath) {
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  try {
+    return JSON.stringify({
+      history: db
+        .prepare("SELECT * FROM spool_history_events ORDER BY id ASC")
+        .all(),
+      spools: db.prepare("SELECT * FROM filament_spools ORDER BY id ASC").all(),
+    });
   } finally {
     db.close();
   }
@@ -291,7 +417,34 @@ async function createManualSpool(page, timeoutMs, record) {
 
 async function verifySpoolInReloadedUi(page, baseUrl, timeoutMs, spoolId, record, weight) {
   await reloadCompanion(page, baseUrl, timeoutMs);
-  return verifySpoolInCurrentUi(page, timeoutMs, spoolId, record, weight, "Reloaded");
+  const row = await verifySpoolInCurrentUi(
+    page,
+    timeoutMs,
+    spoolId,
+    record,
+    weight,
+    "Reloaded",
+    record.location,
+  );
+  await row.click();
+  const detail = page.locator('.detail-modal[aria-busy="false"]');
+  await detail.waitFor({ state: "visible", timeout: timeoutMs });
+  const detailText = await detail.innerText();
+  for (const expected of [
+    record.filamentName,
+    record.colorName,
+    record.vendor,
+    record.location,
+  ]) {
+    if (!detailText.includes(expected)) {
+      throw new Error(
+        `Reloaded Companion detail did not contain ${JSON.stringify(expected)}.`,
+      );
+    }
+  }
+  await detail.locator('[data-action="close-detail"]').click();
+  await detail.waitFor({ state: "detached", timeout: timeoutMs });
+  return row;
 }
 
 async function verifySpoolInCurrentUi(
@@ -301,12 +454,19 @@ async function verifySpoolInCurrentUi(
   record,
   weight,
   stateLabel = "Current",
+  searchQuery = record.filamentName,
 ) {
-  await page.locator('input[name="inventory-search"]').fill(record.filamentName);
+  await page.locator('input[name="inventory-search"]').fill(searchQuery);
   const row = page.locator(`[data-action="select-spool"][data-spool-id="${spoolId}"]`);
   await row.waitFor({ state: "visible", timeout: timeoutMs });
   const text = await row.innerText();
-  for (const expected of [record.filamentName, record.colorName, record.vendor, `${weight} g`]) {
+  for (const expected of [
+    record.filamentName,
+    record.colorName,
+    record.vendor,
+    record.location,
+    `${weight} g`,
+  ]) {
     if (!text.includes(expected)) {
       throw new Error(
         `${stateLabel} Companion inventory row did not contain ${JSON.stringify(expected)}.`,
@@ -373,6 +533,329 @@ async function updateWeight(page, timeoutMs, dbPath, spoolId, record, row) {
   return state;
 }
 
+async function loadSpoolIntoPrinterAndClear(
+  page,
+  timeoutMs,
+  dbPath,
+  spoolId,
+  record,
+) {
+  const assignmentsBefore = readCompanionDataE2eState(
+    dbPath,
+    record,
+  ).printerAssignments;
+  await page.locator('[data-root-flow="printers"]').click();
+  const openSlot = page.locator(
+    `[data-action="start-printer-slot-assignment"][data-printer-id="${COMPANION_E2E_PRINTER_TARGET.printerId}"][data-slot-id="${COMPANION_E2E_PRINTER_TARGET.slotId}"]`,
+  );
+  await openSlot.waitFor({ state: "visible", timeout: timeoutMs });
+  const target = await openSlot.evaluate((button) => ({
+    printerId: button.getAttribute("data-printer-id") || "",
+    printerName: button.getAttribute("data-printer-name") || "",
+    slotId: button.getAttribute("data-slot-id") || "",
+    slotIndex: button.getAttribute("data-slot-index") || "",
+    slotLabel: button.getAttribute("data-slot-label") || "",
+  }));
+  if (!target.printerId || !target.slotId) {
+    throw new Error(
+      `Companion printer picker did not expose a complete empty-slot target: ${JSON.stringify(target)}.`,
+    );
+  }
+  if (
+    target.printerId !== COMPANION_E2E_PRINTER_TARGET.printerId ||
+    target.printerName !== COMPANION_E2E_PRINTER_TARGET.printerName ||
+    target.slotId !== COMPANION_E2E_PRINTER_TARGET.slotId ||
+    target.slotIndex !== COMPANION_E2E_PRINTER_TARGET.slotIndex
+  ) {
+    throw new Error(
+      `Companion printer picker targeted ${JSON.stringify(target)} instead of ${JSON.stringify(COMPANION_E2E_PRINTER_TARGET)}.`,
+    );
+  }
+
+  await openSlot.click();
+  const picker = page.locator(".printer-picker-sheet");
+  await picker.waitFor({ state: "visible", timeout: timeoutMs });
+  await picker
+    .locator('input[name="printer-spool-search"]')
+    .fill(record.filamentName);
+  const spoolOption = picker.locator(
+    `[data-action="assign-selected-spool"][data-spool-id="${spoolId}"]`,
+  );
+  await spoolOption.waitFor({ state: "visible", timeout: timeoutMs });
+  const optionText = await spoolOption.innerText();
+  for (const expected of [record.filamentName, record.colorName, record.vendor]) {
+    if (!optionText.includes(expected)) {
+      throw new Error(
+        `Companion printer picker row did not contain ${JSON.stringify(expected)}.`,
+      );
+    }
+  }
+  await spoolOption.click();
+
+  const operationForm = page.locator(
+    '.printer-weight-sheet [data-action="printer-slot-operation-form"]',
+  );
+  await operationForm.waitFor({ state: "visible", timeout: timeoutMs });
+  const incomingInput = operationForm.locator('input[name="incoming-grams"]');
+  await incomingInput.waitFor({ state: "visible", timeout: timeoutMs });
+  await incomingInput.fill(String(record.initialWeight));
+  const assignmentPath = `/api/v1/printers/${encodeURIComponent(target.printerId)}/slots/${encodeURIComponent(target.slotId)}/assignment`;
+  const assignmentRequestPromise = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === assignmentPath,
+    { timeout: timeoutMs },
+  );
+  const incomingWeightRequestPromise = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname ===
+        `/api/v1/spools/${encodeURIComponent(spoolId)}/weight`,
+    { timeout: timeoutMs },
+  );
+  await operationForm.locator('button[type="submit"]').click();
+  const [assignmentRequest, incomingWeightRequest] = await Promise.all([
+    assignmentRequestPromise,
+    incomingWeightRequestPromise,
+  ]);
+  if (assignmentRequest.postDataJSON()?.spool_id !== spoolId) {
+    throw new Error(
+      `Companion printer assignment sent ${JSON.stringify(assignmentRequest.postDataJSON())} instead of the new spool.`,
+    );
+  }
+  if (incomingWeightRequest.postDataJSON()?.grams !== record.initialWeight) {
+    throw new Error(
+      `Companion printer load sent ${JSON.stringify(incomingWeightRequest.postDataJSON())} instead of ${record.initialWeight} g.`,
+    );
+  }
+
+  let state = await waitForDatabaseState(
+    dbPath,
+    (candidate) =>
+      candidate.printerAssignment?.printer_id === target.printerId &&
+      candidate.printerAssignment?.slot_id === target.slotId &&
+      candidate.printerAssignment?.spool_id === spoolId &&
+      candidate.spool?.status === "ASSIGNED" &&
+      candidate.history.some((event) => event.event_type === "ASSIGNED_TO_AMS"),
+    { record, timeoutMs },
+  );
+  const unchangedAssignmentsBefore = assignmentsBefore.filter(
+    (assignment) => assignment.slot_id !== target.slotId,
+  );
+  const unchangedAssignmentsAfterLoad = state.printerAssignments.filter(
+    (assignment) => assignment.slot_id !== target.slotId,
+  );
+  if (
+    JSON.stringify(unchangedAssignmentsAfterLoad) !==
+    JSON.stringify(unchangedAssignmentsBefore)
+  ) {
+    throw new Error("Companion printer load changed an unrelated slot assignment.");
+  }
+  const clearSlot = page.locator(
+    `[data-action="start-printer-weight-update"][data-printer-task-mode="clear"][data-slot-id="${target.slotId}"][data-spool-id="${spoolId}"]`,
+  );
+  await clearSlot.waitFor({ state: "visible", timeout: timeoutMs });
+  const loadedSlotText = await clearSlot.evaluate(
+    (button) => button.closest(".slot-card")?.textContent || "",
+  );
+  for (const expected of [record.filamentName, record.colorName]) {
+    if (!loadedSlotText.includes(expected)) {
+      throw new Error(
+        `Loaded Companion printer slot did not contain ${JSON.stringify(expected)}.`,
+      );
+    }
+  }
+
+  await clearSlot.click();
+  await operationForm.waitFor({ state: "visible", timeout: timeoutMs });
+  const outgoingInput = operationForm.locator('input[name="outgoing-grams"]');
+  await outgoingInput.waitFor({ state: "visible", timeout: timeoutMs });
+  if (!(await outgoingInput.inputValue()).trim()) {
+    throw new Error("Companion printer clear flow did not prefill the outgoing weight.");
+  }
+  const clearRequestPromise = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === assignmentPath,
+    { timeout: timeoutMs },
+  );
+  await operationForm.locator('button[type="submit"]').click();
+  const clearRequest = await clearRequestPromise;
+  if (clearRequest.postDataJSON()?.spool_id !== null) {
+    throw new Error(
+      `Companion printer clear sent ${JSON.stringify(clearRequest.postDataJSON())} instead of a null spool assignment.`,
+    );
+  }
+  state = await waitForDatabaseState(
+    dbPath,
+    (candidate) =>
+      candidate.printerAssignment === null &&
+      candidate.spool?.status === "IN_STOCK" &&
+      candidate.history.some((event) => event.event_type === "ASSIGNED_TO_AMS"),
+    { record, timeoutMs },
+  );
+  if (JSON.stringify(state.printerAssignments) !== JSON.stringify(assignmentsBefore)) {
+    throw new Error(
+      "Companion printer clear did not restore the complete slot assignment snapshot.",
+    );
+  }
+  await page
+    .locator(
+      `[data-action="start-printer-slot-assignment"][data-printer-id="${target.printerId}"][data-slot-id="${target.slotId}"]`,
+    )
+    .waitFor({ state: "visible", timeout: timeoutMs });
+  return { state, target };
+}
+
+async function receiveWishlistFixture(page, timeoutMs, dbPath, record) {
+  await page.locator('[data-root-flow="storage"]').click();
+  await page.locator('[data-action="toggle-add-spool-form"]').click();
+  const sheet = page.locator(".task-sheet.add-filament-sheet");
+  await sheet.waitFor({ state: "visible", timeout: timeoutMs });
+  const wishlistQueue = sheet.locator(
+    'details[data-collapsible="wishlist-queue"]',
+  );
+  if ((await wishlistQueue.getAttribute("open")) === null) {
+    await wishlistQueue.locator(":scope > summary").click();
+  }
+  const wishlistRow = sheet.locator(".add-spool-wishlist-row").filter({
+    has: page.locator(
+      `input[name="wishlist-id"][value="${COMPANION_E2E_WISHLIST_RECEIPT.itemId}"]`,
+    ),
+  });
+  await wishlistRow.waitFor({ state: "visible", timeout: timeoutMs });
+  const initialText = await wishlistRow.innerText();
+  for (const expected of [
+    COMPANION_E2E_WISHLIST_RECEIPT.filamentName,
+    COMPANION_E2E_WISHLIST_RECEIPT.colorName,
+    COMPANION_E2E_WISHLIST_RECEIPT.vendor,
+    `Qty ${COMPANION_E2E_WISHLIST_RECEIPT.initialQuantity}`,
+  ]) {
+    if (!initialText.includes(expected)) {
+      throw new Error(
+        `Companion wishlist row did not contain ${JSON.stringify(expected)} before receipt.`,
+      );
+    }
+  }
+
+  const receiptForm = wishlistRow.locator('[data-action="wishlist-stock-form"]');
+  const quantityInput = receiptForm.locator('input[name="received-quantity"]');
+  await quantityInput.fill(
+    String(COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity),
+  );
+  const receiptPath = `/api/v1/wishlist/${encodeURIComponent(COMPANION_E2E_WISHLIST_RECEIPT.itemId)}/receive`;
+  const receiptRequestPromise = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === receiptPath,
+    { timeout: timeoutMs },
+  );
+  await receiptForm.locator('button[type="submit"]').click();
+  const receiptRequest = await receiptRequestPromise;
+  if (
+    receiptRequest.postDataJSON()?.quantity !==
+    COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity
+  ) {
+    throw new Error(
+      `Companion wishlist receipt sent ${JSON.stringify(receiptRequest.postDataJSON())} instead of one roll.`,
+    );
+  }
+
+  const state = await waitForDatabaseState(
+    dbPath,
+    (candidate) =>
+      candidate.wishlistItem?.status ===
+        COMPANION_E2E_WISHLIST_RECEIPT.status &&
+      candidate.wishlistItem?.quantity ===
+        COMPANION_E2E_WISHLIST_RECEIPT.remainingQuantity &&
+      candidate.wishlistSpools.length ===
+        COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity &&
+      candidate.wishlistReceiptEvents.length ===
+        COMPANION_E2E_WISHLIST_RECEIPT.receivedQuantity &&
+      candidate.wishlistReceiptEvents.every(
+        (event) =>
+          event.payload?.wishlist_item_id ===
+            COMPANION_E2E_WISHLIST_RECEIPT.itemId &&
+          event.payload?.initial_weight_g ===
+            COMPANION_E2E_WISHLIST_RECEIPT.spoolWeight,
+      ) &&
+      candidate.wishlistSpools.every(
+        (spool) =>
+          spool.status === "IN_STOCK" &&
+          spool.remaining_g === COMPANION_E2E_WISHLIST_RECEIPT.spoolWeight &&
+          spool.material === COMPANION_E2E_WISHLIST_RECEIPT.material &&
+          spool.filament_name ===
+            COMPANION_E2E_WISHLIST_RECEIPT.filamentName &&
+          spool.color_name === COMPANION_E2E_WISHLIST_RECEIPT.colorName &&
+          spool.vendor === COMPANION_E2E_WISHLIST_RECEIPT.vendor,
+      ),
+    { record, timeoutMs },
+  );
+  const receivedSpoolId = state.wishlistSpools[0]?.id;
+  if (!receivedSpoolId) {
+    throw new Error("Companion wishlist receipt did not create a spool ID.");
+  }
+
+  const detail = page.locator('.detail-modal[aria-busy="false"]');
+  await detail.waitFor({ state: "visible", timeout: timeoutMs });
+  await detail.locator('[data-action="close-detail"]').click();
+  await sheet.waitFor({ state: "visible", timeout: timeoutMs });
+  if ((await wishlistQueue.getAttribute("open")) === null) {
+    await wishlistQueue.locator(":scope > summary").click();
+  }
+  const updatedWishlistRow = sheet.locator(".add-spool-wishlist-row").filter({
+    has: page.locator(
+      `input[name="wishlist-id"][value="${COMPANION_E2E_WISHLIST_RECEIPT.itemId}"]`,
+    ),
+  });
+  await updatedWishlistRow.waitFor({ state: "visible", timeout: timeoutMs });
+  const updatedText = await updatedWishlistRow.innerText();
+  if (
+    !updatedText.includes(
+      `Qty ${COMPANION_E2E_WISHLIST_RECEIPT.remainingQuantity}`,
+    )
+  ) {
+    throw new Error(
+      `Companion wishlist row did not show ${COMPANION_E2E_WISHLIST_RECEIPT.remainingQuantity} remaining after receipt.`,
+    );
+  }
+  const updatedQuantityInput = updatedWishlistRow.locator(
+    'input[name="received-quantity"]',
+  );
+  if (
+    (await updatedQuantityInput.getAttribute("max")) !==
+    String(COMPANION_E2E_WISHLIST_RECEIPT.remainingQuantity)
+  ) {
+    throw new Error("Companion wishlist receipt quantity limit did not refresh.");
+  }
+  await sheet.locator('[data-action="close-task-sheet"]').click();
+  await sheet.waitFor({ state: "detached", timeout: timeoutMs });
+
+  await page
+    .locator('input[name="inventory-search"]')
+    .fill(COMPANION_E2E_WISHLIST_RECEIPT.colorName);
+  const receivedRow = page.locator(
+    `[data-action="select-spool"][data-spool-id="${receivedSpoolId}"]`,
+  );
+  await receivedRow.waitFor({ state: "visible", timeout: timeoutMs });
+  const receivedText = await receivedRow.innerText();
+  for (const expected of [
+    COMPANION_E2E_WISHLIST_RECEIPT.filamentName,
+    COMPANION_E2E_WISHLIST_RECEIPT.colorName,
+    COMPANION_E2E_WISHLIST_RECEIPT.vendor,
+  ]) {
+    if (!receivedText.includes(expected)) {
+      throw new Error(
+        `Received Companion inventory row did not contain ${JSON.stringify(expected)}.`,
+      );
+    }
+  }
+  if (!receivedText.replaceAll(/[,\s.]/g, "").includes("1000g")) {
+    throw new Error("Received Companion inventory row did not show the 1,000 g weight.");
+  }
+  return { receivedSpoolId, state };
+}
+
 async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, record) {
   await page.locator('[data-root-flow="loans"]').click();
   await page.locator('[data-action="start-loan-picker"]').click();
@@ -384,13 +867,44 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
   const createForm = page.locator('[data-action="loan-spool-form"]');
   await createForm.waitFor({ state: "visible", timeout: timeoutMs });
   await createForm.locator('input[name="borrower-name"]').fill(record.borrower);
+  await createForm
+    .locator('input[name="grams-out"]')
+    .fill(String(record.loanWeight));
   await createForm.locator('textarea[name="loan-note"]').fill(record.loanNote);
+  const loanPath = `/api/v1/spools/${encodeURIComponent(spoolId)}/lend`;
+  const loanRequestPromise = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === loanPath,
+    { timeout: timeoutMs },
+  );
   await createForm.locator('button[type="submit"]').click();
+  const loanRequest = await loanRequestPromise;
+  const loanPayload = loanRequest.postDataJSON();
+  if (
+    loanPayload?.borrower_name !== record.borrower ||
+    loanPayload?.grams_out !== record.loanWeight ||
+    loanPayload?.note !== record.loanNote
+  ) {
+    throw new Error(
+      `Companion loan sent ${JSON.stringify(loanPayload)} instead of the supplied borrower, weight and note.`,
+    );
+  }
   await createForm.waitFor({ state: "hidden", timeout: timeoutMs });
 
   let state = await waitForDatabaseState(
     dbPath,
-    (candidate) => candidate.loan?.loan_status === "ACTIVE",
+    (candidate) =>
+      candidate.loanMatches.length === 1 &&
+      candidate.loan?.loan_status === "ACTIVE" &&
+      candidate.loan?.borrower_name === record.borrower &&
+      candidate.loan?.grams_out === record.loanWeight &&
+      candidate.loan?.lent_note === record.loanNote &&
+      candidate.spool?.status === "BORROWED" &&
+      candidate.spool?.current_weight_g === record.loanWeight &&
+      candidate.spool?.remaining_g === record.loanWeight &&
+      candidate.spool?.location_name === `Loaned to: ${record.borrower}` &&
+      candidate.spool?.home_location_name === record.location,
     { record, timeoutMs },
   );
   let loanCard = page.locator(".loan-card").filter({ hasText: record.borrower }).first();
@@ -411,8 +925,19 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
   state = await waitForDatabaseState(
     dbPath,
     (candidate) =>
+      candidate.loanMatches.length === 1 &&
       candidate.loan?.loan_status === "RETURNED" &&
+      candidate.loan?.grams_out === record.loanWeight &&
+      typeof candidate.loan?.returned_at === "string" &&
+      candidate.loan.returned_at.length > 0 &&
+      candidate.loan?.returned_grams === record.returnMeasuredWeight &&
+      candidate.loan?.consumed_grams === 0 &&
+      candidate.loan?.return_note === record.returnNote &&
+      candidate.spool?.status === "IN_STOCK" &&
+      candidate.spool?.current_weight_g === record.returnMeasuredWeight &&
       candidate.spool?.remaining_g === record.returnMeasuredWeight &&
+      candidate.spool?.location_name === null &&
+      candidate.spool?.home_location_name === record.location &&
       candidate.history.some((event) => event.event_type === "LOAN_RETURNED"),
     { record, timeoutMs },
   );
@@ -453,12 +978,28 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
   });
   await openCompanion(page, options.baseUrl, timeoutMs);
   await createManualSpool(page, timeoutMs, record);
-  let state = await waitForDatabaseState(options.dbPath, (candidate) => Boolean(candidate.spool), {
-    record,
-    timeoutMs,
-  });
+  let state = await waitForDatabaseState(
+    options.dbPath,
+    (candidate) =>
+      candidate.spoolMatches.length === 1 &&
+      candidate.spool?.initial_weight_g === record.initialWeight &&
+      candidate.spool?.current_weight_g === record.initialWeight &&
+      candidate.spool?.remaining_g === record.initialWeight &&
+      candidate.spool?.ownership_type === "OWNED" &&
+      candidate.spool?.material === record.material &&
+      candidate.spool?.filament_name === record.filamentName &&
+      candidate.spool?.color_name === record.colorName &&
+      candidate.spool?.vendor === record.vendor &&
+      candidate.spool?.location_name === record.location &&
+      candidate.spool?.home_location_name === record.location,
+    {
+      record,
+      timeoutMs,
+    },
+  );
   const spoolId = state.spool.id;
-  const persistedRow = await verifySpoolInReloadedUi(
+  const inventoryBeforeFind = readCompanionInventoryMutationSnapshot(options.dbPath);
+  await verifySpoolInReloadedUi(
     page,
     options.baseUrl,
     timeoutMs,
@@ -466,15 +1007,43 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
     record,
     record.initialWeight,
   );
+  const inventoryAfterFind = readCompanionInventoryMutationSnapshot(options.dbPath);
+  if (inventoryAfterFind !== inventoryBeforeFind) {
+    throw new Error(
+      "Companion find/detail workflow mutated inventory or spool history.",
+    );
+  }
+  const printerWorkflow = await loadSpoolIntoPrinterAndClear(
+    page,
+    timeoutMs,
+    options.dbPath,
+    spoolId,
+    record,
+  );
+  await page.locator('[data-root-flow="storage"]').click();
+  const reloadedRow = await verifySpoolInCurrentUi(
+    page,
+    timeoutMs,
+    spoolId,
+    record,
+    printerWorkflow.state.spool.remaining_g,
+    "Cleared",
+  );
   state = await updateWeight(
     page,
     timeoutMs,
     options.dbPath,
     spoolId,
     record,
-    persistedRow,
+    reloadedRow,
   );
   const persistedWeight = state.spool.remaining_g;
+  const wishlistWorkflow = await receiveWishlistFixture(
+    page,
+    timeoutMs,
+    options.dbPath,
+    record,
+  );
   state = await lendAndReturnSpool(
     page,
     options.baseUrl,
@@ -483,6 +1052,11 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
     spoolId,
     record,
   );
+  if (state.loanMatches.length !== 1) {
+    throw new Error(
+      `Companion E2E expected exactly one matching loan, found ${state.loanMatches.length}.`,
+    );
+  }
   if (!state.history.some((event) => event.event_type === "LOANED_OUT")) {
     throw new Error("Companion E2E database history did not record LOANED_OUT.");
   }
@@ -492,9 +1066,17 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
   return {
     createdSpoolId: spoolId,
     finalLoanStatus: state.loan.loan_status,
+    historyEvents: state.history.map((event) => event.event_type),
     persistedWeight,
     postReturnWeight: state.spool.remaining_g,
-    historyEvents: state.history.map((event) => event.event_type),
+    printerId: printerWorkflow.target.printerId,
+    printerName: printerWorkflow.target.printerName,
+    printerSlotCleared: printerWorkflow.state.printerAssignment === null,
+    printerSlotId: printerWorkflow.target.slotId,
+    receivedWishlistItemId: COMPANION_E2E_WISHLIST_RECEIPT.itemId,
+    receivedWishlistSpoolId: wishlistWorkflow.receivedSpoolId,
+    wishlistRemainingQuantity:
+      wishlistWorkflow.state.wishlistItem.quantity,
   };
 }
 
@@ -595,6 +1177,7 @@ export async function runCompanionDataE2e(options = {}) {
         preparedDatabase = await prepareVisualQaDatabase({
           ...databaseOptions,
           interfaces,
+          scenario: "wishlist-orders",
           trustedLanPort,
         });
         return preparedDatabase;
@@ -647,7 +1230,9 @@ export function formatCompanionDataE2eReport(result) {
   return [
     "Companion data E2E passed on temporary database copies.",
     `  - created spool: ${result.workflows.createdSpoolId}`,
+    `  - printer load/clear: ${result.workflows.printerName} · ${result.workflows.printerSlotId} (${result.workflows.printerSlotCleared ? "cleared" : "still assigned"})`,
     `  - persisted weight update: ${result.workflows.persistedWeight} g`,
+    `  - wishlist receipt: ${result.workflows.receivedWishlistItemId} -> ${result.workflows.receivedWishlistSpoolId} (${result.workflows.wishlistRemainingQuantity} remaining)`,
     `  - weight after return: ${result.workflows.postReturnWeight} g`,
     `  - final loan status: ${result.workflows.finalLoanStatus}`,
     `  - history: ${result.workflows.historyEvents.join(", ")}`,

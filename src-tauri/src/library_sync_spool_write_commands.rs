@@ -413,7 +413,7 @@ pub(crate) async fn create_library_sync_host_spool(
     run_library_sync_blocking(move || create_library_sync_host_spool_blocking(&state, input)).await
 }
 
-fn create_library_sync_host_spool_blocking(
+pub(crate) fn create_library_sync_host_spool_blocking(
     state: &AppState,
     input: LibrarySyncCreateSpoolInput,
 ) -> Result<String, String> {

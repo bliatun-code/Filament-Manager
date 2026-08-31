@@ -28,6 +28,21 @@ The timing threshold is reported per task as well, but the blocking 30% threshol
 | `lend` | Lend the selected spool to a named borrower | The target spool detail is open; borrower and outgoing weight are provided. | One active outbound loan exists for that spool with the supplied borrower and weight. |
 | `receive` | Receive an on-order item into stock | Inventory is open on purchases; the target item and quantity are provided. | The requested number of spools exists and the queue quantity/status is correct. |
 
+## Automated data-integrity companion gates
+
+The release checks exercise these same five success conditions through both a
+Client connected to a separate Host process and the rendered Companion web UI:
+
+```sh
+cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture
+npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000
+```
+
+Those gates verify authoritative routing, exact record counts, relationships,
+cache updates, reload persistence and isolation from real user libraries. They
+do not replace participants, assistance tracking or timing measurements, and
+their successful result must not be reported as usability-study evidence.
+
 ## Moderator rules
 
 1. Read the task card verbatim and start the timer when the participant first controls the app.
