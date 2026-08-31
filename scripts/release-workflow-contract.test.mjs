@@ -518,7 +518,7 @@ test("release SBOM generation is pinned, read-only and fail-closed", () => {
   assert.doesNotMatch(sbomJob, /permissions:[\s\S]*?\n\s+\w[\w-]*: write/);
   assert.match(
     sbomJob,
-    /anchore\/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0\.24\.0/,
+    /anchore\/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0\.24\.2/,
   );
   assert.match(sbomJob, /format: spdx-json/);
   assert.match(sbomJob, /syft-version: v1\.51\.0/);
