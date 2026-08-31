@@ -66,6 +66,8 @@ mod library_sync_models;
 mod library_sync_pairing_commands;
 mod library_sync_printer_write_commands;
 mod library_sync_read_commands;
+#[cfg(test)]
+mod library_sync_resilience_tests;
 mod library_sync_runtime_auth;
 mod library_sync_settings_commands;
 mod library_sync_snapshot_commands;

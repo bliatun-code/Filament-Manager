@@ -255,12 +255,15 @@ mod tests {
     fn library_sync_command_wrappers_use_the_bounded_executor() {
         fn assert_async_blocking_wrapper(source: &str, command: &str) {
             let async_marker = format!("pub(crate) async fn {command}");
-            let blocking_marker = format!("\nfn {command}_blocking(");
             let (_, after_async_marker) = source
                 .split_once(&async_marker)
                 .unwrap_or_else(|| panic!("{command} must be an async Tauri command"));
-            let (wrapper, _) = after_async_marker
-                .split_once(&blocking_marker)
+            let private_blocking_marker = format!("\nfn {command}_blocking(");
+            let crate_blocking_marker = format!("\npub(crate) fn {command}_blocking(");
+            let wrapper = after_async_marker
+                .split_once(&private_blocking_marker)
+                .or_else(|| after_async_marker.split_once(&crate_blocking_marker))
+                .map(|(wrapper, _)| wrapper)
                 .unwrap_or_else(|| panic!("{command} must delegate to its own blocking function"));
 
             assert!(

@@ -29,7 +29,7 @@ pub(crate) fn fetch_cached_library_sync_spools(
     fetch_cached_library_sync_spools_blocking(&state, &input)
 }
 
-fn fetch_cached_library_sync_spools_blocking(
+pub(crate) fn fetch_cached_library_sync_spools_blocking(
     state: &AppState,
     input: &LibrarySyncCacheTargetInput,
 ) -> Result<Option<LibrarySyncCachedSpoolList>, String> {

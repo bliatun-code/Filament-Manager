@@ -310,7 +310,8 @@ What `verify` covers:
 - version consistency checks
 - doctor/runtime checks
 - Rust formatting
-- Rust tests
+- Rust tests, including the real-TCP Host/Client resilience gate with a separate
+  Host subprocess and isolated Host and Client databases
 - Rust clippy with warnings denied
 
 Useful narrower checks:
@@ -321,6 +322,7 @@ npm run test:ui
 npm run test:companion
 npm run test:rust
 npm run check:contracts
+cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture
 ```
 
 `test:ui` and `test:companion` also accept `--grep "name pattern"` for focused
@@ -384,11 +386,14 @@ output path is needed. Official tagged macOS artifacts are Developer ID signed,
 notarized, and stapled. Before GitHub release publication, the workflow
 downloads the internally uploaded candidate, mounts that exact release DMG,
 copies its app without clearing quarantine metadata, opens the isolated
-installation through LaunchServices, and checks its window and isolated
-runtime database. The public macOS contract is one Universal 2 artifact with
-native `arm64` and `x86_64` executables on macOS 11 Big Sur or newer. The exact
-downloaded DMG is installed and launched on both Apple Silicon and Intel
-GitHub-hosted runners before publication. See
+installation through LaunchServices, and runs the mutating packaged desktop
+gate against a private database. That gate creates and updates a spool,
+completes a loan and return, creates a printer and slot assignment, restarts the
+installed app, and validates a complete portable backup. The public macOS
+contract is one Universal 2 artifact with native `arm64` and `x86_64`
+executables on macOS 11 Big Sur or newer. The exact downloaded DMG is installed
+and exercised on both Apple Silicon and Intel GitHub-hosted runners before
+publication. See
 [macOS Installation And Verification](docs/MACOS_DISTRIBUTION.md) for the user
 installation and checksum flow.
 
@@ -405,10 +410,11 @@ npm run tauri -- build --bundles msi
 Windows MSI uses the per-user WiX template in `src-tauri/wix/per-user.wxs`.
 Official Windows artifacts are checked for the expected product name, version,
 and x64 architecture. The uploaded candidate is then downloaded again,
-installed, and launched with an isolated runtime database before its workflow
-job can succeed. The smoke also requires both the MSI and installed executable
-to report Authenticode `NotSigned`; Windows installer signing remains
-intentionally deferred. See
+installed, and exercised through the same spool, weight, loan, return, printer
+slot, restart, and full-backup flow against an isolated runtime database before
+its workflow job can succeed. The smoke also requires both the MSI and installed
+executable to report Authenticode `NotSigned`; Windows installer signing remains
+intentionally deferred by project decision. See
 [Windows Installation And Verification](docs/WINDOWS_DISTRIBUTION.md) for the
 download and checksum flow.
 
@@ -440,9 +446,9 @@ The release workflow builds installer artifacts from version tags and
 maintainer-approved manual runs. A version tag publishes the GitHub release
 only after the exact commit has passed macOS and Windows CI, both installers
 and their checksum manifests pass verification, each exact release installer
-has been installed and launched with an isolated runtime database check, the
-source dependency SBOM and its checksum pass validation, and public releases
-receive signed installer provenance:
+has passed the mutating installed-app E2E and restart against an isolated
+runtime database, the source dependency SBOM and its checksum pass validation,
+and public releases receive signed installer provenance:
 
 - Workflow: `.github/workflows/release-build.yml`
 - Tag trigger: a version tag matching `v*`

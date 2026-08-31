@@ -293,7 +293,7 @@ test("inventory Host feedback waits for a settled role and initial load", () => 
   assert.match(inventoryPageDataSource, /setClientInventorySource\("UNRESOLVED"\)/);
   assert.match(
     inventoryPageWorkspaceSource,
-    /shouldShowClientSnapshotWarning\(\{[\s\S]*clientReadOnly,[\s\S]*initialLoadSettled: librarySyncReady && !loading/,
+    /resolveClientPageFeedbackState\(\{[\s\S]*clientReadOnly,[\s\S]*initialLoadSettled: librarySyncReady && !loading/,
   );
   assert.match(inventoryPageDataSource, /isClientCompositeSnapshotPartial/);
   assert.match(inventoryPageDataSource, /clientInventoryDomainSourcesRef/);
@@ -313,10 +313,10 @@ test("inventory Host feedback waits for a settled role and initial load", () => 
   );
   assert.match(
     inventoryPageWorkspaceSource,
-    /showOfflineSourceWarning=\{[\s\S]*clientReadOnly &&[\s\S]*!clientDataWarningVisible &&[\s\S]*!loadError &&[\s\S]*librarySyncReady &&[\s\S]*!loading/,
+    /showOfflineSourceWarning=\{[\s\S]*clientReadOnly &&[\s\S]*!clientDataWarningVisible &&[\s\S]*!loadErrorVisible &&[\s\S]*librarySyncReady &&[\s\S]*!loading/,
   );
   assert.match(inventoryPageWorkspaceSource, /clientPartialWarningVisible/);
-  assert.match(inventoryPageWorkspaceSource, /!loadError && \(clientHostWarningVisible \|\| clientPartialWarningVisible\)/);
+  assert.match(inventoryPageWorkspaceSource, /resolveClientPageFeedbackState/);
   assert.match(inventoryPageWorkspaceSource, /<PageDataFallbackBanner/);
   assert.match(inventoryPageWorkspaceSource, /onRetry=\{onRetryLoadError\}/);
 });

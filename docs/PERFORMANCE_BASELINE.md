@@ -21,6 +21,16 @@ bundle sizes.
 | 10,000 spools | A real 10,000-row fixture passes through normalization, inventory mapping, options, filtering, grouping, bounded render-window selection, overview calculation, and dashboard derivation without truncation. |
 | Dashboard revisit | 250 repeated cached-snapshot clones remain independent of the number of source spools. A revisit paints the snapshot first, then starts normal background refresh I/O. |
 
+The slow- and interrupted-Host rows are deterministic model and request-wave
+contracts. The separate Host/Client resilience gate is the authority for the
+same rules across a real TCP connection: a Client-test process starts a separate
+Host subprocess, both use distinct databases, and the gate covers pairing, Host
+stop/restart, production gateway dispatch, target-scoped cache-command behavior,
+same-ID local-shadow isolation, and session renewal. It uses a QA-enabled direct
+loopback address and therefore does not cover `.local`/mDNS discovery, route
+pinning, HTTPS/TLS identity, installed candidate applications, or their native
+packaging environment; those require the planned packaged multiprocess gate.
+
 The 10,000-spool contract renders at most 200 list rows or 96 card groups at
 once. Complete pagination is separately covered by
 `ui/src/lib/spool_data_source.test.ts`, including the 10,000-row case with
@@ -71,6 +81,15 @@ npm run test:performance:bundle
 `npm run smoke` runs the production build, the deterministic performance
 contract, and the actual built-bundle check. It is therefore the normal macOS
 and Windows CI verification path.
+
+Run the focused real-TCP Host/Client resilience gate with:
+
+```sh
+cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture
+```
+
+The complete `npm run verify` command includes the same test through the Rust
+suite on both required CI platforms.
 
 For a local wall-clock sample, run:
 

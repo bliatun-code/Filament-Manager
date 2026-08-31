@@ -1,10 +1,10 @@
 # Blocking quality gates
 
 This document is the release contract for Filament Manager's performance,
-backup and upgrade, accessibility, and localization gates. A gate is blocking
-when a failure makes `Database Migration Integrity`, `macOS Smoke`, or
-`Windows Smoke` fail; the release workflow requires all three checks before
-publishing artifacts.
+Host/Client resilience, backup and upgrade, accessibility, and localization
+gates. A gate is blocking when a failure makes `Database Migration Integrity`,
+`macOS Smoke`, or `Windows Smoke` fail; the release workflow requires all three
+checks before publishing artifacts.
 
 The named owner is accountable for the threshold and for reviewing any proposed
 exception. Contributors may implement fixes in every area, but a threshold must
@@ -13,6 +13,7 @@ not be weakened merely to make a change pass.
 | Gate | Named owner | Blocking threshold | Local command | Required CI path |
 | --- | --- | --- | --- | --- |
 | Performance | `@bliatun-code` (performance gate owner) | The deterministic 10,000-spool, concurrency, timeout, render-window, lazy-loading, and bundle contracts pass with zero failures. Production JavaScript chunks remain within the committed byte budgets in [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md). | `npm run test:performance:bundle` and `npm run test:performance` | `npm run verify` on macOS and Windows |
+| Host/Client resilience | `@bliatun-code` (library-sync gate owner) | The loopback-TCP Rust gate passes with zero failures using a Client-test process, a separate Host subprocess, and separate synthetic Host and Client databases. It must pair, route a production-gateway write to the Host, read the target-scoped production cache, expose an explicit offline error without reading or writing the Client's unrelated local library—including a same-ID local shadow row—recover after Host restart, and complete automatic session renewal against the same Host authority. | `cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture` | `npm run verify` on macOS and Windows |
 | Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. The installed DMG and MSI must pass the mutating spool/loan/printer/full-backup E2E across a restart. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, `npm run smoke:release:database-upgrade -- ...`, and `npm run smoke:release:packaged-desktop-e2e -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade and mutating packaged-app smokes in required platform jobs |
 | Accessibility | `@bliatun-code` (accessibility gate owner) | All six data-backed main pages have zero axe violations for WCAG 2.0 A/AA, 2.1 A/AA, and 2.2 AA and emit zero browser errors. The shared modal passes keyboard focus, Escape/focus return, and 200% zoom without page-level horizontal overflow. | `npm run test:a11y:app-modal` and `npm run test:a11y:data-backed` | `npm run verify` on macOS and Windows |
 | Localization | `@bliatun-code` (localization gate owner) | Every selectable catalog keeps 100% key and placeholder coverage, zero English catalog-overlay fallback, zero unknown literal keys, at least 95% translation signal, and current fingerprint-bound artifact and runtime QA evidence. A locale described as maintained also needs a named native reviewer and a reviewed fingerprint matching the current English source. | `npm run check:i18n-readiness`, `npm run qa:visual:desktop:matrix`, and `npm run check:contracts` | `npm run verify` on macOS and Windows; screenshot results are recorded from their actual release-gate runs |
@@ -32,6 +33,28 @@ same pull request:
 2. an explanation of why the additional startup or navigation work is needed;
 3. updated executable tests and documentation; and
 4. approval from the named performance gate owner.
+
+## Host/Client resilience authority
+
+`src-tauri/src/library_sync_resilience_tests.rs` is the Rust transport and
+authority gate. The Client test starts a separate Host operating-system process
+and communicates with it over a real TCP listener. Host and Client use isolated
+databases so they cannot accidentally share library state. The test covers
+authenticated pairing, a Host-authoritative write through `ActiveLibraryGateway`,
+live reads and target-scoped cached reads through their production command
+paths, explicit failure while the Host is stopped, restart recovery, and
+automatic session renewal. A same-ID row and a separate sentinel remain in the
+Client-local database throughout the scenario. A failure must never expose
+those rows as if they were Host data or convert an uncertain Host write into a
+local mutation.
+
+This gate deliberately does not claim installed DMG/MSI behavior, native window
+lifecycle handling, packaged network isolation, stable `.local`/mDNS discovery,
+route pinning, or HTTPS/TLS identity verification. It intentionally uses a
+QA-enabled direct loopback listener; a later packaged multiprocess gate will run
+the installed candidate applications, cover those remaining network and native
+boundaries, and be added to this contract before it becomes a blocking release
+requirement.
 
 ## Backup and upgrade authority
 
@@ -111,9 +134,10 @@ screen capture passed. None of these checks is native-language review.
 
 `npm run verify` includes the production UI build, UI lint, Companion and script
 tests, both browser accessibility gates, the complete UI suite, deterministic
-performance checks, localization contracts, Rust tests, formatting, and Clippy
-in development and release profiles. Both required platform jobs execute this
-command. Release publication separately verifies the successful
+performance checks, localization contracts, the real-TCP Host/Client resilience
+gate within the Rust suite, formatting, and Clippy in development and release
+profiles. Both required platform jobs execute this command. Release publication
+separately verifies the successful
 `Database Migration Integrity`, `macOS Smoke`, and `Windows Smoke` check runs
 for the exact commit.
 

@@ -5,7 +5,7 @@
 | Planstatus | Påbegynt |
 | Planperiode | 12 uker |
 | Oppstart | 2026-08-21 |
-| Sist oppdatert | 2026-08-28 |
+| Sist oppdatert | 2026-08-31 |
 | Eier | Prosjektteamet |
 
 ## Mål
@@ -17,7 +17,7 @@ De viktigste resultatmålene er:
 - Minst 90 % fullføring uten hjelp i fem faste brukertester: registrere, finne, laste, låne ut og motta en spole.
 - Minst 30 % kortere median gjennomføringstid for de samme oppgavene.
 - Identiske lager-, status- og terskelresultater i desktop, Client og Companion.
-- Alle støttede v0.27-backuper kan oppgraderes og gjenopprettes uten datatap.
+- Backuper fra forrige støttede release kan oppgraderes og gjenopprettes uten datatap.
 - Ingen regresjon mot eksisterende ytelsesbudsjett for 10 000 spoler eller gjeldende bundlebudsjetter.
 
 ## Statusnøkkel
@@ -25,6 +25,7 @@ De viktigste resultatmålene er:
 - `Ikke startet`: Arbeidet er ikke påbegynt.
 - `Pågår`: Arbeidet er aktivt.
 - `Blokkert`: Arbeidet venter på en avklaring eller ekstern avhengighet.
+- `Utsatt`: Arbeidet er bevisst flyttet ut av gjeldende leveranse etter en prosjektbeslutning.
 - `Ferdig`: Ferdigkriteriene er dokumentert og verifisert.
 
 ## Fase 0 – korrekthet og sikkerhetsnett (uke 1)
@@ -34,13 +35,13 @@ De viktigste resultatmålene er:
 | Prioritet | Arbeid | Status | Start | Ferdigkriterium |
 | --- | --- | --- | --- | --- |
 | P0 | Samle regelen for lav beholdning i én domenedefinisjon og rette tellingen slik at Dashboard ikke begrenser totalen til de fem viste elementene. Avklar også om 200 g er lav eller sunn beholdning. | Ferdig | 2026-08-21 | Grensene 0, 1, 199, 200 og 201 g samt mer enn fem lave spoler er dekket av automatiske tester, og alle flater viser samme resultat. |
-| P0 | Legge oppgradering fra forrige støttede release inn som obligatorisk CI- og release-gate. | Ferdig | 2026-08-21 | En representativ v0.27-database oppgraderes, åpnes og gjenopprettes automatisk uten tap eller endring av forretningsdata. |
+| P0 | Legge oppgradering fra forrige støttede release inn som obligatorisk CI- og release-gate. | Ferdig | 2026-08-21 | En representativ database fra forrige støttede release oppgraderes, åpnes og gjenopprettes automatisk uten tap eller endring av forretningsdata. |
 | P1 | Styrke Companion med CSP, sikkerhetsheadere, body-grense, request-timeout og rate limiting. | Ferdig | 2026-08-21 | Sikkerhetskontroller er testet, dokumentert og kjører i CI. |
 | P1 | Beholde og tydeliggjøre eksisterende porter for ytelse, backup, tilgjengelighet og lokalisering. | Ferdig | 2026-08-21 | Alle porter har navngitt eier, dokumentert terskel og gir blokkerende CI-feil ved regresjon. |
 
 ### Faseport 0
 
-Fasen er ferdig når lav-beholdning gir samme resultat overalt, oppgradering fra v0.27 er automatisk verifisert, og de nye Companion-kontrollene er aktive uten regresjon i eksisterende porter.
+Fasen er ferdig når lav-beholdning gir samme resultat overalt, oppgradering fra forrige støttede release er automatisk verifisert, og de nye Companion-kontrollene er aktive uten regresjon i eksisterende porter.
 
 ## Fase 1 – raskere daglige arbeidsflyter (uke 2–4)
 
@@ -86,12 +87,12 @@ Fasen er ferdig når lokasjoner og massehandlinger er sporbare, alle flater dele
 | P1 | Legge til periodene 30 dager, 90 dager, 12 måneder og egendefinert intervall i Statistics. | Ferdig | Alle nøkkeltall bruker valgt periode konsekvent og har tester for tids- og datogrenser. |
 | P1 | Vise lagerverdi og materialkostnad per periode med sporbarhet tilbake til spolen. | Ferdig | Summer kan spores til underliggende spoler og transaksjoner, med tydelig valuta- og manglende-datahåndtering. |
 | P2 | Lage en enkel, deterministisk forbruksprognose med synlig datagrunnlag. | Ferdig | Samme input gir samme prognose, antakelser vises, og funksjonen bestiller aldri automatisk. |
-| P0 | Authenticode-signere Windows MSI og programfil før bredere distribusjon. | Blokkert | Installer og binær validerer korrekt signatur i støttede Windows-miljøer. |
-| P0 | Kjøre muterende pakket desktop-E2E på macOS og Windows. | Pågår | Testen oppretter en spole, endrer vekt, låner ut, returnerer, tilordner printerspor, restarter og validerer backup i den pakkede appen. |
+| P0 | Authenticode-signere Windows MSI og programfil før bredere distribusjon. | Utsatt | Installer og binær validerer korrekt signatur i støttede Windows-miljøer. Inntil prosjektet gjenopptar arbeidet, krever Windows-smoken eksplisitt at både MSI og installert binær er usignert. |
+| P0 | Kjøre muterende pakket desktop-E2E på macOS og Windows. | Ferdig | Testen oppretter en spole, endrer vekt, låner ut, returnerer, tilordner printerspor, restarter og validerer backup i den pakkede appen på begge plattformer. |
 
 ### Faseport 3
 
-Fasen er ferdig når kostnader og prognoser er sporbare, Windows-artifakter er signert, og den komplette muterende desktop-flyten passerer på både macOS og Windows.
+Den gjeldende releasekvaliteten er levert når kostnader og prognoser er sporbare og den komplette muterende desktop-flyten passerer på både macOS og Windows. Authenticode er en separat, bevisst utsatt port for bredere Windows-distribusjon og blokkerer ikke dagens eksplisitt usignerte Windows-policy.
 
 ## Produktspor – Filamentstandarder
 
@@ -130,6 +131,8 @@ Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer u
 | Gjøre migrasjoner append-only med én autoritativ migrasjonsrekke. | Ferdig | CI avviser endring eller omnummerering av publiserte migrasjoner og verifiserer både tom installasjon og oppgradering. |
 | Flytte kritiske tester fra kildekodelesing til reell atferd. | Ferdig | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
 | Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ferdig | [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) beholder separate presentasjonslag og fastsetter målte terskler for ny vurdering av en dedikert React-Companion. |
+| Verifisere Host/Client-resiliens mot reell loopback-TCP og separate Host-/Client-databaser. | Ferdig | En Rust Client-testprosess starter en separat Host-underprosess, parer og skriver via produksjonsgatewayen, stopper og starter Host, leser målscopet produksjonscache uten fallback til en lokal same-ID-skyggerad og fullfører automatisk sesjonsfornyelse. |
+| Utvide Host/Client-resiliens til en pakket flerprosessgate. | Pågår | Installerte Host- og Client-kandidater kjører i separate prosesser og verifiserer samme autoritet, cache, stopp/restart og sesjonsfornyelse gjennom det native pakkemiljøet på macOS og Windows. |
 
 ## Kvalitetsrunde før publisering
 
@@ -161,10 +164,20 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Avklar utgiveridentitet og signeringstjeneste for Windows-signering.
-2. Fullfør og dokumenter muterende pakket desktop-E2E på gjeldende schema 5-artifakt for Windows; den tidligere lokale macOS-kjøringen på schema 4 er bestått.
+1. Kjør de fem faste arbeidsflytene – registrere, finne, laste, låne ut og motta – gjennom Client og Companion, og utvid `ActiveLibraryGateway` bare der atferdstestene viser et faktisk gap.
+2. Bygg den pågående pakkede flerprosessgaten som starter installerte Host- og Client-programmer og verifiserer autoritet, cache, stopp/restart og sesjonsfornyelse mot kandidatartifaktene på macOS og Windows. Denne native livssyklus- og pakkedekningen er ikke en del av Rust-gaten.
+3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-08-31
+
+- Den muterende pakkede desktop-gaten er blokkerende i både macOS- og Windows-CI og i release-workflowen. Den installerte kandidaten oppretter og endrer en spole, fullfører utlån og retur, oppretter printer og printerspor, restarter mot samme private schema-5-database og validerer en full portabel backup.
+- En ny deterministisk Rust-gate bruker reell loopback-TCP, en Client-testprosess, en separat Host-underprosess og hver sin isolerte database. Den verifiserer paring, autoritativ Host-skriving gjennom `ActiveLibraryGateway`, produksjonsbanene for live- og målscopet cachelesing, eksplisitt offline-feil for både lesing og skriving uten endring av en lokal same-ID-skyggerad eller separat sentinel, Host-stopp og -restart samt automatisk sesjonsfornyelse. Den fokuserte gaten passerer og inngår i den blokkerende Rust-suiten på begge CI-plattformer; `.local`/mDNS, route pinning, HTTPS/TLS-identitet og installerte apper hører til den planlagte pakkede flerprosessgaten.
+- Den strengere gaten avdekket at Client-gatewayen sendte en ny QR-kode til Host, mens Companion-endepunktet ignorerte feltet og svarte OK. Host-kontrakten skiller nå mellom manglende QR-felt (behold), eksplisitt `null` (fjern) og ny verdi (erstatt), med regresjonstest gjennom både HTTP-endepunktet og gatewayen.
+- Inventory har fått en delt og atferdstestet varselmodell for Client-tilstanden. Den er stille mens rolle og første lasting er uavklart, prioriterer ett presist Host/cache-varsel fremfor en samtidig generell forespørselsfeil, og fjerner fallback-varselet når en live-oppdatering lykkes igjen.
+- En pakket flerprosessgate er neste trinn. Den skal kjøre de installerte Host- og Client-kandidatappene på macOS og Windows og dekke native livssyklus og pakkemiljø som Rust-gaten ikke hevder å teste.
+- Prosjektet har besluttet å utsette Authenticode. Windows MSI og installert programfil skal fortsatt rapportere nøyaktig `NotSigned`; eksisterende signaturverifikator beholdes klar til arbeidet gjenopptas, uten at private nøkler eller sertifikater legges i repo, artefakter eller logger.
 
 ### 2026-08-28
 
