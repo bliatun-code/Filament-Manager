@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   COMPANION_E2E_RECORD,
+  COMPANION_E2E_PRINTER_TARGET,
+  COMPANION_E2E_WISHLIST_RECEIPT,
   assertCompanionDataE2eOptions,
   formatCompanionDataE2eLaunchFailure,
   formatCompanionDataE2eReport,
@@ -11,7 +13,10 @@ import {
   runCompanionDataWorkflows,
 } from "./run-companion-data-e2e.mjs";
 import { createVisualQaFixture } from "./create-visual-qa-fixture.mjs";
-import { cleanupVisualQaDatabase } from "./visual-qa-db.mjs";
+import {
+  applyVisualQaDatabaseFixture,
+  cleanupVisualQaDatabase,
+} from "./visual-qa-db.mjs";
 
 test("Companion data E2E refuses live, source, interface and database dependency overrides", () => {
   assert.throws(
@@ -87,11 +92,61 @@ test("Companion data E2E CLI refuses every explicit source form", () => {
 test("Companion data E2E reader returns an empty workflow state for a clean fixture", () => {
   const fixture = createVisualQaFixture();
   try {
-    assert.deepEqual(readCompanionDataE2eState(fixture.outputPath, COMPANION_E2E_RECORD), {
+    const state = readCompanionDataE2eState(
+      fixture.outputPath,
+      COMPANION_E2E_RECORD,
+    );
+    assert.deepEqual({ ...state, printerAssignments: undefined }, {
       history: [],
       loan: null,
+      loanMatches: [],
+      printerAssignment: null,
+      printerAssignments: undefined,
       spool: null,
+      spoolMatches: [],
+      wishlistItem: null,
+      wishlistReceiptEvents: [],
+      wishlistSpools: [],
     });
+    assert.equal(state.printerAssignments.length, 11);
+    assert.deepEqual(
+      state.printerAssignments.find(
+        (assignment) =>
+          assignment.slot_id === COMPANION_E2E_PRINTER_TARGET.slotId,
+      ),
+      {
+        printer_id: COMPANION_E2E_PRINTER_TARGET.printerId,
+        printer_name: COMPANION_E2E_PRINTER_TARGET.printerName,
+        slot_id: COMPANION_E2E_PRINTER_TARGET.slotId,
+        slot_index: Number(COMPANION_E2E_PRINTER_TARGET.slotIndex),
+        spool_id: null,
+      },
+    );
+  } finally {
+    cleanupVisualQaDatabase(fixture.outputPath);
+  }
+});
+
+test("Companion data E2E reader exposes the fixed partial wishlist receipt fixture", async () => {
+  const fixture = createVisualQaFixture();
+  try {
+    await applyVisualQaDatabaseFixture(fixture.outputPath, "wishlist-orders");
+    const state = readCompanionDataE2eState(
+      fixture.outputPath,
+      COMPANION_E2E_RECORD,
+    );
+    assert.deepEqual(state.wishlistItem, {
+      color_name: COMPANION_E2E_WISHLIST_RECEIPT.colorName,
+      filament_name: COMPANION_E2E_WISHLIST_RECEIPT.filamentName,
+      id: COMPANION_E2E_WISHLIST_RECEIPT.itemId,
+      master_id: "visual_qa_master_wishlist_teal",
+      material: COMPANION_E2E_WISHLIST_RECEIPT.material,
+      quantity: COMPANION_E2E_WISHLIST_RECEIPT.initialQuantity,
+      status: COMPANION_E2E_WISHLIST_RECEIPT.status,
+      vendor: COMPANION_E2E_WISHLIST_RECEIPT.vendor,
+    });
+    assert.deepEqual(state.wishlistReceiptEvents, []);
+    assert.deepEqual(state.wishlistSpools, []);
   } finally {
     cleanupVisualQaDatabase(fixture.outputPath);
   }
@@ -160,13 +215,24 @@ test("Companion data E2E report lists all persisted workflow outcomes", () => {
     workflows: {
       createdSpoolId: "qa-created",
       finalLoanStatus: "RETURNED",
+      historyEvents: ["CREATED", "WEIGHT_UPDATED", "LOANED_OUT", "LOAN_RETURNED"],
       persistedWeight: 777,
       postReturnWeight: 900,
-      historyEvents: ["CREATED", "WEIGHT_UPDATED", "LOANED_OUT", "LOAN_RETURNED"],
+      printerName: "QA Printer",
+      printerSlotCleared: true,
+      printerSlotId: "qa-slot-4",
+      receivedWishlistItemId: COMPANION_E2E_WISHLIST_RECEIPT.itemId,
+      receivedWishlistSpoolId: "qa-received",
+      wishlistRemainingQuantity: 2,
     },
   });
   assert.match(report, /temporary database copies/);
+  assert.match(report, /printer load\/clear: QA Printer · qa-slot-4 \(cleared\)/);
   assert.match(report, /persisted weight update: 777 g/);
+  assert.match(
+    report,
+    /wishlist receipt: visual_qa_wishlist_on_order -> qa-received \(2 remaining\)/,
+  );
   assert.match(report, /weight after return: 900 g/);
   assert.match(report, /final loan status: RETURNED/);
   assert.match(report, /LOAN_RETURNED/);

@@ -30,7 +30,7 @@ pub(crate) async fn assign_library_sync_host_printer_slot(
         .await
 }
 
-fn assign_library_sync_host_printer_slot_blocking(
+pub(crate) fn assign_library_sync_host_printer_slot_blocking(
     state: &AppState,
     input: LibrarySyncAssignPrinterSlotInput,
 ) -> Result<(), String> {

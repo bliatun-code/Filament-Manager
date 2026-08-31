@@ -165,8 +165,15 @@ pub(crate) fn fetch_cached_library_sync_printer_overview(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCacheTargetInput,
 ) -> Result<Option<LibrarySyncCachedPrinterOverview>, String> {
-    let target = capture_cache_target(&state, &input)?;
-    with_current_library_sync_target(&state, &target, |engine| {
+    fetch_cached_library_sync_printer_overview_blocking(&state, &input)
+}
+
+pub(crate) fn fetch_cached_library_sync_printer_overview_blocking(
+    state: &AppState,
+    input: &LibrarySyncCacheTargetInput,
+) -> Result<Option<LibrarySyncCachedPrinterOverview>, String> {
+    let target = capture_cache_target(state, input)?;
+    with_current_library_sync_target(state, &target, |engine| {
         let settings = engine.get_library_sync_settings()?;
         Ok(settings
             .cached_printers
@@ -182,8 +189,15 @@ pub(crate) fn fetch_cached_library_sync_loans(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCacheTargetInput,
 ) -> Result<Option<LibrarySyncCachedLoanList>, String> {
-    let target = capture_cache_target(&state, &input)?;
-    with_current_library_sync_target(&state, &target, |engine| {
+    fetch_cached_library_sync_loans_blocking(&state, &input)
+}
+
+pub(crate) fn fetch_cached_library_sync_loans_blocking(
+    state: &AppState,
+    input: &LibrarySyncCacheTargetInput,
+) -> Result<Option<LibrarySyncCachedLoanList>, String> {
+    let target = capture_cache_target(state, input)?;
+    with_current_library_sync_target(state, &target, |engine| {
         let settings = engine.get_library_sync_settings()?;
         Ok(settings
             .cached_loans
@@ -199,8 +213,15 @@ pub(crate) fn fetch_cached_library_sync_wishlist(
     state: tauri::State<'_, AppState>,
     input: LibrarySyncCacheTargetInput,
 ) -> Result<Option<LibrarySyncCachedWishlistList>, String> {
-    let target = capture_cache_target(&state, &input)?;
-    with_current_library_sync_target(&state, &target, |engine| {
+    fetch_cached_library_sync_wishlist_blocking(&state, &input)
+}
+
+pub(crate) fn fetch_cached_library_sync_wishlist_blocking(
+    state: &AppState,
+    input: &LibrarySyncCacheTargetInput,
+) -> Result<Option<LibrarySyncCachedWishlistList>, String> {
+    let target = capture_cache_target(state, input)?;
+    with_current_library_sync_target(state, &target, |engine| {
         let settings = engine.get_library_sync_settings()?;
         Ok(settings
             .cached_wishlist

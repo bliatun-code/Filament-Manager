@@ -40,6 +40,7 @@ test("blocking quality gates retain named ownership and measurable thresholds", 
   for (const gate of [
     "Performance",
     "Host/Client resilience",
+    "Client/Companion workflow parity",
     "Backup and database upgrade",
     "Accessibility",
     "Localization",
@@ -100,6 +101,42 @@ test("Host Client resilience gate keeps its real process and authority coverage"
   assert.match(hostClientResilienceGate, /offline Host write must fail closed/);
   assert.match(hostClientResilienceGate, /assert_ne!\(session_after_restart, session_before_restart\)/);
   assert.match(
+    hostClientResilienceGate,
+    /real_tcp_client_completes_the_five_fixed_workflows_on_the_host/,
+  );
+  const fixedWorkflowGate = section(
+    hostClientResilienceGate,
+    "async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host()",
+  );
+  const cachedSpoolReadHelper = section(
+    hostClientResilienceGate,
+    "fn client_cached_spools(",
+    "async fn run_blocking",
+  );
+  const hostSpoolReadHelper = section(
+    hostClientResilienceGate,
+    "async fn read_host_spools(",
+    "async fn refresh_host_spool_cache",
+  );
+  assert.match(
+    cachedSpoolReadHelper,
+    /fetch_cached_library_sync_spools_blocking/,
+  );
+  assert.match(hostSpoolReadHelper, /fetch_library_sync_spools_blocking/);
+  for (const productionPath of [
+    "create_library_sync_host_spool_blocking",
+    "read_host_spools",
+    "client_cached_spools",
+    "assign_library_sync_host_printer_slot_blocking",
+    "fetch_cached_library_sync_printer_overview_blocking",
+    "lend_library_sync_host_spool_blocking",
+    "fetch_cached_library_sync_loans_blocking",
+    "receive_library_sync_host_wishlist_item_blocking",
+    "fetch_cached_library_sync_wishlist_blocking",
+  ]) {
+    assert.match(fixedWorkflowGate, new RegExp(productionPath));
+  }
+  assert.match(
     qualityGates,
     /cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture/,
   );
@@ -147,7 +184,14 @@ test("required platform jobs keep every documented gate blocking", () => {
 
   const macosJob = section(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
   const windowsJob = section(ciWorkflow, "  windows-smoke:");
+  const companionE2eStep = section(
+    macosJob,
+    "      - name: Run data-backed Companion E2E",
+    "      - name: Build database upgrade candidate",
+  );
   assert.match(macosJob, /run: npm run verify/);
+  assert.match(companionE2eStep, /npm run qa:visual:companion:data-e2e/);
+  assert.doesNotMatch(companionE2eStep, /continue-on-error:\s*true/);
   assert.match(windowsJob, /run: npm run verify/);
   assert.match(macosJob, /npm run smoke:release:database-upgrade/);
 

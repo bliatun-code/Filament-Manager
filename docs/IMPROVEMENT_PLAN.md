@@ -132,6 +132,7 @@ Dette sporet går gjennom alle fasene og leverer små, kompatible forbedringer u
 | Flytte kritiske tester fra kildekodelesing til reell atferd. | Ferdig | Kritiske akseptansekriterier kjøres mot funksjoner, API eller pakket app; tekststrukturtester brukes ikke som eneste vern. |
 | Vurdere sammenslåing av React- og Companion-kodebasene først etter at gateway og kontrakter er stabile. | Ferdig | [ADR-en](ADR_REACT_COMPANION_CONSOLIDATION.md) beholder separate presentasjonslag og fastsetter målte terskler for ny vurdering av en dedikert React-Companion. |
 | Verifisere Host/Client-resiliens mot reell loopback-TCP og separate Host-/Client-databaser. | Ferdig | En Rust Client-testprosess starter en separat Host-underprosess, parer og skriver via produksjonsgatewayen, stopper og starter Host, leser målscopet produksjonscache uten fallback til en lokal same-ID-skyggerad og fullfører automatisk sesjonsfornyelse. |
+| Verifisere de fem faste arbeidsflytene gjennom Client og Companion. | Ferdig | Client fullfører registrering, søk, printerlasting, utlån og mottak mot en separat Host over reell TCP uten lokale spole- eller historikkmutasjoner; Companion fullfører de samme oppgavene gjennom rendret web-UI mot en midlertidig syntetisk database. Begge porter verifiserer eksakte rader og relasjoner. |
 | Utvide Host/Client-resiliens til en pakket flerprosessgate. | Pågår | Installerte Host- og Client-kandidater kjører i separate prosesser og verifiserer samme autoritet, cache, stopp/restart og sesjonsfornyelse gjennom det native pakkemiljøet på macOS og Windows. |
 
 ## Kvalitetsrunde før publisering
@@ -164,14 +165,16 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Kjør de fem faste arbeidsflytene – registrere, finne, laste, låne ut og motta – gjennom Client og Companion, og utvid `ActiveLibraryGateway` bare der atferdstestene viser et faktisk gap.
-2. Bygg den pågående pakkede flerprosessgaten som starter installerte Host- og Client-programmer og verifiserer autoritet, cache, stopp/restart og sesjonsfornyelse mot kandidatartifaktene på macOS og Windows. Denne native livssyklus- og pakkedekningen er ikke en del av Rust-gaten.
+1. Bygg den pågående pakkede flerprosessgaten som starter installerte Host- og Client-programmer og verifiserer autoritet, cache, stopp/restart og sesjonsfornyelse mot kandidatartifaktene på macOS og Windows. Denne native livssyklus- og pakkedekningen er ikke en del av Rust-gaten.
+2. Gjør Companion-lasting og -tømming av printerspor atomisk i ett API-kall, og la oversikten beholde datasett som faktisk ble lastet når et valgfritt delkall feiler. Den nye femflyt-gaten skal være regresjonsgrunnlag for endringen.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
 
 ### 2026-08-31
 
+- De fem faste arbeidsflytene har nå automatisert dataintegritetsdekning på begge fjernflater. En paret Client registrerer nøyaktig én spole, finner riktig Host-rad, laster den i eksakt printerspor uten å endre en opptatt sentinel-slot, oppretter nøyaktig ett utlån og mottar flere bestilte ruller. Gaten verifiserer Host-data, målscopede cacher og at Clientens lokale spole- og historikkrader er urørt. Companion utfører samme arbeidsflytmønster gjennom den rendrede webappen mot midlertidige kopier av den syntetiske QA-fixturen og kontrollerer SQLite-tilstanden etter omlasting.
+- Atferdstestene avdekket ikke et nytt autoritetsgap som krevde å utvide `ActiveLibraryGateway`. De eksisterende produksjonskommandoene validerer fortsatt Client-mål og målgenerasjon fail-closed; UI-rutingen og søkemodellen har egne kontraktstester. Den planlagte pakkede flerprosessgaten skal dekke den gjenværende native desktop-rutingen.
 - Den muterende pakkede desktop-gaten er blokkerende i både macOS- og Windows-CI og i release-workflowen. Den installerte kandidaten oppretter og endrer en spole, fullfører utlån og retur, oppretter printer og printerspor, restarter mot samme private schema-5-database og validerer en full portabel backup.
 - En ny deterministisk Rust-gate bruker reell loopback-TCP, en Client-testprosess, en separat Host-underprosess og hver sin isolerte database. Den verifiserer paring, autoritativ Host-skriving gjennom `ActiveLibraryGateway`, produksjonsbanene for live- og målscopet cachelesing, eksplisitt offline-feil for både lesing og skriving uten endring av en lokal same-ID-skyggerad eller separat sentinel, Host-stopp og -restart samt automatisk sesjonsfornyelse. Den fokuserte gaten passerer og inngår i den blokkerende Rust-suiten på begge CI-plattformer; `.local`/mDNS, route pinning, HTTPS/TLS-identitet og installerte apper hører til den planlagte pakkede flerprosessgaten.
 - Den strengere gaten avdekket at Client-gatewayen sendte en ny QR-kode til Host, mens Companion-endepunktet ignorerte feltet og svarte OK. Host-kontrakten skiller nå mellom manglende QR-felt (behold), eksplisitt `null` (fjern) og ny verdi (erstatt), med regresjonstest gjennom både HTTP-endepunktet og gatewayen.

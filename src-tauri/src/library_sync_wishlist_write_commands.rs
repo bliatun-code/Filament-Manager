@@ -106,7 +106,7 @@ pub(crate) async fn receive_library_sync_host_wishlist_item(
     .await
 }
 
-fn receive_library_sync_host_wishlist_item_blocking(
+pub(crate) fn receive_library_sync_host_wishlist_item_blocking(
     state: &AppState,
     input: LibrarySyncReceiveWishlistItemInput,
 ) -> Result<WishlistReceiptResult, String> {

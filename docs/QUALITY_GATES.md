@@ -1,10 +1,10 @@
 # Blocking quality gates
 
 This document is the release contract for Filament Manager's performance,
-Host/Client resilience, backup and upgrade, accessibility, and localization
-gates. A gate is blocking when a failure makes `Database Migration Integrity`,
-`macOS Smoke`, or `Windows Smoke` fail; the release workflow requires all three
-checks before publishing artifacts.
+Host/Client resilience, Client/Companion workflow parity, backup and upgrade,
+accessibility, and localization gates. A gate is blocking when a failure makes
+`Database Migration Integrity`, `macOS Smoke`, or `Windows Smoke` fail; the
+release workflow requires all three checks before publishing artifacts.
 
 The named owner is accountable for the threshold and for reviewing any proposed
 exception. Contributors may implement fixes in every area, but a threshold must
@@ -14,6 +14,7 @@ not be weakened merely to make a change pass.
 | --- | --- | --- | --- | --- |
 | Performance | `@bliatun-code` (performance gate owner) | The deterministic 10,000-spool, concurrency, timeout, render-window, lazy-loading, and bundle contracts pass with zero failures. Production JavaScript chunks remain within the committed byte budgets in [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md). | `npm run test:performance:bundle` and `npm run test:performance` | `npm run verify` on macOS and Windows |
 | Host/Client resilience | `@bliatun-code` (library-sync gate owner) | The loopback-TCP Rust gate passes with zero failures using a Client-test process, a separate Host subprocess, and separate synthetic Host and Client databases. It must pair, route a production-gateway write to the Host, read the target-scoped production cache, expose an explicit offline error without reading or writing the Client's unrelated local library—including a same-ID local shadow row—recover after Host restart, and complete automatic session renewal against the same Host authority. | `cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture` | `npm run verify` on macOS and Windows |
+| Client/Companion workflow parity | `@bliatun-code` (workflow gate owner) | The five fixed workflows—register, find, load, lend and receive an on-order item—must pass with exact record counts and relationships. Client operations use a real loopback Host process, leave Client-local spool and history rows unchanged and refresh target-scoped caches. Companion uses its rendered browser UI against a temporary synthetic database and verifies persisted SQLite state after reload. | `cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture` and `npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000` | Client coverage is part of `npm run verify` on macOS and Windows; the rendered Companion gate is a dedicated `macOS Smoke` step |
 | Backup and database upgrade | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. The installed DMG and MSI must pass the mutating spool/loan/printer/full-backup E2E across a restart. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, `npm run smoke:release:database-upgrade -- ...`, and `npm run smoke:release:packaged-desktop-e2e -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade and mutating packaged-app smokes in required platform jobs |
 | Accessibility | `@bliatun-code` (accessibility gate owner) | All six data-backed main pages have zero axe violations for WCAG 2.0 A/AA, 2.1 A/AA, and 2.2 AA and emit zero browser errors. The shared modal passes keyboard focus, Escape/focus return, and 200% zoom without page-level horizontal overflow. | `npm run test:a11y:app-modal` and `npm run test:a11y:data-backed` | `npm run verify` on macOS and Windows |
 | Localization | `@bliatun-code` (localization gate owner) | Every selectable catalog keeps 100% key and placeholder coverage, zero English catalog-overlay fallback, zero unknown literal keys, at least 95% translation signal, and current fingerprint-bound artifact and runtime QA evidence. A locale described as maintained also needs a named native reviewer and a reviewed fingerprint matching the current English source. | `npm run check:i18n-readiness`, `npm run qa:visual:desktop:matrix`, and `npm run check:contracts` | `npm run verify` on macOS and Windows; screenshot results are recorded from their actual release-gate runs |
@@ -48,6 +49,14 @@ Client-local database throughout the scenario. A failure must never expose
 those rows as if they were Host data or convert an uncertain Host write into a
 local mutation.
 
+A second scenario uses the same real transport boundary to register exactly one
+Host spool, find it from Host data, assign it to the requested slot without
+changing a sentinel assignment, create exactly one outbound loan and receive a
+multi-spool on-order item. It verifies weights, statuses, counts and the
+target-scoped spool, printer, loan and wishlist caches after the corresponding
+production Client command paths. The Client-local spool and history snapshot
+must remain row-for-row identical.
+
 This gate deliberately does not claim installed DMG/MSI behavior, native window
 lifecycle handling, packaged network isolation, stable `.local`/mDNS discovery,
 route pinning, or HTTPS/TLS identity verification. It intentionally uses a
@@ -55,6 +64,26 @@ QA-enabled direct loopback listener; a later packaged multiprocess gate will run
 the installed candidate applications, cover those remaining network and native
 boundaries, and be added to this contract before it becomes a blocking release
 requirement.
+
+## Fixed workflow parity authority
+
+The automated workflow gates protect data integrity and routing for the same
+five tasks defined in [USABILITY_TEST_PROTOCOL.md](USABILITY_TEST_PROTOCOL.md).
+They complement the moderated usability study; they do not prove the 90%
+unassisted-completion or 30% timing thresholds.
+
+For Client, the Rust real-TCP scenario proves the authoritative Host boundary,
+while UI routing and the shared inventory search model remain covered by their
+TypeScript behavior tests. `ActiveLibraryGateway` is extended only when a
+behavior test finds an uncovered authority decision; passing Host-specific
+production command paths are not moved merely to make the abstraction larger.
+
+For Companion, `scripts/run-companion-data-e2e.mjs` drives the rendered web UI
+against a generated, sanitized fixture and temporary migrated database copies.
+It registers and reloads a spool, finds and opens the correct row, loads that
+spool into a printer slot, lends and returns it, receives an on-order item and
+then checks both visible state and persisted database relationships. Real user
+libraries are never opened or modified by this gate.
 
 ## Backup and upgrade authority
 
@@ -136,7 +165,8 @@ screen capture passed. None of these checks is native-language review.
 tests, both browser accessibility gates, the complete UI suite, deterministic
 performance checks, localization contracts, the real-TCP Host/Client resilience
 gate within the Rust suite, formatting, and Clippy in development and release
-profiles. Both required platform jobs execute this command. Release publication
+profiles. Both required platform jobs execute this command. The macOS job also
+runs the data-backed Companion workflow gate with a generated fixture. Release publication
 separately verifies the successful
 `Database Migration Integrity`, `macOS Smoke`, and `Windows Smoke` check runs
 for the exact commit.
