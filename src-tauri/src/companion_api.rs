@@ -78,6 +78,13 @@ pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Res
         }
     };
 
+    activate_trusted_lan_listener_locked(state, listener).await
+}
+
+async fn activate_trusted_lan_listener_locked(
+    state: &AppState,
+    listener: tokio::net::TcpListener,
+) -> Result<(), String> {
     let api_state = CompanionApiState::new(
         state.db_path.clone(),
         state.companion.trusted_lan.clone(),
@@ -110,6 +117,23 @@ pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Res
         eprintln!("Companion stable local address is unavailable: {error}");
     }
     Ok(())
+}
+
+#[cfg(test)]
+pub(crate) async fn start_trusted_lan_server_with_bound_listener(
+    state: AppState,
+    listener: tokio::net::TcpListener,
+) -> Result<(), String> {
+    let reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
+    stop_trusted_lan_server_locked(&state, false).await;
+    if state.companion.trusted_lan.shutting_down() {
+        state.companion.trusted_lan.mark_stopped();
+        drop(reconcile_guard);
+        return Ok(());
+    }
+    let result = activate_trusted_lan_listener_locked(&state, listener).await;
+    drop(reconcile_guard);
+    result
 }
 
 pub(crate) async fn shutdown_trusted_lan_server(state: &AppState) {
@@ -1252,6 +1276,10 @@ pub(super) async fn handle_update_spool_details(
                 .map_err(CompanionApiError::from)?
                 .ok_or_else(|| CompanionApiError::NotFound("Record not found".to_string()))?;
             let current_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+            let requested_qr_code = match payload.qr_code.as_update() {
+                Some(value) => normalize_optional_text(value.map(String::as_str)),
+                None => spool.spool.qr_code.clone(),
+            };
             let requested_location = match payload.location.as_update() {
                 Some(value) => normalize_optional_text(value.map(String::as_str)),
                 None => spool.spool.location_id.clone(),
@@ -1283,7 +1311,8 @@ pub(super) async fn handle_update_spool_details(
                 && requested_location == spool.spool.location_id
                 && requested_home_location_is_unchanged
                 && ownership.is_none()
-                && (payload.spool_tare_weight_g.is_some()
+                && (payload.qr_code.is_set()
+                    || payload.spool_tare_weight_g.is_some()
                     || normalized_purchase_metadata.is_some()
                     || payload.purchase_price_batch_locked.is_some());
             if (current_status == SpoolStatus::Borrowed || has_active_outbound_loan)
@@ -1296,7 +1325,8 @@ pub(super) async fn handle_update_spool_details(
             }
             let editing_nonplacement_details = requested_location == spool.spool.location_id
                 && status == current_status.as_str()
-                && (payload.home_location.is_set()
+                && (payload.qr_code.is_set()
+                    || payload.home_location.is_set()
                     || payload.spool_tare_weight_g.is_some()
                     || ownership.is_some()
                     || normalized_purchase_metadata.is_some()
@@ -1321,7 +1351,7 @@ pub(super) async fn handle_update_spool_details(
                 .service
                 .update_spool_details(UpdateSpoolDetailsInput {
                     spool_id: spool_id.to_string(),
-                    qr_code: spool.spool.qr_code.clone(),
+                    qr_code: requested_qr_code,
                     status,
                     location: requested_location,
                     home_location: requested_home_location,

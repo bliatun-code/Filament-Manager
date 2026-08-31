@@ -42,6 +42,12 @@ copies its app to an isolated test installation without clearing quarantine
 metadata, opens the installed copy through LaunchServices with an isolated
 runtime database, and verifies SQLite integrity, schema compatibility, required
 tables, foreign keys, and a visible application window on both architectures.
+It also runs the mutating packaged desktop gate against a separate private
+database: create and update a spool, complete a loan and return, create a
+printer and slot assignment, restart the installed app against the same
+database, and validate both persisted state and a complete portable backup.
+The private database is removed after the gate and is never uploaded with the
+diagnostic logs.
 
 Tagged releases also include a validated source dependency SBOM. Public tag
 releases include GitHub/Sigstore build provenance for the DMG and MSI. See

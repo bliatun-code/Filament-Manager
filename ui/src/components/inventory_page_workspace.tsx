@@ -23,7 +23,7 @@ import { WishlistQueuePanel, type WishlistQueuePanelProps } from "./wishlist_que
 import { formatDateTime } from "../lib/date_time";
 import { useI18n } from "../lib/i18n";
 import {
-  shouldShowClientSnapshotWarning,
+  resolveClientPageFeedbackState,
   type ClientSnapshotSource,
 } from "../lib/page_refresh_state";
 
@@ -158,15 +158,19 @@ export function InventoryPageWorkspace({
   totalPurchaseCount,
 }: InventoryPageWorkspaceProps) {
   const { locale, t } = useI18n();
-  const clientHostWarningVisible = shouldShowClientSnapshotWarning({
+  const {
+    clientDataWarningVisible,
+    clientHostWarningVisible,
+    clientPartialWarningVisible,
+    loadErrorVisible,
+  } = resolveClientPageFeedbackState({
     clientReadOnly,
+    hasLoadError: Boolean(loadError),
     initialLoadSettled: librarySyncReady && !loading,
+    partial: clientInventoryPartial,
+    requestPending: loading || loadErrorRetrying,
     source: clientInventorySource,
   });
-  const clientPartialWarningVisible =
-    clientReadOnly && librarySyncReady && !loading && clientInventoryPartial;
-  const clientDataWarningVisible =
-    !loadError && (clientHostWarningVisible || clientPartialWarningVisible);
 
   return (
     <>
@@ -222,7 +226,7 @@ export function InventoryPageWorkspace({
         </FeedbackBanner>
       ) : null}
 
-      {loadError ? (
+      {loadErrorVisible && loadError ? (
         <PageLoadErrorBanner
           message={loadError}
           onRetry={onRetryLoadError}
@@ -322,7 +326,7 @@ export function InventoryPageWorkspace({
               showOfflineSourceWarning={
                 clientReadOnly &&
                 !clientDataWarningVisible &&
-                !loadError &&
+                !loadErrorVisible &&
                 librarySyncReady &&
                 !loading
               }

@@ -193,6 +193,50 @@ Storage changes must preserve these rules:
 - keep device credentials and transport state out of portable data flows;
 - treat Windows split-location conflicts as failures, not silent overwrites.
 
+## Active Library Authority And Client Resilience
+
+The persisted library role and target generation decide which authority a
+desktop command may use. `ActiveLibraryGateway` and the narrower authoritative-
+local guards route supported work either to the local `InventoryEngine` or to
+the exact paired Host target. Client mode never treats the Client's SQLite
+database as an alternate writable library. An unavailable, unauthorized, or
+unsupported Host therefore returns an explicit error instead of falling back
+to a local mutation.
+
+Host-derived caches are scoped to the Host identity, library ID, and monotonic
+target generation. Changing any part of that target clears incompatible cached
+data and runtime authentication. A response that started under an older target
+generation cannot update UI state, cache state, validation state, or
+credentials after the target changes. Read-only last-good data may remain
+visible during a bounded outage, but it must be labelled as cached and must
+never be combined with the Client's unrelated local shadow data.
+
+Client feedback follows the same authority state. It stays quiet while the
+library role and initial request are unresolved, prefers one precise Host/cache
+warning over a simultaneous generic request error, and clears fallback feedback
+as soon as a settled live response is available again.
+
+Credential-bearing writes are single-shot. Capability checks reject an
+unsupported compound operation before its first partial write, and a transport
+failure does not transparently replay an authenticated mutation against a
+newly resolved address. Session renewal is scoped to the same Host target and
+collapses concurrent renewal attempts; target changes and authorization
+failures invalidate the complete runtime session.
+
+The deterministic Host/Client resilience gate exercises these boundaries over
+real TCP with separate Host and Client databases. A Rust Client-test process
+starts the Host as a separate operating-system subprocess, pairs against it,
+performs Host-authoritative work, warms the Host-scoped cache, stops and
+restarts the Host, verifies the offline no-fallback behavior, and completes
+automatic session renewal. A same-ID Client-local shadow row proves that the
+production gateway dispatch and target-scoped cache command do not fall back to
+the Client database. This proves loopback-TCP process separation, authenticated
+session recovery, authority dispatch, and cache target guards. Because the gate
+uses a QA-enabled direct loopback address, it does not prove stable `.local`/mDNS
+discovery, route pinning, HTTPS/TLS identity, installed candidate applications,
+native window lifecycle, or the packaging environment. A later packaged
+multiprocess gate must exercise those remaining boundaries.
+
 ## Data Consistency And Request Responsiveness
 
 `InventoryEngine` is the transaction boundary for user-visible inventory

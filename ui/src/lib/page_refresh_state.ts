@@ -19,6 +19,48 @@ export function shouldShowClientSnapshotWarning({
   return clientReadOnly && initialLoadSettled && isClientSnapshotFallback(source);
 }
 
+export type ClientPageFeedbackState = {
+  clientDataWarningVisible: boolean;
+  clientHostWarningVisible: boolean;
+  clientPartialWarningVisible: boolean;
+  loadErrorVisible: boolean;
+};
+
+export function resolveClientPageFeedbackState({
+  clientReadOnly,
+  hasLoadError,
+  initialLoadSettled,
+  partial,
+  requestPending,
+  source,
+}: {
+  clientReadOnly: boolean;
+  hasLoadError: boolean;
+  initialLoadSettled: boolean;
+  partial: boolean;
+  requestPending: boolean;
+  source: ClientSnapshotSource;
+}): ClientPageFeedbackState {
+  const clientHostWarningVisible = shouldShowClientSnapshotWarning({
+    clientReadOnly,
+    initialLoadSettled,
+    source,
+  });
+  const clientPartialWarningVisible =
+    clientReadOnly && initialLoadSettled && partial;
+  const clientDataWarningVisible =
+    clientHostWarningVisible || clientPartialWarningVisible;
+
+  return {
+    clientDataWarningVisible,
+    clientHostWarningVisible,
+    clientPartialWarningVisible,
+    // A resolved Host/cache state is more useful than the generic request
+    // failure that may have occurred while composing the same snapshot.
+    loadErrorVisible: hasLoadError && !requestPending && !clientDataWarningVisible,
+  };
+}
+
 export function isClientCompositeSnapshotPartial({
   primarySource,
   secondarySources,

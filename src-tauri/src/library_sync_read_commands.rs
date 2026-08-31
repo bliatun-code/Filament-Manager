@@ -80,7 +80,7 @@ pub(crate) async fn fetch_library_sync_spools(
     run_library_sync_blocking(move || fetch_library_sync_spools_blocking(&state, input)).await
 }
 
-fn fetch_library_sync_spools_blocking(
+pub(crate) fn fetch_library_sync_spools_blocking(
     state: &AppState,
     input: LibrarySyncSpoolListInput,
 ) -> Result<Vec<SpoolWithMasterRow>, String> {

@@ -6,6 +6,7 @@ import {
   isClientCompositeSnapshotPartial,
   isClientSnapshotFallback,
   reducePageRefreshState,
+  resolveClientPageFeedbackState,
   shouldShowClientSnapshotWarning,
 } from "./page_refresh_state";
 
@@ -45,6 +46,123 @@ test("only settled cached and offline client snapshots show a Host warning", () 
       source: "OFFLINE",
     }),
     false,
+  );
+});
+
+test("client feedback stays quiet during startup, prioritizes fallback, and clears after reconnect", () => {
+  const states = [
+    {
+      label: "role unresolved",
+      input: {
+        clientReadOnly: true,
+        hasLoadError: false,
+        initialLoadSettled: false,
+        partial: false,
+        requestPending: true,
+        source: "UNRESOLVED" as const,
+      },
+      expected: { fallback: false, loadError: false },
+    },
+    {
+      label: "live response still loading",
+      input: {
+        clientReadOnly: true,
+        hasLoadError: true,
+        initialLoadSettled: false,
+        partial: false,
+        requestPending: true,
+        source: "LIVE" as const,
+      },
+      expected: { fallback: false, loadError: false },
+    },
+    {
+      label: "cached snapshot after Host loss",
+      input: {
+        clientReadOnly: true,
+        hasLoadError: true,
+        initialLoadSettled: true,
+        partial: false,
+        requestPending: false,
+        source: "CACHED" as const,
+      },
+      expected: { fallback: true, loadError: false },
+    },
+    {
+      label: "offline without a cached snapshot",
+      input: {
+        clientReadOnly: true,
+        hasLoadError: true,
+        initialLoadSettled: true,
+        partial: false,
+        requestPending: false,
+        source: "OFFLINE" as const,
+      },
+      expected: { fallback: true, loadError: false },
+    },
+    {
+      label: "live again after reconnect",
+      input: {
+        clientReadOnly: true,
+        hasLoadError: false,
+        initialLoadSettled: true,
+        partial: false,
+        requestPending: false,
+        source: "LIVE" as const,
+      },
+      expected: { fallback: false, loadError: false },
+    },
+  ];
+
+  for (const { expected, input, label } of states) {
+    const feedback = resolveClientPageFeedbackState(input);
+    assert.equal(
+      feedback.clientDataWarningVisible,
+      expected.fallback,
+      `${label}: fallback warning`,
+    );
+    assert.equal(
+      feedback.loadErrorVisible,
+      expected.loadError,
+      `${label}: generic load error`,
+    );
+  }
+});
+
+test("generic failures remain visible when no client fallback explains them", () => {
+  assert.deepEqual(
+    resolveClientPageFeedbackState({
+      clientReadOnly: true,
+      hasLoadError: true,
+      initialLoadSettled: true,
+      partial: false,
+      requestPending: false,
+      source: "LIVE",
+    }),
+    {
+      clientDataWarningVisible: false,
+      clientHostWarningVisible: false,
+      clientPartialWarningVisible: false,
+      loadErrorVisible: true,
+    },
+  );
+});
+
+test("a failed library-role request remains visible and retryable", () => {
+  assert.deepEqual(
+    resolveClientPageFeedbackState({
+      clientReadOnly: true,
+      hasLoadError: true,
+      initialLoadSettled: false,
+      partial: false,
+      requestPending: false,
+      source: "UNRESOLVED",
+    }),
+    {
+      clientDataWarningVisible: false,
+      clientHostWarningVisible: false,
+      clientPartialWarningVisible: false,
+      loadErrorVisible: true,
+    },
   );
 });
 

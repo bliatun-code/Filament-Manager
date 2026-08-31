@@ -18,6 +18,11 @@ const accessibilityGate = readFileSync(
   "scripts/run-data-backed-accessibility.mjs",
   "utf8",
 );
+const tauriMain = readFileSync("src-tauri/src/main.rs", "utf8");
+const hostClientResilienceGate = readFileSync(
+  "src-tauri/src/library_sync_resilience_tests.rs",
+  "utf8",
+);
 
 function section(source, start, end) {
   const startIndex = source.indexOf(start);
@@ -34,6 +39,7 @@ function section(source, start, end) {
 test("blocking quality gates retain named ownership and measurable thresholds", () => {
   for (const gate of [
     "Performance",
+    "Host/Client resilience",
     "Backup and database upgrade",
     "Accessibility",
     "Localization",
@@ -46,6 +52,11 @@ test("blocking quality gates retain named ownership and measurable thresholds", 
   }
 
   assert.match(qualityGates, /10,000-spool/);
+  assert.match(qualityGates, /separate Host subprocess/);
+  assert.match(
+    qualityGates,
+    /without reading or writing the Client's unrelated local library/,
+  );
   assert.match(qualityGates, /SQLite `quick_check` is `ok`/);
   assert.match(qualityGates, /zero axe violations/);
   assert.match(qualityGates, /100% key and placeholder coverage/);
@@ -60,6 +71,38 @@ test("blocking quality gates retain named ownership and measurable thresholds", 
   for (const tag of ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]) {
     assert.match(accessibilityGate, new RegExp(`"${tag}"`));
   }
+});
+
+test("Host Client resilience gate keeps its real process and authority coverage", () => {
+  assert.match(tauriMain, /mod library_sync_resilience_tests;/);
+  assert.match(
+    hostClientResilienceGate,
+    /Command::new\(std::env::current_exe\(\)/,
+  );
+  assert.match(hostClientResilienceGate, /CLIENT_DECOY_SPOOL_ID/);
+  assert.match(hostClientResilienceGate, /client_shadow_spool/);
+  assert.match(hostClientResilienceGate, /client_local_snapshot/);
+  assert.match(hostClientResilienceGate, /ActiveLibraryGateway::new/);
+  assert.match(
+    hostClientResilienceGate,
+    /fetch_library_sync_spools_blocking/,
+  );
+  assert.match(
+    hostClientResilienceGate,
+    /fetch_cached_library_sync_spools_blocking/,
+  );
+  assert.match(
+    hostClientResilienceGate,
+    /start_trusted_lan_server_with_bound_listener/,
+  );
+  assert.match(hostClientResilienceGate, /refresh_library_sync_spool_cache/);
+  assert.match(hostClientResilienceGate, /offline live Host read must fail explicitly/);
+  assert.match(hostClientResilienceGate, /offline Host write must fail closed/);
+  assert.match(hostClientResilienceGate, /assert_ne!\(session_after_restart, session_before_restart\)/);
+  assert.match(
+    qualityGates,
+    /cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture/,
+  );
 });
 
 test("required platform jobs keep every documented gate blocking", () => {

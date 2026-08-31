@@ -4410,7 +4410,7 @@ async fn companion_api_updates_spool_status_and_location() {
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
                     .body(Body::from(
-                        r#"{"status":"LOST","location":"Archive Bin","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"},"purchase_price_batch_locked":true}"#,
+                        r#"{"qr_code":"qr-host-updated","status":"LOST","location":"Archive Bin","home_location":"Shelf C","spool_tare_weight_g":245,"ownership":{"ownership_type":"OWNED"},"purchase_price_batch_locked":true}"#,
                     ))
                     .map_err(|error| error.to_string())?,
             )
@@ -4450,8 +4450,34 @@ async fn companion_api_updates_spool_status_and_location() {
         assert!(detail_text.contains("\"spool_tare_weight_g\":245"));
         assert!(detail_text.contains("\"ownership_type\":\"OWNED\""));
         assert!(detail_text.contains("\"purchase_price_batch_locked\":true"));
-        assert!(detail_text.contains("\"qr_code\":\"qr-1\""));
+        assert!(detail_text.contains("\"qr_code\":\"qr-host-updated\""));
         assert!(detail_text.contains("\"event_type\":\"DETAILS_UPDATED\""));
+
+        let clear_qr = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/spools/spool_1/details")
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"qr_code":null,"status":"LOST","location":"Archive Bin","home_location":"Shelf C"}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(clear_qr.status(), StatusCode::OK);
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let cleared = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "spool_1 missing after QR clear".to_string())?;
+        assert_eq!(cleared.qr_code, None);
 
         Ok::<(), String>(())
     }
@@ -4499,6 +4525,7 @@ async fn companion_api_updates_and_explicitly_clears_spool_receipt_metadata() {
             .get_spool_by_id("spool_1")
             .map_err(|error| error.to_string())?
             .ok_or_else(|| "spool_1 missing after metadata update".to_string())?;
+        assert_eq!(spool.qr_code.as_deref(), Some("qr-1"));
         assert_eq!(spool.purchase_price, Some(199.0));
         assert_eq!(spool.purchase_currency.as_deref(), Some("EUR"));
         assert_eq!(spool.purchase_date.as_deref(), Some("2026-08-20"));

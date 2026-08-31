@@ -107,10 +107,12 @@ npm run test:ui
 npm run test:companion
 npm run test:rust
 npm run check:contracts
+cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture
 ```
 
-The blocking performance, backup/upgrade, accessibility, and localization
-thresholds—and the maintainer accountable for each—are listed in
+The blocking performance, Host/Client resilience, backup/upgrade,
+accessibility, and localization thresholds—and the maintainer accountable for
+each—are listed in
 [the quality-gate contract](docs/QUALITY_GATES.md). Update that contract and its
 executable test in the same change whenever a gate or threshold changes.
 
@@ -184,6 +186,9 @@ Participation is also covered by [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
   should not overwrite a deliberate slot assignment or RFID identity.
 - Companion and Trusted-LAN changes must preserve browser session and CSRF
   safeguards.
+- Host/Client changes must preserve the exact Host, library, and target
+  generation as the authority. Never add a local Client write fallback or
+  transparently replay a credential-bearing write after a transport failure.
 - Scanner changes should remain usable without specialized hardware.
 - UI changes should keep desktop modal sizing, mobile Companion behavior, and
   localization in mind.

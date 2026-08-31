@@ -43,7 +43,7 @@ Tagged releases also include a validated source dependency SBOM. Public tag
 releases include GitHub/Sigstore build provenance for the DMG and MSI. See
 [Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification
 commands and scope. This provenance does not Authenticode-sign the MSI; Windows
-installer signing remains intentionally deferred.
+installer signing remains intentionally deferred by project decision.
 
 ## Automated installer smoke test
 
@@ -54,9 +54,16 @@ configured not to request elevation, launches the installed executable with an
 isolated runtime database, waits for a responsive application window, and
 verifies that SQLite
 `quick_check`, schema compatibility, and the required catalog, inventory, and
-settings tables pass. CI then closes the app normally, uninstalls it, and
-confirms that the executable, installer registration, shortcuts, and user
-`PATH` entry are removed while the isolated database remains healthy and
+settings tables pass. A separate private test database then drives the installed
+app through the mutating packaged desktop gate: create and update a spool,
+complete a loan and return, create a printer and assign the spool to a slot,
+restart against the same database, and validate both persisted state and a
+complete portable backup. The private database is removed after the gate and is
+never uploaded with the diagnostic logs.
+
+CI then closes the app normally, uninstalls it, and confirms that the
+executable, installer registration, shortcuts, and user `PATH` entry are
+removed while the ordinary isolated smoke database remains healthy and
 unchanged. Verbose install, uninstall, application, and smoke-test logs are
 retained as a CI artifact for troubleshooting. The MSI is intentionally
 unsigned; the smoke test fails unless both the source MSI and installed

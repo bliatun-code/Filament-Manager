@@ -200,6 +200,9 @@ pub(crate) struct UpdateSpoolOwnershipRequest {
 
 #[derive(Deserialize)]
 pub(crate) struct UpdateSpoolDetailsRequest {
+    /// Missing preserves the current QR code; null clears it and a string replaces it.
+    #[serde(default)]
+    pub(crate) qr_code: OptionalUpdate<String>,
     pub(crate) status: String,
     #[serde(default)]
     pub(crate) location: OptionalUpdate<String>,
