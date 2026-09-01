@@ -48,6 +48,11 @@ pub(crate) fn normalize_library_sync_base_url(value: &str) -> Result<String, Str
 }
 
 pub(crate) fn ensure_stable_local_library_sync_host(base_url: &str) -> Result<(), String> {
+    if crate::packaged_host_client_e2e::allows_packaged_host_client_pairing_loopback_base_url(
+        base_url,
+    ) {
+        return Ok(());
+    }
     let parsed = url::Url::parse(base_url)
         .map_err(|_| "Pairing requires the host's stable local Companion address.".to_string())?;
     if parsed

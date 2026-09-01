@@ -3,7 +3,11 @@ import {
   auditManagedVendorCatalog,
   refreshManagedVendorCatalog,
 } from "../lib/catalog_writes";
-import { toErrorMessage } from "../lib/error_text";
+import {
+  completeCatalogRefreshOperation,
+  tryBeginCatalogRefreshOperation,
+} from "../lib/catalog_refresh_operation";
+import { diagnosticErrorText } from "../lib/error_text";
 import type {
   CatalogRefreshResult,
   CatalogSourceAuditResult,
@@ -82,11 +86,12 @@ export function useSettingsCatalogRefreshActions({
     vendor: SettingsCatalogVendor,
     phase: string,
     message: string,
+    startedAt: number,
   ) {
     setCatalogRefreshVendor(vendor);
     setCatalogRefreshPhase(phase);
     setCatalogRefreshProgressMessage(message);
-    setCatalogRefreshStartedAt(Date.now());
+    setCatalogRefreshStartedAt(startedAt);
     setCatalogRefreshBusy(true);
     beginCatalogRefreshResult();
     setError(null);
@@ -98,7 +103,21 @@ export function useSettingsCatalogRefreshActions({
       return;
     }
     const labels = settingsCatalogRefreshMessageLabels();
-    beginCatalogOperation(vendor, "DISCOVER", labels.discoveringCatalogMaterials);
+    const operation = tryBeginCatalogRefreshOperation({
+      kind: "AUDIT",
+      message: labels.discoveringCatalogMaterials,
+      phase: "DISCOVER",
+      vendor,
+    });
+    if (!operation) {
+      return;
+    }
+    beginCatalogOperation(
+      vendor,
+      operation.phase,
+      operation.message,
+      operation.startedAt,
+    );
     try {
       const summary = await auditManagedVendorCatalog(vendor, {
         clientReadOnly: settingsClientReadOnly,
@@ -122,10 +141,11 @@ export function useSettingsCatalogRefreshActions({
     } catch (auditError) {
       console.error(auditError);
       const fallbackMessage = buildSettingsCatalogAuditFallbackErrorMessage(vendor, labels);
-      const technicalMessage = toErrorMessage(auditError, fallbackMessage);
+      const technicalMessage = diagnosticErrorText(auditError) || fallbackMessage;
       failCatalogRefreshResult(technicalMessage);
       setError(fallbackMessage);
     } finally {
+      completeCatalogRefreshOperation(operation.id);
       setCatalogRefreshBusy(false);
       setCatalogRefreshStartedAt(null);
     }
@@ -139,13 +159,24 @@ export function useSettingsCatalogRefreshActions({
     if (!materialType) {
       return;
     }
+    const preparingMessage = buildSettingsCatalogRefreshPreparingMessage(
+      vendor,
+      settingsCatalogRefreshMessageLabels(),
+    );
+    const operation = tryBeginCatalogRefreshOperation({
+      kind: "REFRESH",
+      message: preparingMessage,
+      phase: "PREPARE",
+      vendor,
+    });
+    if (!operation) {
+      return;
+    }
     beginCatalogOperation(
       vendor,
-      "PREPARE",
-      buildSettingsCatalogRefreshPreparingMessage(
-        vendor,
-        settingsCatalogRefreshMessageLabels(),
-      ),
+      operation.phase,
+      operation.message,
+      operation.startedAt,
     );
     try {
       const summary = await refreshManagedVendorCatalog(
@@ -181,10 +212,10 @@ export function useSettingsCatalogRefreshActions({
         vendor,
         settingsCatalogRefreshMessageLabels(),
       );
-      const message = toErrorMessage(refreshError, fallbackMessage);
-      failCatalogRefreshResult(message);
-      setError(message);
+      failCatalogRefreshResult(diagnosticErrorText(refreshError) || fallbackMessage);
+      setError(fallbackMessage);
     } finally {
+      completeCatalogRefreshOperation(operation.id);
       setCatalogRefreshBusy(false);
       setCatalogRefreshStartedAt(null);
     }

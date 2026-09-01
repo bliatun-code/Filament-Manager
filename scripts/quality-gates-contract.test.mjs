@@ -23,6 +23,10 @@ const hostClientResilienceGate = readFileSync(
   "src-tauri/src/library_sync_resilience_tests.rs",
   "utf8",
 );
+const packagedHostClientGate = readFileSync(
+  "scripts/run-packaged-host-client-e2e.mjs",
+  "utf8",
+);
 
 function section(source, start, end) {
   const startIndex = source.indexOf(start);
@@ -46,14 +50,16 @@ test("blocking quality gates retain named ownership and measurable thresholds", 
     "Localization",
   ]) {
     assert.equal(
-      qualityGates.includes(`| ${gate} | \`@bliatun-code\``),
+      new RegExp(
+        `\\|\\s+${gate.replaceAll("/", "\\/")}\\s+\\|\\s+` + "`@bliatun-code`",
+      ).test(qualityGates),
       true,
       `${gate} must retain a named owner`,
     );
   }
 
   assert.match(qualityGates, /10,000-spool/);
-  assert.match(qualityGates, /separate Host subprocess/);
+  assert.match(qualityGates, /separate Host operating-system process/);
   assert.match(
     qualityGates,
     /without reading or writing the Client's unrelated local library/,
@@ -84,10 +90,7 @@ test("Host Client resilience gate keeps its real process and authority coverage"
   assert.match(hostClientResilienceGate, /client_shadow_spool/);
   assert.match(hostClientResilienceGate, /client_local_snapshot/);
   assert.match(hostClientResilienceGate, /ActiveLibraryGateway::new/);
-  assert.match(
-    hostClientResilienceGate,
-    /fetch_library_sync_spools_blocking/,
-  );
+  assert.match(hostClientResilienceGate, /fetch_library_sync_spools_blocking/);
   assert.match(
     hostClientResilienceGate,
     /fetch_cached_library_sync_spools_blocking/,
@@ -97,9 +100,15 @@ test("Host Client resilience gate keeps its real process and authority coverage"
     /start_trusted_lan_server_with_bound_listener/,
   );
   assert.match(hostClientResilienceGate, /refresh_library_sync_spool_cache/);
-  assert.match(hostClientResilienceGate, /offline live Host read must fail explicitly/);
+  assert.match(
+    hostClientResilienceGate,
+    /offline live Host read must fail explicitly/,
+  );
   assert.match(hostClientResilienceGate, /offline Host write must fail closed/);
-  assert.match(hostClientResilienceGate, /assert_ne!\(session_after_restart, session_before_restart\)/);
+  assert.match(
+    hostClientResilienceGate,
+    /assert_ne!\(session_after_restart, session_before_restart\)/,
+  );
   assert.match(
     hostClientResilienceGate,
     /real_tcp_client_completes_the_five_fixed_workflows_on_the_host/,
@@ -140,6 +149,16 @@ test("Host Client resilience gate keeps its real process and authority coverage"
     qualityGates,
     /cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture/,
   );
+  assert.match(
+    qualityGates,
+    /npm run smoke:release:packaged-host-client-e2e --/,
+  );
+  assert.match(packagedHostClientGate, /host-generation-1/);
+  assert.match(packagedHostClientGate, /client-offline/);
+  assert.match(packagedHostClientGate, /client-recover/);
+  assert.match(packagedHostClientGate, /client-cleanup/);
+  assert.match(packagedHostClientGate, /hostHistoryCount !== 3/);
+  assert.match(packagedHostClientGate, /clientHistoryCount !== 1/);
 });
 
 test("required platform jobs keep every documented gate blocking", () => {
@@ -178,9 +197,18 @@ test("required platform jobs keep every documented gate blocking", () => {
     "  shared-contracts:",
     "  migration-integrity:",
   );
-  assert.match(sharedContractsJob, /cargo run --locked --bin generate_shared_contracts -- --check/);
-  assert.match(sharedContractsJob, /cargo test --locked --lib shared_contracts::tests/);
-  assert.match(sharedContractsJob, /cargo test --locked --bin generate_shared_contracts/);
+  assert.match(
+    sharedContractsJob,
+    /cargo run --locked --bin generate_shared_contracts -- --check/,
+  );
+  assert.match(
+    sharedContractsJob,
+    /cargo test --locked --lib shared_contracts::tests/,
+  );
+  assert.match(
+    sharedContractsJob,
+    /cargo test --locked --bin generate_shared_contracts/,
+  );
 
   const macosJob = section(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
   const windowsJob = section(ciWorkflow, "  windows-smoke:");
@@ -194,11 +222,10 @@ test("required platform jobs keep every documented gate blocking", () => {
   assert.doesNotMatch(companionE2eStep, /continue-on-error:\s*true/);
   assert.match(windowsJob, /run: npm run verify/);
   assert.match(macosJob, /npm run smoke:release:database-upgrade/);
+  assert.match(macosJob, /--packaged-host-client-e2e/);
+  assert.match(windowsJob, /-RunPackagedHostClientE2E/);
 
-  const publishJob = section(
-    releaseWorkflow,
-    "  publish-github-release:",
-  );
+  const publishJob = section(releaseWorkflow, "  publish-github-release:");
   assert.match(
     publishJob,
     /required_checks=\("Database Migration Integrity" "macOS Smoke" "Windows Smoke"\)/,

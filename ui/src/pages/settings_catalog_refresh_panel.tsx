@@ -30,6 +30,8 @@ type SettingsCatalogRefreshPanelProps = {
   activeCatalogRefreshMaterial: string | null;
   busy: boolean;
   catalogCount: number;
+  catalogRowsAvailable: boolean;
+  catalogRowsUnavailable: boolean;
   catalogRefreshBusy: boolean;
   catalogRefreshElapsedSeconds: number;
   catalogRefreshLog: string;
@@ -57,6 +59,8 @@ export function SettingsCatalogRefreshPanel({
   activeCatalogRefreshMaterial,
   busy,
   catalogCount,
+  catalogRowsAvailable,
+  catalogRowsUnavailable,
   catalogRefreshBusy,
   catalogRefreshElapsedSeconds,
   catalogRefreshLog,
@@ -98,13 +102,19 @@ export function SettingsCatalogRefreshPanel({
         status={
           <div className={inlineStatusSignalClass("neutral", "text-sm")}>
             {t("settings.totalCatalog", "Catalog")}:{" "}
-            {formatDisplayInteger(catalogCount, locale)}
+            {catalogRowsAvailable ? formatDisplayInteger(catalogCount, locale) : "—"}
           </div>
         }
         metrics={
           <>
-            <SettingsMetricTile label={t("settings.totalCatalog", "Catalog")} value={catalogCount} />
-            <SettingsMetricTile label={catalogVendor} value={activeCatalogMasterCount} />
+            <SettingsMetricTile
+              label={t("settings.totalCatalog", "Catalog")}
+              value={catalogRowsAvailable ? catalogCount : "—"}
+            />
+            <SettingsMetricTile
+              label={catalogVendor}
+              value={catalogRowsAvailable ? activeCatalogMasterCount : "—"}
+            />
             <SettingsMetricTile
               label={t("inventory.materialGroup", "Material")}
               value={activeCatalogMaterialOptions.length}
@@ -122,6 +132,11 @@ export function SettingsCatalogRefreshPanel({
               "settings.catalogRefreshClientHostOnly",
               "Vendor catalog updates run on the host. This client still shows the host catalog and can save swatch fixes there.",
             )}
+          </SettingsNotice>
+        ) : null}
+        {settingsClientReadOnly && catalogRowsUnavailable ? (
+          <SettingsNotice className="mt-3" tone="warning">
+            {t("errors.unavailable", "The service is temporarily unavailable.")}
           </SettingsNotice>
         ) : null}
       </SettingsSectionHeader>

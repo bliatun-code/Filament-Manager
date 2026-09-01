@@ -80,13 +80,13 @@ export type SettingsMaintenanceTabProps = {
   backupValidationHasMissingTables: boolean;
   backupValidationHasWarnings: boolean;
   busy: boolean;
-  catalogCount: number;
+  catalogCount: number | string;
   confirmResetAction: ResetConfirmAction | null;
   lastBackupValidation: BackupValidationStats | null;
   lastCatalogReset: CatalogResetStats | null;
   latestFullBackupExportedAt: string | null;
   locale: Locale;
-  missingSwatchCount: number;
+  missingSwatchCount: number | string;
   printerCount: number;
   settingsClientHostWritePaired: boolean;
   settingsClientReadOnly: boolean;

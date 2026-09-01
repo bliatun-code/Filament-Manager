@@ -20,10 +20,12 @@ type BackupValidationSummary = ReturnType<typeof useSettingsBackupValidationSumm
 type UseSettingsLibraryActionsRuntimeInput = {
   activeTab: SettingsTabKey;
   backupValidation: BackupValidationSummary;
+  catalogRefreshBusy: boolean;
   libraryRuntime: SettingsLibraryRuntime;
   loading: boolean;
   messageGroups: SettingsMessageGroups;
   reloadSettings: () => Promise<void>;
+  settingsDataSourceReady: boolean;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
   showTransientInfo: (message: string) => void;
@@ -34,10 +36,12 @@ type UseSettingsLibraryActionsRuntimeInput = {
 export function useSettingsLibraryActionsRuntime({
   activeTab,
   backupValidation,
+  catalogRefreshBusy,
   libraryRuntime,
   loading,
   messageGroups,
   reloadSettings,
+  settingsDataSourceReady,
   setError,
   setInfo,
   showTransientInfo,
@@ -135,14 +139,21 @@ export function useSettingsLibraryActionsRuntime({
   });
 
   useSettingsInitialLoad({
+    dataSourceReady: settingsDataSourceReady,
     loadTrustedLanCompanionStatus,
     reloadSettings,
     tauri,
   });
 
+  // Catalog refreshes can be multi-minute Host writes. Keep the library role,
+  // Host target, and pairing controls on that same busy boundary so a result
+  // from Host A can never be presented after the user switches to Host B.
+  const librarySyncInteractionBusy =
+    librarySyncBusy || catalogRefreshBusy;
+
   const syncActions = useSettingsLibrarySyncActions({
     librarySyncActionMessageLabels,
-    librarySyncBusy,
+    librarySyncBusy: librarySyncInteractionBusy,
     librarySyncDeviceNameDraft,
     librarySyncErrorMessageLabels,
     librarySyncHostBaseUrlDraft,
@@ -183,7 +194,7 @@ export function useSettingsLibraryActionsRuntime({
     hasValidatedLatestFullBackup,
     lastFullBackupExportedAt,
     lastFullBackupImportedAt,
-    librarySyncBusy,
+    librarySyncBusy: librarySyncInteractionBusy,
     librarySyncSavedMode,
     setLibrarySyncModeDraft,
   });
@@ -191,7 +202,7 @@ export function useSettingsLibraryActionsRuntime({
   useSettingsLibraryAutoValidation({
     activeTab,
     handleValidateLibrarySyncHost: syncActions.handleValidateLibrarySyncHost,
-    librarySyncBusy,
+    librarySyncBusy: librarySyncInteractionBusy,
     librarySyncHostBaseUrlDraft,
     librarySyncModeDraft,
     librarySyncSettings,

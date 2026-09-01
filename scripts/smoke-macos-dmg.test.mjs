@@ -21,8 +21,10 @@ import {
   macosDmgInstallCommand,
   macosLaunchServicesArguments,
   macosRunningApplicationMatches,
+  macosRunningProcessMatches,
   initializeMacosDmgSmokeRuntimeLogs,
   parseMacosRunningApplicationRows,
+  parseMacosRunningProcessRows,
   parseMacosWindowRows,
   publishMacosDmgSmokeLogFile,
   publishMacosDmgSmokeRuntimeLogs,
@@ -91,6 +93,7 @@ test("macOS installed DMG smoke defaults to the release signature policy", () =>
   assert.equal(options.upgradeFixturePath, null);
   assert.equal(options.upgradeSourceRelease, null);
   assert.equal(options.runPackagedDesktopE2E, false);
+  assert.equal(options.runPackagedHostClientE2E, false);
 });
 
 test("macOS installed DMG smoke accepts only an explicit packaged desktop E2E gate", () => {
@@ -110,6 +113,26 @@ test("macOS installed DMG smoke accepts only an explicit packaged desktop E2E ga
         runPackagedDesktopE2E: "true",
       }),
     /selection must be a boolean/,
+  );
+});
+
+test("macOS installed DMG smoke accepts only an explicit packaged Host-Client E2E gate", () => {
+  const options = validateMacosDmgSmokeOptions({
+    dmgPath: "candidate.dmg",
+    expectedTeamId: "ABCDE12345",
+    logDirectory: "release-artifacts/smoke",
+    runPackagedHostClientE2E: true,
+  });
+  assert.equal(options.runPackagedHostClientE2E, true);
+  assert.throws(
+    () =>
+      validateMacosDmgSmokeOptions({
+        dmgPath: "candidate.dmg",
+        expectedTeamId: "ABCDE12345",
+        logDirectory: "release-artifacts/smoke",
+        runPackagedHostClientE2E: "true",
+      }),
+    /Host-Client E2E selection must be a boolean/,
   );
 });
 
@@ -207,36 +230,33 @@ test(
   "macOS DMG smoke creates private staging and preserves existing apps",
   { skip: process.platform === "win32" },
   () => {
-  const testDirectory = mkdtempSync(
-    path.join(tmpdir(), "filament-manager-staging-test-"),
-  );
-  const homeDirectory = path.join(testDirectory, "home");
-  const applicationsDirectory = path.join(homeDirectory, "Applications");
-  const existingAppPath = path.join(applicationsDirectory, "Existing.app");
-  mkdirSync(existingAppPath, { recursive: true });
-  let context = null;
-  try {
-    context = createMacosDmgSmokeStaging({ homeDirectory });
-    assert.equal(
-      path.dirname(context.stagingDirectory),
-      applicationsDirectory,
+    const testDirectory = mkdtempSync(
+      path.join(tmpdir(), "filament-manager-staging-test-"),
     );
-    assert.equal(
-      lstatSync(context.stagingDirectory).mode & 0o777,
-      0o700,
-    );
-    assert.equal(context.applicationsDirectoryCreated, false);
+    const homeDirectory = path.join(testDirectory, "home");
+    const applicationsDirectory = path.join(homeDirectory, "Applications");
+    const existingAppPath = path.join(applicationsDirectory, "Existing.app");
+    mkdirSync(existingAppPath, { recursive: true });
+    let context = null;
+    try {
+      context = createMacosDmgSmokeStaging({ homeDirectory });
+      assert.equal(
+        path.dirname(context.stagingDirectory),
+        applicationsDirectory,
+      );
+      assert.equal(lstatSync(context.stagingDirectory).mode & 0o777, 0o700);
+      assert.equal(context.applicationsDirectoryCreated, false);
 
-    cleanupMacosDmgSmokeStaging(context);
-    context = null;
-    assert.equal(existsSync(existingAppPath), true);
-    assert.equal(existsSync(applicationsDirectory), true);
-  } finally {
-    if (context && existsSync(context.stagingDirectory)) {
-      rmSync(context.stagingDirectory, { force: true, recursive: true });
+      cleanupMacosDmgSmokeStaging(context);
+      context = null;
+      assert.equal(existsSync(existingAppPath), true);
+      assert.equal(existsSync(applicationsDirectory), true);
+    } finally {
+      if (context && existsSync(context.stagingDirectory)) {
+        rmSync(context.stagingDirectory, { force: true, recursive: true });
+      }
+      rmSync(testDirectory, { force: true, recursive: true });
     }
-    rmSync(testDirectory, { force: true, recursive: true });
-  }
   },
 );
 
@@ -244,26 +264,26 @@ test(
   "macOS DMG smoke removes only an empty Applications directory it created",
   { skip: process.platform === "win32" },
   () => {
-  const testDirectory = mkdtempSync(
-    path.join(tmpdir(), "filament-manager-staging-parent-test-"),
-  );
-  const homeDirectory = path.join(testDirectory, "home");
-  const applicationsDirectory = path.join(homeDirectory, "Applications");
-  mkdirSync(homeDirectory, { mode: 0o700 });
-  let context = null;
-  try {
-    context = createMacosDmgSmokeStaging({ homeDirectory });
-    assert.equal(context.applicationsDirectoryCreated, true);
-    cleanupMacosDmgSmokeStaging(context);
-    context = null;
-    assert.equal(existsSync(applicationsDirectory), false);
-    assert.equal(existsSync(homeDirectory), true);
-  } finally {
-    if (context && existsSync(context.stagingDirectory)) {
-      rmSync(context.stagingDirectory, { force: true, recursive: true });
+    const testDirectory = mkdtempSync(
+      path.join(tmpdir(), "filament-manager-staging-parent-test-"),
+    );
+    const homeDirectory = path.join(testDirectory, "home");
+    const applicationsDirectory = path.join(homeDirectory, "Applications");
+    mkdirSync(homeDirectory, { mode: 0o700 });
+    let context = null;
+    try {
+      context = createMacosDmgSmokeStaging({ homeDirectory });
+      assert.equal(context.applicationsDirectoryCreated, true);
+      cleanupMacosDmgSmokeStaging(context);
+      context = null;
+      assert.equal(existsSync(applicationsDirectory), false);
+      assert.equal(existsSync(homeDirectory), true);
+    } finally {
+      if (context && existsSync(context.stagingDirectory)) {
+        rmSync(context.stagingDirectory, { force: true, recursive: true });
+      }
+      rmSync(testDirectory, { force: true, recursive: true });
     }
-    rmSync(testDirectory, { force: true, recursive: true });
-  }
   },
 );
 
@@ -271,31 +291,31 @@ test(
   "macOS DMG smoke fails closed if its unique staging identity changes",
   { skip: process.platform === "win32" },
   () => {
-  const testDirectory = mkdtempSync(
-    path.join(tmpdir(), "filament-manager-staging-identity-test-"),
-  );
-  const homeDirectory = path.join(testDirectory, "home");
-  mkdirSync(homeDirectory);
-  let context = null;
-  let originalStagingDirectory = null;
-  try {
-    context = createMacosDmgSmokeStaging({ homeDirectory });
-    originalStagingDirectory = `${context.stagingDirectory}-original`;
-    renameSync(context.stagingDirectory, originalStagingDirectory);
-    mkdirSync(context.stagingDirectory, { mode: 0o700 });
-    assert.throws(
-      () => validateMacosDmgSmokeStaging(context),
-      /staging directory changed after the smoke staging was created/,
+    const testDirectory = mkdtempSync(
+      path.join(tmpdir(), "filament-manager-staging-identity-test-"),
     );
-  } finally {
-    if (context && existsSync(context.stagingDirectory)) {
-      rmSync(context.stagingDirectory, { force: true, recursive: true });
+    const homeDirectory = path.join(testDirectory, "home");
+    mkdirSync(homeDirectory);
+    let context = null;
+    let originalStagingDirectory = null;
+    try {
+      context = createMacosDmgSmokeStaging({ homeDirectory });
+      originalStagingDirectory = `${context.stagingDirectory}-original`;
+      renameSync(context.stagingDirectory, originalStagingDirectory);
+      mkdirSync(context.stagingDirectory, { mode: 0o700 });
+      assert.throws(
+        () => validateMacosDmgSmokeStaging(context),
+        /staging directory changed after the smoke staging was created/,
+      );
+    } finally {
+      if (context && existsSync(context.stagingDirectory)) {
+        rmSync(context.stagingDirectory, { force: true, recursive: true });
+      }
+      if (originalStagingDirectory && existsSync(originalStagingDirectory)) {
+        rmSync(originalStagingDirectory, { force: true, recursive: true });
+      }
+      rmSync(testDirectory, { force: true, recursive: true });
     }
-    if (originalStagingDirectory && existsSync(originalStagingDirectory)) {
-      rmSync(originalStagingDirectory, { force: true, recursive: true });
-    }
-    rmSync(testDirectory, { force: true, recursive: true });
-  }
   },
 );
 
@@ -344,10 +364,7 @@ test("macOS DMG smoke keeps LaunchServices paths outside the requested log tree"
     stdoutPath: logPaths.runtimePaths.appStdoutPath,
   });
 
-  assert.equal(
-    path.dirname(logPaths.runtimeLogDirectory),
-    runtimeDirectory,
-  );
+  assert.equal(path.dirname(logPaths.runtimeLogDirectory), runtimeDirectory);
   assert.equal(
     Object.values(logPaths.runtimePaths).every((runtimePath) =>
       runtimePath.startsWith(`${logPaths.runtimeLogDirectory}${path.sep}`),
@@ -380,45 +397,45 @@ test(
   "macOS DMG smoke publishes all runtime logs atomically with mode 0600",
   { skip: process.platform === "win32" },
   () => {
-  const testDirectory = mkdtempSync(
-    path.join(tmpdir(), "filament-manager-log-publish-test-"),
-  );
-  const requestedLogDirectory = path.join(testDirectory, "requested");
-  const runtimeDirectory = path.join(testDirectory, "runtime");
-  mkdirSync(requestedLogDirectory);
-  mkdirSync(runtimeDirectory);
-  try {
-    const logPaths = resolveMacosDmgSmokeLogPaths({
-      logDirectory: requestedLogDirectory,
-      runtimeDirectory,
-    });
-    initializeMacosDmgSmokeRuntimeLogs(logPaths);
-    for (const [key, runtimePath] of Object.entries(logPaths.runtimePaths)) {
-      writeFileSync(runtimePath, `${key}\n`, { encoding: "utf8" });
-      writeFileSync(logPaths.requestedPaths[key], "stale\n", {
-        encoding: "utf8",
+    const testDirectory = mkdtempSync(
+      path.join(tmpdir(), "filament-manager-log-publish-test-"),
+    );
+    const requestedLogDirectory = path.join(testDirectory, "requested");
+    const runtimeDirectory = path.join(testDirectory, "runtime");
+    mkdirSync(requestedLogDirectory);
+    mkdirSync(runtimeDirectory);
+    try {
+      const logPaths = resolveMacosDmgSmokeLogPaths({
+        logDirectory: requestedLogDirectory,
+        runtimeDirectory,
       });
-    }
+      initializeMacosDmgSmokeRuntimeLogs(logPaths);
+      for (const [key, runtimePath] of Object.entries(logPaths.runtimePaths)) {
+        writeFileSync(runtimePath, `${key}\n`, { encoding: "utf8" });
+        writeFileSync(logPaths.requestedPaths[key], "stale\n", {
+          encoding: "utf8",
+        });
+      }
 
-    assert.deepEqual(
-      publishMacosDmgSmokeRuntimeLogs(logPaths).sort(),
-      Object.values(logPaths.requestedPaths).sort(),
-    );
-    for (const [key, requestedPath] of Object.entries(
-      logPaths.requestedPaths,
-    )) {
-      assert.equal(readFileSync(requestedPath, "utf8"), `${key}\n`);
-      assert.equal(lstatSync(requestedPath).mode & 0o777, 0o600);
+      assert.deepEqual(
+        publishMacosDmgSmokeRuntimeLogs(logPaths).sort(),
+        Object.values(logPaths.requestedPaths).sort(),
+      );
+      for (const [key, requestedPath] of Object.entries(
+        logPaths.requestedPaths,
+      )) {
+        assert.equal(readFileSync(requestedPath, "utf8"), `${key}\n`);
+        assert.equal(lstatSync(requestedPath).mode & 0o777, 0o600);
+      }
+      assert.deepEqual(
+        readdirSync(requestedLogDirectory).filter((fileName) =>
+          fileName.endsWith(".tmp"),
+        ),
+        [],
+      );
+    } finally {
+      rmSync(testDirectory, { force: true, recursive: true });
     }
-    assert.deepEqual(
-      readdirSync(requestedLogDirectory).filter((fileName) =>
-        fileName.endsWith(".tmp"),
-      ),
-      [],
-    );
-  } finally {
-    rmSync(testDirectory, { force: true, recursive: true });
-  }
   },
 );
 
@@ -441,11 +458,7 @@ test(
       });
       initializeMacosDmgSmokeRuntimeLogs(logPaths);
       writeFileSync(outsidePath, "outside\n", { encoding: "utf8" });
-      symlinkSync(
-        outsidePath,
-        logPaths.requestedPaths.appStdoutPath,
-        "file",
-      );
+      symlinkSync(outsidePath, logPaths.requestedPaths.appStdoutPath, "file");
 
       assert.throws(
         () =>
@@ -494,20 +507,17 @@ test("macOS installed DMG smoke preserves metadata and uses normal LaunchService
     installCommand.args.join("\n"),
     /--noextattr|--noqtn|xattr|-cr/,
   );
-  assert.deepEqual(
-    launchArguments,
-    [
-      "-n",
-      "-W",
-      "--env",
-      `FILAMENT_MANAGER_DB_PATH=${databasePath}`,
-      "--stdout",
-      logPaths.runtimePaths.appStdoutPath,
-      "--stderr",
-      logPaths.runtimePaths.appStderrPath,
-      installedAppPath,
-    ],
-  );
+  assert.deepEqual(launchArguments, [
+    "-n",
+    "-W",
+    "--env",
+    `FILAMENT_MANAGER_DB_PATH=${databasePath}`,
+    "--stdout",
+    logPaths.runtimePaths.appStdoutPath,
+    "--stderr",
+    logPaths.runtimePaths.appStderrPath,
+    installedAppPath,
+  ]);
   assert.doesNotMatch(launchArguments.join("\n"), /--noqtn|xattr|ditto/);
   assert.equal(
     launchArguments.some((argument) =>
@@ -576,6 +586,41 @@ test("macOS installed DMG smoke parses exact running-application identity", () =
       `0\tno.bliatun.filamentmanager\t${bundlePath}\t${executablePath}\tInvalid\n`,
     ),
     [],
+  );
+});
+
+test("macOS installed DMG smoke detects an exact executable absent from NSWorkspace", () => {
+  const executablePath = path.resolve(
+    "home",
+    "Applications",
+    ".filament-manager-release-smoke-test",
+    "Filament Manager.app",
+    "Contents",
+    "MacOS",
+    "filament-manager",
+  );
+  const runningApplications = parseMacosRunningApplicationRows("");
+  const [runningProcess] = parseMacosRunningProcessRows(
+    `4242\t${executablePath}\n`,
+  );
+
+  assert.deepEqual(runningApplications, []);
+  assert.deepEqual(runningProcess, {
+    executablePath,
+    processId: 4242,
+  });
+  assert.equal(
+    macosRunningProcessMatches(runningProcess, {
+      executablePaths: new Set([executablePath]),
+    }),
+    true,
+  );
+  assert.equal(
+    macosRunningProcessMatches(
+      { ...runningProcess, executablePath: path.resolve("other-executable") },
+      { executablePaths: new Set([executablePath]) },
+    ),
+    false,
   );
 });
 

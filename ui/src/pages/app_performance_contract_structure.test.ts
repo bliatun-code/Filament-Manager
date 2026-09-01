@@ -188,7 +188,7 @@ test("printer reloads discard stale library targets without dropping the replace
   assert.doesNotMatch(printerDataHookSource, /reloadInFlightRef/);
 });
 
-test("Host reads stay bounded while non-idempotent mutations wait for a definitive result", () => {
+test("Host reads and auth stay bounded while non-idempotent mutations wait for a definitive result", () => {
   const validation = rustFunctionSource(
     hostValidationSource,
     "validate_library_sync_host",
@@ -208,6 +208,20 @@ test("Host reads stay bounded while non-idempotent mutations wait for a definiti
     /const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis\(2500\)/,
     "standard host requests must remain bounded to 2.5 seconds",
   );
+  assert.match(
+    hostClientSource,
+    /const LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT: Duration = Duration::from_secs\(30\)/,
+    "pairing and session renewal must preserve the previous finite credential-gate deadline",
+  );
+  assert.match(
+    rustFunctionSource(
+      hostClientSource,
+      "send_library_sync_auth_request",
+      "send_library_sync_auth_request_with_timeout",
+    ),
+    /send_library_sync_auth_request_with_timeout\([\s\S]*LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT/,
+    "the production auth wrapper must forward the finite credential-gate deadline",
+  );
 
   for (const [name, nextName] of [
     ["fetch_library_sync_host_json", "pair_library_sync_host_session"],
@@ -226,18 +240,33 @@ test("Host reads stay bounded while non-idempotent mutations wait for a definiti
   for (const [name, nextName] of [
     ["pair_library_sync_host_session", "renew_library_sync_host_session"],
     ["renew_library_sync_host_session", "load_library_sync_device_token"],
-    ["post_library_sync_host_write_json", "perform_library_sync_host_write"],
   ] as const) {
     const source = rustFunctionSource(hostClientSource, name, nextName);
     assert.match(
       source,
-      /send_library_sync_mutation_request/,
-      `${name} must wait for one definitive non-replayed mutation result`,
+      /send_library_sync_auth_request/,
+      `${name} must use the finite authentication deadline`,
     );
     assert.doesNotMatch(
       source,
-      /LIBRARY_SYNC_REQUEST_TIMEOUT|\.timeout\(/,
-      `${name} must not report a timeout while a non-cancellable Host mutation can still commit`,
+      /send_library_sync_mutation_request/,
+      `${name} must not retain the credential gate without a response deadline`,
     );
   }
+
+  const writeSource = rustFunctionSource(
+    hostClientSource,
+    "post_library_sync_host_write_json",
+    "perform_library_sync_host_write",
+  );
+  assert.match(
+    writeSource,
+    /send_library_sync_mutation_request/,
+    "business writes must wait for one definitive non-replayed mutation result",
+  );
+  assert.doesNotMatch(
+    writeSource,
+    /LIBRARY_SYNC_REQUEST_TIMEOUT|LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT|\.timeout\(/,
+    "business writes must not report a timeout while a non-cancellable Host mutation can still commit",
+  );
 });

@@ -6,7 +6,10 @@ import type {
   SpoolWithMasterRow,
 } from "./tauri_inventory_client";
 import type { SpoolLoanDetailsRow } from "./tauri_loan_client";
-import type { PrinterOverviewRow, PrinterSettingsSnapshot } from "./tauri_printer_client";
+import type {
+  PrinterOverviewRow,
+  PrinterSettingsSnapshot,
+} from "./tauri_printer_client";
 import type { WishlistItemRow } from "./tauri_wishlist_client";
 import type { FilamentConsumptionRow } from "./tauri_statistics_client";
 
@@ -24,6 +27,7 @@ export type TrustedLanCompanionStatus = {
   health_error?: string | null;
   running: boolean;
   last_error?: string | null;
+  last_error_kind?: "port-in-use" | null;
   local_name_running: boolean;
   local_name_error?: string | null;
   api_version: string;
@@ -247,12 +251,15 @@ export async function fetchLibrarySyncPrinterSettings(
   baseUrl: string,
   expectedLibraryId?: string | null,
 ) {
-  return invoke<PrinterSettingsSnapshot>("fetch_library_sync_printer_settings", {
-    input: {
-      base_url: baseUrl,
-      expected_library_id: expectedLibraryId ?? null,
+  return invoke<PrinterSettingsSnapshot>(
+    "fetch_library_sync_printer_settings",
+    {
+      input: {
+        base_url: baseUrl,
+        expected_library_id: expectedLibraryId ?? null,
+      },
     },
-  });
+  );
 }
 
 function librarySyncCacheTargetInput(
@@ -272,9 +279,16 @@ export async function fetchCachedLibrarySyncSpools(
   expectedLibraryId: string,
   targetGeneration: number,
 ) {
-  return invoke<LibrarySyncCachedSpoolList | null>("fetch_cached_library_sync_spools", {
-    input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration),
-  });
+  return invoke<LibrarySyncCachedSpoolList | null>(
+    "fetch_cached_library_sync_spools",
+    {
+      input: librarySyncCacheTargetInput(
+        baseUrl,
+        expectedLibraryId,
+        targetGeneration,
+      ),
+    },
+  );
 }
 
 export async function saveLibrarySyncSpoolCache(
@@ -300,7 +314,13 @@ export async function fetchCachedLibrarySyncPrinterOverview(
 ) {
   return invoke<LibrarySyncCachedPrinterOverview | null>(
     "fetch_cached_library_sync_printer_overview",
-    { input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration) },
+    {
+      input: librarySyncCacheTargetInput(
+        baseUrl,
+        expectedLibraryId,
+        targetGeneration,
+      ),
+    },
   );
 }
 
@@ -324,9 +344,16 @@ export async function fetchCachedLibrarySyncLoans(
   expectedLibraryId: string,
   targetGeneration: number,
 ) {
-  return invoke<LibrarySyncCachedLoanList | null>("fetch_cached_library_sync_loans", {
-    input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration),
-  });
+  return invoke<LibrarySyncCachedLoanList | null>(
+    "fetch_cached_library_sync_loans",
+    {
+      input: librarySyncCacheTargetInput(
+        baseUrl,
+        expectedLibraryId,
+        targetGeneration,
+      ),
+    },
+  );
 }
 
 export async function fetchCachedLibrarySyncWishlist(
@@ -334,12 +361,22 @@ export async function fetchCachedLibrarySyncWishlist(
   expectedLibraryId: string,
   targetGeneration: number,
 ) {
-  return invoke<LibrarySyncCachedWishlistList | null>("fetch_cached_library_sync_wishlist", {
-    input: librarySyncCacheTargetInput(baseUrl, expectedLibraryId, targetGeneration),
-  });
+  return invoke<LibrarySyncCachedWishlistList | null>(
+    "fetch_cached_library_sync_wishlist",
+    {
+      input: librarySyncCacheTargetInput(
+        baseUrl,
+        expectedLibraryId,
+        targetGeneration,
+      ),
+    },
+  );
 }
 
-export async function pairLibrarySyncHost(baseUrl: string, pairingTokenOrUrl: string) {
+export async function pairLibrarySyncHost(
+  baseUrl: string,
+  pairingTokenOrUrl: string,
+) {
   return invoke<LibrarySyncSettings>("pair_library_sync_host", {
     input: {
       base_url: baseUrl,
@@ -356,8 +393,13 @@ export async function listTrustedLanInterfaces() {
   return invoke<TrustedLanInterfaceOption[]>("list_trusted_lan_interfaces");
 }
 
-export async function updateTrustedLanCompanionConfig(input: UpdateTrustedLanCompanionConfigInput) {
-  return invoke<TrustedLanCompanionStatus>("update_trusted_lan_companion_config", { input });
+export async function updateTrustedLanCompanionConfig(
+  input: UpdateTrustedLanCompanionConfigInput,
+) {
+  return invoke<TrustedLanCompanionStatus>(
+    "update_trusted_lan_companion_config",
+    { input },
+  );
 }
 
 export async function createTrustedLanPairing(browserLabel?: string | null) {

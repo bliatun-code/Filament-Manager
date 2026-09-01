@@ -48,9 +48,7 @@ function fixture() {
         },
       },
     ],
-    loanUsage: [
-      { loan_direction: "OUTBOUND", borrower_name: "Fixture" },
-    ],
+    loanUsage: [{ loan_direction: "OUTBOUND", borrower_name: "Fixture" }],
     overview: { total_spools: 2 },
     printerRows: [{ printer: { id: "printer-a" } }],
     printerSettings: { printers: [{ id: "printer-a" }] },
@@ -111,10 +109,7 @@ test("browser performance page order covers the primary data-heavy transitions a
 test("browser performance invoke adapter serves bounded data-backed pages", () => {
   const data = fixture();
   assert.deepEqual(
-    resolveUiBrowserPerformanceInvoke(
-      data,
-      "get_desktop_lifecycle_settings",
-    ),
+    resolveUiBrowserPerformanceInvoke(data, "get_desktop_lifecycle_settings"),
     data.desktopLifecycleSettings,
   );
   assert.deepEqual(
@@ -136,11 +131,10 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     },
   );
   assert.equal(
-    resolveUiBrowserPerformanceInvoke(
-      data,
-      "set_desktop_tray_menu_labels",
-      { openLabel: "Open", quitLabel: "Quit" },
-    ),
+    resolveUiBrowserPerformanceInvoke(data, "set_desktop_tray_menu_labels", {
+      openLabel: "Open",
+      quitLabel: "Quit",
+    }),
     null,
   );
   assert.equal(
@@ -156,6 +150,13 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
     resolveUiBrowserPerformanceInvoke(
       data,
       "get_packaged_desktop_e2e_configuration",
+    ),
+    null,
+  );
+  assert.equal(
+    resolveUiBrowserPerformanceInvoke(
+      data,
+      "get_packaged_host_client_e2e_configuration",
     ),
     null,
   );
@@ -271,10 +272,7 @@ test("browser performance invoke adapter serves bounded data-backed pages", () =
   );
   assert.throws(
     () =>
-      resolveUiBrowserPerformanceInvoke(
-        data,
-        "unreviewed_performance_command",
-      ),
+      resolveUiBrowserPerformanceInvoke(data, "unreviewed_performance_command"),
     /no response for Tauri command/,
   );
 });

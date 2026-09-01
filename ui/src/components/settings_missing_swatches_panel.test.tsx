@@ -21,10 +21,14 @@ const missingMaster: MasterCatalogRow = {
 };
 
 function renderPanel({
+  catalogRowsAvailable = true,
+  catalogRowsUnavailable = false,
   confirmBulkSwatch = false,
   draft = "#1F2937",
   master = missingMaster,
 }: {
+  catalogRowsAvailable?: boolean;
+  catalogRowsUnavailable?: boolean;
   confirmBulkSwatch?: boolean;
   draft?: string;
   master?: MasterCatalogRow;
@@ -32,6 +36,8 @@ function renderPanel({
   return renderToStaticMarkup(
     <SettingsMissingSwatchesPanel
       busy={false}
+      catalogRowsAvailable={catalogRowsAvailable}
+      catalogRowsUnavailable={catalogRowsUnavailable}
       catalogRefreshBusy={false}
       confirmBulkSwatch={confirmBulkSwatch}
       missingSwatchCount={8}
@@ -100,4 +106,25 @@ test("bulk auto-fill confirmation has explicit confirm and cancel actions", () =
   assert.match(html, />Cancel</);
   assert.match(html, /Apply suggested colors to 1 visible entries\?/);
   assert.doesNotMatch(html, /Click Auto-fill visible missing swatches again/);
+});
+
+test("a pending host catalog is not presented as zero or as a connection error", () => {
+  const html = renderPanel({ catalogRowsAvailable: false });
+
+  assert.match(html, /Missing swatches: —/);
+  assert.match(html, /Loading\.\.\./);
+  assert.doesNotMatch(html, /The service is temporarily unavailable\./);
+  assert.doesNotMatch(html, /No missing swatches to fill\./);
+  assert.match(html, /disabled=""[^>]*>Auto-fill visible missing swatches<\/button>/);
+});
+
+test("a failed first host catalog load renders unavailable without a false zero", () => {
+  const html = renderPanel({
+    catalogRowsAvailable: false,
+    catalogRowsUnavailable: true,
+  });
+
+  assert.match(html, /Missing swatches: —/);
+  assert.match(html, /The service is temporarily unavailable\./);
+  assert.doesNotMatch(html, /No missing swatches to fill\./);
 });

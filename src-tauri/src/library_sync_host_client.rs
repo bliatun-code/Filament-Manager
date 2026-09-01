@@ -22,8 +22,14 @@ use zeroize::{Zeroize, Zeroizing};
 use mdns_sd::{HostnameResolutionEvent, ServiceDaemon};
 
 const LIBRARY_SYNC_REQUEST_TIMEOUT: Duration = Duration::from_millis(2500);
+const LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const MDNS_RETRY_TIMEOUT: Duration = Duration::from_millis(750);
 const LIBRARY_SYNC_CONNECT_TIMEOUT: Duration = Duration::from_millis(500);
+// Reqwest's blocking client otherwise applies an implicit 30-second total timeout. Definitive
+// business mutations use this shared builder too and must be able to outlive that default because
+// the write API does not have idempotency keys yet. Reads and authentication add an explicit
+// per-request deadline at their call sites.
+const LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT: Option<Duration> = None;
 const MDNS_ROUTE_FRESH_TTL: Duration = Duration::from_secs(5 * 60);
 const MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF: Duration = Duration::from_secs(30);
 const MDNS_HOST_CACHE_LIMIT: usize = 32;
@@ -152,11 +158,18 @@ pub(crate) fn extract_cookie_value_from_set_cookie(set_cookie: &str, name: &str)
 }
 
 fn library_sync_http_client_builder() -> reqwest::blocking::ClientBuilder {
+    library_sync_http_client_builder_with_total_timeout(LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT)
+}
+
+fn library_sync_http_client_builder_with_total_timeout(
+    total_timeout: Option<Duration>,
+) -> reqwest::blocking::ClientBuilder {
     // Companion endpoints are deliberately local-only. Never route a paired desktop request
     // through a system or environment proxy: apart from being unnecessary, that can prevent a
     // private `.local` name from reaching the selected LAN host.
     reqwest::blocking::Client::builder()
         .connect_timeout(LIBRARY_SYNC_CONNECT_TIMEOUT)
+        .timeout(total_timeout)
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
 }
@@ -184,7 +197,12 @@ fn ensure_library_sync_credential_transport(base_url: &str) -> Result<(), String
     }
     #[cfg(not(test))]
     {
-        ensure_library_sync_credential_transport_with_policy(base_url, false)
+        ensure_library_sync_credential_transport_with_policy(
+            base_url,
+            crate::packaged_host_client_e2e::allows_packaged_host_client_credential_loopback_base_url(
+                base_url,
+            ),
+        )
     }
 }
 
@@ -243,6 +261,28 @@ pub(crate) fn send_library_sync_request(
         make_request,
     )
     .map(|outcome| outcome.response)
+}
+
+fn send_library_sync_auth_request(
+    base_url: &str,
+    operation: &str,
+    make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+) -> Result<reqwest::blocking::Response, String> {
+    send_library_sync_auth_request_with_timeout(
+        base_url,
+        LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT,
+        operation,
+        make_request,
+    )
+}
+
+fn send_library_sync_auth_request_with_timeout(
+    base_url: &str,
+    timeout: Duration,
+    operation: &str,
+    make_request: impl Fn(&reqwest::blocking::Client) -> reqwest::blocking::RequestBuilder,
+) -> Result<reqwest::blocking::Response, String> {
+    send_library_sync_request(base_url, timeout, operation, make_request)
 }
 
 /// Sends one mutating request exactly once and waits for its definitive response.
@@ -945,15 +985,14 @@ pub(crate) fn pair_library_sync_host_session(
     let host_header = library_sync_host_header_value(base_url)?;
     let request_url = format!("{base_url}/api/v1/auth/pair");
     let request_body = serde_json::json!({ "pairing_token": pairing_token }).to_string();
-    let response =
-        send_library_sync_mutation_request(base_url, "Host pairing request", |client| {
-            client
-                .post(&request_url)
-                .header(HOST, host_header.as_str())
-                .header(ORIGIN, base_url)
-                .header(CONTENT_TYPE, "application/json")
-                .body(request_body.clone())
-        })?;
+    let response = send_library_sync_auth_request(base_url, "Host pairing request", |client| {
+        client
+            .post(&request_url)
+            .header(HOST, host_header.as_str())
+            .header(ORIGIN, base_url)
+            .header(CONTENT_TYPE, "application/json")
+            .body(request_body.clone())
+    })?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -1010,7 +1049,7 @@ pub(crate) fn renew_library_sync_host_session(
         .ok_or_else(|| "Host session renewal requires a paired device token.".to_string())?;
     let request_url = format!("{base_url}/api/v1/auth/renew");
     let response =
-        send_library_sync_mutation_request(base_url, "Host session renewal request", |client| {
+        send_library_sync_auth_request(base_url, "Host session renewal request", |client| {
             client
                 .post(&request_url)
                 .header(HOST, host_header.as_str())
@@ -1714,14 +1753,16 @@ mod tests {
         current_or_renewed_library_sync_auth_with,
         ensure_library_sync_credential_transport_with_policy, extract_cookie_value_from_set_cookie,
         extract_library_sync_pairing_token, library_sync_host_header_value,
-        library_sync_http_client_builder, load_library_sync_device_token,
-        load_library_sync_device_token_optional, parse_library_sync_health_response,
-        remaining_library_sync_request_timeout, renew_and_cache_library_sync_auth_with,
-        renew_or_reuse_library_sync_auth_with, send_library_sync_mutation_request,
+        library_sync_http_client_builder, library_sync_http_client_builder_with_total_timeout,
+        load_library_sync_device_token, load_library_sync_device_token_optional,
+        parse_library_sync_health_response, remaining_library_sync_request_timeout,
+        renew_and_cache_library_sync_auth_with, renew_or_reuse_library_sync_auth_with,
+        send_library_sync_auth_request_with_timeout, send_library_sync_mutation_request,
         send_mdns_local_request_with, send_mdns_local_request_with_fallback_candidate,
         stable_local_host_and_port, store_library_sync_device_token,
         validated_library_sync_host_error, verify_and_confirm_library_sync_host_identity,
-        LibrarySyncAuthenticatedSessionState, MdnsTransport, MDNS_HOST_CACHE_LIMIT,
+        LibrarySyncAuthenticatedSessionState, MdnsTransport, LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT,
+        LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT, MDNS_HOST_CACHE_LIMIT,
         MDNS_RETAINED_ROUTE_REVALIDATION_BACKOFF, MDNS_ROUTE_FRESH_TTL,
         SHARED_RENEWAL_FAILED_ERROR, SHARED_RENEWAL_UNAUTHORIZED_ERROR,
     };
@@ -1729,6 +1770,7 @@ mod tests {
     use crate::credential_store::CredentialStore;
     use crate::inventory_maintenance_commands::reset_app_data_inner;
     use crate::library_sync_runtime_auth::LibrarySyncRuntimeAuth;
+    use crate::secure_credential_mutation::lock_secure_credential_mutation;
     use crate::state::{
         AppState, CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
@@ -1894,6 +1936,182 @@ mod tests {
                 Duration::from_millis(2500),
             ),
             None,
+        );
+    }
+
+    fn delayed_http_response(delay: Duration) -> (String, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind delayed Host");
+        let address = listener.local_addr().expect("read delayed Host address");
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept delayed request");
+            let mut request = [0_u8; 2048];
+            let _ = stream.read(&mut request).expect("read delayed request");
+            thread::sleep(delay);
+            let _ = stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
+        });
+        (format!("http://{address}/slow"), server)
+    }
+
+    #[test]
+    fn shared_client_disables_implicit_total_timeout_but_reads_can_set_a_deadline() {
+        assert_eq!(LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT, None);
+        assert_eq!(LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT, Duration::from_secs(30));
+
+        let (builder_timeout_url, builder_timeout_server) =
+            delayed_http_response(Duration::from_millis(100));
+        let builder_timeout_error =
+            library_sync_http_client_builder_with_total_timeout(Some(Duration::from_millis(20)))
+                .build()
+                .expect("build explicitly bounded client")
+                .get(builder_timeout_url)
+                .send()
+                .expect_err("builder deadline should stop a slow response");
+        assert!(builder_timeout_error.is_timeout());
+        builder_timeout_server
+            .join()
+            .expect("join builder-timeout Host");
+
+        let (unbounded_url, unbounded_server) = delayed_http_response(Duration::from_millis(100));
+        let response = library_sync_http_client_builder()
+            .build()
+            .expect("build production client")
+            .get(unbounded_url)
+            .send()
+            .expect("production client waits for the definitive response");
+        assert!(response.status().is_success());
+        unbounded_server.join().expect("join unbounded Host");
+
+        let (read_timeout_url, read_timeout_server) =
+            delayed_http_response(Duration::from_millis(100));
+        let read_timeout_error = library_sync_http_client_builder()
+            .build()
+            .expect("build production client for bounded read")
+            .get(read_timeout_url)
+            .timeout(Duration::from_millis(20))
+            .send()
+            .expect_err("per-request deadline should still stop a slow read");
+        assert!(read_timeout_error.is_timeout());
+        read_timeout_server.join().expect("join read-timeout Host");
+    }
+
+    #[test]
+    fn stalled_auth_request_times_out_and_releases_the_credential_gate() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind stalled auth Host");
+        let address = listener.local_addr().expect("read stalled auth address");
+        let host = format!("http://{address}");
+        let state = credential_test_state(&host);
+        store_library_sync_device_token(&state, &host, "device-token")
+            .expect("store auth test device token");
+
+        let (request_accepted_tx, request_accepted_rx) = mpsc::channel();
+        let (release_response_tx, release_response_rx) = mpsc::channel();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept stalled auth request");
+            let mut request = [0_u8; 4096];
+            let read = stream
+                .read(&mut request)
+                .expect("read stalled auth request");
+            assert!(String::from_utf8_lossy(&request[..read])
+                .starts_with("POST /api/v1/auth/renew HTTP/1.1"));
+            request_accepted_tx
+                .send(())
+                .expect("report stalled auth request");
+            release_response_rx
+                .recv_timeout(Duration::from_secs(3))
+                .expect("release stalled auth response");
+            let _ = stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
+        });
+
+        let renewal_state = state.clone();
+        let renewal_host = host.clone();
+        let (renewal_result_tx, renewal_result_rx) = mpsc::channel();
+        let (transport_error_tx, transport_error_rx) = mpsc::channel();
+        let renewal = thread::spawn(move || {
+            let result = renew_and_cache_library_sync_auth_with(
+                &renewal_state,
+                &renewal_host,
+                "device-token",
+                |base_url, _| {
+                    let request_url = format!("{base_url}/api/v1/auth/renew");
+                    match send_library_sync_auth_request_with_timeout(
+                        base_url,
+                        Duration::from_millis(200),
+                        "Stalled auth request",
+                        |client| client.post(&request_url),
+                    ) {
+                        Ok(response) => Err(format!(
+                            "Stalled auth request unexpectedly returned {}.",
+                            response.status()
+                        )),
+                        Err(error) => {
+                            transport_error_tx
+                                .send(error.clone())
+                                .expect("report auth transport timeout");
+                            Err(error)
+                        }
+                    }
+                },
+            );
+            renewal_result_tx
+                .send(result)
+                .expect("report stalled renewal result");
+        });
+
+        request_accepted_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("auth request reached the stalled Host");
+        let (gate_acquired_tx, gate_acquired_rx) = mpsc::channel();
+        let gate_waiter = thread::spawn(move || {
+            let _gate = lock_secure_credential_mutation().expect("reacquire credential gate");
+            gate_acquired_tx
+                .send(())
+                .expect("report credential gate acquisition");
+        });
+        let gate_acquired_early = gate_acquired_rx
+            .recv_timeout(Duration::from_millis(50))
+            .is_ok();
+
+        let renewal_result = match renewal_result_rx.recv_timeout(Duration::from_secs(2)) {
+            Ok(result) => result,
+            Err(error) => {
+                let _ = release_response_tx.send(());
+                let _ = renewal.join();
+                let _ = gate_waiter.join();
+                let _ = server.join();
+                panic!("stalled auth request did not respect its deadline: {error}");
+            }
+        };
+        let transport_error = transport_error_rx
+            .recv_timeout(Duration::from_secs(1))
+            .expect("auth transport reported its timeout");
+        if !gate_acquired_early {
+            gate_acquired_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("credential gate was released after auth timeout");
+        }
+
+        release_response_tx
+            .send(())
+            .expect("release stalled Host response");
+        renewal.join().expect("join stalled renewal");
+        gate_waiter.join().expect("join credential gate waiter");
+        server.join().expect("join stalled auth Host");
+        let _ = std::fs::remove_file(&state.db_path);
+
+        assert!(
+            !gate_acquired_early,
+            "credential gate was released before the auth request completed"
+        );
+        let error = match renewal_result {
+            Ok(_) => panic!("stalled auth request must time out"),
+            Err(error) => error,
+        };
+        assert_eq!(error, SHARED_RENEWAL_FAILED_ERROR);
+        assert!(
+            transport_error.starts_with("Stalled auth request failed:"),
+            "unexpected bounded auth transport error: {transport_error}"
         );
     }
 

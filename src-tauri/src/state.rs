@@ -59,8 +59,15 @@ pub(crate) struct TrustedLanCompanionServerHandle {
 struct TrustedLanCompanionRuntimeStatus {
     running: bool,
     last_error: Option<String>,
+    last_error_kind: Option<TrustedLanCompanionRuntimeFailureKind>,
     local_name_running: bool,
     local_name_error: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum TrustedLanCompanionRuntimeFailureKind {
+    PortInUse,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -78,6 +85,7 @@ pub struct TrustedLanCompanionRuntimeSnapshot {
     pub health_error: Option<String>,
     pub running: bool,
     pub last_error: Option<String>,
+    pub last_error_kind: Option<TrustedLanCompanionRuntimeFailureKind>,
     pub local_name_running: bool,
     pub local_name_error: Option<String>,
     pub api_version: String,
@@ -193,6 +201,7 @@ impl TrustedLanCompanionRuntime {
         if let Ok(mut status) = self.status.write() {
             status.running = true;
             status.last_error = None;
+            status.last_error_kind = None;
         }
     }
 
@@ -200,13 +209,23 @@ impl TrustedLanCompanionRuntime {
         if let Ok(mut status) = self.status.write() {
             status.running = false;
             status.last_error = None;
+            status.last_error_kind = None;
         }
     }
 
     pub fn mark_failed(&self, error: impl Into<String>) {
+        self.mark_failed_with_kind(error, None);
+    }
+
+    pub(crate) fn mark_failed_with_kind(
+        &self,
+        error: impl Into<String>,
+        kind: Option<TrustedLanCompanionRuntimeFailureKind>,
+    ) {
         if let Ok(mut status) = self.status.write() {
             status.running = false;
             status.last_error = Some(error.into());
+            status.last_error_kind = kind;
         }
     }
 
@@ -510,6 +529,7 @@ impl TrustedLanCompanionRuntime {
             health_error: None,
             running: status.as_ref().map(|value| value.running).unwrap_or(false),
             last_error: status.as_ref().and_then(|value| value.last_error.clone()),
+            last_error_kind: status.as_ref().and_then(|value| value.last_error_kind),
             local_name_running,
             local_name_error: status.and_then(|value| value.local_name_error.clone()),
             api_version: COMPANION_API_VERSION.to_string(),
@@ -552,19 +572,20 @@ fn normalize_trusted_lan_port(listen_port: u16) -> u16 {
 }
 
 fn companion_visual_qa_enabled() -> bool {
-    matches!(
-        std::env::var("FILAMENT_MANAGER_VISUAL_QA")
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase()
-            .as_str(),
-        "1" | "true" | "yes" | "on"
-    )
+    crate::packaged_host_client_e2e::allows_packaged_host_client_host_loopback()
+        || matches!(
+            std::env::var("FILAMENT_MANAGER_VISUAL_QA")
+                .unwrap_or_default()
+                .trim()
+                .to_ascii_lowercase()
+                .as_str(),
+            "1" | "true" | "yes" | "on"
+        )
 }
 
 #[cfg(test)]
 mod tests {
-    use super::TrustedLanCompanionRuntime;
+    use super::{TrustedLanCompanionRuntime, TrustedLanCompanionRuntimeFailureKind};
 
     #[test]
     fn trusted_lan_runtime_snapshot_stays_dark_until_explicitly_enabled() {
@@ -677,5 +698,38 @@ mod tests {
             Some("http://fm-qa7m4x2.local:4279/companion"),
         );
         assert!(snapshot.local_name_running);
+    }
+
+    #[test]
+    fn trusted_lan_runtime_failure_kind_is_serialized_and_cleared_with_status() {
+        let runtime = TrustedLanCompanionRuntime::new(4278);
+        runtime.mark_failed_with_kind(
+            "private bind detail",
+            Some(TrustedLanCompanionRuntimeFailureKind::PortInUse),
+        );
+        let snapshot = runtime.snapshot();
+        assert_eq!(
+            snapshot.last_error_kind,
+            Some(TrustedLanCompanionRuntimeFailureKind::PortInUse)
+        );
+        assert_eq!(
+            serde_json::to_value(&snapshot).expect("serialize runtime snapshot")["last_error_kind"],
+            "port-in-use"
+        );
+
+        runtime.mark_failed("generic runtime failure");
+        assert_eq!(runtime.snapshot().last_error_kind, None);
+        runtime.mark_failed_with_kind(
+            "private bind detail",
+            Some(TrustedLanCompanionRuntimeFailureKind::PortInUse),
+        );
+        runtime.mark_running();
+        assert_eq!(runtime.snapshot().last_error_kind, None);
+        runtime.mark_failed_with_kind(
+            "private bind detail",
+            Some(TrustedLanCompanionRuntimeFailureKind::PortInUse),
+        );
+        runtime.mark_stopped();
+        assert_eq!(runtime.snapshot().last_error_kind, None);
     }
 }

@@ -162,7 +162,8 @@ jobs:
             --log-dir="$FILAMENT_MANAGER_PACKAGED_MACOS_SMOKE_LOG_DIR" \
             --launch-timeout-ms=120000 \
             --signature-policy=local-adhoc \
-            --packaged-desktop-e2e
+            --packaged-desktop-e2e \
+            --packaged-host-client-e2e
 
       - name: Upload database upgrade smoke logs
         if: always()
@@ -287,6 +288,7 @@ jobs:
             -LogDirectory $env:WINDOWS_MSI_SMOKE_LOG_DIR `
             -SignaturePolicy "UnsignedRequired" `
             -RunPackagedDesktopE2E `
+            -RunPackagedHostClientE2E `
             -LaunchTimeoutSeconds 90
 
       - name: Upload MSI smoke logs

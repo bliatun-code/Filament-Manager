@@ -1,16 +1,18 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
-import { AppUpdateProvider } from './lib/app_update_provider'
-import { initThemeMode } from './lib/theme_mode'
-import { I18nProvider } from './lib/i18n_provider'
-import { startPackagedDesktopE2eBootstrap } from './lib/packaged_desktop_e2e_bootstrap'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
+import { AppUpdateProvider } from "./lib/app_update_provider";
+import { initThemeMode } from "./lib/theme_mode";
+import { I18nProvider } from "./lib/i18n_provider";
+import { startPackagedHostClientE2eBootstrap } from "./lib/packaged_host_client_e2e_bootstrap";
+import { startPackagedDesktopE2eBootstrap } from "./lib/packaged_desktop_e2e_bootstrap";
 
-startPackagedDesktopE2eBootstrap()
-initThemeMode()
+startPackagedHostClientE2eBootstrap();
+startPackagedDesktopE2eBootstrap();
+initThemeMode();
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <I18nProvider>
       <AppUpdateProvider>
@@ -18,4 +20,4 @@ createRoot(document.getElementById('root')!).render(
       </AppUpdateProvider>
     </I18nProvider>
   </StrictMode>,
-)
+);

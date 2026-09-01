@@ -45,6 +45,20 @@ pub(crate) fn visual_qa_trusted_lan_interface() -> TrustedLanInterfaceOption {
     }
 }
 
+/// The packaged Host-Client gate uses a second synthetic loopback option. It
+/// is only surfaced after the gate module has validated the private run
+/// directory and role-specific database; normal application callers can never
+/// select this address through the interface command.
+pub(crate) fn packaged_host_client_e2e_trusted_lan_interface() -> TrustedLanInterfaceOption {
+    const ADDRESS: &str = "127.0.0.1";
+    let name = crate::packaged_host_client_e2e::HOST_LOOPBACK_INTERFACE_NAME;
+    TrustedLanInterfaceOption {
+        label: format!("{name} ({ADDRESS})"),
+        name: name.to_string(),
+        address: ADDRESS.to_string(),
+    }
+}
+
 pub(crate) fn normalize_trusted_lan_interface_selection(
     interface_name: Option<&str>,
     interface_address: Option<&str>,

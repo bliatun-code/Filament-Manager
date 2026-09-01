@@ -29,7 +29,10 @@ import {
   type DashboardDerivedState,
 } from "./dashboard_model";
 import { deriveInventoryOverviewFromRows } from "./statistics_model";
-import { normalizeActiveLoanRow, normalizeLoanDetailsRow } from "./loan_row_normalization";
+import {
+  normalizeActiveLoanRow,
+  normalizeLoanDetailsRow,
+} from "./loan_row_normalization";
 import { localCalendarDate } from "./loan_due_state";
 import { normalizeSpoolWithMasterRows } from "./spool_row_normalization";
 import { loadAllSpoolRows } from "./spool_data_source";
@@ -51,7 +54,8 @@ import type { NumberDisplayLocale } from "./number_display";
 type TranslateFn = (key: string, fallback: string) => string;
 
 export type DashboardCompanionTone = DashboardHostConnectionTone;
-export type DashboardSyncSource = "local" | "client-live" | "client-cached" | "client-offline";
+export type DashboardSyncSource =
+  "local" | "client-live" | "client-cached" | "client-offline";
 
 export type DashboardDataLoadResult = {
   actionItems: DashboardActionItem[];
@@ -136,7 +140,9 @@ function preserveSnapshotConsumption(
   };
 }
 
-export function hasInvalidClientPairingMessage(message?: string | null): boolean {
+export function hasInvalidClientPairingMessage(
+  message?: string | null,
+): boolean {
   const normalized = (message ?? "").trim().toLowerCase();
   return normalized.includes("desktop client pairing is no longer valid");
 }
@@ -155,7 +161,9 @@ function hasImmediateClientPairingRepairError(error: unknown): boolean {
       );
     }
   }
-  const message = String(error ?? "").trim().toLowerCase();
+  const message = String(error ?? "")
+    .trim()
+    .toLowerCase();
   return (
     hasInvalidClientPairingMessage(message) ||
     /(?:returned|status(?: code)?(?: is)?|response:)\s+401\b/.test(message) ||
@@ -178,17 +186,24 @@ export async function loadDashboardData(
   },
   dependencies: DashboardDataDependencies = {},
 ): Promise<DashboardDataLoadResult> {
-  const loadSyncSettings = dependencies.loadSyncSettings ?? getLibrarySyncSettings;
-  const loadTrustedLanStatus = dependencies.loadTrustedLanStatus ?? getTrustedLanCompanionStatus;
-  const fetchHostSnapshot = dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
+  const loadSyncSettings =
+    dependencies.loadSyncSettings ?? getLibrarySyncSettings;
+  const loadTrustedLanStatus =
+    dependencies.loadTrustedLanStatus ?? getTrustedLanCompanionStatus;
+  const fetchHostSnapshot =
+    dependencies.fetchHostSnapshot ?? fetchLibrarySyncSnapshot;
   const fetchHostPrinterOverview =
     dependencies.fetchHostPrinterOverview ?? fetchLibrarySyncPrinterOverview;
   const fetchHostLoans = dependencies.fetchHostLoans ?? fetchLibrarySyncLoans;
-  const fetchHostWishlist = dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
+  const fetchHostWishlist =
+    dependencies.fetchHostWishlist ?? fetchLibrarySyncWishlistItems;
   const loadSpoolRows = dependencies.loadSpoolRows ?? loadAllSpoolRows;
-  const loadInventoryOverview = dependencies.loadInventoryOverview ?? inventoryOverview;
-  const loadPrinterSettings = dependencies.loadPrinterSettings ?? getPrinterSettings;
-  const listLocalPrinters = dependencies.listLocalPrinters ?? listPrinterOverview;
+  const loadInventoryOverview =
+    dependencies.loadInventoryOverview ?? inventoryOverview;
+  const loadPrinterSettings =
+    dependencies.loadPrinterSettings ?? getPrinterSettings;
+  const listLocalPrinters =
+    dependencies.listLocalPrinters ?? listPrinterOverview;
   const listLocalLoans = dependencies.listLocalLoans ?? listActiveSpoolLoans;
   const listLocalWishlist = dependencies.listLocalWishlist ?? listWishlistItems;
   const onLoadError = dependencies.onLoadError ?? console.error;
@@ -217,8 +232,10 @@ export async function loadDashboardData(
     !!syncSettings?.client_auth_paired &&
     hasInvalidClientPairingMessage(syncSettings?.last_validation_message);
   let clientHostNeedsRepair =
-    clientMode && (params.previousClientHostNeedsRepair || persistedPairingNeedsRepair);
-  let clientHostDisplayName = syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null;
+    clientMode &&
+    (params.previousClientHostNeedsRepair || persistedPairingNeedsRepair);
+  let clientHostDisplayName =
+    syncSettings?.host_device_name ?? cachedSnapshot?.device_name ?? null;
   let clientHostConnectionObservation: DashboardHostConnectionObservation =
     clientMode ? "checking" : "unconfigured";
 
@@ -230,7 +247,8 @@ export async function loadDashboardData(
   let clientSpoolRows = syncSettings?.cached_spools?.rows ?? null;
   let clientPrinterRows = syncSettings?.cached_printers?.rows ?? null;
   let clientLoanRows = syncSettings?.cached_loans?.rows ?? null;
-  let clientWishlistRows: WishlistItemRow[] = syncSettings?.cached_wishlist?.rows ?? [];
+  let clientWishlistRows: WishlistItemRow[] =
+    syncSettings?.cached_wishlist?.rows ?? [];
   let clientSnapshotLive = false;
   let clientSpoolsLive = false;
   let clientPrintersLive = false;
@@ -244,8 +262,13 @@ export async function loadDashboardData(
     : null;
 
   if (clientHostTarget && !params.clientCacheOnly) {
-    const [snapshotResult, spoolsResult, printersResult, loansResult, wishlistResult] =
-      await Promise.allSettled([
+    const [
+      snapshotResult,
+      spoolsResult,
+      printersResult,
+      loansResult,
+      wishlistResult,
+    ] = await Promise.allSettled([
       fetchHostSnapshot(clientHostTarget.baseUrl, clientHostTarget.libraryId),
       loadSpoolRows({
         clientReadOnly: true,
@@ -253,16 +276,29 @@ export async function loadDashboardData(
         clientLibraryId: clientHostTarget.libraryId,
         clientTargetGeneration: syncSettings?.target_generation ?? null,
       }),
-      fetchHostPrinterOverview(clientHostTarget.baseUrl, clientHostTarget.libraryId),
-      fetchHostLoans(clientHostTarget.baseUrl, clientHostTarget.libraryId, 2000),
-      fetchHostWishlist(clientHostTarget.baseUrl, clientHostTarget.libraryId, 500),
+      fetchHostPrinterOverview(
+        clientHostTarget.baseUrl,
+        clientHostTarget.libraryId,
+      ),
+      fetchHostLoans(
+        clientHostTarget.baseUrl,
+        clientHostTarget.libraryId,
+        2000,
+      ),
+      fetchHostWishlist(
+        clientHostTarget.baseUrl,
+        clientHostTarget.libraryId,
+        500,
+      ),
     ]);
 
     if (snapshotResult.status === "fulfilled") {
       activeClientSnapshot = snapshotResult.value;
       clientSnapshotLive = true;
       clientHostDisplayName =
-        snapshotResult.value.device_name ?? syncSettings?.host_device_name ?? null;
+        snapshotResult.value.device_name ??
+        syncSettings?.host_device_name ??
+        null;
     } else {
       onLoadError(snapshotResult.reason);
     }
@@ -342,7 +378,9 @@ export async function loadDashboardData(
     (clientLoanRows?.length ?? 0) > 0 ||
     clientWishlistRows.length > 0;
   const normalizedClientSpoolRows =
-    clientSpoolRows != null ? normalizeSpoolWithMasterRows(clientSpoolRows) : null;
+    clientSpoolRows != null
+      ? normalizeSpoolWithMasterRows(clientSpoolRows)
+      : null;
   const clientRowsOverview =
     (normalizedClientSpoolRows?.length ?? 0) > 0
       ? deriveInventoryOverviewFromRows(normalizedClientSpoolRows ?? [], [])
@@ -353,7 +391,7 @@ export async function loadDashboardData(
   );
   const clientRowsOverviewCapturedAt =
     clientRowsOverview && !clientHostTarget
-      ? syncSettings?.cached_spools?.captured_at ?? null
+      ? (syncSettings?.cached_spools?.captured_at ?? null)
       : null;
 
   if (clientMode) {
@@ -385,7 +423,9 @@ export async function loadDashboardData(
       syncSettings?.cached_loans?.captured_at,
       syncSettings?.cached_wishlist?.captured_at,
     );
-    const normalizedClientLoans = (clientLoanRows ?? []).map(normalizeLoanDetailsRow);
+    const normalizedClientLoans = (clientLoanRows ?? []).map(
+      normalizeLoanDetailsRow,
+    );
     return {
       actionItems: buildDashboardActionItems({
         bambuLiveAttention: [],
@@ -403,6 +443,7 @@ export async function loadDashboardData(
         loans: normalizedClientLoans,
         wishlist: clientWishlistRows,
         locale: params.locale,
+        now: actionNow,
         t: params.t,
       }),
       libraryId,
@@ -417,7 +458,10 @@ export async function loadDashboardData(
         !!syncSettings?.client_auth_paired && !clientHostNeedsRepair,
       setupDataAvailable: hasClientData,
       syncSource,
-      capturedAt: syncSource === "client-live" ? liveCapturedAt : fallbackCapturedAt ?? liveCapturedAt,
+      capturedAt:
+        syncSource === "client-live"
+          ? liveCapturedAt
+          : (fallbackCapturedAt ?? liveCapturedAt),
       revisionSource,
       revisionPollComplete: allClientReadsLive,
     };
@@ -461,6 +505,7 @@ export async function loadDashboardData(
       loans: normalizedLoans,
       wishlist,
       locale: params.locale,
+      now: actionNow,
       t: params.t,
     }),
     libraryId,

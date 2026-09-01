@@ -2,13 +2,20 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-const releaseWorkflow = readFileSync(".github/workflows/release-build.yml", "utf8");
+const releaseWorkflow = readFileSync(
+  ".github/workflows/release-build.yml",
+  "utf8",
+);
 const ciWorkflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const windowsWixTemplate = readFileSync("src-tauri/wix/per-user.wxs", "utf8");
 const windowsMsiSmoke = readFileSync("scripts/smoke-windows-msi.ps1", "utf8");
 const macosDmgSmoke = readFileSync("scripts/smoke-macos-dmg.mjs", "utf8");
 const packagedDesktopE2eRunner = readFileSync(
   "scripts/run-packaged-desktop-e2e.mjs",
+  "utf8",
+);
+const packagedHostClientE2eRunner = readFileSync(
+  "scripts/run-packaged-host-client-e2e.mjs",
   "utf8",
 );
 const releaseDatabaseUpgradeSmoke = readFileSync(
@@ -39,7 +46,9 @@ const packageManifest = JSON.parse(readFileSync("package.json", "utf8"));
 function readSection(source, startMarker, endMarker) {
   const start = source.indexOf(startMarker);
   assert.notEqual(start, -1, `Missing workflow section: ${startMarker.trim()}`);
-  const end = endMarker ? source.indexOf(endMarker, start + startMarker.length) : -1;
+  const end = endMarker
+    ? source.indexOf(endMarker, start + startMarker.length)
+    : -1;
   if (endMarker) {
     assert.notEqual(end, -1, `Missing workflow section: ${endMarker.trim()}`);
   }
@@ -53,7 +62,10 @@ function assertStepOrder(source, stepNames) {
     return position;
   });
 
-  assert.deepEqual(positions, [...positions].sort((left, right) => left - right));
+  assert.deepEqual(
+    positions,
+    [...positions].sort((left, right) => left - right),
+  );
 }
 
 function countOccurrences(source, value) {
@@ -129,7 +141,10 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(validationJob, /"\$SELECTED_PLATFORM" == "windows"/);
   assert.match(validationJob, /"\$SELECTED_PLATFORM" == "both"/);
   assert.match(validationJob, /"\$CONFIRM_MACOS_NOTARIZATION" != "true"/);
-  assert.match(validationJob, /Manual macOS release builds require notarization confirmation/);
+  assert.match(
+    validationJob,
+    /Manual macOS release builds require notarization confirmation/,
+  );
   assert.match(
     validationJob,
     /"\$GITHUB_EVENT_NAME" == "workflow_dispatch"[\s\S]*?"\$GITHUB_REF" != "refs\/heads\/main"/,
@@ -176,8 +191,14 @@ test("release workflow gates tag and manual installer builds", () => {
     updateMetadataGate,
     /Canonical tag releases require repository variable FILAMENT_MANAGER_UPDATE_METADATA_URL to equal \$expected_update_metadata_url\./,
   );
-  assert.doesNotMatch(updateMetadataGate, /workflow_dispatch|SELECTED_PLATFORM/);
-  assert.match(validationJob, /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/);
+  assert.doesNotMatch(
+    updateMetadataGate,
+    /workflow_dispatch|SELECTED_PLATFORM/,
+  );
+  assert.match(
+    validationJob,
+    /git merge-base --is-ancestor HEAD refs\/remotes\/origin\/main/,
+  );
   assert.match(
     macosJob,
     /needs:\s*\n\s+- validate-release\s*\n\s+- prepare-previous-release-fixture/,
@@ -213,7 +234,10 @@ test("release workflow gates tag and manual installer builds", () => {
   );
   const updateMetadataVariableBinding =
     "FILAMENT_MANAGER_UPDATE_METADATA_URL: ${{ vars.FILAMENT_MANAGER_UPDATE_METADATA_URL }}";
-  assert.equal(countOccurrences(validationJob, updateMetadataVariableBinding), 1);
+  assert.equal(
+    countOccurrences(validationJob, updateMetadataVariableBinding),
+    1,
+  );
   assert.equal(countOccurrences(macosJob, updateMetadataVariableBinding), 1);
   assert.equal(countOccurrences(windowsJob, updateMetadataVariableBinding), 1);
   assert.doesNotMatch(
@@ -254,11 +278,11 @@ test("release workflow gates tag and manual installer builds", () => {
   assert.match(windowsJob, /- name: Verify downloaded MSI candidate/);
   assert.match(windowsJob, /SHA256SUMS-windows\.txt/);
   assert.match(windowsJob, /\[regex\]::Match/);
-  assert.match(windowsJob, /Get-FileHash -LiteralPath \$candidatePath -Algorithm SHA256/);
   assert.match(
     windowsJob,
-    /-MsiDirectory \$env:WINDOWS_MSI_CANDIDATE_DIR/,
+    /Get-FileHash -LiteralPath \$candidatePath -Algorithm SHA256/,
   );
+  assert.match(windowsJob, /-MsiDirectory \$env:WINDOWS_MSI_CANDIDATE_DIR/);
   assert.match(
     windowsJob,
     /- name: Exercise release MSI installation from downloaded artifact/,
@@ -280,10 +304,7 @@ test("release workflow gates tag and manual installer builds", () => {
     /path: \|\s+target\/release\/bundle\/msi\/\*\.msi\s+target\/release\/bundle\/msi\/SHA256SUMS-windows\.txt/,
   );
   assert.match(windowsJob, /retention-days: 14/);
-  assert.match(
-    windowsJob,
-    /- name: Install root dependencies\s+run: npm ci/,
-  );
+  assert.match(windowsJob, /- name: Install root dependencies\s+run: npm ci/);
   assert.match(
     windowsJob,
     /- name: Install UI dependencies\s+run: npm --prefix \.\/ui ci/,
@@ -320,7 +341,10 @@ test("release workflow gates tag and manual installer builds", () => {
     /needs\['smoke-macos-dmg-intel'\]\.result == 'success'/,
   );
   assert.match(publishJob, /needs\['build-windows-msi'\]\.result == 'success'/);
-  assert.match(publishJob, /needs\['generate-release-sbom'\]\.result == 'success'/);
+  assert.match(
+    publishJob,
+    /needs\['generate-release-sbom'\]\.result == 'success'/,
+  );
   assert.match(
     publishJob,
     /github\.event\.repository\.private == false && needs\['attest-public-release'\]\.result == 'success'/,
@@ -334,7 +358,10 @@ test("release workflow gates tag and manual installer builds", () => {
     /permissions:\s*\n\s+checks: read\s*\n\s+contents: write/,
   );
   assert.match(publishJob, /environment: github-release/);
-  assert.equal(countOccurrences(releaseWorkflow, "environment: github-release"), 1);
+  assert.equal(
+    countOccurrences(releaseWorkflow, "environment: github-release"),
+    1,
+  );
   assert.doesNotMatch(macosJob, /environment: github-release/);
   assert.doesNotMatch(intelMacosSmokeJob, /environment: github-release/);
   assert.doesNotMatch(windowsJob, /environment: github-release/);
@@ -418,7 +445,10 @@ test("release workflow gates tag and manual installer builds", () => {
     publishJob,
     /release_asset_paths=\("\$FILAMENT_MANAGER_RELEASE_ASSET_DIR"\/\*\)[\s\S]*?for asset_path in "\$\{release_asset_paths\[@\]\}"[\s\S]*?--fail-with-body[\s\S]*?--location[\s\S]*?--data-binary "@\$asset_path"[\s\S]*?https:\/\/uploads\.github\.com\/repos\/\$GITHUB_REPOSITORY\/releases\/\$draft_release_id\/assets\?name=\$encoded_asset_name/,
   );
-  assert.match(publishJob, /jq -rn --arg value "\$asset_name" '\$value \| @uri'/);
+  assert.match(
+    publishJob,
+    /jq -rn --arg value "\$asset_name" '\$value \| @uri'/,
+  );
   assert.match(publishJob, /Authorization: Bearer \$GH_TOKEN/);
   assert.match(publishJob, /Content-Type: application\/octet-stream/);
   assert.doesNotMatch(publishJob, /--clobber/);
@@ -511,10 +541,7 @@ test("release SBOM generation is pinned, read-only and fail-closed", () => {
     "  attest-public-release:",
   );
 
-  assert.match(
-    sbomJob,
-    /permissions:\s*\n\s+contents: read\s*\n\s+steps:/,
-  );
+  assert.match(sbomJob, /permissions:\s*\n\s+contents: read\s*\n\s+steps:/);
   assert.doesNotMatch(sbomJob, /permissions:[\s\S]*?\n\s+\w[\w-]*: write/);
   assert.match(
     sbomJob,
@@ -566,10 +593,7 @@ test("public provenance uses an isolated least-privilege fail-closed job", () =>
   );
   assert.doesNotMatch(attestationJob, /contents: write/);
   assert.doesNotMatch(attestationJob, /APPLE_[A-Z_]+|macos-release/);
-  assert.match(
-    attestationJob,
-    /actions\/attest@[a-f0-9]{40} # v\d+\.\d+\.\d+/,
-  );
+  assert.match(attestationJob, /actions\/attest@[a-f0-9]{40} # v\d+\.\d+\.\d+/);
   assert.match(
     attestationJob,
     /subject-path:\s*\|\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['dmg-path'\] \}\}\s+\$\{\{ steps\['installer-subjects'\]\.outputs\['msi-path'\] \}\}/,
@@ -626,15 +650,28 @@ test("release artifacts remain stable across partial workflow reruns", () => {
     "  publish-github-release:",
   );
   const macosArtifactName = "filament-manager-macos-dmg-${{ github.run_id }}";
-  const windowsArtifactName = "filament-manager-windows-msi-${{ github.run_id }}";
+  const windowsArtifactName =
+    "filament-manager-windows-msi-${{ github.run_id }}";
   const sbomArtifactName = "filament-manager-release-sbom-${{ github.run_id }}";
   const provenanceArtifactName =
     "filament-manager-release-provenance-${{ github.run_id }}";
 
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`), 5);
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`), 4);
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`), 2);
-  assert.equal(countOccurrences(releaseWorkflow, `name: ${provenanceArtifactName}`), 2);
+  assert.equal(
+    countOccurrences(releaseWorkflow, `name: ${macosArtifactName}`),
+    5,
+  );
+  assert.equal(
+    countOccurrences(releaseWorkflow, `name: ${windowsArtifactName}`),
+    4,
+  );
+  assert.equal(
+    countOccurrences(releaseWorkflow, `name: ${sbomArtifactName}`),
+    2,
+  );
+  assert.equal(
+    countOccurrences(releaseWorkflow, `name: ${provenanceArtifactName}`),
+    2,
+  );
   assert.doesNotMatch(releaseWorkflow, /github\.run_attempt/);
   assert.match(
     macosJob,
@@ -682,10 +719,7 @@ test("Windows MSI verifier fails closed and writes a portable checksum", () => {
   assert.match(verifier, /@\(\[int\]7\)/);
   assert.match(verifier, /ExpectedArchitecture/);
   assert.match(verifier, /\[string\]\$NormalizedFileName/);
-  assert.match(
-    verifier,
-    /\^\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*\[\.\]msi\$/,
-  );
+  assert.match(verifier, /\^\[A-Za-z0-9\]\[A-Za-z0-9\._-\]\*\[\.\]msi\$/);
   assert.match(verifier, /Move-Item -LiteralPath \$msiFile\.FullName/);
   assert.match(verifier, /Get-Item -LiteralPath \$normalizedMsiPath/);
   assert.match(verifier, /Get-FileHash[\s\S]*-Algorithm SHA256/);
@@ -700,14 +734,29 @@ test("Windows Authenticode verifier requires publisher, code-signing EKU and tim
   assert.equal(existsSync("scripts/verify-windows-authenticode.ps1"), true);
 
   assert.match(windowsAuthenticodeVerifier, /\[string\[\]\]\$FilePath/);
-  assert.match(windowsAuthenticodeVerifier, /\[string\]\$ExpectedPublisherSubject/);
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /\[string\]\$ExpectedPublisherSubject/,
+  );
   assert.match(windowsAuthenticodeVerifier, /\("\.exe", "\.msi"\)/);
-  assert.match(windowsAuthenticodeVerifier, /Get-AuthenticodeSignature -LiteralPath/);
-  assert.match(windowsAuthenticodeVerifier, /\[string\]\$signature\.Status, "Valid"/);
-  assert.match(windowsAuthenticodeVerifier, /\$signature\.SignerCertificate\.Subject\.Trim\(\)/);
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /Get-AuthenticodeSignature -LiteralPath/,
+  );
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /\[string\]\$signature\.Status, "Valid"/,
+  );
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /\$signature\.SignerCertificate\.Subject\.Trim\(\)/,
+  );
   assert.match(windowsAuthenticodeVerifier, /\[StringComparison\]::Ordinal/);
   assert.match(windowsAuthenticodeVerifier, /1\.3\.6\.1\.5\.5\.7\.3\.3/);
-  assert.match(windowsAuthenticodeVerifier, /\$signature\.TimeStamperCertificate/);
+  assert.match(
+    windowsAuthenticodeVerifier,
+    /\$signature\.TimeStamperCertificate/,
+  );
   assert.match(
     windowsAuthenticodeVerifier,
     /verify \/pa \/all \/v \/tw \$resolvedFilePath/,
@@ -760,12 +809,30 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
   assert.match(windowsMsiSmoke, /\[EnvironmentVariableTarget\]::User/);
   assert.match(windowsMsiSmoke, /Desktop shortcut already exists/);
   assert.match(windowsMsiSmoke, /Start Menu product directory already exists/);
-  assert.match(windowsMsiSmoke, /user PATH already contains the install directory/);
-  assert.match(windowsMsiSmoke, /Install did not register[\s\S]*for the current user/);
-  assert.match(windowsMsiSmoke, /Install did not create the expected Desktop shortcut/);
-  assert.match(windowsMsiSmoke, /Install did not create the expected Start Menu shortcut/);
-  assert.match(windowsMsiSmoke, /Install did not add the install directory to the user PATH/);
-  assert.match(windowsMsiSmoke, /Start-Process[\s\S]*-FilePath \$installedExecutablePath/);
+  assert.match(
+    windowsMsiSmoke,
+    /user PATH already contains the install directory/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Install did not register[\s\S]*for the current user/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Install did not create the expected Desktop shortcut/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Install did not create the expected Start Menu shortcut/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Install did not add the install directory to the user PATH/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Start-Process[\s\S]*-FilePath \$installedExecutablePath/,
+  );
   assert.match(windowsMsiSmoke, /Add-Type -TypeDefinition/);
   assert.match(windowsMsiSmoke, /EnumWindows/);
   assert.match(windowsMsiSmoke, /GetWindowThreadProcessId/);
@@ -861,7 +928,10 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
     "$transcriptStarted = $false",
   );
   assert.equal(countOccurrences(autostartTargets, "[PSCustomObject]@{"), 4);
-  assert.equal(countOccurrences(autostartTargets, "Path = $runRegistryPath"), 2);
+  assert.equal(
+    countOccurrences(autostartTargets, "Path = $runRegistryPath"),
+    2,
+  );
   assert.equal(
     countOccurrences(autostartTargets, "Path = $startupApprovedRegistryPath"),
     2,
@@ -874,8 +944,14 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
     countOccurrences(autostartTargets, "Name = $legacyAutostartValueName"),
     2,
   );
-  assert.equal(countOccurrences(autostartTargets, 'PropertyType = "String"'), 2);
-  assert.equal(countOccurrences(autostartTargets, 'PropertyType = "Binary"'), 2);
+  assert.equal(
+    countOccurrences(autostartTargets, 'PropertyType = "String"'),
+    2,
+  );
+  assert.equal(
+    countOccurrences(autostartTargets, 'PropertyType = "Binary"'),
+    2,
+  );
 
   const defaultCloseIndex = windowsMsiSmoke.indexOf(
     '-Description "The app\'s normal main window"',
@@ -926,28 +1002,58 @@ test("Windows MSI smoke exercises install, desktop lifecycle, data retention and
     realUninstallIndex,
     registryRemovalAssertionIndex,
   ];
-  assert.equal(lifecycleOrder.every((position) => position >= 0), true);
+  assert.equal(
+    lifecycleOrder.every((position) => position >= 0),
+    true,
+  );
   assert.deepEqual(
     lifecycleOrder,
     [...lifecycleOrder].sort((left, right) => left - right),
   );
   assert.match(windowsMsiSmoke, /Get-FileHash[\s\S]*-Algorithm SHA256/);
   assert.match(windowsMsiSmoke, /Invoke-MsiExec -Action "\/x"/);
-  assert.match(windowsMsiSmoke, /Uninstall left Windows Installer product state/);
+  assert.match(
+    windowsMsiSmoke,
+    /Uninstall left Windows Installer product state/,
+  );
   assert.match(windowsMsiSmoke, /Uninstall left the Desktop shortcut behind/);
-  assert.match(windowsMsiSmoke, /Uninstall left the Start Menu shortcut behind/);
-  assert.match(windowsMsiSmoke, /Uninstall left the Start Menu product directory behind/);
-  assert.match(windowsMsiSmoke, /Uninstall left the install directory in the user PATH/);
-  assert.match(windowsMsiSmoke, /Uninstall removed the user database instead of retaining it/);
-  assert.match(windowsMsiSmoke, /The retained database changed during uninstall/);
+  assert.match(
+    windowsMsiSmoke,
+    /Uninstall left the Start Menu shortcut behind/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Uninstall left the Start Menu product directory behind/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Uninstall left the install directory in the user PATH/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Uninstall removed the user database instead of retaining it/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /The retained database changed during uninstall/,
+  );
   assert.match(
     windowsMsiSmoke,
     /\$applicationStoppedForCleanup -and[\s\S]*?\$canRemoveSmokeAppData -and[\s\S]*?Test-Path -LiteralPath \$resolvedAppDataDirectory/,
   );
 
-  assert.match(windowsDatabaseVerifier, /pragma\("quick_check", \{ simple: true \}\)/);
-  assert.match(windowsDatabaseVerifier, /pragma\("user_version", \{ simple: true \}\)/);
-  assert.match(windowsDatabaseVerifier, /REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION/);
+  assert.match(
+    windowsDatabaseVerifier,
+    /pragma\("quick_check", \{ simple: true \}\)/,
+  );
+  assert.match(
+    windowsDatabaseVerifier,
+    /pragma\("user_version", \{ simple: true \}\)/,
+  );
+  assert.match(
+    windowsDatabaseVerifier,
+    /REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION/,
+  );
   assert.match(windowsDatabaseVerifier, /pragma\("foreign_key_check"\)/);
   assert.match(windowsDatabaseVerifier, /filament_master_list/);
   assert.match(windowsDatabaseVerifier, /filament_spools/);
@@ -998,7 +1104,15 @@ test("macOS DMG smoke installs and launches the verified application", () => {
   assert.match(macosDmgSmoke, /foreign_key_check/);
   assert.match(macosDmgSmoke, /macos-window-info\.swift/);
   assert.match(macosDmgSmoke, /SIGTERM/);
+  assert.match(macosDmgSmoke, /listExactExecutableProcesses/);
+  assert.match(
+    macosDmgSmoke,
+    /runCommand\("swift", \[WINDOW_HELPER_PATH, "running-processes"\]/,
+  );
   assert.match(macosWindowHelper, /running-apps/);
+  assert.match(macosWindowHelper, /running-processes/);
+  assert.match(macosWindowHelper, /proc_listallpids/);
+  assert.match(macosWindowHelper, /proc_pidpath/);
   assert.match(macosWindowHelper, /kCGWindowOwnerPID/);
   const detachIndex = macosDmgSmoke.lastIndexOf(
     'runCommand("hdiutil", ["detach"',
@@ -1032,8 +1146,7 @@ test("Windows MSI removes app-owned autostart values only on a real uninstall", 
   const uninstallOnlyCondition =
     '<![CDATA[REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE]]>';
   const runKey = String.raw`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`;
-  const startupApprovedKey =
-    String.raw`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`;
+  const startupApprovedKey = String.raw`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run`;
   const cleanupActions = [
     {
       before: "RemoveStableStartupApproved",
@@ -1132,11 +1245,17 @@ test("Windows MSI PATH feature is user-scoped and independently selectable", () 
   assert.match(pathEnvironmentComponent, /\bPermanent="no"/);
   assert.match(pathEnvironmentComponent, /<RegistryValue\s+Root="HKCU"/);
   assert.match(pathEnvironmentComponent, /\bKeyPath="yes"\s*\/>/);
-  assert.match(environmentFeature, /<ComponentRef\s+Id="PathEnvironment"\s*\/>/);
+  assert.match(
+    environmentFeature,
+    /<ComponentRef\s+Id="PathEnvironment"\s*\/>/,
+  );
   assert.doesNotMatch(environmentFeature, /<ComponentRef\s+Id="Path"\s*\/>/);
   assert.equal(
-    [...windowsWixTemplate.matchAll(/<ComponentRef\s+Id="PathEnvironment"\s*\/>/g)]
-      .length,
+    [
+      ...windowsWixTemplate.matchAll(
+        /<ComponentRef\s+Id="PathEnvironment"\s*\/>/g,
+      ),
+    ].length,
     1,
   );
 });
@@ -1178,7 +1297,10 @@ test("Windows CI runs separate builtin portability contracts before toolchain se
     /-NormalizedFileName "Filament-Manager_\$\(\$tauriConfig\.version\)_x64_en-US\.msi"/,
   );
   assert.match(windowsJob, /\.\/scripts\/smoke-windows-msi\.ps1/);
-  assert.match(windowsJob, /-ExpectedExecutableName "bambu-filament-manager\.exe"/);
+  assert.match(
+    windowsJob,
+    /-ExpectedExecutableName "bambu-filament-manager\.exe"/,
+  );
   assert.match(
     windowsJob,
     /-ExpectedWindowTitles @\(\$tauriConfig\.productName, "Dashboard"\)/,
@@ -1249,9 +1371,17 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
     "  migration-integrity:",
     "  macos-smoke:",
   );
-  const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const macosJob = readSection(
+    ciWorkflow,
+    "  macos-smoke:",
+    "  windows-smoke:",
+  );
   const windowsJobStart = ciWorkflow.indexOf("  windows-smoke:");
-  assert.notEqual(windowsJobStart, -1, "Missing workflow section: windows-smoke:");
+  assert.notEqual(
+    windowsJobStart,
+    -1,
+    "Missing workflow section: windows-smoke:",
+  );
   const windowsJob = ciWorkflow.slice(windowsJobStart);
 
   assert.equal(
@@ -1295,7 +1425,11 @@ test("CI executes real browser accessibility and sanitized Companion workflows",
 });
 
 test("macOS CI makes the sanitized database upgrade smoke a release gate", () => {
-  const macosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+  const macosJob = readSection(
+    ciWorkflow,
+    "  macos-smoke:",
+    "  windows-smoke:",
+  );
   const publishJob = readSection(releaseWorkflow, "  publish-github-release:");
   const requiredChecksStep = readSection(
     publishJob,
@@ -1391,10 +1525,7 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
 
   assert.match(fixtureJob, /name: Prepare v0\.28 database fixture/);
   assert.match(fixtureJob, /needs: validate-release/);
-  assert.match(
-    fixtureJob,
-    /ref: 76cba513eadd5137d6703f9abd1c0452531ef788/,
-  );
+  assert.match(fixtureJob, /ref: 76cba513eadd5137d6703f9abd1c0452531ef788/);
   assert.match(fixtureJob, /path: previous-release-v0\.28\.0/);
   assert.match(fixtureJob, /npm --prefix \.\/previous-release-v0\.28\.0 ci/);
   assert.match(
@@ -1417,10 +1548,7 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
     );
     assert.match(job, /- name: Download sanitized v0\.28 fixture/);
     assert.match(job, /- name: Verify downloaded v0\.28 fixture/);
-    assert.match(
-      job,
-      /npm run qa:release:previous-fixture --[\s\S]*?--verify/,
-    );
+    assert.match(job, /npm run qa:release:previous-fixture --[\s\S]*?--verify/);
   }
 
   assert.match(
@@ -1482,25 +1610,28 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   assert.match(releaseWorkflow, /permissions:\s*\n\s*contents: read/);
   assert.match(macosJob, /environment: macos-release/);
   assert.match(macosJob, /runs-on: macos-15/);
-  assert.match(
-    macosJob,
-    /targets: aarch64-apple-darwin,x86_64-apple-darwin/,
-  );
+  assert.match(macosJob, /targets: aarch64-apple-darwin,x86_64-apple-darwin/);
   assert.match(macosJob, /runner_architecture="\$\(uname -m\)"/);
   assert.match(macosJob, /"\$runner_architecture" != "arm64"/);
   assert.match(macosJob, /- name: Prepare Apple credentials/);
-  assert.match(macosJob, /APPLE_API_ISSUER: \$\{\{ secrets\.APPLE_API_ISSUER \}\}/);
-  assert.match(macosJob, /APPLE_API_PRIVATE_KEY: \$\{\{ secrets\.APPLE_API_PRIVATE_KEY \}\}/);
-  assert.match(macosJob, /APPLE_CERTIFICATE: \$\{\{ secrets\.APPLE_CERTIFICATE \}\}/);
+  assert.match(
+    macosJob,
+    /APPLE_API_ISSUER: \$\{\{ secrets\.APPLE_API_ISSUER \}\}/,
+  );
+  assert.match(
+    macosJob,
+    /APPLE_API_PRIVATE_KEY: \$\{\{ secrets\.APPLE_API_PRIVATE_KEY \}\}/,
+  );
+  assert.match(
+    macosJob,
+    /APPLE_CERTIFICATE: \$\{\{ secrets\.APPLE_CERTIFICATE \}\}/,
+  );
   assert.match(macosJob, /APPLE_TEAM_ID: \$\{\{ secrets\.APPLE_TEAM_ID \}\}/);
   assert.match(
     macosJob,
     /EXPECTED_APPLE_TEAM_ID: \$\{\{ vars\.EXPECTED_APPLE_TEAM_ID \}\}/,
   );
-  assert.match(
-    macosJob,
-    /"\$APPLE_TEAM_ID" != "\$EXPECTED_APPLE_TEAM_ID"/,
-  );
+  assert.match(macosJob, /"\$APPLE_TEAM_ID" != "\$EXPECTED_APPLE_TEAM_ID"/);
   assert.match(macosJob, /FILAMENT_MANAGER_REQUIRE_MACOS_SIGNING: "1"/);
   assert.match(
     macosJob,
@@ -1510,10 +1641,16 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     macosJob,
     /"\$CARGO_TARGET_DIR"\/universal-apple-darwin\/release\/bundle\/dmg\/\*\.dmg/,
   );
-  assert.match(macosJob, /xcrun notarytool submit "\$FILAMENT_MANAGER_DMG_PATH"/);
+  assert.match(
+    macosJob,
+    /xcrun notarytool submit "\$FILAMENT_MANAGER_DMG_PATH"/,
+  );
   assert.match(macosJob, /--wait/);
   assert.match(macosJob, /xcrun stapler staple "\$FILAMENT_MANAGER_DMG_PATH"/);
-  assert.match(macosJob, /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/);
+  assert.match(
+    macosJob,
+    /xcrun stapler validate "\$FILAMENT_MANAGER_DMG_PATH"/,
+  );
   assert.match(
     macosJob,
     /npm run verify:macos-release --[\s\S]*?"\$FILAMENT_MANAGER_DMG_PATH"[\s\S]*?--architectures=arm64,x86_64/,
@@ -1599,7 +1736,10 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
     /permissions:\s*\n\s+contents: read\s*\n\s+steps:/,
   );
   assert.match(intelMacosSmokeJob, /"\$runner_architecture" != "x86_64"/);
-  assert.match(intelMacosSmokeJob, /- name: Install smoke dependencies\s+run: npm ci/);
+  assert.match(
+    intelMacosSmokeJob,
+    /- name: Install smoke dependencies\s+run: npm ci/,
+  );
   assert.match(
     intelMacosSmokeJob,
     /- name: Download Universal 2 DMG candidate[\s\S]*?actions\/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8\.0\.1[\s\S]*?name: filament-manager-macos-dmg-\$\{\{ github\.run_id \}\}/,
@@ -1634,8 +1774,12 @@ test("release workflow keeps the protected macOS signing sequence fail-closed", 
   ]);
 });
 
-test("CI and release workflows block on the packaged mutating desktop E2E", () => {
-  const ciMacosJob = readSection(ciWorkflow, "  macos-smoke:", "  windows-smoke:");
+test("CI and release workflows block on packaged desktop and Host-Client mutation gates", () => {
+  const ciMacosJob = readSection(
+    ciWorkflow,
+    "  macos-smoke:",
+    "  windows-smoke:",
+  );
   const ciWindowsJob = readSection(ciWorkflow, "  windows-smoke:");
   const releaseMacosJob = readSection(
     releaseWorkflow,
@@ -1657,33 +1801,49 @@ test("CI and release workflows block on the packaged mutating desktop E2E", () =
     packageManifest.scripts["smoke:release:packaged-desktop-e2e"],
     "node ./scripts/run-packaged-desktop-e2e.mjs",
   );
+  assert.equal(
+    packageManifest.scripts["smoke:release:packaged-host-client-e2e"],
+    "node ./scripts/run-packaged-host-client-e2e.mjs",
+  );
   assert.match(ciMacosJob, /- name: Build packaged macOS smoke bundle/);
   assert.match(ciMacosJob, /npm run tauri -- build --debug --bundles dmg/);
   assert.match(ciMacosJob, /- name: Exercise packaged macOS mutating E2E/);
   assert.match(ciMacosJob, /--signature-policy=local-adhoc/);
   assert.match(ciMacosJob, /--packaged-desktop-e2e/);
+  assert.match(ciMacosJob, /--packaged-host-client-e2e/);
   assert.match(
     ciMacosJob,
     /- name: Upload packaged macOS smoke logs\s+if: always\(\)[\s\S]*?if-no-files-found: warn/,
   );
   assert.match(ciWindowsJob, /-RunPackagedDesktopE2E/);
+  assert.match(ciWindowsJob, /-RunPackagedHostClientE2E/);
   assert.match(releaseMacosJob, /--packaged-desktop-e2e/);
+  assert.match(releaseMacosJob, /--packaged-host-client-e2e/);
   assert.match(releaseIntelMacosJob, /--packaged-desktop-e2e/);
+  assert.match(releaseIntelMacosJob, /--packaged-host-client-e2e/);
   assert.match(releaseWindowsJob, /-RunPackagedDesktopE2E/);
+  assert.match(releaseWindowsJob, /-RunPackagedHostClientE2E/);
+  assert.equal(countOccurrences(releaseWorkflow, "--packaged-desktop-e2e"), 2);
+  assert.equal(countOccurrences(releaseWorkflow, "-RunPackagedDesktopE2E"), 1);
   assert.equal(
-    countOccurrences(releaseWorkflow, "--packaged-desktop-e2e"),
+    countOccurrences(releaseWorkflow, "--packaged-host-client-e2e"),
     2,
   );
   assert.equal(
-    countOccurrences(releaseWorkflow, "-RunPackagedDesktopE2E"),
+    countOccurrences(releaseWorkflow, "-RunPackagedHostClientE2E"),
     1,
   );
 
   assert.match(macosDmgSmoke, /runPackagedDesktopE2e\(\{/);
+  assert.match(macosDmgSmoke, /runPackagedHostClientE2e\(\{/);
   assert.match(windowsMsiSmoke, /function New-PrivateQaDirectory/);
   assert.match(windowsMsiSmoke, /SetAccessRuleProtection\(\$true, \$false\)/);
   assert.match(windowsMsiSmoke, /run-packaged-desktop-e2e\.mjs/);
-  assert.match(packagedDesktopE2eRunner, /spawn\(context\.executablePath, \[\], \{/);
+  assert.match(windowsMsiSmoke, /run-packaged-host-client-e2e\.mjs/);
+  assert.match(
+    packagedDesktopE2eRunner,
+    /spawn\(context\.executablePath, \[\], \{/,
+  );
   assert.match(
     packagedDesktopE2eRunner,
     /FILAMENT_MANAGER_PACKAGED_DESKTOP_E2E: "1"/,
@@ -1691,4 +1851,120 @@ test("CI and release workflows block on the packaged mutating desktop E2E", () =
   assert.match(packagedDesktopE2eRunner, /phase,\s*\n\s*runId: context\.runId/);
   assert.match(packagedDesktopE2eRunner, /inspectPackagedDesktopE2eDatabase/);
   assert.match(packagedDesktopE2eRunner, /backup_total_rows/);
+  assert.match(
+    packagedHostClientE2eRunner,
+    /FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E: "1"/,
+  );
+  assert.match(
+    packagedHostClientE2eRunner,
+    /const LIBRARY_ID = "packaged_host_client_e2e_library"/,
+  );
+  assert.match(
+    packagedHostClientE2eRunner,
+    /const SPOOL_ID = "packaged_host_client_e2e_spool"/,
+  );
+  assert.match(packagedHostClientE2eRunner, /client_local_weight_g/);
+  assert.match(packagedHostClientE2eRunner, /auth_cleanup/);
+  assert.match(packagedHostClientE2eRunner, /credential-cleanup-pending\.json/);
+  assert.match(packagedHostClientE2eRunner, /run-identity\.json/);
+  assert.match(packagedHostClientE2eRunner, /--resume-credential-cleanup/);
+  assert.match(packagedHostClientE2eRunner, /cleanupStatus === "pass"/);
+  assert.match(packagedHostClientE2eRunner, /WEIGHT_UPDATED/);
+  assert.match(
+    packagedHostClientE2eRunner,
+    /const canLaunchCredentialCleanup = !hasUnconfirmedClientProcess/,
+  );
+  assert.match(
+    packagedHostClientE2eRunner,
+    /windowsTaskkillPath\(environment\)/,
+  );
+  assert.match(packagedHostClientE2eRunner, /timeout: timeoutMs/);
+  assert.doesNotMatch(
+    packagedHostClientE2eRunner,
+    /spawnSync\("taskkill\.exe"/,
+  );
+  assert.match(macosDmgSmoke, /packagedHostClientHarnessCleanupSafe/);
+  const macosCredentialResume = macosDmgSmoke.indexOf(
+    "await resumePackagedHostClientCredentialCleanup",
+  );
+  assert.notEqual(macosCredentialResume, -1);
+  assert.notEqual(
+    macosDmgSmoke.lastIndexOf(
+      "await stopLaunchedApplicationProcesses",
+      macosCredentialResume,
+    ),
+    -1,
+  );
+  assert.ok(
+    macosDmgSmoke.indexOf(
+      "await stopLaunchedApplicationProcesses",
+      macosCredentialResume + 1,
+    ) > macosCredentialResume,
+  );
+  assert.match(
+    macosDmgSmoke,
+    /packagedHostClientHarnessCleanupSafe =\s+exactApplicationProcessesStopped &&/,
+  );
+  assert.match(windowsMsiSmoke, /function Get-ProcessesForExactExecutable/);
+  assert.match(
+    windowsMsiSmoke,
+    /Get-CimInstance\s+`\s+-ClassName Win32_Process[\s\S]*?\$_\.ExecutablePath/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Stop-ProcessesForExactExecutable\s+`\s+-ExecutablePath \$installedExecutablePath\s+`\s+-TimeoutSeconds 5/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /\[string\]::Equals\([\s\S]*?\$liveProcessPath,[\s\S]*?\$expectedPath,[\s\S]*?OrdinalIgnoreCase/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /Stop-Process -InputObject \$process -Force -ErrorAction Stop/,
+  );
+  assert.doesNotMatch(windowsMsiSmoke, /Stop-Process -Id \$processId/);
+  const windowsCredentialResume = windowsMsiSmoke.indexOf(
+    '"--resume-credential-cleanup"',
+  );
+  assert.notEqual(windowsCredentialResume, -1);
+  assert.notEqual(
+    windowsMsiSmoke.lastIndexOf(
+      "Stop-ProcessesForExactExecutable",
+      windowsCredentialResume,
+    ),
+    -1,
+  );
+  assert.ok(
+    windowsMsiSmoke.indexOf(
+      "Stop-ProcessesForExactExecutable",
+      windowsCredentialResume + 1,
+    ) > windowsCredentialResume,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /filament-manager-packaged-host-client-e2e-credential-cleanup-summary-v1/,
+  );
+  assert.match(windowsMsiSmoke, /auth_setting_count/);
+  assert.match(windowsMsiSmoke, /client_schema_version/);
+  assert.match(windowsMsiSmoke, /cleanup_launch/);
+  assert.match(
+    windowsMsiSmoke,
+    /\$packagedHostClientE2eRunId = \[string\]\$runIdentity\.run_id/,
+  );
+  assert.match(
+    packagedHostClientE2eRunner,
+    /closeRawLogsPreservingFailure\([\s\S]*?terminationFailure \?\? failure/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /\$packagedHostClientHarnessCleanupSafe -and\s+\$installationAttempted/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /\$packagedHostClientHarnessCleanupSafe =\s+`\s+\$applicationStoppedForCleanup -and/,
+  );
+  assert.match(
+    windowsMsiSmoke,
+    /if \(\$packagedHostClientHarnessCleanupSafe\) \{\s+try \{\s+Remove-Item[\s\S]*?\$packagedHostClientE2eWorkParent/,
+  );
 });

@@ -25,6 +25,7 @@ import { requireClientHostWriteTarget, resolveClientHostTarget } from "./host_wr
 export type SettingsPageData = {
   snapshot: PrinterSettingsSnapshot;
   catalogRows: MasterCatalogRow[];
+  catalogRowsAvailable: boolean;
   syncSettings: LibrarySyncSettings;
   librarySyncSnapshot: LibrarySyncRemoteSnapshot | null;
   overviewRows: PrinterOverviewRow[];
@@ -103,6 +104,7 @@ export async function loadSettingsPageData(
   let librarySyncSnapshot = syncSettings.cached_snapshot ?? null;
 
   let catalogRows: MasterCatalogRow[] = [];
+  let catalogRowsAvailable = false;
   let overviewRows: PrinterOverviewRow[];
   let spoolRows: SpoolWithMasterRow[];
   // A client must never associate this device's local Bambu Live settings with
@@ -168,6 +170,7 @@ export async function loadSettingsPageData(
 
       if (hostCatalogRowsResult.status === "fulfilled") {
         catalogRows = hostCatalogRowsResult.value;
+        catalogRowsAvailable = true;
       }
 
       if (hostOverviewResult.status === "fulfilled") {
@@ -204,6 +207,7 @@ export async function loadSettingsPageData(
       clientReadOnly: false,
       limit: 5000,
     });
+    catalogRowsAvailable = true;
     spoolRows =
       syncSettings.low_stock_policy_valid === false
         ? await loadSpoolRows(
@@ -224,6 +228,7 @@ export async function loadSettingsPageData(
   return {
     snapshot,
     catalogRows,
+    catalogRowsAvailable,
     syncSettings,
     librarySyncSnapshot,
     overviewRows,

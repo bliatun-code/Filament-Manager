@@ -3,6 +3,7 @@ import {
   subscribeCatalogRefreshProgress,
   type CatalogRefreshProgressPayload,
 } from "../lib/tauri_client";
+import { getActiveCatalogRefreshOperation } from "../lib/catalog_refresh_operation";
 import type { SettingsCatalogVendor } from "./settings_catalog_model";
 
 function disposeCatalogRefreshProgressListener(unlisten: (() => void) | null) {
@@ -20,12 +21,17 @@ export function useSettingsCatalogRefreshProgress({
   initialMessage: string;
   tauri: boolean;
 }) {
+  const operationOnMount = getActiveCatalogRefreshOperation();
   const [catalogRefreshVendor, setCatalogRefreshVendor] =
-    useState<SettingsCatalogVendor>("Bambu");
+    useState<SettingsCatalogVendor>(operationOnMount?.vendor ?? "Bambu");
   const [catalogRefreshProgressMessage, setCatalogRefreshProgressMessage] =
-    useState(initialMessage);
-  const [catalogRefreshPhase, setCatalogRefreshPhase] = useState("PREPARE");
-  const [catalogRefreshStartedAt, setCatalogRefreshStartedAt] = useState<number | null>(null);
+    useState(operationOnMount?.message ?? initialMessage);
+  const [catalogRefreshPhase, setCatalogRefreshPhase] = useState(
+    operationOnMount?.phase ?? "PREPARE",
+  );
+  const [catalogRefreshStartedAt, setCatalogRefreshStartedAt] = useState<
+    number | null
+  >(operationOnMount?.startedAt ?? null);
   const [catalogRefreshElapsedSeconds, setCatalogRefreshElapsedSeconds] = useState(0);
 
   useEffect(() => {

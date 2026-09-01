@@ -25,6 +25,8 @@ import type { I18nContextValue } from "../lib/i18n";
 
 type SettingsMissingSwatchesPanelProps = {
   busy: boolean;
+  catalogRowsAvailable: boolean;
+  catalogRowsUnavailable: boolean;
   catalogRefreshBusy: boolean;
   confirmBulkSwatch: boolean;
   missingSwatchCount: number;
@@ -46,6 +48,8 @@ type SettingsMissingSwatchesPanelProps = {
 
 export function SettingsMissingSwatchesPanel({
   busy,
+  catalogRowsAvailable,
+  catalogRowsUnavailable,
   catalogRefreshBusy,
   confirmBulkSwatch,
   missingSwatchCount,
@@ -65,6 +69,7 @@ export function SettingsMissingSwatchesPanel({
   onVendorFilterChange,
 }: SettingsMissingSwatchesPanelProps) {
   const disabled = !tauri || busy || swatchBusy || catalogRefreshBusy;
+  const mutationDisabled = disabled || !catalogRowsAvailable;
 
   return (
     <SettingsSectionPanel className="mt-6">
@@ -76,20 +81,20 @@ export function SettingsMissingSwatchesPanel({
         )}
         status={
           <div className={inlineStatusSignalClass("warning", "text-sm")}>
-            {t("settings.missingSwatches", "Missing swatches")}: {missingSwatchCount}
+            {t("settings.missingSwatches", "Missing swatches")}: {catalogRowsAvailable ? missingSwatchCount : "—"}
           </div>
         }
       >
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600 dark:text-slate-300">
           <span>
             <strong className="font-semibold text-slate-900 dark:text-slate-100">
-              {visibleMissingSwatchMasters.length}
+              {catalogRowsAvailable ? visibleMissingSwatchMasters.length : "—"}
             </strong>{" "}
             {t("settings.visibleMissing", "Visible missing")}
           </span>
           <span>
             <strong className="font-semibold text-slate-900 dark:text-slate-100">
-              {visibleMissingSwatchVendorCount}
+              {catalogRowsAvailable ? visibleMissingSwatchVendorCount : "—"}
             </strong>{" "}
             {visibleMissingSwatchVendorCount === 1
               ? t("inventory.vendorGroup", "Vendor")
@@ -136,7 +141,7 @@ export function SettingsMissingSwatchesPanel({
                   type="button"
                   className={settingsActionButtonClass("accent")}
                   onClick={onBulkAutoFill}
-                  disabled={disabled}
+                  disabled={mutationDisabled}
                 >
                   {swatchBusy
                     ? t("settings.updatingSwatches", "Updating swatches...")
@@ -156,7 +161,7 @@ export function SettingsMissingSwatchesPanel({
                 type="button"
                 className={settingsActionButtonClass("accent")}
                 onClick={onBulkAutoFill}
-                disabled={disabled || visibleMissingSwatchMasters.length === 0}
+                disabled={mutationDisabled || visibleMissingSwatchMasters.length === 0}
               >
                 {swatchBusy
                   ? t("settings.updatingSwatches", "Updating swatches...")
@@ -175,7 +180,13 @@ export function SettingsMissingSwatchesPanel({
           ) : null}
         </SettingsSectionControls>
 
-        {visibleMissingSwatchMasters.length === 0 ? (
+        {!catalogRowsAvailable ? (
+          <SettingsSectionEmptyState>
+            {catalogRowsUnavailable
+              ? t("errors.unavailable", "The service is temporarily unavailable.")
+              : t("common.loading", "Loading...")}
+          </SettingsSectionEmptyState>
+        ) : visibleMissingSwatchMasters.length === 0 ? (
           <SettingsSectionEmptyState>
             {t("settings.noMissingSwatches", "No missing swatches to fill.")}
           </SettingsSectionEmptyState>
@@ -254,7 +265,7 @@ export function SettingsMissingSwatchesPanel({
                           onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
                           className={`mt-2 ${settingsCompactFormControlClass}`}
                           placeholder="#RRGGBB / gradient(...) / multi(...)"
-                          disabled={disabled}
+                          disabled={mutationDisabled}
                         />
                         {draftInvalid ? (
                           <span
@@ -278,7 +289,7 @@ export function SettingsMissingSwatchesPanel({
                           value={toSwatchColor(previewValue)}
                           onChange={(event) => onSwatchDraftChange(master.id, event.target.value)}
                           className="mt-2 h-10 w-full rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-600 dark:bg-slate-900/70"
-                          disabled={disabled}
+                          disabled={mutationDisabled}
                         />
                       </label>
                       <div className="sm:pt-[26px]">
@@ -287,7 +298,7 @@ export function SettingsMissingSwatchesPanel({
                           aria-label={`${t("common.save", "Save")}: ${displayTitle}`}
                           className={settingsActionButtonClass()}
                           onClick={() => onSaveMissingSwatch(master)}
-                          disabled={disabled || draftInvalid}
+                          disabled={mutationDisabled || draftInvalid}
                         >
                           {t("common.save", "Save")}
                         </button>

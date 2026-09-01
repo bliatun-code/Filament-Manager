@@ -201,6 +201,7 @@ test("loadSettingsPageData loads local settings overview and local spools", asyn
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-local"]?.enabled, true);
+  assert.equal(result.catalogRowsAvailable, true);
   assert.equal(result.revisionPollComplete, true);
 });
 
@@ -293,8 +294,57 @@ test("loadSettingsPageData prefers host overview, settings, and spools for clien
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "BORROWED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "OWNED");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+  assert.equal(result.catalogRowsAvailable, true);
   assert.equal(result.librarySyncSnapshot?.inventory.low_stock_policy?.default_threshold_g, 350);
   assert.equal(result.revisionPollComplete, true);
+});
+
+test("client settings distinguish an authoritative empty catalog from an unavailable catalog read", async () => {
+  const freshHostSnapshot = remoteSnapshot();
+  const dependencies = {
+    loadPrinterSettings: async () => {
+      throw new Error("local printer settings must not be read in client mode");
+    },
+    loadSyncSettings: async () =>
+      syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        target_generation: 7,
+      }),
+    loadSpoolRows: async () => hostSpoolRows,
+    fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
+    fetchHostPrinterSettings: async () => printerSettingsSnapshot("printer-host"),
+    refreshHostSnapshot: async () => ({
+      snapshot: freshHostSnapshot,
+      syncSettings: syncSettings({
+        mode: "CLIENT",
+        host_base_url: "http://host",
+        library_id: "library-host",
+        target_generation: 7,
+        cached_snapshot: freshHostSnapshot,
+      }),
+    }),
+    onHostLoadError: () => {},
+  };
+
+  const authoritativeEmpty = await loadSettingsPageData({
+    ...dependencies,
+    loadCatalogRows: async () => [],
+  });
+  assert.deepEqual(authoritativeEmpty.catalogRows, []);
+  assert.equal(authoritativeEmpty.catalogRowsAvailable, true);
+  assert.equal(authoritativeEmpty.revisionPollComplete, true);
+
+  const unavailable = await loadSettingsPageData({
+    ...dependencies,
+    loadCatalogRows: async () => {
+      throw new Error("catalog read timed out");
+    },
+  });
+  assert.deepEqual(unavailable.catalogRows, []);
+  assert.equal(unavailable.catalogRowsAvailable, false);
+  assert.equal(unavailable.revisionPollComplete, false);
 });
 
 test("loadSettingsPageData falls back to cached client printers and spools", async () => {
@@ -351,6 +401,7 @@ test("loadSettingsPageData falls back to cached client printers and spools", asy
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");
   assert.equal(result.bambuLiveIntegrations["printer-host"]?.enabled, true);
+  assert.equal(result.catalogRowsAvailable, true);
   assert.equal(result.librarySyncSnapshot, cachedSnapshot);
   assert.equal(result.revisionPollComplete, false);
 });
@@ -393,6 +444,7 @@ test("loadSettingsPageData avoids local spools and Bambu settings when client ho
 
   assert.deepEqual(result.overviewRows.map((row) => row.printer.id), ["printer-cache"]);
   assert.deepEqual(result.catalogRows, []);
+  assert.equal(result.catalogRowsAvailable, false);
   assert.deepEqual(result.spoolRows.map((row) => row.spool.id), ["spool-cache"]);
   assert.equal(result.spoolRows[0]?.spool.normalized_status, "ASSIGNED");
   assert.equal(result.spoolRows[0]?.spool.ownership_type, "BORROWED_IN");

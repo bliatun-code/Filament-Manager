@@ -49,6 +49,9 @@ param(
     [switch]$RunPackagedDesktopE2E,
 
     [Parameter(Mandatory = $false)]
+    [switch]$RunPackagedHostClientE2E,
+
+    [Parameter(Mandatory = $false)]
     [ValidateRange(10, 300)]
     [int]$LaunchTimeoutSeconds = 60
 )
@@ -591,6 +594,77 @@ function Wait-ForHiddenRunningProcess {
     throw "$Description did not remain running without a visible app window within $TimeoutSeconds seconds. Last top-level windows: $lastWindowSnapshot"
 }
 
+function Get-ProcessesForExactExecutable {
+    param([Parameter(Mandatory = $true)][string]$ExecutablePath)
+
+    $expectedPath = [IO.Path]::GetFullPath($ExecutablePath)
+    $executableName = [IO.Path]::GetFileName($expectedPath)
+    $escapedExecutableName = $executableName.Replace("'", "''")
+    $candidates = @(
+        Get-CimInstance `
+            -ClassName Win32_Process `
+            -Filter "Name = '$escapedExecutableName'" `
+            -ErrorAction Stop
+    )
+
+    return @(
+        $candidates | Where-Object {
+            -not [string]::IsNullOrWhiteSpace([string]$_.ExecutablePath) -and
+            [string]::Equals(
+                [IO.Path]::GetFullPath([string]$_.ExecutablePath),
+                $expectedPath,
+                [StringComparison]::OrdinalIgnoreCase
+            )
+        }
+    )
+}
+
+function Stop-ProcessesForExactExecutable {
+    param(
+        [Parameter(Mandatory = $true)][string]$ExecutablePath,
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(1, 30)]
+        [int]$TimeoutSeconds = 5
+    )
+
+    $expectedPath = [IO.Path]::GetFullPath($ExecutablePath)
+    $matchingProcesses = @(Get-ProcessesForExactExecutable -ExecutablePath $expectedPath)
+    foreach ($matchingProcess in $matchingProcesses) {
+        $processId = [int]$matchingProcess.ProcessId
+        $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+        if ($null -eq $process) {
+            continue
+        }
+
+        try {
+            $liveProcessPath = [IO.Path]::GetFullPath([string]$process.Path)
+            if (-not [string]::Equals(
+                $liveProcessPath,
+                $expectedPath,
+                [StringComparison]::OrdinalIgnoreCase
+            )) {
+                throw "PID $processId no longer belongs to the expected installed executable."
+            }
+
+            Stop-Process -InputObject $process -Force -ErrorAction Stop
+            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+                throw "Process $processId did not stop within $TimeoutSeconds seconds."
+            }
+        }
+        finally {
+            $process.Dispose()
+        }
+    }
+
+    $remainingProcesses = @(Get-ProcessesForExactExecutable -ExecutablePath $expectedPath)
+    if ($remainingProcesses.Count -ne 0) {
+        $remainingProcessIds = @($remainingProcesses | ForEach-Object { $_.ProcessId }) -join ", "
+        throw "Installed executable still has running processes after bounded cleanup: $remainingProcessIds"
+    }
+
+    return $matchingProcesses.Count
+}
+
 $resolvedMsiPath = (Resolve-Path -LiteralPath $MsiPath).Path
 $msiFile = Get-Item -LiteralPath $resolvedMsiPath
 if ($msiFile.Length -le 0) {
@@ -756,6 +830,13 @@ $productCode = $null
 $previousReleaseDatabaseGateSummary = "not requested"
 $packagedDesktopE2eSummary = "not requested"
 $packagedDesktopE2eWorkParent = $null
+$packagedHostClientE2eSummary = "not requested"
+$packagedHostClientE2eWorkParent = $null
+$packagedHostClientE2eWorkDirectory = $null
+$packagedHostClientE2eLogDirectory = $null
+$packagedHostClientE2eRunner = $null
+$packagedHostClientE2eRunId = $null
+$installedExecutablePath = $null
 $createdAutostartRegistryKeys = @()
 $seededAutostartRegistryTargets = @()
 
@@ -913,6 +994,54 @@ try {
             throw "Packaged desktop mutating E2E summary is not a passing full-backup result."
         }
         $packagedDesktopE2eSummary = "PASS, backup rows $($packagedDesktopE2eResult.backup_total_rows)"
+    }
+
+    if ($RunPackagedHostClientE2E) {
+        $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction Stop |
+            Select-Object -First 1
+        $packagedHostClientE2eRunner = Join-Path $PSScriptRoot "run-packaged-host-client-e2e.mjs"
+        $packagedHostClientE2eWorkParent = New-PrivateQaDirectory `
+            -Path (Join-Path ([IO.Path]::GetTempPath()) "filament-manager-packaged-host-client-e2e-$([Guid]::NewGuid().ToString('N'))") `
+            -Description "Packaged Host-Client E2E work parent"
+        $packagedHostClientE2eLogParent = New-PrivateQaDirectory `
+            -Path (Join-Path $resolvedLogDirectory "packaged-host-client-e2e-private") `
+            -Description "Packaged Host-Client E2E log parent"
+        $packagedHostClientE2eWorkDirectory = Join-Path $packagedHostClientE2eWorkParent "work"
+        $packagedHostClientE2eLogDirectory = Join-Path $packagedHostClientE2eLogParent "logs"
+        $packagedHostClientE2eArguments = @(
+            $packagedHostClientE2eRunner,
+            "--executable=$installedExecutablePath",
+            "--work-dir=$packagedHostClientE2eWorkDirectory",
+            "--log-dir=$packagedHostClientE2eLogDirectory",
+            "--launch-timeout-ms=$($LaunchTimeoutSeconds * 1000)"
+        )
+        $packagedHostClientE2eOutput = & $nodeCommand.Source @packagedHostClientE2eArguments 2>&1
+        $packagedHostClientE2eExitCode = $LASTEXITCODE
+        $packagedHostClientE2eOutput | ForEach-Object { Write-Host $_ }
+        if ($packagedHostClientE2eExitCode -ne 0) {
+            throw "Installed MSI packaged Host-Client mutating E2E failed with exit code $packagedHostClientE2eExitCode."
+        }
+        $packagedHostClientE2eSummaryPath = Join-Path $packagedHostClientE2eLogDirectory "summary.json"
+        if (-not (Test-Path -LiteralPath $packagedHostClientE2eSummaryPath -PathType Leaf)) {
+            throw "Packaged Host-Client mutating E2E did not publish its private summary."
+        }
+        $packagedHostClientE2eResult = Get-Content `
+            -LiteralPath $packagedHostClientE2eSummaryPath `
+            -Raw | ConvertFrom-Json
+        $packagedHostClientE2eRunId = [string]$packagedHostClientE2eResult.run_id
+        if (
+            $packagedHostClientE2eResult.status -ne "pass" -or
+            $packagedHostClientE2eResult.host_weight_g -ne 760 -or
+            $packagedHostClientE2eResult.client_local_weight_g -ne 333 -or
+            $packagedHostClientE2eResult.cache_weight_g -ne 760 -or
+            $packagedHostClientE2eResult.session_renewed -ne $true -or
+            $packagedHostClientE2eResult.auth_cleared -ne $true -or
+            $packagedHostClientE2eResult.auth_cleanup -ne "pass"
+        ) {
+            throw "Packaged Host-Client mutating E2E summary is not a passing authority-isolation result."
+        }
+        $packagedHostClientE2eSummary = `
+            "PASS, Host $($packagedHostClientE2eResult.host_weight_g) g, Client shadow $($packagedHostClientE2eResult.client_local_weight_g) g"
     }
 
     $appProcess = Start-Process `
@@ -1157,6 +1286,7 @@ try {
         "Signature policy: $SignaturePolicy",
         "Previous-release database gate: $previousReleaseDatabaseGateSummary",
         "Packaged desktop mutating E2E: $packagedDesktopE2eSummary",
+        "Packaged Host-Client mutating E2E: $packagedHostClientE2eSummary",
         "Result: PASS"
     ) -join [Environment]::NewLine
     [IO.File]::WriteAllText($summaryPath, "$summary$([Environment]::NewLine)")
@@ -1171,7 +1301,7 @@ finally {
 
         try {
             if (-not $processToStop.HasExited) {
-                Stop-Process -Id $processToStop.Id -Force -ErrorAction Stop
+                Stop-Process -InputObject $processToStop -Force -ErrorAction Stop
                 $processToStop.WaitForExit()
             }
         }
@@ -1181,8 +1311,151 @@ finally {
         }
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($installedExecutablePath)) {
+        try {
+            $exactProcessesStopped = Stop-ProcessesForExactExecutable `
+                -ExecutablePath $installedExecutablePath `
+                -TimeoutSeconds 5
+            if ($exactProcessesStopped -gt 0) {
+                Write-Warning "Stopped $exactProcessesStopped residual smoke-owned process(es) for the exact installed executable path."
+            }
+        }
+        catch {
+            $applicationStoppedForCleanup = $false
+            Write-Warning "Failed to confirm exact installed-executable process cleanup: $($_.Exception.Message)"
+        }
+    }
+
+    $packagedHostClientCredentialCleanupSucceeded = $true
+    if (
+        $null -ne $packagedHostClientE2eWorkDirectory -and
+        (Test-Path -LiteralPath $packagedHostClientE2eWorkDirectory -PathType Container)
+    ) {
+        if (
+            -not $applicationStoppedForCleanup -or
+            [string]::IsNullOrWhiteSpace($installedExecutablePath) -or
+            [string]::IsNullOrWhiteSpace($packagedHostClientE2eLogDirectory) -or
+            [string]::IsNullOrWhiteSpace($packagedHostClientE2eRunner)
+        ) {
+            $packagedHostClientCredentialCleanupSucceeded = $false
+            Write-Warning "Retained packaged Host-Client credentials could not be cleaned because exact installed-process termination was not confirmed."
+        }
+        else {
+            try {
+                $runIdentityPath = Join-Path `
+                    $packagedHostClientE2eLogDirectory `
+                    "run-identity.json"
+                if (-not (Test-Path -LiteralPath $runIdentityPath -PathType Leaf)) {
+                    throw "Packaged Host-Client cleanup is missing its private run identity."
+                }
+                $runIdentity = Get-Content -LiteralPath $runIdentityPath -Raw |
+                    ConvertFrom-Json
+                $runIdentityFields = @(
+                    $runIdentity.PSObject.Properties.Name | Sort-Object
+                )
+                $expectedRunIdentityFields = @("format", "run_id") | Sort-Object
+                $runIdentityFieldDifference = @(
+                    Compare-Object $runIdentityFields $expectedRunIdentityFields
+                )
+                if (
+                    $runIdentityFieldDifference.Count -ne 0 -or
+                    $runIdentity.format -ne "filament-manager-packaged-host-client-e2e-run-identity-v1" -or
+                    [string]$runIdentity.run_id -notmatch '^packaged-host-client-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                ) {
+                    throw "Packaged Host-Client cleanup run identity is invalid."
+                }
+                $packagedHostClientE2eRunId = [string]$runIdentity.run_id
+                $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction Stop |
+                    Select-Object -First 1
+                $credentialCleanupArguments = @(
+                    $packagedHostClientE2eRunner,
+                    "--executable=$installedExecutablePath",
+                    "--work-dir=$packagedHostClientE2eWorkDirectory",
+                    "--log-dir=$packagedHostClientE2eLogDirectory",
+                    "--launch-timeout-ms=$($LaunchTimeoutSeconds * 1000)",
+                    "--resume-credential-cleanup"
+                )
+                $credentialCleanupOutput = & $nodeCommand.Source @credentialCleanupArguments 2>&1
+                $credentialCleanupExitCode = $LASTEXITCODE
+                $credentialCleanupOutput | ForEach-Object { Write-Host $_ }
+                if ($credentialCleanupExitCode -ne 0) {
+                    throw "Packaged Host-Client credential cleanup resume failed with exit code $credentialCleanupExitCode."
+                }
+                $credentialCleanupSummaryPath = Join-Path `
+                    $packagedHostClientE2eLogDirectory `
+                    "credential-cleanup-summary.json"
+                if (-not (Test-Path -LiteralPath $credentialCleanupSummaryPath -PathType Leaf)) {
+                    throw "Packaged Host-Client credential cleanup did not publish its private summary."
+                }
+                $credentialCleanupResult = Get-Content `
+                    -LiteralPath $credentialCleanupSummaryPath `
+                    -Raw | ConvertFrom-Json
+                $credentialCleanupFields = @(
+                    $credentialCleanupResult.PSObject.Properties.Name | Sort-Object
+                )
+                $expectedCredentialCleanupFields = @(
+                    "format",
+                    "status",
+                    "run_id",
+                    "auth_cleared",
+                    "auth_setting_count",
+                    "client_schema_version",
+                    "cleanup_launch",
+                    "process_termination_confirmed"
+                ) | Sort-Object
+                $credentialCleanupFieldDifference = @(
+                    Compare-Object `
+                        $credentialCleanupFields `
+                        $expectedCredentialCleanupFields
+                )
+                if (
+                    $credentialCleanupFieldDifference.Count -ne 0 -or
+                    $credentialCleanupResult.format -ne "filament-manager-packaged-host-client-e2e-credential-cleanup-summary-v1" -or
+                    $credentialCleanupResult.status -ne "pass" -or
+                    [string]$credentialCleanupResult.run_id -ne $packagedHostClientE2eRunId -or
+                    $credentialCleanupResult.auth_cleared -ne $true -or
+                    [int64]$credentialCleanupResult.auth_setting_count -ne 0 -or
+                    [int64]$credentialCleanupResult.client_schema_version -lt 1 -or
+                    [string]$credentialCleanupResult.cleanup_launch -notmatch '^attempt-(?:[2-9]|[1-9][0-9]+)$' -or
+                    $credentialCleanupResult.process_termination_confirmed -ne $true
+                ) {
+                    throw "Packaged Host-Client credential cleanup summary is not passing."
+                }
+                if (Test-Path -LiteralPath $packagedHostClientE2eWorkDirectory) {
+                    throw "Packaged Host-Client credential cleanup retained its private work directory."
+                }
+            }
+            catch {
+                $packagedHostClientCredentialCleanupSucceeded = $false
+                Write-Warning "Failed to resume packaged Host-Client credential cleanup: $($_.Exception.Message)"
+            }
+            try {
+                Stop-ProcessesForExactExecutable `
+                    -ExecutablePath $installedExecutablePath `
+                    -TimeoutSeconds 5 | Out-Null
+            }
+            catch {
+                $applicationStoppedForCleanup = $false
+                $packagedHostClientCredentialCleanupSucceeded = $false
+                Write-Warning "Failed to confirm process cleanup after credential cleanup resume: $($_.Exception.Message)"
+            }
+        }
+    }
+
+    $packagedHostClientHarnessCleanupSafe = `
+        $applicationStoppedForCleanup -and `
+        $packagedHostClientCredentialCleanupSucceeded -and `
+        (
+            $null -eq $packagedHostClientE2eWorkDirectory -or `
+            -not (Test-Path -LiteralPath $packagedHostClientE2eWorkDirectory -PathType Container)
+        )
+    if (-not $packagedHostClientHarnessCleanupSafe) {
+        Write-Warning "Retaining private packaged Host-Client E2E state because harness process termination or cleanup was not confirmed."
+    }
+
     if (
         $applicationStoppedForCleanup -and
+        $packagedHostClientHarnessCleanupSafe -and
         $installationAttempted -and
         -not $uninstallSucceeded -and
         $null -ne $productCode
@@ -1261,6 +1534,24 @@ finally {
         }
         catch {
             Write-Warning "Failed to remove the private packaged desktop E2E work parent: $($_.Exception.Message)"
+        }
+    }
+
+    if (
+        $null -ne $packagedHostClientE2eWorkParent -and
+        (Test-Path -LiteralPath $packagedHostClientE2eWorkParent -PathType Container)
+    ) {
+        if ($packagedHostClientHarnessCleanupSafe) {
+            try {
+                Remove-Item `
+                    -LiteralPath $packagedHostClientE2eWorkParent `
+                    -Recurse `
+                    -Force `
+                    -ErrorAction Stop
+            }
+            catch {
+                Write-Warning "Failed to remove the private packaged Host-Client E2E work parent: $($_.Exception.Message)"
+            }
         }
     }
 

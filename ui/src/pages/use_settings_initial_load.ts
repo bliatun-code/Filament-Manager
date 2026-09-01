@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 
 type UseSettingsInitialLoadOptions = {
+  dataSourceReady: boolean;
   loadTrustedLanCompanionStatus: () => Promise<unknown>;
   reloadSettings: () => Promise<void>;
   tauri: boolean;
 };
 
 export function useSettingsInitialLoad({
+  dataSourceReady,
   loadTrustedLanCompanionStatus,
   reloadSettings,
   tauri,
@@ -15,7 +17,9 @@ export function useSettingsInitialLoad({
     if (!tauri) {
       return;
     }
-    void reloadSettings();
+    if (!dataSourceReady) {
+      void reloadSettings();
+    }
     void loadTrustedLanCompanionStatus();
-  }, [loadTrustedLanCompanionStatus, reloadSettings, tauri]);
+  }, [dataSourceReady, loadTrustedLanCompanionStatus, reloadSettings, tauri]);
 }

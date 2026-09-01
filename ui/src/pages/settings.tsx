@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import type { SettingsTabKey } from "./settings_page_model";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import {
@@ -15,6 +22,7 @@ import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogSection } from "./use_settings_catalog_section";
 import { useSettingsBackupValidationSummary } from "./use_settings_backup_validation_summary";
 import { useSettingsPageDataState } from "./use_settings_page_data_state";
+import { buildSettingsCatalogDataSourceIdentity } from "./settings_catalog_data_state";
 import { useSettingsPageReload } from "./use_settings_page_reload";
 import { useSettingsPageShellState } from "./use_settings_page_shell_state";
 import { useSettingsPreferenceSection } from "./use_settings_preference_section";
@@ -31,6 +39,7 @@ import type { SettingsFilamentDefaultsFocusTarget } from "../components/settings
 import type { FilamentPriceBatchReceipt } from "../lib/settings_filament_defaults_model";
 
 type SettingsPageProps = {
+  catalogRefreshBusy: boolean;
   filamentPriceBatchReceipt?: FilamentPriceBatchReceipt | null;
   initialFilamentDefaultsFocusTarget?: SettingsFilamentDefaultsFocusTarget;
   initialPrinterId?: string | null;
@@ -38,14 +47,17 @@ type SettingsPageProps = {
   onFilamentPriceBatchReceiptChange?: (
     receipt: FilamentPriceBatchReceipt | null,
   ) => void;
+  onCatalogRefreshBusyChange: Dispatch<SetStateAction<boolean>>;
   onOpenInventorySpoolDetails?: (spoolId: string) => void;
 };
 
 export default function SettingsPage({
+  catalogRefreshBusy: appCatalogRefreshBusy,
   filamentPriceBatchReceipt,
   initialFilamentDefaultsFocusTarget = null,
   initialPrinterId = null,
   initialTab = null,
+  onCatalogRefreshBusyChange,
   onFilamentPriceBatchReceiptChange,
   onOpenInventorySpoolDetails = () => undefined,
 }: SettingsPageProps) {
@@ -57,6 +69,7 @@ export default function SettingsPage({
     async () => undefined,
   );
   const reloadSettingsRef = useRef<() => Promise<void>>(async () => undefined);
+  const inheritedCatalogRefreshRef = useRef(appCatalogRefreshBusy);
   const reloadFilamentDefaultsAfterPageData = useCallback(
     () => reloadFilamentDefaultsRef.current(),
     [],
@@ -298,13 +311,17 @@ export default function SettingsPage({
   } = backupValidation;
   const {
     bambuLiveIntegrations,
+    catalogDataSourceIdentity,
+    catalogLoadStatus,
     catalogMasters,
+    catalogRowsAvailable,
+    catalogRowsUnavailable,
     lastCatalogReset,
     loading,
     printerOverview,
     printers,
     setBambuLiveIntegrations,
-    setCatalogMasters,
+    setCatalogData,
     setLastCatalogReset,
     setLoading,
     setPrinterOverview,
@@ -312,6 +329,17 @@ export default function SettingsPage({
     setSpoolRows,
     spoolRows,
   } = useSettingsPageDataState(tauri);
+  const settingsCatalogTargetIdentity =
+    buildSettingsCatalogDataSourceIdentity({
+      clientReadOnly: settingsClientReadOnly,
+      hostBaseUrl: settingsClientHostBaseUrl,
+      hostWritePaired: settingsClientHostWritePaired,
+      libraryId: settingsClientLibraryId,
+      targetGeneration: settingsClientTargetGeneration,
+    });
+  const settingsDataSourceReady =
+    catalogDataSourceIdentity === settingsCatalogTargetIdentity &&
+    catalogLoadStatus !== "pending";
 
   useEffect(() => {
     if (loading || trustedLanLoading) {
@@ -398,16 +426,21 @@ export default function SettingsPage({
   ]);
 
   const {
+    catalogRefreshBusy,
     missingSwatchCount,
     settingsCatalogRouteProps,
     setSwatchDraftById,
   } = useSettingsCatalogSection({
     busy,
     catalogMasters,
+    catalogRefreshBusy: appCatalogRefreshBusy,
+    catalogRowsAvailable,
+    catalogRowsUnavailable,
     locale,
     reloadSettings: () => reloadSettingsRef.current(),
     setError,
     setInfo,
+    setCatalogRefreshBusy: onCatalogRefreshBusyChange,
     settingsCatalogRefreshMessageLabels,
     settingsCatalogRefreshSummaryLabels,
     settingsSwatchBulkMessageLabels,
@@ -422,7 +455,7 @@ export default function SettingsPage({
   const reloadSettings = useSettingsPageReload({
     onDataReloaded: reloadFilamentDefaultsAfterPageData,
     setBambuLiveIntegrations,
-    setCatalogMasters,
+    setCatalogData,
     setError,
     setLibrarySyncDeviceNameDraft,
     setLibrarySyncHostBaseUrlDraft,
@@ -447,7 +480,18 @@ export default function SettingsPage({
     reloadSettingsRef.current = reloadSettings;
   }, [reloadSettings]);
 
-  useSettingsSilentReload({ reloadSettings, tauri });
+  useEffect(() => {
+    if (!appCatalogRefreshBusy && inheritedCatalogRefreshRef.current) {
+      inheritedCatalogRefreshRef.current = false;
+      void reloadSettingsRef.current();
+    }
+  }, [appCatalogRefreshBusy]);
+
+  useSettingsSilentReload({
+    enabled: !catalogRefreshBusy,
+    reloadSettings,
+    tauri,
+  });
 
   const {
     applicationDiagnosticsStatus,
@@ -461,13 +505,13 @@ export default function SettingsPage({
     backupValidationHasMissingTables,
     backupValidationHasWarnings,
     busy,
-    catalogCount: catalogMasters.length,
+    catalogCount: catalogRowsAvailable ? catalogMasters.length : "—",
     clearBackupValidation,
     lastBackupValidation,
     lastCatalogReset,
     librarySyncModeDraft,
     locale,
-    missingSwatchCount,
+    missingSwatchCount: catalogRowsAvailable ? missingSwatchCount : "—",
     printerCount: printers.length,
     recordBackupValidation,
     recordExportedBackupValidation,
@@ -665,16 +709,20 @@ export default function SettingsPage({
   } = useSettingsLibraryActionsRuntime({
     activeTab,
     backupValidation,
+    catalogRefreshBusy,
     libraryRuntime,
     loading,
     messageGroups,
     reloadSettings,
+    settingsDataSourceReady,
     setError,
     setInfo,
     showTransientInfo,
     tauri,
     t,
   });
+  const librarySyncInteractionBusy =
+    librarySyncBusy || catalogRefreshBusy;
 
   useEffect(() => {
     if (
@@ -682,7 +730,7 @@ export default function SettingsPage({
       desktopVisualQaScenarioRef.current !== "settings-library-role-change" ||
       activeTab !== "LIBRARY" ||
       loading ||
-      librarySyncBusy ||
+      librarySyncInteractionBusy ||
       !librarySyncSettings ||
       !tauri
     ) {
@@ -695,7 +743,7 @@ export default function SettingsPage({
   }, [
     activeTab,
     handleRequestLibraryRoleChange,
-    librarySyncBusy,
+    librarySyncInteractionBusy,
     librarySyncSavedMode,
     librarySyncSettings,
     loading,
@@ -735,7 +783,7 @@ export default function SettingsPage({
     lastFullBackupImportedAt,
     lastFullBackupValidatedAt,
     libraryRoleConfirmArmed,
-    librarySyncBusy,
+    librarySyncBusy: librarySyncInteractionBusy,
     librarySyncDeviceNameDirty: isLibrarySyncDeviceNameDirty(
       librarySyncSettings,
       librarySyncDeviceNameDraft,
@@ -817,7 +865,7 @@ export default function SettingsPage({
         busy:
           busy ||
           filamentDefaults.busy ||
-          librarySyncBusy ||
+          librarySyncInteractionBusy ||
           loading,
         locale,
         hostUnsupported: filamentDefaults.hostUnsupported,
@@ -826,7 +874,7 @@ export default function SettingsPage({
         readOnly: !tauri || settingsClientReadOnly,
         t,
         lowStock: {
-          busy: busy || librarySyncBusy || loading,
+          busy: busy || librarySyncInteractionBusy || loading,
           materialOptions: lowStockMaterialOptions,
           policy:
             librarySyncSettings?.mode === "CLIENT"

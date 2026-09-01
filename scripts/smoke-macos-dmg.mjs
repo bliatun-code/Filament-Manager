@@ -29,6 +29,10 @@ import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 
 import { runPackagedDesktopE2e } from "./run-packaged-desktop-e2e.mjs";
+import {
+  resumePackagedHostClientCredentialCleanup,
+  runPackagedHostClientE2e,
+} from "./run-packaged-host-client-e2e.mjs";
 import { smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
 import {
   parseCodesignDetails,
@@ -106,6 +110,7 @@ export function validateMacosDmgSmokeOptions({
   upgradeFixturePath = null,
   upgradeSourceRelease = null,
   runPackagedDesktopE2E = false,
+  runPackagedHostClientE2E = false,
 }) {
   if (typeof dmgPath !== "string" || dmgPath.trim().length === 0) {
     throw new Error("A macOS DMG path is required.");
@@ -131,6 +136,9 @@ export function validateMacosDmgSmokeOptions({
   if (typeof runPackagedDesktopE2E !== "boolean") {
     throw new Error("Packaged desktop E2E selection must be a boolean.");
   }
+  if (typeof runPackagedHostClientE2E !== "boolean") {
+    throw new Error("Packaged Host-Client E2E selection must be a boolean.");
+  }
   const normalizedExpectedTeamId =
     typeof expectedTeamId === "string" ? expectedTeamId.trim() : "";
   if (signaturePolicy === "release" && !normalizedExpectedTeamId) {
@@ -146,9 +154,7 @@ export function validateMacosDmgSmokeOptions({
   const normalizedUpgradeFixturePath =
     typeof upgradeFixturePath === "string" ? upgradeFixturePath.trim() : "";
   const normalizedUpgradeSourceRelease =
-    typeof upgradeSourceRelease === "string"
-      ? upgradeSourceRelease.trim()
-      : "";
+    typeof upgradeSourceRelease === "string" ? upgradeSourceRelease.trim() : "";
   if (
     Boolean(normalizedUpgradeFixturePath) !==
     Boolean(normalizedUpgradeSourceRelease)
@@ -168,6 +174,7 @@ export function validateMacosDmgSmokeOptions({
       : null,
     upgradeSourceRelease: normalizedUpgradeSourceRelease || null,
     runPackagedDesktopE2E,
+    runPackagedHostClientE2E,
   };
 }
 
@@ -209,7 +216,9 @@ export function resolveMacosDmgSmokeStagingPaths({
   }
   const resolvedHomeDirectory = path.resolve(homeDirectory);
   if (resolvedHomeDirectory === path.parse(resolvedHomeDirectory).root) {
-    throw new Error("The macOS smoke staging home cannot be a filesystem root.");
+    throw new Error(
+      "The macOS smoke staging home cannot be a filesystem root.",
+    );
   }
   const applicationsDirectory = path.join(
     resolvedHomeDirectory,
@@ -218,10 +227,7 @@ export function resolveMacosDmgSmokeStagingPaths({
   return {
     applicationsDirectory,
     homeDirectory: resolvedHomeDirectory,
-    stagingPrefix: path.join(
-      applicationsDirectory,
-      STAGING_DIRECTORY_PREFIX,
-    ),
+    stagingPrefix: path.join(applicationsDirectory, STAGING_DIRECTORY_PREFIX),
   };
 }
 
@@ -254,9 +260,9 @@ function assertStagingDirectory(context) {
     context.applicationsDirectory !== expectedPaths.applicationsDirectory ||
     path.dirname(context.stagingDirectory) !==
       expectedPaths.applicationsDirectory ||
-    !path.basename(context.stagingDirectory).startsWith(
-      STAGING_DIRECTORY_PREFIX,
-    )
+    !path
+      .basename(context.stagingDirectory)
+      .startsWith(STAGING_DIRECTORY_PREFIX)
   ) {
     throw new Error(
       "The macOS smoke staging directory is outside the resolved user Applications directory.",
@@ -447,7 +453,9 @@ export function initializeMacosDmgSmokeRuntimeLogs(logPaths) {
     "The macOS smoke runtime log directory",
   );
   if ((runtimeLogDirectoryStats.mode & 0o777) !== 0o700) {
-    throw new Error("The macOS smoke runtime log directory must use mode 0700.");
+    throw new Error(
+      "The macOS smoke runtime log directory must use mode 0700.",
+    );
   }
   for (const runtimePath of Object.values(logPaths.runtimePaths)) {
     const descriptor = openSync(runtimePath, "wx", 0o600);
@@ -465,8 +473,12 @@ function assertSafeRequestedLogDirectory(logDirectory) {
 }
 
 function assertSafeLogDestination(destinationPath) {
-  if (!Object.values(RUNTIME_LOG_FILES).includes(path.basename(destinationPath))) {
-    throw new Error("The macOS smoke log destination has an unexpected filename.");
+  if (
+    !Object.values(RUNTIME_LOG_FILES).includes(path.basename(destinationPath))
+  ) {
+    throw new Error(
+      "The macOS smoke log destination has an unexpected filename.",
+    );
   }
   if (existsSync(destinationPath)) {
     const stats = lstatSync(destinationPath);
@@ -478,15 +490,11 @@ function assertSafeLogDestination(destinationPath) {
   }
 }
 
-export function publishMacosDmgSmokeLogFile({
-  destinationPath,
-  sourcePath,
-}) {
+export function publishMacosDmgSmokeLogFile({ destinationPath, sourcePath }) {
   assertPrivateRegularFile(sourcePath, "The macOS smoke runtime log");
   const destinationDirectory = path.dirname(destinationPath);
-  const destinationDirectoryIdentity = assertSafeRequestedLogDirectory(
-    destinationDirectory,
-  );
+  const destinationDirectoryIdentity =
+    assertSafeRequestedLogDirectory(destinationDirectory);
   assertSafeLogDestination(destinationPath);
   const temporaryPath = path.join(
     destinationDirectory,
@@ -541,9 +549,8 @@ export function publishMacosDmgSmokeRuntimeLogs(logPaths) {
 
 function writeAtomicPrivateTextFile(destinationPath, contents) {
   const destinationDirectory = path.dirname(destinationPath);
-  const directoryIdentityBeforeWrite = assertSafeRequestedLogDirectory(
-    destinationDirectory,
-  );
+  const directoryIdentityBeforeWrite =
+    assertSafeRequestedLogDirectory(destinationDirectory);
   if (existsSync(destinationPath)) {
     const stats = lstatSync(destinationPath);
     if (!stats.isFile() || stats.isSymbolicLink()) {
@@ -563,7 +570,10 @@ function writeAtomicPrivateTextFile(destinationPath, contents) {
       mode: 0o600,
     });
     chmodSync(temporaryPath, 0o600);
-    assertPrivateRegularFile(temporaryPath, "The temporary macOS smoke summary");
+    assertPrivateRegularFile(
+      temporaryPath,
+      "The temporary macOS smoke summary",
+    );
     assertDirectoryIdentity(
       assertRealDirectory(
         destinationDirectory,
@@ -585,9 +595,13 @@ function writeAtomicPrivateTextFile(destinationPath, contents) {
 }
 
 function findMountedApp(mountPoint) {
-  const appNames = readdirSync(mountPoint).filter((name) => name.endsWith(".app"));
+  const appNames = readdirSync(mountPoint).filter((name) =>
+    name.endsWith(".app"),
+  );
   if (appNames.length !== 1) {
-    throw new Error(`Expected exactly one app in the DMG; found ${appNames.length}.`);
+    throw new Error(
+      `Expected exactly one app in the DMG; found ${appNames.length}.`,
+    );
   }
   const applicationsLink = path.join(mountPoint, "Applications");
   if (readlinkSync(applicationsLink) !== "/Applications") {
@@ -635,8 +649,7 @@ function nativeHelperEnvironment(moduleCachePath) {
     ...process.env,
     CLANG_MODULE_CACHE_PATH: path.join(moduleCachePath, "clang"),
     DEVELOPER_DIR:
-      process.env.DEVELOPER_DIR ??
-      "/Applications/Xcode.app/Contents/Developer",
+      process.env.DEVELOPER_DIR ?? "/Applications/Xcode.app/Contents/Developer",
     SWIFT_MODULECACHE_PATH: path.join(moduleCachePath, "swift"),
   };
 }
@@ -691,6 +704,30 @@ export function parseMacosRunningApplicationRows(output) {
     );
 }
 
+export function parseMacosRunningProcessRows(output) {
+  return String(output ?? "")
+    .split(/\r?\n/)
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const separatorIndex = line.indexOf("\t");
+      const processId = line.slice(0, separatorIndex);
+      const executablePath = line.slice(separatorIndex + 1);
+      return {
+        executablePath:
+          separatorIndex > 0 && !executablePath.includes("\t")
+            ? executablePath
+            : "",
+        processId: Number.parseInt(processId, 10),
+      };
+    })
+    .filter(
+      (row) =>
+        Number.isSafeInteger(row.processId) &&
+        row.processId > 0 &&
+        Boolean(row.executablePath),
+    );
+}
+
 function canonicalPathCandidates(filePath) {
   const candidates = new Set([path.resolve(filePath)]);
   try {
@@ -712,6 +749,10 @@ export function macosRunningApplicationMatches(
   );
 }
 
+export function macosRunningProcessMatches(processRow, { executablePaths }) {
+  return executablePaths.has(path.resolve(processRow.executablePath));
+}
+
 function listExactApplicationProcesses({
   bundlePaths,
   bundleIdentifier,
@@ -729,6 +770,17 @@ function listExactApplicationProcesses({
       bundlePaths,
       executablePaths,
     }),
+  );
+}
+
+function listExactExecutableProcesses({ executablePaths, moduleCachePath }) {
+  mkdirSync(moduleCachePath, { mode: 0o700, recursive: true });
+  return parseMacosRunningProcessRows(
+    runCommand("swift", [WINDOW_HELPER_PATH, "running-processes"], {
+      env: nativeHelperEnvironment(moduleCachePath),
+    }).stdout,
+  ).filter((processRow) =>
+    macosRunningProcessMatches(processRow, { executablePaths }),
   );
 }
 
@@ -813,15 +865,11 @@ function signalProcess(processId, signal) {
 }
 
 function newlyLaunchedApplicationProcesses({
-  bundlePaths,
-  bundleIdentifier,
   executablePaths,
   moduleCachePath,
   preexistingProcessIds,
 }) {
-  return listExactApplicationProcesses({
-    bundlePaths,
-    bundleIdentifier,
+  return listExactExecutableProcesses({
     executablePaths,
     moduleCachePath,
   }).filter((application) => !preexistingProcessIds.has(application.processId));
@@ -861,7 +909,11 @@ async function stopChild(child) {
   }
   child.kill("SIGTERM");
   const deadline = Date.now() + 10_000;
-  while (child.exitCode === null && child.signalCode === null && Date.now() < deadline) {
+  while (
+    child.exitCode === null &&
+    child.signalCode === null &&
+    Date.now() < deadline
+  ) {
     await delay(100);
   }
   if (child.exitCode === null && child.signalCode === null) {
@@ -893,6 +945,7 @@ export async function smokeMacosDmg(options) {
     upgradeFixturePath,
     upgradeSourceRelease,
     runPackagedDesktopE2E: shouldRunPackagedDesktopE2E,
+    runPackagedHostClientE2E: shouldRunPackagedHostClientE2E,
   } = validateMacosDmgSmokeOptions(options);
   if (!existsSync(dmgPath) || statSync(dmgPath).size <= 0) {
     throw new Error(`DMG is missing or empty: ${dmgPath}`);
@@ -929,6 +982,10 @@ export async function smokeMacosDmg(options) {
   let launcherStdoutFile = null;
   let launcherStderrFile = null;
   let launchCleanupOptions = null;
+  let packagedHostClientE2eWorkParent = null;
+  let packagedHostClientE2eWorkDirectory = null;
+  let packagedHostClientE2eLogDirectory = null;
+  let packagedHostClientE2eExecutablePath = null;
   let smokeError = null;
   let result;
 
@@ -998,6 +1055,29 @@ export async function smokeMacosDmg(options) {
     }
 
     const executablePath = readBundleExecutable(installedAppPath);
+    const bundlePaths = canonicalPathCandidates(installedAppPath);
+    const executablePaths = canonicalPathCandidates(executablePath);
+    const bundleIdentifier = codesignDetails.identifier;
+    // NSWorkspace is authoritative for LaunchServices/window identity, but it
+    // can omit a directly spawned executable that hangs before AppKit
+    // registration. Cleanup therefore uses libproc-backed PID/path evidence.
+    const preexistingProcesses = listExactExecutableProcesses({
+      executablePaths,
+      moduleCachePath,
+    });
+    const preexistingProcessIds = new Set(
+      preexistingProcesses.map(({ processId }) => processId),
+    );
+    if (preexistingProcessIds.size > 0) {
+      throw new Error(
+        "The installed release application is already running before launch.",
+      );
+    }
+    launchCleanupOptions = {
+      executablePaths,
+      moduleCachePath,
+      preexistingProcessIds,
+    };
     let databaseCompatibilityResult = null;
     if (upgradeFixturePath) {
       databaseCompatibilityResult = await smokeReleaseDatabaseUpgrade({
@@ -1022,8 +1102,37 @@ export async function smokeMacosDmg(options) {
         launchTimeoutMs,
       });
     }
-    const bundlePaths = canonicalPathCandidates(installedAppPath);
-    const executablePaths = canonicalPathCandidates(executablePath);
+    let packagedHostClientE2eResult = null;
+    if (shouldRunPackagedHostClientE2E) {
+      packagedHostClientE2eWorkParent = mkdtempSync(
+        path.join(tmpdir(), "filament-manager-packaged-host-client-e2e-"),
+      );
+      chmodSync(packagedHostClientE2eWorkParent, 0o700);
+      packagedHostClientE2eWorkDirectory = path.join(
+        packagedHostClientE2eWorkParent,
+        "work",
+      );
+      packagedHostClientE2eLogDirectory = path.join(
+        logDirectory,
+        "packaged-host-client-e2e",
+      );
+      packagedHostClientE2eExecutablePath = executablePath;
+      packagedHostClientE2eResult = await runPackagedHostClientE2e({
+        executablePath,
+        workDirectory: packagedHostClientE2eWorkDirectory,
+        logDirectory: packagedHostClientE2eLogDirectory,
+        launchTimeoutMs,
+      });
+    }
+    const residualGateProcesses = listExactExecutableProcesses({
+      executablePaths,
+      moduleCachePath,
+    }).filter(({ processId }) => !preexistingProcessIds.has(processId));
+    if (residualGateProcesses.length > 0) {
+      throw new Error(
+        "The installed release application is still running after its packaged gates.",
+      );
+    }
     const expectedProcessName = runCommand("plutil", [
       "-extract",
       "CFBundleName",
@@ -1033,29 +1142,6 @@ export async function smokeMacosDmg(options) {
     if (!expectedProcessName) {
       throw new Error("The installed app has no CFBundleName.");
     }
-    const bundleIdentifier = codesignDetails.identifier;
-    const preexistingProcesses = listExactApplicationProcesses({
-      bundlePaths,
-      bundleIdentifier,
-      executablePaths,
-      moduleCachePath,
-    });
-    const preexistingProcessIds = new Set(
-      preexistingProcesses.map(({ processId }) => processId),
-    );
-    if (preexistingProcessIds.size > 0) {
-      throw new Error(
-        "The installed release application is already running before launch.",
-      );
-    }
-    launchCleanupOptions = {
-      bundlePaths,
-      bundleIdentifier,
-      executablePaths,
-      moduleCachePath,
-      preexistingProcessIds,
-    };
-
     launcherStdoutFile = openSync(launcherStdoutPath, "w", 0o600);
     launcherStderrFile = openSync(launcherStderrPath, "w", 0o600);
     validateMacosDmgSmokeStaging(stagingContext);
@@ -1151,7 +1237,9 @@ export async function smokeMacosDmg(options) {
       throw new Error(
         `Installed application did not create a healthy database within ` +
           `${launchTimeoutMs} ms.` +
-          (lastDatabaseError ? ` Last check: ${lastDatabaseError.message}` : ""),
+          (lastDatabaseError
+            ? ` Last check: ${lastDatabaseError.message}`
+            : ""),
       );
     }
     if (!applicationProcess) {
@@ -1191,6 +1279,7 @@ export async function smokeMacosDmg(options) {
         : null,
       processId: applicationProcess.processId,
       packagedDesktopE2e: packagedDesktopE2eResult,
+      packagedHostClientE2e: packagedHostClientE2eResult,
       schemaVersion: databaseResult.schemaVersion,
       signaturePolicy,
       tableCount: databaseResult.tableCount,
@@ -1204,10 +1293,12 @@ export async function smokeMacosDmg(options) {
     throw error;
   } finally {
     const cleanupErrors = [];
+    let exactApplicationProcessesStopped = launchCleanupOptions !== null;
     if (launchCleanupOptions) {
       try {
         await stopLaunchedApplicationProcesses(launchCleanupOptions);
       } catch (error) {
+        exactApplicationProcessesStopped = false;
         cleanupErrors.push(
           error instanceof Error ? error : new Error(String(error)),
         );
@@ -1225,10 +1316,56 @@ export async function smokeMacosDmg(options) {
     if (launchCleanupOptions) {
       try {
         await stopLaunchedApplicationProcesses(launchCleanupOptions);
+        exactApplicationProcessesStopped = true;
       } catch (error) {
+        exactApplicationProcessesStopped = false;
         cleanupErrors.push(
           error instanceof Error ? error : new Error(String(error)),
         );
+      }
+    }
+    if (
+      packagedHostClientE2eWorkDirectory &&
+      existsSync(packagedHostClientE2eWorkDirectory)
+    ) {
+      if (
+        !exactApplicationProcessesStopped ||
+        !packagedHostClientE2eExecutablePath ||
+        !packagedHostClientE2eLogDirectory
+      ) {
+        cleanupErrors.push(
+          new Error(
+            "Retained packaged Host-Client credentials could not be cleaned " +
+              "because exact installed-process termination was not confirmed.",
+          ),
+        );
+      } else {
+        try {
+          await resumePackagedHostClientCredentialCleanup({
+            executablePath: packagedHostClientE2eExecutablePath,
+            workDirectory: packagedHostClientE2eWorkDirectory,
+            logDirectory: packagedHostClientE2eLogDirectory,
+            launchTimeoutMs,
+            processTerminationConfirmed: true,
+          });
+          await stopLaunchedApplicationProcesses(launchCleanupOptions);
+          exactApplicationProcessesStopped = true;
+        } catch (error) {
+          cleanupErrors.push(
+            error instanceof Error ? error : new Error(String(error)),
+          );
+          try {
+            await stopLaunchedApplicationProcesses(launchCleanupOptions);
+            exactApplicationProcessesStopped = true;
+          } catch (stopError) {
+            exactApplicationProcessesStopped = false;
+            cleanupErrors.push(
+              stopError instanceof Error
+                ? stopError
+                : new Error(String(stopError)),
+            );
+          }
+        }
       }
     }
     if (launcherStdoutFile !== null) {
@@ -1249,7 +1386,11 @@ export async function smokeMacosDmg(options) {
         );
       }
     }
-    if (stagingContext) {
+    const packagedHostClientHarnessCleanupSafe =
+      exactApplicationProcessesStopped &&
+      (!packagedHostClientE2eWorkDirectory ||
+        !existsSync(packagedHostClientE2eWorkDirectory));
+    if (stagingContext && packagedHostClientHarnessCleanupSafe) {
       try {
         cleanupMacosDmgSmokeStaging(stagingContext);
         stagingContext = null;
@@ -1306,9 +1447,25 @@ export async function smokeMacosDmg(options) {
         );
       }
     }
-    if (!mounted) {
+    if (!mounted && packagedHostClientHarnessCleanupSafe) {
       try {
         rmSync(temporaryDirectory, { force: true, recursive: true });
+      } catch (error) {
+        cleanupErrors.push(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
+    }
+    if (
+      packagedHostClientHarnessCleanupSafe &&
+      packagedHostClientE2eWorkParent &&
+      existsSync(packagedHostClientE2eWorkParent)
+    ) {
+      try {
+        rmSync(packagedHostClientE2eWorkParent, {
+          force: true,
+          recursive: true,
+        });
       } catch (error) {
         cleanupErrors.push(
           error instanceof Error ? error : new Error(String(error)),
@@ -1346,6 +1503,12 @@ export async function smokeMacosDmg(options) {
           ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}`
           : "not requested"
       }`,
+      `Packaged Host-Client mutating E2E: ${
+        result.packagedHostClientE2e
+          ? `PASS, Host ${result.packagedHostClientE2e.host_weight_g} g, ` +
+            `Client shadow ${result.packagedHostClientE2e.client_local_weight_g} g`
+          : "not requested"
+      }`,
       `Window: ${result.windowTitle || "(untitled)"} ${result.windowWidth}x${result.windowHeight}`,
       "",
     ].join("\n"),
@@ -1363,7 +1526,10 @@ function cliOptions(argv) {
     "--upgrade-fixture=",
     "--upgrade-source-release=",
   ];
-  const booleanOptions = new Set(["--packaged-desktop-e2e"]);
+  const booleanOptions = new Set([
+    "--packaged-desktop-e2e",
+    "--packaged-host-client-e2e",
+  ]);
   if (
     dmgPaths.length !== 1 ||
     argv.some(
@@ -1379,7 +1545,8 @@ function cliOptions(argv) {
         "[--launch-timeout-ms=90000] " +
         "[--signature-policy=release|local-adhoc] " +
         "[--upgrade-fixture=<sanitized-db> " +
-        "--upgrade-source-release=v0.28.0] [--packaged-desktop-e2e]",
+        "--upgrade-source-release=v0.28.0] [--packaged-desktop-e2e] " +
+        "[--packaged-host-client-e2e]",
     );
   }
   const expectedTeamId = argv
@@ -1412,10 +1579,14 @@ function cliOptions(argv) {
     upgradeFixturePath,
     upgradeSourceRelease,
     runPackagedDesktopE2E: argv.includes("--packaged-desktop-e2e"),
+    runPackagedHostClientE2E: argv.includes("--packaged-host-client-e2e"),
   };
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   try {
     const result = await smokeMacosDmg(cliOptions(process.argv.slice(2)));
     console.log(
