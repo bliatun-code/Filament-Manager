@@ -1,3 +1,4 @@
+import type { Dispatch, SetStateAction } from "react";
 import type { MasterCatalogRow } from "../lib/tauri_client";
 import { useSettingsCatalogDerivedState } from "./use_settings_catalog_derived_state";
 import { useSettingsCatalogRefreshMaterials } from "./use_settings_catalog_refresh_materials";
@@ -11,14 +12,18 @@ type TranslateFn = (key: string, fallback?: string) => string;
 
 type UseSettingsCatalogSectionStateInput = {
   catalogMasters: MasterCatalogRow[];
+  catalogRefreshBusy: boolean;
   catalogSourceCacheScope: string | null;
+  setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
   tauri: boolean;
   t: TranslateFn;
 };
 
 export function useSettingsCatalogSectionState({
   catalogMasters,
+  catalogRefreshBusy,
   catalogSourceCacheScope,
+  setCatalogRefreshBusy,
   tauri,
   t,
 }: UseSettingsCatalogSectionStateInput) {
@@ -27,7 +32,10 @@ export function useSettingsCatalogSectionState({
   const refreshMaterials = useSettingsCatalogRefreshMaterials({
     cacheScope: catalogSourceCacheScope,
   });
-  const refreshState = useSettingsCatalogRefreshState();
+  const refreshState = useSettingsCatalogRefreshState({
+    catalogRefreshBusy,
+    setCatalogRefreshBusy,
+  });
   const refreshResult = useSettingsCatalogRefreshResult();
   const refreshProgress = useSettingsCatalogRefreshProgress({
     initialMessage: t("wishlist.refreshPreparing", "Preparing catalog refresh..."),

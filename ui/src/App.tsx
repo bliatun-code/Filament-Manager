@@ -45,6 +45,7 @@ import { AppUpdateBanner } from "./components/app_update_banner";
 import type { SettingsFilamentDefaultsFocusTarget } from "./components/settings_filament_defaults_tab";
 import type { FilamentPriceBatchReceipt } from "./lib/settings_filament_defaults_model";
 import type { InventoryNavigationGuard } from "./lib/use_inventory_unsaved_changes_guard";
+import { isCatalogRefreshOperationActive } from "./lib/catalog_refresh_operation";
 import brandIconDark from "./assets/logo_variants/logo-v3-10-dark-static.svg";
 import brandIconLight from "./assets/logo_variants/logo-v3-10-light-static.svg";
 
@@ -87,6 +88,11 @@ export default function App() {
     useState<SettingsFilamentDefaultsFocusTarget>(null);
   const [filamentPriceBatchReceipt, setFilamentPriceBatchReceipt] =
     useState<FilamentPriceBatchReceipt | null>(null);
+  // A vendor refresh can outlive the Settings route. Keep its safety lock at
+  // app scope so navigating away and back cannot start a second refresh or
+  // change the Host target while the original request is still unresolved.
+  const [settingsCatalogRefreshBusy, setSettingsCatalogRefreshBusy] =
+    useState(() => isCatalogRefreshOperationActive());
   const activeNavButtonRef = useRef<HTMLButtonElement | null>(null);
   const inventoryNavigationGuardRef = useRef<InventoryNavigationGuard | null>(null);
   const handleInventoryNavigationGuardChange = useCallback(
@@ -343,10 +349,12 @@ export default function App() {
       case "settings":
         return (
           <SettingsPage
+            catalogRefreshBusy={settingsCatalogRefreshBusy}
             filamentPriceBatchReceipt={filamentPriceBatchReceipt}
             initialFilamentDefaultsFocusTarget={settingsFilamentDefaultsFocusTarget}
             initialPrinterId={settingsInitialPrinterId}
             initialTab={settingsInitialTab}
+            onCatalogRefreshBusyChange={setSettingsCatalogRefreshBusy}
             onFilamentPriceBatchReceiptChange={setFilamentPriceBatchReceipt}
             onOpenInventorySpoolDetails={(spoolId) => {
               navigateToPage("inventory", {

@@ -36,13 +36,13 @@ type UseSettingsMaintenanceSectionInput = {
   backupValidationHasMissingTables: boolean;
   backupValidationHasWarnings: boolean;
   busy: boolean;
-  catalogCount: number;
+  catalogCount: number | string;
   clearBackupValidation: () => void;
   lastBackupValidation: BackupValidationStats | null;
   lastCatalogReset: CatalogResetStats | null;
   librarySyncModeDraft: LibrarySyncMode;
   locale: Locale;
-  missingSwatchCount: number;
+  missingSwatchCount: number | string;
   printerCount: number;
   recordBackupValidation: (summary: BackupValidationStats, validatedAt: string) => void;
   recordExportedBackupValidation: (

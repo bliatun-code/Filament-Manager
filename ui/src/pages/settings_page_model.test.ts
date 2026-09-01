@@ -220,6 +220,7 @@ test("settings page data model prepares reload state in one place", () => {
   const model = buildSettingsPageDataModel({
     bambuLiveIntegrations: { host: { enabled: true } },
     catalogRows,
+    catalogRowsAvailable: true,
     librarySyncSnapshot: null,
     overviewRows,
     revisionPollComplete: true,
@@ -233,5 +234,6 @@ test("settings page data model prepares reload state in one place", () => {
   assert.equal(model.librarySyncDeviceNameDraft, "Desk");
   assert.equal(model.librarySyncHostBaseUrlDraft, "http://host.local");
   assert.equal(model.swatchDraftById["master-1"], "#111");
+  assert.equal(model.catalogRowsAvailable, true);
   assert.equal(model.revisionPollComplete, true);
 });

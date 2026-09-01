@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import Darwin
 import Foundation
 
 func serializedField(_ value: String) -> String {
@@ -50,6 +51,17 @@ struct RunningApplicationRow {
             executablePath,
             processName,
         ]
+            .map(serializedField)
+            .joined(separator: "\t")
+    }
+}
+
+struct RunningProcessRow {
+    let processId: pid_t
+    let executablePath: String
+
+    var serialized: String {
+        [String(processId), executablePath]
             .map(serializedField)
             .joined(separator: "\t")
     }
@@ -131,10 +143,66 @@ func runningApplicationRows() -> [RunningApplicationRow] {
     }
 }
 
+enum ProcessEnumerationError: Error {
+    case unavailable
+}
+
+func runningProcessRows() throws -> [RunningProcessRow] {
+    let initialCount = proc_listallpids(nil, 0)
+    guard initialCount >= 0 else {
+        throw ProcessEnumerationError.unavailable
+    }
+
+    var capacity = max(Int(initialCount) + 256, 1_024)
+    for _ in 0 ..< 4 {
+        var processIds = [pid_t](repeating: 0, count: capacity)
+        let bufferBytes = processIds.count * MemoryLayout<pid_t>.size
+        guard bufferBytes <= Int(Int32.max) else {
+            throw ProcessEnumerationError.unavailable
+        }
+        let processCount = proc_listallpids(&processIds, Int32(bufferBytes))
+        guard processCount >= 0 else {
+            throw ProcessEnumerationError.unavailable
+        }
+        if Int(processCount) >= capacity {
+            capacity *= 2
+            continue
+        }
+
+        return processIds.prefix(Int(processCount)).compactMap { processId in
+            guard processId > 0 else {
+                return nil
+            }
+            var executablePathBuffer = [CChar](repeating: 0, count: 4_096)
+            let pathLength = proc_pidpath(
+                processId,
+                &executablePathBuffer,
+                UInt32(executablePathBuffer.count)
+            )
+            guard pathLength > 0 else {
+                return nil
+            }
+            let executablePath = String(cString: executablePathBuffer)
+            guard !executablePath.isEmpty else {
+                return nil
+            }
+            return RunningProcessRow(
+                processId: processId,
+                executablePath: URL(fileURLWithPath: executablePath)
+                    .resolvingSymlinksInPath()
+                    .standardizedFileURL
+                    .path
+            )
+        }
+    }
+
+    throw ProcessEnumerationError.unavailable
+}
+
 let arguments = Array(CommandLine.arguments.dropFirst())
 guard let command = arguments.first else {
     FileHandle.standardError.write(
-        Data("Expected list, list-all, running-apps, or main-screen.\n".utf8)
+        Data("Expected list, list-all, running-apps, running-processes, or main-screen.\n".utf8)
     )
     exit(2)
 }
@@ -150,6 +218,17 @@ case "list-all":
 case "running-apps":
     for row in runningApplicationRows() {
         print(row.serialized)
+    }
+case "running-processes":
+    do {
+        for row in try runningProcessRows() {
+            print(row.serialized)
+        }
+    } catch {
+        FileHandle.standardError.write(
+            Data("Could not enumerate operating-system processes.\n".utf8)
+        )
+        exit(2)
     }
 case "main-screen":
     print(mainScreenRow().serialized)

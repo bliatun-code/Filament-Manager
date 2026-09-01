@@ -21,7 +21,6 @@ import type {
   LibrarySyncHostValidationResult,
   LibrarySyncRemoteSnapshot,
   LibrarySyncSettings,
-  MasterCatalogRow,
   PrinterOverviewRow,
   PrinterRow,
 } from "../lib/tauri_client";
@@ -32,12 +31,18 @@ import {
   buildSettingsPageLoadErrorMessage,
   type SettingsPageMessageLabels,
 } from "./settings_page_model";
+import {
+  buildSettingsCatalogDataSourceIdentity,
+  commitResolvedSettingsCatalogData,
+  reduceSettingsCatalogData,
+  type SettingsCatalogDataState,
+} from "./settings_catalog_data_state";
 import type { LibrarySyncMode } from "./settings_library_sync_model";
 
 type UseSettingsPageReloadInput = {
   onDataReloaded?: () => Promise<unknown> | unknown;
   setBambuLiveIntegrations: Dispatch<SetStateAction<Record<string, BambuLiveIntegrationEntry["config"]>>>;
-  setCatalogMasters: Dispatch<SetStateAction<MasterCatalogRow[]>>;
+  setCatalogData: Dispatch<SetStateAction<SettingsCatalogDataState>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setLibrarySyncDeviceNameDraft: Dispatch<SetStateAction<string>>;
   setLibrarySyncHostBaseUrlDraft: Dispatch<SetStateAction<string>>;
@@ -76,7 +81,7 @@ class SettingsRevisionPollError extends Error {}
 export function useSettingsPageReload({
   onDataReloaded,
   setBambuLiveIntegrations,
-  setCatalogMasters,
+  setCatalogData,
   setError,
   setLibrarySyncDeviceNameDraft,
   setLibrarySyncHostBaseUrlDraft,
@@ -99,21 +104,34 @@ export function useSettingsPageReload({
 }: UseSettingsPageReloadInput) {
   const reloadRequestRef = useRef(0);
   const revisionTrackerRef = useRef(createLibraryRevisionTracker());
-  const dataSourceIdentity = [
-    settingsClientReadOnly ? "client" : "local",
-    settingsClientHostBaseUrl?.trim() ?? "",
-    settingsClientLibraryId?.trim() ?? "",
-    Number.isSafeInteger(settingsClientTargetGeneration)
-      ? String(settingsClientTargetGeneration)
-      : "unresolved-generation",
-    settingsClientHostWritePaired ? "paired" : "unpaired",
-  ].join(":");
+  const dataSourceIdentity = buildSettingsCatalogDataSourceIdentity({
+    clientReadOnly: settingsClientReadOnly,
+    hostBaseUrl: settingsClientHostBaseUrl,
+    hostWritePaired: settingsClientHostWritePaired,
+    libraryId: settingsClientLibraryId,
+    targetGeneration: settingsClientTargetGeneration,
+  });
   const dataSourceIdentityRef = useRef(dataSourceIdentity);
 
   useLayoutEffect(() => {
+    const sourceChanged = dataSourceIdentityRef.current !== dataSourceIdentity;
     dataSourceIdentityRef.current = dataSourceIdentity;
-    reloadRequestRef.current += 1;
-  }, [dataSourceIdentity]);
+    if (sourceChanged) {
+      reloadRequestRef.current += 1;
+    }
+    setCatalogData((current) =>
+      reduceSettingsCatalogData(current, {
+        type: "target",
+        dataSourceIdentity,
+      }),
+    );
+    if (sourceChanged) {
+      // Catalog rows are Host-scoped. Never keep Host A's last-good catalog visible while a
+      // replacement Host B is unresolved; transient failures for the same identity are handled
+      // later by retaining the already displayed rows.
+      setSwatchDraftById({});
+    }
+  }, [dataSourceIdentity, setCatalogData, setSwatchDraftById]);
 
   useEffect(
     () => () => {
@@ -128,7 +146,7 @@ export function useSettingsPageReload({
     }
     const requestId = reloadRequestRef.current + 1;
     reloadRequestRef.current = requestId;
-    const requestDataSourceIdentity = dataSourceIdentity;
+    let requestDataSourceIdentity = dataSourceIdentity;
     const requestIsCurrent = () =>
       reloadRequestRef.current === requestId &&
       dataSourceIdentityRef.current === requestDataSourceIdentity;
@@ -189,11 +207,36 @@ export function useSettingsPageReload({
       if (!requestIsCurrent()) {
         return;
       }
+      const resolvedDataSourceIdentity =
+        buildSettingsCatalogDataSourceIdentity({
+          clientReadOnly: pageData.librarySyncSettings.mode === "CLIENT",
+          hostBaseUrl: pageData.librarySyncSettings.host_base_url,
+          hostWritePaired: pageData.librarySyncSettings.client_auth_paired,
+          libraryId: pageData.librarySyncSettings.library_id,
+          targetGeneration: pageData.librarySyncSettings.target_generation,
+        });
+      // The first Settings render intentionally treats an unresolved role as a
+      // read-only Client. Once the persisted role has loaded, advance the active
+      // request to that authoritative target before React renders it. The layout
+      // transition then remains part of this request instead of cancelling and
+      // discarding the response that resolved the target.
+      dataSourceIdentityRef.current = resolvedDataSourceIdentity;
+      requestDataSourceIdentity = resolvedDataSourceIdentity;
       setPrinters(pageData.printers);
       setPrinterOverview(pageData.printerOverview);
       setSpoolRows(pageData.spoolRows);
       setBambuLiveIntegrations(pageData.bambuLiveIntegrations);
-      setCatalogMasters(pageData.catalogRows);
+      // A rejected Client catalog read is a partial reload, not an authoritative empty
+      // catalog. Commit the target resolved by this load atomically; the request token above
+      // already rejected genuine stale responses, while same-Host failures retain last-good rows.
+      setCatalogData((current) =>
+        commitResolvedSettingsCatalogData(current, {
+          type: "reload",
+          available: pageData.catalogRowsAvailable,
+          dataSourceIdentity: resolvedDataSourceIdentity,
+          rows: pageData.catalogRows,
+        }),
+      );
       setLibrarySyncSettings(pageData.librarySyncSettings);
       setLibrarySyncSnapshot(pageData.librarySyncSnapshot);
       if (!options?.silent) {
@@ -201,7 +244,9 @@ export function useSettingsPageReload({
         setLibrarySyncDeviceNameDraft(pageData.librarySyncDeviceNameDraft);
         setLibrarySyncHostBaseUrlDraft(pageData.librarySyncHostBaseUrlDraft);
         setLibrarySyncValidation(null);
-        setSwatchDraftById(pageData.swatchDraftById);
+        if (pageData.catalogRowsAvailable) {
+          setSwatchDraftById(pageData.swatchDraftById);
+        }
       }
       let secondaryReloadComplete = true;
       try {
@@ -272,7 +317,7 @@ export function useSettingsPageReload({
   }, [
     onDataReloaded,
     setBambuLiveIntegrations,
-    setCatalogMasters,
+    setCatalogData,
     setError,
     setLibrarySyncDeviceNameDraft,
     setLibrarySyncHostBaseUrlDraft,

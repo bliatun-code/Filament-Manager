@@ -32,7 +32,7 @@ use crate::local_service_advertisement::{
 };
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::security::hash_secret;
-use crate::state::AppState;
+use crate::state::{AppState, TrustedLanCompanionRuntimeFailureKind};
 use crate::trusted_lan_interfaces::current_trusted_lan_interface_index;
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -73,12 +73,40 @@ pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Res
         Err(error) => {
             let message =
                 format!("Failed to bind trusted-LAN companion on {bind_address}: {error}");
-            state.companion.trusted_lan.mark_failed(message.clone());
+            let failure_kind = trusted_lan_bind_failure_kind(&error);
+            state
+                .companion
+                .trusted_lan
+                .mark_failed_with_kind(message.clone(), failure_kind);
             return Err(message);
         }
     };
 
     activate_trusted_lan_listener_locked(state, listener).await
+}
+
+fn trusted_lan_bind_failure_kind(
+    error: &std::io::Error,
+) -> Option<TrustedLanCompanionRuntimeFailureKind> {
+    (error.kind() == std::io::ErrorKind::AddrInUse)
+        .then_some(TrustedLanCompanionRuntimeFailureKind::PortInUse)
+}
+
+#[cfg(test)]
+mod trusted_lan_bind_failure_kind_tests {
+    use super::{trusted_lan_bind_failure_kind, TrustedLanCompanionRuntimeFailureKind};
+
+    #[test]
+    fn only_address_in_use_is_classified_as_a_port_collision() {
+        let occupied = std::io::Error::from(std::io::ErrorKind::AddrInUse);
+        let denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+
+        assert_eq!(
+            trusted_lan_bind_failure_kind(&occupied),
+            Some(TrustedLanCompanionRuntimeFailureKind::PortInUse)
+        );
+        assert_eq!(trusted_lan_bind_failure_kind(&denied), None);
+    }
 }
 
 async fn activate_trusted_lan_listener_locked(

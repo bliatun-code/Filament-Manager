@@ -19,12 +19,12 @@ import type {
 } from "./tauri_client";
 
 const t = (_key: string, fallback: string) => fallback;
-const currentMonth = (() => {
-  const now = new Date();
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-})();
+const dashboardTestNow = new Date("2026-08-15T12:00:00Z");
+const currentMonth = "2026-08";
 
-function overview(overrides: Partial<InventoryOverview> = {}): InventoryOverview {
+function overview(
+  overrides: Partial<InventoryOverview> = {},
+): InventoryOverview {
   return {
     total_spools: 0,
     total_owned_spools: 0,
@@ -64,7 +64,9 @@ function snapshot(
   };
 }
 
-function syncSettings(overrides: Partial<LibrarySyncSettings> = {}): LibrarySyncSettings {
+function syncSettings(
+  overrides: Partial<LibrarySyncSettings> = {},
+): LibrarySyncSettings {
   return {
     mode: "STANDALONE",
     device_name: "desktop",
@@ -132,7 +134,10 @@ function spoolWithMasterRow(
   };
 }
 
-function wishlistItem(id: string, overrides: Partial<WishlistItemRow> = {}): WishlistItemRow {
+function wishlistItem(
+  id: string,
+  overrides: Partial<WishlistItemRow> = {},
+): WishlistItemRow {
   return {
     id,
     master_id: "master-1",
@@ -153,10 +158,7 @@ function wishlistItem(id: string, overrides: Partial<WishlistItemRow> = {}): Wis
   };
 }
 
-function activeLoan(
-  id: string,
-  expectedReturnAt: string,
-): ActiveSpoolLoanRow {
+function activeLoan(id: string, expectedReturnAt: string): ActiveSpoolLoanRow {
   return {
     color_name: "Gray",
     filament_name: "Basic",
@@ -223,7 +225,12 @@ function validation(
 }
 
 test("hasInvalidClientPairingMessage detects persisted repair messages", () => {
-  assert.equal(hasInvalidClientPairingMessage("Desktop client pairing is no longer valid."), true);
+  assert.equal(
+    hasInvalidClientPairingMessage(
+      "Desktop client pairing is no longer valid.",
+    ),
+    true,
+  );
   assert.equal(hasInvalidClientPairingMessage("host is reachable"), false);
 });
 
@@ -231,7 +238,9 @@ test("loadDashboardData fails closed when the library role cannot be resolved", 
   let targetScopedReads = 0;
   const unexpectedRead = async () => {
     targetScopedReads += 1;
-    throw new Error("target-scoped data must not load before the role is known");
+    throw new Error(
+      "target-scoped data must not load before the role is known",
+    );
   };
 
   await assert.rejects(
@@ -261,7 +270,7 @@ test("loadDashboardData fails closed when the library role cannot be resolved", 
 
 test("loadDashboardData loads local dashboard data outside client mode", async () => {
   const result = await loadDashboardData(
-    { previousClientHostNeedsRepair: true, t },
+    { previousClientHostNeedsRepair: true, now: dashboardTestNow, t },
     {
       loadSyncSettings: async () => syncSettings(),
       loadTrustedLanStatus: async () => null,
@@ -316,8 +325,14 @@ test("loadDashboardData loads local dashboard data outside client mode", async (
       trustState: "UNPAIRED",
     },
   ]);
-  assert.deepEqual(result.actionItems.map((item) => item.kind), ["BAMBU_TRUST"]);
-  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+  assert.deepEqual(
+    result.actionItems.map((item) => item.kind),
+    ["BAMBU_TRUST"],
+  );
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    "1",
+  );
 });
 
 test("loadDashboardData builds action items from the same local dashboard snapshot", async () => {
@@ -340,7 +355,10 @@ test("loadDashboardData builds action items from the same local dashboard snapsh
       loadInventoryOverview: async () => overview(),
       loadPrinterSettings: async () => printerSettingsSnapshot(),
       loadSpoolRows: async () => [
-        spoolWithMasterRow("low-a", { current_weight_g: 120, remaining_g: 120 }),
+        spoolWithMasterRow("low-a", {
+          current_weight_g: 120,
+          remaining_g: 120,
+        }),
         spoolWithMasterRow("low-b", { current_weight_g: 80, remaining_g: 80 }),
       ],
       loadSyncSettings: async () => syncSettings(),
@@ -348,10 +366,10 @@ test("loadDashboardData builds action items from the same local dashboard snapsh
     },
   );
 
-  assert.deepEqual(result.actionItems.map((item) => item.kind), [
-    "OVERDUE_LOAN",
-    "ON_ORDER",
-  ]);
+  assert.deepEqual(
+    result.actionItems.map((item) => item.kind),
+    ["OVERDUE_LOAN", "ON_ORDER"],
+  );
   assert.equal(
     result.actionItems.some((item) => item.kind === "LOW_STOCK"),
     false,
@@ -380,12 +398,15 @@ test("loadDashboardData keeps unresolved low stock actionable until a purchase i
     },
   );
 
-  assert.deepEqual(result.actionItems.map((item) => item.kind), ["LOW_STOCK"]);
+  assert.deepEqual(
+    result.actionItems.map((item) => item.kind),
+    ["LOW_STOCK"],
+  );
 });
 
 test("loadDashboardData prefers live host data for paired clients", async () => {
   const result = await loadDashboardData(
-    { previousClientHostNeedsRepair: false, t },
+    { previousClientHostNeedsRepair: false, now: dashboardTestNow, t },
     {
       loadSyncSettings: async () =>
         syncSettings({
@@ -419,7 +440,9 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
         assert.equal(options.clientLibraryId, "library-1");
         return [];
       },
-      fetchHostPrinterOverview: async () => [printerOverviewRow("printer-host")],
+      fetchHostPrinterOverview: async () => [
+        printerOverviewRow("printer-host"),
+      ],
       fetchHostLoans: async (_baseUrl, _libraryId, limit) => {
         assert.equal(limit, 2000);
         return [];
@@ -446,8 +469,14 @@ test("loadDashboardData prefers live host data for paired clients", async () => 
     libraryId: "library-1",
   });
   assert.equal(result.revisionPollComplete, true);
-  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    "1",
+  );
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value,
+    "250 g",
+  );
   assert.equal(result.derived.usageTotal12m, 1_250);
   assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
 });
@@ -470,7 +499,8 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
       loadTrustedLanStatus: async () => null,
       loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => validation(),
-      fetchHostSnapshot: async () => snapshot("Live Host", { captured_at: "snapshot-live" }),
+      fetchHostSnapshot: async () =>
+        snapshot("Live Host", { captured_at: "snapshot-live" }),
       loadSpoolRows: async () => [],
       fetchHostPrinterOverview: async () => {
         throw new Error("printers unavailable");
@@ -488,7 +518,10 @@ test("loadDashboardData marks partial client host reads as cached", async () => 
   assert.equal(result.capturedAt, "printer-cache");
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.revisionPollComplete, false);
-  assert.deepEqual(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
+  assert.deepEqual(
+    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    "1",
+  );
   assert.equal(errors.length, 1);
 });
 
@@ -515,7 +548,9 @@ test("loadDashboardData relies on core reads instead of a separate pairing valid
       loadPrinterSettings: async () => printerSettingsSnapshot(),
       validateHost: async () => {
         validationCalls += 1;
-        throw new Error("dashboard must not amplify refreshes with a separate validation");
+        throw new Error(
+          "dashboard must not amplify refreshes with a separate validation",
+        );
       },
       fetchHostSnapshot: async () => snapshot("Live Host"),
       loadSpoolRows: async () => [],
@@ -548,8 +583,7 @@ test("a successful authenticated core read clears a stale persisted repair state
           host_base_url: "http://host",
           library_id: "library-1",
           client_auth_paired: true,
-          last_validation_message:
-            "Desktop client pairing is no longer valid.",
+          last_validation_message: "Desktop client pairing is no longer valid.",
         }),
       loadTrustedLanStatus: async () => null,
       loadPrinterSettings: async () => printerSettingsSnapshot(),
@@ -635,7 +669,12 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
           },
           cached_wishlist: {
             captured_at: "2026-04-01 08:40:00",
-            rows: [wishlistItem("wishlist-cache", { status: "ON_ORDER", quantity: 2 })],
+            rows: [
+              wishlistItem("wishlist-cache", {
+                status: "ON_ORDER",
+                quantity: 2,
+              }),
+            ],
           },
         }),
       loadTrustedLanStatus: async () => null,
@@ -666,19 +705,29 @@ test("loadDashboardData uses cached client rows without a cached snapshot", asyn
 
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.capturedAt, "2026-04-01 08:30:00");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.trend, "1 assigned");
-  assert.equal(result.derived.ownershipOnHand.borrowedIn, 1);
-  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
   assert.equal(
-    result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,
+    result.derived.stats.find((stat) => stat.id === "total")?.value,
+    "1",
+  );
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "total")?.trend,
+    "1 assigned",
+  );
+  assert.equal(result.derived.ownershipOnHand.borrowedIn, 1);
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    "1",
+  );
+  assert.equal(
+    result.derived.health.metrics.find((metric) => metric.id === "onOrder")
+      ?.value,
     "2",
   );
 });
 
 test("loadDashboardData prefers cached client spool rows over stale snapshot totals", async () => {
   const result = await loadDashboardData(
-    { previousClientHostNeedsRepair: false, t },
+    { previousClientHostNeedsRepair: false, now: dashboardTestNow, t },
     {
       loadSyncSettings: async () =>
         syncSettings({
@@ -730,9 +779,18 @@ test("loadDashboardData prefers cached client spool rows over stale snapshot tot
 
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.capturedAt, "2026-04-01 08:30:00");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "1");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "lowStock")?.value, "0");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "total")?.value,
+    "1",
+  );
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "lowStock")?.value,
+    "0",
+  );
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value,
+    "250 g",
+  );
   assert.equal(result.derived.usageTotal12m, 1_250);
   assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
 });
@@ -751,6 +809,7 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
         tone: "live",
       },
       previousClientHostNeedsRepair: false,
+      now: dashboardTestNow,
       t,
     },
     {
@@ -792,7 +851,10 @@ test("loadDashboardData renders paired-client cache without waiting for host rea
   assert.equal(result.syncSource, "client-cached");
   assert.equal(result.clientHostConnectionObservation, "checking");
   assert.equal(result.clientHostCompanionTone, "live");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value, "250 g");
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "monthlyUsage")?.value,
+    "250 g",
+  );
   assert.equal(result.derived.usageTotal12m, 1_250);
   assert.equal(result.derived.usageMonths.at(-1)?.usedGrams, 1_250);
 });
@@ -841,8 +903,14 @@ test("loadDashboardData stays client-offline without cache instead of loading lo
   assert.equal(result.clientHostPaired, false);
   assert.equal(result.setupDataAvailable, false);
   assert.equal(result.capturedAt, null);
-  assert.equal(result.derived.stats.find((stat) => stat.id === "total")?.value, "0");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "0");
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "total")?.value,
+    "0",
+  );
+  assert.equal(
+    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    "0",
+  );
 });
 
 test("loadDashboardData marks annual usage unavailable for an older host snapshot", async () => {
@@ -926,9 +994,13 @@ test("loadDashboardData falls back to cached client snapshot when host snapshot 
   assert.equal(result.clientHostCompanionTone, "live");
   assert.equal(result.clientHostDisplayName, "Cached Host");
   assert.equal(result.capturedAt, "2026-04-01 09:00:00");
-  assert.equal(result.derived.stats.find((stat) => stat.id === "activePrinters")?.value, "1");
   assert.equal(
-    result.derived.health.metrics.find((metric) => metric.id === "onOrder")?.value,
+    result.derived.stats.find((stat) => stat.id === "activePrinters")?.value,
+    "1",
+  );
+  assert.equal(
+    result.derived.health.metrics.find((metric) => metric.id === "onOrder")
+      ?.value,
     "1",
   );
   assert.equal(errors.length, 3);
@@ -970,19 +1042,24 @@ test("loadDashboardData warns only after consecutive core host failures and rese
     failedDependencies,
   );
   assert.equal(firstFailure.clientHostConnectionObservation, "failed");
-  assert.equal(firstFailure.clientHostConnectionState.consecutiveCoreFailures, 1);
+  assert.equal(
+    firstFailure.clientHostConnectionState.consecutiveCoreFailures,
+    1,
+  );
   assert.equal(firstFailure.clientHostCompanionTone, "live");
 
   const secondFailure = await loadDashboardData(
     {
-      previousClientHostConnectionState:
-        firstFailure.clientHostConnectionState,
+      previousClientHostConnectionState: firstFailure.clientHostConnectionState,
       previousClientHostNeedsRepair: false,
       t,
     },
     failedDependencies,
   );
-  assert.equal(secondFailure.clientHostConnectionState.consecutiveCoreFailures, 2);
+  assert.equal(
+    secondFailure.clientHostConnectionState.consecutiveCoreFailures,
+    2,
+  );
   assert.equal(secondFailure.clientHostCompanionTone, "warn");
 
   const recovered = await loadDashboardData(

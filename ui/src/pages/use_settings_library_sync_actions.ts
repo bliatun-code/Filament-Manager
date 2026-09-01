@@ -113,7 +113,7 @@ export function useSettingsLibrarySyncActions({
   trustedLanValidationMessageLabels,
 }: UseSettingsLibrarySyncActionsInput) {
   const handleSaveLibrarySyncSettings = useCallback(async (nextMode = librarySyncModeDraft) => {
-    if (!tauri || !librarySyncSettings) {
+    if (!tauri || librarySyncBusy || !librarySyncSettings) {
       return false;
     }
     setLibrarySyncBusy(true);
@@ -196,6 +196,7 @@ export function useSettingsLibrarySyncActions({
     librarySyncErrorMessageLabels,
     librarySyncHostBaseUrlDraft,
     librarySyncModeDraft,
+    librarySyncBusy,
     librarySyncSettings,
     persistTrustedLanConfig,
     setError,
@@ -270,7 +271,7 @@ export function useSettingsLibrarySyncActions({
   const handleValidateLibrarySyncHost = useCallback(async () => {
     const baseUrl = librarySyncHostBaseUrlDraft.trim() || settingsClientHostBaseUrl || "";
     const expectedLibraryId = librarySyncSettings?.library_id ?? null;
-    if (!tauri || !baseUrl) {
+    if (!tauri || librarySyncBusy || !baseUrl) {
       return;
     }
     setLibrarySyncValidationBusy(true);
@@ -305,6 +306,7 @@ export function useSettingsLibrarySyncActions({
     librarySyncActionMessageLabels,
     librarySyncErrorMessageLabels,
     librarySyncHostBaseUrlDraft,
+    librarySyncBusy,
     librarySyncSettings,
     setError,
     setInfo,
@@ -320,7 +322,7 @@ export function useSettingsLibrarySyncActions({
   const handlePairLibrarySyncHost = useCallback(async () => {
     const pairingInput = librarySyncPairingDraft.trim();
     const derivedBaseUrl = extractBaseUrlFromPairingInput(pairingInput);
-    if (!tauri || !pairingInput || !derivedBaseUrl) {
+    if (!tauri || librarySyncBusy || !pairingInput || !derivedBaseUrl) {
       if (tauri && pairingInput && !derivedBaseUrl) {
         setError(
           buildLibrarySyncPairingMessage(
@@ -399,6 +401,7 @@ export function useSettingsLibrarySyncActions({
   }, [
     librarySyncActionMessageLabels,
     librarySyncDeviceNameDraft,
+    librarySyncBusy,
     librarySyncPairingDraft,
     librarySyncPairingMessageLabels,
     persistTrustedLanConfig,

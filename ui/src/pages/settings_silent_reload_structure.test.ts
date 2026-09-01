@@ -6,6 +6,19 @@ const source = readFileSync(
   new URL("./use_settings_page_reload.ts", import.meta.url),
   "utf8",
 );
+const settingsSource = readFileSync(new URL("./settings.tsx", import.meta.url), "utf8");
+const pollingSource = readFileSync(
+  new URL("./use_settings_silent_reload.ts", import.meta.url),
+  "utf8",
+);
+const initialLoadSource = readFileSync(
+  new URL("./use_settings_initial_load.ts", import.meta.url),
+  "utf8",
+);
+const libraryActionsSource = readFileSync(
+  new URL("./use_settings_library_actions_runtime.ts", import.meta.url),
+  "utf8",
+);
 
 test("silent settings reloads preserve editable local drafts", () => {
   const snapshotUpdateIndex = source.indexOf(
@@ -39,13 +52,56 @@ test("silent settings reloads still update persisted and live datasets", () => {
     "setPrinterOverview",
     "setSpoolRows",
     "setBambuLiveIntegrations",
-    "setCatalogMasters",
+    "setCatalogData",
     "setLibrarySyncSettings",
     "setLibrarySyncSnapshot",
   ]) {
     const setterIndex = source.indexOf(`${setter}(`, updateBlockStart);
     assert.ok(setterIndex >= updateBlockStart && setterIndex < guardIndex, setter);
   }
+});
+
+test("catalog reloads use target-aware freshness state and guard editable drafts", () => {
+  assert.match(source, /reduceSettingsCatalogData\(current, \{\s*type: "target"/);
+  assert.match(
+    source,
+    /commitResolvedSettingsCatalogData\(current, \{\s*type: "reload",\s*available: pageData\.catalogRowsAvailable/,
+  );
+  assert.match(source, /dataSourceIdentityRef\.current = resolvedDataSourceIdentity/);
+  assert.match(source, /requestDataSourceIdentity = resolvedDataSourceIdentity/);
+  assert.match(
+    source,
+    /if \(pageData\.catalogRowsAvailable\) \{\s*setSwatchDraftById\(pageData\.swatchDraftById\)/,
+  );
+  assert.match(source, /sourceChanged[\s\S]*?setSwatchDraftById\(\{\}\)/);
+});
+
+test("settings pauses background reload waves during a catalog refresh", () => {
+  assert.match(settingsSource, /enabled: !catalogRefreshBusy/);
+  assert.match(pollingSource, /enabled: tauri && enabled/);
+});
+
+test("a resolved first load is not repeated solely because its target identity changed", () => {
+  assert.match(
+    settingsSource,
+    /catalogDataSourceIdentity === settingsCatalogTargetIdentity &&\s*catalogLoadStatus !== "pending"/,
+  );
+  assert.match(initialLoadSource, /if \(!dataSourceReady\) \{\s*void reloadSettings\(\)/);
+});
+
+test("long catalog writes lock library target changes until their result is definitive", () => {
+  assert.match(
+    libraryActionsSource,
+    /librarySyncInteractionBusy =\s*librarySyncBusy \|\| catalogRefreshBusy/,
+  );
+  assert.match(
+    libraryActionsSource,
+    /useSettingsLibrarySyncActions\(\{[\s\S]*?librarySyncBusy: librarySyncInteractionBusy/,
+  );
+  assert.match(
+    settingsSource,
+    /librarySyncBusy: librarySyncInteractionBusy/,
+  );
 });
 
 test("a completed settings data reload also refreshes filament standards", () => {
@@ -126,7 +182,10 @@ test("a failed settings read clears the persisted role before any later write", 
 
 test("settings reloads discard stale role targets without dropping the replacement load", () => {
   assert.match(source, /const reloadRequestRef = useRef\(0\)/);
-  assert.match(source, /const dataSourceIdentity = \[/);
+  assert.match(
+    source,
+    /const dataSourceIdentity = buildSettingsCatalogDataSourceIdentity\(/,
+  );
   assert.match(source, /settingsClientTargetGeneration/);
   assert.match(source, /settingsClientHostWritePaired/);
   assert.match(

@@ -19,10 +19,14 @@ type TranslateFn = (key: string, fallback?: string) => string;
 type UseSettingsCatalogSectionInput = {
   busy: boolean;
   catalogMasters: MasterCatalogRow[];
+  catalogRefreshBusy: boolean;
+  catalogRowsAvailable: boolean;
+  catalogRowsUnavailable: boolean;
   locale: Locale;
   reloadSettings: () => Promise<void>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfo: Dispatch<SetStateAction<string | null>>;
+  setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
   settingsCatalogRefreshMessageLabels: (
     params?: { count?: number },
   ) => SettingsCatalogRefreshMessageLabels;
@@ -40,10 +44,14 @@ type UseSettingsCatalogSectionInput = {
 export function useSettingsCatalogSection({
   busy,
   catalogMasters,
+  catalogRefreshBusy: appCatalogRefreshBusy,
+  catalogRowsAvailable,
+  catalogRowsUnavailable,
   locale,
   reloadSettings,
   setError,
   setInfo,
+  setCatalogRefreshBusy: setAppCatalogRefreshBusy,
   settingsCatalogRefreshMessageLabels,
   settingsCatalogRefreshSummaryLabels,
   settingsSwatchBulkMessageLabels,
@@ -57,9 +65,11 @@ export function useSettingsCatalogSection({
 }: UseSettingsCatalogSectionInput) {
   const catalogSectionState = useSettingsCatalogSectionState({
     catalogMasters,
+    catalogRefreshBusy: appCatalogRefreshBusy,
     catalogSourceCacheScope: settingsClientReadOnly
       ? settingsClientLibraryId
       : "local",
+    setCatalogRefreshBusy: setAppCatalogRefreshBusy,
     tauri,
     t,
   });
@@ -174,6 +184,8 @@ export function useSettingsCatalogSection({
         ),
     missingSwatchesPanel: {
       busy,
+      catalogRowsAvailable,
+      catalogRowsUnavailable,
       catalogRefreshBusy,
       confirmBulkSwatch,
       missingSwatchCount: missingSwatchMasters.length,
@@ -198,6 +210,8 @@ export function useSettingsCatalogSection({
       activeCatalogRefreshMaterial,
       busy,
       catalogCount: catalogMasters.length,
+      catalogRowsAvailable,
+      catalogRowsUnavailable,
       catalogRefreshBusy,
       catalogRefreshElapsedSeconds,
       catalogRefreshLog,
@@ -221,6 +235,7 @@ export function useSettingsCatalogSection({
   });
 
   return {
+    catalogRefreshBusy,
     missingSwatchCount: missingSwatchMasters.length,
     settingsCatalogRouteProps,
     setSwatchDraftById: catalogSectionState.setSwatchDraftById,

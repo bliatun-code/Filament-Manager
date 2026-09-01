@@ -32,9 +32,20 @@ pub(crate) async fn update_trusted_lan_companion_config(
     }
 
     if input.enabled
-        && let Some((_, address)) = selected_interface.as_ref()
+        && let Some((name, address)) = selected_interface.as_ref()
     {
-        ensure_private_trusted_lan_interface(address)?;
+        let requested_port = input
+            .listen_port
+            .filter(|value| *value > 0)
+            .unwrap_or(companion_api::COMPANION_DEFAULT_PORT);
+        if !crate::packaged_host_client_e2e::allows_packaged_host_client_host_loopback_selection(
+            &state,
+            name,
+            address,
+            requested_port,
+        ) {
+            ensure_private_trusted_lan_interface(address)?;
+        }
     }
 
     let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;

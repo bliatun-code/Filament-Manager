@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU8, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
@@ -52,6 +52,7 @@ pub struct DesktopLifecycleState {
     tray_available: AtomicBool,
     visual_qa: bool,
     shutdown_phase: AtomicU8,
+    shutdown_exit_code: AtomicI32,
     shutdown_tx: tokio::sync::watch::Sender<bool>,
     background_tasks: Mutex<Vec<tauri::async_runtime::JoinHandle<()>>>,
     preferences_write_lock: Mutex<()>,
@@ -74,6 +75,7 @@ impl DesktopLifecycleState {
             tray_available: AtomicBool::new(false),
             visual_qa,
             shutdown_phase: AtomicU8::new(SHUTDOWN_PHASE_RUNNING),
+            shutdown_exit_code: AtomicI32::new(0),
             shutdown_tx,
             background_tasks: Mutex::new(Vec::new()),
             preferences_write_lock: Mutex::new(()),
@@ -149,6 +151,21 @@ impl DesktopLifecycleState {
 
     fn exit_is_allowed(&self) -> bool {
         self.shutdown_phase.load(Ordering::Acquire) == SHUTDOWN_PHASE_ALLOW_EXIT
+    }
+
+    fn register_exit_code(&self, exit_code: i32) {
+        if exit_code != 0 {
+            let _ = self.shutdown_exit_code.compare_exchange(
+                0,
+                exit_code,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            );
+        }
+    }
+
+    fn exit_code(&self) -> i32 {
+        self.shutdown_exit_code.load(Ordering::Acquire)
     }
 }
 
@@ -240,13 +257,22 @@ fn replace_preferences_file(temporary_path: &Path, path: &Path) -> Result<(), St
 }
 
 pub fn configure_builder(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<tauri::Wry> {
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-        if second_instance_should_show_window(&args)
-            && let Err(error) = show_main_window_or_defer(app)
-        {
-            eprintln!("Could not show the existing app instance: {error}");
-        }
-    }));
+    // A packaged Host-Client gate deliberately starts two copies of the exact
+    // installed executable. Omit the singleton plugin only after its private
+    // marker, run identity, role, phase and role-specific database have all
+    // passed validation. A missing or malformed gate keeps normal singleton
+    // behavior fail-closed.
+    let builder = if crate::packaged_host_client_e2e::allows_packaged_host_client_multi_instance() {
+        builder
+    } else {
+        builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if second_instance_should_show_window(&args)
+                && let Err(error) = show_main_window_or_defer(app)
+            {
+                eprintln!("Could not show the existing app instance: {error}");
+            }
+        }))
+    };
 
     #[cfg(target_os = "macos")]
     let builder = builder
@@ -470,12 +496,12 @@ pub fn handle_window_event(window: &Window, event: &WindowEvent) {
 }
 
 pub fn handle_run_event(app: &AppHandle, event: RunEvent) {
-    if let RunEvent::ExitRequested { api, .. } = &event
+    if let RunEvent::ExitRequested { api, code, .. } = &event
         && let Some(state) = app.try_state::<DesktopLifecycleState>()
         && !state.exit_is_allowed()
     {
         api.prevent_exit();
-        begin_shutdown(app);
+        begin_shutdown_with_exit_code(app, requested_exit_code(*code));
     }
 
     #[cfg(target_os = "macos")]
@@ -499,10 +525,22 @@ pub fn quit<R: Runtime>(app: &AppHandle<R>) {
 }
 
 fn begin_shutdown<R: Runtime>(app: &AppHandle<R>) {
+    begin_shutdown_with_exit_code(app, 0);
+}
+
+fn requested_exit_code(code: Option<i32>) -> i32 {
+    code.unwrap_or(0)
+}
+
+fn begin_shutdown_with_exit_code<R: Runtime>(app: &AppHandle<R>, exit_code: i32) {
     let Some(state) = app.try_state::<DesktopLifecycleState>() else {
-        app.exit(0);
+        app.exit(exit_code);
         return;
     };
+    // Record a programmatic failure before checking whether shutdown has
+    // already started. A concurrent ordinary close must never downgrade an
+    // already-published harness failure to a successful process exit.
+    state.register_exit_code(exit_code);
     if !state.try_begin_shutdown() {
         return;
     }
@@ -536,10 +574,14 @@ fn begin_shutdown<R: Runtime>(app: &AppHandle<R>) {
         {
             eprintln!("Companion shutdown timed out; forcing application exit.");
         }
-        if let Some(state) = app.try_state::<DesktopLifecycleState>() {
+        let exit_code = if let Some(state) = app.try_state::<DesktopLifecycleState>() {
+            let exit_code = state.exit_code();
             state.allow_exit();
-        }
-        app.exit(0);
+            exit_code
+        } else {
+            exit_code
+        };
+        app.exit(exit_code);
     });
 }
 
@@ -1010,6 +1052,7 @@ mod tests {
             tray_available: AtomicBool::new(false),
             visual_qa: false,
             shutdown_phase: AtomicU8::new(SHUTDOWN_PHASE_RUNNING),
+            shutdown_exit_code: AtomicI32::new(0),
             shutdown_tx,
             background_tasks: Mutex::new(Vec::new()),
             preferences_write_lock: Mutex::new(()),
@@ -1033,6 +1076,7 @@ mod tests {
             tray_available: AtomicBool::new(true),
             visual_qa: false,
             shutdown_phase: AtomicU8::new(SHUTDOWN_PHASE_RUNNING),
+            shutdown_exit_code: AtomicI32::new(0),
             shutdown_tx,
             background_tasks: Mutex::new(Vec::new()),
             preferences_write_lock: Mutex::new(()),
@@ -1046,6 +1090,32 @@ mod tests {
         state.allow_exit();
         assert!(state.exit_is_allowed());
         assert!(!state.try_begin_shutdown());
+    }
+
+    #[test]
+    fn programmatic_exit_code_survives_graceful_and_overlapping_shutdown_requests() {
+        assert_eq!(requested_exit_code(Some(1)), 1);
+        assert_eq!(requested_exit_code(Some(23)), 23);
+        assert_eq!(requested_exit_code(Some(0)), 0);
+        assert_eq!(requested_exit_code(None), 0);
+
+        let (shutdown_tx, _) = tokio::sync::watch::channel(false);
+        let state = DesktopLifecycleState {
+            continue_in_background: AtomicBool::new(false),
+            tray_available: AtomicBool::new(false),
+            visual_qa: false,
+            shutdown_phase: AtomicU8::new(SHUTDOWN_PHASE_RUNNING),
+            shutdown_exit_code: AtomicI32::new(0),
+            shutdown_tx,
+            background_tasks: Mutex::new(Vec::new()),
+            preferences_write_lock: Mutex::new(()),
+            preferences_path: PathBuf::new(),
+        };
+        state.register_exit_code(0);
+        state.register_exit_code(1);
+        state.register_exit_code(0);
+        state.register_exit_code(23);
+        assert_eq!(state.exit_code(), 1);
     }
 
     #[test]

@@ -79,12 +79,7 @@ export function parseUiBrowserPerformanceOptions(argv) {
   return {
     headless: !argv.includes("--headful"),
     json: argv.includes("--json"),
-    samples: parsePositiveNumber(
-      argv,
-      "--samples",
-      DEFAULT_SAMPLES,
-      true,
-    ),
+    samples: parsePositiveNumber(argv, "--samples", DEFAULT_SAMPLES, true),
     sourcePath: parseOptionValue(argv, "--source"),
     startupBudgetMs: parsePositiveNumber(
       argv,
@@ -357,14 +352,12 @@ function inventoryOverview(spoolRows, consumptionRows) {
     total_borrowed_in_spools: spoolRows.filter((row) => !owned(row)).length,
     in_use: spoolRows.filter(inUse).length,
     owned_in_use: spoolRows.filter((row) => owned(row) && inUse(row)).length,
-    borrowed_in_in_use: spoolRows.filter(
-      (row) => !owned(row) && inUse(row),
-    ).length,
+    borrowed_in_in_use: spoolRows.filter((row) => !owned(row) && inUse(row))
+      .length,
     low_stock: spoolRows.filter(low).length,
     owned_low_stock: spoolRows.filter((row) => owned(row) && low(row)).length,
-    borrowed_in_low_stock: spoolRows.filter(
-      (row) => !owned(row) && low(row),
-    ).length,
+    borrowed_in_low_stock: spoolRows.filter((row) => !owned(row) && low(row))
+      .length,
     total_consumption_30d: totalConsumption,
     owned_consumption_30d: ownedConsumption,
     borrowed_in_consumption_30d: totalConsumption - ownedConsumption,
@@ -409,14 +402,9 @@ function statisticsPeriodReport(fixture, period) {
     0,
   );
   const borrowedInUsed = fixture.consumptionRows
-    .filter(
-      (row) => String(row.ownership_type).toUpperCase() === "BORROWED_IN",
-    )
+    .filter((row) => String(row.ownership_type).toUpperCase() === "BORROWED_IN")
     .reduce((sum, row) => sum + Number(row.used_grams ?? 0), 0);
-  const totalJobs = printerUsage.reduce(
-    (sum, row) => sum + row.total_jobs,
-    0,
-  );
+  const totalJobs = printerUsage.reduce((sum, row) => sum + row.total_jobs, 0);
   const successfulJobs = printerUsage.reduce(
     (sum, row) => sum + row.successful_jobs,
     0,
@@ -530,9 +518,7 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
           completed_loans: 0,
           active_loans: 0,
         };
-        groups[key].total_consumed_g += Number(
-          row.loan.consumed_grams ?? 0,
-        );
+        groups[key].total_consumed_g += Number(row.loan.consumed_grams ?? 0);
         if (row.loan.returned_at == null) {
           groups[key].active_loans += 1;
         } else {
@@ -549,8 +535,7 @@ export function buildUiBrowserPerformanceFixture(dbPath) {
       ],
       bambu_live_integrations: bambuLiveIntegrations,
     };
-    const evidenceLoan =
-      activeLoanRows[0] ?? loanRows[0] ?? null;
+    const evidenceLoan = activeLoanRows[0] ?? loanRows[0] ?? null;
     return {
       activeLoanRows,
       appVersion: PERFORMANCE_APP_VERSION,
@@ -663,6 +648,7 @@ export function resolveUiBrowserPerformanceInvoke(
     case "get_library_domain_revisions":
       return fixture.revisions;
     case "get_packaged_desktop_e2e_configuration":
+    case "get_packaged_host_client_e2e_configuration":
       return null;
     case "get_filament_standards":
       return fixture.filamentStandards;
@@ -682,7 +668,8 @@ export function resolveUiBrowserPerformanceInvoke(
       const requestedDirection = payload.direction
         ? String(payload.direction).toUpperCase()
         : null;
-      const direction = requestedDirection === "ALL" ? null : requestedDirection;
+      const direction =
+        requestedDirection === "ALL" ? null : requestedDirection;
       const includeReturned = payload.includeReturned ?? true;
       const rows = fixture.loanRows.filter(
         ({ loan }) =>
@@ -697,7 +684,8 @@ export function resolveUiBrowserPerformanceInvoke(
       const requestedDirection = payload.direction
         ? String(payload.direction).toUpperCase()
         : null;
-      const direction = requestedDirection === "ALL" ? null : requestedDirection;
+      const direction =
+        requestedDirection === "ALL" ? null : requestedDirection;
       return fixture.loanUsage
         .filter(
           (row) =>
@@ -711,28 +699,25 @@ export function resolveUiBrowserPerformanceInvoke(
     case "top_materials":
       return boundedSlice(fixture.topMaterials, payload, 12);
     case "list_filament_consumption": {
-      const printerId =
-        payload.printerId ?? payload.printer_id ?? null;
+      const printerId = payload.printerId ?? payload.printer_id ?? null;
       const rows = printerId
-        ? fixture.consumptionRows.filter(
-            (row) => row.printer_id === printerId,
-          )
+        ? fixture.consumptionRows.filter((row) => row.printer_id === printerId)
         : fixture.consumptionRows;
       return boundedSlice(rows, payload, 500);
     }
     case "statistics_period_report":
       return statisticsPeriodReport(fixture, payload.period);
     case "list_master_catalog": {
-      const search = String(payload.search ?? "").trim().toLowerCase();
+      const search = String(payload.search ?? "")
+        .trim()
+        .toLowerCase();
       const rows = search
         ? fixture.catalogRows.filter((row) =>
-            [
-              row.vendor,
-              row.material,
-              row.filament_name,
-              row.color_name,
-            ].some((value) =>
-              String(value ?? "").toLowerCase().includes(search),
+            [row.vendor, row.material, row.filament_name, row.color_name].some(
+              (value) =>
+                String(value ?? "")
+                  .toLowerCase()
+                  .includes(search),
             ),
           )
         : fixture.catalogRows;
@@ -804,12 +789,7 @@ async function waitForRenderedEvidence(page, label, marker, timeoutMs) {
   );
 }
 
-async function runBrowserSample({
-  baseUrl,
-  browser,
-  fixture,
-  timeoutMs,
-}) {
+async function runBrowserSample({ baseUrl, browser, fixture, timeoutMs }) {
   const context = await browser.newContext();
   const calls = [];
   const pageErrors = [];
@@ -820,11 +800,7 @@ async function runBrowserSample({
       "__bfmPerformanceInvoke",
       async (command, payload) => {
         calls.push({ command, payload: payload ?? {} });
-        return resolveUiBrowserPerformanceInvoke(
-          fixture,
-          command,
-          payload,
-        );
+        return resolveUiBrowserPerformanceInvoke(fixture, command, payload);
       },
     );
     await page.addInitScript(() => {
@@ -896,9 +872,7 @@ async function runBrowserSample({
         ({ command }) => command === spec.criticalCommand,
       ).length;
       const startedAt = performance.now();
-      await page
-        .getByRole("button", { exact: true, name: spec.label })
-        .click();
+      await page.getByRole("button", { exact: true, name: spec.label }).click();
       await waitForRenderedEvidence(
         page,
         spec.heading,
@@ -906,9 +880,8 @@ async function runBrowserSample({
         timeoutMs,
       );
       assert.ok(
-        calls.filter(({ command }) => command === spec.criticalCommand)
-          .length > commandCountBefore ||
-          spec.key === "dashboard",
+        calls.filter(({ command }) => command === spec.criticalCommand).length >
+          commandCountBefore || spec.key === "dashboard",
         `${spec.label} did not issue its data-backed ${spec.criticalCommand} request.`,
       );
       transitions[spec.key] = performance.now() - startedAt;
@@ -930,9 +903,7 @@ async function runBrowserSample({
 }
 
 export async function runUiBrowserPerformanceProbe(options) {
-  const generatedFixture = options.sourcePath
-    ? null
-    : createVisualQaFixture();
+  const generatedFixture = options.sourcePath ? null : createVisualQaFixture();
   let preparedDatabase = null;
   let server = null;
   let browser = null;
@@ -1094,8 +1065,7 @@ async function main() {
       `Data-backed browser performance probe (${result.fixture.spools} spools, ${result.fixture.printers} printers, ${result.fixture.loans} loans):`,
       `  Startup ready: ${formatMeasurement(result.startup)}`,
       ...Object.entries(result.transitions).map(
-        ([page, measurement]) =>
-          `  ${page}: ${formatMeasurement(measurement)}`,
+        ([page, measurement]) => `  ${page}: ${formatMeasurement(measurement)}`,
       ),
       result.violations.length === 0
         ? "  Result: within advisory local budgets."

@@ -1,8 +1,14 @@
-import { useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
-export function useSettingsCatalogRefreshState() {
-  const [catalogRefreshBusy, setCatalogRefreshBusy] = useState(false);
+type UseSettingsCatalogRefreshStateInput = {
+  catalogRefreshBusy: boolean;
+  setCatalogRefreshBusy: Dispatch<SetStateAction<boolean>>;
+};
 
+export function useSettingsCatalogRefreshState({
+  catalogRefreshBusy,
+  setCatalogRefreshBusy,
+}: UseSettingsCatalogRefreshStateInput) {
   return {
     catalogRefreshBusy,
     setCatalogRefreshBusy,

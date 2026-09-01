@@ -35,6 +35,7 @@ export type SettingsPageTabButton = SettingsPageTabOption & {
 export type SettingsPageDataModel = {
   bambuLiveIntegrations: SettingsPageData["bambuLiveIntegrations"];
   catalogRows: SettingsPageData["catalogRows"];
+  catalogRowsAvailable: SettingsPageData["catalogRowsAvailable"];
   librarySyncDeviceNameDraft: string;
   librarySyncHostBaseUrlDraft: string;
   librarySyncModeDraft: LibrarySyncMode;
@@ -115,6 +116,7 @@ export function buildSettingsPageDataModel(data: SettingsPageData): SettingsPage
   return {
     bambuLiveIntegrations: data.bambuLiveIntegrations,
     catalogRows: data.catalogRows,
+    catalogRowsAvailable: data.catalogRowsAvailable,
     librarySyncDeviceNameDraft: data.syncSettings.device_name ?? "",
     librarySyncHostBaseUrlDraft: data.syncSettings.host_base_url ?? "",
     librarySyncModeDraft: normalizeLibrarySyncMode(data.syncSettings.mode),

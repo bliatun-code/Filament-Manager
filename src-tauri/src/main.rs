@@ -78,6 +78,7 @@ mod library_sync_wishlist_write_commands;
 mod local_service_advertisement;
 mod optional_update;
 mod packaged_desktop_e2e;
+mod packaged_host_client_e2e;
 mod printer_active_commands;
 mod printer_bambu_discovery_commands;
 mod printer_bambu_live_commands;
@@ -393,6 +394,11 @@ fn main() {
             packaged_desktop_e2e::get_packaged_desktop_e2e_configuration,
             packaged_desktop_e2e::complete_packaged_desktop_e2e,
             packaged_desktop_e2e::fail_packaged_desktop_e2e,
+            packaged_host_client_e2e::get_packaged_host_client_e2e_configuration,
+            packaged_host_client_e2e::host_packaged_host_client_e2e_ready_and_wait_for_stop,
+            packaged_host_client_e2e::complete_packaged_host_client_e2e,
+            packaged_host_client_e2e::fail_packaged_host_client_e2e,
+            packaged_host_client_e2e::fail_packaged_host_client_e2e_bootstrap,
             desktop_lifecycle::get_desktop_lifecycle_settings,
             desktop_lifecycle::set_continue_in_background,
             desktop_lifecycle::set_launch_at_login,

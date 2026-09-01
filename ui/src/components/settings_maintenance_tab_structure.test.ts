@@ -37,6 +37,10 @@ function renderMaintenanceTab(
   applicationDiagnosticsError: string | null = null,
   latestFullBackupExportedAt: string | null = null,
   locale: Locale = "en",
+  counts: { catalog: number | string; missingSwatches: number | string } = {
+    catalog: 12,
+    missingSwatches: 2,
+  },
 ) {
   return renderToStaticMarkup(
     React.createElement(SettingsMaintenanceTab, {
@@ -49,13 +53,13 @@ function renderMaintenanceTab(
       backupValidationHasMissingTables: false,
       backupValidationHasWarnings: false,
       busy: false,
-      catalogCount: 12,
+      catalogCount: counts.catalog,
       confirmResetAction,
       lastBackupValidation,
       lastCatalogReset: null,
       latestFullBackupExportedAt,
       locale,
-      missingSwatchCount: 2,
+      missingSwatchCount: counts.missingSwatches,
       printerCount: 1,
       settingsClientHostWritePaired: false,
       settingsClientReadOnly: false,
@@ -78,6 +82,20 @@ function renderMaintenanceTab(
     }),
   );
 }
+
+test("SettingsMaintenanceTab renders unresolved catalog metrics as unknown", () => {
+  const html = renderMaintenanceTab(
+    null,
+    null,
+    null,
+    null,
+    null,
+    "en",
+    { catalog: "—", missingSwatches: "—" },
+  );
+
+  assert.ok((html.match(/—/g) ?? []).length >= 2);
+});
 
 const healthyDiagnostics: ApplicationDiagnostics = {
   generated_at_ms: 1_783_000_000_000,
