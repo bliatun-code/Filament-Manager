@@ -599,33 +599,40 @@ async function loadSpoolIntoPrinterAndClear(
   const incomingInput = operationForm.locator('input[name="incoming-grams"]');
   await incomingInput.waitFor({ state: "visible", timeout: timeoutMs });
   await incomingInput.fill(String(record.initialWeight));
-  const assignmentPath = `/api/v1/printers/${encodeURIComponent(target.printerId)}/slots/${encodeURIComponent(target.slotId)}/assignment`;
-  const assignmentRequestPromise = page.waitForRequest(
+  const operationPath = `/api/v1/printers/${encodeURIComponent(target.printerId)}/slots/${encodeURIComponent(target.slotId)}/operation`;
+  const slotMutationRequests = [];
+  const captureSlotMutation = (request) => {
+    if (request.method() !== "POST") {
+      return;
+    }
+    const path = new URL(request.url()).pathname;
+    if (
+      path === operationPath ||
+      path.endsWith("/assignment") ||
+      path === `/api/v1/printers/${encodeURIComponent(target.printerId)}/spools/${encodeURIComponent(spoolId)}/usage` ||
+      path === `/api/v1/spools/${encodeURIComponent(spoolId)}/weight`
+    ) {
+      slotMutationRequests.push(request);
+    }
+  };
+  page.on("request", captureSlotMutation);
+  const operationRequestPromise = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
-      new URL(request.url()).pathname === assignmentPath,
-    { timeout: timeoutMs },
-  );
-  const incomingWeightRequestPromise = page.waitForRequest(
-    (request) =>
-      request.method() === "POST" &&
-      new URL(request.url()).pathname ===
-        `/api/v1/spools/${encodeURIComponent(spoolId)}/weight`,
+      new URL(request.url()).pathname === operationPath,
     { timeout: timeoutMs },
   );
   await operationForm.locator('button[type="submit"]').click();
-  const [assignmentRequest, incomingWeightRequest] = await Promise.all([
-    assignmentRequestPromise,
-    incomingWeightRequestPromise,
-  ]);
-  if (assignmentRequest.postDataJSON()?.spool_id !== spoolId) {
+  const operationRequest = await operationRequestPromise;
+  const operationBody = operationRequest.postDataJSON();
+  if (
+    operationBody?.expected_current_spool_id !== null ||
+    operationBody?.target_spool_id !== spoolId ||
+    operationBody?.outgoing_measured_total_g !== null ||
+    operationBody?.incoming_measured_total_g !== record.initialWeight
+  ) {
     throw new Error(
-      `Companion printer assignment sent ${JSON.stringify(assignmentRequest.postDataJSON())} instead of the new spool.`,
-    );
-  }
-  if (incomingWeightRequest.postDataJSON()?.grams !== record.initialWeight) {
-    throw new Error(
-      `Companion printer load sent ${JSON.stringify(incomingWeightRequest.postDataJSON())} instead of ${record.initialWeight} g.`,
+      `Companion printer load sent invalid atomic operation ${JSON.stringify(operationBody)}.`,
     );
   }
 
@@ -651,6 +658,15 @@ async function loadSpoolIntoPrinterAndClear(
   ) {
     throw new Error("Companion printer load changed an unrelated slot assignment.");
   }
+  if (
+    slotMutationRequests.length !== 1 ||
+    new URL(slotMutationRequests[0].url()).pathname !== operationPath
+  ) {
+    throw new Error(
+      `Companion printer load used ${slotMutationRequests.length} slot mutation requests instead of one atomic operation.`,
+    );
+  }
+  slotMutationRequests.length = 0;
   const clearSlot = page.locator(
     `[data-action="start-printer-weight-update"][data-printer-task-mode="clear"][data-slot-id="${target.slotId}"][data-spool-id="${spoolId}"]`,
   );
@@ -676,14 +692,20 @@ async function loadSpoolIntoPrinterAndClear(
   const clearRequestPromise = page.waitForRequest(
     (request) =>
       request.method() === "POST" &&
-      new URL(request.url()).pathname === assignmentPath,
+      new URL(request.url()).pathname === operationPath,
     { timeout: timeoutMs },
   );
   await operationForm.locator('button[type="submit"]').click();
   const clearRequest = await clearRequestPromise;
-  if (clearRequest.postDataJSON()?.spool_id !== null) {
+  const clearBody = clearRequest.postDataJSON();
+  if (
+    clearBody?.expected_current_spool_id !== spoolId ||
+    clearBody?.target_spool_id !== null ||
+    !Number.isFinite(clearBody?.outgoing_measured_total_g) ||
+    clearBody?.incoming_measured_total_g !== null
+  ) {
     throw new Error(
-      `Companion printer clear sent ${JSON.stringify(clearRequest.postDataJSON())} instead of a null spool assignment.`,
+      `Companion printer clear sent invalid atomic operation ${JSON.stringify(clearBody)}.`,
     );
   }
   state = await waitForDatabaseState(
@@ -697,6 +719,15 @@ async function loadSpoolIntoPrinterAndClear(
   if (JSON.stringify(state.printerAssignments) !== JSON.stringify(assignmentsBefore)) {
     throw new Error(
       "Companion printer clear did not restore the complete slot assignment snapshot.",
+    );
+  }
+  page.off("request", captureSlotMutation);
+  if (
+    slotMutationRequests.length !== 1 ||
+    new URL(slotMutationRequests[0].url()).pathname !== operationPath
+  ) {
+    throw new Error(
+      `Companion printer clear used ${slotMutationRequests.length} slot mutation requests instead of one atomic operation.`,
     );
   }
   await page

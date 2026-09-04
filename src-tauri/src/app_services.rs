@@ -12,9 +12,9 @@ use crate::backend::inventory_engine::{
     AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
     CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
     InventoryBulkMutationInput, InventoryBulkMutationResult, InventoryEngine, LendSpoolInput,
-    PurgeSpoolInput, ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
-    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
-    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    PrinterSlotOperationInput, PurgeSpoolInput, ReceiveWishlistItemInput, RecordPrintUsageInput,
+    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput,
+    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
@@ -410,6 +410,10 @@ impl CompanionService {
                 clear_live_cache_before_next_refresh: Some(clear_live_cache_before_next_refresh),
             })
         })
+    }
+
+    pub fn operate_printer_slot(&self, input: PrinterSlotOperationInput) -> InventoryResult<()> {
+        self.with_authoritative_inventory(|engine| engine.operate_printer_slot(input))
     }
 
     pub fn record_print_usage(&self, input: RecordPrintUsageInput) -> InventoryResult<()> {

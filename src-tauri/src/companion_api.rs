@@ -1,10 +1,10 @@
 use crate::backend::inventory_domain::{LoanDirection, OwnershipType, SpoolStatus};
 use crate::backend::inventory_engine::{
     AcceptBambuLiveWeightEstimateInput, CreateManualSpoolInput, CreatePrinterInput,
-    CreateSpoolInput, DeleteSpoolInput, LendSpoolInput, PurgeSpoolInput, RecordPrintUsageInput,
-    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput,
-    UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput, UpdateSpoolOwnershipInput,
-    WeightSource,
+    CreateSpoolInput, DeleteSpoolInput, LendSpoolInput, PrinterSlotOperationInput, PurgeSpoolInput,
+    RecordPrintUsageInput, ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput,
+    UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolDetailsOwnershipInput,
+    UpdateSpoolOwnershipInput, WeightSource,
 };
 use crate::catalog_commands::{CatalogRefreshResult, CatalogSourceAuditResult};
 #[cfg(test)]
@@ -1096,6 +1096,75 @@ pub(super) async fn handle_update_printer_slot_assignment(
                         .clear_live_cache_before_next_refresh
                         .unwrap_or(false),
                 )
+                .map_err(CompanionApiError::from)?;
+
+            Ok(Json(WriteResponse {
+                ok: true,
+                message: if target_spool_id.is_some() {
+                    "Printer slot assigned".to_string()
+                } else {
+                    "Printer slot cleared".to_string()
+                },
+            }))
+        })
+        .await
+}
+
+pub(super) async fn handle_printer_slot_operation(
+    State(state): State<CompanionApiState>,
+    Path((printer_id, slot_id)): Path<(String, String)>,
+    Json(payload): Json<PrinterSlotOperationRequest>,
+) -> Result<Json<WriteResponse>, CompanionApiError> {
+    state
+        .run_blocking("printer slot operation", move |state| {
+            let printer_id = printer_id.trim();
+            let slot_id = slot_id.trim();
+            if printer_id.is_empty() || slot_id.is_empty() {
+                return Err(CompanionApiError::BadRequest(
+                    "printer_id and slot_id are required".to_string(),
+                ));
+            }
+
+            let normalize_required_nullable_spool_id =
+                |field: &'static str, value: Option<Option<&String>>| {
+                    value
+                        .ok_or_else(|| {
+                            CompanionApiError::BadRequest(format!("{field} is required"))
+                        })
+                        .and_then(|value| {
+                            value
+                                .map(|value| {
+                                    let value = value.trim();
+                                    if value.is_empty() {
+                                        Err(CompanionApiError::BadRequest(format!(
+                                            "{field} must be null or non-empty"
+                                        )))
+                                    } else {
+                                        Ok(value.to_string())
+                                    }
+                                })
+                                .transpose()
+                        })
+                };
+            let expected_current_spool_id = normalize_required_nullable_spool_id(
+                "expected_current_spool_id",
+                payload.expected_current_spool_id.as_update(),
+            )?;
+            let target_spool_id = normalize_required_nullable_spool_id(
+                "target_spool_id",
+                payload.target_spool_id.as_update(),
+            )?;
+
+            state
+                .service
+                .operate_printer_slot(PrinterSlotOperationInput {
+                    printer_id: printer_id.to_string(),
+                    slot_id: slot_id.to_string(),
+                    expected_current_spool_id,
+                    target_spool_id: target_spool_id.clone(),
+                    outgoing_measured_total_g: payload.outgoing_measured_total_g,
+                    incoming_measured_total_g: payload.incoming_measured_total_g,
+                })
                 .map_err(CompanionApiError::from)?;
 
             Ok(Json(WriteResponse {

@@ -310,6 +310,14 @@ export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.amsWeightEstimateChanged",
     "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
   ],
+  "printers.slot_operation_invalid": [
+    "errors.invalidRequest",
+    "The request could not be completed.",
+  ],
+  "printers.slot_operation_stale": [
+    "status.printerSlotFailed",
+    "Failed to update printer slot.",
+  ],
 });
 
 function parseJsonObject(value) {

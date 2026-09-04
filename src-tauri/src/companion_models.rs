@@ -79,6 +79,16 @@ pub(crate) struct UpdatePrinterSlotAssignmentRequest {
 }
 
 #[derive(Deserialize)]
+pub(crate) struct PrinterSlotOperationRequest {
+    #[serde(default)]
+    pub(crate) expected_current_spool_id: OptionalUpdate<String>,
+    #[serde(default)]
+    pub(crate) target_spool_id: OptionalUpdate<String>,
+    pub(crate) outgoing_measured_total_g: Option<i64>,
+    pub(crate) incoming_measured_total_g: Option<i64>,
+}
+
+#[derive(Deserialize)]
 pub(crate) struct RecordPrintUsageRequest {
     pub(crate) grams: i64,
     pub(crate) job_name: Option<String>,

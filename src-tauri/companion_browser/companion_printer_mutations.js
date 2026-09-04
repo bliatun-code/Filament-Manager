@@ -186,20 +186,9 @@ export function createCompanionPrinterMutations({
         );
       }
 
-      if ((mode === "clear" || mode === "assign") && currentSpoolId && requiresOutgoing) {
-        const currentRow = findSpoolRow(currentSpoolId);
-        await applyMeasuredWeightWithUsage(
-          task.printerId,
-          currentSpoolId,
-          currentRow?.spool?.remaining_g,
-          outgoingMeasured,
-          resolveSpoolRowTareWeight(currentRow),
-        );
-      }
-
       if (mode === "clear" || mode === "assign") {
         await fetchJson(
-          `/api/v1/printers/${encodeURIComponent(task.printerId)}/slots/${encodeURIComponent(task.slotId)}/assignment`,
+          `/api/v1/printers/${encodeURIComponent(task.printerId)}/slots/${encodeURIComponent(task.slotId)}/operation`,
           {
             method: "POST",
             headers: {
@@ -207,21 +196,17 @@ export function createCompanionPrinterMutations({
               "x-csrf-token": state.csrfToken,
             },
             body: JSON.stringify({
-              spool_id: mode === "assign" ? targetSpoolId || null : null,
+              expected_current_spool_id: currentSpoolId || null,
+              target_spool_id: mode === "assign" ? targetSpoolId || null : null,
+              outgoing_measured_total_g: requiresOutgoing
+                ? Math.max(0, Math.round(outgoingMeasured))
+                : null,
+              incoming_measured_total_g: requiresIncoming
+                ? Math.max(0, Math.round(incomingMeasured))
+                : null,
             }),
           },
         );
-      }
-
-      if (mode === "assign" && targetSpoolId && requiresIncoming) {
-        await fetchJson(`/api/v1/spools/${encodeURIComponent(targetSpoolId)}/weight`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-csrf-token": state.csrfToken,
-          },
-          body: JSON.stringify({ grams: Math.max(0, Math.round(incomingMeasured)) }),
-        });
       }
 
       state.activeTaskSheet = null;

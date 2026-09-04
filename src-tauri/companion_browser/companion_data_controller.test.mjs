@@ -211,6 +211,112 @@ test("refreshOverview loads all spool pages from the host", async () => {
   assert.equal(paths.includes("/api/v1/inventory/spools?limit=250&offset=500"), false);
 });
 
+test("refreshOverview commits successful datasets and preserves a failed optional dataset", async () => {
+  const harness = createDataHarness({
+    state: {
+      catalogMasters: [{ id: "master-old" }],
+      wishlistItems: [{ id: "wish-old" }],
+      printers: [{ printer: { id: "printer-old" } }],
+      loanHistory: [{ loan: { id: "loan-old", returned_at: null } }],
+      activeLoans: [{ loan: { id: "loan-old", returned_at: null } }],
+    },
+    fetchJson: async (path) => {
+      if (path.startsWith("/api/v1/inventory/spools")) {
+        return [{ spool: { id: "spool-new" }, master: {} }];
+      }
+      if (path.startsWith("/api/v1/catalog/masters")) {
+        return [{ id: "master-new" }];
+      }
+      if (path.startsWith("/api/v1/wishlist")) {
+        throw new Error("Wishlist is temporarily unavailable.");
+      }
+      if (path === "/api/v1/printers/overview") {
+        return [{ printer: { id: "printer-new" } }];
+      }
+      if (path.startsWith("/api/v1/loans")) {
+        return [{ loan: { id: "loan-new", returned_at: null } }];
+      }
+      if (path.startsWith("/api/v1/spools/spool-new")) {
+        return { spool: { spool: { id: "spool-new" } } };
+      }
+      throw new Error(`unexpected path ${path}`);
+    },
+  });
+
+  await harness.controller.refreshOverview();
+
+  assert.equal(harness.state.spools[0].spool.id, "spool-new");
+  assert.equal(harness.state.catalogMasters[0].id, "master-new");
+  assert.equal(harness.state.wishlistItems[0].id, "wish-old");
+  assert.equal(harness.state.printers[0].printer.id, "printer-new");
+  assert.equal(harness.state.loanHistory[0].loan.id, "loan-new");
+  assert.equal(harness.state.activeLoans[0].loan.id, "loan-new");
+  assert.equal(harness.state.statusMessage, "Wishlist is temporarily unavailable.");
+  assert.equal(harness.state.statusTone, "error");
+});
+
+test("refreshOverview preserves an optional dataset when its response is invalid", async () => {
+  const harness = createDataHarness({
+    state: {
+      catalogMasters: [{ id: "master-old" }],
+    },
+    fetchJson: async (path) => {
+      if (path.startsWith("/api/v1/inventory/spools")) {
+        return [];
+      }
+      if (path.startsWith("/api/v1/catalog/masters")) {
+        return { unexpected: true };
+      }
+      if (path.startsWith("/api/v1/wishlist")) {
+        return [];
+      }
+      if (path === "/api/v1/printers/overview") {
+        return [];
+      }
+      if (path.startsWith("/api/v1/loans")) {
+        return [];
+      }
+      throw new Error(`unexpected path ${path}`);
+    },
+  });
+
+  await harness.controller.refreshOverview();
+
+  assert.equal(harness.state.catalogMasters[0].id, "master-old");
+  assert.equal(harness.state.statusMessage, "Failed to load companion data.");
+  assert.equal(harness.state.statusTone, "error");
+});
+
+test("refreshOverview preserves all prior datasets when the required inventory load fails", async () => {
+  const harness = createDataHarness({
+    state: {
+      spools: [{ spool: { id: "spool-old" }, master: {} }],
+      catalogMasters: [{ id: "master-old" }],
+      wishlistItems: [{ id: "wish-old" }],
+      printers: [{ printer: { id: "printer-old" } }],
+      loanHistory: [{ loan: { id: "loan-old", returned_at: null } }],
+      activeLoans: [{ loan: { id: "loan-old", returned_at: null } }],
+    },
+    fetchJson: async (path) => {
+      if (path.startsWith("/api/v1/inventory/spools")) {
+        throw new Error("Inventory is unavailable.");
+      }
+      return [];
+    },
+  });
+
+  await harness.controller.refreshOverview();
+
+  assert.equal(harness.state.spools[0].spool.id, "spool-old");
+  assert.equal(harness.state.catalogMasters[0].id, "master-old");
+  assert.equal(harness.state.wishlistItems[0].id, "wish-old");
+  assert.equal(harness.state.printers[0].printer.id, "printer-old");
+  assert.equal(harness.state.loanHistory[0].loan.id, "loan-old");
+  assert.equal(harness.state.activeLoans[0].loan.id, "loan-old");
+  assert.equal(harness.state.statusMessage, "Inventory is unavailable.");
+  assert.equal(harness.state.statusTone, "error");
+});
+
 test("fetchAllSpoolRows rejects duplicate ids from unstable pagination", async () => {
   const paths = [];
   await assert.rejects(
