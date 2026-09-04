@@ -135,8 +135,15 @@ For Companion, `scripts/run-companion-data-e2e.mjs` drives the rendered web UI
 against a generated, sanitized fixture and temporary migrated database copies.
 It registers and reloads a spool, finds and opens the correct row, loads that
 spool into a printer slot, lends and returns it, receives an on-order item and
-then checks both visible state and persisted database relationships. Real user
-libraries are never opened or modified by this gate.
+then checks both visible state and persisted database relationships. Printer
+loading and clearing must each use exactly one atomic slot-operation request;
+the gate rejects the legacy split assignment/weight sequence and verifies that
+unrelated slot assignments survive. Rust behavior tests force a late database
+failure and require assignment, location, weight, usage and history to roll back
+together. Overview-controller tests additionally require successful optional
+datasets to commit while a failed optional dataset retains its last valid value;
+inventory remains the required authoritative dataset. Real user libraries are
+never opened or modified by this gate.
 
 ## Backup and upgrade authority
 

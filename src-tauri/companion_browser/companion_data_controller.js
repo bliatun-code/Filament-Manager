@@ -193,18 +193,33 @@ export function createCompanionDataController(options) {
   async function refreshOverview() {
     setBusy(true);
     try {
-      const [spools, catalogMasters, wishlistItems, printers, loanHistory] = await Promise.all([
-        fetchAllSpoolRows(fetchJson),
-        fetchJson("/api/v1/catalog/masters?limit=2000"),
-        fetchJson("/api/v1/wishlist?limit=500"),
-        fetchJson("/api/v1/printers/overview"),
-        fetchJson("/api/v1/loans?limit=300&include_returned=true"),
-      ]);
-      state.spools = Array.isArray(spools) ? spools : [];
-      state.catalogMasters = Array.isArray(catalogMasters) ? catalogMasters : [];
-      state.wishlistItems = Array.isArray(wishlistItems) ? wishlistItems : [];
-      state.printers = Array.isArray(printers) ? printers : [];
-      state.loanHistory = Array.isArray(loanHistory) ? loanHistory : [];
+      const [spoolsResult, catalogResult, wishlistResult, printersResult, loansResult] =
+        await Promise.allSettled([
+          fetchAllSpoolRows(fetchJson),
+          fetchJson("/api/v1/catalog/masters?limit=2000"),
+          fetchJson("/api/v1/wishlist?limit=500"),
+          fetchJson("/api/v1/printers/overview"),
+          fetchJson("/api/v1/loans?limit=300&include_returned=true"),
+        ]);
+
+      if (spoolsResult.status === "rejected") {
+        throw spoolsResult.reason;
+      }
+      state.spools = spoolsResult.value;
+
+      const optionalFailures = [];
+      const commitOptionalArray = (result, key) => {
+        if (result.status === "fulfilled" && Array.isArray(result.value)) {
+          state[key] = result.value;
+          return;
+        }
+        optionalFailures.push(result.status === "rejected" ? result.reason : null);
+      };
+
+      commitOptionalArray(catalogResult, "catalogMasters");
+      commitOptionalArray(wishlistResult, "wishlistItems");
+      commitOptionalArray(printersResult, "printers");
+      commitOptionalArray(loansResult, "loanHistory");
       state.activeLoans = state.loanHistory.filter(isLoanCurrentlyActive);
       ensureActivePrinterSelection();
 
@@ -239,7 +254,16 @@ export function createCompanionDataController(options) {
         state.detailBusy = false;
       }
 
-      setStatus(t(state.locale || "en", "status.refreshed", "Companion data refreshed."), "success");
+      if (optionalFailures.length > 0) {
+        const firstFailure = optionalFailures[0];
+        setStatus(
+          firstFailure?.message ||
+            t(state.locale || "en", "status.refreshFailed", "Failed to load companion data."),
+          "error",
+        );
+      } else {
+        setStatus(t(state.locale || "en", "status.refreshed", "Companion data refreshed."), "success");
+      }
     } catch (error) {
       setStatus(
         error.message ||

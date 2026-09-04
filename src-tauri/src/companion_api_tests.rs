@@ -1263,6 +1263,140 @@ async fn companion_api_pairs_session_and_requires_csrf_for_writes() {
 }
 
 #[tokio::test]
+async fn companion_api_printer_slot_operation_requires_expectation_and_replaces_atomically() {
+    let db_path = temp_db_path("printer-slot-operation");
+    let result = async {
+        seed_db(&db_path)?;
+        let router = build_router(test_state(&db_path));
+        let AuthenticatedTestSession {
+            session_cookie,
+            csrf_token,
+        } = pair_test_session(&router, &db_path).await?;
+        let slot_id = "printer_1_ams_1_slot_1";
+
+        let missing_expectation = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!(
+                        "/api/v1/printers/printer_1/slots/{slot_id}/operation"
+                    ))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{"target_spool_id":"spool_1","incoming_measured_total_g":900}"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(missing_expectation.status(), StatusCode::BAD_REQUEST);
+
+        let load_empty_slot = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!(
+                        "/api/v1/printers/printer_1/slots/{slot_id}/operation"
+                    ))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{
+                            "expected_current_spool_id":null,
+                            "target_spool_id":"spool_1",
+                            "outgoing_measured_total_g":null,
+                            "incoming_measured_total_g":1000
+                        }"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(load_empty_slot.status(), StatusCode::OK);
+
+        let replace_slot = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri(format!(
+                        "/api/v1/printers/printer_1/slots/{slot_id}/operation"
+                    ))
+                    .header("content-type", "application/json")
+                    .header("host", "127.0.0.1:4278")
+                    .header("origin", "http://127.0.0.1:4278")
+                    .header("cookie", format!("bfm_companion_session={session_cookie}"))
+                    .header(COMPANION_CSRF_HEADER, &csrf_token)
+                    .body(Body::from(
+                        r#"{
+                            "expected_current_spool_id":"spool_1",
+                            "target_spool_id":"spool_2",
+                            "outgoing_measured_total_g":750,
+                            "incoming_measured_total_g":900
+                        }"#,
+                    ))
+                    .map_err(|error| error.to_string())?,
+            )
+            .await
+            .map_err(|error| error.to_string())?;
+        assert_eq!(replace_slot.status(), StatusCode::OK);
+
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        let slot_spool_id: Option<String> = db
+            .connection()
+            .query_row(
+                "SELECT spool_id FROM ams_slots WHERE id = ?1",
+                [slot_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        let outgoing = db
+            .get_spool_by_id("spool_1")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing outgoing spool".to_string())?;
+        let incoming = db
+            .get_spool_by_id("spool_2")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing incoming spool".to_string())?;
+        let used_grams: i64 = db
+            .connection()
+            .query_row(
+                "SELECT material_used_g FROM print_jobs
+                 WHERE printer_id = 'printer_1' AND spool_id = 'spool_1'",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(slot_spool_id.as_deref(), Some("spool_2"));
+        assert_eq!(outgoing.remaining_g, Some(750));
+        assert_eq!(outgoing.status, "IN_STOCK");
+        assert_eq!(incoming.remaining_g, Some(900));
+        assert_eq!(incoming.status, "ASSIGNED");
+        assert_eq!(used_grams, 250);
+
+        Ok::<(), String>(())
+    }
+    .await;
+
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!(
+            "companion_api_printer_slot_operation_requires_expectation_and_replaces_atomically failed: {message}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn companion_client_role_rejects_protected_reads_and_writes_without_mutating_local_shadow_data(
 ) {
     let db_path = temp_db_path("client-role-authority-gate");

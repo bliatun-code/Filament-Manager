@@ -37,6 +37,20 @@ test("location lifecycle errors have distinct localizable descriptors", () => {
   }
 });
 
+test("atomic printer slot failures use existing localized messages without raw details", () => {
+  for (const [code, expectedKey] of [
+    ["printers.slot_operation_invalid", "errors.invalidRequest"],
+    ["printers.slot_operation_stale", "status.printerSlotFailed"],
+  ]) {
+    const message = localizedAppError(
+      { code, message: "internal validation detail" },
+      (key) => key === expectedKey ? "Oversatt melding" : "Feil nøkkel",
+      "Fallback",
+    );
+    assert.equal(message, "Oversatt melding", code);
+  }
+});
+
 test("loan business conflicts have stable localizable descriptors", () => {
   for (const code of [
     "loans.borrower_required",

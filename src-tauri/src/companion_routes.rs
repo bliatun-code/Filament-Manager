@@ -156,6 +156,10 @@ fn build_router_with_security_config(
             post(handle_update_printer_slot_assignment),
         )
         .route(
+            "/printers/{printer_id}/slots/{slot_id}/operation",
+            post(handle_printer_slot_operation),
+        )
+        .route(
             "/printers/{printer_id}/spools/{spool_id}/usage",
             post(handle_record_print_usage),
         )

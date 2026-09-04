@@ -269,6 +269,16 @@ pub struct AssignPrinterSlotInput {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PrinterSlotOperationInput {
+    pub printer_id: String,
+    pub slot_id: String,
+    pub expected_current_spool_id: Option<String>,
+    pub target_spool_id: Option<String>,
+    pub outgoing_measured_total_g: Option<i64>,
+    pub incoming_measured_total_g: Option<i64>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordPrintUsageInput {
     pub printer_id: String,
     pub spool_id: String,
@@ -798,31 +808,14 @@ impl InventoryEngine {
         self.db.with_inventory_transaction(|conn| {
             let spool_with_master =
                 get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)?;
-            let tare_g = resolve_spool_tare_weight_g(
-                spool_with_master.spool.spool_tare_weight_g,
-                Some(spool_with_master.master.vendor.as_str()),
-            );
-            let filament_grams = (grams - tare_g).max(0);
-
-            ensure_scale_row(conn, effective_scale_id, "Manual Entry", "MANUAL")?;
-            update_spool_weight_row(conn, spool_id, Some(filament_grams), Some(filament_grams))?;
-            insert_weight_reading_row(
+            update_measured_total_weight_in_transaction(
                 conn,
+                &spool_with_master,
                 effective_scale_id,
-                spool_id,
-                filament_grams,
-                source.as_str(),
-            )?;
-            insert_json_history_event(
-                conn,
-                spool_id,
-                "WEIGHT_UPDATED",
-                json!({
-                    "measured_grams": grams,
-                    "tare_weight_g": tare_g,
-                    "grams": filament_grams,
-                    "source": source.as_str()
-                }),
+                "Manual Entry",
+                "MANUAL",
+                grams,
+                source,
             )
         })
     }
@@ -1558,6 +1551,176 @@ impl InventoryEngine {
         })
     }
 
+    pub fn operate_printer_slot(&self, input: PrinterSlotOperationInput) -> InventoryResult<()> {
+        let printer_id = input.printer_id.trim();
+        let slot_id = input.slot_id.trim();
+        if printer_id.is_empty() || slot_id.is_empty() {
+            return Err(invalid_printer_slot_operation(
+                "printer_id and slot_id are required",
+            ));
+        }
+        if input
+            .outgoing_measured_total_g
+            .is_some_and(|grams| grams < 0)
+            || input
+                .incoming_measured_total_g
+                .is_some_and(|grams| grams < 0)
+        {
+            return Err(invalid_printer_slot_operation(
+                "measured total weights must be zero or greater",
+            ));
+        }
+
+        let expected_current_spool_id =
+            Self::normalize_optional_text(input.expected_current_spool_id.as_deref());
+        let target_spool_id = Self::normalize_optional_text(input.target_spool_id.as_deref());
+        if input
+            .expected_current_spool_id
+            .as_deref()
+            .is_some_and(|value| value.trim().is_empty())
+            || input
+                .target_spool_id
+                .as_deref()
+                .is_some_and(|value| value.trim().is_empty())
+        {
+            return Err(invalid_printer_slot_operation(
+                "spool ids must be null or non-empty",
+            ));
+        }
+
+        let assignment_input = AssignPrinterSlotInput {
+            printer_id: printer_id.to_string(),
+            slot_id: slot_id.to_string(),
+            spool_id: target_spool_id.clone(),
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: None,
+        };
+
+        self.db.with_inventory_transaction(|conn| {
+            let actual_current_spool_id: Option<Option<String>> = conn
+                .query_row(
+                    "SELECT s.spool_id
+                     FROM ams_slots s
+                     JOIN ams_units u ON u.id = s.ams_id
+                     WHERE s.id = ?1 AND u.printer_id = ?2
+                     LIMIT 1",
+                    params![slot_id, printer_id],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            let actual_current_spool_id =
+                actual_current_spool_id.ok_or(InventoryError::NotFound)?;
+
+            if actual_current_spool_id != expected_current_spool_id {
+                return Err(stale_printer_slot_operation());
+            }
+            if actual_current_spool_id == target_spool_id {
+                return Err(invalid_printer_slot_operation(
+                    "printer slot operation must change the assigned spool",
+                ));
+            }
+
+            let outgoing_total_g = match actual_current_spool_id.as_deref() {
+                Some(_) => Some(input.outgoing_measured_total_g.ok_or_else(|| {
+                    invalid_printer_slot_operation(
+                        "outgoing_measured_total_g is required when clearing or replacing a spool",
+                    )
+                })?),
+                None => None,
+            };
+            let incoming_total_g = match target_spool_id.as_deref() {
+                Some(_) => Some(input.incoming_measured_total_g.ok_or_else(|| {
+                    invalid_printer_slot_operation(
+                        "incoming_measured_total_g is required when assigning a spool",
+                    )
+                })?),
+                None => None,
+            };
+
+            let outgoing_spool = actual_current_spool_id
+                .as_deref()
+                .map(|spool_id| {
+                    get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)
+                })
+                .transpose()?;
+            if let Some(spool_id) = actual_current_spool_id.as_deref() {
+                ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
+            }
+
+            let incoming_spool = target_spool_id
+                .as_deref()
+                .map(|spool_id| {
+                    get_spool_with_master_by_id_row(conn, spool_id)?.ok_or(InventoryError::NotFound)
+                })
+                .transpose()?;
+            if let Some(spool) = incoming_spool.as_ref() {
+                let target_status = SpoolStatus::from_raw(Some(&spool.spool.status));
+                if matches!(
+                    target_status,
+                    SpoolStatus::Borrowed | SpoolStatus::Empty | SpoolStatus::Lost
+                ) {
+                    return Err(invalid_printer_slot_operation(
+                        "selected spool cannot be loaded into a printer slot",
+                    ));
+                }
+                ensure_spool_not_outbound_loan_locked(conn, &spool.spool.id)?;
+            }
+
+            let (override_tray_uuid, override_color_hex, clear_live_cache) =
+                derive_assign_printer_slot_live_context(&self.db, &assignment_input)?;
+
+            if let (Some(spool), Some(measured_total_g)) =
+                (outgoing_spool.as_ref(), outgoing_total_g)
+            {
+                apply_outgoing_measured_total_in_transaction(
+                    conn,
+                    printer_id,
+                    spool,
+                    measured_total_g,
+                )?;
+            }
+
+            assign_spool_to_ams_slot_in_transaction(
+                conn,
+                printer_id,
+                slot_id,
+                target_spool_id.as_deref(),
+                override_tray_uuid.as_deref(),
+                override_color_hex.as_deref(),
+                clear_live_cache,
+            )?;
+
+            if let (Some(spool), Some(measured_total_g)) =
+                (incoming_spool.as_ref(), incoming_total_g)
+            {
+                update_measured_total_weight_in_transaction(
+                    conn,
+                    spool,
+                    "manual-entry",
+                    "Manual Entry",
+                    "MANUAL",
+                    measured_total_g,
+                    WeightSource::Manual,
+                )?;
+                insert_json_history_event(
+                    conn,
+                    &spool.spool.id,
+                    "ASSIGNED_TO_AMS",
+                    json!({
+                        "printer_id": printer_id,
+                        "slot_id": slot_id,
+                        "rfid_override_tray_uuid": override_tray_uuid,
+                        "rfid_override_color_hex": override_color_hex,
+                        "clear_live_cache_before_next_refresh": clear_live_cache,
+                    }),
+                )?;
+            }
+
+            Ok(())
+        })
+    }
+
     pub fn record_print_usage(&self, input: RecordPrintUsageInput) -> InventoryResult<()> {
         self.db.with_inventory_transaction(|conn| {
             if !printer_exists_row(conn, &input.printer_id)? {
@@ -2086,6 +2249,134 @@ fn ams_weight_accept_rejected(message: &str) -> InventoryError {
         code: "bambu_live.weight_estimate_changed",
         message: message.to_string(),
     }
+}
+
+fn invalid_printer_slot_operation(message: &str) -> InventoryError {
+    InventoryError::InvalidOperation {
+        code: "printers.slot_operation_invalid",
+        message: message.to_string(),
+    }
+}
+
+fn stale_printer_slot_operation() -> InventoryError {
+    InventoryError::InvalidOperation {
+        code: "printers.slot_operation_stale",
+        message: "The printer slot changed. Refresh printer data and try again.".to_string(),
+    }
+}
+
+fn measured_filament_grams(spool: &SpoolWithMasterRow, measured_total_g: i64) -> (i64, i64) {
+    let tare_g = resolve_spool_tare_weight_g(
+        spool.spool.spool_tare_weight_g,
+        Some(spool.master.vendor.as_str()),
+    );
+    (measured_total_g.saturating_sub(tare_g).max(0), tare_g)
+}
+
+fn update_measured_total_weight_in_transaction(
+    conn: &rusqlite::Connection,
+    spool: &SpoolWithMasterRow,
+    scale_id: &str,
+    scale_name: &str,
+    scale_kind: &str,
+    measured_total_g: i64,
+    source: WeightSource,
+) -> InventoryResult<()> {
+    let (filament_grams, tare_g) = measured_filament_grams(spool, measured_total_g);
+    ensure_scale_row(conn, scale_id, scale_name, scale_kind)?;
+    update_spool_weight_row(
+        conn,
+        &spool.spool.id,
+        Some(filament_grams),
+        Some(filament_grams),
+    )?;
+    insert_weight_reading_row(
+        conn,
+        scale_id,
+        &spool.spool.id,
+        filament_grams,
+        source.as_str(),
+    )?;
+    insert_json_history_event(
+        conn,
+        &spool.spool.id,
+        "WEIGHT_UPDATED",
+        json!({
+            "measured_grams": measured_total_g,
+            "tare_weight_g": tare_g,
+            "grams": filament_grams,
+            "source": source.as_str()
+        }),
+    )
+}
+
+fn apply_outgoing_measured_total_in_transaction(
+    conn: &rusqlite::Connection,
+    printer_id: &str,
+    spool: &SpoolWithMasterRow,
+    measured_total_g: i64,
+) -> InventoryResult<()> {
+    let (measured_filament_g, _) = measured_filament_grams(spool, measured_total_g);
+    let baseline = spool.spool.remaining_g.map(|grams| grams.max(0));
+    let used_grams = baseline
+        .map(|grams| grams.saturating_sub(measured_filament_g))
+        .unwrap_or(0);
+
+    if used_grams > 0 {
+        let next_status = if measured_filament_g == 0 {
+            "EMPTY"
+        } else {
+            "ASSIGNED"
+        };
+        insert_print_job_row(conn, printer_id, &spool.spool.id, None, used_grams, true)?;
+        ensure_scale_row(conn, "print-job", "Print Job Usage", "VIRTUAL")?;
+        update_spool_weight_row(
+            conn,
+            &spool.spool.id,
+            Some(measured_filament_g),
+            Some(measured_filament_g),
+        )?;
+        insert_weight_reading_row(
+            conn,
+            "print-job",
+            &spool.spool.id,
+            measured_filament_g,
+            "PRINT_JOB",
+        )?;
+        update_spool_status_row(conn, &spool.spool.id, next_status)?;
+        lock_spool_price_for_historical_status(
+            conn,
+            &spool.spool.id,
+            next_status,
+            "PRINT_JOB_USAGE",
+        )?;
+        return insert_json_history_event(
+            conn,
+            &spool.spool.id,
+            "PRINT_JOB_RECORDED",
+            json!({
+                "printer_id": printer_id,
+                "used_grams": used_grams,
+                "remaining_g": measured_filament_g,
+                "job_name": null,
+                "success": true,
+            }),
+        );
+    }
+
+    if baseline != Some(measured_filament_g) {
+        return update_measured_total_weight_in_transaction(
+            conn,
+            spool,
+            "manual-entry",
+            "Manual Entry",
+            "MANUAL",
+            measured_total_g,
+            WeightSource::Manual,
+        );
+    }
+
+    Ok(())
 }
 
 fn compute_remaining(initial_weight_g: Option<i64>, current_weight_g: Option<i64>) -> Option<i64> {
