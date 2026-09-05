@@ -719,7 +719,14 @@ fn reset_app_state_table_list_tracks_all_backup_tables() {
         "app-state reset tables must not include catalog/template tables"
     );
 
-    let covered_tables: HashSet<&str> = reset_tables.union(&preserved_tables).copied().collect();
+    let local_operation_tables: HashSet<&str> = ["catalog_refresh_jobs"].into_iter().collect();
+    assert!(local_operation_tables.is_subset(&reset_tables));
+    assert!(local_operation_tables.is_disjoint(&full_backup_tables));
+    let covered_tables: HashSet<&str> = reset_tables
+        .union(&preserved_tables)
+        .copied()
+        .filter(|table| !local_operation_tables.contains(table))
+        .collect();
     assert_eq!(
         covered_tables, full_backup_tables,
         "each full-backup table must be either reset as app state or explicitly preserved"

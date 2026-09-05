@@ -45,7 +45,7 @@ pub(crate) fn import_source_vendor_catalog(
     Ok(stats)
 }
 
-fn import_source_vendor_catalog_in_transaction(
+pub(crate) fn import_source_vendor_catalog_in_transaction(
     conn: &Connection,
     vendor: &str,
     material: &str,

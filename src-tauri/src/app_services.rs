@@ -21,8 +21,7 @@ use crate::backend::printer_slot_live_mapping::{
 };
 use crate::backend::statistics::InventoryOverview;
 use crate::catalog_commands::{
-    audit_bambu_catalog_source_blocking, audit_esun_catalog_source_blocking,
-    refresh_bambu_catalog_blocking, refresh_esun_catalog_blocking, CatalogRefreshResult,
+    audit_bambu_catalog_source_blocking, audit_esun_catalog_source_blocking, CatalogRefreshResult,
     CatalogSourceAuditResult,
 };
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
@@ -70,6 +69,10 @@ pub struct CompanionLibrarySnapshot {
 }
 
 impl CompanionService {
+    pub(crate) fn database_path(&self) -> &str {
+        &self.db_path
+    }
+
     pub fn new(db_path: impl Into<String>) -> Self {
         Self {
             db_path: db_path.into(),
@@ -139,26 +142,40 @@ impl CompanionService {
         &self,
         material_types: Option<Vec<String>>,
     ) -> Result<CatalogRefreshResult, String> {
-        self.with_authoritative_write(|| {
-            refresh_bambu_catalog_blocking(&self.db_path, material_types, None)
-        })
+        crate::catalog_refresh_jobs::run_legacy_catalog_refresh(
+            self.clone(),
+            "Bambu",
+            material_types,
+        )
     }
 
     pub fn audit_bambu_catalog_source(&self) -> Result<CatalogSourceAuditResult, String> {
-        self.with_authoritative_write(|| audit_bambu_catalog_source_blocking(None))
+        self.require_bound_authority()
+            .map_err(crate::app_error::inventory_error_to_command_string)?;
+        let result = audit_bambu_catalog_source_blocking(None)?;
+        self.require_bound_authority()
+            .map_err(crate::app_error::inventory_error_to_command_string)?;
+        Ok(result)
     }
 
     pub fn audit_esun_catalog_source(&self) -> Result<CatalogSourceAuditResult, String> {
-        self.with_authoritative_write(|| audit_esun_catalog_source_blocking(None))
+        self.require_bound_authority()
+            .map_err(crate::app_error::inventory_error_to_command_string)?;
+        let result = audit_esun_catalog_source_blocking(None)?;
+        self.require_bound_authority()
+            .map_err(crate::app_error::inventory_error_to_command_string)?;
+        Ok(result)
     }
 
     pub fn refresh_esun_catalog(
         &self,
         material_types: Option<Vec<String>>,
     ) -> Result<CatalogRefreshResult, String> {
-        self.with_authoritative_write(|| {
-            refresh_esun_catalog_blocking(&self.db_path, material_types, None)
-        })
+        crate::catalog_refresh_jobs::run_legacy_catalog_refresh(
+            self.clone(),
+            "eSUN",
+            material_types,
+        )
     }
 
     pub fn list_wishlist_items(&self, limit: i64) -> InventoryResult<Vec<WishlistItemRow>> {
@@ -476,7 +493,7 @@ impl CompanionService {
         func(InventoryEngine::new(db))
     }
 
-    fn with_authoritative_write<Output>(
+    pub(crate) fn with_authoritative_write<Output>(
         &self,
         write: impl FnOnce() -> Result<Output, String>,
     ) -> Result<Output, String> {

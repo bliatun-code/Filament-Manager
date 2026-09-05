@@ -4,9 +4,11 @@ import test from "node:test";
 import type { Dispatch, SetStateAction } from "react";
 
 import type {
+  CatalogRefreshJobSnapshot,
   CatalogRefreshResult,
   LibrarySyncSettings,
 } from "../lib/tauri_client";
+import { observeCatalogRefreshJobSession } from "../lib/catalog_refresh_job_session";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
 import { useSettingsCatalogRefreshState } from "./use_settings_catalog_refresh_state";
 import { useSettingsLibrarySyncActions } from "./use_settings_library_sync_actions";
@@ -116,18 +118,46 @@ test("an App-owned long catalog refresh survives a Settings remount and blocks c
   let refreshStarts = 0;
   let reloads = 0;
   let libraryBusyWrites = 0;
+  const storage = new Map<string, string>();
+  const runningJob: CatalogRefreshJobSnapshot = {
+    job_id: "job-a", vendor: "Bambu", material: "PLA", status: "RUNNING",
+    started_at: "2026-09-05T10:00:00Z", finished_at: null, result: null, error: null,
+  };
   const previousWindow = globalThis.window;
   globalThis.window = {
+    localStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => { storage.set(key, value); },
+      removeItem: (key: string) => { storage.delete(key); },
+    },
+    setTimeout: () => 1,
+    clearTimeout: () => undefined,
     __TAURI__: {
-      invoke: <Value>(command: string) => {
+      invoke: <Value>(command: string, args?: { input?: { job_id?: string | null } }) => {
         invokeCommands.push(command);
-        if (command !== "refresh_library_sync_host_vendor_catalog") {
-          return Promise.reject(new Error(`Unexpected Tauri command: ${command}`));
+        if (command === "start_library_sync_host_catalog_refresh_job") {
+          runningJob.job_id = args!.input!.job_id!;
+          return Promise.resolve(runningJob) as Promise<Value>;
         }
-        return longRefresh.promise as Promise<Value>;
+        if (command === "get_library_sync_host_catalog_refresh_job") {
+          return (args?.input?.job_id
+            ? longRefresh.promise.then((result) => ({ ...runningJob, result, status: "SUCCEEDED" }))
+            : Promise.resolve(null)) as Promise<Value>;
+        }
+        return Promise.reject(new Error(`Unexpected Tauri command: ${command}`));
       },
     },
   } as unknown as Window & typeof globalThis;
+
+  const controller = observeCatalogRefreshJobSession({
+    clientReadOnly: true,
+    clientHostBaseUrl: "http://host-a.local",
+    clientLibraryId: "library-a",
+    clientTargetGeneration: 1,
+  }, (busy) => setAppCatalogRefreshBusy(busy))!;
+  controller.subscribe((state) => {
+    if (state.job?.status === "SUCCEEDED") reloads += 1;
+  });
 
   const catalogActionInput = (
     catalogRefreshBusy: boolean,
@@ -173,11 +203,16 @@ test("an App-owned long catalog refresh survives a Settings remount and blocks c
     settingsClientHostBaseUrl: "http://host-a.local",
     settingsClientLibraryId: "library-a",
     settingsClientReadOnly: true,
+    startCatalogRefreshJob: async (vendor, material) => {
+      refreshStarts += 1;
+      await controller.start(vendor, material);
+    },
     swatchBusy: false,
     tauri: true,
   });
 
   try {
+    await controller.checkNow();
     const firstSettingsMount = SettingsCatalogRefreshStateMount({
       catalogRefreshBusy: appCatalogRefreshBusy,
       setCatalogRefreshBusy: setAppCatalogRefreshBusy,
@@ -192,7 +227,8 @@ test("an App-owned long catalog refresh survives a Settings remount and blocks c
     assert.equal(appCatalogRefreshBusy, true);
     assert.equal(refreshStarts, 1);
     assert.deepEqual(invokeCommands, [
-      "refresh_library_sync_host_vendor_catalog",
+      "get_library_sync_host_catalog_refresh_job",
+      "start_library_sync_host_catalog_refresh_job",
     ]);
 
     // The first Settings instance is now conceptually unmounted. A fresh
@@ -269,15 +305,20 @@ test("an App-owned long catalog refresh survives a Settings remount and blocks c
     assert.equal(libraryBusyWrites, 0);
     assert.equal(refreshStarts, 1);
     assert.deepEqual(invokeCommands, [
-      "refresh_library_sync_host_vendor_catalog",
+      "get_library_sync_host_catalog_refresh_job",
+      "start_library_sync_host_catalog_refresh_job",
     ]);
 
-    longRefresh.resolve(catalogRefreshResult());
     await pendingRefresh;
+    controller.pause();
+    const completion = controller.checkNow();
+    longRefresh.resolve(catalogRefreshResult());
+    await completion;
 
     assert.equal(reloads, 1);
     assert.equal(appCatalogRefreshBusy, false);
   } finally {
+    observeCatalogRefreshJobSession({ clientReadOnly: true }, () => undefined);
     globalThis.window = previousWindow;
   }
 });

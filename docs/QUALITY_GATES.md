@@ -13,7 +13,7 @@ not be weakened merely to make a change pass.
 | Gate                             | Named owner                                   | Blocking threshold                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Local command                                                                                                                                                                               | Required CI path                                                                                                                       |
 | -------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Performance                      | `@bliatun-code` (performance gate owner)      | The deterministic 10,000-spool, concurrency, timeout, render-window, lazy-loading, and bundle contracts pass with zero failures. Production JavaScript chunks remain within the committed byte budgets in [PERFORMANCE_BASELINE.md](PERFORMANCE_BASELINE.md).                                                                                                                                                                                                                                                                                                                     | `npm run test:performance:bundle` and `npm run test:performance`                                                                                                                            | `npm run verify` on macOS and Windows                                                                                                  |
-| Host/Client resilience           | `@bliatun-code` (library-sync gate owner)     | The loopback-TCP Rust gate and installed-candidate Host/Client gate pass with zero failures using separate processes and separate synthetic Host and Client databases. They must pair, route writes only to the Host, retain a same-ID Client shadow at 333 g, cache the Host result, fail closed while offline without reading or writing the Client's unrelated local library, recover the same authority after Host restart, renew the session, clear device credentials, and leave the Host at 760 g without mutating the Client shadow.                                      | `cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture` and `npm run smoke:release:packaged-host-client-e2e -- --executable=... --work-dir=... --log-dir=...`   | `npm run verify` plus the packaged DMG/MSI Host-Client gate in required macOS and Windows jobs                                         |
+| Host/Client resilience           | `@bliatun-code` (library-sync gate owner)     | The loopback-TCP Rust gate and installed-candidate Host/Client gate pass with zero failures using separate processes and separate synthetic Host and Client databases. They must pair, route writes only to the Host, retain a same-ID Client shadow at 333 g, cache the Host result, fail closed while offline without reading or writing the Client's unrelated local library, recover the same authority after Host restart, renew the session, clear device credentials, and leave the Host at 760 g without mutating the Client shadow. Catalog jobs must recover one committed import and interrupt one unfinished job after restart, with no Client-local import.                                      | `cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture` and `npm run smoke:release:packaged-host-client-e2e -- --executable=... --work-dir=... --log-dir=...`   | `npm run verify` plus the packaged DMG/MSI Host-Client gate in required macOS and Windows jobs                                         |
 | Client/Companion workflow parity | `@bliatun-code` (workflow gate owner)         | The five fixed workflows—register, find, load, lend and receive an on-order item—must pass with exact record counts and relationships. Client operations use a real loopback Host process, leave Client-local spool and history rows unchanged and refresh target-scoped caches. Companion uses its rendered browser UI against a temporary synthetic database and verifies persisted SQLite state after reload.                                                                                                                                                                  | `cargo test -p bambu-filament-manager library_sync_resilience_tests -- --nocapture` and `npm run qa:visual:companion:data-e2e -- --startup-timeout-ms 120000`                               | Client coverage is part of `npm run verify` on macOS and Windows; the rendered Companion gate is a dedicated `macOS Smoke` step        |
 | Backup and database upgrade      | `@bliatun-code` (data and release gate owner) | Backup validation and restore tests pass with zero failures; SQLite `quick_check` is `ok`, `foreign_key_check` is empty, unsupported future schemas are rejected before mutation, and device-local credentials never enter portable backups. The historical upgrade smoke must reach the current schema on two consecutive launches without changing protected business data. The installed DMG and MSI must pass the mutating spool/loan/printer/full-backup E2E across a restart. Published migrations and the schema-0 baseline remain byte-identical to their pinned release. | `cargo test`, `npm run check:database-migrations -- --verify-published-reference`, `npm run smoke:release:database-upgrade -- ...`, and `npm run smoke:release:packaged-desktop-e2e -- ...` | `Database Migration Integrity`, `npm run verify`, plus the database-upgrade and mutating packaged-app smokes in required platform jobs |
 | Accessibility                    | `@bliatun-code` (accessibility gate owner)    | All six data-backed main pages have zero axe violations for WCAG 2.0 A/AA, 2.1 A/AA, and 2.2 AA and emit zero browser errors. The shared modal passes keyboard focus, Escape/focus return, and 200% zoom without page-level horizontal overflow.                                                                                                                                                                                                                                                                                                                                  | `npm run test:a11y:app-modal` and `npm run test:a11y:data-backed`                                                                                                                           | `npm run verify` on macOS and Windows                                                                                                  |
@@ -36,6 +36,17 @@ same pull request:
 4. approval from the named performance gate owner.
 
 ## Host/Client resilience authority
+
+The catalog-job gate covers durable request identity, one active refresh across
+entry points, replay after a lost response, responsive authenticated status
+during fetch, and ordinary server restart retaining the same worker. It also
+requires stale-authority rejection before import, atomic rollback on a failed
+success receipt, explicit interruption after process/worker loss, and safe
+UI recovery without another POST. Both a previous Host with no job capability
+and late A→B→A results must be rejected. Job receipts must stay outside portable
+backups, and schema 0–5 upgrades must retain existing rows and relationships.
+Focused checks are `cargo test catalog_refresh_jobs` and the UI
+`catalog_refresh_jobs.test.ts` suite; these also run in the full local gate.
 
 `src-tauri/src/library_sync_resilience_tests.rs` is the Rust transport and
 authority gate. The Client test starts a separate Host operating-system process
@@ -64,6 +75,19 @@ result. The operation lock belongs to the application shell instead of the
 Settings route, so navigation away and back cannot reset it, start a second
 supplier request or let progress and feedback cross from Host A into Host B.
 
+Routine Trusted-LAN restarts and rebinds must drain accepted requests before
+starting the replacement listener. The lifecycle regression gate holds an
+authenticated POST open over real loopback TCP beyond the three-second app-exit
+grace period, requires restart to remain pending, then verifies a successful
+response and exactly one persisted weight/history mutation. Separate tests
+require bounded app shutdown both directly and while a restart owns the
+reconciliation gate, and cancellation must not detach the owned server task.
+The native advertisement keeps its five-second app-exit grace period; routine
+teardown waits for completion. These tests run in `npm run verify`; the focused
+command is `cargo test -p bambu-filament-manager companion_server_lifecycle_tests`.
+They do not establish cancellation of accepted connection tasks or already
+running blocking work; actual process exit remains the final shutdown bound.
+
 A second scenario uses the same real transport boundary to register exactly one
 Host spool, find it from Host data, assign it to the requested slot without
 changing a sentinel assignment, create exactly one outbound loan and receive a
@@ -84,6 +108,22 @@ cleanup launch proves credential deletion is idempotent. Closed SQLite files
 must contain exactly three Host history rows (`CREATED` plus two
 `WEIGHT_UPDATED`) and one Client history row (`CREATED`), with no plaintext
 authentication metadata.
+
+The installed Host/Client scenario also starts catalog refreshes through the
+ordinary Client commands and authenticated job routes. Only a fully validated
+private Host test activation may substitute the two synthetic source responses;
+admission, authority checks, import transactions and receipt persistence remain
+the production implementation. The Client requires one completed Bambu PLA job,
+an identical receipt on replay, and one eSUN PETG job held outside all locks.
+It rejects a competing start and proves status fails while the Host is offline.
+After both application processes restart, read-only status must return the
+original successful receipt and mark the unfinished job interrupted. Final
+SQLite inspection requires exactly those two receipts, one synthetic Host
+catalog row and no catalog job or synthetic import in the Client library.
+Both DMG and MSI runners require these counts in the sanitized summary.
+Windows uses a separate private WebView2 profile per phase, so the process
+restart check proves Host receipt persistence; renderer storage recovery has
+separate controller coverage.
 
 The runner keeps the one-time pairing URL, raw databases and coordination files
 inside an owner-only work directory. It deletes that directory only after every

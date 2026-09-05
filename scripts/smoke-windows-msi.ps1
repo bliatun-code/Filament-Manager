@@ -1036,7 +1036,11 @@ try {
             $packagedHostClientE2eResult.cache_weight_g -ne 760 -or
             $packagedHostClientE2eResult.session_renewed -ne $true -or
             $packagedHostClientE2eResult.auth_cleared -ne $true -or
-            $packagedHostClientE2eResult.auth_cleanup -ne "pass"
+            $packagedHostClientE2eResult.auth_cleanup -ne "pass" -or
+            $packagedHostClientE2eResult.catalog_jobs.succeeded -ne 1 -or
+            $packagedHostClientE2eResult.catalog_jobs.interrupted -ne 1 -or
+            $packagedHostClientE2eResult.catalog_jobs.imported -ne 1 -or
+            $packagedHostClientE2eResult.catalog_jobs.client_jobs -ne 0
         ) {
             throw "Packaged Host-Client mutating E2E summary is not a passing authority-isolation result."
         }

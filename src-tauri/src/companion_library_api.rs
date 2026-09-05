@@ -8,10 +8,10 @@ use crate::companion_http::require_allowed_host;
 use crate::companion_models::{
     CatalogListQuery, CompanionHealthResponse, CompanionLibrarySnapshotResponse,
     CompanionPrinterSettingsResponse, FilamentConsumptionQuery, LoanListQuery, PaginationQuery,
-    FILAMENT_PRICE_STANDARDS_CAPABILITY, INVENTORY_BULK_MUTATION_CAPABILITY,
-    INVENTORY_LOCATIONS_CAPABILITY, LOAN_METADATA_CAPABILITY, PURCHASE_RECEIPT_METADATA_CAPABILITY,
-    SPOOL_COMMON_DETAILS_V2_CAPABILITY, STATISTICS_VALUE_COST_REPORT_CAPABILITY,
-    VENDOR_CATALOG_DISCOVERY_CAPABILITY,
+    CATALOG_REFRESH_JOBS_CAPABILITY, FILAMENT_PRICE_STANDARDS_CAPABILITY,
+    INVENTORY_BULK_MUTATION_CAPABILITY, INVENTORY_LOCATIONS_CAPABILITY, LOAN_METADATA_CAPABILITY,
+    PURCHASE_RECEIPT_METADATA_CAPABILITY, SPOOL_COMMON_DETAILS_V2_CAPABILITY,
+    STATISTICS_VALUE_COST_REPORT_CAPABILITY, VENDOR_CATALOG_DISCOVERY_CAPABILITY,
 };
 use crate::companion_state::CompanionApiState;
 use crate::library_sync_models::{
@@ -42,6 +42,7 @@ pub(super) async fn handle_health(
                     STATISTICS_VALUE_COST_REPORT_CAPABILITY,
                     FILAMENT_PRICE_STANDARDS_CAPABILITY,
                     VENDOR_CATALOG_DISCOVERY_CAPABILITY,
+                    CATALOG_REFRESH_JOBS_CAPABILITY,
                 ],
                 auth_mode: state.runtime.auth_mode().to_string(),
                 access_mode: "trusted-lan",

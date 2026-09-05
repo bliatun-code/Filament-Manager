@@ -260,6 +260,7 @@ pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
 pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
 pub(crate) const VENDOR_CATALOG_DISCOVERY_CAPABILITY: &str = "vendor-catalog-discovery-v1";
+pub(crate) const CATALOG_REFRESH_JOBS_CAPABILITY: &str = "catalog-refresh-jobs-v1";
 
 #[derive(Serialize)]
 pub(crate) struct CompanionLibrarySnapshotResponse {

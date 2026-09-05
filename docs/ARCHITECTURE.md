@@ -73,6 +73,14 @@ as macOS Dock Quit, forced quit, logout, shutdown, or process kill can still
 bypass asynchronous cleanup; committed SQLite transactions remain durable and
 the OS closes process sockets.
 
+Routine Companion restarts and network rebinds stop accepting connections and
+wait for accepted requests to complete before starting a replacement listener.
+An app-shutdown signal also reaches a restart already holding the reconciliation
+gate, switching that drain to the existing bounded exit policy. The draining
+server task remains owned and is aborted if its reconciliation is cancelled.
+Native advertisement teardown likewise waits during ordinary restart and is
+bounded during app exit; a running blocking teardown cannot be cancelled.
+
 Single-instance handling restores and focuses the existing main window. This
 prevents a hidden second process from competing for SQLite, the Companion port,
 or the stable mDNS name. Companion reconciliation, the LAN watcher, and Bambu
@@ -238,6 +246,25 @@ native window lifecycle, or the packaging environment. A later packaged
 multiprocess gate must exercise those remaining boundaries.
 
 ## Data Consistency And Request Responsiveness
+
+Catalog refresh uses a Host-owned job coordinator shared by local commands and
+authenticated Companion routes, including the legacy synchronous adapters.
+Schema 6 stores the normalized request, authority identity, process owner and
+terminal result. An immediate transaction admits at most one running job per
+library; replaying an ID returns that receipt and a changed payload is rejected.
+The worker survives request cancellation and ordinary server restart. Vendor
+network work runs outside the credential/authority gate. The worker reacquires
+that gate and validates its original library, target generation and credential
+profile before atomically importing catalog rows and recording success.
+
+Read-only job status recovers orphaned process owners and workers that have
+finished without recording a terminal failure. A process-local registry tracks
+live workers by canonical database path, job ID and unique registration token.
+Catalog reset interrupts running jobs; full reset/restore clears the operational
+ledger, which is excluded from portable backups. Neither recovery nor the UI
+automatically resubmits an interrupted or missing ID. The UI persists a request
+before starting it, follows authoritative status across route/window reloads,
+and fences late updates by the exact source identity and target generation.
 
 `InventoryEngine` is the transaction boundary for user-visible inventory
 changes. A command that changes a spool, related locations or loans, weight

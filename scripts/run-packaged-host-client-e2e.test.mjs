@@ -20,6 +20,10 @@ import path from "node:path";
 import test from "node:test";
 
 import Database from "better-sqlite3";
+import {
+  EXPECTED_PACKAGED_CATALOG_JOBS,
+  validatePackagedCatalogJobSummary,
+} from "./packaged-catalog-job-evidence.mjs";
 
 import {
   PACKAGED_HOST_CLIENT_CREDENTIAL_CLEANUP_SUMMARY_FORMAT,
@@ -53,6 +57,7 @@ import {
 
 const LIBRARY_ID = "packaged_host_client_e2e_library";
 const SPOOL_ID = "packaged_host_client_e2e_spool";
+const CATALOG_RUN_ID = "packaged-catalog-test-run";
 
 function temporaryRoot(label) {
   const directory = mkdtempSync(
@@ -410,12 +415,33 @@ function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
     );
     CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE printers (id TEXT PRIMARY KEY, access_token TEXT);
+    CREATE TABLE catalog_refresh_jobs (
+      job_id TEXT PRIMARY KEY, vendor TEXT, material TEXT, status TEXT,
+      started_at TEXT, finished_at TEXT, result_json TEXT, error TEXT
+    );
+    CREATE TABLE filament_master_list (
+      vendor TEXT, material TEXT, filament_name TEXT, color_name TEXT,
+      hex_color TEXT, default_weight INTEGER, product_url TEXT
+    );
   `;
   const host = new Database(hostPath);
   const client = new Database(clientPath);
   try {
     host.exec(schema);
     client.exec(schema);
+    host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+      `${CATALOG_RUN_ID}-catalog-complete`, "Bambu", "PLA", "SUCCEEDED",
+      "2026-09-05T12:00:00Z", "2026-09-05T12:00:01Z",
+      JSON.stringify({ imported: 1, reactivated_count: 0, discontinued_count: 0 }), null,
+    );
+    host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+      `${CATALOG_RUN_ID}-catalog-interrupt`, "eSUN", "PETG", "INTERRUPTED",
+      "2026-09-05T12:00:02Z", "2026-09-05T12:00:03Z", null, "Process interrupted.",
+    );
+    host.prepare("INSERT INTO filament_master_list VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+      "Bambu", "PLA", "Packaged catalog job QA", "QA blue", "#1A73E8", 1000,
+      "https://example.invalid/packaged-catalog-job",
+    );
     host
       .prepare("INSERT INTO filament_spools VALUES (?, 760, 760)")
       .run(SPOOL_ID);
@@ -881,7 +907,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
   try {
     createAuthorityDatabases(hostPath, clientPath);
     const result = inspectPackagedHostClientDatabases(
-      { hostDatabasePath: hostPath, clientDatabasePath: clientPath },
+      { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
       { targetGeneration: 7, port: 45_123 },
     );
     assert.deepEqual(
@@ -903,6 +929,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
       },
     );
 
+    assert.deepEqual(result.catalogJobs, EXPECTED_PACKAGED_CATALOG_JOBS);
     const client = new Database(clientPath);
     try {
       client
@@ -914,7 +941,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
     assert.throws(
       () =>
         inspectPackagedHostClientDatabases(
-          { hostDatabasePath: hostPath, clientDatabasePath: clientPath },
+          { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
           { targetGeneration: 7, port: 45_123 },
         ),
       /authentication metadata/,
@@ -944,6 +971,44 @@ test("closed databases preserve Host authority, Client shadow and exact historie
   }
 });
 
+test("catalog evidence rejects partial imports, stale receipts and Client fallback", () => {
+  const corruptions = [
+    ["host", "DELETE FROM catalog_refresh_jobs WHERE status = 'SUCCEEDED'", /receipts/],
+    ["host", "UPDATE catalog_refresh_jobs SET job_id = 'other-run' WHERE status = 'SUCCEEDED'", /receipts/],
+    ["host", "UPDATE catalog_refresh_jobs SET status = 'RUNNING' WHERE status = 'INTERRUPTED'", /receipts/],
+    ["host", "UPDATE catalog_refresh_jobs SET result_json = '{\"imported\":2}' WHERE status = 'SUCCEEDED'", /import result/],
+    ["host", "DELETE FROM filament_master_list", /exactly one synthetic/],
+    ["host", "INSERT INTO filament_master_list SELECT * FROM filament_master_list", /exactly one synthetic/],
+    ["host", "UPDATE filament_master_list SET product_url = 'https://example.invalid/wrong'", /exactly one synthetic/],
+    ["client", "INSERT INTO catalog_refresh_jobs (job_id) VALUES ('local-fallback')", /Client local library/],
+    ["client", "INSERT INTO filament_master_list (filament_name) VALUES ('Packaged catalog job QA')", /Client local library/],
+  ];
+  for (const [role, sql, error] of corruptions) {
+    const root = temporaryRoot("catalog-evidence");
+    const hostPath = path.join(root, "host.db");
+    const clientPath = path.join(root, "client.db");
+    try {
+      createAuthorityDatabases(hostPath, clientPath);
+      const database = new Database(role === "host" ? hostPath : clientPath);
+      try { database.exec(sql); } finally { database.close(); }
+      assert.throws(() => inspectPackagedHostClientDatabases(
+        { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
+        { targetGeneration: 7, port: 45_123 },
+      ), error, sql);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  }
+});
+
+test("catalog summary requires exact counts and rejects unexpected data", () => {
+  assert.doesNotThrow(() => validatePackagedCatalogJobSummary(EXPECTED_PACKAGED_CATALOG_JOBS));
+  for (const value of [undefined, {}, { ...EXPECTED_PACKAGED_CATALOG_JOBS, interrupted: 0 },
+    { ...EXPECTED_PACKAGED_CATALOG_JOBS, private_note: "unexpected" }]) {
+    assert.throws(() => validatePackagedCatalogJobSummary(value), /summary is invalid/);
+  }
+});
+
 test("database inspection closes every resource across open and close failures", () => {
   const root = temporaryRoot("database-resource-cleanup");
   const hostPath = path.join(root, "host.db");
@@ -953,7 +1018,7 @@ test("database inspection closes every resource across open and close failures",
     assert.throws(
       () =>
         inspectPackagedHostClientDatabases(
-          { hostDatabasePath: hostPath, clientDatabasePath: clientPath },
+          { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
           { targetGeneration: 7, port: 45_123 },
           (databasePath) => {
             if (databasePath === hostPath) {
@@ -970,7 +1035,7 @@ test("database inspection closes every resource across open and close failures",
     assert.throws(
       () =>
         inspectPackagedHostClientDatabases(
-          { hostDatabasePath: hostPath, clientDatabasePath: clientPath },
+          { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
           { targetGeneration: 7, port: 45_123 },
           (databasePath) =>
             databasePath === hostPath
@@ -1410,6 +1475,7 @@ test("orchestrator runs both generations, offline proof and unconditional cleanu
           clientHistoryCount: 1,
           cacheSettingCount: 1,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         };
       },
     });
@@ -1425,6 +1491,7 @@ test("orchestrator runs both generations, offline proof and unconditional cleanu
       "client:cleanup:45123",
     ]);
     assert.equal(result.status, "pass");
+    assert.deepEqual(result.catalog_jobs, EXPECTED_PACKAGED_CATALOG_JOBS);
     assert.equal(result.auth_cleanup, "pass");
     assert.equal(result.phases.at(-1), "client-cleanup");
     assert.equal(existsSync(options.workDirectory), false);
@@ -1517,6 +1584,7 @@ test("orchestrator retries only OS-classified Host port collisions and clears ev
         clientHistoryCount: 1,
         cacheSettingCount: 1,
         authSettingCount: 0,
+        catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
       }),
     });
     assert.deepEqual(calls, [
@@ -1535,6 +1603,7 @@ test("orchestrator retries only OS-classified Host port collisions and clears ev
       "client:cleanup:45124",
     ]);
     assert.equal(result.status, "pass");
+    assert.deepEqual(result.catalog_jobs, EXPECTED_PACKAGED_CATALOG_JOBS);
   } finally {
     rmSync(root, { force: true, recursive: true });
   }
@@ -1663,6 +1732,7 @@ test("orchestrator retains private work when the sanitized summary cannot be wri
             clientHistoryCount: 1,
             cacheSettingCount: 1,
             authSettingCount: 0,
+            catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
           };
         },
       }),
@@ -1929,6 +1999,7 @@ test("cleanup-phase unconfirmed termination retains private work", async () => {
           clientHistoryCount: 1,
           cacheSettingCount: 1,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
       }),
       /Synthetic Client cleanup termination was not confirmed/,
@@ -1981,6 +2052,7 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
           clientHistoryCount: 1,
           cacheSettingCount: 1,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
         removeWork: () => {
           throw Object.assign(new Error("synthetic main work removal failure"), {
@@ -2008,6 +2080,7 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
         inspectCredentials: () => ({
           clientSchemaVersion: 21,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
       },
     );
@@ -2052,6 +2125,7 @@ test("credential cleanup resume reuses the identity-bound original port", async 
         inspectCredentials: () => ({
           clientSchemaVersion: 21,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
       },
     );
@@ -2115,6 +2189,7 @@ test("credential cleanup resume retains work on failure and can retry", async ()
         inspectCredentials: () => ({
           clientSchemaVersion: 21,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
       },
     );
@@ -2137,6 +2212,7 @@ test("credential cleanup resume recovers after private work removal fails", asyn
           inspectCredentials: () => ({
             clientSchemaVersion: 21,
             authSettingCount: 0,
+            catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
           }),
           removeWork: () => {
             throw new Error("synthetic retained-work removal failure");
@@ -2166,6 +2242,7 @@ test("credential cleanup resume recovers after private work removal fails", asyn
         inspectCredentials: () => ({
           clientSchemaVersion: 21,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
       },
     );
@@ -2217,6 +2294,7 @@ test("credential cleanup resume tolerates only the known summary directory block
         inspectCredentials: () => ({
           clientSchemaVersion: 21,
           authSettingCount: 0,
+          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
         }),
       },
     );
