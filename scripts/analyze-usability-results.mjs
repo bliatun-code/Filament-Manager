@@ -134,6 +134,7 @@ export function analyzeUsabilityResults(records) {
       return [
         task,
         {
+          matchedPairCount: taskDurations[task].baseline.length,
           baselineMedianMs: baseline,
           candidateMedianMs: candidate,
           improvementRate:
@@ -177,10 +178,12 @@ function percentage(value) {
 function printAnalysis(analysis) {
   console.log(`Participants: ${analysis.participantCount} (minimum ${MIN_PARTICIPANTS})`);
   console.log(`Candidate unassisted completion: ${percentage(analysis.overallSuccessRate)}`);
+  console.log(`Matched timing pairs: ${analysis.matchedPairCount}`);
   for (const task of USABILITY_TASKS) {
     console.log(
       `  ${task}: ${percentage(analysis.perTask[task].successRate)} · ` +
-        `median improvement ${percentage(analysis.timingByTask[task].improvementRate)}`,
+        `median improvement ${percentage(analysis.timingByTask[task].improvementRate)} · ` +
+        `matched timing pairs ${analysis.timingByTask[task].matchedPairCount}`,
     );
   }
   console.log(
