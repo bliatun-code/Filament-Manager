@@ -116,7 +116,7 @@ export class CatalogRefreshJobController {
     try {
       this.dependencies.storage.setItem(this.storageKey, JSON.stringify(request));
     } catch (error) {
-      this.publish({ ...this.state, request, error: String(error) });
+      this.publish({ busy: false, uncertain: false, job: null, request, error: String(error) });
       return false;
     }
     this.revision += 1;

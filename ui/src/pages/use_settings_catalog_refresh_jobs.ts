@@ -33,10 +33,13 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
   const callbacks = useRef(input);
   const controllerRef = useRef<CatalogRefreshJobController | null>(null);
   const identity = catalogRefreshJobSessionIdentity(input.target);
+  const targetResolved = input.target.clientTargetGeneration != null;
   useEffect(() => { callbacks.current = input; });
 
   useEffect(() => {
-    if (!input.tauri) return;
+    // Settings starts with no target while its saved role loads on every mount.
+    // Keep the app-owned session and any in-flight start until that load resolves.
+    if (!input.tauri || !targetResolved) return;
     const controller = observeCatalogRefreshJobSession(
       input.target,
       (busy) => input.setCatalogRefreshBusy(busy),
@@ -86,9 +89,12 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
           return;
         }
       }
-      if (state.error && state.error !== seenError) {
-        seenError = state.error;
-        current.failCatalogRefreshResult(state.error);
+      // A later idle poll can fail after this job already has a receipt.
+      // That transport error cannot change the recorded outcome of the job.
+      const error = job && job.status !== "RUNNING" ? job.error : state.error;
+      if (error && error !== seenError) {
+        seenError = error;
+        current.failCatalogRefreshResult(error);
         current.setError(buildSettingsCatalogRefreshFallbackErrorMessage(
           request.vendor, current.settingsCatalogRefreshMessageLabels(),
         ));
@@ -103,7 +109,7 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
     // A session is bound to the exact Host generation. Other callbacks are
     // read through the ref so routine settings reloads do not restart polling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [identity, input.tauri]);
+  }, [identity, targetResolved, input.tauri]);
 
   const startCatalogRefreshJob = useCallback(async (
     vendor: SettingsCatalogVendor,
