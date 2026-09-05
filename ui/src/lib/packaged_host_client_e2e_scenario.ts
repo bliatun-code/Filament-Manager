@@ -26,6 +26,14 @@ import {
   type PackagedHostClientE2eConfiguration,
   type PackagedHostClientE2eHostWaitInput,
 } from "./tauri_packaged_host_client_e2e_client";
+import {
+  PackagedCatalogJobScenarioError,
+  packagedCatalogJobTransport,
+  pairPackagedCatalogJobs,
+  recoverPackagedCatalogJobs,
+  verifyOfflinePackagedCatalogJobs,
+  type PackagedCatalogJobDependencies,
+} from "./packaged_catalog_refresh_e2e_scenario";
 
 export type {
   PackagedHostClientE2eClientCompletion,
@@ -33,7 +41,7 @@ export type {
   PackagedHostClientE2eConfiguration,
 } from "./tauri_packaged_host_client_e2e_client";
 
-type ScenarioDependencies = {
+type ScenarioDependencies = PackagedCatalogJobDependencies & {
   createManualSpool: typeof createManualSpool;
   listSpools: typeof listSpools;
   getLibrarySyncSettings: typeof getLibrarySyncSettings;
@@ -59,6 +67,7 @@ const HOST_READY_ATTEMPTS = 200;
 const HOST_READY_DELAY_MS = 100;
 
 const defaultDependencies: ScenarioDependencies = {
+  ...packagedCatalogJobTransport,
   createManualSpool,
   listSpools,
   getLibrarySyncSettings,
@@ -113,6 +122,9 @@ async function safeStep<T>(
   } catch (error) {
     if (error instanceof PackagedHostClientE2eScenarioError) {
       throw error;
+    }
+    if (error instanceof PackagedCatalogJobScenarioError) {
+      scenarioFailure(error.step, error.message);
     }
     scenarioFailure(step, safeMessage);
   }
@@ -606,6 +618,9 @@ async function runClientPair(
     config.client_shadow_weight_g,
     "verify-paired-client-shadow",
   );
+  await safeStep("pair-catalog-jobs", "The packaged catalog job sequence failed.", () =>
+    pairPackagedCatalogJobs({ runId: config.run_id, libraryId: config.library_id, baseUrl }, dependencies),
+  );
 
   await dependencies.complete({
     role: "client",
@@ -685,6 +700,9 @@ async function runClientOffline(
     dependencies,
     config.client_shadow_weight_g,
     "verify-offline-client-shadow",
+  );
+  await safeStep("offline-catalog-jobs", "The offline catalog job checks failed.", () =>
+    verifyOfflinePackagedCatalogJobs({ runId: config.run_id, libraryId: config.library_id, baseUrl }, dependencies),
   );
   await dependencies.complete({
     role: "client",
@@ -782,6 +800,9 @@ async function runClientRecover(
     dependencies,
     config.client_shadow_weight_g,
     "verify-recovered-client-shadow",
+  );
+  await safeStep("recover-catalog-jobs", "The catalog job receipts could not be recovered.", () =>
+    recoverPackagedCatalogJobs({ runId: config.run_id, libraryId: config.library_id, baseUrl }, dependencies),
   );
 
   const cleared = await safeStep(

@@ -21,6 +21,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
+import {
+  inspectPackagedCatalogJobs,
+  validatePackagedCatalogJobSummary,
+} from "./packaged-catalog-job-evidence.mjs";
 
 import {
   preparePrivateQaArtifactDirectory,
@@ -495,7 +499,10 @@ function validatePriorRunSummary(logDirectory, runId) {
   }
   const summary = readBoundedJson(summaryPath, "Prior QA summary");
   if (summary?.status === "pass") {
-    exactKeys(summary, MAIN_PASS_SUMMARY_KEYS, "Prior QA summary");
+    // Earlier retained runs predate catalog jobs and must still permit cleanup.
+    const hasCatalogJobs = Object.hasOwn(summary, "catalog_jobs");
+    exactKeys(summary, hasCatalogJobs ? [...MAIN_PASS_SUMMARY_KEYS, "catalog_jobs"] : MAIN_PASS_SUMMARY_KEYS, "Prior QA summary");
+    if (hasCatalogJobs) validatePackagedCatalogJobSummary(summary.catalog_jobs);
     const expectedPhases = [
       "host-generation-1",
       "client-pair",
@@ -1683,7 +1690,7 @@ export function inspectPackagedClientCredentialAbsence(
 }
 
 export function inspectPackagedHostClientDatabases(
-  { hostDatabasePath, clientDatabasePath, sensitiveValues = [] },
+  { hostDatabasePath, clientDatabasePath, sensitiveValues = [], runId },
   { targetGeneration, port },
   databaseFactory = (databasePath, options) =>
     new Database(databasePath, options),
@@ -1845,8 +1852,10 @@ export function inspectPackagedHostClientDatabases(
     }
     inspectCredentialAbsence(host, "Host database");
     inspectCredentialAbsence(client, "Client database");
+    const catalogJobs = inspectPackagedCatalogJobs(host, client, runId);
 
     return {
+      catalogJobs,
       hostSchemaVersion,
       clientSchemaVersion,
       hostWeightG: hostSpool.current_weight_g,
@@ -2306,6 +2315,7 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
       targetGeneration,
       port: selectedPort,
     });
+    validatePackagedCatalogJobSummary(databaseState.catalogJobs);
     summary = {
       format: PACKAGED_HOST_CLIENT_SUMMARY_FORMAT,
       status: "pass",
@@ -2329,6 +2339,7 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
       client_history_count: databaseState.clientHistoryCount,
       cache_setting_count: databaseState.cacheSettingCount,
       auth_setting_count: databaseState.authSettingCount,
+      catalog_jobs: databaseState.catalogJobs,
       session_renewed: recover.session_renewed,
       auth_cleared: recover.auth_cleared,
       auth_cleanup: cleanupStatus,

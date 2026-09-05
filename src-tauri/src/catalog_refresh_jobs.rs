@@ -135,6 +135,21 @@ pub(crate) fn start_job(
     input: CatalogRefreshJobInput,
 ) -> Result<CatalogRefreshJobSnapshot, String> {
     start_job_with(service, input, |execution, job| {
+        if let Some(result) = crate::packaged_host_client_e2e::run_catalog_job(
+            execution.service.database_path(),
+            job,
+            |started_at, entries| {
+                execution.import(
+                    &job.vendor,
+                    &job.material,
+                    started_at,
+                    entries,
+                    crate::packaged_host_client_e2e::catalog_job_summary,
+                )
+            },
+        )? {
+            return Ok(result);
+        }
         let material = Some(vec![job.material.clone()]);
         if job.vendor == "Bambu" {
             refresh_bambu_catalog_blocking(

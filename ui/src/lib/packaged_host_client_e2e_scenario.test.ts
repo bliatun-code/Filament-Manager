@@ -9,6 +9,7 @@ import {
 } from "./packaged_host_client_e2e_scenario";
 import type { SpoolWithMasterRow } from "./tauri_inventory_client";
 import type { LibrarySyncSettings } from "./tauri_library_sync_client";
+import type { CatalogRefreshJobSnapshot } from "./tauri_catalog_client";
 
 type ScenarioDependencies = NonNullable<
   Parameters<typeof runPackagedHostClientE2eScenario>[1]
@@ -84,6 +85,8 @@ function unusedDependencies(): ScenarioDependencies {
     saveLibrarySyncSpoolCache: unexpected,
     fetchCachedLibrarySyncSpools: unexpected,
     updateLibrarySyncHostSpoolWeight: unexpected,
+    startLibrarySyncHostCatalogRefreshJob: unexpected,
+    getLibrarySyncHostCatalogRefreshJob: unexpected,
     clearLibrarySyncClientAuth: unexpected,
     hostReadyAndWaitForStop: unexpected,
     complete: unexpected,
@@ -328,6 +331,8 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
   let cachedRows: SpoolWithMasterRow[] | null = null;
   let online = true;
   const targetGeneration = 7;
+  const catalogJobs = new Map<string, CatalogRefreshJobSnapshot>();
+  let catalogStarts = 0;
   const dependencies: ScenarioDependencies = {
     ...unusedDependencies(),
     async createManualSpool(input) {
@@ -384,6 +389,34 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       currentSettings = { ...currentSettings, client_auth_paired: false };
       return currentSettings;
     },
+    async startLibrarySyncHostCatalogRefreshJob(baseUrl, libraryId, input) {
+      assert.equal(baseUrl, baseConfiguration.base_url);
+      assert.equal(libraryId, baseConfiguration.library_id);
+      assert.equal(online, true);
+      catalogStarts += 1;
+      const existing = catalogJobs.get(input.job_id);
+      if (existing) return structuredClone(existing);
+      if ([...catalogJobs.values()].some((job) => job.status === "RUNNING")) {
+        throw new Error("Catalog job already running");
+      }
+      const job: CatalogRefreshJobSnapshot = {
+        ...input, status: input.vendor === "Bambu" ? "SUCCEEDED" : "RUNNING",
+        started_at: "2026-09-05T10:00:00Z",
+        finished_at: input.vendor === "Bambu" ? "2026-09-05T10:00:01Z" : null,
+        result: input.vendor === "Bambu" ? { imported: 1, reactivated_count: 0, discontinued_count: 0, output: "Synthetic catalog import" } : null,
+        error: null,
+      };
+      catalogJobs.set(job.job_id, job);
+      return structuredClone(job);
+    },
+    async getLibrarySyncHostCatalogRefreshJob(baseUrl, libraryId, jobId) {
+      assert.equal(baseUrl, baseConfiguration.base_url);
+      assert.equal(libraryId, baseConfiguration.library_id);
+      if (!online) throw new Error("Host unavailable with private route details");
+      return structuredClone(jobId === null
+        ? [...catalogJobs.values()].find((job) => job.status === "RUNNING") ?? null
+        : catalogJobs.get(jobId) ?? null);
+    },
     async complete(input) {
       completions.push(input);
     },
@@ -401,6 +434,13 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
     dependencies,
   );
   online = true;
+  for (const job of catalogJobs.values()) {
+    if (job.status === "RUNNING") {
+      job.status = "INTERRUPTED";
+      job.finished_at = "2026-09-05T10:00:02Z";
+      job.error = "The Host process stopped before the job completed.";
+    }
+  }
   await runPackagedHostClientE2eScenario(
     {
       ...baseConfiguration,
@@ -464,6 +504,8 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
   assert.equal(localWeight, 333);
   assert.equal(hostWeight, 760);
   assert.equal(currentSettings.client_auth_paired, false);
+  assert.equal(catalogJobs.size, 2);
+  assert.equal(catalogStarts, 5, "recovery and offline checks never start another job");
 });
 
 test("packaged Client cleanup is Host-independent and verifies unpaired state", async () => {

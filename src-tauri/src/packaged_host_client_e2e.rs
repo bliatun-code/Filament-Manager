@@ -9,6 +9,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+#[path = "packaged_host_client_catalog_jobs.rs"]
+mod catalog_jobs;
+pub(crate) use catalog_jobs::{catalog_job_summary, run_catalog_job};
+
 const ENABLED_ENV_VAR: &str = "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E";
 const ROLE_ENV_VAR: &str = "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E_ROLE";
 const PHASE_ENV_VAR: &str = "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E_PHASE";
@@ -1210,7 +1214,7 @@ mod tests {
 
     static FIXTURE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-    fn private_fixture(role: &str, phase: &str) -> (PathBuf, String, RawConfiguration) {
+    pub(super) fn private_fixture(role: &str, phase: &str) -> (PathBuf, String, RawConfiguration) {
         let fixture_sequence = FIXTURE_COUNTER.fetch_add(1, Ordering::Relaxed);
         let run_id = format!(
             "host-client-e2e-{}-{}-{fixture_sequence}",
