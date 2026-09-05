@@ -15,8 +15,10 @@ mod bambu_mqtt;
 mod bambu_printer_discovery;
 mod bambu_thermal;
 mod catalog_commands;
+mod catalog_refresh_jobs;
 mod companion_api;
 mod companion_assets;
+mod companion_catalog_job_api;
 mod companion_error;
 mod companion_http;
 mod companion_inventory_bulk_write_api;
@@ -56,6 +58,7 @@ mod library_revision_commands;
 mod library_sync_blocking_executor;
 mod library_sync_cache_commands;
 mod library_sync_cache_refresh;
+mod library_sync_catalog_job_commands;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
@@ -372,6 +375,10 @@ fn main() {
             trusted_lan_browser_revoke_all_commands::revoke_all_trusted_lan_paired_browsers,
             inventory_read_commands::list_master_catalog,
             catalog_commands::refresh_bambu_catalog,
+            catalog_refresh_jobs::start_catalog_refresh_job,
+            catalog_refresh_jobs::get_catalog_refresh_job,
+            library_sync_catalog_job_commands::start_library_sync_host_catalog_refresh_job,
+            library_sync_catalog_job_commands::get_library_sync_host_catalog_refresh_job,
             catalog_commands::refresh_esun_catalog,
             catalog_commands::audit_bambu_catalog_source,
             catalog_commands::audit_esun_catalog_source,

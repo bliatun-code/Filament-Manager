@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 
 import {
   PREVIOUS_RELEASE_COMMIT,
@@ -13,7 +14,7 @@ import {
   verifyPreviousReleaseUpgradeFixture,
 } from "./prepare-previous-release-upgrade-fixture.mjs";
 
-const SAME_SCHEMA_MIGRATIONS = [
+const PREVIOUS_RELEASE_MIGRATIONS = [
   ["004_inventory_location_objects.sql", 2, 3],
   ["005_purchase_receipt_metadata.sql", 3, 4],
   ["006_filament_price_standards.sql", 4, 5],
@@ -46,7 +47,7 @@ test("previous-release fixture paths are explicit, distinct and no-replace", () 
 });
 
 test(
-  "v0.28 fixture is sanitized, provenance-bound and gates same-schema compatibility",
+  "v0.28 fixture is sanitized, provenance-bound and gates the current schema upgrade",
   { skip: process.platform === "win32" },
   async () => {
     const directory = mkdtempSync(
@@ -65,9 +66,8 @@ test(
           inspectSource: () => ({
             generatorPath: path.resolve("scripts/create-visual-qa-fixture.mjs"),
             schemaVersion: PREVIOUS_RELEASE_SCHEMA_VERSION,
-            structuralMigrations: SAME_SCHEMA_MIGRATIONS,
+            structuralMigrations: PREVIOUS_RELEASE_MIGRATIONS,
           }),
-          readCurrentSchemaVersion: () => 5,
         },
       );
       assert.equal(result.manifest.sourceRelease, PREVIOUS_RELEASE_REF);
@@ -76,9 +76,10 @@ test(
         result.manifest.sourceSchemaVersion,
         PREVIOUS_RELEASE_SCHEMA_VERSION,
       );
-      assert.equal(result.manifest.currentSchemaVersion, 5);
-      assert.equal(result.manifest.requiresSchemaMigration, false);
-      assert.equal(result.manifest.gateMode, "same-schema-compatibility");
+      assert.equal(result.manifest.currentSchemaVersion, currentSchemaVersion());
+      assert.ok(currentSchemaVersion() > PREVIOUS_RELEASE_SCHEMA_VERSION);
+      assert.equal(result.manifest.requiresSchemaMigration, true);
+      assert.equal(result.manifest.gateMode, "schema-migration");
       assert.equal(result.manifest.sanitized, true);
       assert.equal(result.manifest.counts.filament_spools, 8);
 

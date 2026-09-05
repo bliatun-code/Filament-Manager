@@ -37,6 +37,17 @@ same pull request:
 
 ## Host/Client resilience authority
 
+The catalog-job gate covers durable request identity, one active refresh across
+entry points, replay after a lost response, responsive authenticated status
+during fetch, and ordinary server restart retaining the same worker. It also
+requires stale-authority rejection before import, atomic rollback on a failed
+success receipt, explicit interruption after process/worker loss, and safe
+UI recovery without another POST. Both a previous Host with no job capability
+and late A→B→A results must be rejected. Job receipts must stay outside portable
+backups, and schema 0–5 upgrades must retain existing rows and relationships.
+Focused checks are `cargo test catalog_refresh_jobs` and the UI
+`catalog_refresh_jobs.test.ts` suite; these also run in the full local gate.
+
 `src-tauri/src/library_sync_resilience_tests.rs` is the Rust transport and
 authority gate. The Client test starts a separate Host operating-system process
 and communicates with it over a real TCP listener. Host and Client use isolated

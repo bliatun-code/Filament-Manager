@@ -1,4 +1,8 @@
 use crate::companion_api::*;
+use crate::companion_catalog_job_api::{
+    handle_active_catalog_refresh_job, handle_get_catalog_refresh_job,
+    handle_start_catalog_refresh_job,
+};
 use crate::companion_http::{
     apply_companion_cache_policy, apply_companion_security_headers, enforce_companion_body_limit,
     enforce_companion_rate_limit, enforce_companion_request_timeout, CompanionHttpSecurity,
@@ -99,6 +103,9 @@ fn build_router_with_security_config(
         .route("/catalog/masters", get(handle_list_catalog_masters))
         .route("/catalog/audit", post(handle_audit_vendor_catalog))
         .route("/catalog/refresh", post(handle_refresh_vendor_catalog))
+        .route("/catalog/refresh-jobs", post(handle_start_catalog_refresh_job))
+        .route("/catalog/refresh-jobs/active", get(handle_active_catalog_refresh_job))
+        .route("/catalog/refresh-jobs/{job_id}", get(handle_get_catalog_refresh_job))
         .route(
             "/catalog/masters/{master_id}/details",
             post(handle_update_master_catalog_entry),

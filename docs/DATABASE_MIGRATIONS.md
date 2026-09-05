@@ -20,7 +20,8 @@ migration.
 - `STRUCTURAL_MIGRATIONS` in
   `src/backend/database_schema_setup.rs` is the authoritative runtime order for
   versioned transitions. It currently contains `003` (schema 1 to 2), `004`
-  (schema 2 to 3), `005` (schema 3 to 4), and `006` (schema 4 to 5).
+  (schema 2 to 3), `005` (schema 3 to 4), `006` (schema 4 to 5), and `007`
+  (schema 5 to 6, durable local catalog refresh jobs).
 - `src/database/migrations/manifest.json` records every numbered SQL file, its
   role and SHA-256. Entries through `publishedThroughSequence` are checked
   against the pinned release tag and commit as well as the working tree.
@@ -34,17 +35,17 @@ structural source lock.
 
 ## Append the next migration
 
-Assume the manifest ends at sequence `006` and schema version 5:
+Assume the manifest ends at sequence `007` and schema version 6:
 
-1. Add `src/database/migrations/007_short_description.sql`. Use the next
+1. Add `src/database/migrations/008_short_description.sql`. Use the next
    sequence exactly once. Do not add `BEGIN`, `COMMIT`, or `PRAGMA user_version`;
    the Rust runner owns the transaction and version update.
-2. Append one `StructuralMigration` row with `from_version: 5` and
-   `to_version: 6`. Never insert or reorder rows in the existing sequence.
+2. Append one `StructuralMigration` row with `from_version: 6` and
+   `to_version: 7`. Never insert or reorder rows in the existing sequence.
 3. Do not edit `src/database/schema.sql` or add new structural DDL to the legacy
    normalization helpers. A clean database reaches the current structure by
    applying the frozen baseline and the same migration sequence as an upgrade.
-4. Append the matching manifest entry, set `currentSchemaVersion` to 6, and
+4. Append the matching manifest entry, set `currentSchemaVersion` to 7, and
    record the lowercase SHA-256 of the exact SQL bytes. Leave
    `publishedThroughSequence` and `publishedReference` unchanged while the
    migration is unreleased.

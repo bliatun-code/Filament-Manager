@@ -167,13 +167,15 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Utform eksplisitt jobb-ID/idempotens og autoritativ Host-status/single-flight på tvers av appvinduer og klienter. Da kan en sjelden webview-/serverrestart eller ekstern konfigurasjonsendring midt i en lang Host-skriving avklares uten tvetydig resultat.
+1. Verifiser den nye katalogjobb-flyten med de pakkede appene på macOS og Windows før neste release.
 2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
 
 ### 2026-09-05
 
+- Katalogoppdateringer bruker nå eksplisitt jobb-ID, en varig Host-eid kvittering og maksimalt én aktiv jobb per bibliotek på tvers av appvinduer, klienter og eldre synkrone endepunkter. Schema 6 legger til en lokal jobbtabell; katalogimport og vellykket resultat committes samlet. Nettverksarbeid holder ikke lenger autoritetslåsen, og gjeldende bibliotek, målgenerasjon og credential-profil valideres på nytt før import. Status henter samme resultat etter et mistet svar og markerer avbrutte prosesser eller avsluttede arbeidere uten terminal kvittering som avbrutt. Klienten lagrer ID før start, følger status etter navigasjon eller vinduslasting og sender aldri importen automatisk på nytt. Dette gjelder Bambu/eSUN-katalogoppdatering; øvrige skriveruter beholder sine eksisterende kontrakter.
+- Katalogjobb-endringen er verifisert lokalt med `npm run smoke`, `npm run test:rust`, kontraktskontroll etter staging og fokuserte jobbtester. Testene dekker konkurrerende starter, gjenhenting etter mistet svar, vanlig serverrestart, foreldet autoritet, atomisk tilbakerulling, avbrutte arbeidere og UI-gjenoppretting. En eldre Host avvises før autentisering eller POST, og den reserverte jobb-ID-en `active` avvises før opptak. Både dev- og release-Clippy passerte. Testene bruker syntetiske biblioteker; CI og pakkede apper på macOS/Windows gjenstår.
 - Rutinemessig restart og ombinding av Trusted-LAN-serveren venter nå på at aksepterte forespørsler fullføres før en ny lytter startes. Appavslutning varsler også en allerede pågående drenering, som da bruker den eksisterende tresekundersfristen for serveroppgaven og femsekundersfristen for native annonseopprydding. Avbrutt avstemming avbryter den eide serveroppgaven i stedet for å etterlate den uten en eier. Aksepterte forbindelser og blokkerende arbeid kan fortsatt leve frem til prosessavslutning; dette innfører ikke jobb-ID, automatisk gjentakelse eller gjenoppretting av et svar etter prosesskrasj.
 - Verifisert lokalt med `npm run smoke`, `npm run test:rust` og fire fokuserte livssyklustester. En autentisert POST over reell loopback-TCP holder omstarten ventende forbi tre sekunder, returnerer et vellykket svar og etterlater nøyaktig én vektendring i historikken før en frisk lytter overtar samme port. Egne tester dekker tidsbegrenset avslutning, avslutning under drenering og avbrutt avstemming. Både dev- og release-Clippy passerte; denne endringen er ennå ikke verifisert i CI eller med pakket app.
 

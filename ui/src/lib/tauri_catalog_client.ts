@@ -64,6 +64,51 @@ export type CatalogRefreshResult = {
   output: string;
 };
 
+export type CatalogRefreshJobSnapshot = {
+  job_id: string;
+  vendor: "Bambu" | "eSUN";
+  material: string;
+  status: "RUNNING" | "SUCCEEDED" | "FAILED" | "INTERRUPTED";
+  started_at: string;
+  finished_at: string | null;
+  result: CatalogRefreshResult | null;
+  error: string | null;
+};
+
+export type StartCatalogRefreshJobInput = {
+  job_id: string;
+  vendor: "Bambu" | "eSUN";
+  material: string;
+};
+
+export async function startCatalogRefreshJob(input: StartCatalogRefreshJobInput) {
+  return invoke<CatalogRefreshJobSnapshot>("start_catalog_refresh_job", { input });
+}
+
+export async function getCatalogRefreshJob(jobId: string | null) {
+  return invoke<CatalogRefreshJobSnapshot | null>("get_catalog_refresh_job", { jobId });
+}
+
+export async function startLibrarySyncHostCatalogRefreshJob(
+  baseUrl: string,
+  expectedLibraryId: string,
+  input: StartCatalogRefreshJobInput,
+) {
+  return invoke<CatalogRefreshJobSnapshot>("start_library_sync_host_catalog_refresh_job", {
+    input: { base_url: baseUrl, expected_library_id: expectedLibraryId, ...input },
+  });
+}
+
+export async function getLibrarySyncHostCatalogRefreshJob(
+  baseUrl: string,
+  expectedLibraryId: string,
+  jobId: string | null,
+) {
+  return invoke<CatalogRefreshJobSnapshot | null>("get_library_sync_host_catalog_refresh_job", {
+    input: { base_url: baseUrl, expected_library_id: expectedLibraryId, job_id: jobId },
+  });
+}
+
 export type CatalogSourceAuditResult = {
   vendor: string;
   detected_store: string;

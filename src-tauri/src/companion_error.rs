@@ -14,6 +14,7 @@ pub(crate) enum CompanionApiError {
     NotFound(String),
     RateLimited(u64),
     RequestTimeout,
+    Conflict,
     ServiceUnavailable(String),
     Internal(String),
 }
@@ -113,6 +114,14 @@ impl IntoResponse for CompanionApiError {
                 "The service is temporarily unavailable.".to_string(),
                 None,
                 Some(retry_after_seconds),
+            ),
+            CompanionApiError::Conflict => (
+                StatusCode::CONFLICT,
+                "common.unavailable",
+                "A catalog refresh is already running or this job ID belongs to another request."
+                    .to_string(),
+                None,
+                None,
             ),
             CompanionApiError::RequestTimeout => (
                 StatusCode::REQUEST_TIMEOUT,

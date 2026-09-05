@@ -1323,9 +1323,10 @@ mod architecture_tests {
             );
         }
         // The allowance includes the dedicated packaged Host-Client module and
-        // its four invoke registrations; production logic still lives outside main.rs.
+        // its four invoke registrations, plus the catalog jobs' three modules and
+        // four invoke registrations; production logic still lives outside main.rs.
         assert!(
-            MAIN_SOURCE.lines().count() <= 855,
+            MAIN_SOURCE.lines().count() <= 862,
             "main.rs should stay focused on application wiring"
         );
     }

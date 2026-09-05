@@ -58,6 +58,12 @@ const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
         sql: include_str!("../database/migrations/006_filament_price_standards.sql"),
         to_version: 5,
     },
+    StructuralMigration {
+        from_version: 5,
+        name: "007_catalog_refresh_jobs.sql",
+        sql: include_str!("../database/migrations/007_catalog_refresh_jobs.sql"),
+        to_version: 6,
+    },
 ];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
@@ -186,7 +192,7 @@ mod tests {
         let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
         assert_eq!(first.name, "003_library_domain_revisions.sql");
         assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
-        assert_eq!(last.name, "006_filament_price_standards.sql");
+        assert_eq!(last.name, "007_catalog_refresh_jobs.sql");
         assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
     }
 
@@ -644,6 +650,64 @@ mod tests {
             database_schema_version(&conn).expect("read upgraded version"),
             CURRENT_SCHEMA_VERSION
         );
+    }
+
+    #[test]
+    fn catalog_job_migration_preserves_every_supported_version_and_reapplies_safely() {
+        for starting_version in 0..CURRENT_SCHEMA_VERSION {
+            let conn =
+                Connection::open_in_memory().expect("open historical job migration database");
+            super::apply_structural_baseline(&conn, CURRENT_SCHEMA_SQL).expect("apply baseline");
+            for migration in STRUCTURAL_MIGRATIONS {
+                if migration.to_version <= starting_version {
+                    conn.execute_batch(migration.sql)
+                        .expect("apply historical migration");
+                }
+            }
+            super::set_schema_version(&conn, starting_version).expect("set historical version");
+            conn.execute_batch(
+                "INSERT INTO filament_master_list (id, material, filament_name, color_name, default_weight, vendor)
+                 VALUES ('preserved-job-master', 'PLA', 'Migration fixture', 'Blue', 1000, 'Manual');
+                 INSERT INTO filament_spools (id, master_id, status, remaining_g)
+                 VALUES ('preserved-job-spool', 'preserved-job-master', 'IN_STOCK', 731);",
+            ).expect("seed historical data");
+            apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade job storage");
+            assert!(table_has_column(&conn, "catalog_refresh_jobs", "result_json").unwrap());
+            assert_eq!(
+                database_schema_version(&conn).unwrap(),
+                CURRENT_SCHEMA_VERSION
+            );
+            assert_eq!(
+                conn.query_row(
+                    "SELECT remaining_g FROM filament_spools WHERE id = 'preserved-job-spool'",
+                    [],
+                    |row| row.get::<_, i64>(0)
+                )
+                .unwrap(),
+                731
+            );
+            assert_eq!(
+                conn.query_row("PRAGMA quick_check", [], |row| row.get::<_, String>(0))
+                    .unwrap(),
+                "ok"
+            );
+            assert_eq!(
+                conn.query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
+                    row.get::<_, i64>(0)
+                })
+                .unwrap(),
+                0
+            );
+            let cookie: i64 = conn
+                .query_row("PRAGMA schema_version", [], |row| row.get(0))
+                .unwrap();
+            apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("reapply job migration");
+            assert_eq!(
+                conn.query_row("PRAGMA schema_version", [], |row| row.get::<_, i64>(0))
+                    .unwrap(),
+                cookie
+            );
+        }
     }
 
     #[test]

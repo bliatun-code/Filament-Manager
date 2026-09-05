@@ -54,7 +54,7 @@
       }
     ]
   },
-  "currentSchemaVersion": 5,
+  "currentSchemaVersion": 6,
   "publishedThroughSequence": 6,
   "publishedReference": {
     "ref": "v0.28.0",
@@ -104,6 +104,14 @@
       "role": "schema-migration",
       "fromSchemaVersion": 4,
       "toSchemaVersion": 5
+    },
+    {
+      "sequence": 7,
+      "file": "007_catalog_refresh_jobs.sql",
+      "sha256": "a04e089f866e6e0db24eb478c43607aa8efdeffce0a898d989ac12521463a4d8",
+      "role": "schema-migration",
+      "fromSchemaVersion": 5,
+      "toSchemaVersion": 6
     }
   ]
 }

@@ -43,7 +43,8 @@ pub(crate) fn is_required_full_backup_table(table: &str) -> bool {
     !LEGACY_OPTIONAL_FULL_BACKUP_TABLES.contains(&table)
 }
 
-pub const RESET_APP_STATE_TABLES: [&str; 22] = [
+pub const RESET_APP_STATE_TABLES: [&str; 23] = [
+    "catalog_refresh_jobs",
     "trusted_lan_pairings",
     "trusted_lan_paired_browsers",
     "label_print_jobs",

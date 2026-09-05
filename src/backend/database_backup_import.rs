@@ -33,6 +33,8 @@ pub(crate) fn import_full_backup_content(
     )?;
     let result: InventoryResult<()> = (|| {
         delete_all_rows(conn, &FULL_BACKUP_TABLES)?;
+        // Receipts belong to this installation and cannot survive a library restore.
+        delete_all_rows(conn, &["catalog_refresh_jobs"])?;
 
         insert_portable_full_backup_rows(conn, &parsed)?;
         ensure_post_import_schema(conn)?;

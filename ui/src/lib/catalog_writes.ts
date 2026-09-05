@@ -5,11 +5,16 @@ import {
   refreshBambuCatalog,
   refreshEsunCatalog,
   refreshLibrarySyncHostVendorCatalog,
+  startCatalogRefreshJob,
+  getCatalogRefreshJob,
+  startLibrarySyncHostCatalogRefreshJob,
+  getLibrarySyncHostCatalogRefreshJob,
   updateLibrarySyncHostMasterCatalogEntry,
   updateMasterCatalogEntry,
   type CatalogRefreshResult,
   type CatalogSourceAuditResult,
   type UpdateMasterCatalogEntryInput,
+  type StartCatalogRefreshJobInput,
 } from "./tauri_client";
 import { requireClientHostWriteTarget } from "./host_write_target";
 
@@ -17,7 +22,30 @@ export type CatalogWriteTarget = {
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
+
+export async function startManagedCatalogRefreshJob(
+  input: StartCatalogRefreshJobInput,
+  target: CatalogWriteTarget,
+) {
+  if (target.clientReadOnly) {
+    const host = requireClientHostWriteTarget(target, "Host connection details are missing for this catalog action.");
+    return startLibrarySyncHostCatalogRefreshJob(host.baseUrl, host.libraryId, input);
+  }
+  return startCatalogRefreshJob(input);
+}
+
+export async function getManagedCatalogRefreshJob(
+  jobId: string | null,
+  target: CatalogWriteTarget,
+) {
+  if (target.clientReadOnly) {
+    const host = requireClientHostWriteTarget(target, "Host connection details are missing for this catalog action.");
+    return getLibrarySyncHostCatalogRefreshJob(host.baseUrl, host.libraryId, jobId);
+  }
+  return getCatalogRefreshJob(jobId);
+}
 
 type CatalogWriteDependencies = {
   auditHostVendorCatalog?: typeof auditLibrarySyncHostVendorCatalog;

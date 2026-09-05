@@ -449,6 +449,7 @@ export default function SettingsPage({
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
     tauri,
     t,
   });
