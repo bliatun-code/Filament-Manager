@@ -57,7 +57,9 @@ The generated directory contains:
 - `task-cards.md`: five fixed English participant cards and a separate
   moderator answer key using only the reviewed synthetic identities.
 - `fixture.db`: the read-only schema-2 starting fixture, with local networking
-  disabled, the lending spool available and a two-roll item on order.
+  disabled, the lending spool available and a two-roll item on order. Task
+  setup version 2 normalizes the synthetic dry box from `CONTAINER` to the
+  user-managed `GENERIC` location type supported by both study builds.
 - `sessions/`: a separate byte-identical writable fixture copy for every task,
   build and participant. The default six slots produce 60 databases and 60
   unmeasured records.
@@ -71,18 +73,103 @@ Before timing, fill in the artifact paths and checksums, verify their source
 commits, and rehearse both artifacts using disposable fixture copies. Confirm
 all five starting states and outcomes, then record `launch_verified`. Source
 schema compatibility alone does not prove the installed artifacts are ready.
-Close the app between tasks and launch the chosen build with
+Close the app between tasks and launch the isolated study build with
 `FILAMENT_MANAGER_DB_PATH` pointing to that task's private database. Keep the
-pristine fixture and normal user library out of the launch path.
+pristine fixture and normal user library out of the launch path. Follow the
+native isolation procedure below before starting either artifact.
 
 The planned setup uses English, Dark, and a predeclared ten-minute task limit.
 Select and verify English and Dark in each app before timing, then record
-`preferences_verified` in the manifest. Separate database copies do not reset
-the app's local UI preferences.
+`preferences_verified` in the manifest. Turn off General → Updates → Check
+automatically for each task so update prompts do not interrupt measurements.
+Separate database copies do not reset the app's local UI preferences.
 The participant count and limit can be chosen with `--participants=6` and
 `--time-limit-seconds=600`. Choose the setup before the study, use it for both
 builds, and document any deviation, including actual build order or a repeated
 attempt. Do not silently replace a failed attempt with a better repeat.
+
+### Native macOS build and launch isolation
+
+A database override isolates SQLite only. The ordinary macOS app identifier
+also owns the single-instance socket, webview storage and desktop preferences.
+Renaming an `.app`, or editing its `Info.plist` after compilation, does not
+isolate the compiled single-instance identifier.
+
+For local study builds, create detached worktrees at the two commits recorded
+in `study.json`. Keep the source trees unchanged and use an external Tauri
+configuration overlay for each build. Give each a distinct study-only
+`identifier`, such as `no.bliatun.fmstudy.<study-id>.baseline` and
+`no.bliatun.fmstudy.<study-id>.candidate`. Copy that ref's complete `app.windows`
+array into the overlay and add `"incognito": true` to the main window. On macOS
+this uses a nonpersistent webview data store. Preserve the same window size
+and other window options in both builds. Set
+`"bundle": { "macOS": { "signingIdentity": "-" } }` for local ad-hoc signing.
+
+Install each ref's locked root and UI dependencies, then build the release
+profile from each worktree with a separate target directory:
+
+```sh
+npm ci
+npm --prefix ./ui ci
+CARGO_TARGET_DIR=/absolute/path/to/study-target \
+  npm run tauri -- build --bundles app --config /absolute/path/to/overlay.json --ci
+```
+
+Use the same Rust toolchain, architecture and build profile for both. Keep
+release-signing and notarization credentials out of these build processes.
+Record the source commit, overlay and its SHA-256, tool versions, build log,
+bundle identifier and artifact checksum. These are derived study builds;
+they are not the official signed release artifacts. Verify the bundle's code
+signature and identifier before launching. If the study requires unchanged
+official binaries instead, use a virtual machine, or a separate macOS user
+with the ordinary app fully quit in every other login session. The original
+single-instance socket is shared across users in `/tmp/`.
+
+Launch the exact executable inside the study bundle from a shell with no
+other visual-QA scenario or packaged-test overrides:
+
+```sh
+FILAMENT_MANAGER_DB_PATH=/absolute/path/to/disposable-task.db \
+FILAMENT_MANAGER_VISUAL_QA=1 \
+  '/absolute/path/to/Filament Manager.app/Contents/MacOS/bambu-filament-manager'
+```
+
+For the v0.27.0 baseline and the catalog-recovery candidate, the QA flag keeps
+desktop lifecycle preferences and autostart changes out of the rehearsal.
+It does not select the UI language or theme on its own. Select English and
+Dark and turn off automatic update checks after every launch, because
+incognito storage resets those preferences.
+Do not launch by clicking the bundle: that omits the database and lifecycle
+overrides. Quit the process completely before the next task.
+
+Rehearse with new disposable copies outside `sessions/`. Verify the five task
+outcomes against before/after database state, account separately for startup
+migrations, and retain the observations as rehearsal evidence. Preserve the
+participant databases, actual build orders and unmeasured result fields.
+An automated rehearsal does not start the human study or supply participant
+durations, completion rates or assistance scores.
+
+### Check the library after startup
+
+The byte-identical input fixture does not guarantee identical catalogs after
+launch. Both v0.27.0 and the catalog-recovery candidate seed their bundled
+catalog during database initialization, even when the schema is current.
+There is no supported setting or QA flag to skip that maintenance in these
+refs. `catalog_seed_version` records metadata; it is not a skip marker.
+
+Record each build's bundled catalog revision/checksum and the actual catalog
+count after startup. Check that the original fixture identities, spools,
+loans, purchases and slot assignments remain intact, and that the task's
+catalog target is still unambiguous. Take the task's before snapshot after
+startup has settled so seed rows and schema migrations are not scored as
+participant mutations.
+
+Document catalog differences before collecting measurements. A comparison
+that retains each version's bundled catalog measures the complete build's
+workflow, including that content; it cannot isolate an interface-only effect
+or claim identical runtime catalogs. If the study question requires identical
+catalog contents, resolve and rehearse that setup before timing. Do not modify
+participant databases or add undocumented database triggers to conceal drift.
 
 ## Automated data-integrity companion gates
 

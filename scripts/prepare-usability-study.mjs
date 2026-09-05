@@ -51,7 +51,13 @@ function prepareFixture(path) {
         .run("qa_bambu_slot_3", "spool_demo_100004");
       const ordered = db.prepare("UPDATE wishlist_items SET status = 'ON_ORDER', quantity = 2 WHERE id = ?")
         .run("qa_wishlist_white_pla");
-      if (freed.changes !== 1 || ordered.changes !== 1) throw new Error("Usability fixture no longer matches the task cards.");
+      // Both builds create GENERIC storage locations. CONTAINER exists only in
+      // the visual QA seed and newer builds reject it as a system location.
+      const dryBox = db.prepare("UPDATE inventory_locations SET type = 'GENERIC' WHERE id = ? AND type = 'CONTAINER'")
+        .run("QA Dry box");
+      if (freed.changes !== 1 || ordered.changes !== 1 || dryBox.changes !== 1) {
+        throw new Error("Usability fixture no longer matches the task cards.");
+      }
       db.prepare("DELETE FROM settings WHERE key LIKE 'bambu_live_integration:%'").run();
       const setting = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
       for (const [key, value] of [
@@ -76,19 +82,37 @@ measurement records. No participant results or app-launch evidence were generate
 1. Complete the artifact paths/checksums and machine/display/input details in
    \`study.json\`. Verify that the artifacts match the recorded commits. Keep the
    same locale, theme, machine and input method for both builds. Select and
-   verify English and Dark in each app before timing: separate databases do
-   not reset the app's local UI preferences. Record \`preferences_verified\`.
+   verify English and Dark, and turn off **General > Updates > Check automatically**
+   in each app before timing so update prompts do not interrupt the task.
+   Separate databases do not reset the app's local UI preferences. Record
+   \`preferences_verified\`.
+   Follow the native isolation procedure in \`docs/USABILITY_TEST_PROTOCOL.md\`
+   before launch. On macOS, build each pinned ref with a distinct compiled
+   study-only app identifier and an incognito main webview, or use a VM for
+   unchanged official binaries. Renaming the bundle is not sufficient.
+   Record any study build overlays alongside artifact checksums.
 2. Rehearse both builds with disposable copies of \`fixture.db\`. Confirm the five
    starting states and task outcomes before recruiting or timing participants.
    Record successful rehearsal with \`launch_verified\`; preparation alone does
-   not prove installed-build compatibility.
+   not prove installed-build compatibility. Keep rehearsal copies outside
+   \`sessions/\` and preserve every unmeasured participant record.
+   Check the catalog after startup: each build seeds its own bundled catalog,
+   so identical input files may produce different runtime catalogs. Record
+   those versions/counts and the comparison scope before collecting timings.
+   Confirm fixture identities remain intact, and take task before snapshots
+   after startup migrations and catalog seeding have settled.
 3. Assign the pseudonymous participant slots to actual people. Follow each
    planned build order and record the actual order. With an odd participant
    count the two groups differ by one; record this protocol choice in advance.
-4. Close the app before each task. Launch the chosen artifact with
-   \`FILAMENT_MANAGER_DB_PATH\` pointing to that task's database from \`study.json\`.
-   Each task/build/participant has a separate fresh database. Never launch a
-   study against the app's normal library or the read-only \`fixture.db\`.
+4. Quit the app process before each task. Launch the exact executable in the
+   isolated study artifact with \`FILAMENT_MANAGER_DB_PATH\` pointing to that
+   task's database from \`study.json\` and \`FILAMENT_MANAGER_VISUAL_QA=1\` to
+   avoid saved desktop lifecycle preferences. Do not set a visual-QA scenario
+   or packaged-test override. Do not launch by clicking the bundle, which
+   omits these environment overrides. Each task/build/participant has a separate
+   fresh database. Never launch a study against the app's normal library or the
+   read-only \`fixture.db\`. Select English and Dark and turn off automatic update
+   checks again after every incognito launch; the QA flag alone does not set them.
 5. Establish the starting state from \`task-cards.md\` outside the timer. Read
    only the participant card aloud. Keep the moderator answer key private.
 6. Record observed elapsed milliseconds and outcomes in \`results.json\`.
@@ -158,8 +182,8 @@ export function prepareUsabilityStudy({ baselineRef, candidateRef, outputPath, p
     const manifest = {
       format: "filament-manager-usability-study-v1", status: "not_started",
       builds, tooling_commit: git(repositoryRoot, "rev-parse", "HEAD"),
-      fixture: { file: "fixture.db", schema_version: 2, seed_sha256: VISUAL_QA_SEED_SHA256, sha256: sha256(fixturePath), task_setup_version: 1 },
-      setup: { machine_class: null, display_size: null, input_method: null, locale: "en", theme: "dark", preferences_verified: false, task_time_limit_ms: timeLimitSeconds * 1000 },
+      fixture: { file: "fixture.db", schema_version: 2, seed_sha256: VISUAL_QA_SEED_SHA256, sha256: sha256(fixturePath), task_setup_version: 2 },
+      setup: { machine_class: null, display_size: null, input_method: null, locale: "en", theme: "dark", automatic_update_checks: false, preferences_verified: false, task_time_limit_ms: timeLimitSeconds * 1000 },
       participants, protocol_deviations: [],
     };
     privateFile(resolve(output, "study.json"), `${JSON.stringify(manifest, null, 2)}\n`);

@@ -10,6 +10,7 @@ import path from "node:path";
 import test from "node:test";
 import Database from "better-sqlite3";
 import { analyzeUsabilityResults, USABILITY_TASKS } from "./analyze-usability-results.mjs";
+import { createVisualQaFixture } from "./create-visual-qa-fixture.mjs";
 import { parseUsabilityStudyArgs, prepareUsabilityStudy } from "./prepare-usability-study.mjs";
 
 function temporaryRepository(t) {
@@ -77,6 +78,7 @@ test("study preparation creates balanced slots, unmeasured records and isolated 
   assert.equal(manifest.setup.machine_class, null);
   assert.equal(manifest.setup.display_size, null);
   assert.equal(manifest.setup.input_method, null);
+  assert.equal(manifest.setup.automatic_update_checks, false);
   assert.equal(manifest.setup.preferences_verified, false);
   assert.equal(manifest.participants.length, 6);
   assert.equal(manifest.participants.filter((entry) => entry.planned_build_order[0] === "baseline").length, 3);
@@ -143,6 +145,9 @@ test("study preparation creates balanced slots, unmeasured records and isolated 
   assertPrivateMode(path.join(output, "sessions"), 0o700);
   assertPrivateMode(fixture, 0o400);
   for (const file of ["study.json", "results.json", "task-cards.md", "README.md"]) assertPrivateMode(path.join(output, file), 0o600);
+  const instructions = readFileSync(path.join(output, "README.md"), "utf8");
+  assert.match(instructions, /General > Updates > Check automatically/);
+  assert.match(instructions, /turn off automatic update\s+checks again after every incognito launch/);
   const [cards, answers] = readFileSync(path.join(output, "task-cards.md"), "utf8").split("# Moderator answer key");
   assert.ok(answers);
   for (const [index, task] of USABILITY_TASKS.entries()) {
@@ -173,6 +178,25 @@ test("study preparation preserves existing output and rejects repository paths i
   assert.throws(() => prepareUsabilityStudy({ ...options, outputPath: path.join(linkedParent, "study") }), /outside the repository/);
   assert.equal(existsSync(path.join(repositoryRoot, "study")), false);
   assert.deepEqual(readFileSync(sentinel), existingResults);
+});
+
+test("study fixture uses a shared user-managed dry-box type without changing location identities", (t) => {
+  const { directory, options } = temporaryRepository(t);
+  const originalPath = path.join(directory, "visual-qa.db");
+  createVisualQaFixture({ outputPath: originalPath });
+  const originalBytes = readFileSync(originalPath);
+  const locationRows = (db) => db.prepare("SELECT id, name, type, parent_id FROM inventory_locations ORDER BY id").all();
+  const spoolLocations = (db) => db.prepare("SELECT id, location_id, home_location_id FROM filament_spools ORDER BY id").all();
+  const originalLocations = databaseAt(originalPath, locationRows);
+  assert.equal(originalLocations.find((row) => row.id === "QA Dry box").type, "CONTAINER");
+
+  const prepared = prepareUsabilityStudy(options);
+  const fixturePath = path.join(prepared.outputPath, "fixture.db");
+  assert.deepEqual(databaseAt(fixturePath, locationRows), originalLocations.map((row) =>
+    row.id === "QA Dry box" ? { ...row, type: "GENERIC" } : row));
+  assert.equal(prepared.manifest.fixture.task_setup_version, 2);
+  assert.deepEqual(databaseAt(fixturePath, spoolLocations), databaseAt(originalPath, spoolLocations));
+  assert.deepEqual(readFileSync(originalPath), originalBytes);
 });
 
 test("study preparation rejects invalid counts, time limits and build identities before creating output", (t) => {
