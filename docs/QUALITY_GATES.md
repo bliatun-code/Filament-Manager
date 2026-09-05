@@ -64,6 +64,19 @@ result. The operation lock belongs to the application shell instead of the
 Settings route, so navigation away and back cannot reset it, start a second
 supplier request or let progress and feedback cross from Host A into Host B.
 
+Routine Trusted-LAN restarts and rebinds must drain accepted requests before
+starting the replacement listener. The lifecycle regression gate holds an
+authenticated POST open over real loopback TCP beyond the three-second app-exit
+grace period, requires restart to remain pending, then verifies a successful
+response and exactly one persisted weight/history mutation. Separate tests
+require bounded app shutdown both directly and while a restart owns the
+reconciliation gate, and cancellation must not detach the owned server task.
+The native advertisement keeps its five-second app-exit grace period; routine
+teardown waits for completion. These tests run in `npm run verify`; the focused
+command is `cargo test -p bambu-filament-manager companion_server_lifecycle_tests`.
+They do not establish cancellation of accepted connection tasks or already
+running blocking work; actual process exit remains the final shutdown bound.
+
 A second scenario uses the same real transport boundary to register exactly one
 Host spool, find it from Host data, assign it to the requested slot without
 changing a sentinel assignment, create exactly one outbound loan and receive a

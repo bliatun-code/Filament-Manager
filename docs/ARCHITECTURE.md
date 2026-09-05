@@ -73,6 +73,14 @@ as macOS Dock Quit, forced quit, logout, shutdown, or process kill can still
 bypass asynchronous cleanup; committed SQLite transactions remain durable and
 the OS closes process sockets.
 
+Routine Companion restarts and network rebinds stop accepting connections and
+wait for accepted requests to complete before starting a replacement listener.
+An app-shutdown signal also reaches a restart already holding the reconciliation
+gate, switching that drain to the existing bounded exit policy. The draining
+server task remains owned and is aborted if its reconciliation is cancelled.
+Native advertisement teardown likewise waits during ordinary restart and is
+bounded during app exit; a running blocking teardown cannot be cancelled.
+
 Single-instance handling restores and focuses the existing main window. This
 prevents a hidden second process from competing for SQLite, the Companion port,
 or the stable mDNS name. Companion reconciliation, the LAN watcher, and Bambu

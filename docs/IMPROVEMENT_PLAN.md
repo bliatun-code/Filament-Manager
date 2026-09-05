@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-04     |
+| Sist oppdatert | 2026-09-05     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -167,11 +167,15 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. La rutinemessig restart eller ombinding av Trusted-LAN-serveren drenere aktive Host-forespørsler ferdig. Den eksisterende avgrensede stoppfristen beholdes bare ved faktisk appavslutning, med atferdstester for en aktiv POST under restart og fortsatt tidsavgrenset avslutning.
-2. Utform eksplisitt jobb-ID/idempotens og autoritativ Host-status/single-flight på tvers av appvinduer og klienter. Da kan en sjelden webview-/serverrestart eller ekstern konfigurasjonsendring midt i en lang Host-skriving avklares uten tvetydig resultat.
-3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
+1. Utform eksplisitt jobb-ID/idempotens og autoritativ Host-status/single-flight på tvers av appvinduer og klienter. Da kan en sjelden webview-/serverrestart eller ekstern konfigurasjonsendring midt i en lang Host-skriving avklares uten tvetydig resultat.
+2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-05
+
+- Rutinemessig restart og ombinding av Trusted-LAN-serveren venter nå på at aksepterte forespørsler fullføres før en ny lytter startes. Appavslutning varsler også en allerede pågående drenering, som da bruker den eksisterende tresekundersfristen for serveroppgaven og femsekundersfristen for native annonseopprydding. Avbrutt avstemming avbryter den eide serveroppgaven i stedet for å etterlate den uten en eier. Aksepterte forbindelser og blokkerende arbeid kan fortsatt leve frem til prosessavslutning; dette innfører ikke jobb-ID, automatisk gjentakelse eller gjenoppretting av et svar etter prosesskrasj.
+- Verifisert lokalt med `npm run smoke`, `npm run test:rust` og fire fokuserte livssyklustester. En autentisert POST over reell loopback-TCP holder omstarten ventende forbi tre sekunder, returnerer et vellykket svar og etterlater nøyaktig én vektendring i historikken før en frisk lytter overtar samme port. Egne tester dekker tidsbegrenset avslutning, avslutning under drenering og avbrutt avstemming. Både dev- og release-Clippy passerte; denne endringen er ennå ikke verifisert i CI eller med pakket app.
 
 ### 2026-09-04
 

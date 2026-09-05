@@ -32,7 +32,7 @@ use crate::local_service_advertisement::{
 };
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::security::hash_secret;
-use crate::state::{AppState, TrustedLanCompanionRuntimeFailureKind};
+use crate::state::{AppState, TrustedLanCompanionRuntime, TrustedLanCompanionRuntimeFailureKind};
 use crate::trusted_lan_interfaces::current_trusted_lan_interface_index;
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -57,7 +57,7 @@ pub async fn reconcile_trusted_lan_server(state: AppState) -> Result<(), String>
 }
 
 pub(crate) async fn reconcile_trusted_lan_server_locked(state: &AppState) -> Result<(), String> {
-    stop_trusted_lan_server_locked(state, false).await;
+    stop_trusted_lan_server_locked(state).await;
 
     if state.companion.trusted_lan.shutting_down() {
         state.companion.trusted_lan.mark_stopped();
@@ -153,7 +153,7 @@ pub(crate) async fn start_trusted_lan_server_with_bound_listener(
     listener: tokio::net::TcpListener,
 ) -> Result<(), String> {
     let reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
-    stop_trusted_lan_server_locked(&state, false).await;
+    stop_trusted_lan_server_locked(&state).await;
     if state.companion.trusted_lan.shutting_down() {
         state.companion.trusted_lan.mark_stopped();
         drop(reconcile_guard);
@@ -167,11 +167,41 @@ pub(crate) async fn start_trusted_lan_server_with_bound_listener(
 pub(crate) async fn shutdown_trusted_lan_server(state: &AppState) {
     state.companion.trusted_lan.mark_shutdown_started();
     let _reconcile_guard = state.companion.trusted_lan.lock_reconcile().await;
-    stop_trusted_lan_server_locked(state, true).await;
+    stop_trusted_lan_server_locked(state).await;
     state.companion.trusted_lan.mark_stopped();
 }
 
-async fn stop_trusted_lan_server_locked(state: &AppState, bounded_for_app_shutdown: bool) {
+// Cancelling a reconciliation (for example when the LAN watcher stops) must
+// not detach the server task after it has been removed from the runtime.
+struct DrainingServerTask(tauri::async_runtime::JoinHandle<()>);
+
+impl Drop for DrainingServerTask {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+async fn wait_for_trusted_lan_stop(
+    runtime: &TrustedLanCompanionRuntime,
+    task: &mut tauri::async_runtime::JoinHandle<()>,
+    shutdown_timeout_seconds: u64,
+) -> bool {
+    // Routine rebinds wait for accepted requests to return a definitive result.
+    // App shutdown may start while this task owns the reconciliation gate, so
+    // observe it here instead of waiting for shutdown to acquire that gate.
+    tokio::select! {
+        _ = &mut *task => return true,
+        _ = runtime.wait_for_shutdown() => {}
+    }
+    tokio::time::timeout(
+        std::time::Duration::from_secs(shutdown_timeout_seconds),
+        task,
+    )
+    .await
+    .is_ok()
+}
+
+async fn stop_trusted_lan_server_locked(state: &AppState) {
     let advertisement_drop = state
         .companion
         .trusted_lan
@@ -180,37 +210,32 @@ async fn stop_trusted_lan_server_locked(state: &AppState, bounded_for_app_shutdo
     state.companion.trusted_lan.mark_local_name_stopped();
 
     if let Some(handle) = state.companion.trusted_lan.take_server_handle() {
-        let mut join_handle = handle.shutdown();
-        if tokio::time::timeout(
-            std::time::Duration::from_secs(COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS),
-            &mut join_handle,
+        let mut task = DrainingServerTask(handle.shutdown());
+        if !wait_for_trusted_lan_stop(
+            &state.companion.trusted_lan,
+            &mut task.0,
+            COMPANION_SERVER_SHUTDOWN_TIMEOUT_SECONDS,
         )
         .await
-        .is_err()
         {
-            join_handle.abort();
-            let _ = join_handle.await;
+            task.0.abort();
+            let _ = (&mut task.0).await;
         }
     }
 
     if let Some(mut advertisement_drop) = advertisement_drop {
-        if bounded_for_app_shutdown {
-            // Tokio cannot cancel spawn_blocking once Drop has started. Give the Windows backend
-            // enough time for unregister, daemon shutdown, and its monitor-thread join instead of
-            // calling abort and falsely treating the native teardown as cancelled.
-            if tokio::time::timeout(
-                std::time::Duration::from_secs(LOCAL_SERVICE_SHUTDOWN_TIMEOUT_SECONDS),
-                &mut advertisement_drop,
-            )
-            .await
-            .is_err()
-            {
-                eprintln!(
-                    "Companion local-service shutdown timed out; application exit will continue."
-                );
-            }
-        } else {
-            let _ = advertisement_drop.await;
+        // Tokio cannot cancel a running blocking Drop. Wait for native teardown
+        // during a rebind, but retain its existing grace period on app exit.
+        if !wait_for_trusted_lan_stop(
+            &state.companion.trusted_lan,
+            &mut advertisement_drop,
+            LOCAL_SERVICE_SHUTDOWN_TIMEOUT_SECONDS,
+        )
+        .await
+        {
+            eprintln!(
+                "Companion local-service shutdown timed out; application exit will continue."
+            );
         }
     }
 }

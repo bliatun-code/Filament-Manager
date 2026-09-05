@@ -30,6 +30,9 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tower::ServiceExt;
 
+#[path = "companion_server_lifecycle_tests.rs"]
+mod companion_server_lifecycle_tests;
+
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
