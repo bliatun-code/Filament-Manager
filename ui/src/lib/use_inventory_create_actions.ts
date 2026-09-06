@@ -1,5 +1,8 @@
-import { useMemo, type Dispatch, type SetStateAction } from "react";
-import { commandErrorText } from "./error_text";
+import { useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type Dispatch, type SetStateAction } from "react";
+import { commandErrorText, createAppError } from "./error_text";
+import { catalogSpoolBatchErrorText } from "./catalog_spool_batch_errors";
+import { BambuBatchRegistrationController, type BambuBatchRegistrationDraft } from "./bambu_batch_registration";
+import { catalogSpoolBatchTargetKey, createCatalogSpoolBatch, type CatalogSpoolBatchTarget } from "./tauri_catalog_spool_batch_client";
 import type { BambuFilamentCodeBatch } from "./bambu_filament_code_batch";
 import { isBorrowedInOwnership } from "./inventory_domain";
 import {
@@ -10,6 +13,7 @@ import {
   type InventoryCreateSpoolError,
 } from "./inventory_create_model";
 import { formatInventoryDisplayTitle, type OwnershipType } from "./inventory_list_model";
+import type { InventoryCreateSuccess } from "./inventory_create_success";
 import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 import {
   createInventorySpoolFromMaster,
@@ -27,18 +31,48 @@ import {
   type WishlistStatus,
 } from "./wishlist_data_source";
 
+function newRegistrationSpoolId(): string {
+  const suffix = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return `spool_${suffix}`;
+}
+
+const batchControllers = new Map<string, BambuBatchRegistrationController>();
+function batchControllerFor(target: CatalogSpoolBatchTarget): BambuBatchRegistrationController | null {
+  const key = catalogSpoolBatchTargetKey(target);
+  if (!key || typeof window === "undefined") return null;
+  let controller = batchControllers.get(key);
+  if (!controller) {
+    controller = new BambuBatchRegistrationController(key, {
+      create: input => createCatalogSpoolBatch(input, target),
+      storage: {
+        getItem: key => window.localStorage.getItem(key),
+        setItem: (key, value) => window.localStorage.setItem(key, value),
+        removeItem: key => window.localStorage.removeItem(key),
+      },
+    });
+    batchControllers.set(key, controller);
+  }
+  return controller;
+}
+const emptyBatchSnapshot = () => null;
+const emptyBatchSubscription = () => () => {};
+
 type InventoryCreateActionsInput = {
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
   bambuCodeBatch: BambuFilamentCodeBatch;
+  bambuBatchInput?: string;
   busy: boolean;
   canUseClientHostWrite: () => boolean;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
+  clientTargetGeneration: number | null;
   confirmWishlistRemoveId: string | null;
   createMode: InventoryCreateMode;
+  createSessionId: number;
   ensureLocalWriteAllowed: () => boolean;
   manualColorName: string;
   manualFilamentName: string;
@@ -48,12 +82,14 @@ type InventoryCreateActionsInput = {
   newInitialWeight: string;
   newLocation: string;
   newOwnershipType: OwnershipType;
+  onSpoolCreated: (receipt: InventoryCreateSuccess) => void;
   onWishlistItemCreated: () => void;
   reloadCatalog: () => Promise<void>;
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
   resetAfterCreatedSpool: () => void;
   resetBambuBatchInput: () => void;
+  restoreBambuBatchDraft?: (draft: BambuBatchRegistrationDraft) => void;
   selectedBambuMaster: MasterCatalogRow | null;
   selectedEsunMaster: MasterCatalogRow | null;
   setBusy: Dispatch<SetStateAction<boolean>>;
@@ -71,13 +107,16 @@ export function useInventoryCreateActions({
   borrowedFromName,
   borrowedInNote,
   bambuCodeBatch,
+  bambuBatchInput = "",
   busy,
   canUseClientHostWrite,
   clientHostBaseUrl,
   clientLibraryId,
   clientReadOnly,
+  clientTargetGeneration,
   confirmWishlistRemoveId,
   createMode,
+  createSessionId,
   ensureLocalWriteAllowed,
   manualColorName,
   manualFilamentName,
@@ -87,12 +126,14 @@ export function useInventoryCreateActions({
   newInitialWeight,
   newLocation,
   newOwnershipType,
+  onSpoolCreated,
   onWishlistItemCreated,
   reloadCatalog,
   reloadSpools,
   reloadWishlist,
   resetAfterCreatedSpool,
   resetBambuBatchInput,
+  restoreBambuBatchDraft,
   selectedBambuMaster,
   selectedEsunMaster,
   setBusy,
@@ -105,6 +146,66 @@ export function useInventoryCreateActions({
   t,
 }: InventoryCreateActionsInput) {
   const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const batchController = useMemo(() => batchControllerFor({
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+  }), [clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
+  const rawBatchRegistration = useSyncExternalStore(
+    batchController?.subscribe ?? emptyBatchSubscription,
+    batchController?.snapshot ?? emptyBatchSnapshot,
+    emptyBatchSnapshot,
+  );
+  const batchRegistration = rawBatchRegistration ? {
+    ...rawBatchRegistration,
+    error: rawBatchRegistration.error ? catalogSpoolBatchErrorText(
+      createAppError(rawBatchRegistration.error),
+      t("inventory.error.createBambuBatch", "Failed to create Bambu code batch. Check QR uniqueness and values."), t,
+    ) : null,
+  } : null;
+  const registrationScopeKey = JSON.stringify([
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, createSessionId,
+  ]);
+  const registrationScopeRef = useRef<{ key: string; inFlight: boolean; completed: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const scope = { key: registrationScopeKey, inFlight: false, completed: false };
+    registrationScopeRef.current = scope;
+    return () => {
+      registrationScopeRef.current = null;
+      if (scope.inFlight) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
+    };
+  }, [registrationScopeKey, setBusy]);
+  const batchUi = useRef({ reloadSpools, reloadCatalog, resetAfterCreatedSpool,
+    setSelectedSpoolId, setRecentlyAddedSpoolId, setError, t });
+  useLayoutEffect(() => {
+    batchUi.current = { reloadSpools, reloadCatalog, resetAfterCreatedSpool,
+      setSelectedSpoolId, setRecentlyAddedSpoolId, setError, t };
+  });
+  const consumedBatch = useRef<string | null>(null);
+  useEffect(() => {
+    const snapshot = batchController?.snapshot();
+    if (!snapshot || snapshot.status !== "COMPLETE") return;
+    const key = JSON.stringify([clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, snapshot.batchId]);
+    if (consumedBatch.current === key) return;
+    consumedBatch.current = key;
+    const ui = batchUi.current;
+    const scope = registrationScopeRef.current;
+    const lastId = snapshot.spoolIds.at(-1) ?? null;
+    ui.setSelectedSpoolId(lastId);
+    ui.setRecentlyAddedSpoolId(lastId);
+    ui.resetAfterCreatedSpool();
+    let current = true;
+    void Promise.allSettled([ui.reloadSpools(), ui.reloadCatalog()]).then(results => {
+      if (!current || registrationScopeRef.current !== scope) return;
+      const failure = results.find(result => result.status === "rejected");
+      if (failure?.status === "rejected") ui.setError(commandErrorText(
+        failure.reason, ui.t("inventory.error.loadInventory", "Failed to load inventory."), ui.t,
+      ));
+    });
+    return () => { current = false; };
+  }, [batchController, rawBatchRegistration?.status, rawBatchRegistration?.batchId, registrationScopeKey,
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
   const newSpoolBorrowedIn = isBorrowedInOwnership(newOwnershipType);
   const currentCreateDraft = useMemo(
     () =>
@@ -135,7 +236,20 @@ export function useInventoryCreateActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return false;
     }
-    return tauriAvailable && !busy;
+    return tauriAvailable && !busy && !registrationScopeRef.current?.inFlight &&
+      batchController?.snapshot()?.status !== "SAVING";
+  }
+
+  function beginRegistration() {
+    const scope = registrationScopeRef.current;
+    if (!scope || scope.key !== registrationScopeKey || scope.completed || !canStartWrite()) {
+      return null;
+    }
+    // A React state update alone does not reject two callbacks before the next render.
+    scope.inFlight = true;
+    setBusy(true);
+    setError(null);
+    return scope;
   }
 
   function showCreateValidationError(error: InventoryCreateSpoolError | InventoryCreateBatchError) {
@@ -170,12 +284,11 @@ export function useInventoryCreateActions({
   }
 
   async function handleCreateSpool() {
+    if (batchController?.snapshot()) return;
     if (!canStartWrite()) {
       return;
     }
-    setBusy(true);
-    setError(null);
-    const id = `spool_${Date.now()}`;
+    const id = newRegistrationSpoolId();
     const createRequest = buildInventoryCreateSpoolRequest({
       id,
       mode: createMode,
@@ -195,41 +308,64 @@ export function useInventoryCreateActions({
     });
     if (!createRequest.ok) {
       showCreateValidationError(createRequest.error);
-      setBusy(false);
       return;
     }
+    const message = `${
+      newSpoolBorrowedIn
+        ? t("inventory.borrowedInRegistered", "Borrowed-in spool registered")
+        : t("inventory.addedToInventory", "Added to inventory")
+    }: ${createRequest.addedLabel}`;
+    const scope = beginRegistration();
+    if (!scope) {
+      return;
+    }
+    const isCurrent = () => registrationScopeRef.current === scope;
 
     try {
-      const createdSpoolId =
-        createRequest.kind === "catalog"
+      let createdSpoolId: string;
+      try {
+        createdSpoolId = createRequest.kind === "catalog"
           ? await createInventorySpoolFromMaster(createRequest.input, hostWriteTarget)
           : await createManualInventorySpool(createRequest.input, hostWriteTarget);
+      } catch (createError) {
+        if (isCurrent()) {
+          console.error(createError);
+          setError(commandErrorText(
+            createError,
+            t("inventory.error.createSpool", "Failed to create spool. Check QR uniqueness and values."),
+            t,
+          ));
+        }
+        return;
+      }
+      if (!isCurrent()) {
+        return;
+      }
 
-      await reloadSpools();
-      await reloadCatalog();
+      scope.completed = true;
+      const receipt: InventoryCreateSuccess = Object.freeze({ spoolId: createdSpoolId, message });
       setSelectedSpoolId(createdSpoolId);
       setRecentlyAddedSpoolId(createdSpoolId);
-      setInfoMessage(
-        `${
-          newSpoolBorrowedIn
-            ? t("inventory.borrowedInRegistered", "Borrowed-in spool registered")
-            : t("inventory.addedToInventory", "Added to inventory")
-        }: ${createRequest.addedLabel}`,
-      );
+      setInfoMessage(message);
       resetAfterCreatedSpool();
-    } catch (createError) {
-      console.error(createError);
-      setError(
-        commandErrorText(
-          createError,
-          t(
-            "inventory.error.createSpool",
-            "Failed to create spool. Check QR uniqueness and values.",
-          ),
-        ),
-      );
+      onSpoolCreated(receipt);
+
+      // Refreshing cannot turn a confirmed registration back into a retryable write.
+      const refreshed = await Promise.allSettled([reloadSpools(), reloadCatalog()]);
+      const failed = refreshed.find((result) => result.status === "rejected");
+      if (isCurrent() && failed?.status === "rejected") {
+        console.error(failed.reason);
+        setError(commandErrorText(
+          failed.reason,
+          t("inventory.error.loadInventory", "Failed to load inventory."),
+          t,
+        ));
+      }
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -246,10 +382,9 @@ export function useInventoryCreateActions({
       );
       return;
     }
-    setBusy(true);
-    setError(null);
+    if (batchController?.snapshot()) return;
     const batchRequest = buildBambuCatalogBatchCreateRequests({
-      idPrefix: `spool_${Date.now()}`,
+      idPrefix: newRegistrationSpoolId(),
       selectedMasters: bambuCodeBatch.creatableRows
         .map((row) => row.master)
         .filter((master): master is MasterCatalogRow => Boolean(master)),
@@ -262,47 +397,86 @@ export function useInventoryCreateActions({
     });
     if (!batchRequest.ok) {
       showCreateValidationError(batchRequest.error);
-      setBusy(false);
       return;
     }
-
+    if (batchRequest.requests.length > 100) {
+      setError(catalogSpoolBatchErrorText(createAppError("inventory.batch.invalid"),
+        t("inventory.error.createBambuBatch", "Failed to create Bambu code batch. Check QR uniqueness and values."), t));
+      return;
+    }
+    const scope = beginRegistration();
+    if (!scope) {
+      return;
+    }
     try {
-      let latestCreatedSpoolId: string | null = null;
-      for (const request of batchRequest.requests) {
-        latestCreatedSpoolId = await createInventorySpoolFromMaster(
-          request.input,
-          hostWriteTarget,
-        );
-      }
-
-      await reloadSpools();
-      await reloadCatalog();
-      if (latestCreatedSpoolId) {
-        setSelectedSpoolId(latestCreatedSpoolId);
-        setRecentlyAddedSpoolId(latestCreatedSpoolId);
-      }
-      setInfoMessage(
-        `${
-          newSpoolBorrowedIn
-            ? t("inventory.borrowedInBatchRegistered", "Borrowed-in batch registered")
-            : t("inventory.bambuBatchAdded", "Bambu code batch added")
-        }: ${batchRequest.requests.length}`,
-      );
-      resetAfterCreatedSpool();
-      resetBambuBatchInput();
+      if (!batchController) throw createAppError("common.forbidden");
+      const first = batchRequest.requests[0].input;
+      await batchController.start({
+        input: {
+          batch_id: crypto.randomUUID(),
+          master_ids: batchRequest.requests.map(request => request.input.master_id),
+          initial_weight_g: first.initial_weight_g!,
+          ownership_type: newSpoolBorrowedIn ? "BORROWED_IN" : "OWNED",
+          owner_name: first.owner_name ?? null,
+          owner_contact: first.owner_contact ?? null,
+          ownership_note: first.ownership_note ?? null,
+          location: first.location_id ?? null,
+        },
+        rows: bambuCodeBatch.creatableRows.map(row => ({
+          label: formatInventoryDisplayTitle(row.master!.material, row.master!.filament_name, row.master!.color_name),
+          code: row.code,
+        })),
+        rawInput: bambuBatchInput,
+        selections: Object.fromEntries(bambuCodeBatch.creatableRows.map(row => [row.key, row.master!.id])),
+        remainingInput: (bambuCodeBatch.blockedRows ?? []).map(row => row.sourceText).join("\n"),
+        remainingCount: bambuCodeBatch.blockedRows?.length ?? 0,
+      });
     } catch (batchError) {
+      if (registrationScopeRef.current !== scope) return;
       console.error(batchError);
       setError(
-        commandErrorText(
+        catalogSpoolBatchErrorText(
           batchError,
           t(
             "inventory.error.createBambuBatch",
             "Failed to create Bambu code batch. Check QR uniqueness and values.",
           ),
+          t,
         ),
       );
     } finally {
-      setBusy(false);
+      if (registrationScopeRef.current === scope) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
+    }
+  }
+
+  async function handleRetryBambuBatch() {
+    if (!batchController || batchController.snapshot()?.status !== "UNCERTAIN") return;
+    const scope = beginRegistration();
+    if (!scope) return;
+    try { await batchController.retry(); }
+    catch (error) {
+      if (registrationScopeRef.current === scope) setError(catalogSpoolBatchErrorText(error,
+        t("inventory.error.createBambuBatch", "Failed to create Bambu code batch. Check QR uniqueness and values."), t));
+    } finally {
+      if (registrationScopeRef.current === scope) { scope.inFlight = false; setBusy(false); }
+    }
+  }
+
+  function handleNewBambuBatch() {
+    if (busy || !batchController || registrationScopeRef.current?.key !== registrationScopeKey) return;
+    try {
+      const draft = batchController.nextDraft();
+      if (!draft) return;
+      resetBambuBatchInput();
+      restoreBambuBatchDraft?.(draft);
+      setError(null);
+      setInfoMessage(null);
+    } catch (error) {
+      setError(catalogSpoolBatchErrorText(error,
+        t("inventory.error.createBambuBatch", "Failed to create Bambu code batch. Check QR uniqueness and values."), t));
     }
   }
 
@@ -403,6 +577,7 @@ export function useInventoryCreateActions({
     item: WishlistItemRow,
     quantity: number,
     purchaseMetadata?: PurchaseReceiptMetadata,
+    homeLocation?: string,
   ): Promise<boolean> {
     if (!canStockWishlistItem(item.status)) {
       return false;
@@ -418,23 +593,38 @@ export function useInventoryCreateActions({
         {
           item_id: item.id,
           quantity,
+          ...(homeLocation?.trim() ? { home_location: homeLocation.trim() } : {}),
           ...(purchaseMetadata === undefined
             ? {}
             : { purchase_metadata: purchaseMetadata }),
         },
         hostWriteTarget,
       );
-      await reloadSpools();
-      await reloadWishlist();
+      // The receipt is already committed. A failed read must not leave a
+      // retryable receipt draft that could create the same rolls again.
+      try {
+        const refreshed = await Promise.allSettled([reloadSpools(), reloadWishlist()]);
+        const failed = refreshed.find((result) => result.status === "rejected");
+        if (failed?.status === "rejected") {
+          throw failed.reason;
+        }
+      } catch (refreshError) {
+        console.error(refreshError);
+        setError(commandErrorText(
+          refreshError,
+          t("inventory.error.loadInventory", "Failed to load inventory."),
+          t,
+        ));
+      }
       const createdSpoolId = receipt.spool_ids[0] ?? null;
       setSelectedSpoolId(createdSpoolId);
       setRecentlyAddedSpoolId(createdSpoolId);
       setInfoMessage(
-        `${t("inventory.addedFromWishlist", "Added from wishlist")}: ${receipt.received_quantity} × ${formatInventoryDisplayTitle(
-          item.material,
-          item.filament_name,
-          item.color_name,
-        )}`,
+        t("wishlist.receiptComplete", "Received {count} × {item}. Remaining: {remaining}.", {
+          count: receipt.received_quantity,
+          item: formatInventoryDisplayTitle(item.material, item.filament_name, item.color_name),
+          remaining: receipt.remaining_quantity,
+        }),
       );
       return true;
     } catch (stockError) {
@@ -456,6 +646,10 @@ export function useInventoryCreateActions({
   }
 
   return {
+    batchRegistration,
+    batchBusy: rawBatchRegistration?.status === "SAVING",
+    handleRetryBambuBatch,
+    handleNewBambuBatch,
     currentCreateDraft,
     handleAddCurrentToWishlist,
     handleCreateBambuCodeBatch,

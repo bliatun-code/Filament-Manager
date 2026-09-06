@@ -5,6 +5,7 @@ use super::database_catalog_inputs::ManualMasterInput;
 use super::database_catalog_manual::upsert_manual_master;
 use super::database_events::insert_spool_history_event;
 use super::database_ids::new_id;
+use super::database_locations::resolve_active_generic_location_reference;
 use super::database_result::{require_rows, InventoryError, InventoryResult};
 use super::database_spool_insert::insert_spool;
 use super::database_spool_models::SpoolRow;
@@ -88,6 +89,7 @@ pub(crate) fn receive_wishlist_item(
     item_id: &str,
     received_quantity: i64,
     purchase_metadata: PurchaseReceiptMetadata,
+    home_location: Option<&str>,
 ) -> InventoryResult<WishlistReceiptResult> {
     if received_quantity <= 0 {
         return Err(InventoryError::InvalidOperation {
@@ -115,6 +117,11 @@ pub(crate) fn receive_wishlist_item(
         });
     }
 
+    let home_location_id = home_location
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| resolve_active_generic_location_reference(&transaction, value))
+        .transpose()?;
     let (master_id, default_weight, vendor) = resolve_receipt_master(&transaction, &item)?;
     let spool_id_base = new_id();
     let mut spool_ids = Vec::with_capacity(received_quantity as usize);
@@ -135,8 +142,8 @@ pub(crate) fn receive_wishlist_item(
             current_weight_g: Some(default_weight),
             remaining_g: Some(default_weight),
             spool_tare_weight_g: default_spool_tare_for_vendor(&vendor),
-            location_id: None,
-            home_location_id: None,
+            location_id: home_location_id.clone(),
+            home_location_id: home_location_id.clone(),
             purchase_date: purchase_metadata.purchase_date.clone(),
             purchase_price: purchase_metadata.purchase_price,
             batch_code: purchase_metadata.batch_code.clone(),
@@ -156,12 +163,17 @@ pub(crate) fn receive_wishlist_item(
         }))
         .map_err(|error| InventoryError::Db(error.to_string()))?;
         insert_spool_history_event(&transaction, &spool_id, "CREATED", &payload)?;
-        let receipt_payload = serde_json::to_string(&json!({
+        let mut receipt_payload = json!({
             "wishlist_item_id": item.id,
             "initial_weight_g": spool.initial_weight_g,
             "purchase_metadata": purchase_metadata,
-        }))
-        .map_err(|error| InventoryError::Db(error.to_string()))?;
+        });
+        if let Some(home_location_id) = home_location_id.as_ref() {
+            receipt_payload["home_location_id"] = json!(home_location_id);
+            receipt_payload["location_id"] = json!(home_location_id);
+        }
+        let receipt_payload = serde_json::to_string(&receipt_payload)
+            .map_err(|error| InventoryError::Db(error.to_string()))?;
         insert_spool_history_event(
             &transaction,
             &spool_id,

@@ -1,4 +1,5 @@
 use crate::backend::bambu_live_settings::bambu_live_integration_setting_key;
+pub use crate::backend::catalog_spool_batches::{CatalogSpoolBatchInput, CatalogSpoolBatchReceipt};
 use crate::backend::database_catalog_manual::upsert_manual_master as upsert_manual_master_row;
 use crate::backend::database_events::{
     ensure_scale as ensure_scale_row, insert_spool_history_event as insert_spool_history_event_row,
@@ -245,6 +246,8 @@ pub struct UpdateWishlistStatusInput {
 pub struct ReceiveWishlistItemInput {
     pub item_id: String,
     pub quantity: i64,
+    #[serde(default)]
+    pub home_location: Option<String>,
     #[serde(default)]
     pub purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
@@ -523,6 +526,28 @@ impl InventoryEngine {
     }
 
     pub fn create_spool(&self, input: CreateSpoolInput) -> InventoryResult<()> {
+        self.db
+            .with_inventory_transaction(|conn| Self::create_spool_in_transaction(conn, input))
+    }
+
+    pub fn create_catalog_spool_batch(
+        &self,
+        input: CatalogSpoolBatchInput,
+    ) -> InventoryResult<CatalogSpoolBatchReceipt> {
+        self.db.create_catalog_spool_batch(input)
+    }
+
+    pub fn get_catalog_spool_batch_receipt(
+        &self,
+        batch_id: &str,
+    ) -> InventoryResult<Option<CatalogSpoolBatchReceipt>> {
+        self.db.get_catalog_spool_batch_receipt(batch_id)
+    }
+
+    pub(crate) fn create_spool_in_transaction(
+        conn: &rusqlite::Connection,
+        input: CreateSpoolInput,
+    ) -> InventoryResult<()> {
         let spool_id = input.id.clone();
         let purchase_metadata = PurchaseReceiptMetadata {
             purchase_price: input.purchase_price,
@@ -578,73 +603,71 @@ impl InventoryEngine {
                 .map(|_| PURCHASE_PRICE_SOURCE_MANUAL.to_string()),
         };
 
-        self.db.with_inventory_transaction(|conn| {
-            spool.location_id = match requested_location.as_deref() {
-                Some(value) if !value.trim().is_empty() => {
-                    Some(resolve_active_generic_location_reference(conn, value)?)
-                }
-                _ => None,
-            };
-            spool.home_location_id = match requested_home_location.as_deref() {
-                Some(value) if !value.trim().is_empty() => {
-                    Some(resolve_active_generic_location_reference(conn, value)?)
-                }
-                _ => spool.location_id.clone(),
-            };
+        spool.location_id = match requested_location.as_deref() {
+            Some(value) if !value.trim().is_empty() => {
+                Some(resolve_active_generic_location_reference(conn, value)?)
+            }
+            _ => None,
+        };
+        spool.home_location_id = match requested_home_location.as_deref() {
+            Some(value) if !value.trim().is_empty() => {
+                Some(resolve_active_generic_location_reference(conn, value)?)
+            }
+            _ => spool.location_id.clone(),
+        };
 
-            insert_spool_row(conn, &spool)?;
+        insert_spool_row(conn, &spool)?;
+        insert_json_history_event(
+            conn,
+            &spool_id,
+            "CREATED",
+            json!({
+                "status": spool.status,
+                "ownership_type": spool.ownership_type,
+            }),
+        )?;
+        if !purchase_metadata.is_empty() {
             insert_json_history_event(
                 conn,
                 &spool_id,
-                "CREATED",
+                "PURCHASE_RECEIPT_RECORDED",
                 json!({
-                    "status": spool.status,
-                    "ownership_type": spool.ownership_type,
+                    "source": "DIRECT_CREATE",
+                    "initial_weight_g": spool.initial_weight_g,
+                    "purchase_metadata": purchase_metadata,
                 }),
             )?;
-            if !purchase_metadata.is_empty() {
-                insert_json_history_event(
-                    conn,
-                    &spool_id,
-                    "PURCHASE_RECEIPT_RECORDED",
-                    json!({
-                        "source": "DIRECT_CREATE",
-                        "initial_weight_g": spool.initial_weight_g,
-                        "purchase_metadata": purchase_metadata,
-                    }),
-                )?;
-            }
-            if ownership_type_kind.is_borrowed_in() {
-                let loan = create_inbound_spool_loan_in_transaction(
-                    conn,
-                    &spool_id,
-                    owner_name.as_deref().unwrap_or(""),
-                    owner_contact.as_deref(),
-                    ownership_note.as_deref(),
-                    spool
-                        .remaining_g
-                        .or(spool.current_weight_g)
-                        .or(spool.initial_weight_g)
-                        .unwrap_or(0),
-                )?;
-                insert_json_history_event(
-                    conn,
-                    &spool_id,
-                    "BORROWED_IN_REGISTERED",
-                    json!({
-                        "loan_id": loan.id,
-                        "ownership_type": spool.ownership_type,
-                        "owner_name": spool.owner_name,
-                        "owner_contact": spool.owner_contact,
-                        "ownership_note": spool.ownership_note,
-                        "loan_direction": loan.loan_direction,
-                        "counterparty_name": loan.counterparty_name,
-                        "grams_out": loan.grams_out,
-                    }),
-                )?;
-            }
-            Ok(())
-        })
+        }
+        if ownership_type_kind.is_borrowed_in() {
+            let loan = create_inbound_spool_loan_in_transaction(
+                conn,
+                &spool_id,
+                owner_name.as_deref().unwrap_or(""),
+                owner_contact.as_deref(),
+                ownership_note.as_deref(),
+                spool
+                    .remaining_g
+                    .or(spool.current_weight_g)
+                    .or(spool.initial_weight_g)
+                    .unwrap_or(0),
+            )?;
+            insert_json_history_event(
+                conn,
+                &spool_id,
+                "BORROWED_IN_REGISTERED",
+                json!({
+                    "loan_id": loan.id,
+                    "ownership_type": spool.ownership_type,
+                    "owner_name": spool.owner_name,
+                    "owner_contact": spool.owner_contact,
+                    "ownership_note": spool.ownership_note,
+                    "loan_direction": loan.loan_direction,
+                    "counterparty_name": loan.counterparty_name,
+                    "grams_out": loan.grams_out,
+                }),
+            )?;
+        }
+        Ok(())
     }
 
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {
@@ -1462,6 +1485,7 @@ impl InventoryEngine {
             input.item_id.trim(),
             input.quantity,
             input.purchase_metadata.unwrap_or_default(),
+            input.home_location.as_deref(),
         )
     }
 
@@ -2415,3 +2439,7 @@ pub(super) fn normalize_optional_input_text(value: Option<&str>) -> Option<Strin
 #[cfg(test)]
 #[path = "inventory_engine_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "inventory_wishlist_receipt_location_tests.rs"]
+mod wishlist_receipt_location_tests;

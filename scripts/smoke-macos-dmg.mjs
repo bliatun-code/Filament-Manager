@@ -33,7 +33,8 @@ import {
   resumePackagedHostClientCredentialCleanup,
   runPackagedHostClientE2e,
 } from "./run-packaged-host-client-e2e.mjs";
-import { smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
+import { currentSchemaVersion, smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
+import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
 import {
   parseCodesignDetails,
   validateCodesignDetails,
@@ -58,6 +59,7 @@ const RUNTIME_LOG_FILES = Object.freeze({
 const REQUIRED_DATABASE_TABLES = [
   "filament_master_list",
   "filament_spools",
+  "catalog_spool_batches",
   "settings",
 ];
 
@@ -85,20 +87,6 @@ function runCommand(command, args, options = {}) {
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
-}
-
-function currentSchemaVersion() {
-  const source = readFileSync(
-    path.resolve("src", "backend", "database_schema.rs"),
-    "utf8",
-  );
-  const match = source.match(
-    /CURRENT_SCHEMA_VERSION\s*:\s*i64\s*=\s*(\d+)\s*;/,
-  );
-  if (!match?.[1]) {
-    throw new Error("Could not read CURRENT_SCHEMA_VERSION.");
-  }
-  return Number.parseInt(match[1], 10);
 }
 
 export function validateMacosDmgSmokeOptions({
@@ -804,7 +792,7 @@ function readBundleExecutable(appPath) {
   return path.join(appPath, "Contents", "MacOS", executableName);
 }
 
-function verifySmokeDatabase(databasePath, expectedSchemaVersion) {
+export function verifySmokeDatabase(databasePath, expectedSchemaVersion) {
   const database = new Database(databasePath, {
     fileMustExist: true,
     readonly: true,
@@ -841,6 +829,7 @@ function verifySmokeDatabase(databasePath, expectedSchemaVersion) {
           "foreign-key failure(s).",
       );
     }
+    assertCatalogSpoolBatchSchema(database);
     return {
       schemaVersion,
       tableCount: availableTables.size,
@@ -1500,13 +1489,16 @@ export async function smokeMacosDmg(options) {
       }`,
       `Packaged desktop mutating E2E: ${
         result.packagedDesktopE2e
-          ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}`
+          ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}, ` +
+            `batch replay with ${result.packagedDesktopE2e.catalog_batch.spools} borrowed spools`
           : "not requested"
       }`,
       `Packaged Host-Client mutating E2E: ${
         result.packagedHostClientE2e
           ? `PASS, Host ${result.packagedHostClientE2e.host_weight_g} g, ` +
-            `Client shadow ${result.packagedHostClientE2e.client_local_weight_g} g`
+            `Client shadow ${result.packagedHostClientE2e.client_local_weight_g} g, ` +
+            `batch replay with ${result.packagedHostClientE2e.catalog_batch.spools} borrowed spools ` +
+            `and ${result.packagedHostClientE2e.catalog_batch.client_spools} Client batch spools`
           : "not requested"
       }`,
       `Window: ${result.windowTitle || "(untitled)"} ${result.windowWidth}x${result.windowHeight}`,

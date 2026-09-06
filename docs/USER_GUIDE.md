@@ -658,6 +658,16 @@ Filament catalog:
 - color/swatch data
 - older and reseller-available catalog entries remain searchable
 
+Catalog refresh continues on the Host when you navigate away or reload the
+window. Reopen Settings to follow the active job or recover its last result.
+Only one refresh runs per library, including requests from other clients; the
+progress display identifies that job's vendor and material. A connection error
+triggers status checks without repeating the import. If the Host app exits
+before completion, the job is marked interrupted when status is next checked;
+start a new refresh explicitly when ready. Client job tracking requires an
+updated Host. Job receipts are local operational data and are not included in
+portable backups.
+
 Program maintenance:
 
 - backup

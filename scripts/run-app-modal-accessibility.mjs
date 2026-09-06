@@ -238,6 +238,40 @@ export async function runAppModalAccessibilityTest(options = {}) {
       "The final modal action must fit in the viewport after scrolling.",
     );
 
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached" });
+    for (const viewport of [
+      { width: 1200, height: 800 },
+      { width: 1200, height: 600 },
+      { width: 600, height: 400 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await page.getByTestId("receipt-opener").click();
+      const receipt = page.getByRole("dialog", { name: "Receive purchase" });
+      await receipt.waitFor({ state: "visible" });
+      const receiptRect = await receipt.boundingBox();
+      assert.ok(receiptRect);
+      assert.ok(receiptRect.y >= 0, "Receipt header must stay inside the viewport.");
+      assert.ok(
+        receiptRect.y + receiptRect.height <= viewport.height,
+        `Receipt scroll panel must fit ${viewport.width}×${viewport.height}: ${JSON.stringify(receiptRect)}`,
+      );
+      assert.ok(receiptRect.x >= 0 && receiptRect.x + receiptRect.width <= viewport.width);
+      await receipt.getByRole("textbox", { name: "Home location (optional)" }).fill("QA Dry box");
+      const receive = receipt.getByRole("button", { name: "Receive 1 roll", exact: true });
+      await receive.scrollIntoViewIfNeeded();
+      await receive.focus();
+      const receiveRect = await receive.boundingBox();
+      assert.ok(receiveRect && receiveRect.y >= 0);
+      assert.ok(
+        receiveRect.y + receiveRect.height <= viewport.height,
+        "Receipt submit must remain reachable by scrolling the modal.",
+      );
+      await page.keyboard.press("Enter");
+      await receipt.waitFor({ state: "detached" });
+      await waitForActiveTestId(page, "receipt-opener");
+    }
+
     assert.deepEqual(browserErrors, [], "The accessibility harness must not emit browser errors.");
   } catch (error) {
     primaryError = error;

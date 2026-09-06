@@ -9,6 +9,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+#[path = "packaged_host_client_catalog_jobs.rs"]
+mod catalog_jobs;
+pub(crate) use catalog_jobs::{catalog_job_summary, run_catalog_job};
+
 const ENABLED_ENV_VAR: &str = "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E";
 const ROLE_ENV_VAR: &str = "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E_ROLE";
 const PHASE_ENV_VAR: &str = "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E_PHASE";
@@ -62,6 +66,7 @@ pub(crate) struct PackagedHostClientE2eConfiguration {
     base_url: Option<String>,
     pairing_url: Option<String>,
     target_generation: Option<u64>,
+    batch_receipt: Option<BatchReceiptEvidence>,
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +108,31 @@ pub(crate) struct PackagedHostClientE2eHostWaitInput {
     pairing_url: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct BatchReceiptEvidence {
+    batch_id: String,
+    spool_ids: Vec<String>,
+}
+
+fn validate_batch_receipt(receipt: &BatchReceiptEvidence, run_id: &str) -> Result<(), String> {
+    if receipt.batch_id != format!("{run_id}-catalog-batch")
+        || receipt.spool_ids.len() != 2
+        || receipt.spool_ids[0] == receipt.spool_ids[1]
+        || receipt.spool_ids.iter().any(|id| {
+            !id.strip_prefix("spool_").is_some_and(|suffix| {
+                suffix.len() == 32
+                    && suffix
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            })
+        })
+    {
+        return Err("Packaged Host-Client E2E batch receipt mismatch".to_string());
+    }
+    Ok(())
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct PackagedHostClientE2eClientCompletion {
@@ -120,6 +150,8 @@ pub(crate) struct PackagedHostClientE2eClientCompletion {
     paired_before_cleanup: bool,
     auth_cleared: bool,
     session_renewed: bool,
+    batch_receipt: BatchReceiptEvidence,
+    batch_replayed: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -152,6 +184,8 @@ struct ClientCompletionEvidence {
     paired_before_cleanup: bool,
     auth_cleared: bool,
     session_renewed: bool,
+    batch_receipt: BatchReceiptEvidence,
+    batch_replayed: bool,
 }
 
 impl From<&PackagedHostClientE2eClientCompletion> for ClientCompletionEvidence {
@@ -168,6 +202,8 @@ impl From<&PackagedHostClientE2eClientCompletion> for ClientCompletionEvidence {
             paired_before_cleanup: value.paired_before_cleanup,
             auth_cleared: value.auth_cleared,
             session_renewed: value.session_renewed,
+            batch_receipt: value.batch_receipt.clone(),
+            batch_replayed: value.batch_replayed,
         }
     }
 }
@@ -500,6 +536,7 @@ fn resolve_configuration(raw: RawConfiguration) -> Result<Option<ResolvedConfigu
             base_url: None,
             pairing_url: None,
             target_generation: None,
+            batch_receipt: None,
         },
     }))
 }
@@ -708,7 +745,9 @@ fn read_host_ready_for_client(
     Ok(Some(ready))
 }
 
-fn read_pair_target_generation(config: &ResolvedConfiguration) -> Result<u64, String> {
+fn read_pair_completion(
+    config: &ResolvedConfiguration,
+) -> Result<PackagedHostClientE2eClientCompletion, String> {
     let path = config
         .work_directory
         .join(result_file_name(CLIENT_ROLE, CLIENT_PAIR_PHASE));
@@ -737,9 +776,15 @@ fn read_pair_target_generation(config: &ResolvedConfiguration) -> Result<u64, St
         paired_before_cleanup: result.completion.paired_before_cleanup,
         auth_cleared: result.completion.auth_cleared,
         session_renewed: result.completion.session_renewed,
+        batch_receipt: result.completion.batch_receipt.clone(),
+        batch_replayed: result.completion.batch_replayed,
     };
     validate_client_completion_for_phase(config, &completion, CLIENT_PAIR_PHASE, None)?;
-    Ok(completion.target_generation)
+    Ok(completion)
+}
+
+fn read_pair_target_generation(config: &ResolvedConfiguration) -> Result<u64, String> {
+    Ok(read_pair_completion(config)?.target_generation)
 }
 
 fn public_configuration(
@@ -753,7 +798,9 @@ fn public_configuration(
         if public.phase == CLIENT_PAIR_PHASE {
             public.pairing_url = ready.pairing_url;
         } else {
-            public.target_generation = Some(read_pair_target_generation(config)?);
+            let pair = read_pair_completion(config)?;
+            public.target_generation = Some(pair.target_generation);
+            public.batch_receipt = Some(pair.batch_receipt);
         }
     } else if public.role == HOST_ROLE {
         public.base_url = Some(direct_base_url(public.listen_port));
@@ -795,6 +842,10 @@ fn validate_client_completion_for_phase(
         return Err("Packaged Host-Client E2E Client completion data mismatch".to_string());
     }
 
+    validate_batch_receipt(&completion.batch_receipt, &config.public.run_id)?;
+    if completion.batch_replayed != (expected_phase == CLIENT_RECOVER_PHASE) {
+        return Err("Packaged Host-Client E2E batch replay evidence mismatch".to_string());
+    }
     let phase_matches = match completion.phase.as_str() {
         CLIENT_PAIR_PHASE => {
             completion.host_weight_g == Some(PAIRED_WEIGHT_G)
@@ -1069,6 +1120,13 @@ pub(crate) fn complete_packaged_host_client_e2e(
                 }
             };
             validate_client_completion(&config, completion, expected_target_generation)?;
+            if expected_target_generation.is_some()
+                && completion.batch_receipt != read_pair_completion(&config)?.batch_receipt
+            {
+                return Err(
+                    "Packaged Host-Client E2E batch receipt changed after pairing".to_string(),
+                );
+            }
             CompletionEvidence::Client(ClientCompletionEvidence::from(completion))
         }
         PackagedHostClientE2eCompletion::Cleanup(completion) => {
@@ -1210,7 +1268,7 @@ mod tests {
 
     static FIXTURE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-    fn private_fixture(role: &str, phase: &str) -> (PathBuf, String, RawConfiguration) {
+    pub(super) fn private_fixture(role: &str, phase: &str) -> (PathBuf, String, RawConfiguration) {
         let fixture_sequence = FIXTURE_COUNTER.fetch_add(1, Ordering::Relaxed);
         let run_id = format!(
             "host-client-e2e-{}-{}-{fixture_sequence}",
@@ -1301,6 +1359,13 @@ mod tests {
         (directory, config, state)
     }
 
+    fn batch_receipt(config: &ResolvedConfiguration) -> BatchReceiptEvidence {
+        BatchReceiptEvidence {
+            batch_id: format!("{}-catalog-batch", config.public.run_id),
+            spool_ids: vec![format!("spool_{:032x}", 1), format!("spool_{:032x}", 2)],
+        }
+    }
+
     fn pair_completion(config: &ResolvedConfiguration) -> PackagedHostClientE2eClientCompletion {
         PackagedHostClientE2eClientCompletion {
             role: CLIENT_ROLE.to_string(),
@@ -1317,6 +1382,8 @@ mod tests {
             paired_before_cleanup: true,
             auth_cleared: false,
             session_renewed: false,
+            batch_receipt: batch_receipt(config),
+            batch_replayed: false,
         }
     }
 
@@ -1541,6 +1608,8 @@ mod tests {
             paired_before_cleanup: true,
             auth_cleared: false,
             session_renewed: false,
+            batch_receipt: batch_receipt(&config),
+            batch_replayed: false,
         };
         validate_client_completion(&config, &completion, Some(7)).expect("valid offline evidence");
         assert!(validate_client_completion(&config, &completion, Some(8)).is_err());
@@ -1562,11 +1631,36 @@ mod tests {
             paired_before_cleanup: true,
             auth_cleared: true,
             session_renewed: true,
+            batch_receipt: batch_receipt(&config),
+            batch_replayed: true,
         };
         validate_client_completion(&config, &completion, Some(7))
             .expect("valid recovery and credential cleanup evidence");
         completion.auth_cleared = false;
         assert!(validate_client_completion(&config, &completion, Some(7)).is_err());
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn batch_evidence_rejects_foreign_runs_duplicate_ids_and_extra_fields() {
+        let (directory, config) = resolved_fixture(CLIENT_ROLE, CLIENT_PAIR_PHASE);
+        let valid = batch_receipt(&config);
+        validate_batch_receipt(&valid, &config.public.run_id).expect("valid generated receipt");
+        let mut foreign = valid.clone();
+        foreign.batch_id = "foreign-run-catalog-batch".to_string();
+        assert!(validate_batch_receipt(&foreign, &config.public.run_id).is_err());
+        let mut duplicate = valid.clone();
+        duplicate.spool_ids[1] = duplicate.spool_ids[0].clone();
+        assert!(validate_batch_receipt(&duplicate, &config.public.run_id).is_err());
+        let mut unsafe_id = valid.clone();
+        unsafe_id.spool_ids[0] = "http://private-host/secret".to_string();
+        assert!(validate_batch_receipt(&unsafe_id, &config.public.run_id).is_err());
+        let mut value = serde_json::to_value(&valid).unwrap();
+        value["private_note"] = serde_json::json!("unexpected");
+        assert!(serde_json::from_value::<BatchReceiptEvidence>(value).is_err());
+        let mut completion = pair_completion(&config);
+        completion.batch_replayed = true;
+        assert!(validate_client_completion(&config, &completion, None).is_err());
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -1584,6 +1678,7 @@ mod tests {
                 Some(direct_base_url(config.public.listen_port).as_str())
             );
             assert_eq!(public.target_generation, Some(11));
+            assert_eq!(public.batch_receipt, Some(batch_receipt(&config)));
             assert!(public.pairing_url.is_none());
             let _ = std::fs::remove_dir_all(directory);
         }
@@ -1820,6 +1915,8 @@ mod tests {
         ];
         let mut expected_client = vec![
             "auth_cleared",
+            "batch_receipt",
+            "batch_replayed",
             "cache_weight_g",
             "host_weight_g",
             "library_id",

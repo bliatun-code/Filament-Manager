@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ChangeEvent,
@@ -22,7 +23,9 @@ import {
   type BambuBatchCameraStatus,
 } from "./inventory_bambu_batch_modal_model";
 import { InventoryBambuBatchReviewPanel } from "./inventory_bambu_batch_review_panel";
-import { ModalBody, ModalHeader } from "./modal_chrome";
+import { InventoryBambuBatchOutcomePanel } from "./inventory_bambu_batch_outcome_panel";
+import type { BambuBatchRegistrationSnapshot } from "../lib/bambu_batch_registration";
+import { ModalBody, ModalHeader, ModalNotice } from "./modal_chrome";
 import { useI18n } from "../lib/i18n";
 import type {
   BambuFilamentCodeBatch,
@@ -32,11 +35,17 @@ import { appendBambuFilamentCodeBatchScanInput } from "../lib/bambu_filament_cod
 
 type InventoryBambuBatchModalProps = {
   batch: BambuFilamentCodeBatch;
+  batchRegistration: BambuBatchRegistrationSnapshot | null;
+  batchBusy: boolean;
   createState: BambuFilamentCodeBatchCreateState;
   disabledCreate: boolean;
+  error?: string | null;
   input: string;
   onClose: () => void;
   onCreateBatch: () => void;
+  onRetryBambuBatch: () => void;
+  onNewBambuBatch: () => void;
+  onOpenBambuBatchSpool: (spoolId: string) => void;
   onInputChange: (value: string) => void;
   onRowSelectionChange: (rowKey: string, masterId: string | null) => void;
   open: boolean;
@@ -438,10 +447,12 @@ function BambuFilamentCodeBatchPanel({
     setImageScanMessage(t("inventory.bambuBatchImageScanning", "Reading image..."));
     try {
       const imageScanModule = await loadBambuBatchImageScanModule();
+      if (!mountedRef.current) return;
       const result = await imageScanModule.scanBambuFilamentCodesFromImage({
         currentInput: input,
         file,
       });
+      if (!mountedRef.current) return;
       if (result.status === "ready") {
         onInputChange(result.append.input);
         setImageScanMessage(bambuBatchImageScanMessage(result.append, t));
@@ -458,12 +469,13 @@ function BambuFilamentCodeBatchPanel({
         );
       }
     } catch (error) {
+      if (!mountedRef.current) return;
       console.error(error);
       setImageScanMessage(
         t("inventory.bambuBatchImageError", "Could not read that image."),
       );
     } finally {
-      setImageScanBusy(false);
+      if (mountedRef.current) setImageScanBusy(false);
       inputElement.value = "";
     }
   };
@@ -620,27 +632,52 @@ function BambuFilamentCodeBatchPanel({
 
 export function InventoryBambuBatchModal({
   batch,
+  batchRegistration,
+  batchBusy,
   createState,
   disabledCreate,
+  error,
   input,
   onClose,
   onCreateBatch,
+  onRetryBambuBatch,
+  onNewBambuBatch,
+  onOpenBambuBatchSpool,
   onInputChange,
   onRowSelectionChange,
   open,
   tauriAvailable,
 }: InventoryBambuBatchModalProps) {
   const { t } = useI18n();
+  const closeLocked = batchBusy || batchRegistration?.status === "SAVING";
+  const draft = useRef<HTMLDivElement>(null);
+  const portalRoot = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (open && !batchRegistration) {
+      const target = draft.current?.querySelector<HTMLTextAreaElement>("textarea:not(:disabled)")
+        ?? draft.current?.closest<HTMLElement>('[role="dialog"]');
+      target?.focus();
+    }
+  }, [open, batchRegistration]);
+
+  useLayoutEffect(() => {
     if (!open || typeof document === "undefined") {
       return undefined;
     }
     const previousOverflow = document.body.style.overflow;
     const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    const previousInert = new Map<HTMLElement, boolean>();
+    for (const sibling of document.body.children) {
+      if (sibling instanceof HTMLElement && sibling !== portalRoot.current) {
+        previousInert.set(sibling, sibling.inert);
+        sibling.inert = true;
+      }
+    }
     document.body.style.overflow = "hidden";
     document.body.style.overscrollBehavior = "contain";
     return () => {
+      previousInert.forEach((inert, element) => { element.inert = inert; });
       document.body.style.overflow = previousOverflow;
       document.body.style.overscrollBehavior = previousOverscrollBehavior;
     };
@@ -651,9 +688,10 @@ export function InventoryBambuBatchModal({
   }
 
   const modal = (
+    <div ref={portalRoot}>
     <AppModal
-      closeOnBackdrop
-      onBackdropClose={onClose}
+      closeOnBackdrop={!closeLocked}
+      onBackdropClose={closeLocked ? undefined : onClose}
       overlayClassName={inventoryModalOverlayClassName}
       panelClassName={`${inventoryWideModalPanelClassName} overscroll-contain`}
       zIndex={60}
@@ -662,31 +700,49 @@ export function InventoryBambuBatchModal({
         <ModalHeader
           eyebrow={t("inventory.bambuBatchModalEyebrow", "Bambu boxes")}
           title={t("inventory.bambuBatchModalTitle", "Batch add from boxes")}
-          subtitle={t(
+          subtitle={batchRegistration ? undefined : t(
             "inventory.bambuBatchModalSubtitle",
             "Add several Bambu rolls from box Filament Codes without moving the normal catalog search out of view.",
           )}
           closeLabel={t("common.close", "Close")}
           onClose={onClose}
+          disabled={closeLocked}
           className="py-2.5"
           titleClassName="text-lg"
           subtitleClassName="max-w-3xl text-xs leading-4"
         />
 
         <ModalBody scroll={false} className="px-3 py-3 sm:px-4">
-          <BambuFilamentCodeBatchPanel
-            batch={batch}
-            createState={createState}
-            disabledCreate={disabledCreate}
-            input={input}
-            onCreateBatch={onCreateBatch}
-            onInputChange={onInputChange}
-            onRowSelectionChange={onRowSelectionChange}
-            tauriAvailable={tauriAvailable}
-          />
+          {batchRegistration ? (
+            <InventoryBambuBatchOutcomePanel
+              registration={batchRegistration}
+              busy={batchBusy}
+              error={error}
+              onRetry={onRetryBambuBatch}
+              onNewBatch={onNewBambuBatch}
+              onOpenSpool={onOpenBambuBatchSpool}
+            />
+          ) : (
+            <div ref={draft} className="flex h-full min-h-0 flex-col gap-3">
+              {error ? <ModalNotice tone="danger">{error}</ModalNotice> : null}
+              <div className="min-h-0 flex-1">
+                <BambuFilamentCodeBatchPanel
+                  batch={batch}
+                  createState={createState}
+                  disabledCreate={disabledCreate}
+                  input={input}
+                  onCreateBatch={onCreateBatch}
+                  onInputChange={onInputChange}
+                  onRowSelectionChange={onRowSelectionChange}
+                  tauriAvailable={tauriAvailable}
+                />
+              </div>
+            </div>
+          )}
         </ModalBody>
       </>
     </AppModal>
+    </div>
   );
 
   if (typeof document === "undefined") {

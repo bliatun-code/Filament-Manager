@@ -49,6 +49,10 @@ export const frDictionary: DictionaryNode = {
     optional: "Facultatif",
   },
   errors: {
+    catalogSpoolBatchInvalid: "Le lot n’a pas été enregistré. Vérifiez les filaments sélectionnés, le poids, le propriétaire et l’emplacement. Utilisez au maximum 100 bobines.",
+    catalogSpoolBatchConflict: "Cet identifiant de lot appartient à une autre demande ou bibliothèque. Vérifiez le stock avant d’enregistrer un autre lot.",
+    catalogSpoolBatchHostUnsupported: "Mettez à jour le Host pour enregistrer les lots en toute sécurité. Aucune bobine n’a été envoyée.",
+    catalogSpoolBatchStorageFailed: "L’enregistrement de récupération du lot n’a pas pu être sauvegardé ou lu. L’enregistrement des bobines est suspendu pour éviter les doublons.",
     invalidRequest: "La demande n’a pas pu être exécutée.",
     unauthorized: "Une authentification est requise.",
     forbidden: "Cette action n’est pas autorisée.",
@@ -115,6 +119,7 @@ export const frDictionary: DictionaryNode = {
       "Mettez à jour l’hôte avant d’enregistrer la tare ou la propriété avec les détails de la bobine.",
     purchaseMetadataHostUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les détails d’achat.",
+    wishlistReceiptLocationHostUnsupported: "Mettez à jour l’hôte avant de réceptionner des bobines avec un emplacement de rangement.",
     purchasePriceInvalid:
       "Saisissez un prix d’achat valide, supérieur ou égal à zéro.",
     purchaseCurrencyInvalid:
@@ -342,6 +347,14 @@ export const frDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Aucun emplacement d’imprimante configuré pour le moment.",
   },
   inventory: {
+    bambuBatchSaving: "Enregistrement de {count, plural, one {# bobine} other {# bobines}}...",
+    bambuBatchUncertain: "Nous n’avons pas pu confirmer si ce lot a été enregistré. Poursuivez le même lot pour le vérifier ou le terminer sans créer de doublons.",
+    bambuBatchRejected: "Ce lot n’a pas été enregistré. Consultez l’erreur, puis modifiez le lot.",
+    bambuBatchComplete: "{count, plural, one {# bobine enregistrée} other {# bobines enregistrées}}.",
+    bambuBatchContinue: "Poursuivre le même lot",
+    bambuBatchEdit: "Modifier le lot",
+    bambuBatchNew: "Démarrer un nouveau lot",
+    bambuBatchRemaining: "{count, plural, one {# ligne doit encore être vérifiée et a été conservée pour le prochain lot.} other {# lignes doivent encore être vérifiées et ont été conservées pour le prochain lot.}}",
     title: "Bobines",
     subtitle: "Gérez le stock, les prêts et le poids des bobines au même endroit.",
     addSpoolAction: "Ajouter une bobine",
@@ -531,7 +544,7 @@ export const frDictionary: DictionaryNode = {
     loanOutAction: "Prêter",
     loadInPrinter: "Charger dans l’imprimante",
     loadInPrinterHint: "Choisissez un emplacement d’imprimante libre pour cette bobine.",
-    loadedInPrinter: "Bobine chargée dans l’imprimante.",
+    loadedInPrinter: "Bobine chargée dans {slot}.",
     noAvailablePrinterSlots: "Aucun emplacement d’imprimante libre.",
     printLabelAction: "Imprimer l’étiquette",
     unsavedChanges: "Modifications non enregistrées",
@@ -607,6 +620,8 @@ export const frDictionary: DictionaryNode = {
     showAllRolls: "Tout afficher",
     showFewerRolls: "Afficher moins",
     addedToInventory: "Ajoutée au stock",
+    openCreatedRoll: "Ouvrir la bobine",
+    registerAnotherRoll: "Enregistrer une autre bobine",
     addedFromWishlist: "Ajoutée depuis la liste de souhaits",
     visualFixtureLoaded: "Données de test du détail de stock chargées.",
     noMatchHint: "Modifiez la recherche ou les filtres d’état, de matériau ou de propriété.",
@@ -1090,6 +1105,7 @@ export const frDictionary: DictionaryNode = {
     itemStatusGroup: "État de {name}",
     qty: "Qté",
     receivePurchase: "Réceptionner l’achat",
+    receiptComplete: "{count} × {item} réceptionné(s). Quantité restante : {remaining}.",
     receivedQuantity: "Quantité reçue",
     receiveQuantity:
       "{count, plural, one {Réceptionner # bobine} other {Réceptionner # bobines}}",

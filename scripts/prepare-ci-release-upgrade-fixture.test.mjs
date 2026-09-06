@@ -40,6 +40,8 @@ test(
     try {
       const result = await prepareCiReleaseUpgradeFixture({ outputPath });
       assert.equal(result.outputPath, outputPath);
+      assert.equal(VISUAL_QA_BASELINE_SCHEMA_VERSION, 1);
+      assert.equal(result.fixture.catalogBatchJournal, null);
       assert.equal(
         result.fixture.schemaVersion,
         VISUAL_QA_BASELINE_SCHEMA_VERSION,
@@ -74,6 +76,9 @@ test(
             .get().count,
           0,
         );
+        assert.equal(database.prepare(
+          "SELECT COUNT(*) AS count FROM sqlite_master WHERE name = 'catalog_spool_batches'",
+        ).get().count, 0);
         assert.equal(
           database
             .prepare("SELECT value FROM settings WHERE key = ?")

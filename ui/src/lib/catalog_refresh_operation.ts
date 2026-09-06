@@ -47,6 +47,15 @@ export function getActiveCatalogRefreshOperation(): CatalogRefreshOperationSnaps
   return activeCatalogRefreshOperation;
 }
 
+export function updateCatalogRefreshOperation(
+  operationId: number,
+  update: Partial<Pick<CatalogRefreshOperationSnapshot, "vendor" | "phase" | "startedAt">>,
+): void {
+  if (activeCatalogRefreshOperation?.id === operationId) {
+    activeCatalogRefreshOperation = { ...activeCatalogRefreshOperation, ...update };
+  }
+}
+
 export function isCatalogRefreshOperationActive(): boolean {
   return activeCatalogRefreshOperation !== null;
 }

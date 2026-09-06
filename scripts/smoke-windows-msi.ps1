@@ -989,11 +989,15 @@ try {
             -Raw | ConvertFrom-Json
         if (
             $packagedDesktopE2eResult.status -ne "pass" -or
-            $packagedDesktopE2eResult.backup_total_rows -le 0
+            $packagedDesktopE2eResult.backup_total_rows -le 0 -or
+            $packagedDesktopE2eResult.catalog_batch.spools -ne 2 -or
+            $packagedDesktopE2eResult.catalog_batch.loans -ne 2 -or
+            $packagedDesktopE2eResult.catalog_batch.replayed -ne $true -or
+            [string]$packagedDesktopE2eResult.catalog_batch.state_snapshot_sha256 -cnotmatch '^[0-9a-f]{64}$'
         ) {
             throw "Packaged desktop mutating E2E summary is not a passing full-backup result."
         }
-        $packagedDesktopE2eSummary = "PASS, backup rows $($packagedDesktopE2eResult.backup_total_rows)"
+        $packagedDesktopE2eSummary = "PASS, backup rows $($packagedDesktopE2eResult.backup_total_rows), batch replay with 2 borrowed spools"
     }
 
     if ($RunPackagedHostClientE2E) {
@@ -1036,12 +1040,25 @@ try {
             $packagedHostClientE2eResult.cache_weight_g -ne 760 -or
             $packagedHostClientE2eResult.session_renewed -ne $true -or
             $packagedHostClientE2eResult.auth_cleared -ne $true -or
-            $packagedHostClientE2eResult.auth_cleanup -ne "pass"
+            $packagedHostClientE2eResult.auth_cleanup -ne "pass" -or
+            $packagedHostClientE2eResult.catalog_jobs.succeeded -ne 1 -or
+            $packagedHostClientE2eResult.catalog_jobs.interrupted -ne 1 -or
+            $packagedHostClientE2eResult.catalog_jobs.imported -ne 1 -or
+            $packagedHostClientE2eResult.catalog_jobs.client_jobs -ne 0 -or
+            $packagedHostClientE2eResult.catalog_batch.spools -ne 2 -or
+            $packagedHostClientE2eResult.catalog_batch.loans -ne 2 -or
+            $packagedHostClientE2eResult.catalog_batch.history_events -ne 4 -or
+            $packagedHostClientE2eResult.catalog_batch.receipts -ne 1 -or
+            $packagedHostClientE2eResult.catalog_batch.replayed -ne $true -or
+            $packagedHostClientE2eResult.catalog_batch.replay_revisions_unchanged -ne $true -or
+            $packagedHostClientE2eResult.catalog_batch.client_spools -ne 0 -or
+            $packagedHostClientE2eResult.catalog_batch.client_loans -ne 0 -or
+            $packagedHostClientE2eResult.catalog_batch.client_receipts -ne 0
         ) {
             throw "Packaged Host-Client mutating E2E summary is not a passing authority-isolation result."
         }
         $packagedHostClientE2eSummary = `
-            "PASS, Host $($packagedHostClientE2eResult.host_weight_g) g, Client shadow $($packagedHostClientE2eResult.client_local_weight_g) g"
+            "PASS, Host $($packagedHostClientE2eResult.host_weight_g) g, Client shadow $($packagedHostClientE2eResult.client_local_weight_g) g, batch replay with 2 borrowed spools and zero Client batch rows"
     }
 
     $appProcess = Start-Process `

@@ -14,6 +14,8 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import Database from "better-sqlite3";
+import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 
 import {
   cleanupMacosDmgSmokeStaging,
@@ -32,7 +34,34 @@ import {
   resolveMacosDmgSmokeStagingPaths,
   validateMacosDmgSmokeOptions,
   validateMacosDmgSmokeStaging,
+  verifySmokeDatabase,
 } from "./smoke-macos-dmg.mjs";
+
+test("macOS installed database gate checks the actual migrated schema and rejects a missing or malformed batch journal", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "macos-batch-schema-"));
+  try {
+    const databasePath = path.join(root, "app.db");
+    const database = new Database(databasePath);
+    try {
+      const migrations = new URL("../src/database/migrations/", import.meta.url);
+      const manifest = JSON.parse(readFileSync(new URL("manifest.json", migrations), "utf8"));
+      database.exec(readFileSync(new URL("../src/database/schema.sql", import.meta.url), "utf8"));
+      for (const migration of manifest.migrations.filter(({ role }) => role === "schema-migration")) {
+        database.exec(readFileSync(new URL(migration.file, migrations), "utf8"));
+      }
+      database.pragma(`user_version = ${manifest.currentSchemaVersion}`);
+      assert.equal(verifySmokeDatabase(databasePath, currentSchemaVersion()).schemaVersion, manifest.currentSchemaVersion);
+      database.exec("DROP TABLE catalog_spool_batches");
+      assert.throws(() => verifySmokeDatabase(databasePath, currentSchemaVersion()), /missing catalog_spool_batches/);
+      database.exec("CREATE TABLE catalog_spool_batches (batch_id TEXT PRIMARY KEY)");
+      assert.throws(() => verifySmokeDatabase(databasePath, currentSchemaVersion()), /catalog_spool_batches/);
+    } finally {
+      database.close();
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("macOS installed DMG smoke requires explicit bounded inputs", () => {
   assert.throws(

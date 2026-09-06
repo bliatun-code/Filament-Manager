@@ -43,7 +43,7 @@ export function useSettingsCatalogRefreshProgress({
     }
 
     void subscribeCatalogRefreshProgress((payload: CatalogRefreshProgressPayload) => {
-      if (disposed) {
+      if (disposed || getActiveCatalogRefreshOperation()?.kind !== "AUDIT") {
         return;
       }
       setCatalogRefreshVendor(payload.vendor === "eSUN" ? "eSUN" : "Bambu");

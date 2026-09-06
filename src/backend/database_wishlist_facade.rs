@@ -28,8 +28,15 @@ impl FilamentDatabase {
         item_id: &str,
         quantity: i64,
         purchase_metadata: PurchaseReceiptMetadata,
+        home_location: Option<&str>,
     ) -> InventoryResult<WishlistReceiptResult> {
-        receive_wishlist_item_rows(self.connection(), item_id, quantity, purchase_metadata)
+        receive_wishlist_item_rows(
+            self.connection(),
+            item_id,
+            quantity,
+            purchase_metadata,
+            home_location,
+        )
     }
 
     pub fn delete_wishlist_item(&self, item_id: &str) -> InventoryResult<()> {

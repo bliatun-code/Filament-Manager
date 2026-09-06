@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 import {
   buildBambuFilamentCodeBatch,
@@ -10,6 +11,7 @@ import {
 } from "../lib/bambu_filament_code_batch";
 import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
 import type { MasterCatalogRow } from "../lib/tauri_client";
+import type { BambuBatchRegistrationSnapshot } from "../lib/bambu_batch_registration";
 import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 
 const source = readFileSync(
@@ -25,6 +27,12 @@ const modelSource = readFileSync(
   new URL("./inventory_bambu_batch_modal_model.ts", import.meta.url),
   "utf8",
 );
+
+const registration: BambuBatchRegistrationSnapshot = {
+  status: "SAVING", batchId: "batch-captured",
+  rows: [{ label: "TPU · Yellow", code: "53400" }, { label: "TPU · Yellow", code: "53400" }],
+  spoolIds: [], remainingCount: 1, error: null,
+};
 
 const norwegianMessages: Record<string, string> = {
   "inventory.bambuBatchModalEyebrow": "Bambu-esker",
@@ -45,7 +53,7 @@ function i18nValue(locale: Locale = "en"): I18nContextValue {
   return {
     locale,
     setLocale: () => {},
-    t: (key, fallback = "") => (locale === "nb" ? norwegianMessages[key] ?? fallback : fallback),
+    t: (key, fallback = "", params = {}) => formatMessage(locale === "nb" ? norwegianMessages[key] ?? fallback : fallback, params, locale),
   };
 }
 
@@ -105,6 +113,9 @@ function renderBatchModal(options: {
   locale?: Locale;
   masters?: MasterCatalogRow[];
   selectedMasterIds?: Record<string, string>;
+  registration?: BambuBatchRegistrationSnapshot | null;
+  busy?: boolean;
+  error?: string | null;
 }) {
   const masters = options.masters ?? [master()];
   const input = options.input ?? "";
@@ -128,11 +139,17 @@ function renderBatchModal(options: {
       { value: i18nValue(options.locale ?? "en") },
       React.createElement(InventoryBambuBatchModal, {
         batch,
+        batchRegistration: options.registration ?? null,
+        batchBusy: options.busy ?? false,
         createState,
         disabledCreate: createState.disabled,
+        error: options.error,
         input,
         onClose: () => {},
         onCreateBatch: () => {},
+        onRetryBambuBatch: () => {},
+        onNewBambuBatch: () => {},
+        onOpenBambuBatchSpool: () => {},
         onInputChange: () => {},
         onRowSelectionChange: () => {},
         open: true,
@@ -218,6 +235,50 @@ test("InventoryBambuBatchModal owns batch controls without stock workflow side p
   assert.doesNotMatch(html, /Ownership/);
   assert.doesNotMatch(html, /Add current selection to wishlist/);
   assert.doesNotMatch(html, /Add spool to inventory/);
+});
+
+test("saving replaces scanners with captured duplicate rows and locks closing", () => {
+  const html = renderBatchModal({ registration, busy: true });
+  assert.match(html, /Saving 2 rolls/);
+  assert.match(html, /role="status" aria-live="polite"/);
+  assert.equal((html.match(/TPU · Yellow/g) ?? []).length, 2);
+  assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="Close"|<button[^>]*aria-label="Close"[^>]*disabled=""/);
+  assert.doesNotMatch(html, /<textarea|type="file"|Use webcam|Add ready matches|Start new batch|Open roll/);
+});
+
+test("uncertain outcome offers only continuation of the same batch", () => {
+  const html = renderBatchModal({ registration: { ...registration, status: "UNCERTAIN", error: "Connection lost" } });
+  assert.match(html, /could not confirm whether this batch was saved/);
+  assert.match(html, /Continue same batch/);
+  assert.match(html, /Connection lost/);
+  assert.doesNotMatch(html, /Start new batch|Edit batch|Open roll|<textarea/);
+});
+
+test("rejected batch explains that nothing was saved before enabling edit", () => {
+  const html = renderBatchModal({ registration: { ...registration, status: "REJECTED", error: "Invalid location" } });
+  assert.match(html, /This batch was not saved/);
+  assert.match(html, /Edit batch/);
+  assert.match(html, /Invalid location/);
+  assert.doesNotMatch(html, /Continue same batch|Start new batch|Open roll|<textarea/);
+});
+
+test("complete receipt retains separate physical rolls and unsubmitted review count alongside refresh errors", () => {
+  const html = renderBatchModal({ registration: { ...registration, status: "COMPLETE", spoolIds: ["saved-1", "saved-2"] }, error: "Failed to load inventory." });
+  assert.match(html, /Registered 2 rolls/);
+  assert.match(html, /1 row still needs review and has been kept for the next batch/);
+  assert.equal((html.match(/>Open roll<\/button>/g) ?? []).length, 2);
+  assert.match(html, /Open roll: 1\. TPU · Yellow/);
+  assert.match(html, /Open roll: 2\. TPU · Yellow/);
+  assert.match(html, /Start new batch/);
+  assert.match(html, /Failed to load inventory/);
+  assert.doesNotMatch(html, /Continue same batch|<textarea/);
+});
+
+test("pre-send persistence failures appear inside the editable batch dialog", () => {
+  const html = renderBatchModal({ input: "53400", error: "Could not save pending batch." });
+  assert.match(html, /Could not save pending batch/);
+  assert.match(html, /<textarea/);
+  assert.match(html, /Add ready matches/);
 });
 
 test("InventoryBambuBatchModal localizes batch controls in Norwegian", () => {

@@ -195,6 +195,10 @@ export const csCZDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Záložní limit 200 g pro starší verzi hostitele"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "Dávka nebyla uložena. Zkontrolujte vybrané filamenty, hmotnost, vlastníka a umístění. Použijte nejvýše 100 cívek.",
+    "catalogSpoolBatchConflict": "Toto ID dávky patří jinému požadavku nebo knihovně. Před registrací další dávky zkontrolujte zásoby.",
+    "catalogSpoolBatchHostUnsupported": "Pro bezpečnou registraci dávek aktualizujte Host. Nebyly odeslány žádné cívky.",
+    "catalogSpoolBatchStorageFailed": "Záznam pro obnovení dávky se nepodařilo uložit nebo přečíst. Registrace je pozastavena, aby se zabránilo duplicitním cívkám.",
     "downloadsUnavailable": "Složka Stažené soubory není k dispozici.",
     "exportInvalidPayload": "Vygenerovaný export je neplatný.",
     "exportWriteFailed": "Export se nepodařilo uložit.",
@@ -239,6 +243,7 @@ export const csCZDictionary: DictionaryNode = {
     "inboundLoanRequired": "Tato akce je dostupná pouze pro cívky vypůjčené od někoho jiného.",
     "spoolCommonDetailsHostUnsupported": "Před uložením hmotnosti prázdné cívky nebo vlastnictví spolu s údaji cívky aktualizujte hostitele.",
     "purchaseMetadataHostUnsupported": "Před uložením údajů o nákupu aktualizujte hostitele.",
+    wishlistReceiptLocationHostUnsupported: "Před příjmem cívek s místem uložení aktualizujte hostitele.",
     "purchasePriceInvalid": "Zadejte platnou nákupní cenu rovnou nule nebo vyšší.",
     "purchaseCurrencyInvalid": "Zadejte platný třípísmenný kód měny nákupu.",
     "purchaseCurrencyRequired": "Při nastavení nákupní ceny je vyžadována měna.",
@@ -264,11 +269,21 @@ export const csCZDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Uložené standardy filamentu již nejsou platné. Načtěte je znovu a zkontrolujte."
   },
   "inventory": {
+    "bambuBatchSaving": "Ukládání {count, plural, one {# cívky} few {# cívek} other {# cívek}}...",
+    "bambuBatchUncertain": "Nepodařilo se potvrdit, zda byla dávka uložena. Pokračujte se stejnou dávkou a zkontrolujte nebo dokončete ji bez vytváření duplicit.",
+    "bambuBatchRejected": "Dávka nebyla uložena. Zkontrolujte chybu a poté dávku upravte.",
+    "bambuBatchComplete": "{count, plural, one {Zaregistrována # cívka.} few {Zaregistrovány # cívky.} other {Zaregistrováno # cívek.}}",
+    "bambuBatchContinue": "Pokračovat se stejnou dávkou",
+    "bambuBatchEdit": "Upravit dávku",
+    "bambuBatchNew": "Zahájit novou dávku",
+    "bambuBatchRemaining": "{count, plural, one {# řádek stále vyžaduje kontrolu a byl ponechán pro další dávku.} few {# řádky stále vyžadují kontrolu a byly ponechány pro další dávku.} other {# řádků stále vyžaduje kontrolu a bylo ponecháno pro další dávku.}}",
     "activeFilters": "aktivní",
     "addCurrentSelectionToWishlist": "Přidat aktuální výběr do seznamu přání",
     "addDirectlyToStock": "Přidejte přímo do zásoby",
     "addedFromWishlist": "Přidáno ze seznamu přání",
     "addedToInventory": "Přidáno do inventáře",
+    "openCreatedRoll": "Otevřít cívku",
+    "registerAnotherRoll": "Zaregistrovat další cívku",
     "addFilament": "Přidejte filament",
     "addFilamentSubtitle": "Přidejte přímo do skladu, nebo si ponechte wishlist → na objednávku → skladový postup.",
     "addMovedPrefix": "Tok přidání/objednávky se přesune nahoru",
@@ -761,7 +776,7 @@ export const csCZDictionary: DictionaryNode = {
     "loadInPrinter": "Vložit do tiskárny",
     "loadInPrinterHint": "Vybraná cívka je připravena. Stačí zvolit pozici tiskárny; není třeba znovu hledat cívku.",
     "noAvailablePrinterSlots": "Nejsou dostupné žádné prázdné pozice tiskárny.",
-    "loadedInPrinter": "Cívka byla vložena do pozice tiskárny.",
+    "loadedInPrinter": "Cívka vložena do {slot}.",
     "printLabelAction": "Vytisknout štítek",
     "unsavedChanges": "Máte neuložené změny.",
     "allChangesSaved": "Všechny změny jsou uloženy.",
@@ -2166,6 +2181,7 @@ export const csCZDictionary: DictionaryNode = {
     "vendorPlaceholder": "Prodejce (např. Generic, eSUN)",
     "viewRefreshLog": "Zobrazit protokol obnovení",
     "receivePurchase": "Přijmout nákup",
+    receiptComplete: "Přijato {count} × {item}. Zbývá: {remaining}.",
     "receivedQuantity": "Přijaté množství",
     "receiveQuantity": "{count, plural, one {Přijmout # cívku} few {Přijmout # cívky} many {Přijmout # cívek} other {Přijmout # cívky}}"
   }

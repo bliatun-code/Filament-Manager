@@ -393,6 +393,108 @@
       "key": "errors.inboundLoanRequired",
       "meaning": "Browser Companion conflict shown when a borrowed-in return has no matching active inbound-loan record.",
       "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "wishlist.receiptComplete",
+      "meaning": "Receipt of physical rolls from either a wishlist or an order. {count} is the received quantity, {item} is the filament title, and {remaining} is the unreceived quantity left on this queue entry. Zero means fully received. Do not translate substituted item names.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.wishlistReceiptLocationHostUnsupported",
+      "meaning": "The paired Host is too old to receive rolls and store a home location atomically. The Client rejects the request before changing inventory; upgrade the Host before retrying with a location.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.wishlistReceiptLocationHostUnsupported",
+      "meaning": "Shared error for a Host that does not support receiving rolls with a home location in one operation. Upgrade is required before that operation; no partial receipt is performed.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.openCreatedRoll",
+      "meaning": "Primary action after one roll was successfully registered. Opens the details of that exact saved roll; does not register or physically open another roll.",
+      "screenshot": "docs/screenshots/usability-registration-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.registerAnotherRoll",
+      "meaning": "After successful single-roll registration, returns to the entry form to prepare another physical roll. This action alone does not save a roll. Existing filament selection is retained.",
+      "screenshot": "docs/screenshots/usability-registration-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchSaving",
+      "meaning": "Progress status for one atomic registration batch. Count is the number of physical filament rolls, including separate rolls with the same box code. Saving is not a confirmation of success.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchUncertain",
+      "meaning": "The response was lost or could not be verified, so saving may already have happened. Continuing retains the exact batch ID and payload; the backend safely replays its durable receipt instead of creating duplicate rolls.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchRejected",
+      "meaning": "Terminal rejection after the application has established that this request did not save any rolls. Editing prepares the captured draft again and does not itself write inventory.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchComplete",
+      "meaning": "Confirmed atomic batch receipt. Count is the number of authoritative saved roll IDs; an inventory refresh failure does not invalidate this confirmation.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchContinue",
+      "meaning": "Retry or recover this exact uncertain batch with the same durable request ID and payload. This is not a new batch or a retry of separate physical rolls.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchEdit",
+      "meaning": "Return a rejected batch to its captured editable codes and catalog selections. This action does not save any roll.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchNew",
+      "meaning": "After a confirmed batch, start an editable draft containing only previously unsubmitted review rows. This action does not save rolls and never silently reuses confirmed rows.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.bambuBatchRemaining",
+      "meaning": "Count of original input rows not submitted because they still needed catalog review. These rows remain in the next draft; they are not a partial failure of the atomic write.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.catalogSpoolBatchInvalid",
+      "meaning": "The atomic batch was rejected without storing rolls. Filament selection, weight, ownership and storage location must be valid and the batch is limited to 100 physical rolls.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.catalogSpoolBatchConflict",
+      "meaning": "A durable batch request ID is already bound to different contents or a different library. The current submission is rejected; the earlier request may have stored rolls and inventory must be checked.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.catalogSpoolBatchHostUnsupported",
+      "meaning": "Compatibility guard rejected the operation before sending any rolls because the Host lacks the safe atomic batch API. Upgrade the Host before trying this operation.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.catalogSpoolBatchStorageFailed",
+      "meaning": "Local recovery metadata could not be persisted or read. Registration is paused because forgetting the prior batch identity could cause duplicate physical rolls. This message does not establish whether a prior request stored rolls.",
+      "screenshot": "docs/screenshots/usability-bambu-batch-success.png"
     }
   ],
   "groups": [

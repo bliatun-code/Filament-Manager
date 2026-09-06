@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState, type Dispatch, type SetStateAction } from "react";
 import type {
   InventoryAddModalProps,
   InventoryEntryPurpose,
@@ -7,6 +7,11 @@ import type { WishlistQueuePanelProps } from "../components/wishlist_queue_panel
 import { buildBambuFilamentCodeBatchCreateState } from "./bambu_filament_code_batch";
 import { isBorrowedInOwnership } from "./inventory_domain";
 import { isInventoryCreateDisabled } from "./inventory_create_model";
+import {
+  inventoryCreateSessionReducer,
+  newInventoryCreateSession,
+  type InventoryCreateSuccess,
+} from "./inventory_create_success";
 import {
   inventoryCreatePreviewPanelStyle,
   inventorySwatchActionButtonStyle,
@@ -32,12 +37,14 @@ type InventoryAddWorkflowInput = {
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
+  clientTargetGeneration: number | null;
   defaultPurchaseCurrency: string;
   ensureLocalWriteAllowed: () => boolean;
   error: string | null;
   infoMessage: string | null;
   librarySyncReady: boolean;
   onOpenPurchaseQueue: () => void;
+  onOpenCreatedSpool: (spoolId: string) => boolean;
   purchaseActionsDisabled: boolean;
   reloadSpools: () => Promise<void>;
   reloadWishlist: () => Promise<void>;
@@ -57,12 +64,14 @@ export function useInventoryAddWorkflow({
   clientHostBaseUrl,
   clientLibraryId,
   clientReadOnly,
+  clientTargetGeneration,
   defaultPurchaseCurrency,
   ensureLocalWriteAllowed,
   error,
   infoMessage,
   librarySyncReady,
   onOpenPurchaseQueue,
+  onOpenCreatedSpool,
   purchaseActionsDisabled,
   reloadSpools,
   reloadWishlist,
@@ -81,6 +90,26 @@ export function useInventoryAddWorkflow({
   const [sidePanelMode, setSidePanelMode] = useState<SidePanelMode>("MANAGE");
   const [showAddModal, setShowAddModal] = useState(false);
   const [entryPurpose, setEntryPurpose] = useState<InventoryEntryPurpose>("STOCK");
+  const authorityKey = JSON.stringify([
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+  ]);
+  const [createSession, updateCreateSession] = useReducer(
+    inventoryCreateSessionReducer, authorityKey, newInventoryCreateSession,
+  );
+  const createdSpool = createSession.authorityKey === authorityKey ? createSession.receipt : null;
+
+  useEffect(() => {
+    if (createSession.authorityKey === authorityKey) return;
+    updateCreateSession({ type: "authority", authorityKey });
+    setShowAddModal(false);
+    setSidePanelMode("MANAGE");
+    setBusy(false);
+    setInfoMessage(null);
+  }, [authorityKey, createSession.authorityKey, setInfoMessage]);
+
+  const handleSpoolCreated = useCallback((receipt: InventoryCreateSuccess) => {
+    updateCreateSession({ type: "completed", authorityKey, sessionId: createSession.sessionId, receipt });
+  }, [authorityKey, createSession.sessionId]);
 
   const {
     activeCatalogMasters,
@@ -127,6 +156,11 @@ export function useInventoryAddWorkflow({
     useManualFromCatalog,
   } = useInventoryCreateDraft(masters);
 
+  useEffect(() => {
+    // A previous library's codes must not become a fresh request in a new target.
+    resetBambuBatchInput();
+  }, [authorityKey, resetBambuBatchInput]);
+
   const {
     confirmWishlistRemoveId,
     resetWishlistQueue,
@@ -164,8 +198,11 @@ export function useInventoryAddWorkflow({
   }, [cancelWishlistRemove, confirmWishlistRemoveId, setWishlistQueueQuery]);
 
   const switchToManageMode = useCallback(() => {
+    if (busy) return;
+    updateCreateSession({ type: "reset" });
+    setShowAddModal(false);
     setSidePanelMode("MANAGE");
-  }, []);
+  }, [busy]);
 
   const { catalogLoadState, reloadCatalog, resetCatalogLoadState } =
     useInventoryCatalogReload({
@@ -201,6 +238,10 @@ export function useInventoryAddWorkflow({
   ]);
 
   const {
+    batchRegistration,
+    batchBusy,
+    handleRetryBambuBatch,
+    handleNewBambuBatch,
     currentCreateDraft,
     handleAddCurrentToWishlist,
     handleCreateBambuCodeBatch,
@@ -213,12 +254,15 @@ export function useInventoryAddWorkflow({
     borrowedFromName,
     borrowedInNote,
     bambuCodeBatch,
+    bambuBatchInput,
     busy,
     canUseClientHostWrite,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
     confirmWishlistRemoveId,
+    clientTargetGeneration,
+    createSessionId: createSession.sessionId,
     createMode,
     ensureLocalWriteAllowed,
     manualColorName,
@@ -230,11 +274,23 @@ export function useInventoryAddWorkflow({
     newLocation,
     newOwnershipType,
     onWishlistItemCreated: finishPurchaseEntry,
+    onSpoolCreated: handleSpoolCreated,
     reloadCatalog,
     reloadSpools,
     reloadWishlist,
     resetAfterCreatedSpool,
     resetBambuBatchInput,
+    restoreBambuBatchDraft: (draft) => {
+      setCreateMode("bambu");
+      setBambuBatchInput(draft.rawInput);
+      for (const [key, id] of Object.entries(draft.selections)) setBambuBatchRowSelection(key, id);
+      setNewInitialWeight(String(draft.input.initial_weight_g));
+      setNewLocation(draft.input.location ?? "");
+      setNewOwnershipType(draft.input.ownership_type);
+      setBorrowedFromName(draft.input.owner_name ?? "");
+      setBorrowedFromContact(draft.input.owner_contact ?? "");
+      setBorrowedInNote(draft.input.ownership_note ?? "");
+    },
     selectedBambuMaster,
     selectedEsunMaster,
     setBusy,
@@ -248,6 +304,7 @@ export function useInventoryAddWorkflow({
   });
 
   const openAddModal = useCallback((options: OpenAddModalOptions = {}) => {
+    if (busy) return;
     if (clientReadOnly) {
       if (!canUseClientHostWrite()) {
         return;
@@ -256,16 +313,22 @@ export function useInventoryAddWorkflow({
       return;
     }
     setEntryPurpose(options.purpose ?? "STOCK");
+    updateCreateSession({ type: "reset" });
+    setInfoMessage(null);
+    setError(null);
     setSidePanelMode("ADD");
     resetCatalogLoadState();
     resetBorrowedInDraft();
     setShowAddModal(true);
   }, [
+    busy,
     canUseClientHostWrite,
     clientReadOnly,
     ensureLocalWriteAllowed,
     resetBorrowedInDraft,
     resetCatalogLoadState,
+    setError,
+    setInfoMessage,
   ]);
 
   const openPurchaseModal = useCallback(() => {
@@ -273,11 +336,31 @@ export function useInventoryAddWorkflow({
   }, [openAddModal]);
 
   const closeAddModal = useCallback(() => {
+    if (busy) return;
+    updateCreateSession({ type: "reset" });
     setShowAddModal(false);
     setSidePanelMode("MANAGE");
     resetCatalogLoadState();
     resetBorrowedInDraft();
-  }, [resetBorrowedInDraft, resetCatalogLoadState]);
+  }, [busy, resetBorrowedInDraft, resetCatalogLoadState]);
+
+  const registerAnotherSpool = useCallback(() => {
+    if (busy || !createdSpool) return;
+    updateCreateSession({ type: "reset" });
+    setError(null);
+    setInfoMessage(null);
+  }, [busy, createdSpool, setError, setInfoMessage]);
+
+  const openCreatedSpool = useCallback((spoolId: string) => {
+    if (busy || createdSpool?.spoolId !== spoolId) return;
+    if (onOpenCreatedSpool(spoolId)) closeAddModal();
+  }, [busy, closeAddModal, createdSpool, onOpenCreatedSpool]);
+
+  const openBambuBatchSpool = (spoolId: string) => {
+    if (busy || batchBusy || batchRegistration?.status !== "COMPLETE" ||
+      !batchRegistration.spoolIds.includes(spoolId)) return;
+    if (onOpenCreatedSpool(spoolId)) closeAddModal();
+  };
 
   const catalogSelectionUnavailable =
     isCatalogCreateMode && catalogLoadState !== "READY";
@@ -314,9 +397,14 @@ export function useInventoryAddWorkflow({
     initialWeightValid: parsePositiveWeight(newInitialWeight) !== null,
     borrowedOwnerRequired: newSpoolBorrowedIn && !borrowedFromName.trim(),
   });
-  const addModalActive = showAddModal && sidePanelMode === "ADD";
+  const addModalActive = showAddModal && sidePanelMode === "ADD" && createSession.authorityKey === authorityKey;
 
   const modalProps: InventoryAddModalProps = {
+    batchRegistration,
+    batchBusy,
+    onRetryBambuBatch: handleRetryBambuBatch,
+    onNewBambuBatch: handleNewBambuBatch,
+    onOpenBambuBatchSpool: openBambuBatchSpool,
     actionStyle: currentCreateActionStyle,
     activeCatalogMasters,
     bambuBatchInput,
@@ -325,6 +413,8 @@ export function useInventoryAddWorkflow({
     borrowedFromContact,
     borrowedFromName,
     borrowedInNote,
+    busy,
+    createdSpool,
     catalogLoadState,
     catalogMasterById,
     catalogQuery,
@@ -362,6 +452,8 @@ export function useInventoryAddWorkflow({
     onManualMaterialChange: setManualMaterial,
     onManualVendorChange: setManualVendor,
     onOwnershipTypeChange: setNewOwnershipType,
+    onOpenCreatedSpool: openCreatedSpool,
+    onRegisterAnotherSpool: registerAnotherSpool,
     onRetryCatalog: () => {
       void reloadCatalog();
     },

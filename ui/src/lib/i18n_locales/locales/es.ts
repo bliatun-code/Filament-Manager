@@ -49,6 +49,10 @@ export const esDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   errors: {
+    catalogSpoolBatchInvalid: "El lote no se guardó. Comprueba los filamentos seleccionados, el peso, el propietario y la ubicación. Usa un máximo de 100 bobinas.",
+    catalogSpoolBatchConflict: "Este ID de lote pertenece a otra solicitud o biblioteca. Comprueba el inventario antes de registrar otro lote.",
+    catalogSpoolBatchHostUnsupported: "Actualiza el Host para registrar lotes de forma segura. No se envió ninguna bobina.",
+    catalogSpoolBatchStorageFailed: "No se pudo guardar o leer el registro de recuperación del lote. El registro está pausado para evitar bobinas duplicadas.",
     invalidRequest: "No se pudo completar la solicitud.",
     unauthorized: "Se requiere autenticación.",
     forbidden: "Esta acción no está permitida.",
@@ -115,6 +119,7 @@ export const esDictionary: DictionaryNode = {
       "Actualiza el host antes de guardar la tara o la propiedad junto con los detalles de la bobina.",
     purchaseMetadataHostUnsupported:
       "Actualiza el host antes de guardar los detalles de compra.",
+    wishlistReceiptLocationHostUnsupported: "Actualiza el host antes de recibir bobinas con una ubicación de almacenamiento.",
     purchasePriceInvalid: "Introduce un precio de compra válido de cero o más.",
     purchaseCurrencyInvalid:
       "Introduce una moneda de compra válida de tres letras.",
@@ -349,6 +354,14 @@ export const esDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para hosts antiguos",
   },
   inventory: {
+    bambuBatchSaving: "Guardando {count, plural, one {# bobina} other {# bobinas}}...",
+    bambuBatchUncertain: "No pudimos confirmar si se guardó este lote. Continúa con el mismo lote para comprobarlo o completarlo sin crear duplicados.",
+    bambuBatchRejected: "Este lote no se guardó. Revisa el error y después edita el lote.",
+    bambuBatchComplete: "{count, plural, one {# bobina registrada} other {# bobinas registradas}}.",
+    bambuBatchContinue: "Continuar con el mismo lote",
+    bambuBatchEdit: "Editar lote",
+    bambuBatchNew: "Iniciar nuevo lote",
+    bambuBatchRemaining: "{count, plural, one {# fila aún necesita revisión y se ha conservado para el siguiente lote.} other {# filas aún necesitan revisión y se han conservado para el siguiente lote.}}",
     title: "Bobinas",
     subtitle:
       "Gestiona el stock, los préstamos y el peso de las bobinas en un solo lugar.",
@@ -414,6 +427,8 @@ export const esDictionary: DictionaryNode = {
     showFewerRolls: "Mostrar menos",
     loading: "Cargando bobinas...",
     addedToInventory: "Añadida al inventario",
+    openCreatedRoll: "Abrir bobina",
+    registerAnotherRoll: "Registrar otra bobina",
     addedFromWishlist: "Añadida desde la lista de deseos",
     noMatch: "Ninguna bobina coincide con los filtros actuales.",
     noMatchHint:
@@ -852,7 +867,7 @@ export const esDictionary: DictionaryNode = {
     loadInPrinterHint:
       "La bobina seleccionada está lista. Elige únicamente la ranura de la impresora; no es necesario buscar otra bobina.",
     noAvailablePrinterSlots: "No hay ranuras de impresora vacías disponibles.",
-    loadedInPrinter: "Bobina cargada en la ranura de la impresora.",
+    loadedInPrinter: "Bobina cargada en {slot}.",
     printLabelAction: "Imprimir etiqueta",
     unsavedChanges: "Tienes cambios sin guardar.",
     allChangesSaved: "Todos los cambios están guardados.",
@@ -1153,6 +1168,7 @@ export const esDictionary: DictionaryNode = {
     confirmRemoveHint:
       "Esto elimina la entrada de la cola, no las bobinas del inventario.",
     receivePurchase: "Recibir compra",
+    receiptComplete: "Recibido: {count} × {item}. Pendiente: {remaining}.",
     receivedQuantity: "Cantidad recibida",
     receiveQuantity:
       "{count, plural, one {Recibir # bobina} other {Recibir # bobinas}}",

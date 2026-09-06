@@ -22,13 +22,21 @@ import {
   type PackagedDesktopE2eCompletion,
   type PackagedDesktopE2eConfiguration,
 } from "./tauri_packaged_desktop_e2e_client";
+import { createCatalogSpoolBatch } from "./tauri_catalog_spool_batch_client";
+import { getLibrarySyncSettings } from "./tauri_library_sync_client";
+import {
+  createPackagedDesktopBatch,
+  replayPackagedDesktopBatch,
+  validatePackagedDesktopBatchBackup,
+  type PackagedDesktopBatchDependencies,
+} from "./packaged_desktop_batch_evidence";
 
 export type {
   PackagedDesktopE2eCompletion,
   PackagedDesktopE2eConfiguration,
 } from "./tauri_packaged_desktop_e2e_client";
 
-type ScenarioDependencies = {
+type ScenarioDependencies = PackagedDesktopBatchDependencies & {
   createManualSpool: typeof createManualSpool;
   listSpools: typeof listSpools;
   updateSpoolWeight: typeof updateSpoolWeight;
@@ -72,6 +80,8 @@ async function sha256(content: string): Promise<string> {
 }
 
 const defaultDependencies: ScenarioDependencies = {
+  createCatalogSpoolBatch,
+  getLibrarySyncSettings,
   createManualSpool,
   listSpools,
   updateSpoolWeight,
@@ -374,6 +384,8 @@ async function runMutationPhase(
     if (loan.id !== createdLoan.id) {
       scenarioFailure(step, "The returned QA loan identity changed");
     }
+    step = "create-catalog-batch";
+    const batchEvidence = await createPackagedDesktopBatch(config.run_id, created.master_id, dependencies);
     await dependencies.complete({
       phase: "mutate",
       run_id: config.run_id,
@@ -385,6 +397,7 @@ async function runMutationPhase(
       loan_status: "RETURNED",
       backup_sha256: null,
       backup_total_rows: null,
+      batch_evidence: batchEvidence,
     });
   } catch (error) {
     if (error instanceof PackagedDesktopE2eScenarioError) {
@@ -403,6 +416,8 @@ async function runVerificationPhase(
 ) {
   const step = "validate-state-after-restart";
   const { loan } = await readAndValidatePersistedState(config, dependencies, step);
+  const batchEvidence = await replayPackagedDesktopBatch(config.batch_evidence, config.run_id, dependencies)
+    .catch(error => scenarioFailure("replay-catalog-batch", error instanceof Error ? error.message : String(error)));
 
   const backupStep = "export-and-validate-full-backup";
   const { content } = await dependencies.exportFullBackupJson();
@@ -417,6 +432,11 @@ async function runVerificationPhase(
     scenarioFailure(backupStep, "The exported full backup is incomplete");
   }
   validateBackupScenarioRows(content, config, loan.id, backupStep);
+  try {
+    validatePackagedDesktopBatchBackup(parseBackupRows(content, backupStep), batchEvidence);
+  } catch (error) {
+    scenarioFailure(backupStep, error instanceof Error ? error.message : String(error));
+  }
   const backupSha256 = await dependencies.sha256(content);
 
   await dependencies.complete({
@@ -430,6 +450,7 @@ async function runVerificationPhase(
     loan_status: "RETURNED",
     backup_sha256: backupSha256,
     backup_total_rows: validation.total_rows,
+    batch_evidence: batchEvidence,
   });
 }
 

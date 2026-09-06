@@ -17,6 +17,7 @@ import { useI18n } from "../lib/i18n";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
 import { buildSettingsLibraryRouteBundle } from "./settings_library_route_bundle";
 import { SettingsPageLayout } from "./settings_page_layout";
+import { SettingsBackupImportConfirmation } from "../components/settings_backup_import_confirmation";
 import { buildSettingsRouteMapProps } from "./settings_route_map_props";
 import { useSettingsFeedbackState } from "./use_settings_feedback_state";
 import { useSettingsCatalogSection } from "./use_settings_catalog_section";
@@ -449,10 +450,12 @@ export default function SettingsPage({
     settingsClientHostBaseUrl,
     settingsClientLibraryId,
     settingsClientReadOnly,
+    settingsClientTargetGeneration,
     tauri,
     t,
   });
   const reloadSettings = useSettingsPageReload({
+    suspendSilentReload: busy,
     onDataReloaded: reloadFilamentDefaultsAfterPageData,
     setBambuLiveIntegrations,
     setCatalogData,
@@ -488,13 +491,14 @@ export default function SettingsPage({
   }, [appCatalogRefreshBusy]);
 
   useSettingsSilentReload({
-    enabled: !catalogRefreshBusy,
+    enabled: !catalogRefreshBusy && !busy,
     reloadSettings,
     tauri,
   });
 
   const {
     applicationDiagnosticsStatus,
+    backupImportConfirmation,
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,
@@ -906,18 +910,21 @@ export default function SettingsPage({
     printers: settingsPrintersRouteProps,
   });
   return (
-    <SettingsPageLayout
-      activeTab={activeTab}
-      desktopOnlyMessage={pageChromeLabels.desktopOnly}
-      error={error}
-      info={info}
-      onTabChange={setActiveTab}
-      roleModal={settingsLibraryRoleModalRouteProps}
-      routes={settingsRouteMap}
-      subtitle={pageChromeLabels.subtitle}
-      tabButtons={settingsTabButtons}
-      tauri={tauri}
-      title={pageChromeLabels.title}
-    />
+    <>
+      <SettingsPageLayout
+        activeTab={activeTab}
+        desktopOnlyMessage={pageChromeLabels.desktopOnly}
+        error={error}
+        info={info}
+        onTabChange={setActiveTab}
+        roleModal={settingsLibraryRoleModalRouteProps}
+        routes={settingsRouteMap}
+        subtitle={pageChromeLabels.subtitle}
+        tabButtons={settingsTabButtons}
+        tauri={tauri}
+        title={pageChromeLabels.title}
+      />
+      <SettingsBackupImportConfirmation {...backupImportConfirmation} t={t} />
+    </>
   );
 }

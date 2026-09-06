@@ -3,19 +3,27 @@
 import { statSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
+import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
 
 export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "filament_master_list",
   "filament_spools",
+  "catalog_refresh_jobs",
+  "catalog_spool_batches",
   "settings",
 ];
-export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = 5;
+export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = currentSchemaVersion();
 export const REQUIRED_WINDOWS_SMOKE_COLUMNS = {
   filament_spools: [
     "purchase_currency",
     "supplier_reference",
     "purchase_price_batch_locked",
     "purchase_price_source",
+  ],
+  catalog_refresh_jobs: [
+    "job_id", "authority_key", "owner_id", "vendor", "material", "status",
+    "started_at", "finished_at", "result_json", "error",
   ],
 };
 
@@ -99,6 +107,8 @@ export async function verifyWindowsAppDatabase(
         );
       }
     }
+
+    assertCatalogSpoolBatchSchema(database);
 
     return {
       databasePath: resolvedDatabasePath,

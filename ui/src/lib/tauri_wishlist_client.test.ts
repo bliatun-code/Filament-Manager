@@ -38,3 +38,16 @@ test("wishlist receipt host payload preserves explicit metadata clearing", () =>
     purchaseMetadata,
   );
 });
+
+test("wishlist receipt host payload carries location atomically and preserves null", () => {
+  for (const homeLocation of ["QA Dry box", null]) {
+    const payload = buildLibrarySyncHostWishlistReceiptPayload("http://host", "library-1", {
+      item_id: "wishlist-1",
+      quantity: 2,
+      home_location: homeLocation,
+    });
+    assert.equal(payload.input.home_location, homeLocation);
+    assert.equal(payload.input.expected_library_id, "library-1");
+    assert.equal(payload.input.quantity, 2);
+  }
+});

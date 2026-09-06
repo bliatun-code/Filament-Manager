@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
@@ -10,12 +10,14 @@ import type { ResolvedTheme } from "../lib/theme_mode";
 import type { MasterCatalogRow, WishlistItemRow } from "../lib/tauri_client";
 import { formInputChromeClassName } from "./form_control_class";
 import {
-  emptyPurchaseReceiptMetadataDraft,
   parsePurchaseReceiptMetadataDraft,
   purchaseReceiptMetadataHasValues,
   type PurchaseReceiptMetadata,
-  type PurchaseReceiptMetadataValidationErrors,
 } from "../lib/purchase_receipt_metadata";
+import {
+  emptyWishlistReceiptDraft,
+  wishlistReceiptDraftReducer,
+} from "../lib/wishlist_receipt_draft";
 import { WishlistReceiptModal } from "./wishlist_receipt_modal";
 import {
   canStockWishlistItem,
@@ -45,6 +47,7 @@ export type WishlistQueuePanelProps = {
     item: WishlistItemRow,
     quantity: number,
     purchaseMetadata?: PurchaseReceiptMetadata,
+    homeLocation?: string,
   ) => Promise<boolean>;
   resolvedTheme: ResolvedTheme;
   query: string;
@@ -102,14 +105,13 @@ export function WishlistQueuePanel({
 }: WishlistQueuePanelProps) {
   const { t } = useI18n();
   const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
-  const [receiptItemId, setReceiptItemId] = useState<string | null>(null);
-  const [receiptMetadataDraft, setReceiptMetadataDraft] = useState(
-    emptyPurchaseReceiptMetadataDraft,
+  const [receiptDraft, updateReceiptDraft] = useReducer(
+    wishlistReceiptDraftReducer,
+    undefined,
+    emptyWishlistReceiptDraft,
   );
-  const [receiptMetadataErrors, setReceiptMetadataErrors] =
-    useState<PurchaseReceiptMetadataValidationErrors>({});
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
-  const receiptItem = items.find((item) => item.id === receiptItemId) ?? null;
+  const receiptItem = items.find((item) => item.id === receiptDraft.itemId) ?? null;
   const receiptQuantityRaw = receiptItem
     ? receiptQuantities[receiptItem.id] ?? "1"
     : "1";
@@ -123,43 +125,40 @@ export function WishlistQueuePanel({
   );
 
   const openReceipt = (item: WishlistItemRow) => {
-    setReceiptMetadataDraft(emptyPurchaseReceiptMetadataDraft());
-    setReceiptMetadataErrors({});
-    setReceiptItemId(item.id);
+    updateReceiptDraft({ type: "open", itemId: item.id });
   };
 
   const closeReceipt = () => {
     if (busy || receiptSubmitting) {
       return;
     }
-    setReceiptItemId(null);
-    setReceiptMetadataErrors({});
+    updateReceiptDraft({ type: "close" });
   };
 
   const confirmReceipt = async () => {
     if (!receiptItem || busy || receiptSubmitting) {
       return;
     }
-    const parsed = parsePurchaseReceiptMetadataDraft(receiptMetadataDraft);
+    const parsed = parsePurchaseReceiptMetadataDraft(receiptDraft.metadata);
     if (!parsed.ok) {
-      setReceiptMetadataErrors(parsed.errors);
+      updateReceiptDraft({ type: "errors", value: parsed.errors });
       return;
     }
-    setReceiptMetadataErrors({});
+    updateReceiptDraft({ type: "errors", value: {} });
     setReceiptSubmitting(true);
     try {
       const succeeded = await onStockItem(
         receiptItem,
         receiptQuantity,
         purchaseReceiptMetadataHasValues(parsed.value) ? parsed.value : undefined,
+        receiptDraft.homeLocation.trim() || undefined,
       );
       if (succeeded) {
         setReceiptQuantities((current) => ({
           ...current,
           [receiptItem.id]: "1",
         }));
-        setReceiptItemId(null);
-        setReceiptMetadataDraft(emptyPurchaseReceiptMetadataDraft());
+        updateReceiptDraft({ type: "close" });
       }
     } finally {
       setReceiptSubmitting(false);
@@ -422,17 +421,19 @@ export function WishlistQueuePanel({
         <WishlistReceiptModal
           busy={busy || receiptSubmitting}
           defaultPurchaseCurrency={defaultPurchaseCurrency}
-          errors={receiptMetadataErrors}
+          errors={receiptDraft.errors}
+          homeLocation={receiptDraft.homeLocation}
           itemTitle={formatInventoryDisplayTitle(
             receiptItem.material,
             receiptItem.filament_name,
             receiptItem.color_name,
           )}
           maxQuantity={receiptItem.quantity}
-          metadataDraft={receiptMetadataDraft}
+          metadataDraft={receiptDraft.metadata}
           onCancel={closeReceipt}
           onConfirm={confirmReceipt}
-          onMetadataDraftChange={setReceiptMetadataDraft}
+          onHomeLocationChange={(value) => updateReceiptDraft({ type: "homeLocation", value })}
+          onMetadataDraftChange={(value) => updateReceiptDraft({ type: "metadata", value })}
           onQuantityChange={(value) =>
             setReceiptQuantities((current) => ({
               ...current,

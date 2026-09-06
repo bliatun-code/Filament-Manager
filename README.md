@@ -152,12 +152,17 @@ and published release tags are retained.
   families. One selected family is refreshed at a time; blocked, incomplete, or
   changed vendor sources preserve local data and never mark unseen rows
   discontinued automatically.
+- Catalog refresh jobs are owned by the Host and share one active operation
+  across desktop windows and clients. Reopening Settings resumes job status;
+  a lost response is recovered by job ID without submitting another import.
+  Completed results are stored atomically with catalog changes, and interrupted
+  Host processes leave an explicit interrupted result instead of restarting work.
 - Portable full JSON backups that omit device-local credentials and pairing
   state. Backup v1 includes schema/app metadata while remaining compatible with
   older v1 files that lack it; backups from a newer schema are rejected before
   data is changed. Program maintenance also shows when this device last
   completed a validated full-backup download.
-- Schema v5 startup checks and verified local SQLite recovery snapshots before
+- Schema v6 startup checks and verified local SQLite recovery snapshots before
   older-schema upgrades, full restores, and storage migrations that replace or
   merge an existing database. The additive v0.28 migrations introduce stable
   locations, purchase metadata, and filament pricing standards.

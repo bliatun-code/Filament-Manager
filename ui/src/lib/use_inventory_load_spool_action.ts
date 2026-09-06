@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
 import {
@@ -7,7 +15,57 @@ import {
 } from "./inventory_load_spool_model";
 import type { InventorySpool } from "./inventory_list_model";
 import { writePrinterSlotAssignment } from "./printer_slot_writes";
+import { formatPrinterSlotLabelForModel } from "./printer_profiles";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
+
+type RunInventoryLoadSpoolAssignmentInput = {
+  isCurrent: () => boolean;
+  onError: (error: unknown) => void;
+  onSettled: () => void;
+  onSuccess: (message: string) => void;
+  reload: () => Promise<void>;
+  slot: InventoryPrinterSlotOption;
+  t: ReturnType<typeof useI18n>["t"];
+  write: () => Promise<void>;
+};
+
+export async function runInventoryLoadSpoolAssignment({
+  isCurrent,
+  onError,
+  onSettled,
+  onSuccess,
+  reload,
+  slot,
+  t,
+  write,
+}: RunInventoryLoadSpoolAssignmentInput): Promise<void> {
+  if (!isCurrent()) {
+    return;
+  }
+  const slotLabel = `${slot.printerName} · ${formatPrinterSlotLabelForModel(t, slot.printerModel, {
+    ams_id: slot.amsId,
+    slot_index: slot.slotIndex,
+  })}`;
+  const message = t("inventory.loadedInPrinter", "Roll loaded in {slot}.", { slot: slotLabel });
+  try {
+    await write();
+    if (!isCurrent()) {
+      return;
+    }
+    await reload();
+    if (isCurrent()) {
+      onSuccess(message);
+    }
+  } catch (error) {
+    if (isCurrent()) {
+      onError(error);
+    }
+  } finally {
+    if (isCurrent()) {
+      onSettled();
+    }
+  }
+}
 
 type UseInventoryLoadSpoolActionInput = {
   assignedSlot: InventoryPrinterSlotOption | null;
@@ -15,6 +73,7 @@ type UseInventoryLoadSpoolActionInput = {
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
+  clientTargetGeneration: number | null;
   ensureLocalWriteAllowed: () => boolean;
   loanedOut: boolean;
   manageBusy: boolean;
@@ -36,6 +95,7 @@ export function useInventoryLoadSpoolAction({
   clientHostBaseUrl,
   clientLibraryId,
   clientReadOnly,
+  clientTargetGeneration,
   ensureLocalWriteAllowed,
   loanedOut,
   manageBusy,
@@ -51,6 +111,26 @@ export function useInventoryLoadSpoolAction({
   t,
 }: UseInventoryLoadSpoolActionInput) {
   const [open, setOpen] = useState(false);
+  const scopeKey = JSON.stringify([
+    clientHostBaseUrl,
+    clientLibraryId,
+    clientReadOnly,
+    clientTargetGeneration,
+    selectedSpool?.id,
+  ]);
+  const actionScopeRef = useRef<{ key: string; busy: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const actionScope = { key: scopeKey, busy: false };
+    actionScopeRef.current = actionScope;
+    return () => {
+      actionScopeRef.current = null;
+      if (actionScope.busy) {
+        // Release this operation at the scope boundary, before a later action can own busy.
+        actionScope.busy = false;
+        setManageBusy(false);
+      }
+    };
+  }, [scopeKey, setManageBusy]);
   const availableSlots = useMemo(
     () => availableInventoryLoadSlots(printerSlots),
     [printerSlots],
@@ -67,7 +147,11 @@ export function useInventoryLoadSpoolAction({
   );
 
   const openLoadSpoolModal = useCallback(() => {
-    if (!tauriAvailable || manageBusy || !selectedSpool) {
+    const actionScope = actionScopeRef.current;
+    if (
+      !tauriAvailable || manageBusy || !selectedSpool ||
+      !actionScope || actionScope.key !== scopeKey || actionScope.busy
+    ) {
       return;
     }
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -104,6 +188,7 @@ export function useInventoryLoadSpoolAction({
     loanedOut,
     manageBusy,
     selectedSpool,
+    scopeKey,
     setError,
     t,
     tauriAvailable,
@@ -116,7 +201,11 @@ export function useInventoryLoadSpoolAction({
   }, [manageBusy]);
 
   const confirmLoadSpool = useCallback(async (slotId: string) => {
-    if (!tauriAvailable || manageBusy || !selectedSpool) {
+    const actionScope = actionScopeRef.current;
+    if (
+      !tauriAvailable || manageBusy || !selectedSpool ||
+      !actionScope || actionScope.key !== scopeKey || actionScope.busy
+    ) {
       return;
     }
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -141,7 +230,8 @@ export function useInventoryLoadSpoolAction({
       selectedSlotId: slotId,
       spool: selectedSpool,
     });
-    if (!prepared.ok) {
+    const selectedSlot = availableSlots.find((slot) => slot.slotId === slotId);
+    if (!prepared.ok || !selectedSlot) {
       setError(
         t(
           "inventory.error.loadInPrinterStale",
@@ -151,32 +241,43 @@ export function useInventoryLoadSpoolAction({
       return;
     }
 
+    actionScope.busy = true;
     setManageBusy(true);
     setError(null);
-    try {
-      await writePrinterSlotAssignment(
+    await runInventoryLoadSpoolAssignment({
+      isCurrent: () => actionScopeRef.current === actionScope,
+      slot: selectedSlot,
+      t,
+      write: () => writePrinterSlotAssignment(
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
         prepared.input,
-      );
-      await Promise.all([
-        reloadSpools(),
-        reloadPrinterOverview(),
-        reloadSpoolDetail(selectedSpool.id),
-      ]);
-      setInfoMessage(t("inventory.loadedInPrinter", "Roll loaded in printer slot."));
-      setOpen(false);
-    } catch (loadError) {
-      console.error(loadError);
-      setError(
-        commandErrorText(
-          loadError,
-          t("inventory.error.loadInPrinter", "This roll cannot be loaded in a printer slot."),
-          t,
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
+      ),
+      reload: async () => {
+        await Promise.all([
+          reloadSpools(),
+          reloadPrinterOverview(),
+          reloadSpoolDetail(selectedSpool.id),
+        ]);
+      },
+      onSuccess: (message) => {
+        setInfoMessage(message);
+        setOpen(false);
+      },
+      onError: (loadError) => {
+        console.error(loadError);
+        setError(
+          commandErrorText(
+            loadError,
+            t("inventory.error.loadInPrinter", "This roll cannot be loaded in a printer slot."),
+            t,
+          ),
+        );
+      },
+      onSettled: () => {
+        actionScope.busy = false;
+        setManageBusy(false);
+      },
+    });
   }, [
     assignedSlot,
     availableSlots,
@@ -191,6 +292,7 @@ export function useInventoryLoadSpoolAction({
     reloadSpoolDetail,
     reloadSpools,
     selectedSpool,
+    scopeKey,
     setError,
     setInfoMessage,
     setManageBusy,

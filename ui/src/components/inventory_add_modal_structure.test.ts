@@ -40,10 +40,10 @@ test("InventoryAddModal wires the separate Bambu batch modal from existing workf
   assert.match(source, /autoOpenBambuBatch/);
   assert.match(source, /openBambuBatchModal\(\)/);
   assert.match(source, /catalogLoadState !== "READY"/);
-  assert.match(source, /disabled=\{catalogLoadState !== "READY"\}/);
+  assert.match(source, /disabled=\{!batchRegistration && \(busy \|\| batchBusy \|\| catalogLoadState !== "READY"\)\}/);
   assert.match(
     source,
-    /if \(catalogLoadState !== "READY"\) \{\s*setBambuBatchModalOpen\(false\);/,
+    /if \(!batchRegistration && catalogLoadState !== "READY"\) \{\s*setBambuBatchModalOpen\(false\);/,
   );
   assert.match(source, /catalogLoadState=\{catalogLoadState\}/);
   assert.match(source, /onRetryCatalog=\{onRetryCatalog\}/);

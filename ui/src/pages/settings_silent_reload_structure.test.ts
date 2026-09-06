@@ -76,8 +76,9 @@ test("catalog reloads use target-aware freshness state and guard editable drafts
   assert.match(source, /sourceChanged[\s\S]*?setSwatchDraftById\(\{\}\)/);
 });
 
-test("settings pauses background reload waves during a catalog refresh", () => {
-  assert.match(settingsSource, /enabled: !catalogRefreshBusy/);
+test("settings pauses background reload waves during a catalog refresh or pending write", () => {
+  assert.match(settingsSource, /enabled: !catalogRefreshBusy && !busy/);
+  assert.match(settingsSource, /suspendSilentReload: busy/);
   assert.match(pollingSource, /enabled: tauri && enabled/);
 });
 

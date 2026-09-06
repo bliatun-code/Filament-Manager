@@ -41,6 +41,13 @@ pub(crate) fn reset_catalog_data(conn: &Connection) -> InventoryResult<CatalogRe
     ensure_catalog_seed_columns(conn)?;
     let tx = conn.unchecked_transaction()?;
 
+    tx.execute(
+        "UPDATE catalog_refresh_jobs SET status = 'INTERRUPTED', finished_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
+         error = 'Catalog refresh was interrupted by a catalog reset. No catalog changes were committed.'
+         WHERE status = 'RUNNING'",
+        [],
+    )?;
+
     let removed_count = tx.execute(
         "DELETE FROM filament_master_list
          WHERE catalog_source != 'seeded'

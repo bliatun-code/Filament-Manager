@@ -1,3 +1,6 @@
+import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
+
+export const RELEASE_UPGRADE_LIBRARY_ID = "release-candidate-qa-library";
 export const RELEASE_UPGRADE_FIXTURE_MARKER_KEY =
   "release_candidate_upgrade_fixture_v1";
 export const RELEASE_UPGRADE_FIXTURE_MARKER_VALUE = "sanitized";
@@ -80,6 +83,52 @@ function tableColumns(database, table) {
       .all()
       .map(({ name }) => String(name)),
   );
+}
+
+export function inspectReleaseUpgradeBatchJournal(database) {
+  const schemaVersion = Number(database.pragma("user_version", { simple: true }));
+  if (schemaVersion < 7) {
+    if (databaseTables(database).has("catalog_spool_batches")) {
+      throw new Error("A historical schema below 7 must not already contain catalog_spool_batches.");
+    }
+    return null;
+  }
+  return assertCatalogSpoolBatchSchema(database);
+}
+
+export function parseReleaseUpgradeBatchJournalRow(row) {
+  let request;
+  let receipt;
+  try {
+    request = JSON.parse(row.request_json);
+    receipt = JSON.parse(row.receipt_json);
+  } catch {
+    throw new Error("Upgrade fixture contains malformed catalog batch JSON.");
+  }
+  const exactKeys = (value, keys) => value && typeof value === "object" &&
+    !Array.isArray(value) &&
+    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+  const stringArray = (value) => Array.isArray(value) && value.length >= 1 &&
+    value.length <= 100 && value.every((item) => typeof item === "string" && item.trim());
+  if (
+    !exactKeys(request, ["batch_id", "master_ids", "initial_weight_g", "ownership_type", "owner_name", "owner_contact", "ownership_note", "location"]) ||
+    !exactKeys(receipt, ["batch_id", "spool_ids"]) ||
+    typeof row.batch_id !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(row.batch_id) ||
+    typeof row.library_id !== "string" || !row.library_id.trim() ||
+    request.batch_id !== row.batch_id || receipt.batch_id !== row.batch_id ||
+    !stringArray(request.master_ids) || !stringArray(receipt.spool_ids) ||
+    receipt.spool_ids.length !== request.master_ids.length ||
+    new Set(receipt.spool_ids).size !== receipt.spool_ids.length ||
+    !Number.isSafeInteger(request.initial_weight_g) || request.initial_weight_g < 0 ||
+    !["OWNED", "BORROWED_IN"].includes(request.ownership_type) ||
+    ["owner_name", "owner_contact", "ownership_note", "location"].some((key) =>
+      request[key] !== null && typeof request[key] !== "string"
+    ) ||
+    (request.ownership_type === "BORROWED_IN" && !request.owner_name?.trim())
+  ) {
+    throw new Error("Upgrade fixture catalog batch request/receipt must use the exact known contract.");
+  }
+  return { request, receipt };
 }
 
 function assertNullColumn(database, table, column) {
@@ -264,6 +313,7 @@ export function parseStrictReleaseUpgradeInteger(
 
 export function assertReleaseUpgradeFixtureSanitized(database) {
   const tables = databaseTables(database);
+  inspectReleaseUpgradeBatchJournal(database);
   if (!tables.has("settings")) {
     throw new Error("Upgrade fixture has no settings table.");
   }
@@ -403,6 +453,19 @@ export function assertReleaseUpgradeFixtureSanitized(database) {
       throw new Error(
         `Upgrade fixture still contains private ${table} payloads.`,
       );
+    }
+  }
+  if (tables.has("catalog_spool_batches")) {
+    for (const row of database.prepare("SELECT * FROM catalog_spool_batches").all()) {
+      const { request } = parseReleaseUpgradeBatchJournalRow(row);
+      if (
+        !/^release-candidate-qa-library(?:-[a-f0-9]{16})?$/.test(row.library_id) ||
+        request.owner_name !== (request.ownership_type === "BORROWED_IN" ? "Release QA borrower" : null) ||
+        request.owner_contact !== null || request.ownership_note !== null ||
+        (request.location !== null && request.location !== "Release QA location")
+      ) {
+        throw new Error("Upgrade fixture still contains private catalog batch request values.");
+      }
     }
   }
 }

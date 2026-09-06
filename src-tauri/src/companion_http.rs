@@ -268,9 +268,18 @@ pub(crate) async fn enforce_companion_body_limit(
     next: Next,
 ) -> Response {
     let (parts, body) = request.into_parts();
-    let body = match to_bytes(body, security.config.body_limit_bytes).await {
-        Ok(body) => body,
-        Err(_) => return CompanionApiError::PayloadTooLarge.into_response(),
+    // No handler has started yet, so cancelling an incomplete upload cannot
+    // interrupt a mutation. Bound this phase for every method so a stalled
+    // body cannot hold routine server reconciliation open indefinitely.
+    let body = match tokio::time::timeout(
+        security.config.request_timeout,
+        to_bytes(body, security.config.body_limit_bytes),
+    )
+    .await
+    {
+        Ok(Ok(body)) => body,
+        Ok(Err(_)) => return CompanionApiError::PayloadTooLarge.into_response(),
+        Err(_) => return CompanionApiError::RequestTimeout.into_response(),
     };
     next.run(Request::from_parts(parts, Body::from(body))).await
 }
@@ -476,8 +485,8 @@ fn is_allowed_origin(origin: &str, runtime: &TrustedLanCompanionRuntime) -> bool
 #[cfg(test)]
 mod tests {
     use super::{
-        enforce_companion_request_timeout, is_allowed_host, is_allowed_origin,
-        CompanionHttpSecurity, CompanionHttpSecurityConfig, TokenBucket,
+        enforce_companion_body_limit, enforce_companion_request_timeout, is_allowed_host,
+        is_allowed_origin, CompanionHttpSecurity, CompanionHttpSecurityConfig, TokenBucket,
     };
     use crate::state::TrustedLanCompanionRuntime;
     use axum::body::{to_bytes, Body};
@@ -489,6 +498,69 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
     use std::time::{Duration, Instant};
+
+    struct PendingBody;
+
+    impl axum::body::HttpBody for PendingBody {
+        type Data = axum::body::Bytes;
+        type Error = std::convert::Infallible;
+
+        fn poll_frame(
+            self: std::pin::Pin<&mut Self>,
+            _cx: &mut std::task::Context<'_>,
+        ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
+            std::task::Poll::Pending
+        }
+    }
+
+    #[tokio::test]
+    async fn incomplete_mutation_body_times_out_before_dispatch() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let handler_calls = Arc::clone(&calls);
+        let security = CompanionHttpSecurity::new(CompanionHttpSecurityConfig::for_test(
+            1024,
+            Duration::from_millis(10),
+            Duration::from_secs(60),
+            10,
+            10,
+        ));
+        let router = Router::new()
+            .route(
+                "/write",
+                post(move || {
+                    handler_calls.fetch_add(1, Ordering::SeqCst);
+                    async { StatusCode::OK }
+                }),
+            )
+            .layer(middleware::from_fn_with_state(
+                security.clone(),
+                enforce_companion_body_limit,
+            ))
+            .layer(middleware::from_fn_with_state(
+                security,
+                enforce_companion_request_timeout,
+            ));
+
+        let response = tokio::time::timeout(
+            Duration::from_secs(1),
+            tower::ServiceExt::oneshot(
+                router,
+                Request::builder()
+                    .method(Method::POST)
+                    .uri("/write")
+                    .body(Body::new(PendingBody))
+                    .unwrap(),
+            ),
+        )
+        .await
+        .expect("receiving a body must remain bounded before a mutation starts")
+        .unwrap();
+        assert_eq!(response.status(), StatusCode::REQUEST_TIMEOUT);
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let error: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(error["code"], "common.unavailable");
+    }
 
     fn stable_runtime() -> TrustedLanCompanionRuntime {
         let runtime = TrustedLanCompanionRuntime::new(4278)
@@ -574,6 +646,16 @@ mod tests {
                     }
                 }),
             )
+            .layer(middleware::from_fn_with_state(
+                CompanionHttpSecurity::new(CompanionHttpSecurityConfig::for_test(
+                    1024,
+                    Duration::from_millis(10),
+                    Duration::from_secs(60),
+                    10,
+                    10,
+                )),
+                enforce_companion_body_limit,
+            ))
             .layer(middleware::from_fn_with_state(
                 CompanionHttpSecurity::new(CompanionHttpSecurityConfig::for_test(
                     1024,

@@ -49,6 +49,10 @@ export const enDictionary: DictionaryNode = {
       optional: "Optional",
     },
     errors: {
+      catalogSpoolBatchInvalid: "The batch was not saved. Check the selected filaments, weight, owner and location. Use at most 100 rolls.",
+      catalogSpoolBatchConflict: "This batch ID belongs to a different request or library. Check inventory before registering another batch.",
+      catalogSpoolBatchHostUnsupported: "Upgrade the Host to register batches safely. No rolls were sent.",
+      catalogSpoolBatchStorageFailed: "The batch recovery record could not be saved or read. Registration is paused to prevent duplicate rolls.",
       invalidRequest: "The request could not be completed.",
       unauthorized: "Authentication is required.",
       forbidden: "This action is not allowed.",
@@ -110,6 +114,7 @@ export const enDictionary: DictionaryNode = {
         "Update the Host before saving tare weight or ownership together with roll details.",
       purchaseMetadataHostUnsupported:
         "Update the Host before saving purchase details.",
+      wishlistReceiptLocationHostUnsupported: "Update the Host before receiving rolls with a home location.",
       purchasePriceInvalid: "Enter a valid purchase price of zero or more.",
       purchaseCurrencyInvalid:
         "Enter a valid three-letter purchase currency.",
@@ -331,6 +336,14 @@ export const enDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "No printer slots configured yet.",
     },
     inventory: {
+      bambuBatchSaving: "Saving {count, plural, one {# roll} other {# rolls}}...",
+      bambuBatchUncertain: "We could not confirm whether this batch was saved. Continue the same batch to check or finish it without creating duplicates.",
+      bambuBatchRejected: "This batch was not saved. Review the error, then edit the batch.",
+      bambuBatchComplete: "Registered {count, plural, one {# roll} other {# rolls}}.",
+      bambuBatchContinue: "Continue same batch",
+      bambuBatchEdit: "Edit batch",
+      bambuBatchNew: "Start new batch",
+      bambuBatchRemaining: "{count, plural, one {# row still needs review and has been kept for the next batch.} other {# rows still need review and have been kept for the next batch.}}",
       title: "Spools",
       subtitle: "Manage stock, loans and spool weight in one place.",
       addSpoolAction: "Add spool",
@@ -420,6 +433,8 @@ export const enDictionary: DictionaryNode = {
       showFewerRolls: "Show fewer",
       loading: "Loading spools...",
       addedToInventory: "Added to inventory",
+      openCreatedRoll: "Open roll",
+      registerAnotherRoll: "Register another roll",
       addedFromWishlist: "Added from wishlist",
       visualFixtureLoaded: "Inventory detail fixture loaded.",
       noMatch: "No spools match current filters.",
@@ -432,7 +447,7 @@ export const enDictionary: DictionaryNode = {
       loadInPrinterHint:
         "The selected roll is ready. Choose only the printer slot; no new roll search is needed.",
       noAvailablePrinterSlots: "No empty printer slots are available.",
-      loadedInPrinter: "Roll loaded in printer slot.",
+      loadedInPrinter: "Roll loaded in {slot}.",
       printLabelAction: "Print label",
       unsavedChanges: "You have unsaved changes.",
       allChangesSaved: "All changes are saved.",
@@ -1081,6 +1096,7 @@ export const enDictionary: DictionaryNode = {
       itemStatusGroup: "Status for {name}",
       qty: "Qty",
       receivePurchase: "Receive purchase",
+      receiptComplete: "Received {count} × {item}. Remaining: {remaining}.",
       receivedQuantity: "Received quantity",
       receiveQuantity:
         "{count, plural, one {Receive # roll} other {Receive # rolls}}",

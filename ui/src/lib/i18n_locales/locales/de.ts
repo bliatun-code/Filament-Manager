@@ -49,6 +49,10 @@ export const deDictionary: DictionaryNode = {
     optional: "Optional",
   },
   errors: {
+    catalogSpoolBatchInvalid: "Der Stapel wurde nicht gespeichert. Prüfe die ausgewählten Filamente, das Gewicht, den Eigentümer und den Lagerort. Verwende höchstens 100 Rollen.",
+    catalogSpoolBatchConflict: "Diese Stapel-ID gehört zu einer anderen Anfrage oder Bibliothek. Prüfe den Bestand, bevor du einen weiteren Stapel registrierst.",
+    catalogSpoolBatchHostUnsupported: "Aktualisiere den Host, um Stapel sicher zu registrieren. Es wurden keine Rollen gesendet.",
+    catalogSpoolBatchStorageFailed: "Der Wiederherstellungsdatensatz für den Stapel konnte nicht gespeichert oder gelesen werden. Die Registrierung ist pausiert, um doppelte Rollen zu verhindern.",
     invalidRequest: "Die Anfrage konnte nicht ausgeführt werden.",
     unauthorized: "Eine Anmeldung ist erforderlich.",
     forbidden: "Diese Aktion ist nicht erlaubt.",
@@ -114,6 +118,7 @@ export const deDictionary: DictionaryNode = {
       "Aktualisiere den Host, bevor du Taragewicht oder Eigentum zusammen mit den Rollendetails speicherst.",
     purchaseMetadataHostUnsupported:
       "Aktualisiere den Host, bevor du Kaufdetails speicherst.",
+    wishlistReceiptLocationHostUnsupported: "Aktualisiere den Host, bevor du Rollen mit einem Heimatlagerort annimmst.",
     purchasePriceInvalid:
       "Gib einen gültigen Kaufpreis von null oder mehr ein.",
     purchaseCurrencyInvalid:
@@ -338,6 +343,14 @@ export const deDictionary: DictionaryNode = {
     badgeNoPrinterSlots: "Noch keine Druckerplätze konfiguriert.",
   },
   inventory: {
+    bambuBatchSaving: "{count, plural, one {# Rolle wird gespeichert} other {# Rollen werden gespeichert}}...",
+    bambuBatchUncertain: "Es konnte nicht bestätigt werden, ob dieser Stapel gespeichert wurde. Setze denselben Stapel fort, um ihn zu prüfen oder abzuschließen, ohne Duplikate zu erstellen.",
+    bambuBatchRejected: "Dieser Stapel wurde nicht gespeichert. Prüfe den Fehler und bearbeite anschließend den Stapel.",
+    bambuBatchComplete: "{count, plural, one {# Rolle registriert} other {# Rollen registriert}}.",
+    bambuBatchContinue: "Denselben Stapel fortsetzen",
+    bambuBatchEdit: "Stapel bearbeiten",
+    bambuBatchNew: "Neuen Stapel starten",
+    bambuBatchRemaining: "{count, plural, one {# Zeile muss noch geprüft werden und wurde für den nächsten Stapel beibehalten.} other {# Zeilen müssen noch geprüft werden und wurden für den nächsten Stapel beibehalten.}}",
     title: "Rollen",
     subtitle: "Bestand, Ausleihen und Rollengewicht zentral verwalten.",
     addSpoolAction: "Rolle hinzufügen",
@@ -738,7 +751,7 @@ export const deDictionary: DictionaryNode = {
     loanOutAction: "Ausleihen",
     loadInPrinter: "In Drucker laden",
     loadInPrinterHint: "Wähle einen freien Druckerplatz für diese Rolle.",
-    loadedInPrinter: "Rolle in den Drucker geladen.",
+    loadedInPrinter: "Rolle in {slot} geladen.",
     noAvailablePrinterSlots: "Keine freien Druckerplätze verfügbar.",
     printLabelAction: "Etikett drucken",
     unsavedChanges: "Nicht gespeicherte Änderungen",
@@ -820,6 +833,8 @@ export const deDictionary: DictionaryNode = {
     showAllRolls: "Alle anzeigen",
     showFewerRolls: "Weniger anzeigen",
     addedToInventory: "Zum Bestand hinzugefügt",
+    openCreatedRoll: "Rolle öffnen",
+    registerAnotherRoll: "Weitere Rolle registrieren",
     addedFromWishlist: "Von der Wunschliste hinzugefügt",
     visualFixtureLoaded: "Bestandsdetail-Testdaten geladen.",
     updatingRoll: "Ausgewählte Rolle wird aktualisiert...",
@@ -1065,6 +1080,7 @@ export const deDictionary: DictionaryNode = {
     itemStatusGroup: "Status für {name}",
     qty: "Anz.",
     receivePurchase: "Einkauf empfangen",
+    receiptComplete: "{count} × {item} empfangen. Verbleibend: {remaining}.",
     receivedQuantity: "Empfangene Menge",
     receiveQuantity:
       "{count, plural, one {# Rolle empfangen} other {# Rollen empfangen}}",

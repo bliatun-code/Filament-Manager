@@ -372,11 +372,22 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     defaultPurchaseCurrency,
     ensureLocalWriteAllowed,
     error,
     infoMessage,
     librarySyncReady,
+    onOpenCreatedSpool: (spoolId) => {
+      if (!spools.some((spool) => spool.id === spoolId)) {
+        setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+        void reloadSpools();
+        return false;
+      }
+      setActiveWorkspaceView("STOCK");
+      openRollModal(spoolId);
+      return true;
+    },
     onOpenPurchaseQueue: openPurchaseQueue,
     purchaseActionsDisabled:
       !librarySyncReady || (clientReadOnly ? !clientHostWritePaired : false),
@@ -772,6 +783,7 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     ensureLocalWriteAllowed,
     loanedOut: selectedSpoolLoanedOut,
     manageBusy,

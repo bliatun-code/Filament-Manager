@@ -46,6 +46,11 @@ It also runs the mutating packaged desktop gate against a separate private
 database: create and update a spool, complete a loan and return, create a
 printer and slot assignment, restart the installed app against the same
 database, and validate both persisted state and a complete portable backup.
+The gate also registers two borrowed rolls from the same catalog entry in one
+atomic batch. After restart it submits the original request again and requires
+the same ordered roll IDs, with no extra rolls, loans, history, or revisions.
+The database must contain the current batch receipt table with its actual
+constraints; the portable backup must omit that installation-local journal.
 The private database is removed after the gate and is never uploaded with the
 diagnostic logs.
 

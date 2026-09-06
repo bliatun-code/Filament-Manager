@@ -517,7 +517,7 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
     supplier_reference: "PO-42",
   };
   const hostResult = await receiveWishlistEntry(
-    { item_id: "wish-host", quantity: 2, purchase_metadata: purchaseMetadata },
+    { item_id: "wish-host", quantity: 2, purchase_metadata: purchaseMetadata, home_location: "QA Dry box" },
     { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
     {
       receiveHostWishlistItem: async (baseUrl, _libraryId, input) => {
@@ -538,6 +538,7 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
         item_id: "wish-host",
         quantity: 2,
         purchase_metadata: purchaseMetadata,
+        home_location: "QA Dry box",
       },
     },
   ]);
@@ -545,7 +546,7 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
 
   const localCalls: ReceiveWishlistItemInput[] = [];
   const localResult = await receiveWishlistEntry(
-    { item_id: "wish-local", quantity: 1 },
+    { item_id: "wish-local", quantity: 1, home_location: "QA Shelf A" },
     { clientReadOnly: false },
     {
       receiveLocalWishlistItem: async (input) => {
@@ -559,8 +560,24 @@ test("receiveWishlistEntry uses the same quantity contract for host and local wr
       },
     },
   );
-  assert.deepEqual(localCalls, [{ item_id: "wish-local", quantity: 1 }]);
+  assert.deepEqual(localCalls, [{ item_id: "wish-local", quantity: 1, home_location: "QA Shelf A" }]);
   assert.equal(localResult.status, "RECEIVED");
+});
+
+test("wishlist receipt Host rejection never writes to the local shadow library", async () => {
+  let localCalls = 0;
+  await assert.rejects(receiveWishlistEntry(
+    { item_id: "wish-host", quantity: 1, home_location: "QA Dry box" },
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+    {
+      receiveHostWishlistItem: async () => { throw new Error("Host capability unavailable"); },
+      receiveLocalWishlistItem: async () => {
+        localCalls += 1;
+        throw new Error("unexpected local write");
+      },
+    },
+  ), /Host capability unavailable/);
+  assert.equal(localCalls, 0);
 });
 
 test("deleteWishlistEntry routes deletes to the host", async () => {

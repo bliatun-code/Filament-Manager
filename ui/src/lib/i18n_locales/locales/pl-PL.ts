@@ -195,6 +195,10 @@ export const plPLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Zapasowy próg 200 g dla starszej wersji hosta"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "Partia nie została zapisana. Sprawdź wybrane filamenty, masę, właściciela i lokalizację. Użyj maksymalnie 100 szpul.",
+    "catalogSpoolBatchConflict": "Ten identyfikator partii należy do innego żądania lub biblioteki. Sprawdź stan magazynu przed zarejestrowaniem kolejnej partii.",
+    "catalogSpoolBatchHostUnsupported": "Zaktualizuj Host, aby bezpiecznie rejestrować partie. Nie wysłano żadnych szpul.",
+    "catalogSpoolBatchStorageFailed": "Nie udało się zapisać lub odczytać rekordu odzyskiwania partii. Rejestracja jest wstrzymana, aby zapobiec duplikowaniu szpul.",
     "downloadsUnavailable": "Folder Pobrane jest niedostępny.",
     "exportInvalidPayload": "Wygenerowany eksport jest nieprawidłowy.",
     "exportWriteFailed": "Nie można zapisać eksportu.",
@@ -239,6 +243,7 @@ export const plPLDictionary: DictionaryNode = {
     "inboundLoanRequired": "Ta operacja jest dostępna tylko dla szpul pożyczonych od kogoś.",
     "spoolCommonDetailsHostUnsupported": "Zaktualizuj hosta przed zapisaniem masy pustej szpuli lub własności razem ze szczegółami szpuli.",
     "purchaseMetadataHostUnsupported": "Zaktualizuj hosta przed zapisaniem danych zakupu.",
+    wishlistReceiptLocationHostUnsupported: "Zaktualizuj hosta przed przyjęciem szpul z lokalizacją przechowywania.",
     "purchasePriceInvalid": "Wprowadź prawidłową cenę zakupu równą co najmniej zero.",
     "purchaseCurrencyInvalid": "Wprowadź prawidłowy trzyliterowy kod waluty zakupu.",
     "purchaseCurrencyRequired": "Po ustawieniu ceny zakupu trzeba podać walutę.",
@@ -264,11 +269,21 @@ export const plPLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "Zapisane standardy filamentu są już nieaktualne. Wczytaj je ponownie i sprawdź."
   },
   "inventory": {
+    "bambuBatchSaving": "Zapisywanie {count, plural, one {# szpuli} few {# szpul} many {# szpul} other {# szpuli}}...",
+    "bambuBatchUncertain": "Nie udało się potwierdzić, czy ta partia została zapisana. Kontynuuj tę samą partię, aby ją sprawdzić lub dokończyć bez tworzenia duplikatów.",
+    "bambuBatchRejected": "Ta partia nie została zapisana. Sprawdź błąd, a następnie edytuj partię.",
+    "bambuBatchComplete": "{count, plural, one {Zarejestrowano # szpulę.} few {Zarejestrowano # szpule.} many {Zarejestrowano # szpul.} other {Zarejestrowano # szpuli.}}",
+    "bambuBatchContinue": "Kontynuuj tę samą partię",
+    "bambuBatchEdit": "Edytuj partię",
+    "bambuBatchNew": "Rozpocznij nową partię",
+    "bambuBatchRemaining": "{count, plural, one {# wiersz nadal wymaga sprawdzenia i został zachowany do następnej partii.} few {# wiersze nadal wymagają sprawdzenia i zostały zachowane do następnej partii.} many {# wierszy nadal wymaga sprawdzenia i zostało zachowanych do następnej partii.} other {# wiersza nadal wymaga sprawdzenia i zostało zachowane do następnej partii.}}",
     "activeFilters": "aktywny",
     "addCurrentSelectionToWishlist": "Dodaj bieżący wybór do listy życzeń",
     "addDirectlyToStock": "Dodaj bezpośrednio do zapasów",
     "addedFromWishlist": "Dodano z listy życzeń",
     "addedToInventory": "Dodano do inwentarza",
+    "openCreatedRoll": "Otwórz szpulę",
+    "registerAnotherRoll": "Zarejestruj kolejną szpulę",
     "addFilament": "Dodaj filament",
     "addFilamentSubtitle": "Dodaj bezpośrednio do magazynu lub zachowaj listę życzeń → na zamówienie → przepływ pracy w magazynie.",
     "addMovedPrefix": "Przepływ dodawania/zamawiania został przeniesiony na górę",
@@ -761,7 +776,7 @@ export const plPLDictionary: DictionaryNode = {
     "loadInPrinter": "Załaduj do drukarki",
     "loadInPrinterHint": "Wybrana szpula jest gotowa. Wybierz tylko gniazdo drukarki — nie trzeba ponownie wyszukiwać szpuli.",
     "noAvailablePrinterSlots": "Brak wolnych gniazd drukarki.",
-    "loadedInPrinter": "Szpula została załadowana do gniazda drukarki.",
+    "loadedInPrinter": "Szpula załadowana do {slot}.",
     "printLabelAction": "Drukuj etykietę",
     "unsavedChanges": "Masz niezapisane zmiany.",
     "allChangesSaved": "Wszystkie zmiany zostały zapisane.",
@@ -2166,6 +2181,7 @@ export const plPLDictionary: DictionaryNode = {
     "vendorPlaceholder": "Dostawca (np. Generic, eSUN)",
     "viewRefreshLog": "Wyświetl dziennik odświeżania",
     "receivePurchase": "Przyjmij zakup",
+    receiptComplete: "Przyjęto {count} × {item}. Pozostało: {remaining}.",
     "receivedQuantity": "Odebrana ilość",
     "receiveQuantity": "{count, plural, one {Przyjmij # szpulę} few {Przyjmij # szpule} many {Przyjmij # szpul} other {Przyjmij # szpuli}}"
   }

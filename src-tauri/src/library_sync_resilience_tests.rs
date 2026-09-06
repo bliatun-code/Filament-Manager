@@ -1137,6 +1137,7 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
                     expected_library_id: Some(HOST_LIBRARY_ID.to_string()),
                     item_id: HOST_WISHLIST_ID.to_string(),
                     quantity: 2,
+                    home_location: Some("Receipt shelf".to_string()),
                     purchase_metadata: None,
                 },
             )
@@ -1178,6 +1179,14 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
         assert_eq!(received_spool.spool.initial_weight_g, Some(1_000));
         assert_eq!(received_spool.spool.current_weight_g, Some(1_000));
         assert_eq!(received_spool.spool.remaining_g, Some(1_000));
+        assert_eq!(
+            received_spool.location_name.as_deref(),
+            Some("Receipt shelf")
+        );
+        assert_eq!(
+            received_spool.home_location_name.as_deref(),
+            Some("Receipt shelf")
+        );
         let receipt_history = host_engine
             .list_spool_history(receipt_spool_id, 20)
             .expect("list received spool history")
@@ -1208,6 +1217,17 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
         .expect("find received item in Client cache");
     assert_eq!(cached_item.status, "RECEIVED");
     assert_eq!(cached_item.quantity, 0);
+    for cached_spool in client_cached_spools(&client, &base_url, target_generation)
+        .rows
+        .iter()
+        .filter(|row| receipt.spool_ids.contains(&row.spool.id))
+    {
+        assert_eq!(cached_spool.location_name.as_deref(), Some("Receipt shelf"));
+        assert_eq!(
+            cached_spool.home_location_name.as_deref(),
+            Some("Receipt shelf")
+        );
+    }
     assert_eq!(
         client_cached_spools(&client, &base_url, target_generation)
             .rows
@@ -1215,6 +1235,25 @@ async fn real_tcp_client_completes_the_five_fixed_workflows_on_the_host() {
             .filter(|row| receipt.spool_ids.contains(&row.spool.id))
             .count(),
         2
+    );
+
+    let cached_locations = FilamentDatabase::open(&client_db_path)
+        .expect("open Client location cache")
+        .get_library_sync_cached_locations()
+        .expect("read refreshed Client location cache")
+        .expect("receipt with a home location refreshes the Client location cache");
+    let cached_receipt_location = cached_locations
+        .rows
+        .iter()
+        .find(|location| location.name == "Receipt shelf")
+        .expect("receipt-created location is immediately available in Client cache");
+    let received_spool = host_spools
+        .iter()
+        .find(|row| row.spool.id == receipt.spool_ids[0])
+        .expect("find received Host spool");
+    assert_eq!(
+        received_spool.spool.home_location_id.as_deref(),
+        Some(cached_receipt_location.id.as_str())
     );
 
     assert_eq!(client_local_snapshot(&client_db_path), client_local_before);

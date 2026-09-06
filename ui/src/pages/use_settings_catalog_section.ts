@@ -10,6 +10,7 @@ import type {
 } from "./settings_catalog_model";
 import { buildSettingsCatalogRouteProps } from "./settings_catalog_route_props";
 import { useSettingsCatalogRefreshActions } from "./use_settings_catalog_refresh_actions";
+import { useSettingsCatalogRefreshJobs } from "./use_settings_catalog_refresh_jobs";
 import { useSettingsCatalogSectionState } from "./use_settings_catalog_section_state";
 import { useSettingsSwatchActions } from "./use_settings_swatch_actions";
 import { useSettingsSwatchConfirm } from "./use_settings_swatch_confirm";
@@ -37,6 +38,7 @@ type UseSettingsCatalogSectionInput = {
   settingsClientHostBaseUrl: string | null;
   settingsClientLibraryId: string | null;
   settingsClientReadOnly: boolean;
+  settingsClientTargetGeneration: number | null;
   tauri: boolean;
   t: TranslateFn;
 };
@@ -60,6 +62,7 @@ export function useSettingsCatalogSection({
   settingsClientHostBaseUrl,
   settingsClientLibraryId,
   settingsClientReadOnly,
+  settingsClientTargetGeneration,
   tauri,
   t,
 }: UseSettingsCatalogSectionInput) {
@@ -122,6 +125,32 @@ export function useSettingsCatalogSection({
     visibleMissingSwatchCount: visibleMissingSwatchMasters.length,
   });
 
+  const { startCatalogRefreshJob } = useSettingsCatalogRefreshJobs({
+    beginCatalogRefreshResult,
+    completeCatalogRefreshResult,
+    failCatalogRefreshResult,
+    locale,
+    reloadSettings,
+    setCatalogRefreshBusy,
+    setCatalogRefreshPhase,
+    setCatalogRefreshProgressMessage,
+    setCatalogRefreshStartedAt,
+    setCatalogRefreshVendor,
+    setError,
+    setInfo,
+    settingsCatalogRefreshMessageLabels,
+    settingsCatalogRefreshSummaryLabels,
+    tauri,
+    target: {
+      clientHostBaseUrl: settingsClientHostBaseUrl,
+      clientLibraryId: settingsClientLibraryId,
+      clientReadOnly: settingsClientReadOnly,
+      clientTargetGeneration: settingsClientTargetGeneration,
+    },
+    refreshingMessage: t("wishlist.refreshing", "Refreshing"),
+    unavailableMessage: t("errors.unavailable", "The service is temporarily unavailable."),
+  });
+
   const { handleAuditVendorCatalog, handleRefreshVendorCatalog } =
     useSettingsCatalogRefreshActions({
       beginCatalogRefreshResult,
@@ -146,6 +175,7 @@ export function useSettingsCatalogSection({
       settingsClientHostBaseUrl,
       settingsClientLibraryId,
       settingsClientReadOnly,
+      startCatalogRefreshJob,
       swatchBusy,
       tauri,
     });

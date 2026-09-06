@@ -24,11 +24,13 @@ function renderModal(
       <WishlistReceiptModal
         busy={false}
         errors={{}}
+        homeLocation=""
         itemTitle="PLA · Basic · Black"
         maxQuantity={5}
         metadataDraft={emptyPurchaseReceiptMetadataDraft()}
         onCancel={() => {}}
         onConfirm={() => {}}
+        onHomeLocationChange={() => {}}
         onMetadataDraftChange={() => {}}
         onQuantityChange={() => {}}
         quantity={3}
@@ -52,6 +54,16 @@ test("receipt dialog confirms quantity and optional per-roll purchase metadata",
   assert.match(html, /name="supplier_reference"/);
   assert.match(html, /saved to each of the 3 received rolls/);
   assert.match(html, />Receive 3 rolls<\/button>/);
+  assert.match(html, />Home location \(optional\)</);
+  const locationInput = html.match(/<input[^>]*name="home_location"[^>]*>/)?.[0] ?? "";
+  assert.match(locationInput, /list="inventory-location-options"/);
+  assert.match(locationInput, /value=""/);
+  assert.doesNotMatch(locationInput, /required/);
+});
+
+test("receipt dialog retains the selected location alongside purchase metadata", () => {
+  const html = renderModal({ homeLocation: "QA Dry box" });
+  assert.match(html, /name="home_location"[^>]*value="QA Dry box"/);
 });
 
 test("receipt dialog disables every write control while submitting", () => {
@@ -59,5 +71,7 @@ test("receipt dialog disables every write control while submitting", () => {
 
   assert.match(html, /<fieldset[^>]*disabled=""/);
   assert.match(html, /<input[^>]*type="number"[^>]*disabled=""/);
+  const locationInput = html.match(/<input[^>]*name="home_location"[^>]*>/)?.[0] ?? "";
+  assert.match(locationInput, /disabled=""/);
   assert.equal((html.match(/<button[^>]*disabled=""/g) ?? []).length, 2);
 });

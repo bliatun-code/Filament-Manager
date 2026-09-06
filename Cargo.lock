@@ -346,6 +346,7 @@ dependencies = [
  "base64 0.23.1",
  "filament-manager-core",
  "flate2",
+ "http-body",
  "if-addrs",
  "libc",
  "mdns-sd",

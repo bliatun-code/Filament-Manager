@@ -9,6 +9,7 @@ import {
 } from "./packaged_host_client_e2e_scenario";
 import type { SpoolWithMasterRow } from "./tauri_inventory_client";
 import type { LibrarySyncSettings } from "./tauri_library_sync_client";
+import type { CatalogRefreshJobSnapshot } from "./tauri_catalog_client";
 
 type ScenarioDependencies = NonNullable<
   Parameters<typeof runPackagedHostClientE2eScenario>[1]
@@ -29,6 +30,12 @@ const baseConfiguration: PackagedHostClientE2eConfiguration = {
   pairing_url: "http://packaged-host.local:42780/pair#opaque-token",
   target_generation: null,
 };
+
+const batchReceipt = {
+  batch_id: `${baseConfiguration.run_id}-catalog-batch`,
+  spool_ids: [`spool_${"1".repeat(32)}`, `spool_${"2".repeat(32)}`],
+};
+const revisions = { inventory: 3, catalog: 1, loans: 2, printers: 0, jobs: 0, wishlist: 0 };
 
 function settings(overrides: Partial<LibrarySyncSettings> = {}): LibrarySyncSettings {
   return {
@@ -72,6 +79,9 @@ function unusedDependencies(): ScenarioDependencies {
   };
   return {
     createManualSpool: unexpected,
+    createCatalogSpoolBatch: unexpected,
+    fetchLibrarySyncDomainRevisions: unexpected,
+    getLibraryDomainRevisions: unexpected,
     listSpools: unexpected,
     getLibrarySyncSettings: unexpected,
     saveLibrarySyncSettings: unexpected,
@@ -84,6 +94,8 @@ function unusedDependencies(): ScenarioDependencies {
     saveLibrarySyncSpoolCache: unexpected,
     fetchCachedLibrarySyncSpools: unexpected,
     updateLibrarySyncHostSpoolWeight: unexpected,
+    startLibrarySyncHostCatalogRefreshJob: unexpected,
+    getLibrarySyncHostCatalogRefreshJob: unexpected,
     clearLibrarySyncClientAuth: unexpected,
     hostReadyAndWaitForStop: unexpected,
     complete: unexpected,
@@ -328,6 +340,16 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
   let cachedRows: SpoolWithMasterRow[] | null = null;
   let online = true;
   const targetGeneration = 7;
+  const catalogJobs = new Map<string, CatalogRefreshJobSnapshot>();
+  let catalogStarts = 0;
+  let batchCreated = false;
+  const batchRequests: unknown[] = [];
+  const batchRows = batchReceipt.spool_ids.map((id) => {
+    const row = spoolRow(500, "Host");
+    row.spool.id = id;
+    row.spool.ownership_type = "BORROWED_IN";
+    return row;
+  });
   const dependencies: ScenarioDependencies = {
     ...unusedDependencies(),
     async createManualSpool(input) {
@@ -361,8 +383,20 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       if (!online) {
         throw new Error("Host unavailable with private route details");
       }
-      return [spoolRow(hostWeight, "Host")];
+      return [spoolRow(hostWeight, "Host"), ...(batchCreated ? batchRows : [])];
     },
+    async createCatalogSpoolBatch(request, target) {
+      assert.equal(online, true);
+      assert.deepEqual(target, { clientReadOnly: true, clientHostBaseUrl: baseConfiguration.base_url,
+        clientLibraryId: baseConfiguration.library_id, clientTargetGeneration: targetGeneration });
+      assert.deepEqual(request.master_ids, ["master-Host", "master-Host"]);
+      assert.equal(request.ownership_type, "BORROWED_IN");
+      batchRequests.push(structuredClone(request));
+      batchCreated = true;
+      return structuredClone(batchReceipt);
+    },
+    async fetchLibrarySyncDomainRevisions() { return { ...revisions }; },
+    async getLibraryDomainRevisions() { return { ...revisions, inventory: 1, loans: 0 }; },
     async updateLibrarySyncHostSpoolWeight(_baseUrl, _libraryId, spoolId, grams) {
       if (!online) {
         throw new Error("Host unavailable with private route details");
@@ -384,6 +418,34 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       currentSettings = { ...currentSettings, client_auth_paired: false };
       return currentSettings;
     },
+    async startLibrarySyncHostCatalogRefreshJob(baseUrl, libraryId, input) {
+      assert.equal(baseUrl, baseConfiguration.base_url);
+      assert.equal(libraryId, baseConfiguration.library_id);
+      assert.equal(online, true);
+      catalogStarts += 1;
+      const existing = catalogJobs.get(input.job_id);
+      if (existing) return structuredClone(existing);
+      if ([...catalogJobs.values()].some((job) => job.status === "RUNNING")) {
+        throw new Error("Catalog job already running");
+      }
+      const job: CatalogRefreshJobSnapshot = {
+        ...input, status: input.vendor === "Bambu" ? "SUCCEEDED" : "RUNNING",
+        started_at: "2026-09-05T10:00:00Z",
+        finished_at: input.vendor === "Bambu" ? "2026-09-05T10:00:01Z" : null,
+        result: input.vendor === "Bambu" ? { imported: 1, reactivated_count: 0, discontinued_count: 0, output: "Synthetic catalog import" } : null,
+        error: null,
+      };
+      catalogJobs.set(job.job_id, job);
+      return structuredClone(job);
+    },
+    async getLibrarySyncHostCatalogRefreshJob(baseUrl, libraryId, jobId) {
+      assert.equal(baseUrl, baseConfiguration.base_url);
+      assert.equal(libraryId, baseConfiguration.library_id);
+      if (!online) throw new Error("Host unavailable with private route details");
+      return structuredClone(jobId === null
+        ? [...catalogJobs.values()].find((job) => job.status === "RUNNING") ?? null
+        : catalogJobs.get(jobId) ?? null);
+    },
     async complete(input) {
       completions.push(input);
     },
@@ -397,16 +459,25 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       phase: "offline",
       pairing_url: null,
       target_generation: targetGeneration,
+      batch_receipt: batchReceipt,
     },
     dependencies,
   );
   online = true;
+  for (const job of catalogJobs.values()) {
+    if (job.status === "RUNNING") {
+      job.status = "INTERRUPTED";
+      job.finished_at = "2026-09-05T10:00:02Z";
+      job.error = "The Host process stopped before the job completed.";
+    }
+  }
   await runPackagedHostClientE2eScenario(
     {
       ...baseConfiguration,
       phase: "recover",
       pairing_url: null,
       target_generation: targetGeneration,
+      batch_receipt: batchReceipt,
     },
     dependencies,
   );
@@ -427,6 +498,8 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       paired_before_cleanup: true,
       auth_cleared: false,
       session_renewed: false,
+      batch_receipt: batchReceipt,
+      batch_replayed: false,
     },
     {
       role: "client",
@@ -443,6 +516,8 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       paired_before_cleanup: true,
       auth_cleared: false,
       session_renewed: false,
+      batch_receipt: batchReceipt,
+      batch_replayed: false,
     },
     {
       role: "client",
@@ -459,11 +534,17 @@ test("packaged Client proves pairing, offline cache without fallback, restart re
       paired_before_cleanup: true,
       auth_cleared: true,
       session_renewed: true,
+      batch_receipt: batchReceipt,
+      batch_replayed: true,
     },
   ]);
+  assert.equal(batchRequests.length, 2);
+  assert.deepEqual(batchRequests[0], batchRequests[1], "restart sends the exact original batch request");
   assert.equal(localWeight, 333);
   assert.equal(hostWeight, 760);
   assert.equal(currentSettings.client_auth_paired, false);
+  assert.equal(catalogJobs.size, 2);
+  assert.equal(catalogStarts, 5, "recovery and offline checks never start another job");
 });
 
 test("packaged Client cleanup is Host-independent and verifies unpaired state", async () => {

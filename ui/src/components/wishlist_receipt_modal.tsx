@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type {
   PurchaseReceiptMetadataDraft,
   PurchaseReceiptMetadataValidationErrors,
@@ -7,16 +8,19 @@ import { formInputChromeClassName } from "./form_control_class";
 import { purchaseReceiptMetadataFieldsCopy } from "../lib/purchase_receipt_metadata_copy";
 import { PurchaseReceiptMetadataFields } from "./purchase_receipt_metadata_fields";
 import { SaveOnlyModal } from "./save_only_modal";
+import { INVENTORY_LOCATION_DATALIST_ID } from "./inventory_location_datalist";
 
 export type WishlistReceiptModalProps = Readonly<{
   busy: boolean;
   defaultPurchaseCurrency?: string;
   errors: PurchaseReceiptMetadataValidationErrors;
+  homeLocation: string;
   itemTitle: string;
   maxQuantity: number;
   metadataDraft: PurchaseReceiptMetadataDraft;
   onCancel: () => void;
   onConfirm: () => void | Promise<void>;
+  onHomeLocationChange: (value: string) => void;
   onMetadataDraftChange: (draft: PurchaseReceiptMetadataDraft) => void;
   onQuantityChange: (value: string) => void;
   quantity: number;
@@ -27,11 +31,13 @@ export function WishlistReceiptModal({
   busy,
   defaultPurchaseCurrency = "",
   errors,
+  homeLocation,
   itemTitle,
   maxQuantity,
   metadataDraft,
   onCancel,
   onConfirm,
+  onHomeLocationChange,
   onMetadataDraftChange,
   onQuantityChange,
   quantity,
@@ -39,7 +45,7 @@ export function WishlistReceiptModal({
 }: WishlistReceiptModalProps) {
   const { t } = useI18n();
 
-  return (
+  const modal = (
     <SaveOnlyModal
       cancelDisabled={busy}
       onCancel={onCancel}
@@ -69,6 +75,21 @@ export function WishlistReceiptModal({
           />
         </label>
 
+        <label className="block">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            {t("inventory.homeLocationOptional", "Home location (optional)")}
+          </span>
+          <input
+            type="text"
+            name="home_location"
+            list={INVENTORY_LOCATION_DATALIST_ID}
+            value={homeLocation}
+            onChange={(event) => onHomeLocationChange(event.target.value)}
+            className={`mt-1.5 w-full ${formInputChromeClassName}`}
+            disabled={busy}
+          />
+        </label>
+
         <PurchaseReceiptMetadataFields
           copy={purchaseReceiptMetadataFieldsCopy(t)}
           defaultCurrency={defaultPurchaseCurrency}
@@ -81,4 +102,8 @@ export function WishlistReceiptModal({
       </div>
     </SaveOnlyModal>
   );
+
+  // Purchase queue surfaces use backdrop blur, which would otherwise anchor
+  // this fixed overlay to the card instead of the viewport.
+  return typeof document === "undefined" ? modal : createPortal(modal, document.body);
 }

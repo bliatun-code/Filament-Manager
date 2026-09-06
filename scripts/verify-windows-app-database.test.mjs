@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -31,6 +31,12 @@ function createDatabase(
   const database = new Database(databasePath);
   try {
     for (const tableName of tableNames) {
+      if (tableName === "catalog_spool_batches") {
+        database.exec(readFileSync(new URL(
+          "../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url,
+        ), "utf8"));
+        continue;
+      }
       const requiredColumns = REQUIRED_WINDOWS_SMOKE_COLUMNS[tableName] ?? [];
       const columnDefinitions = [
         "id TEXT PRIMARY KEY",
@@ -58,6 +64,28 @@ test("Windows app database verifier accepts a healthy initialized database", asy
   });
 });
 
+test("Windows app database verifier accepts the repository's actual migrated schema", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    const databasePath = join(directory, "migrated.db");
+    const migrationRoot = new URL("../src/database/migrations/", import.meta.url);
+    const manifest = JSON.parse(readFileSync(new URL("manifest.json", migrationRoot), "utf8"));
+    const database = new Database(databasePath);
+    try {
+      database.exec(readFileSync(new URL("../src/database/schema.sql", import.meta.url), "utf8"));
+      for (const migration of manifest.migrations.filter(({ role }) => role === "schema-migration")) {
+        database.exec(readFileSync(new URL(migration.file, migrationRoot), "utf8"));
+      }
+      database.pragma(`user_version = ${manifest.currentSchemaVersion}`);
+    } finally {
+      database.close();
+    }
+    const result = await verifyWindowsAppDatabase(databasePath);
+    assert.equal(result.schemaVersion, manifest.currentSchemaVersion);
+    assert.ok(result.tables.includes("catalog_refresh_jobs"));
+    assert.ok(result.tables.includes("catalog_spool_batches"));
+  });
+});
+
 test("Windows app database verifier reports the schema version in CLI output", async () => {
   await withTemporaryDirectory(async (directory) => {
     const databasePath = join(directory, "filament-manager.db");
@@ -74,13 +102,16 @@ test("Windows app database verifier reports the schema version in CLI output", a
     );
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /database schema v5/);
+    assert.ok(result.stdout.includes(`database schema v${REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION}`));
   });
 });
 
 test("Windows app database verifier requires the exact current schema version", async () => {
   await withTemporaryDirectory(async (directory) => {
-    for (const schemaVersion of [0, 1, 2, 3, 4, 6]) {
+    for (const schemaVersion of [
+      ...Array.from({ length: REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION }, (_, version) => version),
+      REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION + 1,
+    ]) {
       const databasePath = join(
         directory,
         `filament-manager-schema-${schemaVersion}.db`,
@@ -97,6 +128,25 @@ test("Windows app database verifier requires the exact current schema version", 
           `schema version mismatch.*expected ${REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION}, got ${schemaVersion}`,
         ),
       );
+    }
+  });
+});
+
+test("Windows app database verifier rejects a missing or incomplete catalog job ledger", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    for (const missingTable of [true, false]) {
+      const databasePath = join(directory, `catalog-ledger-${missingTable}.db`);
+      createDatabase(databasePath, REQUIRED_WINDOWS_SMOKE_TABLES);
+      const database = new Database(databasePath);
+      try {
+        database.exec("DROP TABLE catalog_refresh_jobs");
+        if (!missingTable) database.exec("CREATE TABLE catalog_refresh_jobs (job_id TEXT PRIMARY KEY)");
+      } finally {
+        database.close();
+      }
+      await assert.rejects(verifyWindowsAppDatabase(databasePath), missingTable
+        ? /missing required table\(s\): catalog_refresh_jobs/
+        : /catalog_refresh_jobs is missing required column\(s\): authority_key/);
     }
   });
 });
@@ -120,6 +170,33 @@ test("Windows app database verifier requires schema 5 purchase-standard columns"
       verifyWindowsAppDatabase(databasePath),
       /filament_spools is missing required column\(s\): purchase_currency, supplier_reference, purchase_price_batch_locked, purchase_price_source/,
     );
+  });
+});
+
+test("Windows app database verifier rejects a current version with a missing or malformed batch journal", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    for (const malformed of ["missing", "columns", "nullable"]) {
+      const databasePath = join(directory, `batch-journal-${malformed}.db`);
+      createDatabase(databasePath, REQUIRED_WINDOWS_SMOKE_TABLES);
+      const database = new Database(databasePath);
+      try {
+        database.exec("DROP TABLE IF EXISTS catalog_spool_batches");
+        if (malformed === "columns") {
+          database.exec("CREATE TABLE catalog_spool_batches (batch_id TEXT PRIMARY KEY NOT NULL)");
+        } else if (malformed === "nullable") {
+          database.exec(`CREATE TABLE catalog_spool_batches (
+            batch_id TEXT PRIMARY KEY NOT NULL,
+            library_id TEXT,
+            request_json TEXT NOT NULL CHECK (json_valid(request_json)),
+            receipt_json TEXT NOT NULL CHECK (json_valid(receipt_json)),
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+          )`);
+        }
+      } finally {
+        database.close();
+      }
+      await assert.rejects(verifyWindowsAppDatabase(databasePath), /catalog_spool_batches|batch journal/i);
+    }
   });
 });
 

@@ -9,11 +9,12 @@ const source = readFileSync(
 
 test("full backup file import validates and confirms before restore", () => {
   const validationIndex = source.indexOf("validateFullBackupJson(content)");
-  const confirmationIndex = source.indexOf("window.confirm(");
+  const confirmationIndex = source.indexOf("await new Promise<boolean>");
   const importIndex = source.indexOf("importDataFile(content)");
 
   assert.ok(validationIndex >= 0, "full backup preflight validation must remain present");
   assert.ok(confirmationIndex > validationIndex, "confirmation must follow validation");
   assert.ok(importIndex > confirmationIndex, "restore must not start before confirmation");
-  assert.match(source, /settings\.confirmImportBackup/);
+  assert.doesNotMatch(source, /window\.confirm/);
+  assert.match(source, /if \(!confirmed \|\| !isCurrent\(\)\) return/);
 });

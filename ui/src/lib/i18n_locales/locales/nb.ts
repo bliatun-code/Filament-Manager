@@ -49,6 +49,10 @@ export const nbDictionary: DictionaryNode = {
       optional: "Valgfritt",
     },
     errors: {
+      catalogSpoolBatchInvalid: "Batchen ble ikke lagret. Kontroller valgte filamenter, vekt, eier og lokasjon. Bruk høyst 100 ruller.",
+      catalogSpoolBatchConflict: "Denne batch-ID-en tilhører en annen forespørsel eller et annet bibliotek. Kontroller lageret før du registrerer en ny batch.",
+      catalogSpoolBatchHostUnsupported: "Oppgrader Host for å registrere batcher trygt. Ingen ruller ble sendt.",
+      catalogSpoolBatchStorageFailed: "Gjenopprettingsdataene for batchen kunne ikke lagres eller leses. Registreringen er satt på pause for å hindre duplikate ruller.",
       invalidRequest: "Forespørselen kunne ikke fullføres.",
       unauthorized: "Autentisering er påkrevd.",
       forbidden: "Denne handlingen er ikke tillatt.",
@@ -110,6 +114,7 @@ export const nbDictionary: DictionaryNode = {
         "Oppdater verten før du lagrer tara eller eierskap sammen med rulldetaljer.",
       purchaseMetadataHostUnsupported:
         "Oppdater verten før du lagrer kjøpsdetaljer.",
+      wishlistReceiptLocationHostUnsupported: "Oppdater verten før du mottar ruller med en hjemmelokasjon.",
       purchasePriceInvalid: "Skriv inn en gyldig kjøpspris som er null eller høyere.",
       purchaseCurrencyInvalid:
         "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",
@@ -332,6 +337,14 @@ export const nbDictionary: DictionaryNode = {
       badgeNoPrinterSlots: "Ingen printerspor konfigurert ennå.",
     },
     inventory: {
+      bambuBatchSaving: "Lagrer {count, plural, one {# rull} other {# ruller}}...",
+      bambuBatchUncertain: "Vi kunne ikke bekrefte om batchen ble lagret. Fortsett med samme batch for å kontrollere eller fullføre den uten å opprette duplikater.",
+      bambuBatchRejected: "Batchen ble ikke lagret. Se på feilen, og rediger deretter batchen.",
+      bambuBatchComplete: "Registrerte {count, plural, one {# rull} other {# ruller}}.",
+      bambuBatchContinue: "Fortsett med samme batch",
+      bambuBatchEdit: "Rediger batch",
+      bambuBatchNew: "Start ny batch",
+      bambuBatchRemaining: "{count, plural, one {# rad må fortsatt gjennomgås og er beholdt til neste batch.} other {# rader må fortsatt gjennomgås og er beholdt til neste batch.}}",
       title: "Filamenter",
       subtitle: "Administrer lager, utlån og filamentvekt på ett sted.",
       addSpoolAction: "Legg til filament",
@@ -421,6 +434,8 @@ export const nbDictionary: DictionaryNode = {
       showFewerRolls: "Vis færre",
       loading: "Laster filamenter...",
       addedToInventory: "Lagt til i lageret",
+      openCreatedRoll: "Åpne rullen",
+      registerAnotherRoll: "Registrer en rull til",
       addedFromWishlist: "Lagt til fra ønskelisten",
       visualFixtureLoaded: "Testdata for filamentdetaljer er lastet.",
       noMatch: "Ingen filamenter matcher valgte filtre.",
@@ -433,7 +448,7 @@ export const nbDictionary: DictionaryNode = {
       loadInPrinterHint:
         "Det valgte filamentet er klart. Velg bare printersport; du trenger ikke søke etter filamentet på nytt.",
       noAvailablePrinterSlots: "Ingen tomme printersport er tilgjengelige.",
-      loadedInPrinter: "Filamentet er lastet i printersportet.",
+      loadedInPrinter: "Rullen er lastet i {slot}.",
       printLabelAction: "Skriv etikett",
       unsavedChanges: "Du har ulagrede endringer.",
       allChangesSaved: "Alle endringer er lagret.",
@@ -1086,6 +1101,7 @@ export const nbDictionary: DictionaryNode = {
       itemStatusGroup: "Status for {name}",
       qty: "Antall",
       receivePurchase: "Motta kjøp",
+      receiptComplete: "Mottatt {count} × {item}. Gjenstår: {remaining}.",
       receivedQuantity: "Mottatt antall",
       receiveQuantity:
         "{count, plural, one {Motta # rull} other {Motta # ruller}}",

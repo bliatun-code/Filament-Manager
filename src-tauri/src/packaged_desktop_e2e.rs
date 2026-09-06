@@ -1,4 +1,5 @@
 use crate::app_storage::APP_DB_PATH_ENV_VAR;
+use crate::backend::inventory_engine::{CatalogSpoolBatchInput, CatalogSpoolBatchReceipt};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use std::fs::{symlink_metadata, OpenOptions};
@@ -19,6 +20,13 @@ const SLOT_ID: &str = "packaged_e2e_printer_ams_1_slot_1";
 const INITIAL_WEIGHT_G: i64 = 1_000;
 const UPDATED_WEIGHT_G: i64 = 875;
 const RETURNED_WEIGHT_G: i64 = 760;
+const MAXIMUM_RESULT_BYTES: u64 = 64 * 1024;
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+struct PackagedDesktopBatchEvidence {
+    request: CatalogSpoolBatchInput,
+    receipt: CatalogSpoolBatchReceipt,
+}
 
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct PackagedDesktopE2eConfiguration {
@@ -30,6 +38,7 @@ pub(crate) struct PackagedDesktopE2eConfiguration {
     initial_weight_g: i64,
     updated_weight_g: i64,
     returned_weight_g: i64,
+    batch_evidence: Option<PackagedDesktopBatchEvidence>,
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +68,7 @@ pub(crate) struct PackagedDesktopE2eCompletion {
     loan_status: String,
     backup_sha256: Option<String>,
     backup_total_rows: Option<u64>,
+    batch_evidence: PackagedDesktopBatchEvidence,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -217,6 +227,7 @@ fn resolve_configuration(raw: RawConfiguration) -> Result<Option<ResolvedConfigu
             initial_weight_g: INITIAL_WEIGHT_G,
             updated_weight_g: UPDATED_WEIGHT_G,
             returned_weight_g: RETURNED_WEIGHT_G,
+            batch_evidence: None,
         },
     }))
 }
@@ -248,7 +259,76 @@ fn require_active_configuration_for_state(
             "Packaged desktop E2E is not using the managed application database".to_string(),
         );
     }
+    bind_restarted_batch_evidence(config)
+}
+
+fn bind_restarted_batch_evidence(
+    mut config: ResolvedConfiguration,
+) -> Result<ResolvedConfiguration, String> {
+    if config.public.phase != "verify" {
+        return Ok(config);
+    }
+    let original_path = config.result_path.with_file_name("mutate-result.json");
+    require_regular_file(&original_path, "Packaged desktop mutation evidence")?;
+    require_private_permissions(&original_path, false, "Packaged desktop mutation evidence")?;
+    let size = symlink_metadata(&original_path)
+        .map_err(|_| "Cannot inspect packaged desktop mutation evidence".to_string())?
+        .len();
+    if size == 0 || size > MAXIMUM_RESULT_BYTES {
+        return Err("Packaged desktop mutation evidence has an invalid size".to_string());
+    }
+    let content = std::fs::read_to_string(&original_path)
+        .map_err(|_| "Cannot read packaged desktop mutation evidence".to_string())?;
+    let value: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|_| "Packaged desktop mutation evidence is invalid JSON".to_string())?;
+    if value["format"] != RESULT_FORMAT
+        || value["status"] != "pass"
+        || value["phase"] != "mutate"
+        || value["run_id"] != config.public.run_id
+    {
+        return Err("Packaged desktop mutation evidence identity mismatch".to_string());
+    }
+    let completion: PackagedDesktopE2eCompletion =
+        serde_json::from_value(value["completion"].clone())
+            .map_err(|_| "Packaged desktop mutation evidence is incomplete".to_string())?;
+    let mut mutation_config = config.clone();
+    mutation_config.public.phase = "mutate".to_string();
+    validate_completion(&mutation_config, &completion)?;
+    config.public.batch_evidence = Some(completion.batch_evidence);
     Ok(config)
+}
+
+fn validate_batch_evidence(
+    evidence: &PackagedDesktopBatchEvidence,
+    run_id: &str,
+) -> Result<(), String> {
+    let request = &evidence.request;
+    let receipt = &evidence.receipt;
+    if request.batch_id != format!("{run_id}-catalog-batch")
+        || request.master_ids.len() != 2
+        || request.master_ids[0].trim().is_empty()
+        || request.master_ids[0] != request.master_ids[1]
+        || request.initial_weight_g != 640
+        || request.ownership_type != "BORROWED_IN"
+        || request.owner_name.as_deref() != Some("Packaged desktop E2E lender")
+        || request.owner_contact.as_deref() != Some("desktop-batch@example.invalid")
+        || request.ownership_note.as_deref() != Some("Isolated packaged desktop batch fixture")
+        || request.location.as_deref() != Some("Private packaged desktop QA")
+        || receipt.batch_id != request.batch_id
+        || receipt.spool_ids.len() != 2
+        || receipt.spool_ids[0] == receipt.spool_ids[1]
+        || receipt.spool_ids.iter().any(|id| {
+            id.strip_prefix("spool_").is_none_or(|suffix| {
+                suffix.len() != 32
+                    || !suffix
+                        .bytes()
+                        .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+            })
+        })
+    {
+        return Err("Packaged desktop catalog batch evidence is invalid".to_string());
+    }
+    Ok(())
 }
 
 fn validate_completion(
@@ -268,6 +348,7 @@ fn validate_completion(
     {
         return Err("Packaged desktop E2E completion data mismatch".to_string());
     }
+    validate_batch_evidence(&completion.batch_evidence, &config.public.run_id)?;
     match config.public.phase.as_str() {
         "mutate" => {
             if completion.backup_sha256.is_some() || completion.backup_total_rows.is_some() {
@@ -275,6 +356,11 @@ fn validate_completion(
             }
         }
         "verify" => {
+            if config.public.batch_evidence.as_ref() != Some(&completion.batch_evidence) {
+                return Err(
+                    "Verification must replay the original catalog batch evidence".to_string(),
+                );
+            }
             let backup_sha256 = completion
                 .backup_sha256
                 .as_deref()
@@ -397,6 +483,45 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    fn batch_evidence(run_id: &str) -> PackagedDesktopBatchEvidence {
+        let batch_id = format!("{run_id}-catalog-batch");
+        PackagedDesktopBatchEvidence {
+            request: CatalogSpoolBatchInput {
+                batch_id: batch_id.clone(),
+                master_ids: vec!["qa-master".to_string(); 2],
+                initial_weight_g: 640,
+                ownership_type: "BORROWED_IN".to_string(),
+                owner_name: Some("Packaged desktop E2E lender".to_string()),
+                owner_contact: Some("desktop-batch@example.invalid".to_string()),
+                ownership_note: Some("Isolated packaged desktop batch fixture".to_string()),
+                location: Some("Private packaged desktop QA".to_string()),
+            },
+            receipt: CatalogSpoolBatchReceipt {
+                batch_id,
+                spool_ids: vec![
+                    format!("spool_{}", "1".repeat(32)),
+                    format!("spool_{}", "2".repeat(32)),
+                ],
+            },
+        }
+    }
+
+    fn completion(phase: &str, run_id: &str) -> PackagedDesktopE2eCompletion {
+        PackagedDesktopE2eCompletion {
+            phase: phase.to_string(),
+            run_id: run_id.to_string(),
+            spool_id: SPOOL_ID.to_string(),
+            printer_id: PRINTER_ID.to_string(),
+            slot_id: SLOT_ID.to_string(),
+            loan_id: "loan-id".to_string(),
+            final_weight_g: RETURNED_WEIGHT_G,
+            loan_status: "RETURNED".to_string(),
+            backup_sha256: None,
+            backup_total_rows: None,
+            batch_evidence: batch_evidence(run_id),
+        }
+    }
+
     fn private_fixture() -> (PathBuf, String) {
         let run_id = format!(
             "packaged-e2e-{}-{}",
@@ -480,6 +605,36 @@ mod tests {
     fn completion_requires_post_restart_backup_evidence() {
         let (directory, run_id) = private_fixture();
         let result = (|| {
+            let mut config = resolve_configuration(RawConfiguration {
+                enabled: Some("1".to_string()),
+                phase: Some("verify".to_string()),
+                run_id: Some(run_id.clone()),
+                work_directory: Some(directory.to_string_lossy().into_owned()),
+                database_path: Some(directory.join(DATABASE_FILE_NAME)),
+            })?
+            .expect("active config");
+            config.public.batch_evidence = Some(batch_evidence(&run_id));
+            let mut completion = completion("verify", &run_id);
+            assert!(validate_completion(&config, &completion)
+                .expect_err("backup evidence required")
+                .contains("backup SHA-256"));
+            completion.backup_sha256 = Some("a".repeat(64));
+            completion.backup_total_rows = Some(12);
+            validate_completion(&config, &completion)?;
+            completion.batch_evidence.receipt.spool_ids.reverse();
+            assert!(validate_completion(&config, &completion)
+                .expect_err("same IDs in changed order fail")
+                .contains("original catalog batch evidence"));
+            Ok::<(), String>(())
+        })();
+        let _ = std::fs::remove_dir_all(&directory);
+        result.expect("validate completion evidence");
+    }
+
+    #[test]
+    fn restarted_configuration_requires_private_original_batch_evidence() {
+        let (directory, run_id) = private_fixture();
+        let result = (|| {
             let config = resolve_configuration(RawConfiguration {
                 enabled: Some("1".to_string()),
                 phase: Some("verify".to_string()),
@@ -488,27 +643,53 @@ mod tests {
                 database_path: Some(directory.join(DATABASE_FILE_NAME)),
             })?
             .expect("active config");
-            let mut completion = PackagedDesktopE2eCompletion {
-                phase: "verify".to_string(),
-                run_id,
-                spool_id: SPOOL_ID.to_string(),
-                printer_id: PRINTER_ID.to_string(),
-                slot_id: SLOT_ID.to_string(),
-                loan_id: "loan-id".to_string(),
-                final_weight_g: RETURNED_WEIGHT_G,
-                loan_status: "RETURNED".to_string(),
-                backup_sha256: None,
-                backup_total_rows: None,
+            assert!(bind_restarted_batch_evidence(config.clone()).is_err());
+            let mutation = completion("mutate", &run_id);
+            let path = directory.join("mutate-result.json");
+            let original = SuccessResult {
+                format: RESULT_FORMAT,
+                status: "pass",
+                phase: "mutate",
+                run_id: &run_id,
+                completion: &mutation,
             };
-            assert!(validate_completion(&config, &completion)
-                .expect_err("backup evidence required")
-                .contains("backup SHA-256"));
-            completion.backup_sha256 = Some("a".repeat(64));
-            completion.backup_total_rows = Some(12);
-            validate_completion(&config, &completion)?;
+            write_private_result(&path, &original)?;
+            let restored = bind_restarted_batch_evidence(config.clone())?;
+            assert_eq!(
+                restored.public.batch_evidence,
+                Some(mutation.batch_evidence.clone())
+            );
+            for change in ["missing-batch", "wrong-run", "duplicate-spool"] {
+                let mut value =
+                    serde_json::to_value(&original).map_err(|error| error.to_string())?;
+                match change {
+                    "missing-batch" => {
+                        value["completion"]
+                            .as_object_mut()
+                            .unwrap()
+                            .remove("batch_evidence");
+                    }
+                    "wrong-run" => value["run_id"] = serde_json::json!("other-run"),
+                    _ => {
+                        value["completion"]["batch_evidence"]["receipt"]["spool_ids"][1] =
+                            value["completion"]["batch_evidence"]["receipt"]["spool_ids"][0].clone()
+                    }
+                }
+                std::fs::write(&path, serde_json::to_vec(&value).unwrap())
+                    .map_err(|error| error.to_string())?;
+                assert!(
+                    bind_restarted_batch_evidence(config.clone()).is_err(),
+                    "{change} must fail closed"
+                );
+            }
+            std::fs::write(&path, vec![b' '; MAXIMUM_RESULT_BYTES as usize + 1])
+                .map_err(|error| error.to_string())?;
+            assert!(bind_restarted_batch_evidence(config)
+                .expect_err("oversized evidence rejected")
+                .contains("invalid size"));
             Ok::<(), String>(())
         })();
-        let _ = std::fs::remove_dir_all(&directory);
-        result.expect("validate completion evidence");
+        let _ = std::fs::remove_dir_all(directory);
+        result.expect("verify original evidence is mandatory");
     }
 }

@@ -197,7 +197,7 @@ export function useSettingsMaintenanceSection({
     t,
   });
 
-  const { handleImportDataFile, handleValidateBackupFile } = useSettingsBackupFileActions({
+  const { backupImportConfirmation, handleImportDataFile, handleValidateBackupFile } = useSettingsBackupFileActions({
     busy,
     clearBackupValidation,
     clearConfirmResetAction,
@@ -218,6 +218,9 @@ export function useSettingsMaintenanceSection({
     settingsBackupErrorMessageLabels,
     settingsBackupValidationMessageLabels,
     settingsClientReadOnly,
+    settingsClientHostBaseUrl,
+    settingsClientLibraryId,
+    settingsClientTargetGeneration,
     settingsImportMessageLabels,
     tauri,
     t,
@@ -263,6 +266,7 @@ export function useSettingsMaintenanceSection({
 
   return {
     applicationDiagnosticsStatus,
+    backupImportConfirmation,
     handleExportFullBackup,
     handleOpenBackupValidate,
     handleOpenDataImport,

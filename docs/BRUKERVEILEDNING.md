@@ -667,6 +667,16 @@ Filamentkatalog:
 - farge-/swatch-data
 - eldre og forhandler-tilgjengelige katalogelementer beholdes søkbare
 
+Katalogoppdateringen fortsetter på verten når du navigerer bort eller laster
+vinduet på nytt. Åpne Innstillinger igjen for å følge jobben eller hente siste
+resultat. Bare én oppdatering kjører per bibliotek, også når flere klienter
+brukes; fremdriften viser jobbens faktiske leverandør og materiale. Ved
+forbindelsesfeil sjekker appen status uten å sende importen på nytt. Hvis
+vertsappen avsluttes før jobben er ferdig, markeres jobben som avbrutt ved neste
+statussjekk. Start da en ny oppdatering når du er klar. Jobbsporing fra klient
+krever en oppdatert vert. Jobbkvitteringer er lokale driftsdata og følger ikke
+med i portable sikkerhetskopier.
+
 Programvedlikehold:
 
 - sikkerhetskopi

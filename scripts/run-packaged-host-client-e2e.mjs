@@ -21,6 +21,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
+import {
+  inspectPackagedCatalogJobs,
+  validatePackagedCatalogJobSummary,
+} from "./packaged-catalog-job-evidence.mjs";
+
+import {
+  capturePackagedCatalogBatch, inspectPackagedCatalogBatch, verifyPackagedCatalogBatchReplay,
+  validatePackagedCatalogBatchReceipt, validatePackagedCatalogBatchSummary,
+} from "./packaged-catalog-batch-evidence.mjs";
 
 import {
   preparePrivateQaArtifactDirectory,
@@ -89,6 +98,8 @@ const CLIENT_COMPLETION_KEYS = [
   "paired_before_cleanup",
   "auth_cleared",
   "session_renewed",
+  "batch_receipt",
+  "batch_replayed",
 ];
 const HOST_COMPLETION_KEYS = [
   "library_id",
@@ -495,7 +506,13 @@ function validatePriorRunSummary(logDirectory, runId) {
   }
   const summary = readBoundedJson(summaryPath, "Prior QA summary");
   if (summary?.status === "pass") {
-    exactKeys(summary, MAIN_PASS_SUMMARY_KEYS, "Prior QA summary");
+    // Earlier retained runs predate catalog jobs and must still permit cleanup.
+    const hasCatalogJobs = Object.hasOwn(summary, "catalog_jobs");
+    const hasCatalogBatch = Object.hasOwn(summary, "catalog_batch");
+    exactKeys(summary, [...MAIN_PASS_SUMMARY_KEYS, ...(hasCatalogJobs ? ["catalog_jobs"] : []),
+      ...(hasCatalogBatch ? ["catalog_batch"] : [])], "Prior QA summary");
+    if (hasCatalogBatch) validatePackagedCatalogBatchSummary(summary.catalog_batch);
+    if (hasCatalogJobs) validatePackagedCatalogJobSummary(summary.catalog_jobs);
     const expectedPhases = [
       "host-generation-1",
       "client-pair",
@@ -1385,9 +1402,13 @@ export function validatePackagedHostClientPhaseResult(
       : finiteInteger(targetGeneration, "Expected Client target generation", {
           minimum: 1,
         });
+  validatePackagedCatalogBatchReceipt(result.completion.batch_receipt, runId);
+  if (result.completion.batch_replayed !== (phase === "recover")) {
+    throw new Error(`Packaged Client ${phase} batch replay evidence is invalid.`);
+  }
   const expected = expectedClientCompletion(phase, generation);
   if (
-    CLIENT_COMPLETION_KEYS.some(
+    Object.keys(expected).some(
       (key) => result.completion[key] !== expected[key],
     )
   ) {
@@ -1683,8 +1704,8 @@ export function inspectPackagedClientCredentialAbsence(
 }
 
 export function inspectPackagedHostClientDatabases(
-  { hostDatabasePath, clientDatabasePath, sensitiveValues = [] },
-  { targetGeneration, port },
+  { hostDatabasePath, clientDatabasePath, sensitiveValues = [], runId },
+  { targetGeneration, port, batchReceipt, batchSnapshot },
   databaseFactory = (databasePath, options) =>
     new Database(databasePath, options),
 ) {
@@ -1759,7 +1780,7 @@ export function inspectPackagedHostClientDatabases(
       0,
     );
     if (
-      hostSpoolCount !== 1 ||
+      hostSpoolCount !== 3 ||
       hostSpool.current_weight_g !== RECOVERED_WEIGHT_G ||
       hostSpool.remaining_g !== RECOVERED_WEIGHT_G ||
       hostHistoryCount !== 3 ||
@@ -1834,10 +1855,11 @@ export function inspectPackagedHostClientDatabases(
       typeof cache.captured_at !== "string" ||
       !cache.captured_at.trim() ||
       !Array.isArray(cache.rows) ||
-      cache.rows.length !== 1 ||
-      cache.rows[0]?.spool?.id !== SPOOL_ID ||
-      cache.rows[0]?.spool?.current_weight_g !== RECOVERED_WEIGHT_G ||
-      cache.rows[0]?.spool?.remaining_g !== RECOVERED_WEIGHT_G
+      cache.rows.length !== 3 ||
+      cache.rows.filter(({ spool }) => spool?.id === SPOOL_ID &&
+        spool.current_weight_g === RECOVERED_WEIGHT_G && spool.remaining_g === RECOVERED_WEIGHT_G).length !== 1 ||
+      batchReceipt?.spool_ids.some((id) => cache.rows.filter(({ spool }) => spool?.id === id &&
+        spool.current_weight_g === 500 && spool.remaining_g === 500).length !== 1)
     ) {
       throw new Error(
         "Client spool cache does not contain the recovered Host row.",
@@ -1845,13 +1867,19 @@ export function inspectPackagedHostClientDatabases(
     }
     inspectCredentialAbsence(host, "Host database");
     inspectCredentialAbsence(client, "Client database");
+    const catalogJobs = inspectPackagedCatalogJobs(host, client, runId);
+    const catalogBatch = verifyPackagedCatalogBatchReplay(
+      inspectPackagedCatalogBatch(host, client, runId, batchReceipt), batchSnapshot,
+    );
 
     return {
+      catalogJobs,
+      catalogBatch,
       hostSchemaVersion,
       clientSchemaVersion,
       hostWeightG: hostSpool.current_weight_g,
       clientLocalWeightG: clientSpool.current_weight_g,
-      cacheWeightG: cache.rows[0].spool.current_weight_g,
+      cacheWeightG: RECOVERED_WEIGHT_G,
       targetGeneration,
       hostHistoryCount,
       clientHistoryCount,
@@ -2209,6 +2237,7 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
   const runClient = dependencies.runClient ?? runPackagedClient;
   const inspectDatabases =
     dependencies.inspectDatabases ?? inspectPackagedHostClientDatabases;
+  const captureBatch = dependencies.captureCatalogBatch ?? capturePackagedCatalogBatch;
   const removeWork =
     dependencies.removeWork ?? removePackagedHostClientWorkDirectory;
   let context = null;
@@ -2277,6 +2306,7 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
     });
     const targetGeneration = pair.target_generation;
     await stopActiveHost();
+    const batchSnapshot = captureBatch(context, pair.batch_receipt);
 
     await runTrackedClient({
       context,
@@ -2302,10 +2332,14 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
     });
     await stopActiveHost();
 
+    if (JSON.stringify(pair.batch_receipt) !== JSON.stringify(recover.batch_receipt) || !recover.batch_replayed) {
+      throw new Error("Restarted Client batch receipt does not match the paired receipt.");
+    }
     const databaseState = inspectDatabases(context, {
-      targetGeneration,
-      port: selectedPort,
+      targetGeneration, port: selectedPort, batchReceipt: pair.batch_receipt, batchSnapshot,
     });
+    validatePackagedCatalogJobSummary(databaseState.catalogJobs);
+    validatePackagedCatalogBatchSummary(databaseState.catalogBatch);
     summary = {
       format: PACKAGED_HOST_CLIENT_SUMMARY_FORMAT,
       status: "pass",
@@ -2329,6 +2363,8 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
       client_history_count: databaseState.clientHistoryCount,
       cache_setting_count: databaseState.cacheSettingCount,
       auth_setting_count: databaseState.authSettingCount,
+      catalog_jobs: databaseState.catalogJobs,
+      catalog_batch: databaseState.catalogBatch,
       session_renewed: recover.session_renewed,
       auth_cleared: recover.auth_cleared,
       auth_cleanup: cleanupStatus,

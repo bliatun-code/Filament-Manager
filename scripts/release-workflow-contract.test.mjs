@@ -1593,6 +1593,26 @@ test("packaged releases preserve pinned v0.28 data on DMG and MSI", () => {
   ]);
 });
 
+test("installed platform wrappers require batch replay evidence and the actual journal schema", () => {
+  for (const source of [macosDmgSmoke, windowsDatabaseVerifier]) {
+    assert.match(source, /assertCatalogSpoolBatchSchema\(database\)/);
+    assert.match(source, /catalog-spool-batch-schema\.mjs/);
+  }
+  for (const field of ["spools", "loans"]) {
+    assert.ok(windowsMsiSmoke.includes(`$packagedDesktopE2eResult.catalog_batch.${field} -ne 2`));
+    assert.ok(windowsMsiSmoke.includes(`$packagedHostClientE2eResult.catalog_batch.${field} -ne 2`));
+  }
+  assert.match(windowsMsiSmoke, /\$packagedDesktopE2eResult\.catalog_batch\.replayed -ne \$true/);
+  assert.match(windowsMsiSmoke, /\$packagedDesktopE2eResult\.catalog_batch\.state_snapshot_sha256 -cnotmatch/);
+  assert.match(windowsMsiSmoke, /\$packagedHostClientE2eResult\.catalog_batch\.history_events -ne 4/);
+  assert.match(windowsMsiSmoke, /\$packagedHostClientE2eResult\.catalog_batch\.receipts -ne 1/);
+  assert.match(windowsMsiSmoke, /\$packagedHostClientE2eResult\.catalog_batch\.replayed -ne \$true/);
+  assert.match(windowsMsiSmoke, /\$packagedHostClientE2eResult\.catalog_batch\.replay_revisions_unchanged -ne \$true/);
+  for (const field of ["client_spools", "client_loans", "client_receipts"]) {
+    assert.ok(windowsMsiSmoke.includes(`$packagedHostClientE2eResult.catalog_batch.${field} -ne 0`));
+  }
+});
+
 test("release workflow keeps the protected macOS signing sequence fail-closed", () => {
   const macosJob = readSection(
     releaseWorkflow,

@@ -3,6 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import Database from "better-sqlite3";
+import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 
 import {
   PREVIOUS_RELEASE_COMMIT,
@@ -13,7 +15,7 @@ import {
   verifyPreviousReleaseUpgradeFixture,
 } from "./prepare-previous-release-upgrade-fixture.mjs";
 
-const SAME_SCHEMA_MIGRATIONS = [
+const PREVIOUS_RELEASE_MIGRATIONS = [
   ["004_inventory_location_objects.sql", 2, 3],
   ["005_purchase_receipt_metadata.sql", 3, 4],
   ["006_filament_price_standards.sql", 4, 5],
@@ -46,7 +48,7 @@ test("previous-release fixture paths are explicit, distinct and no-replace", () 
 });
 
 test(
-  "v0.28 fixture is sanitized, provenance-bound and gates same-schema compatibility",
+  "v0.28 fixture is sanitized, provenance-bound and gates the current schema upgrade",
   { skip: process.platform === "win32" },
   async () => {
     const directory = mkdtempSync(
@@ -65,22 +67,33 @@ test(
           inspectSource: () => ({
             generatorPath: path.resolve("scripts/create-visual-qa-fixture.mjs"),
             schemaVersion: PREVIOUS_RELEASE_SCHEMA_VERSION,
-            structuralMigrations: SAME_SCHEMA_MIGRATIONS,
+            structuralMigrations: PREVIOUS_RELEASE_MIGRATIONS,
           }),
-          readCurrentSchemaVersion: () => 5,
         },
       );
       assert.equal(result.manifest.sourceRelease, PREVIOUS_RELEASE_REF);
+      assert.equal(PREVIOUS_RELEASE_SCHEMA_VERSION, 5);
       assert.equal(result.manifest.sourceCommit, PREVIOUS_RELEASE_COMMIT);
       assert.equal(
         result.manifest.sourceSchemaVersion,
         PREVIOUS_RELEASE_SCHEMA_VERSION,
       );
-      assert.equal(result.manifest.currentSchemaVersion, 5);
-      assert.equal(result.manifest.requiresSchemaMigration, false);
-      assert.equal(result.manifest.gateMode, "same-schema-compatibility");
+      assert.equal(result.manifest.currentSchemaVersion, currentSchemaVersion());
+      assert.ok(currentSchemaVersion() > PREVIOUS_RELEASE_SCHEMA_VERSION);
+      assert.equal(result.manifest.requiresSchemaMigration, true);
+      assert.equal(result.manifest.gateMode, "schema-migration");
       assert.equal(result.manifest.sanitized, true);
       assert.equal(result.manifest.counts.filament_spools, 8);
+      assert.equal(Object.hasOwn(result.manifest.counts, "catalog_spool_batches"), false);
+      const historical = new Database(databasePath, { readonly: true, fileMustExist: true });
+      try {
+        assert.equal(historical.pragma("user_version", { simple: true }), 5);
+        assert.equal(historical.prepare(
+          "SELECT COUNT(*) AS count FROM sqlite_master WHERE name = 'catalog_spool_batches'",
+        ).get().count, 0);
+      } finally {
+        historical.close();
+      }
 
       const verified = verifyPreviousReleaseUpgradeFixture({
         databasePath,

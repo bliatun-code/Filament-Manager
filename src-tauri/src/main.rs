@@ -15,8 +15,11 @@ mod bambu_mqtt;
 mod bambu_printer_discovery;
 mod bambu_thermal;
 mod catalog_commands;
+mod catalog_refresh_jobs;
 mod companion_api;
 mod companion_assets;
+mod companion_catalog_batch_api;
+mod companion_catalog_job_api;
 mod companion_error;
 mod companion_http;
 mod companion_inventory_bulk_write_api;
@@ -40,6 +43,7 @@ mod external_url_commands;
 mod inventory_activity_commands;
 mod inventory_bulk_commands;
 mod inventory_bulk_models;
+mod inventory_catalog_batch_commands;
 mod inventory_command_support;
 mod inventory_create_commands;
 mod inventory_danger_zone_commands;
@@ -56,6 +60,8 @@ mod library_revision_commands;
 mod library_sync_blocking_executor;
 mod library_sync_cache_commands;
 mod library_sync_cache_refresh;
+mod library_sync_catalog_batch_commands;
+mod library_sync_catalog_job_commands;
 mod library_sync_command_support;
 mod library_sync_danger_zone_commands;
 mod library_sync_host_client;
@@ -107,9 +113,8 @@ mod trusted_lan_pairing_commands;
 mod trusted_lan_runtime_commands;
 mod trusted_lan_status_commands;
 
+pub(crate) use app_storage::{with_db, with_inventory, with_stats};
 use backend::filament_database::FilamentDatabase;
-use backend::inventory_engine::InventoryEngine;
-use backend::statistics::StatisticsEngine;
 use filament_manager_core::backend;
 #[cfg(target_os = "macos")]
 use objc2::{AnyThread, MainThreadMarker};
@@ -372,12 +377,18 @@ fn main() {
             trusted_lan_browser_revoke_all_commands::revoke_all_trusted_lan_paired_browsers,
             inventory_read_commands::list_master_catalog,
             catalog_commands::refresh_bambu_catalog,
+            catalog_refresh_jobs::start_catalog_refresh_job,
+            catalog_refresh_jobs::get_catalog_refresh_job,
+            library_sync_catalog_job_commands::start_library_sync_host_catalog_refresh_job,
+            library_sync_catalog_job_commands::get_library_sync_host_catalog_refresh_job,
             catalog_commands::refresh_esun_catalog,
             catalog_commands::audit_bambu_catalog_source,
             catalog_commands::audit_esun_catalog_source,
             catalog_commands::esun_search_filaments,
             catalog_commands::esun_fetch_product_detail,
             inventory_create_commands::create_spool,
+            inventory_catalog_batch_commands::create_catalog_spool_batch,
+            library_sync_catalog_batch_commands::create_library_sync_host_catalog_spool_batch,
             inventory_create_commands::create_wishlist_item,
             inventory_create_commands::create_manual_spool,
             printer_create_commands::create_printer,
@@ -818,34 +829,6 @@ fn apply_visual_qa_scenario_url(app: &tauri::App) -> Result<(), String> {
             .append_pair("bfm_visual_qa_theme", theme);
     }
     window.navigate(url).map_err(|error| error.to_string())
-}
-
-pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
-where
-    Func: FnOnce(InventoryEngine) -> backend::database_result::InventoryResult<Output>,
-{
-    let db = FilamentDatabase::open(&state.db_path)
-        .map_err(|error| app_error::internal_command_error("Open inventory database", error))?;
-    let engine = InventoryEngine::new(db);
-    func(engine).map_err(app_error::inventory_error_to_command_string)
-}
-
-pub(crate) fn with_db<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
-where
-    Func: FnOnce(&FilamentDatabase) -> backend::database_result::InventoryResult<Output>,
-{
-    let db = FilamentDatabase::open(&state.db_path)
-        .map_err(|error| app_error::internal_command_error("Open inventory database", error))?;
-    func(&db).map_err(app_error::inventory_error_to_command_string)
-}
-
-pub(crate) fn with_stats<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
-where
-    Func: FnOnce(StatisticsEngine) -> Result<Output, rusqlite::Error>,
-{
-    let stats = StatisticsEngine::open(&state.db_path)
-        .map_err(|error| app_error::internal_command_error("Open statistics database", error))?;
-    func(stats).map_err(|error| app_error::internal_command_error("Statistics query", error))
 }
 
 #[cfg(test)]

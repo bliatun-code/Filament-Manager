@@ -1,13 +1,16 @@
-use crate::backend;
 use crate::backend::database_settings::{
     CREDENTIAL_STORE_PROFILE_ID_SETTING_KEY, CREDENTIAL_STORE_PROFILE_MIGRATION_SETTING_KEY,
 };
 use crate::backend::database_tables::FULL_BACKUP_TABLES;
 use crate::backend::filament_database::FilamentDatabase;
+use crate::backend::inventory_engine::InventoryEngine;
+use crate::backend::statistics::StatisticsEngine;
 use crate::sqlite_recovery::{
     online_backup, sanitize_legacy_database_credentials, RecoveryReason, RecoverySnapshot,
     SqliteWorkingCopy,
 };
+use crate::state::AppState;
+use crate::{app_error, backend};
 #[cfg(any(target_os = "windows", test))]
 use rusqlite::OptionalExtension;
 use std::ffi::OsString;
@@ -63,6 +66,34 @@ struct DatabaseMergePreflight {
 struct DatabaseTableMergeSchema {
     columns: Vec<String>,
     primary_key_indices: Vec<usize>,
+}
+
+pub(crate) fn with_inventory<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
+where
+    Func: FnOnce(InventoryEngine) -> backend::database_result::InventoryResult<Output>,
+{
+    let db = FilamentDatabase::open(&state.db_path)
+        .map_err(|error| app_error::internal_command_error("Open inventory database", error))?;
+    let engine = InventoryEngine::new(db);
+    func(engine).map_err(app_error::inventory_error_to_command_string)
+}
+
+pub(crate) fn with_db<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
+where
+    Func: FnOnce(&FilamentDatabase) -> backend::database_result::InventoryResult<Output>,
+{
+    let db = FilamentDatabase::open(&state.db_path)
+        .map_err(|error| app_error::internal_command_error("Open inventory database", error))?;
+    func(&db).map_err(app_error::inventory_error_to_command_string)
+}
+
+pub(crate) fn with_stats<Func, Output>(state: &AppState, func: Func) -> Result<Output, String>
+where
+    Func: FnOnce(StatisticsEngine) -> Result<Output, rusqlite::Error>,
+{
+    let stats = StatisticsEngine::open(&state.db_path)
+        .map_err(|error| app_error::internal_command_error("Open statistics database", error))?;
+    func(stats).map_err(|error| app_error::internal_command_error("Statistics query", error))
 }
 
 pub(crate) fn ensure_db(app: &tauri::App) -> Result<PathBuf, String> {
@@ -1312,6 +1343,9 @@ mod architecture_tests {
             "fn migrate_legacy_app_storage_if_needed(",
             "fn resolve_windows_storage_resolution(",
             "fn merge_windows_split_brain_databases(",
+            "fn with_inventory<",
+            "fn with_db<",
+            "fn with_stats<",
         ] {
             assert!(
                 !MAIN_SOURCE.contains(implementation),
@@ -1322,10 +1356,11 @@ mod architecture_tests {
                 "app_storage.rs should own `{implementation}`"
             );
         }
-        // The allowance includes the dedicated packaged Host-Client module and
-        // its four invoke registrations; production logic still lives outside main.rs.
+        // Keep the existing wiring budget. Database access helpers belong in
+        // app_storage alongside startup; adding commands must not add their
+        // implementation details to main.rs.
         assert!(
-            MAIN_SOURCE.lines().count() <= 855,
+            MAIN_SOURCE.lines().count() <= 862,
             "main.rs should stay focused on application wiring"
         );
     }

@@ -1,4 +1,5 @@
 import { hasTauriRuntime, invoke } from "./tauri_invoke";
+import { createAppError } from "./error_text";
 
 export type MasterCatalogRow = {
   id: string;
@@ -63,6 +64,60 @@ export type CatalogRefreshResult = {
   detail_fetches?: number | null;
   output: string;
 };
+
+export type CatalogRefreshJobSnapshot = {
+  job_id: string;
+  vendor: "Bambu" | "eSUN";
+  material: string;
+  status: "RUNNING" | "SUCCEEDED" | "FAILED" | "INTERRUPTED";
+  started_at: string;
+  finished_at: string | null;
+  result: CatalogRefreshResult | null;
+  error: string | null;
+};
+
+export type StartCatalogRefreshJobInput = {
+  job_id: string;
+  vendor: "Bambu" | "eSUN";
+  material: string;
+};
+
+export async function startCatalogRefreshJob(input: StartCatalogRefreshJobInput) {
+  return invoke<CatalogRefreshJobSnapshot>("start_catalog_refresh_job", { input });
+}
+
+export async function getCatalogRefreshJob(jobId: string | null) {
+  return invoke<CatalogRefreshJobSnapshot | null>("get_catalog_refresh_job", { jobId });
+}
+
+export async function startLibrarySyncHostCatalogRefreshJob(
+  baseUrl: string,
+  expectedLibraryId: string,
+  input: StartCatalogRefreshJobInput,
+  expectedTargetGeneration: number,
+) {
+  if (!Number.isSafeInteger(expectedTargetGeneration) || expectedTargetGeneration < 0) {
+    throw createAppError("common.forbidden");
+  }
+  return invoke<CatalogRefreshJobSnapshot>("start_library_sync_host_catalog_refresh_job", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedTargetGeneration,
+      ...input,
+    },
+  });
+}
+
+export async function getLibrarySyncHostCatalogRefreshJob(
+  baseUrl: string,
+  expectedLibraryId: string,
+  jobId: string | null,
+) {
+  return invoke<CatalogRefreshJobSnapshot | null>("get_library_sync_host_catalog_refresh_job", {
+    input: { base_url: baseUrl, expected_library_id: expectedLibraryId, job_id: jobId },
+  });
+}
 
 export type CatalogSourceAuditResult = {
   vendor: string;

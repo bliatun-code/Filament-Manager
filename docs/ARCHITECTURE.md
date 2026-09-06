@@ -73,6 +73,14 @@ as macOS Dock Quit, forced quit, logout, shutdown, or process kill can still
 bypass asynchronous cleanup; committed SQLite transactions remain durable and
 the OS closes process sockets.
 
+Routine Companion restarts and network rebinds stop accepting connections and
+wait for accepted requests to complete before starting a replacement listener.
+An app-shutdown signal also reaches a restart already holding the reconciliation
+gate, switching that drain to the existing bounded exit policy. The draining
+server task remains owned and is aborted if its reconciliation is cancelled.
+Native advertisement teardown likewise waits during ordinary restart and is
+bounded during app exit; a running blocking teardown cannot be cancelled.
+
 Single-instance handling restores and focuses the existing main window. This
 prevents a hidden second process from competing for SQLite, the Companion port,
 or the stable mDNS name. Companion reconciliation, the LAN watcher, and Bambu
@@ -239,6 +247,25 @@ multiprocess gate must exercise those remaining boundaries.
 
 ## Data Consistency And Request Responsiveness
 
+Catalog refresh uses a Host-owned job coordinator shared by local commands and
+authenticated Companion routes, including the legacy synchronous adapters.
+Schema 6 stores the normalized request, authority identity, process owner and
+terminal result. An immediate transaction admits at most one running job per
+library; replaying an ID returns that receipt and a changed payload is rejected.
+The worker survives request cancellation and ordinary server restart. Vendor
+network work runs outside the credential/authority gate. The worker reacquires
+that gate and validates its original library, target generation and credential
+profile before atomically importing catalog rows and recording success.
+
+Read-only job status recovers orphaned process owners and workers that have
+finished without recording a terminal failure. A process-local registry tracks
+live workers by canonical database path, job ID and unique registration token.
+Catalog reset interrupts running jobs; full reset/restore clears the operational
+ledger, which is excluded from portable backups. Neither recovery nor the UI
+automatically resubmits an interrupted or missing ID. The UI persists a request
+before starting it, follows authoritative status across route/window reloads,
+and fences late updates by the exact source identity and target generation.
+
 `InventoryEngine` is the transaction boundary for user-visible inventory
 changes. A command that changes a spool, related locations or loans, weight
 readings, print jobs, and history must commit all of those records together or
@@ -246,6 +273,14 @@ leave all of them unchanged. Lower database helpers that already own a
 transaction expose an internal connection-based variant when they need to join
 an engine transaction; nested independent transactions are not an acceptable
 substitute.
+
+Wishlist receipt can include an optional home-location ID or name. The receipt
+transaction resolves or creates the active generic location, assigns it as both
+home and current location for every received spool, records the receipt history,
+and updates the remaining queue quantity together. Blank or omitted locations
+preserve the legacy unassigned behavior. Client receipts with a location require
+the Host capability `wishlist-receipt-location-v1` before any mutation; an older
+Host returns an explicit update message without a partial receipt or retry.
 
 Compound detail and statistics responses use one deferred SQLite read
 transaction. Every query contributing to a response therefore observes the
