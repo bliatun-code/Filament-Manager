@@ -633,7 +633,7 @@ async function runClientPair(
     "verify-paired-client-shadow",
   );
   await safeStep("pair-catalog-jobs", "The packaged catalog job sequence failed.", () =>
-    pairPackagedCatalogJobs({ runId: config.run_id, libraryId: config.library_id, baseUrl }, dependencies),
+    pairPackagedCatalogJobs({ runId: config.run_id, libraryId: config.library_id, baseUrl, targetGeneration }, dependencies),
   );
 
   await dependencies.complete({

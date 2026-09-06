@@ -3,13 +3,16 @@ use crate::backend::catalog_refresh_jobs::{CatalogRefreshJobInput, CatalogRefres
 use crate::companion_models::CATALOG_REFRESH_JOBS_CAPABILITY;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
-    encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_read,
-    prepare_library_sync_host_write,
+    encode_library_sync_path_segment, library_sync_host_input, normalize_library_sync_base_url,
+    prepare_library_sync_host_read,
 };
 use crate::library_sync_host_client::{
-    get_library_sync_host_json_authenticated, perform_library_sync_host_write_and_parse,
+    ensure_library_sync_host_matches, get_library_sync_host_json_authenticated,
+    perform_library_sync_host_write_and_parse_for_target,
 };
-use crate::library_sync_target_guard::ensure_library_sync_target_current;
+use crate::library_sync_target_guard::{
+    capture_library_sync_target, ensure_library_sync_target_current,
+};
 use crate::state::AppState;
 use serde::Deserialize;
 
@@ -17,6 +20,7 @@ use serde::Deserialize;
 pub(crate) struct StartHostCatalogJobInput {
     base_url: String,
     expected_library_id: Option<String>,
+    expected_target_generation: u64,
     job_id: String,
     vendor: String,
     material: String,
@@ -55,11 +59,16 @@ fn start_host_job(
     state: &AppState,
     input: StartHostCatalogJobInput,
 ) -> Result<CatalogRefreshJobSnapshot, String> {
-    let host = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, health, target) = prepare_library_sync_host_write(state, &host)?;
+    let base_url = normalize_library_sync_base_url(&input.base_url)?;
+    let target =
+        capture_library_sync_target(state, &base_url, input.expected_library_id.as_deref())?;
+    if target.generation() != input.expected_target_generation {
+        return Err(coded_command_error("common.invalid_request"));
+    }
+    let health = ensure_library_sync_host_matches(&base_url, Some(target.library_id()))?;
     require_capability(&health.capabilities)?;
     ensure_library_sync_target_current(state, &target)?;
-    let job = perform_library_sync_host_write_and_parse(
+    let job = perform_library_sync_host_write_and_parse_for_target(
         state,
         &base_url,
         "/api/v1/catalog/refresh-jobs",
@@ -68,6 +77,8 @@ fn start_host_job(
             vendor: input.vendor,
             material: input.material,
         },
+        &target,
+        None,
     )?;
     ensure_library_sync_target_current(state, &target)?;
     Ok(job)
@@ -111,7 +122,7 @@ mod tests {
     use crate::state::{
         CompanionRuntimeState, TrustedLanCompanionRuntime, TRUSTED_LAN_DEFAULT_PORT,
     };
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::{BufRead, BufReader, Read, Write};
     use std::net::TcpListener;
     use std::path::PathBuf;
     use std::sync::{
@@ -136,6 +147,10 @@ mod tests {
 
     impl OlderHost {
         fn start() -> Self {
+            Self::start_with_capability(false)
+        }
+
+        fn start_with_capability(capable: bool) -> Self {
             let listener = TcpListener::bind("127.0.0.1:0").expect("bind synthetic older Host");
             listener.set_nonblocking(true).unwrap();
             let base_url = format!("http://{}", listener.local_addr().unwrap());
@@ -152,22 +167,48 @@ mod tests {
                         }
                         Err(error) => panic!("synthetic Host accept failed: {error}"),
                     };
+                    // macOS inherits the listener's nonblocking flag. The HTTP
+                    // reader must wait for bytes even when accept wins that race.
+                    stream.set_nonblocking(false).unwrap();
                     stream
                         .set_read_timeout(Some(Duration::from_secs(5)))
                         .unwrap();
-                    {
+                    let (request_line, payload) = {
                         let mut reader = BufReader::new(&mut stream);
                         let mut line = String::new();
                         reader.read_line(&mut line).unwrap();
-                        requests.push(line.trim().to_string());
+                        let request_line = line.trim().to_string();
+                        let mut content_length = 0;
                         loop {
                             line.clear();
                             if reader.read_line(&mut line).unwrap() == 0 || line == "\r\n" {
                                 break;
                             }
+                            if let Some(value) =
+                                line.to_ascii_lowercase().strip_prefix("content-length:")
+                            {
+                                content_length = value.trim().parse::<usize>().unwrap();
+                            }
                         }
-                    }
-                    let body = r#"{"ok":true,"api_version":"v1","capabilities":[],"auth_mode":"pairing-session","access_mode":"trusted-lan","library_id":"catalog-old-host-library","device_name":"Synthetic older Host","sync_mode":"HOST"}"#;
+                        assert!(content_length < 64 * 1024);
+                        let mut body = vec![0; content_length];
+                        reader.read_exact(&mut body).unwrap();
+                        (request_line, body)
+                    };
+                    let body = if request_line == "GET /api/v1/health HTTP/1.1" {
+                        serde_json::json!({"ok":true,"api_version":"v1",
+                            "capabilities": if capable { vec![CATALOG_REFRESH_JOBS_CAPABILITY] } else { vec![] },
+                            "auth_mode":"pairing-session","access_mode":"trusted-lan",
+                            "library_id":"catalog-old-host-library","device_name":"Synthetic catalog Host","sync_mode":"HOST"})
+                    } else {
+                        assert!(capable);
+                        assert_eq!(request_line, "POST /api/v1/catalog/refresh-jobs HTTP/1.1");
+                        let input: CatalogRefreshJobInput = serde_json::from_slice(&payload).unwrap();
+                        serde_json::json!({"job_id":input.job_id,"vendor":input.vendor,"material":input.material,
+                            "status":"RUNNING","started_at":"2026-09-06T00:00:00Z",
+                            "finished_at":null,"result":null,"error":null})
+                    }.to_string();
+                    requests.push(request_line);
                     write!(stream, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).unwrap();
                     stream.flush().unwrap();
                 }
@@ -213,7 +254,10 @@ mod tests {
         settings.mode = "CLIENT".to_string();
         settings.library_id = "catalog-old-host-library".to_string();
         settings.host_base_url = Some(host.base_url.clone());
-        db.save_library_sync_settings(&settings).unwrap();
+        let generation = db
+            .save_library_sync_settings(&settings)
+            .unwrap()
+            .target_generation;
         drop(db);
         let state = AppState {
             db_path: path.to_string_lossy().into_owned(),
@@ -228,6 +272,7 @@ mod tests {
             StartHostCatalogJobInput {
                 base_url: host.base_url.clone(),
                 expected_library_id: Some("catalog-old-host-library".to_string()),
+                expected_target_generation: generation,
                 job_id: "never-submitted-job".to_string(),
                 vendor: "eSUN".to_string(),
                 material: "PLA".to_string(),
@@ -264,6 +309,74 @@ mod tests {
                 .get_library_sync_settings()
                 .unwrap()
                 .client_auth_paired
+        );
+    }
+
+    #[test]
+    fn old_start_intent_cannot_post_after_target_returns_to_the_same_host() {
+        let directory = TestDirectory(
+            std::env::temp_dir().join(format!("catalog-job-target-{}", random_hex_token(16))),
+        );
+        std::fs::create_dir(&directory.0).unwrap();
+        let path = directory.0.join("client.db");
+        let mut host = OlderHost::start_with_capability(true);
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let mut settings = db.get_library_sync_settings().unwrap();
+        settings.mode = "CLIENT".to_string();
+        settings.library_id = "catalog-old-host-library".to_string();
+        settings.host_base_url = Some(host.base_url.clone());
+        let original = db.save_library_sync_settings(&settings).unwrap();
+        let start_input = |generation| StartHostCatalogJobInput {
+            base_url: host.base_url.clone(),
+            expected_library_id: Some(original.library_id.clone()),
+            expected_target_generation: generation,
+            job_id: "generation-bound-job".to_string(),
+            vendor: "eSUN".to_string(),
+            material: "PLA".to_string(),
+        };
+        let queued_intent = start_input(original.target_generation);
+        let current_generation = {
+            let _gate =
+                crate::secure_credential_mutation::lock_secure_credential_mutation().unwrap();
+            let mut replacement = original.clone();
+            replacement.library_id = "replacement-library".to_string();
+            replacement.host_base_url = Some("http://replacement.invalid:4278".to_string());
+            db.save_library_sync_settings(&replacement).unwrap();
+            db.save_library_sync_settings(&original)
+                .unwrap()
+                .target_generation
+        };
+        assert!(current_generation > original.target_generation);
+        drop(db);
+        let state = AppState {
+            db_path: path.to_string_lossy().into_owned(),
+            companion: CompanionRuntimeState::new(TrustedLanCompanionRuntime::new(
+                TRUSTED_LAN_DEFAULT_PORT,
+            )),
+            credentials: CredentialStore::in_memory(),
+            library_sync_auth: LibrarySyncRuntimeAuth::new(),
+        };
+        state
+            .library_sync_auth
+            .replace_authenticated(&host.base_url, "session", "csrf", "device")
+            .unwrap();
+        let error = start_host_job(&state, queued_intent)
+            .expect_err("a queued start from the previous generation must not reach the Host");
+        let envelope: serde_json::Value = serde_json::from_str(&error).unwrap();
+        assert_eq!(envelope["code"], "common.invalid_request");
+
+        // A new intent for the same URL/library is valid. The exact request log
+        // also proves the stale intent sent neither health nor a job POST.
+        let current = start_host_job(&state, start_input(current_generation)).unwrap();
+        assert_eq!(current.job_id, "generation-bound-job");
+        assert_eq!(current.status, "RUNNING");
+        assert_eq!(
+            host.finish(),
+            vec![
+                "GET /api/v1/health HTTP/1.1",
+                "POST /api/v1/catalog/refresh-jobs HTTP/1.1",
+            ]
         );
     }
 

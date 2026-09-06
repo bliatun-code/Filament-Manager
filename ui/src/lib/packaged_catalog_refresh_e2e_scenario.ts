@@ -92,7 +92,7 @@ async function getJob(
 }
 
 async function startJob(
-  context: CatalogContext,
+  context: CatalogContext & { targetGeneration: number },
   dependencies: PackagedCatalogJobDependencies,
   request: StartCatalogRefreshJobInput,
   step: string,
@@ -100,7 +100,7 @@ async function startJob(
   let result: CatalogRefreshJobSnapshot;
   try {
     result = await dependencies.startLibrarySyncHostCatalogRefreshJob(
-      context.baseUrl, context.libraryId, request,
+      context.baseUrl, context.libraryId, request, context.targetGeneration,
     );
   } catch {
     fail(step, "The packaged catalog job start request failed.");
@@ -109,7 +109,7 @@ async function startJob(
 }
 
 export async function pairPackagedCatalogJobs(
-  context: CatalogContext,
+  context: CatalogContext & { targetGeneration: number },
   dependencies: PackagedCatalogJobDependencies,
 ) {
   const request = requests(context);
@@ -135,7 +135,7 @@ export async function pairPackagedCatalogJobs(
   let rejected = false;
   try {
     await dependencies.startLibrarySyncHostCatalogRefreshJob(
-      context.baseUrl, context.libraryId, request.conflict,
+      context.baseUrl, context.libraryId, request.conflict, context.targetGeneration,
     );
   } catch { rejected = true; }
   if (!rejected) fail("reject-catalog-conflict", "A competing packaged catalog job was accepted.");

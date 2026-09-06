@@ -9,7 +9,7 @@ import {
 } from "./packaged_catalog_refresh_e2e_scenario";
 import type { CatalogRefreshJobSnapshot, StartCatalogRefreshJobInput } from "./tauri_catalog_client";
 
-const context = { runId: "packaged-run", libraryId: "qa-library", baseUrl: "http://127.0.0.1:42780" };
+const context = { runId: "packaged-run", libraryId: "qa-library", baseUrl: "http://127.0.0.1:42780", targetGeneration: 7 };
 const completeRequest = { job_id: `${context.runId}-catalog-complete`, vendor: "Bambu", material: "PLA" } as const;
 const interruptRequest = { job_id: `${context.runId}-catalog-interrupt`, vendor: "eSUN", material: "PETG" } as const;
 
@@ -44,9 +44,10 @@ test("packaged pair polls a real start, replays identical receipts, and rejects 
   const gets: Array<string | null> = [];
   let delays = 0;
   await pairPackagedCatalogJobs(context, {
-    async startLibrarySyncHostCatalogRefreshJob(baseUrl, libraryId, input) {
+    async startLibrarySyncHostCatalogRefreshJob(baseUrl, libraryId, input, targetGeneration) {
       assert.equal(baseUrl, context.baseUrl);
       assert.equal(libraryId, context.libraryId);
+      assert.equal(targetGeneration, context.targetGeneration);
       posts.push(input.job_id);
       const existing = jobs.get(input.job_id);
       if (existing) return structuredClone(existing);

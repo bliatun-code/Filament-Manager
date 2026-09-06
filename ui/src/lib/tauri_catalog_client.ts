@@ -1,4 +1,5 @@
 import { hasTauriRuntime, invoke } from "./tauri_invoke";
+import { createAppError } from "./error_text";
 
 export type MasterCatalogRow = {
   id: string;
@@ -93,9 +94,18 @@ export async function startLibrarySyncHostCatalogRefreshJob(
   baseUrl: string,
   expectedLibraryId: string,
   input: StartCatalogRefreshJobInput,
+  expectedTargetGeneration: number,
 ) {
+  if (!Number.isSafeInteger(expectedTargetGeneration) || expectedTargetGeneration < 0) {
+    throw createAppError("common.forbidden");
+  }
   return invoke<CatalogRefreshJobSnapshot>("start_library_sync_host_catalog_refresh_job", {
-    input: { base_url: baseUrl, expected_library_id: expectedLibraryId, ...input },
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedTargetGeneration,
+      ...input,
+    },
   });
 }
 

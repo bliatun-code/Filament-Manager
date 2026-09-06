@@ -31,7 +31,9 @@ export async function startManagedCatalogRefreshJob(
 ) {
   if (target.clientReadOnly) {
     const host = requireClientHostWriteTarget(target, "Host connection details are missing for this catalog action.");
-    return startLibrarySyncHostCatalogRefreshJob(host.baseUrl, host.libraryId, input);
+    return startLibrarySyncHostCatalogRefreshJob(
+      host.baseUrl, host.libraryId, input, target.clientTargetGeneration!,
+    );
   }
   return startCatalogRefreshJob(input);
 }

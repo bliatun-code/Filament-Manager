@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-06     |
+| Sist oppdatert | 2026-09-07     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -175,11 +175,16 @@ De [installerte batchkontrollene](PACKAGED_BATCH_GATES_2026-09-06.md) er nå utv
 
 [Oppfølgings-CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34058558627) bestod på `d3c0b96d`: macOS Smoke, Windows Smoke, delte kontrakter og migrasjonsintegritet. CodeQL og avhengighets-/lisenskontrollene er også grønne på samme commit. Begge installasjonspakkene bestod batchgjentakelse og opprydding; Windows er dermed verifisert i native CI.
 
-1. Gjennomgå den samlede [PR #89](https://github.com/bliatun-code/Filament-Manager/pull/89) før merge. Installerte batchkontroller er grønne på samme kandidat. Bevar den separate release-kontrollen for v0.28.0-oppgradering fra schema 5 til 7 og de eksisterende plattform-/signeringskravene før publisering; ordinær Windows Smoke dekker ikke oppgraderingen alene.
+1. Verifiser rettelsene fra sluttgjennomgangen av [PR #89](https://github.com/bliatun-code/Filament-Manager/pull/89) i en samlet CI-kjøring før merge. Mottak av HTTP-body har nå en frist før handlerstart, og katalogstart beholder fanget målgenerasjon. Installerte batchkontroller er grønne på den tidligere kandidaten `d3c0b96d`. Bevar den separate release-kontrollen for v0.28.0-oppgradering fra schema 5 til 7 og de eksisterende plattform-/signeringskravene før publisering; ordinær Windows Smoke dekker ikke oppgraderingen alene.
 2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-07
+
+- Sluttgjennomgangen av PR #89 avdekket to feil som er rettet: mottak av en ufullstendig HTTP-body kunne vente uten grense, og en gammel katalogstart kunne sendes etter A→B→A-bibliotekbytte. Mottaksfasen får nå 30 sekunders frist før handleren starter; påbegynt lagring får fortsatt fullføre. Host-katalogstart krever opprinnelig målgenerasjon før health-kall og beholder samme mål gjennom autentisering og POST. Den installerbare Host/Client-testen sender også målgenerasjonen. En tredje syntetisk HTTP-server har fått eksplisitt blokkerende lesing på accepted socket for macOS.
+- Begge nye regresjoner var røde før og grønne etter rettelsene: en isolert body-test returnerer nå 408 uten handlerdispatch, og en gammel A-intensjon avvises uten nettverkskall mens en ny intensjon mot samme Host lykkes. Fem HTTP-tester, tre katalogjobbtester og 33 fokuserte UI-tester bestod. Gjennomgangen av batchtransaksjoner, kvitteringer, backup, migrasjoner og de øvrige brukerflytene ga ingen ytterligere konkrete funn. Samlet `npm run smoke` og `npm run test:rust` bestod: 1 655 UI-, 792 skript-, 392 Companion-, 23 ytelses-, 634 desktop-, 289 kjerne-, 15 mDNS- og 3 generatortester. Tre eksisterende Rust-tester er fortsatt ignorert. Begge Clippy-profiler og Rust 1.88-kontrollen bestod. Rettelsene sendes som én samlet CI-pakke før merge.
 
 ### 2026-09-06
 

@@ -50,4 +50,5 @@ tauri-build = { version = "2.6.3", features = [] }
 
 [dev-dependencies]
 filament-manager-core = { path = "..", features = ["test-support"] }
+http-body = "1.0.1"
 tower = "0.5.3"
