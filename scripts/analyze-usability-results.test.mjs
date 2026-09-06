@@ -107,6 +107,64 @@ test("usability CLI prints aggregate timing pair counts without participant iden
   }
 });
 
+test("usability CLI rejects invalid files without exposing private data or paths", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "PRIVATE_PATH_SENTINEL-"));
+  const records = completeStudy().map((record) => ({
+    ...record,
+    participant_id: `PRIVATE_PARTICIPANT_${record.participant_id}`,
+  }));
+  const cases = [
+    {
+      name: "duplicate",
+      content: JSON.stringify([...records, { ...records[0] }]),
+      message: "Duplicate result at record 51 for baseline/register.",
+    },
+    {
+      name: "incomplete",
+      content: JSON.stringify(records.filter((record) => !(
+        record.build === "candidate" && record.task === "receive" &&
+        ["PRIVATE_PARTICIPANT_P1", "PRIVATE_PARTICIPANT_P2"].includes(record.participant_id)
+      ))),
+      message: "Incomplete matched dataset: 2 missing results (candidate/receive: 2).",
+    },
+    {
+      name: "invalid-json",
+      content: "PRIVATE_CONTENT_SENTINEL invalid json",
+      message: "The usability result file is not valid JSON.",
+    },
+    {
+      name: "unreadable",
+      content: null,
+      message: "Unable to read the usability result file. Check that the supplied file exists and is readable.",
+    },
+  ];
+  try {
+    for (const { name, content, message } of cases) {
+      const inputPath = path.join(directory, `${name}-PRIVATE_FILE_SENTINEL.json`);
+      if (content !== null) writeFileSync(inputPath, content);
+      const result = spawnSync(process.execPath, [
+        fileURLToPath(new URL("./analyze-usability-results.mjs", import.meta.url)),
+        inputPath,
+      ], { encoding: "utf8" });
+
+      assert.equal(result.error, undefined, name);
+      assert.equal(result.status, 1, name);
+      assert.equal(result.stdout, "", name);
+      assert.equal(result.stderr, `${message}\n`, name);
+      const output = `${result.stdout}${result.stderr}`;
+      for (const marker of [
+        "PRIVATE_PARTICIPANT_", "PRIVATE_CONTENT_SENTINEL",
+        "PRIVATE_PATH_SENTINEL", "PRIVATE_FILE_SENTINEL",
+      ]) {
+        assert.ok(!output.includes(marker), `${name} exposed ${marker}`);
+      }
+      assert.ok(!output.includes("Acceptance gate: PASS"), name);
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("usability analyzer blocks when one task hides failures behind the overall rate", () => {
   const records = completeStudy();
   const failedTaskAttempts = records.filter(

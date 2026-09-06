@@ -126,7 +126,7 @@ measurement records. No participant results or app-launch evidence were generate
 Run the analyzer from the repository after every required record is complete:
 
 \`\`\`sh
-npm run qa:usability:analyze -- /absolute/path/to/study/results.json
+npm run --silent qa:usability:analyze -- /absolute/path/to/study/results.json
 \`\`\`
 
 The unfilled template deliberately fails analysis. The manifest is a separate
@@ -134,7 +134,8 @@ moderator record: the analyzer cannot verify artifact identity, actual order,
 rehearsal or human participation. Review total and per-task matched timing
 counts before interpreting a PASS; the current timing gate has no separate
 minimum number of comparable pairs. Keep raw records private and share only
-reviewed aggregate evidence with build/fixture identities.
+reviewed aggregate evidence with build/fixture identities. Keep \`--silent\`
+when collecting output for sharing so npm does not echo the private input path.
 `;
 }
 

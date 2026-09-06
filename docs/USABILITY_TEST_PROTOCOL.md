@@ -215,10 +215,19 @@ Store results outside the repository as a JSON array. Each participant must have
 Analyze a completed study with:
 
 ```sh
-npm run qa:usability:analyze -- /absolute/path/to/results.json
+npm run --silent qa:usability:analyze -- /absolute/path/to/results.json
 ```
 
 The command exits non-zero when the dataset is incomplete or either blocking threshold is missed. It reports the actual number of comparable timing pairs overall and for each task without printing participant IDs. Keep the raw participant file private; attach only the aggregate command output to the release evidence.
+
+Validation errors also omit participant IDs, raw JSON contents, and private
+input paths. Duplicate records are identified by their one-based record
+numbers and build/task; missing attempts are counted by build/task. Use those
+diagnostics to inspect the private source file locally. An unreadable file or
+invalid JSON produces a generic input error and never an acceptance result.
+Use `--silent` when collecting output for sharing: npm otherwise echoes the
+command and its input path before the analyzer runs. Review the captured output
+before sharing it.
 
 The timing calculation includes only pairs where both attempts succeeded
 without assistance or a critical error. The existing acceptance rule has no

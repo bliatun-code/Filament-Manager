@@ -61,31 +61,37 @@ export function analyzeUsabilityResults(records) {
 
   const byKey = new Map();
   const participantIds = new Set();
-  for (const record of records) {
+  for (const [index, record] of records.entries()) {
     const normalized = { ...record, participant_id: record.participant_id.trim() };
     const key = resultKey(normalized);
     if (byKey.has(key)) {
       throw new Error(
-        `Duplicate result for ${normalized.participant_id}/${normalized.build}/${normalized.task}.`,
+        `Duplicate result at record ${index + 1} for ${normalized.build}/${normalized.task}.`,
       );
     }
     byKey.set(key, normalized);
     participantIds.add(normalized.participant_id);
   }
 
-  const missing = [];
+  let missingCount = 0;
+  const missingByBuildAndTask = new Map();
   for (const participantId of participantIds) {
     for (const build of USABILITY_BUILDS) {
       for (const task of USABILITY_TASKS) {
         const key = `${participantId}\u0000${build}\u0000${task}`;
         if (!byKey.has(key)) {
-          missing.push(`${participantId}/${build}/${task}`);
+          missingCount += 1;
+          const group = `${build}/${task}`;
+          missingByBuildAndTask.set(group, (missingByBuildAndTask.get(group) ?? 0) + 1);
         }
       }
     }
   }
-  if (missing.length > 0) {
-    throw new Error(`Incomplete matched dataset: ${missing.join(", ")}.`);
+  if (missingCount > 0) {
+    const counts = [...missingByBuildAndTask]
+      .map(([group, count]) => `${group}: ${count}`)
+      .join(", ");
+    throw new Error(`Incomplete matched dataset: ${missingCount} missing results (${counts}).`);
   }
 
   const candidateRecords = records.filter((record) => record.build === "candidate");
@@ -199,7 +205,18 @@ async function main() {
   if (!inputPath) {
     throw new Error("Usage: node scripts/analyze-usability-results.mjs <results.json>");
   }
-  const records = JSON.parse(await readFile(inputPath, "utf8"));
+  let input;
+  try {
+    input = await readFile(inputPath, "utf8");
+  } catch {
+    throw new Error("Unable to read the usability result file. Check that the supplied file exists and is readable.");
+  }
+  let records;
+  try {
+    records = JSON.parse(input);
+  } catch {
+    throw new Error("The usability result file is not valid JSON.");
+  }
   const analysis = analyzeUsabilityResults(records);
   printAnalysis(analysis);
   if (!analysis.passed) {

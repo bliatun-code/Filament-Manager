@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-05     |
+| Sist oppdatert | 2026-09-06     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -171,6 +171,10 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-06
+
+- Analyseverktøyets feilstier er gjennomgått før innsamling av deltakermålinger. Duplikater og manglende forsøk rapporteres nå med radnumre eller summer per bygg/oppgave, uten deltaker-ID-er. Ulesbare filer og ugyldig JSON gir heller ikke fra seg private filstier eller innholdsutdrag. Veiledningen bruker `npm run --silent` slik at npm heller ikke skriver filstien i rapporten. 27 fokuserte tester, kontraktskontrollene og den dokumenterte npm-feilstien passerer. Akseptgrenser og beregninger er uendret; den modererte brukertesten gjenstår.
 
 ### 2026-09-05
 
