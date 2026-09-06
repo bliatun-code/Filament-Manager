@@ -35,13 +35,18 @@ import {
   type PackagedCatalogJobDependencies,
 } from "./packaged_catalog_refresh_e2e_scenario";
 
+import {
+  packagedCatalogBatchTransport, requirePackagedBatchReceipt, requirePackagedBatchRows,
+  runPackagedCatalogBatch, type PackagedCatalogBatchDependencies,
+} from "./packaged_catalog_spool_batch_e2e_scenario";
+
 export type {
   PackagedHostClientE2eClientCompletion,
   PackagedHostClientE2eCompletion,
   PackagedHostClientE2eConfiguration,
 } from "./tauri_packaged_host_client_e2e_client";
 
-type ScenarioDependencies = PackagedCatalogJobDependencies & {
+type ScenarioDependencies = PackagedCatalogJobDependencies & PackagedCatalogBatchDependencies & {
   createManualSpool: typeof createManualSpool;
   listSpools: typeof listSpools;
   getLibrarySyncSettings: typeof getLibrarySyncSettings;
@@ -68,6 +73,7 @@ const HOST_READY_DELAY_MS = 100;
 
 const defaultDependencies: ScenarioDependencies = {
   ...packagedCatalogJobTransport,
+  ...packagedCatalogBatchTransport,
   createManualSpool,
   listSpools,
   getLibrarySyncSettings,
@@ -584,11 +590,19 @@ async function runClientPair(
       config.paired_weight_g,
     ),
   );
-  const hostRows = await readHostRows(
+  const beforeBatchRows = await readHostRows(
     config,
     dependencies,
     baseUrl,
     "read-paired-host",
+  );
+  const batchReceipt = await safeStep("create-host-batch", "The paired Host batch could not be verified.", () =>
+    runPackagedCatalogBatch({ runId: config.run_id, libraryId: config.library_id,
+      spoolId: config.spool_id, baseUrl, targetGeneration, hostRows: beforeBatchRows }, dependencies),
+  );
+  const hostRows = await readHostRows(config, dependencies, baseUrl, "read-paired-batch");
+  await safeStep("read-paired-batch", "The paired Host batch rows are invalid.", async () =>
+    requirePackagedBatchRows(hostRows, batchReceipt),
   );
   const hostWeight = readExactHostWeight(
     hostRows,
@@ -637,6 +651,8 @@ async function runClientPair(
     paired_before_cleanup: true,
     auth_cleared: false,
     session_renewed: false,
+    batch_receipt: batchReceipt,
+    batch_replayed: false,
   });
 }
 
@@ -719,6 +735,8 @@ async function runClientOffline(
     paired_before_cleanup: true,
     auth_cleared: false,
     session_renewed: false,
+    batch_receipt: requirePackagedBatchReceipt(config.batch_receipt, config.run_id),
+    batch_replayed: false,
   });
 }
 
@@ -756,6 +774,11 @@ async function runClientRecover(
     config.paired_weight_g,
     "renew-client-session",
   );
+  const batchReceipt = await safeStep("replay-host-batch", "The restarted Host batch replay could not be verified.", () =>
+    runPackagedCatalogBatch({ runId: config.run_id, libraryId: config.library_id,
+      spoolId: config.spool_id, baseUrl, targetGeneration, hostRows: recoveredRows,
+      priorReceipt: requirePackagedBatchReceipt(config.batch_receipt, config.run_id) }, dependencies),
+  );
   await safeStep("write-recovered-host-weight", "The recovered Client Host write failed.", () =>
     dependencies.updateLibrarySyncHostSpoolWeight(
       baseUrl,
@@ -769,6 +792,9 @@ async function runClientRecover(
     dependencies,
     baseUrl,
     "read-recovered-host",
+  );
+  await safeStep("read-recovered-batch", "The restarted Host batch rows are invalid.", async () =>
+    requirePackagedBatchRows(finalHostRows, batchReceipt),
   );
   const hostWeight = readExactHostWeight(
     finalHostRows,
@@ -840,6 +866,8 @@ async function runClientRecover(
     paired_before_cleanup: true,
     auth_cleared: true,
     session_renewed: true,
+    batch_receipt: batchReceipt,
+    batch_replayed: true,
   });
 }
 

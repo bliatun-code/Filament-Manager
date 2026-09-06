@@ -19,6 +19,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
+import { isDeepStrictEqual } from "node:util";
+import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
+import { inspectDesktopBatchEvidence, validateDesktopBatchEvidence } from "./packaged-desktop-batch-evidence.mjs";
 
 import {
   preparePrivateQaArtifactDirectory,
@@ -311,6 +314,7 @@ export function validatePackagedDesktopE2ePhaseResult(result, { phase, runId }) 
     throw new Error(`Packaged desktop E2E ${phase} did not record a passing result.`);
   }
   const completion = result.completion;
+  validateDesktopBatchEvidence(completion.batch_evidence, runId);
   if (
     completion.phase !== phase ||
     completion.run_id !== runId ||
@@ -350,7 +354,7 @@ function requireSingleRow(database, sql, parameters, label) {
   return rows[0];
 }
 
-export function inspectPackagedDesktopE2eDatabase(databasePath) {
+export function inspectPackagedDesktopE2eDatabase(databasePath, batchEvidence, runId) {
   const database = new Database(databasePath, {
     fileMustExist: true,
     readonly: true,
@@ -367,7 +371,7 @@ export function inspectPackagedDesktopE2eDatabase(databasePath) {
       );
     }
     const schemaVersion = database.pragma("user_version", { simple: true });
-    if (!Number.isSafeInteger(schemaVersion) || schemaVersion <= 0) {
+    if (schemaVersion !== currentSchemaVersion()) {
       throw new Error(`Packaged QA database schema is invalid: ${schemaVersion}.`);
     }
     const spool = requireSingleRow(
@@ -426,12 +430,14 @@ export function inspectPackagedDesktopE2eDatabase(databasePath) {
     if (slot.spool_id !== SPOOL_ID) {
       throw new Error("The packaged QA printer slot assignment is invalid.");
     }
+    const catalogBatch = inspectDesktopBatchEvidence(database, batchEvidence, runId);
     const normalized = {
       schemaVersion,
       spool,
       loan,
       printer,
       slot,
+      catalogBatch,
     };
     return {
       ...normalized,
@@ -514,15 +520,16 @@ export async function runPackagedDesktopE2e(
   try {
     context = await preparePackagedDesktopE2eRun(options);
     const mutation = await executePhase(context, "mutate", launchPhase);
-    const afterMutation = inspectPackagedDesktopE2eDatabase(context.databasePath);
+    const afterMutation = inspectPackagedDesktopE2eDatabase(context.databasePath, mutation.batch_evidence, context.runId);
     if (mutation.loan_id !== afterMutation.loan.id) {
       throw new Error("Mutation result loan identity does not match SQLite state.");
     }
 
     const verification = await executePhase(context, "verify", launchPhase);
-    const afterRestart = inspectPackagedDesktopE2eDatabase(context.databasePath);
+    const afterRestart = inspectPackagedDesktopE2eDatabase(context.databasePath, verification.batch_evidence, context.runId);
     if (
       verification.loan_id !== afterRestart.loan.id ||
+      !isDeepStrictEqual(verification.batch_evidence, mutation.batch_evidence) ||
       afterRestart.snapshotSha256 !== afterMutation.snapshotSha256 ||
       afterRestart.schemaVersion !== afterMutation.schemaVersion
     ) {
@@ -536,6 +543,7 @@ export async function runPackagedDesktopE2e(
       state_snapshot_sha256: afterRestart.snapshotSha256,
       backup_sha256: verification.backup_sha256,
       backup_total_rows: verification.backup_total_rows,
+      catalog_batch: { ...afterRestart.catalogBatch, replayed:true },
     };
     writeSummary(context.logDirectory, summary);
     return summary;

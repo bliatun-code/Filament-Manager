@@ -31,6 +31,15 @@ import {
   RELEASE_UPGRADE_FIXTURE_MARKER_VALUE,
   snapshotReleaseUpgradeProtectedValues,
 } from "./release-upgrade-fixture-contract.mjs";
+import {
+  assertPreservedReleaseUpgradeData,
+  snapshotReleaseUpgradeDatabase,
+} from "./smoke-release-database-upgrade.mjs";
+
+const batchMigration = readFileSync(
+  new URL("../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url),
+  "utf8",
+);
 
 function createLegacyDatabase(databasePath) {
   const database = new Database(databasePath);
@@ -691,3 +700,96 @@ test(
     }
   },
 );
+
+test("current-schema fixtures sanitize copied batch requests and preserve exact receipts without changing the source", { skip: process.platform === "win32" }, async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "release-batch-fixture-"));
+  const sourcePath = path.join(directory, "source.db");
+  const outputPath = path.join(directory, "sanitized.db");
+  try {
+    createLegacyDatabase(sourcePath);
+    const source = new Database(sourcePath);
+    source.exec(batchMigration);
+    source.pragma("user_version = 7");
+    source.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("library_sync_library_id", " private-active-library ");
+    const insert = source.prepare("INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json, created_at) VALUES (?, ?, ?, ?, ?)");
+    const originalReceipts = [];
+    for (const [batchId, libraryId, ownership] of [
+      ["batch-owned", "private-active-library", "OWNED"],
+      ["batch-borrowed", "private-other-library", "BORROWED_IN"],
+    ]) {
+      const receipt = JSON.stringify({ batch_id: batchId, spool_ids: ["spool-1", "spool-removed"] });
+      originalReceipts.push({ batch_id: batchId, receipt_json: receipt, created_at: "2026-09-06T00:00:00Z" });
+      insert.run(batchId, libraryId, JSON.stringify({
+        batch_id: batchId, master_ids: ["master-1", "master-1"], initial_weight_g: 850,
+        ownership_type: ownership, owner_name: ownership === "BORROWED_IN" ? "Private owner" : null,
+        owner_contact: "private@example.test", ownership_note: "Private note", location: "Private room",
+      }), receipt, "2026-09-06T00:00:00Z");
+    }
+    source.close();
+    const sourceBytes = readFileSync(sourcePath);
+    const result = await prepareReleaseUpgradeFixture({ sourcePath, outputPath });
+    assert.deepEqual(readFileSync(sourcePath), sourceBytes);
+    assert.equal(result.fixture.schemaVersion, 7);
+    assert.equal(result.fixture.catalogBatchJournal.receiptCount, 2);
+    assert.equal(result.sanitization.sanitizedBatchReceipts, 2);
+    const fixture = new Database(outputPath, { readonly: true, fileMustExist: true });
+    try {
+      assertReleaseUpgradeFixtureSanitized(fixture);
+      assert.deepEqual(fixture.prepare("SELECT batch_id, receipt_json, created_at FROM catalog_spool_batches ORDER BY batch_id").all(), originalReceipts.sort((left, right) => left.batch_id.localeCompare(right.batch_id)));
+      const entries = fixture.prepare("SELECT * FROM catalog_spool_batches ORDER BY batch_id").all();
+      for (const row of entries) {
+        const request = JSON.parse(row.request_json);
+        assert.deepEqual(request.master_ids, ["master-1", "master-1"]);
+        assert.equal(request.initial_weight_g, 850);
+        assert.equal(request.owner_name, request.ownership_type === "BORROWED_IN" ? "Release QA borrower" : null);
+        assert.equal(request.owner_contact, null);
+        assert.equal(request.ownership_note, null);
+        assert.equal(request.location, "Release QA location");
+        if (row.batch_id === "batch-owned") assert.equal(row.library_id, "release-candidate-qa-library");
+        else assert.match(row.library_id, /^release-candidate-qa-library-[a-f0-9]{16}$/);
+      }
+    } finally {
+      fixture.close();
+    }
+    const sanitized = snapshotReleaseUpgradeDatabase(outputPath);
+    assert.doesNotThrow(() => assertPreservedReleaseUpgradeData(sanitized, snapshotReleaseUpgradeDatabase(outputPath)));
+    const tampered = new Database(outputPath);
+    tampered.exec("UPDATE catalog_spool_batches SET receipt_json = '{}'");
+    tampered.close();
+    assert.throws(() => assertPreservedReleaseUpgradeData(sanitized, snapshotReleaseUpgradeDatabase(outputPath)), /changed preserved values in catalog_spool_batches/);
+    assert.deepEqual(readFileSync(sourcePath), sourceBytes);
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("fixture preparation rejects unrecognized batch payload fields and mismatched historical schema without publishing or changing source", { skip: process.platform === "win32" }, async () => {
+  for (const variant of ["private-request-field", "private-receipt-field", "missing-table", "premature-table"]) {
+    const directory = mkdtempSync(path.join(tmpdir(), "release-batch-invalid-"));
+    const sourcePath = path.join(directory, "source.db");
+    const outputPath = path.join(directory, "sanitized.db");
+    try {
+      createLegacyDatabase(sourcePath);
+      const source = new Database(sourcePath);
+      source.pragma(`user_version = ${variant === "premature-table" ? 5 : 7}`);
+      if (variant !== "missing-table") {
+        source.exec(batchMigration);
+        const request = {
+          batch_id: "batch-a", master_ids: ["master-1"], initial_weight_g: 850,
+          ownership_type: "OWNED", owner_name: null, owner_contact: null, ownership_note: null, location: null,
+        };
+        const receipt = { batch_id: "batch-a", spool_ids: ["spool-1"] };
+        if (variant === "private-request-field") request.secret = "must-not-publish";
+        if (variant === "private-receipt-field") receipt.secret = "must-not-publish";
+        source.prepare("INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json) VALUES (?, ?, ?, ?)").run("batch-a", "private", JSON.stringify(request), JSON.stringify(receipt));
+      }
+      source.close();
+      const original = readFileSync(sourcePath);
+      await assert.rejects(prepareReleaseUpgradeFixture({ sourcePath, outputPath }), /exact known contract|requires the catalog_spool_batches table|historical schema below 7/);
+      assert.equal(existsSync(outputPath), false);
+      assert.deepEqual(readFileSync(sourcePath), original);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  }
+});

@@ -21,6 +21,7 @@ import Database from "better-sqlite3";
 import {
   assertReleaseUpgradeFixtureSanitized,
   assertReleaseUpgradeProtectedValuesPreserved,
+  inspectReleaseUpgradeBatchJournal,
   snapshotReleaseUpgradeProtectedValues,
 } from "./release-upgrade-fixture-contract.mjs";
 
@@ -123,6 +124,7 @@ export function snapshotReleaseUpgradeDatabase(databasePath) {
     const valueColumns = {};
     const valueRows = {};
     const protectedValues = snapshotReleaseUpgradeProtectedValues(database);
+    const catalogBatchJournal = inspectReleaseUpgradeBatchJournal(database);
     for (const table of [...tables].sort()) {
       if (
         table.startsWith("sqlite_") ||
@@ -156,6 +158,7 @@ export function snapshotReleaseUpgradeDatabase(databasePath) {
       }
     }
     return {
+      catalogBatchJournal,
       counts,
       ids,
       protectedValues,
@@ -183,6 +186,14 @@ export function assertSanitizedReleaseUpgradeFixture(databasePath) {
 }
 
 export function assertPreservedReleaseUpgradeData(before, after) {
+  if (after.schemaVersion >= 7) {
+    if (!after.catalogBatchJournal) {
+      throw new Error("Schema 7 is missing its validated catalog batch journal.");
+    }
+    if (before.schemaVersion < 7 && after.catalogBatchJournal.receiptCount !== 0) {
+      throw new Error("Upgrading a historical fixture must create an empty catalog batch journal.");
+    }
+  }
   for (const table of Object.keys(before.counts)) {
     if (!(table in after.counts)) {
       throw new Error(`Upgrade removed the ${table} table.`);
@@ -481,6 +492,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
     "filament-manager-swift-module-cache",
   );
   const launchResults = [];
+  let previousLaunchSnapshot = before;
   for (let launchIndex = 1; launchIndex <= launchCount; launchIndex += 1) {
     const stdoutPath = path.join(logDirectory, `launch-${launchIndex}-stdout.log`);
     const stderrPath = path.join(logDirectory, `launch-${launchIndex}-stderr.log`);
@@ -520,6 +532,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
         try {
           after = snapshotReleaseUpgradeDatabase(databasePath);
           assertPreservedReleaseUpgradeData(before, after);
+          assertPreservedReleaseUpgradeData(previousLaunchSnapshot, after);
           if (after.schemaVersion !== expectedSchemaVersion) {
             throw new Error(
               `Expected schema ${expectedSchemaVersion}, found ${after.schemaVersion}.`,
@@ -562,7 +575,12 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       if (childHasExited(child)) {
         throw new Error(`Release application exited after launch ${launchIndex}.`);
       }
-      launchResults.push(after);
+      const settled = snapshotReleaseUpgradeDatabase(databasePath);
+      assertPreservedReleaseUpgradeData(before, settled);
+      assertPreservedReleaseUpgradeData(previousLaunchSnapshot, settled);
+      if (settled.schemaVersion !== expectedSchemaVersion) {
+        throw new Error(`Release database schema changed after launch ${launchIndex}.`);
+      }
     } finally {
       try {
         if (child) {
@@ -573,10 +591,22 @@ export async function smokeReleaseDatabaseUpgrade(options) {
         closeSync(stderrFile);
       }
     }
+    const stopped = snapshotReleaseUpgradeDatabase(databasePath);
+    assertPreservedReleaseUpgradeData(before, stopped);
+    assertPreservedReleaseUpgradeData(previousLaunchSnapshot, stopped);
+    if (stopped.schemaVersion !== expectedSchemaVersion) {
+      throw new Error(`Release database schema changed when stopping launch ${launchIndex}.`);
+    }
+    launchResults.push(stopped);
+    previousLaunchSnapshot = stopped;
   }
 
   const finalSnapshot = snapshotReleaseUpgradeDatabase(databasePath);
   assertPreservedReleaseUpgradeData(before, finalSnapshot);
+  assertPreservedReleaseUpgradeData(previousLaunchSnapshot, finalSnapshot);
+  if (finalSnapshot.schemaVersion !== expectedSchemaVersion) {
+    throw new Error("Release database schema changed after the final launch.");
+  }
   writeFileSync(
     path.join(logDirectory, "upgrade-summary.txt"),
     [
@@ -595,6 +625,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       `Printers: ${finalSnapshot.counts.printers ?? 0}`,
       `Spool history events: ${finalSnapshot.counts.spool_history_events ?? 0}`,
       `Printer live events: ${finalSnapshot.counts.printer_live_events ?? 0}`,
+      `Catalog batch journal: schema verified; ${finalSnapshot.catalogBatchJournal?.receiptCount ?? 0} receipt(s) preserved`,
       "",
     ].join("\n"),
     { encoding: "utf8", mode: 0o600 },

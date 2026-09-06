@@ -61,6 +61,14 @@ restart against the same database, and validate both persisted state and a
 complete portable backup. The private database is removed after the gate and is
 never uploaded with the diagnostic logs.
 
+Both the local desktop and paired Host/Client gates register two borrowed rolls
+from one catalog entry and replay the original batch after restart. They require
+the same ordered IDs without extra rolls, loans, history, or revisions. The
+Host/Client gate also requires zero batch rolls, loans, or receipts in the
+Client's unrelated local database. A current schema marker alone cannot pass:
+the batch journal and its constraints must exist, and the MSI wrapper requires
+explicit batch replay evidence in each passing summary.
+
 CI then closes the app normally, uninstalls it, and confirms that the
 executable, installer registration, shortcuts, and user `PATH` entry are
 removed while the ordinary isolated smoke database remains healthy and
@@ -73,12 +81,12 @@ executable report the exact Authenticode status `NotSigned`.
 
 On startup, an existing database is inspected read-only before schema writes.
 The app runs SQLite `quick_check` and verifies that the recorded schema is not
-newer than schema v5 supported by this build. A failed integrity or compatibility
+newer than schema v7 supported by this build. A failed integrity or compatibility
 check stops startup instead of silently modifying the database.
 
-An existing unversioned, schema-v1, schema-v2, schema-v3, or schema-v4 database
+An existing supported database older than schema v7
 receives an automatically created and verified local recovery snapshot before
-its schema v5 upgrade. Verified snapshots are also used before a full restore
+its schema v7 upgrade. Verified snapshots are also used before a full restore
 and storage migrations that replace or merge an existing database. If snapshot
 creation or verification fails, the destructive operation does not continue.
 

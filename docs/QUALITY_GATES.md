@@ -219,6 +219,23 @@ run-specific marker, and database path all agree. Unix artifacts use owner-only
 database is removed after the run and is never uploaded with the private smoke
 logs.
 
+The same installed executable also creates a two-roll borrowed catalog batch
+with repeated master IDs. The second launch reuses the saved request and must
+return exactly the original ordered receipt. Independent SQLite checks require
+unchanged rolls, loans, history, revisions, and the local batch journal across
+that replay. Portable backups include the rolls and loans and omit the journal.
+The paired Host/Client gate replays its batch after Host restart and session
+renewal, proves unchanged batch rows and revisions, and requires zero batch
+spools, loans, or receipts in the Client's unrelated local database.
+
+All current-schema platform database checks require the actual
+`catalog_spool_batches` structure and constraints. Historical upgrade fixtures
+retain their original schema: the pinned v0.28.0 fixture upgrades from schema 5
+to 7, and the CI baseline remains schema 1. A newly migrated journal must be
+empty; an existing journal must retain every protected receipt across both
+launches. Windows summary checks require explicit local and Host batch replay
+results before the installed MSI gate can pass.
+
 ## Accessibility authority
 
 The data-backed browser gate runs axe against Dashboard, Inventory, Loans,

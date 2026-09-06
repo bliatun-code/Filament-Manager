@@ -4,11 +4,13 @@ import { statSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
+import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
 
 export const REQUIRED_WINDOWS_SMOKE_TABLES = [
   "filament_master_list",
   "filament_spools",
   "catalog_refresh_jobs",
+  "catalog_spool_batches",
   "settings",
 ];
 export const REQUIRED_WINDOWS_SMOKE_SCHEMA_VERSION = currentSchemaVersion();
@@ -105,6 +107,8 @@ export async function verifyWindowsAppDatabase(
         );
       }
     }
+
+    assertCatalogSpoolBatchSchema(database);
 
     return {
       databasePath: resolvedDatabasePath,

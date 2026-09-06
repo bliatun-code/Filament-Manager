@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 
 import Database from "better-sqlite3";
 
@@ -21,10 +23,25 @@ import {
   monitorChildProcessErrors,
   parseReleaseDatabaseUpgradeSmokeCliOptions,
   snapshotReleaseUpgradeDatabase,
+  smokeReleaseDatabaseUpgrade,
   stopChild,
   validateReleaseDatabaseUpgradeSmokeOptions,
   waitForSpawnedChild,
 } from "./smoke-release-database-upgrade.mjs";
+
+const batchMigration = readFileSync(
+  new URL("../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url),
+  "utf8",
+);
+
+function insertBatchReceipt(database) {
+  database.prepare(
+    "INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json, created_at) VALUES (?, ?, ?, ?, ?)",
+  ).run("batch-a", "release-candidate-qa-library", JSON.stringify({
+    batch_id: "batch-a", master_ids: ["master-a", "master-a"], initial_weight_g: 850,
+    ownership_type: "OWNED", owner_name: null, owner_contact: null, ownership_note: null, location: null,
+  }), JSON.stringify({ batch_id: "batch-a", spool_ids: ["spool-a", "spool-b"] }), "2026-09-06T00:00:00Z");
+}
 
 function createSanitizedFixture(databasePath) {
   const database = new Database(databasePath);
@@ -520,6 +537,107 @@ test("release database upgrade snapshot protects every existing domain table val
       () => assertPreservedReleaseUpgradeData(before, after),
       /changed preserved values in custom_domain/,
     );
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("schema 6 migration must create the actual empty batch journal and preserve prior data", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "filament-manager-batch-migration-"));
+  const databasePath = path.join(directory, "fixture.db");
+  try {
+    createSanitizedFixture(databasePath);
+    let database = new Database(databasePath);
+    database.exec("PRAGMA user_version = 6; CREATE TABLE user_data (id TEXT PRIMARY KEY, note TEXT); INSERT INTO user_data VALUES ('old', 'preserve');");
+    database.close();
+    const before = snapshotReleaseUpgradeDatabase(databasePath);
+    assert.equal(before.catalogBatchJournal, null);
+
+    database = new Database(databasePath);
+    database.exec("PRAGMA user_version = 7");
+    database.close();
+    assert.throws(() => snapshotReleaseUpgradeDatabase(databasePath), /requires the catalog_spool_batches table/);
+
+    database = new Database(databasePath);
+    database.exec(batchMigration);
+    database.close();
+    const migrated = snapshotReleaseUpgradeDatabase(databasePath);
+    assert.equal(migrated.catalogBatchJournal.receiptCount, 0);
+    assert.doesNotThrow(() => assertPreservedReleaseUpgradeData(before, migrated));
+    assert.doesNotThrow(() => assertPreservedReleaseUpgradeData(migrated, snapshotReleaseUpgradeDatabase(databasePath)));
+
+    database = new Database(databasePath);
+    insertBatchReceipt(database);
+    database.close();
+    assert.throws(() => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(databasePath)), /must create an empty catalog batch journal/);
+
+    database = new Database(databasePath);
+    database.exec("DELETE FROM catalog_spool_batches; UPDATE user_data SET note = 'lost';");
+    database.close();
+    assert.throws(() => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(databasePath)), /changed preserved values in user_data/);
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("schema-7 repeated launch snapshots preserve every batch receipt byte and ordered ID", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "filament-manager-batch-receipt-"));
+  const databasePath = path.join(directory, "fixture.db");
+  try {
+    createSanitizedFixture(databasePath);
+    let database = new Database(databasePath);
+    database.exec(batchMigration);
+    database.pragma("user_version = 7");
+    insertBatchReceipt(database);
+    const original = database.prepare("SELECT * FROM catalog_spool_batches").get();
+    database.close();
+    const before = snapshotReleaseUpgradeDatabase(databasePath);
+    assert.equal(before.catalogBatchJournal.receiptCount, 1);
+    assert.doesNotThrow(() => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(databasePath)));
+    for (const [column, value] of [
+      ["batch_id", "batch-changed"], ["library_id", "another-library"],
+      ["request_json", JSON.stringify({ changed: true })],
+      ["receipt_json", JSON.stringify({ batch_id: "batch-a", spool_ids: ["spool-b", "spool-a"] })],
+      ["created_at", "2026-09-07T00:00:00Z"],
+    ]) {
+      database = new Database(databasePath);
+      database.prepare(`UPDATE catalog_spool_batches SET ${column} = ?`).run(value);
+      database.close();
+      assert.throws(() => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(databasePath)), /changed preserved values in catalog_spool_batches/, column);
+      database = new Database(databasePath);
+      database.prepare(`UPDATE catalog_spool_batches SET ${column} = ?`).run(original[column]);
+      database.close();
+    }
+    database = new Database(databasePath);
+    database.exec("DELETE FROM catalog_spool_batches");
+    database.close();
+    assert.throws(() => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(databasePath)), /catalog_spool_batches row count/);
+    database = new Database(databasePath);
+    database.exec("DROP TABLE catalog_spool_batches");
+    database.close();
+    assert.throws(() => snapshotReleaseUpgradeDatabase(databasePath), /requires the catalog_spool_batches table/);
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("repeated-launch gate detects a receipt lost while the application exits", { skip: process.platform === "win32" }, async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "filament-manager-batch-stop-"));
+  const databasePath = path.join(directory, "fixture.db");
+  try {
+    createSanitizedFixture(databasePath);
+    const database = new Database(databasePath);
+    database.exec(batchMigration);
+    database.pragma("user_version = 7");
+    insertBatchReceipt(database);
+    database.close();
+    const executablePath = path.join(directory, "candidate.mjs");
+    const require = createRequire(import.meta.url);
+    writeFileSync(executablePath, `#!${process.execPath}\nimport Database from ${JSON.stringify(pathToFileURL(require.resolve("better-sqlite3")).href)};\nsetInterval(() => {}, 1000);\nprocess.on('SIGTERM', () => { const db = new Database(process.env.FILAMENT_MANAGER_DB_PATH); db.exec('DELETE FROM catalog_spool_batches'); db.close(); process.exit(0); });\n`, { mode: 0o700 });
+    await assert.rejects(smokeReleaseDatabaseUpgrade({
+      allowCurrentSchema: true, sourceRelease: "v0.29.0-test", databasePath, executablePath,
+      logDirectory: path.join(directory, "logs"), requireVisibleWindow: false,
+    }), /catalog_spool_batches row count/);
   } finally {
     rmSync(directory, { force: true, recursive: true });
   }

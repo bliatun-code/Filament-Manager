@@ -1,3 +1,4 @@
+import type { CatalogSpoolBatchReceipt } from "./tauri_catalog_spool_batch_client";
 import { invoke } from "./tauri_invoke";
 
 export type PackagedHostClientE2eRole = "host" | "client";
@@ -24,6 +25,7 @@ export type PackagedHostClientE2eConfiguration = {
   base_url?: string | null;
   pairing_url?: string | null;
   target_generation?: number | null;
+  batch_receipt?: CatalogSpoolBatchReceipt | null;
 };
 
 export type PackagedHostClientE2eHostWaitInput = {
@@ -50,6 +52,8 @@ export type PackagedHostClientE2eClientCompletion = {
   paired_before_cleanup: boolean;
   auth_cleared: boolean;
   session_renewed: boolean;
+  batch_receipt: CatalogSpoolBatchReceipt;
+  batch_replayed: boolean;
 };
 
 export type PackagedHostClientE2eCleanupCompletion = {

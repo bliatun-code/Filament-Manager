@@ -31,6 +31,12 @@ function createDatabase(
   const database = new Database(databasePath);
   try {
     for (const tableName of tableNames) {
+      if (tableName === "catalog_spool_batches") {
+        database.exec(readFileSync(new URL(
+          "../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url,
+        ), "utf8"));
+        continue;
+      }
       const requiredColumns = REQUIRED_WINDOWS_SMOKE_COLUMNS[tableName] ?? [];
       const columnDefinitions = [
         "id TEXT PRIMARY KEY",
@@ -76,6 +82,7 @@ test("Windows app database verifier accepts the repository's actual migrated sch
     const result = await verifyWindowsAppDatabase(databasePath);
     assert.equal(result.schemaVersion, manifest.currentSchemaVersion);
     assert.ok(result.tables.includes("catalog_refresh_jobs"));
+    assert.ok(result.tables.includes("catalog_spool_batches"));
   });
 });
 
@@ -163,6 +170,33 @@ test("Windows app database verifier requires schema 5 purchase-standard columns"
       verifyWindowsAppDatabase(databasePath),
       /filament_spools is missing required column\(s\): purchase_currency, supplier_reference, purchase_price_batch_locked, purchase_price_source/,
     );
+  });
+});
+
+test("Windows app database verifier rejects a current version with a missing or malformed batch journal", async () => {
+  await withTemporaryDirectory(async (directory) => {
+    for (const malformed of ["missing", "columns", "nullable"]) {
+      const databasePath = join(directory, `batch-journal-${malformed}.db`);
+      createDatabase(databasePath, REQUIRED_WINDOWS_SMOKE_TABLES);
+      const database = new Database(databasePath);
+      try {
+        database.exec("DROP TABLE IF EXISTS catalog_spool_batches");
+        if (malformed === "columns") {
+          database.exec("CREATE TABLE catalog_spool_batches (batch_id TEXT PRIMARY KEY NOT NULL)");
+        } else if (malformed === "nullable") {
+          database.exec(`CREATE TABLE catalog_spool_batches (
+            batch_id TEXT PRIMARY KEY NOT NULL,
+            library_id TEXT,
+            request_json TEXT NOT NULL CHECK (json_valid(request_json)),
+            receipt_json TEXT NOT NULL CHECK (json_valid(receipt_json)),
+            created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+          )`);
+        }
+      } finally {
+        database.close();
+      }
+      await assert.rejects(verifyWindowsAppDatabase(databasePath), /catalog_spool_batches|batch journal/i);
+    }
   });
 });
 

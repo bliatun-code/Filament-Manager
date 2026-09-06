@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import Database from "better-sqlite3";
 import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 
 import {
@@ -71,6 +72,7 @@ test(
         },
       );
       assert.equal(result.manifest.sourceRelease, PREVIOUS_RELEASE_REF);
+      assert.equal(PREVIOUS_RELEASE_SCHEMA_VERSION, 5);
       assert.equal(result.manifest.sourceCommit, PREVIOUS_RELEASE_COMMIT);
       assert.equal(
         result.manifest.sourceSchemaVersion,
@@ -82,6 +84,16 @@ test(
       assert.equal(result.manifest.gateMode, "schema-migration");
       assert.equal(result.manifest.sanitized, true);
       assert.equal(result.manifest.counts.filament_spools, 8);
+      assert.equal(Object.hasOwn(result.manifest.counts, "catalog_spool_batches"), false);
+      const historical = new Database(databasePath, { readonly: true, fileMustExist: true });
+      try {
+        assert.equal(historical.pragma("user_version", { simple: true }), 5);
+        assert.equal(historical.prepare(
+          "SELECT COUNT(*) AS count FROM sqlite_master WHERE name = 'catalog_spool_batches'",
+        ).get().count, 0);
+      } finally {
+        historical.close();
+      }
 
       const verified = verifyPreviousReleaseUpgradeFixture({
         databasePath,

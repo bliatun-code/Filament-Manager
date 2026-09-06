@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   closeSync,
@@ -22,10 +23,13 @@ import Database from "better-sqlite3";
 
 import {
   assertReleaseUpgradeFixtureSanitized,
+  inspectReleaseUpgradeBatchJournal,
+  parseReleaseUpgradeBatchJournalRow,
   BAMBU_LIVE_SETTING_PREFIX,
   RELEASE_UPGRADE_EMPTY_TABLES,
   RELEASE_UPGRADE_FIXTURE_MARKER_KEY,
   RELEASE_UPGRADE_FIXTURE_MARKER_VALUE,
+  RELEASE_UPGRADE_LIBRARY_ID,
   RELEASE_UPGRADE_PRIVATE_SETTING_KEYS,
   RELEASE_UPGRADE_PRIVATE_SETTING_PREFIXES,
   RELEASE_UPGRADE_SAFE_BAMBU_LIVE_CONFIG,
@@ -273,7 +277,7 @@ function sanitizeSettings(database) {
        VALUES (?, ?)
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     )
-    .run("library_sync_library_id", "release-candidate-qa-library");
+    .run("library_sync_library_id", RELEASE_UPGRADE_LIBRARY_ID);
   database
     .prepare(
       `INSERT INTO settings (key, value)
@@ -360,6 +364,37 @@ function sanitizePrivateRows(database) {
   return { removedPrivateRows };
 }
 
+function sanitizeCatalogBatchJournal(database) {
+  if (!databaseTables(database).has("catalog_spool_batches")) {
+    return { sanitizedBatchReceipts: 0 };
+  }
+  const activeLibraryValue = database.prepare(
+    "SELECT value FROM settings WHERE key = 'library_sync_library_id'",
+  ).get()?.value;
+  const activeLibrary = typeof activeLibraryValue === "string" ? activeLibraryValue.trim() : null;
+  const journal = database.prepare("SELECT * FROM catalog_spool_batches ORDER BY batch_id").all();
+  const update = database.prepare(
+    "UPDATE catalog_spool_batches SET library_id = ?, request_json = ? WHERE batch_id = ?",
+  );
+  for (const row of journal) {
+    const { request } = parseReleaseUpgradeBatchJournalRow(row);
+    const libraryId = row.library_id === activeLibrary
+      ? RELEASE_UPGRADE_LIBRARY_ID
+      : `${RELEASE_UPGRADE_LIBRARY_ID}-${createHash("sha256").update(row.library_id).digest("hex").slice(0, 16)}`;
+    update.run(libraryId, JSON.stringify({
+      batch_id: request.batch_id,
+      master_ids: request.master_ids,
+      initial_weight_g: request.initial_weight_g,
+      ownership_type: request.ownership_type,
+      owner_name: request.ownership_type === "BORROWED_IN" ? "Release QA borrower" : null,
+      owner_contact: null,
+      ownership_note: null,
+      location: request.location === null ? null : "Release QA location",
+    }), row.batch_id);
+  }
+  return { sanitizedBatchReceipts: journal.length };
+}
+
 function identitySnapshot(database) {
   const tables = databaseTables(database);
   const counts = {};
@@ -398,6 +433,7 @@ function inspectDatabase(database) {
   }
   return {
     ...identitySnapshot(database),
+    catalogBatchJournal: inspectReleaseUpgradeBatchJournal(database),
     schemaVersion: Number(database.pragma("user_version", { simple: true })),
     tableCount: databaseTables(database).size,
   };
@@ -454,6 +490,7 @@ export async function prepareReleaseUpgradeFixture(options) {
       fixture.pragma("foreign_keys = ON");
       fixture.pragma("secure_delete = ON");
       sanitization = fixture.transaction(() => ({
+        ...sanitizeCatalogBatchJournal(fixture),
         ...sanitizeSettings(fixture),
         ...sanitizePrivateRows(fixture),
       }))();

@@ -26,6 +26,11 @@ import {
 } from "./packaged-catalog-job-evidence.mjs";
 
 import {
+  capturePackagedCatalogBatch, EXPECTED_PACKAGED_CATALOG_BATCH,
+  validatePackagedCatalogBatchSummary, validatePackagedCatalogBatchReceipt,
+} from "./packaged-catalog-batch-evidence.mjs";
+
+import {
   PACKAGED_HOST_CLIENT_CREDENTIAL_CLEANUP_SUMMARY_FORMAT,
   PACKAGED_HOST_CLIENT_READY_FORMAT,
   PACKAGED_HOST_CLIENT_RESULT_FORMAT,
@@ -359,13 +364,20 @@ function resultEnvelope(role, phase, runId, completion) {
   };
 }
 
-function clientCompletion(phase, generation = 7) {
+function batchReceipt(runId = CATALOG_RUN_ID) {
+  return { batch_id: `${runId}-catalog-batch`, spool_ids: [`spool_${"1".repeat(32)}`, `spool_${"2".repeat(32)}`] };
+}
+const batchBaselines = new Map();
+
+function clientCompletion(phase, generation = 7, runId = "packaged-host-client-0123456789") {
   const common = {
     library_id: LIBRARY_ID,
     spool_id: SPOOL_ID,
     local_weight_g: 333,
     target_generation: generation,
     paired_before_cleanup: true,
+    batch_receipt: batchReceipt(runId),
+    batch_replayed: phase === "recover",
   };
   if (phase === "pair") {
     return {
@@ -402,16 +414,22 @@ function clientCompletion(phase, generation = 7) {
 
 function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
   const schema = `
-    PRAGMA user_version = 21;
+    PRAGMA user_version = 7;
     CREATE TABLE filament_spools (
       id TEXT PRIMARY KEY,
       current_weight_g INTEGER,
-      remaining_g INTEGER
+      remaining_g INTEGER,
+      master_id TEXT, initial_weight_g INTEGER, ownership_type TEXT, owner_name TEXT,
+      status TEXT DEFAULT 'IN_STOCK', owner_contact TEXT, ownership_note TEXT,
+      location_id TEXT, home_location_id TEXT, deleted_at TEXT
     );
+    CREATE TABLE spool_loans (id TEXT PRIMARY KEY, spool_id TEXT, loan_direction TEXT, loan_status TEXT, grams_out INTEGER,
+      borrower_name TEXT, counterparty_name TEXT, counterparty_contact TEXT, counterparty_note TEXT, lent_note TEXT,
+      expected_return_at TEXT, returned_at TEXT, returned_grams INTEGER, consumed_grams INTEGER, return_note TEXT);
     CREATE TABLE spool_history_events (
       id INTEGER PRIMARY KEY,
       spool_id TEXT NOT NULL,
-      event_type TEXT NOT NULL
+      event_type TEXT NOT NULL, payload_json TEXT
     );
     CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE printers (id TEXT PRIMARY KEY, access_token TEXT);
@@ -429,6 +447,8 @@ function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
   try {
     host.exec(schema);
     client.exec(schema);
+    const journal = readFileSync(new URL("../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url), "utf8");
+    host.exec(journal); client.exec(journal);
     host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
       `${CATALOG_RUN_ID}-catalog-complete`, "Bambu", "PLA", "SUCCEEDED",
       "2026-09-05T12:00:00Z", "2026-09-05T12:00:01Z",
@@ -443,23 +463,45 @@ function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
       "https://example.invalid/packaged-catalog-job",
     );
     host
-      .prepare("INSERT INTO filament_spools VALUES (?, 760, 760)")
+      .prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 760, 760, 'qa-master', 1000, 'OWNED', NULL)")
       .run(SPOOL_ID);
     client
-      .prepare("INSERT INTO filament_spools VALUES (?, 333, 333)")
+      .prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 333, 333, 'shadow-master', 333, 'OWNED', NULL)")
       .run(SPOOL_ID);
     host
-      .prepare("INSERT INTO spool_history_events VALUES (?, ?, ?)")
+      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
       .run(1, SPOOL_ID, "CREATED");
     host
-      .prepare("INSERT INTO spool_history_events VALUES (?, ?, ?)")
+      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
       .run(2, SPOOL_ID, "WEIGHT_UPDATED");
     host
-      .prepare("INSERT INTO spool_history_events VALUES (?, ?, ?)")
+      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
       .run(3, SPOOL_ID, "WEIGHT_UPDATED");
     client
-      .prepare("INSERT INTO spool_history_events VALUES (?, ?, ?)")
+      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
       .run(1, SPOOL_ID, "CREATED");
+    const receipt = batchReceipt();
+    host.prepare("INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json) VALUES (?, ?, ?, ?)").run(
+      receipt.batch_id, LIBRARY_ID, JSON.stringify({ batch_id: receipt.batch_id, master_ids: ["qa-master", "qa-master"],
+        initial_weight_g: 500, ownership_type: "BORROWED_IN", owner_name: "Packaged batch QA owner", owner_contact: null,
+        ownership_note: "Isolated packaged Host-Client batch fixture", location: null }), JSON.stringify(receipt),
+    );
+    receipt.spool_ids.forEach((id, index) => {
+      host.prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 500, 500, 'qa-master', 500, 'BORROWED_IN', 'Packaged batch QA owner')").run(id);
+      host.prepare("UPDATE filament_spools SET ownership_note = ? WHERE id = ?")
+        .run("Isolated packaged Host-Client batch fixture", id);
+      host.prepare("INSERT INTO spool_loans (id, spool_id, loan_direction, loan_status, grams_out, borrower_name, counterparty_name, counterparty_note, lent_note) VALUES (?, ?, 'INBOUND', 'ACTIVE', 500, ?, ?, ?, ?)")
+        .run(`loan-${index}`, id, "Packaged batch QA owner", "Packaged batch QA owner",
+          "Isolated packaged Host-Client batch fixture", "Isolated packaged Host-Client batch fixture");
+      host.prepare("INSERT INTO spool_history_events (id, spool_id, event_type, payload_json) VALUES (?, ?, ?, ?)")
+        .run(4 + index * 2, id, "CREATED", JSON.stringify({ status: "IN_STOCK", ownership_type: "BORROWED_IN" }));
+      host.prepare("INSERT INTO spool_history_events (id, spool_id, event_type, payload_json) VALUES (?, ?, ?, ?)")
+        .run(5 + index * 2, id, "BORROWED_IN_REGISTERED", JSON.stringify({
+          loan_id: `loan-${index}`, ownership_type: "BORROWED_IN", owner_name: "Packaged batch QA owner",
+          owner_contact: null, ownership_note: "Isolated packaged Host-Client batch fixture",
+          loan_direction: "INBOUND", counterparty_name: "Packaged batch QA owner", grams_out: 500,
+        }));
+    });
     host
       .prepare("INSERT INTO settings VALUES (?, ?)")
       .run("library_sync_mode", "HOST");
@@ -476,6 +518,7 @@ function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
         JSON.stringify({
           captured_at: "2026-08-31T21:00:00Z",
           rows: [
+            ...batchReceipt().spool_ids.map((id) => ({ spool: { id, current_weight_g: 500, remaining_g: 500 } })),
             {
               spool: {
                 id: SPOOL_ID,
@@ -500,6 +543,8 @@ function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
     host.close();
     client.close();
   }
+  batchBaselines.set(hostPath, capturePackagedCatalogBatch({ hostDatabasePath: hostPath, clientDatabasePath: clientPath,
+    runId: CATALOG_RUN_ID }, batchReceipt()));
 }
 
 test("packaged Host-Client options require fresh disjoint private roots", () => {
@@ -908,7 +953,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
     createAuthorityDatabases(hostPath, clientPath);
     const result = inspectPackagedHostClientDatabases(
       { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
-      { targetGeneration: 7, port: 45_123 },
+      { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
     );
     assert.deepEqual(
       {
@@ -930,6 +975,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
     );
 
     assert.deepEqual(result.catalogJobs, EXPECTED_PACKAGED_CATALOG_JOBS);
+    assert.deepEqual(result.catalogBatch, EXPECTED_PACKAGED_CATALOG_BATCH);
     const client = new Database(clientPath);
     try {
       client
@@ -942,7 +988,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
       () =>
         inspectPackagedHostClientDatabases(
           { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
-          { targetGeneration: 7, port: 45_123 },
+          { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
         ),
       /authentication metadata/,
     );
@@ -962,7 +1008,7 @@ test("closed databases preserve Host authority, Client shadow and exact historie
             clientDatabasePath: clientPath,
             sensitiveValues: new Set(["unexpected-pairing-secret"]),
           },
-          { targetGeneration: 7, port: 45_123 },
+          { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
         ),
       /retained credential bytes/,
     );
@@ -993,7 +1039,7 @@ test("catalog evidence rejects partial imports, stale receipts and Client fallba
       try { database.exec(sql); } finally { database.close(); }
       assert.throws(() => inspectPackagedHostClientDatabases(
         { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
-        { targetGeneration: 7, port: 45_123 },
+        { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
       ), error, sql);
     } finally {
       rmSync(root, { force: true, recursive: true });
@@ -1009,6 +1055,78 @@ test("catalog summary requires exact counts and rejects unexpected data", () => 
   }
 });
 
+test("batch evidence rejects schema drift, extra rows and mutations hidden behind an unchanged receipt", () => {
+  const id = batchReceipt().spool_ids[0];
+  const corruptions = [
+    ["host", "PRAGMA user_version = 6", /current application schema/],
+    ["client", "DROP TABLE catalog_spool_batches", /requires the catalog_spool_batches table/],
+    ["host", "INSERT INTO filament_spools (id) VALUES ('extra-roll')", /exact authoritative/],
+    ["host", `INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (99, '${id}', 'CREATED')`, /physical rolls, loans or history/],
+    ["host", `UPDATE spool_loans SET grams_out = 499 WHERE spool_id = '${id}'`, /physical rolls, loans or history/],
+    ["host", "UPDATE catalog_spool_batches SET created_at = '2026-09-06T12:00:00Z'", /changed across restart replay/],
+    ["host", `UPDATE spool_loans SET id = 'replacement-loan' WHERE spool_id = '${id}'`, /history payload/],
+    ["client", "INSERT INTO spool_loans (id) VALUES ('shadow-loan')", /Client local inventory/],
+    ["client", "UPDATE filament_spools SET owner_name = 'unexpected'", /changed across restart replay/],
+  ];
+  for (const [role, sql, error] of corruptions) {
+    const root = temporaryRoot("batch-evidence");
+    const hostPath = path.join(root, "host.db"); const clientPath = path.join(root, "client.db");
+    try {
+      createAuthorityDatabases(hostPath, clientPath);
+      const database = new Database(role === "host" ? hostPath : clientPath);
+      try { database.exec(sql); } finally { database.close(); }
+      assert.throws(() => inspectPackagedHostClientDatabases(
+        { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
+        { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
+      ), error, sql);
+    } finally { rmSync(root, { force: true, recursive: true }); }
+  }
+});
+
+test("initial batch capture rejects incorrect lender, locations and registration payloads before a baseline exists", () => {
+  const id = batchReceipt().spool_ids[0];
+  const corruptions = [
+    `UPDATE filament_spools SET status = 'CONSUMED' WHERE id = '${id}'`,
+    `UPDATE filament_spools SET owner_contact = 'wrong@example.invalid' WHERE id = '${id}'`,
+    `UPDATE filament_spools SET ownership_note = 'wrong note' WHERE id = '${id}'`,
+    `UPDATE filament_spools SET location_id = 'wrong-location' WHERE id = '${id}'`,
+    `UPDATE filament_spools SET home_location_id = 'wrong-location' WHERE id = '${id}'`,
+    `UPDATE spool_loans SET counterparty_name = 'wrong lender' WHERE spool_id = '${id}'`,
+    `UPDATE spool_loans SET counterparty_contact = 'wrong@example.invalid' WHERE spool_id = '${id}'`,
+    `UPDATE spool_loans SET counterparty_note = 'wrong note' WHERE spool_id = '${id}'`,
+    `UPDATE spool_loans SET returned_grams = 500 WHERE spool_id = '${id}'`,
+    `UPDATE spool_history_events SET payload_json = '{"status":"IN_STOCK","ownership_type":"OWNED"}' WHERE spool_id = '${id}' AND event_type = 'CREATED'`,
+    `UPDATE spool_history_events SET payload_json = json_set(payload_json, '$.loan_id', 'wrong-loan') WHERE spool_id = '${id}' AND event_type = 'BORROWED_IN_REGISTERED'`,
+    `UPDATE spool_history_events SET payload_json = json_set(payload_json, '$.owner_name', 'wrong lender') WHERE spool_id = '${id}' AND event_type = 'BORROWED_IN_REGISTERED'`,
+    `UPDATE spool_history_events SET payload_json = json_set(payload_json, '$.private_extra', 'unexpected') WHERE spool_id = '${id}' AND event_type = 'BORROWED_IN_REGISTERED'`,
+  ];
+  for (const sql of corruptions) {
+    const root = temporaryRoot("batch-initial-values");
+    const hostPath = path.join(root, "host.db"); const clientPath = path.join(root, "client.db");
+    try {
+      createAuthorityDatabases(hostPath, clientPath);
+      const host = new Database(hostPath);
+      try { host.exec(sql); } finally { host.close(); }
+      assert.throws(() => capturePackagedCatalogBatch({
+        hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID,
+      }, batchReceipt()), /physical rolls, loans or history|history payload/, sql);
+    } finally { rmSync(root, { force: true, recursive: true }); }
+  }
+});
+
+test("batch summaries and phase receipts reject additional fields and unproven replay", () => {
+  assert.doesNotThrow(() => validatePackagedCatalogBatchSummary(EXPECTED_PACKAGED_CATALOG_BATCH));
+  for (const value of [undefined, {}, { ...EXPECTED_PACKAGED_CATALOG_BATCH, replayed: false },
+    { ...EXPECTED_PACKAGED_CATALOG_BATCH, replay_revisions_unchanged: false },
+    { ...EXPECTED_PACKAGED_CATALOG_BATCH, private_note: "unexpected" }]) {
+    assert.throws(() => validatePackagedCatalogBatchSummary(value), /summary is invalid/);
+  }
+  for (const value of [{ ...batchReceipt(), private_note: "unexpected" },
+    { ...batchReceipt(), spool_ids: [batchReceipt().spool_ids[0], batchReceipt().spool_ids[0]] }]) {
+    assert.throws(() => validatePackagedCatalogBatchReceipt(value, CATALOG_RUN_ID), /receipt is invalid/);
+  }
+});
+
 test("database inspection closes every resource across open and close failures", () => {
   const root = temporaryRoot("database-resource-cleanup");
   const hostPath = path.join(root, "host.db");
@@ -1019,7 +1137,7 @@ test("database inspection closes every resource across open and close failures",
       () =>
         inspectPackagedHostClientDatabases(
           { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
-          { targetGeneration: 7, port: 45_123 },
+          { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
           (databasePath) => {
             if (databasePath === hostPath) {
               return { close: () => (hostCloseCount += 1) };
@@ -1036,7 +1154,7 @@ test("database inspection closes every resource across open and close failures",
       () =>
         inspectPackagedHostClientDatabases(
           { hostDatabasePath: hostPath, clientDatabasePath: clientPath, runId: CATALOG_RUN_ID },
-          { targetGeneration: 7, port: 45_123 },
+          { targetGeneration: 7, port: 45_123, batchReceipt: batchReceipt(), batchSnapshot: batchBaselines.get(hostPath) },
           (databasePath) =>
             databasePath === hostPath
               ? {
@@ -1462,11 +1580,12 @@ test("orchestrator runs both generations, offline proof and unconditional cleanu
         if (phase === "cleanup") return { auth_cleared: true };
         return clientCompletion(phase);
       },
+      captureCatalogBatch: () => ({ synthetic: true }),
       inspectDatabases: (_context, { port }) => {
         calls.push(`inspect:${port}`);
         return {
-          hostSchemaVersion: 21,
-          clientSchemaVersion: 21,
+          hostSchemaVersion: 7,
+          clientSchemaVersion: 7,
           hostWeightG: 760,
           clientLocalWeightG: 333,
           cacheWeightG: 760,
@@ -1476,6 +1595,7 @@ test("orchestrator runs both generations, offline proof and unconditional cleanu
           cacheSettingCount: 1,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         };
       },
     });
@@ -1492,6 +1612,7 @@ test("orchestrator runs both generations, offline proof and unconditional cleanu
     ]);
     assert.equal(result.status, "pass");
     assert.deepEqual(result.catalog_jobs, EXPECTED_PACKAGED_CATALOG_JOBS);
+    assert.deepEqual(result.catalog_batch, EXPECTED_PACKAGED_CATALOG_BATCH);
     assert.equal(result.auth_cleanup, "pass");
     assert.equal(result.phases.at(-1), "client-cleanup");
     assert.equal(existsSync(options.workDirectory), false);
@@ -1573,9 +1694,10 @@ test("orchestrator retries only OS-classified Host port collisions and clears ev
         if (phase === "cleanup") return { auth_cleared: true };
         return clientCompletion(phase);
       },
+      captureCatalogBatch: () => ({ synthetic: true }),
       inspectDatabases: () => ({
-        hostSchemaVersion: 21,
-        clientSchemaVersion: 21,
+        hostSchemaVersion: 7,
+        clientSchemaVersion: 7,
         hostWeightG: 760,
         clientLocalWeightG: 333,
         cacheWeightG: 760,
@@ -1585,6 +1707,7 @@ test("orchestrator retries only OS-classified Host port collisions and clears ev
         cacheSettingCount: 1,
         authSettingCount: 0,
         catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
       }),
     });
     assert.deepEqual(calls, [
@@ -1714,7 +1837,8 @@ test("orchestrator retains private work when the sanitized summary cannot be wri
           phase === "cleanup"
             ? { auth_cleared: true }
             : clientCompletion(phase),
-        inspectDatabases: () => {
+        captureCatalogBatch: () => ({ synthetic: true }),
+      inspectDatabases: () => {
           const summaryBlocker = path.join(
             options.logDirectory,
             "summary.json",
@@ -1722,8 +1846,8 @@ test("orchestrator retains private work when the sanitized summary cannot be wri
           mkdirSync(summaryBlocker);
           writeFileSync(path.join(summaryBlocker, "blocker"), "not a file");
           return {
-            hostSchemaVersion: 21,
-            clientSchemaVersion: 21,
+            hostSchemaVersion: 7,
+            clientSchemaVersion: 7,
             hostWeightG: 760,
             clientLocalWeightG: 333,
             cacheWeightG: 760,
@@ -1733,6 +1857,7 @@ test("orchestrator retains private work when the sanitized summary cannot be wri
             cacheSettingCount: 1,
             authSettingCount: 0,
             catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
           };
         },
       }),
@@ -1988,9 +2113,10 @@ test("cleanup-phase unconfirmed termination retains private work", async () => {
           }
           return clientCompletion(phase);
         },
-        inspectDatabases: () => ({
-          hostSchemaVersion: 21,
-          clientSchemaVersion: 21,
+        captureCatalogBatch: () => ({ synthetic: true }),
+      inspectDatabases: () => ({
+          hostSchemaVersion: 7,
+          clientSchemaVersion: 7,
           hostWeightG: 760,
           clientLocalWeightG: 333,
           cacheWeightG: 760,
@@ -2000,6 +2126,7 @@ test("cleanup-phase unconfirmed termination retains private work", async () => {
           cacheSettingCount: 1,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
       }),
       /Synthetic Client cleanup termination was not confirmed/,
@@ -2041,9 +2168,10 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
           phase === "cleanup"
             ? { auth_cleared: true }
             : clientCompletion(phase),
-        inspectDatabases: () => ({
-          hostSchemaVersion: 21,
-          clientSchemaVersion: 21,
+        captureCatalogBatch: () => ({ synthetic: true }),
+      inspectDatabases: () => ({
+          hostSchemaVersion: 7,
+          clientSchemaVersion: 7,
           hostWeightG: 760,
           clientLocalWeightG: 333,
           cacheWeightG: 760,
@@ -2053,6 +2181,7 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
           cacheSettingCount: 1,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
         removeWork: () => {
           throw Object.assign(new Error("synthetic main work removal failure"), {
@@ -2078,9 +2207,10 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
           return { auth_cleared: true };
         },
         inspectCredentials: () => ({
-          clientSchemaVersion: 21,
+          clientSchemaVersion: 7,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
       },
     );
@@ -2123,9 +2253,10 @@ test("credential cleanup resume reuses the identity-bound original port", async 
           return { auth_cleared: true };
         },
         inspectCredentials: () => ({
-          clientSchemaVersion: 21,
+          clientSchemaVersion: 7,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
       },
     );
@@ -2187,9 +2318,10 @@ test("credential cleanup resume retains work on failure and can retry", async ()
       {
         runClient: async () => ({ auth_cleared: true }),
         inspectCredentials: () => ({
-          clientSchemaVersion: 21,
+          clientSchemaVersion: 7,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
       },
     );
@@ -2210,9 +2342,10 @@ test("credential cleanup resume recovers after private work removal fails", asyn
         {
           runClient: async () => ({ auth_cleared: true }),
           inspectCredentials: () => ({
-            clientSchemaVersion: 21,
+            clientSchemaVersion: 7,
             authSettingCount: 0,
             catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
           }),
           removeWork: () => {
             throw new Error("synthetic retained-work removal failure");
@@ -2240,9 +2373,10 @@ test("credential cleanup resume recovers after private work removal fails", asyn
           return { auth_cleared: true };
         },
         inspectCredentials: () => ({
-          clientSchemaVersion: 21,
+          clientSchemaVersion: 7,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
       },
     );
@@ -2292,9 +2426,10 @@ test("credential cleanup resume tolerates only the known summary directory block
       {
         runClient: async () => ({ auth_cleared: true }),
         inspectCredentials: () => ({
-          clientSchemaVersion: 21,
+          clientSchemaVersion: 7,
           authSettingCount: 0,
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
+          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
       },
     );

@@ -1,4 +1,10 @@
 import { invoke } from "./tauri_invoke";
+import type { CatalogSpoolBatchInput, CatalogSpoolBatchReceipt } from "./tauri_catalog_spool_batch_client";
+
+export type PackagedDesktopBatchEvidence = {
+  request: CatalogSpoolBatchInput;
+  receipt: CatalogSpoolBatchReceipt;
+};
 
 export type PackagedDesktopE2eConfiguration = {
   phase: "mutate" | "verify";
@@ -9,6 +15,7 @@ export type PackagedDesktopE2eConfiguration = {
   initial_weight_g: number;
   updated_weight_g: number;
   returned_weight_g: number;
+  batch_evidence: PackagedDesktopBatchEvidence | null;
 };
 
 export type PackagedDesktopE2eCompletion = {
@@ -22,6 +29,7 @@ export type PackagedDesktopE2eCompletion = {
   loan_status: "RETURNED";
   backup_sha256: string | null;
   backup_total_rows: number | null;
+  batch_evidence: PackagedDesktopBatchEvidence;
 };
 
 export type PackagedDesktopE2eFailure = {
