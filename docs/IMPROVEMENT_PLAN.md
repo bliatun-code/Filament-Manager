@@ -167,13 +167,15 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere, faste baseline-/kandidatbygg og samme syntetiske bibliotek. `npm run qa:usability:prepare` klargjør oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. De automatiserte femflyt-testene dokumenterer dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid krever egne deltakermålinger.
-2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
+1. Følg opp den [AI-utførte evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md): tilby lokasjon ved mottak og vis nøyaktig printerspor etter lasting. Alle fem oppgaveutfall er verifisert; rapporten skiller observerte forhold fra hypoteser.
+2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
+3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
 
 ### 2026-09-06
 
+- En [AI-utført native evaluering](USABILITY_AGENT_EVALUATION_2026-09-06.md) fullførte registrering, søk, lasting, utlån og delmottak på kandidaten mot fem nye private testbaser. Uavhengige før-/etterkontroller godkjenner 5 av 5 utfall. Nulltreff, manglende låntakernavn, avbrutt mottak og varsel om ulagrede lokasjonsendringer ble også prøvd. De viktigste forbedringspunktene er lokasjon direkte i mottaket og nøyaktig spornummer i lastingsbekreftelsen. Rapporten inneholder ingen simulerte deltakermålinger.
 - Analyseverktøyets feilstier er gjennomgått før innsamling av deltakermålinger. Duplikater og manglende forsøk rapporteres nå med radnumre eller summer per bygg/oppgave, uten deltaker-ID-er. Ulesbare filer og ugyldig JSON gir heller ikke fra seg private filstier eller innholdsutdrag. Veiledningen bruker `npm run --silent` slik at npm heller ikke skriver filstien i rapporten. 27 fokuserte tester, kontraktskontrollene og den dokumenterte npm-feilstien passerer. Akseptgrenser og beregninger er uendret; den modererte brukertesten gjenstår.
 
 ### 2026-09-05
