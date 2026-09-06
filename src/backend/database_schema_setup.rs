@@ -64,6 +64,12 @@ const STRUCTURAL_MIGRATIONS: &[StructuralMigration] = &[
         sql: include_str!("../database/migrations/007_catalog_refresh_jobs.sql"),
         to_version: 6,
     },
+    StructuralMigration {
+        from_version: 6,
+        name: "008_catalog_spool_batches.sql",
+        sql: include_str!("../database/migrations/008_catalog_spool_batches.sql"),
+        to_version: 7,
+    },
 ];
 
 pub(crate) fn apply_schema_migrations(conn: &Connection, schema_sql: &str) -> InventoryResult<()> {
@@ -192,7 +198,7 @@ mod tests {
         let last = STRUCTURAL_MIGRATIONS.last().expect("last migration");
         assert_eq!(first.name, "003_library_domain_revisions.sql");
         assert_eq!(first.from_version, BASELINE_SCHEMA_VERSION);
-        assert_eq!(last.name, "007_catalog_refresh_jobs.sql");
+        assert_eq!(last.name, "008_catalog_spool_batches.sql");
         assert_eq!(last.to_version, CURRENT_SCHEMA_VERSION);
     }
 
@@ -653,7 +659,7 @@ mod tests {
     }
 
     #[test]
-    fn catalog_job_migration_preserves_every_supported_version_and_reapplies_safely() {
+    fn operational_receipt_migrations_preserve_every_supported_version_and_reapply_safely() {
         for starting_version in 0..CURRENT_SCHEMA_VERSION {
             let conn =
                 Connection::open_in_memory().expect("open historical job migration database");
@@ -673,6 +679,7 @@ mod tests {
             ).expect("seed historical data");
             apply_schema_migrations(&conn, CURRENT_SCHEMA_SQL).expect("upgrade job storage");
             assert!(table_has_column(&conn, "catalog_refresh_jobs", "result_json").unwrap());
+            assert!(table_has_column(&conn, "catalog_spool_batches", "receipt_json").unwrap());
             assert_eq!(
                 database_schema_version(&conn).unwrap(),
                 CURRENT_SCHEMA_VERSION

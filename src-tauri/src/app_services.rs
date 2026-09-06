@@ -9,12 +9,13 @@ use crate::backend::filament_database::{
 };
 use crate::backend::inventory_domain::OwnershipType;
 use crate::backend::inventory_engine::{
-    AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CreateManualSpoolInput,
-    CreatePrinterInput, CreateSpoolInput, CreateWishlistItemInput, DeleteSpoolInput,
-    InventoryBulkMutationInput, InventoryBulkMutationResult, InventoryEngine, LendSpoolInput,
-    PrinterSlotOperationInput, PurgeSpoolInput, ReceiveWishlistItemInput, RecordPrintUsageInput,
-    ReturnSpoolLoanInput, UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput,
-    UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
+    AcceptBambuLiveWeightEstimateInput, AssignPrinterSlotInput, CatalogSpoolBatchInput,
+    CatalogSpoolBatchReceipt, CreateManualSpoolInput, CreatePrinterInput, CreateSpoolInput,
+    CreateWishlistItemInput, DeleteSpoolInput, InventoryBulkMutationInput,
+    InventoryBulkMutationResult, InventoryEngine, LendSpoolInput, PrinterSlotOperationInput,
+    PurgeSpoolInput, ReceiveWishlistItemInput, RecordPrintUsageInput, ReturnSpoolLoanInput,
+    UpdateBorrowedInSpoolInput, UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput,
+    UpdateSpoolOwnershipInput, UpdateWishlistStatusInput, WeightSource,
 };
 use crate::backend::printer_slot_live_mapping::{
     bambu_live_active_tray_matches_slot, bambu_live_slot_matches_tray, is_external_slot_id,
@@ -333,6 +334,13 @@ impl CompanionService {
 
     pub fn create_manual_spool(&self, input: CreateManualSpoolInput) -> InventoryResult<()> {
         self.with_authoritative_inventory(|engine| engine.create_manual_spool(input))
+    }
+
+    pub fn create_catalog_spool_batch(
+        &self,
+        input: CatalogSpoolBatchInput,
+    ) -> InventoryResult<CatalogSpoolBatchReceipt> {
+        self.with_authoritative_inventory(|engine| engine.create_catalog_spool_batch(input))
     }
 
     pub fn create_spool(&self, input: CreateSpoolInput) -> InventoryResult<()> {

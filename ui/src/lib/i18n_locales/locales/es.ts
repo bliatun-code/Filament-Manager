@@ -49,6 +49,10 @@ export const esDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   errors: {
+    catalogSpoolBatchInvalid: "El lote no se guardó. Comprueba los filamentos seleccionados, el peso, el propietario y la ubicación. Usa un máximo de 100 bobinas.",
+    catalogSpoolBatchConflict: "Este ID de lote pertenece a otra solicitud o biblioteca. Comprueba el inventario antes de registrar otro lote.",
+    catalogSpoolBatchHostUnsupported: "Actualiza el Host para registrar lotes de forma segura. No se envió ninguna bobina.",
+    catalogSpoolBatchStorageFailed: "No se pudo guardar o leer el registro de recuperación del lote. El registro está pausado para evitar bobinas duplicadas.",
     invalidRequest: "No se pudo completar la solicitud.",
     unauthorized: "Se requiere autenticación.",
     forbidden: "Esta acción no está permitida.",
@@ -350,6 +354,14 @@ export const esDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para hosts antiguos",
   },
   inventory: {
+    bambuBatchSaving: "Guardando {count, plural, one {# bobina} other {# bobinas}}...",
+    bambuBatchUncertain: "No pudimos confirmar si se guardó este lote. Continúa con el mismo lote para comprobarlo o completarlo sin crear duplicados.",
+    bambuBatchRejected: "Este lote no se guardó. Revisa el error y después edita el lote.",
+    bambuBatchComplete: "{count, plural, one {# bobina registrada} other {# bobinas registradas}}.",
+    bambuBatchContinue: "Continuar con el mismo lote",
+    bambuBatchEdit: "Editar lote",
+    bambuBatchNew: "Iniciar nuevo lote",
+    bambuBatchRemaining: "{count, plural, one {# fila aún necesita revisión y se ha conservado para el siguiente lote.} other {# filas aún necesitan revisión y se han conservado para el siguiente lote.}}",
     title: "Bobinas",
     subtitle:
       "Gestiona el stock, los préstamos y el peso de las bobinas en un solo lugar.",

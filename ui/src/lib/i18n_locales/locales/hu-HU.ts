@@ -71,6 +71,10 @@ export const huHUDictionary: DictionaryNode = {
     "optional": "Opcionális"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "A köteg nem lett mentve. Ellenőrizze a kiválasztott filamenteket, a tömeget, a tulajdonost és a helyet. Legfeljebb 100 tekercset használjon.",
+    "catalogSpoolBatchConflict": "Ez a kötegazonosító másik kéréshez vagy könyvtárhoz tartozik. Újabb köteg regisztrálása előtt ellenőrizze a készletet.",
+    "catalogSpoolBatchHostUnsupported": "A kötegek biztonságos regisztrálásához frissítse a Hostot. Nem lett elküldve tekercs.",
+    "catalogSpoolBatchStorageFailed": "A köteg helyreállítási rekordját nem sikerült menteni vagy beolvasni. A regisztráció szünetel a tekercsek megkettőzésének elkerülése érdekében.",
     "internal": "Valami elromlott. Próbáld újra.",
     "forbidden": "Ez a művelet nem engedélyezett.",
     "unauthorized": "Hitelesítés szükséges.",
@@ -734,6 +738,14 @@ export const huHUDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "bambuBatchSaving": "{count, plural, one {# tekercs} other {# tekercs}} mentése...",
+    "bambuBatchUncertain": "Nem sikerült megerősíteni, hogy ez a köteg mentve lett-e. Folytassa ugyanazt a köteget az ellenőrzéshez vagy a befejezéshez, másolatok létrehozása nélkül.",
+    "bambuBatchRejected": "Ez a köteg nem lett mentve. Ellenőrizze a hibát, majd szerkessze a köteget.",
+    "bambuBatchComplete": "{count, plural, one {# tekercs} other {# tekercs}} regisztrálva.",
+    "bambuBatchContinue": "Ugyanazon köteg folytatása",
+    "bambuBatchEdit": "Köteg szerkesztése",
+    "bambuBatchNew": "Új köteg indítása",
+    "bambuBatchRemaining": "{count, plural, one {# sor még ellenőrzésre vár, és megmaradt a következő köteghez.} other {# sor még ellenőrzésre vár, és megmaradt a következő köteghez.}}",
     "title": "Tekercsek",
     "addSpoolAction": "Adja hozzá az orsót",
     "clientReadOnlyBanner": "Ez az eszköz kliensként van összekapcsolva. A készletszerkesztések egyelőre a gazdagépen maradnak.",

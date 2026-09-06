@@ -49,6 +49,10 @@ export const zhTWDictionary: DictionaryNode = {
     "optional": "選填"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "批次未儲存。請檢查所選耗材、重量、擁有者及存放位置。最多可使用 100 卷耗材。",
+    "catalogSpoolBatchConflict": "此批次 ID 屬於另一個請求或資料庫。登錄另一批次前，請先檢查庫存。",
+    "catalogSpoolBatchHostUnsupported": "請升級 Host 以安全登錄批次。未傳送任何耗材卷。",
+    "catalogSpoolBatchStorageFailed": "無法儲存或讀取批次復原記錄。為防止產生重複耗材卷，登錄作業已暫停。",
     "invalidRequest": "請求無法完成。",
     "unauthorized": "需要身份驗證。",
     "forbidden": "不允許執行此操作。",
@@ -269,6 +273,14 @@ export const zhTWDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置印表機插槽。"
   },
   "inventory": {
+    "bambuBatchSaving": "正在儲存{count, plural, other { # 卷耗材}}...",
+    "bambuBatchUncertain": "無法確認此批次是否已儲存。繼續同一批次即可檢查或完成操作，而不會建立重複記錄。",
+    "bambuBatchRejected": "此批次未儲存。請查看錯誤，然後編輯批次。",
+    "bambuBatchComplete": "已登錄{count, plural, other { # 卷耗材}}。",
+    "bambuBatchContinue": "繼續同一批次",
+    "bambuBatchEdit": "編輯批次",
+    "bambuBatchNew": "開始新批次",
+    "bambuBatchRemaining": "{count, plural, other {# 列仍需檢查，已保留至下一批次。}}",
     "title": "線材捲",
     "subtitle": "在一處管理庫存、貸款和線材捲重量。",
     "addSpoolAction": "新增線材捲",

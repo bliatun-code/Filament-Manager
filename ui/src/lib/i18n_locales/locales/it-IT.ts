@@ -224,6 +224,10 @@ export const itITDictionary: DictionaryNode = {
     totalSpoolsSubtitle: "In tutte le località",
   },
   errors: {
+    catalogSpoolBatchInvalid: "Il lotto non è stato salvato. Controlla i filamenti selezionati, il peso, il proprietario e la posizione. Usa al massimo 100 bobine.",
+    catalogSpoolBatchConflict: "Questo ID lotto appartiene a un’altra richiesta o libreria. Controlla l’inventario prima di registrare un altro lotto.",
+    catalogSpoolBatchHostUnsupported: "Aggiorna il Host per registrare i lotti in sicurezza. Non è stata inviata alcuna bobina.",
+    catalogSpoolBatchStorageFailed: "Non è stato possibile salvare o leggere il record di recupero del lotto. La registrazione è sospesa per evitare bobine duplicate.",
     unavailable: "Questa funzione non è disponibile qui.",
     locationHasReferences:
       "La posizione è ancora associata a delle bobine. Spostale o archivia la posizione invece di eliminarla.",
@@ -312,6 +316,14 @@ export const itITDictionary: DictionaryNode = {
     unauthorized: "È richiesta l'autenticazione.",
   },
   inventory: {
+    bambuBatchSaving: "Salvataggio di {count, plural, one {# bobina} other {# bobine}}...",
+    bambuBatchUncertain: "Non è stato possibile confermare se questo lotto è stato salvato. Continua lo stesso lotto per verificarlo o completarlo senza creare duplicati.",
+    bambuBatchRejected: "Questo lotto non è stato salvato. Controlla l’errore, quindi modifica il lotto.",
+    bambuBatchComplete: "{count, plural, one {# bobina registrata} other {# bobine registrate}}.",
+    bambuBatchContinue: "Continua lo stesso lotto",
+    bambuBatchEdit: "Modifica lotto",
+    bambuBatchNew: "Avvia nuovo lotto",
+    bambuBatchRemaining: "{count, plural, one {# riga deve ancora essere controllata ed è stata conservata per il prossimo lotto.} other {# righe devono ancora essere controllate e sono state conservate per il prossimo lotto.}}",
     activeFilters: "attivo",
     addCurrentSelectionToWishlist:
       "Aggiungi la selezione corrente alla lista dei desideri",

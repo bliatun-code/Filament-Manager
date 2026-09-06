@@ -36,6 +36,13 @@ const hostValidationSource = readFileSync(
   ),
   "utf8",
 );
+const hostCatalogBatchSource = readFileSync(
+  new URL(
+    "../../../src-tauri/src/library_sync_catalog_batch_commands.rs",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 const pageModules = [
   "dashboard",
@@ -266,7 +273,26 @@ test("Host reads and auth stay bounded while non-idempotent mutations wait for a
   );
   assert.doesNotMatch(
     writeSource,
-    /LIBRARY_SYNC_REQUEST_TIMEOUT|LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT|\.timeout\(/,
-    "business writes must not report a timeout while a non-cancellable Host mutation can still commit",
+    /LIBRARY_SYNC_REQUEST_TIMEOUT|LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT/,
+    "the shared write transport must not impose a read or auth deadline on business writes",
+  );
+  assert.match(
+    writeSource,
+    /match timeout \{\s*Some\(timeout\) => request\.timeout\(timeout\),\s*None => request,/,
+    "only callers with an explicit timeout may bound a mutation request",
+  );
+  assert.match(
+    rustFunctionSource(
+      hostClientSource,
+      "perform_library_sync_host_write_and_parse",
+      "perform_library_sync_host_write_and_parse_for_target",
+    ),
+    /perform_library_sync_host_write_and_parse_for_target\(\s*state, base_url, path, payload, &target, None,/,
+    "legacy non-idempotent writes must preserve their definitive-result contract without a timeout",
+  );
+  assert.match(
+    hostCatalogBatchSource,
+    /perform_library_sync_host_write_and_parse_for_target\([\s\S]*?"\/api\/v1\/spools\/catalog-batch"[\s\S]*?Some\(std::time::Duration::from_secs\(30\)\)/,
+    "the idempotent catalog batch explicitly opts into a finite deadline so its same-ID request can be recovered",
   );
 });

@@ -195,6 +195,10 @@ export const trTRDictionary: DictionaryNode = {
     "totalSpoolsSubtitle": "Tüm lokasyonlarda"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "Toplu kayıt kaydedilmedi. Seçilen filamentleri, ağırlığı, sahibini ve konumu kontrol edin. En fazla 100 makara kullanın.",
+    "catalogSpoolBatchConflict": "Bu toplu kayıt kimliği başka bir isteğe veya kütüphaneye ait. Başka bir toplu kayıt yapmadan önce envanteri kontrol edin.",
+    "catalogSpoolBatchHostUnsupported": "Toplu kayıtları güvenli şekilde yapmak için Host'u yükseltin. Hiçbir makara gönderilmedi.",
+    "catalogSpoolBatchStorageFailed": "Toplu kayıt kurtarma kaydı kaydedilemedi veya okunamadı. Yinelenen makaraları önlemek için kayıt işlemi duraklatıldı.",
     "unavailable": "Hizmet geçici olarak kullanılamıyor.",
     "locationHasReferences": "Bu konumu silmeden önce tüm makaraları ve alt konumları taşıyın.",
     "locationNameRequired": "Konum adı zorunludur.",
@@ -265,6 +269,14 @@ export const trTRDictionary: DictionaryNode = {
     "unauthorized": "Kimlik doğrulama gerekli."
   },
   "inventory": {
+    "bambuBatchSaving": "{count, plural, one {# makara} other {# makara}} kaydediliyor...",
+    "bambuBatchUncertain": "Bu toplu kaydın kaydedilip kaydedilmediğini doğrulayamadık. Yinelenen kayıtlar oluşturmadan kontrol etmek veya tamamlamak için aynı toplu kayda devam edin.",
+    "bambuBatchRejected": "Bu toplu kayıt kaydedilmedi. Hatayı inceleyin, ardından toplu kaydı düzenleyin.",
+    "bambuBatchComplete": "{count, plural, one {# makara} other {# makara}} kaydedildi.",
+    "bambuBatchContinue": "Aynı toplu kayda devam et",
+    "bambuBatchEdit": "Toplu kaydı düzenle",
+    "bambuBatchNew": "Yeni toplu kayıt başlat",
+    "bambuBatchRemaining": "{count, plural, one {# satırın hâlâ incelenmesi gerekiyor ve sonraki toplu kayıt için saklandı.} other {# satırın hâlâ incelenmesi gerekiyor ve sonraki toplu kayıt için saklandı.}}",
     "activeFilters": "aktif",
     "addCurrentSelectionToWishlist": "Mevcut seçimi istek listesine ekle",
     "addDirectlyToStock": "Doğrudan stoklara ekleyin",

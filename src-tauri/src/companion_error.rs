@@ -15,6 +15,7 @@ pub(crate) enum CompanionApiError {
     RateLimited(u64),
     RequestTimeout,
     Conflict,
+    CodedConflict(&'static str),
     ServiceUnavailable(String),
     Internal(String),
 }
@@ -120,6 +121,13 @@ impl IntoResponse for CompanionApiError {
                 "common.unavailable",
                 "A catalog refresh is already running or this job ID belongs to another request."
                     .to_string(),
+                None,
+                None,
+            ),
+            CompanionApiError::CodedConflict(code) => (
+                StatusCode::CONFLICT,
+                code,
+                "This request conflicts with an earlier saved request.".to_string(),
                 None,
                 None,
             ),

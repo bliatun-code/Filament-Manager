@@ -4,6 +4,7 @@ import { InventoryBambuBatchModal } from "./inventory_bambu_batch_modal";
 import { InventoryCreateActionsPanel } from "./inventory_create_actions_panel";
 import { InventoryCreateSuccessPanel } from "./inventory_create_success_panel";
 import type { InventoryCreateSuccess } from "../lib/inventory_create_success";
+import type { BambuBatchRegistrationSnapshot } from "../lib/bambu_batch_registration";
 import {
   inventoryModalOverlayClassName,
   inventoryTwoColumnModalGridClassName,
@@ -34,6 +35,8 @@ export type InventoryAddModalProps = {
   bambuBatchInput: string;
   bambuBatchCreateState: BambuFilamentCodeBatchCreateState;
   bambuCodeBatch: BambuFilamentCodeBatch;
+  batchRegistration: BambuBatchRegistrationSnapshot | null;
+  batchBusy: boolean;
   borrowedFromContact: string;
   borrowedFromName: string;
   borrowedInNote: string;
@@ -65,6 +68,9 @@ export type InventoryAddModalProps = {
   onCatalogQueryChange: (value: string) => void;
   onClose: () => void;
   onCreateBambuCodeBatch: () => void;
+  onRetryBambuBatch: () => void;
+  onNewBambuBatch: () => void;
+  onOpenBambuBatchSpool: (spoolId: string) => void;
   onCreateModeChange: (value: InventoryCreateMode) => void;
   onCreateSpool: () => void;
   onInitialWeightChange: (value: string) => void;
@@ -97,6 +103,8 @@ export function InventoryAddModal({
   bambuBatchInput,
   bambuBatchCreateState,
   bambuCodeBatch,
+  batchRegistration,
+  batchBusy,
   borrowedFromContact,
   borrowedFromName,
   borrowedInNote,
@@ -128,6 +136,9 @@ export function InventoryAddModal({
   onCatalogQueryChange,
   onClose,
   onCreateBambuCodeBatch,
+  onRetryBambuBatch,
+  onNewBambuBatch,
+  onOpenBambuBatchSpool,
   onCreateModeChange,
   onCreateSpool,
   onInitialWeightChange,
@@ -157,15 +168,16 @@ export function InventoryAddModal({
   const [autoOpenedBambuBatch, setAutoOpenedBambuBatch] = useState(false);
   const form = useRef<HTMLFieldSetElement>(null);
   const showCreatedSpool = purpose === "STOCK" ? createdSpool : null;
+  const formLocked = busy || batchBusy || (purpose === "STOCK" && Boolean(batchRegistration));
 
   useEffect(() => {
     if (!open || showCreatedSpool || bambuBatchModalOpen) return;
-    if (busy) {
+    if (formLocked) {
       form.current?.closest<HTMLElement>('[role="dialog"]')?.focus();
     } else {
       form.current?.querySelector<HTMLInputElement>("input:not(:disabled)")?.focus();
     }
-  }, [open, showCreatedSpool, busy, bambuBatchModalOpen]);
+  }, [open, showCreatedSpool, formLocked, bambuBatchModalOpen]);
   const selectedCatalogMaster = selectedCatalogMasterId
     ? (catalogMasterById.get(selectedCatalogMasterId) ?? null)
     : null;
@@ -182,14 +194,18 @@ export function InventoryAddModal({
   });
 
   const openBambuBatchModal = useCallback(() => {
-    if (busy || showCreatedSpool || catalogLoadState !== "READY") {
+    if (batchRegistration) {
+      setBambuBatchModalOpen(true);
+      return;
+    }
+    if (busy || batchBusy || showCreatedSpool || catalogLoadState !== "READY") {
       return;
     }
     if (createMode !== "bambu") {
       onCreateModeChange("bambu");
     }
     setBambuBatchModalOpen(true);
-  }, [busy, showCreatedSpool, catalogLoadState, createMode, onCreateModeChange]);
+  }, [batchRegistration, busy, batchBusy, showCreatedSpool, catalogLoadState, createMode, onCreateModeChange]);
 
   useEffect(() => {
     if (!open) {
@@ -200,7 +216,7 @@ export function InventoryAddModal({
     if (
       !autoOpenBambuBatch ||
       autoOpenedBambuBatch ||
-      catalogLoadState !== "READY"
+      (!batchRegistration && catalogLoadState !== "READY")
     ) {
       return;
     }
@@ -209,16 +225,17 @@ export function InventoryAddModal({
   }, [
     autoOpenBambuBatch,
     autoOpenedBambuBatch,
+    batchRegistration,
     catalogLoadState,
     open,
     openBambuBatchModal,
   ]);
 
   useEffect(() => {
-    if (catalogLoadState !== "READY") {
+    if (!batchRegistration && catalogLoadState !== "READY") {
       setBambuBatchModalOpen(false);
     }
-  }, [catalogLoadState]);
+  }, [batchRegistration, catalogLoadState]);
 
   if (!open) {
     return null;
@@ -226,8 +243,8 @@ export function InventoryAddModal({
 
   return (
     <AppModal
-      closeOnBackdrop={!busy}
-      onBackdropClose={busy ? undefined : onClose}
+      closeOnBackdrop={!busy && !batchBusy}
+      onBackdropClose={busy || batchBusy ? undefined : onClose}
       overlayClassName={inventoryModalOverlayClassName}
       panelClassName={inventoryWideModalPanelClassName}
       returnFocusElement={returnFocusElement}
@@ -257,13 +274,13 @@ export function InventoryAddModal({
           }
           closeLabel={t("common.close", "Close")}
           onClose={onClose}
-          disabled={busy}
+          disabled={busy || batchBusy}
           className="sticky top-0 z-10 backdrop-blur-xl"
           aside={
             purpose === "STOCK" && !showCreatedSpool ? (
               <ModalHeaderActionButton
                 onClick={openBambuBatchModal}
-                disabled={busy || catalogLoadState !== "READY"}
+                disabled={!batchRegistration && (busy || batchBusy || catalogLoadState !== "READY")}
                 aria-label={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
                 title={t("inventory.bambuBatchHeaderAction", "Batch add from boxes")}
               >
@@ -302,7 +319,7 @@ export function InventoryAddModal({
               onRegisterAnother={onRegisterAnotherSpool}
             />
           ) : (
-          <fieldset ref={form} disabled={busy} className={`min-w-0 ${inventoryTwoColumnModalGridClassName}`}>
+          <fieldset ref={form} disabled={formLocked} className={`min-w-0 ${inventoryTwoColumnModalGridClassName}`}>
             <div className="space-y-4">
               <InventoryStockSourcePanel
                 activeCatalogMasters={activeCatalogMasters}
@@ -362,11 +379,17 @@ export function InventoryAddModal({
         </ModalBody>
         <InventoryBambuBatchModal
           batch={bambuCodeBatch}
+          batchRegistration={batchRegistration}
+          batchBusy={batchBusy}
           createState={bambuBatchCreateState}
           disabledCreate={disabledBambuBatchCreate}
           input={bambuBatchInput}
-          onClose={() => { if (!busy) setBambuBatchModalOpen(false); }}
+          error={error}
+          onClose={() => { if (!batchBusy) setBambuBatchModalOpen(false); }}
           onCreateBatch={onCreateBambuCodeBatch}
+          onRetryBambuBatch={onRetryBambuBatch}
+          onNewBambuBatch={onNewBambuBatch}
+          onOpenBambuBatchSpool={onOpenBambuBatchSpool}
           onInputChange={onBambuBatchInputChange}
           onRowSelectionChange={onBambuBatchRowSelectionChange}
           open={bambuBatchModalOpen}

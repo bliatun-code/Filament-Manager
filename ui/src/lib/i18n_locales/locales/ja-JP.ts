@@ -49,6 +49,10 @@ export const jaJPDictionary: DictionaryNode = {
     "optional": "任意"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "一括登録は保存されませんでした。選択したフィラメント、重量、所有者、保管場所を確認してください。ロール数は 100 個以下にしてください。",
+    "catalogSpoolBatchConflict": "この一括登録 ID は別のリクエストまたはライブラリに属しています。次の一括登録を行う前に在庫を確認してください。",
+    "catalogSpoolBatchHostUnsupported": "一括登録を安全に行うには Host をアップグレードしてください。ロールは送信されていません。",
+    "catalogSpoolBatchStorageFailed": "一括登録の復旧記録を保存または読み取りできませんでした。ロールの重複を防ぐため、登録を一時停止しています。",
     "invalidRequest": "リクエストを完了できませんでした。",
     "unauthorized": "認証が必要です。",
     "forbidden": "この行為は許可されていません。",
@@ -269,6 +273,14 @@ export const jaJPDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "プリンター slots がまだ構成されていません。"
   },
   "inventory": {
+    "bambuBatchSaving": "{count, plural, other {# 個のロールを保存中}}...",
+    "bambuBatchUncertain": "この一括登録が保存されたか確認できませんでした。同じ一括登録を続行すると、重複を作成せずに確認または完了できます。",
+    "bambuBatchRejected": "この一括登録は保存されませんでした。エラーを確認してから、一括登録を編集してください。",
+    "bambuBatchComplete": "{count, plural, other {# 個のロールを登録しました}}。",
+    "bambuBatchContinue": "同じ一括登録を続行",
+    "bambuBatchEdit": "一括登録を編集",
+    "bambuBatchNew": "新しい一括登録を開始",
+    "bambuBatchRemaining": "{count, plural, other {# 行はまだ確認が必要なため、次の一括登録用に保持されています。}}",
     "title": "ロール",
     "subtitle": "在庫、ローン、スプール重量を 1 か所で管理します。",
     "addSpoolAction": "スプールを追加する",

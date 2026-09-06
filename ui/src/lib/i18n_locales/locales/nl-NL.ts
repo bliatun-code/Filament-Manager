@@ -195,6 +195,10 @@ export const nlNLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Terugvalwaarde van 200 g voor oudere host"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "De batch is niet opgeslagen. Controleer de geselecteerde filamenten, het gewicht, de eigenaar en de locatie. Gebruik maximaal 100 rollen.",
+    "catalogSpoolBatchConflict": "Deze batch-ID hoort bij een ander verzoek of een andere bibliotheek. Controleer de voorraad voordat je een andere batch registreert.",
+    "catalogSpoolBatchHostUnsupported": "Werk de Host bij om batches veilig te registreren. Er zijn geen rollen verzonden.",
+    "catalogSpoolBatchStorageFailed": "Het herstelrecord van de batch kon niet worden opgeslagen of gelezen. De registratie is gepauzeerd om dubbele rollen te voorkomen.",
     "downloadsUnavailable": "De map Downloads is niet beschikbaar.",
     "exportInvalidPayload": "De gegenereerde export is ongeldig.",
     "exportWriteFailed": "De export kon niet worden opgeslagen.",
@@ -265,6 +269,14 @@ export const nlNLDictionary: DictionaryNode = {
     "filamentStandardsInvalid": "De opgeslagen filamentstandaarden zijn niet meer geldig. Laad ze opnieuw en controleer ze."
   },
   "inventory": {
+    "bambuBatchSaving": "{count, plural, one {# rol} other {# rollen}} opslaan...",
+    "bambuBatchUncertain": "We konden niet bevestigen of deze batch is opgeslagen. Ga verder met dezelfde batch om deze te controleren of af te ronden zonder duplicaten te maken.",
+    "bambuBatchRejected": "Deze batch is niet opgeslagen. Bekijk de fout en bewerk daarna de batch.",
+    "bambuBatchComplete": "{count, plural, one {# rol geregistreerd} other {# rollen geregistreerd}}.",
+    "bambuBatchContinue": "Dezelfde batch voortzetten",
+    "bambuBatchEdit": "Batch bewerken",
+    "bambuBatchNew": "Nieuwe batch starten",
+    "bambuBatchRemaining": "{count, plural, one {# rij moet nog worden gecontroleerd en is bewaard voor de volgende batch.} other {# rijen moeten nog worden gecontroleerd en zijn bewaard voor de volgende batch.}}",
     "activeFilters": "actief",
     "addCurrentSelectionToWishlist": "Voeg huidige selectie toe aan verlanglijst",
     "addDirectlyToStock": "Direct toevoegen aan de voorraad",

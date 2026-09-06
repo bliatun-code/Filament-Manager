@@ -156,6 +156,11 @@ export function useInventoryAddWorkflow({
     useManualFromCatalog,
   } = useInventoryCreateDraft(masters);
 
+  useEffect(() => {
+    // A previous library's codes must not become a fresh request in a new target.
+    resetBambuBatchInput();
+  }, [authorityKey, resetBambuBatchInput]);
+
   const {
     confirmWishlistRemoveId,
     resetWishlistQueue,
@@ -233,6 +238,10 @@ export function useInventoryAddWorkflow({
   ]);
 
   const {
+    batchRegistration,
+    batchBusy,
+    handleRetryBambuBatch,
+    handleNewBambuBatch,
     currentCreateDraft,
     handleAddCurrentToWishlist,
     handleCreateBambuCodeBatch,
@@ -245,6 +254,7 @@ export function useInventoryAddWorkflow({
     borrowedFromName,
     borrowedInNote,
     bambuCodeBatch,
+    bambuBatchInput,
     busy,
     canUseClientHostWrite,
     clientHostBaseUrl,
@@ -270,6 +280,17 @@ export function useInventoryAddWorkflow({
     reloadWishlist,
     resetAfterCreatedSpool,
     resetBambuBatchInput,
+    restoreBambuBatchDraft: (draft) => {
+      setCreateMode("bambu");
+      setBambuBatchInput(draft.rawInput);
+      for (const [key, id] of Object.entries(draft.selections)) setBambuBatchRowSelection(key, id);
+      setNewInitialWeight(String(draft.input.initial_weight_g));
+      setNewLocation(draft.input.location ?? "");
+      setNewOwnershipType(draft.input.ownership_type);
+      setBorrowedFromName(draft.input.owner_name ?? "");
+      setBorrowedFromContact(draft.input.owner_contact ?? "");
+      setBorrowedInNote(draft.input.ownership_note ?? "");
+    },
     selectedBambuMaster,
     selectedEsunMaster,
     setBusy,
@@ -335,6 +356,12 @@ export function useInventoryAddWorkflow({
     if (onOpenCreatedSpool(spoolId)) closeAddModal();
   }, [busy, closeAddModal, createdSpool, onOpenCreatedSpool]);
 
+  const openBambuBatchSpool = (spoolId: string) => {
+    if (busy || batchBusy || batchRegistration?.status !== "COMPLETE" ||
+      !batchRegistration.spoolIds.includes(spoolId)) return;
+    if (onOpenCreatedSpool(spoolId)) closeAddModal();
+  };
+
   const catalogSelectionUnavailable =
     isCatalogCreateMode && catalogLoadState !== "READY";
   const disableCreate =
@@ -373,6 +400,11 @@ export function useInventoryAddWorkflow({
   const addModalActive = showAddModal && sidePanelMode === "ADD" && createSession.authorityKey === authorityKey;
 
   const modalProps: InventoryAddModalProps = {
+    batchRegistration,
+    batchBusy,
+    onRetryBambuBatch: handleRetryBambuBatch,
+    onNewBambuBatch: handleNewBambuBatch,
+    onOpenBambuBatchSpool: openBambuBatchSpool,
     actionStyle: currentCreateActionStyle,
     activeCatalogMasters,
     bambuBatchInput,

@@ -49,6 +49,10 @@ export const koKRDictionary: DictionaryNode = {
     "optional": "선택 과목"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "일괄 등록이 저장되지 않았습니다. 선택한 필라멘트, 무게, 소유자 및 위치를 확인하세요. 최대 100개의 롤을 사용하세요.",
+    "catalogSpoolBatchConflict": "이 일괄 등록 ID는 다른 요청 또는 라이브러리에 속합니다. 다른 일괄 등록을 하기 전에 재고를 확인하세요.",
+    "catalogSpoolBatchHostUnsupported": "일괄 등록을 안전하게 수행하려면 Host를 업그레이드하세요. 전송된 롤은 없습니다.",
+    "catalogSpoolBatchStorageFailed": "일괄 등록 복구 기록을 저장하거나 읽을 수 없습니다. 중복 롤을 방지하기 위해 등록이 일시 중지되었습니다.",
     "invalidRequest": "요청을 완료할 수 없습니다.",
     "unauthorized": "인증이 필요합니다.",
     "forbidden": "이 작업은 허용되지 않습니다.",
@@ -269,6 +273,14 @@ export const koKRDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "아직 구성된 프린터 슬롯이 없습니다."
   },
   "inventory": {
+    "bambuBatchSaving": "{count, plural, other {롤 #개 저장 중}}...",
+    "bambuBatchUncertain": "이 일괄 등록이 저장되었는지 확인할 수 없습니다. 동일한 일괄 등록을 계속하면 중복을 만들지 않고 확인하거나 완료할 수 있습니다.",
+    "bambuBatchRejected": "이 일괄 등록은 저장되지 않았습니다. 오류를 확인한 후 일괄 등록을 편집하세요.",
+    "bambuBatchComplete": "{count, plural, other {롤 #개를 등록했습니다}}.",
+    "bambuBatchContinue": "동일한 일괄 등록 계속",
+    "bambuBatchEdit": "일괄 등록 편집",
+    "bambuBatchNew": "새 일괄 등록 시작",
+    "bambuBatchRemaining": "{count, plural, other {#개 행은 아직 검토가 필요하여 다음 일괄 등록을 위해 유지되었습니다.}}",
     "title": "롤",
     "subtitle": "재고, 대출, 스풀 중량을 한 곳에서 관리하세요.",
     "addSpoolAction": "스풀 추가",

@@ -49,6 +49,10 @@ export const fiFIDictionary: DictionaryNode = {
     "optional": "valinnainen"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "Erää ei tallennettu. Tarkista valitut filamentit, paino, omistaja ja sijainti. Käytä enintään 100 kelaa.",
+    "catalogSpoolBatchConflict": "Tämä erätunnus kuuluu toiseen pyyntöön tai kirjastoon. Tarkista varasto ennen uuden erän rekisteröintiä.",
+    "catalogSpoolBatchHostUnsupported": "Päivitä Host, jotta voit rekisteröidä erät turvallisesti. Yhtään kelaa ei lähetetty.",
+    "catalogSpoolBatchStorageFailed": "Erän palautustietuetta ei voitu tallentaa tai lukea. Rekisteröinti on keskeytetty kaksoiskappaleiden estämiseksi.",
     "invalidRequest": "Pyyntöä ei voitu suorittaa loppuun.",
     "unauthorized": "Todennus vaaditaan.",
     "forbidden": "Tämä toiminto ei ole sallittu.",
@@ -269,6 +273,14 @@ export const fiFIDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "Tulostinpaikkoja ei ole vielä määritetty."
   },
   "inventory": {
+    "bambuBatchSaving": "Tallennetaan {count, plural, one {# kela} other {# kelaa}}...",
+    "bambuBatchUncertain": "Emme voineet vahvistaa, tallennettiinko tämä erä. Jatka samaa erää tarkistaaksesi tai viimeistelläksesi sen ilman kaksoiskappaleita.",
+    "bambuBatchRejected": "Tätä erää ei tallennettu. Tarkista virhe ja muokkaa sitten erää.",
+    "bambuBatchComplete": "Rekisteröity {count, plural, one {# kela} other {# kelaa}}.",
+    "bambuBatchContinue": "Jatka samaa erää",
+    "bambuBatchEdit": "Muokkaa erää",
+    "bambuBatchNew": "Aloita uusi erä",
+    "bambuBatchRemaining": "{count, plural, one {# rivi vaatii vielä tarkistusta, ja se on säilytetty seuraavaa erää varten.} other {# riviä vaatii vielä tarkistusta, ja ne on säilytetty seuraavaa erää varten.}}",
     "title": "Rullat",
     "subtitle": "Hallitse varastoa, lainoja ja kelan painoa yhdessä paikassa.",
     "addSpoolAction": "Lisää kela",

@@ -54,7 +54,7 @@
       }
     ]
   },
-  "currentSchemaVersion": 6,
+  "currentSchemaVersion": 7,
   "publishedThroughSequence": 6,
   "publishedReference": {
     "ref": "v0.28.0",
@@ -112,6 +112,14 @@
       "role": "schema-migration",
       "fromSchemaVersion": 5,
       "toSchemaVersion": 6
+    },
+    {
+      "sequence": 8,
+      "file": "008_catalog_spool_batches.sql",
+      "sha256": "9455858171841fe911ec6612cdc47c6c4d5884bcfe34f075847d7f0c79e79e2e",
+      "role": "schema-migration",
+      "fromSchemaVersion": 6,
+      "toSchemaVersion": 7
     }
   ]
 }

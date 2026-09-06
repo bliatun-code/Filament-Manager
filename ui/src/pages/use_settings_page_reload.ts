@@ -41,6 +41,7 @@ import type { LibrarySyncMode } from "./settings_library_sync_model";
 
 type UseSettingsPageReloadInput = {
   onDataReloaded?: () => Promise<unknown> | unknown;
+  suspendSilentReload?: boolean;
   setBambuLiveIntegrations: Dispatch<SetStateAction<Record<string, BambuLiveIntegrationEntry["config"]>>>;
   setCatalogData: Dispatch<SetStateAction<SettingsCatalogDataState>>;
   setError: Dispatch<SetStateAction<string | null>>;
@@ -80,6 +81,7 @@ class SettingsRevisionPollError extends Error {}
 
 export function useSettingsPageReload({
   onDataReloaded,
+  suspendSilentReload = false,
   setBambuLiveIntegrations,
   setCatalogData,
   setError,
@@ -103,6 +105,10 @@ export function useSettingsPageReload({
   tauri,
 }: UseSettingsPageReloadInput) {
   const reloadRequestRef = useRef(0);
+  const suspendSilentReloadRef = useRef(suspendSilentReload);
+  useLayoutEffect(() => {
+    suspendSilentReloadRef.current = suspendSilentReload;
+  }, [suspendSilentReload]);
   const revisionTrackerRef = useRef(createLibraryRevisionTracker());
   const dataSourceIdentity = buildSettingsCatalogDataSourceIdentity({
     clientReadOnly: settingsClientReadOnly,
@@ -141,7 +147,7 @@ export function useSettingsPageReload({
   );
 
   return useCallback(async (options?: SettingsReloadOptions) => {
-    if (!tauri) {
+    if (!tauri || (options?.silent && suspendSilentReloadRef.current)) {
       return;
     }
     const requestId = reloadRequestRef.current + 1;
@@ -149,7 +155,11 @@ export function useSettingsPageReload({
     let requestDataSourceIdentity = dataSourceIdentity;
     const requestIsCurrent = () =>
       reloadRequestRef.current === requestId &&
-      dataSourceIdentityRef.current === requestDataSourceIdentity;
+      dataSourceIdentityRef.current === requestDataSourceIdentity &&
+      // A poll started before a restore must not publish its new identity
+      // while the confirmed write still owns the page. Explicit refreshes
+      // after commit remain available while that operation is busy.
+      !(options?.silent && suspendSilentReloadRef.current);
     let revisionSource: LibraryRevisionSource | null = null;
     let observedTracker: LibraryRevisionTracker | null = null;
     let revisionSignalFailed = false;

@@ -71,6 +71,10 @@ export const svSEDictionary: DictionaryNode = {
     "optional": "Valfritt"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "Batchen sparades inte. Kontrollera valda filament, vikt, ägare och plats. Använd högst 100 rullar.",
+    "catalogSpoolBatchConflict": "Detta batch-ID tillhör en annan begäran eller ett annat bibliotek. Kontrollera lagret innan du registrerar en ny batch.",
+    "catalogSpoolBatchHostUnsupported": "Uppgradera Host för att registrera batcher säkert. Inga rullar skickades.",
+    "catalogSpoolBatchStorageFailed": "Batchens återställningspost kunde inte sparas eller läsas. Registreringen har pausats för att förhindra dubbla rullar.",
     "internal": "Något gick fel. Försök igen.",
     "loadedSpoolEditBlocked": "Använd åtgärderna för skrivarfack för att redigera en laddad rulle.",
     "loanedSpoolEditBlocked": "Avsluta det aktiva utlånet innan du ändrar rullens status, plats eller ägarskap.",
@@ -734,6 +738,14 @@ export const svSEDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "bambuBatchSaving": "Sparar {count, plural, one {# rulle} other {# rullar}}...",
+    "bambuBatchUncertain": "Vi kunde inte bekräfta om denna batch sparades. Fortsätt med samma batch för att kontrollera eller slutföra den utan att skapa dubbletter.",
+    "bambuBatchRejected": "Denna batch sparades inte. Granska felet och redigera sedan batchen.",
+    "bambuBatchComplete": "Registrerade {count, plural, one {# rulle} other {# rullar}}.",
+    "bambuBatchContinue": "Fortsätt med samma batch",
+    "bambuBatchEdit": "Redigera batch",
+    "bambuBatchNew": "Starta ny batch",
+    "bambuBatchRemaining": "{count, plural, one {# rad behöver fortfarande granskas och har behållits till nästa batch.} other {# rader behöver fortfarande granskas och har behållits till nästa batch.}}",
     "subtitle": "Hantera lager, lån och spolvikt på ett ställe.",
     "clientHostUnavailable": "Värdanslutningsdetaljer saknas för den här klientenheten.",
     "clientReadOnlyBannerPaired": "Den här enheten är ansluten som en klient. Lageruppdateringar skickas till den parade värden, medan värden fortfarande är biblioteksauktoritet.",

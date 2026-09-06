@@ -49,6 +49,10 @@ export const zhCNDictionary: DictionaryNode = {
     "optional": "可选"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "批次未保存。请检查所选耗材、重量、所有者和存放位置。最多可使用 100 卷耗材。",
+    "catalogSpoolBatchConflict": "此批次 ID 属于另一请求或资料库。登记另一批次前，请先检查库存。",
+    "catalogSpoolBatchHostUnsupported": "请升级 Host 以安全登记批次。未发送任何耗材卷。",
+    "catalogSpoolBatchStorageFailed": "无法保存或读取批次恢复记录。为防止产生重复耗材卷，登记操作已暂停。",
     "invalidRequest": "请求无法完成。",
     "unauthorized": "需要身份验证。",
     "forbidden": "不允许执行此操作。",
@@ -269,6 +273,14 @@ export const zhCNDictionary: DictionaryNode = {
     "badgeNoPrinterSlots": "尚未配置打印机 slots。"
   },
   "inventory": {
+    "bambuBatchSaving": "正在保存{count, plural, other { # 卷耗材}}...",
+    "bambuBatchUncertain": "无法确认此批次是否已保存。继续同一批次即可检查或完成操作，而不会创建重复记录。",
+    "bambuBatchRejected": "此批次未保存。请查看错误，然后编辑批次。",
+    "bambuBatchComplete": "已登记{count, plural, other { # 卷耗材}}。",
+    "bambuBatchContinue": "继续同一批次",
+    "bambuBatchEdit": "编辑批次",
+    "bambuBatchNew": "开始新批次",
+    "bambuBatchRemaining": "{count, plural, other {# 行仍需检查，已保留至下一批次。}}",
     "title": "耗材卷",
     "subtitle": "在一处管理库存、贷款和线轴重量。",
     "addSpoolAction": "添加线轴",

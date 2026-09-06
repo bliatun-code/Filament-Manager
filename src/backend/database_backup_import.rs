@@ -33,8 +33,10 @@ pub(crate) fn import_full_backup_content(
     )?;
     let result: InventoryResult<()> = (|| {
         delete_all_rows(conn, &FULL_BACKUP_TABLES)?;
-        // Receipts belong to this installation and cannot survive a library restore.
         delete_all_rows(conn, &["catalog_refresh_jobs"])?;
+        // Keep the installation's batch journal: a pending retry can outlive a
+        // restore, even when that backup predates its rolls. Receipts are not
+        // exported; full app reset clears them along with the library identity.
 
         insert_portable_full_backup_rows(conn, &parsed)?;
         ensure_post_import_schema(conn)?;

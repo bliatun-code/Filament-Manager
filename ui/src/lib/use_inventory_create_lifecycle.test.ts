@@ -33,7 +33,7 @@ async function buildCreateHarness() {
       }, []);
       actions = useInventoryCreateActions({
         borrowedFromContact: "", borrowedFromName: "", borrowedInNote: "",
-        bambuCodeBatch: { creatableRows: [{ master }, { master: { ...master, id: "master-2" } }] },
+        bambuCodeBatch: { creatableRows: [{ master, code: "10101", key: "0-10101" }, { master: { ...master, id: "master-2" }, code: "10102", key: "1-10102" }], blockedRows: [] },
         busy, canUseClientHostWrite: () => true,
         clientHostBaseUrl: host ? "http://" + host : null,
         clientLibraryId: host ? "library-" + host : null,
@@ -139,10 +139,9 @@ test("real registration hook protects its commit receipt and session ownership",
 
       await page.evaluate("createLifecycle.render({mode:'bambu',session:2}); createLifecycle.start(['batch','single','batch'])");
       await waitForCommand(page, 2);
-      await page.evaluate("createLifecycle.finish(1, 'batch-first')");
-      await waitForCommand(page, 3);
-      await finishOperation(page, 2, 3, "batch-second");
-      assert.equal(await page.evaluate("createLifecycle.commandCount()"), 3);
+      await page.evaluate("createLifecycle.finish(1, {batch_id: createLifecycle.commands()[1].payload.input.batch.batch_id, spool_ids: ['batch-first','batch-second']})");
+      await page.waitForFunction("createLifecycle.settled(3) && createLifecycle.snapshot().selected === 'batch-second'");
+      assert.equal(await page.evaluate("createLifecycle.commandCount()"), 2);
       const result = await page.evaluate("createLifecycle.snapshot()");
       assert.equal(result.receipts.length, 1, "batch success must not publish a single-roll receipt");
       assert.equal(result.selected, "batch-second");

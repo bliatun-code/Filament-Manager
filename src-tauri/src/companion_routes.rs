@@ -1,4 +1,5 @@
 use crate::companion_api::*;
+use crate::companion_catalog_batch_api::handle_create_catalog_spool_batch;
 use crate::companion_catalog_job_api::{
     handle_active_catalog_refresh_job, handle_get_catalog_refresh_job,
     handle_start_catalog_refresh_job,
@@ -142,6 +143,7 @@ fn build_router_with_security_config(
         .route("/spools/owned", post(handle_create_owned_spool))
         .route("/spools/manual", post(handle_create_owned_spool))
         .route("/spools/borrowed-in", post(handle_create_borrowed_in_spool))
+        .route("/spools/catalog-batch", post(handle_create_catalog_spool_batch))
         .route(
             "/spools/{spool_id}/borrowed-in",
             post(handle_update_borrowed_in_spool),

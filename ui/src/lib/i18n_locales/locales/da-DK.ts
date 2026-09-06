@@ -71,6 +71,10 @@ export const daDKDictionary: DictionaryNode = {
     "optional": "Valgfrit"
   },
   "errors": {
+    "catalogSpoolBatchInvalid": "Batchen blev ikke gemt. Kontrollér de valgte filamenter, vægt, ejer og placering. Brug højst 100 ruller.",
+    "catalogSpoolBatchConflict": "Dette batch-ID tilhører en anden anmodning eller et andet bibliotek. Kontrollér lageret, før du registrerer en ny batch.",
+    "catalogSpoolBatchHostUnsupported": "Opgrader Host for at registrere batches sikkert. Ingen ruller blev sendt.",
+    "catalogSpoolBatchStorageFailed": "Gendannelsesdataene for batchen kunne ikke gemmes eller læses. Registreringen er sat på pause for at forhindre dublerede ruller.",
     "internal": "Noget gik galt. Prøv igen.",
     "loadedSpoolEditBlocked": "Brug printerbakkehandlingerne til at redigere en ilagt rulle.",
     "loanedSpoolEditBlocked": "Afslut det aktive udlån, før du ændrer denne rulles status, placering eller ejerskab.",
@@ -734,6 +738,14 @@ export const daDKDictionary: DictionaryNode = {
     }
   },
   "inventory": {
+    "bambuBatchSaving": "Gemmer {count, plural, one {# rulle} other {# ruller}}...",
+    "bambuBatchUncertain": "Vi kunne ikke bekræfte, om denne batch blev gemt. Fortsæt med samme batch for at kontrollere eller fuldføre den uden at oprette dubletter.",
+    "bambuBatchRejected": "Denne batch blev ikke gemt. Gennemgå fejlen, og rediger derefter batchen.",
+    "bambuBatchComplete": "Registrerede {count, plural, one {# rulle} other {# ruller}}.",
+    "bambuBatchContinue": "Fortsæt samme batch",
+    "bambuBatchEdit": "Rediger batch",
+    "bambuBatchNew": "Start ny batch",
+    "bambuBatchRemaining": "{count, plural, one {# række skal stadig gennemgås og er bevaret til næste batch.} other {# rækker skal stadig gennemgås og er bevaret til næste batch.}}",
     "subtitle": "Administrer lagerbeholdning, lån og spolevægt på ét sted.",
     "clientHostUnavailable": "Værtsforbindelsesoplysninger mangler for denne klientenhed.",
     "clientReadOnlyBannerPaired": "Denne enhed er tilsluttet som en klient. Lageropdateringer sendes til den parrede vært, mens værten stadig er biblioteksautoritet.",

@@ -2,7 +2,7 @@ use crate::credential_store::{CredentialKey, SecretValue};
 use crate::library_sync_command_support::normalize_library_sync_base_url;
 use crate::library_sync_runtime_auth::LibrarySyncRenewalFailureKind;
 use crate::library_sync_target_guard::{
-    capture_library_sync_target, ensure_library_sync_target_current,
+    capture_library_sync_target, ensure_library_sync_target_current, LibrarySyncTargetGuard,
 };
 use crate::secure_credential_mutation::lock_secure_credential_mutation;
 use crate::state::AppState;
@@ -1464,13 +1464,14 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     Ok(parsed)
 }
 
-pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
+fn post_library_sync_host_write_json<T: serde::Serialize>(
     base_url: &str,
     path: &str,
     session_id: &str,
     device_token: &str,
     csrf_token: &str,
     payload: &T,
+    timeout: Option<Duration>,
 ) -> Result<reqwest::blocking::Response, String> {
     ensure_library_sync_credential_transport(base_url)?;
     let host_header = library_sync_host_header_value(base_url)?;
@@ -1480,14 +1481,18 @@ pub(crate) fn post_library_sync_host_write_json<T: serde::Serialize>(
     let request_body = serde_json::to_string(payload)
         .map_err(|error| format!("Failed to encode desktop sync write payload: {error}"))?;
     send_library_sync_mutation_request(base_url, "Desktop sync write request", |client| {
-        client
+        let request = client
             .post(&request_url)
             .header(HOST, host_header.as_str())
             .header(ORIGIN, base_url)
             .header(reqwest::header::COOKIE, cookie_header.as_str())
             .header("x-csrf-token", csrf_token)
             .header(CONTENT_TYPE, "application/json")
-            .body(request_body.clone())
+            .body(request_body.clone());
+        match timeout {
+            Some(timeout) => request.timeout(timeout),
+            None => request,
+        }
     })
 }
 
@@ -1513,8 +1518,25 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
     payload: &T,
 ) -> Result<R, String> {
     let target = capture_library_sync_target(state, base_url, None)?;
-    let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
+    perform_library_sync_host_write_and_parse_for_target(
+        state, base_url, path, payload, &target, None,
+    )
+}
 
+pub(crate) fn perform_library_sync_host_write_and_parse_for_target<
+    T: serde::Serialize,
+    R: DeserializeOwned,
+>(
+    state: &AppState,
+    base_url: &str,
+    path: &str,
+    payload: &T,
+    target: &LibrarySyncTargetGuard,
+    timeout: Option<Duration>,
+) -> Result<R, String> {
+    ensure_library_sync_target_current(state, target)?;
+    let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
+    ensure_library_sync_target_current(state, target)?;
     let mut response = post_library_sync_host_write_json(
         base_url,
         path,
@@ -1522,6 +1544,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
         &initial_auth_state.device_token,
         &initial_auth_state.csrf_token,
         payload,
+        timeout,
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
@@ -1531,6 +1554,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
             &initial_auth_state.session_id,
             &initial_auth_state.device_token,
         )?;
+        ensure_library_sync_target_current(state, target)?;
         response = post_library_sync_host_write_json(
             base_url,
             path,
@@ -1538,6 +1562,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
             &renewed.device_token,
             &renewed.csrf_token,
             payload,
+            timeout,
         )?;
     }
 
@@ -1553,7 +1578,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse<
         .map_err(|error| format!("Desktop sync write response could not be read: {error}"))?;
     let parsed = serde_json::from_str(&body_text)
         .map_err(|error| format!("Desktop sync write returned invalid JSON: {error}"))?;
-    ensure_library_sync_target_current(state, &target)?;
+    ensure_library_sync_target_current(state, target)?;
     Ok(parsed)
 }
 
