@@ -67,7 +67,7 @@ Kildedatabasen åpnes skrivebeskyttet og skal være uendret.
 | Full smoke | Bestått: 792 skripttester, 1 652 UI-tester, 392 Companion-tester og 23 ytelsestester; build, lint, kontrakter, doctor og tilgjengelighetskontroller er grønne. |
 | Rust-verifisering | Bestått: 630 desktop-, 289 core-, 15 mDNS- og 3 generatortester. Tre eksisterende ignorerte tester. Format og begge Clippy-profiler er grønne etter retting av én overflødig referanse i testkoden. |
 | Installert lokal macOS-DMG | Bestått på arm64: begge batchscenarioer, synlig appvindu, skjema 7 og 27 tabeller; v0.28.0-fixturen bevares gjennom 5→7 og to starter. |
-| Native Windows-MSI | Ikke kjørt i denne lokale oppfølgingen. |
+| Native Windows-MSI | Bestått i etterfølgende CI på `d3c0b96d`; se CI-oppfølgingen nedenfor. |
 
 Den lokale kandidaten ble bygget fra `78c96503403f20f59e91444520b63d2ed6eb95cb`
 med denne oppfølgingens staged kodeendringer. Før bygg ble patch og filhasher
@@ -96,7 +96,49 @@ allerede de utvidede kontrollene. Windows-wrapperen krever nå batchbevis i
 begge sammendragene. De eksisterende kravene til tidligere release, installasjon,
 avinstallasjon og opprydding er beholdt. Oppgradering fra v0.28.0 er en separat
 release-kontroll og følger ikke automatisk av grønn ordinær Windows Smoke.
-Ingen CI-kjøring er startet eller kode pushet i denne lokale oppfølgingen.
+Denne lokale verifiseringen ble senere fulgt av CI-kjøringen nedenfor.
 
 Dette er automatiserte app- og databasekontroller. De tilfører ingen
 menneskelige tids- eller fullføringsmålinger fra brukertestprotokollen.
+
+## CI-oppfølging
+
+De lokale endringene ble samlet i [PR #89](https://github.com/bliatun-code/Filament-Manager/pull/89).
+Første CI-kjøring avdekket to feil i testoppsettet før installasjonspakkene
+ble prøvd. På Windows traff ikke Vites normaliserte modulstier mocken for
+Innstillinger-oppfriskning. På macOS arvet de syntetiske HTTP-serverne en
+nonblocking socket og kunne feile når forbindelsen ble akseptert før første
+request-byte var sendt.
+
+Begge feil ble gjenskapt lokalt før rettelsen. En ny Vite-byggtest prøver
+Windows-stier og krever at mocken faktisk lastes. To nettverksregresjoner
+venter til forbindelsen er akseptert før klienten sender HTTP-data.
+Testserverne setter nå eksplisitt blocking-modus for aksepterte forbindelser.
+Tre testfiler ble rettet samlet i `d3c0b96d7ae97a94006426361e8891ad6a4ab118`;
+produksjonskode og tidsgrenser ble ikke endret.
+
+Alle 1 653 UI-tester og Rust-verifiseringen bestod lokalt etter rettelsen:
+632 desktop-, 289 core-, 15 mDNS- og 3 generatortester, med tre eksisterende
+ignorerte tester. Format, begge Clippy-profiler og Rust 1.88-kontrollen bestod.
+
+[Oppfølgings-CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34058558627)
+bestod på den samme rettelsescommiten. Mac-jobben er bestått, inkludert
+installert DMG, begge batchscenarioer og oppgradering fra den historiske
+skjema-1-fixturen til skjema 7 gjennom to starter.
+[CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34058558579)
+og [avhengighets- og lisenskontrollen](https://github.com/bliatun-code/Filament-Manager/actions/runs/34058558637)
+er også grønne. Windows-jobben bestod full verifisering, MSI-bygg,
+pakkeverifikasjon, ren installasjon, begge batchscenarioer og avinstallasjon.
+
+Begge installerte appers sammendrag bekrefter skjema 7, to innlånte batchruller,
+to innlån og bevart kvittering ved gjentakelse etter omstart. Host/Client har
+fire batchhistorikkhendelser, én kvittering, uendrede revisjoner ved gjentakelse
+og null Client-batchrader. Sesjonsfornyelse og sletting av testlegitimasjon
+bestod; Windows beholder `UnsignedRequired`.
+
+Mac-CI prøvde skjema 1→7 separat fra den installerte DMG-en. Den SHA-pinnede
+v0.28.0-oppgraderingen 5→7 er dokumentert av den lokale DMG-kjøringen ovenfor.
+Release-kontrollen skal fortsatt kjøres på releasekandidaten; ordinær Windows
+Smoke prøver ikke denne oppgraderingen.
+Disse CI-resultatene gjelder `d3c0b96d`; den etterfølgende dokumentasjonen
+ble committet lokalt og inngår i neste samlede push, uten en egen smoke-kjøring.
