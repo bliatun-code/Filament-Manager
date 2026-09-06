@@ -239,6 +239,7 @@ export const plPLDictionary: DictionaryNode = {
     "inboundLoanRequired": "Ta operacja jest dostępna tylko dla szpul pożyczonych od kogoś.",
     "spoolCommonDetailsHostUnsupported": "Zaktualizuj hosta przed zapisaniem masy pustej szpuli lub własności razem ze szczegółami szpuli.",
     "purchaseMetadataHostUnsupported": "Zaktualizuj hosta przed zapisaniem danych zakupu.",
+    wishlistReceiptLocationHostUnsupported: "Zaktualizuj hosta przed przyjęciem szpul z lokalizacją przechowywania.",
     "purchasePriceInvalid": "Wprowadź prawidłową cenę zakupu równą co najmniej zero.",
     "purchaseCurrencyInvalid": "Wprowadź prawidłowy trzyliterowy kod waluty zakupu.",
     "purchaseCurrencyRequired": "Po ustawieniu ceny zakupu trzeba podać walutę.",
@@ -761,7 +762,7 @@ export const plPLDictionary: DictionaryNode = {
     "loadInPrinter": "Załaduj do drukarki",
     "loadInPrinterHint": "Wybrana szpula jest gotowa. Wybierz tylko gniazdo drukarki — nie trzeba ponownie wyszukiwać szpuli.",
     "noAvailablePrinterSlots": "Brak wolnych gniazd drukarki.",
-    "loadedInPrinter": "Szpula została załadowana do gniazda drukarki.",
+    "loadedInPrinter": "Szpula załadowana do {slot}.",
     "printLabelAction": "Drukuj etykietę",
     "unsavedChanges": "Masz niezapisane zmiany.",
     "allChangesSaved": "Wszystkie zmiany zostały zapisane.",
@@ -2166,6 +2167,7 @@ export const plPLDictionary: DictionaryNode = {
     "vendorPlaceholder": "Dostawca (np. Generic, eSUN)",
     "viewRefreshLog": "Wyświetl dziennik odświeżania",
     "receivePurchase": "Przyjmij zakup",
+    receiptComplete: "Przyjęto {count} × {item}. Pozostało: {remaining}.",
     "receivedQuantity": "Odebrana ilość",
     "receiveQuantity": "{count, plural, one {Przyjmij # szpulę} few {Przyjmij # szpule} many {Przyjmij # szpul} other {Przyjmij # szpuli}}"
   }

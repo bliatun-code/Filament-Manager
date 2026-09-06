@@ -160,6 +160,8 @@ pub(crate) struct UpdateWishlistItemStatusRequest {
 pub(crate) struct ReceiveWishlistItemRequest {
     pub(crate) quantity: i64,
     #[serde(default)]
+    pub(crate) home_location: Option<String>,
+    #[serde(default)]
     pub(crate) purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
@@ -257,6 +259,7 @@ pub(crate) const INVENTORY_BULK_MUTATION_CAPABILITY: &str = "inventory-bulk-muta
 pub(crate) const INVENTORY_LOCATIONS_CAPABILITY: &str = "inventory-locations-v1";
 pub(crate) const SPOOL_COMMON_DETAILS_V2_CAPABILITY: &str = "spool-common-details-v2";
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
+pub(crate) const WISHLIST_RECEIPT_LOCATION_CAPABILITY: &str = "wishlist-receipt-location-v1";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
 pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
 pub(crate) const VENDOR_CATALOG_DISCOVERY_CAPABILITY: &str = "vendor-catalog-discovery-v1";

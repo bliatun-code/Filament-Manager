@@ -4707,6 +4707,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_partial_1".to_string(),
                 quantity: 2,
+                home_location: None,
                 purchase_metadata: Some(PurchaseReceiptMetadata {
                     purchase_price: Some(249.5),
                     purchase_currency: Some(" nok ".to_string()),
@@ -4763,6 +4764,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_partial_1".to_string(),
                 quantity: 1,
+                home_location: None,
                 purchase_metadata: Some(PurchaseReceiptMetadata {
                     purchase_price: Some(199.0),
                     purchase_currency: Some("EUR".to_string()),
@@ -4800,6 +4802,7 @@ fn receive_wishlist_item_creates_exact_spools_and_tracks_remaining_quantity() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_partial_1".to_string(),
                 quantity: 1,
+                home_location: None,
                 purchase_metadata: None,
             })
             .is_err());
@@ -4858,6 +4861,7 @@ fn receive_wishlist_item_rolls_back_spools_and_quantity_together() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_rollback_1".to_string(),
                 quantity: 2,
+                home_location: None,
                 purchase_metadata: Some(PurchaseReceiptMetadata {
                     purchase_price: Some(99.0),
                     purchase_currency: Some("NOK".to_string()),
@@ -4919,6 +4923,7 @@ fn receive_wishlist_item_rejects_invalid_metadata_without_side_effects() {
             .receive_wishlist_item(ReceiveWishlistItemInput {
                 item_id: "wish_invalid_metadata".to_string(),
                 quantity: 1,
+                home_location: None,
                 purchase_metadata: Some(PurchaseReceiptMetadata {
                     purchase_price: Some(100.0),
                     ..Default::default()

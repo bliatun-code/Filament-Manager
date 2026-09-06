@@ -1843,6 +1843,11 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .is_some_and(|values| values
                 .iter()
                 .any(|value| { value.as_str() == Some("purchase-receipt-metadata") })));
+        assert!(host_health_json["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value.as_str() == Some("wishlist-receipt-location-v1")));
         assert!(host_health_json
             .get("capabilities")
             .and_then(|value| value.as_array())
@@ -3796,7 +3801,7 @@ async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
                     .header("cookie", format!("bfm_companion_session={session_cookie}"))
                     .header(COMPANION_CSRF_HEADER, &csrf_token)
                     .body(Body::from(
-                        r#"{"quantity":2,"purchase_metadata":{"purchase_price":249.5,"purchase_currency":"nok","purchase_date":"2026-08-21","batch_code":" batch-7 ","supplier_reference":" po-19 "}}"#,
+                        r#"{"quantity":2,"home_location":"  Receipt box  ","purchase_metadata":{"purchase_price":249.5,"purchase_currency":"nok","purchase_date":"2026-08-21","batch_code":" batch-7 ","supplier_reference":" po-19 "}}"#,
                     ))
                     .map_err(|error| error.to_string())?,
             )
@@ -3828,6 +3833,11 @@ async fn companion_api_applies_receipt_metadata_to_every_received_spool() {
             assert_eq!(spool.purchase_date.as_deref(), Some("2026-08-21"));
             assert_eq!(spool.batch_code.as_deref(), Some("batch-7"));
             assert_eq!(spool.supplier_reference.as_deref(), Some("po-19"));
+            let location = db.list_inventory_locations(false).map_err(|error| error.to_string())?
+                .into_iter().find(|location| location.name == "Receipt box")
+                .ok_or_else(|| "receipt home location missing".to_string())?;
+            assert_eq!(spool.home_location_id.as_deref(), Some(location.id.as_str()));
+            assert_eq!(spool.location_id, spool.home_location_id);
         }
 
         Ok::<(), String>(())

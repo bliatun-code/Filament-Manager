@@ -115,6 +115,7 @@ export const frDictionary: DictionaryNode = {
       "Mettez à jour l’hôte avant d’enregistrer la tare ou la propriété avec les détails de la bobine.",
     purchaseMetadataHostUnsupported:
       "Mettez à jour l’hôte avant d’enregistrer les détails d’achat.",
+    wishlistReceiptLocationHostUnsupported: "Mettez à jour l’hôte avant de réceptionner des bobines avec un emplacement de rangement.",
     purchasePriceInvalid:
       "Saisissez un prix d’achat valide, supérieur ou égal à zéro.",
     purchaseCurrencyInvalid:
@@ -531,7 +532,7 @@ export const frDictionary: DictionaryNode = {
     loanOutAction: "Prêter",
     loadInPrinter: "Charger dans l’imprimante",
     loadInPrinterHint: "Choisissez un emplacement d’imprimante libre pour cette bobine.",
-    loadedInPrinter: "Bobine chargée dans l’imprimante.",
+    loadedInPrinter: "Bobine chargée dans {slot}.",
     noAvailablePrinterSlots: "Aucun emplacement d’imprimante libre.",
     printLabelAction: "Imprimer l’étiquette",
     unsavedChanges: "Modifications non enregistrées",
@@ -1090,6 +1091,7 @@ export const frDictionary: DictionaryNode = {
     itemStatusGroup: "État de {name}",
     qty: "Qté",
     receivePurchase: "Réceptionner l’achat",
+    receiptComplete: "{count} × {item} réceptionné(s). Quantité restante : {remaining}.",
     receivedQuantity: "Quantité reçue",
     receiveQuantity:
       "{count, plural, one {Réceptionner # bobine} other {Réceptionner # bobines}}",

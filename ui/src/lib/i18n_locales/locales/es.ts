@@ -115,6 +115,7 @@ export const esDictionary: DictionaryNode = {
       "Actualiza el host antes de guardar la tara o la propiedad junto con los detalles de la bobina.",
     purchaseMetadataHostUnsupported:
       "Actualiza el host antes de guardar los detalles de compra.",
+    wishlistReceiptLocationHostUnsupported: "Actualiza el host antes de recibir bobinas con una ubicación de almacenamiento.",
     purchasePriceInvalid: "Introduce un precio de compra válido de cero o más.",
     purchaseCurrencyInvalid:
       "Introduce una moneda de compra válida de tres letras.",
@@ -852,7 +853,7 @@ export const esDictionary: DictionaryNode = {
     loadInPrinterHint:
       "La bobina seleccionada está lista. Elige únicamente la ranura de la impresora; no es necesario buscar otra bobina.",
     noAvailablePrinterSlots: "No hay ranuras de impresora vacías disponibles.",
-    loadedInPrinter: "Bobina cargada en la ranura de la impresora.",
+    loadedInPrinter: "Bobina cargada en {slot}.",
     printLabelAction: "Imprimir etiqueta",
     unsavedChanges: "Tienes cambios sin guardar.",
     allChangesSaved: "Todos los cambios están guardados.",
@@ -1153,6 +1154,7 @@ export const esDictionary: DictionaryNode = {
     confirmRemoveHint:
       "Esto elimina la entrada de la cola, no las bobinas del inventario.",
     receivePurchase: "Recibir compra",
+    receiptComplete: "Recibido: {count} × {item}. Pendiente: {remaining}.",
     receivedQuantity: "Cantidad recibida",
     receiveQuantity:
       "{count, plural, one {Recibir # bobina} other {Recibir # bobinas}}",

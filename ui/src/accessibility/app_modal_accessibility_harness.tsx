@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { AppModal } from "../components/app_modal";
 import { ModalHeader } from "../components/modal_chrome";
+import { WishlistReceiptModal } from "../components/wishlist_receipt_modal";
+import { I18nContext, type I18nContextValue } from "../lib/i18n";
+import { emptyPurchaseReceiptMetadataDraft } from "../lib/purchase_receipt_metadata";
+import { formatMessage } from "../../../src-tauri/companion_browser/message_format.js";
 
 const APP_MODAL_ACCESSIBILITY_DIALOG_NAME = "AppModal accessibility test";
+const receiptI18n: I18nContextValue = {
+  locale: "en",
+  setLocale: () => {},
+  t: (_key, fallback = "", params = {}) => formatMessage(fallback, params, "en"),
+};
 
 export function AppModalAccessibilityHarness() {
   const [open, setOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [homeLocation, setHomeLocation] = useState("");
+  const [metadataDraft, setMetadataDraft] = useState(emptyPurchaseReceiptMetadataDraft);
 
   return (
     <main className="min-h-screen bg-slate-100 p-8 text-slate-950">
@@ -17,6 +29,35 @@ export function AppModalAccessibilityHarness() {
       >
         Open accessibility test dialog
       </button>
+
+      <section className="surface-card mt-40 h-[35rem]">
+        <button
+          type="button"
+          data-testid="receipt-opener"
+          onClick={() => setReceiptOpen(true)}
+        >
+          Open receipt inside purchase queue surface
+        </button>
+        {receiptOpen ? (
+          <I18nContext.Provider value={receiptI18n}>
+            <WishlistReceiptModal
+              busy={false}
+              errors={{}}
+              homeLocation={homeLocation}
+              itemTitle="PLA Basic · Jade White"
+              maxQuantity={2}
+              metadataDraft={metadataDraft}
+              onCancel={() => setReceiptOpen(false)}
+              onConfirm={() => setReceiptOpen(false)}
+              onHomeLocationChange={setHomeLocation}
+              onMetadataDraftChange={setMetadataDraft}
+              onQuantityChange={() => {}}
+              quantity={1}
+              quantityValue="1"
+            />
+          </I18nContext.Provider>
+        ) : null}
+      </section>
 
       {open ? (
         <AppModal closeOnBackdrop onBackdropClose={() => setOpen(false)}>

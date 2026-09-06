@@ -34,6 +34,7 @@ export type UpdateWishlistStatusInput = {
 export type ReceiveWishlistItemInput = {
   item_id: string;
   quantity: number;
+  home_location?: string | null;
   purchase_metadata?: PurchaseReceiptMetadata;
 };
 
@@ -102,6 +103,7 @@ export function buildLibrarySyncHostWishlistReceiptPayload(
       expected_library_id: expectedLibraryId ?? null,
       item_id: input.item_id,
       quantity: input.quantity,
+      ...(input.home_location === undefined ? {} : { home_location: input.home_location }),
       ...(input.purchase_metadata === undefined
         ? {}
         : { purchase_metadata: input.purchase_metadata }),

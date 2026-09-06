@@ -1,4 +1,8 @@
 export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
+  "wishlist.receive.location_host_unsupported": [
+    "errors.wishlistReceiptLocationHostUnsupported",
+    "Update the Host before receiving rolls with a home location.",
+  ],
   "common.invalid_request": ["errors.invalidRequest", "The request could not be completed."],
   "common.unauthorized": ["errors.unauthorized", "Authentication is required."],
   "common.forbidden": ["errors.forbidden", "This action is not allowed."],

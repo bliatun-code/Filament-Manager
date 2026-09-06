@@ -110,6 +110,7 @@ export const enDictionary: DictionaryNode = {
         "Update the Host before saving tare weight or ownership together with roll details.",
       purchaseMetadataHostUnsupported:
         "Update the Host before saving purchase details.",
+      wishlistReceiptLocationHostUnsupported: "Update the Host before receiving rolls with a home location.",
       purchasePriceInvalid: "Enter a valid purchase price of zero or more.",
       purchaseCurrencyInvalid:
         "Enter a valid three-letter purchase currency.",
@@ -432,7 +433,7 @@ export const enDictionary: DictionaryNode = {
       loadInPrinterHint:
         "The selected roll is ready. Choose only the printer slot; no new roll search is needed.",
       noAvailablePrinterSlots: "No empty printer slots are available.",
-      loadedInPrinter: "Roll loaded in printer slot.",
+      loadedInPrinter: "Roll loaded in {slot}.",
       printLabelAction: "Print label",
       unsavedChanges: "You have unsaved changes.",
       allChangesSaved: "All changes are saved.",
@@ -1081,6 +1082,7 @@ export const enDictionary: DictionaryNode = {
       itemStatusGroup: "Status for {name}",
       qty: "Qty",
       receivePurchase: "Receive purchase",
+      receiptComplete: "Received {count} × {item}. Remaining: {remaining}.",
       receivedQuantity: "Received quantity",
       receiveQuantity:
         "{count, plural, one {Receive # roll} other {Receive # rolls}}",

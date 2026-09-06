@@ -314,7 +314,7 @@ fn fetch_and_cache_locations(
     })
 }
 
-fn refresh_location_cache_best_effort(
+pub(crate) fn refresh_location_cache_best_effort(
     state: &AppState,
     base_url: &str,
     target: &LibrarySyncTargetGuard,

@@ -300,6 +300,7 @@ export const ptBRDictionary: DictionaryNode = {
       "Atualize o host antes de salvar a tara ou a propriedade junto com os detalhes da bobina.",
     purchaseMetadataHostUnsupported:
       "Atualize o host antes de salvar os dados da compra.",
+    wishlistReceiptLocationHostUnsupported: "Atualize o host antes de receber bobinas com um local de armazenamento.",
     purchasePriceInvalid:
       "Insira um preço de compra válido igual ou superior a zero.",
     purchaseCurrencyInvalid:
@@ -556,7 +557,7 @@ export const ptBRDictionary: DictionaryNode = {
       "A bobina selecionada está pronta. Escolha apenas o slot da impressora; não é necessário procurar outra bobina.",
     noAvailablePrinterSlots:
       "Nenhum slot de impressora vazio está disponível.",
-    loadedInPrinter: "Bobina carregada no slot da impressora.",
+    loadedInPrinter: "Bobina carregada em {slot}.",
     printLabelAction: "Imprimir etiqueta",
     unsavedChanges: "Você tem alterações não salvas.",
     allChangesSaved: "Todas as alterações foram salvas.",
@@ -2717,6 +2718,7 @@ export const ptBRDictionary: DictionaryNode = {
     confirmRemoveHint:
       "Isso remove a entrada da fila. As bobinas de estoque existentes não são afetadas.",
     receivePurchase: "Receber compra",
+    receiptComplete: "Recebido: {count} × {item}. Restante: {remaining}.",
     receivedQuantity: "Quantidade recebida",
     receiveQuantity:
       "{count, plural, one {Receber # bobina} other {Receber # bobinas}}",

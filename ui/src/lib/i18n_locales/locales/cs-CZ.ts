@@ -239,6 +239,7 @@ export const csCZDictionary: DictionaryNode = {
     "inboundLoanRequired": "Tato akce je dostupná pouze pro cívky vypůjčené od někoho jiného.",
     "spoolCommonDetailsHostUnsupported": "Před uložením hmotnosti prázdné cívky nebo vlastnictví spolu s údaji cívky aktualizujte hostitele.",
     "purchaseMetadataHostUnsupported": "Před uložením údajů o nákupu aktualizujte hostitele.",
+    wishlistReceiptLocationHostUnsupported: "Před příjmem cívek s místem uložení aktualizujte hostitele.",
     "purchasePriceInvalid": "Zadejte platnou nákupní cenu rovnou nule nebo vyšší.",
     "purchaseCurrencyInvalid": "Zadejte platný třípísmenný kód měny nákupu.",
     "purchaseCurrencyRequired": "Při nastavení nákupní ceny je vyžadována měna.",
@@ -761,7 +762,7 @@ export const csCZDictionary: DictionaryNode = {
     "loadInPrinter": "Vložit do tiskárny",
     "loadInPrinterHint": "Vybraná cívka je připravena. Stačí zvolit pozici tiskárny; není třeba znovu hledat cívku.",
     "noAvailablePrinterSlots": "Nejsou dostupné žádné prázdné pozice tiskárny.",
-    "loadedInPrinter": "Cívka byla vložena do pozice tiskárny.",
+    "loadedInPrinter": "Cívka vložena do {slot}.",
     "printLabelAction": "Vytisknout štítek",
     "unsavedChanges": "Máte neuložené změny.",
     "allChangesSaved": "Všechny změny jsou uloženy.",
@@ -2166,6 +2167,7 @@ export const csCZDictionary: DictionaryNode = {
     "vendorPlaceholder": "Prodejce (např. Generic, eSUN)",
     "viewRefreshLog": "Zobrazit protokol obnovení",
     "receivePurchase": "Přijmout nákup",
+    receiptComplete: "Přijato {count} × {item}. Zbývá: {remaining}.",
     "receivedQuantity": "Přijaté množství",
     "receiveQuantity": "{count, plural, one {Přijmout # cívku} few {Přijmout # cívky} many {Přijmout # cívek} other {Přijmout # cívky}}"
   }

@@ -115,6 +115,7 @@ export const huHUDictionary: DictionaryNode = {
     "inboundLoanRequired": "Ez a művelet csak mástól kölcsönzött tekercsekhez érhető el.",
     "spoolCommonDetailsHostUnsupported": "A tárasúly vagy a tulajdonjog tekercsadatokkal együtt történő mentéséhez frissítse a gazdagépet.",
     "purchaseMetadataHostUnsupported": "A vásárlási adatok mentéséhez frissítse a gazdagépet.",
+    wishlistReceiptLocationHostUnsupported: "Frissítsd a gazdagépet, mielőtt tárolási hellyel együtt veszel át tekercseket.",
     "purchasePriceInvalid": "Adjon meg egy érvényes, nulla vagy annál nagyobb vételárat.",
     "purchaseCurrencyInvalid": "Adjon meg egy érvényes, hárombetűs vásárlási pénznemkódot.",
     "purchaseCurrencyRequired": "Vételár megadásakor a vásárlási pénznemet is meg kell adni.",
@@ -190,6 +191,7 @@ export const huHUDictionary: DictionaryNode = {
       "delete": "Nem sikerült törölni a kívánságlista elemét."
     },
     "receivePurchase": "Vásárlás bevételezése",
+    receiptComplete: "Átvéve: {count} × {item}. Hátralévő mennyiség: {remaining}.",
     "receivedQuantity": "Bevételezett mennyiség",
     "receiveQuantity": "{count, plural, one {# tekercs bevételezése} other {# tekercs bevételezése}}"
   },
@@ -1033,7 +1035,7 @@ export const huHUDictionary: DictionaryNode = {
     "loadInPrinter": "Betöltés nyomtatóba",
     "loadInPrinterHint": "A kijelölt tekercs készen áll. Csak a nyomtatóhelyet válassza ki; nem kell újra tekercset keresni.",
     "noAvailablePrinterSlots": "Nincs elérhető üres nyomtatóhely.",
-    "loadedInPrinter": "A tekercs betöltve egy nyomtatóhelyre.",
+    "loadedInPrinter": "A tekercs betöltve ide: {slot}.",
     "printLabelAction": "Címke nyomtatása",
     "unsavedChanges": "Nem mentett módosítások vannak.",
     "allChangesSaved": "Minden módosítás mentve.",

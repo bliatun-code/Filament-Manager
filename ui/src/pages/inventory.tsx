@@ -772,6 +772,7 @@ export default function InventoryPage({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
     ensureLocalWriteAllowed,
     loanedOut: selectedSpoolLoanedOut,
     manageBusy,

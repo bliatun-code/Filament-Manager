@@ -274,6 +274,14 @@ transaction expose an internal connection-based variant when they need to join
 an engine transaction; nested independent transactions are not an acceptable
 substitute.
 
+Wishlist receipt can include an optional home-location ID or name. The receipt
+transaction resolves or creates the active generic location, assigns it as both
+home and current location for every received spool, records the receipt history,
+and updates the remaining queue quantity together. Blank or omitted locations
+preserve the legacy unassigned behavior. Client receipts with a location require
+the Host capability `wishlist-receipt-location-v1` before any mutation; an older
+Host returns an explicit update message without a partial receipt or retry.
+
 Compound detail and statistics responses use one deferred SQLite read
 transaction. Every query contributing to a response therefore observes the
 same database snapshot, even if another connection commits while the response

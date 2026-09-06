@@ -167,7 +167,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
-1. Følg opp den [AI-utførte evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md): tilby lokasjon ved mottak og vis nøyaktig printerspor etter lasting. Alle fem oppgaveutfall er verifisert; rapporten skiller observerte forhold fra hypoteser.
+1. Vurder hypotesen om uklart neste steg etter vanlig registrering fra [AI-evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md). Lokasjon ved mottak og nøyaktig printerspor er nå [rettet og verifisert lokalt](USABILITY_FOLLOWUP_2026-09-06.md); hypotesen om dobbeltregistrering er ennå ikke bekreftet.
 2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
@@ -175,6 +175,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ### 2026-09-06
 
+- [Oppfølgingen av AI-evalueringen](USABILITY_FOLLOWUP_2026-09-06.md) lagrer valgfri hjemme- og nåværende lokasjon atomisk ved mottak og viser valgt printer, enhet og spor etter lasting. Et lagret mottak beholder suksess ved oppfriskningsfeil, og foreldede lastingssvar undertrykkes. Native testing avdekket og fikk rettet en avkuttet mottaksdialog. Delmottak, sluttmottak, tastaturinnsending og printerlasting er kontrollert med skjermbilder og uavhengige databasekontroller. `npm run smoke` og `npm run test:rust` passerer, inkludert tilgjengelighet, Host/Client, lokalisering og begge Clippy-profiler. Menneskelige fullføringsrater og tidsgevinster er fortsatt umålte.
 - En [AI-utført native evaluering](USABILITY_AGENT_EVALUATION_2026-09-06.md) fullførte registrering, søk, lasting, utlån og delmottak på kandidaten mot fem nye private testbaser. Uavhengige før-/etterkontroller godkjenner 5 av 5 utfall. Nulltreff, manglende låntakernavn, avbrutt mottak og varsel om ulagrede lokasjonsendringer ble også prøvd. De viktigste forbedringspunktene er lokasjon direkte i mottaket og nøyaktig spornummer i lastingsbekreftelsen. Rapporten inneholder ingen simulerte deltakermålinger.
 - Analyseverktøyets feilstier er gjennomgått før innsamling av deltakermålinger. Duplikater og manglende forsøk rapporteres nå med radnumre eller summer per bygg/oppgave, uten deltaker-ID-er. Ulesbare filer og ugyldig JSON gir heller ikke fra seg private filstier eller innholdsutdrag. Veiledningen bruker `npm run --silent` slik at npm heller ikke skriver filstien i rapporten. 27 fokuserte tester, kontraktskontrollene og den dokumenterte npm-feilstien passerer. Akseptgrenser og beregninger er uendret; den modererte brukertesten gjenstår.
 

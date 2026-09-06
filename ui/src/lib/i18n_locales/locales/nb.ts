@@ -110,6 +110,7 @@ export const nbDictionary: DictionaryNode = {
         "Oppdater verten før du lagrer tara eller eierskap sammen med rulldetaljer.",
       purchaseMetadataHostUnsupported:
         "Oppdater verten før du lagrer kjøpsdetaljer.",
+      wishlistReceiptLocationHostUnsupported: "Oppdater verten før du mottar ruller med en hjemmelokasjon.",
       purchasePriceInvalid: "Skriv inn en gyldig kjøpspris som er null eller høyere.",
       purchaseCurrencyInvalid:
         "Skriv inn en gyldig kjøpsvaluta med tre bokstaver.",
@@ -433,7 +434,7 @@ export const nbDictionary: DictionaryNode = {
       loadInPrinterHint:
         "Det valgte filamentet er klart. Velg bare printersport; du trenger ikke søke etter filamentet på nytt.",
       noAvailablePrinterSlots: "Ingen tomme printersport er tilgjengelige.",
-      loadedInPrinter: "Filamentet er lastet i printersportet.",
+      loadedInPrinter: "Rullen er lastet i {slot}.",
       printLabelAction: "Skriv etikett",
       unsavedChanges: "Du har ulagrede endringer.",
       allChangesSaved: "Alle endringer er lagret.",
@@ -1086,6 +1087,7 @@ export const nbDictionary: DictionaryNode = {
       itemStatusGroup: "Status for {name}",
       qty: "Antall",
       receivePurchase: "Motta kjøp",
+      receiptComplete: "Mottatt {count} × {item}. Gjenstår: {remaining}.",
       receivedQuantity: "Mottatt antall",
       receiveQuantity:
         "{count, plural, one {Motta # rull} other {Motta # ruller}}",

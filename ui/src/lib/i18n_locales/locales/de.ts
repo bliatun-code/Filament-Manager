@@ -114,6 +114,7 @@ export const deDictionary: DictionaryNode = {
       "Aktualisiere den Host, bevor du Taragewicht oder Eigentum zusammen mit den Rollendetails speicherst.",
     purchaseMetadataHostUnsupported:
       "Aktualisiere den Host, bevor du Kaufdetails speicherst.",
+    wishlistReceiptLocationHostUnsupported: "Aktualisiere den Host, bevor du Rollen mit einem Heimatlagerort annimmst.",
     purchasePriceInvalid:
       "Gib einen gültigen Kaufpreis von null oder mehr ein.",
     purchaseCurrencyInvalid:
@@ -738,7 +739,7 @@ export const deDictionary: DictionaryNode = {
     loanOutAction: "Ausleihen",
     loadInPrinter: "In Drucker laden",
     loadInPrinterHint: "Wähle einen freien Druckerplatz für diese Rolle.",
-    loadedInPrinter: "Rolle in den Drucker geladen.",
+    loadedInPrinter: "Rolle in {slot} geladen.",
     noAvailablePrinterSlots: "Keine freien Druckerplätze verfügbar.",
     printLabelAction: "Etikett drucken",
     unsavedChanges: "Nicht gespeicherte Änderungen",
@@ -1065,6 +1066,7 @@ export const deDictionary: DictionaryNode = {
     itemStatusGroup: "Status für {name}",
     qty: "Anz.",
     receivePurchase: "Einkauf empfangen",
+    receiptComplete: "{count} × {item} empfangen. Verbleibend: {remaining}.",
     receivedQuantity: "Empfangene Menge",
     receiveQuantity:
       "{count, plural, one {# Rolle empfangen} other {# Rollen empfangen}}",

@@ -264,6 +264,7 @@ export const itITDictionary: DictionaryNode = {
       "Aggiorna l'host della libreria prima di modificare i dettagli condivisi da questo client.",
     purchaseMetadataHostUnsupported:
       "Aggiorna l'host della libreria prima di modificare i dettagli di acquisto da questo client.",
+    wishlistReceiptLocationHostUnsupported: "Aggiorna l’host prima di ricevere bobine con una posizione di deposito.",
     purchasePriceInvalid: "Inserisci un prezzo di acquisto valido.",
     purchaseCurrencyInvalid: "Usa un codice valuta di tre lettere, per esempio EUR.",
     purchaseCurrencyRequired: "La valuta è obbligatoria quando è presente un prezzo.",
@@ -935,7 +936,7 @@ export const itITDictionary: DictionaryNode = {
     loadInPrinterHint:
       "La bobina selezionata è pronta. Scegli solo lo slot della stampante; non serve cercare un’altra bobina.",
     noAvailablePrinterSlots: "Non sono disponibili slot vuoti nelle stampanti.",
-    loadedInPrinter: "Bobina caricata nello slot della stampante.",
+    loadedInPrinter: "Bobina caricata in {slot}.",
     printLabelAction: "Stampa etichetta",
     unsavedChanges: "Sono presenti modifiche non salvate.",
     allChangesSaved: "Tutte le modifiche sono state salvate.",
@@ -2676,6 +2677,7 @@ export const itITDictionary: DictionaryNode = {
     confirmRemoveHint:
       "Ciò rimuove la voce della coda. Le bobine di inventario esistenti non sono interessate.",
     receivePurchase: "Ricevi acquisto",
+    receiptComplete: "Ricevuto: {count} × {item}. Rimanente: {remaining}.",
     receivedQuantity: "Quantità ricevuta",
     receiveQuantity:
       "{count, plural, one {Ricevi # bobina} other {Ricevi # bobine}}",

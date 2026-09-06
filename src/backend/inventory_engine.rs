@@ -246,6 +246,8 @@ pub struct ReceiveWishlistItemInput {
     pub item_id: String,
     pub quantity: i64,
     #[serde(default)]
+    pub home_location: Option<String>,
+    #[serde(default)]
     pub purchase_metadata: Option<PurchaseReceiptMetadata>,
 }
 
@@ -1462,6 +1464,7 @@ impl InventoryEngine {
             input.item_id.trim(),
             input.quantity,
             input.purchase_metadata.unwrap_or_default(),
+            input.home_location.as_deref(),
         )
     }
 
@@ -2415,3 +2418,7 @@ pub(super) fn normalize_optional_input_text(value: Option<&str>) -> Option<Strin
 #[cfg(test)]
 #[path = "inventory_engine_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "inventory_wishlist_receipt_location_tests.rs"]
+mod wishlist_receipt_location_tests;

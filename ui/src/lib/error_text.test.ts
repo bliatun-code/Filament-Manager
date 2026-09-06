@@ -56,6 +56,23 @@ test("older Host purchase metadata capability error is localized and actionable"
   );
 });
 
+test("older Host receipt location error explains the required upgrade", () => {
+  const error = new Error(JSON.stringify({
+    code: "wishlist.receive.location_host_unsupported",
+    safe_detail: null,
+    diagnostic_id: null,
+  }));
+  const t = (key: string, fallback = "") =>
+    key === "errors.wishlistReceiptLocationHostUnsupported"
+      ? "Oppdater verten før du mottar ruller med en hjemmelokasjon."
+      : fallback;
+
+  assert.equal(
+    toErrorMessage(error, "Kunne ikke motta rullene.", t),
+    "Oppdater verten før du mottar ruller med en hjemmelokasjon.",
+  );
+});
+
 test("referenced location deletion error explains the required cleanup", () => {
   const error = new Error(
     JSON.stringify({

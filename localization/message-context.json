@@ -393,6 +393,24 @@
       "key": "errors.inboundLoanRequired",
       "meaning": "Browser Companion conflict shown when a borrowed-in return has no matching active inbound-loan record.",
       "screenshot": "docs/screenshots/companion-phone-lend-spool.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "wishlist.receiptComplete",
+      "meaning": "Receipt of physical rolls from either a wishlist or an order. {count} is the received quantity, {item} is the filament title, and {remaining} is the unreceived quantity left on this queue entry. Zero means fully received. Do not translate substituted item names.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.wishlistReceiptLocationHostUnsupported",
+      "meaning": "The paired Host is too old to receive rolls and store a home location atomically. The Client rejects the request before changing inventory; upgrade the Host before retrying with a location.",
+      "screenshot": "docs/screenshots/inventory.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.wishlistReceiptLocationHostUnsupported",
+      "meaning": "Shared error for a Host that does not support receiving rolls with a home location in one operation. Upgrade is required before that operation; no partial receipt is performed.",
+      "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
     }
   ],
   "groups": [

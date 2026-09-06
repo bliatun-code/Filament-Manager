@@ -403,6 +403,7 @@ export function useInventoryCreateActions({
     item: WishlistItemRow,
     quantity: number,
     purchaseMetadata?: PurchaseReceiptMetadata,
+    homeLocation?: string,
   ): Promise<boolean> {
     if (!canStockWishlistItem(item.status)) {
       return false;
@@ -418,23 +419,38 @@ export function useInventoryCreateActions({
         {
           item_id: item.id,
           quantity,
+          ...(homeLocation?.trim() ? { home_location: homeLocation.trim() } : {}),
           ...(purchaseMetadata === undefined
             ? {}
             : { purchase_metadata: purchaseMetadata }),
         },
         hostWriteTarget,
       );
-      await reloadSpools();
-      await reloadWishlist();
+      // The receipt is already committed. A failed read must not leave a
+      // retryable receipt draft that could create the same rolls again.
+      try {
+        const refreshed = await Promise.allSettled([reloadSpools(), reloadWishlist()]);
+        const failed = refreshed.find((result) => result.status === "rejected");
+        if (failed?.status === "rejected") {
+          throw failed.reason;
+        }
+      } catch (refreshError) {
+        console.error(refreshError);
+        setError(commandErrorText(
+          refreshError,
+          t("inventory.error.loadInventory", "Failed to load inventory."),
+          t,
+        ));
+      }
       const createdSpoolId = receipt.spool_ids[0] ?? null;
       setSelectedSpoolId(createdSpoolId);
       setRecentlyAddedSpoolId(createdSpoolId);
       setInfoMessage(
-        `${t("inventory.addedFromWishlist", "Added from wishlist")}: ${receipt.received_quantity} × ${formatInventoryDisplayTitle(
-          item.material,
-          item.filament_name,
-          item.color_name,
-        )}`,
+        t("wishlist.receiptComplete", "Received {count} × {item}. Remaining: {remaining}.", {
+          count: receipt.received_quantity,
+          item: formatInventoryDisplayTitle(item.material, item.filament_name, item.color_name),
+          remaining: receipt.remaining_quantity,
+        }),
       );
       return true;
     } catch (stockError) {
