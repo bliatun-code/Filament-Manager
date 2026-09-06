@@ -348,6 +348,8 @@ export const zhCNDictionary: DictionaryNode = {
     "showFewerRolls": "显示更少",
     "loading": "正在加载线轴...",
     "addedToInventory": "添加到库存",
+    "openCreatedRoll": "打开料卷",
+    "registerAnotherRoll": "登记另一卷",
     "addedFromWishlist": "从愿望清单添加",
     "visualFixtureLoaded": "已加载库存明细夹具。",
     "noMatch": "没有线轴与当前过滤器匹配。",

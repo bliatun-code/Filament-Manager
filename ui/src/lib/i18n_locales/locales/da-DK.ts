@@ -816,6 +816,8 @@ export const daDKDictionary: DictionaryNode = {
     "remaining": "Tilbage",
     "addedFromWishlist": "Tilføjet fra ønskeliste",
     "addedToInventory": "Tilføjet til lager",
+    "openCreatedRoll": "Åbn rullen",
+    "registerAnotherRoll": "Registrer en rulle mere",
     "location": "Sted",
     "noMatch": "Ingen spoler matcher det aktuelle filter.",
     "visualFixtureLoaded": "Inventar detalje armatur indlæst.",

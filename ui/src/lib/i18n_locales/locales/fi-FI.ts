@@ -348,6 +348,8 @@ export const fiFIDictionary: DictionaryNode = {
     "showFewerRolls": "Näytä vähemmän",
     "loading": "Ladataan keloja...",
     "addedToInventory": "Lisätty varastoon",
+    "openCreatedRoll": "Avaa rulla",
+    "registerAnotherRoll": "Rekisteröi toinen rulla",
     "addedFromWishlist": "Lisätty toivelistalta",
     "visualFixtureLoaded": "Varastotietojen kiinnitys ladattu.",
     "noMatch": "Yksikään kela ei vastaa nykyistä suodatinta.",

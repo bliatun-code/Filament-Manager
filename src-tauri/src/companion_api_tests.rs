@@ -33,6 +33,9 @@ use tower::ServiceExt;
 #[path = "companion_server_lifecycle_tests.rs"]
 mod companion_server_lifecycle_tests;
 
+#[path = "companion_borrowed_catalog_create_tests.rs"]
+mod companion_borrowed_catalog_create_tests;
+
 fn temp_db_path(test_name: &str) -> PathBuf {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)

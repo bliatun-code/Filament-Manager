@@ -608,6 +608,8 @@ export const frDictionary: DictionaryNode = {
     showAllRolls: "Tout afficher",
     showFewerRolls: "Afficher moins",
     addedToInventory: "Ajoutée au stock",
+    openCreatedRoll: "Ouvrir la bobine",
+    registerAnotherRoll: "Enregistrer une autre bobine",
     addedFromWishlist: "Ajoutée depuis la liste de souhaits",
     visualFixtureLoaded: "Données de test du détail de stock chargées.",
     noMatchHint: "Modifiez la recherche ou les filtres d’état, de matériau ou de propriété.",

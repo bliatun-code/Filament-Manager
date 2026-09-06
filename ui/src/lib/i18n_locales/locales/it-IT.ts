@@ -318,6 +318,8 @@ export const itITDictionary: DictionaryNode = {
     addDirectlyToStock: "Aggiungi direttamente allo stock",
     addedFromWishlist: "Aggiunto dalla lista dei desideri",
     addedToInventory: "Aggiunto all'inventario",
+    openCreatedRoll: "Apri bobina",
+    registerAnotherRoll: "Registra un'altra bobina",
     addFilament: "Aggiungi filamento",
     addFilamentSubtitle:
       "Aggiungi direttamente allo stock o mantieni la lista dei desideri → in ordine → flusso di lavoro dello stock.",

@@ -270,6 +270,8 @@ export const trTRDictionary: DictionaryNode = {
     "addDirectlyToStock": "Doğrudan stoklara ekleyin",
     "addedFromWishlist": "İstek listesinden eklendi",
     "addedToInventory": "Envantere eklendi",
+    "openCreatedRoll": "Makarayı aç",
+    "registerAnotherRoll": "Başka bir makara kaydet",
     "addFilament": "Filament ekle",
     "addFilamentSubtitle": "Doğrudan stoğa ekleyin veya istek listesini → sipariş üzerine → stok iş akışını saklayın.",
     "addMovedPrefix": "Ekleme/sipariş akışı en üste taşındı",

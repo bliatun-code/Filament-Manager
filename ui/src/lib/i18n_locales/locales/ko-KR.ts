@@ -348,6 +348,8 @@ export const koKRDictionary: DictionaryNode = {
     "showFewerRolls": "간략히 표시",
     "loading": "스풀 로드 중...",
     "addedToInventory": "인벤토리에 추가됨",
+    "openCreatedRoll": "스풀 열기",
+    "registerAnotherRoll": "다른 스풀 등록",
     "addedFromWishlist": "위시리스트에서 추가됨",
     "visualFixtureLoaded": "재고 세부 고정 장치가 로드되었습니다.",
     "noMatch": "현재 필터와 일치하는 스풀이 없습니다.",

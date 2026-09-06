@@ -348,6 +348,8 @@ export const ukUADictionary: DictionaryNode = {
     "showFewerRolls": "Показувати менше",
     "loading": "Завантаження котушок...",
     "addedToInventory": "Додано до інвентарю",
+    "openCreatedRoll": "Відкрити котушку",
+    "registerAnotherRoll": "Зареєструвати ще одну котушку",
     "addedFromWishlist": "Додано зі списку бажань",
     "visualFixtureLoaded": "Пристосування деталей інвентарю завантажено.",
     "noMatch": "Немає спулів, що відповідають поточним фільтрам.",

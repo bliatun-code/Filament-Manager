@@ -348,6 +348,8 @@ export const zhTWDictionary: DictionaryNode = {
     "showFewerRolls": "顯示更少",
     "loading": "正在載入線材捲...",
     "addedToInventory": "新增到庫存",
+    "openCreatedRoll": "開啟料卷",
+    "registerAnotherRoll": "登記另一卷",
     "addedFromWishlist": "從願望清單新增",
     "visualFixtureLoaded": "已載入庫存明細夾具。",
     "noMatch": "沒有線材捲與當前過濾器匹配。",

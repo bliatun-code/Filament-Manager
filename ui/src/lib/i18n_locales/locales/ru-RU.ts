@@ -811,6 +811,8 @@ export const ruRUDictionary: DictionaryNode = {
     "noActiveLoans": "Никаких активных кредитов.",
     "moreRolls": "больше рулонов",
     "addedToInventory": "Добавлено в инвентарь",
+    "openCreatedRoll": "Открыть катушку",
+    "registerAnotherRoll": "Зарегистрировать ещё одну катушку",
     "visualFixtureLoaded": "Загружено подробное описание инвентаря.",
     "material": "Материал",
     "loading": "Загрузка катушек...",

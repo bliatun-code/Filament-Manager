@@ -415,6 +415,8 @@ export const esDictionary: DictionaryNode = {
     showFewerRolls: "Mostrar menos",
     loading: "Cargando bobinas...",
     addedToInventory: "Añadida al inventario",
+    openCreatedRoll: "Abrir bobina",
+    registerAnotherRoll: "Registrar otra bobina",
     addedFromWishlist: "Añadida desde la lista de deseos",
     noMatch: "Ninguna bobina coincide con los filtros actuales.",
     noMatchHint:

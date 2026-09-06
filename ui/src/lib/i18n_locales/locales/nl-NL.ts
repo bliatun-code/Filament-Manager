@@ -270,6 +270,8 @@ export const nlNLDictionary: DictionaryNode = {
     "addDirectlyToStock": "Direct toevoegen aan de voorraad",
     "addedFromWishlist": "Toegevoegd vanuit verlanglijst",
     "addedToInventory": "Toegevoegd aan inventaris",
+    "openCreatedRoll": "Rol openen",
+    "registerAnotherRoll": "Nog een rol registreren",
     "addFilament": "Voeg filament toe",
     "addFilamentSubtitle": "Direct toevoegen aan de voorraad, of het verlanglijstje behouden → op bestelling → voorraadworkflow.",
     "addMovedPrefix": "De toevoeg-/bestelstroom wordt naar boven verplaatst",

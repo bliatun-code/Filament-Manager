@@ -351,6 +351,8 @@ export const ptBRDictionary: DictionaryNode = {
     addDirectlyToStock: "Adicione diretamente ao estoque",
     addedFromWishlist: "Adicionado da lista de desejos",
     addedToInventory: "Adicionado ao inventário",
+    openCreatedRoll: "Abrir rolo",
+    registerAnotherRoll: "Registrar outro rolo",
     addFilament: "Adicionar filamento",
     addFilamentSubtitle:
       "Adicione diretamente ao estoque ou mantenha o fluxo lista de desejos → encomendado → estoque.",

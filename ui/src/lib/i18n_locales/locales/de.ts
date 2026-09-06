@@ -821,6 +821,8 @@ export const deDictionary: DictionaryNode = {
     showAllRolls: "Alle anzeigen",
     showFewerRolls: "Weniger anzeigen",
     addedToInventory: "Zum Bestand hinzugefügt",
+    openCreatedRoll: "Rolle öffnen",
+    registerAnotherRoll: "Weitere Rolle registrieren",
     addedFromWishlist: "Von der Wunschliste hinzugefügt",
     visualFixtureLoaded: "Bestandsdetail-Testdaten geladen.",
     updatingRoll: "Ausgewählte Rolle wird aktualisiert...",

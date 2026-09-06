@@ -974,8 +974,8 @@ pub(super) async fn handle_create_borrowed_in_spool(
                         ownership_note: ownership_note.clone(),
                         initial_weight_g: payload.initial_weight_g,
                         current_weight_g: payload.initial_weight_g,
-                        location_id: None,
-                        home_location_id: None,
+                        location_id: location.clone(),
+                        home_location_id: location.clone(),
                         purchase_date: None,
                         purchase_price: None,
                         batch_code: None,
@@ -983,22 +983,6 @@ pub(super) async fn handle_create_borrowed_in_spool(
                         supplier_reference: None,
                     })
                     .map_err(CompanionApiError::from)?;
-                if location.is_some() {
-                    state
-                        .service
-                        .update_spool_details(UpdateSpoolDetailsInput {
-                            spool_id: spool_id.clone(),
-                            qr_code,
-                            status: "IN_STOCK".to_string(),
-                            location: location.clone(),
-                            home_location: Some(location.clone()),
-                            spool_tare_weight_g: None,
-                            ownership: None,
-                            purchase_metadata: None,
-                            purchase_price_batch_locked: None,
-                        })
-                        .map_err(CompanionApiError::from)?;
-                }
             } else {
                 let manual = normalize_owned_manual_fields(
                     payload.material.as_deref(),

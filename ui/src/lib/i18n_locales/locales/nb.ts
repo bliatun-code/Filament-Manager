@@ -422,6 +422,8 @@ export const nbDictionary: DictionaryNode = {
       showFewerRolls: "Vis færre",
       loading: "Laster filamenter...",
       addedToInventory: "Lagt til i lageret",
+      openCreatedRoll: "Åpne rullen",
+      registerAnotherRoll: "Registrer en rull til",
       addedFromWishlist: "Lagt til fra ønskelisten",
       visualFixtureLoaded: "Testdata for filamentdetaljer er lastet.",
       noMatch: "Ingen filamenter matcher valgte filtre.",

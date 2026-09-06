@@ -811,6 +811,8 @@ export const huHUDictionary: DictionaryNode = {
     "showFewerRolls": "Mutass kevesebbet",
     "addedFromWishlist": "Kívánságlistáról hozzáadva",
     "addedToInventory": "Hozzáadva a készlethez",
+    "openCreatedRoll": "Tekercs megnyitása",
+    "registerAnotherRoll": "Újabb tekercs regisztrálása",
     "moreRolls": "több tekercs",
     "material": "Anyag",
     "remaining": "Fennmaradó",

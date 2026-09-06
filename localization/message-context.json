@@ -411,6 +411,18 @@
       "key": "errors.wishlistReceiptLocationHostUnsupported",
       "meaning": "Shared error for a Host that does not support receiving rolls with a home location in one operation. Upgrade is required before that operation; no partial receipt is performed.",
       "screenshot": "docs/screenshots/companion-phone-inventory.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.openCreatedRoll",
+      "meaning": "Primary action after one roll was successfully registered. Opens the details of that exact saved roll; does not register or physically open another roll.",
+      "screenshot": "docs/screenshots/usability-registration-success.png"
+    },
+    {
+      "surface": "desktop",
+      "key": "inventory.registerAnotherRoll",
+      "meaning": "After successful single-roll registration, returns to the entry form to prepare another physical roll. This action alone does not save a roll. Existing filament selection is retained.",
+      "screenshot": "docs/screenshots/usability-registration-success.png"
     }
   ],
   "groups": [

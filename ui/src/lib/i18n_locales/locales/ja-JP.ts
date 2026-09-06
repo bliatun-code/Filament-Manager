@@ -348,6 +348,8 @@ export const jaJPDictionary: DictionaryNode = {
     "showFewerRolls": "表示数を減らす",
     "loading": "スプールをロード中...",
     "addedToInventory": "在庫に追加されました",
+    "openCreatedRoll": "スプールを開く",
+    "registerAnotherRoll": "別のスプールを登録",
     "addedFromWishlist": "ウィッシュリストから追加されました",
     "visualFixtureLoaded": "インベントリ詳細フィクスチャがロードされました。",
     "noMatch": "現在のフィルターに一致するスプールがありません。",

@@ -1,4 +1,4 @@
-import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useLayoutEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { commandErrorText } from "./error_text";
 import type { BambuFilamentCodeBatch } from "./bambu_filament_code_batch";
 import { isBorrowedInOwnership } from "./inventory_domain";
@@ -10,6 +10,7 @@ import {
   type InventoryCreateSpoolError,
 } from "./inventory_create_model";
 import { formatInventoryDisplayTitle, type OwnershipType } from "./inventory_list_model";
+import type { InventoryCreateSuccess } from "./inventory_create_success";
 import type { PurchaseReceiptMetadata } from "./purchase_receipt_metadata";
 import {
   createInventorySpoolFromMaster,
@@ -27,6 +28,12 @@ import {
   type WishlistStatus,
 } from "./wishlist_data_source";
 
+function newRegistrationSpoolId(): string {
+  const suffix = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return `spool_${suffix}`;
+}
+
 type InventoryCreateActionsInput = {
   borrowedFromContact: string;
   borrowedFromName: string;
@@ -37,8 +44,10 @@ type InventoryCreateActionsInput = {
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
+  clientTargetGeneration: number | null;
   confirmWishlistRemoveId: string | null;
   createMode: InventoryCreateMode;
+  createSessionId: number;
   ensureLocalWriteAllowed: () => boolean;
   manualColorName: string;
   manualFilamentName: string;
@@ -48,6 +57,7 @@ type InventoryCreateActionsInput = {
   newInitialWeight: string;
   newLocation: string;
   newOwnershipType: OwnershipType;
+  onSpoolCreated: (receipt: InventoryCreateSuccess) => void;
   onWishlistItemCreated: () => void;
   reloadCatalog: () => Promise<void>;
   reloadSpools: () => Promise<void>;
@@ -76,8 +86,10 @@ export function useInventoryCreateActions({
   clientHostBaseUrl,
   clientLibraryId,
   clientReadOnly,
+  clientTargetGeneration,
   confirmWishlistRemoveId,
   createMode,
+  createSessionId,
   ensureLocalWriteAllowed,
   manualColorName,
   manualFilamentName,
@@ -87,6 +99,7 @@ export function useInventoryCreateActions({
   newInitialWeight,
   newLocation,
   newOwnershipType,
+  onSpoolCreated,
   onWishlistItemCreated,
   reloadCatalog,
   reloadSpools,
@@ -105,6 +118,21 @@ export function useInventoryCreateActions({
   t,
 }: InventoryCreateActionsInput) {
   const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const registrationScopeKey = JSON.stringify([
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, createSessionId,
+  ]);
+  const registrationScopeRef = useRef<{ key: string; inFlight: boolean; completed: boolean } | null>(null);
+  useLayoutEffect(() => {
+    const scope = { key: registrationScopeKey, inFlight: false, completed: false };
+    registrationScopeRef.current = scope;
+    return () => {
+      registrationScopeRef.current = null;
+      if (scope.inFlight) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
+    };
+  }, [registrationScopeKey, setBusy]);
   const newSpoolBorrowedIn = isBorrowedInOwnership(newOwnershipType);
   const currentCreateDraft = useMemo(
     () =>
@@ -135,7 +163,19 @@ export function useInventoryCreateActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return false;
     }
-    return tauriAvailable && !busy;
+    return tauriAvailable && !busy && !registrationScopeRef.current?.inFlight;
+  }
+
+  function beginRegistration() {
+    const scope = registrationScopeRef.current;
+    if (!scope || scope.key !== registrationScopeKey || scope.completed || !canStartWrite()) {
+      return null;
+    }
+    // A React state update alone does not reject two callbacks before the next render.
+    scope.inFlight = true;
+    setBusy(true);
+    setError(null);
+    return scope;
   }
 
   function showCreateValidationError(error: InventoryCreateSpoolError | InventoryCreateBatchError) {
@@ -173,9 +213,7 @@ export function useInventoryCreateActions({
     if (!canStartWrite()) {
       return;
     }
-    setBusy(true);
-    setError(null);
-    const id = `spool_${Date.now()}`;
+    const id = newRegistrationSpoolId();
     const createRequest = buildInventoryCreateSpoolRequest({
       id,
       mode: createMode,
@@ -195,41 +233,64 @@ export function useInventoryCreateActions({
     });
     if (!createRequest.ok) {
       showCreateValidationError(createRequest.error);
-      setBusy(false);
       return;
     }
+    const message = `${
+      newSpoolBorrowedIn
+        ? t("inventory.borrowedInRegistered", "Borrowed-in spool registered")
+        : t("inventory.addedToInventory", "Added to inventory")
+    }: ${createRequest.addedLabel}`;
+    const scope = beginRegistration();
+    if (!scope) {
+      return;
+    }
+    const isCurrent = () => registrationScopeRef.current === scope;
 
     try {
-      const createdSpoolId =
-        createRequest.kind === "catalog"
+      let createdSpoolId: string;
+      try {
+        createdSpoolId = createRequest.kind === "catalog"
           ? await createInventorySpoolFromMaster(createRequest.input, hostWriteTarget)
           : await createManualInventorySpool(createRequest.input, hostWriteTarget);
+      } catch (createError) {
+        if (isCurrent()) {
+          console.error(createError);
+          setError(commandErrorText(
+            createError,
+            t("inventory.error.createSpool", "Failed to create spool. Check QR uniqueness and values."),
+            t,
+          ));
+        }
+        return;
+      }
+      if (!isCurrent()) {
+        return;
+      }
 
-      await reloadSpools();
-      await reloadCatalog();
+      scope.completed = true;
+      const receipt: InventoryCreateSuccess = Object.freeze({ spoolId: createdSpoolId, message });
       setSelectedSpoolId(createdSpoolId);
       setRecentlyAddedSpoolId(createdSpoolId);
-      setInfoMessage(
-        `${
-          newSpoolBorrowedIn
-            ? t("inventory.borrowedInRegistered", "Borrowed-in spool registered")
-            : t("inventory.addedToInventory", "Added to inventory")
-        }: ${createRequest.addedLabel}`,
-      );
+      setInfoMessage(message);
       resetAfterCreatedSpool();
-    } catch (createError) {
-      console.error(createError);
-      setError(
-        commandErrorText(
-          createError,
-          t(
-            "inventory.error.createSpool",
-            "Failed to create spool. Check QR uniqueness and values.",
-          ),
-        ),
-      );
+      onSpoolCreated(receipt);
+
+      // Refreshing cannot turn a confirmed registration back into a retryable write.
+      const refreshed = await Promise.allSettled([reloadSpools(), reloadCatalog()]);
+      const failed = refreshed.find((result) => result.status === "rejected");
+      if (isCurrent() && failed?.status === "rejected") {
+        console.error(failed.reason);
+        setError(commandErrorText(
+          failed.reason,
+          t("inventory.error.loadInventory", "Failed to load inventory."),
+          t,
+        ));
+      }
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -246,10 +307,8 @@ export function useInventoryCreateActions({
       );
       return;
     }
-    setBusy(true);
-    setError(null);
     const batchRequest = buildBambuCatalogBatchCreateRequests({
-      idPrefix: `spool_${Date.now()}`,
+      idPrefix: newRegistrationSpoolId(),
       selectedMasters: bambuCodeBatch.creatableRows
         .map((row) => row.master)
         .filter((master): master is MasterCatalogRow => Boolean(master)),
@@ -262,21 +321,37 @@ export function useInventoryCreateActions({
     });
     if (!batchRequest.ok) {
       showCreateValidationError(batchRequest.error);
-      setBusy(false);
       return;
     }
+    const scope = beginRegistration();
+    if (!scope) {
+      return;
+    }
+    const isCurrent = () => registrationScopeRef.current === scope;
 
     try {
       let latestCreatedSpoolId: string | null = null;
       for (const request of batchRequest.requests) {
+        if (!isCurrent()) {
+          return;
+        }
         latestCreatedSpoolId = await createInventorySpoolFromMaster(
           request.input,
           hostWriteTarget,
         );
       }
+      if (!isCurrent()) {
+        return;
+      }
 
       await reloadSpools();
+      if (!isCurrent()) {
+        return;
+      }
       await reloadCatalog();
+      if (!isCurrent()) {
+        return;
+      }
       if (latestCreatedSpoolId) {
         setSelectedSpoolId(latestCreatedSpoolId);
         setRecentlyAddedSpoolId(latestCreatedSpoolId);
@@ -291,6 +366,9 @@ export function useInventoryCreateActions({
       resetAfterCreatedSpool();
       resetBambuBatchInput();
     } catch (batchError) {
+      if (!isCurrent()) {
+        return;
+      }
       console.error(batchError);
       setError(
         commandErrorText(
@@ -302,7 +380,10 @@ export function useInventoryCreateActions({
         ),
       );
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 

@@ -270,6 +270,8 @@ export const plPLDictionary: DictionaryNode = {
     "addDirectlyToStock": "Dodaj bezpośrednio do zapasów",
     "addedFromWishlist": "Dodano z listy życzeń",
     "addedToInventory": "Dodano do inwentarza",
+    "openCreatedRoll": "Otwórz szpulę",
+    "registerAnotherRoll": "Zarejestruj kolejną szpulę",
     "addFilament": "Dodaj filament",
     "addFilamentSubtitle": "Dodaj bezpośrednio do magazynu lub zachowaj listę życzeń → na zamówienie → przepływ pracy w magazynie.",
     "addMovedPrefix": "Przepływ dodawania/zamawiania został przeniesiony na górę",

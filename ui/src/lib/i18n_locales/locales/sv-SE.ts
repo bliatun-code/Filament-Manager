@@ -816,6 +816,8 @@ export const svSEDictionary: DictionaryNode = {
     "remaining": "Återstående",
     "addedFromWishlist": "Tillagd från önskelistan",
     "addedToInventory": "Läggs till i lager",
+    "openCreatedRoll": "Öppna rullen",
+    "registerAnotherRoll": "Registrera en rulle till",
     "location": "Plats",
     "noMatch": "Inga spolar matchar nuvarande filter.",
     "visualFixtureLoaded": "Inventeringsdetaljfixtur laddad.",

@@ -270,6 +270,8 @@ export const csCZDictionary: DictionaryNode = {
     "addDirectlyToStock": "Přidejte přímo do zásoby",
     "addedFromWishlist": "Přidáno ze seznamu přání",
     "addedToInventory": "Přidáno do inventáře",
+    "openCreatedRoll": "Otevřít cívku",
+    "registerAnotherRoll": "Zaregistrovat další cívku",
     "addFilament": "Přidejte filament",
     "addFilamentSubtitle": "Přidejte přímo do skladu, nebo si ponechte wishlist → na objednávku → skladový postup.",
     "addMovedPrefix": "Tok přidání/objednávky se přesune nahoru",

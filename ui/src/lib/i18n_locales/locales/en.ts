@@ -421,6 +421,8 @@ export const enDictionary: DictionaryNode = {
       showFewerRolls: "Show fewer",
       loading: "Loading spools...",
       addedToInventory: "Added to inventory",
+      openCreatedRoll: "Open roll",
+      registerAnotherRoll: "Register another roll",
       addedFromWishlist: "Added from wishlist",
       visualFixtureLoaded: "Inventory detail fixture loaded.",
       noMatch: "No spools match current filters.",
