@@ -4,7 +4,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 import { chromium, type Page } from "playwright";
 
-async function buildHarness() {
+function normalizedModuleId(id: string) {
+  return id.replaceAll("\\", "/");
+}
+
+async function buildHarness(windowsDataSourcePath = false) {
   const requireFromUi = createRequire(new URL("../../package.json", import.meta.url));
   const [{ build }, { default: react }] = await Promise.all([
     import(pathToFileURL(requireFromUi.resolve("vite")).href),
@@ -12,7 +16,11 @@ async function buildHarness() {
   ]);
   const entry = fileURLToPath(new URL("./__settings_reload_entry__.jsx", import.meta.url));
   const hook = fileURLToPath(new URL("./use_settings_page_reload.ts", import.meta.url));
-  const dataSource = fileURLToPath(new URL("../lib/settings_data_source.ts", import.meta.url));
+  const resolvedDataSource = fileURLToPath(new URL("../lib/settings_data_source.ts", import.meta.url));
+  // Exercise Vite's slash-normalized module ID against a Windows filesystem path
+  // on every test platform, so this cannot regress unnoticed on macOS/Linux.
+  const dataSource = windowsDataSourcePath ? resolvedDataSource.replaceAll("/", "\\") : resolvedDataSource;
+  let mockedDataSource = false;
   const source = `
     import React from "react";
     import {createRoot} from "react-dom/client";
@@ -67,18 +75,29 @@ async function buildHarness() {
     plugins: [{
       name: "settings-reload-harness",
       enforce: "pre",
-      resolveId: (id: string) => id === entry ? entry : null,
-      load: (id: string) => id === entry ? source : id === dataSource
-        ? "export const loadSettingsPageData=()=>window.qa.load();" : null,
+      resolveId: (id: string) => normalizedModuleId(id) === normalizedModuleId(entry) ? entry : null,
+      load: (id: string) => {
+        if (normalizedModuleId(id) === normalizedModuleId(entry)) return source;
+        if (normalizedModuleId(id) === normalizedModuleId(dataSource)) {
+          mockedDataSource = true;
+          return "export const loadSettingsPageData=()=>window.qa.load();";
+        }
+        return null;
+      },
     }, react()],
     build: { write: false, minify: false, emptyOutDir: false,
       lib: { entry, formats: ["iife"], name: "SettingsReloadHarness" } },
   });
+  assert.equal(mockedDataSource, true, "Settings reload harness must replace settings_data_source before launching Chromium");
   const output = (Array.isArray(result) ? result : [result]).flatMap(result => result.output);
   const script = output.find(output => output.type === "chunk" && output.isEntry)?.code;
   assert.ok(script);
   return `<html><body><div id="root"></div><script>${script.replaceAll("</script", "<\\/script")}</script></body></html>`;
 }
+
+test("Settings reload harness replaces a Windows data source path during the real Vite build", async () => {
+  await buildHarness(true);
+});
 
 test("Settings silent reload cannot replace an active import scope", async context => {
   const document = await buildHarness();

@@ -51,6 +51,7 @@ struct SyntheticHost {
     db_path: PathBuf,
     stopped: Arc<AtomicBool>,
     transition: Arc<Mutex<(TransitionAt, Option<String>)>>,
+    accepted: std::sync::mpsc::Receiver<()>,
     server: Option<std::thread::JoinHandle<RequestLog>>,
     _directory: TestDirectory,
 }
@@ -104,6 +105,7 @@ impl SyntheticHost {
         let stop = Arc::clone(&stopped);
         let transition = Arc::new(Mutex::new((TransitionAt::Never, None::<String>)));
         let transition_state = Arc::clone(&transition);
+        let (accepted_tx, accepted) = std::sync::mpsc::channel();
         let server = std::thread::spawn(move || {
             let mut requests = Vec::new();
             let mut post_count = 0;
@@ -116,9 +118,13 @@ impl SyntheticHost {
                     }
                     Err(error) => panic!("synthetic Host accept: {error}"),
                 };
+                // macOS inherits the listener's nonblocking flag. The HTTP
+                // reader must wait for bytes even when accept wins that race.
+                stream.set_nonblocking(false).unwrap();
                 stream
                     .set_read_timeout(Some(Duration::from_secs(5)))
                     .unwrap();
+                accepted_tx.send(()).unwrap();
                 let (request_line, payload) = {
                     let mut reader = BufReader::new(&mut stream);
                     let mut request_line = String::new();
@@ -188,6 +194,7 @@ impl SyntheticHost {
             db_path,
             stopped,
             transition,
+            accepted,
             server: Some(server),
             _directory: directory,
         }
@@ -296,6 +303,35 @@ fn cycle_target(path: &str) {
     next.host_base_url = Some("http://another.local:4278".into());
     db.save_library_sync_settings(&next).unwrap();
     db.save_library_sync_settings(&original).unwrap();
+}
+
+#[test]
+fn catalog_batch_synthetic_host_waits_for_the_first_request_bytes() {
+    let _network_test = NETWORK_TEST_LOCK.lock().unwrap();
+    let mut host = SyntheticHost::start(true, false);
+    let mut stream =
+        std::net::TcpStream::connect(host.base_url.strip_prefix("http://").unwrap()).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .unwrap();
+    host.accepted.recv_timeout(Duration::from_secs(2)).unwrap();
+    // The TCP connection can be accepted before the HTTP client gets CPU time
+    // to send its request. A nonblocking accepted socket must not kill the Host.
+    std::thread::sleep(Duration::from_millis(100));
+    assert!(
+        !host.server.as_ref().unwrap().is_finished(),
+        "the accepted connection must wait for its first HTTP bytes"
+    );
+    stream
+        .write_all(b"GET /api/v1/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        .unwrap();
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+    assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
+    assert_eq!(
+        host.finish(),
+        vec![("GET /api/v1/health HTTP/1.1".into(), String::new())]
+    );
 }
 
 #[test]
