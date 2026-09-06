@@ -141,4 +141,47 @@ v0.28.0-oppgraderingen 5→7 er dokumentert av den lokale DMG-kjøringen ovenfor
 Release-kontrollen skal fortsatt kjøres på releasekandidaten; ordinær Windows
 Smoke prøver ikke denne oppgraderingen.
 Disse CI-resultatene gjelder `d3c0b96d`; den etterfølgende dokumentasjonen
-ble committet lokalt og inngår i neste samlede push, uten en egen smoke-kjøring.
+ble committet lokalt og tatt med i den samlede pushen av `89aca68e`, uten en egen smoke-kjøring.
+
+
+## Sluttgjennomgang og ny CI 7. september 2026
+
+Sluttgjennomgangen av PR #89 fikk rettet to feil i
+`89aca68e4544e73c7b06beb69ceb8b7820d18579`: ufullstendig mottak av HTTP-body
+har nå en frist før handlerstart, og Host-katalogstarter beholder den fangede
+målgenerasjonen gjennom kø, forberedelse og autentisering. Påbegynt lagring
+får fortsatt fullføre. En tredje syntetisk HTTP-server bruker nå eksplisitt
+blokkerende lesing på macOS.
+
+Begge regresjoner var røde før og grønne etter rettelsen. En isolert body-test
+returnerer 408 uten handlerdispatch; en gammel katalogstart etter A→B→A
+avvises før nettverkskall, mens en ny start mot samme Host lykkes. Full lokal
+smoke og Rust-verifisering bestod, med 1 655 UI- og 634 desktop-tester,
+begge Clippy-profiler og Rust 1.88-kontrollen.
+
+Alle 11 PR-kontroller er grønne på samme commit:
+[CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34063248014),
+[CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34063248040)
+og [avhengigheter/lisenser](https://github.com/bliatun-code/Filament-Manager/actions/runs/34063248052).
+Begge plattformer bestod installert desktop- og Host/Client-E2E, inkludert
+katalogstarter med den nye målgenerasjonen. Katalogjobbenes sluttresultat er
+én vellykket jobb, én avbrutt jobb, én importert rad og null Client-jobber.
+
+Desktop-resultatene har 1 637 backuprader, to innlånte batchruller og samme
+opprinnelige, ordnede kvittering etter omstart. Host/Client har to batchruller,
+to lån, fire historikkhendelser, én kvittering og uendrede revisjoner ved
+gjentakelse. Client har ingen lokale batchruller, lån eller kvitteringer;
+Host-vekten er 760 g og Clientens skyggedata beholder 333 g. Sesjonsfornyelse
+og sletting av testlegitimasjon bestod.
+
+Mac-CI bevarte også den historiske skjema-1-fixturen gjennom 1→7 og to starter.
+Den tidligere lokale v0.28.0-kontrollen og de separate release- og
+signeringskravene gjelder fortsatt som beskrevet ovenfor. Windows beholder
+`UnsignedRequired`. Dette er automatiserte kontroller, uten nye menneskelige
+brukermålinger. Resultatdokumentasjonen committes lokalt uten en ekstra CI-kjøring.
+
+PR #89 ble deretter merget som `9a92420f7288cfc694e7623bb72ae3f431ec8cd5`.
+Git-treet er identisk med den verifiserte kandidaten `89aca68e`. Lokal `main`
+er oppdatert, og denne resultatdokumentasjonen er bevart på den lokale
+oppfølgingsgrenen `codex/post-pr89`. Hovedgrenens automatiske CI er en separat
+kjøring; resultatene ovenfor gjelder de oppgitte, fullførte PR-kjøringene.
