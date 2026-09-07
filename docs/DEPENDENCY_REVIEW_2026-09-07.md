@@ -124,3 +124,57 @@ Registry and RustSec results are a dated assessment of known advisories, not a
 general security guarantee. Full macOS and Windows smoke jobs, CodeQL and the
 supply-chain workflow remain required for the combined pull request. No audit
 warning, license requirement or test threshold is suppressed to make it pass.
+
+## TLS/HTTP maintenance batch (2026-09-07 follow-up)
+
+### Valgte oppdateringer
+
+- `rustls` 0.23.43 → `0.23.44`
+- `aws-lc-rs` 1.18.0 → `1.18.1`
+- `aws-lc-sys` 0.44.0 → `0.45.0` (transitiv via `rustls`-provider)
+- `tokio-rustls` 0.26.4 → `0.26.5`
+- `hyper` 1.11.0 → `1.11.1`
+
+### Grunnlag og kompatibilitet
+
+- Kandidatversjoner ble sjekket mot upstream release-merker før oppdatering:
+  `rustls` 0.23.44, `aws-lc-rs` 1.18.1, `aws-lc-sys` 0.45.0, `tokio-rustls` 0.26.5
+  og `hyper` 1.11.1.
+- `quinn-proto` er allerede låst til 0.11.17 fra forrige fellespakke, og ble
+  ikke endret i denne runden.
+- Kompatibilitet ble verifisert gjennom:
+  - låst Cargo-løsning med eksplisitte `--precise`-oppdateringer i sekvens
+  - full MSRV-kjøring (`cargo +1.88.0 check --workspace --all-targets --all-features --locked`)
+  - TLS/HTTP-relatert testsett (fingerprinter/handshake/pinning/negative-krav)
+  - komplett repo-verifisering med `npm run verify`.
+
+### Cargo.lock-kontroll (utilsiktede endringer)
+
+`Cargo.lock` endringer er begrenset til de valgte pakkene og nødvendige
+transitive oppryddinger:
+- Direkte: `aws-lc-rs`, `aws-lc-sys`, `hyper`, `rustls`, `tokio-rustls`.
+- `windows-sys` gikk fra `0.61.2` til `0.59.0` i et begrenset sett av avhengigheter
+  i lockfilen, og `getrandom` fikk også en eldre 0.3.4-linje i én graf.
+- Det er ingen manifest-baserte version bumps utover de fire direkte endringene.
+
+### Verifikasjon og resultat
+
+- `cargo +1.88.0 check --workspace --all-targets --all-features --locked` ✅
+- `cargo test` mot TLS-identitetsscenarier (handshake, SPKI/serial matching, pin
+  og negativt oppførsel) ✅
+- `npm run audit:dependencies` ✅ (npm-audit rent, Cargo-audit med kun kjente
+  pre-eksisterende, ikke-advarende rustsec-/lisensstatus).
+- `npm run verify` ✅ (full suite, inkludert kontrakter, UI/Companion,
+  smoke/lint/test + `cargo fmt/test/clippy`).
+
+### Gjenstående funn etter pakken
+
+- Sikkerhet: Oppdateringene er et vedlikeholds-/harde-sikkerhetsløft i TLS/HTTP-kjeden
+  (TLS/HTTP-ytelser og provider-kjede). Ingen nye advarsler ble introdusert i
+  dagens kontrollkjøring.
+- Vedlikehold: transitive lockforskyvninger (`windows-sys`/`getrandom`) er
+  kompatible oppløsningsresultater, men bør overvåkes i neste batch dersom ny
+  lockdominans gir avvik på tvers av støtteplattformene.
+- Hypotetisk eksponering: Vi har fortsatt ikke tatt en større `hyper`/TLS/Net-batch
+  (eks. HTTP/3/QUIC eller Playwright-impakt), så disse områdene ligger utenfor
+  denne pakken og bør vurderes separat ved behov.
