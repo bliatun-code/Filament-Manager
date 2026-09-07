@@ -55,6 +55,8 @@ updates:
       time: "05:45"
       timezone: "Europe/Oslo"
     open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "all"
     groups:
       rust-patches:
         update-types:

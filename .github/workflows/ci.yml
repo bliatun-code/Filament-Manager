@@ -26,10 +26,19 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
 
       - name: Reject stale or missing shared contracts
         run: cargo run --locked --bin generate_shared_contracts -- --check
@@ -61,10 +70,14 @@ jobs:
       - name: Test migration manifest behavior
         run: node --test ./scripts/check-database-migrations.test.mjs
 
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
 
       - name: Test clean install and historical upgrades
         run: cargo test --locked --lib database_schema_setup::tests
@@ -98,10 +111,14 @@ jobs:
           CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
         run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
 
       - name: Install root dependencies
@@ -220,10 +237,14 @@ jobs:
           CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
         run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
 
       - name: Install root dependencies

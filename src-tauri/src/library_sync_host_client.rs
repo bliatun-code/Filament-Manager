@@ -1964,18 +1964,77 @@ mod tests {
         );
     }
 
-    fn delayed_http_response(delay: Duration) -> (String, thread::JoinHandle<()>) {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind delayed Host");
-        let address = listener.local_addr().expect("read delayed Host address");
-        let server = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept delayed request");
-            let mut request = [0_u8; 2048];
-            let _ = stream.read(&mut request).expect("read delayed request");
-            thread::sleep(delay);
-            let _ = stream
-                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");
-        });
-        (format!("http://{address}/slow"), server)
+    struct ReleaseHttpResponseOnDrop(mpsc::Sender<()>);
+
+    impl Drop for ReleaseHttpResponseOnDrop {
+        fn drop(&mut self) {
+            let _ = self.0.send(());
+        }
+    }
+
+    fn with_controlled_http_response<T>(
+        response_delay: Option<Duration>,
+        request: impl FnOnce(String) -> T,
+    ) -> T {
+        const HARNESS_TIMEOUT: Duration = Duration::from_secs(10);
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind controlled Host");
+        listener
+            .set_nonblocking(true)
+            .expect("bound controlled Host accept");
+        let address = listener.local_addr().expect("read controlled Host address");
+        let (release_tx, release_rx) = mpsc::channel();
+        thread::scope(|scope| {
+            let server = scope.spawn(move || -> std::io::Result<()> {
+                let accept_deadline = Instant::now() + HARNESS_TIMEOUT;
+                let mut stream = loop {
+                    match listener.accept() {
+                        Ok((stream, _)) => break stream,
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                            let remaining =
+                                accept_deadline.saturating_duration_since(Instant::now());
+                            if remaining.is_zero() {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::TimedOut,
+                                    "controlled Host did not receive a connection",
+                                ));
+                            }
+                            match release_rx.recv_timeout(remaining.min(Duration::from_millis(5))) {
+                                Ok(()) | Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+                                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                            }
+                        }
+                        Err(error) => return Err(error),
+                    }
+                };
+                // macOS inherits the listener's nonblocking flag.
+                stream.set_nonblocking(false)?;
+                stream.set_read_timeout(Some(HARNESS_TIMEOUT))?;
+                stream.set_write_timeout(Some(HARNESS_TIMEOUT))?;
+                let mut bytes = [0_u8; 2048];
+                if stream.read(&mut bytes)? == 0 {
+                    return Ok(());
+                }
+                // Timeout checks release only after send() returns. The fallback
+                // merely lets a broken/unbounded client finish with an unexpected
+                // 200 instead of hanging the test; it is not the client deadline.
+                let _ = release_rx.recv_timeout(response_delay.unwrap_or(HARNESS_TIMEOUT));
+                // A correctly timed-out client may have already closed its socket.
+                let _ = stream.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
+                );
+                Ok(())
+            });
+            // Release on both the success path and unwinding. The scoped thread
+            // is joined, and all of its blocking operations have a deadline.
+            let release = ReleaseHttpResponseOnDrop(release_tx);
+            let result = request(format!("http://{address}/slow"));
+            drop(release);
+            server
+                .join()
+                .expect("join controlled Host")
+                .expect("serve controlled response");
+            result
+        })
     }
 
     #[test]
@@ -1983,41 +2042,36 @@ mod tests {
         assert_eq!(LIBRARY_SYNC_HTTP_TOTAL_TIMEOUT, None);
         assert_eq!(LIBRARY_SYNC_AUTH_REQUEST_TIMEOUT, Duration::from_secs(30));
 
-        let (builder_timeout_url, builder_timeout_server) =
-            delayed_http_response(Duration::from_millis(100));
-        let builder_timeout_error =
+        let builder_timeout_error = with_controlled_http_response(None, |url| {
             library_sync_http_client_builder_with_total_timeout(Some(Duration::from_millis(20)))
                 .build()
                 .expect("build explicitly bounded client")
-                .get(builder_timeout_url)
+                .get(url)
                 .send()
-                .expect_err("builder deadline should stop a slow response");
+        })
+        .expect_err("builder deadline should stop a held response");
         assert!(builder_timeout_error.is_timeout());
-        builder_timeout_server
-            .join()
-            .expect("join builder-timeout Host");
 
-        let (unbounded_url, unbounded_server) = delayed_http_response(Duration::from_millis(100));
-        let response = library_sync_http_client_builder()
-            .build()
-            .expect("build production client")
-            .get(unbounded_url)
-            .send()
-            .expect("production client waits for the definitive response");
+        let response = with_controlled_http_response(Some(Duration::from_millis(100)), |url| {
+            library_sync_http_client_builder()
+                .build()
+                .expect("build production client")
+                .get(url)
+                .send()
+        })
+        .expect("production client waits for the definitive response");
         assert!(response.status().is_success());
-        unbounded_server.join().expect("join unbounded Host");
 
-        let (read_timeout_url, read_timeout_server) =
-            delayed_http_response(Duration::from_millis(100));
-        let read_timeout_error = library_sync_http_client_builder()
-            .build()
-            .expect("build production client for bounded read")
-            .get(read_timeout_url)
-            .timeout(Duration::from_millis(20))
-            .send()
-            .expect_err("per-request deadline should still stop a slow read");
+        let read_timeout_error = with_controlled_http_response(None, |url| {
+            library_sync_http_client_builder()
+                .build()
+                .expect("build production client for bounded read")
+                .get(url)
+                .timeout(Duration::from_millis(20))
+                .send()
+        })
+        .expect_err("per-request deadline should still stop a held read");
         assert!(read_timeout_error.is_timeout());
-        read_timeout_server.join().expect("join read-timeout Host");
     }
 
     #[test]
