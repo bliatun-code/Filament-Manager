@@ -18,6 +18,8 @@ on:
       - "rust-toolchain.toml"
       - "scripts/check-npm-licenses.mjs"
       - "scripts/release-workflow-contract.test.mjs"
+      - "scripts/read-rust-toolchain.mjs"
+      - "scripts/read-rust-toolchain.test.mjs"
       - "scripts/rust-toolchain-contract.test.mjs"
       - "scripts/supply-chain-workflow-contract.test.mjs"
       - "src-tauri/Cargo.toml"
@@ -71,10 +73,19 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Read Rust toolchain
+        id: rust-toolchain
+        run: node ./scripts/read-rust-toolchain.mjs --github-output
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
         with:
-          toolchain: 1.98.0
+          toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
 
       - name: Install pinned cargo-audit
         run: cargo install --locked cargo-audit --version 0.22.2

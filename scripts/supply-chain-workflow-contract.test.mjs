@@ -135,6 +135,8 @@ test("supply-chain workflow audits dependency pull requests and stays least priv
     "rust-toolchain.toml",
     "scripts/check-npm-licenses.mjs",
     "scripts/release-workflow-contract.test.mjs",
+    "scripts/read-rust-toolchain.mjs",
+    "scripts/read-rust-toolchain.test.mjs",
     "scripts/rust-toolchain-contract.test.mjs",
     "scripts/supply-chain-workflow-contract.test.mjs",
     "src-tauri/Cargo.toml",

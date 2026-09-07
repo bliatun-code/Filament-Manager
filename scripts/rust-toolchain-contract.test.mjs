@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { parseRustToolchain } from "./read-rust-toolchain.mjs";
 
 const repoFile = (path) =>
   readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
@@ -57,7 +58,7 @@ test("the edition migration keeps formatting changes isolated", () => {
 
 test("the repository selects one complete reviewed Rust toolchain", () => {
   assert.match(toolchain, /^\[toolchain\]$/m);
-  assert.match(toolchain, /^channel = "1\.98\.0"$/m);
+  assert.match(parseRustToolchain(toolchain), /^\d+\.\d+\.\d+$/);
   assert.match(toolchain, /^profile = "minimal"$/m);
   assert.match(toolchain, /^components = \["clippy", "rustfmt"\]$/m);
 });
@@ -91,9 +92,27 @@ test("every reviewed Rust workflow setup installs the exact toolchain", () => {
     );
     assert.match(
       step,
-      /^          toolchain: 1\.98\.0$/m,
-      `${name} must install the reviewed Rust release explicitly`,
+      /^          toolchain: \$\{\{ steps\.rust-toolchain\.outputs\.toolchain \}\}$/m,
+      `${name} must install the release read from rust-toolchain.toml`,
     );
+  }
+});
+
+test("every Rust setup reads the sole release pin after Node 24 is installed", () => {
+  for (const [workflowIndex, jobNames] of [
+    [0, ["shared-contracts", "migration-integrity", "macos-smoke", "windows-smoke"]],
+    [1, ["build-macos-dmg", "build-windows-msi"]],
+    [2, ["cargo-audit"]],
+  ]) {
+    for (const jobName of jobNames) {
+      const job = workflowJob(workflows[workflowIndex][1], jobName);
+      const readers = [...job.matchAll(/^      - name: Read Rust toolchain\n        id: rust-toolchain\n        run: node \.\/scripts\/read-rust-toolchain\.mjs --github-output$/gm)];
+      assert.equal(readers.length, 1, `${jobName} must run the validated pin reader exactly once`);
+      const nodeSetup = job.match(/      - name: Setup Node\n        uses: actions\/setup-node@[0-9a-f]{40}[^\n]*\n        with:\n          node-version: 24\n/);
+      assert.ok(nodeSetup, `${jobName} must install Node 24 before reading the pin`);
+      assert.ok(nodeSetup.index < readers[0].index, `${jobName} must install Node first`);
+      assert.ok(readers[0].index < job.indexOf("      - name: Setup Rust\n"), `${jobName} must read the pin before installing Rust`);
+    }
   }
 });
 
