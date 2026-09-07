@@ -8,13 +8,20 @@ state or an extra audit tool, while `verify` must remain a repeatable source and
 build gate. The deterministic npm lockfile policy is also exercised by the
 ordinary script test suite.
 
-The reviewed Rust release is pinned in `rust-toolchain.toml` and monitored by
+The reviewed Rust release has one version source, `rust-toolchain.toml`, monitored by
 Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.88 as
 their minimum supported version. Both required smoke jobs compile the complete
 workspace with Rust 1.88 on their supported desktop platform before selecting
-the exact pinned release for ordinary verification. Rust-toolchain pull
-requests must update the explicit workflow toolchain values to match; the
-contract suite rejects partial bumps.
+the exact pinned release for ordinary verification. Each CI, release and audit
+Rust setup first runs `scripts/read-rust-toolchain.mjs` with Node 24. The reader
+accepts one exact `x.y.z` release pin and rejects rolling channels, expressions,
+missing or duplicate pins, and unsupported configuration syntax before writing
+the validated value to GitHub Actions output. The SHA-pinned Rust setup action
+uses that output explicitly while retaining its required components and targets.
+Dependabot therefore updates only the version source; workflow and contract
+tests do not keep another copy of the release number. Every new toolchain still
+requires ordinary verification, including formatting, tests and Clippy; the
+Rust 1.88 lower bound and formatting style remain separate, explicit contracts.
 
 Dependabot surfaces major npm and Cargo upgrades as focused pull requests
 instead of suppressing them with wildcard rules. The UI has two temporary,
@@ -22,6 +29,13 @@ named compatibility holds: `@types/node` follows the application's Node 24
 runtime contract, and TypeScript remains on 6.x until the lint toolchain
 supports TypeScript 7. The contract suite requires these holds to stay explicit
 and tied to their manifest baselines.
+
+The weekly Cargo version-update group explicitly allows both direct and
+transitive dependencies. Eligible patch and minor updates share the existing
+`rust-patches` pull request, so reviewing transitive maintenance does not require
+one full smoke run per package. Major versions remain outside that group and
+dependency constraints still apply. Security-update grouping is a separate
+Dependabot setting. [Dependabot allow policy](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#allow).
 
 The workflow has read-only repository permission, uses SHA-pinned GitHub
 Actions, and installs the Rust audit tools from exact versions with their own
@@ -36,11 +50,17 @@ lockfiles:
 - `cargo deny` checks normal, build, target-specific, and development
   dependencies against the Cargo license allowlist.
 
-The Tauri dependency graph contains GTK dependencies used only by Tauri's Linux
-backend. RustSec currently reports maintenance and soundness warnings for that
-GTK3 graph even though Filament Manager distributes macOS and Windows builds.
-Those warnings remain visible in the scheduled report, but only vulnerability
-advisories fail `cargo audit`. License violations always fail.
+The Tauri dependency graph contains GTK dependencies used by its Linux/BSD
+backend. RustSec reports maintenance and soundness warnings for that GTK3 graph,
+including its `proc-macro-error` build dependency, even though Filament Manager
+distributes macOS and Windows builds. Separately, the unmaintained `unic`
+packages reach both supported platforms through `tauri-utils` and `urlpattern`.
+Do not classify all maintenance warnings as Linux-only. Follow a published,
+compatible Tauri update for that dependency chain; do not force an incompatible
+`urlpattern` version into the lockfile. The dated
+[dependency review](DEPENDENCY_REVIEW_2026-09-07.md) records the current paths and
+follow-up decisions. All warnings remain visible in the scheduled report, but
+only vulnerability advisories fail `cargo audit`. License violations always fail.
 
 ## Policy Files
 
