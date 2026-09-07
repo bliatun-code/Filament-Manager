@@ -21,7 +21,7 @@ if-addrs = "0.15.0"
 sha2 = "0.11.0"
 qrcode = "0.14.1"
 base64 = { version = "0.23.0", default-features = false, features = ["std"] }
-rustls = "0.23.43"
+rustls = "0.23.44"
 rustls-webpki = "0.103.15"
 x509-parser = { version = "0.18.1", default-features = false }
 time = { workspace = true }

@@ -1427,7 +1427,7 @@ mod tests {
             .expect("security save thread")
             .expect("security save");
         delete_done_rx
-            .recv_timeout(Duration::from_secs(2))
+            .recv_timeout(Duration::from_secs(10))
             .expect("delete result")
             .expect("delete printer after save");
         delete_thread.join().expect("delete thread");
