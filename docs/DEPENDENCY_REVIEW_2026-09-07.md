@@ -162,10 +162,11 @@ transitive oppryddinger:
 - `cargo +1.88.0 check --workspace --all-targets --all-features --locked` ✅
 - `cargo test` mot TLS-identitetsscenarier (handshake, SPKI/serial matching, pin
   og negativt oppførsel) ✅
-- `npm run audit:dependencies` ✅ (npm-audit rent, Cargo-audit med kun kjente
-  pre-eksisterende, ikke-advarende rustsec-/lisensstatus).
+- `cargo test -p bambu-filament-manager printer_bambu_live_commands::tests::full_printer_delete_waits_for_in_flight_security_save` ✅
 - `npm run verify` ✅ (full suite, inkludert kontrakter, UI/Companion,
   smoke/lint/test + `cargo fmt/test/clippy`).
+- `npm run audit:dependencies` ✅ (npm-audit rent, Cargo-audit med kjente,
+  pre-eksisterende, ikke-advarende rustsec-/lisensstatus).
 
 ### Gjenstående funn etter pakken
 
@@ -178,3 +179,7 @@ transitive oppryddinger:
 - Hypotetisk eksponering: Vi har fortsatt ikke tatt en større `hyper`/TLS/Net-batch
   (eks. HTTP/3/QUIC eller Playwright-impakt), så disse områdene ligger utenfor
   denne pakken og bør vurderes separat ved behov.
+- Fiksing av CI-dimensjonert flakiness: Windows smoke-feilen i testen
+  `full_printer_delete_waits_for_in_flight_security_save` ble løst i denne
+  pakken ved å øke post-lås ventingen til 10s for å unngå falske timeout på
+  tregere Windows-ruter, uten å endre TLS/HTTP-sikkerhetskrav.
