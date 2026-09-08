@@ -12,8 +12,9 @@ migration.
 - The schema-0 entrypoint and its five `database_*_schema.rs` helper files are
   the rest of that same frozen baseline. The manifest locks the exact
   `apply_structural_baseline` function, every helper file, and the complete set
-  of `ensure_*` calls against v0.28.0. This prevents clean installs from gaining
-  unversioned DDL that versioned upgrades would skip.
+  of `ensure_*` calls. Originally frozen at v0.28.0, these unchanged sources
+  are now checked against the pinned v0.30.0 release. This prevents clean
+  installs from gaining unversioned DDL that versioned upgrades would skip.
 - `001_init.sql` and `002_sync_queue.sql` reconstruct old databases that were
   released before `PRAGMA user_version` was authoritative. They remain locked
   historical fixtures; they are not replayed as schema versions 1 and 2.
@@ -68,10 +69,17 @@ versions, unlisted SQL files, and hash drift.
 
 ## Advance the published boundary
 
-Only after a release tag containing the new migration has been published:
+The published boundary is v0.30.0, through sequence `008` and schema 7.
+The packaged upgrade fixture remains pinned to v0.28.0 and schema 5 so that
+it continues to exercise a historical migration rather than a current-schema
+restart.
+
+After the GitHub release containing the new migration has been published and
+verified, advance the boundary as follows. Pushing the release tag alone is
+insufficient.
 
 1. Set `publishedReference.ref` and `publishedReference.commit` to that exact
-   release tag and its full commit SHA.
+   release tag and its full resolved commit SHA, not the annotated tag object.
 2. Advance `publishedThroughSequence` to the last migration present in that
    release. Never reduce it.
 3. Run the strict published-reference check with full Git history available.
