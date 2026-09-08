@@ -27,8 +27,10 @@ starter, og krever den faktiske, tomme batchjournalen etter migreringen.
 Den manuelle release-kjøringen er bestått: seks jobber er grønne, og de to
 taggstyrte jobbene for publisering og attestasjoner er hoppet over. Den separate
 ordinære CI-kjøringen og CodeQL på hovedgrenen er også bestått på samme
-kildecommit. De etterfølgende lokale endringene gjelder bare dokumentasjon;
-appkode, avhengigheter og workflow er uendret fra den verifiserte kandidaten.
+kildecommit. Resultatnotatene ble bevart i dokumentasjonscommiten `cd8b5db6`,
+uten endring av appkode, avhengigheter eller workflow. Den senere klargjøringen
+av v0.30.0 endrer versjonsmetadata og må få egne kandidatkontroller; pakkene og
+hashene i denne rapporten gjelder fortsatt den oppgitte 0.29.0-kandidaten.
 
 | Kontroll | Status |
 | --- | --- |
