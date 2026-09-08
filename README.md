@@ -56,9 +56,9 @@ Start with the user guide for product behavior and workflows:
 
 Release notes:
 
+- [v0.30.0](docs/releases/RELEASE_NOTES_v0.30.0.md)
 - [v0.29.0](docs/releases/RELEASE_NOTES_v0.29.0.md)
 - [v0.28.0](docs/releases/RELEASE_NOTES_v0.28.0.md)
-- [v0.27.0](docs/releases/RELEASE_NOTES_v0.27.0.md)
 
 The repository keeps the three most recent release-note files. Older notes
 remain available in the [v0.29.0 source snapshot](https://github.com/bliatun-code/Filament-Manager/tree/v0.29.0),
@@ -370,7 +370,7 @@ Validate the ordinary local Universal 2 DMG after the build:
 
 ```bash
 npm run verify:macos-local -- \
-  /path/to/Filament\ Manager_0.29.0_universal.dmg \
+  /path/to/Filament\ Manager_0.30.0_universal.dmg \
   --architectures=arm64,x86_64
 ```
 
@@ -426,7 +426,7 @@ download and checksum flow.
 ## Release Status
 
 - Latest release page: https://github.com/bliatun-code/Filament-Manager/releases/latest
-- Current version: `0.29.0`
+- Current version: `0.30.0`
 - Version source of truth must stay aligned across:
   - `package.json`
   - `package-lock.json`

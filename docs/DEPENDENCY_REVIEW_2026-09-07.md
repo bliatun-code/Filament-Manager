@@ -1,10 +1,32 @@
 # Dependency review — 2026-09-07
 
-PR #90 is already merged. The recovery batch brings together the pending
-Dependabot updates from [#91](https://github.com/bliatun-code/Filament-Manager/pull/91),
-[#92](https://github.com/bliatun-code/Filament-Manager/pull/92), and
-[#93](https://github.com/bliatun-code/Filament-Manager/pull/93), with their shared
-CI fixes. The original failures do not establish a dependency regression.
+Status updated on 2026-09-08. The dependency batches planned in this review are
+merged, following the earlier [#90](https://github.com/bliatun-code/Filament-Manager/pull/90):
+
+- [#94](https://github.com/bliatun-code/Filament-Manager/pull/94) combined the
+  updates proposed in [#91](https://github.com/bliatun-code/Filament-Manager/pull/91),
+  [#92](https://github.com/bliatun-code/Filament-Manager/pull/92) and
+  [#93](https://github.com/bliatun-code/Filament-Manager/pull/93) with their shared
+  CI fixes and the mDNS/Quinn patches described below.
+- [#95](https://github.com/bliatun-code/Filament-Manager/pull/95) updated ESLint
+  to 10.10.0.
+- [#96](https://github.com/bliatun-code/Filament-Manager/pull/96) applied the
+  grouped Cargo update with 43 updates, including aws-lc, tokio-rustls and Hyper.
+- [#97](https://github.com/bliatun-code/Filament-Manager/pull/97) completed the
+  TLS/HTTP follow-up with rustls 0.23.44 and a Windows test-timeout correction.
+- [#98](https://github.com/bliatun-code/Filament-Manager/pull/98) updated
+  Playwright and playwright-core to 1.63.0.
+
+The resulting main candidate is
+[`aee8d23e`](https://github.com/bliatun-code/Filament-Manager/commit/aee8d23eeef1684150491fef8823589f58d388a5).
+All 11 PR #98 checks passed. The separate main
+[CI run](https://github.com/bliatun-code/Filament-Manager/actions/runs/34227436481)
+and [CodeQL run](https://github.com/bliatun-code/Filament-Manager/actions/runs/34227436487)
+also passed on `aee8d23e`. The subsequent manual
+[release verification](RELEASE_VERIFICATION_2026-09-08.md) passed on that same
+source commit without publishing a release.
+The historical findings and validation below explain this completed dependency
+round. They do not prescribe another broad version update.
 
 ## Why the dependency PRs failed
 
@@ -26,10 +48,12 @@ CI fixes. The original failures do not establish a dependency regression.
 
 ## Broader dependency decisions
 
-The four UI updates in #91 fit the current engine and peer ranges:
+The four UI updates proposed in #91 and merged through #94 fit the reviewed
+engine and peer ranges:
 `@types/react-dom` 19.2.7, `eslint-plugin-react-refresh` 0.5.6, `globals` 17.12.0,
-and `typescript-eslint` 8.69.0. Neither npm lockfile has a registered vulnerability
-in the dated audit, and no direct npm dependency has a deprecation marker.
+and `typescript-eslint` 8.69.0. The dated audits reported no registered
+vulnerabilities in either npm lockfile, and the registry check found no
+deprecation markers on the direct npm dependencies.
 
 Keep TypeScript 6: `typescript-eslint` 8.69.0 still requires TypeScript below 6.1,
 and TypeScript 7.0 does not provide the compiler API used by that tooling.
@@ -39,53 +63,54 @@ compatibility holds, not a blanket policy against major upgrades.
 [TypeScript 7 release](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/),
 [Node release status](https://nodejs.org/en/about/previous-releases).
 
-Take Playwright 1.63 separately: it changes the test browser from Chromium 151
-to 153 and needs its matching browser installation plus UI, accessibility,
-Companion and performance verification. Do not automatically relax screenshot
-or performance thresholds for the new browser. ESLint 10.10 is another compatible
-minor tooling update, with no connection to the failed Rust test.
+Playwright 1.63 was taken separately in #98. It changed the test browser from
+Chromium 151 to 153 and was checked with the matching browser installation and
+the existing UI, accessibility, Companion and performance gates. Screenshot and
+performance thresholds were retained. ESLint 10.10.0 was merged separately in
+#95; it was not a fix for the Rust timeout test.
 [Playwright release notes](https://playwright.dev/docs/release-notes#version-163),
 [ESLint 10.10 release](https://github.com/eslint/eslint/releases/tag/v10.10.0).
 
-The Cargo lockfile includes the #92 updates to `tauri-plugin-single-instance`
-2.4.4, `open` 5.4.3 and `flate2` 1.1.10. The latter adds `miniz_oxide` 0.9.1
+The #94 Cargo update incorporated #92's `tauri-plugin-single-instance`
+2.4.4, `open` 5.4.3 and `flate2` 1.1.10. The latter added `miniz_oxide` 0.9.1
 and `zlib-rs` 0.6.7; PNG still needs `miniz_oxide` 0.8.9. Multiple compatible
 dependency generations in the graph are not, by themselves, a reason to force
 one version across incompatible constraints. Manifest caret minima do not need
 to be rewritten merely to match an already reviewed lockfile version.
 
-Go beyond #92's `mdns-sd` 0.21.1 to 0.21.2 in this batch. It fixes an
+The #94 batch went beyond #92's `mdns-sd` 0.21.1 to 0.21.2. It fixes an
 out-of-bounds panic when receiving a truncated HINFO packet and removes the raw
-packet dump from parse errors. This is a concrete network-input fix, unlike
-updating an unrelated package solely because a new version exists.
+packet dump from parse errors. This network-input fix was the reason for
+including the additional patch.
 [mdns-sd 0.21.2 release](https://github.com/keepsimple1/mdns-sd/releases/tag/v0.21.2).
 
-Also take the compatible `quinn-proto` 0.11.17 security patch. The locked 0.11.16
-is within the affected ranges of three upstream memory-exhaustion advisories.
+The #94 batch also included `quinn-proto` 0.11.17. The previously locked 0.11.16
+was within the affected ranges of three upstream memory-exhaustion advisories.
 The crate is in the resolved reqwest graph on both desktop targets, but our
 reqwest features do not enable HTTP/3 and its QUIC runtime calls are behind that
-feature. No active application exploit is demonstrated. The available patch
-still belongs in this recovery batch. These upstream advisories were not
-reported by the dated RustSec audit, which is why audit exit status alone is
-insufficient evidence for dependency review.
+feature. No active application exploit was demonstrated. These upstream
+advisories were not reported by the dated RustSec audit, which is why audit
+exit status alone is insufficient evidence for dependency review.
 [Quinn security release](https://github.com/quinn-rs/quinn/releases/tag/quinn-proto-0.11.17),
 [GHSA-qfwj-vfxf-92j2](https://github.com/quinn-rs/quinn/security/advisories/GHSA-qfwj-vfxf-92j2),
 [GHSA-2hv7-gw8g-gpq5](https://github.com/quinn-rs/quinn/security/advisories/GHSA-2hv7-gw8g-gpq5),
 [GHSA-hmxj-32vh-65vr](https://github.com/quinn-rs/quinn/security/advisories/GHSA-hmxj-32vh-65vr).
 
-Review `rustls` 0.23.44 in the next TLS maintenance batch. Its aws-lc signature
-changes affect the provider selected by this application; verify Bambu
-handshakes, certificate/pin rejection and both desktop platforms. The app does
-not enable ECH or TLS keylogging, so those other patch notes do not demonstrate
-an active application bug. Keep this protocol change separate from restoring
-the already pending Dependabot checks.
+The TLS/HTTP follow-up was completed through #96 and #97. The rustls 0.23.44
+aws-lc signature changes affect the provider selected by this application, so
+the follow-up included TLS identity, certificate and pin-rejection tests and
+the existing platform gates. The app does not enable ECH or TLS keylogging;
+those other patch notes did not demonstrate an active application bug.
 [rustls 0.23.44 release](https://github.com/rustls/rustls/releases/tag/v%2F0.23.44).
 
 A read-only `cargo update --dry-run` after the mDNS patch proposed 59 updates
-within the declared Rust 1.88 and dependency constraints. The targeted Quinn fix
-above is taken now; the remaining maintenance belongs in a reviewed Cargo batch,
-including TLS tests for rustls/aws-lc and HTTP behavior for Hyper. The existing
-Dependabot Cargo block now has `allow: dependency-type: all`, so ordinary version
+within the declared Rust 1.88 and dependency constraints. This was a dated
+candidate set, not a permanent list of outstanding work. The targeted Quinn
+patch was included in #94, the grouped Cargo maintenance in #96, and rustls in
+#97. The resulting lockfile is the basis for subsequent reviews; the original
+59-update count must not be reused as the current backlog.
+
+The Dependabot Cargo block has `allow: dependency-type: all`, so ordinary version
 updates also consider transitives. The existing weekly patch/minor group is
 retained. This does not force incompatible versions, guarantee the exact dry-run
 set, group majors, or change security-update grouping.
@@ -93,8 +118,8 @@ set, group majors, or change security-update grouping.
 
 ## Rust advisory follow-up
 
-The RustSec audit's vulnerability section contains zero entries. Its 17
-informational warnings still require an explicit distinction:
+The recorded RustSec audits reported zero vulnerability entries and 17
+informational warnings. Those warnings require an explicit distinction:
 
 - Ten GTK3 maintenance warnings, the `glib` soundness warning, and the
   `proc-macro-error` maintenance warning enter through Linux/BSD-only Tauri
@@ -109,11 +134,13 @@ informational warnings still require an explicit distinction:
   This review establishes dependency reachability, not a demonstrated exploit.
   [unic advisory](https://rustsec.org/advisories/RUSTSEC-2025-0100.html).
 
-The latest published `tauri` 2.11.5, `tauri-build` 2.6.3 and `tauri-utils` 2.9.3
-are already locked. The published utility crate requires `urlpattern ^0.3`,
-whose only published 0.3 release is 0.3.0. Upstream replaced `unic` with
-`icu_properties`, but the Tauri switch to `urlpattern` 0.6 is not yet released.
-Track that normal Tauri upgrade; there is no compatible lock-only fix today.
+At the 2026-09-07 registry check, the latest published `tauri` 2.11.5,
+`tauri-build` 2.6.3 and `tauri-utils` 2.9.3 were already locked; these versions
+remain in the reviewed main candidate. The utility crate requires
+`urlpattern ^0.3`, whose only published 0.3 release was 0.3.0. Upstream had
+replaced `unic` with `icu_properties`, but the Tauri switch to `urlpattern` 0.6
+was not yet released. Follow that change through a published, compatible Tauri
+update; the dated registry check found no compatible lock-only fix.
 Do not add an advisory ignore or force the incompatible 0.6 API under 0.3.
 [Published tauri-utils](https://crates.io/crates/tauri-utils/2.9.3/dependencies),
 [upstream replacement](https://github.com/denoland/rust-urlpattern/pull/67).
@@ -121,124 +148,77 @@ Do not add an advisory ignore or force the incompatible 0.6 API under 0.3.
 ## Verification scope
 
 Registry and RustSec results are a dated assessment of known advisories, not a
-general security guarantee. Full macOS and Windows smoke jobs, CodeQL and the
-supply-chain workflow remain required for the combined pull request. No audit
-warning, license requirement or test threshold is suppressed to make it pass.
+general security guarantee. The recorded local checks below belong to their
+respective dependency batches. PR #98's 11 completed checks include macOS and
+Windows smoke, CodeQL and the supply-chain checks; the separate main CI and
+CodeQL runs also passed as recorded above. Audit warnings remain visible, and license
+requirements and screenshot/performance thresholds were retained. The test
+waiting corrections are documented in this report. Release verification remains
+a separate gate; its completed candidate results and platform limits are recorded
+in [the release report](RELEASE_VERIFICATION_2026-09-08.md).
 
-## TLS/HTTP maintenance batch (2026-09-07 follow-up)
+## TLS/HTTP follow-up — merged through #96 and #97
 
-### Valgte oppdateringer
+The planned TLS/HTTP versions reached main in two PRs:
 
-- `rustls` 0.23.43 → `0.23.44`
-- `aws-lc-rs` 1.18.0 → `1.18.1`
-- `aws-lc-sys` 0.44.0 → `0.45.0` (transitiv via `rustls`-provider)
-- `tokio-rustls` 0.26.4 → `0.26.5`
-- `hyper` 1.11.0 → `1.11.1`
+| Package | Previous lock | Reviewed lock | Merged in |
+| --- | --- | --- | --- |
+| `aws-lc-rs` | 1.18.0 | 1.18.1 | #96 |
+| `aws-lc-sys` | 0.44.0 | 0.45.0 | #96 |
+| `tokio-rustls` | 0.26.4 | 0.26.5 | #96 |
+| `hyper` | 1.11.0 | 1.11.1 | #96 |
+| `rustls` | 0.23.43 | 0.23.44 | #97 |
 
-### Grunnlag og kompatibilitet
+The diff from #96's merge (`48096d7c`) to #97's merge (`39db1036`) changes only
+the rustls version and checksum in `Cargo.lock`. Its sole manifest change raises
+the rustls requirement in `src-tauri/Cargo.toml` to 0.23.44. The other four
+versions were already present after #96; #97 did not change `windows-sys` or
+`getrandom`. `quinn-proto` remained at the 0.11.17 patch taken in #94.
 
-- Kandidatversjoner ble sjekket mot upstream release-merker før oppdatering:
-  `rustls` 0.23.44, `aws-lc-rs` 1.18.1, `aws-lc-sys` 0.45.0, `tokio-rustls` 0.26.5
-  og `hyper` 1.11.1.
-- `quinn-proto` er allerede låst til 0.11.17 fra forrige fellespakke, og ble
-  ikke endret i denne runden.
-- Kompatibilitet ble verifisert gjennom:
-  - låst Cargo-løsning med eksplisitte `--precise`-oppdateringer i sekvens
-  - full MSRV-kjøring (`cargo +1.88.0 check --workspace --all-targets --all-features --locked`)
-  - TLS/HTTP-relatert testsett (fingerprinter/handshake/pinning/negative-krav)
-  - komplett repo-verifisering med `npm run verify`.
+The recorded local validation for the TLS follow-up passed:
 
-### Cargo.lock-kontroll (utilsiktede endringer)
+- `cargo +1.88.0 check --workspace --all-targets --all-features --locked`.
+- The targeted TLS identity tests, including certificate/SPKI/serial matching
+  and rejection of unknown or changed identities and incorrect pins.
+- `cargo test -p bambu-filament-manager printer_bambu_live_commands::tests::full_printer_delete_waits_for_in_flight_security_save`.
+- `npm run verify`, including UI/Companion, contracts, accessibility,
+  performance, Rust formatting/tests and both Clippy profiles.
+- `npm run audit:dependencies`: no npm vulnerability entries, the informational
+  RustSec warnings described above, and a passing Cargo license check.
 
-`Cargo.lock` endringer er begrenset til de valgte pakkene og nødvendige
-transitive oppryddinger:
-- Direkte: `aws-lc-rs`, `aws-lc-sys`, `hyper`, `rustls`, `tokio-rustls`.
-- `windows-sys` gikk fra `0.61.2` til `0.59.0` i et begrenset sett av avhengigheter
-  i lockfilen, og `getrandom` fikk også en eldre 0.3.4-linje i én graf.
-- Det er ingen manifest-baserte version bumps utover de fire direkte endringene.
+The #97 test correction increased the post-lock completion wait in
+`full_printer_delete_waits_for_in_flight_security_save` to 10 seconds after a
+Windows CI timeout. It changed the test's waiting allowance, not the production
+TLS or deletion behavior. These results complete the planned TLS/HTTP batch;
+they do not establish coverage of every possible protocol or browser defect.
 
-### Verifikasjon og resultat
+## Playwright 1.63.0 — merged in #98 on 2026-09-08
 
-- `cargo +1.88.0 check --workspace --all-targets --all-features --locked` ✅
-- `cargo test` mot TLS-identitetsscenarier (handshake, SPKI/serial matching, pin
-  og negativt oppførsel) ✅
-- `cargo test -p bambu-filament-manager printer_bambu_live_commands::tests::full_printer_delete_waits_for_in_flight_security_save` ✅
-- `npm run verify` ✅ (full suite, inkludert kontrakter, UI/Companion,
-  smoke/lint/test + `cargo fmt/test/clippy`).
-- `npm run audit:dependencies` ✅ (npm-audit rent, Cargo-audit med kjente,
-  pre-eksisterende, ikke-advarende rustsec-/lisensstatus).
+The root manifest now requires `playwright ^1.63.0`; `package-lock.json` resolves
+both `playwright` and `playwright-core` to 1.63.0. The update removed Playwright's
+optional `fsevents` dependency and its now-unused root lockfile entry.
+`@axe-core/playwright` and `axe-core` remain locked at 4.13.0. The declared
+`playwright-core >=1.0.0` peer range accepts 1.63.0; compatibility was also checked
+through the existing accessibility tests.
 
-### Gjenstående funn etter pakken
+The [Playwright release](https://playwright.dev/docs/release-notes#version-163)
+updates the test browser to Chromium 153. CI retains the explicit matching
+browser installation, `node ./node_modules/playwright/cli.js install chromium`,
+before running the browser-dependent checks. This changes the test browser;
+the installed Tauri apps continue to use WKWebView on macOS and WebView2 on
+Windows. The Cargo dependencies, Node/types 24, TypeScript 6, SHA-pinned actions,
+and screenshot/performance thresholds were unchanged by #98.
 
-- Sikkerhet: Oppdateringene er et vedlikeholds-/harde-sikkerhetsløft i TLS/HTTP-kjeden
-  (TLS/HTTP-ytelser og provider-kjede). Ingen nye advarsler ble introdusert i
-  dagens kontrollkjøring.
-- Vedlikehold: transitive lockforskyvninger (`windows-sys`/`getrandom`) er
-  kompatible oppløsningsresultater, men bør overvåkes i neste batch dersom ny
-  lockdominans gir avvik på tvers av støtteplattformene.
-- Hypotetisk eksponering: Vi har fortsatt ikke tatt en større `hyper`/TLS/Net-batch
-  (eks. HTTP/3/QUIC eller Playwright-impakt), så disse områdene ligger utenfor
-  denne pakken og bør vurderes separat ved behov.
-- Fiksing av CI-dimensjonert flakiness: Windows smoke-feilen i testen
-  `full_printer_delete_waits_for_in_flight_security_save` ble løst i denne
-  pakken ved å øke post-lås ventingen til 10s for å unngå falske timeout på
-  tregere Windows-ruter, uten å endre TLS/HTTP-sikkerhetskrav.
+The recorded local `npm run verify` and `npm run audit:dependencies` passed.
+Verification included UI build/lint, Companion and script tests, accessibility,
+UI and performance tests, contracts, and the full Rust/Clippy sequence. The
+audits reported zero npm vulnerability entries, the same 17 informational
+RustSec warnings, and a passing Cargo license check. These warnings were still
+reported; no advisory ignore was added. All 11 PR #98 checks passed before merge.
 
-## Playwright 1.63.x separat pakke (2026-09-08)
-
-### Valgte oppdateringer
-
-- `playwright` `1.62.1` → `1.63.0` (`^1.62.0` → `^1.63.0` i
-  manifestet, låst til `playwright`/`playwright-core` 1.63.0).
-- `playwright`-/`playwright-core`-linjer i `package-lock.json`.
-- Løsnet/fordelt valg i lockfilen: `fsevents`-posten for macOS var ikke lenger
-  nødvendig i den låste 1.63-oppløsningen og ble fjernet.
-
-### Grunnlag og kompatibilitet
-
-- Oppgradering ble valgt som en separat, avgrenset pakke med krav om at
-  TLS/HTTP-batchene forblir helt uendret i denne runden.
-- Oppgraderingsmålet ble verifisert mot [Playwright 1.63 release notes](https://playwright.dev/docs/release-notes#version-163), hvor de relevante endringene er:
-  - Chromium ble oppdatert til 153-serien,
-  - nytt `lock`-API i testløper, nye locator-/trace-/a11y-tilknyttede forbedringer,
-  - nye browser-versjonskrav i CI-planen,
-  - Ubuntu 20.04 er markert utdatert i den aktuelle versjonen.
-- `@axe-core/playwright` ble sjekket mot registrert peer:
-  - `peerDependencies.playwright-core = \">= 1.0.0\"`
-  - `dependencies = axe-core ~4.13.0`  
-  Dette gir bakoverkompatibilitet med Playwright 1.63-linjen uten ekstra
-  overstyringer.
-- CI har fortsatt én eksplisitt browser-installasjon for Chromium:
-  `node ./node_modules/playwright/cli.js install chromium`.
-  Dette samsvarer med testoppsettet der det installerte Chromium-biblioteket
-  brukes både i `npm run verify` og de eksplisitte Companion/UI-e2e
-  kommandoene.
-
-### Verifikasjon og resultat
-
-- `npm run verify` ✅
-  - `smoke` (UI build, lint, Companion, skript, a11y, UI-tester, performance og
-    contracts) + full Rust/Clippy-sekvens.
-- `npm run audit:dependencies` ✅
-  - 0 `npm`-vulnerabiliteter i både rot-/UI-låsfil.
-  - cargo-audit gav 17 tillatte “allowed warnings” (samme gjenværende mønster som
-    tidligere); ingen `deny`-kriterier utløst.
-  - `cargo deny`-lisenskontroll OK.
-- `@types/node` 24 og TypeScript 6 ble holdt uendret.
-- SHA-pinnede GitHub Actions forble uendret.
-
-### Gjenstående funn etter denne pakken
-
-- Sikkerhet:
-  - Ingen Playwright-spesifikke nye sikkerhetsadvarsler i dagens verifiseringsløp.
-  - Chromium-kravet har gått opp, men dette har ikke trigget tilleggstests for
-    Chromium-kanalspesifikke sikkerhetspunkter utover dagens baseline-gates.
-- Vedlikehold:
-  - Lockfila inneholder nå `@axe-core/playwright` 4.13.0 med `axe-core`
-    4.13.0; dette samsvarer med registrert semantikk.
-  - Ingen andre runtime-avhengigheter er endret som følge av denne pakken.
-- Hypotetisk eksponering:
-  - Spesielle Playwright- eller browser-endringer vedrørende nett-tilpasning
-    (f.eks. frame-scope-feil, nye traces-profiler) er fortsatt dekkende gjennom
-    dagens UI/Companion/e2e/perf-scripts, men bør overvåkes i neste planlagte
-    browser-pakke.
+This completes the planned browser-tooling update. Further dependency work
+follows the existing [maintenance policy](DEPENDENCY_SECURITY.md), including
+the Tauri/`unic` follow-up above. Release verification on `aee8d23e` is completed
+and recorded in [the release report](RELEASE_VERIFICATION_2026-09-08.md).
+Any later publishing candidate must meet the gates in
+[the improvement plan](IMPROVEMENT_PLAN.md#neste-arbeid).

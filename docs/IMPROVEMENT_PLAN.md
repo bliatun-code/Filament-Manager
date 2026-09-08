@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-07     |
+| Sist oppdatert | 2026-09-08     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -175,13 +175,23 @@ De [installerte batchkontrollene](PACKAGED_BATCH_GATES_2026-09-06.md) er nå utv
 
 [CI etter sluttgjennomgangen](https://github.com/bliatun-code/Filament-Manager/actions/runs/34063248014) bestod på `89aca68e`: macOS Smoke, Windows Smoke, delte kontrakter og migrasjonsintegritet. CodeQL og avhengighets-/lisenskontrollene er også grønne på samme commit; alle 11 PR-kontroller er bestått. Begge installasjonspakkene bestod desktop- og Host/Client-flytene.
 
-[PR #89](https://github.com/bliatun-code/Filament-Manager/pull/89) er merget i `main` som `9a92420f`. Hele Git-treet er identisk med den verifiserte kandidaten `89aca68e`. Hovedgrenens automatiske [CI-kjøring](https://github.com/bliatun-code/Filament-Manager/actions/runs/34065183732) er startet; resultatet er ikke lagt til grunn for den tidligere PR-verifiseringen.
+[PR #89](https://github.com/bliatun-code/Filament-Manager/pull/89) ble merget i `main` som `9a92420f`, med samme Git-tre som den verifiserte kandidaten `89aca68e`. Etterfølgende PR #94–98 fullførte den planlagte [dependency-runden](DEPENDENCY_REVIEW_2026-09-07.md). Den release-verifiserte kildekandidaten var `aee8d23e`; gamle PR-resultater regnes ikke som nye testresultater på senere kandidater.
 
-1. Før neste publisering: kontroller hovedgrenens CI og kjør den separate release-kontrollen for v0.28.0-oppgradering fra schema 5 til 7 på releasekandidaten. Bevar de eksisterende plattform-/signeringskravene; ordinær Windows Smoke dekker ikke oppgraderingen alene.
+Den separate [release-verifiseringen 8. september](RELEASE_VERIFICATION_2026-09-08.md) er bestått på `aee8d23e`, sammen med hovedgrenens CI og CodeQL. Den eksisterende manuelle workflowen verifiserte signert/notarisert Universal 2-DMG og eksplisitt usignert Windows-MSI, uten tagg eller publisering. Rapporten dokumenterer schema 5→7 gjennom to starter på macOS arm64 og Windows x64, samt bestått separat Intel-installasjon og desktop-/Host/Client-batch på alle tre plattformene. Historisk oppgradering ble ikke kjørt på Intel.
+
+Versjon [v0.30.0](releases/RELEASE_NOTES_v0.30.0.md) klargjøres nå med samstemte app-, pakke-, Cargo- og Tauri-versjoner og egne releasenotater for endringene siden publisert v0.29.0. Forberedelsen tar med dokumentasjonscommiten `cd8b5db6`; avhengigheter, migrasjoner og release-workflow beholdes. v0.28.0-fixturen er fortsatt den eksplisitte historiske schema-5-baselinen, ikke en påstand om siste publiserte release.
+
+1. Fullfør review og PR-kontroller for v0.30.0. Etter merge skal release-portene kjøres på den faktiske v0.30.0-kandidaten før publisering. Kontrollen av `aee8d23e` gjelder forgjengeren og erstatter ikke kandidatens nye tester eller installasjonspakker. Bevar de eksisterende plattform-/signeringskravene; ordinær Windows Smoke dekker ikke v0.28.0-oppgraderingen alene. Migrasjonenes publiserte grense flyttes først etter at release er publisert.
 2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-08
+
+- Neste release er klargjort som v0.30.0 med nye releasenotater og samstemte versjonsfelt. Releasenotatene for v0.27.0 roteres ut etter tre-versjonersregelen; publiserte tagger og eldre notater i historikken bevares. Ingen nye dependency-oppdateringer eller migrasjonsendringer inngår. Den tidligere release-verifiseringen dokumenteres som forgjengerens resultat, med egne porter for den nye kandidaten.
+- PR #94–98 er merget og den planlagte dependency-runden er avsluttet. Den daterte dependency-rapporten er oppdatert slik at utførte ESLint-, Cargo-, TLS/HTTP- og Playwright-oppdateringer ikke står som fremtidig arbeid.
+- Release-verifiseringen fra `main` på `aee8d23e` bestod i [kjøring 34227965780](https://github.com/bliatun-code/Filament-Manager/actions/runs/34227965780): seks grønne jobber, publisering og attestasjoner hoppet over. macOS arm64 og Windows x64 bevarte 22 domenetabeller gjennom schema 5→7 og to starter; begge og native Intel bestod installert desktop-/Host/Client-batch. Hovedgrenens CI og CodeQL er grønne. De 38 fokuserte lokale kontrakt-/oppgraderingstestene, nedlastede fixturen, SBOM og pakkechecksummene er verifisert. [Resultatrapporten](RELEASE_VERIFICATION_2026-09-08.md) bevarer kildecommit, hasher og Intel-avgrensning. Publisert v0.29.0 er uendret; dokumentasjonen committes lokalt uten en ekstra smoke-kjøring.
 
 ### 2026-09-07
 
