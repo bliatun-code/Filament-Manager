@@ -55,10 +55,10 @@
     ]
   },
   "currentSchemaVersion": 7,
-  "publishedThroughSequence": 6,
+  "publishedThroughSequence": 8,
   "publishedReference": {
-    "ref": "v0.28.0",
-    "commit": "76cba513eadd5137d6703f9abd1c0452531ef788"
+    "ref": "v0.30.0",
+    "commit": "7d2eb3a45fc78a60ad31cb88e178ba266d044c5b"
   },
   "migrations": [
     {
