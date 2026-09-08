@@ -1,4 +1,4 @@
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { VendorBadge } from "./vendor_badge";
 import { SegmentedChoiceRow } from "./segmented_choice_row";
 import { InventorySwatchChip } from "./inventory_swatch_chip";
@@ -30,6 +30,7 @@ import {
 
 export type WishlistQueuePanelProps = {
   addPurchaseDisabled: boolean;
+  authorityKey: string;
   busy: boolean;
   catalogMasterById: Map<string, MasterCatalogRow>;
   confirmWishlistRemoveId: string | null;
@@ -111,6 +112,7 @@ export function WishlistQueuePanel({
     emptyWishlistReceiptDraft,
   );
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
+  const receiptOperation = useRef({ inFlight: false, completed: false });
   const receiptItem = items.find((item) => item.id === receiptDraft.itemId) ?? null;
   const receiptQuantityRaw = receiptItem
     ? receiptQuantities[receiptItem.id] ?? "1"
@@ -125,18 +127,20 @@ export function WishlistQueuePanel({
   );
 
   const openReceipt = (item: WishlistItemRow) => {
+    if (busy || receiptOperation.current.inFlight) return;
+    receiptOperation.current.completed = false;
     updateReceiptDraft({ type: "open", itemId: item.id });
   };
 
   const closeReceipt = () => {
-    if (busy || receiptSubmitting) {
+    if (busy || receiptOperation.current.inFlight) {
       return;
     }
     updateReceiptDraft({ type: "close" });
   };
 
   const confirmReceipt = async () => {
-    if (!receiptItem || busy || receiptSubmitting) {
+    if (!receiptItem || busy || receiptOperation.current.inFlight || receiptOperation.current.completed) {
       return;
     }
     const parsed = parsePurchaseReceiptMetadataDraft(receiptDraft.metadata);
@@ -145,6 +149,7 @@ export function WishlistQueuePanel({
       return;
     }
     updateReceiptDraft({ type: "errors", value: {} });
+    receiptOperation.current.inFlight = true;
     setReceiptSubmitting(true);
     try {
       const succeeded = await onStockItem(
@@ -154,6 +159,7 @@ export function WishlistQueuePanel({
         receiptDraft.homeLocation.trim() || undefined,
       );
       if (succeeded) {
+        receiptOperation.current.completed = true;
         setReceiptQuantities((current) => ({
           ...current,
           [receiptItem.id]: "1",
@@ -161,6 +167,7 @@ export function WishlistQueuePanel({
         updateReceiptDraft({ type: "close" });
       }
     } finally {
+      receiptOperation.current.inFlight = false;
       setReceiptSubmitting(false);
     }
   };

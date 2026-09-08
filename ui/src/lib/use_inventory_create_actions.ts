@@ -240,9 +240,9 @@ export function useInventoryCreateActions({
       batchController?.snapshot()?.status !== "SAVING";
   }
 
-  function beginRegistration() {
+  function beginWrite() {
     const scope = registrationScopeRef.current;
-    if (!scope || scope.key !== registrationScopeKey || scope.completed || !canStartWrite()) {
+    if (!scope || scope.key !== registrationScopeKey || !canStartWrite()) {
       return null;
     }
     // A React state update alone does not reject two callbacks before the next render.
@@ -250,6 +250,11 @@ export function useInventoryCreateActions({
     setBusy(true);
     setError(null);
     return scope;
+  }
+
+  function beginRegistration() {
+    if (registrationScopeRef.current?.completed) return null;
+    return beginWrite();
   }
 
   function showCreateValidationError(error: InventoryCreateSpoolError | InventoryCreateBatchError) {
@@ -493,8 +498,9 @@ export function useInventoryCreateActions({
       );
       return;
     }
-    setBusy(true);
-    setError(null);
+    const scope = beginWrite();
+    if (!scope) return;
+    const isCurrent = () => registrationScopeRef.current === scope;
     try {
       await createWishlistEntry(
         {
@@ -509,7 +515,9 @@ export function useInventoryCreateActions({
         },
         hostWriteTarget,
       );
+      if (!isCurrent()) return;
       await reloadWishlist();
+      if (!isCurrent()) return;
       setInfoMessage(
         `${t("inventory.wishlistOrders", "Wishlist & orders")}: ${formatInventoryDisplayTitle(
           currentCreateDraft.material,
@@ -520,10 +528,14 @@ export function useInventoryCreateActions({
       resetAfterCreatedSpool();
       onWishlistItemCreated();
     } catch (wishlistError) {
+      if (!isCurrent()) return;
       console.error(wishlistError);
       setError(t("wishlist.error.add", "Failed to add wishlist item."));
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -531,9 +543,10 @@ export function useInventoryCreateActions({
     if (!canStartWrite()) {
       return;
     }
+    const scope = beginWrite();
+    if (!scope) return;
+    const isCurrent = () => registrationScopeRef.current === scope;
     setConfirmWishlistRemoveId(null);
-    setBusy(true);
-    setError(null);
     try {
       await updateWishlistEntryStatus(
         {
@@ -542,12 +555,17 @@ export function useInventoryCreateActions({
         },
         hostWriteTarget,
       );
+      if (!isCurrent()) return;
       await reloadWishlist();
     } catch (statusError) {
+      if (!isCurrent()) return;
       console.error(statusError);
       setError(t("wishlist.error.updateStatus", "Failed to update wishlist status."));
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -558,18 +576,24 @@ export function useInventoryCreateActions({
     if (!canStartWrite()) {
       return;
     }
+    const scope = beginWrite();
+    if (!scope) return;
+    const isCurrent = () => registrationScopeRef.current === scope;
     setConfirmWishlistRemoveId(null);
     setInfoMessage(null);
-    setBusy(true);
-    setError(null);
     try {
       await deleteWishlistEntry(itemId, hostWriteTarget);
+      if (!isCurrent()) return;
       await reloadWishlist();
     } catch (deleteError) {
+      if (!isCurrent()) return;
       console.error(deleteError);
       setError(t("wishlist.error.delete", "Failed to delete wishlist item."));
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -585,9 +609,10 @@ export function useInventoryCreateActions({
     if (!canStartWrite()) {
       return false;
     }
+    const scope = beginWrite();
+    if (!scope) return false;
+    const isCurrent = () => registrationScopeRef.current === scope;
     setConfirmWishlistRemoveId(null);
-    setBusy(true);
-    setError(null);
     try {
       const receipt = await receiveWishlistEntry(
         {
@@ -600,6 +625,7 @@ export function useInventoryCreateActions({
         },
         hostWriteTarget,
       );
+      if (!isCurrent()) return false;
       // The receipt is already committed. A failed read must not leave a
       // retryable receipt draft that could create the same rolls again.
       try {
@@ -609,13 +635,16 @@ export function useInventoryCreateActions({
           throw failed.reason;
         }
       } catch (refreshError) {
-        console.error(refreshError);
-        setError(commandErrorText(
-          refreshError,
-          t("inventory.error.loadInventory", "Failed to load inventory."),
-          t,
-        ));
+        if (isCurrent()) {
+          console.error(refreshError);
+          setError(commandErrorText(
+            refreshError,
+            t("inventory.error.loadInventory", "Failed to load inventory."),
+            t,
+          ));
+        }
       }
+      if (!isCurrent()) return false;
       const createdSpoolId = receipt.spool_ids[0] ?? null;
       setSelectedSpoolId(createdSpoolId);
       setRecentlyAddedSpoolId(createdSpoolId);
@@ -628,6 +657,7 @@ export function useInventoryCreateActions({
       );
       return true;
     } catch (stockError) {
+      if (!isCurrent()) return false;
       console.error(stockError);
       setError(
         commandErrorText(
@@ -641,7 +671,10 @@ export function useInventoryCreateActions({
       );
       return false;
     } finally {
-      setBusy(false);
+      if (isCurrent()) {
+        scope.inFlight = false;
+        setBusy(false);
+      }
     }
   }
 
