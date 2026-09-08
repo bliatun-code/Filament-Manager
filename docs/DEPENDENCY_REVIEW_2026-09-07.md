@@ -183,3 +183,62 @@ transitive oppryddinger:
   `full_printer_delete_waits_for_in_flight_security_save` ble løst i denne
   pakken ved å øke post-lås ventingen til 10s for å unngå falske timeout på
   tregere Windows-ruter, uten å endre TLS/HTTP-sikkerhetskrav.
+
+## Playwright 1.63.x separat pakke (2026-09-08)
+
+### Valgte oppdateringer
+
+- `playwright` `1.62.1` → `1.63.0` (`^1.62.0` → `^1.63.0` i
+  manifestet, låst til `playwright`/`playwright-core` 1.63.0).
+- `playwright`-/`playwright-core`-linjer i `package-lock.json`.
+- Løsnet/fordelt valg i lockfilen: `fsevents`-posten for macOS var ikke lenger
+  nødvendig i den låste 1.63-oppløsningen og ble fjernet.
+
+### Grunnlag og kompatibilitet
+
+- Oppgradering ble valgt som en separat, avgrenset pakke med krav om at
+  TLS/HTTP-batchene forblir helt uendret i denne runden.
+- Oppgraderingsmålet ble verifisert mot [Playwright 1.63 release notes](https://playwright.dev/docs/release-notes#version-163), hvor de relevante endringene er:
+  - Chromium ble oppdatert til 153-serien,
+  - nytt `lock`-API i testløper, nye locator-/trace-/a11y-tilknyttede forbedringer,
+  - nye browser-versjonskrav i CI-planen,
+  - Ubuntu 20.04 er markert utdatert i den aktuelle versjonen.
+- `@axe-core/playwright` ble sjekket mot registrert peer:
+  - `peerDependencies.playwright-core = \">= 1.0.0\"`
+  - `dependencies = axe-core ~4.13.0`  
+  Dette gir bakoverkompatibilitet med Playwright 1.63-linjen uten ekstra
+  overstyringer.
+- CI har fortsatt én eksplisitt browser-installasjon for Chromium:
+  `node ./node_modules/playwright/cli.js install chromium`.
+  Dette samsvarer med testoppsettet der det installerte Chromium-biblioteket
+  brukes både i `npm run verify` og de eksplisitte Companion/UI-e2e
+  kommandoene.
+
+### Verifikasjon og resultat
+
+- `npm run verify` ✅
+  - `smoke` (UI build, lint, Companion, skript, a11y, UI-tester, performance og
+    contracts) + full Rust/Clippy-sekvens.
+- `npm run audit:dependencies` ✅
+  - 0 `npm`-vulnerabiliteter i både rot-/UI-låsfil.
+  - cargo-audit gav 17 tillatte “allowed warnings” (samme gjenværende mønster som
+    tidligere); ingen `deny`-kriterier utløst.
+  - `cargo deny`-lisenskontroll OK.
+- `@types/node` 24 og TypeScript 6 ble holdt uendret.
+- SHA-pinnede GitHub Actions forble uendret.
+
+### Gjenstående funn etter denne pakken
+
+- Sikkerhet:
+  - Ingen Playwright-spesifikke nye sikkerhetsadvarsler i dagens verifiseringsløp.
+  - Chromium-kravet har gått opp, men dette har ikke trigget tilleggstests for
+    Chromium-kanalspesifikke sikkerhetspunkter utover dagens baseline-gates.
+- Vedlikehold:
+  - Lockfila inneholder nå `@axe-core/playwright` 4.13.0 med `axe-core`
+    4.13.0; dette samsvarer med registrert semantikk.
+  - Ingen andre runtime-avhengigheter er endret som følge av denne pakken.
+- Hypotetisk eksponering:
+  - Spesielle Playwright- eller browser-endringer vedrørende nett-tilpasning
+    (f.eks. frame-scope-feil, nye traces-profiler) er fortsatt dekkende gjennom
+    dagens UI/Companion/e2e/perf-scripts, men bør overvåkes i neste planlagte
+    browser-pakke.
