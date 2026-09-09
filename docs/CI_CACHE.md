@@ -60,3 +60,18 @@ transfer time, on the same runner image and toolchains before reporting a time
 saving. A miss, eviction, or image update must leave all
 existing checks operational. Release and audit workflows keep their current
 build behavior.
+
+## Initial main-run follow-up
+
+The first main [CI run](https://github.com/bliatun-code/Filament-Manager/actions/runs/34381229276)
+after #103, on `e751dcd29a380f35f407fbba1ba073e5a8cf06df`, failed in
+`Clean workspace artifacts for cache` on both macOS and Windows: Cargo rejected
+`target` because its `CACHEDIR.TAG` was missing or invalid. Neither job saved a
+Rust cache.
+
+The preparation step now writes valid cache-directory markers in the two fixed
+CI build directories, `target` and `target/msrv`, before package cleanup. It uses
+the same successful-main/cache-miss condition as cleanup and saving. Cargo's
+cleanup checks and all verification gates remain in place. A successful ordinary
+main run must still confirm saving, followed by an ordinary PR run to demonstrate
+reuse; warm-cache savings remain **not measured**.

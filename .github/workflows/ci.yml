@@ -418,9 +418,9 @@ jobs:
         shell: pwsh
         run: |
           $cachedirTag = @'
-Signature: 8a477f597d28d172789f06886806bc55
-# This file is a cache directory tag.
-'@
+          Signature: 8a477f597d28d172789f06886806bc55
+          # This file is a cache directory tag.
+          '@
           New-Item -ItemType Directory -Path target -Force | Out-Null
           $cachedirTag | Set-Content -Path target/CACHEDIR.TAG -NoNewline
           New-Item -ItemType Directory -Path target/msrv -Force | Out-Null

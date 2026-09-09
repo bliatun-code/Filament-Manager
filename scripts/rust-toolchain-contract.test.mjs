@@ -223,6 +223,38 @@ test("native Rust cache paths exclude application bundles, credentials and fixtu
   }
 });
 
+test("native cache cleanup prepares valid target markers inside the workflow run block", () => {
+  const saveCondition = "${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}";
+  const signature = "Signature: 8a477f597d28d172789f06886806bc55";
+  for (const jobName of ["macos-smoke", "windows-smoke"]) {
+    const job = workflowJob(workflows[0][1], jobName);
+    const markerName = "Prepare cache-clean target markers";
+    const marker = workflowStep(job, markerName);
+    assert.equal(marker.match(/^        if: (.+)$/m)?.[1], saveCondition, `${jobName} markers must follow the trusted successful-write policy`);
+    assert.doesNotMatch(marker, /^        continue-on-error:/m);
+    const windows = jobName === "windows-smoke";
+    assert.match(marker, windows ? /^        shell: pwsh$/m : /^        shell: bash$/m, `${jobName} must prepare markers using its native supported shell`);
+
+    const runMarker = "        run: |\n";
+    const runStart = marker.indexOf(runMarker);
+    assert.notEqual(runStart, -1, `${jobName} markers must use an explicit run block`);
+    const commands = marker.slice(runStart + runMarker.length);
+    for (const line of commands.split("\n").filter((line) => line.trim() !== "")) {
+      assert.match(line, /^ {10}/, `${jobName} marker command must stay inside the YAML run block: ${line}`);
+    }
+
+    assert.ok(commands.includes(signature), `${jobName} markers must use Cargo's cache-directory signature`);
+    for (const path of ["target/CACHEDIR.TAG", "target/msrv/CACHEDIR.TAG"]) {
+      assert.ok(commands.includes(path), `${jobName} must prepare ${path} before Cargo clean`);
+    }
+    const markerIndex = job.indexOf(`- name: ${markerName}`);
+    const cleanupIndex = job.indexOf("- name: Clean workspace artifacts for cache");
+    const saveIndex = job.indexOf("- name: Save Rust dependencies");
+    assert.ok(markerIndex > job.lastIndexOf("- name: Upload "), `${jobName} must complete smoke gates and uploads before preparing cache markers`);
+    assert.ok(markerIndex < cleanupIndex && cleanupIndex < saveIndex, `${jobName} must prepare target markers before cleanup and cache saving`);
+  }
+});
+
 test("native Rust caches save only after successful main gates and workspace cleanup", () => {
   const members = JSON.parse(rootManifest.match(/^members = (\[[^\n]+\])$/m)?.[1]);
   const packages = [rootManifest, ...members.map((member) => repoFile(`${member}/Cargo.toml`))]
