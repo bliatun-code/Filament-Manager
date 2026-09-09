@@ -10,6 +10,7 @@ import {
   openSync,
   readFileSync,
   readdirSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -32,6 +33,7 @@ import {
 
 import {
   PACKAGED_HOST_CLIENT_CREDENTIAL_CLEANUP_SUMMARY_FORMAT,
+  PACKAGED_HOST_CLIENT_WORK_CLEANUP_SUMMARY_FORMAT,
   PACKAGED_HOST_CLIENT_READY_FORMAT,
   PACKAGED_HOST_CLIENT_RESULT_FORMAT,
   PACKAGED_HOST_CLIENT_STOP_FORMAT,
@@ -46,6 +48,7 @@ import {
   removePackagedHostClientWorkDirectory,
   requestPackagedChildForcedTermination,
   resumePackagedHostClientCredentialCleanup,
+  resumePackagedHostClientWorkCleanup,
   resolvePackagedHostClientPhaseCompletion,
   runPackagedHostClientE2e,
   runWindowsTaskkill,
@@ -644,6 +647,11 @@ test("packaged Host-Client CLI recognizes cleanup resume explicitly", () => {
     "--resume-credential-cleanup",
   ]);
   assert.equal(options.resumeCredentialCleanup, true);
+  assert.equal(options.resumeWorkCleanup, false);
+  assert.equal(packagedHostClientE2eCliOptions(["--resume-work-cleanup"]).resumeWorkCleanup, true);
+  assert.throws(() => packagedHostClientE2eCliOptions([
+    "--resume-credential-cleanup", "--resume-work-cleanup",
+  ]), /Usage:/);
 });
 
 test("packaged Host-Client CLI exits promptly on a sanitized setup failure", () => {
@@ -1812,6 +1820,7 @@ test("orchestrator preserves and redacts the original failure when cleanup also 
     );
     assert.equal(summary.status, "fail");
     assert.equal(summary.auth_cleanup, "failed");
+    assert.equal(existsSync(path.join(options.logDirectory, "work-cleanup-authorized.json")), false);
     assert.equal(summary.message.includes(secret), false);
     assert.match(summary.message, /original pair failure \[REDACTED\]/);
     assert.equal(existsSync(options.workDirectory), true);
@@ -1864,6 +1873,7 @@ test("orchestrator retains private work when the sanitized summary cannot be wri
       /summary could not be written/,
     );
     assert.equal(existsSync(options.workDirectory), true);
+    assert.equal(existsSync(path.join(options.logDirectory, "work-cleanup-authorized.json")), false);
     assert.equal(
       readdirSync(options.logDirectory).some((name) => name.endsWith(".tmp")),
       false,
@@ -1963,6 +1973,7 @@ test("orchestrator retains private work when Host termination cannot be confirme
     assert.equal(summary.status, "fail");
     assert.equal(summary.auth_cleanup, "pass");
     assert.match(summary.message, /Host cleanup failed/);
+    assert.equal(existsSync(path.join(options.logDirectory, "work-cleanup-authorized.json")), false);
   } finally {
     rmSync(root, { force: true, recursive: true });
   }
@@ -2151,7 +2162,227 @@ test("credential cleanup resume requires confirmed exact-process termination", a
   }
 });
 
-test("a normal-run work removal failure can be recovered by cleanup resume", async () => {
+async function authorizedWorkCleanupFixture(root) {
+  const fixture = await retainedCleanupFixture(root);
+  await resumePackagedHostClientCredentialCleanup(
+    { ...fixture.options, processTerminationConfirmed: true },
+    {
+      runClient: async () => ({ auth_cleared: true }),
+      inspectCredentials: () => ({ clientSchemaVersion: 7, authSettingCount: 0 }),
+      removeWork: async () => {},
+    },
+  );
+  return {
+    ...fixture,
+    authorizationPath: path.join(fixture.options.logDirectory, "work-cleanup-authorized.json"),
+    summaryPath: path.join(fixture.options.logDirectory, "work-cleanup-summary.json"),
+  };
+}
+
+test("authorized work cleanup recovers after partial deletion without a Client or work marker", async () => {
+  const root = temporaryRoot("partial-work-deletion");
+  try {
+    const { options, context, authorizationPath, summaryPath } = await authorizedWorkCleanupFixture(root);
+    let attempts = 0;
+    await assert.rejects(removePackagedHostClientWorkDirectory(options.workDirectory, {
+      platform: "win32",
+      removeDirectory: () => {
+        attempts += 1;
+        for (const filePath of [context.markerPath, context.hostDatabasePath,
+          context.clientDatabasePath, context.credentialCleanupPendingPath]) {
+          rmSync(filePath, { force: true });
+        }
+        throw Object.assign(new Error("synthetic locked profile"), { code: "EPERM" });
+      },
+      waitBeforeRetry: async () => {},
+    }), /synthetic locked profile/);
+    assert.equal(attempts, 10);
+    assert.equal(existsSync(authorizationPath), true);
+    assert.throws(() => validateRetainedPackagedHostClientE2eOptions(options), { code: "ENOENT" });
+    const result = await resumePackagedHostClientWorkCleanup(
+      { ...options, processTerminationConfirmed: true },
+      { runClient: () => assert.fail("Deletion recovery must never launch a Client") },
+    );
+    assert.deepEqual(result, {
+      format: PACKAGED_HOST_CLIENT_WORK_CLEANUP_SUMMARY_FORMAT,
+      status: "pass",
+      run_id: context.runId,
+      auth_cleared: true,
+      process_termination_confirmed: true,
+      work_directory_removed: true,
+    });
+    assert.equal(existsSync(options.workDirectory), false);
+    assert.deepEqual(JSON.parse(readFileSync(summaryPath, "utf8")), result);
+    // A crash after removal but before reporting completion is retryable too.
+    assert.deepEqual(await resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }), result);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("work cleanup rejects unconfirmed termination, altered authorization and unrelated roots", async () => {
+  const root = temporaryRoot("work-authorization-validation");
+  try {
+    const { options, authorizationPath } = await authorizedWorkCleanupFixture(root);
+    const original = JSON.parse(readFileSync(authorizationPath, "utf8"));
+    const forbiddenRemoval = () => assert.fail("Invalid authorization must not remove work");
+    await assert.rejects(resumePackagedHostClientWorkCleanup(options, {
+      removeWork: forbiddenRemoval,
+    }), /requires confirmed exact-process termination/);
+    for (const mutation of [
+      { auth_cleared: false },
+      { process_termination_confirmed: false },
+      { run_id: "packaged-host-client-00000000-0000-0000-0000-000000000000" },
+      { work_directory: path.dirname(options.workDirectory) },
+      { log_directory: path.dirname(options.logDirectory) },
+      { work_root_identity: { ...original.work_root_identity, ino: "0" } },
+      { work_root_identity: { dev: "not-a-device", ino: "1" } },
+      { log_root_identity: { ...original.log_root_identity, ino: "0" } },
+    ]) {
+      writeFileSync(authorizationPath, JSON.stringify({ ...original, ...mutation }));
+      await assert.rejects(resumePackagedHostClientWorkCleanup({
+        ...options, processTerminationConfirmed: true,
+      }, { removeWork: forbiddenRemoval }), /identity/);
+    }
+    writeFileSync(authorizationPath, JSON.stringify(original));
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, workDirectory: path.dirname(options.workDirectory), processTerminationConfirmed: true,
+    }, { removeWork: forbiddenRemoval }), /identity/);
+    assert.equal(existsSync(options.workDirectory), true);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("work cleanup rejects a replaced root and symlinked work or log root", async () => {
+  const root = temporaryRoot("work-replacement-validation");
+  try {
+    const { options } = await authorizedWorkCleanupFixture(root);
+    const movedWork = `${options.workDirectory}-original`;
+    renameSync(options.workDirectory, movedWork);
+    mkdirSync(options.workDirectory, { mode: 0o700 });
+    const sentinel = path.join(options.workDirectory, "keep");
+    writeFileSync(sentinel, "unrelated replacement");
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }), /root identity changed/);
+    assert.equal(readFileSync(sentinel, "utf8"), "unrelated replacement");
+    rmSync(options.workDirectory, { recursive: true });
+    const linkKind = process.platform === "win32" ? "junction" : "dir";
+    symlinkSync(movedWork, options.workDirectory, linkKind);
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }), /not a symbolic link/);
+    rmSync(options.workDirectory);
+    renameSync(movedWork, options.workDirectory);
+    const logAlias = `${options.logDirectory}-alias`;
+    symlinkSync(options.logDirectory, logAlias, linkKind);
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, logDirectory: logAlias, processTerminationConfirmed: true,
+    }), /not a symbolic link/);
+    rmSync(logAlias);
+    const movedLogs = `${options.logDirectory}-original`;
+    renameSync(options.logDirectory, movedLogs);
+    mkdirSync(options.logDirectory, { mode: 0o700 });
+    for (const fileName of ["work-cleanup-authorized.json", "run-identity.json"]) {
+      writeFileSync(path.join(options.logDirectory, fileName),
+        readFileSync(path.join(movedLogs, fileName)), { mode: 0o600 });
+    }
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }), /log directory identity changed/);
+    assert.equal(existsSync(options.workDirectory), true);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("work cleanup rechecks root identity between Windows deletion retries", async () => {
+  const root = temporaryRoot("work-replacement-retry");
+  try {
+    const { options } = await authorizedWorkCleanupFixture(root);
+    let attempts = 0;
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }, {
+      removeWork: (work, guard) => removePackagedHostClientWorkDirectory(work, {
+        ...guard,
+        platform: "win32",
+        removeDirectory: () => {
+          attempts += 1;
+          renameSync(work, `${work}-original`);
+          mkdirSync(work, { mode: 0o700 });
+          writeFileSync(path.join(work, "keep"), "replacement");
+          throw Object.assign(new Error("synthetic partial removal"), { code: "EPERM" });
+        },
+        waitBeforeRetry: async () => {},
+      }),
+    }), /Authorized private work cleanup failed/);
+    assert.equal(attempts, 1);
+    assert.equal(readFileSync(path.join(options.workDirectory, "keep"), "utf8"), "replacement");
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("work cleanup reports bounded sanitized failures and retains retry authorization", async () => {
+  const root = temporaryRoot("work-cleanup-remains-locked");
+  try {
+    const { options, authorizationPath, summaryPath } = await authorizedWorkCleanupFixture(root);
+    const secretPath = path.join(options.workDirectory, "webview2-client-cleanup", "secret-token");
+    let attempts = 0;
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }, {
+      removeWork: (work, guard) => removePackagedHostClientWorkDirectory(work, {
+        ...guard,
+        platform: "win32",
+        removeDirectory: () => {
+          attempts += 1;
+          throw Object.assign(new Error(secretPath), { code: "EPERM", syscall: "unlink", path: secretPath });
+        },
+        waitBeforeRetry: async () => {},
+      }),
+    }), (error) => {
+      assert.match(error.message, /EPERM.*operation: unlink; target: webview2-profile/);
+      assert.equal(error.message.includes(root), false);
+      assert.equal(error.message.includes("secret-token"), false);
+      return true;
+    });
+    assert.equal(attempts, 10);
+    assert.equal(existsSync(authorizationPath), true);
+    assert.equal(existsSync(summaryPath), false);
+    assert.equal(existsSync(options.workDirectory), true);
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }, { removeWork: async () => {} }), /retained its authorized root/);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("a fresh failed credential cleanup invalidates prior work deletion authorization", async () => {
+  const root = temporaryRoot("work-authorization-invalidated");
+  try {
+    const { options, authorizationPath } = await authorizedWorkCleanupFixture(root);
+    await assert.rejects(resumePackagedHostClientCredentialCleanup({
+      ...options, processTerminationConfirmed: true,
+    }, {
+      runClient: async () => { throw new Error("fresh credentials not cleared"); },
+    }), /fresh credentials not cleared/);
+    assert.equal(existsSync(authorizationPath), false);
+    await assert.rejects(resumePackagedHostClientWorkCleanup({
+      ...options, processTerminationConfirmed: true,
+    }, { removeWork: () => assert.fail("No authorization") }), { code: "ENOENT" });
+    assert.equal(existsSync(options.workDirectory), true);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("a normal-run partial work removal failure can be recovered by deletion-only resume", async () => {
   const root = temporaryRoot("main-remove-resume");
   const options = optionsFor(root);
   try {
@@ -2183,13 +2414,17 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
           catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
           catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
         }),
-        removeWork: () => {
+        removeWork: (work) => {
+          for (const fileName of [".filament-manager-packaged-host-client-e2e",
+            "credential-cleanup-pending.json", "host.db", "client.db"]) {
+            rmSync(path.join(work, fileName));
+          }
           throw Object.assign(new Error("synthetic main work removal failure"), {
-            code: "ENOENT",
+            code: "EPERM",
           });
         },
       }),
-      /private work cleanup failed \(ENOENT after bounded retries\)/,
+      /private work cleanup failed \(EPERM after bounded retries\)/,
     );
     assert.equal(existsSync(options.workDirectory), true);
     const prior = JSON.parse(
@@ -2198,20 +2433,10 @@ test("a normal-run work removal failure can be recovered by cleanup resume", asy
     assert.equal(prior.status, "pass");
     assert.equal(prior.auth_cleanup, "pass");
 
-    await resumePackagedHostClientCredentialCleanup(
+    await resumePackagedHostClientWorkCleanup(
       { ...options, processTerminationConfirmed: true },
       {
-        runClient: async ({ port, attempt }) => {
-          assert.equal(port, 45_123);
-          assert.equal(attempt, 2);
-          return { auth_cleared: true };
-        },
-        inspectCredentials: () => ({
-          clientSchemaVersion: 7,
-          authSettingCount: 0,
-          catalogJobs: { ...EXPECTED_PACKAGED_CATALOG_JOBS },
-          catalogBatch: { ...EXPECTED_PACKAGED_CATALOG_BATCH },
-        }),
+        runClient: () => assert.fail("A completed cleanup must not relaunch a Client"),
       },
     );
     assert.equal(existsSync(options.workDirectory), false);

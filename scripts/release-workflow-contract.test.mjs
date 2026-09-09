@@ -2022,3 +2022,16 @@ test("schema-7 fixture supplements both installed release gates with verified pr
   assert.match(windowsGate, /database-compatibility-v0\.30\.0/);
   assert.match(windowsGate, /@compatibilitySmokeArguments\s+if \(\$LASTEXITCODE -ne 0\) \{\s+throw/);
 });
+
+test("partial Host-Client work deletion resumes only through an authorized cleanup path", () => {
+  assert.match(packagedHostClientE2eRunner, /work-cleanup-authorized\.json/);
+  assert.match(packagedHostClientE2eRunner, /resumePackagedHostClientWorkCleanup/);
+  assert.match(macosDmgSmoke, /if \(existsSync\(path\.join\(packagedHostClientE2eLogDirectory, "work-cleanup-authorized\.json"\)\)\) \{\s+await resumePackagedHostClientWorkCleanup\(cleanupOptions\);\s+\} else \{\s+await resumePackagedHostClientCredentialCleanup\(cleanupOptions\)/);
+  assert.match(macosDmgSmoke, /processTerminationConfirmed: true/);
+  assert.match(windowsMsiSmoke, /\$cleanupMode = if \(\$resumeWorkCleanup\) \{ "--resume-work-cleanup" \} else \{ "--resume-credential-cleanup" \}/);
+  assert.match(windowsMsiSmoke, /work-cleanup-summary\.json/);
+  assert.match(windowsMsiSmoke, /work_directory_removed -ne \$true/);
+  assert.match(windowsMsiSmoke, /credentialCleanupFieldDifference\.Count -ne 0/);
+  assert.match(windowsMsiSmoke, /credentialCleanupResult\.process_termination_confirmed -ne \$true/);
+  assert.match(windowsMsiSmoke, /if \(\$packagedHostClientE2eExitCode -ne 0\) \{\s+throw/);
+});
