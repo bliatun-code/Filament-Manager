@@ -40,6 +40,10 @@ const batchMigration = readFileSync(
   new URL("../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url),
   "utf8",
 );
+const catalogJobMigration = readFileSync(
+  new URL("../src/database/migrations/007_catalog_refresh_jobs.sql", import.meta.url),
+  "utf8",
+);
 
 function createLegacyDatabase(databasePath) {
   const database = new Database(databasePath);
@@ -708,6 +712,7 @@ test("current-schema fixtures sanitize copied batch requests and preserve exact 
   try {
     createLegacyDatabase(sourcePath);
     const source = new Database(sourcePath);
+    source.exec(catalogJobMigration);
     source.exec(batchMigration);
     source.pragma("user_version = 7");
     source.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run("library_sync_library_id", " private-active-library ");
@@ -771,6 +776,7 @@ test("fixture preparation rejects unrecognized batch payload fields and mismatch
     try {
       createLegacyDatabase(sourcePath);
       const source = new Database(sourcePath);
+      if (variant !== "premature-table") source.exec(catalogJobMigration);
       source.pragma(`user_version = ${variant === "premature-table" ? 5 : 7}`);
       if (variant !== "missing-table") {
         source.exec(batchMigration);
@@ -788,6 +794,155 @@ test("fixture preparation rejects unrecognized batch payload fields and mismatch
       await assert.rejects(prepareReleaseUpgradeFixture({ sourcePath, outputPath }), /exact known contract|requires the catalog_spool_batches table|historical schema below 7/);
       assert.equal(existsSync(outputPath), false);
       assert.deepEqual(readFileSync(sourcePath), original);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  }
+});
+
+test("current-schema fixtures remove catalog job identities and diagnostics while preserving terminal outcomes", { skip: process.platform === "win32" }, async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "release-catalog-job-fixture-"));
+  const sourcePath = path.join(directory, "source.db");
+  const outputPath = path.join(directory, "sanitized.db");
+  const privateValues = [
+    "private-catalog-library", "private-catalog-credential-profile",
+    "private-catalog-process-owner", "private-catalog-error",
+    "https://private-catalog-store.test/token", "private-catalog-collection",
+    "private-catalog-discovery", "private-catalog-output",
+  ];
+  try {
+    createLegacyDatabase(sourcePath);
+    const source = new Database(sourcePath);
+    source.exec(catalogJobMigration);
+    source.exec(batchMigration);
+    source.pragma("user_version = 7");
+    const insert = source.prepare(`
+      INSERT INTO catalog_refresh_jobs
+        (job_id, authority_key, owner_id, vendor, material, status,
+         started_at, finished_at, result_json, error)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const startedAt = "2026-09-08T12:00:00Z";
+    const finishedAt = "2026-09-08T12:01:00Z";
+    const originalResult = {
+      imported: 12, detected_store: privateValues[4], detected_collection: privateValues[5],
+      discovered_materials: [privateValues[6]], reactivated_count: 2, discontinued_count: 0,
+      reused_cached_products: 8, detail_fetches: null, output: privateValues[7],
+    };
+    for (const status of ["SUCCEEDED", "FAILED", "INTERRUPTED", "RUNNING"]) {
+      insert.run(
+        `job-${status.toLowerCase()}`, JSON.stringify([privateValues[0], 27, privateValues[1]]),
+        privateValues[2], status === "SUCCEEDED" ? "Bambu" : "eSUN", "PETG", status,
+        startedAt, status === "RUNNING" ? null : finishedAt,
+        status === "SUCCEEDED" ? JSON.stringify(originalResult) : null,
+        ["FAILED", "INTERRUPTED"].includes(status) ? privateValues[3] : null,
+      );
+    }
+    const terminalRows = source.prepare(`
+      SELECT job_id, vendor, material, status, started_at, finished_at
+      FROM catalog_refresh_jobs WHERE status != 'RUNNING' ORDER BY job_id
+    `).all();
+    source.close();
+    const sourceBytes = readFileSync(sourcePath);
+    const result = await prepareReleaseUpgradeFixture({ sourcePath, outputPath });
+    assert.deepEqual(readFileSync(sourcePath), sourceBytes);
+    for (const value of privateValues) {
+      assert.equal(readFileSync(outputPath).includes(Buffer.from(value)), false, `Copied private catalog value: ${value}`);
+    }
+    assert.equal(result.sanitization.sanitizedCatalogJobs, 4);
+    assert.equal(result.sanitization.interruptedCatalogJobs, 1);
+    assert.equal(result.fixture.counts.catalog_refresh_jobs, 4);
+    const fixture = new Database(outputPath, { readonly: true, fileMustExist: true });
+    try {
+      assertReleaseUpgradeFixtureSanitized(fixture);
+      assert.deepEqual(fixture.prepare(`
+        SELECT job_id, vendor, material, status, started_at, finished_at
+        FROM catalog_refresh_jobs WHERE job_id != 'job-running' ORDER BY job_id
+      `).all(), terminalRows);
+      const jobs = fixture.prepare("SELECT * FROM catalog_refresh_jobs ORDER BY job_id").all();
+      for (const job of jobs) {
+        assert.equal(job.authority_key, '["release-qa-catalog-library",0,"release-qa-credential-profile"]');
+        assert.equal(job.owner_id, "release-qa-catalog-owner");
+        assert.equal(job.error, job.status === "SUCCEEDED" ? null : "catalogJob.interrupted");
+      }
+      const completed = jobs.find((job) => job.job_id === "job-succeeded");
+      assert.deepEqual(JSON.parse(completed.result_json), {
+        imported: 12, detected_store: null, detected_collection: null,
+        discovered_materials: null, reactivated_count: 2, discontinued_count: 0,
+        reused_cached_products: 8, detail_fetches: null, output: "Release QA catalog result",
+      });
+      const interrupted = jobs.find((job) => job.job_id === "job-running");
+      assert.equal(interrupted.status, "INTERRUPTED");
+      assert.equal(interrupted.finished_at, startedAt);
+      assert.equal(interrupted.started_at, startedAt);
+      assert.equal(interrupted.result_json, null);
+    } finally {
+      fixture.close();
+    }
+    const before = snapshotReleaseUpgradeDatabase(outputPath);
+    const reopened = new Database(outputPath);
+    try {
+      // The runtime's foreign-owner recovery must have no copied worker left to retire.
+      const recovered = reopened.prepare(`
+        UPDATE catalog_refresh_jobs SET status = 'INTERRUPTED',
+          finished_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), error = 'runtime interruption'
+        WHERE status = 'RUNNING' AND owner_id != ?
+      `).run("new-native-process");
+      assert.equal(recovered.changes, 0);
+    } finally {
+      reopened.close();
+    }
+    assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(outputPath));
+    const tampered = new Database(outputPath);
+    tampered.prepare("UPDATE catalog_refresh_jobs SET material = 'PLA' WHERE job_id = 'job-succeeded'").run();
+    tampered.close();
+    assert.throws(
+      () => assertPreservedReleaseUpgradeData(before, snapshotReleaseUpgradeDatabase(outputPath)),
+      /changed preserved values in catalog_refresh_jobs/,
+    );
+    assert.deepEqual(readFileSync(sourcePath), sourceBytes);
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
+
+test("invalid catalog jobs never publish a fixture or modify the source database", { skip: process.platform === "win32" }, async () => {
+  for (const variant of ["unknown-result-field", "invalid-count", "unknown-column", "missing-table", "premature-table"]) {
+    const directory = mkdtempSync(path.join(tmpdir(), "release-catalog-job-invalid-"));
+    const sourcePath = path.join(directory, "source.db");
+    const outputPath = path.join(directory, "sanitized.db");
+    try {
+      createLegacyDatabase(sourcePath);
+      const source = new Database(sourcePath);
+      source.pragma(`user_version = ${variant === "premature-table" ? 5 : 6}`);
+      if (variant !== "missing-table") {
+        source.exec(catalogJobMigration);
+        const result = {
+          imported: 1, detected_store: null, detected_collection: null,
+          discovered_materials: null, reactivated_count: 0, discontinued_count: 0,
+          reused_cached_products: null, detail_fetches: null, output: "private-job-diagnostic",
+        };
+        if (variant === "unknown-result-field") result.token = "private-job-diagnostic";
+        if (variant === "invalid-count") result.imported = "private-job-diagnostic";
+        if (variant === "unknown-column") source.exec("ALTER TABLE catalog_refresh_jobs ADD COLUMN private_metadata TEXT");
+        source.prepare(`
+          INSERT INTO catalog_refresh_jobs
+            (job_id, authority_key, owner_id, vendor, material, status,
+             started_at, finished_at, result_json, error)
+          VALUES ('job-a', 'private-job-diagnostic', 'private-job-diagnostic', 'Bambu', 'PLA',
+            'SUCCEEDED', '2026-09-08T12:00:00Z', '2026-09-08T12:01:00Z', ?, NULL)
+        `).run(JSON.stringify(result));
+      }
+      source.close();
+      const original = readFileSync(sourcePath);
+      await assert.rejects(
+        () => prepareReleaseUpgradeFixture({ sourcePath, outputPath }),
+        (error) => /catalog jobs/.test(error.message) && !error.message.includes("private-job-diagnostic"),
+        variant,
+      );
+      assert.equal(existsSync(outputPath), false, variant);
+      assert.deepEqual(readFileSync(sourcePath), original, variant);
+      assert.deepEqual(readdirSync(directory).filter((name) => name.startsWith(".release-upgrade-fixture-")), [], variant);
     } finally {
       rmSync(directory, { force: true, recursive: true });
     }

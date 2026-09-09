@@ -1,4 +1,5 @@
 import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
+import { assertReleaseUpgradeCatalogJobsSanitized } from "./release-upgrade-catalog-jobs.mjs";
 
 export const RELEASE_UPGRADE_LIBRARY_ID = "release-candidate-qa-library";
 export const RELEASE_UPGRADE_FIXTURE_MARKER_KEY =
@@ -314,6 +315,7 @@ export function parseStrictReleaseUpgradeInteger(
 export function assertReleaseUpgradeFixtureSanitized(database) {
   const tables = databaseTables(database);
   inspectReleaseUpgradeBatchJournal(database);
+  assertReleaseUpgradeCatalogJobsSanitized(database);
   if (!tables.has("settings")) {
     throw new Error("Upgrade fixture has no settings table.");
   }
