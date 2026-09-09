@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +8,7 @@ import test from "node:test";
 import { pathToFileURL } from "node:url";
 
 import Database from "better-sqlite3";
+import { prepareCompatibilityReleaseUpgradeFixture } from "./prepare-compatibility-release-upgrade-fixture.mjs";
 
 import {
   RELEASE_UPGRADE_FIXTURE_MARKER_KEY,
@@ -18,6 +19,7 @@ import {
   assertReleaseUpgradeSmokePlatform,
   assertSanitizedReleaseUpgradeFixture,
   currentSchemaVersion,
+  databaseStartupAcknowledged,
   macosApplicationBundlePath,
   macosWindowOutputHasProcessId,
   monitorChildProcessErrors,
@@ -634,7 +636,22 @@ test("repeated-launch gate detects a receipt lost while the application exits", 
     database.close();
     const executablePath = path.join(directory, "candidate.mjs");
     const require = createRequire(import.meta.url);
-    writeFileSync(executablePath, `#!${process.execPath}\nimport Database from ${JSON.stringify(pathToFileURL(require.resolve("better-sqlite3")).href)};\nsetInterval(() => {}, 1000);\nprocess.on('SIGTERM', () => { const db = new Database(process.env.FILAMENT_MANAGER_DB_PATH); db.exec('DELETE FROM catalog_spool_batches'); db.close(); process.exit(0); });\n`, { mode: 0o700 });
+    writeFileSync(executablePath, `#!${process.execPath}
+import Database from ${JSON.stringify(pathToFileURL(require.resolve("better-sqlite3")).href)};
+import { writeFileSync, realpathSync } from 'node:fs';
+setInterval(() => {}, 1000);
+// Deliberately exceed the former fixed startup delay. Acknowledge only after
+// the shutdown handler is installed, so this regression cannot pass by timing.
+setTimeout(() => {
+  const startupDb = new Database(process.env.FILAMENT_MANAGER_DB_PATH);
+  startupDb.pragma('user_version'); startupDb.close();
+  process.on('SIGTERM', () => { const db = new Database(process.env.FILAMENT_MANAGER_DB_PATH); db.exec('DELETE FROM catalog_spool_batches'); db.close(); process.exit(0); });
+  writeFileSync(process.env.FILAMENT_MANAGER_DATABASE_READY_FILE, JSON.stringify({
+    token: process.env.FILAMENT_MANAGER_DATABASE_READY_TOKEN, pid: process.pid,
+    databasePath: realpathSync(process.env.FILAMENT_MANAGER_DB_PATH),
+  }), {flag:'wx', mode:0o600});
+}, 1500);
+`, { mode: 0o700 });
     await assert.rejects(smokeReleaseDatabaseUpgrade({
       allowCurrentSchema: true, sourceRelease: "v0.29.0-test", databasePath, executablePath,
       logDirectory: path.join(directory, "logs"), requireVisibleWindow: false,
@@ -642,4 +659,79 @@ test("repeated-launch gate detects a receipt lost while the application exits", 
   } finally {
     rmSync(directory, { force: true, recursive: true });
   }
+});
+
+
+test("startup acknowledgment requires the exact launch and actual fixture", () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "database-readiness-contract-"));
+  try {
+    const databasePath = path.join(directory, "fixture.db");
+    const otherPath = path.join(directory, "other.db");
+    const readinessPath = path.join(directory, "ready.json");
+    writeFileSync(databasePath, "fixture");
+    writeFileSync(otherPath, "different database");
+    const options = { databasePath, readinessPath, token: "a".repeat(64), processId: 123 };
+    const valid = { token: options.token, pid: 123, databasePath };
+    assert.equal(databaseStartupAcknowledged(options), false);
+    writeFileSync(readinessPath, '{"token":');
+    assert.equal(databaseStartupAcknowledged(options), false);
+    for (const changed of [{token:"b".repeat(64)}, {pid:456}, {databasePath:otherPath}]) {
+      writeFileSync(readinessPath, JSON.stringify({...valid, ...changed}));
+      assert.throws(() => databaseStartupAcknowledged(options), /startup acknowledgment/);
+    }
+    writeFileSync(readinessPath, JSON.stringify(valid));
+    assert.equal(databaseStartupAcknowledged(options), true);
+    if (process.platform !== "win32") {
+      rmSync(readinessPath);
+      symlinkSync(databasePath, readinessPath);
+      assert.throws(() => databaseStartupAcknowledged(options), /Invalid database startup acknowledgment file/);
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test("same-schema smoke rejects a living process that never opens the database", { skip: process.platform === "win32" }, async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "database-readiness-noop-"));
+  try {
+    const databasePath = path.join(directory, "fixture.db");
+    await prepareCompatibilityReleaseUpgradeFixture({outputPath:databasePath});
+    const before = readFileSync(databasePath);
+    const executablePath = path.join(directory, "noop.mjs");
+    writeFileSync(executablePath, `#!${process.execPath}\nsetInterval(() => {}, 1000);\n`, {mode:0o700});
+    await assert.rejects(smokeReleaseDatabaseUpgrade({
+      databasePath, executablePath, logDirectory:path.join(directory,"logs"),
+      allowCurrentSchema:true, sourceRelease:"v0.30.0", requireVisibleWindow:false, launchTimeoutMs:10000,
+    }), /did not acknowledge database startup/);
+    assert.deepEqual(readFileSync(databasePath), before);
+  } finally { rmSync(directory, {recursive:true, force:true}); }
+});
+
+test("two acknowledged launches get different challenges and preserve the fixture", { skip: process.platform === "win32" }, async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "database-readiness-restart-"));
+  try {
+    const databasePath = path.join(directory, "fixture.db");
+    await prepareCompatibilityReleaseUpgradeFixture({outputPath:databasePath});
+    const executablePath = path.join(directory, "candidate.mjs");
+    const require = createRequire(import.meta.url);
+    writeFileSync(executablePath, `#!${process.execPath}
+import Database from ${JSON.stringify(pathToFileURL(require.resolve("better-sqlite3")).href)};
+import { writeFileSync, realpathSync } from 'node:fs';
+const db = new Database(process.env.FILAMENT_MANAGER_DB_PATH);
+db.pragma('user_version'); db.close();
+writeFileSync(process.env.FILAMENT_MANAGER_DATABASE_READY_FILE, JSON.stringify({
+  token:process.env.FILAMENT_MANAGER_DATABASE_READY_TOKEN, pid:process.pid,
+  databasePath:realpathSync(process.env.FILAMENT_MANAGER_DB_PATH),
+}), {flag:'wx', mode:0o600});
+setInterval(() => {}, 1000);
+`, {mode:0o700});
+    const logDirectory = path.join(directory,"logs");
+    const result = await smokeReleaseDatabaseUpgrade({databasePath, executablePath, logDirectory,
+      allowCurrentSchema:true, sourceRelease:"v0.30.0", requireVisibleWindow:false});
+    assert.equal(result.launchCount, 2);
+    const markers = readdirSync(logDirectory).filter(file => file.endsWith(".json"))
+      .map(file => JSON.parse(readFileSync(path.join(logDirectory,file),"utf8")));
+    assert.equal(markers.length, 2);
+    assert.notEqual(markers[0].token, markers[1].token);
+    assert.notEqual(markers[0].pid, markers[1].pid);
+    assert.match(readFileSync(path.join(logDirectory,"upgrade-summary.txt"),"utf8"), /Startup acknowledgment: unique token/);
+  } finally { rmSync(directory, {recursive:true, force:true}); }
 });

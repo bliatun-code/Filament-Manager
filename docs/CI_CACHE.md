@@ -73,5 +73,34 @@ The preparation step now writes valid cache-directory markers in the two fixed
 CI build directories, `target` and `target/msrv`, before package cleanup. It uses
 the same successful-main/cache-miss condition as cleanup and saving. Cargo's
 cleanup checks and all verification gates remain in place. A successful ordinary
-main run must still confirm saving, followed by an ordinary PR run to demonstrate
-reuse; warm-cache savings remain **not measured**.
+main run and a later PR run have now confirmed saving and reuse, as recorded below.
+
+## Observed cache reuse on 2026-09-09
+
+The main run after #104, [CI 34393298624](https://github.com/bliatun-code/Filament-Manager/actions/runs/34393298624),
+passed cache preparation, workspace cleanup, and saving on both native jobs.
+In #106, [CI 34402027229](https://github.com/bliatun-code/Filament-Manager/actions/runs/34402027229),
+both the [macOS job](https://github.com/bliatun-code/Filament-Manager/actions/runs/34402027229/job/102635967542)
+and the [Windows job](https://github.com/bliatun-code/Filament-Manager/actions/runs/34402027229/job/102635967460)
+logged `Cache hit for:` and `Cache restored successfully` in **Restore Rust dependencies**.
+Both jobs passed all verification and packaged application gates. As expected for
+a PR, cleanup and saving were skipped.
+
+These durations come from the jobs' recorded start and completion timestamps;
+total job time includes cache transfer and all other steps, but excludes queue time.
+
+| Step | macOS main #104 | macOS PR #106 | Windows main #104 | Windows PR #106 |
+| --- | ---: | ---: | ---: | ---: |
+| Restore Rust dependencies | 1 s | 30 s | 0 s | 58 s |
+| Check Rust MSRV | 2 m 23 s | 19 s | 3 m 9 s | 22 s |
+| Run full verification | 18 m 59 s | 16 m | 27 m 10 s | 15 m 57 s |
+| Build native smoke bundle | 2 m 59 s | 2 m 52 s | 1 m 48 s | 1 m 21 s |
+| Save Rust dependencies | 35 s | Skipped | 4 m 13 s | Skipped |
+| Total job | 28 m 9 s | 22 m 47 s | 44 m 51 s | 21 m 52 s |
+
+Cache reuse is confirmed; **cache-only time savings remain unmeasured**. These
+ordinary runs used different commits and workloads, and this comparison does not
+independently establish equal runner images and compiler environments between
+them. Full verification also includes work beyond Rust compilation. The shorter
+observed totals therefore cannot be attributed entirely to caching, particularly
+because the main run also uploaded caches. No extra benchmark run was started.
