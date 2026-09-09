@@ -470,6 +470,7 @@ export function useInventoryAddWorkflow({
 
   const purchaseQueueProps: WishlistQueuePanelProps = {
     addPurchaseDisabled: !tauriAvailable || purchaseActionsDisabled || busy,
+    authorityKey,
     busy,
     catalogMasterById,
     confirmWishlistRemoveId,
