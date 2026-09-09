@@ -627,6 +627,7 @@ test("repeated-launch gate detects a receipt lost while the application exits", 
   try {
     createSanitizedFixture(databasePath);
     const database = new Database(databasePath);
+    database.exec(readFileSync(new URL("../src/database/migrations/007_catalog_refresh_jobs.sql", import.meta.url), "utf8"));
     database.exec(batchMigration);
     database.pragma("user_version = 7");
     insertBatchReceipt(database);

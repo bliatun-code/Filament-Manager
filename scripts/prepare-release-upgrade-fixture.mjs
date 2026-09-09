@@ -20,6 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import Database from "better-sqlite3";
+import { sanitizeReleaseUpgradeCatalogJobs } from "./release-upgrade-catalog-jobs.mjs";
 
 import {
   assertReleaseUpgradeFixtureSanitized,
@@ -490,6 +491,7 @@ export async function prepareReleaseUpgradeFixture(options) {
       fixture.pragma("foreign_keys = ON");
       fixture.pragma("secure_delete = ON");
       sanitization = fixture.transaction(() => ({
+        ...sanitizeReleaseUpgradeCatalogJobs(fixture),
         ...sanitizeCatalogBatchJournal(fixture),
         ...sanitizeSettings(fixture),
         ...sanitizePrivateRows(fixture),
