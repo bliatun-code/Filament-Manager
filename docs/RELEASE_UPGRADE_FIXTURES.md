@@ -45,11 +45,41 @@ normalization does not exclude the table from the value digests.
 ## Release coverage
 
 The published v0.28.0 fixture remains the historical schema-5 migration input.
-It has no catalog-job table and is unaffected by this change. A future separate
-v0.30.0 fixture should include synthetic terminal jobs and batch receipts while
-retaining the historical fixture. This sanitizer change does not add that new
-release fixture or claim installed v0.30.0 restore coverage.
+It has no catalog-job table and is unaffected by this change.
 
-The application's portable backup rules remain separate: refresh jobs are
-cleared on restore, and catalog batch receipts remain installation-local to
-prevent duplicate replay. Neither journal becomes portable user data here.
+## Synthetic compatibility fixture for v0.30.0/schema 7
+
+Prepare a separate compatibility input on macOS or Linux:
+
+```sh
+node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output=/tmp/v0.30.0-compat.sqlite
+node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output=/tmp/v0.30.0-compat.sqlite --verify
+```
+
+The generator reconstructs schema 7 from the baseline SQL and structural
+migrations 003–008 published at v0.30.0 commit
+`7d2eb3a45fc78a60ad31cb88e178ba266d044c5b`. Each file must match an independently
+pinned SHA-256; today's migration manifest and Git history are not inputs.
+`--source-root=/path/to/checkout` optionally selects another copy of those
+same pinned files. It does not select a different release.
+
+Synthetic records cover three catalog jobs (running, successful and failed)
+and one batch receipt for two distinct owned spools of the same catalog master.
+The shared fixture sanitizer interrupts the copied running job, replaces
+operational identities and diagnostics, and preserves the receipt's spool IDs.
+The verifier checks schema, SQLite integrity, foreign keys, sanitization,
+representative journal counts and agreement between the receipt and spool weights.
+
+Preparation publishes the database and `<output>.json` manifest with owner-only
+permissions, without replacing existing files or symlinks. A failed publication
+cleans up this attempt's output. The pair is not published atomically; consumers
+must wait for preparation to succeed and verify both files before use. The
+manifest binds the database hash, source file hashes, release commit, schema and
+counts. It is local consistency metadata, not a signed provenance attestation.
+Verification is read-only and can also run on Windows; private preparation
+requires macOS or Linux. Tests skip private preparation on other platforms.
+
+This is generator and contract coverage only. It does not run the old app binary
+or demonstrate installed-app upgrade or portable-backup restore behavior. The
+v0.28.0/schema-5 fixture and existing native release gates remain unchanged.
+Neither operational journal becomes portable user data through this fixture.
