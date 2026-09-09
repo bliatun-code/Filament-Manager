@@ -40,6 +40,12 @@ function workflowStep(job, stepName) {
   return sections[1].split(/^      - name:/m)[0];
 }
 
+function cachePaths(step) {
+  const match = step.match(/^          path: \|\n((?:            .+\n)+)/m);
+  assert.ok(match, "cache paths must be an explicit list");
+  return match[1].trim().split(/\n\s*/).sort();
+}
+
 test("Cargo packages declare the supported Rust 1.88 lower bound", () => {
   for (const manifest of [rootManifest, tauriManifest]) {
     const packageSection = manifest
@@ -143,12 +149,14 @@ test("both required smoke jobs check Rust 1.88 before full verification", () => 
     const msrvSetupIndex = job.indexOf("- name: Setup Rust MSRV");
     const msrvCheckIndex = job.indexOf("- name: Check Rust MSRV");
     const reviewedSetupIndex = job.indexOf("- name: Setup Rust\n");
+    const identifyCacheIndex = job.indexOf("- name: Identify Rust cache");
     const cacheIndex = job.indexOf("- name: Restore Rust dependencies");
     const verificationIndex = job.indexOf("- name: Run full verification");
     assert.ok(
-      msrvSetupIndex < cacheIndex && reviewedSetupIndex < cacheIndex,
+      msrvSetupIndex < identifyCacheIndex && reviewedSetupIndex < identifyCacheIndex,
       `${jobName} must install both compilers before computing the cache key`,
     );
+    assert.ok(identifyCacheIndex < cacheIndex, `${jobName} must identify its environment before restoring`);
     assert.ok(
       cacheIndex < msrvCheckIndex && msrvCheckIndex < verificationIndex,
       `${jobName} must check the lower bound after restoring dependencies and before full verification`,
@@ -161,57 +169,99 @@ test("both required smoke jobs check Rust 1.88 before full verification", () => 
   }
 });
 
-test("native Rust caches save only successful main pushes and exclude workspace outputs", () => {
+test("native Rust caches isolate the environment and dependency graph using approved actions", () => {
   const ciWorkflow = workflows[0][1];
-  assert.equal(
-    (ciWorkflow.match(/uses: Swatinem\/rust-cache@/g) ?? []).length,
-    2,
-    "only the two native smoke jobs use the Rust dependency cache",
-  );
+  for (const action of ["restore", "save"]) {
+    assert.equal(
+      (ciWorkflow.match(new RegExp(`uses: actions/cache/${action}@`, "g")) ?? []).length,
+      2,
+      `only the two native smoke jobs use the Rust cache ${action} action`,
+    );
+  }
+  assert.doesNotMatch(ciWorkflow, /uses: Swatinem\/rust-cache@/);
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(ciWorkflow, jobName);
+    assert.match(job, /^    env:\n      CARGO_INCREMENTAL: ["']?0["']?$/m);
+    const identify = workflowStep(job, "Identify Rust cache");
+    assert.match(identify, /^        id: rust-cache-environment$/m);
+    assert.match(identify, /^        run: node \.\/scripts\/read-rust-cache-environment\.mjs --github-output$/m);
+    assert.doesNotMatch(identify, /^        (?:if|continue-on-error):/m);
     const cache = workflowStep(job, "Restore Rust dependencies");
-    assert.match(cache, /uses: Swatinem\/rust-cache@[0-9a-f]{40} # v2\.\d+\.\d+/);
-    assert.match(cache, /^          prefix-key: v\d+-native-smoke$/m);
-    assert.match(cache, /^          workspaces: ["']?\. -> target["']?$/m);
-    assert.match(
-      cache,
-      /^          save-if: \$\{\{ github\.event_name == 'push' && github\.ref == 'refs\/heads\/main' \}\}$/m,
-      `${jobName} must only populate caches from trusted pushes to main`,
-    );
-    for (const setting of [
-      "cache-bin",
-      "cache-workspace-crates",
-      "cache-all-crates",
-      "cache-on-failure",
-    ]) {
-      assert.match(
-        cache,
-        new RegExp(`^          ${setting}: ["']?false["']?$`, "m"),
-        `${jobName} must explicitly disable ${setting}`,
-      );
-    }
-    assert.doesNotMatch(
-      cache,
-      /^          (?:cache-directories|shared-key|cmd-format):/m,
-      `${jobName} must use dependency paths and the action's compiler/job isolation`,
+    assert.match(cache, /^        id: rust-cache$/m);
+    assert.match(cache, /uses: actions\/cache\/restore@[0-9a-f]{40} # v\d+\.\d+\.\d+/);
+    const key = cache.match(/^          key: (.+)$/m)?.[1];
+    assert.equal(
+      key,
+      "v2-native-smoke-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-environment.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', '**/.cargo/config', '**/.cargo/config.toml') }}",
+      `${jobName} must isolate job, platform, both compilers, native environment and dependency inputs`,
     );
     assert.doesNotMatch(
       cache,
-      /^          (?:add-job-id-key|add-rust-environment-hash-key):\s*["']?false/m,
-      `${jobName} must retain compiler, manifest, lockfile and job cache keys`,
+      /^          (?:restore-keys|lookup-only|enableCrossOsArchive):/m,
+      `${jobName} must restore only an exact cache for its environment and dependency graph`,
     );
-    const environment = cache.match(/^          env-vars: (.+)$/m);
-    assert.ok(environment, `${jobName} must account for native runner images and SDKs`);
-    const prefixes = new Set(environment[1].replace(/["']/g, "").split(/\s+/));
-    for (const prefix of [
-      "ImageOS",
-      "ImageVersion",
-      "MACOSX_DEPLOYMENT_TARGET",
-      "SDKROOT",
-    ]) {
-      assert.ok(prefixes.has(prefix), `${jobName} cache key must include ${prefix}`);
+    assert.doesNotMatch(cache, /^        (?:if|continue-on-error):/m);
+  }
+});
+
+test("native Rust cache paths exclude application bundles, credentials and fixture state", () => {
+  const expectedPaths = [
+    "~/.cargo/registry/index",
+    "~/.cargo/registry/cache",
+    "~/.cargo/registry/src",
+    "~/.cargo/git/db",
+    "~/.cargo/git/checkouts",
+    ...["target/debug", "target/release", "target/msrv/debug"].flatMap((profile) =>
+      ["deps", "build", ".fingerprint"].map((directory) => `${profile}/${directory}`),
+    ),
+  ].sort();
+  for (const jobName of ["macos-smoke", "windows-smoke"]) {
+    const job = workflowJob(workflows[0][1], jobName);
+    for (const stepName of ["Restore Rust dependencies", "Save Rust dependencies"]) {
+      assert.deepEqual(cachePaths(workflowStep(job, stepName)), expectedPaths, `${jobName} ${stepName}`);
     }
+  }
+});
+
+test("native Rust caches save only after successful main gates and workspace cleanup", () => {
+  const members = JSON.parse(rootManifest.match(/^members = (\[[^\n]+\])$/m)?.[1]);
+  const packages = [rootManifest, ...members.map((member) => repoFile(`${member}/Cargo.toml`))]
+    .map((manifest) => manifest.match(/^\[package\]\nname = "([^"]+)"$/m)?.[1]);
+  assert.ok(packages.every(Boolean), "every workspace package must be identified for cleanup");
+  const packageFlags = packages.map((name) => `--package ${name}`).join(" ");
+  const expectedCommands = [
+    `cargo clean --locked --offline ${packageFlags} --target-dir target`,
+    `cargo clean --locked --offline ${packageFlags} --target-dir target --release`,
+    `cargo +1.88.0 clean --locked --offline ${packageFlags} --target-dir target/msrv`,
+  ];
+  const saveCondition = "${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}";
+  for (const jobName of ["macos-smoke", "windows-smoke"]) {
+    const job = workflowJob(workflows[0][1], jobName);
+    const cleanup = workflowStep(job, "Clean workspace artifacts for cache");
+    const save = workflowStep(job, "Save Rust dependencies");
+    for (const [name, step] of [["cleanup", cleanup], ["save", save]]) {
+      assert.equal(step.match(/^        if: (.+)$/m)?.[1], saveCondition, `${jobName} ${name} must follow the trusted successful-write policy`);
+      assert.doesNotMatch(step, /^        continue-on-error:/m);
+    }
+    const windows = jobName === "windows-smoke";
+    assert.match(cleanup, windows ? /^        shell: pwsh$/m : /^        shell: bash$/m, `${jobName} must use its native supported shell`);
+    const commands = cleanup.match(/^        run: \|\n((?:          .+\n)+)/m)?.[1];
+    assert.ok(commands, `${jobName} must explicitly clean workspace packages before saving`);
+    const expectedRun = windows
+      ? expectedCommands.flatMap((command) => [command, "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"])
+      : expectedCommands;
+    assert.deepEqual(commands.trim().split(/\n\s*/), expectedRun, `${jobName} must clean every workspace package from both ordinary profiles and the MSRV output, stopping on any failure`);
+    const cleanupIndex = job.indexOf("- name: Clean workspace artifacts for cache");
+    const saveIndex = job.indexOf("- name: Save Rust dependencies");
+    assert.ok(cleanupIndex > job.lastIndexOf("- name: Upload "), `${jobName} must complete every smoke gate and upload before cleanup`);
+    assert.ok(cleanupIndex < saveIndex, `${jobName} must not save workspace artifacts before cleaning them`);
+    assert.match(save, /uses: actions\/cache\/save@[0-9a-f]{40} # v\d+\.\d+\.\d+/);
+    assert.match(save, /^          key: \$\{\{ steps\.rust-cache\.outputs\.cache-primary-key \}\}$/m);
+    assert.doesNotMatch(
+      save,
+      /^          (?:restore-keys|enableCrossOsArchive):/m,
+      `${jobName} must save only under the restored primary key`,
+    );
   }
 });
 
@@ -240,7 +290,7 @@ test("cache hits cannot skip native verification or packaged application gates",
   for (const [jobName, gates] of Object.entries(nativeGates)) {
     const job = workflowJob(ciWorkflow, jobName);
     assert.doesNotMatch(job, /^    (?:if|continue-on-error):/m);
-    assert.doesNotMatch(job, /cache-hit|lookup-only:/);
+    assert.doesNotMatch(job, /lookup-only:/);
     for (const gate of [...commonGates, ...gates]) {
       const step = workflowStep(job, gate);
       assert.match(step, /^        run:/m, `${gate} must execute its verification`);
