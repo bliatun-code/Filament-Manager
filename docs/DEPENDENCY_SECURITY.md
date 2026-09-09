@@ -11,8 +11,10 @@ ordinary script test suite.
 The reviewed Rust release has one version source, `rust-toolchain.toml`, monitored by
 Dependabot's Rust-toolchain ecosystem. Both Cargo packages declare Rust 1.88 as
 their minimum supported version. Both required smoke jobs compile the complete
-workspace with Rust 1.88 on their supported desktop platform before selecting
-the exact pinned release for ordinary verification. Each CI, release and audit
+workspace with Rust 1.88 on their supported desktop platform before running
+ordinary verification with the exact pinned release. Both compilers are installed
+before restoring the [native CI dependency cache](CI_CACHE.md), so its key includes
+both compiler identities. Each CI, release and audit
 Rust setup first runs `scripts/read-rust-toolchain.mjs` with Node 24. The reader
 accepts one exact `x.y.z` release pin and rejects rolling channels, expressions,
 missing or duplicate pins, and unsupported configuration syntax before writing

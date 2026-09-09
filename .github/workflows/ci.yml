@@ -86,6 +86,8 @@ jobs:
     name: macOS Smoke
     runs-on: macos-latest
     timeout-minutes: 45
+    env:
+      CARGO_INCREMENTAL: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -106,11 +108,6 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - name: Check Rust MSRV
-        env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
-        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
-
       - name: Read Rust toolchain
         id: rust-toolchain
         run: node ./scripts/read-rust-toolchain.mjs --github-output
@@ -120,6 +117,36 @@ jobs:
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
+
+      - name: Identify Rust cache
+        id: rust-cache-environment
+        run: node ./scripts/read-rust-cache-environment.mjs --github-output
+
+      - name: Restore Rust dependencies
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: v2-native-smoke-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-environment.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', '**/.cargo/config', '**/.cargo/config.toml') }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            ~/.cargo/git/db
+            ~/.cargo/git/checkouts
+            target/debug/deps
+            target/debug/build
+            target/debug/.fingerprint
+            target/release/deps
+            target/release/build
+            target/release/.fingerprint
+            target/msrv/debug/deps
+            target/msrv/debug/build
+            target/msrv/debug/.fingerprint
+
+      - name: Check Rust MSRV
+        env:
+          CARGO_TARGET_DIR: target/msrv
+        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
       - name: Install root dependencies
         run: npm ci
@@ -202,10 +229,41 @@ jobs:
           overwrite: true
           retention-days: 7
 
+      - name: Clean workspace artifacts for cache
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        shell: bash
+        run: |
+          cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target
+          cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target --release
+          cargo +1.88.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
+
+      - name: Save Rust dependencies
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            ~/.cargo/git/db
+            ~/.cargo/git/checkouts
+            target/debug/deps
+            target/debug/build
+            target/debug/.fingerprint
+            target/release/deps
+            target/release/build
+            target/release/.fingerprint
+            target/msrv/debug/deps
+            target/msrv/debug/build
+            target/msrv/debug/.fingerprint
+
   windows-smoke:
     name: Windows Smoke
     runs-on: windows-latest
     timeout-minutes: 60
+    env:
+      CARGO_INCREMENTAL: "0"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -232,11 +290,6 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - name: Check Rust MSRV
-        env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
-        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
-
       - name: Read Rust toolchain
         id: rust-toolchain
         run: node ./scripts/read-rust-toolchain.mjs --github-output
@@ -246,6 +299,36 @@ jobs:
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
+
+      - name: Identify Rust cache
+        id: rust-cache-environment
+        run: node ./scripts/read-rust-cache-environment.mjs --github-output
+
+      - name: Restore Rust dependencies
+        id: rust-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: v2-native-smoke-${{ github.job }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.rust-cache-environment.outputs.hash }}-${{ hashFiles('Cargo.lock', '**/Cargo.toml', 'rust-toolchain.toml', '**/.cargo/config', '**/.cargo/config.toml') }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            ~/.cargo/git/db
+            ~/.cargo/git/checkouts
+            target/debug/deps
+            target/debug/build
+            target/debug/.fingerprint
+            target/release/deps
+            target/release/build
+            target/release/.fingerprint
+            target/msrv/debug/deps
+            target/msrv/debug/build
+            target/msrv/debug/.fingerprint
+
+      - name: Check Rust MSRV
+        env:
+          CARGO_TARGET_DIR: target/msrv
+        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
       - name: Install root dependencies
         run: npm ci
@@ -321,3 +404,35 @@ jobs:
           if-no-files-found: warn
           overwrite: true
           retention-days: 7
+
+      - name: Clean workspace artifacts for cache
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        shell: pwsh
+        run: |
+          cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo +1.88.0 clean --locked --offline --package filament-manager-core --package bambu-filament-manager --target-dir target/msrv
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Save Rust dependencies
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/src
+            ~/.cargo/git/db
+            ~/.cargo/git/checkouts
+            target/debug/deps
+            target/debug/build
+            target/debug/.fingerprint
+            target/release/deps
+            target/release/build
+            target/release/.fingerprint
+            target/msrv/debug/deps
+            target/msrv/debug/build
+            target/msrv/debug/.fingerprint
