@@ -33,6 +33,13 @@ function workflowJob(workflow, jobName) {
   return remainder.slice(0, nextJob === -1 ? undefined : nextJob);
 }
 
+function workflowStep(job, stepName) {
+  const marker = `      - name: ${stepName}\n`;
+  const sections = job.split(marker);
+  assert.equal(sections.length, 2, `expected exactly one ${stepName} step`);
+  return sections[1].split(/^      - name:/m)[0];
+}
+
 test("Cargo packages declare the supported Rust 1.88 lower bound", () => {
   for (const manifest of [rootManifest, tauriManifest]) {
     const packageSection = manifest
@@ -116,7 +123,7 @@ test("every Rust setup reads the sole release pin after Node 24 is installed", (
   }
 });
 
-test("both required smoke jobs enforce the Rust 1.88 MSRV first", () => {
+test("both required smoke jobs check Rust 1.88 before full verification", () => {
   const ciWorkflow = workflows[0][1];
   for (const jobName of ["macos-smoke", "windows-smoke"]) {
     const job = workflowJob(ciWorkflow, jobName);
@@ -131,15 +138,118 @@ test("both required smoke jobs enforce the Rust 1.88 MSRV first", () => {
     );
     assert.match(
       job,
-      /- name: Check Rust MSRV\s+env:\s+CARGO_TARGET_DIR: \$\{\{ runner\.temp \}\}\/filament-manager-msrv-target\s+run: cargo \+1\.88\.0 check --workspace --all-targets --all-features --locked/,
+      /- name: Check Rust MSRV\s+env:\s+CARGO_TARGET_DIR: target\/msrv\s+run: cargo \+1\.88\.0 check --workspace --all-targets --all-features --locked/,
     );
     const msrvSetupIndex = job.indexOf("- name: Setup Rust MSRV");
     const msrvCheckIndex = job.indexOf("- name: Check Rust MSRV");
     const reviewedSetupIndex = job.indexOf("- name: Setup Rust\n");
+    const cacheIndex = job.indexOf("- name: Restore Rust dependencies");
+    const verificationIndex = job.indexOf("- name: Run full verification");
     assert.ok(
-      msrvSetupIndex < msrvCheckIndex && msrvCheckIndex < reviewedSetupIndex,
-      `${jobName} must install and check the lower bound before selecting the reviewed toolchain`,
+      msrvSetupIndex < cacheIndex && reviewedSetupIndex < cacheIndex,
+      `${jobName} must install both compilers before computing the cache key`,
     );
+    assert.ok(
+      cacheIndex < msrvCheckIndex && msrvCheckIndex < verificationIndex,
+      `${jobName} must check the lower bound after restoring dependencies and before full verification`,
+    );
+    assert.equal(
+      (job.match(/\bCARGO_TARGET_DIR:/g) ?? []).length,
+      1,
+      `${jobName} must scope the separate target directory to the MSRV check`,
+    );
+  }
+});
+
+test("native Rust caches save only successful main pushes and exclude workspace outputs", () => {
+  const ciWorkflow = workflows[0][1];
+  assert.equal(
+    (ciWorkflow.match(/uses: Swatinem\/rust-cache@/g) ?? []).length,
+    2,
+    "only the two native smoke jobs use the Rust dependency cache",
+  );
+  for (const jobName of ["macos-smoke", "windows-smoke"]) {
+    const job = workflowJob(ciWorkflow, jobName);
+    const cache = workflowStep(job, "Restore Rust dependencies");
+    assert.match(cache, /uses: Swatinem\/rust-cache@[0-9a-f]{40} # v2\.\d+\.\d+/);
+    assert.match(cache, /^          prefix-key: v\d+-native-smoke$/m);
+    assert.match(cache, /^          workspaces: ["']?\. -> target["']?$/m);
+    assert.match(
+      cache,
+      /^          save-if: \$\{\{ github\.event_name == 'push' && github\.ref == 'refs\/heads\/main' \}\}$/m,
+      `${jobName} must only populate caches from trusted pushes to main`,
+    );
+    for (const setting of [
+      "cache-bin",
+      "cache-workspace-crates",
+      "cache-all-crates",
+      "cache-on-failure",
+    ]) {
+      assert.match(
+        cache,
+        new RegExp(`^          ${setting}: ["']?false["']?$`, "m"),
+        `${jobName} must explicitly disable ${setting}`,
+      );
+    }
+    assert.doesNotMatch(
+      cache,
+      /^          (?:cache-directories|shared-key|cmd-format):/m,
+      `${jobName} must use dependency paths and the action's compiler/job isolation`,
+    );
+    assert.doesNotMatch(
+      cache,
+      /^          (?:add-job-id-key|add-rust-environment-hash-key):\s*["']?false/m,
+      `${jobName} must retain compiler, manifest, lockfile and job cache keys`,
+    );
+    const environment = cache.match(/^          env-vars: (.+)$/m);
+    assert.ok(environment, `${jobName} must account for native runner images and SDKs`);
+    const prefixes = new Set(environment[1].replace(/["']/g, "").split(/\s+/));
+    for (const prefix of [
+      "ImageOS",
+      "ImageVersion",
+      "MACOSX_DEPLOYMENT_TARGET",
+      "SDKROOT",
+    ]) {
+      assert.ok(prefixes.has(prefix), `${jobName} cache key must include ${prefix}`);
+    }
+  }
+});
+
+test("cache hits cannot skip native verification or packaged application gates", () => {
+  const ciWorkflow = workflows[0][1];
+  const commonGates = ["Check Rust MSRV", "Run full verification"];
+  const nativeGates = {
+    "macos-smoke": [
+      "Run data-backed Companion E2E",
+      "Build database upgrade candidate",
+      "Prepare sanitized historical database fixture",
+      "Exercise database upgrade and restart",
+      "Build packaged macOS smoke bundle",
+      "Exercise packaged macOS mutating E2E",
+    ],
+    "windows-smoke": [
+      "Run static path portability contract",
+      "Run static command portability contract",
+      "Run portability checks",
+      "Prepare MSI smoke version override",
+      "Build MSI smoke bundle",
+      "Verify MSI smoke bundle",
+      "Exercise clean MSI installation",
+    ],
+  };
+  for (const [jobName, gates] of Object.entries(nativeGates)) {
+    const job = workflowJob(ciWorkflow, jobName);
+    assert.doesNotMatch(job, /^    (?:if|continue-on-error):/m);
+    assert.doesNotMatch(job, /cache-hit|lookup-only:/);
+    for (const gate of [...commonGates, ...gates]) {
+      const step = workflowStep(job, gate);
+      assert.match(step, /^        run:/m, `${gate} must execute its verification`);
+      assert.doesNotMatch(
+        step,
+        /^        (?:if|continue-on-error):/m,
+        `${gate} must remain an unconditional, blocking gate`,
+      );
+    }
   }
 });
 

@@ -106,11 +106,6 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - name: Check Rust MSRV
-        env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
-        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
-
       - name: Read Rust toolchain
         id: rust-toolchain
         run: node ./scripts/read-rust-toolchain.mjs --github-output
@@ -120,6 +115,23 @@ jobs:
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
+
+      - name: Restore Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          prefix-key: v1-native-smoke
+          workspaces: ". -> target"
+          env-vars: "CARGO CC CFLAGS CXX CMAKE RUST ImageOS ImageVersion MACOSX_DEPLOYMENT_TARGET SDKROOT"
+          cache-bin: false
+          cache-workspace-crates: false
+          cache-all-crates: false
+          cache-on-failure: false
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Check Rust MSRV
+        env:
+          CARGO_TARGET_DIR: target/msrv
+        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
       - name: Install root dependencies
         run: npm ci
@@ -232,11 +244,6 @@ jobs:
         with:
           toolchain: 1.88.0
 
-      - name: Check Rust MSRV
-        env:
-          CARGO_TARGET_DIR: ${{ runner.temp }}/filament-manager-msrv-target
-        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
-
       - name: Read Rust toolchain
         id: rust-toolchain
         run: node ./scripts/read-rust-toolchain.mjs --github-output
@@ -246,6 +253,23 @@ jobs:
         with:
           toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
           components: clippy,rustfmt
+
+      - name: Restore Rust dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          prefix-key: v1-native-smoke
+          workspaces: ". -> target"
+          env-vars: "CARGO CC CFLAGS CXX CMAKE RUST ImageOS ImageVersion MACOSX_DEPLOYMENT_TARGET SDKROOT"
+          cache-bin: false
+          cache-workspace-crates: false
+          cache-all-crates: false
+          cache-on-failure: false
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Check Rust MSRV
+        env:
+          CARGO_TARGET_DIR: target/msrv
+        run: cargo +1.88.0 check --workspace --all-targets --all-features --locked
 
       - name: Install root dependencies
         run: npm ci
