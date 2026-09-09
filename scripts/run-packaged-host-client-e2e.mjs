@@ -10,6 +10,7 @@ import {
   openSync,
   readFileSync,
   readSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -44,6 +45,8 @@ export const PACKAGED_HOST_CLIENT_SUMMARY_FORMAT =
   "filament-manager-packaged-host-client-e2e-summary-v1";
 export const PACKAGED_HOST_CLIENT_CREDENTIAL_CLEANUP_SUMMARY_FORMAT =
   "filament-manager-packaged-host-client-e2e-credential-cleanup-summary-v1";
+export const PACKAGED_HOST_CLIENT_WORK_CLEANUP_SUMMARY_FORMAT =
+  "filament-manager-packaged-host-client-e2e-work-cleanup-summary-v1";
 export const PACKAGED_HOST_CLIENT_STOP_FORMAT =
   "filament-manager-packaged-host-client-e2e-stop-v1";
 
@@ -58,6 +61,10 @@ const RUN_IDENTITY_FORMAT =
 const HOST_DATABASE_FILE_NAME = "host.db";
 const CLIENT_DATABASE_FILE_NAME = "client.db";
 const CREDENTIAL_CLEANUP_SUMMARY_FILE_NAME = "credential-cleanup-summary.json";
+const WORK_CLEANUP_AUTHORIZATION_FILE_NAME = "work-cleanup-authorized.json";
+const WORK_CLEANUP_AUTHORIZATION_FORMAT =
+  "filament-manager-packaged-host-client-e2e-work-cleanup-authorization-v1";
+const WORK_CLEANUP_SUMMARY_FILE_NAME = "work-cleanup-summary.json";
 const LIBRARY_ID = "packaged_host_client_e2e_library";
 const SPOOL_ID = "packaged_host_client_e2e_spool";
 const CLIENT_LOCAL_WEIGHT_G = 333;
@@ -242,6 +249,7 @@ export async function removePackagedHostClientWorkDirectory(
     platform = process.platform,
     removeDirectory = rmSync,
     inspectPath = lstatSync,
+    validateRemovalTarget = () => {},
     waitBeforeRetry = (milliseconds) =>
       new Promise((resolve) => setTimeout(resolve, milliseconds)),
   } = {},
@@ -250,6 +258,8 @@ export async function removePackagedHostClientWorkDirectory(
     platform === "win32" ? WINDOWS_WORK_DIRECTORY_REMOVE_ATTEMPTS : 1;
   let lastError = null;
   for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    // Recheck an authorized root before every traversal, including retries.
+    validateRemovalTarget();
     let removalError = null;
     try {
       removeDirectory(workDirectory, {
@@ -628,6 +638,164 @@ function validateRunIdentity(identityPath, runId) {
   return identity;
 }
 
+function workRootIdentity(workDirectory, label = "QA work cleanup root") {
+  assertRealDirectory(workDirectory, label);
+  const stats = lstatSync(workDirectory, { bigint: true });
+  return { dev: String(stats.dev), ino: String(stats.ino) };
+}
+
+function canonicalWorkPath(workDirectory) {
+  // Resolving the parent also works after a partial cleanup removed the root.
+  return path.join(realpathSync(path.dirname(workDirectory)), path.basename(workDirectory));
+}
+
+function assertAuthorizedWorkRoot(workDirectory, expectedIdentity) {
+  const inspection = inspectPathWithoutFollowing(workDirectory);
+  if (inspection.error) throw inspection.error;
+  if (!inspection.exists) return;
+  const actualIdentity = workRootIdentity(workDirectory);
+  if (
+    actualIdentity.dev !== expectedIdentity.dev ||
+    actualIdentity.ino !== expectedIdentity.ino
+  ) {
+    throw new Error("QA work cleanup root identity changed.");
+  }
+}
+
+function workCleanupFailureDetails(error, workDirectory) {
+  const operation = ["unlink", "rmdir", "scandir", "lstat", "stat", "chmod"]
+    .includes(error?.syscall) ? error.syscall : "unknown";
+  let target = "unknown";
+  if (typeof error?.path === "string" && path.isAbsolute(error.path)) {
+    const relative = path.relative(workDirectory, error.path);
+    if (!relative) target = "work-root";
+    else if (pathIsInside(workDirectory, error.path)) {
+      const first = relative.split(path.sep)[0];
+      target = /^webview2-(?:host|client)-/.test(first)
+        ? "webview2-profile" : "work-file";
+    }
+  }
+  // Never expose arbitrary raw error paths or profile child filenames.
+  return `Cleanup operation: ${operation}; target: ${target}.`;
+}
+
+function writeWorkCleanupAuthorization(context) {
+  // The caller must already have confirmed credential cleanup, every tracked
+  // child's termination and publication of the sanitized outcome summary.
+  // The receipt lives outside the tree that rm may only partially remove.
+  if (readRetainedRunId(context.markerPath) !== context.runId) {
+    throw new Error("QA work cleanup run identity changed.");
+  }
+  validateRunIdentity(context.runIdentityPath, context.runId);
+  const work = canonicalWorkPath(context.workDirectory);
+  const logs = realpathSync(context.logDirectory);
+  const logIdentity = workRootIdentity(context.logDirectory, "QA work cleanup logs");
+  if (
+    work !== context.canonicalWorkDirectory || logs !== context.canonicalLogDirectory ||
+    logIdentity.dev !== context.logRootIdentity.dev || logIdentity.ino !== context.logRootIdentity.ino
+  ) {
+    throw new Error("QA work cleanup directory identity changed before authorization.");
+  }
+  assertAuthorizedWorkRoot(work, context.workRootIdentity);
+  const authorization = {
+    format: WORK_CLEANUP_AUTHORIZATION_FORMAT,
+    run_id: context.runId,
+    work_directory: work,
+    log_directory: logs,
+    work_root_identity: context.workRootIdentity,
+    log_root_identity: context.logRootIdentity,
+    auth_cleared: true,
+    process_termination_confirmed: true,
+  };
+  writePrivateFileAtomically(
+    path.join(context.logDirectory, WORK_CLEANUP_AUTHORIZATION_FILE_NAME),
+    `${JSON.stringify(authorization)}\n`,
+  );
+  return authorization;
+}
+
+export async function resumePackagedHostClientWorkCleanup(options, dependencies = {}) {
+  if (options?.processTerminationConfirmed !== true) {
+    throw new Error("Work cleanup resume requires confirmed exact-process termination.");
+  }
+  const work = assertSafeAbsolutePath(options.workDirectory, "QA work cleanup root");
+  const logs = assertSafeAbsolutePath(options.logDirectory, "QA work cleanup logs");
+  if (work === logs || pathIsInside(work, logs) || pathIsInside(logs, work)) {
+    throw new Error("QA work cleanup root and logs must be disjoint.");
+  }
+  assertRealDirectory(logs, "QA work cleanup logs");
+  assertPrivateUnixMode(logs, 0o700, "QA work cleanup logs");
+  const canonicalWork = canonicalWorkPath(work);
+  const canonicalLogs = realpathSync(logs);
+  if (
+    canonicalWork === canonicalLogs ||
+    pathIsInside(canonicalWork, canonicalLogs) ||
+    pathIsInside(canonicalLogs, canonicalWork)
+  ) {
+    throw new Error("QA work cleanup canonical root and logs must be disjoint.");
+  }
+  const authorization = readBoundedJson(
+    path.join(logs, WORK_CLEANUP_AUTHORIZATION_FILE_NAME),
+    "QA work cleanup authorization",
+  );
+  exactKeys(authorization, [
+    "format", "run_id", "work_directory", "log_directory", "work_root_identity", "log_root_identity",
+    "auth_cleared", "process_termination_confirmed",
+  ], "QA work cleanup authorization");
+  exactKeys(authorization.work_root_identity, ["dev", "ino"], "QA work cleanup root identity");
+  exactKeys(authorization.log_root_identity, ["dev", "ino"], "QA work cleanup log identity");
+  if (
+    authorization.format !== WORK_CLEANUP_AUTHORIZATION_FORMAT ||
+    !/^packaged-host-client-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(authorization.run_id) ||
+    authorization.work_directory !== canonicalWork ||
+    authorization.log_directory !== canonicalLogs ||
+    ![authorization.work_root_identity.dev, authorization.work_root_identity.ino,
+      authorization.log_root_identity.dev, authorization.log_root_identity.ino]
+      .every((value) => typeof value === "string" && /^(?:0|[1-9][0-9]*)$/.test(value)) ||
+    authorization.auth_cleared !== true ||
+    authorization.process_termination_confirmed !== true
+  ) {
+    throw new Error("QA work cleanup authorization identity is invalid.");
+  }
+  validateRunIdentity(path.join(logs, RUN_IDENTITY_FILE_NAME), authorization.run_id);
+  const validateRemovalTarget = () => {
+    if (canonicalWorkPath(work) !== canonicalWork || realpathSync(logs) !== canonicalLogs) {
+      throw new Error("QA work cleanup canonical directory changed.");
+    }
+    const logIdentity = workRootIdentity(logs, "QA work cleanup logs");
+    if (logIdentity.dev !== authorization.log_root_identity.dev || logIdentity.ino !== authorization.log_root_identity.ino) {
+      throw new Error("QA work cleanup log directory identity changed.");
+    }
+    assertAuthorizedWorkRoot(work, authorization.work_root_identity);
+  };
+  validateRemovalTarget();
+  const removeWork = dependencies.removeWork ?? removePackagedHostClientWorkDirectory;
+  try {
+    await removeWork(work, { validateRemovalTarget });
+  } catch (error) {
+    const code = /^[A-Z0-9_]+$/.test(error?.code) ? error.code : "unclassified";
+    throw new Error(`Authorized private work cleanup failed (${code}). ${workCleanupFailureDetails(error, work)}`);
+  }
+  const remaining = inspectPathWithoutFollowing(work);
+  if (remaining.error) throw remaining.error;
+  if (remaining.exists) {
+    throw new Error("QA work cleanup retained its authorized root.");
+  }
+  const summary = {
+    format: PACKAGED_HOST_CLIENT_WORK_CLEANUP_SUMMARY_FORMAT,
+    status: "pass",
+    run_id: authorization.run_id,
+    auth_cleared: true,
+    process_termination_confirmed: true,
+    work_directory_removed: true,
+  };
+  writePrivateFileAtomically(
+    path.join(logs, WORK_CLEANUP_SUMMARY_FILE_NAME),
+    `${JSON.stringify(summary)}\n`,
+  );
+  return summary;
+}
+
 export function validateRetainedPackagedHostClientE2eOptions({
   executablePath,
   workDirectory,
@@ -707,6 +875,10 @@ export function validateRetainedPackagedHostClientE2eOptions({
     priorCredentialCleanupSummary,
     priorSummary,
     runId,
+    workRootIdentity: workRootIdentity(work),
+    logRootIdentity: workRootIdentity(logs, "QA work cleanup logs"),
+    canonicalWorkDirectory: canonicalWorkPath(work),
+    canonicalLogDirectory: realpathSync(logs),
     sensitiveValues: new Set(),
   };
 }
@@ -770,6 +942,10 @@ export async function preparePackagedHostClientE2eRun(options) {
       hostDatabasePath,
       clientDatabasePath,
       runId,
+      workRootIdentity: workRootIdentity(validated.workDirectory),
+      logRootIdentity: workRootIdentity(validated.logDirectory, "QA work cleanup logs"),
+      canonicalWorkDirectory: canonicalWorkPath(validated.workDirectory),
+      canonicalLogDirectory: realpathSync(validated.logDirectory),
       sensitiveValues: new Set(),
     };
   } catch (error) {
@@ -2158,6 +2334,10 @@ export async function resumePackagedHostClientCredentialCleanup(
   let failure = null;
   try {
     context = validateRetainedPackagedHostClientE2eOptions(options);
+    // A fresh Client may touch its credential scope again. An earlier receipt
+    // must not remain usable if this new cleanup launch fails or stays alive.
+    rmSync(path.join(context.logDirectory, WORK_CLEANUP_AUTHORIZATION_FILE_NAME), { force: true });
+    rmSync(path.join(context.logDirectory, WORK_CLEANUP_SUMMARY_FILE_NAME), { force: true });
     if (context.priorCredentialCleanupSummary) {
       rmSync(context.credentialCleanupSummaryPath, { force: true });
     }
@@ -2200,7 +2380,11 @@ export async function resumePackagedHostClientCredentialCleanup(
       process_termination_confirmed: true,
     };
     writeCredentialCleanupSummary(context, summary);
-    await removeWork(context.workDirectory);
+    const authorization = writeWorkCleanupAuthorization(context);
+    await removeWork(context.workDirectory, {
+      validateRemovalTarget: () =>
+        assertAuthorizedWorkRoot(context.workDirectory, authorization.work_root_identity),
+    });
     return summary;
   } catch (error) {
     failure = error instanceof Error ? error : new Error(String(error));
@@ -2473,7 +2657,11 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
           context?.workDirectory &&
           existsSync(context.workDirectory)
         ) {
-          await removeWork(context.workDirectory);
+          const authorization = writeWorkCleanupAuthorization(context);
+          await removeWork(context.workDirectory, {
+            validateRemovalTarget: () =>
+              assertAuthorizedWorkRoot(context.workDirectory, authorization.work_root_identity),
+          });
         }
       } catch (cleanupError) {
         const cleanupCode =
@@ -2485,7 +2673,8 @@ export async function runPackagedHostClientE2e(options, dependencies = {}) {
             ? `${cleanupCode} after bounded retries`
             : cleanupCode;
         failure ??= new Error(
-          `Packaged Host-Client E2E private work cleanup failed (${cleanupReason}).`,
+          `Packaged Host-Client E2E private work cleanup failed (${cleanupReason}). ` +
+            workCleanupFailureDetails(cleanupError, context.workDirectory),
         );
       }
     }
@@ -2507,14 +2696,16 @@ export function packagedHostClientE2eCliOptions(argv) {
     argv.some(
       (argument) =>
         argument !== "--resume-credential-cleanup" &&
+        argument !== "--resume-work-cleanup" &&
         !allowedPrefixes.some((prefix) => argument.startsWith(prefix)),
-    )
+    ) ||
+    (argv.includes("--resume-credential-cleanup") && argv.includes("--resume-work-cleanup"))
   ) {
     throw new Error(
       "Usage: node scripts/run-packaged-host-client-e2e.mjs " +
         "--executable=<installed-app-executable> --work-dir=<private-directory> " +
         "--log-dir=<private-log-directory> [--launch-timeout-ms=120000] " +
-        "[--resume-credential-cleanup]",
+        "[--resume-credential-cleanup | --resume-work-cleanup]",
     );
   }
   const value = (prefix) =>
@@ -2531,6 +2722,7 @@ export function packagedHostClientE2eCliOptions(argv) {
           ? Number(timeout)
           : Number.NaN,
     resumeCredentialCleanup: argv.includes("--resume-credential-cleanup"),
+    resumeWorkCleanup: argv.includes("--resume-work-cleanup"),
   };
 }
 
@@ -2540,7 +2732,13 @@ if (
 ) {
   try {
     const options = packagedHostClientE2eCliOptions(process.argv.slice(2));
-    if (options.resumeCredentialCleanup) {
+    if (options.resumeWorkCleanup) {
+      await resumePackagedHostClientWorkCleanup({
+        ...options,
+        processTerminationConfirmed: true,
+      });
+      console.log("Packaged Host-Client authorized work cleanup resumed successfully.");
+    } else if (options.resumeCredentialCleanup) {
       const result = await resumePackagedHostClientCredentialCleanup({
         ...options,
         processTerminationConfirmed: true,

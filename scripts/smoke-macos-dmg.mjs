@@ -31,6 +31,7 @@ import Database from "better-sqlite3";
 import { runPackagedDesktopE2e } from "./run-packaged-desktop-e2e.mjs";
 import {
   resumePackagedHostClientCredentialCleanup,
+  resumePackagedHostClientWorkCleanup,
   runPackagedHostClientE2e,
 } from "./run-packaged-host-client-e2e.mjs";
 import { verifyCompatibilityReleaseUpgradeFixture, COMPATIBILITY_RELEASE } from "./prepare-compatibility-release-upgrade-fixture.mjs";
@@ -1360,13 +1361,18 @@ export async function smokeMacosDmg(options) {
         );
       } else {
         try {
-          await resumePackagedHostClientCredentialCleanup({
+          const cleanupOptions = {
             executablePath: packagedHostClientE2eExecutablePath,
             workDirectory: packagedHostClientE2eWorkDirectory,
             logDirectory: packagedHostClientE2eLogDirectory,
             launchTimeoutMs,
             processTerminationConfirmed: true,
-          });
+          };
+          if (existsSync(path.join(packagedHostClientE2eLogDirectory, "work-cleanup-authorized.json"))) {
+            await resumePackagedHostClientWorkCleanup(cleanupOptions);
+          } else {
+            await resumePackagedHostClientCredentialCleanup(cleanupOptions);
+          }
           await stopLaunchedApplicationProcesses(launchCleanupOptions);
           exactApplicationProcessesStopped = true;
         } catch (error) {

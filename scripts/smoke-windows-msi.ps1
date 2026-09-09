@@ -1415,13 +1415,17 @@ finally {
                 $packagedHostClientE2eRunId = [string]$runIdentity.run_id
                 $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction Stop |
                     Select-Object -First 1
+                $workCleanupAuthorizationPath = Join-Path `
+                    $packagedHostClientE2eLogDirectory "work-cleanup-authorized.json"
+                $resumeWorkCleanup = Test-Path -LiteralPath $workCleanupAuthorizationPath -PathType Leaf
+                $cleanupMode = if ($resumeWorkCleanup) { "--resume-work-cleanup" } else { "--resume-credential-cleanup" }
                 $credentialCleanupArguments = @(
                     $packagedHostClientE2eRunner,
                     "--executable=$installedExecutablePath",
                     "--work-dir=$packagedHostClientE2eWorkDirectory",
                     "--log-dir=$packagedHostClientE2eLogDirectory",
                     "--launch-timeout-ms=$($LaunchTimeoutSeconds * 1000)",
-                    "--resume-credential-cleanup"
+                    $cleanupMode
                 )
                 $credentialCleanupOutput = & $nodeCommand.Source @credentialCleanupArguments 2>&1
                 $credentialCleanupExitCode = $LASTEXITCODE
@@ -1429,9 +1433,10 @@ finally {
                 if ($credentialCleanupExitCode -ne 0) {
                     throw "Packaged Host-Client credential cleanup resume failed with exit code $credentialCleanupExitCode."
                 }
+                $cleanupSummaryFile = if ($resumeWorkCleanup) { "work-cleanup-summary.json" } else { "credential-cleanup-summary.json" }
                 $credentialCleanupSummaryPath = Join-Path `
                     $packagedHostClientE2eLogDirectory `
-                    "credential-cleanup-summary.json"
+                    $cleanupSummaryFile
                 if (-not (Test-Path -LiteralPath $credentialCleanupSummaryPath -PathType Leaf)) {
                     throw "Packaged Host-Client credential cleanup did not publish its private summary."
                 }
@@ -1441,16 +1446,12 @@ finally {
                 $credentialCleanupFields = @(
                     $credentialCleanupResult.PSObject.Properties.Name | Sort-Object
                 )
-                $expectedCredentialCleanupFields = @(
-                    "format",
-                    "status",
-                    "run_id",
-                    "auth_cleared",
-                    "auth_setting_count",
-                    "client_schema_version",
-                    "cleanup_launch",
-                    "process_termination_confirmed"
-                ) | Sort-Object
+                $expectedCredentialCleanupFields = if ($resumeWorkCleanup) {
+                    @("format", "status", "run_id", "auth_cleared", "process_termination_confirmed", "work_directory_removed")
+                } else {
+                    @("format", "status", "run_id", "auth_cleared", "auth_setting_count", "client_schema_version", "cleanup_launch", "process_termination_confirmed")
+                }
+                $expectedCredentialCleanupFields = @($expectedCredentialCleanupFields | Sort-Object)
                 $credentialCleanupFieldDifference = @(
                     Compare-Object `
                         $credentialCleanupFields `
@@ -1458,14 +1459,25 @@ finally {
                 )
                 if (
                     $credentialCleanupFieldDifference.Count -ne 0 -or
-                    $credentialCleanupResult.format -ne "filament-manager-packaged-host-client-e2e-credential-cleanup-summary-v1" -or
                     $credentialCleanupResult.status -ne "pass" -or
                     [string]$credentialCleanupResult.run_id -ne $packagedHostClientE2eRunId -or
                     $credentialCleanupResult.auth_cleared -ne $true -or
+                    $credentialCleanupResult.process_termination_confirmed -ne $true
+                ) {
+                    throw "Packaged Host-Client credential cleanup summary is not passing."
+                }
+                if ($resumeWorkCleanup) {
+                    if (
+                        $credentialCleanupResult.format -ne "filament-manager-packaged-host-client-e2e-work-cleanup-summary-v1" -or
+                        $credentialCleanupResult.work_directory_removed -ne $true
+                    ) {
+                        throw "Packaged Host-Client work cleanup summary is not passing."
+                    }
+                } elseif (
+                    $credentialCleanupResult.format -ne "filament-manager-packaged-host-client-e2e-credential-cleanup-summary-v1" -or
                     [int64]$credentialCleanupResult.auth_setting_count -ne 0 -or
                     [int64]$credentialCleanupResult.client_schema_version -lt 1 -or
-                    [string]$credentialCleanupResult.cleanup_launch -notmatch '^attempt-(?:[2-9]|[1-9][0-9]+)$' -or
-                    $credentialCleanupResult.process_termination_confirmed -ne $true
+                    [string]$credentialCleanupResult.cleanup_launch -notmatch '^attempt-(?:[2-9]|[1-9][0-9]+)$'
                 ) {
                     throw "Packaged Host-Client credential cleanup summary is not passing."
                 }
