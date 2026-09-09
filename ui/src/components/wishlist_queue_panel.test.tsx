@@ -60,6 +60,7 @@ function renderPanel(options: {
     <I18nContext.Provider value={i18nValue}>
       <WishlistQueuePanel
         addPurchaseDisabled={false}
+        authorityKey="local-test-library"
         busy={false}
         catalogMasterById={new Map()}
         confirmWishlistRemoveId={options.confirmId ?? null}

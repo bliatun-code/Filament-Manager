@@ -311,7 +311,7 @@ export function InventoryPageWorkspace({
           hidden={activeView !== "PURCHASES"}
         >
           {activeView === "PURCHASES" ? (
-            <WishlistQueuePanel {...purchaseQueueProps} />
+            <WishlistQueuePanel key={purchaseQueueProps.authorityKey} {...purchaseQueueProps} />
           ) : null}
         </div>
         <div
