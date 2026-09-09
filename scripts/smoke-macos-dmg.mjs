@@ -33,6 +33,7 @@ import {
   resumePackagedHostClientCredentialCleanup,
   runPackagedHostClientE2e,
 } from "./run-packaged-host-client-e2e.mjs";
+import { verifyCompatibilityReleaseUpgradeFixture, COMPATIBILITY_RELEASE } from "./prepare-compatibility-release-upgrade-fixture.mjs";
 import { currentSchemaVersion, smokeReleaseDatabaseUpgrade } from "./smoke-release-database-upgrade.mjs";
 import { assertCatalogSpoolBatchSchema } from "./catalog-spool-batch-schema.mjs";
 import {
@@ -97,6 +98,7 @@ export function validateMacosDmgSmokeOptions({
   signaturePolicy = DEFAULT_SIGNATURE_POLICY,
   upgradeFixturePath = null,
   upgradeSourceRelease = null,
+  compatibilityFixturePath = null,
   runPackagedDesktopE2E = false,
   runPackagedHostClientE2E = false,
 }) {
@@ -139,6 +141,10 @@ export function validateMacosDmgSmokeOptions({
       "An expected Apple Team ID cannot be used with the local ad-hoc signature policy.",
     );
   }
+  if (compatibilityFixturePath !== null &&
+      (typeof compatibilityFixturePath !== "string" || !compatibilityFixturePath.trim())) {
+    throw new Error("A nonempty compatibility fixture path is required when supplied.");
+  }
   const normalizedUpgradeFixturePath =
     typeof upgradeFixturePath === "string" ? upgradeFixturePath.trim() : "";
   const normalizedUpgradeSourceRelease =
@@ -161,6 +167,7 @@ export function validateMacosDmgSmokeOptions({
       ? path.resolve(normalizedUpgradeFixturePath)
       : null,
     upgradeSourceRelease: normalizedUpgradeSourceRelease || null,
+    compatibilityFixturePath: compatibilityFixturePath ? path.resolve(compatibilityFixturePath.trim()) : null,
     runPackagedDesktopE2E,
     runPackagedHostClientE2E,
   };
@@ -933,6 +940,7 @@ export async function smokeMacosDmg(options) {
     signaturePolicy,
     upgradeFixturePath,
     upgradeSourceRelease,
+    compatibilityFixturePath,
     runPackagedDesktopE2E: shouldRunPackagedDesktopE2E,
     runPackagedHostClientE2E: shouldRunPackagedHostClientE2E,
   } = validateMacosDmgSmokeOptions(options);
@@ -1077,6 +1085,19 @@ export async function smokeMacosDmg(options) {
         logDirectory: path.join(logDirectory, "database-compatibility"),
         requireVisibleWindow: false,
         sourceRelease: upgradeSourceRelease,
+      });
+    }
+    let schema7CompatibilityResult = null;
+    if (compatibilityFixturePath) {
+      verifyCompatibilityReleaseUpgradeFixture({ outputPath: compatibilityFixturePath });
+      schema7CompatibilityResult = await smokeReleaseDatabaseUpgrade({
+        allowCurrentSchema: true,
+        databasePath: compatibilityFixturePath,
+        executablePath,
+        launchTimeoutMs,
+        logDirectory: path.join(logDirectory, "database-compatibility-v0.30.0"),
+        requireVisibleWindow: false,
+        sourceRelease: COMPATIBILITY_RELEASE,
       });
     }
     let packagedDesktopE2eResult = null;
@@ -1264,6 +1285,15 @@ export async function smokeMacosDmg(options) {
             launches: databaseCompatibilityResult.launchCount,
             sourceRelease: databaseCompatibilityResult.sourceRelease,
             toSchema: databaseCompatibilityResult.after.schemaVersion,
+          }
+        : null,
+      schema7Compatibility: schema7CompatibilityResult
+        ? {
+            fromSchema: schema7CompatibilityResult.before.schemaVersion,
+            toSchema: schema7CompatibilityResult.after.schemaVersion,
+            gateMode: schema7CompatibilityResult.gateMode,
+            launches: schema7CompatibilityResult.launchCount,
+            sourceRelease: schema7CompatibilityResult.sourceRelease,
           }
         : null,
       processId: applicationProcess.processId,
@@ -1487,6 +1517,13 @@ export async function smokeMacosDmg(options) {
             `${result.databaseCompatibility.launches} launches`
           : "not requested"
       }`,
+      `Schema-7 database gate: ${
+        result.schema7Compatibility
+          ? `${result.schema7Compatibility.sourceRelease}, ` +
+            `${result.schema7Compatibility.fromSchema} -> ${result.schema7Compatibility.toSchema}, ` +
+            `${result.schema7Compatibility.launches} launches`
+          : "not requested"
+      }`,
       `Packaged desktop mutating E2E: ${
         result.packagedDesktopE2e
           ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}, ` +
@@ -1516,6 +1553,7 @@ function cliOptions(argv) {
     "--log-dir=",
     "--signature-policy=",
     "--upgrade-fixture=",
+    "--compatibility-fixture=",
     "--upgrade-source-release=",
   ];
   const booleanOptions = new Set([
@@ -1538,7 +1576,7 @@ function cliOptions(argv) {
         "[--signature-policy=release|local-adhoc] " +
         "[--upgrade-fixture=<sanitized-db> " +
         "--upgrade-source-release=v0.28.0] [--packaged-desktop-e2e] " +
-        "[--packaged-host-client-e2e]",
+        "[--packaged-host-client-e2e] [--compatibility-fixture=<v0.30-db>]",
     );
   }
   const expectedTeamId = argv
@@ -1556,6 +1594,9 @@ function cliOptions(argv) {
   const upgradeFixturePath = argv
     .find((argument) => argument.startsWith("--upgrade-fixture="))
     ?.slice("--upgrade-fixture=".length);
+  const compatibilityFixturePath = argv
+    .find((argument) => argument.startsWith("--compatibility-fixture="))
+    ?.slice("--compatibility-fixture=".length);
   const upgradeSourceRelease = argv
     .find((argument) => argument.startsWith("--upgrade-source-release="))
     ?.slice("--upgrade-source-release=".length);
@@ -1570,6 +1611,7 @@ function cliOptions(argv) {
     signaturePolicy,
     upgradeFixturePath,
     upgradeSourceRelease,
+    compatibilityFixturePath,
     runPackagedDesktopE2E: argv.includes("--packaged-desktop-e2e"),
     runPackagedHostClientE2E: argv.includes("--packaged-host-client-e2e"),
   };

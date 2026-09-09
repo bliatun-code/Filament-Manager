@@ -201,6 +201,23 @@ jobs:
           overwrite: true
           retention-days: 1
 
+      - name: Prepare and verify sanitized v0.30 compatibility fixture
+        env:
+          COMPATIBILITY_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
+        run: |
+          set -euo pipefail
+          node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output="$COMPATIBILITY_FIXTURE_DIR/filament-manager-v0.30.0.db"
+          node scripts/prepare-compatibility-release-upgrade-fixture.mjs --output="$COMPATIBILITY_FIXTURE_DIR/filament-manager-v0.30.0.db" --verify
+
+      - name: Upload sanitized v0.30 compatibility fixture
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: filament-manager-v0.30.0-database-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
   build-macos-dmg:
     name: Build signed macOS DMG
     needs:
@@ -267,6 +284,12 @@ jobs:
         with:
           name: filament-manager-v0.28.0-database-fixture-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-v0.28.0-fixture
+
+      - name: Download sanitized v0.30 compatibility fixture
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-v0.30.0-database-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
 
       - name: Verify downloaded v0.28 fixture
         env:
@@ -463,6 +486,7 @@ jobs:
           --signature-policy=release
           --upgrade-fixture="$PREVIOUS_RELEASE_FIXTURE_DIR/filament-manager-v0.28.0.db"
           --upgrade-source-release=v0.28.0
+          --compatibility-fixture="${{ runner.temp }}/filament-manager-v0.30.0-fixture/filament-manager-v0.30.0.db"
           --packaged-desktop-e2e
           --packaged-host-client-e2e
 
@@ -622,6 +646,12 @@ jobs:
           name: filament-manager-v0.28.0-database-fixture-${{ github.run_id }}
           path: ${{ runner.temp }}/filament-manager-v0.28.0-fixture
 
+      - name: Download sanitized v0.30 compatibility fixture
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: filament-manager-v0.30.0-database-fixture-${{ github.run_id }}
+          path: ${{ runner.temp }}/filament-manager-v0.30.0-fixture
+
       - name: Verify downloaded v0.28 fixture
         env:
           PREVIOUS_RELEASE_FIXTURE_DIR: ${{ runner.temp }}/filament-manager-v0.28.0-fixture
@@ -742,6 +772,7 @@ jobs:
             -SignaturePolicy "UnsignedRequired" `
             -UpgradeFixturePath (Join-Path $env:PREVIOUS_RELEASE_FIXTURE_DIR "filament-manager-v0.28.0.db") `
             -UpgradeSourceRelease "v0.28.0" `
+            -CompatibilityFixturePath (Join-Path $env:RUNNER_TEMP "filament-manager-v0.30.0-fixture/filament-manager-v0.30.0.db") `
             -RunPackagedDesktopE2E `
             -RunPackagedHostClientE2E `
             -LaunchTimeoutSeconds 120

@@ -46,6 +46,9 @@ param(
     [string]$UpgradeSourceRelease = "",
 
     [Parameter(Mandatory = $false)]
+    [string]$CompatibilityFixturePath = "",
+
+    [Parameter(Mandatory = $false)]
     [switch]$RunPackagedDesktopE2E,
 
     [Parameter(Mandatory = $false)]
@@ -828,6 +831,7 @@ $appProcess = $null
 $secondaryProcess = $null
 $productCode = $null
 $previousReleaseDatabaseGateSummary = "not requested"
+$schema7DatabaseGateSummary = "not requested"
 $packagedDesktopE2eSummary = "not requested"
 $packagedDesktopE2eWorkParent = $null
 $packagedHostClientE2eSummary = "not requested"
@@ -953,6 +957,32 @@ try {
             throw "Installed MSI database compatibility smoke failed with exit code $upgradeSmokeExitCode."
         }
         $previousReleaseDatabaseGateSummary = "$UpgradeSourceRelease, two installed-binary launches"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($CompatibilityFixturePath)) {
+        $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction Stop |
+            Select-Object -First 1
+        $compatibilityVerifier = Join-Path $PSScriptRoot "prepare-compatibility-release-upgrade-fixture.mjs"
+        & $nodeCommand.Source $compatibilityVerifier "--output=$CompatibilityFixturePath" --verify
+        if ($LASTEXITCODE -ne 0) {
+            throw "The v0.30 compatibility fixture failed verification."
+        }
+        $compatibilityLogDirectory = Join-Path $resolvedLogDirectory "database-compatibility-v0.30.0"
+        $compatibilitySmokeArguments = @(
+            (Join-Path $PSScriptRoot "smoke-release-database-upgrade.mjs"),
+            "--database=$CompatibilityFixturePath",
+            "--executable=$installedExecutablePath",
+            "--log-dir=$compatibilityLogDirectory",
+            "--launch-timeout-ms=$($LaunchTimeoutSeconds * 1000)",
+            "--database-readiness-only",
+            "--allow-current-schema",
+            "--source-release=v0.30.0"
+        )
+        & $nodeCommand.Source @compatibilitySmokeArguments
+        if ($LASTEXITCODE -ne 0) {
+            throw "Installed MSI v0.30 database compatibility smoke failed."
+        }
+        $schema7DatabaseGateSummary = "v0.30.0, two installed-binary launches"
     }
 
     if ($RunPackagedDesktopE2E) {
@@ -1302,6 +1332,7 @@ try {
         "User PATH entry removed: yes",
         "Signature policy: $SignaturePolicy",
         "Previous-release database gate: $previousReleaseDatabaseGateSummary",
+        "Schema-7 database gate: $schema7DatabaseGateSummary",
         "Packaged desktop mutating E2E: $packagedDesktopE2eSummary",
         "Packaged Host-Client mutating E2E: $packagedHostClientE2eSummary",
         "Result: PASS"
