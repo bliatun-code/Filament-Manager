@@ -110,3 +110,32 @@ smoke, or `-CompatibilityFixturePath` to the Windows MSI smoke. The adjacent
 with an explicit fixture database; the wrappers separately retain their normal
 window/installation checks. This does not test portable-backup restore and is
 not evidence of a signed release run until that workflow has actually passed.
+
+## Positive database startup acknowledgment
+
+Every database smoke launch now requires an acknowledgment emitted by the
+candidate after database initialization, desktop setup and background-task
+startup succeed. A pre-existing healthy database and a living process alone
+are insufficient, including when source and candidate use the same schema.
+
+The runner supplies a fresh 64-character hexadecimal token and an output file
+through `FILAMENT_MANAGER_DATABASE_READY_TOKEN` and
+`FILAMENT_MANAGER_DATABASE_READY_FILE`, alongside the explicit fixture database
+override. The app creates that file without replacement and records the token,
+its process ID and the canonical database path. The runner checks all three
+before accepting readiness. An absent, stale, wrong-process or wrong-database
+acknowledgment cannot pass. A file is used because packaged Windows GUI apps
+need not have standard error available. Normal startup supplies neither probe
+variable and does not create an acknowledgment.
+
+Acknowledgments stay in the private smoke log directory and include the test
+database path; retain them with the other private QA evidence. Each restart
+uses a different token and filename. The gate still compares preserved data
+before shutdown and after the process exits. Its settling delay follows the
+explicit readiness handshake and is not used as proof of initialization.
+
+Candidates built before this handshake was introduced will fail this newer
+runner, even if their database schema matches. Use matching candidate source
+and test scripts. Earlier schema-7 smoke results lacking an acknowledgment
+are insufficient evidence that the application actually opened the fixture;
+repeat the check with a candidate implementing the handshake.

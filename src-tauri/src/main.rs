@@ -35,6 +35,7 @@ mod companion_wishlist_write_api;
 mod credential_migration;
 mod credential_profile_migration;
 mod credential_store;
+mod database_startup_probe;
 mod desktop_lifecycle;
 mod desktop_visual_qa_theme;
 mod desktop_window_theme;
@@ -349,6 +350,7 @@ fn main() {
             apply_visual_qa_scenario_url(app)?;
 
             desktop_lifecycle::start_background_tasks(app).map_err(std::io::Error::other)?;
+            database_startup_probe::emit_database_startup_probe(&db_path)?;
 
             Ok(())
         })

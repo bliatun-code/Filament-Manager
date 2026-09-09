@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   closeSync,
   existsSync,
@@ -9,6 +9,7 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  realpathSync,
   statSync,
   writeFileSync,
 } from "node:fs";
@@ -443,6 +444,38 @@ export function validateReleaseDatabaseUpgradeSmokeOptions({
   };
 }
 
+// A valid existing database and a living process do not prove app initialization.
+// Each launch must acknowledge its nonce, exact process and actual opened database.
+export function databaseStartupAcknowledged({ readinessPath, token, processId, databasePath }) {
+  let bytes;
+  try {
+    const file = lstatSync(readinessPath);
+    if (!file.isFile() || file.size > 8192) {
+      throw new Error("Invalid database startup acknowledgment file.");
+    }
+    bytes = readFileSync(readinessPath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  }
+  let acknowledgment;
+  try {
+    acknowledgment = JSON.parse(bytes);
+  } catch {
+    // The child may still be writing the small acknowledgment.
+    return false;
+  }
+  if (!acknowledgment || acknowledgment.token !== token ||
+      acknowledgment.pid !== processId || typeof acknowledgment.databasePath !== "string") {
+    throw new Error("Database startup acknowledgment does not match this launch.");
+  }
+  const canonical = (file) => path.toNamespacedPath(realpathSync.native(file));
+  if (canonical(acknowledgment.databasePath) !== canonical(databasePath)) {
+    throw new Error("Database startup acknowledgment names a different database.");
+  }
+  return true;
+}
+
 export async function smokeReleaseDatabaseUpgrade(options) {
   const {
     allowCurrentSchema,
@@ -494,6 +527,8 @@ export async function smokeReleaseDatabaseUpgrade(options) {
   const launchResults = [];
   let previousLaunchSnapshot = before;
   for (let launchIndex = 1; launchIndex <= launchCount; launchIndex += 1) {
+    const readinessToken = randomBytes(32).toString("hex");
+    const readinessPath = path.join(logDirectory, `launch-${launchIndex}-ready-${readinessToken}.json`);
     const stdoutPath = path.join(logDirectory, `launch-${launchIndex}-stdout.log`);
     const stderrPath = path.join(logDirectory, `launch-${launchIndex}-stderr.log`);
     const stdoutFile = openSync(stdoutPath, "w", 0o600);
@@ -504,6 +539,8 @@ export async function smokeReleaseDatabaseUpgrade(options) {
         env: {
           ...process.env,
           FILAMENT_MANAGER_DB_PATH: databasePath,
+          FILAMENT_MANAGER_DATABASE_READY_FILE: readinessPath,
+          FILAMENT_MANAGER_DATABASE_READY_TOKEN: readinessToken,
         },
         stdio: ["ignore", stdoutFile, stderrFile],
       });
@@ -513,6 +550,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       });
       const deadline = Date.now() + launchTimeoutMs;
       let after = null;
+      let startupAcknowledged = false;
       let visibleWindow = !requireVisibleWindow;
       let lastError = null;
       while (Date.now() < deadline) {
@@ -529,6 +567,9 @@ export async function smokeReleaseDatabaseUpgrade(options) {
               `(code ${String(child.exitCode)}, signal ${String(child.signalCode)}).`,
           );
         }
+        startupAcknowledged = databaseStartupAcknowledged({
+          readinessPath, token: readinessToken, processId: childProcessId, databasePath,
+        });
         try {
           after = snapshotReleaseUpgradeDatabase(databasePath);
           assertPreservedReleaseUpgradeData(before, after);
@@ -548,10 +589,13 @@ export async function smokeReleaseDatabaseUpgrade(options) {
             moduleCachePath,
           );
         }
-        if (after?.schemaVersion === expectedSchemaVersion && visibleWindow && !lastError) {
+        if (startupAcknowledged && after?.schemaVersion === expectedSchemaVersion && visibleWindow && !lastError) {
           break;
         }
         await delay(500);
+      }
+      if (!startupAcknowledged) {
+        throw new Error(`Release application did not acknowledge database startup during launch ${launchIndex}.`);
       }
       if (lastError || !after || after.schemaVersion !== expectedSchemaVersion) {
         throw new Error(
@@ -617,6 +661,7 @@ export async function smokeReleaseDatabaseUpgrade(options) {
       `Current schema: ${finalSnapshot.schemaVersion}`,
       `Launches: ${launchCount}`,
       `Readiness: ${requireVisibleWindow ? "database and visible window" : "database"}`,
+      "Startup acknowledgment: unique token, process ID and database path verified for every launch",
       `Preserved domain tables: ${Object.keys(before.counts).length}`,
       `Value-digested tables: ${Object.keys(before.valueDigests).length}`,
       `Protected settings: ${Object.keys(before.protectedValues.settings).length}`,
