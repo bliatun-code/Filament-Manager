@@ -83,3 +83,30 @@ This is generator and contract coverage only. It does not run the old app binary
 or demonstrate installed-app upgrade or portable-backup restore behavior. The
 v0.28.0/schema-5 fixture and existing native release gates remain unchanged.
 Neither operational journal becomes portable user data through this fixture.
+
+
+## Packaged v0.30 compatibility gate
+
+The release workflow prepares the v0.30 fixture on Linux and transfers its
+database and manifest as a separate, run-scoped artifact to the Apple Silicon
+DMG and Windows MSI jobs. Each installed-app runner verifies the downloaded
+pair before passing the fixture to the existing two-launch database smoke.
+The v0.28 schema-migration gate still runs first. Intel's existing launch gate
+is unchanged.
+
+The new gate records schema-7 journal preservation across startup, shutdown and
+restart in `database-compatibility-v0.30.0/upgrade-summary.txt`, under the existing
+always-uploaded smoke logs. Schema 7 is currently a same-schema compatibility
+check; the shared runner requires migration if the candidate schema advances.
+Both catalog jobs and batch receipts are included in the protected value
+snapshots. The fixture is a disposable input: the candidate may modify it,
+so its original manifest is verified before the first launch, not afterward.
+Download or generate a fresh pair before repeating the gate.
+
+For a local packaged candidate, add
+`--compatibility-fixture=/path/to/filament-manager-v0.30.0.db` to the macOS DMG
+smoke, or `-CompatibilityFixturePath` to the Windows MSI smoke. The adjacent
+`.json` manifest is required. These checks exercise the installed executable
+with an explicit fixture database; the wrappers separately retain their normal
+window/installation checks. This does not test portable-backup restore and is
+not evidence of a signed release run until that workflow has actually passed.

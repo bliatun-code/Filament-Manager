@@ -676,3 +676,18 @@ test("macOS installed DMG smoke binds visible windows to the exact process ID", 
     ],
   );
 });
+
+
+test("schema-7 compatibility is independent of the historical fixture selection", () => {
+  const base = { dmgPath: "candidate.dmg", expectedTeamId: "ABCDE12345", logDirectory: "logs" };
+  for (const compatibilityFixturePath of ["", "   ", true]) {
+    assert.throws(() => validateMacosDmgSmokeOptions({ ...base, compatibilityFixturePath }), /nonempty compatibility fixture path/);
+  }
+  const options = validateMacosDmgSmokeOptions({ ...base,
+    upgradeFixturePath: "v0.28.db", upgradeSourceRelease: "v0.28.0",
+    compatibilityFixturePath: "v0.30.db",
+  });
+  assert.equal(options.upgradeFixturePath, path.resolve("v0.28.db"));
+  assert.equal(options.compatibilityFixturePath, path.resolve("v0.30.db"));
+  assert.equal(validateMacosDmgSmokeOptions(base).compatibilityFixturePath, null);
+});

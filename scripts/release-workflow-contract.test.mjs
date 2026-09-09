@@ -1989,3 +1989,36 @@ test("CI and release workflows block on packaged desktop and Host-Client mutatio
     /if \(\$packagedHostClientHarnessCleanupSafe\) \{\s+try \{\s+Remove-Item[\s\S]*?\$packagedHostClientE2eWorkParent/,
   );
 });
+
+
+test("schema-7 fixture supplements both installed release gates with verified provenance", () => {
+  const fixtureJob = readSection(releaseWorkflow, "  prepare-previous-release-fixture:", "  build-macos-dmg:");
+  const macosJob = readSection(releaseWorkflow, "  build-macos-dmg:", "  smoke-macos-dmg-intel:");
+  const windowsJob = readSection(releaseWorkflow, "  build-windows-msi:", "  generate-release-sbom:");
+  assert.match(fixtureJob, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.*v0\.30\.0\.db/);
+  assert.match(fixtureJob, /prepare-compatibility-release-upgrade-fixture\.mjs --output=.* --verify/);
+  assert.match(fixtureJob, /Upload sanitized v0\.30 compatibility fixture[\s\S]*?if-no-files-found: error/);
+  for (const job of [macosJob, windowsJob]) {
+    assert.match(job, /Download sanitized v0\.30 compatibility fixture/);
+    assert.match(job, /name: filament-manager-v0\.30\.0-database-fixture-\$\{\{ github.run_id \}\}/);
+    assert.match(job, /prepare-previous-release-fixture/);
+    assert.match(job, /Upload .*smoke logs[\s\S]*?if: always\(\)/);
+  }
+  assert.match(macosJob, /--compatibility-fixture=.*v0\.30\.0\.db/);
+  assert.match(windowsJob, /-CompatibilityFixturePath .*v0\.30\.0\.db/);
+  const macosGate = readSection(macosDmgSmoke, "    if (compatibilityFixturePath) {", "    let packagedDesktopE2eResult");
+  assert.ok(macosGate.indexOf("verifyCompatibilityReleaseUpgradeFixture") < macosGate.indexOf("await smokeReleaseDatabaseUpgrade"));
+  assert.match(macosGate, /databasePath: compatibilityFixturePath/);
+  assert.match(macosGate, /executablePath,/);
+  assert.match(macosGate, /allowCurrentSchema: true/);
+  assert.match(macosGate, /database-compatibility-v0\.30\.0/);
+  assert.match(macosGate, /sourceRelease: COMPATIBILITY_RELEASE/);
+  const windowsGate = readSection(windowsMsiSmoke, "    if (-not [string]::IsNullOrWhiteSpace($CompatibilityFixturePath)) {", "    if ($RunPackagedDesktopE2E)");
+  assert.match(windowsGate, /compatibilityVerifier .*--output=\$CompatibilityFixturePath.*--verify/);
+  assert.match(windowsGate, /if \(\$LASTEXITCODE -ne 0\) \{\s+throw/);
+  assert.match(windowsGate, /--executable=\$installedExecutablePath/);
+  assert.match(windowsGate, /--allow-current-schema/);
+  assert.match(windowsGate, /--source-release=v0\.30\.0/);
+  assert.match(windowsGate, /database-compatibility-v0\.30\.0/);
+  assert.match(windowsGate, /@compatibilitySmokeArguments\s+if \(\$LASTEXITCODE -ne 0\) \{\s+throw/);
+});
