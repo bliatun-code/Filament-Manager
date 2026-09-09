@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-09     |
+| Sist oppdatert | 2026-09-10     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -187,11 +187,17 @@ Oppfølgingen etter v0.30.0 er merget gjennom [PR #100](https://github.com/bliat
 
 Den etterfølgende gjennomgangen avdekket dobbeltinnsending og foreldede Host-svar i innkjøpsflyten. [Oppfølgingen](PURCHASE_LIFECYCLE_FOLLOWUP_2026-09-09.md) beskriver operasjonslåsen, målscopet mottaksdialog og automatiserte regresjoner.
 
-1. Klargjør separat kompatibilitetskontroll fra publisert v0.30.0/schema 7 før neste release, samtidig som den historiske v0.28.0/schema-5-fixturen beholdes. Bruk syntetiske katalogjobber og batchkvitteringer. Før en schema-7-kopi fra brukerdata kan deles som sanitert fixture, må `catalog_refresh_jobs` få eksplisitt rensing og validering av autoritetsmetadata og resultat-/feilfelter. Utvid også den pakkede backupkontrollen med faktisk gjenoppretting; dagens pakkede kontroll validerer eksport, mens gjenoppretting testes separat i Rust. Installasjonens batchkvitteringer og katalogjobber skal fortsatt ikke eksporteres som portable brukerdata.
+Den separate v0.30.0/schema-7-fixturen og rensingen av katalogjobber er implementert. [Oppstartsverifiseringen](PACKAGED_STARTUP_VERIFICATION_2026-09-10.md) dokumenterer at både den historiske schema-5-porten og kompatibilitetsporten bestod to starter på macOS og Windows, med egen bekreftelse fra hver appprosess. En ny Windows-kandidat etter #108 bestod også normal opprydding og hele MSI-smoken med bevart database etter avinstallasjon. Gjenopptakelse etter delvis sletting er regresjonstestet, men ble ikke utløst i den grønne native kjøringen.
+
+1. Utvid den pakkede backupkontrollen med faktisk gjenoppretting; dagens pakkede kontroll validerer eksport, mens gjenoppretting testes separat i Rust. Kontroller gjenopprettede domenedata etter omstart, at installasjonens batchkvitteringer bevares, og at katalogjobber ryddes ved import. Verken kvitteringer eller katalogjobber skal eksporteres som portable brukerdata. Behold både v0.28.0/schema-5-porten og v0.30.0/schema-7-porten.
 2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-10
+
+- PR #105–108 har lagt til den separate schema-7-fixturen, installerte kompatibilitetsporter, bekreftelse fra hver appprosess og trygg gjenopptakelse av privat filopprydding. [Resultatrapporten](PACKAGED_STARTUP_VERIFICATION_2026-09-10.md) skiller den første kandidatens beståtte oppstarter og senere Windows-feil fra den nye, grønne Windows-kjøringen 34414767110 på `2c47ba37`. Pakke og logger er lastet ned og kontrollert. Publisert v0.30.0 er uendret; dokumentasjonen samles lokalt uten en ekstra smoke-kjøring.
 
 ### 2026-09-09
 
