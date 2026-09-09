@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-08     |
+| Sist oppdatert | 2026-09-09     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -183,11 +183,20 @@ Versjon [v0.30.0](releases/RELEASE_NOTES_v0.30.0.md) er klargjort gjennom [PR #9
 
 v0.30.0 er nå [publisert og etterkontrollert](RELEASE_PUBLICATION_v0.30.0_2026-09-08.md) fra den samme commiten. Taggkjøringen bestod alle åtte jobber uten omkjøring. De sju publiserte filene, nyeste-release-status, uforanderlighet, checksummene og begge installatørenes signerte proveniens er verifisert. Taggkjøringens nye pakkehasher dokumenteres separat fra den manuelle kjøringen.
 
-1. Fullfør review og merge av oppfølgingen etter v0.30.0: migrasjonsmanifestet og kontrakttestene låser nå sekvens 001–008 til den publiserte taggen og `7d2eb3a4`. SQL, schema 7, baseline-/helperhashes og v0.28-oppgraderingsfixturen er uendret. Oppfølgingen samler også resultatrapportene; den endrer ikke den publiserte appen.
+Oppfølgingen etter v0.30.0 er merget gjennom [PR #100](https://github.com/bliatun-code/Filament-Manager/pull/100) som `e750978a`, med grønn CI og CodeQL på hovedgrenen. Migrasjonsmanifestet og kontrakttestene låser sekvens 001–008 til den publiserte taggen og `7d2eb3a4`; SQL, schema 7 og v0.28-fixturen er uendret.
+
+Den etterfølgende gjennomgangen avdekket dobbeltinnsending og foreldede Host-svar i innkjøpsflyten. [Oppfølgingen](PURCHASE_LIFECYCLE_FOLLOWUP_2026-09-09.md) beskriver operasjonslåsen, målscopet mottaksdialog og automatiserte regresjoner.
+
+1. Klargjør separat kompatibilitetskontroll fra publisert v0.30.0/schema 7 før neste release, samtidig som den historiske v0.28.0/schema-5-fixturen beholdes. Bruk syntetiske katalogjobber og batchkvitteringer. Før en schema-7-kopi fra brukerdata kan deles som sanitert fixture, må `catalog_refresh_jobs` få eksplisitt rensing og validering av autoritetsmetadata og resultat-/feilfelter. Utvid også den pakkede backupkontrollen med faktisk gjenoppretting; dagens pakkede kontroll validerer eksport, mens gjenoppretting testes separat i Rust. Installasjonens batchkvitteringer og katalogjobber skal fortsatt ikke eksporteres som portable brukerdata.
 2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-09
+
+- PR #100 er merget, og hovedgrenens CI og CodeQL er bestått på `e750978a`. Lokalt arbeid er videreført fra denne commiten.
+- Innkjøpshandlingene deler nå registreringens synkrone innsendinglås og kontrollerer at svar, oppfriskning og opprydding fortsatt tilhører samme Host-, bibliotek-, mål- og registreringsgenerasjon. Mottaksdialogens kladd og mengder nullstilles når autoriteten byttes, også ved A→B→A med samme vare-ID. Ekte React-/nettlesertester erstatter SSR-simuleringen av mottakshandlingen. Ingen menneskelige brukermålinger er samlet inn.
 
 ### 2026-09-08
 

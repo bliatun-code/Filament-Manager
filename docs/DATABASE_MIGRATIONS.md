@@ -74,6 +74,10 @@ The packaged upgrade fixture remains pinned to v0.28.0 and schema 5 so that
 it continues to exercise a historical migration rather than a current-schema
 restart.
 
+For additional database copies, follow the [release fixture preparation
+contract](RELEASE_UPGRADE_FIXTURES.md). Current-schema fixtures also sanitize
+catalog-job operational identities and diagnostics before value snapshots.
+
 After the GitHub release containing the new migration has been published and
 verified, advance the boundary as follows. Pushing the release tag alone is
 insufficient.

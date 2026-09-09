@@ -138,7 +138,7 @@ test("inventory header leaves loan creation to the loans page and spool detail",
 test("inventory exposes purchases as a page view and keeps queue management out of add spool", () => {
   assert.match(inventoryPageWorkspaceSource, /<InventoryWorkspaceNavigation/);
   assert.match(inventoryPageWorkspaceSource, /activeView === "STOCK"/);
-  assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel \{\.\.\.purchaseQueueProps\} \/>/);
+  assert.match(inventoryPageWorkspaceSource, /<WishlistQueuePanel\b[^>]*\{\.\.\.purchaseQueueProps\} \/>/);
   assert.match(inventoryPageWorkspaceSource, /id="inventory-purchases-panel"/);
   assert.match(
     inventoryPageWorkspaceSource,
