@@ -229,6 +229,14 @@ jobs:
           overwrite: true
           retention-days: 7
 
+      - name: Prepare cache-clean target markers
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        shell: bash
+        run: |
+          mkdir -p target target/msrv
+          printf 'Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag.\n' > target/CACHEDIR.TAG
+          printf 'Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag.\n' > target/msrv/CACHEDIR.TAG
+
       - name: Clean workspace artifacts for cache
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
         shell: bash
@@ -404,6 +412,19 @@ jobs:
           if-no-files-found: warn
           overwrite: true
           retention-days: 7
+
+      - name: Prepare cache-clean target markers
+        if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
+        shell: pwsh
+        run: |
+          $cachedirTag = @'
+          Signature: 8a477f597d28d172789f06886806bc55
+          # This file is a cache directory tag.
+          '@
+          New-Item -ItemType Directory -Path target -Force | Out-Null
+          $cachedirTag | Set-Content -Path target/CACHEDIR.TAG -NoNewline
+          New-Item -ItemType Directory -Path target/msrv -Force | Out-Null
+          $cachedirTag | Set-Content -Path target/msrv/CACHEDIR.TAG -NoNewline
 
       - name: Clean workspace artifacts for cache
         if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.rust-cache.outputs.cache-hit != 'true' }}
