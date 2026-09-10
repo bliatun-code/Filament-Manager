@@ -10,8 +10,6 @@ use std::time::{Duration, Instant};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{App, AppHandle, Manager, RunEvent, Runtime, State, Window, WindowEvent};
-#[cfg(target_os = "macos")]
-use tauri_plugin_autostart::ManagerExt;
 
 const PREFERENCES_FILE_NAME: &str = "desktop-lifecycle.json";
 const TRAY_ID: &str = "filament-manager-tray";
@@ -19,9 +17,8 @@ const TRAY_OPEN_ID: &str = "desktop-lifecycle-open";
 const TRAY_QUIT_ID: &str = "desktop-lifecycle-quit";
 const TRAY_LABEL_MAX_CHARACTERS: usize = 80;
 #[cfg(target_os = "macos")]
-const APP_LOCATION_UNSTABLE_ERROR: &str = "APP_LOCATION_UNSTABLE";
-#[cfg(target_os = "macos")]
 const MACOS_QUIT_ID: &str = "desktop-lifecycle-macos-quit";
+#[cfg(target_os = "windows")]
 const AUTOSTART_ID: &str = "no.bliatun.filamentmanager";
 const SHUTDOWN_PHASE_RUNNING: u8 = 0;
 const SHUTDOWN_PHASE_STOPPING: u8 = 1;
@@ -275,15 +272,7 @@ pub fn configure_builder(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<
     };
 
     #[cfg(target_os = "macos")]
-    let builder = builder
-        .menu(macos_menu)
-        .on_menu_event(handle_menu_event)
-        .plugin(
-            tauri_plugin_autostart::Builder::new()
-                .app_name(AUTOSTART_ID)
-                .arg("--background")
-                .build(),
-        );
+    let builder = builder.menu(macos_menu).on_menu_event(handle_menu_event);
 
     builder.on_window_event(handle_window_event)
 }
@@ -298,6 +287,9 @@ pub fn initialize(app: &mut App) -> Result<(), String> {
         preferences_path,
         desktop_visual_qa_enabled(),
     ));
+
+    #[cfg(target_os = "macos")]
+    reconcile_macos_autostart(app.handle());
 
     match install_tray(app.handle()) {
         Ok(()) => {
@@ -723,7 +715,14 @@ pub fn set_launch_at_login(
         return Ok(settings_with_launch_status(state.inner(), Some(false)));
     }
     update_launch_at_login(&app, enabled)?;
-    Ok(settings_with_launch_status(state.inner(), Some(enabled)))
+    #[cfg(target_os = "macos")]
+    {
+        Ok(current_settings(&app, state.inner()))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(settings_with_launch_status(state.inner(), Some(enabled)))
+    }
 }
 
 #[tauri::command]
@@ -769,29 +768,76 @@ fn set_macos_quit_label(app: &AppHandle, quit_label: &str) -> Result<(), String>
 
 #[cfg(target_os = "macos")]
 fn launch_at_login_enabled(app: &AppHandle) -> Result<bool, String> {
-    app.autolaunch()
-        .is_enabled()
-        .map_err(|error| error.to_string())
+    let (directory, executable) = macos_autostart_paths(app)?;
+    crate::macos_autostart::is_enabled(&directory, &executable)
 }
 
 #[cfg(target_os = "macos")]
 fn update_launch_at_login(app: &AppHandle, enabled: bool) -> Result<(), String> {
+    let (directory, executable) = macos_autostart_paths(app)?;
     if enabled {
-        let executable = std::env::current_exe()
-            .map_err(|error| format!("Could not resolve the application path: {error}"))?;
-        let executable_path = executable.to_string_lossy();
-        if executable_path.starts_with("/Volumes/")
-            || executable_path.contains("/AppTranslocation/")
-        {
-            return Err(APP_LOCATION_UNSTABLE_ERROR.to_string());
-        }
-        app.autolaunch()
-            .enable()
-            .map_err(|error| format!("Could not enable launch at login: {error}"))
+        crate::macos_app_registration::register(&executable)?;
+        crate::macos_autostart::enable(&directory, &executable)
     } else {
-        app.autolaunch()
-            .disable()
-            .map_err(|error| format!("Could not disable launch at login: {error}"))
+        crate::macos_autostart::disable(&directory, &executable)
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_autostart_paths(app: &AppHandle) -> Result<(PathBuf, PathBuf), String> {
+    let directory = app
+        .path()
+        .home_dir()
+        .map_err(|error| format!("Home directory is unavailable: {error}"))?
+        .join("Library/LaunchAgents");
+    let executable = std::env::current_exe()
+        .map_err(|error| format!("Could not resolve the application path: {error}"))?;
+    Ok((directory, executable))
+}
+
+#[cfg(target_os = "macos")]
+fn reconcile_macos_autostart(app: &AppHandle) {
+    // Diagnostic builds must never migrate the user's real login item. Merely
+    // setting one of these isolation flags is enough to suppress this optional
+    // migration; it grants no other QA privileges.
+    if app.state::<DesktopLifecycleState>().visual_qa
+        || [
+            "FILAMENT_MANAGER_PACKAGED_DESKTOP_E2E",
+            "FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E",
+            "FILAMENT_MANAGER_DB_PATH",
+            "BAMBU_DB_PATH",
+        ]
+        .iter()
+        .any(|key| std::env::var_os(key).is_some())
+    {
+        return;
+    }
+    let Ok((directory, executable)) = macos_autostart_paths(app) else {
+        return;
+    };
+    // An unpackaged development build, DMG, or translocated copy cannot own the
+    // installed app's registration. A normal first launch creates no login item.
+    if crate::macos_autostart::validate_installed_executable(&executable).is_err() {
+        return;
+    }
+    match crate::macos_autostart::has_registration(&directory, &executable) {
+        Ok(false) => return,
+        Ok(true) => {}
+        Err(error) => {
+            eprintln!("Could not inspect the launch-at-login registration: {error}");
+            return;
+        }
+    }
+    // The app must be known to Launch Services before the agent file changes:
+    // that file event is when macOS resolves its associated app and signing team.
+    // Keep the old plist on registration failure so the next attempt can retry
+    // in the same order, including for a recognized but disabled registration.
+    if let Err(error) = crate::macos_app_registration::register(&executable) {
+        eprintln!("Could not register the launch-at-login application: {error}");
+        return;
+    }
+    if let Err(error) = crate::macos_autostart::reconcile(&directory, &executable) {
+        eprintln!("Could not associate launch at login with this application: {error}");
     }
 }
 

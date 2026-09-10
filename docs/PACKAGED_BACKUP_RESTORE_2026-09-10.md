@@ -119,9 +119,10 @@ i neste samlede push.
 PR #109 ble merget 10. september som
 `be184e9c10b685e22cf877f390739e32a6c21dca`. Mergecommiten og den verifiserte
 PR-kandidaten `a838631b` har identisk Git-tre
-(`48413e762eea9b7c3d8c1910b02392927206a1d5`). Lokal `main` er oppdatert,
-og denne resultatdokumentasjonen er videreført på `codex/post-pr109` for neste
-samlede push. Hovedgrenens [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446340)
+(`48413e762eea9b7c3d8c1910b02392927206a1d5`). Resultatdokumentasjonen ble
+inkludert i den samlede pushen for
+[PR #110](https://github.com/bliatun-code/Filament-Manager/pull/110).
+Hovedgrenens [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446340)
 og [CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446362)
 er også grønne på mergecommiten. Disse er egne kjøringer; de detaljerte
 installasjonsresultatene ovenfor er fra PR-kandidaten.

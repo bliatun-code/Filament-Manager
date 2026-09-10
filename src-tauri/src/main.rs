@@ -84,6 +84,10 @@ mod library_sync_target_guard;
 mod library_sync_validation_commands;
 mod library_sync_wishlist_write_commands;
 mod local_service_advertisement;
+#[cfg(target_os = "macos")]
+mod macos_app_registration;
+#[cfg(target_os = "macos")]
+mod macos_autostart;
 mod optional_update;
 mod packaged_desktop_e2e;
 mod packaged_host_client_e2e;

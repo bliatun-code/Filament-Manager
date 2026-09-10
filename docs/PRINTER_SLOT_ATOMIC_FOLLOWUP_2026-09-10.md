@@ -85,5 +85,28 @@ språk- eller visuell godkjenning.
 Alle kontraktskontroller, public-readiness, bundlebudsjett og `doctor` er grønne
 etter at språkbeviset og dokumentasjonen ble inkludert i den samlede endringen.
 
-Grønne resultater fra PR #109 dokumenterer den tidligere backupkandidaten.
-PR- og CI-resultater for denne rettelsen føres inn når de foreligger.
+## CI og installerte pakker
+
+[PR #110](https://github.com/bliatun-code/Filament-Manager/pull/110) bestod alle
+åtte kontroller på `d85b4721023a68f0de9d010ff1b5dc2d92464637` i første samlede
+CI-runde. [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34427152784)
+og [CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34427152865)
+er grønne. Kandidatens Git-tre er `da5bba8611ce7f3c6fa9847e8dfc0d56446152ea`.
+
+Loggartefaktene fra både macOS og Windows er lastet ned og kontrollert:
+
+| Kontroll | macOS DMG | Windows x64 MSI |
+| --- | --- | --- |
+| Atomisk lasting, måling og identisk gjentakelse | Bestått | Bestått |
+| Nøyaktig 100 g forbruk og én jobb gjennom alle fire appfaser | Bestått | Bestått |
+| Backup-gjenoppretting, også etter omstart | 1 643 rader | 1 643 rader |
+| Katalogjobb fjernet, batchjournal og legitimasjonsmarkør kontrollert | Bestått | Bestått |
+| Host/Client, sesjonsfornyelse og legitimasjonsopprydding | Bestått | Bestått |
+
+Dette er ordinære debug-pakker fra PR-CI, med lokal ad-hoc-policy på Mac og
+`UnsignedRequired` på Windows. Den optimaliserte lokale Mac-pakken er dokumentert
+separat ovenfor. Ingen offentlig release eller tagg ble opprettet.
+Resultatoppfølgingen committes lokalt og tas med i neste samlede push.
+
+En separat [undersøkelse av utlånsdialogene](LOAN_DIALOG_AUDIT_2026-09-10.md)
+ga konkrete reproduksjoner til neste kodejobb. Den endrer ikke printerkandidaten.
