@@ -20,6 +20,7 @@ const config: PackagedDesktopE2eConfiguration = {
   updated_weight_g: 875,
   returned_weight_g: 760,
   batch_evidence: null,
+  restore_evidence: null,
 };
 
 test("packaged desktop bootstrap is inert outside Tauri and in normal app launches", async () => {

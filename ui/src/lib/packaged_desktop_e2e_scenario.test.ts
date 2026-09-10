@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
 import {
@@ -22,6 +23,7 @@ const baseConfiguration: PackagedDesktopE2eConfiguration = {
   updated_weight_g: 875,
   returned_weight_g: 760,
   batch_evidence: null,
+  restore_evidence: null,
 };
 
 const batchEvidence: PackagedDesktopBatchEvidence = {
@@ -67,7 +69,7 @@ function spoolRows(currentWeight: number) {
       spool: {
         id: baseConfiguration.spool_id,
         master_id: "manual_packaged_e2e_spool",
-        status: "IN_PRINTER",
+        status: "ASSIGNED",
         initial_weight_g: baseConfiguration.initial_weight_g,
         current_weight_g: currentWeight,
         remaining_g: currentWeight,
@@ -162,7 +164,7 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
                 returned_at: "2026-08-21 11:00:00",
                 returned_grams: baseConfiguration.returned_weight_g,
               }),
-              spool_status: "IN_PRINTER",
+              spool_status: "ASSIGNED",
               spool_remaining_g: baseConfiguration.returned_weight_g,
             },
           ]
@@ -197,6 +199,7 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
     async exportFullBackupJson() {
       throw new Error("mutation must not export a backup");
     },
+    async importFullBackupJson() { throw new Error("this phase must not import a backup"); },
     async validateFullBackupJson() {
       throw new Error("mutation must not validate a backup");
     },
@@ -240,6 +243,7 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
       backup_sha256: null,
       backup_total_rows: null,
       batch_evidence: batchEvidence,
+      restore_evidence: null,
     },
   ]);
 });
@@ -289,7 +293,7 @@ test("packaged desktop verification reads restarted state and validates full bac
     },
     async listSpoolLoans(_limit,_includeReturned,direction) {
       if(direction==="INBOUND") return batchLoanRows();
-      return [{ loan: returnedLoan, spool_status: "IN_PRINTER" }];
+      return [{ loan: returnedLoan, spool_status: "ASSIGNED" }];
     },
     async returnSpoolLoan() {
       throw new Error("verification must be read-only");
@@ -306,6 +310,7 @@ test("packaged desktop verification reads restarted state and validates full bac
     async exportFullBackupJson() {
       return { content: backup };
     },
+    async importFullBackupJson() { throw new Error("this phase must not import a backup"); },
     async validateFullBackupJson(content) {
       assert.equal(content, backup);
       return {
@@ -338,6 +343,7 @@ test("packaged desktop verification reads restarted state and validates full bac
     backup_sha256: "a".repeat(64),
     backup_total_rows: 8,
     batch_evidence: batchEvidence,
+    restore_evidence: null,
   });
 });
 
@@ -384,6 +390,7 @@ test("packaged desktop verification rejects missing backup preservation", async 
         }),
       };
     },
+    async importFullBackupJson() { throw new Error("this phase must not import a backup"); },
     async validateFullBackupJson() {
       return {
         format: "filament-manager-backup-v1",
@@ -465,4 +472,180 @@ test("portable backup keeps batch business rows and excludes the operational jou
   validatePackagedDesktopBatchBackup(tables,batchEvidence);
   assert.throws(()=>validatePackagedDesktopBatchBackup({...tables,catalog_spool_batches:[]},batchEvidence),/installation-local batch journal/);
   assert.throws(()=>validatePackagedDesktopBatchBackup({...tables,spool_loans:[]},batchEvidence),/preserve the borrowed catalog batch/);
+});
+
+type BackupTables = Record<string, Record<string, unknown>[]>;
+type ScenarioDependencies = NonNullable<Parameters<typeof runPackagedDesktopE2eScenario>[1]>;
+
+function restoreHarness(options: {
+  noopPerturbation?: "both" | "current" | "remaining";
+  noopImport?: boolean;
+  afterImport?: (tables: BackupTables) => void;
+} = {}) {
+  const returnedLoan = loanRow({ loan_status: "RETURNED", returned_at: "2026-08-21 11:00:00", returned_grams: 760 });
+  const state = {
+    weight: 760,
+    remaining: 760,
+    generation: 3,
+    exports: 0,
+    imports: 0,
+    targetGenerations: [] as number[],
+    completions: [] as PackagedDesktopE2eCompletion[],
+    tables: {
+      filament_master_list: [spoolRows(760)[0]!.master],
+      filament_spools: [...spoolRows(760), ...batchSpoolRows()].map(row => row.spool),
+      spool_loans: [returnedLoan, ...batchLoanRows().map(row => row.loan)],
+      printers: [printerRows()[0]!.printer],
+      ams_slots: [{ id: baseConfiguration.slot_id, spool_id: baseConfiguration.spool_id }],
+      spool_history_events: [
+        { id: "history-weighed", spool_id: baseConfiguration.spool_id, weight_g: 875 },
+        { id: "history-returned", spool_id: baseConfiguration.spool_id, weight_g: 760 },
+      ],
+      inventory_locations: [{ id: "qa-location", name: "Private packaged desktop QA" }],
+      settings: [],
+    } as BackupTables,
+  };
+  const dependencies: ScenarioDependencies = {
+    async getLibrarySyncSettings() { return { ...await getLibrarySyncSettings(), target_generation: state.generation }; },
+    async createCatalogSpoolBatch(input, target) {
+      assert.deepEqual(input, batchEvidence.request);
+      assert.equal(target.clientTargetGeneration, state.generation, "replay must use a freshly resolved local target");
+      state.targetGenerations.push(target.clientTargetGeneration!);
+      return structuredClone(batchEvidence.receipt);
+    },
+    async createManualSpool() { throw new Error("restore must not create a spool"); },
+    async listSpools() {
+      const rows = spoolRows(state.weight);
+      rows[0]!.spool.remaining_g = state.remaining;
+      return [...rows, ...batchSpoolRows()];
+    },
+    async updateSpoolWeight(id, weight) {
+      assert.equal(id, baseConfiguration.spool_id);
+      assert.equal(weight, 123);
+      if (options.noopPerturbation !== "both" && options.noopPerturbation !== "current") state.weight = weight;
+      if (options.noopPerturbation !== "both" && options.noopPerturbation !== "remaining") state.remaining = weight;
+      state.tables.filament_spools![0]!.current_weight_g = state.weight;
+      state.tables.filament_spools![0]!.remaining_g = state.remaining;
+      state.tables.spool_history_events!.push({ id: "history-perturbation", weight_g: weight });
+    },
+    async lendSpool() { throw new Error("restore must not create a loan"); },
+    async listSpoolLoans(_limit, _includeReturned, direction) {
+      if (direction === "INBOUND") return batchLoanRows();
+      return state.tables.spool_loans!.filter(row => row.spool_id === baseConfiguration.spool_id)
+        .map(row => ({ loan: row as unknown as SpoolLoanRow }));
+    },
+    async returnSpoolLoan() { throw new Error("restore must not return a loan"); },
+    async createPrinter() { throw new Error("restore must not create a printer"); },
+    async assignPrinterSlot() { throw new Error("restore must not assign a printer slot"); },
+    async listPrinterOverview() { return printerRows(); },
+    async exportFullBackupJson() {
+      state.exports++;
+      const entries = Object.entries(state.tables).map(([table, rows]) => [table, rows.map(row =>
+        Object.fromEntries(Object.entries(row).reverse())).reverse()]);
+      if (state.exports % 2) entries.reverse();
+      return { content: JSON.stringify({ format: "filament-manager-backup-v1", exported_at: state.exports, tables: Object.fromEntries(entries) }) };
+    },
+    async validateFullBackupJson(content) {
+      const tables = (JSON.parse(content) as { tables: BackupTables }).tables;
+      return { format: "filament-manager-backup-v1", expected_tables: 8, present_tables: 8,
+        total_rows: Object.values(tables).reduce((count, rows) => count + rows.length, 0), missing_tables: [], extra_tables: [] };
+    },
+    async importFullBackupJson(content) {
+      state.imports++;
+      assert.equal(state.weight, 123, "the destructive perturbation must be observed before import");
+      assert.equal(state.remaining, 123);
+      if (options.noopImport) return;
+      state.tables = (JSON.parse(content) as { tables: BackupTables }).tables;
+      options.afterImport?.(state.tables);
+      const restored = state.tables.filament_spools!.find(row => row.id === baseConfiguration.spool_id)!;
+      state.weight = restored.current_weight_g as number;
+      state.remaining = restored.remaining_g as number;
+      state.generation++;
+    },
+    async sha256(content) { return createHash("sha256").update(content).digest("hex"); },
+    async complete(input) { state.completions.push(input); },
+  };
+  return { state, dependencies, config: { ...baseConfiguration, phase: "restore" as const, batch_evidence: batchEvidence } };
+}
+
+test("installed restore imports after an observed perturbation, preserves all portable rows and verifies again after restart", async () => {
+  const { state, dependencies, config } = restoreHarness();
+  await runPackagedDesktopE2eScenario(config, dependencies);
+  const restored = state.completions[0]!;
+  assert.equal(state.imports, 1);
+  assert.deepEqual(state.targetGenerations, [3, 4]);
+  assert.equal(restored.phase, "restore");
+  assert.equal(restored.loan_id, "packaged-e2e-loan");
+  assert.equal(restored.restore_evidence?.perturbed_weight_g, 123);
+  assert.match(restored.restore_evidence!.backup_tables_sha256, /^[0-9a-f]{64}$/);
+  assert.equal(state.tables.spool_history_events!.length, 2, "the perturbation history must be rolled back by import");
+
+  await runPackagedDesktopE2eScenario({ ...config, phase: "verify-restored", restore_evidence: restored.restore_evidence }, dependencies);
+  const restarted = state.completions[1]!;
+  assert.deepEqual(restarted.restore_evidence, restored.restore_evidence);
+  assert.equal(restarted.backup_total_rows, restored.backup_total_rows);
+  assert.notEqual(restarted.backup_sha256, restored.backup_sha256, "export metadata is permitted to change");
+  assert.equal(state.imports, 1, "post-restart verification must not import again");
+  assert.deepEqual(state.targetGenerations, [3, 4, 4]);
+});
+
+test("restore cannot pass when either weight perturbation was ignored", async () => {
+  for (const noopPerturbation of ["both", "current", "remaining"] as const) {
+    const { state, dependencies, config } = restoreHarness({ noopPerturbation });
+    await assert.rejects(() => runPackagedDesktopE2eScenario(config, dependencies), /Perturbed QA spool .* weight expected 123/);
+    assert.equal(state.imports, 0);
+    assert.equal(state.completions.length, 0);
+  }
+});
+
+test("restore cannot pass when import is a no-op", async () => {
+  const { state, dependencies, config } = restoreHarness({ noopImport: true });
+  await assert.rejects(() => runPackagedDesktopE2eScenario(config, dependencies), /QA spool current weight expected 760, found 123/);
+  assert.equal(state.imports, 1);
+  assert.equal(state.completions.length, 0);
+});
+
+test("restore rejects lost domain/history data, changed original loan identity and a retained perturbation event", async () => {
+  const changes: Array<(tables: BackupTables) => void> = [
+    tables => { tables.inventory_locations = []; },
+    tables => { tables.spool_history_events!.pop(); },
+    tables => { tables.spool_history_events!.push({ id: "history-perturbation", weight_g: 123 }); },
+    tables => { tables.spool_loans!.find(row => row.id === "packaged-e2e-loan")!.id = "replacement-loan"; },
+    tables => { tables.printers = []; },
+    tables => { delete tables.settings; },
+  ];
+  for (const afterImport of changes) {
+    const { state, dependencies, config } = restoreHarness({ afterImport });
+    await assert.rejects(() => runPackagedDesktopE2eScenario(config, dependencies), /differ from the original|loan identity changed|printers backup row/);
+    assert.equal(state.completions.length, 0);
+  }
+});
+
+test("post-restart verification requires exact original restore evidence and rejects changed persisted data", async () => {
+  const { state, dependencies, config } = restoreHarness();
+  await runPackagedDesktopE2eScenario(config, dependencies);
+  const evidence = state.completions[0]!.restore_evidence!;
+  for (const invalid of [null, { ...evidence, backup_tables_sha256: "bad" }, { ...evidence, perturbed_weight_g: 124 },
+    { ...evidence, unexpected: true }]) {
+    await assert.rejects(() => runPackagedDesktopE2eScenario({ ...config, phase: "verify-restored", restore_evidence: invalid }, dependencies), /restore evidence is missing or invalid/);
+  }
+  await assert.rejects(() => runPackagedDesktopE2eScenario({ ...config, phase: "verify-restored",
+    restore_evidence: { ...evidence, backup_tables_sha256: "0".repeat(64) } }, dependencies), /differ from the original/);
+  state.tables.spool_history_events!.pop();
+  await assert.rejects(() => runPackagedDesktopE2eScenario({ ...config, phase: "verify-restored", restore_evidence: evidence }, dependencies), /differ from the original/);
+  assert.equal(state.completions.length, 1);
+});
+
+test("every backup verification rejects installation-local table keys even when empty", async () => {
+  for (const phase of ["verify", "restore", "verify-restored"] as const) {
+    for (const table of ["catalog_spool_batches", "catalog_refresh_jobs"]) {
+      const { state, dependencies, config } = restoreHarness();
+      state.tables[table] = [];
+      await assert.rejects(() => runPackagedDesktopE2eScenario({ ...config, phase,
+        restore_evidence: phase === "verify-restored" ? { backup_tables_sha256: "a".repeat(64), perturbed_weight_g: 123 } : null }, dependencies),
+      new RegExp(`installation-local table ${table}`));
+      assert.equal(state.imports, 0);
+      assert.equal(state.completions.length, 0);
+    }
+  }
 });

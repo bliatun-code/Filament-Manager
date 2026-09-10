@@ -22,6 +22,13 @@ import Database from "better-sqlite3";
 import { isDeepStrictEqual } from "node:util";
 import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
 import { inspectDesktopBatchEvidence, validateDesktopBatchEvidence } from "./packaged-desktop-batch-evidence.mjs";
+import {
+  assertDesktopRestorePreserved,
+  assertDesktopRestoredRestart,
+  inspectDesktopRestoreState,
+  seedDesktopRestoreCatalogJob,
+  validateDesktopRestoreEvidence,
+} from "./packaged-desktop-restore-evidence.mjs";
 
 import {
   preparePrivateQaArtifactDirectory,
@@ -315,6 +322,7 @@ export function validatePackagedDesktopE2ePhaseResult(result, { phase, runId }) 
   }
   const completion = result.completion;
   validateDesktopBatchEvidence(completion.batch_evidence, runId);
+  validateDesktopRestoreEvidence(completion.restore_evidence, phase);
   if (
     completion.phase !== phase ||
     completion.run_id !== runId ||
@@ -535,15 +543,50 @@ export async function runPackagedDesktopE2e(
     ) {
       throw new Error("Packaged desktop state changed across the verified restart.");
     }
+
+    const catalogJobsSeeded = seedDesktopRestoreCatalogJob(context.databasePath, context.runId);
+    const beforeRestore = inspectDesktopRestoreState(context.databasePath);
+    if (beforeRestore.catalogJobsCount !== catalogJobsSeeded) {
+      throw new Error("Packaged desktop backup restore sentinel count is invalid.");
+    }
+    const restoration = await executePhase(context, "restore", launchPhase);
+    const afterRestore = inspectPackagedDesktopE2eDatabase(context.databasePath, restoration.batch_evidence, context.runId);
+    if (restoration.loan_id !== afterRestore.loan.id
+      || !isDeepStrictEqual(restoration.batch_evidence, mutation.batch_evidence)) {
+      throw new Error("Packaged desktop backup restore changed the original workflow identities.");
+    }
+    const restoredState = inspectDesktopRestoreState(context.databasePath);
+    assertDesktopRestorePreserved(beforeRestore, restoredState);
+
+    const restoredVerification = await executePhase(context, "verify-restored", launchPhase);
+    const afterRestoredRestart = inspectPackagedDesktopE2eDatabase(context.databasePath, restoredVerification.batch_evidence, context.runId);
+    const restartedRestoredState = inspectDesktopRestoreState(context.databasePath);
+    assertDesktopRestorePreserved(beforeRestore, restartedRestoredState);
+    assertDesktopRestoredRestart(restoredState, restartedRestoredState);
+    if (restoredVerification.loan_id !== afterRestoredRestart.loan.id
+      || !isDeepStrictEqual(restoredVerification.batch_evidence, mutation.batch_evidence)
+      || !isDeepStrictEqual(restoredVerification.restore_evidence, restoration.restore_evidence)
+      || afterRestoredRestart.schemaVersion !== afterRestore.schemaVersion) {
+      throw new Error("Packaged desktop restored state or backup evidence changed across the verified restart.");
+    }
     const summary = {
       format: SUMMARY_FORMAT,
       status: "pass",
-      phases: ["mutate", "verify"],
-      schema_version: afterRestart.schemaVersion,
-      state_snapshot_sha256: afterRestart.snapshotSha256,
-      backup_sha256: verification.backup_sha256,
-      backup_total_rows: verification.backup_total_rows,
-      catalog_batch: { ...afterRestart.catalogBatch, replayed:true },
+      phases: ["mutate", "verify", "restore", "verify-restored"],
+      schema_version: afterRestoredRestart.schemaVersion,
+      state_snapshot_sha256: afterRestoredRestart.snapshotSha256,
+      backup_sha256: restoredVerification.backup_sha256,
+      backup_total_rows: restoredVerification.backup_total_rows,
+      catalog_batch: { ...afterRestoredRestart.catalogBatch, replayed:true },
+      backup_restore: {
+        status: "pass",
+        post_restart_verified: true,
+        portable_state_sha256: beforeRestore.portableStateSha256,
+        backup_tables_sha256: restoredVerification.restore_evidence.backup_tables_sha256,
+        catalog_jobs_cleared: catalogJobsSeeded,
+        batch_journal_preserved: true,
+        credential_migration_reinitialized: true,
+      },
     };
     writeSummary(context.logDirectory, summary);
     return summary;

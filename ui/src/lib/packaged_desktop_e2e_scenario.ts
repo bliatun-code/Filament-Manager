@@ -10,6 +10,7 @@ import {
 } from "./tauri_loan_client";
 import {
   exportFullBackupJson,
+  importFullBackupJson,
   validateFullBackupJson,
 } from "./tauri_maintenance_client";
 import {
@@ -21,6 +22,8 @@ import {
   completePackagedDesktopE2e,
   type PackagedDesktopE2eCompletion,
   type PackagedDesktopE2eConfiguration,
+  type PackagedDesktopBatchEvidence,
+  type PackagedDesktopRestoreEvidence,
 } from "./tauri_packaged_desktop_e2e_client";
 import { createCatalogSpoolBatch } from "./tauri_catalog_spool_batch_client";
 import { getLibrarySyncSettings } from "./tauri_library_sync_client";
@@ -47,6 +50,7 @@ type ScenarioDependencies = PackagedDesktopBatchDependencies & {
   assignPrinterSlot: typeof assignPrinterSlot;
   listPrinterOverview: typeof listPrinterOverview;
   exportFullBackupJson: typeof exportFullBackupJson;
+  importFullBackupJson: typeof importFullBackupJson;
   validateFullBackupJson: typeof validateFullBackupJson;
   sha256: (content: string) => Promise<string>;
   complete: (input: PackagedDesktopE2eCompletion) => Promise<void>;
@@ -92,6 +96,7 @@ const defaultDependencies: ScenarioDependencies = {
   assignPrinterSlot,
   listPrinterOverview,
   exportFullBackupJson,
+  importFullBackupJson,
   validateFullBackupJson,
   sha256,
   complete: completePackagedDesktopE2e,
@@ -126,6 +131,9 @@ async function readAndValidatePersistedState(
     ?.spool;
   if (!spool) {
     scenarioFailure(step, "The QA spool is missing");
+  }
+  if (spool.status !== "ASSIGNED") {
+    scenarioFailure(step, "The QA spool is not in the printer");
   }
   expectExactNumber(
     step,
@@ -193,7 +201,33 @@ function parseBackupRows(content: string, step: string) {
   if (!root.tables || typeof root.tables !== "object" || Array.isArray(root.tables)) {
     return scenarioFailure(step, "The exported full backup has no tables object");
   }
+  for (const table of ["catalog_spool_batches", "catalog_refresh_jobs"]) {
+    if (Object.hasOwn(root.tables, table)) {
+      scenarioFailure(step, `The portable backup must exclude installation-local table ${table}`);
+    }
+  }
+  for (const [table, rows] of Object.entries(root.tables)) {
+    if (!Array.isArray(rows) || rows.some(row => !row || typeof row !== "object" || Array.isArray(row))) {
+      scenarioFailure(step, `The exported full backup has invalid rows in table ${table}`);
+    }
+  }
   return root.tables as Record<string, BackupRow[]>;
+}
+
+// Export metadata, table order and SQL row order can change between exports.
+// Every portable table name, row and field remains part of this fingerprint.
+function canonicalBackupTables(tables: Record<string, BackupRow[]>) {
+  function canonicalValue(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(canonicalValue);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+        .map(([key, entry]) => [key, canonicalValue(entry)]));
+    }
+    return value;
+  }
+  return JSON.stringify(Object.fromEntries(Object.keys(tables).sort().map(table => [
+    table, tables[table]!.map(row => JSON.stringify(canonicalValue(row))).sort().map(row => JSON.parse(row)),
+  ])));
 }
 
 function findSingleBackupRow(
@@ -398,6 +432,7 @@ async function runMutationPhase(
       backup_sha256: null,
       backup_total_rows: null,
       batch_evidence: batchEvidence,
+      restore_evidence: null,
     });
   } catch (error) {
     if (error instanceof PackagedDesktopE2eScenarioError) {
@@ -410,15 +445,12 @@ async function runMutationPhase(
   }
 }
 
-async function runVerificationPhase(
+async function exportAndValidateBackup(
   config: PackagedDesktopE2eConfiguration,
   dependencies: ScenarioDependencies,
+  loanId: string,
+  batchEvidence: PackagedDesktopBatchEvidence,
 ) {
-  const step = "validate-state-after-restart";
-  const { loan } = await readAndValidatePersistedState(config, dependencies, step);
-  const batchEvidence = await replayPackagedDesktopBatch(config.batch_evidence, config.run_id, dependencies)
-    .catch(error => scenarioFailure("replay-catalog-batch", error instanceof Error ? error.message : String(error)));
-
   const backupStep = "export-and-validate-full-backup";
   const { content } = await dependencies.exportFullBackupJson();
   const validation = await dependencies.validateFullBackupJson(content);
@@ -431,16 +463,58 @@ async function runVerificationPhase(
   ) {
     scenarioFailure(backupStep, "The exported full backup is incomplete");
   }
-  validateBackupScenarioRows(content, config, loan.id, backupStep);
+  validateBackupScenarioRows(content, config, loanId, backupStep);
+  const tables = parseBackupRows(content, backupStep);
   try {
-    validatePackagedDesktopBatchBackup(parseBackupRows(content, backupStep), batchEvidence);
+    validatePackagedDesktopBatchBackup(tables, batchEvidence);
   } catch (error) {
     scenarioFailure(backupStep, error instanceof Error ? error.message : String(error));
   }
-  const backupSha256 = await dependencies.sha256(content);
+  return { content, tables, totalRows: validation.total_rows };
+}
+
+async function replayBatch(
+  config: PackagedDesktopE2eConfiguration,
+  dependencies: ScenarioDependencies,
+) {
+  return replayPackagedDesktopBatch(config.batch_evidence, config.run_id, dependencies)
+    .catch(error => scenarioFailure("replay-catalog-batch", error instanceof Error ? error.message : String(error)));
+}
+
+async function runVerificationPhase(
+  config: PackagedDesktopE2eConfiguration,
+  dependencies: ScenarioDependencies,
+) {
+  const { loan } = await readAndValidatePersistedState(config, dependencies, "validate-state-after-restart");
+  let batchEvidence = await replayBatch(config, dependencies);
+  let backup = await exportAndValidateBackup(config, dependencies, loan.id, batchEvidence);
+  let restoreEvidence: PackagedDesktopRestoreEvidence | null = config.restore_evidence;
+
+  if (config.phase === "restore") {
+    const originalTablesHash = await dependencies.sha256(canonicalBackupTables(backup.tables));
+    const perturbStep = "perturb-spool-before-restore";
+    await dependencies.updateSpoolWeight(config.spool_id, RESTORE_PERTURBED_WEIGHT_G);
+    const perturbed = (await dependencies.listSpools(500, 0))
+      .find(({ spool }) => spool.id === config.spool_id)?.spool;
+    expectExactNumber(perturbStep, "Perturbed QA spool current weight", perturbed?.current_weight_g, RESTORE_PERTURBED_WEIGHT_G);
+    expectExactNumber(perturbStep, "Perturbed QA spool remaining weight", perturbed?.remaining_g, RESTORE_PERTURBED_WEIGHT_G);
+
+    await dependencies.importFullBackupJson(backup.content);
+    const restored = await readAndValidatePersistedState(config, dependencies, "validate-restored-state");
+    if (restored.loan.id !== loan.id) {
+      scenarioFailure("validate-restored-state", "The original QA loan identity changed during restore");
+    }
+    // Import replaces the local target generation; resolve it again for replay.
+    batchEvidence = await replayBatch(config, dependencies);
+    backup = await exportAndValidateBackup(config, dependencies, loan.id, batchEvidence);
+    restoreEvidence = { backup_tables_sha256: originalTablesHash, perturbed_weight_g: RESTORE_PERTURBED_WEIGHT_G };
+  }
+  if (restoreEvidence && await dependencies.sha256(canonicalBackupTables(backup.tables)) !== restoreEvidence.backup_tables_sha256) {
+    scenarioFailure("validate-restored-backup", "The restored portable backup tables differ from the original backup");
+  }
 
   await dependencies.complete({
-    phase: "verify",
+    phase: config.phase,
     run_id: config.run_id,
     spool_id: config.spool_id,
     printer_id: config.printer_id,
@@ -448,21 +522,38 @@ async function runVerificationPhase(
     loan_id: loan.id,
     final_weight_g: config.returned_weight_g,
     loan_status: "RETURNED",
-    backup_sha256: backupSha256,
-    backup_total_rows: validation.total_rows,
+    backup_sha256: await dependencies.sha256(backup.content),
+    backup_total_rows: backup.totalRows,
     batch_evidence: batchEvidence,
+    restore_evidence: restoreEvidence,
   });
+}
+
+const RESTORE_PERTURBED_WEIGHT_G = 123;
+
+function validateRestoreEvidence(config: PackagedDesktopE2eConfiguration) {
+  const evidence = config.restore_evidence;
+  if (config.phase !== "verify-restored") {
+    if (evidence !== null) scenarioFailure("configuration", "Unexpected backup restore evidence");
+    return;
+  }
+  if (!evidence || Object.keys(evidence).length !== 2 ||
+    typeof evidence.backup_tables_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(evidence.backup_tables_sha256) ||
+    evidence.perturbed_weight_g !== RESTORE_PERTURBED_WEIGHT_G) {
+    scenarioFailure("configuration", "The original backup restore evidence is missing or invalid");
+  }
 }
 
 export async function runPackagedDesktopE2eScenario(
   config: PackagedDesktopE2eConfiguration,
   dependencies: ScenarioDependencies = defaultDependencies,
 ) {
+  validateRestoreEvidence(config);
   if (config.phase === "mutate") {
     await runMutationPhase(config, dependencies);
     return;
   }
-  if (config.phase === "verify") {
+  if (["verify", "restore", "verify-restored"].includes(config.phase)) {
     await runVerificationPhase(config, dependencies);
     return;
   }

@@ -1533,6 +1533,7 @@ export async function smokeMacosDmg(options) {
       `Packaged desktop mutating E2E: ${
         result.packagedDesktopE2e
           ? `PASS, backup rows ${result.packagedDesktopE2e.backup_total_rows}, ` +
+            `backup restore verified after restart, ` +
             `batch replay with ${result.packagedDesktopE2e.catalog_batch.spools} borrowed spools`
           : "not requested"
       }`,

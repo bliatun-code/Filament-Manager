@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-09     |
+| Sist oppdatert | 2026-09-10     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -187,11 +187,18 @@ Oppfølgingen etter v0.30.0 er merget gjennom [PR #100](https://github.com/bliat
 
 Den etterfølgende gjennomgangen avdekket dobbeltinnsending og foreldede Host-svar i innkjøpsflyten. [Oppfølgingen](PURCHASE_LIFECYCLE_FOLLOWUP_2026-09-09.md) beskriver operasjonslåsen, målscopet mottaksdialog og automatiserte regresjoner.
 
-1. Klargjør separat kompatibilitetskontroll fra publisert v0.30.0/schema 7 før neste release, samtidig som den historiske v0.28.0/schema-5-fixturen beholdes. Bruk syntetiske katalogjobber og batchkvitteringer. Før en schema-7-kopi fra brukerdata kan deles som sanitert fixture, må `catalog_refresh_jobs` få eksplisitt rensing og validering av autoritetsmetadata og resultat-/feilfelter. Utvid også den pakkede backupkontrollen med faktisk gjenoppretting; dagens pakkede kontroll validerer eksport, mens gjenoppretting testes separat i Rust. Installasjonens batchkvitteringer og katalogjobber skal fortsatt ikke eksporteres som portable brukerdata.
+Den separate v0.30.0/schema-7-fixturen og rensingen av katalogjobber er implementert. [Oppstartsverifiseringen](PACKAGED_STARTUP_VERIFICATION_2026-09-10.md) dokumenterer at både den historiske schema-5-porten og kompatibilitetsporten bestod to starter på macOS og Windows, med egen bekreftelse fra hver appprosess. En ny Windows-kandidat etter #108 bestod også normal opprydding og hele MSI-smoken med bevart database etter avinstallasjon. Gjenopptakelse etter delvis sletting er regresjonstestet, men ble ikke utløst i den grønne native kjøringen.
+
+1. Fullfør native CI for den [utvidede backupkontrollen](PACKAGED_BACKUP_RESTORE_2026-09-10.md). Faktisk import, kontroll av gjenopprettede data etter omstart, bevarte batchkvitteringer og sletting av katalogjobber er implementert og bestått i en fersk installert arm64-DMG. Kontrollen avdekket og fikk rettet ustabile tidsstempler for uendrede utgåtte katalogposter. Begge historiske oppgraderingsporter er uendret; Windows-verifisering gjenstår i PR-ens ordinære CI.
 2. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 3. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-10
+
+- Den [pakkede backupkontrollen](PACKAGED_BACKUP_RESTORE_2026-09-10.md) kjører nå fire appstarter med faktisk vektendring og gjenoppretting gjennom den vanlige importkommandoen. Uavhengig SQLite-kontroll krever bevarte domenedata og batchjournal, slettet katalogjobb og uendret tilstand etter siste omstart, med bare den eksisterende legitimasjonsmarkørens presise oppstartsovergang. En fersk optimalisert arm64-DMG bestod desktop og Host/Client. Alle 884 skripttester, full Rust-suite, UI-testene, begge Clippy-profiler og kontraktskontrollene er grønne. Den påviste katalogtidsstempelfeilen er rettet; native Windows gjenstår i CI.
+- PR #105–108 har lagt til den separate schema-7-fixturen, installerte kompatibilitetsporter, bekreftelse fra hver appprosess og trygg gjenopptakelse av privat filopprydding. [Resultatrapporten](PACKAGED_STARTUP_VERIFICATION_2026-09-10.md) skiller den første kandidatens beståtte oppstarter og senere Windows-feil fra den nye, grønne Windows-kjøringen 34414767110 på `2c47ba37`. Pakke og logger er lastet ned og kontrollert. Publisert v0.30.0 er uendret; dokumentasjonen samles lokalt uten en ekstra smoke-kjøring.
 
 ### 2026-09-09
 
