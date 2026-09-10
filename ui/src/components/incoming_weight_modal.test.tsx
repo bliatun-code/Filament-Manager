@@ -10,6 +10,7 @@ import { IncomingWeightModal } from "./incoming_weight_modal";
 const prompt: IncomingWeightPrompt = {
   printerId: "printer-1",
   slotId: "slot-1",
+  expectedCurrentSpoolId: "spool-1",
   targetSpoolId: "spool-2",
   targetMaterial: "PLA",
   targetFilamentName: "Basic",
@@ -42,6 +43,7 @@ function renderModal(
       React.createElement(IncomingWeightModal, {
         amsEstimateAvailable,
         busy,
+        error: null,
         prompt: promptOverride,
         incomingWeightValue: "1000",
         outgoingWeightValue: "600",

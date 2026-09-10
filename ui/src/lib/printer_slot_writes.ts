@@ -3,18 +3,22 @@ import {
   acceptLibrarySyncHostBambuLiveWeightEstimate,
   assignLibrarySyncHostPrinterSlot,
   assignPrinterSlot,
+  operateLibrarySyncHostPrinterSlot,
+  operatePrinterSlot,
   recordLibrarySyncHostPrintUsage,
   recordPrintUsage,
   updateLibrarySyncHostSpoolWeight,
   updateSpoolWeight,
   type AssignPrinterSlotInput,
   type AcceptBambuLiveWeightEstimateInput,
+  type PrinterSlotOperationInput,
 } from "./tauri_client";
 import type {
   PreparedMeasuredWeightUpdate,
   PreparedPrinterSlotAssignment,
 } from "./printer_slot_model";
-import { requireClientHostWriteTarget } from "./host_write_target";
+import { requireClientHostWriteTarget, resolveClientHostCacheTarget } from "./host_write_target";
+import { createAppError } from "./error_text";
 
 export type PrinterSlotWriteTarget = {
   clientReadOnly: boolean;
@@ -23,6 +27,8 @@ export type PrinterSlotWriteTarget = {
 };
 
 type PrinterSlotWriteDependencies = {
+  operateHostPrinterSlot?: typeof operateLibrarySyncHostPrinterSlot;
+  operateLocalPrinterSlot?: typeof operatePrinterSlot;
   acceptHostAmsWeightEstimate?: typeof acceptLibrarySyncHostBambuLiveWeightEstimate;
   acceptLocalAmsWeightEstimate?: typeof acceptBambuLiveWeightEstimate;
   assignHostPrinterSlot?: typeof assignLibrarySyncHostPrinterSlot;
@@ -32,6 +38,26 @@ type PrinterSlotWriteDependencies = {
   updateHostSpoolWeight?: typeof updateLibrarySyncHostSpoolWeight;
   updateLocalSpoolWeight?: typeof updateSpoolWeight;
 };
+
+export async function writePrinterSlotOperation(
+  target: PrinterSlotWriteTarget & { clientTargetGeneration: number | null },
+  operation: PrinterSlotOperationInput,
+  dependencies: PrinterSlotWriteDependencies = {},
+) {
+  if (target.clientReadOnly) {
+    const hostTarget = resolveClientHostCacheTarget(target);
+    if (!hostTarget) {
+      throw createAppError("common.invalid_request");
+    }
+    const operateHost = dependencies.operateHostPrinterSlot ?? operateLibrarySyncHostPrinterSlot;
+    await operateHost(
+      hostTarget.baseUrl, hostTarget.libraryId, hostTarget.targetGeneration, operation,
+    );
+    return;
+  }
+  const operateLocal = dependencies.operateLocalPrinterSlot ?? operatePrinterSlot;
+  await operateLocal(operation);
+}
 
 export async function writeAcceptedBambuLiveWeightEstimate(
   target: PrinterSlotWriteTarget,

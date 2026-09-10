@@ -319,8 +319,12 @@ export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "The request could not be completed.",
   ],
   "printers.slot_operation_stale": [
-    "status.printerSlotFailed",
-    "Failed to update printer slot.",
+    "errors.printerSlotChanged",
+    "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
+  ],
+  "printers.slot_operation_host_unsupported": [
+    "errors.printerSlotHostUnsupported",
+    "Upgrade the Host before changing printer slots or their weights. No changes were sent.",
   ],
 });
 

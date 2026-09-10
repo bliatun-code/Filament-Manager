@@ -115,6 +115,7 @@ test("replacement preparation includes measured weights for both rolls", () => {
   );
 
   assert.equal(prepared.prompt.targetSpoolId, "replacement");
+  assert.equal(prepared.prompt.expectedCurrentSpoolId, "current");
   assert.equal(prepared.prompt.requiresIncomingWeight, true);
   assert.equal(prepared.prompt.requiresOutgoingWeight, true);
   assert.equal(prepared.incomingWeightValue, "950");
@@ -130,6 +131,7 @@ test("empty-slot preparation leaves outgoing weight blank", () => {
   );
 
   assert.equal(prepared.prompt.targetSpoolId, "incoming");
+  assert.equal(prepared.prompt.expectedCurrentSpoolId, null);
   assert.equal(prepared.prompt.requiresOutgoingWeight, false);
   assert.equal(prepared.incomingWeightValue, "950");
   assert.equal(prepared.outgoingWeightValue, "");
@@ -143,6 +145,7 @@ test("clear-occupied preparation only requests outgoing measured weight", () => 
   );
 
   assert.equal(prepared.prompt.targetSpoolId, null);
+  assert.equal(prepared.prompt.expectedCurrentSpoolId, "current");
   assert.equal(prepared.prompt.requiresIncomingWeight, false);
   assert.equal(prepared.prompt.requiresOutgoingWeight, true);
   assert.equal(prepared.incomingWeightValue, "");
@@ -160,6 +163,7 @@ test("same-roll preparation does not create an outgoing weight draft", () => {
   assert.equal(prepared.prompt.requiresIncomingWeight, true);
   assert.equal(prepared.prompt.requiresOutgoingWeight, false);
   assert.equal(prepared.prompt.updatesCurrentRollWeight, true);
+  assert.equal(prepared.prompt.expectedCurrentSpoolId, "current");
   assert.equal(prepared.incomingWeightValue, "700");
   assert.equal(prepared.outgoingWeightValue, "");
 });

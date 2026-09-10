@@ -74,7 +74,7 @@ Host/Client-flyt med sesjonsfornyelse og legitimasjonsopprydding. Desktop-result
 bekrefter én slettet katalogjobb, bevart batchjournal, identisk portabelt innhold
 og den nøyaktige markørovergangen etter omstart. Dette er lokal installasjonstesting;
 historiske oppgraderingsporter og Developer ID/notarisering inngikk ikke i denne
-kjøringen. Windows-verifisering gjenstår i PR-ens ordinære native CI.
+kjøringen. Native CI-resultater er dokumentert nedenfor.
 
 Lokalt bestod 884 skripttester og 1 693 UI-tester, samt 18 fokuserte UI-tester
 etter den siste kontrollen av skriverstatus. Hele Rust-workspacet bestod med
@@ -84,3 +84,44 @@ kontraktskontrollene, public-readiness og det ferske UI-bundlebudsjettet er grø
 
 Dette endrer ikke databaseskjema, backupformat eller appversjon. Testbiblioteket
 inneholder ingen reelle brukerdata.
+
+## CI-oppfølging
+
+[PR #109](https://github.com/bliatun-code/Filament-Manager/pull/109) bestod alle
+11 kontroller på `a838631b8c73ddcfd68c15342eb8247773fe3d44` i første kjøring.
+[CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34422061783),
+[CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34422061788)
+og [avhengighets-/lisenskontrollene](https://github.com/bliatun-code/Filament-Manager/actions/runs/34422061781)
+er grønne. Loggartefaktene fra begge installasjonene er lastet ned og kontrollert.
+
+| Kontroll | macOS DMG | Windows x64 MSI |
+| --- | --- | --- |
+| Alle fire desktop-faser og schema 7 | Bestått | Bestått |
+| Gjenopprettet backup, også etter omstart | 1 637 rader | 1 637 rader |
+| Vedvarende katalogjobb fjernet ved import | 1 | 1 |
+| Opprinnelig batchjournal og bibliotek-ID bevart | Bestått | Bestått |
+| Nøyaktig legitimasjonsmarkør etter omstart | Bestått | Bestått |
+| Host/Client, sesjonsfornyelse og legitimasjonsopprydding | Bestått | Bestått |
+
+Fasekvitteringene har samme kjørings-, låne- og batchidentitet gjennom alle fire
+starter. Begge gjenopprettingsfasene og sluttsammendraget har samme normaliserte
+backuphash innen hver plattformkjøring. Windows bestod også vanlig lukking,
+bakgrunnsstart, tray-/single-instance-flyt og avinstallasjon med bevart database.
+
+Dette var ordinære debug-pakker i PR-CI med lokal ad-hoc-policy på Mac og
+`UnsignedRequired` på Windows. De separate release-portene for v0.28.0 og v0.30.0,
+Intel-installasjon og notarisering ble ikke kjørt på nytt. Ingen offentlig release
+eller tagg ble opprettet. Denne resultatoppfølgingen committes lokalt og tas med
+i neste samlede push.
+
+## Merge-oppfølging
+
+PR #109 ble merget 10. september som
+`be184e9c10b685e22cf877f390739e32a6c21dca`. Mergecommiten og den verifiserte
+PR-kandidaten `a838631b` har identisk Git-tre
+(`48413e762eea9b7c3d8c1910b02392927206a1d5`). Lokal `main` er oppdatert,
+og denne resultatdokumentasjonen er videreført på `codex/post-pr109` for neste
+samlede push. Hovedgrenens [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446340)
+og [CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446362)
+er også grønne på mergecommiten. Disse er egne kjøringer; de detaljerte
+installasjonsresultatene ovenfor er fra PR-kandidaten.

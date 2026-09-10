@@ -49,6 +49,8 @@ export const zhCNDictionary: DictionaryNode = {
     "optional": "可选"
   },
   "errors": {
+    "printerSlotChanged": "此槽位中的料卷已更改。请重新打开槽位操作并确认当前料卷。",
+    "printerSlotHostUnsupported": "更改打印机槽位或其中料卷的重量前，请升级主机。未发送任何更改。",
     "catalogSpoolBatchInvalid": "批次未保存。请检查所选耗材、重量、所有者和存放位置。最多可使用 100 卷耗材。",
     "catalogSpoolBatchConflict": "此批次 ID 属于另一请求或资料库。登记另一批次前，请先检查库存。",
     "catalogSpoolBatchHostUnsupported": "请升级 Host 以安全登记批次。未发送任何耗材卷。",

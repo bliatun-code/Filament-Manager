@@ -49,6 +49,8 @@ export const frDictionary: DictionaryNode = {
     optional: "Facultatif",
   },
   errors: {
+    "printerSlotChanged": "La bobine de cet emplacement a changé. Rouvrez l’action de l’emplacement et confirmez la bobine actuelle.",
+    "printerSlotHostUnsupported": "Mettez à jour l’hôte avant de modifier les emplacements de l’imprimante ou le poids de leurs bobines. Aucune modification n’a été envoyée.",
     catalogSpoolBatchInvalid: "Le lot n’a pas été enregistré. Vérifiez les filaments sélectionnés, le poids, le propriétaire et l’emplacement. Utilisez au maximum 100 bobines.",
     catalogSpoolBatchConflict: "Cet identifiant de lot appartient à une autre demande ou bibliothèque. Vérifiez le stock avant d’enregistrer un autre lot.",
     catalogSpoolBatchHostUnsupported: "Mettez à jour le Host pour enregistrer les lots en toute sécurité. Aucune bobine n’a été envoyée.",

@@ -85,7 +85,9 @@
         "filamentStandardsStaleReview": "The selected rolls changed. Review the filament price group again.",
         "filamentStandardsCurrencyInvalid": "Enter a valid three-letter purchase currency.",
         "filamentStandardsPriceInvalid": "Enter a valid filament price of zero or more.",
-        "filamentStandardsInvalid": "The saved filament standards are no longer valid. Reload and review them."
+        "filamentStandardsInvalid": "The saved filament standards are no longer valid. Reload and review them.",
+        "printerSlotChanged": "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
+        "printerSlotHostUnsupported": "Upgrade the Host before changing printer slots or their weights. No changes were sent."
       },
       "nav": {
         "storage": "Inventory",
@@ -726,7 +728,9 @@
         "filamentStandardsStaleReview": "De valgte rullene er endret. Se gjennom prisgruppen for filament på nytt.",
         "filamentStandardsCurrencyInvalid": "Oppgi en gyldig kjøpsvaluta med tre bokstaver.",
         "filamentStandardsPriceInvalid": "Oppgi en gyldig filamentpris som er null eller høyere.",
-        "filamentStandardsInvalid": "De lagrede filamentstandardene er ikke lenger gyldige. Last inn på nytt og se gjennom dem."
+        "filamentStandardsInvalid": "De lagrede filamentstandardene er ikke lenger gyldige. Last inn på nytt og se gjennom dem.",
+        "printerSlotChanged": "Rullen i dette sporet er endret. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
+        "printerSlotHostUnsupported": "Oppgrader verten før du endrer printerspor eller vekten på rullene i dem. Ingen endringer ble sendt."
       },
       "nav": {
         "storage": "Lager",
@@ -1367,7 +1371,9 @@
         "filamentStandardsStaleReview": "Die ausgewählten Rollen haben sich geändert. Prüfe die Filament-Preisgruppe erneut.",
         "filamentStandardsCurrencyInvalid": "Gib eine gültige dreibuchstabige Kaufwährung ein.",
         "filamentStandardsPriceInvalid": "Gib einen gültigen Filamentpreis von null oder mehr ein.",
-        "filamentStandardsInvalid": "Die gespeicherten Filamentstandards sind nicht mehr gültig. Lade sie neu und prüfe sie."
+        "filamentStandardsInvalid": "Die gespeicherten Filamentstandards sind nicht mehr gültig. Lade sie neu und prüfe sie.",
+        "printerSlotChanged": "Die Rolle in diesem Steckplatz hat sich geändert. Öffne die Steckplatzaktion erneut und bestätige die aktuelle Rolle.",
+        "printerSlotHostUnsupported": "Aktualisiere den Host, bevor du Druckersteckplätze oder das Gewicht ihrer Rollen änderst. Es wurden keine Änderungen gesendet."
       },
       "nav": {
         "storage": "Bestand",
@@ -2008,7 +2014,9 @@
         "filamentStandardsStaleReview": "Les bobines sélectionnées ont changé. Vérifiez à nouveau le groupe de prix du filament.",
         "filamentStandardsCurrencyInvalid": "Saisissez une devise d’achat valide à trois lettres.",
         "filamentStandardsPriceInvalid": "Saisissez un prix de filament valide, supérieur ou égal à zéro.",
-        "filamentStandardsInvalid": "Les valeurs de filament enregistrées ne sont plus valides. Rechargez-les et vérifiez-les."
+        "filamentStandardsInvalid": "Les valeurs de filament enregistrées ne sont plus valides. Rechargez-les et vérifiez-les.",
+        "printerSlotChanged": "La bobine de cet emplacement a changé. Rouvrez l’action de l’emplacement et confirmez la bobine actuelle.",
+        "printerSlotHostUnsupported": "Mettez à jour l’hôte avant de modifier les emplacements de l’imprimante ou le poids de leurs bobines. Aucune modification n’a été envoyée."
       },
       "nav": {
         "storage": "Stock",
@@ -2649,7 +2657,9 @@
         "filamentStandardsStaleReview": "Las bobinas seleccionadas han cambiado. Revisa de nuevo el grupo de precios de filamento.",
         "filamentStandardsCurrencyInvalid": "Introduce una moneda de compra válida de tres letras.",
         "filamentStandardsPriceInvalid": "Introduce un precio de filamento válido de cero o más.",
-        "filamentStandardsInvalid": "Los estándares de filamento guardados ya no son válidos. Vuelve a cargarlos y revísalos."
+        "filamentStandardsInvalid": "Los estándares de filamento guardados ya no son válidos. Vuelve a cargarlos y revísalos.",
+        "printerSlotChanged": "La bobina de esta ranura ha cambiado. Vuelve a abrir la acción de la ranura y confirma la bobina actual.",
+        "printerSlotHostUnsupported": "Actualiza el Host antes de cambiar las ranuras de la impresora o el peso de sus bobinas. No se envió ningún cambio."
       },
       "nav": {
         "storage": "Inventario",
@@ -3381,7 +3391,9 @@
         "wishlistReceiveAlreadyReceived": "Este item da lista de desejos já foi recebido. Atualize a lista.",
         "wishlistReceiveQuantityExceedsRemaining": "A quantidade excede o número de bobinas ainda esperadas. Atualize a lista de desejos.",
         "wishlistStatusInvalid": "Escolha um status válido para a lista de desejos.",
-        "wishlistStatusReceivedRequiresReceipt": "Receba as bobinas restantes pela ação de recebimento no estoque."
+        "wishlistStatusReceivedRequiresReceipt": "Receba as bobinas restantes pela ação de recebimento no estoque.",
+        "printerSlotChanged": "O rolo neste slot mudou. Abra a ação do slot novamente e confirme o rolo atual.",
+        "printerSlotHostUnsupported": "Atualize o Host antes de alterar os slots da impressora ou o peso dos rolos neles. Nenhuma alteração foi enviada."
       },
       "format": {
         "assigned": "Atribuído",
@@ -4022,7 +4034,9 @@
         "wishlistReceiveAlreadyReceived": "Questo elemento della lista dei desideri è già stato ricevuto. Aggiorna la lista.",
         "wishlistReceiveQuantityExceedsRemaining": "La quantità supera il numero di bobine ancora attese. Aggiorna la lista dei desideri.",
         "wishlistStatusInvalid": "Scegli uno stato valido per la lista dei desideri.",
-        "wishlistStatusReceivedRequiresReceipt": "Ricevi le bobine rimanenti tramite l’azione di carico a magazzino."
+        "wishlistStatusReceivedRequiresReceipt": "Ricevi le bobine rimanenti tramite l’azione di carico a magazzino.",
+        "printerSlotChanged": "La bobina in questo slot è cambiata. Riapri l’azione dello slot e conferma la bobina attuale.",
+        "printerSlotHostUnsupported": "Aggiorna l’Host prima di modificare gli slot della stampante o il peso delle bobine al loro interno. Non è stata inviata alcuna modifica."
       },
       "format": {
         "assigned": "Assegnato",
@@ -4663,7 +4677,9 @@
         "wishlistReceiveAlreadyReceived": "Ta pozycja listy życzeń została już przyjęta. Odśwież listę życzeń.",
         "wishlistReceiveQuantityExceedsRemaining": "Podana ilość przekracza liczbę nadal oczekiwanych szpul. Odśwież listę życzeń.",
         "wishlistStatusInvalid": "Wybierz prawidłowy stan pozycji na liście życzeń.",
-        "wishlistStatusReceivedRequiresReceipt": "Przyjmij pozostałe szpule za pomocą operacji przyjęcia do magazynu."
+        "wishlistStatusReceivedRequiresReceipt": "Przyjmij pozostałe szpule za pomocą operacji przyjęcia do magazynu.",
+        "printerSlotChanged": "Szpula w tym slocie uległa zmianie. Otwórz ponownie działanie slotu i potwierdź aktualną szpulę.",
+        "printerSlotHostUnsupported": "Zaktualizuj Host przed zmianą slotów drukarki lub masy znajdujących się w nich szpul. Nie wysłano żadnych zmian."
       },
       "format": {
         "assigned": "Przydzielony",
@@ -5304,7 +5320,9 @@
         "wishlistReceiveAlreadyReceived": "Dit verlanglijstitem is al ontvangen. Vernieuw de verlanglijst.",
         "wishlistReceiveQuantityExceedsRemaining": "Het aantal is groter dan het aantal rollen dat nog wordt verwacht. Vernieuw de verlanglijst.",
         "wishlistStatusInvalid": "Kies een geldige verlanglijststatus.",
-        "wishlistStatusReceivedRequiresReceipt": "Ontvang de resterende rollen via de voorraadontvangst."
+        "wishlistStatusReceivedRequiresReceipt": "Ontvang de resterende rollen via de voorraadontvangst.",
+        "printerSlotChanged": "De rol in deze sleuf is gewijzigd. Open de sleufactie opnieuw en bevestig de huidige rol.",
+        "printerSlotHostUnsupported": "Werk de Host bij voordat je printersleuven of het gewicht van de rollen daarin wijzigt. Er zijn geen wijzigingen verzonden."
       },
       "format": {
         "assigned": "Toegewezen",
@@ -5945,7 +5963,9 @@
         "wishlistReceiveAlreadyReceived": "Tato položka seznamu přání již byla přijata. Obnovte seznam přání.",
         "wishlistReceiveQuantityExceedsRemaining": "Zadané množství překračuje počet cívek, které ještě čekají na přijetí. Obnovte seznam přání.",
         "wishlistStatusInvalid": "Vyberte platný stav položky seznamu přání.",
-        "wishlistStatusReceivedRequiresReceipt": "Zbývající cívky přijměte pomocí operace příjmu na sklad."
+        "wishlistStatusReceivedRequiresReceipt": "Zbývající cívky přijměte pomocí operace příjmu na sklad.",
+        "printerSlotChanged": "Cívka v tomto slotu se změnila. Znovu otevřete akci slotu a potvrďte aktuální cívku.",
+        "printerSlotHostUnsupported": "Před změnou slotů tiskárny nebo hmotnosti cívek v nich aktualizujte Host. Nebyly odeslány žádné změny."
       },
       "format": {
         "assigned": "Přiřazeno",
@@ -6586,7 +6606,9 @@
         "wishlistReceiveAlreadyReceived": "此愿望清单项目已接收。请刷新愿望清单。",
         "wishlistReceiveQuantityExceedsRemaining": "数量超过仍待接收的耗材卷数量。请刷新愿望清单。",
         "wishlistStatusInvalid": "请选择有效的愿望清单状态。",
-        "wishlistStatusReceivedRequiresReceipt": "请通过入库操作接收剩余耗材卷。"
+        "wishlistStatusReceivedRequiresReceipt": "请通过入库操作接收剩余耗材卷。",
+        "printerSlotChanged": "此槽位中的料卷已更改。请重新打开槽位操作并确认当前料卷。",
+        "printerSlotHostUnsupported": "更改打印机槽位或其中料卷的重量前，请升级主机。未发送任何更改。"
       },
       "format": {
         "assigned": "已分配",
@@ -7227,7 +7249,9 @@
         "wishlistReceiveAlreadyReceived": "このウィッシュリスト項目はすでに受け取り済みです。ウィッシュリストを更新してください。",
         "wishlistReceiveQuantityExceedsRemaining": "数量が、まだ受け取る予定のロール数を超えています。ウィッシュリストを更新してください。",
         "wishlistStatusInvalid": "有効なウィッシュリストのステータスを選択してください。",
-        "wishlistStatusReceivedRequiresReceipt": "残りのロールは入庫操作で受け取ってください。"
+        "wishlistStatusReceivedRequiresReceipt": "残りのロールは入庫操作で受け取ってください。",
+        "printerSlotChanged": "このスロットのスプールが変更されました。スロット操作を開き直し、現在のスプールを確認してください。",
+        "printerSlotHostUnsupported": "プリンターのスロットやスプールの重量を変更する前に、ホストをアップグレードしてください。変更は送信されていません。"
       },
       "format": {
         "assigned": "割り当て済み",
@@ -7868,7 +7892,9 @@
         "wishlistReceiveAlreadyReceived": "이 위시리스트 항목은 이미 입고되었습니다. 위시리스트를 새로 고침하세요.",
         "wishlistReceiveQuantityExceedsRemaining": "아직 입고할 스풀 수보다 많은 수량입니다. 위시리스트를 새로 고침하세요.",
         "wishlistStatusInvalid": "올바른 위시리스트 상태를 선택하세요.",
-        "wishlistStatusReceivedRequiresReceipt": "남은 스풀은 입고 작업을 통해 받으세요."
+        "wishlistStatusReceivedRequiresReceipt": "남은 스풀은 입고 작업을 통해 받으세요.",
+        "printerSlotChanged": "이 슬롯의 스풀이 변경되었습니다. 슬롯 작업을 다시 열고 현재 스풀을 확인하세요.",
+        "printerSlotHostUnsupported": "프린터 슬롯이나 해당 스풀의 무게를 변경하기 전에 호스트를 업그레이드하세요. 변경 사항은 전송되지 않았습니다."
       },
       "format": {
         "assigned": "할당된",
@@ -8509,7 +8535,9 @@
         "wishlistReceiveAlreadyReceived": "此願望清單項目已接收。請重新整理願望清單。",
         "wishlistReceiveQuantityExceedsRemaining": "數量超過仍待接收的耗材捲數量。請重新整理願望清單。",
         "wishlistStatusInvalid": "請選擇有效的願望清單狀態。",
-        "wishlistStatusReceivedRequiresReceipt": "請透過入庫操作接收剩餘耗材捲。"
+        "wishlistStatusReceivedRequiresReceipt": "請透過入庫操作接收剩餘耗材捲。",
+        "printerSlotChanged": "此插槽中的料捲已變更。請重新開啟插槽操作並確認目前的料捲。",
+        "printerSlotHostUnsupported": "變更印表機插槽或其中料捲的重量前，請升級主機。未傳送任何變更。"
       },
       "format": {
         "assigned": "已分配",
@@ -9150,7 +9178,9 @@
         "wishlistReceiveAlreadyReceived": "Bu istek listesi öğesi zaten teslim alındı. İstek listesini yenileyin.",
         "wishlistReceiveQuantityExceedsRemaining": "Miktar, hâlâ beklenen makara sayısını aşıyor. İstek listesini yenileyin.",
         "wishlistStatusInvalid": "Geçerli bir istek listesi durumu seçin.",
-        "wishlistStatusReceivedRequiresReceipt": "Kalan makaraları stok teslim alma işlemiyle teslim alın."
+        "wishlistStatusReceivedRequiresReceipt": "Kalan makaraları stok teslim alma işlemiyle teslim alın.",
+        "printerSlotChanged": "Bu yuvadaki makara değişti. Yuva işlemini yeniden açın ve mevcut makarayı onaylayın.",
+        "printerSlotHostUnsupported": "Yazıcı yuvalarını veya içlerindeki makaraların ağırlığını değiştirmeden önce Host’u yükseltin. Hiçbir değişiklik gönderilmedi."
       },
       "format": {
         "assigned": "Atandı",
@@ -9791,7 +9821,9 @@
         "wishlistReceiveAlreadyReceived": "Цей елемент списку бажань уже отримано. Оновіть список бажань.",
         "wishlistReceiveQuantityExceedsRemaining": "Кількість перевищує число котушок, які ще очікуються. Оновіть список бажань.",
         "wishlistStatusInvalid": "Виберіть дійсний статус списку бажань.",
-        "wishlistStatusReceivedRequiresReceipt": "Отримайте решту котушок за допомогою дії приймання на склад."
+        "wishlistStatusReceivedRequiresReceipt": "Отримайте решту котушок за допомогою дії приймання на склад.",
+        "printerSlotChanged": "Котушка в цьому слоті змінилася. Знову відкрийте дію слота й підтвердьте поточну котушку.",
+        "printerSlotHostUnsupported": "Оновіть Host, перш ніж змінювати слоти принтера або вагу котушок у них. Жодних змін не надіслано."
       },
       "format": {
         "assigned": "Призначений",
@@ -10335,7 +10367,9 @@
         "wishlistReceiveAlreadyReceived": "Этот элемент списка желаний уже принят. Обновите список желаний.",
         "wishlistReceiveQuantityExceedsRemaining": "Количество превышает число катушек, которые ещё ожидаются. Обновите список желаний.",
         "wishlistStatusInvalid": "Выберите допустимый статус списка желаний.",
-        "wishlistStatusReceivedRequiresReceipt": "Примите оставшиеся катушки через действие приёмки на склад."
+        "wishlistStatusReceivedRequiresReceipt": "Примите оставшиеся катушки через действие приёмки на склад.",
+        "printerSlotChanged": "Катушка в этом слоте изменилась. Снова откройте действие слота и подтвердите текущую катушку.",
+        "printerSlotHostUnsupported": "Обновите Host, прежде чем изменять слоты принтера или вес катушек в них. Изменения не отправлены."
       },
       "shell": {
         "refresh": "Обновить",
@@ -10976,7 +11010,9 @@
         "filamentStandardsStaleReview": "A kijelölt tekercsek megváltoztak. Tekintse át ismét a filament-árcsoportot.",
         "filamentStandardsCurrencyInvalid": "Adjon meg egy érvényes, hárombetűs vásárlási pénznemkódot.",
         "filamentStandardsPriceInvalid": "Adjon meg egy érvényes, nulla vagy annál nagyobb filamentárat.",
-        "filamentStandardsInvalid": "A mentett filament-szabványok már nem érvényesek. Töltse újra és ellenőrizze őket."
+        "filamentStandardsInvalid": "A mentett filament-szabványok már nem érvényesek. Töltse újra és ellenőrizze őket.",
+        "printerSlotChanged": "A rekeszben lévő tekercs megváltozott. Nyisd meg újra a rekesz műveletét, és erősítsd meg az aktuális tekercset.",
+        "printerSlotHostUnsupported": "A nyomtatórekeszek vagy a bennük lévő tekercsek súlyának módosítása előtt frissítsd a Hostot. Nem küldtünk módosításokat."
       },
       "purchaseReceipt": {
         "optionalSummary": "Vásárlási adatok (opcionális)",
@@ -11617,7 +11653,9 @@
         "wishlistReceiveAlreadyReceived": "Den här posten på önskelistan har redan tagits emot. Uppdatera önskelistan.",
         "wishlistReceiveQuantityExceedsRemaining": "Antalet överstiger hur många rullar som fortfarande väntas. Uppdatera önskelistan.",
         "wishlistStatusInvalid": "Välj en giltig status för önskelistan.",
-        "wishlistStatusReceivedRequiresReceipt": "Ta emot de återstående rullarna via lagerinleveransen."
+        "wishlistStatusReceivedRequiresReceipt": "Ta emot de återstående rullarna via lagerinleveransen.",
+        "printerSlotChanged": "Rullen i det här facket har ändrats. Öppna fackets åtgärd igen och bekräfta den aktuella rullen.",
+        "printerSlotHostUnsupported": "Uppgradera värden innan du ändrar skrivarfack eller vikten på rullarna i dem. Inga ändringar skickades."
       },
       "shell": {
         "refresh": "Uppdatera",
@@ -12258,7 +12296,9 @@
         "wishlistReceiveAlreadyReceived": "Denne post på ønskelisten er allerede modtaget. Opdater ønskelisten.",
         "wishlistReceiveQuantityExceedsRemaining": "Antallet overstiger det antal ruller, der stadig forventes. Opdater ønskelisten.",
         "wishlistStatusInvalid": "Vælg en gyldig ønskelistestatus.",
-        "wishlistStatusReceivedRequiresReceipt": "Modtag de resterende ruller via lagerets modtagelseshandling."
+        "wishlistStatusReceivedRequiresReceipt": "Modtag de resterende ruller via lagerets modtagelseshandling.",
+        "printerSlotChanged": "Rullen i dette spor er ændret. Åbn sporhandlingen igen, og bekræft den aktuelle rulle.",
+        "printerSlotHostUnsupported": "Opgrader værten, før du ændrer printerspor eller vægten på rullerne i dem. Ingen ændringer blev sendt."
       },
       "shell": {
         "refresh": "Opdater",
@@ -12899,7 +12939,9 @@
         "wishlistReceiveAlreadyReceived": "Tämä toivelistan kohde on jo vastaanotettu. Päivitä toivelista.",
         "wishlistReceiveQuantityExceedsRemaining": "Määrä ylittää vielä odotettujen kelojen määrän. Päivitä toivelista.",
         "wishlistStatusInvalid": "Valitse kelvollinen toivelistan tila.",
-        "wishlistStatusReceivedRequiresReceipt": "Vastaanota jäljellä olevat kelat varastoonottotoiminnolla."
+        "wishlistStatusReceivedRequiresReceipt": "Vastaanota jäljellä olevat kelat varastoonottotoiminnolla.",
+        "printerSlotChanged": "Tämän paikan kela on vaihtunut. Avaa paikan toiminto uudelleen ja vahvista nykyinen kela.",
+        "printerSlotHostUnsupported": "Päivitä Host ennen tulostinpaikkojen tai niissä olevien kelojen painojen muuttamista. Muutoksia ei lähetetty."
       },
       "shell": {
         "refresh": "Päivitä",

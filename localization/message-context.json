@@ -3,6 +3,30 @@
   "messages": [
     {
       "surface": "desktop",
+      "key": "errors.printerSlotChanged",
+      "meaning": "The physical roll assigned to this printer material slot changed after the user opened the operation dialog. The atomic operation was rejected; refresh the printer and choose the operation again using the current roll. Slot means an AMS, MMU, external-holder, or toolhead material position.",
+      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+    },
+    {
+      "surface": "desktop",
+      "key": "errors.printerSlotHostUnsupported",
+      "meaning": "The remote library Host is too old to support an atomic printer slot operation. Update Filament Manager on the Host computer before retrying. No measured weight, usage, or slot assignment has been sent to that Host; Host is the computer owning the shared library.",
+      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.printerSlotChanged",
+      "meaning": "The physical roll assigned to this printer material slot changed after the user opened the operation dialog. The atomic operation was rejected; refresh the printer and choose the operation again using the current roll. Slot means an AMS, MMU, external-holder, or toolhead material position.",
+      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+    },
+    {
+      "surface": "companion",
+      "key": "errors.printerSlotHostUnsupported",
+      "meaning": "The remote library Host is too old to support an atomic printer slot operation. Update Filament Manager on the Host computer before retrying. No measured weight, usage, or slot assignment has been sent to that Host; Host is the computer owning the shared library.",
+      "screenshot": "docs/screenshots/printer-slot-replacement.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "common.active",
       "meaning": "Generic enabled/current state, not a grammatical description of a person.",
       "screenshot": "docs/screenshots/settings-library.jpg"

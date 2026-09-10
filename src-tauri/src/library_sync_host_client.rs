@@ -1408,9 +1408,20 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     base_url: &str,
     path: &str,
 ) -> Result<T, String> {
-    ensure_library_sync_credential_transport(base_url)?;
     let target = capture_library_sync_target(state, base_url, None)?;
+    get_library_sync_host_json_authenticated_for_target(state, base_url, path, &target)
+}
+
+pub(crate) fn get_library_sync_host_json_authenticated_for_target<T: DeserializeOwned>(
+    state: &AppState,
+    base_url: &str,
+    path: &str,
+    target: &LibrarySyncTargetGuard,
+) -> Result<T, String> {
+    ensure_library_sync_credential_transport(base_url)?;
+    ensure_library_sync_target_current(state, target)?;
     let initial_auth_state = current_or_renewed_library_sync_auth(state, base_url)?;
+    ensure_library_sync_target_current(state, target)?;
 
     let execute = |session_id: &str,
                    device_token: &str|
@@ -1439,12 +1450,14 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        ensure_library_sync_target_current(state, target)?;
         let renewed = renew_or_reuse_library_sync_auth(
             state,
             base_url,
             &initial_auth_state.session_id,
             &initial_auth_state.device_token,
         )?;
+        ensure_library_sync_target_current(state, target)?;
         response = execute(&renewed.session_id, &renewed.device_token)?;
     }
 
@@ -1460,7 +1473,7 @@ pub(crate) fn get_library_sync_host_json_authenticated<T: DeserializeOwned>(
         .map_err(|error| format!("Desktop sync read response could not be read: {error}"))?;
     let parsed = serde_json::from_str(&body_text)
         .map_err(|error| format!("Desktop sync read returned invalid JSON: {error}"))?;
-    ensure_library_sync_target_current(state, &target)?;
+    ensure_library_sync_target_current(state, target)?;
     Ok(parsed)
 }
 
@@ -1548,6 +1561,7 @@ pub(crate) fn perform_library_sync_host_write_and_parse_for_target<
     )?;
 
     if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+        ensure_library_sync_target_current(state, target)?;
         let renewed = renew_or_reuse_library_sync_auth(
             state,
             base_url,

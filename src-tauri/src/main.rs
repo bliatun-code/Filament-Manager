@@ -71,6 +71,7 @@ mod library_sync_loan_write_commands;
 mod library_sync_location_commands;
 mod library_sync_models;
 mod library_sync_pairing_commands;
+mod library_sync_printer_slot_operation_commands;
 mod library_sync_printer_write_commands;
 mod library_sync_read_commands;
 #[cfg(test)]
@@ -474,11 +475,13 @@ fn main() {
             library_sync_spool_write_commands::update_library_sync_host_spool_ownership,
             library_sync_spool_write_commands::update_library_sync_host_spool_rfid_tag,
             library_sync_printer_write_commands::assign_library_sync_host_printer_slot,
+            library_sync_printer_slot_operation_commands::operate_library_sync_host_printer_slot,
             library_sync_printer_write_commands::record_library_sync_host_print_usage,
             library_sync_printer_write_commands::accept_library_sync_host_bambu_live_weight_estimate,
             library_sync_loan_write_commands::return_library_sync_host_loan,
             library_sync_loan_write_commands::lend_library_sync_host_spool,
             printer_slot_write_commands::assign_printer_slot,
+            printer_slot_write_commands::operate_printer_slot,
             printer_usage_commands::record_print_usage,
             printer_usage_commands::accept_bambu_live_weight_estimate,
             inventory_update_commands::update_spool_weight,

@@ -195,6 +195,8 @@ export const nlNLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Terugvalwaarde van 200 g voor oudere host"
   },
   "errors": {
+    "printerSlotChanged": "De rol in deze sleuf is gewijzigd. Open de sleufactie opnieuw en bevestig de huidige rol.",
+    "printerSlotHostUnsupported": "Werk de Host bij voordat je printersleuven of het gewicht van de rollen daarin wijzigt. Er zijn geen wijzigingen verzonden.",
     "catalogSpoolBatchInvalid": "De batch is niet opgeslagen. Controleer de geselecteerde filamenten, het gewicht, de eigenaar en de locatie. Gebruik maximaal 100 rollen.",
     "catalogSpoolBatchConflict": "Deze batch-ID hoort bij een ander verzoek of een andere bibliotheek. Controleer de voorraad voordat je een andere batch registreert.",
     "catalogSpoolBatchHostUnsupported": "Werk de Host bij om batches veilig te registreren. Er zijn geen rollen verzonden.",

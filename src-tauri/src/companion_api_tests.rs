@@ -1854,6 +1854,11 @@ async fn companion_api_trusted_lan_requires_exact_host_and_pairing() {
             .unwrap()
             .iter()
             .any(|value| value.as_str() == Some("wishlist-receipt-location-v1")));
+        assert!(host_health_json["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|value| value.as_str() == Some("printer-slot-operations-v1")));
         assert!(host_health_json
             .get("capabilities")
             .and_then(|value| value.as_array())

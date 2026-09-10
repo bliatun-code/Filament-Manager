@@ -218,6 +218,15 @@ export type AssignPrinterSlotInput = {
   clear_live_cache_before_next_refresh?: boolean | null;
 };
 
+export type PrinterSlotOperationInput = {
+  printer_id: string;
+  slot_id: string;
+  expected_current_spool_id: string | null;
+  target_spool_id: string | null;
+  outgoing_measured_total_g: number | null;
+  incoming_measured_total_g: number | null;
+};
+
 export type RecordPrintUsageInput = {
   printer_id: string;
   spool_id: string;
@@ -379,6 +388,26 @@ export async function setActivePrinter(printerId?: string | null) {
 
 export async function assignPrinterSlot(input: AssignPrinterSlotInput) {
   return invoke<void>("assign_printer_slot", { input });
+}
+
+export async function operatePrinterSlot(input: PrinterSlotOperationInput) {
+  return invoke<void>("operate_printer_slot", { input });
+}
+
+export async function operateLibrarySyncHostPrinterSlot(
+  baseUrl: string,
+  expectedLibraryId: string,
+  expectedTargetGeneration: number,
+  operation: PrinterSlotOperationInput,
+) {
+  return invoke<void>("operate_library_sync_host_printer_slot", {
+    input: {
+      base_url: baseUrl,
+      expected_library_id: expectedLibraryId,
+      expected_target_generation: expectedTargetGeneration,
+      operation,
+    },
+  });
 }
 
 export async function assignLibrarySyncHostPrinterSlot(

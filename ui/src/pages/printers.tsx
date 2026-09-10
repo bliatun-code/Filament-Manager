@@ -270,7 +270,9 @@ export default function PrintersPage() {
     clientLibraryId,
     clientPrinterSource,
     clientReadOnly,
+    clientTargetGeneration,
     ensureLocalWriteAllowed,
+    librarySyncReady,
     locale,
     printers,
     reloadData,
@@ -789,6 +791,7 @@ export default function PrintersPage() {
         <IncomingWeightModal
           amsEstimateAvailable={liveAmsWeightAvailable}
           busy={busy}
+          error={error}
           prompt={incomingWeightPrompt}
           incomingWeightValue={incomingWeightValue}
           outgoingWeightValue={outgoingWeightValue}

@@ -49,6 +49,8 @@ export const zhTWDictionary: DictionaryNode = {
     "optional": "選填"
   },
   "errors": {
+    "printerSlotChanged": "此插槽中的料捲已變更。請重新開啟插槽操作並確認目前的料捲。",
+    "printerSlotHostUnsupported": "變更印表機插槽或其中料捲的重量前，請升級主機。未傳送任何變更。",
     "catalogSpoolBatchInvalid": "批次未儲存。請檢查所選耗材、重量、擁有者及存放位置。最多可使用 100 卷耗材。",
     "catalogSpoolBatchConflict": "此批次 ID 屬於另一個請求或資料庫。登錄另一批次前，請先檢查庫存。",
     "catalogSpoolBatchHostUnsupported": "請升級 Host 以安全登錄批次。未傳送任何耗材卷。",

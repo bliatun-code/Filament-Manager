@@ -37,10 +37,11 @@ test("location lifecycle errors have distinct localizable descriptors", () => {
   }
 });
 
-test("atomic printer slot failures use existing localized messages without raw details", () => {
+test("atomic printer slot failures explain stale slots and older Hosts without raw details", () => {
   for (const [code, expectedKey] of [
     ["printers.slot_operation_invalid", "errors.invalidRequest"],
-    ["printers.slot_operation_stale", "status.printerSlotFailed"],
+    ["printers.slot_operation_stale", "errors.printerSlotChanged"],
+    ["printers.slot_operation_host_unsupported", "errors.printerSlotHostUnsupported"],
   ]) {
     const message = localizedAppError(
       { code, message: "internal validation detail" },
