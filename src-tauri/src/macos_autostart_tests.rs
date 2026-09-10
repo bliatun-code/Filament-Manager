@@ -97,6 +97,7 @@ fn macos_autostart_new_registration_uses_bundle_association_and_escaped_backgrou
     let mut expected = fixture.legacy();
     expected.insert("AssociatedBundleIdentifiers".into(), association());
     assert_eq!(fixture.read(), expected);
+    assert!(has_registration(&fixture.agents, &fixture.executable).unwrap());
     assert!(is_enabled(&fixture.agents, &fixture.executable).unwrap());
     assert!(fs::read_to_string(fixture.path())
         .unwrap()
@@ -109,6 +110,7 @@ fn macos_autostart_new_registration_uses_bundle_association_and_escaped_backgrou
 #[test]
 fn macos_autostart_reconcile_absent_agent_never_opts_in_or_creates_directories() {
     let fixture = Fixture::new();
+    assert!(!has_registration(&fixture.agents, &fixture.executable).unwrap());
     assert!(!reconcile(&fixture.agents, &fixture.executable).unwrap());
     assert!(!fixture.agents.exists());
     disable(&fixture.agents, &fixture.executable).unwrap();
@@ -133,6 +135,7 @@ fn macos_autostart_reconcile_only_adds_association_and_is_byte_stable_afterwards
         .push(Value::String("--custom-user-argument".into()));
     fixture.save(legacy.clone());
     fs::set_permissions(fixture.path(), fs::Permissions::from_mode(0o640)).unwrap();
+    assert!(has_registration(&fixture.agents, &fixture.executable).unwrap());
     assert!(reconcile(&fixture.agents, &fixture.executable).unwrap());
     legacy.insert("AssociatedBundleIdentifiers".into(), association());
     assert_eq!(fixture.read(), legacy);
@@ -140,6 +143,7 @@ fn macos_autostart_reconcile_only_adds_association_and_is_byte_stable_afterwards
     assert_eq!(fs::metadata(fixture.path()).unwrap().mode() & 0o777, 0o640);
     let after = fs::read(fixture.path()).unwrap();
     let metadata = fs::metadata(fixture.path()).unwrap();
+    assert!(has_registration(&fixture.agents, &fixture.executable).unwrap());
     assert!(!reconcile(&fixture.agents, &fixture.executable).unwrap());
     assert_eq!(fs::read(fixture.path()).unwrap(), after);
     assert!(same_file(&metadata, &fs::metadata(fixture.path()).unwrap()));
@@ -229,6 +233,10 @@ fn macos_autostart_rejects_unrecognized_label_program_or_arguments_without_modif
         fixture.save(dictionary);
         let before = fs::read(fixture.path()).unwrap();
         assert!(
+            has_registration(&fixture.agents, &fixture.executable).is_err(),
+            "{malformed}"
+        );
+        assert!(
             reconcile(&fixture.agents, &fixture.executable).is_err(),
             "{malformed}"
         );
@@ -255,6 +263,7 @@ fn macos_autostart_another_bundle_copy_cannot_repoint_or_reconcile_installed_reg
     fixture.save(fixture.legacy());
     let another = Fixture::bundle(&fixture.root, "Temporary Copy.app");
     let before = fs::read(fixture.path()).unwrap();
+    assert!(has_registration(&fixture.agents, &another).is_err());
     assert!(reconcile(&fixture.agents, &another).is_err());
     assert!(enable(&fixture.agents, &another).is_err());
     assert!(disable(&fixture.agents, &another).is_err());
@@ -285,6 +294,10 @@ fn macos_autostart_refuses_malformed_nonregular_symlink_and_hardlink_agents() {
             _ => fs::hard_link(&referenced, fixture.path()).unwrap(),
         }
         let before = fs::symlink_metadata(fixture.path()).unwrap();
+        assert!(
+            has_registration(&fixture.agents, &fixture.executable).is_err(),
+            "{kind}"
+        );
         assert!(
             reconcile(&fixture.agents, &fixture.executable).is_err(),
             "{kind}"
@@ -317,6 +330,7 @@ fn macos_autostart_refuses_symlinked_launchagents_directory() {
     let other = fixture.root.join("other-directory");
     fs::create_dir(&other).unwrap();
     symlink(&other, &fixture.agents).unwrap();
+    assert!(has_registration(&fixture.agents, &fixture.executable).is_err());
     assert!(enable(&fixture.agents, &fixture.executable).is_err());
     assert!(reconcile(&fixture.agents, &fixture.executable).is_err());
     assert_eq!(fs::read_dir(&other).unwrap().count(), 0);
@@ -422,6 +436,7 @@ fn macos_autostart_rejects_non_utf8_executable_paths_without_replacing_agent() {
     assert!(executable.to_str().is_none());
     let error = validate_installed_executable(&executable).unwrap_err();
     assert!(error.contains("cannot be represented in a launch agent plist"));
+    assert!(has_registration(&fixture.agents, &executable).is_err());
     assert!(enable(&fixture.agents, &executable).is_err());
     assert!(reconcile(&fixture.agents, &executable).is_err());
     assert!(disable(&fixture.agents, &executable).is_err());

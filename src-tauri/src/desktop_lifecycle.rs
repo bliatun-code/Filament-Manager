@@ -820,20 +820,24 @@ fn reconcile_macos_autostart(app: &AppHandle) {
     if crate::macos_autostart::validate_installed_executable(&executable).is_err() {
         return;
     }
-    match crate::macos_autostart::reconcile(&directory, &executable) {
-        Ok(changed) => {
-            // Register even if a previous launch already repaired the plist but
-            // Launch Services was unavailable. The same bundle identity is reused.
-            if (changed
-                || crate::macos_autostart::is_enabled(&directory, &executable).unwrap_or(false))
-                && let Err(error) = crate::macos_app_registration::register(&executable)
-            {
-                eprintln!("Could not register the launch-at-login application: {error}");
-            }
-        }
+    match crate::macos_autostart::has_registration(&directory, &executable) {
+        Ok(false) => return,
+        Ok(true) => {}
         Err(error) => {
-            eprintln!("Could not associate launch at login with this application: {error}")
+            eprintln!("Could not inspect the launch-at-login registration: {error}");
+            return;
         }
+    }
+    // The app must be known to Launch Services before the agent file changes:
+    // that file event is when macOS resolves its associated app and signing team.
+    // Keep the old plist on registration failure so the next attempt can retry
+    // in the same order, including for a recognized but disabled registration.
+    if let Err(error) = crate::macos_app_registration::register(&executable) {
+        eprintln!("Could not register the launch-at-login application: {error}");
+        return;
+    }
+    if let Err(error) = crate::macos_autostart::reconcile(&directory, &executable) {
+        eprintln!("Could not associate launch at login with this application: {error}");
     }
 }
 

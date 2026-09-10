@@ -225,6 +225,13 @@ fn association() -> Value {
     Value::Array(vec![Value::String(BUNDLE_ID.into())])
 }
 
+/// Confirm ownership before registering this app with Launch Services. Disabled
+/// agents still need attribution; an absent agent must not opt the user in.
+pub(crate) fn has_registration(directory: &Path, executable: &Path) -> Result<bool, String> {
+    let executable = validate_installed_executable(executable)?;
+    Ok(read_agent(directory, &executable)?.is_some())
+}
+
 pub(crate) fn is_enabled(directory: &Path, executable: &Path) -> Result<bool, String> {
     let executable = validate_installed_executable(executable)?;
     let Some(agent) = read_agent(directory, &executable)? else {

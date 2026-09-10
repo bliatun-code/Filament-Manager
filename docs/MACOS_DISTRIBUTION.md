@@ -77,7 +77,9 @@ The publisher's signing identity remains part of the app's valid signature.
 The startup repair in this source version adds the missing association to an
 existing recognized registration. It preserves your launch and background
 permission choices and does not turn on launch at login when no registration
-exists. The repair was verified locally against an installed 0.30.0 app; it
+exists. Existing macOS caches can retain an older publisher grouping even after
+the metadata and icon are correct. The repair and a separate cache refresh were
+verified locally against an installed 0.30.0 app; the source change
 has not yet been verified through a packaged app upgrade or published in a
 new release. See the
 [verification record](MACOS_AUTOSTART_IDENTITY_2026-09-10.md) for the tested

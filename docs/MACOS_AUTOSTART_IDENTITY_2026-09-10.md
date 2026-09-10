@@ -1,7 +1,8 @@
 # macOS Login Items Identity — 10 September 2026
 
-Status: **The local metadata repair restored the Filament Manager name and app
-icon in System Settings. Local Rust tests, Clippy, contracts, and dependency
+Status: **The metadata and icon repair is verified. Local name correction has
+been temporary because the older macOS grouping returned, so stable attribution
+is still under investigation. Local Rust tests, Clippy, contracts, and dependency
 checks passed. CI and a packaged app upgrade containing this change remain
 pending.**
 
@@ -35,7 +36,10 @@ permissions. An absent registration stays absent, and a second reconciliation
 leaves an already-correct file unchanged. Malformed, mismatched, linked, or
 nonregular files are rejected. Another app copy cannot repoint the existing
 registration. Launch Services is refreshed through the public `LSRegisterURL`
-API.
+API after validating the existing registration and before changing the agent
+file. A registration failure leaves the old plist intact for a later retry in
+that order. Recognized disabled agents receive the same association repair;
+absent agents and other executable paths do not trigger registration.
 
 Visual QA, packaged desktop/Host–Client tests, and explicit database overrides
 skip automatic migration. Unbundled development executables, mounted DMGs, and
@@ -59,8 +63,8 @@ preserved disabled state and explicit re-enabling; scoped deletion; rejected
 identity, path, and file types; failed writes; detected concurrent changes;
 and non-UTF-8 paths.
 
-The same thirteen tests also passed in the actual desktop test binary. The full
-`npm run test:rust` gate then passed: 665 desktop tests, 295 core tests, 15 mDNS
+The same thirteen tests also passed in the actual desktop test binary. On the
+first candidate (`d57e664e`), the full `npm run test:rust` gate passed: 665 desktop tests, 295 core tests, 15 mDNS
 tests, three generator tests, and both dev/release Clippy profiles. Three
 existing tests remain ignored. `npm run check:contracts`, Cargo and npm license
 checks, and `cargo audit` passed; the audit still reports seven warnings from
@@ -70,6 +74,11 @@ has a documented exception to the path-portability check.
 
 The locked workspace check with all targets and features also passed on the
 supported Rust 1.88 minimum version.
+
+The ordering follow-up extended the same thirteen filesystem tests to cover
+registration presence, including disabled agents and ownership refusal. All
+thirteen passed again, along with thirteen desktop-lifecycle tests, both Clippy
+profiles, Rust 1.88, formatting, and the full contract gate.
 
 A private helper exercised the actual agent-management and bundle-registration
 modules against the existing signed **0.30.0** installation on **macOS 27**.
@@ -90,7 +99,46 @@ attribution, not the signing identity.
 `codesign --verify --deep --strict` also passed for the installed application
 after the metadata repair.
 
-This verifies the metadata repair on an existing installation. It does not
+## Cache Follow-up And Packaged Verification
+
+After local verification, System Settings reverted to the publisher row, now
+with the correct icon. The plist remained byte-for-byte identical. BTM still
+had the correct agent name and association, but its parent remained the
+publisher and the associated app record was missing. Launch Services listed
+only the real installed application; no remaining duplicate was observed.
+The exact trigger of this cache change was not established.
+
+Registering the real bundle again, reopening the settings page, and a scoped
+Launch Services unregister/register did not restore the display. Refreshing
+only the owned agent's modification time after bundle registration restored
+one Filament Manager row with its icon. Its bytes, permissions, UUID, and OS
+approval stayed unchanged; BTM advanced the agent generation. This local
+diagnostic repair is separate from the shipped implementation: the app does
+not use `lsregister`, touch correct files on every launch, or reset BTM.
+The observation motivated registering the app before migrating its agent.
+
+The old grouping later returned without another packaged QA run, so test-copy
+registration alone does not explain it. The already-loaded launchd job was
+confirmed idle and explicitly enabled. Reloading only that job preserved the
+enabled override and the existing application process but did not immediately
+correct the grouping. The local `launchctl` diagnostic is not part of the
+shipped migration, which never unloads a potentially running application.
+
+[Apple DTS has described a similar icon-correct/name-stale case](https://developer.apple.com/forums/thread/721902)
+with legacy registrations and recommended testing an old-to-new installation
+on a clean machine. That older report is not proof of the exact same macOS 27
+defect. Correct metadata does not guarantee that every existing OS cache is
+immediately repaired.
+
+An optimized arm64 DMG passed local bundle, architecture, and ad-hoc signature
+verification. The full local desktop smoke encountered the existing running
+production app's single-instance gate and exited before writing its mutation
+result; this is not a passing desktop run. A separate copy installed privately
+from that DMG passed all six packaged Host/Client phases, including recovery,
+session renewal, and credential cleanup. The real agent stayed byte-identical,
+and the private test work directory and installed test copy were removed.
+
+This verifies the metadata repair and a packaged Host/Client run. It does not
 yet verify migration through an installed app upgrade, next-login execution,
 or behavior on other macOS versions. CI remains pending. Private backups,
 screenshots, paths, signing identifiers, and raw background-task records are
