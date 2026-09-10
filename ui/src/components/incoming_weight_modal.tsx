@@ -4,12 +4,14 @@ import { formatDisplayPercent } from "../lib/number_display";
 import { formatDateTime, formatGrams, toSwatchColor } from "../lib/printer_live_display";
 import type { IncomingWeightPrompt } from "../lib/printer_slot_model";
 import { modalFormInputClassName } from "./form_control_class";
+import { FeedbackBanner } from "./feedback_banner";
 import { ModalFormField } from "./modal_chrome";
 import { SaveOnlyModal } from "./save_only_modal";
 
 type IncomingWeightModalProps = {
   amsEstimateAvailable: boolean;
   busy: boolean;
+  error: string | null;
   prompt: IncomingWeightPrompt;
   incomingWeightValue: string;
   outgoingWeightValue: string;
@@ -23,6 +25,7 @@ type IncomingWeightModalProps = {
 export function IncomingWeightModal({
   amsEstimateAvailable,
   busy,
+  error,
   prompt,
   incomingWeightValue,
   outgoingWeightValue,
@@ -56,6 +59,7 @@ export function IncomingWeightModal({
       onSave={onSave}
     >
       <div className="space-y-3">
+        {error ? <FeedbackBanner tone="danger" compact>{error}</FeedbackBanner> : null}
         {amsEstimate ? (
           <div
             data-testid="printer-ams-weight-estimate"

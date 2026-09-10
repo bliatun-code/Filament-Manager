@@ -195,6 +195,8 @@ export const plPLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Zapasowy próg 200 g dla starszej wersji hosta"
   },
   "errors": {
+    "printerSlotChanged": "Szpula w tym slocie uległa zmianie. Otwórz ponownie działanie slotu i potwierdź aktualną szpulę.",
+    "printerSlotHostUnsupported": "Zaktualizuj Host przed zmianą slotów drukarki lub masy znajdujących się w nich szpul. Nie wysłano żadnych zmian.",
     "catalogSpoolBatchInvalid": "Partia nie została zapisana. Sprawdź wybrane filamenty, masę, właściciela i lokalizację. Użyj maksymalnie 100 szpul.",
     "catalogSpoolBatchConflict": "Ten identyfikator partii należy do innego żądania lub biblioteki. Sprawdź stan magazynu przed zarejestrowaniem kolejnej partii.",
     "catalogSpoolBatchHostUnsupported": "Zaktualizuj Host, aby bezpiecznie rejestrować partie. Nie wysłano żadnych szpul.",

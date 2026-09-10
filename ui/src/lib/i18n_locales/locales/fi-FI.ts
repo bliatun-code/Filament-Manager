@@ -49,6 +49,8 @@ export const fiFIDictionary: DictionaryNode = {
     "optional": "valinnainen"
   },
   "errors": {
+    "printerSlotChanged": "Tämän paikan kela on vaihtunut. Avaa paikan toiminto uudelleen ja vahvista nykyinen kela.",
+    "printerSlotHostUnsupported": "Päivitä Host ennen tulostinpaikkojen tai niissä olevien kelojen painojen muuttamista. Muutoksia ei lähetetty.",
     "catalogSpoolBatchInvalid": "Erää ei tallennettu. Tarkista valitut filamentit, paino, omistaja ja sijainti. Käytä enintään 100 kelaa.",
     "catalogSpoolBatchConflict": "Tämä erätunnus kuuluu toiseen pyyntöön tai kirjastoon. Tarkista varasto ennen uuden erän rekisteröintiä.",
     "catalogSpoolBatchHostUnsupported": "Päivitä Host, jotta voit rekisteröidä erät turvallisesti. Yhtään kelaa ei lähetetty.",

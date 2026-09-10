@@ -7,6 +7,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,8 +32,6 @@ import {
   buildSlotSwapDraft,
   findPrinterSlotById,
   parseWeightInput,
-  prepareMeasuredWeightUpdate,
-  preparePrinterSlotAssignment,
   resolveLiveRfidObservedAt,
   type IncomingWeightPrompt,
   type SlotCatalogOnboardingPrompt,
@@ -40,11 +39,9 @@ import {
   type SlotSwapDraft,
 } from "../lib/printer_slot_model";
 import {
-  writePreparedMeasuredWeightUpdate,
-  writePreparedPrinterSlotAssignment,
   writeAcceptedBambuLiveWeightEstimate,
   writePrinterSlotAssignment,
-  writeSpoolMeasuredWeight,
+  writePrinterSlotOperation,
 } from "../lib/printer_slot_writes";
 import {
   commandErrorText as printerCommandErrorText,
@@ -86,7 +83,9 @@ type UsePrinterSlotInteractionsInput = {
   clientLibraryId: string | null;
   clientPrinterSource: PrinterSnapshotSource;
   clientReadOnly: boolean;
+  clientTargetGeneration: number | null;
   ensureLocalWriteAllowed: () => boolean;
+  librarySyncReady: boolean;
   locale: string;
   printers: PrinterOverviewRow[];
   reloadData: () => Promise<void>;
@@ -106,7 +105,9 @@ export function usePrinterSlotInteractions({
   clientLibraryId,
   clientPrinterSource,
   clientReadOnly,
+  clientTargetGeneration,
   ensureLocalWriteAllowed,
+  librarySyncReady,
   locale,
   printers,
   reloadData,
@@ -128,7 +129,15 @@ export function usePrinterSlotInteractions({
     useState<SlotRfidOverridePrompt | null>(null);
   const [slotCatalogOnboardingPrompt, setSlotCatalogOnboardingPrompt] =
     useState<SlotCatalogOnboardingPrompt | null>(null);
-  const amsWeightAcceptInFlightRef = useRef(false);
+  const weightOperationRef = useRef<symbol | null>(null);
+  const weightPromptRef = useRef<IncomingWeightPrompt | null>(null);
+  const mountedRef = useRef(false);
+  const scopeKey = JSON.stringify([
+    tauri, librarySyncReady, clientReadOnly, clientHostBaseUrl,
+    clientLibraryId, clientTargetGeneration,
+  ]);
+  const scope = useMemo(() => ({ key: scopeKey }), [scopeKey]);
+  const scopeRef = useRef(scope);
 
   useEffect(() => {
     if (!incomingWeightPrompt?.amsWeightEstimate) {
@@ -140,6 +149,11 @@ export function usePrinterSlotInteractions({
   }, [incomingWeightPrompt]);
 
   const resetPrinterInteractionState = useCallback(() => {
+    weightPromptRef.current = null;
+    if (weightOperationRef.current) {
+      weightOperationRef.current = null;
+      setBusy(false);
+    }
     setSlotDrafts({});
     setOpenDropdownSlotId(null);
     setIncomingWeightPrompt(null);
@@ -147,7 +161,21 @@ export function usePrinterSlotInteractions({
     setOutgoingWeightValue("");
     setRfidOverridePrompt(null);
     setSlotCatalogOnboardingPrompt(null);
-  }, []);
+  }, [setBusy]);
+
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    scopeRef.current = scope;
+    resetPrinterInteractionState();
+    setBusy(false);
+    setError(null);
+    setInfo(null);
+    return () => {
+      mountedRef.current = false;
+      weightOperationRef.current = null;
+      weightPromptRef.current = null;
+    };
+  }, [resetPrinterInteractionState, scope, setBusy, setError, setInfo]);
 
   const spoolsById = useMemo(() => buildSpoolsById(spools), [spools]);
 
@@ -296,6 +324,12 @@ export function usePrinterSlotInteractions({
 
   const openIncomingWeightDialog = useCallback(
     (printerId: string, slot: PrinterAmsSlotRow, row: SpoolWithMasterRow) => {
+      if (
+        !mountedRef.current || scopeRef.current !== scope ||
+        !librarySyncReady || busy || weightOperationRef.current
+      ) return;
+      setError(null);
+      setInfo(null);
       const { liveConfig, tray } = findLiveTrayForSlot(printerId, slot);
       const liveTray = canOfferAmsWeightEstimateFromSource(
         clientPrinterSource,
@@ -310,36 +344,47 @@ export function usePrinterSlotInteractions({
         resolveSpoolTareWeightById,
         liveTray,
       );
+      weightPromptRef.current = prepared.prompt;
       setIncomingWeightPrompt(prepared.prompt);
       setIncomingWeightValue(prepared.incomingWeightValue);
       setOutgoingWeightValue(prepared.outgoingWeightValue);
     },
-    [clientPrinterSource, findLiveTrayForSlot, resolveSpoolTareWeightById],
+    [busy, clientPrinterSource, findLiveTrayForSlot, librarySyncReady, resolveSpoolTareWeightById, scope, setError, setInfo],
   );
 
   const openEmptySlotWeightDialog = useCallback(
     (printerId: string, slot: PrinterAmsSlotRow) => {
-      if (!slot.spool_id) {
+      if (
+        !mountedRef.current || scopeRef.current !== scope || !slot.spool_id ||
+        !librarySyncReady || busy || weightOperationRef.current
+      ) {
         return;
       }
+      setError(null);
+      setInfo(null);
       const prepared = prepareEmptySlotWeightDialog(
         printerId,
         slot,
         resolveSpoolTareWeightById,
       );
+      weightPromptRef.current = prepared.prompt;
       setIncomingWeightPrompt(prepared.prompt);
       setIncomingWeightValue(prepared.incomingWeightValue);
       setOutgoingWeightValue(prepared.outgoingWeightValue);
     },
-    [resolveSpoolTareWeightById],
+    [busy, librarySyncReady, resolveSpoolTareWeightById, scope, setError, setInfo],
   );
 
   const cancelIncomingWeightDialog = useCallback(() => {
-    if (busy) {
+    if (
+      busy || weightOperationRef.current || !mountedRef.current ||
+      weightPromptRef.current !== incomingWeightPrompt
+    ) {
       return;
     }
 
     const closed = buildClosedSlotWeightDialog(incomingWeightPrompt);
+    weightPromptRef.current = null;
     if (closed.discardSlotId) {
       setSlotDrafts((current) =>
         discardIncomingWeightSlotDraft(current, closed.discardSlotId),
@@ -350,192 +395,65 @@ export function usePrinterSlotInteractions({
     setOutgoingWeightValue(closed.outgoingWeightValue);
   }, [busy, incomingWeightPrompt]);
 
-  const applyMeasuredWeightWithUsage = useCallback(
-    async (
-      printerId: string,
-      spoolId: string,
-      previousRemaining: number | null | undefined,
-      measuredTotalWeight: number,
-      tareWeight: number,
-    ) => {
-      const preparedWeight = prepareMeasuredWeightUpdate(
-        previousRemaining,
-        measuredTotalWeight,
-        tareWeight,
-      );
-      await writePreparedMeasuredWeightUpdate(
-        {
-          clientReadOnly,
-          clientHostBaseUrl,
-          clientLibraryId,
-        },
-        printerId,
-        spoolId,
-        preparedWeight,
-      );
-    },
-    [clientHostBaseUrl, clientLibraryId, clientReadOnly],
-  );
+  const runWeightOperation = useCallback(async (
+    prompt: IncomingWeightPrompt,
+    write: () => Promise<void>,
+    successMessage: string,
+    failureMessage: string,
+  ) => {
+    if (
+      !tauri || !librarySyncReady || busy || weightOperationRef.current ||
+      !mountedRef.current || scopeRef.current !== scope ||
+      weightPromptRef.current !== prompt
+    ) return;
+    if (!clientReadOnly && !ensureLocalWriteAllowed()) return;
+    if (clientReadOnly && !canUseClientHostWrite()) return;
 
-  const applySlotChange = useCallback(
-    async (
-      printerId: string,
-      slot: PrinterAmsSlotRow,
-      overrides?: {
-        targetSpoolId: string | null;
-        outgoingWeight: number | null;
-        incomingWeight: number | null;
-      },
-    ) => {
-      if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-        return false;
-      }
-      if (clientReadOnly && !canUseClientHostWrite()) {
-        return false;
-      }
-      if (!tauri || busy) {
-        return false;
-      }
-      const draft = overrides ? null : getSlotDraft(slot);
-      const targetSpoolId = overrides ? overrides.targetSpoolId : draft?.targetSpoolId || null;
-      const outgoingWeightRaw = overrides ? "" : draft?.outgoingWeight.trim() ?? "";
-      const incomingWeightRaw = overrides ? "" : draft?.incomingWeight.trim() ?? "";
-      const outgoingWeight = overrides
-        ? overrides.outgoingWeight
-        : parseWeightInput(outgoingWeightRaw);
-      const incomingWeight = overrides
-        ? overrides.incomingWeight
-        : parseWeightInput(incomingWeightRaw);
-      const { tray: liveTray } = findLiveTrayForSlot(printerId, slot);
-      const preparedAssignment = preparePrinterSlotAssignment(
-        printerId,
-        slot,
-        targetSpoolId,
-        liveTray,
-      );
-      const { currentSpoolId } = preparedAssignment;
+    const operation = Symbol("printer-weight-operation");
+    weightOperationRef.current = operation;
+    const isCurrent = () => mountedRef.current &&
+      scopeRef.current === scope && weightOperationRef.current === operation;
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      await write();
+      if (!isCurrent() || weightPromptRef.current !== prompt) return;
 
-      if (!overrides && outgoingWeightRaw && outgoingWeight == null) {
-        setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
-        return false;
-      }
-      if (!overrides && incomingWeightRaw && incomingWeight == null) {
-        setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
-        return false;
-      }
-
-      if (
-        !preparedAssignment.shouldAssignSlot &&
-        outgoingWeight == null &&
-        incomingWeight == null
-      ) {
-        setInfo(t("printers.noPendingChanges", "No pending slot changes."));
-        return false;
-      }
-
-      setBusy(true);
-      setError(null);
-      setInfo(null);
+      // The write committed. Close its dialog before refreshing so a failed
+      // refresh cannot turn the completed operation into another submission.
+      weightPromptRef.current = null;
+      setIncomingWeightPrompt(null);
+      setIncomingWeightValue("");
+      setOutgoingWeightValue("");
+      setSlotDrafts((current) => discardIncomingWeightSlotDraft(current, prompt.slotId));
+      setInfo(successMessage);
       try {
-        if (currentSpoolId && preparedAssignment.hasChange) {
-          if (outgoingWeight == null) {
-            throw new Error(
-              t(
-                "printers.error.outgoingWeightRequired",
-                "Enter outgoing spool weight before swapping rolls.",
-              ),
-            );
-          }
-          await applyMeasuredWeightWithUsage(
-            printerId,
-            currentSpoolId,
-            slot.spool_remaining_g,
-            outgoingWeight,
-            resolveSpoolTareWeightById(currentSpoolId),
-          );
-        } else if (
-          currentSpoolId &&
-          !preparedAssignment.hasChange &&
-          (incomingWeight != null || outgoingWeight != null)
-        ) {
-          const sameRollMeasuredWeight = incomingWeight ?? outgoingWeight;
-          if (sameRollMeasuredWeight != null) {
-            await applyMeasuredWeightWithUsage(
-              printerId,
-              currentSpoolId,
-              slot.spool_remaining_g,
-              sameRollMeasuredWeight,
-              resolveSpoolTareWeightById(currentSpoolId),
-            );
-          }
-        }
-
-        if (preparedAssignment.shouldAssignSlot) {
-          await writePreparedPrinterSlotAssignment(
-            {
-              clientReadOnly,
-              clientHostBaseUrl,
-              clientLibraryId,
-            },
-            preparedAssignment,
-          );
-        }
-
-        if (
-          preparedAssignment.hasChange &&
-          preparedAssignment.targetSpoolId &&
-          incomingWeight != null
-        ) {
-          await writeSpoolMeasuredWeight(
-            {
-              clientReadOnly,
-              clientHostBaseUrl,
-              clientLibraryId,
-            },
-            preparedAssignment.targetSpoolId,
-            incomingWeight,
-          );
-        }
         await reloadData();
-        setInfo(t("printers.slotUpdated", "Printer slot updated."));
-        return true;
-      } catch (updateError) {
-        console.error(updateError);
-        setError(
-          printerCommandErrorText(
-            updateError,
-            t("printers.error.updateSlot", "Failed to update printer slot."),
-          ),
-        );
-        return false;
-      } finally {
+      } catch (refreshError) {
+        console.error(refreshError);
+        if (isCurrent()) {
+          setError(t("printers.error.load", "Failed to load printer overview."));
+        }
+      }
+    } catch (writeError) {
+      console.error(writeError);
+      if (isCurrent() && weightPromptRef.current === prompt) {
+        setError(printerCommandErrorText(writeError, failureMessage, t));
+      }
+    } finally {
+      if (isCurrent()) {
+        weightOperationRef.current = null;
         setBusy(false);
       }
-    },
-    [
-      applyMeasuredWeightWithUsage,
-      busy,
-      canUseClientHostWrite,
-      clientHostBaseUrl,
-      clientLibraryId,
-      clientReadOnly,
-      ensureLocalWriteAllowed,
-      findLiveTrayForSlot,
-      getSlotDraft,
-      reloadData,
-      resolveSpoolTareWeightById,
-      setBusy,
-      setError,
-      setInfo,
-      tauri,
-      t,
-    ],
-  );
+    }
+  }, [
+    busy, canUseClientHostWrite, clientReadOnly, ensureLocalWriteAllowed,
+    librarySyncReady, reloadData, scope, setBusy, setError, setInfo, tauri, t,
+  ]);
 
   const confirmIncomingWeightDialog = useCallback(async () => {
-    if (!incomingWeightPrompt) {
-      return;
-    }
+    if (!incomingWeightPrompt || weightPromptRef.current !== incomingWeightPrompt) return;
     const parsedIncoming = incomingWeightPrompt.requiresIncomingWeight
       ? parseWeightInput(incomingWeightValue)
       : null;
@@ -555,33 +473,37 @@ export function usePrinterSlotInteractions({
       );
       return;
     }
-    const printer = printers.find((item) => item.printer.id === incomingWeightPrompt.printerId);
-    const slot = printer?.slots.find((item) => item.slot_id === incomingWeightPrompt.slotId);
-    if (!printer || !slot) {
-      setError(t("printers.error.updateSlot", "Failed to update printer slot."));
+    const slot = findPrinterSlotById(
+      printers, incomingWeightPrompt.printerId, incomingWeightPrompt.slotId,
+    );
+    if (!slot || (slot.spool_id ?? null) !== incomingWeightPrompt.expectedCurrentSpoolId) {
+      setError(t(
+        "errors.printerSlotChanged",
+        "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
+      ));
       return;
     }
 
-    const applied = await applySlotChange(printer.printer.id, slot, {
-      targetSpoolId: incomingWeightPrompt.targetSpoolId,
-      incomingWeight: parsedIncoming,
-      outgoingWeight: incomingWeightPrompt.requiresOutgoingWeight ? parsedOutgoing : null,
-    });
-    if (!applied) {
-      return;
-    }
-
-    setIncomingWeightPrompt(null);
-    setIncomingWeightValue("");
-    setOutgoingWeightValue("");
+    await runWeightOperation(
+      incomingWeightPrompt,
+      () => writePrinterSlotOperation(
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
+        {
+          printer_id: incomingWeightPrompt.printerId,
+          slot_id: incomingWeightPrompt.slotId,
+          expected_current_spool_id: incomingWeightPrompt.expectedCurrentSpoolId,
+          target_spool_id: incomingWeightPrompt.targetSpoolId,
+          outgoing_measured_total_g: parsedOutgoing,
+          incoming_measured_total_g: parsedIncoming,
+        },
+      ),
+      t("printers.slotUpdated", "Printer slot updated."),
+      t("printers.error.updateSlot", "Failed to update printer slot."),
+    );
   }, [
-    applySlotChange,
-    incomingWeightPrompt,
-    incomingWeightValue,
-    outgoingWeightValue,
-    printers,
-    setError,
-    t,
+    clientHostBaseUrl, clientLibraryId, clientReadOnly, clientTargetGeneration,
+    incomingWeightPrompt, incomingWeightValue, outgoingWeightValue, printers,
+    runWeightOperation, setError, t,
   ]);
 
   const acceptIncomingAmsWeightEstimate = useCallback(async () => {
@@ -589,9 +511,7 @@ export function usePrinterSlotInteractions({
     if (
       !incomingWeightPrompt ||
       !expected ||
-      !tauri ||
-      busy ||
-      amsWeightAcceptInFlightRef.current
+      weightPromptRef.current !== incomingWeightPrompt
     ) {
       return;
     }
@@ -627,17 +547,10 @@ export function usePrinterSlotInteractions({
       return;
     }
 
-    amsWeightAcceptInFlightRef.current = true;
-    setBusy(true);
-    setError(null);
-    setInfo(null);
-    try {
-      await writeAcceptedBambuLiveWeightEstimate(
-        {
-          clientReadOnly,
-          clientHostBaseUrl,
-          clientLibraryId,
-        },
+    await runWeightOperation(
+      incomingWeightPrompt,
+      () => writeAcceptedBambuLiveWeightEstimate(
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
         {
           printer_id: printer.printer.id,
           slot_id: slot.slot_id,
@@ -646,50 +559,18 @@ export function usePrinterSlotInteractions({
           expected_remaining_grams: expected.remainingGrams,
           expected_current_grams: expected.expectedCurrentGrams,
         },
-      );
-      await reloadData();
-      setIncomingWeightPrompt(null);
-      setIncomingWeightValue("");
-      setOutgoingWeightValue("");
-      setInfo(
-        t(
-          "printers.amsWeightAccepted",
-          "Weight updated from the current AMS estimate.",
-        ),
-      );
-    } catch (acceptError) {
-      console.error(acceptError);
-      setError(
-        printerCommandErrorText(
-          acceptError,
-          t(
-            "printers.error.amsWeightEstimateChanged",
-            "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
-          ),
-        ),
-      );
-    } finally {
-      amsWeightAcceptInFlightRef.current = false;
-      setBusy(false);
-    }
+      ),
+      t("printers.amsWeightAccepted", "Weight updated from the current AMS estimate."),
+      t(
+        "printers.error.amsWeightEstimateChanged",
+        "The AMS estimate or exact roll match changed. Reopen Update weight and try again.",
+      ),
+    );
   }, [
-    busy,
-    canUseClientHostWrite,
-    clientHostBaseUrl,
-    clientLibraryId,
-    clientReadOnly,
-    ensureLocalWriteAllowed,
-    findLiveTrayForSlot,
-    findSpoolById,
-    incomingWeightPrompt,
-    liveAmsWeightAvailable,
-    printers,
-    reloadData,
-    setBusy,
-    setError,
-    setInfo,
-    tauri,
-    t,
+    canUseClientHostWrite, clientHostBaseUrl, clientLibraryId, clientReadOnly,
+    ensureLocalWriteAllowed, findLiveTrayForSlot, findSpoolById,
+    incomingWeightPrompt, liveAmsWeightAvailable, printers, runWeightOperation,
+    setError, t,
   ]);
 
   const handleSaveOverrideRfid = useCallback(async () => {

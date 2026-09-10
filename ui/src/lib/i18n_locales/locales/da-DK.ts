@@ -71,6 +71,8 @@ export const daDKDictionary: DictionaryNode = {
     "optional": "Valgfrit"
   },
   "errors": {
+    "printerSlotChanged": "Rullen i dette spor er ændret. Åbn sporhandlingen igen, og bekræft den aktuelle rulle.",
+    "printerSlotHostUnsupported": "Opgrader værten, før du ændrer printerspor eller vægten på rullerne i dem. Ingen ændringer blev sendt.",
     "catalogSpoolBatchInvalid": "Batchen blev ikke gemt. Kontrollér de valgte filamenter, vægt, ejer og placering. Brug højst 100 ruller.",
     "catalogSpoolBatchConflict": "Dette batch-ID tilhører en anden anmodning eller et andet bibliotek. Kontrollér lageret, før du registrerer en ny batch.",
     "catalogSpoolBatchHostUnsupported": "Opgrader Host for at registrere batches sikkert. Ingen ruller blev sendt.",

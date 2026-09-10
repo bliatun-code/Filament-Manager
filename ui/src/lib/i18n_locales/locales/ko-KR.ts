@@ -49,6 +49,8 @@ export const koKRDictionary: DictionaryNode = {
     "optional": "선택 과목"
   },
   "errors": {
+    "printerSlotChanged": "이 슬롯의 스풀이 변경되었습니다. 슬롯 작업을 다시 열고 현재 스풀을 확인하세요.",
+    "printerSlotHostUnsupported": "프린터 슬롯이나 해당 스풀의 무게를 변경하기 전에 호스트를 업그레이드하세요. 변경 사항은 전송되지 않았습니다.",
     "catalogSpoolBatchInvalid": "일괄 등록이 저장되지 않았습니다. 선택한 필라멘트, 무게, 소유자 및 위치를 확인하세요. 최대 100개의 롤을 사용하세요.",
     "catalogSpoolBatchConflict": "이 일괄 등록 ID는 다른 요청 또는 라이브러리에 속합니다. 다른 일괄 등록을 하기 전에 재고를 확인하세요.",
     "catalogSpoolBatchHostUnsupported": "일괄 등록을 안전하게 수행하려면 Host를 업그레이드하세요. 전송된 롤은 없습니다.",

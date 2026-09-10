@@ -49,6 +49,8 @@ export const jaJPDictionary: DictionaryNode = {
     "optional": "任意"
   },
   "errors": {
+    "printerSlotChanged": "このスロットのスプールが変更されました。スロット操作を開き直し、現在のスプールを確認してください。",
+    "printerSlotHostUnsupported": "プリンターのスロットやスプールの重量を変更する前に、ホストをアップグレードしてください。変更は送信されていません。",
     "catalogSpoolBatchInvalid": "一括登録は保存されませんでした。選択したフィラメント、重量、所有者、保管場所を確認してください。ロール数は 100 個以下にしてください。",
     "catalogSpoolBatchConflict": "この一括登録 ID は別のリクエストまたはライブラリに属しています。次の一括登録を行う前に在庫を確認してください。",
     "catalogSpoolBatchHostUnsupported": "一括登録を安全に行うには Host をアップグレードしてください。ロールは送信されていません。",

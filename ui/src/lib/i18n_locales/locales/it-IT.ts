@@ -224,6 +224,8 @@ export const itITDictionary: DictionaryNode = {
     totalSpoolsSubtitle: "In tutte le località",
   },
   errors: {
+    "printerSlotChanged": "La bobina in questo slot è cambiata. Riapri l’azione dello slot e conferma la bobina attuale.",
+    "printerSlotHostUnsupported": "Aggiorna l’Host prima di modificare gli slot della stampante o il peso delle bobine al loro interno. Non è stata inviata alcuna modifica.",
     catalogSpoolBatchInvalid: "Il lotto non è stato salvato. Controlla i filamenti selezionati, il peso, il proprietario e la posizione. Usa al massimo 100 bobine.",
     catalogSpoolBatchConflict: "Questo ID lotto appartiene a un’altra richiesta o libreria. Controlla l’inventario prima di registrare un altro lotto.",
     catalogSpoolBatchHostUnsupported: "Aggiorna il Host per registrare i lotti in sicurezza. Non è stata inviata alcuna bobina.",

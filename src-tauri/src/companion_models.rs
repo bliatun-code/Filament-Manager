@@ -261,6 +261,7 @@ pub(crate) const SPOOL_COMMON_DETAILS_V2_CAPABILITY: &str = "spool-common-detail
 pub(crate) const PURCHASE_RECEIPT_METADATA_CAPABILITY: &str = "purchase-receipt-metadata";
 pub(crate) const WISHLIST_RECEIPT_LOCATION_CAPABILITY: &str = "wishlist-receipt-location-v1";
 pub(crate) const CATALOG_SPOOL_BATCH_CAPABILITY: &str = "catalog-spool-batch-v1";
+pub(crate) const PRINTER_SLOT_OPERATIONS_CAPABILITY: &str = "printer-slot-operations-v1";
 pub(crate) const STATISTICS_VALUE_COST_REPORT_CAPABILITY: &str = "statistics-value-cost-report";
 pub(crate) const FILAMENT_PRICE_STANDARDS_CAPABILITY: &str = "filament-price-standards-v1";
 pub(crate) const VENDOR_CATALOG_DISCOVERY_CAPABILITY: &str = "vendor-catalog-discovery-v1";

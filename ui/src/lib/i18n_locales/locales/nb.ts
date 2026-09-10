@@ -49,6 +49,8 @@ export const nbDictionary: DictionaryNode = {
       optional: "Valgfritt",
     },
     errors: {
+      "printerSlotChanged": "Rullen i dette sporet er endret. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
+      "printerSlotHostUnsupported": "Oppgrader verten før du endrer printerspor eller vekten på rullene i dem. Ingen endringer ble sendt.",
       catalogSpoolBatchInvalid: "Batchen ble ikke lagret. Kontroller valgte filamenter, vekt, eier og lokasjon. Bruk høyst 100 ruller.",
       catalogSpoolBatchConflict: "Denne batch-ID-en tilhører en annen forespørsel eller et annet bibliotek. Kontroller lageret før du registrerer en ny batch.",
       catalogSpoolBatchHostUnsupported: "Oppgrader Host for å registrere batcher trygt. Ingen ruller ble sendt.",

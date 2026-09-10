@@ -49,6 +49,8 @@ export const deDictionary: DictionaryNode = {
     optional: "Optional",
   },
   errors: {
+    "printerSlotChanged": "Die Rolle in diesem Steckplatz hat sich geändert. Öffne die Steckplatzaktion erneut und bestätige die aktuelle Rolle.",
+    "printerSlotHostUnsupported": "Aktualisiere den Host, bevor du Druckersteckplätze oder das Gewicht ihrer Rollen änderst. Es wurden keine Änderungen gesendet.",
     catalogSpoolBatchInvalid: "Der Stapel wurde nicht gespeichert. Prüfe die ausgewählten Filamente, das Gewicht, den Eigentümer und den Lagerort. Verwende höchstens 100 Rollen.",
     catalogSpoolBatchConflict: "Diese Stapel-ID gehört zu einer anderen Anfrage oder Bibliothek. Prüfe den Bestand, bevor du einen weiteren Stapel registrierst.",
     catalogSpoolBatchHostUnsupported: "Aktualisiere den Host, um Stapel sicher zu registrieren. Es wurden keine Rollen gesendet.",

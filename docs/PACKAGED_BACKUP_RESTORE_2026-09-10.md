@@ -123,4 +123,5 @@ PR-kandidaten `a838631b` har identisk Git-tre
 og denne resultatdokumentasjonen er videreført på `codex/post-pr109` for neste
 samlede push. Hovedgrenens [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446340)
 og [CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34424446362)
-er egne kjøringer; de grønne resultatene ovenfor er fra PR-kandidaten.
+er også grønne på mergecommiten. Disse er egne kjøringer; de detaljerte
+installasjonsresultatene ovenfor er fra PR-kandidaten.

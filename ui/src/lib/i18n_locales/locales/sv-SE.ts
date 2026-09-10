@@ -71,6 +71,8 @@ export const svSEDictionary: DictionaryNode = {
     "optional": "Valfritt"
   },
   "errors": {
+    "printerSlotChanged": "Rullen i det här facket har ändrats. Öppna fackets åtgärd igen och bekräfta den aktuella rullen.",
+    "printerSlotHostUnsupported": "Uppgradera värden innan du ändrar skrivarfack eller vikten på rullarna i dem. Inga ändringar skickades.",
     "catalogSpoolBatchInvalid": "Batchen sparades inte. Kontrollera valda filament, vikt, ägare och plats. Använd högst 100 rullar.",
     "catalogSpoolBatchConflict": "Detta batch-ID tillhör en annan begäran eller ett annat bibliotek. Kontrollera lagret innan du registrerar en ny batch.",
     "catalogSpoolBatchHostUnsupported": "Uppgradera Host för att registrera batcher säkert. Inga rullar skickades.",

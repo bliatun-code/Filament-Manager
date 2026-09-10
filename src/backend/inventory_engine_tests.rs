@@ -95,6 +95,46 @@ fn seed_printer_slot_operation_fixture(
     Ok((printer_id, slot_id, outgoing_spool_id, incoming_spool_id))
 }
 
+fn printer_slot_operation_snapshot(
+    engine: &InventoryEngine,
+) -> Result<std::collections::BTreeMap<&'static str, Vec<Vec<rusqlite::types::Value>>>, String> {
+    [
+        "ams_slots",
+        "filament_spools",
+        "inventory_locations",
+        "library_domain_revisions",
+        "print_jobs",
+        "printer_live_events",
+        "printer_live_usage_sessions",
+        "printer_live_usage_session_spools",
+        "scales",
+        "settings",
+        "spool_history_events",
+        "spool_loans",
+        "weight_readings",
+    ]
+    .into_iter()
+    .map(|table| {
+        let mut statement = engine
+            .db
+            .connection()
+            .prepare(&format!("SELECT * FROM {table} ORDER BY 1"))
+            .map_err(|error| error.to_string())?;
+        let columns = statement.column_count();
+        let rows = statement
+            .query_map([], |row| {
+                (0..columns)
+                    .map(|index| row.get(index))
+                    .collect::<rusqlite::Result<Vec<rusqlite::types::Value>>>()
+            })
+            .map_err(|error| error.to_string())?
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(|error| error.to_string())?;
+        Ok((table, rows))
+    })
+    .collect()
+}
+
 #[test]
 fn create_manual_spool_rolls_back_catalog_location_and_spool_when_history_fails() {
     let db_path = temp_db_path("create-manual-atomic-rollback");
@@ -655,6 +695,354 @@ fn assign_printer_slot_rolls_back_slot_and_spool_when_history_fails() {
         panic!(
             "assign_printer_slot_rolls_back_slot_and_spool_when_history_fails failed: {message}"
         );
+    }
+}
+
+#[test]
+fn printer_slot_operation_measures_assigned_spool_once_without_reassigning() {
+    let db_path = temp_db_path("slot-operation-same-spool");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        let (printer_id, slot_id, spool_id, _) =
+            seed_printer_slot_operation_fixture(&engine, "atomic_same_spool")?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools
+             SET current_weight_g = 500, remaining_g = 500, spool_tare_weight_g = 200,
+                 rfid_tag = 'same-spool-tag', rfid_observed_at = '2026-09-01T12:00:00Z'
+             WHERE id = ?1",
+                [&spool_id],
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE ams_slots
+             SET last_seen_at = '2026-09-01T12:00:00Z',
+                 rfid_override_tray_uuid = 'same-spool-tray',
+                 rfid_override_color_hex = '#123456',
+                 live_cache_cleared_at = '2026-08-31T12:00:00Z'
+             WHERE id = ?1",
+                [&slot_id],
+            )
+            .map_err(|error| error.to_string())?;
+        let before = printer_slot_operation_snapshot(&engine)?;
+        let old_spool = engine
+            .db
+            .get_spool_by_id(&spool_id)
+            .map_err(|error| error.to_string())?
+            .ok_or("missing assigned spool")?;
+        let input = PrinterSlotOperationInput {
+            printer_id: printer_id.clone(),
+            slot_id,
+            expected_current_spool_id: Some(spool_id.clone()),
+            target_spool_id: Some(spool_id.clone()),
+            outgoing_measured_total_g: None,
+            incoming_measured_total_g: Some(600),
+        };
+
+        engine
+            .operate_printer_slot(input.clone())
+            .map_err(|error| error.to_string())?;
+
+        let spool = engine
+            .db
+            .get_spool_by_id(&spool_id)
+            .map_err(|error| error.to_string())?
+            .ok_or("missing measured spool")?;
+        assert_eq!(spool.current_weight_g, Some(400));
+        assert_eq!(spool.remaining_g, Some(400));
+        assert_eq!(spool.status, "ASSIGNED");
+        assert_eq!(spool.location_id, old_spool.location_id);
+        assert_eq!(spool.home_location_id, old_spool.home_location_id);
+        assert_eq!(spool.rfid_tag, old_spool.rfid_tag);
+        assert_eq!(spool.rfid_observed_at, old_spool.rfid_observed_at);
+        let used_grams: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT material_used_g FROM print_jobs
+                     WHERE printer_id = ?1 AND spool_id = ?2",
+                [&printer_id, &spool_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(used_grams, 100);
+        let after = printer_slot_operation_snapshot(&engine)?;
+        for table in [
+            "ams_slots",
+            "settings",
+            "printer_live_events",
+            "printer_live_usage_sessions",
+            "printer_live_usage_session_spools",
+        ] {
+            assert_eq!(
+                after[table], before[table],
+                "{table} must not be reassigned or reset"
+            );
+        }
+        assert_eq!(after["print_jobs"].len(), before["print_jobs"].len() + 1);
+        assert_eq!(
+            after["weight_readings"].len(),
+            before["weight_readings"].len() + 1
+        );
+        assert_eq!(
+            after["spool_history_events"].len(),
+            before["spool_history_events"].len() + 1
+        );
+
+        engine
+            .operate_printer_slot(input)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            printer_slot_operation_snapshot(&engine)?,
+            after,
+            "retry must preserve full history, jobs, readings, spool state, and revisions"
+        );
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("printer_slot_operation_measures_assigned_spool_once_without_reassigning failed: {message}");
+    }
+}
+
+#[test]
+fn printer_slot_operation_same_spool_increase_and_zero_preserve_assignment() {
+    let db_path = temp_db_path("slot-operation-same-spool-increase-zero");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        let (printer_id, slot_id, spool_id, _) =
+            seed_printer_slot_operation_fixture(&engine, "atomic_same_spool_bounds")?;
+        let before = printer_slot_operation_snapshot(&engine)?;
+        let mut input = PrinterSlotOperationInput {
+            printer_id: printer_id.clone(),
+            slot_id,
+            expected_current_spool_id: Some(spool_id.clone()),
+            target_spool_id: Some(spool_id.clone()),
+            outgoing_measured_total_g: None,
+            incoming_measured_total_g: Some(1300),
+        };
+        engine
+            .operate_printer_slot(input.clone())
+            .map_err(|error| error.to_string())?;
+        let increased = engine
+            .db
+            .get_spool_by_id(&spool_id)
+            .map_err(|error| error.to_string())?
+            .ok_or("missing increased spool")?;
+        assert_eq!(increased.remaining_g, Some(1050));
+        assert_eq!(increased.status, "ASSIGNED");
+        let after_increase = printer_slot_operation_snapshot(&engine)?;
+        assert_eq!(after_increase["print_jobs"], before["print_jobs"]);
+        assert_eq!(after_increase["ams_slots"], before["ams_slots"]);
+        assert_eq!(
+            after_increase["weight_readings"].len(),
+            before["weight_readings"].len() + 1
+        );
+        assert_eq!(
+            after_increase["spool_history_events"].len(),
+            before["spool_history_events"].len() + 1
+        );
+        engine
+            .operate_printer_slot(input.clone())
+            .map_err(|error| error.to_string())?;
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, after_increase);
+
+        input.incoming_measured_total_g = Some(0);
+        engine
+            .operate_printer_slot(input.clone())
+            .map_err(|error| error.to_string())?;
+        let empty = engine
+            .db
+            .get_spool_by_id(&spool_id)
+            .map_err(|error| error.to_string())?
+            .ok_or("missing empty spool")?;
+        assert_eq!(empty.remaining_g, Some(0));
+        assert_eq!(empty.current_weight_g, Some(0));
+        assert_eq!(empty.status, "EMPTY");
+        assert_eq!(empty.location_id, increased.location_id);
+        let used_grams: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT material_used_g FROM print_jobs
+                     WHERE printer_id = ?1 AND spool_id = ?2",
+                [&printer_id, &spool_id],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(used_grams, 1050);
+        let after_zero = printer_slot_operation_snapshot(&engine)?;
+        assert_eq!(after_zero["ams_slots"], before["ams_slots"]);
+        engine
+            .operate_printer_slot(input)
+            .map_err(|error| error.to_string())?;
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, after_zero);
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("printer_slot_operation_same_spool_increase_and_zero_preserve_assignment failed: {message}");
+    }
+}
+
+#[test]
+fn printer_slot_operation_same_spool_rejects_invalid_stale_and_loaned_requests_without_writes() {
+    let db_path = temp_db_path("slot-operation-same-spool-rejections");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        let (printer_id, slot_id, spool_id, other_spool_id) =
+            seed_printer_slot_operation_fixture(&engine, "atomic_same_spool_rejections")?;
+        let input = PrinterSlotOperationInput {
+            printer_id: printer_id.clone(),
+            slot_id: slot_id.clone(),
+            expected_current_spool_id: Some(spool_id.clone()),
+            target_spool_id: Some(spool_id.clone()),
+            outgoing_measured_total_g: None,
+            incoming_measured_total_g: Some(600),
+        };
+        let before = printer_slot_operation_snapshot(&engine)?;
+        for invalid in [
+            PrinterSlotOperationInput {
+                incoming_measured_total_g: None,
+                ..input.clone()
+            },
+            PrinterSlotOperationInput {
+                outgoing_measured_total_g: Some(600),
+                ..input.clone()
+            },
+            PrinterSlotOperationInput {
+                incoming_measured_total_g: Some(-1),
+                ..input.clone()
+            },
+            PrinterSlotOperationInput {
+                slot_id: format!("{printer_id}_ext_slot_1"),
+                expected_current_spool_id: None,
+                target_spool_id: None,
+                ..input.clone()
+            },
+        ] {
+            assert!(matches!(
+                engine.operate_printer_slot(invalid),
+                Err(super::InventoryError::InvalidOperation {
+                    code: "printers.slot_operation_invalid",
+                    ..
+                })
+            ));
+            assert_eq!(printer_slot_operation_snapshot(&engine)?, before);
+        }
+        let stale = PrinterSlotOperationInput {
+            expected_current_spool_id: Some(other_spool_id.clone()),
+            target_spool_id: Some(other_spool_id),
+            ..input.clone()
+        };
+        assert!(matches!(
+            engine.operate_printer_slot(stale),
+            Err(super::InventoryError::InvalidOperation {
+                code: "printers.slot_operation_stale",
+                ..
+            })
+        ));
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, before);
+
+        engine
+            .lend_spool(super::LendSpoolInput {
+                spool_id: spool_id.clone(),
+                borrower_name: "Loan guard".to_string(),
+                counterparty_contact: None,
+                grams_out: Some(1000),
+                note: None,
+                expected_return_at: None,
+            })
+            .map_err(|error| error.to_string())?;
+        // A legacy inconsistent slot must still respect its active outbound loan.
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE ams_slots SET spool_id = ?1 WHERE id = ?2",
+                [&spool_id, &slot_id],
+            )
+            .map_err(|error| error.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET status = 'ASSIGNED' WHERE id = ?1",
+                [&spool_id],
+            )
+            .map_err(|error| error.to_string())?;
+        let before_loan_rejection = printer_slot_operation_snapshot(&engine)?;
+        assert!(matches!(
+            engine.operate_printer_slot(input),
+            Err(super::InventoryError::InvalidOperation {
+                code: "inventory.spool.loaned_edit_blocked",
+                ..
+            })
+        ));
+        assert_eq!(
+            printer_slot_operation_snapshot(&engine)?,
+            before_loan_rejection
+        );
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("printer_slot_operation_same_spool_rejects_invalid_stale_and_loaned_requests_without_writes failed: {message}");
+    }
+}
+
+#[test]
+fn printer_slot_operation_same_spool_rolls_back_usage_when_history_fails() {
+    let db_path = temp_db_path("slot-operation-same-spool-rollback");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|error| error.to_string())?;
+        db.apply_schema().map_err(|error| error.to_string())?;
+        let engine = InventoryEngine::new(db);
+        let (printer_id, slot_id, spool_id, _) =
+            seed_printer_slot_operation_fixture(&engine, "atomic_same_spool_rollback")?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_same_spool_usage_history
+             BEFORE INSERT ON spool_history_events
+             WHEN NEW.event_type = 'PRINT_JOB_RECORDED'
+             BEGIN
+                 SELECT RAISE(ABORT, 'forced same spool history failure');
+             END;",
+            )
+            .map_err(|error| error.to_string())?;
+        let before = printer_slot_operation_snapshot(&engine)?;
+        let error = engine
+            .operate_printer_slot(PrinterSlotOperationInput {
+                printer_id,
+                slot_id,
+                expected_current_spool_id: Some(spool_id.clone()),
+                target_spool_id: Some(spool_id),
+                outgoing_measured_total_g: None,
+                incoming_measured_total_g: Some(600),
+            })
+            .expect_err("late history failure must roll back usage, readings, and revisions");
+        assert!(error
+            .to_string()
+            .contains("forced same spool history failure"));
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, before);
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&db_path);
+    if let Err(message) = result {
+        panic!("printer_slot_operation_same_spool_rolls_back_usage_when_history_fails failed: {message}");
     }
 }
 

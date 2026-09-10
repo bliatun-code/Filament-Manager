@@ -1640,9 +1640,32 @@ impl InventoryEngine {
                 return Err(stale_printer_slot_operation());
             }
             if actual_current_spool_id == target_spool_id {
-                return Err(invalid_printer_slot_operation(
-                    "printer slot operation must change the assigned spool",
-                ));
+                let spool_id = actual_current_spool_id.as_deref().ok_or_else(|| {
+                    invalid_printer_slot_operation(
+                        "printer slot operation must assign or measure a spool",
+                    )
+                })?;
+                if input.outgoing_measured_total_g.is_some() {
+                    return Err(invalid_printer_slot_operation(
+                        "outgoing_measured_total_g must be null when measuring the assigned spool",
+                    ));
+                }
+                let measured_total_g = input.incoming_measured_total_g.ok_or_else(|| {
+                    invalid_printer_slot_operation(
+                        "incoming_measured_total_g is required when measuring the assigned spool",
+                    )
+                })?;
+                ensure_spool_not_outbound_loan_locked(conn, spool_id)?;
+                let spool = get_spool_with_master_by_id_row(conn, spool_id)?
+                    .ok_or(InventoryError::NotFound)?;
+                // Preserve assignment and live/RFID metadata. Read the current weight
+                // in this transaction so an identical retry records no extra usage.
+                return apply_outgoing_measured_total_in_transaction(
+                    conn,
+                    printer_id,
+                    &spool,
+                    measured_total_g,
+                );
             }
 
             let outgoing_total_g = match actual_current_spool_id.as_deref() {

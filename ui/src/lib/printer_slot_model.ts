@@ -42,6 +42,7 @@ export type SlotSwapDraft = {
 export type IncomingWeightPrompt = {
   printerId: string;
   slotId: string;
+  expectedCurrentSpoolId: string | null;
   targetSpoolId: string | null;
   targetMaterial: string;
   targetFilamentName: string;
@@ -317,6 +318,7 @@ export function buildIncomingWeightPrompt(
   return {
     printerId,
     slotId: slot.slot_id,
+    expectedCurrentSpoolId: slot.spool_id ?? null,
     targetSpoolId: row.spool.id,
     targetMaterial: row.master.material,
     targetFilamentName: row.master.filament_name,
@@ -339,6 +341,7 @@ export function buildEmptySlotWeightPrompt(
   return {
     printerId,
     slotId: slot.slot_id,
+    expectedCurrentSpoolId: slot.spool_id ?? null,
     targetSpoolId: null,
     targetMaterial: slot.spool_material ?? "—",
     targetFilamentName: slot.spool_filament_name ?? "—",

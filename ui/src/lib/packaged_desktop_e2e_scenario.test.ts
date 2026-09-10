@@ -9,6 +9,7 @@ import {
   type PackagedDesktopE2eConfiguration,
 } from "./packaged_desktop_e2e_scenario";
 import type { SpoolLoanRow } from "./tauri_loan_client";
+import type { PrinterSlotOperationInput } from "./tauri_printer_client";
 import type { PackagedDesktopBatchEvidence } from "./tauri_packaged_desktop_e2e_client";
 import { replayPackagedDesktopBatch, validatePackagedDesktopBatchBackup,
   type PackagedDesktopBatchDependencies } from "./packaged_desktop_batch_evidence";
@@ -86,7 +87,7 @@ function spoolRows(currentWeight: number) {
   ];
 }
 
-function printerRows(spoolId = baseConfiguration.spool_id) {
+function printerRows(spoolId = baseConfiguration.spool_id, totalUsedGrams = 100, totalJobs = 1) {
   return [
     {
       printer: {
@@ -97,10 +98,10 @@ function printerRows(spoolId = baseConfiguration.spool_id) {
         updated_at: "2026-08-21 10:00:00",
       },
       usage: {
-        total_jobs: 0,
-        successful_jobs: 0,
+        total_jobs: totalJobs,
+        successful_jobs: totalJobs,
         failed_jobs: 0,
-        total_used_g: 0,
+        total_used_g: totalUsedGrams,
       },
       slots: [
         {
@@ -114,17 +115,24 @@ function printerRows(spoolId = baseConfiguration.spool_id) {
   ];
 }
 
-test("packaged desktop mutation uses the real command-client sequence", async () => {
+function mutationHarness(options: {
+  ignoredLoadWeight?: "current" | "remaining" | "both";
+  duplicateReplayUsage?: boolean;
+  duplicateReplayJob?: boolean;
+} = {}) {
   const events: string[] = [];
   const completions: PackagedDesktopE2eCompletion[] = [];
+  const operations: PrinterSlotOperationInput[] = [];
   let weight = baseConfiguration.initial_weight_g;
   let created = false;
   let returned = false;
   let printerCreated = false;
   let assigned = false;
   let batchCreated = false;
+  let totalUsedGrams = 0;
+  let totalJobs = 0;
 
-  await runPackagedDesktopE2eScenario(baseConfiguration, {
+  const dependencies: ScenarioDependencies = {
     async getLibrarySyncSettings() { events.push("get_library_sync_settings");return getLibrarySyncSettings(); },
     async createCatalogSpoolBatch(input,target) {
       events.push("create_catalog_spool_batch");
@@ -141,7 +149,16 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
     },
     async listSpools() {
       events.push("list_spools");
-      return created ? [...spoolRows(weight),...(batchCreated?batchSpoolRows():[])] : [];
+      const rows = spoolRows(weight);
+      if (operations.length === 1) {
+        if (options.ignoredLoadWeight === "current" || options.ignoredLoadWeight === "both") {
+          rows[0]!.spool.current_weight_g = baseConfiguration.returned_weight_g;
+        }
+        if (options.ignoredLoadWeight === "remaining" || options.ignoredLoadWeight === "both") {
+          rows[0]!.spool.remaining_g = baseConfiguration.returned_weight_g;
+        }
+      }
+      return created ? [...rows,...(batchCreated?batchSpoolRows():[])] : [];
     },
     async updateSpoolWeight(spoolId, grams) {
       events.push("update_spool_weight");
@@ -186,15 +203,31 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
       assert.equal(input.id, baseConfiguration.printer_id);
       printerCreated = true;
     },
-    async assignPrinterSlot(input) {
-      events.push("assign_printer_slot");
+    async operatePrinterSlot(input) {
+      events.push("operate_printer_slot");
+      operations.push(structuredClone(input));
+      assert.equal(input.printer_id, baseConfiguration.printer_id);
       assert.equal(input.slot_id, baseConfiguration.slot_id);
       assert.ok(printerCreated);
+      assert.equal(input.expected_current_spool_id, assigned ? baseConfiguration.spool_id : null);
+      assert.equal(input.target_spool_id, baseConfiguration.spool_id);
+      assert.equal(input.outgoing_measured_total_g, null);
+      assert.equal(input.incoming_measured_total_g, baseConfiguration.returned_weight_g + (assigned ? 0 : 100));
+      const consumed = assigned ? Math.max(0, weight - input.incoming_measured_total_g!) : 0;
+      if (consumed > 0) {
+        totalUsedGrams += consumed;
+        totalJobs++;
+      }
+      if (operations.length === 3) {
+        if (options.duplicateReplayUsage) totalUsedGrams += 100;
+        if (options.duplicateReplayJob) totalJobs++;
+      }
+      weight = input.incoming_measured_total_g!;
       assigned = true;
     },
     async listPrinterOverview() {
       events.push("list_printer_overview");
-      return assigned ? printerRows() : [];
+      return assigned ? printerRows(baseConfiguration.spool_id, totalUsedGrams, totalJobs) : [];
     },
     async exportFullBackupJson() {
       throw new Error("mutation must not export a backup");
@@ -210,7 +243,13 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
       events.push("complete");
       completions.push(input);
     },
-  });
+  };
+  return { dependencies, events, completions, operations };
+}
+
+test("packaged desktop mutation uses the real atomic command sequence and replays one measurement", async () => {
+  const { dependencies, events, completions, operations } = mutationHarness();
+  await runPackagedDesktopE2eScenario(baseConfiguration, dependencies);
 
   assert.deepEqual(events, [
     "create_manual_spool",
@@ -220,7 +259,10 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
     "lend_spool",
     "return_spool_loan",
     "create_printer",
-    "assign_printer_slot",
+    "operate_printer_slot",
+    "list_spools",
+    "operate_printer_slot",
+    "operate_printer_slot",
     "list_spools",
     "list_spool_loans",
     "list_printer_overview",
@@ -229,6 +271,20 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
     "list_spools",
     "list_spool_loans",
     "complete",
+  ]);
+  const measurement = {
+    printer_id: baseConfiguration.printer_id,
+    slot_id: baseConfiguration.slot_id,
+    expected_current_spool_id: baseConfiguration.spool_id,
+    target_spool_id: baseConfiguration.spool_id,
+    outgoing_measured_total_g: null,
+    incoming_measured_total_g: baseConfiguration.returned_weight_g,
+  };
+  assert.deepEqual(operations, [
+    { ...measurement, expected_current_spool_id: null,
+      incoming_measured_total_g: baseConfiguration.returned_weight_g + 100 },
+    measurement,
+    measurement,
   ]);
   assert.deepEqual(completions, [
     {
@@ -246,6 +302,35 @@ test("packaged desktop mutation uses the real command-client sequence", async ()
       restore_evidence: null,
     },
   ]);
+});
+
+test("packaged desktop mutation rejects ignored intermediate weight updates before measurement or completion", async () => {
+  for (const ignoredLoadWeight of ["current", "remaining", "both"] as const) {
+    const { dependencies, operations, completions } = mutationHarness({ ignoredLoadWeight });
+    await assert.rejects(() => runPackagedDesktopE2eScenario(baseConfiguration, dependencies), (error: unknown) => {
+      assert.ok(error instanceof PackagedDesktopE2eScenarioError);
+      assert.equal(error.step, "assign-printer-slot");
+      assert.match(error.message, /Loaded QA spool (current|remaining) weight expected 860, found 760/);
+      return true;
+    });
+    assert.equal(operations.length, 1);
+    assert.equal(completions.length, 0);
+  }
+});
+
+test("packaged desktop mutation rejects doubled usage or jobs after identical measurement replay", async () => {
+  for (const options of [{ duplicateReplayUsage: true }, { duplicateReplayJob: true }]) {
+    const { dependencies, operations, completions } = mutationHarness(options);
+    await assert.rejects(() => runPackagedDesktopE2eScenario(baseConfiguration, dependencies), (error: unknown) => {
+      assert.ok(error instanceof PackagedDesktopE2eScenarioError);
+      assert.equal(error.step, "validate-mutated-state");
+      assert.match(error.message, /QA printer (used grams expected 100, found 200|total jobs expected 1, found 2)/);
+      return true;
+    });
+    assert.equal(operations.length, 3);
+    assert.deepEqual(operations[1], operations[2]);
+    assert.equal(completions.length, 0);
+  }
 });
 
 test("packaged desktop verification reads restarted state and validates full backup rows", async () => {
@@ -301,7 +386,7 @@ test("packaged desktop verification reads restarted state and validates full bac
     async createPrinter() {
       throw new Error("verification must be read-only");
     },
-    async assignPrinterSlot() {
+    async operatePrinterSlot() {
       throw new Error("verification must be read-only");
     },
     async listPrinterOverview() {
@@ -373,7 +458,7 @@ test("packaged desktop verification rejects missing backup preservation", async 
       return returnedLoan;
     },
     async createPrinter() {},
-    async assignPrinterSlot() {},
+    async operatePrinterSlot() { throw new Error("verification must not mutate printer slots"); },
     async listPrinterOverview() {
       return printerRows();
     },
@@ -536,7 +621,7 @@ function restoreHarness(options: {
     },
     async returnSpoolLoan() { throw new Error("restore must not return a loan"); },
     async createPrinter() { throw new Error("restore must not create a printer"); },
-    async assignPrinterSlot() { throw new Error("restore must not assign a printer slot"); },
+    async operatePrinterSlot() { throw new Error("restore must not mutate printer slots"); },
     async listPrinterOverview() { return printerRows(); },
     async exportFullBackupJson() {
       state.exports++;

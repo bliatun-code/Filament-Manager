@@ -14,7 +14,7 @@ import {
   validateFullBackupJson,
 } from "./tauri_maintenance_client";
 import {
-  assignPrinterSlot,
+  operatePrinterSlot,
   createPrinter,
   listPrinterOverview,
 } from "./tauri_printer_client";
@@ -47,7 +47,7 @@ type ScenarioDependencies = PackagedDesktopBatchDependencies & {
   listSpoolLoans: typeof listSpoolLoans;
   returnSpoolLoan: typeof returnSpoolLoan;
   createPrinter: typeof createPrinter;
-  assignPrinterSlot: typeof assignPrinterSlot;
+  operatePrinterSlot: typeof operatePrinterSlot;
   listPrinterOverview: typeof listPrinterOverview;
   exportFullBackupJson: typeof exportFullBackupJson;
   importFullBackupJson: typeof importFullBackupJson;
@@ -93,7 +93,7 @@ const defaultDependencies: ScenarioDependencies = {
   listSpoolLoans,
   returnSpoolLoan,
   createPrinter,
-  assignPrinterSlot,
+  operatePrinterSlot,
   listPrinterOverview,
   exportFullBackupJson,
   importFullBackupJson,
@@ -184,6 +184,8 @@ async function readAndValidatePersistedState(
   if (slot?.spool_id !== config.spool_id) {
     scenarioFailure(step, "The QA spool is not assigned to the expected printer slot");
   }
+  expectExactNumber(step, "QA printer used grams", matchingPrinters[0]?.usage.total_used_g, 100);
+  expectExactNumber(step, "QA printer total jobs", matchingPrinters[0]?.usage.total_jobs, 1);
 
   return { loan };
 }
@@ -404,14 +406,33 @@ async function runMutationPhase(
     });
 
     step = "assign-printer-slot";
-    await dependencies.assignPrinterSlot({
+    const loadedWeight = config.returned_weight_g + 100;
+    await dependencies.operatePrinterSlot({
       printer_id: config.printer_id,
       slot_id: config.slot_id,
-      spool_id: config.spool_id,
-      rfid_override_tray_uuid: null,
-      rfid_override_color_hex: null,
-      clear_live_cache_before_next_refresh: false,
+      expected_current_spool_id: null,
+      target_spool_id: config.spool_id,
+      outgoing_measured_total_g: null,
+      incoming_measured_total_g: loadedWeight,
     });
+    const loaded = (await dependencies.listSpools(500, 0)).find(
+      ({ spool }) => spool.id === config.spool_id,
+    )?.spool;
+    expectExactNumber(step, "Loaded QA spool current weight", loaded?.current_weight_g, loadedWeight);
+    expectExactNumber(step, "Loaded QA spool remaining weight", loaded?.remaining_g, loadedWeight);
+
+    step = "measure-printer-slot";
+    const measurement = {
+      printer_id: config.printer_id,
+      slot_id: config.slot_id,
+      expected_current_spool_id: config.spool_id,
+      target_spool_id: config.spool_id,
+      outgoing_measured_total_g: null,
+      incoming_measured_total_g: config.returned_weight_g,
+    };
+    await dependencies.operatePrinterSlot(measurement);
+    step = "replay-printer-slot-measurement";
+    await dependencies.operatePrinterSlot(measurement);
 
     step = "validate-mutated-state";
     const { loan } = await readAndValidatePersistedState(config, dependencies, step);
