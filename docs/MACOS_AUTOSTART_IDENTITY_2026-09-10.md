@@ -124,6 +124,15 @@ enabled override and the existing application process but did not immediately
 correct the grouping. The local `launchctl` diagnostic is not part of the
 shipped migration, which never unloads a potentially running application.
 
+A final scoped diagnostic backed up the associated plist, unloaded only the
+idle job, temporarily removed that one plist, and restored its identical bytes
+and permissions after registering the real app. The same label was bootstrapped
+again and its enabled override was verified. The publisher grouping still
+remained. A normal launch of the installed application likewise did not resolve
+it. A new macOS login remains the next user-controlled verification; it has not
+been performed or assumed to succeed. No other background-item preferences or
+global caches were reset.
+
 [Apple DTS has described a similar icon-correct/name-stale case](https://developer.apple.com/forums/thread/721902)
 with legacy registrations and recommended testing an old-to-new installation
 on a clean machine. That older report is not proof of the exact same macOS 27
@@ -143,3 +152,21 @@ yet verify migration through an installed app upgrade, next-login execution,
 or behavior on other macOS versions. CI remains pending. Private backups,
 screenshots, paths, signing identifiers, and raw background-task records are
 kept outside the repository.
+
+## Remaining Acceptance Checks
+
+The next local check is a new login initiated by the user after saving their
+work. Inspect Background App Activity again for the Filament Manager name and
+icon, confirm that the existing approval is preserved, and check that the
+normal app still starts as expected. Reopen the settings page later to catch
+the temporary correction already observed. A new login is a verification
+step, not a guaranteed cache repair.
+
+Separately, verify an old-to-new signed app upgrade on a clean installation.
+That must exercise normal startup with an existing legacy agent, both enabled
+and disabled, and a user who never enabled launch at login. Packaged diagnostic
+runs intentionally skip this migration and cannot substitute for that check.
+
+A final independent source review of `1daaf5de` found no blocking ownership,
+ordering, disabled-state, or FFI issues. The public APIs used predate the macOS
+11 deployment target; this is not a claim of runtime verification on macOS 11.
