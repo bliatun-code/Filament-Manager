@@ -59,6 +59,31 @@ releases include GitHub/Sigstore build provenance for the DMG and MSI. See
 [Release Integrity And Supply Chain](SUPPLY_CHAIN.md) for their verification
 commands and scope.
 
+## Login Items And Background Activity
+
+**Launch at login** is optional. When enabled in Filament Manager, it starts
+the app in the background after login. On recent macOS versions, System
+Settings → General → Login Items shows the related background activity under
+**Filament Manager**, with the app icon. macOS controls permission to run in
+the background; the app's launch preference does not override that permission.
+
+Older registrations could show the publisher's name and a generic icon even
+though the installed application already had the correct icon. The
+registration lacked the bundle association that macOS uses to identify the
+app. This fallback is described in
+[Apple's Login Items documentation](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos).
+The publisher's signing identity remains part of the app's valid signature.
+
+The startup repair in this source version adds the missing association to an
+existing recognized registration. It preserves your launch and background
+permission choices and does not turn on launch at login when no registration
+exists. The repair was verified locally against an installed 0.30.0 app; it
+has not yet been verified through a packaged app upgrade or published in a
+new release. See the
+[verification record](MACOS_AUTOSTART_IDENTITY_2026-09-10.md) for the tested
+scope. Users do not need to delete login items or change system permissions
+to correct the app's name and icon.
+
 ## Troubleshooting
 
 An official signed and notarized release should open without removing
