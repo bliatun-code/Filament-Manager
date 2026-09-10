@@ -1018,16 +1018,25 @@ try {
             -LiteralPath $packagedDesktopE2eSummaryPath `
             -Raw | ConvertFrom-Json
         if (
+            $packagedDesktopE2eResult.format -ne "filament-manager-packaged-desktop-e2e-summary-v1" -or
             $packagedDesktopE2eResult.status -ne "pass" -or
+            ($packagedDesktopE2eResult.phases -join ",") -cne "mutate,verify,restore,verify-restored" -or
+            $packagedDesktopE2eResult.backup_restore.status -ne "pass" -or
+            $packagedDesktopE2eResult.backup_restore.post_restart_verified -ne $true -or
+            $packagedDesktopE2eResult.backup_restore.credential_migration_reinitialized -ne $true -or
+            $packagedDesktopE2eResult.backup_restore.catalog_jobs_cleared -ne 1 -or
+            $packagedDesktopE2eResult.backup_restore.batch_journal_preserved -ne $true -or
+            [string]$packagedDesktopE2eResult.backup_restore.portable_state_sha256 -cnotmatch '^[0-9a-f]{64}$' -or
+            [string]$packagedDesktopE2eResult.backup_restore.backup_tables_sha256 -cnotmatch '^[0-9a-f]{64}$' -or
             $packagedDesktopE2eResult.backup_total_rows -le 0 -or
             $packagedDesktopE2eResult.catalog_batch.spools -ne 2 -or
             $packagedDesktopE2eResult.catalog_batch.loans -ne 2 -or
             $packagedDesktopE2eResult.catalog_batch.replayed -ne $true -or
             [string]$packagedDesktopE2eResult.catalog_batch.state_snapshot_sha256 -cnotmatch '^[0-9a-f]{64}$'
         ) {
-            throw "Packaged desktop mutating E2E summary is not a passing full-backup result."
+            throw "Packaged desktop mutating E2E summary is not a passing full-backup restore result."
         }
-        $packagedDesktopE2eSummary = "PASS, backup rows $($packagedDesktopE2eResult.backup_total_rows), batch replay with 2 borrowed spools"
+        $packagedDesktopE2eSummary = "PASS, backup rows $($packagedDesktopE2eResult.backup_total_rows), backup restore verified after restart, batch replay with 2 borrowed spools"
     }
 
     if ($RunPackagedHostClientE2E) {

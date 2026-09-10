@@ -123,7 +123,11 @@ pub(crate) fn apply_seed_catalog(conn: &Connection) -> InventoryResult<CatalogSe
                             OR filament_master_list.default_weight != excluded.default_weight
                             OR filament_master_list.vendor != excluded.vendor
                             OR filament_master_list.is_discontinued != excluded.is_discontinued
-                            OR COALESCE(filament_master_list.discontinued_at, '') != COALESCE(excluded.discontinued_at, '')
+                            OR filament_master_list.discontinued_at IS NOT CASE
+                                WHEN excluded.is_discontinued != 0
+                                    THEN COALESCE(filament_master_list.discontinued_at, excluded.discontinued_at)
+                                ELSE NULL
+                            END
                          )
                          THEN datetime('now')
                     WHEN COALESCE(filament_master_list.catalog_seed_version, '') != excluded.catalog_seed_version
@@ -338,10 +342,103 @@ fn dedupe_seeded_catalog_case_variants(conn: &Connection) -> InventoryResult<i64
 #[cfg(test)]
 mod tests {
     use super::{
-        dedupe_seeded_catalog_case_variants, normalize_seed_color_name,
+        apply_seed_catalog, dedupe_seeded_catalog_case_variants, normalize_seed_color_name,
         preferred_seeded_catalog_row, SeededCatalogRow,
     };
     use rusqlite::{params, Connection};
+
+    #[test]
+    fn reapplying_unchanged_discontinued_seed_preserves_historical_timestamps() {
+        let conn = Connection::open_in_memory().expect("open test database");
+        conn.execute_batch(include_str!("../database/schema.sql"))
+            .expect("create seed schema");
+        apply_seed_catalog(&conn).expect("apply initial catalog seed");
+        let id: String = conn
+            .query_row(
+                "SELECT id FROM filament_master_list WHERE is_discontinued = 1 LIMIT 1",
+                [],
+                |row| row.get(0),
+            )
+            .expect("find discontinued seed entry");
+        conn.execute(
+            "UPDATE filament_master_list
+             SET discontinued_at = '2001-01-01 00:00:00', updated_at = '2001-01-02 00:00:00'
+             WHERE id = ?1",
+            params![id],
+        )
+        .expect("retain historical catalog timestamps");
+
+        apply_seed_catalog(&conn).expect("reapply unchanged catalog seed");
+
+        let timestamps: (String, String) = conn
+            .query_row(
+                "SELECT discontinued_at, updated_at FROM filament_master_list WHERE id = ?1",
+                params![id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("read unchanged timestamps");
+        assert_eq!(
+            timestamps,
+            (
+                "2001-01-01 00:00:00".to_string(),
+                "2001-01-02 00:00:00".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn applying_seed_updates_discontinued_and_reactivated_entries() {
+        let conn = Connection::open_in_memory().expect("open test database");
+        conn.execute_batch(include_str!("../database/schema.sql"))
+            .expect("create seed schema");
+        apply_seed_catalog(&conn).expect("apply initial catalog seed");
+        let id_for_status = |status| {
+            conn.query_row(
+                "SELECT id FROM filament_master_list WHERE is_discontinued = ?1 LIMIT 1",
+                params![status],
+                |row| row.get::<_, String>(0),
+            )
+            .expect("find seed entry with requested lifecycle")
+        };
+        let discontinued_id = id_for_status(1);
+        let active_id = id_for_status(0);
+        conn.execute(
+            "UPDATE filament_master_list SET is_discontinued = 0, discontinued_at = NULL,
+                updated_at = '2001-01-01 00:00:00' WHERE id = ?1",
+            params![discontinued_id],
+        )
+        .expect("model newly discontinued seed entry");
+        conn.execute(
+            "UPDATE filament_master_list SET is_discontinued = 1,
+                discontinued_at = '2001-01-01 00:00:00', updated_at = '2001-01-01 00:00:00'
+             WHERE id = ?1",
+            params![active_id],
+        )
+        .expect("model newly reactivated seed entry");
+
+        apply_seed_catalog(&conn).expect("apply lifecycle changes from seed");
+
+        for (id, expected_status) in [(discontinued_id, 1), (active_id, 0)] {
+            let (status, discontinued_at, updated_at): (i64, Option<String>, String) = conn
+                .query_row(
+                    "SELECT is_discontinued, discontinued_at, updated_at
+                     FROM filament_master_list WHERE id = ?1",
+                    params![id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .expect("read changed seed lifecycle");
+            assert_eq!(status, expected_status);
+            assert_ne!(updated_at, "2001-01-01 00:00:00");
+            assert_eq!(
+                discontinued_at,
+                if expected_status == 1 {
+                    Some(updated_at)
+                } else {
+                    None
+                }
+            );
+        }
+    }
 
     #[test]
     fn seed_color_normalization_title_cases_shouting_labels_only() {

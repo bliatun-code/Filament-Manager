@@ -20,12 +20,20 @@ const SLOT_ID: &str = "packaged_e2e_printer_ams_1_slot_1";
 const INITIAL_WEIGHT_G: i64 = 1_000;
 const UPDATED_WEIGHT_G: i64 = 875;
 const RETURNED_WEIGHT_G: i64 = 760;
+const RESTORE_PERTURBED_WEIGHT_G: i64 = 123;
 const MAXIMUM_RESULT_BYTES: u64 = 64 * 1024;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 struct PackagedDesktopBatchEvidence {
     request: CatalogSpoolBatchInput,
     receipt: CatalogSpoolBatchReceipt,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct PackagedDesktopRestoreEvidence {
+    backup_tables_sha256: String,
+    perturbed_weight_g: i64,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -39,6 +47,7 @@ pub(crate) struct PackagedDesktopE2eConfiguration {
     updated_weight_g: i64,
     returned_weight_g: i64,
     batch_evidence: Option<PackagedDesktopBatchEvidence>,
+    restore_evidence: Option<PackagedDesktopRestoreEvidence>,
 }
 
 #[derive(Clone, Debug)]
@@ -69,6 +78,8 @@ pub(crate) struct PackagedDesktopE2eCompletion {
     backup_sha256: Option<String>,
     backup_total_rows: Option<u64>,
     batch_evidence: PackagedDesktopBatchEvidence,
+    #[serde(default)]
+    restore_evidence: Option<PackagedDesktopRestoreEvidence>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -166,8 +177,13 @@ fn resolve_configuration(raw: RawConfiguration) -> Result<Option<ResolvedConfigu
     let phase = raw
         .phase
         .ok_or_else(|| format!("{PHASE_ENV_VAR} is required"))?;
-    if !matches!(phase.as_str(), "mutate" | "verify") {
-        return Err(format!("{PHASE_ENV_VAR} must be mutate or verify"));
+    if !matches!(
+        phase.as_str(),
+        "mutate" | "verify" | "restore" | "verify-restored"
+    ) {
+        return Err(format!(
+            "{PHASE_ENV_VAR} must be mutate, verify, restore or verify-restored"
+        ));
     }
     let run_id = raw
         .run_id
@@ -228,6 +244,7 @@ fn resolve_configuration(raw: RawConfiguration) -> Result<Option<ResolvedConfigu
             updated_weight_g: UPDATED_WEIGHT_G,
             returned_weight_g: RETURNED_WEIGHT_G,
             batch_evidence: None,
+            restore_evidence: None,
         },
     }))
 }
@@ -265,37 +282,55 @@ fn require_active_configuration_for_state(
 fn bind_restarted_batch_evidence(
     mut config: ResolvedConfiguration,
 ) -> Result<ResolvedConfiguration, String> {
-    if config.public.phase != "verify" {
+    if config.public.phase == "mutate" {
         return Ok(config);
     }
-    let original_path = config.result_path.with_file_name("mutate-result.json");
-    require_regular_file(&original_path, "Packaged desktop mutation evidence")?;
-    require_private_permissions(&original_path, false, "Packaged desktop mutation evidence")?;
+    let mutation = read_phase_completion(&config, "mutate")?;
+    config.public.batch_evidence = Some(mutation.batch_evidence);
+    if config.public.phase == "verify-restored" {
+        let restoration = read_phase_completion(&config, "restore")?;
+        if restoration.loan_id != mutation.loan_id {
+            return Err("Restoration must retain the original loan identity".to_string());
+        }
+        config.public.restore_evidence = restoration.restore_evidence;
+    }
+    Ok(config)
+}
+
+fn read_phase_completion(
+    config: &ResolvedConfiguration,
+    phase: &str,
+) -> Result<PackagedDesktopE2eCompletion, String> {
+    let original_path = config
+        .result_path
+        .with_file_name(format!("{phase}-result.json"));
+    let label = format!("Packaged desktop {phase} evidence");
+    require_regular_file(&original_path, &label)?;
+    require_private_permissions(&original_path, false, &label)?;
     let size = symlink_metadata(&original_path)
-        .map_err(|_| "Cannot inspect packaged desktop mutation evidence".to_string())?
+        .map_err(|_| format!("Cannot inspect {label}"))?
         .len();
     if size == 0 || size > MAXIMUM_RESULT_BYTES {
-        return Err("Packaged desktop mutation evidence has an invalid size".to_string());
+        return Err(format!("{label} has an invalid size"));
     }
-    let content = std::fs::read_to_string(&original_path)
-        .map_err(|_| "Cannot read packaged desktop mutation evidence".to_string())?;
-    let value: serde_json::Value = serde_json::from_str(&content)
-        .map_err(|_| "Packaged desktop mutation evidence is invalid JSON".to_string())?;
+    let content =
+        std::fs::read_to_string(&original_path).map_err(|_| format!("Cannot read {label}"))?;
+    let value: serde_json::Value =
+        serde_json::from_str(&content).map_err(|_| format!("{label} is invalid JSON"))?;
     if value["format"] != RESULT_FORMAT
         || value["status"] != "pass"
-        || value["phase"] != "mutate"
+        || value["phase"] != phase
         || value["run_id"] != config.public.run_id
     {
-        return Err("Packaged desktop mutation evidence identity mismatch".to_string());
+        return Err(format!("{label} identity mismatch"));
     }
     let completion: PackagedDesktopE2eCompletion =
         serde_json::from_value(value["completion"].clone())
-            .map_err(|_| "Packaged desktop mutation evidence is incomplete".to_string())?;
-    let mut mutation_config = config.clone();
-    mutation_config.public.phase = "mutate".to_string();
-    validate_completion(&mutation_config, &completion)?;
-    config.public.batch_evidence = Some(completion.batch_evidence);
-    Ok(config)
+            .map_err(|_| format!("{label} is incomplete"))?;
+    let mut phase_config = config.clone();
+    phase_config.public.phase = phase.to_string();
+    validate_completion(&phase_config, &completion)?;
+    Ok(completion)
 }
 
 fn validate_batch_evidence(
@@ -350,12 +385,34 @@ fn validate_completion(
     }
     validate_batch_evidence(&completion.batch_evidence, &config.public.run_id)?;
     match config.public.phase.as_str() {
+        "restore" | "verify-restored" => {
+            let evidence = completion
+                .restore_evidence
+                .as_ref()
+                .ok_or_else(|| "Restoration evidence is required".to_string())?;
+            if !valid_sha256(&evidence.backup_tables_sha256)
+                || evidence.perturbed_weight_g != RESTORE_PERTURBED_WEIGHT_G
+            {
+                return Err("Restoration evidence is invalid".to_string());
+            }
+            if config.public.phase == "verify-restored"
+                && config.public.restore_evidence.as_ref() != Some(evidence)
+            {
+                return Err("Restart must verify the original restoration evidence".to_string());
+            }
+        }
+        _ if completion.restore_evidence.is_some() => {
+            return Err("This phase must not claim restoration evidence".to_string());
+        }
+        _ => {}
+    }
+    match config.public.phase.as_str() {
         "mutate" => {
             if completion.backup_sha256.is_some() || completion.backup_total_rows.is_some() {
                 return Err("Mutation phase must not claim backup verification".to_string());
             }
         }
-        "verify" => {
+        "verify" | "restore" | "verify-restored" => {
             if config.public.batch_evidence.as_ref() != Some(&completion.batch_evidence) {
                 return Err(
                     "Verification must replay the original catalog batch evidence".to_string(),
@@ -365,17 +422,20 @@ fn validate_completion(
                 .backup_sha256
                 .as_deref()
                 .ok_or_else(|| "Verification phase must include a backup SHA-256".to_string())?;
-            if backup_sha256.len() != 64
-                || !backup_sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
-                || !backup_sha256.bytes().all(|byte| !byte.is_ascii_uppercase())
-                || completion.backup_total_rows.unwrap_or(0) == 0
-            {
+            if !valid_sha256(backup_sha256) || completion.backup_total_rows.unwrap_or(0) == 0 {
                 return Err("Verification phase backup evidence is invalid".to_string());
             }
         }
         _ => return Err("Packaged desktop E2E phase is invalid".to_string()),
     }
     Ok(())
+}
+
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
 }
 
 fn write_private_result(path: &Path, value: &impl Serialize) -> Result<(), String> {
@@ -519,6 +579,7 @@ mod tests {
             backup_sha256: None,
             backup_total_rows: None,
             batch_evidence: batch_evidence(run_id),
+            restore_evidence: None,
         }
     }
 
@@ -691,5 +752,155 @@ mod tests {
         })();
         let _ = std::fs::remove_dir_all(directory);
         result.expect("verify original evidence is mandatory");
+    }
+
+    #[test]
+    fn restoration_requires_distinct_perturbation_and_bound_backup_tables() {
+        let (directory, run_id) = private_fixture();
+        let result = (|| {
+            let mut config = resolve_configuration(RawConfiguration {
+                enabled: Some("1".to_string()),
+                phase: Some("restore".to_string()),
+                run_id: Some(run_id.clone()),
+                work_directory: Some(directory.to_string_lossy().into_owned()),
+                database_path: Some(directory.join(DATABASE_FILE_NAME)),
+            })?
+            .expect("active config");
+            config.public.batch_evidence = Some(batch_evidence(&run_id));
+            let mut input = completion("restore", &run_id);
+            input.backup_sha256 = Some("a".repeat(64));
+            input.backup_total_rows = Some(12);
+            assert!(validate_completion(&config, &input).is_err());
+            let evidence = PackagedDesktopRestoreEvidence {
+                backup_tables_sha256: "b".repeat(64),
+                perturbed_weight_g: RESTORE_PERTURBED_WEIGHT_G,
+            };
+            input.restore_evidence = Some(evidence.clone());
+            validate_completion(&config, &input)?;
+            for bad_evidence in [
+                PackagedDesktopRestoreEvidence {
+                    perturbed_weight_g: RETURNED_WEIGHT_G,
+                    ..evidence.clone()
+                },
+                PackagedDesktopRestoreEvidence {
+                    backup_tables_sha256: "B".repeat(64),
+                    ..evidence.clone()
+                },
+                PackagedDesktopRestoreEvidence {
+                    backup_tables_sha256: "b".repeat(63),
+                    ..evidence.clone()
+                },
+            ] {
+                input.restore_evidence = Some(bad_evidence);
+                assert!(validate_completion(&config, &input).is_err());
+            }
+            input.restore_evidence = Some(evidence.clone());
+            config.public.phase = "verify-restored".to_string();
+            input.phase = config.public.phase.clone();
+            assert!(
+                validate_completion(&config, &input).is_err(),
+                "restart needs original evidence"
+            );
+            config.public.restore_evidence = Some(evidence);
+            validate_completion(&config, &input)?;
+            input
+                .restore_evidence
+                .as_mut()
+                .unwrap()
+                .backup_tables_sha256 = "c".repeat(64);
+            assert!(
+                validate_completion(&config, &input).is_err(),
+                "different backup must fail"
+            );
+            for phase in ["mutate", "verify"] {
+                config.public.phase = phase.to_string();
+                input.phase = phase.to_string();
+                assert!(
+                    validate_completion(&config, &input).is_err(),
+                    "early phases cannot claim restore"
+                );
+            }
+            Ok::<(), String>(())
+        })();
+        let _ = std::fs::remove_dir_all(directory);
+        result.expect("validate restore protocol");
+    }
+
+    #[test]
+    fn restored_restart_loads_only_matching_private_restore_receipt() {
+        let (directory, run_id) = private_fixture();
+        let result = (|| {
+            let config = resolve_configuration(RawConfiguration {
+                enabled: Some("1".to_string()),
+                phase: Some("verify-restored".to_string()),
+                run_id: Some(run_id.clone()),
+                work_directory: Some(directory.to_string_lossy().into_owned()),
+                database_path: Some(directory.join(DATABASE_FILE_NAME)),
+            })?
+            .expect("active config");
+            let mutation = completion("mutate", &run_id);
+            write_private_result(
+                &directory.join("mutate-result.json"),
+                &SuccessResult {
+                    format: RESULT_FORMAT,
+                    status: "pass",
+                    phase: "mutate",
+                    run_id: &run_id,
+                    completion: &mutation,
+                },
+            )?;
+            assert!(
+                bind_restarted_batch_evidence(config.clone()).is_err(),
+                "missing restore cannot pass"
+            );
+            let mut restore = completion("restore", &run_id);
+            restore.backup_sha256 = Some("a".repeat(64));
+            restore.backup_total_rows = Some(12);
+            restore.restore_evidence = Some(PackagedDesktopRestoreEvidence {
+                backup_tables_sha256: "b".repeat(64),
+                perturbed_weight_g: RESTORE_PERTURBED_WEIGHT_G,
+            });
+            let original = serde_json::to_value(SuccessResult {
+                format: RESULT_FORMAT,
+                status: "pass",
+                phase: "restore",
+                run_id: &run_id,
+                completion: &restore,
+            })
+            .map_err(|error| error.to_string())?;
+            let path = directory.join("restore-result.json");
+            write_private_result(&path, &original)?;
+            let bound = bind_restarted_batch_evidence(config.clone())?;
+            assert_eq!(bound.public.restore_evidence, restore.restore_evidence);
+            for field in ["run_id", "phase", "loan_id", "restore_evidence"] {
+                let mut invalid = original.clone();
+                if field == "restore_evidence" {
+                    invalid["completion"][field] = serde_json::Value::Null;
+                } else if field == "loan_id" {
+                    invalid["completion"][field] = serde_json::json!("other-loan");
+                } else {
+                    invalid[field] = serde_json::json!("other-run-or-phase");
+                }
+                std::fs::write(&path, serde_json::to_vec(&invalid).unwrap())
+                    .map_err(|error| error.to_string())?;
+                assert!(
+                    bind_restarted_batch_evidence(config.clone()).is_err(),
+                    "{field} must fail closed"
+                );
+            }
+            #[cfg(unix)]
+            {
+                std::fs::remove_file(&path).map_err(|error| error.to_string())?;
+                std::os::unix::fs::symlink(directory.join("mutate-result.json"), &path)
+                    .map_err(|error| error.to_string())?;
+                assert!(
+                    bind_restarted_batch_evidence(config).is_err(),
+                    "symlink receipt must fail closed"
+                );
+            }
+            Ok::<(), String>(())
+        })();
+        let _ = std::fs::remove_dir_all(directory);
+        result.expect("bind the original restoration receipt");
     }
 }

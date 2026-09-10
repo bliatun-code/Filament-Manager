@@ -18,6 +18,7 @@ import test from "node:test";
 
 import Database from "better-sqlite3";
 import { currentSchemaVersion } from "./smoke-release-database-upgrade.mjs";
+import { inspectDesktopRestoreState, assertDesktopRestorePreserved } from "./packaged-desktop-restore-evidence.mjs";
 
 import {
   inspectPackagedDesktopE2eDatabase,
@@ -71,9 +72,11 @@ function completion(phase, runId) {
     loan_id: "packaged-e2e-loan",
     final_weight_g: 760,
     loan_status: "RETURNED",
-    backup_sha256: phase === "verify" ? "a".repeat(64) : null,
-    backup_total_rows: phase === "verify" ? 8 : null,
+    backup_sha256: phase === "mutate" ? null : "a".repeat(64),
+    backup_total_rows: phase === "mutate" ? null : 8,
     batch_evidence: batchEvidence(runId),
+    restore_evidence: ["restore", "verify-restored"].includes(phase)
+      ? { backup_tables_sha256: "b".repeat(64), perturbed_weight_g: 123 } : null,
   };
 }
 
@@ -99,7 +102,12 @@ function createMutatedDatabase(databasePath, runId = "packaged-e2e-contract-run"
     database.exec(`
       INSERT INTO filament_master_list(id,material,filament_name,color_name,vendor) VALUES
         ('manual_packaged_e2e_spool','PLA','Packaged desktop E2E','QA blue','Filament Manager QA');
-      INSERT INTO settings(key,value) VALUES ('library_sync_library_id','local-qa-library');
+      INSERT INTO settings(key,value) VALUES
+        ('library_sync_library_id','local-qa-library'),
+        ('theme_mode','light'),
+        ('low_stock_policy_json','{"threshold":100}'),
+        ('secure_credential_storage_migration_v1','complete'),
+        ('library_sync_cache','{"local":true}');
       INSERT INTO inventory_locations(id,name,type) VALUES ('qa-location','Private packaged desktop QA','GENERIC');
       INSERT INTO filament_spools(id,master_id,initial_weight_g,current_weight_g,remaining_g,status) VALUES (
         'packaged_e2e_spool', 'manual_packaged_e2e_spool', 1000, 760, 760, 'ASSIGNED'
@@ -134,6 +142,29 @@ function createMutatedDatabase(databasePath, runId = "packaged-e2e-contract-run"
     }
     database.prepare("INSERT INTO catalog_spool_batches(batch_id,library_id,request_json,receipt_json) VALUES (?,'local-qa-library',?,?)")
       .run(request.batch_id,JSON.stringify(request),JSON.stringify(receipt));
+  } finally {
+    database.close();
+  }
+}
+
+function simulateRestore(databasePath) {
+  const database = new Database(databasePath);
+  try {
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM catalog_refresh_jobs WHERE status = 'FAILED'").get().count, 1);
+    database.exec(`
+      DELETE FROM catalog_refresh_jobs;
+      DELETE FROM settings WHERE key IN ('library_sync_cache', 'secure_credential_storage_migration_v1');
+      UPDATE library_domain_revisions SET revision = revision + 1;
+    `);
+  } finally {
+    database.close();
+  }
+}
+
+function simulateRestoredStartup(databasePath) {
+  const database = new Database(databasePath);
+  try {
+    database.prepare("INSERT INTO settings(key,value) VALUES ('secure_credential_storage_migration_v1','complete')").run();
   } finally {
     database.close();
   }
@@ -286,6 +317,27 @@ test("packaged desktop database inspection covers every mutating workflow state"
   }
 });
 
+test("restore projection also detects seeded catalog timestamp and version changes", () => {
+  const root = temporaryRoot("restore-seeded-metadata");
+  const databasePath = path.join(root, "qa.db");
+  try {
+    createMutatedDatabase(databasePath);
+    const database = new Database(databasePath);
+    try {
+      database.exec("UPDATE filament_master_list SET catalog_source = 'seeded', catalog_user_edited = 0");
+      for (const sql of [
+        "UPDATE filament_master_list SET updated_at = '2099-01-01 00:00:00'",
+        "UPDATE filament_master_list SET catalog_seed_version = 'unexpected-version'",
+      ]) {
+        const before = inspectDesktopRestoreState(databasePath);
+        database.exec(sql);
+        assert.throws(() => assertDesktopRestorePreserved(before, inspectDesktopRestoreState(databasePath)),
+          /changed portable business rows/);
+      }
+    } finally { database.close(); }
+  } finally { rmSync(root, { force: true, recursive: true }); }
+});
+
 test("packaged desktop orchestration restarts against one DB and removes the private fixture", async () => {
   const root = temporaryRoot("orchestration");
   const options = optionsFor(root);
@@ -301,6 +353,8 @@ test("packaged desktop orchestration restarts against one DB and removes the pri
         if (phase === "mutate") {
           createMutatedDatabase(context.databasePath,context.runId);
         }
+        if (phase === "restore") simulateRestore(context.databasePath);
+        if (phase === "verify-restored") simulateRestoredStartup(context.databasePath);
         const resultPath = path.join(context.workDirectory, `${phase}-result.json`);
         writeFileSync(
           resultPath,
@@ -313,10 +367,10 @@ test("packaged desktop orchestration restarts against one DB and removes the pri
 
     assert.deepEqual(
       observedPhases.map(({ phase }) => phase),
-      ["mutate", "verify"],
+      ["mutate", "verify", "restore", "verify-restored"],
     );
-    assert.equal(observedPhases[0].databasePath, observedPhases[1].databasePath);
-    assert.equal(observedPhases[0].runId, observedPhases[1].runId);
+    assert.equal(new Set(observedPhases.map(entry => entry.databasePath)).size, 1);
+    assert.equal(new Set(observedPhases.map(entry => entry.runId)).size, 1);
     assert.equal(existsSync(options.workDirectory), false);
     assert.equal(summary.status, "pass");
     assert.equal(summary.schema_version, currentSchemaVersion());
@@ -327,6 +381,16 @@ test("packaged desktop orchestration restarts against one DB and removes the pri
     assert.equal(summary.catalog_batch.loans,2);
     assert.equal(summary.catalog_batch.replayed,true);
     assert.match(summary.catalog_batch.state_snapshot_sha256,/^[0-9a-f]{64}$/);
+    assert.deepEqual(summary.backup_restore, {
+      status: "pass",
+      post_restart_verified: true,
+      portable_state_sha256: summary.backup_restore.portable_state_sha256,
+      backup_tables_sha256: "b".repeat(64),
+      catalog_jobs_cleared: 1,
+      batch_journal_preserved: true,
+      credential_migration_reinitialized: true,
+    });
+    assert.match(summary.backup_restore.portable_state_sha256, /^[0-9a-f]{64}$/);
     assert.equal(JSON.stringify(summary).includes("batch_evidence"),false);
     assert.equal(existsSync(path.join(options.logDirectory, "mutate-result.json")), true);
     assert.equal(existsSync(path.join(options.logDirectory, "verify-result.json")), true);
@@ -343,6 +407,12 @@ test("packaged desktop orchestration restarts against one DB and removes the pri
         "verify-result.json",
         "verify-stderr.log",
         "verify-stdout.log",
+        "restore-result.json",
+        "restore-stderr.log",
+        "restore-stdout.log",
+        "verify-restored-result.json",
+        "verify-restored-stderr.log",
+        "verify-restored-stdout.log",
         "summary.json",
       ]) {
         assert.equal(statSync(path.join(options.logDirectory, name)).mode & 0o777, 0o600);
@@ -350,6 +420,159 @@ test("packaged desktop orchestration restarts against one DB and removes the pri
     }
   } finally {
     rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("backup restore completion evidence is phase-specific and exact", () => {
+  const runId = "packaged-e2e-contract-run";
+  for (const phase of ["mutate", "verify", "restore", "verify-restored"]) {
+    assert.deepEqual(validatePackagedDesktopE2ePhaseResult(passingResult(phase, runId), { phase, runId }), completion(phase, runId));
+    const missing = passingResult(phase, runId);
+    delete missing.completion.restore_evidence;
+    assert.throws(() => validatePackagedDesktopE2ePhaseResult(missing, { phase, runId }), /backup restore/);
+  }
+  for (const phase of ["mutate", "verify"]) {
+    const result = passingResult(phase, runId);
+    result.completion.restore_evidence = completion("restore", runId).restore_evidence;
+    assert.throws(() => validatePackagedDesktopE2ePhaseResult(result, { phase, runId }), /must not claim restore evidence/);
+  }
+  for (const phase of ["restore", "verify-restored"]) {
+    for (const evidence of [null, [], {},
+      { backup_tables_sha256: "B".repeat(64), perturbed_weight_g: 123 },
+      { backup_tables_sha256: "b".repeat(64), perturbed_weight_g: 760 },
+      { backup_tables_sha256: "b".repeat(64), perturbed_weight_g: 123, imported: true },
+    ]) {
+      const result = passingResult(phase, runId);
+      result.completion.restore_evidence = evidence;
+      assert.throws(() => validatePackagedDesktopE2ePhaseResult(result, { phase, runId }), /completion evidence is invalid/);
+    }
+    for (const invalid of [{ backup_sha256: null }, { backup_total_rows: 0 }]) {
+      const result = passingResult(phase, runId);
+      Object.assign(result.completion, invalid);
+      assert.throws(() => validatePackagedDesktopE2ePhaseResult(result, { phase, runId }), /invalid full-backup evidence/);
+    }
+  }
+});
+
+test("backup restore cannot pass without clearing a persisted run-bound catalog job", async () => {
+  const root = temporaryRoot("noop-restore");
+  const options = optionsFor(root);
+  const phases = [];
+  try {
+    await assert.rejects(() => runPackagedDesktopE2e(options, { async launchPhase({ context, phase }) {
+      phases.push(phase);
+      if (phase === "mutate") createMutatedDatabase(context.databasePath, context.runId);
+      if (phase === "restore") {
+        const database = new Database(context.databasePath, { readonly: true });
+        try {
+          const jobs = database.prepare("SELECT * FROM catalog_refresh_jobs").all();
+          assert.equal(jobs.length, 1);
+          assert.equal(jobs[0].job_id, `${context.runId}-restore-job`);
+          assert.equal(jobs[0].authority_key, `${context.runId}-restore-authority`);
+          assert.equal(jobs[0].owner_id, `${context.runId}-restore-owner`);
+          assert.equal(jobs[0].status, "FAILED");
+          assert.equal(database.pragma("quick_check", { simple: true }), "ok");
+        } finally { database.close(); }
+      }
+      writeFileSync(path.join(context.workDirectory, `${phase}-result.json`), JSON.stringify(passingResult(phase, context.runId)), { flag: "wx", mode: 0o600 });
+      return { exitCode: 0, signal: null };
+    } }), /did not clear the synthetic catalog job/);
+    assert.deepEqual(phases, ["mutate", "verify", "restore"]);
+    assert.equal(existsSync(options.workDirectory), false);
+  } finally { rmSync(root, { force: true, recursive: true }); }
+});
+
+test("restore preserves exact installation journal bytes, identity and original business history", async () => {
+  for (const [label, sql, error] of [
+    ["missing receipt", "DELETE FROM catalog_spool_batches", /durable journal receipt/],
+    ["receipt timestamp", "UPDATE catalog_spool_batches SET created_at = '2099-01-01T00:00:00Z'", /installation batch journal/],
+    ["request JSON bytes", "UPDATE catalog_spool_batches SET request_json = ' ' || request_json", /installation batch journal/],
+    ["receipt JSON bytes", "UPDATE catalog_spool_batches SET receipt_json = receipt_json || ' '", /installation batch journal/],
+    ["library and journal identity", "UPDATE settings SET value = 'other-library' WHERE key = 'library_sync_library_id'; UPDATE catalog_spool_batches SET library_id = 'other-library'", /installation batch journal/],
+    ["history timestamp", "UPDATE spool_history_events SET created_at = '2099-01-01 00:00:00' WHERE id = 'created-0'", /portable business rows/],
+    ["extra history", "INSERT INTO spool_history_events(id,spool_id,event_type,payload_json) VALUES ('unexpected','packaged_e2e_spool','UPDATED','{}')", /portable business rows/],
+    ["uninspected spool metadata", "UPDATE filament_spools SET qr_code = 'altered' WHERE id = 'packaged_e2e_spool'", /portable business rows/],
+    ["printer metadata", "UPDATE printers SET updated_at = '2099-01-01 00:00:00'", /portable business rows/],
+    ["manual catalog value", "UPDATE filament_master_list SET default_weight = 900", /portable business rows/],
+    ["theme preference", "UPDATE settings SET value = 'dark' WHERE key = 'theme_mode'", /portable business rows/],
+    ["low-stock policy", "UPDATE settings SET value = '{\"threshold\":1}' WHERE key = 'low_stock_policy_json'", /portable business rows/],
+  ]) {
+    const root = temporaryRoot("restore-corruption");
+    const options = optionsFor(root);
+    try {
+      await assert.rejects(() => runPackagedDesktopE2e(options, { async launchPhase({ context, phase }) {
+        if (phase === "mutate") createMutatedDatabase(context.databasePath, context.runId);
+        if (phase === "restore") {
+          simulateRestore(context.databasePath);
+          const database = new Database(context.databasePath);
+          try { database.exec(sql); } finally { database.close(); }
+        }
+        writeFileSync(path.join(context.workDirectory, `${phase}-result.json`), JSON.stringify(passingResult(phase, context.runId)), { flag: "wx", mode: 0o600 });
+        return { exitCode: 0, signal: null };
+      } }), error, label);
+      assert.equal(JSON.parse(readFileSync(path.join(options.logDirectory, "summary.json"), "utf8")).status, "fail");
+      assert.equal(existsSync(options.workDirectory), false);
+    } finally { rmSync(root, { force: true, recursive: true }); }
+  }
+});
+
+test("restored restart retains full snapshot and the original backup evidence", async () => {
+  for (const [label, sql, alter, error] of [
+    ["revision-only write", "UPDATE library_domain_revisions SET revision = revision + 1", null, /restored state changed across the verified restart/],
+    ["new local cache", "INSERT INTO settings(key,value) VALUES ('library_sync_cache','{}')", null, /restored state changed across the verified restart/],
+    ["missing credential migration", "DELETE FROM settings WHERE key = 'secure_credential_storage_migration_v1'", null, /exact completed credential migration marker/],
+    ["wrong credential migration", "UPDATE settings SET value = 'incomplete' WHERE key = 'secure_credential_storage_migration_v1'", null, /exact completed credential migration marker/],
+    ["similarly named setting", "INSERT INTO settings(key,value) VALUES ('secure_credential_storage_migration_v2','complete')", null, /restored state changed across the verified restart/],
+    ["printer local credential write", "UPDATE printers SET access_token = 'isolated-qa-token'", null, /restored state changed across the verified restart/],
+    ["history corruption", "UPDATE spool_history_events SET created_at = '2099-01-01 00:00:00'", null, /portable business rows/],
+    ["changed restore evidence", null, result => { result.completion.restore_evidence.backup_tables_sha256 = "c".repeat(64); }, /restored state or backup evidence changed/],
+  ]) {
+    const root = temporaryRoot("restored-restart-corruption");
+    const options = optionsFor(root);
+    try {
+      await assert.rejects(() => runPackagedDesktopE2e(options, { async launchPhase({ context, phase }) {
+        if (phase === "mutate") createMutatedDatabase(context.databasePath, context.runId);
+        if (phase === "restore") simulateRestore(context.databasePath);
+        const result = passingResult(phase, context.runId);
+        if (phase === "verify-restored") {
+          simulateRestoredStartup(context.databasePath);
+          if (sql) {
+            const database = new Database(context.databasePath);
+            try { database.exec(sql); } finally { database.close(); }
+          }
+          alter?.(result);
+        }
+        writeFileSync(path.join(context.workDirectory, `${phase}-result.json`), JSON.stringify(result), { flag: "wx", mode: 0o600 });
+        return { exitCode: 0, signal: null };
+      } }), error, label);
+    } finally { rmSync(root, { force: true, recursive: true }); }
+  }
+});
+
+test("restore must remove the credential migration marker before startup recreates it", async () => {
+  for (const marker of ["complete", "incomplete"]) {
+    const root = temporaryRoot("restore-retained-credential-marker");
+    const options = optionsFor(root);
+    try {
+      await assert.rejects(() => runPackagedDesktopE2e(options, { async launchPhase({ context, phase }) {
+        if (phase === "mutate") createMutatedDatabase(context.databasePath, context.runId);
+        if (phase === "restore") {
+          simulateRestore(context.databasePath);
+          const database = new Database(context.databasePath);
+          try {
+            database.prepare("INSERT INTO settings(key,value) VALUES ('secure_credential_storage_migration_v1',?)").run(marker);
+          } finally { database.close(); }
+        }
+        if (phase === "verify-restored") {
+          const database = new Database(context.databasePath);
+          try {
+            database.exec("UPDATE settings SET value = 'complete' WHERE key = 'secure_credential_storage_migration_v1'");
+          } finally { database.close(); }
+        }
+        writeFileSync(path.join(context.workDirectory, `${phase}-result.json`), JSON.stringify(passingResult(phase, context.runId)), { flag: "wx", mode: 0o600 });
+        return { exitCode: 0, signal: null };
+      } }), /must remove the local credential migration marker during import/);
+    } finally { rmSync(root, { force: true, recursive: true }); }
   }
 });
 
@@ -397,6 +620,8 @@ test("replay cannot hide history, revision, or other business-row writes",async(
     ["printer metadata","UPDATE printers SET updated_at = '2099-01-01 00:00:00'"],
     ["extra history","INSERT INTO spool_history_events(id,spool_id,event_type,payload_json) VALUES ('unexpected','packaged_e2e_spool','UPDATED','{}')"],
     ["theme setting","INSERT INTO settings(key,value) VALUES ('theme_mode','dark') ON CONFLICT(key) DO UPDATE SET value = excluded.value"],
+    ["credential migration removed","DELETE FROM settings WHERE key = 'secure_credential_storage_migration_v1'"],
+    ["credential migration changed","UPDATE settings SET value = 'incomplete' WHERE key = 'secure_credential_storage_migration_v1'"],
     ["low-stock policy","INSERT INTO settings(key,value) VALUES ('low_stock_policy_json','{\"threshold\":1}') ON CONFLICT(key) DO UPDATE SET value = excluded.value"],
   ]) {
     const root=temporaryRoot("replay-writes");const options=optionsFor(root);

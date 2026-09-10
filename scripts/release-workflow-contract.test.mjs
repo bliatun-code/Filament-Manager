@@ -1872,6 +1872,18 @@ test("CI and release workflows block on packaged desktop and Host-Client mutatio
   assert.match(packagedDesktopE2eRunner, /phase,\s*\n\s*runId: context\.runId/);
   assert.match(packagedDesktopE2eRunner, /inspectPackagedDesktopE2eDatabase/);
   assert.match(packagedDesktopE2eRunner, /backup_total_rows/);
+  assert.match(packagedDesktopE2eRunner, /backup_restore/);
+  assert.match(macosDmgSmoke, /backup restore verified after restart/);
+  assert.match(windowsMsiSmoke, /backup restore verified after restart/);
+  assert.ok(windowsMsiSmoke.includes('($packagedDesktopE2eResult.phases -join ",") -cne "mutate,verify,restore,verify-restored"'));
+  assert.ok(windowsMsiSmoke.includes('$packagedDesktopE2eResult.backup_restore.status -ne "pass"'));
+  for (const field of ["post_restart_verified", "batch_journal_preserved", "credential_migration_reinitialized"]) {
+    assert.ok(windowsMsiSmoke.includes(`$packagedDesktopE2eResult.backup_restore.${field} -ne $true`));
+  }
+  assert.ok(windowsMsiSmoke.includes("$packagedDesktopE2eResult.backup_restore.catalog_jobs_cleared -ne 1"));
+  for (const field of ["portable_state_sha256", "backup_tables_sha256"]) {
+    assert.ok(windowsMsiSmoke.includes(`$packagedDesktopE2eResult.backup_restore.${field} -cnotmatch`));
+  }
   assert.match(
     packagedHostClientE2eRunner,
     /FILAMENT_MANAGER_PACKAGED_HOST_CLIENT_E2E: "1"/,

@@ -6,8 +6,13 @@ export type PackagedDesktopBatchEvidence = {
   receipt: CatalogSpoolBatchReceipt;
 };
 
+export type PackagedDesktopRestoreEvidence = {
+  backup_tables_sha256: string;
+  perturbed_weight_g: number;
+};
+
 export type PackagedDesktopE2eConfiguration = {
-  phase: "mutate" | "verify";
+  phase: "mutate" | "verify" | "restore" | "verify-restored";
   run_id: string;
   spool_id: string;
   printer_id: string;
@@ -16,10 +21,11 @@ export type PackagedDesktopE2eConfiguration = {
   updated_weight_g: number;
   returned_weight_g: number;
   batch_evidence: PackagedDesktopBatchEvidence | null;
+  restore_evidence: PackagedDesktopRestoreEvidence | null;
 };
 
 export type PackagedDesktopE2eCompletion = {
-  phase: "mutate" | "verify";
+  phase: PackagedDesktopE2eConfiguration["phase"];
   run_id: string;
   spool_id: string;
   printer_id: string;
@@ -30,6 +36,7 @@ export type PackagedDesktopE2eCompletion = {
   backup_sha256: string | null;
   backup_total_rows: number | null;
   batch_evidence: PackagedDesktopBatchEvidence;
+  restore_evidence: PackagedDesktopRestoreEvidence | null;
 };
 
 export type PackagedDesktopE2eFailure = {
