@@ -195,7 +195,7 @@ PR #109 er merget som `be184e9c`, med identisk Git-tre som den verifiserte PR-ka
 
 Den avgrensede [printeroppfølgingen](PRINTER_SLOT_ATOMIC_FOLLOWUP_2026-09-10.md) retter feil rull ved en foreldet vektkladd og gjentatt delvis forbruk ved nytt forsøk. Én atomisk operasjon kontrollerer forventet rull og lagrer vekt, forbruk og tilordning samlet; identisk veiing av samme rull gir ikke ekstra forbruk. Full lokal verifisering og en fersk optimalisert arm64-DMG er grønne. [PR #110](https://github.com/bliatun-code/Filament-Manager/pull/110) bestod alle åtte kontroller på `d85b4721` i første CI-runde. Nedlastede macOS- og Windows-resultater bekrefter 100 g forbruk og én jobb gjennom gjentatt måling, omstart og backup-gjenoppretting med 1 643 rader, samt bestått Host/Client. Client-handlingene krever en oppgradert Host; schema, versjon og publisert release er uendret.
 
-Den aktuelle oppfølgingen er [macOS-identiteten for bakgrunnsstart](MACOS_BACKGROUND_SERVICE_2026-09-12.md). PR #111 er merget med alle elleve kontroller grønne. Metadata og ikon er rettet, men utgivernavnet vises fortsatt etter en faktisk omstart. Oppfølgingen bruker en egen oppstarter med Apples moderne Service Management-API på macOS 13+, og beholder støtte for macOS 11/12. Lokal implementering og regresjonstester er på plass; signert installasjon, faktisk navnevisning og CI for denne oppfølgingen verifiseres videre. Publisert release er uendret.
+Den aktuelle oppfølgingen er [macOS-identiteten for bakgrunnsstart](MACOS_BACKGROUND_SERVICE_2026-09-12.md). PR #111 er merget med alle elleve kontroller grønne, men den gamle registreringen beholdt utgivernavnet etter omstart. Den nye oppstarteren bruker Apples moderne Service Management-API på macOS 13+, med bevart støtte for macOS 11/12. Signert lokal oppgradering viser nå Filament Manager med riktig ikon, og utgiverraden er borte på testmaskinen. Av/på, avslått oppstart etter appomstart, respekt for macOS-avslag og faktisk skjult oppstart via den registrerte hjelperen er bekreftet. Veiledningen er rendret og kontrollert på norsk og engelsk, og språkbeviset er fornyet for alle 21 språk. Siste installerte tekstkontroll, CI og en reell neste innlogging gjenstår. Publisert release er uendret.
 
 Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstartskontrollen 12. september lukker den antakelsen uten å erklære visningsproblemet løst. Overgangen til den moderne registreringen bevarer avslag og tilpassede oppsett og avslutter ikke den åpne appen. Gammel jobb kan være lastet frem til utlogging; en reell innlogging etter oppgraderingen må kontrolleres separat.
 
@@ -208,7 +208,7 @@ Deretter følger [utlånsdialogene](LOAN_DIALOG_AUDIT_2026-09-10.md). Fire rendr
 
 ### 2026-09-12
 
-- PR #111 er merget som `3c244109`; alle elleve kontroller og nedlastede macOS-/Windows-pakketester er bekreftet grønne. Ettersjekk etter systemomstart viser fortsatt utgivernavnet. Den [moderne bakgrunnsoppstarteren](MACOS_BACKGROUND_SERVICE_2026-09-12.md) implementeres og verifiseres som neste avgrensede pakke.
+- PR #111 er merget som `3c244109`; alle elleve kontroller og nedlastede macOS-/Windows-pakketester er bekreftet grønne. Ettersjekk etter systemomstart viste fortsatt utgivernavnet. Den [moderne bakgrunnsoppstarteren](MACOS_BACKGROUND_SERVICE_2026-09-12.md) har siden bestått signert lokal oppgradering og funksjonstester, med riktig navn og ikon og bortfall av den gamle utgiverraden. En reell neste innlogging og den nye PR-ens CI gjenstår.
 
 ### 2026-09-10
 

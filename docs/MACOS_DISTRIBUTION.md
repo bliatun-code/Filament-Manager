@@ -81,10 +81,13 @@ and macOS permit. Missing, disabled, or customized registrations do not silently
 opt in. Disabling the modern launcher leaves the main application running.
 
 The association repair fixed the icon of the installed 0.30.0 app, but its old
-publisher grouping remained after restart. The modern implementation has not
-yet been verified through a signed installed upgrade or published in a release.
-Existing Settings history may remain until after the old login session ends;
-no system-wide cache reset is required or performed. See the
+publisher grouping remained after restart. A signed local upgrade using the
+modern implementation subsequently showed Filament Manager with its icon;
+the old publisher row disappeared during the same session. Background launch,
+explicit disable/re-enable and OS-denial preservation passed locally. A real
+next-login check is still pending, and no new release has been published.
+Existing Settings history may take longer to clear on other Macs; no system-wide
+cache reset is required or performed. See the
 [follow-up verification record](MACOS_BACKGROUND_SERVICE_2026-09-12.md) for
 current evidence and outstanding checks.
 

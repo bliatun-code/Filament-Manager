@@ -81,6 +81,12 @@
     },
     {
       "surface": "desktop",
+      "key": "settings.backgroundMacosApprovalRequired",
+      "meaning": "macOS requires the user to approve Filament Manager background activity before launch at login can be enabled. Direct the user to the localized System Settings > General > Login Items page and Background App Activity section, then ask them to retry. This concerns the operating system permission, not the close-to-tray preference.",
+      "screenshot": "docs/screenshots/settings-general.jpg"
+    },
+    {
+      "surface": "desktop",
       "key": "inventory.labelProfile.custom",
       "meaning": "Size-profile option that lets the user enter physical label dimensions; it does not customize the label content.",
       "screenshot": "docs/screenshots/filament-label.jpg",

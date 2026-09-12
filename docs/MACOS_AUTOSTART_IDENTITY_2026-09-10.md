@@ -155,12 +155,17 @@ kept outside the repository.
 
 ## Remaining Acceptance Checks
 
-A follow-up inspection on 12 September confirmed a system restart after the
+A follow-up inspection before the modern-service upgrade on 12 September confirmed a system restart after the
 original repair. The installed app remains 0.30.0 and its associated plist
 remains enabled, but Background App Activity still shows the publisher row
 alongside the historical Filament Manager row. Restart did not resolve the
 name grouping. Future registration changes must be checked both immediately
 and after another login before their visible attribution is considered fixed.
+
+The subsequent [modern-service upgrade](MACOS_BACKGROUND_SERVICE_2026-09-12.md)
+passed signed installed migration, background start, and permission checks.
+It displayed the app name and icon and cleared the publisher row on this Mac;
+its real next-login check remains separate from the legacy repair recorded here.
 
 Separately, verify an old-to-new signed app upgrade on a clean installation.
 That must exercise normal startup with an existing legacy agent, both enabled
