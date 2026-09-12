@@ -1,0 +1,13 @@
+{
+  "build": {
+    "beforeBundleCommand": "node ./scripts/prepare-macos-login-helper-bundle.mjs"
+  },
+  "bundle": {
+    "externalBin": ["target/macos-login-helper/filament-manager-login-helper"],
+    "macOS": {
+      "files": {
+        "Library/LaunchAgents/no.bliatun.filamentmanager.background.plist": "macos/no.bliatun.filamentmanager.background.plist"
+      }
+    }
+  }
+}

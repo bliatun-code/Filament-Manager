@@ -20,6 +20,52 @@ struct ExistingAgent {
     metadata: Metadata,
 }
 
+/// The exact owned file inspected before registering its modern replacement.
+/// Retiring it must not erase edits made while Service Management was running.
+pub(crate) struct LegacySnapshot(ExistingAgent);
+
+impl LegacySnapshot {
+    pub(crate) fn enabled(&self) -> bool {
+        self.0
+            .dictionary
+            .get("RunAtLoad")
+            .and_then(Value::as_boolean)
+            == Some(true)
+            && self
+                .0
+                .dictionary
+                .get("Disabled")
+                .and_then(Value::as_boolean)
+                != Some(true)
+    }
+
+    pub(crate) fn stock(&self) -> bool {
+        self.0.dictionary.keys().all(|key| {
+            matches!(
+                key.as_str(),
+                "Label"
+                    | "Program"
+                    | "ProgramArguments"
+                    | "RunAtLoad"
+                    | "Disabled"
+                    | "AssociatedBundleIdentifiers"
+            )
+        }) && self
+            .0
+            .dictionary
+            .get("ProgramArguments")
+            .and_then(Value::as_array)
+            .is_some_and(|arguments| {
+                arguments.len() == 2 && arguments[1].as_string() == Some("--background")
+            })
+            && self
+                .0
+                .dictionary
+                .get("AssociatedBundleIdentifiers")
+                .is_none_or(|value| value == &association())
+    }
+}
+
 fn describe(error: impl std::fmt::Display) -> String {
     format!("Could not manage Filament Manager launch at login: {error}")
 }
@@ -230,6 +276,24 @@ fn association() -> Value {
 pub(crate) fn has_registration(directory: &Path, executable: &Path) -> Result<bool, String> {
     let executable = validate_installed_executable(executable)?;
     Ok(read_agent(directory, &executable)?.is_some())
+}
+
+pub(crate) fn inspect_registration(
+    directory: &Path,
+    executable: &Path,
+) -> Result<Option<LegacySnapshot>, String> {
+    let executable = validate_installed_executable(executable)?;
+    Ok(read_agent(directory, &executable)?.map(LegacySnapshot))
+}
+
+pub(crate) fn retire_registration(
+    directory: &Path,
+    snapshot: &LegacySnapshot,
+) -> Result<(), String> {
+    check_directory(directory)?;
+    let path = directory.join(AGENT_FILE);
+    ensure_unchanged(&path, Some(&snapshot.0))?;
+    fs::remove_file(path).map_err(describe)
 }
 
 pub(crate) fn is_enabled(directory: &Path, executable: &Path) -> Result<bool, String> {

@@ -15,9 +15,55 @@ import {
   validateDmgLayout,
   validateExpectedArchitectures,
   validateLocalCodesignDetails,
+  validateLoginHelperEntry,
+  validateLoginHelperSignature,
+  validateMacosLoginAgent,
   validateMacosDeploymentTargets,
   validateReleaseMetadata,
 } from "./verify-macos-release.mjs";
+
+test("macOS login agent accepts only its embedded relative launcher contract", () => {
+  const agent = {
+    Label: "no.bliatun.filamentmanager.background",
+    BundleProgram: "Contents/MacOS/filament-manager-login-helper",
+    RunAtLoad: true,
+  };
+  assert.doesNotThrow(() => validateMacosLoginAgent(agent));
+  for (const invalid of [
+    null, {}, { ...agent, Label: "unrelated" }, { ...agent, RunAtLoad: false },
+    { ...agent, BundleProgram: "../outside" }, { ...agent, Program: "/bin/sh" },
+    { ...agent, KeepAlive: true },
+  ]) assert.throws(() => validateMacosLoginAgent(invalid), /launch settings/);
+});
+
+test("macOS login helper requires executable regular code with its own signature identity", () => {
+  const entry = { isFile: true, isSymbolicLink: false, linkCount: 1, executable: true };
+  assert.doesNotThrow(() => validateLoginHelperEntry(entry));
+  for (const override of [
+    { isFile: false }, { isSymbolicLink: true }, { linkCount: 2 }, { executable: false },
+  ]) assert.throws(() => validateLoginHelperEntry({ ...entry, ...override }), /regular executable/);
+  const local = parseCodesignDetails(
+    "Identifier=no.bliatun.filamentmanager.login-helper\nSignature=adhoc\nRuntime Version=27.0.0\n",
+  );
+  assert.doesNotThrow(() => validateLoginHelperSignature(local, { signatureMode: "local" }));
+  assert.throws(() => validateLoginHelperSignature(local, { signatureMode: "release" }), /Developer ID/);
+  assert.throws(() => validateLoginHelperSignature({ ...local, runtime: false }, {
+    signatureMode: "local",
+  }), /Hardened Runtime/);
+  const release = {
+    ...local, authorities: ["Developer ID Application: Example AS"],
+    signature: undefined, teamIdentifier: "TEAM123456", timestamp: "12 Sep 2026",
+  };
+  assert.doesNotThrow(() => validateLoginHelperSignature(release, {
+    signatureMode: "release", expectedTeamId: "TEAM123456",
+  }));
+  assert.throws(() => validateLoginHelperSignature(release, {
+    signatureMode: "release", expectedTeamId: "OTHERTEAM",
+  }), /Expected Apple Team ID/);
+  assert.throws(() => validateLoginHelperSignature({
+    ...release, identifier: "no.bliatun.filamentmanager",
+  }, { signatureMode: "release" }), /Expected bundle identifier no\.bliatun\.filamentmanager\.login-helper/);
+});
 
 const expectedAppVersion = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),

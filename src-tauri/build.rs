@@ -92,7 +92,92 @@ fn emit_build_metadata() {
     );
 }
 
+fn build_macos_login_helper() -> std::io::Result<()> {
+    use std::{fs, path::PathBuf, process::Command};
+
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos") {
+        return Ok(());
+    }
+    let target = env::var("TARGET").expect("Cargo must provide TARGET");
+    let architecture = match target.as_str() {
+        "aarch64-apple-darwin" => "arm64",
+        "x86_64-apple-darwin" => "x86_64",
+        _ => {
+            return Err(std::io::Error::other(
+                "Unsupported macOS login helper target",
+            ))
+        }
+    };
+    let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let source = manifest.join("macos/filament-manager-login-helper.m");
+    println!("cargo:rerun-if-changed={}", source.display());
+    for variable in ["DEVELOPER_DIR", "SDKROOT", "TARGET"] {
+        println!("cargo:rerun-if-env-changed={variable}");
+    }
+    let directory = manifest.join("target/macos-login-helper");
+    fs::create_dir_all(&directory)?;
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(std::io::Error::other)?
+        .as_nanos();
+    let temporary = directory.join(format!(".build-{}-{nonce}", std::process::id()));
+    fs::create_dir(&temporary)?;
+    let result = (|| {
+        let candidate = temporary.join("filament-manager-login-helper");
+        let status = Command::new("/usr/bin/xcrun")
+            .args([
+                "--sdk",
+                "macosx",
+                "clang",
+                "-arch",
+                architecture,
+                "-mmacosx-version-min=11.0",
+                "-O2",
+                "-g0",
+                "-fobjc-arc",
+                "-Wall",
+                "-Wextra",
+                "-Werror",
+                "-Wunguarded-availability",
+                "-framework",
+                "Foundation",
+                "-framework",
+                "AppKit",
+            ])
+            .arg(&source)
+            .arg("-o")
+            .arg(&candidate)
+            .status()?;
+        if !status.success() {
+            return Err(std::io::Error::other(
+                "macOS login helper compilation failed",
+            ));
+        }
+        let destination = directory.join(format!("filament-manager-login-helper-{target}"));
+        if fs::symlink_metadata(&destination).is_ok_and(|metadata| !metadata.is_file()) {
+            return Err(std::io::Error::other(
+                "Expected a regular login helper output",
+            ));
+        }
+        // Keep an unchanged sidecar's mtime: tauri-build watches this file.
+        if fs::read(&destination).ok() != Some(fs::read(&candidate)?) {
+            fs::rename(&candidate, &destination)?;
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if fs::metadata(&destination)?.permissions().mode() & 0o777 != 0o755 {
+                fs::set_permissions(&destination, fs::Permissions::from_mode(0o755))?;
+            }
+        }
+        Ok(())
+    })();
+    let cleanup = fs::remove_dir_all(temporary);
+    result.and(cleanup)
+}
+
 fn main() {
     emit_build_metadata();
+    build_macos_login_helper().expect("failed to prepare the macOS login helper");
     tauri_build::build()
 }

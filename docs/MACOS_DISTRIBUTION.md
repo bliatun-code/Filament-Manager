@@ -63,8 +63,8 @@ commands and scope.
 
 **Launch at login** is optional. When enabled in Filament Manager, it starts
 the app in the background after login. On recent macOS versions, System
-Settings → General → Login Items shows the related background activity under
-**Filament Manager**, with the app icon. macOS controls permission to run in
+Settings → General → Login Items identifies the related background activity.
+Older registrations may still show the publisher's name. macOS controls permission to run in
 the background; the app's launch preference does not override that permission.
 
 Older registrations could show the publisher's name and a generic icon even
@@ -74,17 +74,19 @@ app. This fallback is described in
 [Apple's Login Items documentation](https://developer.apple.com/documentation/servicemanagement/updating-helper-executables-from-earlier-versions-of-macos).
 The publisher's signing identity remains part of the app's valid signature.
 
-The startup repair in this source version adds the missing association to an
-existing recognized registration. It preserves your launch and background
-permission choices and does not turn on launch at login when no registration
-exists. Existing macOS caches can retain an older publisher grouping even after
-the metadata and icon are correct. The repair and a separate cache refresh were
-verified locally against an installed 0.30.0 app; the source change
-has not yet been verified through a packaged app upgrade or published in a
-new release. See the
-[verification record](MACOS_AUTOSTART_IDENTITY_2026-09-10.md) for the tested
-scope. Users do not need to delete login items or change system permissions
-to correct the app's name and icon.
+This source version uses an app-embedded Service Management launcher on macOS
+13 and newer; macOS 11/12 retain the associated legacy LaunchAgent. Automatic
+transition requires an owned, stock registration that both the app preference
+and macOS permit. Missing, disabled, or customized registrations do not silently
+opt in. Disabling the modern launcher leaves the main application running.
+
+The association repair fixed the icon of the installed 0.30.0 app, but its old
+publisher grouping remained after restart. The modern implementation has not
+yet been verified through a signed installed upgrade or published in a release.
+Existing Settings history may remain until after the old login session ends;
+no system-wide cache reset is required or performed. See the
+[follow-up verification record](MACOS_BACKGROUND_SERVICE_2026-09-12.md) for
+current evidence and outstanding checks.
 
 ## Troubleshooting
 

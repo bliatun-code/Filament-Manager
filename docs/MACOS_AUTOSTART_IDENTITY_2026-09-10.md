@@ -1,10 +1,10 @@
 # macOS Login Items Identity — 10 September 2026
 
-Status: **The metadata and icon repair is verified. Local name correction has
-been temporary because the older macOS grouping returned, so stable attribution
-is still under investigation. Local Rust tests, Clippy, contracts, and dependency
-checks passed. CI and a packaged app upgrade containing this change remain
-pending.**
+Status, rechecked 12 September: **PR #111 is merged and all eleven checks passed.
+The metadata and icon repair is verified, but the publisher name still appears
+after a real macOS restart. Stable display attribution is not fixed by that
+legacy metadata change. A modern Service Management follow-up is in progress;
+an installed signed upgrade containing the fix remains unverified.**
 
 ## Cause
 
@@ -149,18 +149,18 @@ and the private test work directory and installed test copy were removed.
 
 This verifies the metadata repair and a packaged Host/Client run. It does not
 yet verify migration through an installed app upgrade, next-login execution,
-or behavior on other macOS versions. CI remains pending. Private backups,
+or behavior on other macOS versions. CI subsequently passed as recorded below. Private backups,
 screenshots, paths, signing identifiers, and raw background-task records are
 kept outside the repository.
 
 ## Remaining Acceptance Checks
 
-The next local check is a new login initiated by the user after saving their
-work. Inspect Background App Activity again for the Filament Manager name and
-icon, confirm that the existing approval is preserved, and check that the
-normal app still starts as expected. Reopen the settings page later to catch
-the temporary correction already observed. A new login is a verification
-step, not a guaranteed cache repair.
+A follow-up inspection on 12 September confirmed a system restart after the
+original repair. The installed app remains 0.30.0 and its associated plist
+remains enabled, but Background App Activity still shows the publisher row
+alongside the historical Filament Manager row. Restart did not resolve the
+name grouping. Future registration changes must be checked both immediately
+and after another login before their visible attribution is considered fixed.
 
 Separately, verify an old-to-new signed app upgrade on a clean installation.
 That must exercise normal startup with an existing legacy agent, both enabled
@@ -170,3 +170,30 @@ runs intentionally skip this migration and cannot substitute for that check.
 A final independent source review of `1daaf5de` found no blocking ownership,
 ordering, disabled-state, or FFI issues. The public APIs used predate the macOS
 11 deployment target; this is not a claim of runtime verification on macOS 11.
+
+## Completed CI Evidence
+
+All eleven PR checks passed on `1daaf5de` before PR #111 was merged as
+`3c244109`. [CI run 34492947042](https://github.com/bliatun-code/Filament-Manager/actions/runs/34492947042)
+checked out synthetic merge `5d34b1f0`, whose parents are base `e626cb4c` and
+head `1daaf5de`; its tree matches that head. Both native checkout logs confirm
+that tested merge. Downloaded artifacts were independently inspected:
+
+- macOS artifact `10160146197` and Windows artifact `10160081946`: all four
+  installed desktop phases passed, including restoration of a 1,643-row backup
+  and verification after restart. Both six-phase Host/Client runs passed with
+  760 g on Host/cache and the untouched 333 g Client shadow. Session renewal,
+  authentication clearing, replayed batch revisions, and zero Client batch
+  records were verified.
+- Matching run identities and cleanup authorizations confirmed child process
+  termination and authentication clearing. Successful enclosing gates also
+  verified that their private work directories were removed. Windows installer,
+  shortcut, PATH, and autostart cleanup passed, retaining the application database.
+- Database artifact `10160145169`: historical schema 1 to 7 upgrade passed across
+  two uniquely acknowledged launches, preserving 22 value-digested domain
+  tables, eight protected settings, and five catalog rows.
+
+These macOS packages were ad-hoc signed and the Windows package was unsigned.
+They establish regression coverage, not signed upgrade migration or the macOS
+name/icon display. The packaged previous-release/schema-7 gate was not requested
+in this CI run. Private raw artifacts remain outside the repository.
