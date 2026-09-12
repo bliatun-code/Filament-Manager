@@ -13,7 +13,7 @@ impl Backend for SystemBackend {
         let status = native::status()?;
         if matches!(
             status,
-            ServiceStatus::Enabled | ServiceStatus::NotRegistered
+            ServiceStatus::Enabled | ServiceStatus::NotRegistered | ServiceStatus::NotFound
         ) && disabled_override("no.bliatun.filamentmanager.background")?
         {
             Ok(ServiceStatus::RequiresApproval)

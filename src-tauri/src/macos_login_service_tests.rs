@@ -712,12 +712,13 @@ fn pending_recovery_flush_failure_does_not_mutate_native_service_or_legacy() {
 }
 
 #[test]
-fn missing_native_service_keeps_pending_migration_and_legacy_for_recovery() {
+fn missing_native_service_keeps_denied_pending_migration_and_legacy_for_recovery() {
     let fixture = Fixture::new();
     fixture.save(fixture.legacy());
     let before = fs::read(fixture.path()).unwrap();
     let mut backend = Mock {
         service: ServiceStatus::NotFound,
+        allowed: Ok(false),
         ..Mock::default()
     };
     fixture.record(&mut backend, true);
@@ -771,4 +772,279 @@ fn explicit_enable_reports_approval_requirement_after_resuming_interrupted_refre
         backend.mutations(),
         ["store_record", "register", "store_record"]
     );
+}
+
+#[test]
+fn unowned_approval_required_remains_readable_without_authorizing_any_mutation() {
+    for has_legacy in [false, true] {
+        let fixture = Fixture::new();
+        if has_legacy {
+            fixture.save(fixture.legacy());
+        }
+        let before = fs::read(fixture.path()).ok();
+        let mut backend = Mock {
+            service: ServiceStatus::RequiresApproval,
+            allowed: Ok(false),
+            ..Mock::default()
+        };
+        assert!(!status(&fixture.agents, &fixture.executable, &mut backend).unwrap());
+        reconcile(&fixture.agents, &fixture.executable, &mut backend).unwrap();
+        assert!(
+            set_enabled(&fixture.agents, &fixture.executable, true, &mut backend)
+                .unwrap_err()
+                .contains("System Settings")
+        );
+        let disable_error =
+            set_enabled(&fixture.agents, &fixture.executable, false, &mut backend).unwrap_err();
+        assert!(disable_error.contains("RequiresApproval"));
+        assert!(disable_error.contains("ownership record"));
+        assert!(backend.mutations().is_empty());
+        assert_eq!(fs::read(fixture.path()).ok(), before);
+        assert_eq!(fixture.agents.exists(), has_legacy);
+    }
+}
+
+#[test]
+fn unowned_registered_service_error_identifies_native_status_without_mutating_it() {
+    let fixture = Fixture::new();
+    let mut backend = Mock {
+        service: ServiceStatus::Enabled,
+        ..Mock::default()
+    };
+    let status_error = status(&fixture.agents, &fixture.executable, &mut backend).unwrap_err();
+    assert!(status_error.contains("Enabled"));
+    assert!(status_error.contains("ownership record"));
+    assert!(reconcile(&fixture.agents, &fixture.executable, &mut backend).is_err());
+    assert!(set_enabled(&fixture.agents, &fixture.executable, false, &mut backend).is_err());
+    assert!(backend.mutations().is_empty());
+    assert!(!fixture.agents.exists());
+}
+
+#[test]
+fn virgin_not_found_service_can_migrate_stock_legacy_or_accept_explicit_opt_in() {
+    for has_legacy in [false, true] {
+        let fixture = Fixture::new();
+        if has_legacy {
+            fixture.save(fixture.legacy());
+        }
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        if has_legacy {
+            reconcile(&fixture.agents, &fixture.executable, &mut backend).unwrap();
+        } else {
+            assert!(!status(&fixture.agents, &fixture.executable, &mut backend).unwrap());
+            set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).unwrap();
+        }
+        assert_eq!(backend.service, ServiceStatus::Enabled);
+        assert!(!fixture.path().exists());
+        assert!(!backend.pending());
+        assert_eq!(
+            backend
+                .trace
+                .iter()
+                .filter(|event| **event == "register")
+                .count(),
+            1
+        );
+        assert!(!backend.trace.contains(&"unregister"));
+    }
+}
+
+#[test]
+fn virgin_not_found_service_does_not_automatically_opt_in_without_approved_stock_legacy() {
+    for case in ["absent", "disabled", "customized", "os_denied"] {
+        let fixture = Fixture::new();
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        if case != "absent" {
+            let mut dictionary = fixture.legacy();
+            match case {
+                "disabled" => {
+                    dictionary.insert("Disabled".into(), Value::Boolean(true));
+                }
+                "customized" => {
+                    dictionary.insert("KeepAlive".into(), Value::Boolean(true));
+                }
+                "os_denied" => backend.allowed = Ok(false),
+                _ => unreachable!(),
+            }
+            fixture.save(dictionary);
+        }
+        let before = fs::read(fixture.path()).ok();
+        reconcile(&fixture.agents, &fixture.executable, &mut backend).unwrap();
+        assert!(backend.mutations().is_empty(), "{case}");
+        assert_eq!(fs::read(fixture.path()).ok(), before);
+        assert_eq!(fixture.agents.exists(), case != "absent");
+    }
+}
+
+#[test]
+fn virgin_not_found_requires_valid_bundled_resources_before_any_registration() {
+    for invalid in ["missing_helper", "invalid_plist"] {
+        let fixture = Fixture::new();
+        fixture.save(fixture.legacy());
+        let before = fs::read(fixture.path()).unwrap();
+        if invalid == "missing_helper" {
+            fs::remove_file(fixture.bundle().join(HELPER_PROGRAM)).unwrap();
+        } else {
+            fs::write(
+                fixture.bundle().join(SERVICE_PLIST),
+                b"invalid property list",
+            )
+            .unwrap();
+        }
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        assert!(reconcile(&fixture.agents, &fixture.executable, &mut backend).is_err());
+        assert!(set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).is_err());
+        assert!(backend.mutations().is_empty());
+        assert_eq!(fs::read(fixture.path()).unwrap(), before);
+    }
+}
+
+#[test]
+fn established_not_found_record_is_not_treated_as_a_first_install() {
+    let fixture = Fixture::new();
+    fixture.save(fixture.legacy());
+    let before = fs::read(fixture.path()).unwrap();
+    let mut backend = Mock {
+        service: ServiceStatus::NotFound,
+        ..Mock::default()
+    };
+    fixture.record(&mut backend, false);
+    let record = backend.record.clone();
+    assert!(reconcile(&fixture.agents, &fixture.executable, &mut backend).is_err());
+    assert!(backend.mutations().is_empty());
+    assert_eq!(backend.record, record);
+    assert_eq!(fs::read(fixture.path()).unwrap(), before);
+}
+
+#[test]
+fn pending_first_migration_can_resume_not_found_with_current_valid_resources() {
+    let fixture = Fixture::new();
+    fixture.save(fixture.legacy());
+    let mut backend = Mock {
+        service: ServiceStatus::NotFound,
+        ..Mock::default()
+    };
+    fixture.record(&mut backend, true);
+    fs::write(
+        fixture.bundle().join(HELPER_PROGRAM),
+        b"new valid bundled helper",
+    )
+    .unwrap();
+    reconcile(&fixture.agents, &fixture.executable, &mut backend).unwrap();
+    assert_eq!(backend.service, ServiceStatus::Enabled);
+    assert!(!fixture.path().exists());
+    assert!(!backend.pending());
+    let record =
+        serde_json::from_str::<RegistrationRecord>(backend.record.as_ref().unwrap()).unwrap();
+    assert_eq!(
+        record.fingerprint,
+        fingerprint(&fixture.executable).unwrap()
+    );
+    assert_eq!(
+        backend.mutations(),
+        ["store_record", "store_record", "register", "store_record"]
+    );
+}
+
+#[test]
+fn pending_not_found_does_not_register_or_unregister_when_migration_evidence_changed() {
+    for case in [
+        "absent",
+        "disabled",
+        "customized",
+        "os_denied",
+        "unknown_permission",
+        "invalid_bundle",
+    ] {
+        let fixture = Fixture::new();
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        fixture.record(&mut backend, true);
+        if case != "absent" {
+            let mut dictionary = fixture.legacy();
+            match case {
+                "disabled" => {
+                    dictionary.insert("Disabled".into(), Value::Boolean(true));
+                }
+                "customized" => {
+                    dictionary.insert("KeepAlive".into(), Value::Boolean(true));
+                }
+                "os_denied" => backend.allowed = Ok(false),
+                "unknown_permission" => backend.allowed = Err("unknown permission".into()),
+                "invalid_bundle" => fs::remove_file(fixture.bundle().join(HELPER_PROGRAM)).unwrap(),
+                _ => unreachable!(),
+            }
+            fixture.save(dictionary);
+        }
+        let before = fs::read(fixture.path()).ok();
+        let record = backend.record.clone();
+        assert!(
+            reconcile(&fixture.agents, &fixture.executable, &mut backend).is_err(),
+            "{case}"
+        );
+        assert_eq!(backend.mutations(), ["store_record"], "{case}");
+        assert_eq!(backend.record, record);
+        assert_eq!(fs::read(fixture.path()).ok(), before);
+    }
+}
+
+#[test]
+fn explicit_enable_retries_an_owned_not_found_record_without_automatic_opt_in() {
+    for has_legacy in [false, true] {
+        let fixture = Fixture::new();
+        if has_legacy {
+            fixture.save(fixture.legacy());
+        }
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        fixture.record(&mut backend, false);
+        assert!(reconcile(&fixture.agents, &fixture.executable, &mut backend).is_err());
+        assert!(backend.mutations().is_empty());
+        set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).unwrap();
+        assert_eq!(backend.service, ServiceStatus::Enabled);
+        assert!(!fixture.path().exists());
+        assert!(!backend.pending());
+        assert!(!backend.trace.contains(&"unregister"));
+    }
+}
+
+#[test]
+fn explicit_owned_not_found_retry_validates_resources_and_preserves_legacy_restrictions() {
+    for case in ["invalid_bundle", "os_denied", "customized"] {
+        let fixture = Fixture::new();
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        fixture.record(&mut backend, false);
+        let mut dictionary = fixture.legacy();
+        match case {
+            "invalid_bundle" => fs::remove_file(fixture.bundle().join(HELPER_PROGRAM)).unwrap(),
+            "os_denied" => backend.allowed = Ok(false),
+            "customized" => {
+                dictionary.insert("KeepAlive".into(), Value::Boolean(true));
+            }
+            _ => unreachable!(),
+        }
+        fixture.save(dictionary);
+        let before = fs::read(fixture.path()).unwrap();
+        let record = backend.record.clone();
+        assert!(set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).is_err());
+        assert!(backend.mutations().is_empty());
+        assert_eq!(backend.record, record);
+        assert_eq!(fs::read(fixture.path()).unwrap(), before);
+    }
 }

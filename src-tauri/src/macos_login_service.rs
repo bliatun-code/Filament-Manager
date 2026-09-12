@@ -88,11 +88,21 @@ fn read_state(
             ));
         }
     }
-    let service = backend.status()?;
-    if service != ServiceStatus::NotRegistered && record.is_none() {
-        return Err(error(
-            "the background service has no matching application ownership record",
-        ));
+    let mut service = backend.status()?;
+    if service == ServiceStatus::NotFound && record.is_none() {
+        // macOS also reports NotFound for a bundled agent it has never seen.
+        // Only a complete, recognized bundle can be treated as a first install.
+        fingerprint(&executable)?;
+        service = ServiceStatus::NotRegistered;
+    }
+    if !matches!(
+        service,
+        ServiceStatus::NotRegistered | ServiceStatus::RequiresApproval
+    ) && record.is_none()
+    {
+        return Err(error(format!(
+            "the background service ({service:?}) has no matching application ownership record"
+        )));
     }
     Ok(State {
         executable,
@@ -318,6 +328,21 @@ fn recover_pending(
         return Ok(true);
     }
     if state.service == ServiceStatus::NotFound {
+        if let Some(snapshot) = &state.legacy
+            && snapshot.stock()
+            && snapshot.enabled()
+            && legacy_allowed(directory, backend)?
+        {
+            // The process can exit after saving migration intent but before
+            // its first native register call. Resume only that approved, owned
+            // stock migration; NotFound alone is not registration authority.
+            record.fingerprint = fingerprint(&state.executable)?;
+            save_record(backend, record)?;
+            complete_registration(directory, Some(snapshot), record, backend)?;
+            state.legacy = None;
+            state.service = backend.status()?;
+            return Ok(true);
+        }
         return Err(error(
             "macOS could not find the background service during migration recovery",
         ));
@@ -487,6 +512,14 @@ pub(crate) fn set_enabled(
 ) -> Result<(), String> {
     let mut state = read_state(directory, executable, backend)?;
     if !enabled {
+        if state.service != ServiceStatus::NotRegistered && state.record.is_none() {
+            // A persistent OS opt-out can exist without a registration record.
+            // It is safe to report that state, but not to remove an unowned job.
+            return Err(error(format!(
+                "the background service ({:?}) cannot be removed without a matching application ownership record",
+                state.service
+            )));
+        }
         if let Some(record) = &mut state.record {
             record.migration_pending = false;
             record.refresh_pending = false;
@@ -507,13 +540,15 @@ pub(crate) fn set_enabled(
             require_enabled(backend)
         }
         ServiceStatus::RequiresApproval => Err(error("allow Filament Manager in System Settings > General > Login Items before enabling launch at login")),
-        ServiceStatus::NotFound => Err(error("macOS could not find the registered background service")),
-        ServiceStatus::NotRegistered => {
+        ServiceStatus::NotRegistered | ServiceStatus::NotFound => {
             if let Some(snapshot) = &state.legacy {
                 if !legacy_allowed(directory, backend)? {
                     return Err(error("the existing login agent is disabled by macOS; review Background App Activity in System Settings"));
                 }
                 if !snapshot.stock() {
+                    if state.service == ServiceStatus::NotFound {
+                        return Err(error("the registered background service could not be found; the customized legacy login agent was preserved"));
+                    }
                     return legacy::enable(directory, &state.executable);
                 }
             }
