@@ -30,21 +30,23 @@ function createDatabase(
 ) {
   const database = new Database(databasePath);
   try {
-    for (const tableName of tableNames) {
-      if (tableName === "catalog_spool_batches") {
-        database.exec(readFileSync(new URL(
-          "../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url,
-        ), "utf8"));
-        continue;
+    database.transaction(() => {
+      for (const tableName of tableNames) {
+        if (tableName === "catalog_spool_batches") {
+          database.exec(readFileSync(new URL(
+            "../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url,
+          ), "utf8"));
+          continue;
+        }
+        const requiredColumns = REQUIRED_WINDOWS_SMOKE_COLUMNS[tableName] ?? [];
+        const columnDefinitions = [
+          "id TEXT PRIMARY KEY",
+          ...requiredColumns.map((columnName) => `${columnName} TEXT`),
+        ];
+        database.exec(`CREATE TABLE ${tableName} (${columnDefinitions.join(", ")})`);
       }
-      const requiredColumns = REQUIRED_WINDOWS_SMOKE_COLUMNS[tableName] ?? [];
-      const columnDefinitions = [
-        "id TEXT PRIMARY KEY",
-        ...requiredColumns.map((columnName) => `${columnName} TEXT`),
-      ];
-      database.exec(`CREATE TABLE ${tableName} (${columnDefinitions.join(", ")})`);
-    }
-    database.pragma(`user_version = ${schemaVersion}`);
+      database.pragma(`user_version = ${schemaVersion}`);
+    })();
   } finally {
     database.close();
   }
@@ -71,11 +73,14 @@ test("Windows app database verifier accepts the repository's actual migrated sch
     const manifest = JSON.parse(readFileSync(new URL("manifest.json", migrationRoot), "utf8"));
     const database = new Database(databasePath);
     try {
-      database.exec(readFileSync(new URL("../src/database/schema.sql", import.meta.url), "utf8"));
-      for (const migration of manifest.migrations.filter(({ role }) => role === "schema-migration")) {
-        database.exec(readFileSync(new URL(migration.file, migrationRoot), "utf8"));
-      }
-      database.pragma(`user_version = ${manifest.currentSchemaVersion}`);
+      database.pragma("foreign_keys = ON");
+      database.transaction(() => {
+        database.exec(readFileSync(new URL("../src/database/schema.sql", import.meta.url), "utf8"));
+        for (const migration of manifest.migrations.filter(({ role }) => role === "schema-migration")) {
+          database.exec(readFileSync(new URL(migration.file, migrationRoot), "utf8"));
+        }
+        database.pragma(`user_version = ${manifest.currentSchemaVersion}`);
+      })();
     } finally {
       database.close();
     }

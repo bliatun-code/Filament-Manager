@@ -686,19 +686,20 @@ export function createVisualQaFixture(options = {}) {
   let hasPrimaryError = false;
   try {
     db = openDatabase(outputPath);
+    // SQLite ignores foreign_keys changes inside a transaction.
     db.pragma("foreign_keys = ON");
-    db.exec(schemaSource);
-    if (expectedSchemaVersion === seed.schemaVersion) {
-      db.exec(readFileSync(VISUAL_QA_SCHEMA_MIGRATION_PATH, "utf8"));
-    }
-    const insertAll = db.transaction(() => {
+    const initializeFixture = db.transaction(() => {
+      db.exec(schemaSource);
+      if (expectedSchemaVersion === seed.schemaVersion) {
+        db.exec(readFileSync(VISUAL_QA_SCHEMA_MIGRATION_PATH, "utf8"));
+      }
       for (const [table, rows] of Object.entries(seed.tables ?? {})) {
         insertFixtureRows(db, table, rows);
       }
       db.pragma(`user_version = ${expectedSchemaVersion}`);
+      verifyFixtureDatabase(db, seed, expectedSchemaVersion);
     });
-    insertAll();
-    verifyFixtureDatabase(db, seed, expectedSchemaVersion);
+    initializeFixture();
   } catch (error) {
     primaryError = error;
     hasPrimaryError = true;

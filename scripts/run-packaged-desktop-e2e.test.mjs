@@ -93,55 +93,58 @@ function passingResult(phase, runId) {
 function createMutatedDatabase(databasePath, runId = "packaged-e2e-contract-run") {
   const database = new Database(databasePath);
   try {
-    database.exec(readFileSync(new URL("../src/database/schema.sql",import.meta.url),"utf8"));
-    const manifest = JSON.parse(readFileSync(new URL("../src/database/migrations/manifest.json",import.meta.url),"utf8"));
-    for (const migration of manifest.migrations.filter(entry=>entry.role==="schema-migration")) {
-      database.exec(readFileSync(new URL(`../src/database/migrations/${migration.file}`,import.meta.url),"utf8"));
-    }
-    database.pragma(`user_version = ${currentSchemaVersion()}`);
-    database.exec(`
-      INSERT INTO filament_master_list(id,material,filament_name,color_name,vendor) VALUES
-        ('manual_packaged_e2e_spool','PLA','Packaged desktop E2E','QA blue','Filament Manager QA');
-      INSERT INTO settings(key,value) VALUES
-        ('library_sync_library_id','local-qa-library'),
-        ('theme_mode','light'),
-        ('low_stock_policy_json','{"threshold":100}'),
-        ('secure_credential_storage_migration_v1','complete'),
-        ('library_sync_cache','{"local":true}');
-      INSERT INTO inventory_locations(id,name,type) VALUES ('qa-location','Private packaged desktop QA','GENERIC');
-      INSERT INTO filament_spools(id,master_id,initial_weight_g,current_weight_g,remaining_g,status) VALUES (
-        'packaged_e2e_spool', 'manual_packaged_e2e_spool', 1000, 760, 760, 'ASSIGNED'
-      );
-      INSERT INTO spool_loans(id,spool_id,borrower_name,loan_direction,loan_status,grams_out,returned_grams,consumed_grams,returned_at) VALUES (
-        'packaged-e2e-loan', 'packaged_e2e_spool', 'Packaged desktop E2E borrower', 'OUTBOUND',
-        'RETURNED', 875, 760, 115, '2026-08-21 12:00:00'
-      );
-      INSERT INTO printers(id,model,name) VALUES (
-        'packaged_e2e_printer', 'Generic QA printer',
-        'Packaged desktop E2E printer'
-      );
-      INSERT INTO ams_units(id,printer_id,slot_count) VALUES ('qa-ams','packaged_e2e_printer',1);
-      INSERT INTO ams_slots(id,ams_id,slot_index,spool_id) VALUES (
-        'packaged_e2e_printer_ams_1_slot_1', 'qa-ams', 1, 'packaged_e2e_spool'
-      );
-    `);
-    const {request,receipt} = batchEvidence(runId);
-    for (const [index,id] of receipt.spool_ids.entries()) {
-      database.prepare(`INSERT INTO filament_spools(id,master_id,status,ownership_type,owner_name,owner_contact,ownership_note,
-        initial_weight_g,current_weight_g,remaining_g,location_id,home_location_id) VALUES (?,?,?,?,?,?,?,640,640,640,'qa-location','qa-location')`)
-        .run(id,request.master_ids[index],"IN_STOCK","BORROWED_IN",request.owner_name,request.owner_contact,request.ownership_note);
-      const loanId=`batch-loan-${index}`;
-      database.prepare(`INSERT INTO spool_loans(id,spool_id,borrower_name,loan_direction,loan_status,counterparty_name,counterparty_contact,counterparty_note,grams_out)
-        VALUES (?,?,?,'INBOUND','ACTIVE',?,?,?,640)`)
-        .run(loanId,id,request.owner_name,request.owner_name,request.owner_contact,request.ownership_note);
-      const insertHistory=database.prepare("INSERT INTO spool_history_events(id,spool_id,event_type,payload_json) VALUES (?,?,?,?)");
-      insertHistory.run(`created-${index}`,id,"CREATED",JSON.stringify({status:"IN_STOCK",ownership_type:"BORROWED_IN"}));
-      insertHistory.run(`borrowed-${index}`,id,"BORROWED_IN_REGISTERED",JSON.stringify({loan_id:loanId,ownership_type:"BORROWED_IN",
-        owner_name:request.owner_name,owner_contact:request.owner_contact,ownership_note:request.ownership_note,
-        loan_direction:"INBOUND",counterparty_name:request.owner_name,grams_out:640}));
-    }
-    database.prepare("INSERT INTO catalog_spool_batches(batch_id,library_id,request_json,receipt_json) VALUES (?,'local-qa-library',?,?)")
-      .run(request.batch_id,JSON.stringify(request),JSON.stringify(receipt));
+    database.pragma("foreign_keys = ON");
+    database.transaction(() => {
+      database.exec(readFileSync(new URL("../src/database/schema.sql",import.meta.url),"utf8"));
+      const manifest = JSON.parse(readFileSync(new URL("../src/database/migrations/manifest.json",import.meta.url),"utf8"));
+      for (const migration of manifest.migrations.filter(entry=>entry.role==="schema-migration")) {
+        database.exec(readFileSync(new URL(`../src/database/migrations/${migration.file}`,import.meta.url),"utf8"));
+      }
+      database.pragma(`user_version = ${currentSchemaVersion()}`);
+      database.exec(`
+        INSERT INTO filament_master_list(id,material,filament_name,color_name,vendor) VALUES
+          ('manual_packaged_e2e_spool','PLA','Packaged desktop E2E','QA blue','Filament Manager QA');
+        INSERT INTO settings(key,value) VALUES
+          ('library_sync_library_id','local-qa-library'),
+          ('theme_mode','light'),
+          ('low_stock_policy_json','{"threshold":100}'),
+          ('secure_credential_storage_migration_v1','complete'),
+          ('library_sync_cache','{"local":true}');
+        INSERT INTO inventory_locations(id,name,type) VALUES ('qa-location','Private packaged desktop QA','GENERIC');
+        INSERT INTO filament_spools(id,master_id,initial_weight_g,current_weight_g,remaining_g,status) VALUES (
+          'packaged_e2e_spool', 'manual_packaged_e2e_spool', 1000, 760, 760, 'ASSIGNED'
+        );
+        INSERT INTO spool_loans(id,spool_id,borrower_name,loan_direction,loan_status,grams_out,returned_grams,consumed_grams,returned_at) VALUES (
+          'packaged-e2e-loan', 'packaged_e2e_spool', 'Packaged desktop E2E borrower', 'OUTBOUND',
+          'RETURNED', 875, 760, 115, '2026-08-21 12:00:00'
+        );
+        INSERT INTO printers(id,model,name) VALUES (
+          'packaged_e2e_printer', 'Generic QA printer',
+          'Packaged desktop E2E printer'
+        );
+        INSERT INTO ams_units(id,printer_id,slot_count) VALUES ('qa-ams','packaged_e2e_printer',1);
+        INSERT INTO ams_slots(id,ams_id,slot_index,spool_id) VALUES (
+          'packaged_e2e_printer_ams_1_slot_1', 'qa-ams', 1, 'packaged_e2e_spool'
+        );
+      `);
+      const {request,receipt} = batchEvidence(runId);
+      for (const [index,id] of receipt.spool_ids.entries()) {
+        database.prepare(`INSERT INTO filament_spools(id,master_id,status,ownership_type,owner_name,owner_contact,ownership_note,
+          initial_weight_g,current_weight_g,remaining_g,location_id,home_location_id) VALUES (?,?,?,?,?,?,?,640,640,640,'qa-location','qa-location')`)
+          .run(id,request.master_ids[index],"IN_STOCK","BORROWED_IN",request.owner_name,request.owner_contact,request.ownership_note);
+        const loanId=`batch-loan-${index}`;
+        database.prepare(`INSERT INTO spool_loans(id,spool_id,borrower_name,loan_direction,loan_status,counterparty_name,counterparty_contact,counterparty_note,grams_out)
+          VALUES (?,?,?,'INBOUND','ACTIVE',?,?,?,640)`)
+          .run(loanId,id,request.owner_name,request.owner_name,request.owner_contact,request.ownership_note);
+        const insertHistory=database.prepare("INSERT INTO spool_history_events(id,spool_id,event_type,payload_json) VALUES (?,?,?,?)");
+        insertHistory.run(`created-${index}`,id,"CREATED",JSON.stringify({status:"IN_STOCK",ownership_type:"BORROWED_IN"}));
+        insertHistory.run(`borrowed-${index}`,id,"BORROWED_IN_REGISTERED",JSON.stringify({loan_id:loanId,ownership_type:"BORROWED_IN",
+          owner_name:request.owner_name,owner_contact:request.owner_contact,ownership_note:request.ownership_note,
+          loan_direction:"INBOUND",counterparty_name:request.owner_name,grams_out:640}));
+      }
+      database.prepare("INSERT INTO catalog_spool_batches(batch_id,library_id,request_json,receipt_json) VALUES (?,'local-qa-library',?,?)")
+        .run(request.batch_id,JSON.stringify(request),JSON.stringify(receipt));
+    })();
   } finally {
     database.close();
   }
