@@ -90,6 +90,58 @@ impl Drop for Fixture {
 }
 
 #[test]
+fn legacy_migration_retires_only_the_unchanged_owned_snapshot() {
+    let fixture = Fixture::new();
+    fixture.save(fixture.legacy());
+    let snapshot = inspect_registration(&fixture.agents, &fixture.executable)
+        .unwrap()
+        .unwrap();
+    assert!(snapshot.enabled());
+    assert!(snapshot.stock());
+    let mut edited = fixture.read();
+    edited.insert("Disabled".into(), Value::Boolean(true));
+    fixture.save(edited.clone());
+    assert!(retire_registration(&fixture.agents, &snapshot).is_err());
+    assert_eq!(fixture.read(), edited);
+    let snapshot = inspect_registration(&fixture.agents, &fixture.executable)
+        .unwrap()
+        .unwrap();
+    assert!(!snapshot.enabled());
+    retire_registration(&fixture.agents, &snapshot).unwrap();
+    assert!(!fixture.path().exists());
+}
+
+#[test]
+fn legacy_migration_does_not_classify_custom_launch_behavior_as_stock() {
+    let fixture = Fixture::new();
+    for (key, value) in [
+        ("KeepAlive", Value::Boolean(true)),
+        ("StartInterval", Value::Integer(60.into())),
+        ("EnvironmentVariables", Value::Dictionary(Dictionary::new())),
+        (
+            "AssociatedBundleIdentifiers",
+            Value::String("another.app".into()),
+        ),
+        (
+            "ProgramArguments",
+            Value::Array(vec![
+                Value::String(fixture.executable.to_string_lossy().into_owned()),
+                Value::String("--background".into()),
+                Value::String("--custom".into()),
+            ]),
+        ),
+    ] {
+        let mut dictionary = fixture.legacy();
+        dictionary.insert(key.into(), value);
+        fixture.save(dictionary);
+        let snapshot = inspect_registration(&fixture.agents, &fixture.executable)
+            .unwrap()
+            .unwrap();
+        assert!(!snapshot.stock(), "custom {key} was accepted");
+    }
+}
+
+#[test]
 fn macos_autostart_new_registration_uses_bundle_association_and_escaped_background_args() {
     let fixture = Fixture::new();
     assert!(!is_enabled(&fixture.agents, &fixture.executable).unwrap());

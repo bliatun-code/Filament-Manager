@@ -1839,6 +1839,8 @@ export const frDictionary: DictionaryNode = {
     backgroundMoveToApplicationsError:
       "Déplacez Filament Manager dans le dossier Applications avant d’activer le lancement à l’ouverture de session.",
     backgroundOperationLoadError: "Les réglages d’arrière-plan n’ont pas pu être chargés.",
+    backgroundMacosApprovalRequired:
+      "macOS nécessite votre autorisation. Ouvrez Réglages Système > Général > Ouverture, autorisez Filament Manager dans Activité des apps en arrière-plan, puis réessayez.",
     backgroundOperationUpdateError:
       "Les réglages d’arrière-plan n’ont pas pu être mis à jour.",
     backgroundOperationRetry: "Réessayer",

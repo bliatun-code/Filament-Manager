@@ -1519,6 +1519,8 @@ export const ukUADictionary: DictionaryNode = {
     "launchAtLoginHint": "Програма запускається приховано для цього облікового запису. Якщо піктограма в рядку меню або області сповіщень недоступна, натомість відкриється вікно.",
     "backgroundMoveToApplicationsError": "Перш ніж вмикати запуск після входу, перемістіть Filament Manager до папки «Програми».",
     "backgroundOperationLoadError": "Не вдалося завантажити налаштування фонового режиму.",
+    "backgroundMacosApprovalRequired":
+      "macOS потребує вашого дозволу. Відкрийте Системні параметри > Загальні > Об’єкти входу, дозвольте Filament Manager у розділі Фонова активність програм і повторіть спробу.",
     "backgroundOperationUpdateError": "Не вдалося оновити налаштування фонового режиму.",
     "backgroundOperationRetry": "Повторити",
     "version": "Версія",

@@ -1519,6 +1519,8 @@ export const zhCNDictionary: DictionaryNode = {
     "launchAtLoginHint": "会针对当前用户账户隐藏启动。如果菜单栏或系统托盘图标不可用，则会改为打开窗口。",
     "backgroundMoveToApplicationsError": "启用登录时启动前，请将 Filament Manager 移至“应用程序”文件夹。",
     "backgroundOperationLoadError": "无法加载后台运行设置。",
+    "backgroundMacosApprovalRequired":
+      "macOS 需要您的批准。请打开“系统设置”>“通用”>“登录项”，在“后台 App 活动”中允许 Filament Manager，然后重试。",
     "backgroundOperationUpdateError": "无法更新后台运行设置。",
     "backgroundOperationRetry": "重试",
     "version": "版本",

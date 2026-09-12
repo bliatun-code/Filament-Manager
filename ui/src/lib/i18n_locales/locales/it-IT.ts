@@ -2226,6 +2226,8 @@ export const itITDictionary: DictionaryNode = {
       "Sposta Filament Manager in Applicazioni prima di abilitare l'avvio all'accesso.",
     backgroundOperationLoadError:
       "Non è stato possibile caricare le impostazioni per il funzionamento in background.",
+    backgroundMacosApprovalRequired:
+      "macOS richiede la tua autorizzazione. Apri Impostazioni di Sistema > Generali > Elementi login, consenti Filament Manager in Attività delle app in background e riprova.",
     backgroundOperationUpdateError:
       "Non è stato possibile aggiornare le impostazioni per il funzionamento in background.",
     backgroundOperationRetry: "Riprova",

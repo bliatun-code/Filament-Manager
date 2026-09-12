@@ -1803,6 +1803,8 @@ export const enDictionary: DictionaryNode = {
       backgroundMoveToApplicationsError:
         "Move Filament Manager to Applications before enabling launch at login.",
       backgroundOperationLoadError: "The background settings could not be loaded.",
+      backgroundMacosApprovalRequired:
+        "macOS requires your approval. Open System Settings > General > Login Items and allow Filament Manager under Background App Activity, then try again.",
       backgroundOperationUpdateError: "The background settings could not be updated.",
       backgroundOperationRetry: "Retry",
       version: "Version",

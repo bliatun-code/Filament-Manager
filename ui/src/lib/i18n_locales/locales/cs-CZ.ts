@@ -1662,6 +1662,8 @@ export const csCZDictionary: DictionaryNode = {
     "launchAtLoginHint": "Program se pro tento uživatelský účet spustí skrytě. Pokud ikona na řádku nabídek nebo v oznamovací oblasti není dostupná, místo toho se otevře okno.",
     "backgroundMoveToApplicationsError": "Před zapnutím spouštění po přihlášení přesuňte Filament Manager do složky Aplikace.",
     "backgroundOperationLoadError": "Nastavení běhu na pozadí se nepodařilo načíst.",
+    "backgroundMacosApprovalRequired":
+      "macOS vyžaduje váš souhlas. Otevřete Nastavení systému > Obecné > Přihlášení, povolte Filament Manager v části Aktivita aplikací na pozadí a zkuste to znovu.",
     "backgroundOperationUpdateError": "Nastavení běhu na pozadí se nepodařilo aktualizovat.",
     "backgroundOperationRetry": "Zkusit znovu",
     "reactivated": "znovu aktivován",

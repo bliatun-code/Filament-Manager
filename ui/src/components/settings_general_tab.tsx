@@ -75,6 +75,9 @@ export function SettingsGeneralTab({
   const userGuideUrl = userGuideUrlForLocale(locale);
   const checkingForUpdates = updateCheck.state.status === "CHECKING";
   const updateMessage = appUpdateCheckMessage(updateCheck.state, t);
+  const macosApprovalRequired = desktopLifecycleUpdateError?.startsWith(
+    "MACOS_LOGIN_APPROVAL_REQUIRED:",
+  );
 
   return (
     <>
@@ -317,14 +320,20 @@ export function SettingsGeneralTab({
 
             {desktopLifecycleUpdateError ? (
               <p className="text-xs leading-5 text-rose-700 dark:text-rose-300" role="alert">
-                {t(
-                  desktopLifecycleUpdateError === "APP_LOCATION_UNSTABLE"
-                    ? "settings.backgroundMoveToApplicationsError"
-                    : "settings.backgroundOperationUpdateError",
-                  desktopLifecycleUpdateError === "APP_LOCATION_UNSTABLE"
-                    ? "Move Filament Manager to Applications before enabling launch at login."
-                    : "The background settings could not be updated.",
-                )}
+                {desktopLifecycleUpdateError === "APP_LOCATION_UNSTABLE"
+                  ? t(
+                      "settings.backgroundMoveToApplicationsError",
+                      "Move Filament Manager to Applications before enabling launch at login.",
+                    )
+                  : macosApprovalRequired
+                    ? t(
+                        "settings.backgroundMacosApprovalRequired",
+                        "macOS requires your approval. Open System Settings > General > Login Items and allow Filament Manager under Background App Activity, then try again.",
+                      )
+                    : t(
+                        "settings.backgroundOperationUpdateError",
+                        "The background settings could not be updated.",
+                      )}
               </p>
             ) : null}
           </div>

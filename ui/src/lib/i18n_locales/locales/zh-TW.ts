@@ -1519,6 +1519,8 @@ export const zhTWDictionary: DictionaryNode = {
     "launchAtLoginHint": "會針對此使用者帳戶以隱藏方式啟動。若無法使用選單列或系統匣圖示，則改為開啟視窗。",
     "backgroundMoveToApplicationsError": "啟用登入時啟動前，請將 Filament Manager 移至「應用程式」資料夾。",
     "backgroundOperationLoadError": "無法載入背景執行設定。",
+    "backgroundMacosApprovalRequired":
+      "macOS 需要您的許可。請開啟「系統設定」>「一般」>「登入項目」，在「背景 App 活動」中允許 Filament Manager，然後再試一次。",
     "backgroundOperationUpdateError": "無法更新背景執行設定。",
     "backgroundOperationRetry": "重試",
     "version": "版本",

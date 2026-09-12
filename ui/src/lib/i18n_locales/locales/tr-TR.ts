@@ -1760,6 +1760,8 @@ export const trTRDictionary: DictionaryNode = {
     "launchAtLoginHint": "Bu kullanıcı hesabı için gizli olarak başlatılır. Menü çubuğu veya sistem tepsisi simgesi kullanılamıyorsa bunun yerine pencere açılır.",
     "backgroundMoveToApplicationsError": "Oturum açıldığında başlatmayı etkinleştirmeden önce Filament Manager'ı Uygulamalar klasörüne taşıyın.",
     "backgroundOperationLoadError": "Arka plan ayarları yüklenemedi.",
+    "backgroundMacosApprovalRequired":
+      "macOS onayınızı gerektiriyor. Sistem Ayarları > Genel > Giriş Öğeleri bölümünü açın, Arka Plan Uygulama Etkinliği altında Filament Manager’a izin verin ve yeniden deneyin.",
     "backgroundOperationUpdateError": "Arka plan ayarları güncellenemedi.",
     "backgroundOperationRetry": "Yeniden dene",
     "reactivated": "yeniden etkinleştirildi",

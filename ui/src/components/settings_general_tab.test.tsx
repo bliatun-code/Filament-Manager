@@ -4,10 +4,13 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { AppUpdateProvider } from "../lib/app_update_provider";
-import { I18nContext, type I18nContextValue, type Locale } from "../lib/i18n";
+import { I18nContext, lookup, type I18nContextValue, type Locale } from "../lib/i18n";
+import nbDictionary from "../lib/i18n_locales/locales/nb";
 import { SettingsGeneralTab, type SettingsGeneralTabProps } from "./settings_general_tab";
 
 const norwegianMessages: Record<string, string> = {
+  "settings.backgroundMacosApprovalRequired":
+    lookup(nbDictionary, "settings.backgroundMacosApprovalRequired") ?? "",
   "settings.backgroundOperation": "Bakgrunnskjøring",
   "settings.backgroundOperationRetry": "Prøv igjen",
   "settings.continueInBackground": "Fortsett å kjøre når jeg lukker vinduet",
@@ -213,6 +216,35 @@ test("SettingsGeneralTab reports update errors separately from load errors", () 
     /Move Filament Manager to Applications before enabling launch at login/,
   );
   assert.doesNotMatch(applicationPathHtml, /APP_LOCATION_UNSTABLE/);
+});
+
+test("SettingsGeneralTab explains macOS approval in English and Norwegian without native details", () => {
+  const desktopLifecycleUpdateError = "MACOS_LOGIN_APPROVAL_REQUIRED: Native approval diagnostic";
+  const english = renderGeneralTab("en", { desktopLifecycleUpdateError });
+  assert.match(english, /role="alert"/);
+  assert.match(english, /macOS requires your approval/);
+  assert.match(english, /System Settings.*General.*Login Items/);
+  assert.match(english, /allow Filament Manager under Background App Activity/);
+  assert.doesNotMatch(english, /could not be updated|MACOS_LOGIN_APPROVAL_REQUIRED|Native approval diagnostic/);
+
+  const norwegian = renderGeneralTab("nb", { desktopLifecycleUpdateError });
+  assert.match(norwegian, /macOS krever godkjenning fra deg/);
+  assert.match(norwegian, /Systeminnstillinger.*Generelt.*Påloggingsobjekter/);
+  assert.match(norwegian, /tillat Filament Manager under Bakgrunnsaktivitet/);
+  assert.doesNotMatch(norwegian, /macOS requires your approval|MACOS_LOGIN_APPROVAL_REQUIRED|Native approval diagnostic/);
+});
+
+test("SettingsGeneralTab recognizes only the exact macOS approval error prefix", () => {
+  for (const desktopLifecycleUpdateError of [
+    "MACOS_LOGIN_APPROVAL_REQUIRED",
+    "macos_login_approval_required: diagnostic",
+    "Other error: MACOS_LOGIN_APPROVAL_REQUIRED: diagnostic",
+    "MACOS_LOGIN_APPROVAL_REQUIRED_EXTRA: diagnostic",
+  ]) {
+    const html = renderGeneralTab("en", { desktopLifecycleUpdateError });
+    assert.match(html, /The background settings could not be updated/);
+    assert.doesNotMatch(html, /macOS requires your approval|diagnostic/);
+  }
 });
 
 test("SettingsGeneralTab disables close-to-tray when the tray is unavailable", () => {

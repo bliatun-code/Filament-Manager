@@ -47,6 +47,9 @@ const FORBIDDEN_TRUE_ENTITLEMENTS = [
 ];
 const EXPECTED_PRIVACY_KEYS = ["NSCameraUsageDescription", "NSLocalNetworkUsageDescription"];
 const EXPECTED_BONJOUR_SERVICE = "_filament-manager._tcp";
+const LOGIN_HELPER_NAME = "filament-manager-login-helper";
+const LOGIN_HELPER_ID = "no.bliatun.filamentmanager.login-helper";
+const LOGIN_AGENT_LABEL = "no.bliatun.filamentmanager.background";
 
 function commandText(command, args) {
   return [command, ...args].join(" ");
@@ -236,6 +239,35 @@ export function validateBundleExecutableName(value) {
 export function validateBundleExecutableEntry({ isFile, isSymbolicLink }) {
   if (!isFile || isSymbolicLink) {
     throw new Error("Expected the main app executable to be a real file, not a link.");
+  }
+}
+
+export function validateMacosLoginAgent(plist) {
+  if (
+    !plist ||
+    Object.keys(plist).sort().join(",") !== "BundleProgram,Label,RunAtLoad" ||
+    plist.Label !== LOGIN_AGENT_LABEL ||
+    plist.BundleProgram !== `Contents/MacOS/${LOGIN_HELPER_NAME}` ||
+    plist.RunAtLoad !== true
+  ) {
+    throw new Error("The embedded macOS login agent has unexpected launch settings.");
+  }
+}
+
+export function validateLoginHelperEntry({ isFile, isSymbolicLink, linkCount, executable }) {
+  if (!isFile || isSymbolicLink || linkCount !== 1 || !executable) {
+    throw new Error("The macOS login helper must be a regular executable, not a link.");
+  }
+}
+
+export function validateLoginHelperSignature(details, { signatureMode, expectedTeamId } = {}) {
+  const options = { expectedBundleId: LOGIN_HELPER_ID, expectedTeamId };
+  if (signatureMode === "release") {
+    validateCodesignDetails(details, options);
+  } else if (signatureMode === "local") {
+    validateLocalCodesignDetails(details, options);
+  } else {
+    throw new Error("A macOS login helper signature policy is required.");
   }
 }
 
@@ -490,6 +522,33 @@ function verifyMacosDmg({
       requiredArchitectures,
     );
 
+    const helperPath = path.join(appPath, "Contents", "MacOS", LOGIN_HELPER_NAME);
+    const helperStats = lstatSync(helperPath);
+    validateLoginHelperEntry({
+      isFile: helperStats.isFile(),
+      isSymbolicLink: helperStats.isSymbolicLink(),
+      linkCount: helperStats.nlink,
+      executable: Boolean(helperStats.mode & 0o111),
+    });
+    verifyExpectedArchitectures(helperPath, requiredArchitectures);
+    validateMacosDeploymentTargets(
+      parseMacosDeploymentTargets(runCommand("otool", ["-l", helperPath]).stdout),
+      expectedMinimumSystemVersion,
+    );
+    runCommand("codesign", ["--verify", "--strict", "--verbose=2", helperPath]);
+    validateLoginHelperSignature(
+      parseCodesignDetails(runCommand("codesign", ["-d", "--verbose=4", helperPath]).combined),
+      { signatureMode, expectedTeamId: requiredTeamId },
+    );
+    const agentPath = path.join(
+      appPath, "Contents", "Library", "LaunchAgents", `${LOGIN_AGENT_LABEL}.plist`,
+    );
+    const agentStats = lstatSync(agentPath);
+    if (!agentStats.isFile() || agentStats.isSymbolicLink() || agentStats.nlink !== 1) {
+      throw new Error("The embedded macOS login agent must be a regular plist file.");
+    }
+    validateMacosLoginAgent(readPlistObject(agentPath));
+
     if (signatureMode === "release") {
       runCommand("spctl", [
         "--assess",
@@ -506,6 +565,7 @@ function verifyMacosDmg({
       bundleId,
       deploymentTargets,
       minimumSystemVersion,
+      loginHelperVerified: true,
       signatureMode,
       teamId: codesignDetails.teamIdentifier ?? null,
     };

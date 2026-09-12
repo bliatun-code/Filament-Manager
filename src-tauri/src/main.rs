@@ -88,6 +88,12 @@ mod local_service_advertisement;
 mod macos_app_registration;
 #[cfg(target_os = "macos")]
 mod macos_autostart;
+#[cfg(target_os = "macos")]
+mod macos_login_service;
+#[cfg(target_os = "macos")]
+mod macos_login_service_backend;
+#[cfg(target_os = "macos")]
+mod macos_service_management;
 mod optional_update;
 mod packaged_desktop_e2e;
 mod packaged_host_client_e2e;

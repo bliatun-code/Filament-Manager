@@ -1519,6 +1519,8 @@ export const koKRDictionary: DictionaryNode = {
     "launchAtLoginHint": "이 사용자 계정에서는 숨겨진 상태로 시작됩니다. 메뉴 막대 또는 시스템 트레이 아이콘을 사용할 수 없으면 대신 창이 열립니다.",
     "backgroundMoveToApplicationsError": "로그인 시 실행을 활성화하기 전에 Filament Manager를 응용 프로그램 폴더로 이동하세요.",
     "backgroundOperationLoadError": "백그라운드 설정을 불러올 수 없습니다.",
+    "backgroundMacosApprovalRequired":
+      "macOS에서 승인이 필요합니다. 시스템 설정 > 일반 > 로그인 항목을 열고 백그라운드 앱 활동에서 Filament Manager를 허용한 다음 다시 시도하세요.",
     "backgroundOperationUpdateError": "백그라운드 설정을 업데이트할 수 없습니다.",
     "backgroundOperationRetry": "다시 시도",
     "version": "버전",

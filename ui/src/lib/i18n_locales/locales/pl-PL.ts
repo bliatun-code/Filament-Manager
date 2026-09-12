@@ -1662,6 +1662,8 @@ export const plPLDictionary: DictionaryNode = {
     "launchAtLoginHint": "Program uruchamia się w ukryciu dla tego konta użytkownika. Jeśli ikona na pasku menu lub w zasobniku systemowym jest niedostępna, zamiast tego zostanie otwarte okno.",
     "backgroundMoveToApplicationsError": "Przenieś Filament Manager do folderu Programy przed włączeniem uruchamiania po zalogowaniu.",
     "backgroundOperationLoadError": "Nie udało się wczytać ustawień działania w tle.",
+    "backgroundMacosApprovalRequired":
+      "macOS wymaga Twojej zgody. Otwórz Ustawienia systemowe > Ogólne > Rzeczy otwierane, zezwól na działanie Filament Manager w sekcji Aktywność aplikacji w tle i spróbuj ponownie.",
     "backgroundOperationUpdateError": "Nie udało się zaktualizować ustawień działania w tle.",
     "backgroundOperationRetry": "Spróbuj ponownie",
     "reactivated": "reaktywowany",

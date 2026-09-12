@@ -1797,6 +1797,8 @@ export const deDictionary: DictionaryNode = {
     backgroundMoveToApplicationsError:
       "Verschieben Sie Filament Manager in den Ordner „Programme“, bevor Sie den Start bei der Anmeldung aktivieren.",
     backgroundOperationLoadError: "Die Hintergrundeinstellungen konnten nicht geladen werden.",
+    backgroundMacosApprovalRequired:
+      "macOS benötigt deine Zustimmung. Öffne Systemeinstellungen > Allgemein > Anmeldeobjekte, erlaube Filament Manager unter App-Aktivität im Hintergrund und versuche es erneut.",
     backgroundOperationUpdateError:
       "Die Hintergrundeinstellungen konnten nicht aktualisiert werden.",
     backgroundOperationRetry: "Erneut versuchen",

@@ -333,6 +333,7 @@ version = "0.30.0"
 dependencies = [
  "axum",
  "base64 0.23.1",
+ "block2",
  "filament-manager-core",
  "flate2",
  "http-body",

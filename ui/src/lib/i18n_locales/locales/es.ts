@@ -1755,6 +1755,8 @@ export const esDictionary: DictionaryNode = {
       "Mueve Filament Manager a Aplicaciones antes de activar su inicio al iniciar sesión.",
     backgroundOperationLoadError:
       "No se pudieron cargar los ajustes de segundo plano.",
+    backgroundMacosApprovalRequired:
+      "macOS requiere tu autorización. Abre Ajustes del Sistema > General > Ítems de inicio, permite Filament Manager en Actividad de apps en segundo plano y vuelve a intentarlo.",
     backgroundOperationUpdateError:
       "No se pudieron actualizar los ajustes de segundo plano.",
     backgroundOperationRetry: "Reintentar",

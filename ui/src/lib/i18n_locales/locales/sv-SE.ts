@@ -1435,6 +1435,8 @@ export const svSEDictionary: DictionaryNode = {
     "launchAtLoginHint": "Startar dolt för det här användarkontot. Om ikonen i menyraden eller meddelandefältet inte är tillgänglig öppnas fönstret i stället.",
     "backgroundMoveToApplicationsError": "Flytta Filament Manager till Program innan du aktiverar start vid inloggning.",
     "backgroundOperationLoadError": "Inställningarna för bakgrundskörning kunde inte läsas in.",
+    "backgroundMacosApprovalRequired":
+      "macOS kräver ditt godkännande. Öppna Systeminställningar > Allmänt > Startobjekt, tillåt Filament Manager under Appaktivitet i bakgrunden och försök igen.",
     "backgroundOperationUpdateError": "Inställningarna för bakgrundskörning kunde inte uppdateras.",
     "backgroundOperationRetry": "Försök igen",
     "license": "Licens",

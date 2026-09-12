@@ -1435,6 +1435,8 @@ export const daDKDictionary: DictionaryNode = {
     "launchAtLoginHint": "Starter skjult for denne brugerkonto. Hvis ikonet på menulinjen eller i meddelelsesområdet ikke er tilgængeligt, åbnes vinduet i stedet.",
     "backgroundMoveToApplicationsError": "Flyt Filament Manager til Programmer, før du aktiverer start ved login.",
     "backgroundOperationLoadError": "Indstillingerne for baggrundskørsel kunne ikke indlæses.",
+    "backgroundMacosApprovalRequired":
+      "macOS kræver din godkendelse. Åbn Systemindstillinger > Generelt > Loginemner, tillad Filament Manager under Appaktivitet i baggrunden, og prøv igen.",
     "backgroundOperationUpdateError": "Indstillingerne for baggrundskørsel kunne ikke opdateres.",
     "backgroundOperationRetry": "Prøv igen",
     "license": "Licens",

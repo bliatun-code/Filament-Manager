@@ -1519,6 +1519,8 @@ export const fiFIDictionary: DictionaryNode = {
     "launchAtLoginHint": "Käynnistyy piilotettuna tällä käyttäjätilillä. Jos valikkorivin tai ilmaisinalueen kuvake ei ole käytettävissä, ikkuna avautuu sen sijaan.",
     "backgroundMoveToApplicationsError": "Siirrä Filament Manager Ohjelmat-kansioon ennen kuin otat käynnistyksen sisäänkirjautumisen yhteydessä käyttöön.",
     "backgroundOperationLoadError": "Taustatoimintojen asetuksia ei voitu ladata.",
+    "backgroundMacosApprovalRequired":
+      "macOS tarvitsee hyväksyntäsi. Avaa Järjestelmäasetukset > Yleiset > Kirjautumiskohteet, salli Filament Manager kohdassa Ohjelmien taustatoiminta ja yritä uudelleen.",
     "backgroundOperationUpdateError": "Taustatoimintojen asetuksia ei voitu päivittää.",
     "backgroundOperationRetry": "Yritä uudelleen",
     "version": "Versio",
