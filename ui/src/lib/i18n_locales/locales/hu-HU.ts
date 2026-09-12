@@ -1434,6 +1434,8 @@ export const huHUDictionary: DictionaryNode = {
     "launchAtLoginHint": "Ennél a felhasználói fióknál rejtve indul el. Ha a menüsáv vagy a rendszertálca ikonja nem érhető el, helyette megnyílik az ablak.",
     "backgroundMoveToApplicationsError": "A bejelentkezéskori indítás bekapcsolása előtt helyezze át a Filament Manager alkalmazást az Alkalmazások mappába.",
     "backgroundOperationLoadError": "Nem sikerült betölteni a háttérben futás beállításait.",
+    "backgroundMacosApprovalRequired":
+      "A macOS a jóváhagyását kéri. Nyissa meg a Rendszerbeállítások > Általános > Bejelentkezési elemek menüt, engedélyezze a Filament Manager alkalmazást a Háttérben végzett apptevékenység résznél, majd próbálja újra.",
     "backgroundOperationUpdateError": "Nem sikerült frissíteni a háttérben futás beállításait.",
     "backgroundOperationRetry": "Próbálja újra",
     "version": "Változat",

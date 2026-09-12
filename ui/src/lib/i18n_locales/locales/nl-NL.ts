@@ -1760,6 +1760,8 @@ export const nlNLDictionary: DictionaryNode = {
     "launchAtLoginHint": "Start verborgen voor dit gebruikersaccount. Als het pictogram in de menubalk of het systeemvak niet beschikbaar is, wordt in plaats daarvan het venster geopend.",
     "backgroundMoveToApplicationsError": "Verplaats Filament Manager naar Programma's voordat je starten bij aanmelden inschakelt.",
     "backgroundOperationLoadError": "De achtergrondinstellingen konden niet worden geladen.",
+    "backgroundMacosApprovalRequired":
+      "macOS heeft je toestemming nodig. Open Systeeminstellingen > Algemeen > Inloggen, sta Filament Manager toe bij Appactiviteit op de achtergrond en probeer het opnieuw.",
     "backgroundOperationUpdateError": "De achtergrondinstellingen konden niet worden bijgewerkt.",
     "backgroundOperationRetry": "Opnieuw proberen",
     "reactivated": "opnieuw geactiveerd",

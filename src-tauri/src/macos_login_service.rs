@@ -15,6 +15,8 @@ const SERVICE_LABEL: &str = "no.bliatun.filamentmanager.background";
 const SERVICE_PLIST: &str =
     "Contents/Library/LaunchAgents/no.bliatun.filamentmanager.background.plist";
 const HELPER_PROGRAM: &str = "Contents/MacOS/filament-manager-login-helper";
+// The UI recognizes this stable prefix and presents localized macOS guidance.
+const APPROVAL_REQUIRED_ERROR: &str = "MACOS_LOGIN_APPROVAL_REQUIRED: allow Filament Manager in System Settings > General > Login Items before enabling launch at login";
 
 pub(crate) trait Backend {
     fn status(&mut self) -> Result<ServiceStatus, String>;
@@ -445,8 +447,10 @@ fn finish_disable(
 fn require_enabled(backend: &mut impl Backend) -> Result<(), String> {
     match backend.status()? {
         ServiceStatus::Enabled => Ok(()),
-        ServiceStatus::RequiresApproval => Err(error("allow Filament Manager in System Settings > General > Login Items before enabling launch at login")),
-        ServiceStatus::NotRegistered | ServiceStatus::NotFound => Err(error("macOS did not enable the bundled background service")),
+        ServiceStatus::RequiresApproval => Err(APPROVAL_REQUIRED_ERROR.into()),
+        ServiceStatus::NotRegistered | ServiceStatus::NotFound => {
+            Err(error("macOS did not enable the bundled background service"))
+        }
     }
 }
 
@@ -545,8 +549,10 @@ pub(crate) fn set_enabled(
             refresh_enabled(directory, &state, backend)?;
             require_enabled(backend)
         }
-        ServiceStatus::RequiresApproval => Err(error("allow Filament Manager in System Settings > General > Login Items before enabling launch at login")),
-        ServiceStatus::NotRegistered | ServiceStatus::NotFound => enable_unregistered(directory, &state, backend),
+        ServiceStatus::RequiresApproval => Err(APPROVAL_REQUIRED_ERROR.into()),
+        ServiceStatus::NotRegistered | ServiceStatus::NotFound => {
+            enable_unregistered(directory, &state, backend)
+        }
     }
 }
 
@@ -557,7 +563,7 @@ fn enable_unregistered(
 ) -> Result<(), String> {
     if let Some(snapshot) = &state.legacy {
         if !legacy_allowed(directory, backend)? {
-            return Err(error("the existing login agent is disabled by macOS; review Background App Activity in System Settings"));
+            return Err("MACOS_LOGIN_APPROVAL_REQUIRED: the existing login agent is disabled by macOS; review Background App Activity in System Settings".into());
         }
         if !snapshot.stock() {
             if state.service == ServiceStatus::NotFound {

@@ -1519,6 +1519,8 @@ export const jaJPDictionary: DictionaryNode = {
     "launchAtLoginHint": "このユーザーアカウントでは非表示で起動します。メニューバーまたはシステムトレイのアイコンを利用できない場合は、代わりにウィンドウを開きます。",
     "backgroundMoveToApplicationsError": "ログイン時の起動を有効にする前に、Filament Manager を「アプリケーション」フォルダへ移動してください。",
     "backgroundOperationLoadError": "バックグラウンド設定を読み込めませんでした。",
+    "backgroundMacosApprovalRequired":
+      "macOS での承認が必要です。「システム設定」>「一般」>「ログイン項目」を開き、「アプリのバックグラウンドアクティビティ」で Filament Manager を許可してから、もう一度お試しください。",
     "backgroundOperationUpdateError": "バックグラウンド設定を更新できませんでした。",
     "backgroundOperationRetry": "再試行",
     "version": "バージョン",

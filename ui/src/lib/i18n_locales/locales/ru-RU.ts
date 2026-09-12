@@ -1435,6 +1435,8 @@ export const ruRUDictionary: DictionaryNode = {
     "launchAtLoginHint": "Программа запускается скрытой для этой учетной записи. Если значок в строке меню или области уведомлений недоступен, вместо этого откроется окно.",
     "backgroundMoveToApplicationsError": "Перед включением запуска при входе переместите Filament Manager в папку «Программы».",
     "backgroundOperationLoadError": "Не удалось загрузить настройки фонового режима.",
+    "backgroundMacosApprovalRequired":
+      "macOS требуется ваше разрешение. Откройте Системные настройки > Основные > Объекты входа, разрешите Filament Manager в разделе Фоновая активность приложений и повторите попытку.",
     "backgroundOperationUpdateError": "Не удалось обновить настройки фонового режима.",
     "backgroundOperationRetry": "Повторить",
     "license": "Лицензия",

@@ -1811,6 +1811,8 @@ export const nbDictionary: DictionaryNode = {
         "Flytt Filament Manager til Programmer før du aktiverer oppstart ved innlogging.",
       backgroundOperationLoadError:
         "Innstillingene for bakgrunnskjøring kunne ikke lastes inn.",
+      backgroundMacosApprovalRequired:
+        "macOS krever godkjenning fra deg. Åpne Systeminnstillinger > Generelt > Påloggingsobjekter, tillat Filament Manager under Bakgrunnsaktivitet, og prøv igjen.",
       backgroundOperationUpdateError:
         "Innstillingene for bakgrunnskjøring kunne ikke oppdateres.",
       backgroundOperationRetry: "Prøv igjen",

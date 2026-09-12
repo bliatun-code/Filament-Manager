@@ -2270,6 +2270,8 @@ export const ptBRDictionary: DictionaryNode = {
       "Mova o Filament Manager para Aplicativos antes de ativar a inicialização ao fazer login.",
     backgroundOperationLoadError:
       "Não foi possível carregar as configurações de segundo plano.",
+    backgroundMacosApprovalRequired:
+      "O macOS precisa da sua autorização. Abra Ajustes do Sistema > Geral > Itens de Início, permita o Filament Manager em Atividade de Apps em Segundo Plano e tente novamente.",
     backgroundOperationUpdateError:
       "Não foi possível atualizar as configurações de segundo plano.",
     backgroundOperationRetry: "Tentar novamente",
