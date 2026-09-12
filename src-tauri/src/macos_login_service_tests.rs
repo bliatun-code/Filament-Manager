@@ -1048,3 +1048,107 @@ fn explicit_owned_not_found_retry_validates_resources_and_preserves_legacy_restr
         assert_eq!(fs::read(fixture.path()).unwrap(), before);
     }
 }
+
+#[test]
+fn explicit_opt_in_can_supersede_pending_not_found_disable_after_unregister_eperm() {
+    let fixture = Fixture::new();
+    let mut backend = Mock {
+        service: ServiceStatus::NotFound,
+        unregister_error: Some("SMAppServiceErrorDomain error 1 (EPERM)".into()),
+        ..Mock::default()
+    };
+    fixture.record(&mut backend, false);
+    let mut record =
+        serde_json::from_str::<RegistrationRecord>(backend.record.as_ref().unwrap()).unwrap();
+    record.disable_pending = true;
+    backend.record = Some(serde_json::to_string(&record).unwrap());
+    let pending = backend.record.clone();
+    assert!(
+        reconcile(&fixture.agents, &fixture.executable, &mut backend)
+            .unwrap_err()
+            .contains("EPERM")
+    );
+    assert_eq!(
+        backend.record, pending,
+        "failed removal must preserve the pending opt-out"
+    );
+    assert_eq!(backend.service, ServiceStatus::NotFound);
+    assert!(!backend.trace.contains(&"register"));
+    backend.trace.clear();
+    set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).unwrap();
+    assert_eq!(backend.service, ServiceStatus::Enabled);
+    assert_eq!(backend.mutations(), ["store_record", "register"]);
+    let record =
+        serde_json::from_str::<RegistrationRecord>(backend.record.as_ref().unwrap()).unwrap();
+    assert!(!record.disable_pending);
+    assert!(!record.migration_pending);
+    assert!(!record.refresh_pending);
+    assert!(!fixture.agents.exists());
+}
+
+#[test]
+fn explicit_opt_in_can_supersede_pending_not_found_migration_after_legacy_opt_out() {
+    for has_disabled_legacy in [false, true] {
+        let fixture = Fixture::new();
+        if has_disabled_legacy {
+            let mut dictionary = fixture.legacy();
+            dictionary.insert("Disabled".into(), Value::Boolean(true));
+            fixture.save(dictionary);
+        }
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        fixture.record(&mut backend, true);
+        assert!(reconcile(&fixture.agents, &fixture.executable, &mut backend).is_err());
+        assert!(!backend.trace.contains(&"register"));
+        backend.trace.clear();
+        set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).unwrap();
+        assert_eq!(backend.service, ServiceStatus::Enabled);
+        assert!(!backend.pending());
+        assert!(!backend.trace.contains(&"unregister"));
+        assert!(!fixture.path().exists());
+    }
+}
+
+#[test]
+fn superseding_pending_not_found_disable_still_checks_resources_and_legacy_permission() {
+    for case in [
+        "invalid_bundle",
+        "os_denied",
+        "customized",
+        "failed_persistence",
+    ] {
+        let fixture = Fixture::new();
+        let mut backend = Mock {
+            service: ServiceStatus::NotFound,
+            ..Mock::default()
+        };
+        fixture.record(&mut backend, false);
+        let mut record =
+            serde_json::from_str::<RegistrationRecord>(backend.record.as_ref().unwrap()).unwrap();
+        record.disable_pending = true;
+        backend.record = Some(serde_json::to_string(&record).unwrap());
+        let mut dictionary = fixture.legacy();
+        match case {
+            "invalid_bundle" => fs::remove_file(fixture.bundle().join(HELPER_PROGRAM)).unwrap(),
+            "os_denied" => backend.allowed = Ok(false),
+            "customized" => {
+                dictionary.insert("KeepAlive".into(), Value::Boolean(true));
+            }
+            "failed_persistence" => backend.fail_store = true,
+            _ => unreachable!(),
+        }
+        fixture.save(dictionary);
+        let before = fs::read(fixture.path()).unwrap();
+        let pending = backend.record.clone();
+        assert!(
+            set_enabled(&fixture.agents, &fixture.executable, true, &mut backend).is_err(),
+            "{case}"
+        );
+        assert!(!backend.trace.contains(&"register"), "{case}");
+        assert!(!backend.trace.contains(&"unregister"), "{case}");
+        assert_eq!(backend.record, pending);
+        assert_eq!(fs::read(fixture.path()).unwrap(), before);
+    }
+}

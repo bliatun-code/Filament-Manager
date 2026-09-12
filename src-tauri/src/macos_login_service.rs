@@ -528,6 +528,12 @@ pub(crate) fn set_enabled(
         }
         return finish_disable(directory, &state, backend);
     }
+    if state.service == ServiceStatus::NotFound && state.record.is_some() {
+        // A new explicit opt-in supersedes pending removal or migration intent.
+        // An unseen service may reject unregister with EPERM, so retrying that
+        // old operation first would permanently prevent a valid explicit opt-in.
+        return enable_unregistered(directory, &state, backend);
+    }
     if !recover_pending(directory, &mut state, backend)? {
         return Err(error("the interrupted migration was rolled back; review background activity permissions before enabling it"));
     }
@@ -540,22 +546,28 @@ pub(crate) fn set_enabled(
             require_enabled(backend)
         }
         ServiceStatus::RequiresApproval => Err(error("allow Filament Manager in System Settings > General > Login Items before enabling launch at login")),
-        ServiceStatus::NotRegistered | ServiceStatus::NotFound => {
-            if let Some(snapshot) = &state.legacy {
-                if !legacy_allowed(directory, backend)? {
-                    return Err(error("the existing login agent is disabled by macOS; review Background App Activity in System Settings"));
-                }
-                if !snapshot.stock() {
-                    if state.service == ServiceStatus::NotFound {
-                        return Err(error("the registered background service could not be found; the customized legacy login agent was preserved"));
-                    }
-                    return legacy::enable(directory, &state.executable);
-                }
+        ServiceStatus::NotRegistered | ServiceStatus::NotFound => enable_unregistered(directory, &state, backend),
+    }
+}
+
+fn enable_unregistered(
+    directory: &Path,
+    state: &State,
+    backend: &mut impl Backend,
+) -> Result<(), String> {
+    if let Some(snapshot) = &state.legacy {
+        if !legacy_allowed(directory, backend)? {
+            return Err(error("the existing login agent is disabled by macOS; review Background App Activity in System Settings"));
+        }
+        if !snapshot.stock() {
+            if state.service == ServiceStatus::NotFound {
+                return Err(error("the registered background service could not be found; the customized legacy login agent was preserved"));
             }
-            register(directory, &state.executable, state.legacy.as_ref(), backend)?;
-            require_enabled(backend)
+            return legacy::enable(directory, &state.executable);
         }
     }
+    register(directory, &state.executable, state.legacy.as_ref(), backend)?;
+    require_enabled(backend)
 }
 
 #[cfg(test)]
