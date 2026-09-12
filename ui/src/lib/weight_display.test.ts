@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatGrams, parsePositiveWeight } from "./weight_display";
+import { formatGrams, parseNonNegativeWeight, parsePositiveWeight } from "./weight_display";
 
 test("formatGrams clamps negative values and supports empty display modes", () => {
   assert.equal(formatGrams(125), "125 g");
@@ -23,4 +23,13 @@ test("parsePositiveWeight accepts only positive safe whole grams", () => {
   assert.equal(parsePositiveWeight("850 g"), null);
   assert.equal(parsePositiveWeight(""), null);
   assert.equal(parsePositiveWeight(String(Number.MAX_SAFE_INTEGER + 1)), null);
+});
+
+test("parseNonNegativeWeight accepts zero and safe whole grams without partial parsing", () => {
+  for (const [raw, expected] of [["0", 0], [" 850 ", 850], ["00850", 850], [String(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER]] as const) {
+    assert.equal(parseNonNegativeWeight(raw), expected);
+  }
+  for (const raw of ["", " ", "-1", "2.5", "850 g", "1e3", "+2", "Infinity", String(Number.MAX_SAFE_INTEGER + 1)]) {
+    assert.equal(parseNonNegativeWeight(raw), null, raw);
+  }
 });

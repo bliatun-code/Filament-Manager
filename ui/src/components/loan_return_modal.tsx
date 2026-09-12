@@ -36,6 +36,7 @@ import { inlineStatusSignalClass } from "../lib/chip_styles";
 
 type LoanReturnModalProps = {
   busy: boolean;
+  error?: string | null;
   grams: string;
   loan: NormalizedLoanDetailsRow | null;
   note: string;
@@ -48,6 +49,7 @@ type LoanReturnModalProps = {
 
 export function LoanReturnModal({
   busy,
+  error = null,
   grams,
   loan,
   note,
@@ -71,7 +73,7 @@ export function LoanReturnModal({
   return (
     <AppModal
       closeOnBackdrop
-      onBackdropClose={onClose}
+      onBackdropClose={busy ? undefined : onClose}
       panelClassName={modalPanelClassName("lg")}
     >
       <div className="space-y-4">
@@ -93,10 +95,13 @@ export function LoanReturnModal({
                   "Weigh it back in and add a note if needed.",
                 )
           }
+          disabled={busy}
           onClose={onClose}
           closeLabel={t("common.close", "Close")}
           className="-mx-5 -mt-5"
         />
+
+        {error ? <ModalNotice tone="danger" role="alert">{error}</ModalNotice> : null}
 
         <LoanSwatchCard
           variant="modal"
@@ -198,6 +203,7 @@ export function LoanReturnModal({
           <input
             type="number"
             min={0}
+            disabled={busy}
             value={grams}
             onChange={(event) => onGramsChange(event.target.value)}
             className={modalFormInputClassName}
@@ -210,6 +216,7 @@ export function LoanReturnModal({
         <ModalFormField label={t("loans.returnNoteOptional", "Return note (optional)")}>
           <input
             type="text"
+            disabled={busy}
             value={note}
             onChange={(event) => onNoteChange(event.target.value)}
             className={modalFormInputClassName}

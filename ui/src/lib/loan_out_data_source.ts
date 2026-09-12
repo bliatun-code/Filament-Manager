@@ -1,4 +1,3 @@
-import { fetchCachedLibrarySyncSpools } from "./tauri_client";
 import {
   isBorrowedInOwnership,
   isSpoolStatusLoanable,
@@ -12,7 +11,7 @@ import {
   loadSpoolRowsPage,
 } from "./spool_data_source";
 import { sortSpoolsAlphabetically } from "./spool_sort";
-import { resolveClientHostCacheTarget } from "./host_write_target";
+import { resolveClientHostTarget } from "./host_write_target";
 import {
   normalizeSpoolWithMasterRows,
   type NormalizedSpoolWithMasterRow,
@@ -27,7 +26,6 @@ type LoanOutDataSourceOptions = {
 };
 
 type LoanOutDataSourceDependencies = {
-  fetchCachedSpools?: typeof fetchCachedLibrarySyncSpools;
   loadSpoolRows?: typeof loadSpoolRowsPage;
   loadPrinterOverview?: typeof loadPrinterOverviewData;
 };
@@ -89,11 +87,11 @@ export async function loadLoanableSpoolCandidates(
   options: LoanOutDataSourceOptions,
   dependencies: LoanOutDataSourceDependencies = {},
 ): Promise<LoanableSpool[]> {
-  const fetchCachedSpools = dependencies.fetchCachedSpools ?? fetchCachedLibrarySyncSpools;
   const loadPrinterOverview = dependencies.loadPrinterOverview ?? loadPrinterOverviewData;
-  const cacheTarget = options.clientReadOnly
-    ? resolveClientHostCacheTarget(options)
-    : null;
+  // A write picker must use current host data; cached rows are for browsing.
+  if (options.clientReadOnly && !resolveClientHostTarget(options)) {
+    return [];
+  }
   const [spoolRows, printerOverview] = await Promise.all([
     (dependencies.loadSpoolRows
       ? loadAllSpoolRowsWithPageLoader(
@@ -102,26 +100,13 @@ export async function loadLoanableSpoolCandidates(
           dependencies.loadSpoolRows,
         )
       : loadAllSpoolRows(options)
-    ).catch(async (loadError) => {
-      if (options.clientReadOnly) {
-        const cached = cacheTarget
-          ? await fetchCachedSpools(
-              cacheTarget.baseUrl,
-              cacheTarget.libraryId,
-              cacheTarget.targetGeneration,
-            ).catch(() => null)
-          : null;
-        if (cached) {
-          return cached.rows;
-        }
-        if (!cacheTarget) {
-          return [];
-        }
-      }
-      throw loadError;
-    }),
+    ),
     loadPrinterOverview(options),
   ]);
+
+  if (printerOverview.source !== "LIVE") {
+    throw new Error("Current printer assignments are unavailable.");
+  }
 
   return buildLoanableSpoolCandidates(
     normalizeSpoolWithMasterRows(spoolRows),

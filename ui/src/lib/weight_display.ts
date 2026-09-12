@@ -22,3 +22,13 @@ export function parsePositiveWeight(raw: string): number | null {
   const parsed = Number(normalized);
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
+
+/** Whole grams, including an empty spool measurement of zero. */
+export function parseNonNegativeWeight(raw: string): number | null {
+  const normalized = raw.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}

@@ -3326,6 +3326,26 @@ fn active_outbound_loan_blocks_printer_resize_and_delete_atomically() {
             })
             .map_err(|error| error.to_string())?;
 
+        // A supplied outgoing weight is authoritative and lending detaches the
+        // spool. The desktop picker must not reuse a stale selection or draft.
+        let loaned_spool = engine
+            .db
+            .get_spool_by_id("legacy-assigned-loan")
+            .map_err(|error| error.to_string())?
+            .ok_or_else(|| "missing newly loaned spool".to_string())?;
+        assert_eq!(loaned_spool.remaining_g, Some(850));
+        assert_eq!(loaned_spool.status, "BORROWED");
+        let assigned_count: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM ams_slots WHERE spool_id = ?1",
+                ["legacy-assigned-loan"],
+                |row| row.get(0),
+            )
+            .map_err(|error| error.to_string())?;
+        assert_eq!(assigned_count, 0);
+
         engine
             .db
             .connection()

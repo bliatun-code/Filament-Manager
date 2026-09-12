@@ -48,3 +48,12 @@ test("return summary leaves derived values empty while the existing input is inv
     estimatedUsedGrams: null,
   });
 });
+
+test("return summary never previews a truncated or unsafe measurement", () => {
+  for (const raw of ["2.5", "850 g", "1e3", String(Number.MAX_SAFE_INTEGER + 1)]) {
+    assert.deepEqual(resolveLoanReturnSummary(loanRow(), raw), {
+      loanedGrams: 1_000, returnedGrams: null, estimatedUsedGrams: null,
+    });
+  }
+  assert.equal(resolveLoanReturnSummary(loanRow(), "0").returnedGrams, 0);
+});

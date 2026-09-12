@@ -166,6 +166,7 @@ test("required platform jobs keep every documented gate blocking", () => {
   for (const command of [
     "npm run test:a11y:app-modal",
     "npm run test:a11y:data-backed",
+    "npm run test:loans:dialogs",
     "npm run test:scripts",
     "npm run test:performance",
     "npm run check:contracts",
