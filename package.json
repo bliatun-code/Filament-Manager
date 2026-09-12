@@ -66,7 +66,7 @@
     "verify:macos-local": "node ./scripts/verify-macos-local.mjs",
     "verify:macos-release": "node ./scripts/verify-macos-release.mjs",
     "smoke:macos-dmg": "node ./scripts/smoke-macos-dmg.mjs",
-    "smoke": "npm --prefix ./ui run build && npm run lint:ui && npm run test:companion && npm run test:scripts && npm run test:a11y:app-modal && npm run test:a11y:data-backed && npm run test:ui && npm run test:performance && npm run check:contracts && npm run doctor",
+    "smoke": "npm --prefix ./ui run build && npm run lint:ui && npm run test:companion && npm run test:scripts && npm run test:a11y:app-modal && npm run test:a11y:data-backed && npm run test:loans:dialogs && npm run test:ui && npm run test:performance && npm run check:contracts && npm run doctor",
     "verify": "npm run smoke && npm run test:rust",
     "qa:visual:db": "node ./scripts/visual-qa-db.mjs",
     "qa:release:upgrade-fixture": "node ./scripts/prepare-release-upgrade-fixture.mjs",
@@ -85,7 +85,8 @@
     "qa:visual:desktop:scenarios": "node ./scripts/run-desktop-screenshot-gate.mjs --launch --scenario all",
     "qa:visual:desktop:matrix": "node ./scripts/run-desktop-visual-matrix.mjs",
     "catalog:seed:export": "node ./scripts/export-seed-catalog.mjs",
-    "tauri": "node ./scripts/run-tauri.mjs"
+    "tauri": "node ./scripts/run-tauri.mjs",
+    "test:loans:dialogs": "node ./scripts/run-loan-dialog-regressions.mjs"
   },
   "optionalDependencies": {
     "better-sqlite3": "^13.0.3"

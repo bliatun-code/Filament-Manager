@@ -136,9 +136,6 @@ test("loadLoanableSpoolCandidates ignores unscoped cache when host target is inc
       loadSpoolRows: async () => {
         throw new Error("host spools should not load without a complete target");
       },
-      fetchCachedSpools: async () => {
-        throw new Error("unscoped cache must not load");
-      },
       loadPrinterOverview: async (options) => {
         assert.equal(options.clientReadOnly, true);
         return {
@@ -152,4 +149,30 @@ test("loadLoanableSpoolCandidates ignores unscoped cache when host target is inc
   );
 
   assert.deepEqual(candidates, []);
+});
+
+for (const source of ["CACHED", "OFFLINE"] as const) {
+  test(`loan candidates reject ${source} printer assignments`, async () => {
+    await assert.rejects(loadLoanableSpoolCandidates(
+      { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1" },
+      {
+        loadSpoolRows: async () => [spoolRow("spool-a")],
+        loadPrinterOverview: async () => ({
+          printers: [], bambuLiveIntegrations: {}, source, updatedAt: null,
+        }),
+      },
+    ), /Current printer assignments are unavailable/);
+  });
+}
+
+test("loan candidates fail when live spools cannot load", async () => {
+  await assert.rejects(loadLoanableSpoolCandidates(
+    { clientReadOnly: true, clientHostBaseUrl: "http://host", clientLibraryId: "library-1", clientTargetGeneration: 7 },
+    {
+      loadSpoolRows: async () => { throw new Error("live spools unavailable"); },
+      loadPrinterOverview: async () => ({
+        printers: [], bambuLiveIntegrations: {}, source: "LIVE", updatedAt: null,
+      }),
+    },
+  ), /live spools unavailable/);
 });

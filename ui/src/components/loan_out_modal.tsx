@@ -44,6 +44,7 @@ import {
   toLoanedFilamentWeight,
   toMeasuredTotalWeight,
 } from "../lib/loan_out_weight_model";
+import { parseNonNegativeWeight } from "../lib/weight_display";
 import { isTauri } from "../lib/tauri_client";
 import { LoanOutCandidateList } from "./loan_out_candidate_list";
 import {
@@ -69,7 +70,20 @@ type LoanOutModalProps = {
   }) => Promise<void> | void;
 };
 
-export function LoanOutModal({
+export function LoanOutModal(props: LoanOutModalProps) {
+  // Each opening and host target owns its own candidates and weight draft.
+  if (!props.open) return null;
+  const targetKey = JSON.stringify([
+    props.clientReadOnly ?? false,
+    props.clientHostBaseUrl ?? null,
+    props.clientLibraryId ?? null,
+    props.clientTargetGeneration ?? null,
+    props.preferredSpoolId ?? null,
+  ]);
+  return <LoanOutSession key={targetKey} {...props} />;
+}
+
+function LoanOutSession({
   open,
   onClose,
   preferredSpoolId = null,
@@ -95,7 +109,20 @@ export function LoanOutModal({
   const [note, setNote] = useState("");
   const [expectedReturnAt, setExpectedReturnAt] = useState("");
   const reloadRequestRef = useRef(0);
+  const submittingRef = useRef(false);
+  const mountedRef = useRef(false);
+  const candidatesReadyRef = useRef(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const today = localCalendarDate();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  function closeUnlessSubmitting() {
+    if (!submittingRef.current) onClose();
+  }
 
   const reload = useCallback(async () => {
     if (!tauri) {
@@ -103,7 +130,12 @@ export function LoanOutModal({
     }
     const requestId = reloadRequestRef.current + 1;
     reloadRequestRef.current = requestId;
+    candidatesReadyRef.current = false;
     setLoading(true);
+    setLoadFailed(false);
+    setSpools([]);
+    setSelectedSpoolId(null);
+    setGramsOut("");
     setError(null);
     try {
       const candidates = await loadLoanableSpoolCandidates({
@@ -115,6 +147,7 @@ export function LoanOutModal({
       if (reloadRequestRef.current !== requestId) {
         return;
       }
+      candidatesReadyRef.current = true;
       setSpools(candidates);
       const preferredById = preferredSpoolId
         ? candidates.find((spool) => spool.id === preferredSpoolId)
@@ -129,6 +162,7 @@ export function LoanOutModal({
     } catch (loadError) {
       console.error(loadError);
       if (reloadRequestRef.current === requestId) {
+        setLoadFailed(true);
         setError(t("inventory.error.loadInventory", "Failed to load inventory."));
       }
     } finally {
@@ -159,6 +193,7 @@ export function LoanOutModal({
     void reload();
     return () => {
       reloadRequestRef.current += 1;
+      candidatesReadyRef.current = false;
     };
   }, [open, reload, tauri]);
 
@@ -174,7 +209,7 @@ export function LoanOutModal({
     : null;
 
   async function handleSubmit() {
-    if (!tauri || !selectedSpool || busy) {
+    if (!tauri || !selectedSpool || loading || !candidatesReadyRef.current || submittingRef.current) {
       return;
     }
     if (clientReadOnly && (!clientHostBaseUrl || !clientLibraryId)) {
@@ -200,8 +235,8 @@ export function LoanOutModal({
       setError(t("inventory.error.borrowerRequired", "Borrower name is required."));
       return;
     }
-    const measuredTotalGrams = Number.parseInt(gramsOut, 10);
-    if (!Number.isFinite(measuredTotalGrams) || measuredTotalGrams < 0) {
+    const measuredTotalGrams = parseNonNegativeWeight(gramsOut);
+    if (measuredTotalGrams === null) {
       setError(t("inventory.error.loanGrams", "Loan grams must be zero or greater."));
       return;
     }
@@ -227,6 +262,7 @@ export function LoanOutModal({
     }
     const contact = counterpartyContact.trim() || null;
 
+    submittingRef.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -241,16 +277,9 @@ export function LoanOutModal({
         },
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
       );
-      await onLoanCreated?.({
-        spoolId: selectedSpool.id,
-        borrowerName: borrower,
-        counterpartyContact: contact,
-        gramsOut: grams,
-        expectedReturnAt: expectedReturn.value,
-      });
-      onClose();
     } catch (loanError) {
       console.error(loanError);
+      if (!mountedRef.current) return;
       setError(
         toErrorMessage(
           loanError,
@@ -258,8 +287,24 @@ export function LoanOutModal({
           t,
         ),
       );
-    } finally {
+      submittingRef.current = false;
       setBusy(false);
+      return;
+    }
+    if (!mountedRef.current) return;
+    // The write succeeded. Close before refreshing the page so a refresh
+    // failure cannot offer a second submission of an already-created loan.
+    onClose();
+    try {
+      await onLoanCreated?.({
+        spoolId: selectedSpool.id,
+        borrowerName: borrower,
+        counterpartyContact: contact,
+        gramsOut: grams,
+        expectedReturnAt: expectedReturn.value,
+      });
+    } catch (refreshError) {
+      console.error(refreshError);
     }
   }
 
@@ -270,7 +315,7 @@ export function LoanOutModal({
   return (
     <AppModal
       closeOnBackdrop
-      onBackdropClose={busy ? undefined : onClose}
+      onBackdropClose={busy ? undefined : closeUnlessSubmitting}
       overlayClassName={inventoryModalOverlayClassName}
       panelClassName={inventoryWideModalPanelClassName}
       zIndex={70}
@@ -279,7 +324,7 @@ export function LoanOutModal({
         <ModalHeader
           eyebrow={t("inventory.loanTracking", "Loan tracking")}
           title={t("inventory.loanOutRoll", "Loan out roll")}
-          onClose={onClose}
+          onClose={closeUnlessSubmitting}
           closeLabel={t("common.close", "Close")}
           disabled={busy}
           className="px-6 py-4"
@@ -287,13 +332,19 @@ export function LoanOutModal({
 
         <ModalBody scroll={false} className="px-6 py-6">
           <div className="flex min-h-0 flex-1 flex-col space-y-4">
-            {error ? <ModalNotice tone="danger">{error}</ModalNotice> : null}
+            {error ? <ModalNotice tone="danger" role="alert">{error}</ModalNotice> : null}
+
+            {loadFailed ? (
+              <ModalActionButton onClick={() => void reload()} disabled={loading}>
+                {t("common.refresh", "Refresh")}
+              </ModalActionButton>
+            ) : null}
 
             {loading ? (
               <ModalNotice className="border-dashed">
                 {t("inventory.loading", "Loading...")}
               </ModalNotice>
-            ) : spools.length === 0 ? (
+            ) : loadFailed ? null : spools.length === 0 ? (
               <ModalNotice className="border-dashed">
                 {t(
                   "inventory.noLoanableRolls",

@@ -244,6 +244,13 @@ is zero violations, not a severity-filtered allowance. The focused modal gate
 covers behavior that a static scan cannot prove: initial focus, wrapped tab
 order, Escape, focus restoration, scroll reachability, and layout at 200% zoom.
 
+`npm run test:loans:dialogs` also exercises the real loan dialogs with synthetic
+native responses: failed and late loads, fresh candidates on reopen, inline
+errors in both return directions, retained drafts, whole-gram validation,
+single submission, blocked dismissal while saving, and refresh failure after a
+successful write. It must pass all five scenarios; native transaction behavior
+is checked separately against temporary SQLite databases in the Rust suite.
+
 The desktop and Companion screenshot gates accept Auto, Light, Dark, Bambu, and
 Prusa as explicit theme inputs. A theme-model or palette change must exercise a
 representative desktop and Companion capture for every affected theme, verify
@@ -279,7 +286,7 @@ screen capture passed. None of these checks is native-language review.
 ## Wiring and change control
 
 `npm run verify` includes the production UI build, UI lint, Companion and script
-tests, both browser accessibility gates, the complete UI suite, deterministic
+tests, both browser accessibility gates, loan-dialog regressions, the complete UI suite, deterministic
 performance checks, localization contracts, the real-TCP Host/Client resilience
 gate within the Rust suite, formatting, and Clippy in development and release
 profiles. Both required platform jobs execute this command. The macOS job also

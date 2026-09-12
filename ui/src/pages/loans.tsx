@@ -37,6 +37,7 @@ import {
   resolveDesktopVisualQaScenario,
 } from "../lib/desktop_visual_qa_scenario";
 import { useClientWriteGuards } from "../lib/use_client_write_guards";
+import { parseNonNegativeWeight } from "../lib/weight_display";
 import { useLibrarySyncState } from "./use_library_sync_state";
 
 export default function LoansPage() {
@@ -81,6 +82,8 @@ export default function LoansPage() {
   );
   const [returnModalGrams, setReturnModalGrams] = useState("");
   const [returnModalNote, setReturnModalNote] = useState("");
+  const [returnModalError, setReturnModalError] = useState<string | null>(null);
+  const returnSubmittingRef = useRef(false);
   const desktopVisualQaScenario = useMemo(() => resolveDesktopVisualQaScenario(), []);
   const [desktopVisualQaReturnApplied, setDesktopVisualQaReturnApplied] = useState(
     () =>
@@ -158,7 +161,7 @@ export default function LoansPage() {
         "Pair this desktop client with the host before running protected loan actions.",
       ),
     },
-    setError,
+    setError: returnModalLoan ? setReturnModalError : setError,
     setInfoMessage: setInfo,
   });
 
@@ -209,7 +212,7 @@ export default function LoansPage() {
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    if (!tauri || busy || !isLoanCurrentlyActive(loan)) {
+    if (!tauri || busy || returnSubmittingRef.current || !isLoanCurrentlyActive(loan)) {
       return;
     }
     const isInbound = isInboundLoan(loan);
@@ -223,6 +226,7 @@ export default function LoansPage() {
       ),
     );
     setReturnModalNote("");
+    setReturnModalError(null);
     setError(null);
     setInfo(null);
   }, [
@@ -271,21 +275,22 @@ export default function LoansPage() {
   ]);
 
   function closeReturnModal() {
-    if (busy) {
+    if (busy || returnSubmittingRef.current) {
       return;
     }
     setReturnModalLoan(null);
     setReturnModalGrams("");
     setReturnModalNote("");
+    setReturnModalError(null);
   }
 
   async function handleConfirmReturnLoan() {
-    if (!tauri || busy || !returnModalLoan || !isLoanCurrentlyActive(returnModalLoan)) {
+    if (!tauri || busy || returnSubmittingRef.current || !returnModalLoan || !isLoanCurrentlyActive(returnModalLoan)) {
       return;
     }
-    const measuredTotalGrams = Number.parseInt(returnModalGrams, 10);
-    if (!Number.isFinite(measuredTotalGrams) || measuredTotalGrams < 0) {
-      setError(
+    const measuredTotalGrams = parseNonNegativeWeight(returnModalGrams);
+    if (measuredTotalGrams === null) {
+      setReturnModalError(
         t("loans.error.invalidReturned", "Returned grams must be zero or greater."),
       );
       return;
@@ -297,8 +302,9 @@ export default function LoansPage() {
       return;
     }
 
+    returnSubmittingRef.current = true;
     setBusy(true);
-    setError(null);
+    setReturnModalError(null);
     setInfo(null);
     try {
       const isInbound = isInboundLoan(returnModalLoan);
@@ -312,21 +318,25 @@ export default function LoansPage() {
         },
         { clientReadOnly, clientHostBaseUrl, clientLibraryId },
       );
+      // The mutation is complete even if refreshing history fails.
+      setReturnModalLoan(null);
+      setReturnModalGrams("");
+      setReturnModalNote("");
       await reload();
       setInfo(
         isInbound
           ? `${t("loans.markedHandedBackTo", "Marked borrowed-in spool as handed back to")} ${returnModalLoan.loan.counterparty_name ?? returnModalLoan.loan.borrower_name}.`
           : `${t("loans.markedReturnedFor", "Marked loan as returned for")} ${returnModalLoan.loan.borrower_name}.`,
       );
-      closeReturnModal();
     } catch (returnError) {
       console.error(returnError);
-      setError(
+      setReturnModalError(
         isInboundLoan(returnModalLoan)
           ? t("loans.error.handBack", "Failed to hand back borrowed-in spool.")
           : t("loans.error.return", "Failed to return loan."),
       );
     } finally {
+      returnSubmittingRef.current = false;
       setBusy(false);
     }
   }
@@ -575,6 +585,7 @@ export default function LoansPage() {
 
       <LoanReturnModal
         busy={busy}
+        error={returnModalError}
         loan={returnModalLoan}
         grams={returnModalGrams}
         note={returnModalNote}

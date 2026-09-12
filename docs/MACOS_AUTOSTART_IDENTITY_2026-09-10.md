@@ -164,8 +164,10 @@ and after another login before their visible attribution is considered fixed.
 
 The subsequent [modern-service upgrade](MACOS_BACKGROUND_SERVICE_2026-09-12.md)
 passed signed installed migration, background start, and permission checks.
-It displayed the app name and icon and cleared the publisher row on this Mac;
-its real next-login check remains separate from the legacy repair recorded here.
+It displayed the app name and icon and cleared the publisher row on this Mac.
+Its final signed candidate subsequently passed a real logout/login with automatic
+background startup and the same correct app identity. That verification remains
+separate from the legacy repair recorded here.
 
 Separately, verify an old-to-new signed app upgrade on a clean installation.
 That must exercise normal startup with an existing legacy agent, both enabled

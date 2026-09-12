@@ -85,18 +85,20 @@ export function formatBrowserErrorDetails(errors) {
     .join("\n");
 }
 
-async function createUiViteServer(options) {
+export async function createUiViteServer(options) {
   const viteEntry = requireFromUi.resolve("vite");
   const { createServer } = await import(pathToFileURL(viteEntry).href);
   return createServer(options);
 }
 
-async function installTauriFixtureBridge(page, fixture, calls) {
+export async function installTauriFixtureBridge(
+  page, fixture, calls, resolveInvoke = resolveUiBrowserPerformanceInvoke,
+) {
   await page.exposeFunction(
     "__bfmAccessibilityInvoke",
     async (command, payload) => {
       calls.push({ command, payload: payload ?? {} });
-      return resolveUiBrowserPerformanceInvoke(fixture, command, payload);
+      return resolveInvoke(fixture, command, payload);
     },
   );
   await page.addInitScript(() => {

@@ -1,4 +1,5 @@
 import type { NormalizedLoanDetailsRow } from "./loan_data_source";
+import { parseNonNegativeWeight } from "./weight_display";
 import { toReturnedFilamentWeight } from "./loan_display";
 
 export type LoanReturnSummary = {
@@ -14,9 +15,9 @@ export function resolveLoanReturnSummary(
   const loanedGrams = Number.isFinite(loan.loan.grams_out)
     ? Math.max(0, loan.loan.grams_out)
     : 0;
-  const measuredTotalGrams = Number.parseInt(measuredTotalGramsRaw, 10);
+  const measuredTotalGrams = parseNonNegativeWeight(measuredTotalGramsRaw);
 
-  if (!Number.isFinite(measuredTotalGrams) || measuredTotalGrams < 0) {
+  if (measuredTotalGrams === null) {
     return {
       estimatedUsedGrams: null,
       loanedGrams,
