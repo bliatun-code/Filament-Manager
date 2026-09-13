@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-10     |
+| Sist oppdatert | 2026-09-13     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -199,7 +199,9 @@ Oppfølgingen av [macOS-identiteten for bakgrunnsstart](MACOS_BACKGROUND_SERVICE
 
 Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstartskontrollen 12. september viste at den gamle registreringen ikke løste visningsproblemet. Overgangen til den moderne registreringen bevarer avslag og tilpassede oppsett og avslutter ikke den åpne appen. Den separate innloggingskontrollen av den moderne oppstarteren bekrefter nå resultatet også etter utlogging; ingen global nullstilling av macOS-bakgrunnshistorikk er brukt.
 
-[Utlånsdialogene](LOAN_DIALOG_AUDIT_2026-09-10.md) er rettet i neste samlede pakke. Hver åpning får ferske rullvalg og vektkladder, kandidatlisten krever aktuelle data, og returfeil vises inne i dialogen. Hele gram valideres strengt, gjentatt innsending er sperret, og vellykket lagring skilles fra etterfølgende oppfriskingsfeil. Fem rendrede regresjonsscenarioer er lagt inn i den ordinære verifiseringen; en isolert databasekontroll dokumenterer at backend bruker innsendt vekt og fjerner printertilordning ved utlån. Schema og release er uendret.
+[Utlånsdialogene](LOAN_DIALOG_AUDIT_2026-09-10.md) er rettet og merget gjennom [PR #114](https://github.com/bliatun-code/Filament-Manager/pull/114) som `e726860e`, etter elleve grønne kontroller. Hver åpning får ferske rullvalg og vektkladder, kandidatlisten krever aktuelle data, og returfeil vises inne i dialogen. Hele gram valideres strengt, gjentatt innsending er sperret, og vellykket lagring skilles fra etterfølgende oppfriskingsfeil. Fem rendrede regresjonsscenarioer inngår i den ordinære verifiseringen og er bekreftet i begge plattformloggene; en isolert databasekontroll dokumenterer at backend bruker innsendt vekt og fjerner printertilordning ved utlån. Schema og release er uendret.
+
+Neste avgrensede pakke [samler oppretting av syntetiske testdatabaser i transaksjoner](CI_FIXTURE_TRANSACTIONS_2026-09-13.md). Windows-loggene viser stor tidsbruk i gjentatt databasebygging. Hele databasen sammenlignes mot tidligere byggemåte, og feil under skjema, innsetting og verifisering skal rulle tilbake før opprydding. CI-målingene må skille en faktisk forbedring fra variasjon mellom kjørere.
 
 1. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
@@ -208,6 +210,7 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 
 ### 2026-09-13
 
+- PR #114 er merget som `e726860e`. [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34723423979), CodeQL og forsyningskjedekontroller bestod etter én samlet push. Neste pakke angriper kostbar fixture-oppretting uten å redusere sikkerhets- eller datakontrollene; [målegrunnlag og regresjoner](CI_FIXTURE_TRANSACTIONS_2026-09-13.md) dokumenterer omfanget.
 - PR #113 er bekreftet merget som `133e3185`, med identisk Git-tre som den verifiserte kandidaten `5a810689`. Hovedgrenens [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34713771470) og [CodeQL](https://github.com/bliatun-code/Filament-Manager/actions/runs/34713771495) er grønne på samme merge-commit. Dette avslutter macOS-oppfølgingen etter bestått signert oppgradering, tillatelses- og veiledningstester og reell av-/pålogging med riktig navn og ikon.
 - De tre lokale resultatcommitene er videreført uten innholdstap og samlet med merge-bekreftelsen på en ny arbeidsgren fra oppdatert `main`. Bare dokumentasjon gjenstår til neste samlede push; ingen ekstra CI eller ny release er startet.
 

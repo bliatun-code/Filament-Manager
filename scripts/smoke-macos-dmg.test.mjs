@@ -45,11 +45,14 @@ test("macOS installed database gate checks the actual migrated schema and reject
     try {
       const migrations = new URL("../src/database/migrations/", import.meta.url);
       const manifest = JSON.parse(readFileSync(new URL("manifest.json", migrations), "utf8"));
-      database.exec(readFileSync(new URL("../src/database/schema.sql", import.meta.url), "utf8"));
-      for (const migration of manifest.migrations.filter(({ role }) => role === "schema-migration")) {
-        database.exec(readFileSync(new URL(migration.file, migrations), "utf8"));
-      }
-      database.pragma(`user_version = ${manifest.currentSchemaVersion}`);
+      database.pragma("foreign_keys = ON");
+      database.transaction(() => {
+        database.exec(readFileSync(new URL("../src/database/schema.sql", import.meta.url), "utf8"));
+        for (const migration of manifest.migrations.filter(({ role }) => role === "schema-migration")) {
+          database.exec(readFileSync(new URL(migration.file, migrations), "utf8"));
+        }
+        database.pragma(`user_version = ${manifest.currentSchemaVersion}`);
+      })();
       assert.equal(verifySmokeDatabase(databasePath, currentSchemaVersion()).schemaVersion, manifest.currentSchemaVersion);
       database.exec("DROP TABLE catalog_spool_batches");
       assert.throws(() => verifySmokeDatabase(databasePath, currentSchemaVersion()), /missing catalog_spool_batches/);

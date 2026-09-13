@@ -448,100 +448,102 @@ function createAuthorityDatabases(hostPath, clientPath, port = 45_123) {
   const host = new Database(hostPath);
   const client = new Database(clientPath);
   try {
-    host.exec(schema);
-    client.exec(schema);
-    const journal = readFileSync(new URL("../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url), "utf8");
-    host.exec(journal); client.exec(journal);
-    host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
-      `${CATALOG_RUN_ID}-catalog-complete`, "Bambu", "PLA", "SUCCEEDED",
-      "2026-09-05T12:00:00Z", "2026-09-05T12:00:01Z",
-      JSON.stringify({ imported: 1, reactivated_count: 0, discontinued_count: 0 }), null,
-    );
-    host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
-      `${CATALOG_RUN_ID}-catalog-interrupt`, "eSUN", "PETG", "INTERRUPTED",
-      "2026-09-05T12:00:02Z", "2026-09-05T12:00:03Z", null, "Process interrupted.",
-    );
-    host.prepare("INSERT INTO filament_master_list VALUES (?, ?, ?, ?, ?, ?, ?)").run(
-      "Bambu", "PLA", "Packaged catalog job QA", "QA blue", "#1A73E8", 1000,
-      "https://example.invalid/packaged-catalog-job",
-    );
-    host
-      .prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 760, 760, 'qa-master', 1000, 'OWNED', NULL)")
-      .run(SPOOL_ID);
-    client
-      .prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 333, 333, 'shadow-master', 333, 'OWNED', NULL)")
-      .run(SPOOL_ID);
-    host
-      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
-      .run(1, SPOOL_ID, "CREATED");
-    host
-      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
-      .run(2, SPOOL_ID, "WEIGHT_UPDATED");
-    host
-      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
-      .run(3, SPOOL_ID, "WEIGHT_UPDATED");
-    client
-      .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
-      .run(1, SPOOL_ID, "CREATED");
-    const receipt = batchReceipt();
-    host.prepare("INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json) VALUES (?, ?, ?, ?)").run(
-      receipt.batch_id, LIBRARY_ID, JSON.stringify({ batch_id: receipt.batch_id, master_ids: ["qa-master", "qa-master"],
-        initial_weight_g: 500, ownership_type: "BORROWED_IN", owner_name: "Packaged batch QA owner", owner_contact: null,
-        ownership_note: "Isolated packaged Host-Client batch fixture", location: null }), JSON.stringify(receipt),
-    );
-    receipt.spool_ids.forEach((id, index) => {
-      host.prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 500, 500, 'qa-master', 500, 'BORROWED_IN', 'Packaged batch QA owner')").run(id);
-      host.prepare("UPDATE filament_spools SET ownership_note = ? WHERE id = ?")
-        .run("Isolated packaged Host-Client batch fixture", id);
-      host.prepare("INSERT INTO spool_loans (id, spool_id, loan_direction, loan_status, grams_out, borrower_name, counterparty_name, counterparty_note, lent_note) VALUES (?, ?, 'INBOUND', 'ACTIVE', 500, ?, ?, ?, ?)")
-        .run(`loan-${index}`, id, "Packaged batch QA owner", "Packaged batch QA owner",
-          "Isolated packaged Host-Client batch fixture", "Isolated packaged Host-Client batch fixture");
-      host.prepare("INSERT INTO spool_history_events (id, spool_id, event_type, payload_json) VALUES (?, ?, ?, ?)")
-        .run(4 + index * 2, id, "CREATED", JSON.stringify({ status: "IN_STOCK", ownership_type: "BORROWED_IN" }));
-      host.prepare("INSERT INTO spool_history_events (id, spool_id, event_type, payload_json) VALUES (?, ?, ?, ?)")
-        .run(5 + index * 2, id, "BORROWED_IN_REGISTERED", JSON.stringify({
-          loan_id: `loan-${index}`, ownership_type: "BORROWED_IN", owner_name: "Packaged batch QA owner",
-          owner_contact: null, ownership_note: "Isolated packaged Host-Client batch fixture",
-          loan_direction: "INBOUND", counterparty_name: "Packaged batch QA owner", grams_out: 500,
-        }));
-    });
-    host
-      .prepare("INSERT INTO settings VALUES (?, ?)")
-      .run("library_sync_mode", "HOST");
-    host
-      .prepare("INSERT INTO settings VALUES (?, ?)")
-      .run("library_sync_library_id", LIBRARY_ID);
-    const clientSettings = [
-      ["library_sync_mode", "CLIENT"],
-      ["library_sync_library_id", LIBRARY_ID],
-      ["library_sync_host_base_url", `http://127.0.0.1:${port}`],
-      ["library_sync_target_generation", "7"],
-      [
-        "library_sync_cached_spools_json",
-        JSON.stringify({
-          captured_at: "2026-08-31T21:00:00Z",
-          rows: [
-            ...batchReceipt().spool_ids.map((id) => ({ spool: { id, current_weight_g: 500, remaining_g: 500 } })),
-            {
-              spool: {
-                id: SPOOL_ID,
-                current_weight_g: 760,
-                remaining_g: 760,
+    host.transaction(() => client.transaction(() => {
+      host.exec(schema);
+      client.exec(schema);
+      const journal = readFileSync(new URL("../src/database/migrations/008_catalog_spool_batches.sql", import.meta.url), "utf8");
+      host.exec(journal); client.exec(journal);
+      host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+        `${CATALOG_RUN_ID}-catalog-complete`, "Bambu", "PLA", "SUCCEEDED",
+        "2026-09-05T12:00:00Z", "2026-09-05T12:00:01Z",
+        JSON.stringify({ imported: 1, reactivated_count: 0, discontinued_count: 0 }), null,
+      );
+      host.prepare("INSERT INTO catalog_refresh_jobs VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+        `${CATALOG_RUN_ID}-catalog-interrupt`, "eSUN", "PETG", "INTERRUPTED",
+        "2026-09-05T12:00:02Z", "2026-09-05T12:00:03Z", null, "Process interrupted.",
+      );
+      host.prepare("INSERT INTO filament_master_list VALUES (?, ?, ?, ?, ?, ?, ?)").run(
+        "Bambu", "PLA", "Packaged catalog job QA", "QA blue", "#1A73E8", 1000,
+        "https://example.invalid/packaged-catalog-job",
+      );
+      host
+        .prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 760, 760, 'qa-master', 1000, 'OWNED', NULL)")
+        .run(SPOOL_ID);
+      client
+        .prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 333, 333, 'shadow-master', 333, 'OWNED', NULL)")
+        .run(SPOOL_ID);
+      host
+        .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
+        .run(1, SPOOL_ID, "CREATED");
+      host
+        .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
+        .run(2, SPOOL_ID, "WEIGHT_UPDATED");
+      host
+        .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
+        .run(3, SPOOL_ID, "WEIGHT_UPDATED");
+      client
+        .prepare("INSERT INTO spool_history_events (id, spool_id, event_type) VALUES (?, ?, ?)")
+        .run(1, SPOOL_ID, "CREATED");
+      const receipt = batchReceipt();
+      host.prepare("INSERT INTO catalog_spool_batches (batch_id, library_id, request_json, receipt_json) VALUES (?, ?, ?, ?)").run(
+        receipt.batch_id, LIBRARY_ID, JSON.stringify({ batch_id: receipt.batch_id, master_ids: ["qa-master", "qa-master"],
+          initial_weight_g: 500, ownership_type: "BORROWED_IN", owner_name: "Packaged batch QA owner", owner_contact: null,
+          ownership_note: "Isolated packaged Host-Client batch fixture", location: null }), JSON.stringify(receipt),
+      );
+      receipt.spool_ids.forEach((id, index) => {
+        host.prepare("INSERT INTO filament_spools (id, current_weight_g, remaining_g, master_id, initial_weight_g, ownership_type, owner_name) VALUES (?, 500, 500, 'qa-master', 500, 'BORROWED_IN', 'Packaged batch QA owner')").run(id);
+        host.prepare("UPDATE filament_spools SET ownership_note = ? WHERE id = ?")
+          .run("Isolated packaged Host-Client batch fixture", id);
+        host.prepare("INSERT INTO spool_loans (id, spool_id, loan_direction, loan_status, grams_out, borrower_name, counterparty_name, counterparty_note, lent_note) VALUES (?, ?, 'INBOUND', 'ACTIVE', 500, ?, ?, ?, ?)")
+          .run(`loan-${index}`, id, "Packaged batch QA owner", "Packaged batch QA owner",
+            "Isolated packaged Host-Client batch fixture", "Isolated packaged Host-Client batch fixture");
+        host.prepare("INSERT INTO spool_history_events (id, spool_id, event_type, payload_json) VALUES (?, ?, ?, ?)")
+          .run(4 + index * 2, id, "CREATED", JSON.stringify({ status: "IN_STOCK", ownership_type: "BORROWED_IN" }));
+        host.prepare("INSERT INTO spool_history_events (id, spool_id, event_type, payload_json) VALUES (?, ?, ?, ?)")
+          .run(5 + index * 2, id, "BORROWED_IN_REGISTERED", JSON.stringify({
+            loan_id: `loan-${index}`, ownership_type: "BORROWED_IN", owner_name: "Packaged batch QA owner",
+            owner_contact: null, ownership_note: "Isolated packaged Host-Client batch fixture",
+            loan_direction: "INBOUND", counterparty_name: "Packaged batch QA owner", grams_out: 500,
+          }));
+      });
+      host
+        .prepare("INSERT INTO settings VALUES (?, ?)")
+        .run("library_sync_mode", "HOST");
+      host
+        .prepare("INSERT INTO settings VALUES (?, ?)")
+        .run("library_sync_library_id", LIBRARY_ID);
+      const clientSettings = [
+        ["library_sync_mode", "CLIENT"],
+        ["library_sync_library_id", LIBRARY_ID],
+        ["library_sync_host_base_url", `http://127.0.0.1:${port}`],
+        ["library_sync_target_generation", "7"],
+        [
+          "library_sync_cached_spools_json",
+          JSON.stringify({
+            captured_at: "2026-08-31T21:00:00Z",
+            rows: [
+              ...batchReceipt().spool_ids.map((id) => ({ spool: { id, current_weight_g: 500, remaining_g: 500 } })),
+              {
+                spool: {
+                  id: SPOOL_ID,
+                  current_weight_g: 760,
+                  remaining_g: 760,
+                },
               },
-            },
-          ],
-        }),
-      ],
-      [
-        "library_sync_cached_printers_json",
-        JSON.stringify({
-          captured_at: "2026-08-31T21:00:00Z",
-          rows: [],
-        }),
-      ],
-    ];
-    const insertSetting = client.prepare("INSERT INTO settings VALUES (?, ?)");
-    for (const row of clientSettings) insertSetting.run(...row);
+            ],
+          }),
+        ],
+        [
+          "library_sync_cached_printers_json",
+          JSON.stringify({
+            captured_at: "2026-08-31T21:00:00Z",
+            rows: [],
+          }),
+        ],
+      ];
+      const insertSetting = client.prepare("INSERT INTO settings VALUES (?, ?)");
+      for (const row of clientSettings) insertSetting.run(...row);
+    })())();
   } finally {
     host.close();
     client.close();
