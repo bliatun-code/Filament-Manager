@@ -184,7 +184,7 @@ test("inventory spool status predicates centralize list visibility and low-stock
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "IN_STOCK" }), "ALL"), true);
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "ASSIGNED" }), "ALL"), true);
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "LOST" }), "ALL"), true);
-  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "EMPTY" }), "ALL"), true);
+  assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "EMPTY" }), "ALL"), false);
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "MISSING" }), "ALL"), true);
   assert.equal(isInventorySpoolVisibleForStatusFilter(spool({ status: "DELETED" }), "ALL"), true);
   assert.equal(
@@ -206,7 +206,7 @@ test("inventory spool status predicates centralize list visibility and low-stock
   assert.equal(isInventorySpoolLowStockCandidate(spool({ remainingGrams: 201 })), false);
 });
 
-test("All status filter returns every normalized inventory status", () => {
+test("All status filter excludes empty rolls while the Empty filter retains them", () => {
   const rows = [
     spool({ id: "in-stock", status: "IN_STOCK" }),
     spool({ id: "assigned", status: "ASSIGNED" }),
@@ -219,7 +219,7 @@ test("All status filter returns every normalized inventory status", () => {
 
   assert.deepEqual(
     filterInventorySpools(rows, defaultFilterOptions).map((row) => row.id),
-    rows.map((row) => row.id),
+    rows.filter((row) => row.status !== "EMPTY").map((row) => row.id),
   );
 
   for (const status of ["IN_STOCK", "ASSIGNED", "BORROWED", "EMPTY", "LOST"] as const) {

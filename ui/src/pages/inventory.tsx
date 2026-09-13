@@ -15,6 +15,7 @@ import { InventoryRfidCaptureModal } from "../components/inventory_rfid_capture_
 import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_modal";
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
+import { useInventoryMarkEmptyAction } from "../lib/use_inventory_mark_empty_action";
 import { commandErrorText } from "../lib/error_text";
 import { useI18n } from "../lib/i18n";
 import {
@@ -882,9 +883,19 @@ export default function InventoryPage({
     setUsagePoints([]);
   }, [setHistoryRows, setSelectedSpoolId, setUsagePoints]);
 
+  const handleMarkEmpty = useInventoryMarkEmptyAction({
+    selectedSpool: showRollModal ? selectedSpool : null,
+    assignedSlot: selectedSpoolAssignedSlot,
+    activeLoan: selectedSpool ? activeLoanSpoolIds.has(selectedSpool.id) : false,
+    loanedOut: selectedSpoolLoanedOut,
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+    tauriAvailable: tauri, manageBusy, canUseClientHostWrite, ensureLocalWriteAllowed,
+    setManageBusy, setError, setInfoMessage, reloadSpools, reloadPrinterOverview,
+    reloadSpoolDetail, t,
+  });
+
   const {
     handleDeleteSelected,
-    handleMarkEmpty,
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,

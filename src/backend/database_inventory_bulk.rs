@@ -43,6 +43,12 @@ pub(crate) fn execute_inventory_bulk_mutation(
     input: InventoryBulkMutationInput,
 ) -> InventoryResult<InventoryBulkMutationResult> {
     let (expected_affected_count, preconditions, target) = match input {
+        InventoryBulkMutationInput::MarkEmpty {
+            spool,
+            expected_slot_id,
+        } => {
+            return mark_empty(connection, spool, expected_slot_id.as_deref());
+        }
         InventoryBulkMutationInput::Move {
             expected_affected_count,
             spools,
@@ -403,6 +409,94 @@ fn invalid_bulk_operation(code: &'static str, message: impl Into<String>) -> Inv
         code,
         message: message.into(),
     }
+}
+
+// Runs inside the same immediate transaction as the reviewed snapshot check.
+fn mark_empty(
+    connection: &Connection,
+    expected: InventoryBulkSpoolPrecondition,
+    expected_slot_id: Option<&str>,
+) -> InventoryResult<InventoryBulkMutationResult> {
+    use super::database_loan_queries::ensure_spool_not_outbound_loan_locked;
+    use super::database_printer_slot_assignment::assign_spool_to_ams_slot_in_transaction;
+    use super::database_spool_queries::get_spool_by_id;
+    use super::database_spool_updates::{update_spool_status, update_spool_weight};
+
+    let actual =
+        load_actual_snapshot(connection, &expected.spool_id)?.ok_or(InventoryError::NotFound)?;
+    validate_snapshot_preconditions(&expected, &actual)?;
+    if actual.removed {
+        return Err(InventoryError::NotFound);
+    }
+    ensure_spool_not_outbound_loan_locked(connection, &expected.spool_id)?;
+    let slots = {
+        let mut statement = connection.prepare(
+            "SELECT s.id, u.printer_id FROM ams_slots s
+             JOIN ams_units u ON u.id = s.ams_id WHERE s.spool_id = ?1 ORDER BY s.id",
+        )?;
+        statement
+            .query_map(params![expected.spool_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    if slots.len() > 1 || slots.first().map(|slot| slot.0.as_str()) != expected_slot_id {
+        return Err(invalid_bulk_operation(
+            "inventory.bulk.stale_snapshot",
+            "The roll's printer slot changed. Refresh the roll before marking it empty.",
+        ));
+    }
+    let spool = get_spool_by_id(connection, &expected.spool_id)?.ok_or(InventoryError::NotFound)?;
+    if actual.status == SpoolStatus::Empty
+        && slots.is_empty()
+        && spool.current_weight_g == Some(0)
+        && spool.remaining_g == Some(0)
+    {
+        return Ok(InventoryBulkMutationResult {
+            affected_count: 0,
+            committed: true,
+            history_spool_count: 0,
+        });
+    }
+    if let Some((slot_id, printer_id)) = slots.first() {
+        assign_spool_to_ams_slot_in_transaction(
+            connection, printer_id, slot_id, None, None, None, true,
+        )?;
+        insert_json_history(
+            connection,
+            &expected.spool_id,
+            "CLEARED_FROM_AMS",
+            json!({
+                "printer_id": printer_id, "slot_id": slot_id, "source": "MARK_EMPTY",
+            }),
+        )?;
+    }
+    update_spool_status(connection, &expected.spool_id, "EMPTY")?;
+    update_spool_weight(connection, &expected.spool_id, Some(0), Some(0))?;
+    lock_spool_price_for_historical_status(connection, &expected.spool_id, "EMPTY", "MARK_EMPTY")?;
+    insert_json_history(
+        connection,
+        &expected.spool_id,
+        "STATUS_UPDATED",
+        json!({
+            "previous_status": actual.status.as_str(), "status": "EMPTY", "source": "MARK_EMPTY",
+        }),
+    )?;
+    // This is a declaration of depletion, not a fabricated scale measurement or print job.
+    insert_json_history(
+        connection,
+        &expected.spool_id,
+        "USED_UP",
+        json!({
+            "status": "EMPTY", "source": "MARK_EMPTY", "remaining_g": 0,
+            "previous_remaining_g": spool.remaining_g, "previous_current_weight_g": spool.current_weight_g,
+        }),
+    )?;
+    Ok(InventoryBulkMutationResult {
+        affected_count: 1,
+        committed: true,
+        history_spool_count: 1,
+    })
 }
 
 #[cfg(test)]
