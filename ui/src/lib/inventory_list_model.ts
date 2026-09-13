@@ -287,7 +287,9 @@ export function isInventorySpoolVisibleForStatusFilter(
   statusFilter: StatusFilter,
 ): boolean {
   const normalizedStatus = normalizeStatus(spool.status);
-  return statusFilter === "ALL" || normalizedStatus === statusFilter;
+  return statusFilter === "ALL"
+    ? normalizedStatus !== "EMPTY"
+    : normalizedStatus === statusFilter;
 }
 
 export function isInventorySpoolLowStockCandidate(

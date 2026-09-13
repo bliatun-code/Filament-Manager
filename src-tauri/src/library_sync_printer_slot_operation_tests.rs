@@ -172,18 +172,29 @@ impl SyntheticHost {
                     )
                 };
                 let health = request_line.starts_with("GET /api/v1/health ");
-                let post = request_line
+                let slot_post = request_line
                     == format!(
                         "POST /api/v1/printers/{}/slots/{}/operation HTTP/1.1",
                         encode_library_sync_path_segment("printer / one"),
                         encode_library_sync_path_segment("printer / one_ams_1_slot_1")
                     );
+                let bulk_post = request_line == "POST /api/v1/inventory/bulk-mutations HTTP/1.1";
+                let post = slot_post || bulk_post;
                 let (status, body) = if health {
                     ("200 OK", serde_json::json!({"ok":true,"api_version":"v1",
-                        "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY] } else { vec![] },
+                        "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic slot Host","sync_mode":"HOST"}).to_string())
-                } else if post {
+                } else if bulk_post {
+                    let input = serde_json::from_str(&payload).unwrap();
+                    match service.execute_inventory_bulk_mutation(input) {
+                        Ok(receipt) => ("200 OK", serde_json::to_string(&receipt).unwrap()),
+                        Err(_) => (
+                            "409 Conflict",
+                            serde_json::json!({"code":"inventory.bulk.stale_snapshot"}).to_string(),
+                        ),
+                    }
+                } else if slot_post {
                     let mut value: serde_json::Value = serde_json::from_str(&payload).unwrap();
                     value["printer_id"] = "printer / one".into();
                     value["slot_id"] = "printer / one_ams_1_slot_1".into();
@@ -596,3 +607,6 @@ fn printer_slot_requires_a_well_formed_positive_acknowledgment() {
         assert_eq!(host.finish().len(), 2);
     }
 }
+
+#[path = "library_sync_mark_empty_tests.rs"]
+mod mark_empty_tests;

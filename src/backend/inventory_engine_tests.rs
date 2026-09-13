@@ -6391,3 +6391,218 @@ fn setup_acceptable_bambu_live_weight(
         },
     ))
 }
+
+fn mark_empty_input(engine: &InventoryEngine, spool_id: &str) -> super::InventoryBulkMutationInput {
+    let spool = engine.db.get_spool_by_id(spool_id).unwrap().unwrap();
+    let slot: Option<String> = engine
+        .db
+        .connection()
+        .query_row(
+            "SELECT id FROM ams_slots WHERE spool_id = ?1",
+            [spool_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .unwrap();
+    super::InventoryBulkMutationInput::MarkEmpty {
+        spool: super::InventoryBulkSpoolPrecondition {
+            spool_id: spool_id.into(),
+            expected_status: crate::backend::inventory_domain::SpoolStatus::from_raw(Some(
+                &spool.status,
+            )),
+            expected_location_id: spool.location_id,
+            expected_home_location_id: spool.home_location_id,
+            expected_active_loan: false,
+            expected_assigned_to_printer: slot.is_some(),
+        },
+        expected_slot_id: slot,
+    }
+}
+
+#[test]
+fn mark_empty_atomically_depletes_stock_and_assigned_rolls_without_measurements() {
+    let path = temp_db_path("mark-empty");
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (_, slot, assigned, stock) =
+            seed_printer_slot_operation_fixture(&engine, "empty").unwrap();
+        for id in [&assigned, &stock] {
+            let original = engine.db.get_spool_by_id(id).unwrap().unwrap();
+            let before = printer_slot_operation_snapshot(&engine).unwrap();
+            let input = mark_empty_input(&engine, id);
+            let receipt = engine
+                .execute_bulk_inventory_mutation(input.clone())
+                .unwrap();
+            assert_eq!(receipt.affected_count, 1);
+            assert_eq!(receipt.history_spool_count, 1);
+            assert!(receipt.committed);
+            let after = engine.db.get_spool_by_id(id).unwrap().unwrap();
+            assert_eq!(after.status, "EMPTY");
+            assert_eq!(after.remaining_g, Some(0));
+            assert_eq!(after.current_weight_g, Some(0));
+            assert_eq!(after.spool_tare_weight_g, original.spool_tare_weight_g);
+            assert_eq!(after.home_location_id, original.home_location_id);
+            assert_eq!(after.location_id, original.home_location_id);
+            assert!(after.purchase_price_batch_locked);
+            let snapshot = printer_slot_operation_snapshot(&engine).unwrap();
+            for table in ["print_jobs", "weight_readings", "scales", "spool_loans"] {
+                assert_eq!(snapshot[table], before[table], "{table}");
+            }
+            assert!(
+                engine.execute_bulk_inventory_mutation(input).is_err(),
+                "stale retry rejected"
+            );
+            assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), snapshot);
+            let receipt = engine
+                .execute_bulk_inventory_mutation(mark_empty_input(&engine, id))
+                .unwrap();
+            assert_eq!(
+                receipt.affected_count, 0,
+                "current empty snapshot is a no-op"
+            );
+            assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), snapshot);
+        }
+        let occupant: Option<String> = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT spool_id FROM ams_slots WHERE id = ?1",
+                [&slot],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(occupant, None);
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn mark_empty_rejects_changed_slot_without_unloading_its_new_occupant() {
+    let path = temp_db_path("mark-empty-stale");
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (printer, slot, assigned, stock) =
+            seed_printer_slot_operation_fixture(&engine, "stale_empty").unwrap();
+        let input = mark_empty_input(&engine, &assigned);
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: printer,
+                slot_id: slot,
+                spool_id: Some(stock),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .unwrap();
+        let before = printer_slot_operation_snapshot(&engine).unwrap();
+        assert!(engine.execute_bulk_inventory_mutation(input).is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+        let mut wrong_slot = mark_empty_input(&engine, &assigned);
+        if let super::InventoryBulkMutationInput::MarkEmpty {
+            expected_slot_id, ..
+        } = &mut wrong_slot
+        {
+            *expected_slot_id = Some("other-slot".into());
+        }
+        assert!(engine.execute_bulk_inventory_mutation(wrong_slot).is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn mark_empty_rolls_back_slot_weight_price_and_history_on_late_failure() {
+    for (name, trigger) in [
+        (
+            "weight",
+            "BEFORE UPDATE OF current_weight_g ON filament_spools",
+        ),
+        (
+            "history",
+            "BEFORE INSERT ON spool_history_events WHEN NEW.event_type = 'USED_UP'",
+        ),
+    ] {
+        let path = temp_db_path(&format!("mark-empty-{name}-rollback"));
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            let engine = InventoryEngine::new(db);
+            let (_, _, assigned, _) =
+                seed_printer_slot_operation_fixture(&engine, "rollback_empty").unwrap();
+            engine.db.connection().execute_batch(&format!(
+                "CREATE TRIGGER fail_empty {trigger} BEGIN SELECT RAISE(ABORT, 'late mark empty failure'); END;"
+            )).unwrap();
+            let before = printer_slot_operation_snapshot(&engine).unwrap();
+            let error = engine
+                .execute_bulk_inventory_mutation(mark_empty_input(&engine, &assigned))
+                .unwrap_err();
+            assert!(error.to_string().contains("late mark empty failure"));
+            assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+#[test]
+fn mark_empty_preserves_inbound_loans_and_rejects_outbound_loans_or_removed_rolls() {
+    for case in ["INBOUND", "OUTBOUND", "deleted", "missing"] {
+        let path = temp_db_path(&format!("mark-empty-{case}"));
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            let engine = InventoryEngine::new(db);
+            let (_, _, _, stock) =
+                seed_printer_slot_operation_fixture(&engine, "loan_empty").unwrap();
+            if case == "deleted" || case == "missing" {
+                let mut input = mark_empty_input(&engine, &stock);
+                if let super::InventoryBulkMutationInput::MarkEmpty { spool, .. } = &mut input {
+                    spool.expected_status = crate::backend::inventory_domain::SpoolStatus::from_raw(
+                        Some(if case == "deleted" {
+                            "DELETED"
+                        } else {
+                            "MISSING"
+                        }),
+                    );
+                }
+                engine.db.connection().execute(
+                    "UPDATE filament_spools SET status = ?1, deleted_at = CASE WHEN ?1 = 'DELETED' THEN datetime('now') ELSE NULL END WHERE id = ?2",
+                    rusqlite::params![if case == "deleted" { "DELETED" } else { "MISSING" }, stock],
+                ).unwrap();
+                let before = printer_slot_operation_snapshot(&engine).unwrap();
+                assert!(engine.execute_bulk_inventory_mutation(input).is_err());
+                assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+                drop(engine);
+                let _ = std::fs::remove_file(&path);
+                continue;
+            }
+            engine.db.connection().execute(
+                "INSERT INTO spool_loans (id, spool_id, borrower_name, loan_direction, loan_status, grams_out)
+                 VALUES ('loan', ?1, 'Owner', ?2, 'ACTIVE', 1000)",
+                rusqlite::params![stock, case],
+            ).unwrap();
+            let mut input = mark_empty_input(&engine, &stock);
+            if let super::InventoryBulkMutationInput::MarkEmpty { spool, .. } = &mut input {
+                spool.expected_active_loan = true;
+            }
+            let before = printer_slot_operation_snapshot(&engine).unwrap();
+            let result = engine.execute_bulk_inventory_mutation(input);
+            let after = printer_slot_operation_snapshot(&engine).unwrap();
+            if case == "INBOUND" {
+                assert!(result.unwrap().committed);
+                assert_eq!(after["spool_loans"], before["spool_loans"]);
+                assert_eq!(
+                    engine.db.get_spool_by_id(&stock).unwrap().unwrap().status,
+                    "EMPTY"
+                );
+            } else {
+                assert!(result.is_err());
+                assert_eq!(after, before);
+            }
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}

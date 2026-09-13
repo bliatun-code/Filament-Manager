@@ -203,7 +203,7 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 
 [Samlet oppretting av syntetiske testdatabaser](CI_FIXTURE_TRANSACTIONS_2026-09-13.md) er merget gjennom PR #115 som `627fdba2`, etter åtte grønne kontroller. Windows-skriptsuiten gikk fra 264 til 36 sekunder med fem flere tester i den målte CI-kjøringen; macOS-tiden var omtrent uendret. Hele databasen sammenlignes mot tidligere byggemåte, og feil under skjema, innsetting og verifisering ruller tilbake før opprydding.
 
-Neste samlede oppfølging gjelder [lasting fra lager til printer](INVENTORY_LOAD_FOLLOWUP_2026-09-13.md): stabilt sporvalg, feil inne i dialogen, bekreftet lagring før oppfriskning og atomisk kontroll av at målsporet fortsatt er tomt. Lasting bevarer eksisterende vekt og avviser ruller som allerede er flyttet til en printer.
+[Lasting fra lager til printer](INVENTORY_LOAD_FOLLOWUP_2026-09-13.md) er merget i PR #116 som `ad3aac5c` etter åtte grønne kontroller: stabilt sporvalg, feil inne i dialogen, bekreftet lagring før oppfriskning og atomisk kontroll av at målsporet fortsatt er tomt. Lasting bevarer eksisterende vekt og avviser ruller som allerede er flyttet til en printer.
 
 1. Gjennomfør og dokumenter den modererte [brukertesten](USABILITY_TEST_PROTOCOL.md) med minst fem deltakere når faktiske brukermålinger samles inn. Faste baseline-/kandidatbygg og samme syntetiske startbibliotek er klargjort. `npm run qa:usability:prepare` lager oppgavekort, planlagt byggrekkefølge, isolerte oppgavedatabaser og en uutfylt resultatmal. AI-evalueringen og de automatiserte femflyt-testene dokumenterer arbeidsflyter og dataintegritet; målene om minst 90 % uhjulpet fullføring og minst 30 % kortere median tid er fortsatt umålte.
 2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
@@ -211,6 +211,8 @@ Neste samlede oppfølging gjelder [lasting fra lager til printer](INVENTORY_LOAD
 ## Fremdriftslogg
 
 ### 2026-09-13
+
+- PR #116 er merget. Neste samlede pakke følger opp [«Merk som tom» og standardfilteret](INVENTORY_MARK_EMPTY_2026-09-13.md): én kontrollert transaksjon for status, vekt, printerspor og historikk; tomme ruller skjules under «Alle» og beholdes under «Tom».
 
 - PR #115 er merget som `627fdba2` etter én push og åtte grønne kontroller. Windows-skriptsuiten målte 36,03 sekunder mot 264,44 i #114. Neste pakke samler dialog- og datakontrollene for [lasting i printer fra lageret](INVENTORY_LOAD_FOLLOWUP_2026-09-13.md).
 - PR #114 er merget som `e726860e`. [CI](https://github.com/bliatun-code/Filament-Manager/actions/runs/34723423979), CodeQL og forsyningskjedekontroller bestod etter én samlet push. Neste pakke angriper kostbar fixture-oppretting uten å redusere sikkerhets- eller datakontrollene; [målegrunnlag og regresjoner](CI_FIXTURE_TRANSACTIONS_2026-09-13.md) dokumenterer omfanget.

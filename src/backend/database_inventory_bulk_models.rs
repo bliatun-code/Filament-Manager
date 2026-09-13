@@ -15,6 +15,11 @@ pub struct InventoryBulkSpoolPrecondition {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "action")]
 pub enum InventoryBulkMutationInput {
+    #[serde(rename = "MARK_EMPTY")]
+    MarkEmpty {
+        spool: InventoryBulkSpoolPrecondition,
+        expected_slot_id: Option<String>,
+    },
     #[serde(rename = "MOVE")]
     Move {
         expected_affected_count: i64,

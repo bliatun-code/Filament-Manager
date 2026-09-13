@@ -5,6 +5,7 @@ use serde::Deserialize;
 pub(crate) struct LibrarySyncInventoryBulkMutationInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) mutation: InventoryBulkMutationInput,
 }
 

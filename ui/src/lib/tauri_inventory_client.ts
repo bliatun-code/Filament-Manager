@@ -191,7 +191,12 @@ export type CompanionSpoolDetail = {
   active_loan?: ActiveSpoolLoanRow | null;
 };
 
-export type InventoryBulkMutationInput = InventoryBulkMutationCommand;
+export type InventoryMarkEmptyCommand = {
+  action: "MARK_EMPTY";
+  spool: import("./inventory_bulk_actions_model").InventoryBulkSpoolPrecondition;
+  expected_slot_id: string | null;
+};
+export type InventoryBulkMutationInput = InventoryBulkMutationCommand | InventoryMarkEmptyCommand;
 export type InventoryBulkMutationResult = InventoryBulkMutationReceipt;
 
 export async function listSpools(limit = 100, offset = 0) {
@@ -210,12 +215,14 @@ export function buildLibrarySyncHostInventoryBulkMutationPayload(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   command: InventoryBulkMutationInput,
+  expectedTargetGeneration?: number,
 ) {
   return {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
       mutation: command,
+      ...(expectedTargetGeneration === undefined ? {} : { expected_target_generation: expectedTargetGeneration }),
     },
   };
 }
@@ -224,6 +231,7 @@ export async function executeLibrarySyncHostInventoryBulkMutation(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   command: InventoryBulkMutationInput,
+  expectedTargetGeneration?: number,
 ) {
   return invoke<InventoryBulkMutationResult>(
     "execute_library_sync_host_inventory_bulk_mutation",
@@ -231,6 +239,7 @@ export async function executeLibrarySyncHostInventoryBulkMutation(
       baseUrl,
       expectedLibraryId,
       command,
+      expectedTargetGeneration,
     ),
   );
 }

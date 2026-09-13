@@ -514,53 +514,6 @@ export function useInventorySpoolDetailActions({
     }
   }
 
-  async function handleMarkEmpty() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    setConfirmDelete(false);
-    setConfirmPurge(false);
-    setManageBusy(true);
-    setError(null);
-    try {
-      if (selectedSpoolAssignedSlot) {
-        await writePrinterSlotAssignment(hostWriteTarget, {
-          printer_id: selectedSpoolAssignedSlot.printerId,
-          slot_id: selectedSpoolAssignedSlot.slotId,
-          spool_id: null,
-        });
-      }
-      await updateInventorySpoolStatus(
-        {
-          spool_id: selectedSpool.id,
-          qr_code: selectedSpool.qrCode ?? null,
-          status: "EMPTY",
-          location: currentLocationReference,
-        },
-        hostWriteTarget,
-      );
-      await updateInventorySpoolWeight(selectedSpool.id, 0, hostWriteTarget);
-      await reloadInventorySurfaces();
-      await reloadSpoolDetail(selectedSpool.id);
-    } catch (statusError) {
-      console.error(statusError);
-      setError(
-        commandErrorText(
-          statusError,
-          t("inventory.error.markEmpty", "Failed to mark roll as empty."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
   async function handleSaveSpoolLocation() {
     if (!tauriAvailable || !selectedSpool || manageBusy) {
       return;
@@ -871,7 +824,6 @@ export function useInventorySpoolDetailActions({
 
   return {
     handleDeleteSelected,
-    handleMarkEmpty,
     handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
