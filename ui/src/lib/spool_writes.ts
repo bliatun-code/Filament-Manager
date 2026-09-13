@@ -31,6 +31,7 @@ export type SpoolWriteTarget = {
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
+  clientTargetGeneration?: number | null;
 };
 
 type SpoolWriteDependencies = {
@@ -150,7 +151,7 @@ export async function deleteInventorySpool(
 
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
-    await deleteHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
+    await deleteHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input, target.clientTargetGeneration ?? undefined);
     return;
   }
 
@@ -167,7 +168,7 @@ export async function purgeInventorySpool(
 
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
-    await purgeHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input);
+    await purgeHostSpool(hostTarget.baseUrl, hostTarget.libraryId, input, target.clientTargetGeneration ?? undefined);
     return;
   }
 

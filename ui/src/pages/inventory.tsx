@@ -63,6 +63,7 @@ import { useInventoryRollModalEscape } from "../lib/use_inventory_roll_modal_esc
 import { useInventorySelectedSpool } from "../lib/use_inventory_selected_spool";
 import { useInventorySelectedSpoolDetailState } from "../lib/use_inventory_selected_spool_detail_state";
 import { useInventorySelectedSpoolViewModel } from "../lib/use_inventory_selected_spool_view_model";
+import { useInventoryRemovalActions } from "../lib/use_inventory_removal_actions";
 import { useInventorySpoolDetailActions } from "../lib/use_inventory_spool_detail_actions";
 import { useInventorySpoolDetailUtilityActions } from "../lib/use_inventory_spool_detail_utility_actions";
 import { useInventorySpoolQrArtifacts } from "../lib/use_inventory_spool_qr_artifacts";
@@ -519,8 +520,6 @@ export default function InventoryPage({
   const selectedSpool = useInventorySelectedSpool(spools, selectedSpoolId);
 
   const {
-    confirmDelete,
-    confirmPurge,
     commonDetailsDirty,
     editMasterColorName,
     editMasterFilamentName,
@@ -541,8 +540,6 @@ export default function InventoryPage({
     selectedSpoolPurchaseMetadataDraft,
     selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
-    setConfirmDelete,
-    setConfirmPurge,
     setEditMasterColorName,
     setEditMasterFilamentName,
     setEditMasterHexColor,
@@ -578,10 +575,23 @@ export default function InventoryPage({
     setUsagePoints,
   });
 
-  const cancelDangerZoneConfirmation = useCallback(() => {
-    setConfirmDelete(false);
-    setConfirmPurge(false);
-  }, [setConfirmDelete, setConfirmPurge]);
+  const clearSelectedSpoolDetail = useCallback(() => {
+    setSelectedSpoolId(null);
+    setHistoryRows([]);
+    setUsagePoints([]);
+  }, [setHistoryRows, setSelectedSpoolId, setUsagePoints]);
+
+  const {
+    confirmDelete, confirmPurge, handleDeleteSelected, handlePurgeSelected, removalError,
+    cancelConfirmation: cancelDangerZoneConfirmation,
+  } = useInventoryRemovalActions({
+    selectedSpool: showRollModal ? selectedSpool : null,
+    activeLoan: activeLoans.some(row => row.loan.spool_id === selectedSpool?.id),
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+    tauriAvailable: tauri, manageBusy, canUseClientHostWrite, ensureLocalWriteAllowed,
+    setManageBusy, setError, setInfoMessage, onRemoved: clearSelectedSpoolDetail,
+    reloadSpools, reloadPrinterOverview, reloadActiveLoans, t,
+  });
 
   const discardSelectedSpoolDetail = useCallback(() => {
     resetDetailDrafts();
@@ -877,12 +887,6 @@ export default function InventoryPage({
     t,
   });
 
-  const clearSelectedSpoolDetail = useCallback(() => {
-    setSelectedSpoolId(null);
-    setHistoryRows([]);
-    setUsagePoints([]);
-  }, [setHistoryRows, setSelectedSpoolId, setUsagePoints]);
-
   const handleMarkEmpty = useInventoryMarkEmptyAction({
     selectedSpool: showRollModal ? selectedSpool : null,
     assignedSlot: selectedSpoolAssignedSlot,
@@ -895,8 +899,6 @@ export default function InventoryPage({
   });
 
   const {
-    handleDeleteSelected,
-    handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
     handleSaveSpoolCommonDetails,
@@ -904,12 +906,10 @@ export default function InventoryPage({
     handleWeightSubmit,
   } = useInventorySpoolDetailActions({
     canUseClientHostWrite,
-    clearSelectedSpoolDetail,
+    cancelDangerZoneConfirmation,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
-    confirmDelete,
-    confirmPurge,
     editMasterColorName,
     editMasterFilamentName,
     editMasterHexColor,
@@ -938,8 +938,6 @@ export default function InventoryPage({
     selectedSpoolPurchaseMetadataDraft,
     selectedSpoolResolvedTare,
     selectedSpoolTareDraft,
-    setConfirmDelete,
-    setConfirmPurge,
     setError,
     setInfoMessage,
     setManageBusy,
@@ -1347,7 +1345,7 @@ export default function InventoryPage({
             displayTitle={selectedSpoolDisplayTitle}
             defaultPurchaseCurrency={defaultPurchaseCurrency}
             discardConfirmationOpen={selectedSpoolDiscardConfirmationOpen}
-            error={error}
+            error={removalError ?? error}
             filamentName={editMasterFilamentName}
             formatHistoryEventDetails={formatHistoryEventDetails}
             formatHistoryEventType={formatHistoryEventType}

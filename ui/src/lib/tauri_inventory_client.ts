@@ -450,6 +450,7 @@ export async function deleteLibrarySyncHostSpool(
   baseUrl: string,
   expectedLibraryId?: string | null,
   input?: DeleteSpoolInput,
+  expectedTargetGeneration?: number,
 ) {
   return invoke<void>("delete_library_sync_host_spool", {
     input: {
@@ -457,6 +458,7 @@ export async function deleteLibrarySyncHostSpool(
       expected_library_id: expectedLibraryId ?? null,
       spool_id: input?.spool_id,
       reason: input?.reason ?? null,
+      ...(expectedTargetGeneration === undefined ? {} : { expected_target_generation: expectedTargetGeneration }),
     },
   });
 }
@@ -469,6 +471,7 @@ export async function purgeLibrarySyncHostSpool(
   baseUrl: string,
   expectedLibraryId?: string | null,
   input?: PurgeSpoolInput,
+  expectedTargetGeneration?: number,
 ) {
   return invoke<void>("purge_library_sync_host_spool", {
     input: {
@@ -476,6 +479,7 @@ export async function purgeLibrarySyncHostSpool(
       expected_library_id: expectedLibraryId ?? null,
       spool_id: input?.spool_id,
       reason: input?.reason ?? null,
+      ...(expectedTargetGeneration === undefined ? {} : { expected_target_generation: expectedTargetGeneration }),
     },
   });
 }
