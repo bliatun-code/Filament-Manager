@@ -10,6 +10,7 @@ import { appSoftButtonClassName } from "./ui_class_names";
 
 type InventoryLoadSpoolModalProps = {
   busy: boolean;
+  error: string | null;
   onClose: () => void;
   onConfirm: (slotId: string) => void;
   open: boolean;
@@ -18,25 +19,32 @@ type InventoryLoadSpoolModalProps = {
   spool: InventorySpool | null;
 };
 
-export function InventoryLoadSpoolModal({
+export function InventoryLoadSpoolModal(props: InventoryLoadSpoolModalProps) {
+  if (!props.open || !props.spool) return null;
+  return <InventoryLoadSpoolSession key={props.spool.id} {...props} />;
+}
+
+function InventoryLoadSpoolSession({
   busy,
+  error,
   onClose,
   onConfirm,
-  open,
   slotLabelById,
   slots,
   spool,
 }: InventoryLoadSpoolModalProps) {
   const { t } = useI18n();
-  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [selectedSlotId, setSelectedSlotId] = useState(() => slots[0]?.slotId ?? "");
+  const selectedSlotAvailable = slots.some((slot) => slot.slotId === selectedSlotId);
 
   useEffect(() => {
-    if (open) {
-      setSelectedSlotId(slots[0]?.slotId ?? "");
+    if (selectedSlotId && !selectedSlotAvailable) {
+      // A refresh must never silently move the user's choice to another printer.
+      setSelectedSlotId("");
     }
-  }, [open, slots]);
+  }, [selectedSlotAvailable, selectedSlotId]);
 
-  if (!open || !spool) {
+  if (!spool) {
     return null;
   }
 
@@ -57,6 +65,12 @@ export function InventoryLoadSpoolModal({
         onClose={onClose}
       />
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
+        {error ? <ModalNotice role="alert" tone="danger" className="mb-4">{error}</ModalNotice> : null}
+        {!error && slots.length > 0 && !selectedSlotAvailable ? (
+          <ModalNotice role="alert" tone="warning" className="mb-4">
+            {t("inventory.error.loadInPrinterStale", "The selected printer slot is no longer available. Refresh and choose another slot.")}
+          </ModalNotice>
+        ) : null}
         <ModalNotice tone="info">
           {t(
             "inventory.loadInPrinterHint",
@@ -112,7 +126,7 @@ export function InventoryLoadSpoolModal({
         <button
           type="button"
           className={inventoryDetailSaveButtonClassName}
-          disabled={busy || !selectedSlotId}
+          disabled={busy || !selectedSlotAvailable}
           onClick={() => onConfirm(selectedSlotId)}
         >
           {busy
