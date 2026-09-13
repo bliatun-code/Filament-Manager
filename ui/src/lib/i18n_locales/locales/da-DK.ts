@@ -71,6 +71,7 @@ export const daDKDictionary: DictionaryNode = {
     "optional": "Valgfrit"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "Opdater værten, før du gemmer en målt rullevægt. Ingen ændringer blev sendt.",
       "inventoryStatusHostUnsupported": "Opdater værten, før du ændrer en rulles status. Ingen ændringer blev sendt.",
     "printerSlotChanged": "Rullen i dette spor er ændret. Åbn sporhandlingen igen, og bekræft den aktuelle rulle.",
     "printerSlotHostUnsupported": "Opgrader værten, før du ændrer printerspor eller vægten på rullerne i dem. Ingen ændringer blev sendt.",

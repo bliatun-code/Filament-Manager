@@ -5,7 +5,7 @@
 | Planstatus     | Påbegynt       |
 | Planperiode    | 12 uker        |
 | Oppstart       | 2026-08-21     |
-| Sist oppdatert | 2026-09-13     |
+| Sist oppdatert | 2026-09-14     |
 | Eier           | Prosjektteamet |
 
 ## Mål
@@ -209,6 +209,10 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 2. Authenticode forblir utsatt til prosjektet eksplisitt gjenopptar valg av utgiveridentitet, signeringstjeneste og beskyttet GitHub-miljø.
 
 ## Fremdriftslogg
+
+### 2026-09-14
+
+- PR #119 er merget som `83ab1a1e` etter én push og åtte grønne kontroller. Neste samlede pakke gjør [veiing med automatisk reaktivering](INVENTORY_WEIGHT_2026-09-14.md) transaksjonell, med autoritativ beregning av printerforbruk og vern mot gamle målegrunnlag.
 
 ### 2026-09-13
 

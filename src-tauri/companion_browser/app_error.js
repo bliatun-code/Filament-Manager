@@ -322,6 +322,10 @@ export const ERROR_MESSAGE_DESCRIPTORS = Object.freeze({
     "errors.printerSlotChanged",
     "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
   ],
+  "inventory.roll_weight.host_unsupported": [
+    "errors.inventoryWeightHostUnsupported",
+    "Update the Host before saving a measured roll weight. No changes were sent.",
+  ],
   "inventory.roll_status.host_unsupported": [
     "errors.inventoryStatusHostUnsupported",
     "Update the Host before changing a roll’s status. No changes were sent.",

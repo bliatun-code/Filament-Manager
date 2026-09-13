@@ -49,6 +49,7 @@ export const koKRDictionary: DictionaryNode = {
     "optional": "선택 과목"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "측정한 롤 무게를 저장하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
       "inventoryStatusHostUnsupported": "롤 상태를 변경하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
     "printerSlotChanged": "이 슬롯의 스풀이 변경되었습니다. 슬롯 작업을 다시 열고 현재 스풀을 확인하세요.",
     "printerSlotHostUnsupported": "프린터 슬롯이나 해당 스풀의 무게를 변경하기 전에 호스트를 업그레이드하세요. 변경 사항은 전송되지 않았습니다.",

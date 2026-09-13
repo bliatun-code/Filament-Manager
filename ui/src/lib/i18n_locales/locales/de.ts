@@ -49,6 +49,7 @@ export const deDictionary: DictionaryNode = {
     optional: "Optional",
   },
   errors: {
+      "inventoryWeightHostUnsupported": "Aktualisiere den Host, bevor du ein gemessenes Rollengewicht speicherst. Es wurden keine Änderungen gesendet.",
       "inventoryStatusHostUnsupported": "Aktualisiere den Host, bevor du den Status einer Rolle änderst. Es wurden keine Änderungen gesendet.",
     "printerSlotChanged": "Die Rolle in diesem Steckplatz hat sich geändert. Öffne die Steckplatzaktion erneut und bestätige die aktuelle Rolle.",
     "printerSlotHostUnsupported": "Aktualisiere den Host, bevor du Druckersteckplätze oder das Gewicht ihrer Rollen änderst. Es wurden keine Änderungen gesendet.",

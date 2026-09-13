@@ -6867,3 +6867,292 @@ fn roll_status_outbound_loans_removed_rolls_and_invalid_targets_are_unchanged() 
         let _ = std::fs::remove_file(path);
     }
 }
+
+fn roll_weight_input(
+    engine: &InventoryEngine,
+    id: &str,
+    total: i64,
+) -> super::InventoryBulkMutationInput {
+    let super::InventoryBulkMutationInput::MarkEmpty {
+        mut spool,
+        expected_slot_id,
+    } = mark_empty_input(engine, id)
+    else {
+        unreachable!()
+    };
+    spool.expected_active_loan = engine.db.spool_has_active_loan(id).unwrap();
+    let stored = engine.db.get_spool_by_id(id).unwrap().unwrap();
+    let tare = stored.spool_tare_weight_g.unwrap_or(0);
+    super::InventoryBulkMutationInput::RollWeight {
+        spool,
+        expected_slot_id,
+        expected_remaining_g: stored.remaining_g,
+        expected_tare_g: tare,
+        measured_total_g: total,
+    }
+}
+
+fn with_roll_weight_fixture(run: impl FnOnce(&InventoryEngine, &str, &str, &str, &str)) {
+    static NEXT_FIXTURE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let serial = NEXT_FIXTURE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let path = temp_db_path(&format!("roll-weight-{}-{serial}", std::process::id()));
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (printer, slot, assigned, stock) =
+            seed_printer_slot_operation_fixture(&engine, "weight").unwrap();
+        run(&engine, &printer, &slot, &assigned, &stock);
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn roll_weight_printer_usage_uses_authoritative_net_weight_and_preserves_slot() {
+    with_roll_weight_fixture(|engine, _, _, assigned, stock| {
+        let original = engine.db.get_spool_by_id(assigned).unwrap().unwrap();
+        let before = printer_slot_operation_snapshot(engine).unwrap();
+        let input = roll_weight_input(engine, assigned, 850);
+        let receipt = engine
+            .execute_bulk_inventory_mutation(input.clone())
+            .unwrap();
+        assert!(receipt.committed);
+        assert_eq!(receipt.affected_count, 1);
+        let row = engine.db.get_spool_by_id(assigned).unwrap().unwrap();
+        assert_eq!(row.remaining_g, Some(600));
+        assert_eq!(row.current_weight_g, Some(600));
+        assert_eq!(row.status, "ASSIGNED");
+        assert_eq!(row.location_id, original.location_id);
+        assert_eq!(row.home_location_id, original.home_location_id);
+        assert_eq!(row.qr_code, original.qr_code);
+        let used: i64 = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT material_used_g FROM print_jobs WHERE spool_id=?1",
+                [assigned],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(used, original.remaining_g.unwrap() - 600);
+        let after = printer_slot_operation_snapshot(engine).unwrap();
+        assert_eq!(after["ams_slots"], before["ams_slots"]);
+        assert!(engine.execute_bulk_inventory_mutation(input).is_err());
+        assert_eq!(printer_slot_operation_snapshot(engine).unwrap(), after);
+        assert_eq!(
+            engine
+                .db
+                .get_spool_by_id(stock)
+                .unwrap()
+                .unwrap()
+                .remaining_g,
+            Some(1000)
+        );
+        let no_op = engine
+            .execute_bulk_inventory_mutation(roll_weight_input(engine, assigned, 850))
+            .unwrap();
+        assert_eq!(no_op.affected_count, 0);
+        assert_eq!(no_op.history_spool_count, 0);
+        assert_eq!(printer_slot_operation_snapshot(engine).unwrap(), after);
+        for correction in [
+            "current_weight_g=900",
+            "current_weight_g=NULL,remaining_g=NULL",
+        ] {
+            engine
+                .db
+                .connection()
+                .execute(
+                    &format!("UPDATE filament_spools SET {correction} WHERE id=?1"),
+                    [assigned],
+                )
+                .unwrap();
+            engine
+                .execute_bulk_inventory_mutation(roll_weight_input(engine, assigned, 850))
+                .unwrap();
+            let corrected = engine.db.get_spool_by_id(assigned).unwrap().unwrap();
+            assert_eq!(corrected.current_weight_g, Some(600));
+            assert_eq!(corrected.remaining_g, Some(600));
+            let corrected_snapshot = printer_slot_operation_snapshot(engine).unwrap();
+            assert_eq!(corrected_snapshot["print_jobs"], after["print_jobs"]);
+            assert_eq!(corrected_snapshot["ams_slots"], after["ams_slots"]);
+        }
+    });
+}
+
+#[test]
+fn roll_weight_zero_and_reactivation_preserve_assignment_and_historical_price_lock() {
+    with_roll_weight_fixture(|engine, _, _, assigned, _| {
+        engine
+            .execute_bulk_inventory_mutation(roll_weight_input(engine, assigned, 200))
+            .unwrap();
+        let empty = engine.db.get_spool_by_id(assigned).unwrap().unwrap();
+        assert_eq!(empty.remaining_g, Some(0));
+        assert_eq!(empty.status, "EMPTY");
+        assert!(empty.purchase_price_batch_locked);
+        assert!(engine.db.spool_assigned_to_printer(assigned).unwrap());
+        let before = printer_slot_operation_snapshot(engine).unwrap();
+        engine
+            .execute_bulk_inventory_mutation(roll_weight_input(engine, assigned, 750))
+            .unwrap();
+        let full = engine.db.get_spool_by_id(assigned).unwrap().unwrap();
+        assert_eq!(full.status, "ASSIGNED");
+        assert_eq!(full.remaining_g, Some(500));
+        assert!(full.purchase_price_batch_locked);
+        let after = printer_slot_operation_snapshot(engine).unwrap();
+        assert_eq!(before["ams_slots"], after["ams_slots"]);
+        assert_eq!(before["print_jobs"], after["print_jobs"]);
+    });
+}
+
+#[test]
+fn roll_weight_stock_reactivation_preserves_inbound_loan_and_lost_roll_stays_lost() {
+    with_roll_weight_fixture(|engine, _, _, _, stock| {
+        engine.db.connection().execute("UPDATE filament_spools SET status='EMPTY',remaining_g=0,current_weight_g=0,ownership_type='BORROWED_IN' WHERE id=?1",[stock]).unwrap();
+        engine.db.connection().execute("INSERT INTO spool_loans (id,spool_id,borrower_name,loan_direction,loan_status,grams_out) VALUES ('weight-inbound',?1,'Synthetic Owner','INBOUND','ACTIVE',400)",[stock]).unwrap();
+        let before = printer_slot_operation_snapshot(engine).unwrap();
+        engine
+            .execute_bulk_inventory_mutation(roll_weight_input(engine, stock, 500))
+            .unwrap();
+        let full = engine.db.get_spool_by_id(stock).unwrap().unwrap();
+        assert_eq!(full.status, "IN_STOCK");
+        assert_eq!(full.remaining_g, Some(400));
+        let after = printer_slot_operation_snapshot(engine).unwrap();
+        assert_eq!(before["spool_loans"], after["spool_loans"]);
+        assert_eq!(before["print_jobs"], after["print_jobs"]);
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET status='LOST' WHERE id=?1",
+                [stock],
+            )
+            .unwrap();
+        engine
+            .execute_bulk_inventory_mutation(roll_weight_input(engine, stock, 600))
+            .unwrap();
+        assert_eq!(
+            engine.db.get_spool_by_id(stock).unwrap().unwrap().status,
+            "LOST"
+        );
+    });
+}
+
+#[test]
+fn roll_weight_stale_weight_tare_and_slot_reject_without_changes() {
+    for case in ["weight", "tare", "slot", "vendor-default"] {
+        with_roll_weight_fixture(|engine, printer, slot, assigned, stock| {
+            let input = roll_weight_input(engine, assigned, 850);
+            match case {
+                "weight" => {
+                    engine
+                        .update_spool_weight(assigned, 950, None, WeightSource::Manual)
+                        .unwrap();
+                }
+                "tare" => {
+                    engine.update_spool_tare_weight(assigned, 260).unwrap();
+                }
+                "slot" => {
+                    engine
+                        .assign_printer_slot(AssignPrinterSlotInput {
+                            printer_id: printer.into(),
+                            slot_id: slot.into(),
+                            spool_id: Some(stock.into()),
+                            rfid_override_tray_uuid: None,
+                            rfid_override_color_hex: None,
+                            clear_live_cache_before_next_refresh: None,
+                        })
+                        .unwrap();
+                }
+                _ => {
+                    engine
+                        .db
+                        .connection()
+                        .execute(
+                            "UPDATE filament_spools SET spool_tare_weight_g=NULL WHERE id=?1",
+                            [assigned],
+                        )
+                        .unwrap();
+                }
+            }
+            let before = printer_slot_operation_snapshot(engine).unwrap();
+            assert!(
+                engine.execute_bulk_inventory_mutation(input).is_err(),
+                "{case}"
+            );
+            assert_eq!(
+                printer_slot_operation_snapshot(engine).unwrap(),
+                before,
+                "{case}"
+            );
+        });
+    }
+}
+
+#[test]
+fn roll_weight_last_history_failure_rolls_back_usage_weight_and_reactivation() {
+    for event in ["PRINT_JOB_RECORDED", "WEIGHT_UPDATED", "STATUS_UPDATED"] {
+        with_roll_weight_fixture(|engine, _, _, assigned, stock| {
+            let id = if event == "PRINT_JOB_RECORDED" {
+                assigned
+            } else {
+                stock
+            };
+            if event == "STATUS_UPDATED" {
+                engine.db.connection().execute("UPDATE filament_spools SET status='EMPTY',remaining_g=0,current_weight_g=0 WHERE id=?1",[id]).unwrap();
+            }
+            engine.db.connection().execute_batch(&format!("CREATE TRIGGER reject_weight_history BEFORE INSERT ON spool_history_events WHEN NEW.event_type='{event}' BEGIN SELECT RAISE(ABORT,'injected final write failure'); END;")).unwrap();
+            let before = printer_slot_operation_snapshot(engine).unwrap();
+            assert!(
+                engine
+                    .execute_bulk_inventory_mutation(roll_weight_input(engine, id, 650))
+                    .is_err(),
+                "{event}"
+            );
+            assert_eq!(
+                printer_slot_operation_snapshot(engine).unwrap(),
+                before,
+                "{event}"
+            );
+        });
+    }
+}
+
+#[test]
+fn roll_weight_rejects_outbound_removed_and_invalid_measurements() {
+    for case in ["outbound", "deleted", "missing", "negative", "unsafe"] {
+        with_roll_weight_fixture(|engine, _, _, _, stock| {
+            match case {
+                "outbound" => {
+                    engine.db.connection().execute("INSERT INTO spool_loans (id,spool_id,borrower_name,loan_direction,loan_status,grams_out) VALUES ('weight-outbound',?1,'Synthetic Borrower','OUTBOUND','ACTIVE',400)",[stock]).unwrap();
+                }
+                "deleted" => {
+                    engine.db.connection().execute("UPDATE filament_spools SET deleted_at=datetime('now'),status='DELETED' WHERE id=?1",[stock]).unwrap();
+                }
+                "missing" => {
+                    engine
+                        .db
+                        .connection()
+                        .execute(
+                            "UPDATE filament_spools SET status='MISSING' WHERE id=?1",
+                            [stock],
+                        )
+                        .unwrap();
+                }
+                _ => {}
+            }
+            let total = match case {
+                "negative" => -1,
+                "unsafe" => i64::MAX,
+                _ => 650,
+            };
+            let before = printer_slot_operation_snapshot(engine).unwrap();
+            assert!(
+                engine
+                    .execute_bulk_inventory_mutation(roll_weight_input(engine, stock, total))
+                    .is_err(),
+                "{case}"
+            );
+            assert_eq!(printer_slot_operation_snapshot(engine).unwrap(), before);
+        });
+    }
+}

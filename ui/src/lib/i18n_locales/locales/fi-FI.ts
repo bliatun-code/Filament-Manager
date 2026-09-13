@@ -49,6 +49,7 @@ export const fiFIDictionary: DictionaryNode = {
     "optional": "valinnainen"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "Päivitä isäntäkone ennen rullan mitatun painon tallentamista. Muutoksia ei lähetetty.",
       "inventoryStatusHostUnsupported": "Päivitä isäntä ennen rullan tilan muuttamista. Muutoksia ei lähetetty.",
     "printerSlotChanged": "Tämän paikan kela on vaihtunut. Avaa paikan toiminto uudelleen ja vahvista nykyinen kela.",
     "printerSlotHostUnsupported": "Päivitä Host ennen tulostinpaikkojen tai niissä olevien kelojen painojen muuttamista. Muutoksia ei lähetetty.",

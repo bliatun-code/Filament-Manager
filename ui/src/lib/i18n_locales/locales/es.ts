@@ -49,6 +49,7 @@ export const esDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   errors: {
+      "inventoryWeightHostUnsupported": "Actualiza el anfitrión antes de guardar el peso medido de una bobina. No se envió ningún cambio.",
       "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio.",
     "printerSlotChanged": "La bobina de esta ranura ha cambiado. Vuelve a abrir la acción de la ranura y confirma la bobina actual.",
     "printerSlotHostUnsupported": "Actualiza el Host antes de cambiar las ranuras de la impresora o el peso de sus bobinas. No se envió ningún cambio.",

@@ -64,6 +64,7 @@ import { useInventoryRollModalEscape } from "../lib/use_inventory_roll_modal_esc
 import { useInventorySelectedSpool } from "../lib/use_inventory_selected_spool";
 import { useInventorySelectedSpoolDetailState } from "../lib/use_inventory_selected_spool_detail_state";
 import { useInventorySelectedSpoolViewModel } from "../lib/use_inventory_selected_spool_view_model";
+import { useInventoryWeightAction } from "../lib/use_inventory_weight_action";
 import { useInventoryStatusActions } from "../lib/use_inventory_status_actions";
 import { useInventoryRemovalActions } from "../lib/use_inventory_removal_actions";
 import { useInventorySpoolDetailActions } from "../lib/use_inventory_spool_detail_actions";
@@ -900,6 +901,16 @@ export default function InventoryPage({
     reloadSpools, reloadPrinterOverview, reloadSpoolDetail, t,
   });
 
+  const { handleWeightSubmit, weightError, clearWeightError } = useInventoryWeightAction({
+    selectedSpool: showRollModal ? selectedSpool : null,
+    assignedSlot: selectedSpoolAssignedSlot, resolvedTare: selectedSpoolResolvedTare,
+    activeLoan: hasInventorySpoolLoan(selectedSpool, activeLoanSpoolIds), loanedOut: selectedSpoolLoanedOut,
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+    tauriAvailable: tauri, manageBusy, canUseClientHostWrite, ensureLocalWriteAllowed,
+    cancelDangerZoneConfirmation, setManageBusy, setError, setInfoMessage,
+    reloadSpools, reloadPrinterOverview, reloadSpoolDetail, t,
+  });
+
   const handleMarkEmpty = useInventoryMarkEmptyAction({
     selectedSpool: showRollModal ? selectedSpool : null,
     assignedSlot: selectedSpoolAssignedSlot,
@@ -914,7 +925,6 @@ export default function InventoryPage({
   const {
     handleSaveMasterMetadata,
     handleSaveSpoolCommonDetails,
-    handleWeightSubmit,
   } = useInventorySpoolDetailActions({
     canUseClientHostWrite,
     cancelDangerZoneConfirmation,
@@ -938,7 +948,6 @@ export default function InventoryPage({
     reloadSpoolDetail,
     reloadSpools,
     selectedSpool,
-    selectedSpoolAssignedSlot,
     selectedSpoolLocationDraft,
     selectedSpoolLoanedOut,
     selectedSpoolOwnerContactDraft,
@@ -1356,7 +1365,7 @@ export default function InventoryPage({
             displayTitle={selectedSpoolDisplayTitle}
             defaultPurchaseCurrency={defaultPurchaseCurrency}
             discardConfirmationOpen={selectedSpoolDiscardConfirmationOpen}
-            error={statusError ?? removalError ?? error}
+            error={weightError ?? statusError ?? removalError ?? error}
             filamentName={editMasterFilamentName}
             formatHistoryEventDetails={formatHistoryEventDetails}
             formatHistoryEventType={formatHistoryEventType}
@@ -1393,19 +1402,19 @@ export default function InventoryPage({
             onCancelDiscardConfirmation={cancelSelectedSpoolDiscardConfirmation}
             onClose={closeSelectedSpoolDetailModal}
             onConfirmDiscard={confirmSelectedSpoolDiscard}
-            onDelete={() => { clearStatusError(); void handleDeleteSelected(); }}
+            onDelete={() => { clearWeightError(); clearStatusError(); void handleDeleteSelected(); }}
             onLoadInPrinter={openLoadSpoolModal}
             onLoanOut={() => openLoanTrackingModal(selectedSpool)}
-            onMarkEmpty={handleMarkEmpty}
+            onMarkEmpty={() => { clearWeightError(); void handleMarkEmpty(); }}
             onPrintLabel={handlePrintLabel}
-            onPurge={() => { clearStatusError(); void handlePurgeSelected(); }}
-            onRefill={handleRefillSpool}
+            onPurge={() => { clearWeightError(); clearStatusError(); void handlePurgeSelected(); }}
+            onRefill={() => { clearWeightError(); void handleRefillSpool(); }}
             onSaveCommonDetails={handleSaveSpoolCommonDetails}
             onSaveMasterMetadata={handleSaveMasterMetadata}
             onStartRfidCapture={handleStartRfidCapture}
             onSubmitWeight={handleWeightSubmit}
             onToggleEditUnlocked={toggleMasterEditUnlocked}
-            onToggleLostStatus={handleToggleLostStatus}
+            onToggleLostStatus={() => { clearWeightError(); void handleToggleLostStatus(); }}
             onToggleRollHistory={toggleRollHistory}
             open={showRollModal}
             ownershipLabel={selectedSpoolOwnershipLabel}

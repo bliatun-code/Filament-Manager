@@ -49,6 +49,7 @@ export const frDictionary: DictionaryNode = {
     optional: "Facultatif",
   },
   errors: {
+      "inventoryWeightHostUnsupported": "Mettez à jour l’hôte avant d’enregistrer le poids mesuré d’une bobine. Aucune modification n’a été envoyée.",
       "inventoryStatusHostUnsupported": "Mettez à jour l’hôte avant de modifier le statut d’une bobine. Aucune modification n’a été envoyée.",
     "printerSlotChanged": "La bobine de cet emplacement a changé. Rouvrez l’action de l’emplacement et confirmez la bobine actuelle.",
     "printerSlotHostUnsupported": "Mettez à jour l’hôte avant de modifier les emplacements de l’imprimante ou le poids de leurs bobines. Aucune modification n’a été envoyée.",

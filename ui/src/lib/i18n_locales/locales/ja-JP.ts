@@ -49,6 +49,7 @@ export const jaJPDictionary: DictionaryNode = {
     "optional": "任意"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "ロールの実測重量を保存する前にホストを更新してください。変更は送信されていません。",
       "inventoryStatusHostUnsupported": "ロールの状態を変更する前にホストを更新してください。変更は送信されていません。",
     "printerSlotChanged": "このスロットのスプールが変更されました。スロット操作を開き直し、現在のスプールを確認してください。",
     "printerSlotHostUnsupported": "プリンターのスロットやスプールの重量を変更する前に、ホストをアップグレードしてください。変更は送信されていません。",

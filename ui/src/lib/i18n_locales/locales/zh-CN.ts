@@ -49,6 +49,7 @@ export const zhCNDictionary: DictionaryNode = {
     "optional": "可选"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "保存测得的料卷重量前，请先更新主机。未发送任何更改。",
       "inventoryStatusHostUnsupported": "更改料卷状态前请更新主机。未发送任何更改。",
     "printerSlotChanged": "此槽位中的料卷已更改。请重新打开槽位操作并确认当前料卷。",
     "printerSlotHostUnsupported": "更改打印机槽位或其中料卷的重量前，请升级主机。未发送任何更改。",

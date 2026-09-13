@@ -310,3 +310,5 @@ pub(crate) struct CreateSpoolResponse {
     pub(crate) message: String,
     pub(crate) spool_id: String,
 }
+
+pub(crate) const INVENTORY_ROLL_WEIGHT_CAPABILITY: &str = "inventory-roll-weight-v1";

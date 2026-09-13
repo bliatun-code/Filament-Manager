@@ -88,7 +88,8 @@
         "filamentStandardsInvalid": "The saved filament standards are no longer valid. Reload and review them.",
         "printerSlotChanged": "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
         "printerSlotHostUnsupported": "Upgrade the Host before changing printer slots or their weights. No changes were sent.",
-        "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent."
+        "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent.",
+        "inventoryWeightHostUnsupported": "Update the Host before saving a measured roll weight. No changes were sent."
       },
       "nav": {
         "storage": "Inventory",
@@ -732,7 +733,8 @@
         "filamentStandardsInvalid": "De lagrede filamentstandardene er ikke lenger gyldige. Last inn på nytt og se gjennom dem.",
         "printerSlotChanged": "Rullen i dette sporet er endret. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
         "printerSlotHostUnsupported": "Oppgrader verten før du endrer printerspor eller vekten på rullene i dem. Ingen endringer ble sendt.",
-        "inventoryStatusHostUnsupported": "Oppdater verten før du endrer statusen til en rull. Ingen endringer ble sendt."
+        "inventoryStatusHostUnsupported": "Oppdater verten før du endrer statusen til en rull. Ingen endringer ble sendt.",
+        "inventoryWeightHostUnsupported": "Oppdater verten før du lagrer en målt rullvekt. Ingen endringer ble sendt."
       },
       "nav": {
         "storage": "Lager",
@@ -1376,7 +1378,8 @@
         "filamentStandardsInvalid": "Die gespeicherten Filamentstandards sind nicht mehr gültig. Lade sie neu und prüfe sie.",
         "printerSlotChanged": "Die Rolle in diesem Steckplatz hat sich geändert. Öffne die Steckplatzaktion erneut und bestätige die aktuelle Rolle.",
         "printerSlotHostUnsupported": "Aktualisiere den Host, bevor du Druckersteckplätze oder das Gewicht ihrer Rollen änderst. Es wurden keine Änderungen gesendet.",
-        "inventoryStatusHostUnsupported": "Aktualisiere den Host, bevor du den Status einer Rolle änderst. Es wurden keine Änderungen gesendet."
+        "inventoryStatusHostUnsupported": "Aktualisiere den Host, bevor du den Status einer Rolle änderst. Es wurden keine Änderungen gesendet.",
+        "inventoryWeightHostUnsupported": "Aktualisiere den Host, bevor du ein gemessenes Rollengewicht speicherst. Es wurden keine Änderungen gesendet."
       },
       "nav": {
         "storage": "Bestand",
@@ -2020,7 +2023,8 @@
         "filamentStandardsInvalid": "Les valeurs de filament enregistrées ne sont plus valides. Rechargez-les et vérifiez-les.",
         "printerSlotChanged": "La bobine de cet emplacement a changé. Rouvrez l’action de l’emplacement et confirmez la bobine actuelle.",
         "printerSlotHostUnsupported": "Mettez à jour l’hôte avant de modifier les emplacements de l’imprimante ou le poids de leurs bobines. Aucune modification n’a été envoyée.",
-        "inventoryStatusHostUnsupported": "Mettez à jour l’hôte avant de modifier le statut d’une bobine. Aucune modification n’a été envoyée."
+        "inventoryStatusHostUnsupported": "Mettez à jour l’hôte avant de modifier le statut d’une bobine. Aucune modification n’a été envoyée.",
+        "inventoryWeightHostUnsupported": "Mettez à jour l’hôte avant d’enregistrer le poids mesuré d’une bobine. Aucune modification n’a été envoyée."
       },
       "nav": {
         "storage": "Stock",
@@ -2664,7 +2668,8 @@
         "filamentStandardsInvalid": "Los estándares de filamento guardados ya no son válidos. Vuelve a cargarlos y revísalos.",
         "printerSlotChanged": "La bobina de esta ranura ha cambiado. Vuelve a abrir la acción de la ranura y confirma la bobina actual.",
         "printerSlotHostUnsupported": "Actualiza el Host antes de cambiar las ranuras de la impresora o el peso de sus bobinas. No se envió ningún cambio.",
-        "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio."
+        "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio.",
+        "inventoryWeightHostUnsupported": "Actualiza el anfitrión antes de guardar el peso medido de una bobina. No se envió ningún cambio."
       },
       "nav": {
         "storage": "Inventario",
@@ -3399,7 +3404,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Receba as bobinas restantes pela ação de recebimento no estoque.",
         "printerSlotChanged": "O rolo neste slot mudou. Abra a ação do slot novamente e confirme o rolo atual.",
         "printerSlotHostUnsupported": "Atualize o Host antes de alterar os slots da impressora ou o peso dos rolos neles. Nenhuma alteração foi enviada.",
-        "inventoryStatusHostUnsupported": "Atualize o Host antes de alterar o estado de um rolo. Nenhuma alteração foi enviada."
+        "inventoryStatusHostUnsupported": "Atualize o Host antes de alterar o estado de um rolo. Nenhuma alteração foi enviada.",
+        "inventoryWeightHostUnsupported": "Atualize o Host antes de salvar o peso medido de um rolo. Nenhuma alteração foi enviada."
       },
       "format": {
         "assigned": "Atribuído",
@@ -4043,7 +4049,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Ricevi le bobine rimanenti tramite l’azione di carico a magazzino.",
         "printerSlotChanged": "La bobina in questo slot è cambiata. Riapri l’azione dello slot e conferma la bobina attuale.",
         "printerSlotHostUnsupported": "Aggiorna l’Host prima di modificare gli slot della stampante o il peso delle bobine al loro interno. Non è stata inviata alcuna modifica.",
-        "inventoryStatusHostUnsupported": "Aggiorna l’Host prima di cambiare lo stato di una bobina. Non è stata inviata alcuna modifica."
+        "inventoryStatusHostUnsupported": "Aggiorna l’Host prima di cambiare lo stato di una bobina. Non è stata inviata alcuna modifica.",
+        "inventoryWeightHostUnsupported": "Aggiorna l’Host prima di salvare il peso misurato di una bobina. Nessuna modifica è stata inviata."
       },
       "format": {
         "assigned": "Assegnato",
@@ -4687,7 +4694,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Przyjmij pozostałe szpule za pomocą operacji przyjęcia do magazynu.",
         "printerSlotChanged": "Szpula w tym slocie uległa zmianie. Otwórz ponownie działanie slotu i potwierdź aktualną szpulę.",
         "printerSlotHostUnsupported": "Zaktualizuj Host przed zmianą slotów drukarki lub masy znajdujących się w nich szpul. Nie wysłano żadnych zmian.",
-        "inventoryStatusHostUnsupported": "Zaktualizuj hosta przed zmianą statusu szpuli. Nie wysłano żadnych zmian."
+        "inventoryStatusHostUnsupported": "Zaktualizuj hosta przed zmianą statusu szpuli. Nie wysłano żadnych zmian.",
+        "inventoryWeightHostUnsupported": "Zaktualizuj hosta przed zapisaniem zmierzonej wagi szpuli. Nie wysłano żadnych zmian."
       },
       "format": {
         "assigned": "Przydzielony",
@@ -5331,7 +5339,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Ontvang de resterende rollen via de voorraadontvangst.",
         "printerSlotChanged": "De rol in deze sleuf is gewijzigd. Open de sleufactie opnieuw en bevestig de huidige rol.",
         "printerSlotHostUnsupported": "Werk de Host bij voordat je printersleuven of het gewicht van de rollen daarin wijzigt. Er zijn geen wijzigingen verzonden.",
-        "inventoryStatusHostUnsupported": "Werk de host bij voordat je de status van een rol wijzigt. Er zijn geen wijzigingen verzonden."
+        "inventoryStatusHostUnsupported": "Werk de host bij voordat je de status van een rol wijzigt. Er zijn geen wijzigingen verzonden.",
+        "inventoryWeightHostUnsupported": "Werk de host bij voordat je een gemeten rolgewicht opslaat. Er zijn geen wijzigingen verzonden."
       },
       "format": {
         "assigned": "Toegewezen",
@@ -5975,7 +5984,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Zbývající cívky přijměte pomocí operace příjmu na sklad.",
         "printerSlotChanged": "Cívka v tomto slotu se změnila. Znovu otevřete akci slotu a potvrďte aktuální cívku.",
         "printerSlotHostUnsupported": "Před změnou slotů tiskárny nebo hmotnosti cívek v nich aktualizujte Host. Nebyly odeslány žádné změny.",
-        "inventoryStatusHostUnsupported": "Před změnou stavu cívky aktualizujte hostitele. Nebyly odeslány žádné změny."
+        "inventoryStatusHostUnsupported": "Před změnou stavu cívky aktualizujte hostitele. Nebyly odeslány žádné změny.",
+        "inventoryWeightHostUnsupported": "Před uložením naměřené hmotnosti cívky aktualizujte hostitele. Žádné změny nebyly odeslány."
       },
       "format": {
         "assigned": "Přiřazeno",
@@ -6619,7 +6629,8 @@
         "wishlistStatusReceivedRequiresReceipt": "请通过入库操作接收剩余耗材卷。",
         "printerSlotChanged": "此槽位中的料卷已更改。请重新打开槽位操作并确认当前料卷。",
         "printerSlotHostUnsupported": "更改打印机槽位或其中料卷的重量前，请升级主机。未发送任何更改。",
-        "inventoryStatusHostUnsupported": "更改料卷状态前请更新主机。未发送任何更改。"
+        "inventoryStatusHostUnsupported": "更改料卷状态前请更新主机。未发送任何更改。",
+        "inventoryWeightHostUnsupported": "保存测得的料卷重量前，请先更新主机。未发送任何更改。"
       },
       "format": {
         "assigned": "已分配",
@@ -7263,7 +7274,8 @@
         "wishlistStatusReceivedRequiresReceipt": "残りのロールは入庫操作で受け取ってください。",
         "printerSlotChanged": "このスロットのスプールが変更されました。スロット操作を開き直し、現在のスプールを確認してください。",
         "printerSlotHostUnsupported": "プリンターのスロットやスプールの重量を変更する前に、ホストをアップグレードしてください。変更は送信されていません。",
-        "inventoryStatusHostUnsupported": "ロールの状態を変更する前にホストを更新してください。変更は送信されていません。"
+        "inventoryStatusHostUnsupported": "ロールの状態を変更する前にホストを更新してください。変更は送信されていません。",
+        "inventoryWeightHostUnsupported": "ロールの実測重量を保存する前にホストを更新してください。変更は送信されていません。"
       },
       "format": {
         "assigned": "割り当て済み",
@@ -7907,7 +7919,8 @@
         "wishlistStatusReceivedRequiresReceipt": "남은 스풀은 입고 작업을 통해 받으세요.",
         "printerSlotChanged": "이 슬롯의 스풀이 변경되었습니다. 슬롯 작업을 다시 열고 현재 스풀을 확인하세요.",
         "printerSlotHostUnsupported": "프린터 슬롯이나 해당 스풀의 무게를 변경하기 전에 호스트를 업그레이드하세요. 변경 사항은 전송되지 않았습니다.",
-        "inventoryStatusHostUnsupported": "롤 상태를 변경하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다."
+        "inventoryStatusHostUnsupported": "롤 상태를 변경하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다.",
+        "inventoryWeightHostUnsupported": "측정한 롤 무게를 저장하기 전에 호스트를 업데이트하세요. 변경 사항은 전송되지 않았습니다."
       },
       "format": {
         "assigned": "할당된",
@@ -8551,7 +8564,8 @@
         "wishlistStatusReceivedRequiresReceipt": "請透過入庫操作接收剩餘耗材捲。",
         "printerSlotChanged": "此插槽中的料捲已變更。請重新開啟插槽操作並確認目前的料捲。",
         "printerSlotHostUnsupported": "變更印表機插槽或其中料捲的重量前，請升級主機。未傳送任何變更。",
-        "inventoryStatusHostUnsupported": "變更料卷狀態前請更新主機。未傳送任何變更。"
+        "inventoryStatusHostUnsupported": "變更料卷狀態前請更新主機。未傳送任何變更。",
+        "inventoryWeightHostUnsupported": "儲存測得的料卷重量前，請先更新主機。未傳送任何變更。"
       },
       "format": {
         "assigned": "已分配",
@@ -9195,7 +9209,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Kalan makaraları stok teslim alma işlemiyle teslim alın.",
         "printerSlotChanged": "Bu yuvadaki makara değişti. Yuva işlemini yeniden açın ve mevcut makarayı onaylayın.",
         "printerSlotHostUnsupported": "Yazıcı yuvalarını veya içlerindeki makaraların ağırlığını değiştirmeden önce Host’u yükseltin. Hiçbir değişiklik gönderilmedi.",
-        "inventoryStatusHostUnsupported": "Makara durumunu değiştirmeden önce Host’u güncelleyin. Hiçbir değişiklik gönderilmedi."
+        "inventoryStatusHostUnsupported": "Makara durumunu değiştirmeden önce Host’u güncelleyin. Hiçbir değişiklik gönderilmedi.",
+        "inventoryWeightHostUnsupported": "Ölçülen makara ağırlığını kaydetmeden önce ana bilgisayarı güncelleyin. Hiçbir değişiklik gönderilmedi."
       },
       "format": {
         "assigned": "Atandı",
@@ -9839,7 +9854,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Отримайте решту котушок за допомогою дії приймання на склад.",
         "printerSlotChanged": "Котушка в цьому слоті змінилася. Знову відкрийте дію слота й підтвердьте поточну котушку.",
         "printerSlotHostUnsupported": "Оновіть Host, перш ніж змінювати слоти принтера або вагу котушок у них. Жодних змін не надіслано.",
-        "inventoryStatusHostUnsupported": "Оновіть хост перед зміною стану котушки. Жодних змін не надіслано."
+        "inventoryStatusHostUnsupported": "Оновіть хост перед зміною стану котушки. Жодних змін не надіслано.",
+        "inventoryWeightHostUnsupported": "Оновіть хост, перш ніж зберігати виміряну вагу котушки. Жодних змін не надіслано."
       },
       "format": {
         "assigned": "Призначений",
@@ -10386,7 +10402,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Примите оставшиеся катушки через действие приёмки на склад.",
         "printerSlotChanged": "Катушка в этом слоте изменилась. Снова откройте действие слота и подтвердите текущую катушку.",
         "printerSlotHostUnsupported": "Обновите Host, прежде чем изменять слоты принтера или вес катушек в них. Изменения не отправлены.",
-        "inventoryStatusHostUnsupported": "Обновите хост перед изменением статуса катушки. Изменения не отправлены."
+        "inventoryStatusHostUnsupported": "Обновите хост перед изменением статуса катушки. Изменения не отправлены.",
+        "inventoryWeightHostUnsupported": "Обновите хост перед сохранением измеренного веса катушки. Изменения не отправлены."
       },
       "shell": {
         "refresh": "Обновить",
@@ -11030,7 +11047,8 @@
         "filamentStandardsInvalid": "A mentett filament-szabványok már nem érvényesek. Töltse újra és ellenőrizze őket.",
         "printerSlotChanged": "A rekeszben lévő tekercs megváltozott. Nyisd meg újra a rekesz műveletét, és erősítsd meg az aktuális tekercset.",
         "printerSlotHostUnsupported": "A nyomtatórekeszek vagy a bennük lévő tekercsek súlyának módosítása előtt frissítsd a Hostot. Nem küldtünk módosításokat.",
-        "inventoryStatusHostUnsupported": "A tekercs állapotának módosítása előtt frissítse a gazdagépet. Nem történt módosításküldés."
+        "inventoryStatusHostUnsupported": "A tekercs állapotának módosítása előtt frissítse a gazdagépet. Nem történt módosításküldés.",
+        "inventoryWeightHostUnsupported": "Frissítse a gazdagépet a tekercs mért tömegének mentése előtt. Nem történt módosításküldés."
       },
       "purchaseReceipt": {
         "optionalSummary": "Vásárlási adatok (opcionális)",
@@ -11674,7 +11692,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Ta emot de återstående rullarna via lagerinleveransen.",
         "printerSlotChanged": "Rullen i det här facket har ändrats. Öppna fackets åtgärd igen och bekräfta den aktuella rullen.",
         "printerSlotHostUnsupported": "Uppgradera värden innan du ändrar skrivarfack eller vikten på rullarna i dem. Inga ändringar skickades.",
-        "inventoryStatusHostUnsupported": "Uppdatera värden innan du ändrar en rulles status. Inga ändringar skickades."
+        "inventoryStatusHostUnsupported": "Uppdatera värden innan du ändrar en rulles status. Inga ändringar skickades.",
+        "inventoryWeightHostUnsupported": "Uppdatera värden innan du sparar en uppmätt rullvikt. Inga ändringar har skickats."
       },
       "shell": {
         "refresh": "Uppdatera",
@@ -12318,7 +12337,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Modtag de resterende ruller via lagerets modtagelseshandling.",
         "printerSlotChanged": "Rullen i dette spor er ændret. Åbn sporhandlingen igen, og bekræft den aktuelle rulle.",
         "printerSlotHostUnsupported": "Opgrader værten, før du ændrer printerspor eller vægten på rullerne i dem. Ingen ændringer blev sendt.",
-        "inventoryStatusHostUnsupported": "Opdater værten, før du ændrer en rulles status. Ingen ændringer blev sendt."
+        "inventoryStatusHostUnsupported": "Opdater værten, før du ændrer en rulles status. Ingen ændringer blev sendt.",
+        "inventoryWeightHostUnsupported": "Opdater værten, før du gemmer en målt rullevægt. Ingen ændringer blev sendt."
       },
       "shell": {
         "refresh": "Opdater",
@@ -12962,7 +12982,8 @@
         "wishlistStatusReceivedRequiresReceipt": "Vastaanota jäljellä olevat kelat varastoonottotoiminnolla.",
         "printerSlotChanged": "Tämän paikan kela on vaihtunut. Avaa paikan toiminto uudelleen ja vahvista nykyinen kela.",
         "printerSlotHostUnsupported": "Päivitä Host ennen tulostinpaikkojen tai niissä olevien kelojen painojen muuttamista. Muutoksia ei lähetetty.",
-        "inventoryStatusHostUnsupported": "Päivitä isäntä ennen rullan tilan muuttamista. Muutoksia ei lähetetty."
+        "inventoryStatusHostUnsupported": "Päivitä isäntä ennen rullan tilan muuttamista. Muutoksia ei lähetetty.",
+        "inventoryWeightHostUnsupported": "Päivitä isäntäkone ennen rullan mitatun painon tallentamista. Muutoksia ei lähetetty."
       },
       "shell": {
         "refresh": "Päivitä",
