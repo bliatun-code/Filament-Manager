@@ -34,13 +34,16 @@ function callbacks() {
   const events: string[] = [];
   const messages: string[] = [];
   const errors: unknown[] = [];
+  const reloadErrors: unknown[] = [];
   return {
     events,
     messages,
     errors,
+    reloadErrors,
     input: {
       isCurrent: () => true,
       onError: (error: unknown) => { errors.push(error); },
+      onReloadError: (error: unknown) => { reloadErrors.push(error); },
       onSettled: () => { events.push("settled"); },
       onSuccess: (message: string) => { messages.push(message); },
       reload: async () => { events.push("reload"); },
@@ -105,7 +108,7 @@ test("contextual load captures its selected destination before writes and reload
   write.resolve();
   await reloading.promise;
   Object.assign(selected, { printerName: "Refreshed printer", amsId: "later_ams_4", slotIndex: 2 });
-  assert.deepEqual(result.messages, []);
+  assert.deepEqual(result.messages, ["Roll loaded in Workshop P1S · AMS 2 · Slot 3."]);
   reload.resolve();
   await pending;
   assert.deepEqual(result.messages, ["Roll loaded in Workshop P1S · AMS 2 · Slot 3."]);
@@ -140,7 +143,7 @@ test("contextual load leaves later feedback and busy ownership alone after a sco
   assert.deepEqual(result.errors, []);
 });
 
-test("contextual load suppresses a receipt when its scope changes during reload", async () => {
+test("contextual load acknowledges the write before reload and suppresses later stale feedback", async () => {
   const reloading = deferred();
   const reload = deferred();
   const result = callbacks();
@@ -148,14 +151,25 @@ test("contextual load suppresses a receipt when its scope changes during reload"
   const pending = runInventoryLoadSpoolAssignment({
     ...result.input,
     isCurrent: () => current,
-    reload: async () => { reloading.resolve(); await reload.promise; },
+    reload: async () => { reloading.resolve(); await reload.promise; throw new Error("Old refresh failed"); },
   });
   await reloading.promise;
   current = false;
   reload.resolve();
   await pending;
-  assert.deepEqual(result.messages, []);
+  assert.deepEqual(result.messages, ["Roll loaded in Workshop P1S · AMS 2 · Slot 3."]);
+  assert.deepEqual(result.reloadErrors, []);
   assert.deepEqual(result.events, ["write"]);
+});
+
+test("contextual load retains committed success and separates a failed refresh from a failed write", async () => {
+  const result = callbacks();
+  const error = new Error("Refresh failed");
+  await runInventoryLoadSpoolAssignment({ ...result.input, reload: async () => { throw error; } });
+  assert.deepEqual(result.messages, ["Roll loaded in Workshop P1S · AMS 2 · Slot 3."]);
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.reloadErrors, [error]);
+  assert.deepEqual(result.events, ["write", "settled"]);
 });
 
 test("contextual load reports a current failure and never publishes a success receipt", async () => {

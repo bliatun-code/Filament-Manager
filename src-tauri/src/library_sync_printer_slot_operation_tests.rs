@@ -410,6 +410,68 @@ fn printer_slot_legacy_host_fails_before_authentication_or_post() {
 }
 
 #[test]
+fn printer_slot_unweighed_load_uses_host_weight_and_leaves_client_rows_untouched() {
+    let _network_test = NETWORK_TEST_LOCK.lock().unwrap();
+    let mut host = SyntheticHost::start(true, serde_json::json!({"ok":true}));
+    let engine = InventoryEngine::new(FilamentDatabase::open(&host.db_path).unwrap());
+    engine
+        .assign_printer_slot(AssignPrinterSlotInput {
+            printer_id: "printer / one".into(),
+            slot_id: "printer / one_ams_1_slot_1".into(),
+            spool_id: None,
+            rfid_override_tray_uuid: None,
+            rfid_override_color_hex: None,
+            clear_live_cache_before_next_refresh: None,
+        })
+        .unwrap();
+    drop(engine);
+    let host_db = FilamentDatabase::open(&host.db_path).unwrap();
+    host_db.connection().execute(
+        "UPDATE filament_spools SET current_weight_g = 437, remaining_g = 437 WHERE id = 'incoming-host-roll'", [],
+    ).unwrap();
+    let readings_before: i64 = host_db
+        .connection()
+        .query_row("SELECT COUNT(*) FROM weight_readings", [], |row| row.get(0))
+        .unwrap();
+    drop(host_db);
+    let (_directory, state, generation) = client(&host, true);
+    let before = snapshot(&state.db_path);
+    let mut request = input(&host, generation);
+    request.operation = serde_json::from_value(serde_json::json!({
+        "printer_id": "printer / one", "slot_id": "printer / one_ams_1_slot_1",
+        "expected_current_spool_id": null, "target_spool_id": "incoming-host-roll",
+        "outgoing_measured_total_g": null, "incoming_measured_total_g": null,
+    }))
+    .unwrap();
+    operate_library_sync_host_printer_slot_blocking(&state, request).unwrap();
+    assert_eq!(snapshot(&state.db_path), before);
+    let db = FilamentDatabase::open(&host.db_path).unwrap();
+    let spool = db.get_spool_by_id("incoming-host-roll").unwrap().unwrap();
+    assert_eq!(spool.current_weight_g, Some(437));
+    assert_eq!(spool.remaining_g, Some(437));
+    assert_eq!(spool.status, "ASSIGNED");
+    let readings: i64 = db
+        .connection()
+        .query_row("SELECT COUNT(*) FROM weight_readings", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(readings, readings_before);
+    let requests = host.finish();
+    let posts: Vec<_> = requests
+        .iter()
+        .filter(|(line, _)| line.starts_with("POST "))
+        .collect();
+    assert_eq!(posts.len(), 1);
+    assert!(posts[0].0.ends_with("/operation HTTP/1.1"));
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&posts[0].1).unwrap(),
+        serde_json::json!({
+            "expected_current_spool_id": null, "target_spool_id": "incoming-host-roll",
+            "outgoing_measured_total_g": null, "incoming_measured_total_g": null,
+        })
+    );
+}
+
+#[test]
 fn printer_slot_current_host_gets_one_atomic_post_and_refresh_failure_preserves_success() {
     let _network_test = NETWORK_TEST_LOCK.lock().unwrap();
     let mut host = SyntheticHost::start(true, serde_json::json!({"ok":true, "message":"saved"}));

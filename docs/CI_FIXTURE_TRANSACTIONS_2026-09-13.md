@@ -33,4 +33,10 @@ Flere hjelpere opprettet hvert skjemaobjekt med en egen SQLite-autocommit. Den d
 
 Alle fem nye regresjoner feilet mot tidligere byggemåte og passerer med endringen. Den fokuserte kjøringen av berørte byggere og verifikatorer bestod 129 tester. Den lokale samlede kontrollen bestod UI-bygg, lint, 392 Companion-tester, 896 skripttester, begge tilgjengelighetsporter, fem utlånsdialogscenarioer, 1 726 UI-tester og 23 ytelsestester. Dokumentasjonsporten ble kjørt på nytt etter staging av den nye rapporten; alle kontrakter og doctor er grønne. Ingen native implementasjon er endret; full Rust-verifisering og installerte pakker kjøres i eksisterende CI.
 
-Windows-effekt og komplett CI-validering dokumenteres i PR-en etter den samlede kjøringen. Ingen ny release er nødvendig for denne testinfrastrukturendringen.
+## Verifisert resultat og merge
+
+[PR #115](https://github.com/bliatun-code/Filament-Manager/pull/115) bestod alle åtte kontroller etter én push på `aa47b5ca` og er merget som `627fdba2`. Nedlastede logger fra [CI 34725647963](https://github.com/bliatun-code/Filament-Manager/actions/runs/34725647963) bekrefter 896 skripttester og installerte DMG-/MSI-tester på begge plattformer.
+
+Windows-skriptsuiten gikk fra 264,44 til 36,03 sekunder, 86,4 % kortere i denne sammenligningen. Restore-testen gikk fra 98,94 til 8,26 sekunder. I samme Windows-prosess målte schema-2-referansen 10 823,2 ms mot 83,4 ms for den samlede transaksjonen, med identiske snapshots. macOS-suiten gikk fra 29,24 til 30,63 sekunder; det hevdes ingen samlet macOS-gevinst. Enkeltkjøringer påvirkes fortsatt av konkurranse om kjørerressurser.
+
+Ingen ny release er nødvendig for denne testinfrastrukturendringen.

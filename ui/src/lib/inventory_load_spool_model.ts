@@ -1,6 +1,6 @@
 import { isSpoolStatusAssigned, isSpoolStatusUnavailableForSlot } from "./inventory_domain";
 import type { InventorySpool } from "./inventory_list_model";
-import type { AssignPrinterSlotInput } from "./tauri_client";
+import type { PrinterSlotOperationInput } from "./tauri_client";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
 export type InventoryLoadSpoolBlockReason =
@@ -11,7 +11,7 @@ export type InventoryLoadSpoolBlockReason =
   | "unavailable-spool";
 
 export type InventoryLoadSpoolPreparation =
-  | { ok: true; input: AssignPrinterSlotInput }
+  | { ok: true; input: PrinterSlotOperationInput }
   | { ok: false; reason: InventoryLoadSpoolBlockReason };
 
 export function availableInventoryLoadSlots(
@@ -48,7 +48,10 @@ export function prepareInventoryLoadSpoolAssignment(input: {
     input: {
       printer_id: slot.printerId,
       slot_id: slot.slotId,
-      spool_id: input.spool.id,
+      expected_current_spool_id: null,
+      target_spool_id: input.spool.id,
+      outgoing_measured_total_g: null,
+      incoming_measured_total_g: null,
     },
   };
 }
