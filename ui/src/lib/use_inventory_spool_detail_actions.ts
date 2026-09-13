@@ -13,8 +13,6 @@ import {
   shouldReactivateSpoolFromMeasuredTotal,
 } from "./inventory_spool_detail_actions_model";
 import {
-  deleteInventorySpool,
-  purgeInventorySpool,
   updateInventorySpoolDetails,
   updateInventorySpoolOwnership,
   updateInventorySpoolStatus,
@@ -44,12 +42,10 @@ type InventoryDetailReloads = {
 
 type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   canUseClientHostWrite: () => boolean;
-  clearSelectedSpoolDetail: () => void;
+  cancelDangerZoneConfirmation: () => void;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
-  confirmDelete: boolean;
-  confirmPurge: boolean;
   editMasterColorName: string;
   editMasterFilamentName: string;
   editMasterHexColor: string;
@@ -73,8 +69,6 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   selectedSpoolPurchaseMetadataDraft: PurchaseReceiptMetadataDraft;
   selectedSpoolResolvedTare: number;
   selectedSpoolTareDraft: string;
-  setConfirmDelete: Dispatch<SetStateAction<boolean>>;
-  setConfirmPurge: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
   setManageBusy: Dispatch<SetStateAction<boolean>>;
@@ -112,12 +106,10 @@ async function applyMeasuredWeightWithUsage(
 
 export function useInventorySpoolDetailActions({
   canUseClientHostWrite,
-  clearSelectedSpoolDetail,
+  cancelDangerZoneConfirmation,
   clientHostBaseUrl,
   clientLibraryId,
   clientReadOnly,
-  confirmDelete,
-  confirmPurge,
   editMasterColorName,
   editMasterFilamentName,
   editMasterHexColor,
@@ -146,8 +138,6 @@ export function useInventorySpoolDetailActions({
   selectedSpoolPurchaseMetadataDraft,
   selectedSpoolResolvedTare,
   selectedSpoolTareDraft,
-  setConfirmDelete,
-  setConfirmPurge,
   setError,
   setInfoMessage,
   setManageBusy,
@@ -331,8 +321,7 @@ export function useInventorySpoolDetailActions({
       return;
     }
 
-    setConfirmDelete(false);
-    setConfirmPurge(false);
+    cancelDangerZoneConfirmation();
     setManageBusy(true);
     setError(null);
     try {
@@ -434,8 +423,7 @@ export function useInventorySpoolDetailActions({
       return;
     }
 
-    setConfirmDelete(false);
-    setConfirmPurge(false);
+    cancelDangerZoneConfirmation();
     setManageBusy(true);
     setError(null);
     try {
@@ -468,48 +456,6 @@ export function useInventorySpoolDetailActions({
         ),
       );
     } finally {
-      setManageBusy(false);
-    }
-  }
-
-  async function handleDeleteSelected() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      setConfirmPurge(false);
-      return;
-    }
-    setManageBusy(true);
-    setError(null);
-    try {
-      await deleteInventorySpool(
-        {
-          spool_id: selectedSpool.id,
-          reason: "manual removal",
-        },
-        hostWriteTarget,
-      );
-      clearSelectedSpoolDetail();
-      await reloadInventorySurfaces();
-    } catch (deleteError) {
-      console.error(deleteError);
-      setError(
-        commandErrorText(
-          deleteError,
-          t("inventory.error.deleteRoll", "Failed to delete roll."),
-          t,
-        ),
-      );
-    } finally {
-      setConfirmDelete(false);
       setManageBusy(false);
     }
   }
@@ -662,44 +608,6 @@ export function useInventorySpoolDetailActions({
     }
   }
 
-  async function handlePurgeSelected() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    if (!confirmPurge) {
-      setConfirmPurge(true);
-      setConfirmDelete(false);
-      return;
-    }
-    setManageBusy(true);
-    setError(null);
-    try {
-      await purgeInventorySpool(
-        {
-          spool_id: selectedSpool.id,
-          reason: "manual purge",
-        },
-        hostWriteTarget,
-      );
-      clearSelectedSpoolDetail();
-      await reloadInventorySurfaces();
-    } catch (purgeError) {
-      console.error(purgeError);
-      setError(
-        commandErrorText(purgeError, t("inventory.error.purgeRoll", "Failed to purge roll.")),
-      );
-    } finally {
-      setConfirmPurge(false);
-      setManageBusy(false);
-    }
-  }
-
   async function handleWeightSubmit(grams: number) {
     if (!selectedSpool || !tauriAvailable || manageBusy) {
       return;
@@ -714,8 +622,7 @@ export function useInventorySpoolDetailActions({
     if (clientReadOnly && !canUseClientHostWrite()) {
       return;
     }
-    setConfirmDelete(false);
-    setConfirmPurge(false);
+    cancelDangerZoneConfirmation();
     const safeGrams = Math.max(0, Math.round(grams));
     setManageBusy(true);
     setError(null);
@@ -823,8 +730,6 @@ export function useInventorySpoolDetailActions({
   }
 
   return {
-    handleDeleteSelected,
-    handlePurgeSelected,
     handleRefillSpool,
     handleSaveMasterMetadata,
     handleSaveSpoolCommonDetails,

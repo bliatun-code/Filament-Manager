@@ -61,8 +61,6 @@ export function useInventorySelectedSpoolDetailState({
   const [editMasterFilamentName, setEditMasterFilamentName] = useState("");
   const [editMasterColorName, setEditMasterColorName] = useState("");
   const [editMasterHexColor, setEditMasterHexColor] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmPurge, setConfirmPurge] = useState(false);
   const [selectedSpoolTareDraft, setSelectedSpoolTareDraft] = useState("");
   const [selectedSpoolLocationDraft, setSelectedSpoolLocationDraft] = useState("");
   const [selectedSpoolOwnershipDraft, setSelectedSpoolOwnershipDraft] =
@@ -95,8 +93,6 @@ export function useInventorySelectedSpoolDetailState({
       setEditMasterHexColor("");
       setHistoryRows([]);
       setUsagePoints([]);
-      setConfirmDelete(false);
-      setConfirmPurge(false);
       setSelectedSpoolLocationDraft("");
       setSelectedSpoolTareDraft("");
       setSelectedSpoolOwnershipDraft("OWNED");
@@ -145,8 +141,6 @@ export function useInventorySelectedSpoolDetailState({
     setSelectedRfidCaptureSlotId(null);
     setRfidCaptureError(null);
     setRfidCaptureLoading(false);
-    setConfirmDelete(false);
-    setConfirmPurge(false);
     void reloadSpoolDetail(selectedSpool.id);
   }, [
     closeRfidCaptureModal,
@@ -272,8 +266,6 @@ export function useInventorySelectedSpoolDetailState({
   }, [draftBaseline]);
 
   return {
-    confirmDelete,
-    confirmPurge,
     commonDetailsDirty,
     editMasterColorName,
     editMasterFilamentName,
@@ -294,8 +286,6 @@ export function useInventorySelectedSpoolDetailState({
     selectedSpoolPurchaseMetadataDraft,
     selectedSpoolPurchaseMetadataErrors,
     selectedSpoolTareDraft,
-    setConfirmDelete,
-    setConfirmPurge,
     setEditMasterColorName,
     setEditMasterFilamentName,
     setEditMasterHexColor,

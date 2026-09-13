@@ -6606,3 +6606,45 @@ fn mark_empty_preserves_inbound_loans_and_rejects_outbound_loans_or_removed_roll
         let _ = std::fs::remove_file(path);
     }
 }
+
+#[test]
+fn removal_rolls_back_slot_history_and_business_rows_on_late_failure() {
+    for (operation, trigger) in [
+        (
+            "delete",
+            "BEFORE INSERT ON spool_history_events WHEN NEW.event_type = 'DELETED'",
+        ),
+        ("purge", "BEFORE DELETE ON spool_history_events"),
+        ("purge", "BEFORE DELETE ON filament_spools"),
+    ] {
+        let path = temp_db_path("removal-rollback");
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            let engine = InventoryEngine::new(db);
+            let (_, _, assigned, _) =
+                seed_printer_slot_operation_fixture(&engine, "removal").unwrap();
+            engine.db.connection().execute_batch(&format!(
+                "CREATE TRIGGER fail_removal {trigger} BEGIN SELECT RAISE(ABORT, 'late removal failure'); END;"
+            )).unwrap();
+            let before = printer_slot_operation_snapshot(&engine).unwrap();
+            let result = if operation == "delete" {
+                engine.delete_spool(DeleteSpoolInput {
+                    spool_id: assigned,
+                    reason: None,
+                })
+            } else {
+                engine.purge_spool(PurgeSpoolInput {
+                    spool_id: assigned,
+                    reason: None,
+                })
+            };
+            assert!(result
+                .unwrap_err()
+                .to_string()
+                .contains("late removal failure"));
+            assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}

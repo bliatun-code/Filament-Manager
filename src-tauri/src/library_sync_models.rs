@@ -329,6 +329,7 @@ pub(crate) struct LibrarySyncDeletePrinterInput {
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncDeleteSpoolInput {
+    pub(crate) expected_target_generation: u64,
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
     pub(crate) spool_id: String,

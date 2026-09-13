@@ -280,20 +280,21 @@ test("updateInventorySpoolOwnership writes locally outside client mode", async (
 });
 
 test("deleteInventorySpool and purgeInventorySpool route destructive writes to the host", async () => {
-  const deletes: Array<{ baseUrl: string; reason?: string | null }> = [];
-  const purges: Array<{ baseUrl: string; reason?: string | null }> = [];
+  const deletes: Array<{ baseUrl: string; reason?: string | null; generation?: number }> = [];
+  const purges: Array<{ baseUrl: string; reason?: string | null; generation?: number }> = [];
   const target = {
     clientReadOnly: true,
     clientHostBaseUrl: "http://host",
     clientLibraryId: "library-1",
+    clientTargetGeneration: 7,
   };
 
   await deleteInventorySpool(
     { spool_id: "spool-1", reason: "manual removal" },
     target,
     {
-      deleteHostSpool: async (baseUrl, _libraryId, input) => {
-        deletes.push({ baseUrl, reason: input?.reason });
+      deleteHostSpool: async (baseUrl, _libraryId, input, generation) => {
+        deletes.push({ baseUrl, reason: input?.reason, generation });
       },
     },
   );
@@ -301,14 +302,14 @@ test("deleteInventorySpool and purgeInventorySpool route destructive writes to t
     { spool_id: "spool-1", reason: "manual purge" },
     target,
     {
-      purgeHostSpool: async (baseUrl, _libraryId, input) => {
-        purges.push({ baseUrl, reason: input?.reason });
+      purgeHostSpool: async (baseUrl, _libraryId, input, generation) => {
+        purges.push({ baseUrl, reason: input?.reason, generation });
       },
     },
   );
 
-  assert.deepEqual(deletes, [{ baseUrl: "http://host", reason: "manual removal" }]);
-  assert.deepEqual(purges, [{ baseUrl: "http://host", reason: "manual purge" }]);
+  assert.deepEqual(deletes, [{ baseUrl: "http://host", reason: "manual removal", generation: 7 }]);
+  assert.deepEqual(purges, [{ baseUrl: "http://host", reason: "manual purge", generation: 7 }]);
 });
 
 test("updateInventorySpoolWeight routes weight writes to host and local targets", async () => {
