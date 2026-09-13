@@ -48,7 +48,10 @@ test("contextual load keeps the selected spool in the prepared printer assignmen
     input: {
       printer_id: "printer-1",
       slot_id: "slot-1",
-      spool_id: "spool-1",
+      expected_current_spool_id: null,
+      target_spool_id: "spool-1",
+      outgoing_measured_total_g: null,
+      incoming_measured_total_g: null,
     },
   });
 });

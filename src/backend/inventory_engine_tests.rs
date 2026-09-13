@@ -699,6 +699,150 @@ fn assign_printer_slot_rolls_back_slot_and_spool_when_history_fails() {
 }
 
 #[test]
+fn printer_slot_operation_unweighed_load_preserves_weight_and_rejects_changed_placement() {
+    let db_path = temp_db_path("unweighed-load");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|e| e.to_string())?;
+        db.apply_schema().map_err(|e| e.to_string())?;
+        let engine = InventoryEngine::new(db);
+        let (printer_id, slot_id, _, incoming_id) =
+            seed_printer_slot_operation_fixture(&engine, "unweighed_load")?;
+        let input = PrinterSlotOperationInput {
+            printer_id: printer_id.clone(),
+            slot_id: slot_id.clone(),
+            expected_current_spool_id: None,
+            target_spool_id: Some(incoming_id.clone()),
+            outgoing_measured_total_g: None,
+            incoming_measured_total_g: None,
+        };
+        let occupied = printer_slot_operation_snapshot(&engine)?;
+        assert!(engine.operate_printer_slot(input.clone()).is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, occupied);
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id,
+                slot_id: slot_id.clone(),
+                spool_id: None,
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|e| e.to_string())?;
+        engine.db.connection().execute(
+            "UPDATE filament_spools SET current_weight_g = 437, remaining_g = 437 WHERE id = ?1",
+            [&incoming_id],
+        ).map_err(|e| e.to_string())?;
+        let before = printer_slot_operation_snapshot(&engine)?;
+        engine
+            .operate_printer_slot(input.clone())
+            .map_err(|e| e.to_string())?;
+        let spool = engine
+            .db
+            .get_spool_by_id(&incoming_id)
+            .map_err(|e| e.to_string())?
+            .unwrap();
+        assert_eq!(spool.current_weight_g, Some(437));
+        assert_eq!(spool.remaining_g, Some(437));
+        assert_eq!(spool.status, "ASSIGNED");
+        let assigned: String = engine
+            .db
+            .connection()
+            .query_row(
+                "SELECT spool_id FROM ams_slots WHERE id = ?1",
+                [&slot_id],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+        assert_eq!(assigned, incoming_id);
+        let after = printer_slot_operation_snapshot(&engine)?;
+        for table in ["weight_readings", "print_jobs", "scales", "spool_loans"] {
+            assert_eq!(
+                after[table], before[table],
+                "loading is not a weight measurement"
+            );
+        }
+        assert_eq!(
+            after["spool_history_events"].len(),
+            before["spool_history_events"].len() + 1
+        );
+        assert!(engine.operate_printer_slot(input.clone()).is_err());
+        assert_eq!(
+            printer_slot_operation_snapshot(&engine)?,
+            after,
+            "retry cannot add history or move the spool"
+        );
+        engine
+            .create_printer(CreatePrinterInput {
+                id: "other_printer".into(),
+                model: "P1S".into(),
+                name: "Other printer".into(),
+                ams_units: Some(1),
+                slots_per_ams: Some(1),
+            })
+            .map_err(|e| e.to_string())?;
+        let before_move = printer_slot_operation_snapshot(&engine)?;
+        assert!(engine
+            .operate_printer_slot(PrinterSlotOperationInput {
+                printer_id: "other_printer".into(),
+                slot_id: "other_printer_ams_1_slot_1".into(),
+                ..input
+            })
+            .is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, before_move);
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&db_path);
+    result.unwrap();
+}
+
+#[test]
+fn printer_slot_operation_unweighed_load_rolls_back_when_history_fails() {
+    let db_path = temp_db_path("unweighed-load-rollback");
+    let result = (|| -> Result<(), String> {
+        let db = FilamentDatabase::open(&db_path).map_err(|e| e.to_string())?;
+        db.apply_schema().map_err(|e| e.to_string())?;
+        let engine = InventoryEngine::new(db);
+        let (printer_id, slot_id, _, incoming_id) =
+            seed_printer_slot_operation_fixture(&engine, "unweighed_rollback")?;
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: printer_id.clone(),
+                slot_id: slot_id.clone(),
+                spool_id: None,
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .map_err(|e| e.to_string())?;
+        engine
+            .db
+            .connection()
+            .execute_batch(
+                "CREATE TRIGGER fail_load_history BEFORE INSERT ON spool_history_events
+             WHEN NEW.event_type = 'ASSIGNED_TO_AMS'
+             BEGIN SELECT RAISE(ABORT, 'forced load history failure'); END;",
+            )
+            .map_err(|e| e.to_string())?;
+        let before = printer_slot_operation_snapshot(&engine)?;
+        let error = engine
+            .operate_printer_slot(PrinterSlotOperationInput {
+                printer_id,
+                slot_id,
+                expected_current_spool_id: None,
+                target_spool_id: Some(incoming_id),
+                outgoing_measured_total_g: None,
+                incoming_measured_total_g: None,
+            })
+            .unwrap_err();
+        assert!(error.to_string().contains("forced load history failure"));
+        assert_eq!(printer_slot_operation_snapshot(&engine)?, before);
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&db_path);
+    result.unwrap();
+}
+
+#[test]
 fn printer_slot_operation_measures_assigned_spool_once_without_reassigning() {
     let db_path = temp_db_path("slot-operation-same-spool");
     let result = (|| -> Result<(), String> {

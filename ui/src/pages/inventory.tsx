@@ -776,6 +776,7 @@ export default function InventoryPage({
     closeLoadSpoolModal,
     confirmLoadSpool,
     openLoadSpoolModal,
+    loadSpoolError,
     showLoadSpoolModal,
   } = useInventoryLoadSpoolAction({
     assignedSlot: selectedSpoolAssignedSlot,
@@ -1309,6 +1310,7 @@ export default function InventoryPage({
 
       <InventoryLoadSpoolModal
         busy={manageBusy}
+        error={loadSpoolError}
         onClose={closeLoadSpoolModal}
         onConfirm={(slotId) => void confirmLoadSpool(slotId)}
         open={showLoadSpoolModal}

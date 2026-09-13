@@ -14,13 +14,15 @@ import {
   prepareInventoryLoadSpoolAssignment,
 } from "./inventory_load_spool_model";
 import type { InventorySpool } from "./inventory_list_model";
-import { writePrinterSlotAssignment } from "./printer_slot_writes";
+import { writePrinterSlotOperation } from "./printer_slot_writes";
 import { formatPrinterSlotLabelForModel } from "./printer_profiles";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
+import type { InventoryReloadReporter } from "./use_inventory_page_data";
 
 type RunInventoryLoadSpoolAssignmentInput = {
   isCurrent: () => boolean;
   onError: (error: unknown) => void;
+  onReloadError: (error: unknown) => void;
   onSettled: () => void;
   onSuccess: (message: string) => void;
   reload: () => Promise<void>;
@@ -32,6 +34,7 @@ type RunInventoryLoadSpoolAssignmentInput = {
 export async function runInventoryLoadSpoolAssignment({
   isCurrent,
   onError,
+  onReloadError,
   onSettled,
   onSuccess,
   reload,
@@ -48,17 +51,20 @@ export async function runInventoryLoadSpoolAssignment({
   })}`;
   const message = t("inventory.loadedInPrinter", "Roll loaded in {slot}.", { slot: slotLabel });
   try {
-    await write();
+    try {
+      await write();
+    } catch (error) {
+      if (isCurrent()) onError(error);
+      return;
+    }
     if (!isCurrent()) {
       return;
     }
-    await reload();
-    if (isCurrent()) {
-      onSuccess(message);
-    }
-  } catch (error) {
-    if (isCurrent()) {
-      onError(error);
+    onSuccess(message);
+    try {
+      await reload();
+    } catch (error) {
+      if (isCurrent()) onReloadError(error);
     }
   } finally {
     if (isCurrent()) {
@@ -78,9 +84,9 @@ type UseInventoryLoadSpoolActionInput = {
   loanedOut: boolean;
   manageBusy: boolean;
   printerSlots: InventoryPrinterSlotOption[];
-  reloadPrinterOverview: () => Promise<void>;
-  reloadSpoolDetail: (spoolId: string) => Promise<void>;
-  reloadSpools: () => Promise<void>;
+  reloadPrinterOverview: (reportResult?: InventoryReloadReporter) => Promise<void>;
+  reloadSpoolDetail: (spoolId: string, reportResult?: InventoryReloadReporter) => Promise<void>;
+  reloadSpools: (reportResult?: InventoryReloadReporter) => Promise<void>;
   selectedSpool: InventorySpool | null;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
@@ -110,7 +116,8 @@ export function useInventoryLoadSpoolAction({
   tauriAvailable,
   t,
 }: UseInventoryLoadSpoolActionInput) {
-  const [open, setOpen] = useState(false);
+  const [dialog, setDialog] = useState<{ scopeKey: string; token: object } | null>(null);
+  const [loadSpoolError, setLoadSpoolError] = useState<string | null>(null);
   const scopeKey = JSON.stringify([
     clientHostBaseUrl,
     clientLibraryId,
@@ -118,10 +125,12 @@ export function useInventoryLoadSpoolAction({
     clientTargetGeneration,
     selectedSpool?.id,
   ]);
-  const actionScopeRef = useRef<{ key: string; busy: boolean } | null>(null);
+  const actionScopeRef = useRef<{ key: string; busy: boolean; dialogToken: object | null } | null>(null);
   useLayoutEffect(() => {
-    const actionScope = { key: scopeKey, busy: false };
+    const actionScope = { key: scopeKey, busy: false, dialogToken: null as object | null };
     actionScopeRef.current = actionScope;
+    setDialog(null);
+    setLoadSpoolError(null);
     return () => {
       actionScopeRef.current = null;
       if (actionScope.busy) {
@@ -178,7 +187,10 @@ export function useInventoryLoadSpoolAction({
       return;
     }
     setError(null);
-    setOpen(true);
+    setLoadSpoolError(null);
+    const token = {};
+    actionScope.dialogToken = token;
+    setDialog({ scopeKey, token });
   }, [
     availableSlots.length,
     canLoadSelectedSpool,
@@ -195,27 +207,32 @@ export function useInventoryLoadSpoolAction({
   ]);
 
   const closeLoadSpoolModal = useCallback(() => {
-    if (!manageBusy) {
-      setOpen(false);
+    const actionScope = actionScopeRef.current;
+    if (dialog && actionScope?.dialogToken === dialog.token && !manageBusy && !actionScope.busy) {
+      actionScope.dialogToken = null;
+      setDialog(null);
     }
-  }, [manageBusy]);
+  }, [dialog, manageBusy]);
 
   const confirmLoadSpool = useCallback(async (slotId: string) => {
     const actionScope = actionScopeRef.current;
     if (
       !tauriAvailable || manageBusy || !selectedSpool ||
-      !actionScope || actionScope.key !== scopeKey || actionScope.busy
+      !actionScope || actionScope.key !== scopeKey || actionScope.busy ||
+      !dialog || dialog.scopeKey !== scopeKey || actionScope.dialogToken !== dialog.token
     ) {
       return;
     }
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+      setLoadSpoolError(t("inventory.error.loadInPrinter", "This roll cannot be loaded in a printer slot."));
       return;
     }
     if (clientReadOnly && !canUseClientHostWrite()) {
+      setLoadSpoolError(t("inventory.error.loadInPrinter", "This roll cannot be loaded in a printer slot."));
       return;
     }
     if (loanedOut) {
-      setError(
+      setLoadSpoolError(
         t(
           "errors.loanedSpoolEditBlocked",
           "Return the active outbound loan before changing status, location, or ownership for this roll.",
@@ -232,7 +249,7 @@ export function useInventoryLoadSpoolAction({
     });
     const selectedSlot = availableSlots.find((slot) => slot.slotId === slotId);
     if (!prepared.ok || !selectedSlot) {
-      setError(
+      setLoadSpoolError(
         t(
           "inventory.error.loadInPrinterStale",
           "The selected printer slot is no longer available. Refresh and choose another slot.",
@@ -244,34 +261,49 @@ export function useInventoryLoadSpoolAction({
     actionScope.busy = true;
     setManageBusy(true);
     setError(null);
+    setLoadSpoolError(null);
     await runInventoryLoadSpoolAssignment({
       isCurrent: () => actionScopeRef.current === actionScope,
       slot: selectedSlot,
       t,
-      write: () => writePrinterSlotAssignment(
-        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+      write: () => writePrinterSlotOperation(
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
         prepared.input,
       ),
       reload: async () => {
+        let refreshFailed = false;
+        const reportResult: InventoryReloadReporter = (_domain, resolution) => {
+          if (resolution !== "LIVE" && resolution !== "SUPERSEDED") refreshFailed = true;
+        };
         await Promise.all([
-          reloadSpools(),
-          reloadPrinterOverview(),
-          reloadSpoolDetail(selectedSpool.id),
+          reloadSpools(reportResult),
+          reloadPrinterOverview(reportResult),
+          reloadSpoolDetail(selectedSpool.id, reportResult),
         ]);
+        if (refreshFailed) throw new Error(t("inventory.error.loadInventory", "Failed to load inventory."));
       },
       onSuccess: (message) => {
         setInfoMessage(message);
-        setOpen(false);
+        actionScope.dialogToken = null;
+        setDialog(null);
       },
       onError: (loadError) => {
         console.error(loadError);
-        setError(
+        setLoadSpoolError(
           commandErrorText(
             loadError,
             t("inventory.error.loadInPrinter", "This roll cannot be loaded in a printer slot."),
             t,
           ),
         );
+      },
+      onReloadError: (loadError) => {
+        console.error(loadError);
+        setError(commandErrorText(
+          loadError,
+          t("inventory.error.loadInventory", "Failed to load inventory."),
+          t,
+        ));
       },
       onSettled: () => {
         actionScope.busy = false;
@@ -285,6 +317,8 @@ export function useInventoryLoadSpoolAction({
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
+    clientTargetGeneration,
+    dialog,
     ensureLocalWriteAllowed,
     loanedOut,
     manageBusy,
@@ -306,6 +340,7 @@ export function useInventoryLoadSpoolAction({
     closeLoadSpoolModal,
     confirmLoadSpool,
     openLoadSpoolModal,
-    showLoadSpoolModal: open,
+    loadSpoolError,
+    showLoadSpoolModal: dialog?.scopeKey === scopeKey,
   };
 }

@@ -49,7 +49,7 @@ type InventoryReloadResolution =
   | ResolvedClientSnapshotSource
   | "ERROR"
   | "SUPERSEDED";
-type InventoryReloadReporter = (
+export type InventoryReloadReporter = (
   domain: InventoryDataRequestDomain,
   resolution: InventoryReloadResolution,
 ) => void;

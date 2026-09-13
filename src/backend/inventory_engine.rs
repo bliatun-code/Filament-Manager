@@ -1676,7 +1676,14 @@ impl InventoryEngine {
                 })?),
                 None => None,
             };
+            // Loading from inventory does not represent a new measurement. It may
+            // preserve weight only when the destination is still empty.
+            let loading_without_measurement = actual_current_spool_id.is_none()
+                && target_spool_id.is_some()
+                && input.incoming_measured_total_g.is_none()
+                && input.outgoing_measured_total_g.is_none();
             let incoming_total_g = match target_spool_id.as_deref() {
+                Some(_) if loading_without_measurement => None,
                 Some(_) => Some(input.incoming_measured_total_g.ok_or_else(|| {
                     invalid_printer_slot_operation(
                         "incoming_measured_total_g is required when assigning a spool",
@@ -1712,6 +1719,16 @@ impl InventoryEngine {
                     ));
                 }
                 ensure_spool_not_outbound_loan_locked(conn, &spool.spool.id)?;
+                if loading_without_measurement {
+                    let already_assigned: bool = conn.query_row(
+                        "SELECT EXISTS(SELECT 1 FROM ams_slots WHERE spool_id = ?1)",
+                        [&spool.spool.id],
+                        |row| row.get(0),
+                    )?;
+                    if target_status == SpoolStatus::Assigned || already_assigned {
+                        return Err(stale_printer_slot_operation());
+                    }
+                }
             }
 
             let (override_tray_uuid, override_color_hex, clear_live_cache) =
@@ -1738,18 +1755,18 @@ impl InventoryEngine {
                 clear_live_cache,
             )?;
 
-            if let (Some(spool), Some(measured_total_g)) =
-                (incoming_spool.as_ref(), incoming_total_g)
-            {
-                update_measured_total_weight_in_transaction(
-                    conn,
-                    spool,
-                    "manual-entry",
-                    "Manual Entry",
-                    "MANUAL",
-                    measured_total_g,
-                    WeightSource::Manual,
-                )?;
+            if let Some(spool) = incoming_spool.as_ref() {
+                if let Some(measured_total_g) = incoming_total_g {
+                    update_measured_total_weight_in_transaction(
+                        conn,
+                        spool,
+                        "manual-entry",
+                        "Manual Entry",
+                        "MANUAL",
+                        measured_total_g,
+                        WeightSource::Manual,
+                    )?;
+                }
                 insert_json_history_event(
                     conn,
                     &spool.spool.id,
