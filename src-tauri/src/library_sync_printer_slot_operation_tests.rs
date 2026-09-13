@@ -186,7 +186,7 @@ impl SyntheticHost {
                 let post = slot_post || bulk_post || delete_post || purge_post;
                 let (status, body) = if health {
                     ("200 OK", serde_json::json!({"ok":true,"api_version":"v1",
-                        "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY] } else { vec![] },
+                        "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY, crate::companion_models::INVENTORY_ROLL_STATUS_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic slot Host","sync_mode":"HOST"}).to_string())
                 } else if delete_post || purge_post {
@@ -207,7 +207,13 @@ impl SyntheticHost {
                 } else if bulk_post {
                     let input = serde_json::from_str(&payload).unwrap();
                     match service.execute_inventory_bulk_mutation(input) {
-                        Ok(receipt) => ("200 OK", serde_json::to_string(&receipt).unwrap()),
+                        Ok(receipt) => (
+                            "200 OK",
+                            acknowledgment
+                                .get("bulk_receipt")
+                                .map(serde_json::Value::to_string)
+                                .unwrap_or_else(|| serde_json::to_string(&receipt).unwrap()),
+                        ),
                         Err(_) => (
                             "409 Conflict",
                             serde_json::json!({"code":"inventory.bulk.stale_snapshot"}).to_string(),
@@ -632,3 +638,6 @@ mod mark_empty_tests;
 
 #[path = "library_sync_removal_tests.rs"]
 mod removal_tests;
+
+#[path = "library_sync_roll_status_tests.rs"]
+mod roll_status_tests;

@@ -71,6 +71,7 @@ export const huHUDictionary: DictionaryNode = {
     "optional": "Opcionális"
   },
   "errors": {
+      "inventoryStatusHostUnsupported": "A tekercs állapotának módosítása előtt frissítse a gazdagépet. Nem történt módosításküldés.",
     "printerSlotChanged": "A rekeszben lévő tekercs megváltozott. Nyisd meg újra a rekesz műveletét, és erősítsd meg az aktuális tekercset.",
     "printerSlotHostUnsupported": "A nyomtatórekeszek vagy a bennük lévő tekercsek súlyának módosítása előtt frissítsd a Hostot. Nem küldtünk módosításokat.",
     "catalogSpoolBatchInvalid": "A köteg nem lett mentve. Ellenőrizze a kiválasztott filamenteket, a tömeget, a tulajdonost és a helyet. Legfeljebb 100 tekercset használjon.",

@@ -212,6 +212,7 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 
 ### 2026-09-13
 
+- PR #118 er merget som `7ea604a0` etter én push og åtte grønne kontroller. Neste samlede pakke gjør [mistet/funnet og reaktivering](INVENTORY_STATUS_2026-09-13.md) transaksjonell og retter lånegrunnlaget for innlånte ruller i detaljhandlingene.
 - PR #117 er merget som `fc3c9461` etter én push og åtte grønne kontroller. «Alle» skjuler nå tomme ruller som ønsket, mens «Tom» beholder dem. Neste samlede pakke sikrer [vanlig og permanent sletting](INVENTORY_REMOVAL_2026-09-13.md) mot dobbeltkall, gamle bekreftelser, sene svar og Host-målbytte.
 - PR #116 er merget. Neste samlede pakke følger opp [«Merk som tom» og standardfilteret](INVENTORY_MARK_EMPTY_2026-09-13.md): én kontrollert transaksjon for status, vekt, printerspor og historikk; tomme ruller skjules under «Alle» og beholdes under «Tom».
 

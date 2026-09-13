@@ -2,6 +2,7 @@ use crate::app_error::coded_command_error;
 use crate::backend::inventory_engine::{InventoryBulkMutationInput, InventoryBulkMutationResult};
 use crate::companion_models::{
     INVENTORY_BULK_MUTATION_CAPABILITY, INVENTORY_MARK_EMPTY_CAPABILITY,
+    INVENTORY_ROLL_STATUS_CAPABILITY,
 };
 use crate::inventory_bulk_models::LibrarySyncInventoryBulkMutationInput;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
@@ -37,21 +38,25 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
     let (base_url, health, target) = prepare_library_sync_host_write(state, &host_input)?;
     ensure_library_sync_target_current(state, &target)?;
-    let mark_empty = matches!(
-        &input.mutation,
-        InventoryBulkMutationInput::MarkEmpty { .. }
-    );
-    if mark_empty && input.expected_target_generation != Some(target.generation()) {
+    let single_roll_capability = match &input.mutation {
+        InventoryBulkMutationInput::MarkEmpty { .. } => Some(INVENTORY_MARK_EMPTY_CAPABILITY),
+        InventoryBulkMutationInput::RollStatus { .. } => Some(INVENTORY_ROLL_STATUS_CAPABILITY),
+        _ => None,
+    };
+    if single_roll_capability.is_some()
+        && input.expected_target_generation != Some(target.generation())
+    {
         return Err(coded_command_error("common.invalid_request"));
     }
-    if mark_empty
-        && !health
-            .capabilities
-            .iter()
-            .any(|value| value == INVENTORY_MARK_EMPTY_CAPABILITY)
+    if single_roll_capability
+        .is_some_and(|required| !health.capabilities.iter().any(|value| value == required))
     {
         return Err(coded_command_error(
-            "printers.slot_operation_host_unsupported",
+            if single_roll_capability == Some(INVENTORY_ROLL_STATUS_CAPABILITY) {
+                "inventory.roll_status.host_unsupported"
+            } else {
+                "printers.slot_operation_host_unsupported"
+            },
         ));
     }
     require_inventory_bulk_mutation_capability(&health.capabilities)?;
@@ -66,14 +71,14 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     .map_err(map_inventory_bulk_host_error)?;
 
     if !result.committed
-        || (mark_empty
+        || (single_roll_capability.is_some()
             && (result.affected_count < 0
                 || result.affected_count > 1
                 || result.history_spool_count != result.affected_count))
     {
         return Err(coded_command_error("common.internal"));
     }
-    if mark_empty {
+    if single_roll_capability.is_some() {
         refresh_library_sync_printer_cache(state, &base_url, &target);
     }
     refresh_library_sync_spool_cache(state, &base_url, &target);

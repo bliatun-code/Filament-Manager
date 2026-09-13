@@ -49,6 +49,7 @@ export const enDictionary: DictionaryNode = {
       optional: "Optional",
     },
     errors: {
+      "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent.",
       "printerSlotChanged": "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
       "printerSlotHostUnsupported": "Upgrade the Host before changing printer slots or their weights. No changes were sent.",
       catalogSpoolBatchInvalid: "The batch was not saved. Check the selected filaments, weight, owner and location. Use at most 100 rolls.",

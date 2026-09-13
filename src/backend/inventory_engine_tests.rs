@@ -6648,3 +6648,222 @@ fn removal_rolls_back_slot_history_and_business_rows_on_late_failure() {
         let _ = std::fs::remove_file(path);
     }
 }
+
+fn roll_status_input(
+    engine: &InventoryEngine,
+    id: &str,
+    status: &str,
+) -> super::InventoryBulkMutationInput {
+    let super::InventoryBulkMutationInput::MarkEmpty {
+        mut spool,
+        expected_slot_id,
+    } = mark_empty_input(engine, id)
+    else {
+        unreachable!()
+    };
+    spool.expected_active_loan = engine.db.spool_has_active_loan(id).unwrap();
+    super::InventoryBulkMutationInput::RollStatus {
+        spool,
+        expected_slot_id,
+        target_status: crate::backend::inventory_domain::SpoolStatus::from_raw(Some(status)),
+    }
+}
+
+#[test]
+fn roll_status_lost_and_found_preserve_weight_and_restore_home_location_atomically() {
+    let path = temp_db_path("roll-status-lost-found");
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (_, _, assigned, other) =
+            seed_printer_slot_operation_fixture(&engine, "roll_status").unwrap();
+        let before = engine.db.get_spool_by_id(&assigned).unwrap().unwrap();
+        let other_before =
+            serde_json::to_value(engine.db.get_spool_by_id(&other).unwrap()).unwrap();
+        let request = roll_status_input(&engine, &assigned, "LOST");
+        assert_eq!(
+            engine
+                .execute_bulk_inventory_mutation(request.clone())
+                .unwrap()
+                .affected_count,
+            1
+        );
+        let lost = engine.db.get_spool_by_id(&assigned).unwrap().unwrap();
+        assert_eq!(lost.status, "LOST");
+        assert_eq!(lost.location_id, before.home_location_id);
+        assert_eq!(lost.current_weight_g, before.current_weight_g);
+        assert_eq!(lost.remaining_g, before.remaining_g);
+        assert_eq!(lost.qr_code, before.qr_code);
+        assert_eq!(lost.spool_tare_weight_g, before.spool_tare_weight_g);
+        assert!(!engine.db.spool_assigned_to_printer(&assigned).unwrap());
+        let saved = printer_slot_operation_snapshot(&engine).unwrap();
+        assert!(engine.execute_bulk_inventory_mutation(request).is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), saved);
+        engine
+            .execute_bulk_inventory_mutation(roll_status_input(&engine, &assigned, "IN_STOCK"))
+            .unwrap();
+        let found = engine.db.get_spool_by_id(&assigned).unwrap().unwrap();
+        assert_eq!(found.status, "IN_STOCK");
+        assert_eq!(found.location_id, before.home_location_id);
+        assert_eq!(found.remaining_g, before.remaining_g);
+        assert_eq!(found.current_weight_g, before.current_weight_g);
+        assert_eq!(
+            serde_json::to_value(engine.db.get_spool_by_id(&other).unwrap()).unwrap(),
+            other_before
+        );
+        let history = engine.list_spool_history(&assigned, 100).unwrap();
+        assert_eq!(
+            history
+                .iter()
+                .filter(|row| row.event_type == "CLEARED_FROM_AMS")
+                .count(),
+            1
+        );
+        assert_eq!(
+            history
+                .iter()
+                .filter(|row| row.event_type == "STATUS_UPDATED"
+                    && row.payload_json["source"] == "ROLL_STATUS")
+                .count(),
+            2
+        );
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn roll_status_stale_slot_never_unloads_a_replacement_roll() {
+    let path = temp_db_path("roll-status-stale-slot");
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (printer, slot, assigned, other) =
+            seed_printer_slot_operation_fixture(&engine, "stale_status").unwrap();
+        let request = roll_status_input(&engine, &assigned, "LOST");
+        engine
+            .assign_printer_slot(AssignPrinterSlotInput {
+                printer_id: printer,
+                slot_id: slot,
+                spool_id: Some(other),
+                rfid_override_tray_uuid: None,
+                rfid_override_color_hex: None,
+                clear_live_cache_before_next_refresh: None,
+            })
+            .unwrap();
+        let before = printer_slot_operation_snapshot(&engine).unwrap();
+        assert!(engine.execute_bulk_inventory_mutation(request).is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn roll_status_late_history_failure_rolls_back_slot_status_and_price() {
+    let path = temp_db_path("roll-status-rollback");
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (_, _, assigned, _) =
+            seed_printer_slot_operation_fixture(&engine, "rollback_status").unwrap();
+        engine.db.connection().execute_batch("CREATE TRIGGER fail_roll_status BEFORE INSERT ON spool_history_events WHEN NEW.event_type='STATUS_UPDATED' BEGIN SELECT RAISE(ABORT,'late status failure'); END;").unwrap();
+        let before = printer_slot_operation_snapshot(&engine).unwrap();
+        let error = engine
+            .execute_bulk_inventory_mutation(roll_status_input(&engine, &assigned, "LOST"))
+            .unwrap_err();
+        assert!(error.to_string().contains("late status failure"));
+        assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn roll_status_reactivation_checks_authoritative_weight_and_preserves_inbound_loan() {
+    let path = temp_db_path("roll-status-reactivate");
+    {
+        let db = FilamentDatabase::open(&path).unwrap();
+        db.apply_schema().unwrap();
+        let engine = InventoryEngine::new(db);
+        let (_, _, _, stock) =
+            seed_printer_slot_operation_fixture(&engine, "reactivate_status").unwrap();
+        engine.db.connection().execute("UPDATE filament_spools SET status='EMPTY',remaining_g=0,current_weight_g=200 WHERE id=?1",[&stock]).unwrap();
+        let request = roll_status_input(&engine, &stock, "IN_STOCK");
+        let before = printer_slot_operation_snapshot(&engine).unwrap();
+        assert!(engine.execute_bulk_inventory_mutation(request).is_err());
+        assert_eq!(printer_slot_operation_snapshot(&engine).unwrap(), before);
+        engine
+            .db
+            .connection()
+            .execute(
+                "UPDATE filament_spools SET remaining_g=400,current_weight_g=600 WHERE id=?1",
+                [&stock],
+            )
+            .unwrap();
+        engine.db.connection().execute("INSERT INTO spool_loans (id,spool_id,borrower_name,loan_direction,loan_status,grams_out) VALUES ('inbound',?1,'Owner','INBOUND','ACTIVE',400)",[&stock]).unwrap();
+        engine
+            .execute_bulk_inventory_mutation(roll_status_input(&engine, &stock, "IN_STOCK"))
+            .unwrap();
+        let stored = engine.db.get_spool_by_id(&stock).unwrap().unwrap();
+        assert_eq!(stored.status, "IN_STOCK");
+        assert_eq!(stored.remaining_g, Some(400));
+        assert_eq!(stored.current_weight_g, Some(600));
+        assert!(engine.db.spool_has_active_loan(&stock).unwrap());
+        engine
+            .execute_bulk_inventory_mutation(roll_status_input(&engine, &stock, "LOST"))
+            .unwrap();
+        assert!(engine.db.spool_has_active_loan(&stock).unwrap());
+    }
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn roll_status_outbound_loans_removed_rolls_and_invalid_targets_are_unchanged() {
+    for case in ["outbound", "deleted", "missing", "invalid"] {
+        let path = temp_db_path("roll-status-rejection");
+        {
+            let db = FilamentDatabase::open(&path).unwrap();
+            db.apply_schema().unwrap();
+            let engine = InventoryEngine::new(db);
+            let (_, _, _, stock) =
+                seed_printer_slot_operation_fixture(&engine, "reject_status").unwrap();
+            match case {
+                "outbound" => {
+                    engine.db.connection().execute("INSERT INTO spool_loans (id,spool_id,borrower_name,loan_direction,loan_status,grams_out) VALUES ('outbound',?1,'Borrower','OUTBOUND','ACTIVE',400)",[&stock]).unwrap();
+                }
+                "deleted" => {
+                    engine.db.connection().execute("UPDATE filament_spools SET status='DELETED',deleted_at=datetime('now') WHERE id=?1",[&stock]).unwrap();
+                }
+                "missing" => {
+                    engine
+                        .db
+                        .connection()
+                        .execute(
+                            "UPDATE filament_spools SET status='MISSING' WHERE id=?1",
+                            [&stock],
+                        )
+                        .unwrap();
+                }
+                _ => {}
+            }
+            let before = printer_slot_operation_snapshot(&engine).unwrap();
+            assert!(
+                engine
+                    .execute_bulk_inventory_mutation(roll_status_input(
+                        &engine,
+                        &stock,
+                        if case == "invalid" { "EMPTY" } else { "LOST" }
+                    ))
+                    .is_err(),
+                "{case}"
+            );
+            assert_eq!(
+                printer_slot_operation_snapshot(&engine).unwrap(),
+                before,
+                "{case}"
+            );
+        }
+        let _ = std::fs::remove_file(path);
+    }
+}

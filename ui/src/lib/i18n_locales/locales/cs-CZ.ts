@@ -195,6 +195,7 @@ export const csCZDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Záložní limit 200 g pro starší verzi hostitele"
   },
   "errors": {
+      "inventoryStatusHostUnsupported": "Před změnou stavu cívky aktualizujte hostitele. Nebyly odeslány žádné změny.",
     "printerSlotChanged": "Cívka v tomto slotu se změnila. Znovu otevřete akci slotu a potvrďte aktuální cívku.",
     "printerSlotHostUnsupported": "Před změnou slotů tiskárny nebo hmotnosti cívek v nich aktualizujte Host. Nebyly odeslány žádné změny.",
     "catalogSpoolBatchInvalid": "Dávka nebyla uložena. Zkontrolujte vybrané filamenty, hmotnost, vlastníka a umístění. Použijte nejvýše 100 cívek.",

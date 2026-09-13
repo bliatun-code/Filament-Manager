@@ -1,14 +1,13 @@
 import {
   isSpoolStatusEmpty,
   normalizeSpoolStatus,
-  type SpoolStatus,
 } from "./inventory_domain";
 
 export function canRefillSpoolStatus(status: string): boolean {
   return isSpoolStatusEmpty(status);
 }
 
-export function nextLostToggleStatus(status: string): SpoolStatus {
+export function nextLostToggleStatus(status: string): "LOST" | "IN_STOCK" {
   return normalizeSpoolStatus(status) === "LOST" ? "IN_STOCK" : "LOST";
 }
 

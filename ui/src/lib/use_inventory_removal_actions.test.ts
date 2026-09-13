@@ -15,13 +15,14 @@ async function harness() {
     import { flushSync } from "react-dom";
     import { useInventoryRemovalActions } from ${path("./use_inventory_removal_actions.ts")};
     import { InventoryDangerZonePanel } from ${path("../components/inventory_danger_zone_panel.tsx")};
+    import { hasInventorySpoolLoan } from ${path("./inventory_list_model.ts")};
     import { I18nContext } from ${path("./i18n.ts")};
     let actions, snapshot, props, oldAction;
     const calls = [], pending = [], reloads = [], removed = [];
     let resolution = "LIVE", failReload = false, holdReload = false, finishReload;
     const t = (_key, fallback) => fallback;
     window.__TAURI__ = { invoke: (command, payload) => new Promise((resolve, reject) => calls.push({command,payload,resolve,reject})) };
-    function Harness({ id = "roll-a", host = "local", generation = 1, open = true, loaned = false }) {
+    function Harness({ id = "roll-a", host = "local", generation = 1, open = true, loaned = false, borrowed = false }) {
       const [busy, setManageBusy] = useState(false);
       const [error, setError] = useState(null);
       const [info, setInfoMessage] = useState(null);
@@ -29,9 +30,9 @@ async function harness() {
       const viewKey = JSON.stringify([id,host,generation]);
       const visible = open && closedFor !== viewKey;
       const selectedSpool = visible ? { id, masterId:"master", vendor:"Maker", material:"PLA", filamentName:"Basic",
-        colorName:"Blue", initialWeightGrams:1000, ownershipType:"OWNED", status:"IN_STOCK" } : null;
+        colorName:"Blue", initialWeightGrams:1000, ownershipType:borrowed?"BORROWED_IN":"OWNED", status:"IN_STOCK" } : null;
       const input = {
-        selectedSpool, activeLoan: loaned, tauriAvailable:true, manageBusy:busy,
+        selectedSpool, activeLoan: hasInventorySpoolLoan(selectedSpool,new Set(loaned?[id]:[])), tauriAvailable:true, manageBusy:busy,
         clientReadOnly:host !== "local", clientHostBaseUrl:"http://" + host, clientLibraryId:"library",
         clientTargetGeneration:generation, canUseClientHostWrite:()=>true, ensureLocalWriteAllowed:()=>true,
         setManageBusy, setError, setInfoMessage, t,
@@ -184,6 +185,11 @@ test("rendered inventory removal confirmations and asynchronous results", async 
       assert.equal(call.command,"purge_library_sync_host_spool");
       assert.equal(call.payload.input.expected_target_generation,3);
       await page.evaluate("removal.finish(0)");
+    });
+    await scenario("inbound ownership blocks removal even when the outbound feed is empty", async page => {
+      await page.evaluate("removal.render({borrowed:true});removal.request('PURGE');removal.start('PURGE')");
+      assert.equal((await page.evaluate("removal.snapshot()")).calls.length,0);
+      assert.match(await page.getByRole("alert").innerText(),/Return the active loan/);
     });
     await scenario("active inbound or outbound loan blocks removal before confirmation",async page=>{
       await page.evaluate("removal.render({loaned:true});removal.request('DELETE');removal.start('DELETE')");

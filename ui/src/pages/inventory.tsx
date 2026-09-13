@@ -25,6 +25,7 @@ import {
 } from "../lib/desktop_visual_qa_scenario";
 import {
   isInventorySpoolLoanedOut,
+  hasInventorySpoolLoan,
   isInventorySpoolLoanTrackingCandidate,
   type InventoryLocationFilter,
 } from "../lib/inventory_list_model";
@@ -63,6 +64,7 @@ import { useInventoryRollModalEscape } from "../lib/use_inventory_roll_modal_esc
 import { useInventorySelectedSpool } from "../lib/use_inventory_selected_spool";
 import { useInventorySelectedSpoolDetailState } from "../lib/use_inventory_selected_spool_detail_state";
 import { useInventorySelectedSpoolViewModel } from "../lib/use_inventory_selected_spool_view_model";
+import { useInventoryStatusActions } from "../lib/use_inventory_status_actions";
 import { useInventoryRemovalActions } from "../lib/use_inventory_removal_actions";
 import { useInventorySpoolDetailActions } from "../lib/use_inventory_spool_detail_actions";
 import { useInventorySpoolDetailUtilityActions } from "../lib/use_inventory_spool_detail_utility_actions";
@@ -517,6 +519,10 @@ export default function InventoryPage({
     setRecentlyAddedSpoolId,
   });
 
+  const activeLoanSpoolIds = useMemo(
+    () => new Set(activeLoans.map((loan) => loan.loan.spool_id)),
+    [activeLoans],
+  );
   const selectedSpool = useInventorySelectedSpool(spools, selectedSpoolId);
 
   const {
@@ -586,7 +592,7 @@ export default function InventoryPage({
     cancelConfirmation: cancelDangerZoneConfirmation,
   } = useInventoryRemovalActions({
     selectedSpool: showRollModal ? selectedSpool : null,
-    activeLoan: activeLoans.some(row => row.loan.spool_id === selectedSpool?.id),
+    activeLoan: hasInventorySpoolLoan(selectedSpool, activeLoanSpoolIds),
     clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
     tauriAvailable: tauri, manageBusy, canUseClientHostWrite, ensureLocalWriteAllowed,
     setManageBusy, setError, setInfoMessage, onRemoved: clearSelectedSpoolDetail,
@@ -625,10 +631,6 @@ export default function InventoryPage({
     showRollModal,
   });
 
-  const activeLoanSpoolIds = useMemo(
-    () => new Set(activeLoans.map((loan) => loan.loan.spool_id)),
-    [activeLoans],
-  );
   const activeOutboundLoanSpoolIds = useMemo(
     () =>
       new Set(
@@ -887,10 +889,21 @@ export default function InventoryPage({
     t,
   });
 
+  const { handleRefillSpool, handleToggleLostStatus, statusError, clearStatusError } = useInventoryStatusActions({
+    selectedSpool: showRollModal ? selectedSpool : null,
+    assignedSlot: selectedSpoolAssignedSlot,
+    activeLoan: hasInventorySpoolLoan(selectedSpool, activeLoanSpoolIds),
+    loanedOut: selectedSpoolLoanedOut,
+    clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
+    tauriAvailable: tauri, manageBusy, canUseClientHostWrite, ensureLocalWriteAllowed,
+    cancelDangerZoneConfirmation, setManageBusy, setError, setInfoMessage,
+    reloadSpools, reloadPrinterOverview, reloadSpoolDetail, t,
+  });
+
   const handleMarkEmpty = useInventoryMarkEmptyAction({
     selectedSpool: showRollModal ? selectedSpool : null,
     assignedSlot: selectedSpoolAssignedSlot,
-    activeLoan: selectedSpool ? activeLoanSpoolIds.has(selectedSpool.id) : false,
+    activeLoan: hasInventorySpoolLoan(selectedSpool, activeLoanSpoolIds),
     loanedOut: selectedSpoolLoanedOut,
     clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration,
     tauriAvailable: tauri, manageBusy, canUseClientHostWrite, ensureLocalWriteAllowed,
@@ -899,10 +912,8 @@ export default function InventoryPage({
   });
 
   const {
-    handleRefillSpool,
     handleSaveMasterMetadata,
     handleSaveSpoolCommonDetails,
-    handleToggleLostStatus,
     handleWeightSubmit,
   } = useInventorySpoolDetailActions({
     canUseClientHostWrite,
@@ -1345,7 +1356,7 @@ export default function InventoryPage({
             displayTitle={selectedSpoolDisplayTitle}
             defaultPurchaseCurrency={defaultPurchaseCurrency}
             discardConfirmationOpen={selectedSpoolDiscardConfirmationOpen}
-            error={removalError ?? error}
+            error={statusError ?? removalError ?? error}
             filamentName={editMasterFilamentName}
             formatHistoryEventDetails={formatHistoryEventDetails}
             formatHistoryEventType={formatHistoryEventType}
@@ -1382,12 +1393,12 @@ export default function InventoryPage({
             onCancelDiscardConfirmation={cancelSelectedSpoolDiscardConfirmation}
             onClose={closeSelectedSpoolDetailModal}
             onConfirmDiscard={confirmSelectedSpoolDiscard}
-            onDelete={handleDeleteSelected}
+            onDelete={() => { clearStatusError(); void handleDeleteSelected(); }}
             onLoadInPrinter={openLoadSpoolModal}
             onLoanOut={() => openLoanTrackingModal(selectedSpool)}
             onMarkEmpty={handleMarkEmpty}
             onPrintLabel={handlePrintLabel}
-            onPurge={handlePurgeSelected}
+            onPurge={() => { clearStatusError(); void handlePurgeSelected(); }}
             onRefill={handleRefillSpool}
             onSaveCommonDetails={handleSaveSpoolCommonDetails}
             onSaveMasterMetadata={handleSaveMasterMetadata}
