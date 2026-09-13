@@ -16,6 +16,7 @@ async function harness() {
     import { useInventoryMarkEmptyAction } from ${path("./use_inventory_mark_empty_action.ts")};
     import { useInventoryFilters } from ${path("./use_inventory_filters.ts")};
     import { InventoryDangerZonePanel } from ${path("../components/inventory_danger_zone_panel.tsx")};
+    import { hasInventorySpoolLoan } from ${path("./inventory_list_model.ts")};
     import { I18nContext } from ${path("./i18n.ts")};
     let action, snapshot, props, filter, oldAction;
     const calls = [], pending = [], reloads = [];
@@ -28,7 +29,7 @@ async function harness() {
     window.__TAURI__ = { invoke: (command, payload) => new Promise((resolve, reject) => {
       calls.push({ command, payload, resolve, reject });
     }) };
-    function Harness({ host = "local", generation = 1, id = "roll", open = true, assigned = false, loaned = false }) {
+    function Harness({ host = "local", generation = 1, id = "roll", open = true, assigned = false, loaned = false, borrowed = false }) {
       const [busy, setManageBusy] = useState(false);
       const [info, setInfoMessage] = useState(null);
       const [error, setError] = useState(null);
@@ -36,7 +37,7 @@ async function harness() {
       action = useInventoryMarkEmptyAction({
         selectedSpool: open ? { ...spool, id, status: assigned ? "ASSIGNED" : "IN_STOCK" } : null,
         assignedSlot: assigned ? { slotId: "slot", printerId: "printer" } : null,
-        activeLoan: loaned, loanedOut: loaned,
+        activeLoan: hasInventorySpoolLoan({id,ownershipType:borrowed?"BORROWED_IN":"OWNED"},new Set(loaned?[id]:[])), loanedOut: loaned,
         clientReadOnly: host !== "local", clientHostBaseUrl: "http://" + host,
         clientLibraryId: "library", clientTargetGeneration: generation,
         tauriAvailable: true, manageBusy: busy, canUseClientHostWrite: () => true,
@@ -120,6 +121,11 @@ test("rendered mark-empty action and default inventory filtering", async context
       assert.deepEqual((await page.evaluate("mark.snapshot()")).visible, []);
       await page.evaluate("mark.filter('EMPTY')");
       assert.deepEqual((await page.evaluate("mark.snapshot()")).visible, ["roll", "empty"]);
+    });
+    await scenario("borrowed-in empty marking uses the active inbound loan precondition", async page => {
+      await page.evaluate("mark.render({borrowed:true});mark.start();mark.finish(0)");
+      const state=await page.evaluate("mark.snapshot()");assert.equal(state.calls.length,1);
+      assert.equal(state.calls[0].payload.input.spool.expected_active_loan,true);
     });
     await scenario("same-event duplicate sends one Host command with slot and generation", async page => {
       await page.evaluate("mark.render({host:'host', generation:3, assigned:true}); mark.double()");

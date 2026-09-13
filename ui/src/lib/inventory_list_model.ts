@@ -83,6 +83,16 @@ export function normalizeStatus(status: string): SpoolStatus {
   return normalizeSpoolStatus(status);
 }
 
+// The inventory loan feed is outbound-only. Active borrowed-in rolls carry
+// their ownership marker; returning an inbound loan removes the roll from inventory.
+// The mutation still verifies the actual loan row in its transaction.
+export function hasInventorySpoolLoan(
+  spool: Pick<InventorySpool, "id" | "ownershipType"> | null,
+  activeOutboundLoanSpoolIds: ReadonlySet<string>,
+): boolean {
+  return Boolean(spool && (isBorrowedInOwnership(spool.ownershipType) || activeOutboundLoanSpoolIds.has(spool.id)));
+}
+
 export function isInventorySpoolLoanedOut(
   spool: Pick<InventorySpool, "id" | "status"> | null,
   activeOutboundLoanSpoolIds: ReadonlySet<string>,

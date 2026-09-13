@@ -11,6 +11,7 @@ import {
   inventoryOwnershipTone,
   inventoryStatusTone,
   isInventorySpoolLoanedOut,
+  hasInventorySpoolLoan,
   isInventorySpoolLoanTrackingCandidate,
   isInventorySpoolLowStockCandidate,
   isInventorySpoolVisibleForStatusFilter,
@@ -478,4 +479,14 @@ test("remainingBarClass keeps stock level color thresholds stable", () => {
   assert.equal(remainingBarClass(0.21), "bg-amber-500 dark:bg-amber-300");
   assert.equal(remainingBarClass(0.45), "bg-amber-500 dark:bg-amber-300");
   assert.equal(remainingBarClass(0.46), "bg-emerald-500 dark:bg-emerald-300");
+});
+
+test("single-roll loan review includes inbound ownership despite an outbound-only feed", () => {
+  assert.equal(hasInventorySpoolLoan(null, new Set()), false);
+  assert.equal(hasInventorySpoolLoan(spool(), new Set()), false);
+  assert.equal(hasInventorySpoolLoan(spool(), new Set(["spool_1"])), true);
+  for (const status of ["IN_STOCK", "EMPTY", "LOST"] as const) {
+    assert.equal(hasInventorySpoolLoan(spool({ownershipType:"BORROWED_IN",status}), new Set()), true);
+    assert.equal(isInventorySpoolLoanedOut(spool({ownershipType:"BORROWED_IN",status}), new Set()), false);
+  }
 });

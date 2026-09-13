@@ -71,6 +71,7 @@ export const daDKDictionary: DictionaryNode = {
     "optional": "Valgfrit"
   },
   "errors": {
+      "inventoryStatusHostUnsupported": "Opdater værten, før du ændrer en rulles status. Ingen ændringer blev sendt.",
     "printerSlotChanged": "Rullen i dette spor er ændret. Åbn sporhandlingen igen, og bekræft den aktuelle rulle.",
     "printerSlotHostUnsupported": "Opgrader værten, før du ændrer printerspor eller vægten på rullerne i dem. Ingen ændringer blev sendt.",
     "catalogSpoolBatchInvalid": "Batchen blev ikke gemt. Kontrollér de valgte filamenter, vægt, ejer og placering. Brug højst 100 ruller.",

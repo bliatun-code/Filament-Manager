@@ -49,6 +49,7 @@ export const esDictionary: DictionaryNode = {
     optional: "Opcional",
   },
   errors: {
+      "inventoryStatusHostUnsupported": "Actualiza el Host antes de cambiar el estado de una bobina. No se envió ningún cambio.",
     "printerSlotChanged": "La bobina de esta ranura ha cambiado. Vuelve a abrir la acción de la ranura y confirma la bobina actual.",
     "printerSlotHostUnsupported": "Actualiza el Host antes de cambiar las ranuras de la impresora o el peso de sus bobinas. No se envió ningún cambio.",
     catalogSpoolBatchInvalid: "El lote no se guardó. Comprueba los filamentos seleccionados, el peso, el propietario y la ubicación. Usa un máximo de 100 bobinas.",

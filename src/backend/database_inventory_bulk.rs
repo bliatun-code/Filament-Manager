@@ -43,6 +43,18 @@ pub(crate) fn execute_inventory_bulk_mutation(
     input: InventoryBulkMutationInput,
 ) -> InventoryResult<InventoryBulkMutationResult> {
     let (expected_affected_count, preconditions, target) = match input {
+        InventoryBulkMutationInput::RollStatus {
+            spool,
+            expected_slot_id,
+            target_status,
+        } => {
+            return change_roll_status(
+                connection,
+                spool,
+                expected_slot_id.as_deref(),
+                target_status,
+            );
+        }
         InventoryBulkMutationInput::MarkEmpty {
             spool,
             expected_slot_id,
@@ -417,35 +429,11 @@ fn mark_empty(
     expected: InventoryBulkSpoolPrecondition,
     expected_slot_id: Option<&str>,
 ) -> InventoryResult<InventoryBulkMutationResult> {
-    use super::database_loan_queries::ensure_spool_not_outbound_loan_locked;
     use super::database_printer_slot_assignment::assign_spool_to_ams_slot_in_transaction;
     use super::database_spool_queries::get_spool_by_id;
     use super::database_spool_updates::{update_spool_status, update_spool_weight};
 
-    let actual =
-        load_actual_snapshot(connection, &expected.spool_id)?.ok_or(InventoryError::NotFound)?;
-    validate_snapshot_preconditions(&expected, &actual)?;
-    if actual.removed {
-        return Err(InventoryError::NotFound);
-    }
-    ensure_spool_not_outbound_loan_locked(connection, &expected.spool_id)?;
-    let slots = {
-        let mut statement = connection.prepare(
-            "SELECT s.id, u.printer_id FROM ams_slots s
-             JOIN ams_units u ON u.id = s.ams_id WHERE s.spool_id = ?1 ORDER BY s.id",
-        )?;
-        statement
-            .query_map(params![expected.spool_id], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })?
-            .collect::<Result<Vec<_>, _>>()?
-    };
-    if slots.len() > 1 || slots.first().map(|slot| slot.0.as_str()) != expected_slot_id {
-        return Err(invalid_bulk_operation(
-            "inventory.bulk.stale_snapshot",
-            "The roll's printer slot changed. Refresh the roll before marking it empty.",
-        ));
-    }
+    let (actual, slots) = review_roll(connection, &expected, expected_slot_id)?;
     let spool = get_spool_by_id(connection, &expected.spool_id)?.ok_or(InventoryError::NotFound)?;
     if actual.status == SpoolStatus::Empty
         && slots.is_empty()
@@ -502,3 +490,118 @@ fn mark_empty(
 #[cfg(test)]
 #[path = "database_inventory_bulk_tests.rs"]
 mod tests;
+
+// Shared by single-roll actions. Validation and all writes run in the caller's
+// immediate transaction, including the exact slot identity rather than a boolean.
+fn review_roll(
+    connection: &Connection,
+    expected: &InventoryBulkSpoolPrecondition,
+    expected_slot_id: Option<&str>,
+) -> InventoryResult<(ActualSpoolSnapshot, Vec<(String, String)>)> {
+    use super::database_loan_queries::ensure_spool_not_outbound_loan_locked;
+    let actual =
+        load_actual_snapshot(connection, &expected.spool_id)?.ok_or(InventoryError::NotFound)?;
+    validate_snapshot_preconditions(expected, &actual)?;
+    if actual.removed {
+        return Err(InventoryError::NotFound);
+    }
+    ensure_spool_not_outbound_loan_locked(connection, &expected.spool_id)?;
+    let slots = {
+        let mut statement = connection.prepare(
+            "SELECT s.id, u.printer_id FROM ams_slots s
+             JOIN ams_units u ON u.id = s.ams_id WHERE s.spool_id = ?1 ORDER BY s.id",
+        )?;
+        statement
+            .query_map(params![expected.spool_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?
+    };
+    if slots.len() > 1 || slots.first().map(|slot| slot.0.as_str()) != expected_slot_id {
+        return Err(invalid_bulk_operation(
+            "inventory.bulk.stale_snapshot",
+            "The roll's printer slot changed. Refresh the roll before changing it.",
+        ));
+    }
+    Ok((actual, slots))
+}
+
+fn change_roll_status(
+    connection: &Connection,
+    expected: InventoryBulkSpoolPrecondition,
+    expected_slot_id: Option<&str>,
+    target: SpoolStatus,
+) -> InventoryResult<InventoryBulkMutationResult> {
+    use super::database_printer_slot_assignment::assign_spool_to_ams_slot_in_transaction;
+    use super::database_spool_queries::get_spool_by_id;
+    use super::database_spool_updates::update_spool_status;
+
+    if !matches!(target, SpoolStatus::Lost | SpoolStatus::InStock) {
+        return Err(invalid_bulk_operation(
+            "inventory.bulk.invalid_status_target",
+            "Roll status must be LOST or IN_STOCK.",
+        ));
+    }
+    let (actual, slots) = review_roll(connection, &expected, expected_slot_id)?;
+    if target == SpoolStatus::InStock {
+        if !slots.is_empty()
+            || !matches!(
+                actual.status,
+                SpoolStatus::Lost | SpoolStatus::Empty | SpoolStatus::InStock
+            )
+        {
+            return Err(invalid_bulk_operation(
+                "inventory.bulk.stale_snapshot",
+                "Only a lost or empty roll can be reactivated here.",
+            ));
+        }
+        if actual.status == SpoolStatus::Empty {
+            let spool =
+                get_spool_by_id(connection, &expected.spool_id)?.ok_or(InventoryError::NotFound)?;
+            if spool.remaining_g.unwrap_or(0) <= 0 {
+                return Err(invalid_bulk_operation(
+                    "inventory.bulk.stale_snapshot",
+                    "Set a positive measured filament weight before reactivating an empty roll.",
+                ));
+            }
+        }
+    }
+    if actual.status == target && slots.is_empty() {
+        return Ok(InventoryBulkMutationResult {
+            affected_count: 0,
+            committed: true,
+            history_spool_count: 0,
+        });
+    }
+    if let Some((slot_id, printer_id)) = slots.first() {
+        assign_spool_to_ams_slot_in_transaction(
+            connection, printer_id, slot_id, None, None, None, true,
+        )?;
+        insert_json_history(
+            connection,
+            &expected.spool_id,
+            "CLEARED_FROM_AMS",
+            json!({"printer_id":printer_id, "slot_id":slot_id, "source":"ROLL_STATUS"}),
+        )?;
+    }
+    // Preserve weights, QR, home location and inbound loan. Clearing a printer
+    // restores its home location; never write back the old printer location.
+    update_spool_status(connection, &expected.spool_id, target.as_str())?;
+    lock_spool_price_for_historical_status(
+        connection,
+        &expected.spool_id,
+        target.as_str(),
+        "ROLL_STATUS",
+    )?;
+    insert_json_history(
+        connection,
+        &expected.spool_id,
+        "STATUS_UPDATED",
+        json!({"previous_status":actual.status.as_str(), "status":target.as_str(), "source":"ROLL_STATUS"}),
+    )?;
+    Ok(InventoryBulkMutationResult {
+        affected_count: 1,
+        committed: true,
+        history_spool_count: 1,
+    })
+}

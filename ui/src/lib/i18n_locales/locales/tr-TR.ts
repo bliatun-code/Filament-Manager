@@ -195,6 +195,7 @@ export const trTRDictionary: DictionaryNode = {
     "totalSpoolsSubtitle": "Tüm lokasyonlarda"
   },
   "errors": {
+      "inventoryStatusHostUnsupported": "Makara durumunu değiştirmeden önce Host’u güncelleyin. Hiçbir değişiklik gönderilmedi.",
     "printerSlotChanged": "Bu yuvadaki makara değişti. Yuva işlemini yeniden açın ve mevcut makarayı onaylayın.",
     "printerSlotHostUnsupported": "Yazıcı yuvalarını veya içlerindeki makaraların ağırlığını değiştirmeden önce Host’u yükseltin. Hiçbir değişiklik gönderilmedi.",
     "catalogSpoolBatchInvalid": "Toplu kayıt kaydedilmedi. Seçilen filamentleri, ağırlığı, sahibini ve konumu kontrol edin. En fazla 100 makara kullanın.",

@@ -8,8 +8,6 @@ import type { InventorySpool, OwnershipType } from "./inventory_list_model";
 import type { InventoryLocationRow } from "./tauri_location_client";
 import { parseInventorySpoolCommonDetailsDraft } from "./inventory_spool_detail_draft_model";
 import {
-  canRefillSpoolStatus,
-  nextLostToggleStatus,
   shouldReactivateSpoolFromMeasuredTotal,
 } from "./inventory_spool_detail_actions_model";
 import {
@@ -21,7 +19,6 @@ import {
 } from "./spool_writes";
 import {
   writePreparedMeasuredWeightUpdate,
-  writePrinterSlotAssignment,
 } from "./printer_slot_writes";
 import { prepareMeasuredWeightUpdate } from "./printer_slot_model";
 import { updateManagedMasterCatalogEntry } from "./catalog_writes";
@@ -508,106 +505,6 @@ export function useInventorySpoolDetailActions({
     }
   }
 
-  async function handleRefillSpool() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    if (!canRefillSpoolStatus(selectedSpool.status)) {
-      return;
-    }
-    if ((selectedSpool.remainingGrams ?? 0) <= 0) {
-      setError(
-        t(
-          "inventory.error.refillRequiresWeight",
-          "Set measured total weight above empty spool weight before reactivating.",
-        ),
-      );
-      return;
-    }
-    setManageBusy(true);
-    setError(null);
-    try {
-      await updateInventorySpoolStatus(
-        {
-          spool_id: selectedSpool.id,
-          qr_code: selectedSpool.qrCode ?? null,
-          status: "IN_STOCK",
-          location: currentLocationReference,
-        },
-        hostWriteTarget,
-      );
-      await reloadInventorySurfaces();
-      await reloadSpoolDetail(selectedSpool.id);
-      setInfoMessage(t("inventory.refilled", "Roll reactivated and ready for use."));
-    } catch (statusError) {
-      console.error(statusError);
-      setError(
-        commandErrorText(
-          statusError,
-          t("inventory.error.refill", "Failed to reactivate roll."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
-  async function handleToggleLostStatus() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    const nextStatus = nextLostToggleStatus(selectedSpool.status);
-    setManageBusy(true);
-    setError(null);
-    try {
-      if (nextStatus === "LOST" && selectedSpoolAssignedSlot) {
-        await writePrinterSlotAssignment(hostWriteTarget, {
-          printer_id: selectedSpoolAssignedSlot.printerId,
-          slot_id: selectedSpoolAssignedSlot.slotId,
-          spool_id: null,
-        });
-      }
-      await updateInventorySpoolStatus(
-        {
-          spool_id: selectedSpool.id,
-          qr_code: selectedSpool.qrCode ?? null,
-          status: nextStatus,
-          location: currentLocationReference,
-        },
-        hostWriteTarget,
-      );
-      await reloadInventorySurfaces();
-      await reloadSpoolDetail(selectedSpool.id);
-      setInfoMessage(
-        nextStatus === "LOST"
-          ? t("inventory.markedLost", "Roll marked as lost.")
-          : t("inventory.markedFound", "Roll restored to in stock."),
-      );
-    } catch (statusError) {
-      console.error(statusError);
-      setError(
-        commandErrorText(
-          statusError,
-          t("inventory.error.toggleLost", "Failed to update lost status."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
   async function handleWeightSubmit(grams: number) {
     if (!selectedSpool || !tauriAvailable || manageBusy) {
       return;
@@ -730,13 +627,11 @@ export function useInventorySpoolDetailActions({
   }
 
   return {
-    handleRefillSpool,
     handleSaveMasterMetadata,
     handleSaveSpoolCommonDetails,
     handleSaveSpoolOwnership,
     handleSaveSpoolLocation,
     handleSaveSpoolTareWeight,
-    handleToggleLostStatus,
     handleWeightSubmit,
   };
 }
