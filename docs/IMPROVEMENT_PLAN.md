@@ -167,6 +167,8 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 ## Neste arbeid
 
+[Avhengighetsgjennomgangen 14. september](DEPENDENCY_REVIEW_2026-09-14.md) samler Dependabot #121–123, React 19.3, Vite 8.3 og kompatible Rust-oppdateringer, inkludert Quinn-sikkerhetsrettelser. Tauri 3 er nå publisert som alfa og krever en separat migrering; TypeScript 7 venter fortsatt på lintstøtte. Den daterte rapporten beskriver gjenværende varsler og hva som må utløse neste oppgradering. Samlet kandidat må ha grønn CI før merge.
+
 Vanlig registrering har fått en [egen kvittering og eksplisitte neste handlinger](REGISTRATION_FOLLOWUP_2026-09-06.md); samlet lokal verifisering og native kontroll med uavhengige databasekontroller er bestått. Lokasjon ved mottak og nøyaktig printerspor er allerede [rettet og verifisert lokalt](USABILITY_FOLLOWUP_2026-09-06.md). Hypotesen om menneskelig dobbeltregistrering fra [AI-evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md) er fortsatt ikke målt.
 
 [Bambu-batchregistrering](BAMBU_BATCH_FOLLOWUP_2026-09-06.md) er implementert med én atomisk forespørsel for 1–100 ruller, varig kvittering og trygg gjentakelse av samme batch-ID. Like filamentkoder beholdes som separate fysiske ruller. UI-et bevarer bekreftede ID-er og skiller ukjent utfall fra avvisning; bare ikke-innsendte gjennomgangsrader følger med til neste batch. JSON-gjenoppretting bevarer installasjonens batchkvitteringer og bruker en eksplisitt importdialog. Samlet lokal verifisering og native kontroller er dokumentert i oppfølgingsrapporten.
