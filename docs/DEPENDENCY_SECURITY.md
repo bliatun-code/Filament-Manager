@@ -53,14 +53,16 @@ lockfiles:
   dependencies against the Cargo license allowlist.
 
 The Tauri dependency graph contains GTK dependencies used by its Linux/BSD
-backend. RustSec reports maintenance and soundness warnings for that GTK3 graph,
-including its `proc-macro-error` build dependency, even though Filament Manager
-distributes macOS and Windows builds. Separately, the unmaintained `unic`
+backend. RustSec still reports the `glib` soundness and `proc-macro-error`
+maintenance warnings in that graph, even though Filament Manager distributes
+macOS and Windows builds. The ten GTK3 maintenance advisories were withdrawn
+upstream; their absence from a current audit does not mean GTK left the lockfile.
+Separately, the unmaintained `unic`
 packages reach both supported platforms through `tauri-utils` and `urlpattern`.
 Do not classify all maintenance warnings as Linux-only. Follow a published,
 compatible Tauri update for that dependency chain; do not force an incompatible
 `urlpattern` version into the lockfile. The dated
-[dependency review](DEPENDENCY_REVIEW_2026-09-07.md) records the current paths and
+[dependency review](DEPENDENCY_REVIEW_2026-09-14.md) records the current paths and
 follow-up decisions. All warnings remain visible in the scheduled report, but
 only vulnerability advisories fail `cargo audit`. License violations always fail.
 
