@@ -1,4 +1,6 @@
-use crate::active_library_gateway::{with_authoritative_local_library, ActiveLibraryGateway};
+use crate::active_library_gateway::{
+    with_authoritative_local_library, ActiveLibraryGateway, ReviewedLibraryAuthority,
+};
 use crate::backend::inventory_engine::{
     UpdateMasterCatalogEntryInput, UpdateSpoolDetailsInput, UpdateSpoolOwnershipInput,
     UpdateSpoolRfidTagInput, WeightSource,
@@ -63,10 +65,13 @@ pub(crate) fn update_spool_details(
 pub(crate) async fn update_active_library_spool_details(
     state: tauri::State<'_, AppState>,
     input: UpdateSpoolDetailsInput,
+    expected_authority: Option<ReviewedLibraryAuthority>,
 ) -> Result<(), String> {
     let state = state.inner().clone();
-    run_library_sync_blocking(move || ActiveLibraryGateway::new(&state).update_spool_details(input))
-        .await
+    run_library_sync_blocking(move || {
+        ActiveLibraryGateway::new(&state).update_spool_details(input, expected_authority)
+    })
+    .await
 }
 
 #[tauri::command]

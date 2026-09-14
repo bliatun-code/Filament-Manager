@@ -595,17 +595,20 @@ async fn real_tcp_host_client_survives_outage_restart_and_session_renewal_withou
     {
         let state = client.clone();
         run_blocking(move || {
-            ActiveLibraryGateway::new(&state).update_spool_details(UpdateSpoolDetailsInput {
-                spool_id: HOST_SPOOL_ID.to_string(),
-                qr_code: Some(HOST_UPDATED_QR.to_string()),
-                status: "IN_STOCK".to_string(),
-                location: Some(HOST_UPDATED_LOCATION.to_string()),
-                home_location: Some(Some(HOST_UPDATED_LOCATION.to_string())),
-                spool_tare_weight_g: None,
-                ownership: None,
-                purchase_metadata: None,
-                purchase_price_batch_locked: None,
-            })
+            ActiveLibraryGateway::new(&state).update_spool_details(
+                UpdateSpoolDetailsInput {
+                    spool_id: HOST_SPOOL_ID.to_string(),
+                    qr_code: Some(HOST_UPDATED_QR.to_string()),
+                    status: "IN_STOCK".to_string(),
+                    location: Some(HOST_UPDATED_LOCATION.to_string()),
+                    home_location: Some(Some(HOST_UPDATED_LOCATION.to_string())),
+                    spool_tare_weight_g: None,
+                    ownership: None,
+                    purchase_metadata: None,
+                    purchase_price_batch_locked: None,
+                },
+                None,
+            )
         })
         .await;
     }
@@ -667,17 +670,20 @@ async fn real_tcp_host_client_survives_outage_restart_and_session_renewal_withou
     let offline_write = {
         let state = client.clone();
         tokio::task::spawn_blocking(move || {
-            ActiveLibraryGateway::new(&state).update_spool_details(UpdateSpoolDetailsInput {
-                spool_id: HOST_SPOOL_ID.to_string(),
-                qr_code: Some("must-not-be-saved-offline".to_string()),
-                status: "IN_STOCK".to_string(),
-                location: Some("Must not exist".to_string()),
-                home_location: Some(Some("Must not exist".to_string())),
-                spool_tare_weight_g: None,
-                ownership: None,
-                purchase_metadata: None,
-                purchase_price_batch_locked: None,
-            })
+            ActiveLibraryGateway::new(&state).update_spool_details(
+                UpdateSpoolDetailsInput {
+                    spool_id: HOST_SPOOL_ID.to_string(),
+                    qr_code: Some("must-not-be-saved-offline".to_string()),
+                    status: "IN_STOCK".to_string(),
+                    location: Some("Must not exist".to_string()),
+                    home_location: Some(Some("Must not exist".to_string())),
+                    spool_tare_weight_g: None,
+                    ownership: None,
+                    purchase_metadata: None,
+                    purchase_price_batch_locked: None,
+                },
+                None,
+            )
         })
         .await
         .expect("join offline Host write")

@@ -925,11 +925,13 @@ export default function InventoryPage({
   const {
     handleSaveMasterMetadata,
     handleSaveSpoolCommonDetails,
+    detailSaveError,
   } = useInventorySpoolDetailActions({
     canUseClientHostWrite,
     cancelDangerZoneConfirmation,
     clientHostBaseUrl,
     clientLibraryId,
+    clientTargetGeneration,
     clientReadOnly,
     editMasterColorName,
     editMasterFilamentName,
@@ -947,7 +949,7 @@ export default function InventoryPage({
     reloadPrinterOverview,
     reloadSpoolDetail,
     reloadSpools,
-    selectedSpool,
+    selectedSpool: showRollModal ? selectedSpool : null,
     selectedSpoolLocationDraft,
     selectedSpoolLoanedOut,
     selectedSpoolOwnerContactDraft,
@@ -1365,7 +1367,7 @@ export default function InventoryPage({
             displayTitle={selectedSpoolDisplayTitle}
             defaultPurchaseCurrency={defaultPurchaseCurrency}
             discardConfirmationOpen={selectedSpoolDiscardConfirmationOpen}
-            error={weightError ?? statusError ?? removalError ?? error}
+            error={detailSaveError ?? weightError ?? statusError ?? removalError ?? error}
             filamentName={editMasterFilamentName}
             formatHistoryEventDetails={formatHistoryEventDetails}
             formatHistoryEventType={formatHistoryEventType}

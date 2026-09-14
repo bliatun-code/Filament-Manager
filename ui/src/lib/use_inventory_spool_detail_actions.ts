@@ -1,17 +1,14 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import type { InventoryReloadReporter } from "./use_inventory_page_data";
 import { isValidSwatchColor, normalizeSwatchValue } from "./color_utils";
-import { commandErrorText } from "./error_text";
+import { commandErrorText, createAppError } from "./error_text";
 import type { useI18n } from "./i18n";
 import { isBorrowedInOwnership } from "./inventory_domain";
 import { resolveInventoryLocationReferenceForWrite } from "./inventory_location_model";
 import type { InventorySpool, OwnershipType } from "./inventory_list_model";
 import type { InventoryLocationRow } from "./tauri_location_client";
 import { parseInventorySpoolCommonDetailsDraft } from "./inventory_spool_detail_draft_model";
-import {
-  updateInventorySpoolDetails,
-  updateInventorySpoolOwnership,
-  updateInventorySpoolTareWeight,
-} from "./spool_writes";
+import { updateInventorySpoolDetails } from "./spool_writes";
 import { updateManagedMasterCatalogEntry } from "./catalog_writes";
 import {
   preparePurchaseReceiptMetadataUpdate,
@@ -20,11 +17,11 @@ import {
 } from "./purchase_receipt_metadata";
 
 type InventoryDetailReloads = {
-  reloadActiveLoans: () => Promise<void>;
-  reloadCatalog: () => Promise<void>;
-  reloadPrinterOverview: () => Promise<void>;
-  reloadSpoolDetail: (spoolId: string) => Promise<void>;
-  reloadSpools: () => Promise<void>;
+  reloadActiveLoans: (report?: InventoryReloadReporter) => Promise<void>;
+  reloadCatalog: (reportResult?: (successful: boolean) => void) => Promise<void>;
+  reloadPrinterOverview: (report?: InventoryReloadReporter) => Promise<void>;
+  reloadSpoolDetail: (spoolId: string, report?: InventoryReloadReporter) => Promise<void>;
+  reloadSpools: (report?: InventoryReloadReporter) => Promise<void>;
 };
 
 type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
@@ -32,6 +29,7 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   cancelDangerZoneConfirmation: () => void;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
+  clientTargetGeneration: number | null;
   clientReadOnly: boolean;
   editMasterColorName: string;
   editMasterFilamentName: string;
@@ -75,6 +73,7 @@ export function useInventorySpoolDetailActions({
   cancelDangerZoneConfirmation,
   clientHostBaseUrl,
   clientLibraryId,
+  clientTargetGeneration,
   clientReadOnly,
   editMasterColorName,
   editMasterFilamentName,
@@ -115,7 +114,93 @@ export function useInventorySpoolDetailActions({
   tauriAvailable,
   t,
 }: InventorySpoolDetailActionsInput) {
-  const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId };
+  const hostWriteTarget = { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration };
+  const viewKey = JSON.stringify([selectedSpool?.id, clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
+  const view = useMemo(() => ({ key: viewKey }), [viewKey]);
+  const commonKey = JSON.stringify([selectedSpool, locations, selectedSpoolLoanedOut, selectedSpoolResolvedTare,
+    selectedSpoolLocationDraft, selectedSpoolOwnershipDraft, selectedSpoolOwnerNameDraft,
+    selectedSpoolOwnerContactDraft, selectedSpoolOwnershipNoteDraft, selectedSpoolTareDraft,
+    selectedSpoolPurchasePriceBatchLockedDraft, selectedSpoolPurchaseMetadataDraft]);
+  const masterKey = JSON.stringify([selectedSpool?.masterId, masterEditUnlocked, editMasterVendor,
+    editMasterMaterial, editMasterFilamentName, editMasterColorName, editMasterHexColor]);
+  // Identity, rather than the serialized value alone, invalidates old A callbacks after A→B→A.
+  const commonIntent = useMemo(() => ({ key: commonKey }), [commonKey]);
+  const masterIntent = useMemo(() => ({ key: masterKey }), [masterKey]);
+  const currentIntents = useRef({ common: commonIntent, master: masterIntent });
+  type Kind = "common" | "master";
+  type Scope = { view: typeof view; busy: boolean; committed: Partial<Record<Kind, object>> };
+  const currentScope = useRef<Scope | null>(null);
+  const [detailSaveError, setDetailSaveError] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    currentIntents.current = { common: commonIntent, master: masterIntent };
+  }, [commonIntent, masterIntent]);
+  useLayoutEffect(() => {
+    const scope: Scope = { view, busy: false, committed: {} };
+    currentScope.current = scope;
+    setDetailSaveError(null);
+    return () => {
+      currentScope.current = null;
+      if (scope.busy) setManageBusy(false);
+    };
+  }, [view, setManageBusy]);
+  useLayoutEffect(() => {
+    if (manageBusy && !currentScope.current?.busy) setDetailSaveError(null);
+  }, [manageBusy]);
+
+  function canSubmit(kind: Kind) {
+    const scope = currentScope.current;
+    const intent = kind === "common" ? commonIntent : masterIntent;
+    return Boolean(scope && scope.view === view && !scope.busy && !manageBusy && selectedSpool &&
+      tauriAvailable && currentIntents.current[kind] === intent && scope.committed[kind] !== intent);
+  }
+
+  async function save(kind: Kind, write: () => Promise<unknown>, committed: () => void, failureMessage: string) {
+    if (!canSubmit(kind) || !selectedSpool) return;
+    const scope = currentScope.current!;
+    const intent = kind === "common" ? commonIntent : masterIntent;
+    const isCurrent = () => currentScope.current === scope && scope.view === view;
+    scope.busy = true;
+    setManageBusy(true);
+    setDetailSaveError(null);
+    setError(null);
+    setInfoMessage(null);
+    try {
+      try {
+        if (clientReadOnly && (!clientHostBaseUrl || !clientLibraryId ||
+          !Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration! < 0)) {
+          throw createAppError("common.invalid_request");
+        }
+        await write();
+      } catch (updateError) {
+        if (isCurrent()) setDetailSaveError(commandErrorText(updateError, failureMessage, t));
+        return;
+      }
+      if (!isCurrent()) return;
+      // Refresh can fail after storage has acknowledged the mutation. Keep those outcomes separate.
+      scope.committed[kind] = intent;
+      committed();
+      let failed = false;
+      const report: InventoryReloadReporter = (_domain, resolution) => {
+        if (resolution !== "LIVE" && resolution !== "SUPERSEDED") failed = true;
+      };
+      const refreshes = [() => reloadSpools(report), () => reloadPrinterOverview(report),
+        () => reloadActiveLoans(report), () => reloadSpoolDetail(selectedSpool.id, report)];
+      if (kind === "master") {
+        refreshes.push(() => reloadCatalog(successful => {
+          if (!successful) failed = true;
+        }));
+      }
+      const results = await Promise.allSettled(refreshes.map(refresh => Promise.resolve().then(refresh)));
+      if (isCurrent() && (failed || results.some(result => result.status === "rejected"))) {
+        setDetailSaveError(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
+    } finally {
+      if (isCurrent()) {
+        scope.busy = false;
+        setManageBusy(false);
+      }
+    }
+  }
   const currentLocationReference = selectedSpool
     ? resolveInventoryLocationReferenceForWrite(locations, selectedSpool.location, {
         id: selectedSpool.locationId,
@@ -123,14 +208,8 @@ export function useInventorySpoolDetailActions({
       })
     : null;
 
-  async function reloadInventorySurfaces() {
-    await reloadSpools();
-    await reloadPrinterOverview();
-    await reloadActiveLoans();
-  }
-
   async function handleSaveMasterMetadata() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
+    if (!canSubmit("master") || !selectedSpool) {
       return;
     }
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -140,7 +219,7 @@ export function useInventorySpoolDetailActions({
       return;
     }
     if (!masterEditUnlocked) {
-      setError(
+      setDetailSaveError(
         t(
           "inventory.error.unlockMetadataFirst",
           "Unlock roll metadata before editing catalog fields.",
@@ -154,7 +233,7 @@ export function useInventorySpoolDetailActions({
     const filamentName = editMasterFilamentName.trim();
     const colorName = editMasterColorName.trim();
     if (!material || !filamentName || !colorName) {
-      setError(
+      setDetailSaveError(
         t(
           "inventory.error.masterFieldsRequired",
           "Material, filament name and color are required.",
@@ -165,7 +244,7 @@ export function useInventorySpoolDetailActions({
 
     const rawHex = editMasterHexColor.trim();
     if (rawHex && !isValidSwatchColor(rawHex)) {
-      setError(
+      setDetailSaveError(
         t(
           "inventory.error.invalidHex",
           "Invalid swatch. Use #RGB, #RRGGBB, multi(#RRGGBB,#RRGGBB) or gradient(#RRGGBB,#RRGGBB).",
@@ -175,10 +254,8 @@ export function useInventorySpoolDetailActions({
     }
     const hexColor = rawHex ? normalizeSwatchValue(rawHex, { uppercase: true }) : null;
 
-    setManageBusy(true);
-    setError(null);
-    try {
-      await updateManagedMasterCatalogEntry(
+    await save("master",
+      () => updateManagedMasterCatalogEntry(
         {
           master_id: selectedSpool.masterId,
           vendor,
@@ -188,29 +265,17 @@ export function useInventorySpoolDetailActions({
           hex_color: hexColor,
         },
         hostWriteTarget,
-      );
-      await reloadSpools();
-      await reloadCatalog();
-      await reloadActiveLoans();
-      await reloadPrinterOverview();
-      await reloadSpoolDetail(selectedSpool.id);
-      markMasterMetadataSaved();
-      setMasterEditUnlocked(false);
-    } catch (updateError) {
-      console.error(updateError);
-      setError(
-        commandErrorText(
-          updateError,
-          t("inventory.error.updateMetadata", "Failed to update roll metadata."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
+      ),
+      () => {
+        markMasterMetadataSaved();
+        if (currentIntents.current.master === masterIntent) setMasterEditUnlocked(false);
+      },
+      t("inventory.error.updateMetadata", "Failed to update roll metadata."),
+    );
   }
 
   async function handleSaveSpoolCommonDetails() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
+    if (!canSubmit("common") || !selectedSpool) {
       return;
     }
     if (!clientReadOnly && !ensureLocalWriteAllowed()) {
@@ -231,7 +296,7 @@ export function useInventorySpoolDetailActions({
       tareWeight: selectedSpoolTareDraft,
     });
     if (!parsed.ok) {
-      setError(
+      setDetailSaveError(
         parsed.error === "borrowed-owner-required"
           ? t(
               "inventory.error.ownerNameRequired",
@@ -255,7 +320,7 @@ export function useInventorySpoolDetailActions({
     );
     if (!purchaseMetadata.ok) {
       setSelectedSpoolPurchaseMetadataErrors(purchaseMetadata.errors);
-      setError(
+      setDetailSaveError(
         t(
           "inventory.error.purchaseMetadataInvalid",
           "Review the highlighted purchase details.",
@@ -277,7 +342,7 @@ export function useInventorySpoolDetailActions({
           (selectedSpool.ownershipNote ?? "").trim() !==
             (parsed.value.ownershipNote ?? "")));
     if (selectedSpoolLoanedOut && (homeLocationChanged || ownershipChanged)) {
-      setError(
+      setDetailSaveError(
         t(
           "errors.loanedSpoolEditBlocked",
           "Return the loan before editing this roll's status, location, or ownership.",
@@ -287,15 +352,13 @@ export function useInventorySpoolDetailActions({
     }
 
     cancelDangerZoneConfirmation();
-    setManageBusy(true);
-    setError(null);
-    try {
       const tareWeightChanged =
         parsed.value.tareWeightGrams !== selectedSpoolResolvedTare;
       const purchasePriceBatchLockChanged =
         parsed.value.purchasePriceBatchLocked !==
         (selectedSpool.purchasePriceBatchLocked ?? false);
-      await updateInventorySpoolDetails(
+    await save("common",
+      () => updateInventorySpoolDetails(
         {
           spool_id: selectedSpool.id,
           qr_code: selectedSpool.qrCode ?? null,
@@ -337,196 +400,25 @@ export function useInventorySpoolDetailActions({
             ? { purchase_metadata: purchaseMetadata.value }
             : {}),
         },
-        hostWriteTarget,
-      );
-      markCommonDetailsSaved();
-      await reloadInventorySurfaces();
-      await reloadSpoolDetail(selectedSpool.id);
-      if (!isBorrowedInOwnership(parsed.value.ownershipType)) {
-        setSelectedSpoolOwnerNameDraft("");
-        setSelectedSpoolOwnerContactDraft("");
-        setSelectedSpoolOwnershipNoteDraft("");
-      }
-      setSelectedSpoolTareDraft(String(parsed.value.tareWeightGrams));
-      setInfoMessage(t("inventory.rollChangesSaved", "Roll changes saved."));
-    } catch (updateError) {
-      console.error(updateError);
-      setError(
-        commandErrorText(
-          updateError,
-          t("inventory.error.saveRollChanges", "Failed to save roll changes."),
-          t,
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
-  async function handleSaveSpoolOwnership() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-
-    const ownerName = selectedSpoolOwnerNameDraft.trim();
-    const ownerContact = selectedSpoolOwnerContactDraft.trim();
-    const ownershipNote = selectedSpoolOwnershipNoteDraft.trim();
-    const borrowedIn = isBorrowedInOwnership(selectedSpoolOwnershipDraft);
-    if (borrowedIn && !ownerName) {
-      setError(
-        t(
-          "inventory.error.ownerNameRequired",
-          "Borrowed-in rolls need an owner or counterparty name.",
-        ),
-      );
-      return;
-    }
-
-    cancelDangerZoneConfirmation();
-    setManageBusy(true);
-    setError(null);
-    try {
-      await updateInventorySpoolOwnership(
-        {
-          spool_id: selectedSpool.id,
-          ownership_type: selectedSpoolOwnershipDraft,
-          owner_name: borrowedIn ? ownerName : null,
-          owner_contact: borrowedIn ? ownerContact || null : null,
-          ownership_note: borrowedIn ? ownershipNote || null : null,
-        },
-        hostWriteTarget,
-      );
-      await reloadInventorySurfaces();
-      await reloadSpoolDetail(selectedSpool.id);
-      if (!borrowedIn) {
-        setSelectedSpoolOwnerNameDraft("");
-        setSelectedSpoolOwnerContactDraft("");
-        setSelectedSpoolOwnershipNoteDraft("");
-      }
-      setInfoMessage(
-        t("inventory.ownershipUpdated", "Roll ownership updated."),
-      );
-    } catch (ownershipError) {
-      console.error(ownershipError);
-      setError(
-        commandErrorText(
-          ownershipError,
-          t("inventory.error.updateOwnership", "Failed to update roll ownership."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
-  async function handleSaveSpoolLocation() {
-    if (!tauriAvailable || !selectedSpool || manageBusy) {
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    const location = resolveInventoryLocationReferenceForWrite(
-      locations,
-      selectedSpoolLocationDraft,
-      {
-        id: selectedSpool.homeLocationId,
-        name: selectedSpool.homeLocation,
+        { ...hostWriteTarget, reviewedAuthority: clientReadOnly
+          ? { mode: "CLIENT", base_url: clientHostBaseUrl!, library_id: clientLibraryId!, target_generation: clientTargetGeneration! }
+          : { mode: "LOCAL" } },
+      ),
+      () => {
+        markCommonDetailsSaved();
+        if (currentIntents.current.common === commonIntent) {
+          if (!isBorrowedInOwnership(parsed.value.ownershipType)) {
+            setSelectedSpoolOwnerNameDraft("");
+            setSelectedSpoolOwnerContactDraft("");
+            setSelectedSpoolOwnershipNoteDraft("");
+          }
+          setSelectedSpoolTareDraft(String(parsed.value.tareWeightGrams));
+        }
+        setInfoMessage(t("inventory.rollChangesSaved", "Roll changes saved."));
       },
+      t("inventory.error.saveRollChanges", "Failed to save roll changes."),
     );
-    setManageBusy(true);
-    setError(null);
-    try {
-      await updateInventorySpoolDetails(
-        {
-          spool_id: selectedSpool.id,
-          qr_code: selectedSpool.qrCode ?? null,
-          status: selectedSpool.status,
-          location: currentLocationReference,
-          home_location: location,
-        },
-        hostWriteTarget,
-      );
-      await reloadSpools();
-      await reloadPrinterOverview();
-      await reloadSpoolDetail(selectedSpool.id);
-      setInfoMessage(t("inventory.homeLocationSaved", "Home location saved."));
-    } catch (updateError) {
-      console.error(updateError);
-      setError(
-        commandErrorText(
-          updateError,
-          t("inventory.error.updateHomeLocation", "Failed to save home location."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
   }
 
-  async function handleSaveSpoolTareWeight() {
-    if (!selectedSpool || !tauriAvailable || manageBusy) {
-      return;
-    }
-    const parsed = Number.parseInt(selectedSpoolTareDraft, 10);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-      setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    const safeGrams = Math.max(0, Math.round(parsed));
-    setManageBusy(true);
-    setError(null);
-    try {
-      if (clientReadOnly) {
-        await updateInventorySpoolTareWeight(selectedSpool.id, safeGrams, hostWriteTarget);
-        await reloadSpools();
-        await reloadSpoolDetail(selectedSpool.id);
-        setSelectedSpoolTareDraft(String(safeGrams));
-        setInfoMessage(
-          t(
-            "inventory.clientTareWeightUpdated",
-            "Empty spool weight updated on the host library.",
-          ),
-        );
-        return;
-      }
-      await updateInventorySpoolTareWeight(selectedSpool.id, safeGrams);
-      await reloadSpools();
-      await reloadSpoolDetail(selectedSpool.id);
-      setInfoMessage(t("inventory.tareWeightUpdated", "Empty spool weight updated."));
-    } catch (updateError) {
-      console.error(updateError);
-      setError(
-        commandErrorText(
-          updateError,
-          t("inventory.error.updateTareWeight", "Failed to update empty spool weight."),
-        ),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
-  return {
-    handleSaveMasterMetadata,
-    handleSaveSpoolCommonDetails,
-    handleSaveSpoolOwnership,
-    handleSaveSpoolLocation,
-    handleSaveSpoolTareWeight,
-  };
+  return { handleSaveMasterMetadata, handleSaveSpoolCommonDetails, detailSaveError };
 }

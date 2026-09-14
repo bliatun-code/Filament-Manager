@@ -6,12 +6,14 @@ use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_cache_refresh::refresh_library_sync_spool_cache;
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
+    prepare_library_sync_host_write_for_generation,
     require_host_filament_price_standards_capability,
     require_host_purchase_receipt_metadata_capability, save_library_sync_success,
     trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
     perform_library_sync_host_write, perform_library_sync_host_write_and_parse,
+    perform_library_sync_host_write_and_parse_for_target,
 };
 use crate::library_sync_models::{
     LibrarySyncCreateSpoolInput, LibrarySyncCreateSpoolResponse,
@@ -134,6 +136,7 @@ fn update_library_sync_host_spool_details_blocking(
         state,
         &base_url,
         expected_library_id.as_deref(),
+        None,
         HostSpoolDetailsUpdate {
             spool_id: input.spool_id,
             qr_code: input.qr_code,
@@ -157,12 +160,14 @@ pub(crate) fn update_active_library_host_spool_details_blocking(
     state: &AppState,
     base_url: &str,
     expected_library_id: &str,
+    expected_generation: u64,
     input: UpdateSpoolDetailsInput,
 ) -> Result<(), String> {
     update_library_sync_host_spool_details_for_target(
         state,
         base_url,
         Some(expected_library_id),
+        Some(expected_generation),
         host_spool_details_update_from_active_input(input),
     )
 }
@@ -197,11 +202,12 @@ fn update_library_sync_host_spool_details_for_target(
     state: &AppState,
     base_url: &str,
     expected_library_id: Option<&str>,
+    expected_generation: Option<u64>,
     input: HostSpoolDetailsUpdate,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(base_url, expected_library_id);
     let (normalized_base_url, health, target) =
-        prepare_library_sync_host_write(state, &host_input)?;
+        prepare_library_sync_host_write_for_generation(state, &host_input, expected_generation)?;
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
         return Err("Spool id is required.".to_string());
@@ -212,15 +218,17 @@ fn update_library_sync_host_spool_details_for_target(
     let payload = host_spool_details_payload_for_capabilities(&input, &health.capabilities)?;
     let spool_id = encode_library_sync_path_segment(spool_id);
 
-    perform_library_sync_host_write(
+    let _: serde_json::Value = perform_library_sync_host_write_and_parse_for_target(
         state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/details"),
         &serde_json::Value::Object(payload),
+        &target,
+        None,
     )?;
 
     refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
-    save_library_sync_success(state, &target, "Host spool details updated.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host spool details updated.", None);
     Ok(())
 }
 
@@ -510,7 +518,7 @@ mod tests {
         forbidden_request_fragments: &'static [&'static str],
     }
 
-    fn read_http_request(stream: &mut std::net::TcpStream) -> String {
+    pub(super) fn read_http_request(stream: &mut std::net::TcpStream) -> String {
         let mut received = Vec::new();
         let mut buffer = [0_u8; 4096];
         loop {
@@ -570,13 +578,15 @@ mod tests {
         (format!("http://{address}"), handle)
     }
 
-    fn fake_host_state(base_url: &str) -> (AppState, PathBuf) {
+    pub(super) fn fake_host_state(base_url: &str) -> (AppState, PathBuf) {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        let sequence = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let suffix = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
         let db_path = std::env::temp_dir().join(format!(
-            "filament-manager-common-details-host-test-{}-{suffix}.sqlite",
+            "filament-manager-common-details-host-test-{}-{suffix}-{sequence}.sqlite",
             std::process::id(),
         ));
         let db = FilamentDatabase::open(&db_path).expect("open fake Host database");
@@ -603,7 +613,7 @@ mod tests {
         (state, db_path)
     }
 
-    fn common_details_update() -> HostSpoolDetailsUpdate {
+    pub(super) fn common_details_update() -> HostSpoolDetailsUpdate {
         HostSpoolDetailsUpdate {
             spool_id: "spool-1".to_string(),
             qr_code: Some("FM-SPOOL-1".to_string()),
@@ -754,6 +764,7 @@ mod tests {
             &state,
             &base_url,
             Some("library-test"),
+            None,
             common_details_update(),
         )
         .expect_err("legacy Host must fail before the first partial write");
@@ -785,3 +796,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "library_sync_detail_save_tests.rs"]
+mod detail_save_tests;

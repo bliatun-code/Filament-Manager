@@ -43,6 +43,51 @@ pub(crate) fn require_authoritative_local_mode(mode: &str) -> Result<(), String>
     }
 }
 
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(tag = "mode", rename_all = "SCREAMING_SNAKE_CASE", deny_unknown_fields)]
+pub(crate) enum ReviewedLibraryAuthority {
+    Local,
+    Client {
+        base_url: String,
+        library_id: String,
+        target_generation: u64,
+    },
+}
+
+fn require_reviewed_authority(
+    settings: &LibrarySyncSettingsRow,
+    expected: &ReviewedLibraryAuthority,
+) -> Result<(), String> {
+    let matches = match expected {
+        ReviewedLibraryAuthority::Local => require_authoritative_local_mode(&settings.mode).is_ok(),
+        ReviewedLibraryAuthority::Client {
+            base_url,
+            library_id,
+            target_generation,
+        } => {
+            settings.mode == "CLIENT"
+                && settings.target_generation == *target_generation
+                && !library_id.trim().is_empty()
+                && settings.library_id.trim() == library_id.trim()
+                && normalize_library_sync_base_url(base_url)
+                    .ok()
+                    .is_some_and(|url| {
+                        settings
+                            .host_base_url
+                            .as_deref()
+                            .and_then(|host| normalize_library_sync_base_url(host).ok())
+                            .as_ref()
+                            == Some(&url)
+                    })
+        }
+    };
+    if matches {
+        Ok(())
+    } else {
+        Err(coded_command_error("common.invalid_request"))
+    }
+}
+
 pub(crate) struct ActiveLibraryGateway<'state> {
     state: &'state AppState,
 }
@@ -55,9 +100,14 @@ impl<'state> ActiveLibraryGateway<'state> {
     pub(crate) fn update_spool_details(
         &self,
         input: UpdateSpoolDetailsInput,
+        expected_authority: Option<ReviewedLibraryAuthority>,
     ) -> Result<(), String> {
         let authority_gate = lock_secure_credential_mutation()?;
         let settings = with_inventory(self.state, |engine| engine.get_library_sync_settings())?;
+        if let Some(expected) = &expected_authority {
+            require_reviewed_authority(&settings, expected)?;
+        }
+        let generation = settings.target_generation;
         let target = resolve_write_target(ActiveLibraryConfiguration::from(settings))?;
         match target {
             ActiveLibraryWriteTarget::Local => {
@@ -72,6 +122,7 @@ impl<'state> ActiveLibraryGateway<'state> {
                     self.state,
                     &target.base_url,
                     &target.library_id,
+                    generation,
                     input,
                 )
             }
@@ -309,6 +360,38 @@ mod tests {
 
         assert_eq!(result.expect_err("host error"), "host unavailable");
         assert!(!local_called.get());
+    }
+
+    #[test]
+    fn reviewed_authority_matches_role_library_url_and_generation() {
+        let db = FilamentDatabase::open(":memory:").unwrap();
+        db.apply_schema().unwrap();
+        let mut settings = db.get_library_sync_settings().unwrap();
+        let local = super::ReviewedLibraryAuthority::Local;
+        super::require_reviewed_authority(&settings, &local).unwrap();
+        settings.mode = "CLIENT".into();
+        settings.host_base_url = Some("http://host-a.local:4278".into());
+        settings.library_id = "library-a".into();
+        settings.target_generation = 7;
+        let client = super::ReviewedLibraryAuthority::Client {
+            base_url: "http://host-a.local:4278/".into(),
+            library_id: "library-a".into(),
+            target_generation: 7,
+        };
+        super::require_reviewed_authority(&settings, &client).unwrap();
+        assert!(super::require_reviewed_authority(&settings, &local).is_err());
+        settings.library_id = "library-b".into();
+        assert!(super::require_reviewed_authority(&settings, &client).is_err());
+        settings.library_id = "library-a".into();
+        settings.host_base_url = Some("http://host-b.local:4278".into());
+        assert!(super::require_reviewed_authority(&settings, &client).is_err());
+        settings.host_base_url = Some("http://host-a.local:4278".into());
+        settings.target_generation = 9;
+        assert!(super::require_reviewed_authority(&settings, &client).is_err());
+        settings.target_generation = 7;
+        settings.mode = "STANDALONE".into();
+        assert!(super::require_reviewed_authority(&settings, &client).is_err());
+        assert!(serde_json::from_value::<super::ReviewedLibraryAuthority>(serde_json::json!({"mode":"CLIENT","base_url":"http://host-a.local:4278","library_id":"library-a"})).is_err());
     }
 
     #[test]
