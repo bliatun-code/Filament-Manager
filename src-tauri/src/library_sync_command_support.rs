@@ -79,8 +79,21 @@ pub(crate) fn prepare_library_sync_host_write(
     state: &AppState,
     input: &ValidateLibrarySyncHostInput,
 ) -> Result<(String, CompanionHealthCheckResponse, LibrarySyncTargetGuard), String> {
+    prepare_library_sync_host_write_for_generation(state, input, None)
+}
+
+pub(crate) fn prepare_library_sync_host_write_for_generation(
+    state: &AppState,
+    input: &ValidateLibrarySyncHostInput,
+    expected_generation: Option<u64>,
+) -> Result<(String, CompanionHealthCheckResponse, LibrarySyncTargetGuard), String> {
     let (normalized_base_url, expected_library_id) = normalize_library_sync_host_input(input)?;
     let target = capture_library_sync_target(state, &normalized_base_url, expected_library_id)?;
+    if expected_generation.is_some_and(|generation| generation != target.generation()) {
+        return Err(crate::app_error::coded_command_error(
+            "common.invalid_request",
+        ));
+    }
     let health = ensure_library_sync_host_matches(&normalized_base_url, Some(target.library_id()))?;
     Ok((normalized_base_url, health, target))
 }

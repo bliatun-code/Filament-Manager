@@ -24,10 +24,11 @@ import {
   type UpdateSpoolOwnershipInput,
   type UpdateSpoolRfidTagInput,
 } from "./tauri_client";
-import { updateActiveLibrarySpoolDetails } from "./tauri_active_library_gateway_client";
+import { updateActiveLibrarySpoolDetails, type ReviewedLibraryAuthority } from "./tauri_active_library_gateway_client";
 import { requireClientHostWriteTarget } from "./host_write_target";
 
 export type SpoolWriteTarget = {
+  reviewedAuthority?: ReviewedLibraryAuthority;
   clientReadOnly?: boolean;
   clientHostBaseUrl?: string | null;
   clientLibraryId?: string | null;
@@ -98,11 +99,10 @@ export async function updateInventorySpoolDetails(
   target: SpoolWriteTarget = {},
   dependencies: SpoolWriteDependencies = {},
 ): Promise<void> {
-  // Retained for source compatibility while Rust owns active-library target selection.
-  void target;
+  // Rust resolves the authority; reviewed saves also constrain it to the original view.
   const updateDetails =
     dependencies.updateActiveLibrarySpoolDetails ?? updateActiveLibrarySpoolDetails;
-  await updateDetails(input);
+  await updateDetails(input, target.reviewedAuthority);
 }
 
 export async function updateInventorySpoolOwnership(

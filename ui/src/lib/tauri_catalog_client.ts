@@ -229,10 +229,12 @@ export async function updateLibrarySyncHostMasterCatalogEntry(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   input: UpdateMasterCatalogEntryInput,
+  expectedTargetGeneration?: number | null,
 ) {
   return invoke<void>("update_library_sync_host_master_catalog_entry", {
     input: {
       base_url: baseUrl,
+      ...(expectedTargetGeneration != null ? { expected_target_generation: expectedTargetGeneration } : {}),
       expected_library_id: expectedLibraryId ?? null,
       master_id: input.master_id,
       material: input.material,

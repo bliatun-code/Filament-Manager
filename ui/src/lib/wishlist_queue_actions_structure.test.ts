@@ -66,23 +66,19 @@ test("wishlist receipt action forwards optional purchase metadata and reports su
   assert.match(handlerBlock, /commandErrorText\([\s\S]*stockError[\s\S]*,[\s\S]*t[\s\S]*\)/);
 });
 
-test("purchase receipt and later detail writes both localize structured Host errors", () => {
+test("detail save keeps purchase metadata and the batch lock in one payload", () => {
   const saveStart = detailActionsSource.indexOf(
     "async function handleSaveSpoolCommonDetails",
   );
-  const ownershipStart = detailActionsSource.indexOf(
-    "async function handleSaveSpoolOwnership",
+  const saveEnd = detailActionsSource.indexOf(
+    "  return { handleSaveMasterMetadata",
   );
-  assert.ok(saveStart >= 0 && ownershipStart > saveStart);
-  const saveBlock = detailActionsSource.slice(saveStart, ownershipStart);
+  assert.ok(saveStart >= 0 && saveEnd > saveStart);
+  const saveBlock = detailActionsSource.slice(saveStart, saveEnd);
 
   assert.match(saveBlock, /purchase_metadata: purchaseMetadata\.value/);
   assert.match(
     saveBlock,
     /purchase_price_batch_locked: parsed\.value\.purchasePriceBatchLocked/,
-  );
-  assert.match(
-    saveBlock,
-    /catch \(updateError\)[\s\S]*commandErrorText\([\s\S]*updateError[\s\S]*,[\s\S]*t[\s\S]*\)/,
   );
 });

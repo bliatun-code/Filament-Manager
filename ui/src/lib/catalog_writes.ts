@@ -97,7 +97,7 @@ export async function updateManagedMasterCatalogEntry(
       target,
       "Host connection details are missing for this catalog action.",
     );
-    await updateHostMasterCatalogEntry(hostTarget.baseUrl, hostTarget.libraryId, input);
+    await updateHostMasterCatalogEntry(hostTarget.baseUrl, hostTarget.libraryId, input, target.clientTargetGeneration);
     return;
   }
 

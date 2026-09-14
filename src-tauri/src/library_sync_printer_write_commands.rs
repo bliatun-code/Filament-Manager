@@ -6,10 +6,12 @@ use crate::library_sync_cache_refresh::{
 };
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_write,
-    save_library_sync_success, save_library_sync_success_without_message, trimmed_non_empty,
+    prepare_library_sync_host_write_for_generation, save_library_sync_success,
+    save_library_sync_success_without_message, trimmed_non_empty,
 };
 use crate::library_sync_host_client::{
     perform_library_sync_host_write, perform_library_sync_host_write_and_parse,
+    perform_library_sync_host_write_and_parse_for_target,
 };
 use crate::library_sync_models::{
     LibrarySyncAcceptBambuLiveWeightEstimateInput, LibrarySyncAssignPrinterSlotInput,
@@ -239,12 +241,16 @@ pub(crate) async fn update_library_sync_host_master_catalog_entry(
     .await
 }
 
-fn update_library_sync_host_master_catalog_entry_blocking(
+pub(crate) fn update_library_sync_host_master_catalog_entry_blocking(
     state: &AppState,
     input: LibrarySyncUpdateMasterCatalogEntryInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
 
     let master_id = input.master_id.trim();
     let material = input.material.trim();
@@ -259,7 +265,7 @@ fn update_library_sync_host_master_catalog_entry_blocking(
     }
     let master_id = encode_library_sync_path_segment(master_id);
 
-    perform_library_sync_host_write(
+    let _: serde_json::Value = perform_library_sync_host_write_and_parse_for_target(
         state,
         &normalized_base_url,
         &format!("/api/v1/catalog/masters/{master_id}/details"),
@@ -272,9 +278,11 @@ fn update_library_sync_host_master_catalog_entry_blocking(
             "vendor": trimmed_non_empty(input.vendor.as_deref()),
             "default_weight": input.default_weight,
         }),
+        &target,
+        None,
     )?;
 
-    save_library_sync_success(state, &target, "Host catalog entry updated.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host catalog entry updated.", None);
     Ok(())
 }
 
