@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   inventoryLocationActionRows,
   normalizeInventoryLocationName,
@@ -185,6 +185,7 @@ export function InventoryLocationDeleteConfirmation({
 }
 
 type InventoryLocationManagementPanelProps = {
+  authorityKey?: string;
   busy: boolean;
   canMutate: boolean;
   loading: boolean;
@@ -214,17 +215,11 @@ function locationActionDomId(
   return `inventory-location-${action}-${locationDomId(locationId)}`;
 }
 
-function focusAfterRender(elementId: string, fallbackElementId?: string): void {
-  if (typeof window === "undefined") return;
-  window.requestAnimationFrame(() => {
-    const element =
-      document.getElementById(elementId) ??
-      (fallbackElementId ? document.getElementById(fallbackElementId) : null);
-    element?.focus();
-  });
+export function InventoryLocationManagementPanel(props: InventoryLocationManagementPanelProps) {
+  return <InventoryLocationManagementContents key={props.authorityKey} {...props} />;
 }
 
-export function InventoryLocationManagementPanel({
+function InventoryLocationManagementContents({
   busy,
   canMutate,
   loading,
@@ -260,6 +255,64 @@ export function InventoryLocationManagementPanel({
   const [mergeConfirmationVisible, setMergeConfirmationVisible] = useState(false);
   const normalizedNewName = normalizeInventoryLocationName(newName);
   const normalizedRename = normalizeInventoryLocationName(renameName);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const mounted = useRef(false);
+  const [focusTarget, setFocusTarget] = useState<{ elementId: string; fallbackElementId?: string } | null>(null);
+  function focusAfterRender(elementId: string, fallbackElementId?: string) {
+    setFocusTarget({ elementId, fallbackElementId });
+  }
+  useLayoutEffect(() => {
+    if (!focusTarget) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (!mounted.current) return;
+      const element = document.getElementById(focusTarget.elementId) ??
+        (focusTarget.fallbackElementId ? document.getElementById(focusTarget.fallbackElementId) : null);
+      element?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusTarget]);
+
+  const submission = useRef(false);
+  const acknowledged = useRef(new WeakSet<object>());
+  const draftKey = JSON.stringify([newName, renameId, renameName, archiveConfirmationId,
+    deleteConfirmationId, sourceId, targetId, mergeConfirmationVisible]);
+  const draft = useMemo(() => ({ key: draftKey }), [draftKey]);
+  const reviewKey = JSON.stringify([rows, mutationsAvailable, loading]);
+  const review = useMemo(() => ({ key: reviewKey }), [reviewKey]);
+  const latest = useRef({ draft, review });
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  useLayoutEffect(() => { latest.current = { draft, review }; }, [draft, review]);
+  useLayoutEffect(() => {
+    if (submission.current) return;
+    setArchiveConfirmationId("");
+    setDeleteConfirmationId("");
+    setMergeConfirmationVisible(false);
+  }, [review]);
+
+  async function runAction(operation: () => Promise<boolean>, complete: (result: boolean) => void) {
+    if (!mounted.current || busy || loading || !mutationsAvailable || submission.current ||
+      latest.current.draft !== draft || latest.current.review !== review || acknowledged.current.has(draft)) return;
+    submission.current = true;
+    setActionError(null);
+    try {
+      const result = await operation();
+      if (result) acknowledged.current.add(draft);
+      if (mounted.current && !result && latest.current.review !== review) {
+        setArchiveConfirmationId("");
+        setDeleteConfirmationId("");
+        setMergeConfirmationVisible(false);
+      }
+      if (mounted.current && latest.current.draft === draft) complete(result);
+    } catch {
+      if (mounted.current && latest.current.draft === draft) {
+        setActionError(t("errors.requestFailed", "The request could not be completed."));
+      }
+    } finally { submission.current = false; }
+  }
+
 
   const resetRename = () => {
     setRenameId("");
@@ -302,7 +355,7 @@ export function InventoryLocationManagementPanel({
             onSubmit={(event: FormEvent<HTMLFormElement>) => {
               event.preventDefault();
               if (!row.canRename || !validInventoryLocationName(renameName)) return;
-              void onRename(row.id, normalizedRename).then((renamed) => {
+              void runAction(() => onRename(row.id, normalizedRename), (renamed) => {
                 if (renamed) {
                   resetRename();
                   focusAfterRender(renameActionId);
@@ -424,7 +477,7 @@ export function InventoryLocationManagementPanel({
                   })}
                   onClick={() => {
                     setDeleteConfirmationId("");
-                    void onRestore(row.id).then((restored) => {
+                    void runAction(() => onRestore(row.id), (restored) => {
                       if (restored) focusAfterRender(renameActionId);
                     });
                   }}
@@ -476,7 +529,7 @@ export function InventoryLocationManagementPanel({
               focusAfterRender(archiveActionId);
             }}
             onConfirm={() => {
-              void onArchive(row.id).then((archived) => {
+              void runAction(() => onArchive(row.id), (archived) => {
                 if (archived) {
                   setArchiveConfirmationId("");
                   focusAfterRender(activeLocationsHeadingId);
@@ -497,7 +550,7 @@ export function InventoryLocationManagementPanel({
               focusAfterRender(deleteActionId);
             }}
             onConfirm={() => {
-              void onDelete(row.id).then((deleted) => {
+              void runAction(() => onDelete(row.id), (deleted) => {
                 setDeleteConfirmationId("");
                 if (deleted) {
                   focusAfterRender(
@@ -523,6 +576,7 @@ export function InventoryLocationManagementPanel({
       <h2 id="inventory-location-management-heading" className="sr-only">
         {t("inventory.locationManagementTitle", "Manage locations")}
       </h2>
+      {actionError ? <FeedbackBanner tone="danger" className="mb-4">{actionError}</FeedbackBanner> : null}
       {source === "LEGACY_HOST" || (source === "LIVE" && !mutationsSupported) ? (
         <FeedbackBanner tone="warning" className="mb-4">
           {t(
@@ -568,7 +622,7 @@ export function InventoryLocationManagementPanel({
         onSubmit={(event) => {
           event.preventDefault();
           if (!mutationsAvailable || !validInventoryLocationName(newName)) return;
-          void onCreate(normalizedNewName).then((created) => {
+          void runAction(() => onCreate(normalizedNewName), (created) => {
             if (created) setNewName("");
           });
         }}
@@ -745,7 +799,7 @@ export function InventoryLocationManagementPanel({
                   focusAfterRender(mergeReviewButtonId);
                 }}
                 onConfirm={() => {
-                  void onMerge(sourceId, targetId).then((merged) => {
+                  void runAction(() => onMerge(sourceId, targetId), (merged) => {
                     if (merged) {
                       const mergedTargetId = targetId;
                       setMergeConfirmationVisible(false);

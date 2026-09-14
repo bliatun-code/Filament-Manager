@@ -169,7 +169,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 [Avhengighetsgjennomgangen 14. september](DEPENDENCY_REVIEW_2026-09-14.md) er merget gjennom PR #124 som `22106b33`, etter én push og elleve grønne kontroller uten omkjøring. Den samler Dependabot #121–123, React 19.3, Vite 8.3 og kompatible Rust-oppdateringer, inkludert Quinn-sikkerhetsrettelser. Tauri 3 er publisert som alfa og krever en separat migrering; TypeScript 7 venter fortsatt på lintstøtte. Den daterte rapporten beskriver gjenværende varsler og hva som må utløse neste oppgradering.
 
-Neste samlede pakke sikrer [lagring av rull- og katalogdetaljer](INVENTORY_DETAIL_SAVES_2026-09-14.md) mot dobbeltinnsending, gamle dialogsvar og bytte av Host-mål. Bekreftet lagring beholdes som vellykket selv om etterfølgende oppfriskning feiler.
+[Lagring av rull- og katalogdetaljer](INVENTORY_DETAIL_SAVES_2026-09-14.md) er merget i PR #125 som `9a357248`, etter én push og åtte grønne kontroller uten omkjøring. Begge plattformene bestod 1 864 UI-tester og pakket backup-/Host/Client-verifisering. Neste samlede pakke sikrer [de seks lokasjonshandlingene](INVENTORY_LOCATION_ACTIONS_2026-09-14.md), inkludert bekreftelser, tastaturfokus, oppfriskingsfeil og målscopet Host-skriving.
 
 Vanlig registrering har fått en [egen kvittering og eksplisitte neste handlinger](REGISTRATION_FOLLOWUP_2026-09-06.md); samlet lokal verifisering og native kontroll med uavhengige databasekontroller er bestått. Lokasjon ved mottak og nøyaktig printerspor er allerede [rettet og verifisert lokalt](USABILITY_FOLLOWUP_2026-09-06.md). Hypotesen om menneskelig dobbeltregistrering fra [AI-evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md) er fortsatt ikke målt.
 
@@ -215,6 +215,8 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 ## Fremdriftslogg
 
 ### 2026-09-14
+
+- PR #125 er merget som `9a357248`. Neste pakke samler oppretting, navneendring, arkivering, gjenoppretting, sletting og sammenslåing av lokasjoner, med reelle UI-regresjoner og native kontroll av gamle Host-generasjoner.
 
 - PR #120 er merget som `36ff64f6`; atomisk veiing og reaktivering er på hovedgrenen. PR #124 er deretter merget som `22106b33`, med alle elleve kontroller grønne. De erstattede Dependabot-PR-ene #121–123 er lukket. Neste arbeid følger de to detaljlagringene som fortsatt manglet vern mot gamle UI-intensjoner.
 

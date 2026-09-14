@@ -8,10 +8,11 @@ use crate::inventory_location_models::{
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
 use crate::library_sync_command_support::{
     encode_library_sync_path_segment, library_sync_host_input, prepare_library_sync_host_read,
-    prepare_library_sync_host_write, save_library_sync_success,
+    prepare_library_sync_host_write_for_generation, save_library_sync_success,
 };
 use crate::library_sync_host_client::{
-    get_library_sync_host_json_authenticated, perform_library_sync_host_write_and_parse,
+    get_library_sync_host_json_authenticated_for_target,
+    perform_library_sync_host_write_and_parse_for_target,
 };
 use crate::library_sync_models::LibrarySyncCacheTargetInput;
 use crate::library_sync_target_guard::{
@@ -110,15 +111,17 @@ fn create_library_sync_host_location_blocking(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
+        input.expected_target_generation,
     )?;
     let row = location_write(
         state,
         &base_url,
+        &target,
         "/api/v1/locations",
         &serde_json::json!({ "name": input.name, "parent_id": input.parent_id }),
     )?;
     refresh_location_cache_best_effort(state, &base_url, &target);
-    save_library_sync_success(state, &target, "Host location created.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host location created.", None);
     Ok(row)
 }
 
@@ -140,6 +143,7 @@ fn rename_library_sync_host_location_blocking(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
+        input.expected_target_generation,
     )?;
     let path = format!(
         "/api/v1/locations/{}/rename",
@@ -148,11 +152,12 @@ fn rename_library_sync_host_location_blocking(
     let row = location_write(
         state,
         &base_url,
+        &target,
         &path,
         &serde_json::json!({ "location_id": input.location_id, "name": input.name }),
     )?;
     refresh_location_cache_best_effort(state, &base_url, &target);
-    save_library_sync_success(state, &target, "Host location renamed.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host location renamed.", None);
     Ok(row)
 }
 
@@ -217,6 +222,7 @@ fn location_id_write_blocking(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
+        input.expected_target_generation,
     )?;
     let path = format!(
         "/api/v1/locations/{}/{}",
@@ -226,11 +232,12 @@ fn location_id_write_blocking(
     let row = location_write(
         state,
         &base_url,
+        &target,
         &path,
         &serde_json::json!({ "location_id": input.location_id }),
     )?;
     refresh_location_cache_best_effort(state, &base_url, &target);
-    save_library_sync_success(state, &target, success_message, None)?;
+    let _ = save_library_sync_success(state, &target, success_message, None);
     Ok(row)
 }
 
@@ -252,10 +259,12 @@ fn merge_library_sync_host_locations_blocking(
         state,
         &input.base_url,
         input.expected_library_id.as_deref(),
+        input.expected_target_generation,
     )?;
     let result = location_write(
         state,
         &base_url,
+        &target,
         "/api/v1/locations/merge",
         &serde_json::json!({
             "source_id": input.source_id,
@@ -263,7 +272,7 @@ fn merge_library_sync_host_locations_blocking(
         }),
     )?;
     refresh_location_cache_best_effort(state, &base_url, &target);
-    save_library_sync_success(state, &target, "Host locations merged.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host locations merged.", None);
     Ok(result)
 }
 
@@ -271,9 +280,11 @@ fn prepare_location_write_target(
     state: &AppState,
     base_url: &str,
     expected_library_id: Option<&str>,
+    expected_generation: Option<u64>,
 ) -> Result<(String, LibrarySyncTargetGuard), String> {
     let host_input = library_sync_host_input(base_url, expected_library_id);
-    let (base_url, health, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (base_url, health, target) =
+        prepare_library_sync_host_write_for_generation(state, &host_input, expected_generation)?;
     if !host_supports_locations(&health.capabilities) {
         // Hosts released before the capability marker can still have the
         // collection endpoint. Probe that unambiguous route once before
@@ -293,10 +304,13 @@ fn prepare_location_write_target(
 fn location_write<T: serde::Serialize, R: serde::de::DeserializeOwned>(
     state: &AppState,
     base_url: &str,
+    target: &LibrarySyncTargetGuard,
     path: &str,
     payload: &T,
 ) -> Result<R, String> {
-    perform_library_sync_host_write_and_parse(state, base_url, path, payload)
+    perform_library_sync_host_write_and_parse_for_target(
+        state, base_url, path, payload, target, None,
+    )
 }
 
 fn fetch_and_cache_locations(
@@ -304,10 +318,11 @@ fn fetch_and_cache_locations(
     base_url: &str,
     target: &LibrarySyncTargetGuard,
 ) -> Result<crate::backend::filament_database::LibrarySyncCachedLocationListRow, String> {
-    let rows: Vec<InventoryLocationRow> = get_library_sync_host_json_authenticated(
+    let rows: Vec<InventoryLocationRow> = get_library_sync_host_json_authenticated_for_target(
         state,
         base_url,
         "/api/v1/library/locations?include_archived=true",
+        target,
     )?;
     with_current_library_sync_target(state, target, |engine| {
         engine.save_library_sync_cached_locations(&rows)
@@ -407,13 +422,15 @@ mod tests {
         (format!("http://{address}"), handle)
     }
 
-    fn test_state(base_url: &str) -> (AppState, std::path::PathBuf) {
+    pub(super) fn test_state(base_url: &str) -> (AppState, std::path::PathBuf) {
         let suffix = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let sequence = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let db_path = std::env::temp_dir().join(format!(
-            "filament-manager-location-host-test-{}-{suffix}.sqlite",
+            "filament-manager-location-host-test-{}-{suffix}-{sequence}.sqlite",
             std::process::id(),
         ));
         let db = FilamentDatabase::open(&db_path).expect("open test database");
@@ -445,6 +462,7 @@ mod tests {
             base_url: base_url.to_string(),
             expected_library_id: Some("library-test".to_string()),
             location_id: "location-missing".to_string(),
+            expected_target_generation: None,
         }
     }
 
@@ -562,3 +580,7 @@ mod tests {
         let _ = std::fs::remove_file(db_path);
     }
 }
+
+#[cfg(test)]
+#[path = "library_sync_location_write_tests.rs"]
+mod write_tests;
