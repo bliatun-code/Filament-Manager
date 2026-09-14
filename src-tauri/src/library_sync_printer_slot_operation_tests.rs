@@ -644,3 +644,6 @@ mod roll_status_tests;
 
 #[path = "library_sync_roll_weight_tests.rs"]
 mod roll_weight_tests;
+
+#[path = "library_sync_bulk_selection_tests.rs"]
+mod bulk_selection_tests;

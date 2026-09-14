@@ -729,10 +729,13 @@ export default function InventoryPage({
   const inventoryLabelSheetVisualQaOpenedRef = useRef(false);
 
   const {
+    bulkError, bulkInfo,
     collectionProps: inventoryBulkCollectionProps,
     panelProps: inventoryBulkActionsProps,
     selectionModeTriggerProps: inventoryBulkSelectionTriggerProps,
   } = useInventoryBulkActions({
+    active: activeWorkspaceView === "STOCK", ready: librarySyncReady, clientTargetGeneration,
+    clientDataLive: !clientReadOnly || (clientInventorySource === "LIVE" && !clientInventoryPartial),
     activeLoanSpoolIds,
     busy: manageBusy,
     clientHostBaseUrl,
@@ -1419,7 +1422,7 @@ export default function InventoryPage({
           vendorOptions,
           visibleInventoryCount,
         }}
-        error={activeWorkspaceView === "LOCATIONS" ? locationError ?? error : error}
+        error={activeWorkspaceView === "LOCATIONS" ? locationError ?? error : activeWorkspaceView === "STOCK" ? bulkError ?? error : error}
         loadError={loadError}
         loadErrorRetryDisabled={!tauri || librarySyncResolving || manageBusy}
         loadErrorRetrying={librarySyncResolving || refreshing}
@@ -1461,7 +1464,7 @@ export default function InventoryPage({
           showStockFilters: activeWorkspaceView === "STOCK",
           statusFilter,
         }}
-        infoMessage={activeWorkspaceView === "LOCATIONS" ? locationInfo ?? infoMessage : infoMessage}
+        infoMessage={activeWorkspaceView === "LOCATIONS" ? locationInfo ?? infoMessage : activeWorkspaceView === "STOCK" ? bulkInfo ?? infoMessage : infoMessage}
         showRollModal={showRollModal}
         totalInventoryCount={spools.length}
         totalLocationCount={selectableInventoryLocations(locations).length}
