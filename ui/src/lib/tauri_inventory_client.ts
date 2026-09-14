@@ -196,13 +196,21 @@ export type InventoryMarkEmptyCommand = {
   spool: import("./inventory_bulk_actions_model").InventoryBulkSpoolPrecondition;
   expected_slot_id: string | null;
 };
+export type InventoryRollWeightCommand = {
+  action: "ROLL_WEIGHT";
+  spool: import("./inventory_bulk_actions_model").InventoryBulkSpoolPrecondition;
+  expected_slot_id: string | null;
+  expected_remaining_g: number | null;
+  expected_tare_g: number;
+  measured_total_g: number;
+};
 export type InventoryRollStatusCommand = {
   action: "ROLL_STATUS";
   spool: import("./inventory_bulk_actions_model").InventoryBulkSpoolPrecondition;
   expected_slot_id: string | null;
   target_status: "LOST" | "IN_STOCK";
 };
-export type InventoryBulkMutationInput = InventoryBulkMutationCommand | InventoryMarkEmptyCommand | InventoryRollStatusCommand;
+export type InventoryBulkMutationInput = InventoryBulkMutationCommand | InventoryMarkEmptyCommand | InventoryRollStatusCommand | InventoryRollWeightCommand;
 export type InventoryBulkMutationResult = InventoryBulkMutationReceipt;
 
 export async function listSpools(limit = 100, offset = 0) {

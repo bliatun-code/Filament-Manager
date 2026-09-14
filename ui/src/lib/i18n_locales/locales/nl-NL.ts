@@ -195,6 +195,7 @@ export const nlNLDictionary: DictionaryNode = {
     "legacyLowStockFallback": "Terugvalwaarde van 200 g voor oudere host"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "Werk de host bij voordat je een gemeten rolgewicht opslaat. Er zijn geen wijzigingen verzonden.",
       "inventoryStatusHostUnsupported": "Werk de host bij voordat je de status van een rol wijzigt. Er zijn geen wijzigingen verzonden.",
     "printerSlotChanged": "De rol in deze sleuf is gewijzigd. Open de sleufactie opnieuw en bevestig de huidige rol.",
     "printerSlotHostUnsupported": "Werk de Host bij voordat je printersleuven of het gewicht van de rollen daarin wijzigt. Er zijn geen wijzigingen verzonden.",

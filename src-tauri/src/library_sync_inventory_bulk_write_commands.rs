@@ -2,7 +2,7 @@ use crate::app_error::coded_command_error;
 use crate::backend::inventory_engine::{InventoryBulkMutationInput, InventoryBulkMutationResult};
 use crate::companion_models::{
     INVENTORY_BULK_MUTATION_CAPABILITY, INVENTORY_MARK_EMPTY_CAPABILITY,
-    INVENTORY_ROLL_STATUS_CAPABILITY,
+    INVENTORY_ROLL_STATUS_CAPABILITY, INVENTORY_ROLL_WEIGHT_CAPABILITY,
 };
 use crate::inventory_bulk_models::LibrarySyncInventoryBulkMutationInput;
 use crate::library_sync_blocking_executor::run_library_sync_blocking;
@@ -41,6 +41,7 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     let single_roll_capability = match &input.mutation {
         InventoryBulkMutationInput::MarkEmpty { .. } => Some(INVENTORY_MARK_EMPTY_CAPABILITY),
         InventoryBulkMutationInput::RollStatus { .. } => Some(INVENTORY_ROLL_STATUS_CAPABILITY),
+        InventoryBulkMutationInput::RollWeight { .. } => Some(INVENTORY_ROLL_WEIGHT_CAPABILITY),
         _ => None,
     };
     if single_roll_capability.is_some()
@@ -54,6 +55,8 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
         return Err(coded_command_error(
             if single_roll_capability == Some(INVENTORY_ROLL_STATUS_CAPABILITY) {
                 "inventory.roll_status.host_unsupported"
+            } else if single_roll_capability == Some(INVENTORY_ROLL_WEIGHT_CAPABILITY) {
+                "inventory.roll_weight.host_unsupported"
             } else {
                 "printers.slot_operation_host_unsupported"
             },

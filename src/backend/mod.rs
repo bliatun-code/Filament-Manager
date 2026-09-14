@@ -50,6 +50,7 @@ pub mod database_location_models;
 pub mod database_locations;
 pub mod database_low_stock_policy;
 pub mod database_maintenance;
+pub mod database_measured_weight;
 pub mod database_print_jobs;
 pub mod database_printer_facade;
 pub mod database_printer_live_events;

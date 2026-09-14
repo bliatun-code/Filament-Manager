@@ -71,6 +71,7 @@ export const svSEDictionary: DictionaryNode = {
     "optional": "Valfritt"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "Uppdatera värden innan du sparar en uppmätt rullvikt. Inga ändringar har skickats.",
       "inventoryStatusHostUnsupported": "Uppdatera värden innan du ändrar en rulles status. Inga ändringar skickades.",
     "printerSlotChanged": "Rullen i det här facket har ändrats. Öppna fackets åtgärd igen och bekräfta den aktuella rullen.",
     "printerSlotHostUnsupported": "Uppgradera värden innan du ändrar skrivarfack eller vikten på rullarna i dem. Inga ändringar skickades.",

@@ -186,7 +186,7 @@ impl SyntheticHost {
                 let post = slot_post || bulk_post || delete_post || purge_post;
                 let (status, body) = if health {
                     ("200 OK", serde_json::json!({"ok":true,"api_version":"v1",
-                        "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY, crate::companion_models::INVENTORY_ROLL_STATUS_CAPABILITY] } else { vec![] },
+                        "capabilities": if capable { vec![PRINTER_SLOT_OPERATIONS_CAPABILITY, crate::companion_models::INVENTORY_BULK_MUTATION_CAPABILITY, crate::companion_models::INVENTORY_MARK_EMPTY_CAPABILITY, crate::companion_models::INVENTORY_ROLL_STATUS_CAPABILITY, crate::companion_models::INVENTORY_ROLL_WEIGHT_CAPABILITY] } else { vec![] },
                         "auth_mode":"pairing-session","access_mode":"trusted-lan", "library_id":LIBRARY_ID,
                         "device_name":"Synthetic slot Host","sync_mode":"HOST"}).to_string())
                 } else if delete_post || purge_post {
@@ -641,3 +641,6 @@ mod removal_tests;
 
 #[path = "library_sync_roll_status_tests.rs"]
 mod roll_status_tests;
+
+#[path = "library_sync_roll_weight_tests.rs"]
+mod roll_weight_tests;

@@ -49,6 +49,7 @@ export const ukUADictionary: DictionaryNode = {
     "optional": "Опціональний"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "Оновіть хост, перш ніж зберігати виміряну вагу котушки. Жодних змін не надіслано.",
       "inventoryStatusHostUnsupported": "Оновіть хост перед зміною стану котушки. Жодних змін не надіслано.",
     "printerSlotChanged": "Котушка в цьому слоті змінилася. Знову відкрийте дію слота й підтвердьте поточну котушку.",
     "printerSlotHostUnsupported": "Оновіть Host, перш ніж змінювати слоти принтера або вагу котушок у них. Жодних змін не надіслано.",

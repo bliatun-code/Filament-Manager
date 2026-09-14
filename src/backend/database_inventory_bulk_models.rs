@@ -15,6 +15,14 @@ pub struct InventoryBulkSpoolPrecondition {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(tag = "action")]
 pub enum InventoryBulkMutationInput {
+    #[serde(rename = "ROLL_WEIGHT")]
+    RollWeight {
+        spool: InventoryBulkSpoolPrecondition,
+        expected_slot_id: Option<String>,
+        expected_remaining_g: Option<i64>,
+        expected_tare_g: i64,
+        measured_total_g: i64,
+    },
     #[serde(rename = "ROLL_STATUS")]
     RollStatus {
         spool: InventoryBulkSpoolPrecondition,

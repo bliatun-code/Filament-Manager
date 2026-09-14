@@ -43,6 +43,22 @@ pub(crate) fn execute_inventory_bulk_mutation(
     input: InventoryBulkMutationInput,
 ) -> InventoryResult<InventoryBulkMutationResult> {
     let (expected_affected_count, preconditions, target) = match input {
+        InventoryBulkMutationInput::RollWeight {
+            spool,
+            expected_slot_id,
+            expected_remaining_g,
+            expected_tare_g,
+            measured_total_g,
+        } => {
+            return measure_roll(
+                connection,
+                spool,
+                expected_slot_id.as_deref(),
+                expected_remaining_g,
+                expected_tare_g,
+                measured_total_g,
+            );
+        }
         InventoryBulkMutationInput::RollStatus {
             spool,
             expected_slot_id,
@@ -602,6 +618,102 @@ fn change_roll_status(
     Ok(InventoryBulkMutationResult {
         affected_count: 1,
         committed: true,
+        history_spool_count: 1,
+    })
+}
+
+fn measure_roll(
+    connection: &Connection,
+    expected: InventoryBulkSpoolPrecondition,
+    expected_slot_id: Option<&str>,
+    expected_remaining_g: Option<i64>,
+    expected_tare_g: i64,
+    measured_total_g: i64,
+) -> InventoryResult<InventoryBulkMutationResult> {
+    use super::database_measured_weight::{
+        apply_outgoing_measured_total_in_transaction, measured_filament_grams,
+        update_measured_total_weight_in_transaction,
+    };
+    use super::database_spool_queries::get_spool_with_master_by_id;
+    use super::database_spool_updates::update_spool_status;
+    use super::inventory_engine::WeightSource;
+    if !(0..=9_007_199_254_740_991).contains(&measured_total_g) {
+        return Err(invalid_bulk_operation(
+            "common.invalid_request",
+            "Measured total must be a non-negative safe integer.",
+        ));
+    }
+    let (actual, slots) = review_roll(connection, &expected, expected_slot_id)?;
+    let spool = get_spool_with_master_by_id(connection, &expected.spool_id)?
+        .ok_or(InventoryError::NotFound)?;
+    let (remaining, tare) = measured_filament_grams(&spool, measured_total_g);
+    if spool.spool.remaining_g != expected_remaining_g || tare != expected_tare_g {
+        return Err(invalid_bulk_operation(
+            "inventory.bulk.stale_snapshot",
+            "The roll's weight or tare changed. Refresh before weighing it again.",
+        ));
+    }
+    let reactivate = actual.status == SpoolStatus::Empty && remaining > 0;
+    if spool.spool.remaining_g == Some(remaining)
+        && spool.spool.current_weight_g == Some(remaining)
+        && !reactivate
+    {
+        return Ok(InventoryBulkMutationResult {
+            committed: true,
+            affected_count: 0,
+            history_spool_count: 0,
+        });
+    }
+    if let Some((_, printer_id)) = slots.first() {
+        apply_outgoing_measured_total_in_transaction(
+            connection,
+            printer_id,
+            &spool,
+            measured_total_g,
+        )?;
+        // The shared printer helper skips equal net measurements. A legacy total
+        // weight mismatch still needs normalization and an auditable reading.
+        if spool.spool.remaining_g == Some(remaining)
+            && spool.spool.current_weight_g != Some(remaining)
+        {
+            update_measured_total_weight_in_transaction(
+                connection,
+                &spool,
+                "manual-entry",
+                "Manual Entry",
+                "MANUAL",
+                measured_total_g,
+                WeightSource::Manual,
+            )?;
+        }
+    } else {
+        update_measured_total_weight_in_transaction(
+            connection,
+            &spool,
+            "manual-entry",
+            "Manual Entry",
+            "MANUAL",
+            measured_total_g,
+            WeightSource::Manual,
+        )?;
+    }
+    if reactivate {
+        let status = if slots.is_empty() {
+            "IN_STOCK"
+        } else {
+            "ASSIGNED"
+        };
+        update_spool_status(connection, &expected.spool_id, status)?;
+        insert_json_history(
+            connection,
+            &expected.spool_id,
+            "STATUS_UPDATED",
+            json!({"previous_status":"EMPTY", "status":status, "source":"ROLL_WEIGHT"}),
+        )?;
+    }
+    Ok(InventoryBulkMutationResult {
+        committed: true,
+        affected_count: 1,
         history_spool_count: 1,
     })
 }

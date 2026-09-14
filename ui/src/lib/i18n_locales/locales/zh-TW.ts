@@ -49,6 +49,7 @@ export const zhTWDictionary: DictionaryNode = {
     "optional": "選填"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "儲存測得的料卷重量前，請先更新主機。未傳送任何變更。",
       "inventoryStatusHostUnsupported": "變更料卷狀態前請更新主機。未傳送任何變更。",
     "printerSlotChanged": "此插槽中的料捲已變更。請重新開啟插槽操作並確認目前的料捲。",
     "printerSlotHostUnsupported": "變更印表機插槽或其中料捲的重量前，請升級主機。未傳送任何變更。",

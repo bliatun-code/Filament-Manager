@@ -49,6 +49,7 @@ export const nbDictionary: DictionaryNode = {
       optional: "Valgfritt",
     },
     errors: {
+      "inventoryWeightHostUnsupported": "Oppdater verten før du lagrer en målt rullvekt. Ingen endringer ble sendt.",
       "inventoryStatusHostUnsupported": "Oppdater verten før du endrer statusen til en rull. Ingen endringer ble sendt.",
       "printerSlotChanged": "Rullen i dette sporet er endret. Åpne sporhandlingen på nytt og bekreft gjeldende rull.",
       "printerSlotHostUnsupported": "Oppgrader verten før du endrer printerspor eller vekten på rullene i dem. Ingen endringer ble sendt.",

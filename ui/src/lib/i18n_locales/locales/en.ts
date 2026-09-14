@@ -49,6 +49,7 @@ export const enDictionary: DictionaryNode = {
       optional: "Optional",
     },
     errors: {
+      "inventoryWeightHostUnsupported": "Update the Host before saving a measured roll weight. No changes were sent.",
       "inventoryStatusHostUnsupported": "Update the Host before changing a roll’s status. No changes were sent.",
       "printerSlotChanged": "The roll in this slot changed. Reopen the slot action and confirm the current roll.",
       "printerSlotHostUnsupported": "Upgrade the Host before changing printer slots or their weights. No changes were sent.",

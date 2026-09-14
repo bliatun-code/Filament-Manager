@@ -224,6 +224,7 @@ export const itITDictionary: DictionaryNode = {
     totalSpoolsSubtitle: "In tutte le località",
   },
   errors: {
+      "inventoryWeightHostUnsupported": "Aggiorna l’Host prima di salvare il peso misurato di una bobina. Nessuna modifica è stata inviata.",
       "inventoryStatusHostUnsupported": "Aggiorna l’Host prima di cambiare lo stato di una bobina. Non è stata inviata alcuna modifica.",
     "printerSlotChanged": "La bobina in questo slot è cambiata. Riapri l’azione dello slot e conferma la bobina attuale.",
     "printerSlotHostUnsupported": "Aggiorna l’Host prima di modificare gli slot della stampante o il peso delle bobine al loro interno. Non è stata inviata alcuna modifica.",

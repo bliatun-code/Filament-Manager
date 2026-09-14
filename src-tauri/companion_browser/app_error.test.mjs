@@ -42,6 +42,7 @@ test("atomic roll and printer slot failures explain older Hosts without raw deta
     ["printers.slot_operation_invalid", "errors.invalidRequest"],
     ["printers.slot_operation_stale", "errors.printerSlotChanged"],
     ["printers.slot_operation_host_unsupported", "errors.printerSlotHostUnsupported"],
+    ["inventory.roll_weight.host_unsupported", "errors.inventoryWeightHostUnsupported"],
     ["inventory.roll_status.host_unsupported", "errors.inventoryStatusHostUnsupported"],
   ]) {
     const message = localizedAppError(

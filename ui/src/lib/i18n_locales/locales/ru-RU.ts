@@ -71,6 +71,7 @@ export const ruRUDictionary: DictionaryNode = {
     "optional": "Необязательно"
   },
   "errors": {
+      "inventoryWeightHostUnsupported": "Обновите хост перед сохранением измеренного веса катушки. Изменения не отправлены.",
       "inventoryStatusHostUnsupported": "Обновите хост перед изменением статуса катушки. Изменения не отправлены.",
     "printerSlotChanged": "Катушка в этом слоте изменилась. Снова откройте действие слота и подтвердите текущую катушку.",
     "printerSlotHostUnsupported": "Обновите Host, прежде чем изменять слоты принтера или вес катушек в них. Изменения не отправлены.",

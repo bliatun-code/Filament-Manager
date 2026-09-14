@@ -8,21 +8,11 @@ import type { InventorySpool, OwnershipType } from "./inventory_list_model";
 import type { InventoryLocationRow } from "./tauri_location_client";
 import { parseInventorySpoolCommonDetailsDraft } from "./inventory_spool_detail_draft_model";
 import {
-  shouldReactivateSpoolFromMeasuredTotal,
-} from "./inventory_spool_detail_actions_model";
-import {
   updateInventorySpoolDetails,
   updateInventorySpoolOwnership,
-  updateInventorySpoolStatus,
   updateInventorySpoolTareWeight,
-  updateInventorySpoolWeight,
 } from "./spool_writes";
-import {
-  writePreparedMeasuredWeightUpdate,
-} from "./printer_slot_writes";
-import { prepareMeasuredWeightUpdate } from "./printer_slot_model";
 import { updateManagedMasterCatalogEntry } from "./catalog_writes";
-import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 import {
   preparePurchaseReceiptMetadataUpdate,
   type PurchaseReceiptMetadataDraft,
@@ -55,7 +45,6 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   markMasterMetadataSaved: () => void;
   masterEditUnlocked: boolean;
   selectedSpool: InventorySpool | null;
-  selectedSpoolAssignedSlot: InventoryPrinterSlotOption | null;
   selectedSpoolLocationDraft: string;
   selectedSpoolLoanedOut: boolean;
   selectedSpoolOwnerContactDraft: string;
@@ -81,26 +70,6 @@ type InventorySpoolDetailActionsInput = InventoryDetailReloads & {
   t: ReturnType<typeof useI18n>["t"];
 };
 
-async function applyMeasuredWeightWithUsage(
-  hostWriteTarget: {
-    clientReadOnly: boolean;
-    clientHostBaseUrl: string | null;
-    clientLibraryId: string | null;
-  },
-  printerId: string,
-  spoolId: string,
-  previousRemaining: number | null | undefined,
-  measuredTotalWeight: number,
-  tareWeight: number,
-) {
-  await writePreparedMeasuredWeightUpdate(
-    hostWriteTarget,
-    printerId,
-    spoolId,
-    prepareMeasuredWeightUpdate(previousRemaining, measuredTotalWeight, tareWeight),
-  );
-}
-
 export function useInventorySpoolDetailActions({
   canUseClientHostWrite,
   cancelDangerZoneConfirmation,
@@ -124,7 +93,6 @@ export function useInventorySpoolDetailActions({
   reloadSpoolDetail,
   reloadSpools,
   selectedSpool,
-  selectedSpoolAssignedSlot,
   selectedSpoolLocationDraft,
   selectedSpoolLoanedOut,
   selectedSpoolOwnerContactDraft,
@@ -505,78 +473,6 @@ export function useInventorySpoolDetailActions({
     }
   }
 
-  async function handleWeightSubmit(grams: number) {
-    if (!selectedSpool || !tauriAvailable || manageBusy) {
-      return;
-    }
-    if (!Number.isFinite(grams)) {
-      setError(t("inventory.error.invalidWeight", "Weight value is invalid."));
-      return;
-    }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
-      return;
-    }
-    if (clientReadOnly && !canUseClientHostWrite()) {
-      return;
-    }
-    cancelDangerZoneConfirmation();
-    const safeGrams = Math.max(0, Math.round(grams));
-    setManageBusy(true);
-    setError(null);
-    try {
-      let successMessage: string | null = null;
-      if (selectedSpoolAssignedSlot) {
-        await applyMeasuredWeightWithUsage(
-          hostWriteTarget,
-          selectedSpoolAssignedSlot.printerId,
-          selectedSpool.id,
-          selectedSpool.remainingGrams,
-          safeGrams,
-          selectedSpoolResolvedTare,
-        );
-      } else {
-        await updateInventorySpoolWeight(selectedSpool.id, safeGrams, hostWriteTarget);
-      }
-      if (
-        shouldReactivateSpoolFromMeasuredTotal(
-          selectedSpool.status,
-          safeGrams,
-          selectedSpoolResolvedTare,
-        )
-      ) {
-        await updateInventorySpoolStatus(
-          {
-            spool_id: selectedSpool.id,
-            qr_code: selectedSpool.qrCode ?? null,
-            status: "IN_STOCK",
-            location: currentLocationReference,
-          },
-          hostWriteTarget,
-        );
-        successMessage = t("inventory.refilledAuto", "Roll reactivated from new measured weight.");
-      }
-      await reloadSpools();
-      await reloadPrinterOverview();
-      await reloadSpoolDetail(selectedSpool.id);
-      if (clientReadOnly) {
-        successMessage ??= t(
-          "inventory.clientWeightUpdated",
-          "Weight updated on the host library.",
-        );
-      }
-      if (successMessage) {
-        setInfoMessage(successMessage);
-      }
-    } catch (updateError) {
-      console.error(updateError);
-      setError(
-        commandErrorText(updateError, t("inventory.error.updateWeight", "Failed to update weight.")),
-      );
-    } finally {
-      setManageBusy(false);
-    }
-  }
-
   async function handleSaveSpoolTareWeight() {
     if (!selectedSpool || !tauriAvailable || manageBusy) {
       return;
@@ -632,6 +528,5 @@ export function useInventorySpoolDetailActions({
     handleSaveSpoolOwnership,
     handleSaveSpoolLocation,
     handleSaveSpoolTareWeight,
-    handleWeightSubmit,
   };
 }

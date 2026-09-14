@@ -231,6 +231,7 @@ export const ptBRDictionary: DictionaryNode = {
     legacyLowStockFallback: "Valor alternativo de 200 g para host antigo",
   },
   errors: {
+      "inventoryWeightHostUnsupported": "Atualize o Host antes de salvar o peso medido de um rolo. Nenhuma alteração foi enviada.",
       "inventoryStatusHostUnsupported": "Atualize o Host antes de alterar o estado de um rolo. Nenhuma alteração foi enviada.",
     "printerSlotChanged": "O rolo neste slot mudou. Abra a ação do slot novamente e confirme o rolo atual.",
     "printerSlotHostUnsupported": "Atualize o Host antes de alterar os slots da impressora ou o peso dos rolos neles. Nenhuma alteração foi enviada.",
