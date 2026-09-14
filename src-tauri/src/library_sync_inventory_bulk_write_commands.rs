@@ -10,7 +10,8 @@ use crate::library_sync_cache_refresh::{
     refresh_library_sync_printer_cache, refresh_library_sync_spool_cache,
 };
 use crate::library_sync_command_support::{
-    library_sync_host_input, prepare_library_sync_host_write, save_library_sync_success,
+    library_sync_host_input, prepare_library_sync_host_write_for_generation,
+    save_library_sync_success,
 };
 use crate::library_sync_host_client::perform_library_sync_host_write_and_parse_for_target;
 use crate::library_sync_target_guard::ensure_library_sync_target_current;
@@ -36,7 +37,11 @@ pub(crate) fn execute_library_sync_host_inventory_bulk_mutation_blocking(
     input: LibrarySyncInventoryBulkMutationInput,
 ) -> Result<InventoryBulkMutationResult, String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (base_url, health, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (base_url, health, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
     ensure_library_sync_target_current(state, &target)?;
     let single_roll_capability = match &input.mutation {
         InventoryBulkMutationInput::MarkEmpty { .. } => Some(INVENTORY_MARK_EMPTY_CAPABILITY),

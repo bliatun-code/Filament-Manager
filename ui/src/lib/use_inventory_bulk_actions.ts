@@ -2,6 +2,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useLayoutEffect,
+  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -44,9 +46,15 @@ import {
 import type { InventoryLocationRow } from "./tauri_location_client";
 import { isUserManagedInventoryLocation } from "./inventory_location_model";
 
+import type { InventoryReloadReporter } from "./use_inventory_page_data";
+
 type TranslateFn = ReturnType<typeof useI18n>["t"];
 
 type UseInventoryBulkActionsInput = Readonly<{
+  active: boolean;
+  ready: boolean;
+  clientDataLive: boolean;
+  clientTargetGeneration: number | null;
   activeLoanSpoolIds: ReadonlySet<string>;
   busy: boolean;
   clientHostBaseUrl: string | null;
@@ -58,9 +66,9 @@ type UseInventoryBulkActionsInput = Readonly<{
   locations: readonly InventoryLocationRow[];
   openLabelSheet: (selectionPlan?: InventoryBulkDataPlan) => Promise<void>;
   printerSlotBySpoolId: ReadonlyMap<string, unknown>;
-  reloadActiveLoans: () => Promise<void>;
-  reloadPrinterOverview: () => Promise<void>;
-  reloadSpools: () => Promise<void>;
+  reloadActiveLoans: (report?: InventoryReloadReporter) => Promise<void>;
+  reloadPrinterOverview: (report?: InventoryReloadReporter) => Promise<void>;
+  reloadSpools: (report?: InventoryReloadReporter) => Promise<void>;
   setBusy: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;
   setInfoMessage: Dispatch<SetStateAction<string | null>>;
@@ -248,16 +256,8 @@ function sameIds(left: readonly string[], right: readonly string[]): boolean {
   );
 }
 
-function focusInventoryBulkSelectionModeTriggerAfterRender(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.requestAnimationFrame(() =>
-    document.getElementById("inventory-bulk-selection-mode-trigger")?.focus(),
-  );
-}
-
 export function useInventoryBulkActions({
+  active, ready, clientDataLive, clientTargetGeneration,
   activeLoanSpoolIds,
   busy,
   clientHostBaseUrl,
@@ -273,8 +273,8 @@ export function useInventoryBulkActions({
   reloadPrinterOverview,
   reloadSpools,
   setBusy,
-  setError,
-  setInfoMessage,
+  setError: clearPageError,
+  setInfoMessage: clearPageInfo,
   spools,
   tauriAvailable,
   t,
@@ -287,6 +287,56 @@ export function useInventoryBulkActions({
   const [statusTarget, setStatusTarget] =
     useState<InventoryBulkManualStatus>("IN_STOCK");
   const [review, setReview] = useState<InventoryBulkMutationPlan | null>(null);
+  const [reviewSnapshot, setReviewSnapshot] = useState<object | null>(null);
+  const [bulkError, setError] = useState<string | null>(null);
+  const [bulkInfo, setInfoMessage] = useState<string | null>(null);
+  const authorityKey = JSON.stringify([clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration, ready]);
+  const view = useMemo(() => ({ authorityKey, active }), [authorityKey, active]);
+  const eligibility = useMemo(() => ({ loading, clientDataLive, clientHostWritePaired, tauriAvailable }),
+    [loading, clientDataLive, clientHostWritePaired, tauriAvailable]);
+  const [intentRevision, setIntentRevision] = useState(0);
+  const consumedReviews = useRef(new WeakSet<object>());
+  const draftKey = JSON.stringify([intentRevision, selectionModeActive, selection.spoolIds, activeMutationAction,
+    moveTargetLocationId, statusTarget, review]);
+  const draft = useMemo(() => ({ key: draftKey }), [draftKey]);
+  const current = useRef<{ view: object; busy: boolean } | null>(null);
+  const latest = useRef({ draft, eligibility });
+  const [focusView, setFocusView] = useState<object | null>(null);
+  const invalidateDraft = useCallback(() => {
+    latest.current = { ...latest.current, draft: { key: "revoked" } };
+    setIntentRevision(value => value + 1);
+  }, []);
+
+  useLayoutEffect(() => { latest.current = { draft, eligibility }; }, [draft, eligibility]);
+  useLayoutEffect(() => {
+    const scope = { view, busy: false };
+    current.current = scope;
+    setSelection(clearInventoryBulkSelection());
+    setSelectionModeActive(false);
+    setActiveMutationAction(null);
+    setMoveTargetLocationId("");
+    setStatusTarget("IN_STOCK");
+    setReview(null);
+    setReviewSnapshot(null);
+    setError(null);
+    setInfoMessage(null);
+    setFocusView(null);
+    return () => { current.current = null; if (scope.busy) setBusy(false); };
+  }, [view, setBusy]);
+  useLayoutEffect(() => {
+    if (focusView !== view || !active || busy) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (current.current?.view === view) document.getElementById("inventory-bulk-selection-mode-trigger")?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusView, view, active, busy]);
+  useLayoutEffect(() => {
+    if (busy && !current.current?.busy) { setError(null); setInfoMessage(null); }
+  }, [busy]);
+  const canUseSelection = useCallback(() => Boolean(active && ready && !loading && !busy && tauriAvailable &&
+    current.current?.view === view && !current.current.busy && latest.current.draft === draft && latest.current.eligibility === eligibility),
+    [active, ready, loading, busy, tauriAvailable, view, draft, eligibility]);
+
 
   const snapshots = useMemo<InventoryBulkSpoolSnapshot[]>(
     () =>
@@ -311,6 +361,12 @@ export function useInventoryBulkActions({
         })),
     [locations],
   );
+  const selectedIds = new Set(selection.spoolIds);
+  const snapshotKey = JSON.stringify([snapshots.filter(row => selectedIds.has(row.spoolId)), locationTargets]);
+  const dataSnapshot = useMemo(() => ({ key: snapshotKey }), [snapshotKey]);
+  const currentDataSnapshot = useRef(dataSnapshot);
+  useLayoutEffect(() => { currentDataSnapshot.current = dataSnapshot; }, [dataSnapshot]);
+
   const visibleSpoolIds = useMemo(
     () => filteredSpools.map((spool) => spool.id),
     [filteredSpools],
@@ -383,6 +439,7 @@ export function useInventoryBulkActions({
   );
   const reviewCurrent = Boolean(
     review &&
+      reviewSnapshot === dataSnapshot &&
       latestReview?.ok &&
       latestReview.plan.confirmationKey === review.confirmationKey,
   );
@@ -398,6 +455,7 @@ export function useInventoryBulkActions({
 
   const requestMoveReview = useCallback(
     (targetLocation: InventoryBulkLocationTarget) => {
+      if (!canUseSelection()) return;
       const result = buildInventoryBulkMutationPlan({
         action: "MOVE",
         selectedSpoolIds: selection.spoolIds,
@@ -410,14 +468,17 @@ export function useInventoryBulkActions({
         reportPlanError(result);
         return;
       }
+      invalidateDraft();
       setMoveTargetLocationId(targetLocation.id);
       setReview(result.plan);
+      setReviewSnapshot(dataSnapshot);
     },
-    [reportPlanError, selection.spoolIds, setError, setInfoMessage, snapshots],
+    [canUseSelection, invalidateDraft, dataSnapshot, reportPlanError, selection.spoolIds, setError, setInfoMessage, snapshots],
   );
 
   const requestStatusReview = useCallback(
     (targetStatus: InventoryBulkManualStatus) => {
+      if (!canUseSelection()) return;
       const result = buildInventoryBulkMutationPlan({
         action: "STATUS",
         selectedSpoolIds: selection.spoolIds,
@@ -430,15 +491,20 @@ export function useInventoryBulkActions({
         reportPlanError(result);
         return;
       }
+      invalidateDraft();
       setStatusTarget(targetStatus);
       setReview(result.plan);
+      setReviewSnapshot(dataSnapshot);
     },
-    [reportPlanError, selection.spoolIds, setError, setInfoMessage, snapshots],
+    [canUseSelection, invalidateDraft, dataSnapshot, reportPlanError, selection.spoolIds, setError, setInfoMessage, snapshots],
   );
 
   const confirmReview = useCallback(
     async (reviewedPlan: InventoryBulkMutationPlan) => {
-      if (!tauriAvailable || busy) {
+      if (!canUseSelection() || consumedReviews.current.has(reviewedPlan) || !selectionModeActive || !clientDataLive || review !== reviewedPlan ||
+        reviewSnapshot !== dataSnapshot || currentDataSnapshot.current !== dataSnapshot ||
+        (clientReadOnly && (!clientHostWritePaired || !clientHostBaseUrl || !clientLibraryId ||
+          !Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration! < 0))) {
         return;
       }
       const currentPlan = buildLatestReview(reviewedPlan);
@@ -453,7 +519,12 @@ export function useInventoryBulkActions({
         return;
       }
 
+      const scope = current.current!;
+      const isCurrent = () => current.current === scope;
+      scope.busy = true;
       setBusy(true);
+      clearPageError(null);
+      clearPageInfo(null);
       setError(null);
       setInfoMessage(null);
       try {
@@ -463,22 +534,23 @@ export function useInventoryBulkActions({
             clientHostWritePaired,
             clientLibraryId,
             clientReadOnly,
+            clientTargetGeneration,
           },
           confirmation.command,
         );
+        if (!isCurrent()) return;
+        consumedReviews.current.add(reviewedPlan);
         if (!inventoryBulkMutationReceiptMatchesPlan(reviewedPlan, receipt)) {
+          if (latest.current.draft === draft) setReview(null);
           throw new Error("INVENTORY_BULK_RECEIPT_MISMATCH");
         }
-        await Promise.all([
-          reloadSpools(),
-          reloadActiveLoans(),
-          reloadPrinterOverview(),
-        ]);
-        setSelection(clearInventoryBulkSelection());
-        setSelectionModeActive(false);
-        setActiveMutationAction(null);
-        setReview(null);
-        focusInventoryBulkSelectionModeTriggerAfterRender();
+        if (latest.current.draft === draft) {
+          setSelection(clearInventoryBulkSelection());
+          setSelectionModeActive(false);
+          setActiveMutationAction(null);
+          setReview(null);
+          setFocusView(view);
+        }
         setInfoMessage(
           t(
             "inventory.bulkMutationDone",
@@ -486,7 +558,17 @@ export function useInventoryBulkActions({
             { count: receipt.affected_count },
           ),
         );
+        let refreshFailed = false;
+        const report: InventoryReloadReporter = (_domain, resolution) => {
+          if (resolution !== "LIVE" && resolution !== "SUPERSEDED") refreshFailed = true;
+        };
+        const results = await Promise.allSettled([reloadSpools, reloadActiveLoans, reloadPrinterOverview]
+          .map(reload => Promise.resolve().then(() => reload(report))));
+        if (isCurrent() && (refreshFailed || results.some(result => result.status === "rejected"))) {
+          setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+        }
       } catch (mutationError) {
+        if (!isCurrent()) return;
         const routed = routingErrorMessage(mutationError, t);
         setError(
           routed ??
@@ -506,12 +588,12 @@ export function useInventoryBulkActions({
                 )),
         );
       } finally {
-        setBusy(false);
+        if (isCurrent()) { scope.busy = false; setBusy(false); }
       }
     },
     [
-      buildLatestReview,
-      busy,
+      buildLatestReview, canUseSelection, selectionModeActive, clientDataLive, review, reviewSnapshot,
+      dataSnapshot, draft, view, clientTargetGeneration, clearPageError, clearPageInfo,
       clientHostBaseUrl,
       clientHostWritePaired,
       clientLibraryId,
@@ -523,7 +605,6 @@ export function useInventoryBulkActions({
       setError,
       setInfoMessage,
       t,
-      tauriAvailable,
     ],
   );
 
@@ -546,6 +627,8 @@ export function useInventoryBulkActions({
 
   const exportSelected = useCallback(
     async (plan: InventoryBulkDataPlan, format: "CSV" | "JSON") => {
+      if (!canUseSelection() || plan !== exportPlan) return;
+      const scope = current.current;
       const rows = resolveDataRows(plan);
       if (!rows) {
         return;
@@ -557,6 +640,7 @@ export function useInventoryBulkActions({
           buildInventorySpoolExportCsv,
           buildInventorySpoolExportJson,
         } = await import("./inventory_export");
+        if (current.current !== scope || latest.current.draft !== draft) return;
         const timestamp = Date.now();
         if (format === "CSV") {
           downloadTextFile(
@@ -579,6 +663,7 @@ export function useInventoryBulkActions({
           ),
         );
       } catch (exportError) {
+        if (current.current !== scope || latest.current.draft !== draft) return;
         setError(
           toErrorMessage(
             exportError,
@@ -591,21 +676,25 @@ export function useInventoryBulkActions({
         );
       }
     },
-    [resolveDataRows, setError, setInfoMessage, t],
+    [canUseSelection, exportPlan, draft, resolveDataRows, setError, setInfoMessage, t],
   );
 
   const updateSelection = useCallback(
     (spoolId: string, selected: boolean) => {
+      if (!canUseSelection()) return;
+      invalidateDraft();
       setSelection((current) =>
         toggleInventoryBulkSelection(current, spoolId, selected),
       );
       setReview(null);
     },
-    [],
+    [canUseSelection, invalidateDraft],
   );
 
   const selectVisible = useCallback(
     (selected: boolean) => {
+      if (!canUseSelection()) return;
+      invalidateDraft();
       setSelection((current) =>
         selected
           ? selectVisibleInventoryBulkSpools(current, visibleSpoolIds)
@@ -613,27 +702,31 @@ export function useInventoryBulkActions({
       );
       setReview(null);
     },
-    [visibleSpoolIds],
+    [canUseSelection, invalidateDraft, visibleSpoolIds],
   );
 
   const clearSelection = useCallback(() => {
+    if (!canUseSelection()) return;
+    invalidateDraft();
     setSelection(clearInventoryBulkSelection());
     setActiveMutationAction(null);
     setReview(null);
-  }, []);
+  }, [canUseSelection, invalidateDraft]);
 
   const exitSelectionMode = useCallback(() => {
+    if (!canUseSelection()) return;
+    invalidateDraft();
     setSelectionModeActive(false);
     setSelection(clearInventoryBulkSelection());
     setActiveMutationAction(null);
     setReview(null);
-  }, []);
+  }, [canUseSelection, invalidateDraft]);
 
   const selectedBulkSpoolIds = useMemo(
     () => new Set(selection.spoolIds),
     [selection.spoolIds],
   );
-  const panelDisabled = !tauriAvailable || loading || busy;
+  const panelDisabled = !active || !ready || !tauriAvailable || loading || busy;
   const visibleSpoolIdSet = useMemo(
     () => new Set(visibleSpoolIds),
     [visibleSpoolIds],
@@ -644,6 +737,7 @@ export function useInventoryBulkActions({
   );
 
   return {
+    bulkError, bulkInfo,
     collectionProps: {
       bulkSelectionActive: selectionModeActive,
       bulkSelectionDisabled: panelDisabled,
@@ -659,20 +753,24 @@ export function useInventoryBulkActions({
       labelsPlan,
       locationTargets,
       moveTargetLocationId,
-      onActiveMutationActionChange: setActiveMutationAction,
-      onCancelReview: () => setReview(null),
+      onActiveMutationActionChange: (action: InventoryBulkMutationAction | null) => {
+        if (canUseSelection()) { invalidateDraft(); setActiveMutationAction(action); setReview(null); }
+      },
+      onCancelReview: () => { if (canUseSelection()) { invalidateDraft(); setReview(null); } },
       onClearSelection: clearSelection,
       onConfirmReview: (plan: InventoryBulkMutationPlan) => void confirmReview(plan),
-      onCreateLabels: (plan: InventoryBulkDataPlan) => void openLabelSheet(plan),
+      onCreateLabels: (plan: InventoryBulkDataPlan) => {
+        if (canUseSelection() && plan === labelsPlan) void openLabelSheet(plan);
+      },
       onExportCsv: (plan: InventoryBulkDataPlan) => void exportSelected(plan, "CSV"),
       onExportJson: (plan: InventoryBulkDataPlan) => void exportSelected(plan, "JSON"),
-      onMoveTargetLocationIdChange: setMoveTargetLocationId,
+      onMoveTargetLocationIdChange: (id: string) => { if (canUseSelection()) { invalidateDraft(); setMoveTargetLocationId(id); setReview(null); } },
       onRequestMoveReview: requestMoveReview,
       onRequestStatusReview: requestStatusReview,
       onSelectVisibleChange: selectVisible,
-      onStatusTargetChange: setStatusTarget,
+      onStatusTargetChange: (status: InventoryBulkManualStatus) => { if (canUseSelection()) { invalidateDraft(); setStatusTarget(status); setReview(null); } },
       review,
-      reviewCurrent,
+      reviewCurrent: reviewCurrent && clientDataLive && (!clientReadOnly || clientHostWritePaired),
       selectedCount: selection.spoolIds.length,
       statusTarget,
       visibleCount: visibleSpoolIds.length,
@@ -686,7 +784,9 @@ export function useInventoryBulkActions({
       active: selectionModeActive,
       disabled: panelDisabled || (!selectionModeActive && visibleSpoolIds.length === 0),
       onActiveChange: (active: boolean) => {
+        if (!canUseSelection()) return;
         if (active) {
+          invalidateDraft();
           setSelectionModeActive(true);
         } else {
           exitSelectionMode();

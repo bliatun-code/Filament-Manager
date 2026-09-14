@@ -169,7 +169,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 [Avhengighetsgjennomgangen 14. september](DEPENDENCY_REVIEW_2026-09-14.md) er merget gjennom PR #124 som `22106b33`, etter én push og elleve grønne kontroller uten omkjøring. Den samler Dependabot #121–123, React 19.3, Vite 8.3 og kompatible Rust-oppdateringer, inkludert Quinn-sikkerhetsrettelser. Tauri 3 er publisert som alfa og krever en separat migrering; TypeScript 7 venter fortsatt på lintstøtte. Den daterte rapporten beskriver gjenværende varsler og hva som må utløse neste oppgradering.
 
-[Lagring av rull- og katalogdetaljer](INVENTORY_DETAIL_SAVES_2026-09-14.md) er merget i PR #125 som `9a357248`, etter én push og åtte grønne kontroller uten omkjøring. Begge plattformene bestod 1 864 UI-tester og pakket backup-/Host/Client-verifisering. Neste samlede pakke sikrer [de seks lokasjonshandlingene](INVENTORY_LOCATION_ACTIONS_2026-09-14.md), inkludert bekreftelser, tastaturfokus, oppfriskingsfeil og målscopet Host-skriving.
+[Lagring av rull- og katalogdetaljer](INVENTORY_DETAIL_SAVES_2026-09-14.md) er merget i PR #125 som `9a357248`, etter én push og åtte grønne kontroller uten omkjøring. Begge plattformene bestod 1 864 UI-tester og pakket backup-/Host/Client-verifisering. [De seks lokasjonshandlingene](INVENTORY_LOCATION_ACTIONS_2026-09-14.md) er deretter merget i PR #126 som `4b272815`, etter åtte grønne kontroller. Neste samlede pakke sikrer [masseflytting og statusendring](INVENTORY_BULK_ACTIONS_2026-09-14.md), med vern mot dobbeltinnsending, foreldede bekreftelser og feil under oppfrisking etter bekreftet skriving.
 
 Vanlig registrering har fått en [egen kvittering og eksplisitte neste handlinger](REGISTRATION_FOLLOWUP_2026-09-06.md); samlet lokal verifisering og native kontroll med uavhengige databasekontroller er bestått. Lokasjon ved mottak og nøyaktig printerspor er allerede [rettet og verifisert lokalt](USABILITY_FOLLOWUP_2026-09-06.md). Hypotesen om menneskelig dobbeltregistrering fra [AI-evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md) er fortsatt ikke målt.
 
@@ -215,6 +215,8 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 ## Fremdriftslogg
 
 ### 2026-09-14
+
+- PR #126 er merget som `4b272815`. Neste pakke sikrer MOVE/STATUS for valgte ruller, binder bekreftelsen til Client-målgenerasjonen og verifiserer atomiske endringer av to ruller gjennom en reell Host-tjeneste.
 
 - PR #125 er merget som `9a357248`. Neste pakke samler oppretting, navneendring, arkivering, gjenoppretting, sletting og sammenslåing av lokasjoner, med reelle UI-regresjoner og native kontroll av gamle Host-generasjoner.
 

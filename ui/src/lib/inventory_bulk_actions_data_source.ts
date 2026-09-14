@@ -26,6 +26,7 @@ export type InventoryBulkMutationContext = Readonly<{
   clientHostWritePaired: boolean;
   clientLibraryId: string | null;
   clientReadOnly: boolean;
+  clientTargetGeneration?: number | null;
 }>;
 
 type InventoryBulkMutationDependencies = Readonly<{
@@ -61,5 +62,7 @@ export async function executeInventoryBulkMutationForInventory(
 
   // A client issues exactly one protected Host command. Rejection is surfaced
   // to the caller; there is deliberately no local or sequential fallback.
-  return executeHost(baseUrl, libraryId, command);
+  return context.clientTargetGeneration == null
+    ? executeHost(baseUrl, libraryId, command)
+    : executeHost(baseUrl, libraryId, command, context.clientTargetGeneration);
 }
