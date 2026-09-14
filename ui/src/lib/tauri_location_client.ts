@@ -34,12 +34,14 @@ export type InventoryLocationListResponse = {
 type HostTarget = {
   baseUrl: string;
   expectedLibraryId?: string | null;
+  targetGeneration?: number | null;
 };
 
 function hostTargetInput(target: HostTarget) {
   return {
     base_url: target.baseUrl,
     expected_library_id: target.expectedLibraryId ?? null,
+    ...(target.targetGeneration == null ? {} : { expected_target_generation: target.targetGeneration }),
   };
 }
 

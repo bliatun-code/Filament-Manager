@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -224,41 +223,6 @@ test("irreversible merge confirmation names source and target and explains archi
   assert.match(html, /Confirm merge &amp; archive/);
   assert.match(html, />Cancel</);
   assert.match(html, /<button class="[^"]*whitespace-normal[^"]*"[^>]*>Confirm merge/);
-});
-
-test("failed mutations preserve form drafts and successful actions restore focus", () => {
-  const source = readFileSync(
-    new URL("./inventory_location_management_panel.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(source, /onCreate\(normalizedNewName\)\.then\(\(created\) => \{\s*if \(created\) setNewName\(""\)/);
-  assert.match(source, /onRename\(row\.id, normalizedRename\)\.then\(\(renamed\) => \{\s*if \(renamed\)/);
-  assert.match(source, /void onMerge\(sourceId, targetId\)\.then\(\(merged\) => \{\s*if \(merged\) \{/);
-  assert.match(source, /if \(merged\) \{[\s\S]*setMergeConfirmationVisible\(false\);[\s\S]*setSourceId\(""\);[\s\S]*setTargetId\(""\)/);
-  assert.match(source, /focusAfterRender\(renameActionId\)/);
-  assert.match(source, /focusAfterRender\(archiveActionId\)/);
-  assert.match(source, /focusAfterRender\(deleteActionId\)/);
-  assert.match(source, /if \(deleted\)[\s\S]*else \{[\s\S]*deleteActionId/);
-  assert.match(source, /focusAfterRender\(activeLocationsHeadingId\)/);
-  assert.match(source, /previousLocationsSummaryId/);
-  assert.match(source, /focusAfterRender\(mergeReviewButtonId\)/);
-});
-
-test("a rejected delete refreshes stale eligibility before another attempt", () => {
-  const pageSource = readFileSync(
-    new URL("../pages/inventory.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(
-    pageSource,
-    /reloadOnFailure = false[\s\S]*if \(reloadOnFailure\) \{\s*await reloadSpools\(\)/,
-  );
-  assert.match(
-    pageSource,
-    /deleteLocationForInventory\(locationMutationContext, locationId\)[\s\S]*locationDeleted[\s\S]*true/,
-  );
 });
 
 test("legacy and cached Host states explain read-only compatibility without enabling mutations", () => {

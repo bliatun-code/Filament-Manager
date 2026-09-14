@@ -16,7 +16,6 @@ import { InventoryLabelSheetModal } from "../components/inventory_label_sheet_mo
 import { LoanOutModal } from "../components/loan_out_modal";
 import type { InventoryNavigationIntent } from "../lib/app_navigation_model";
 import { useInventoryMarkEmptyAction } from "../lib/use_inventory_mark_empty_action";
-import { commandErrorText } from "../lib/error_text";
 import { useI18n } from "../lib/i18n";
 import {
   chooseDesktopVisualQaLoanSpool,
@@ -31,15 +30,10 @@ import {
 } from "../lib/inventory_list_model";
 import { isOutboundLoanDirection } from "../lib/inventory_domain";
 import {
-  archiveLocationForInventory,
-  createLocationForInventory,
-  deleteLocationForInventory,
-  mergeLocationsForInventory,
-  renameLocationForInventory,
-  restoreLocationForInventory,
   selectableInventoryLocations,
   type InventoryLocationMutationContext,
 } from "../lib/inventory_location_data_source";
+import { useInventoryLocationActions } from "../lib/use_inventory_location_actions";
 import type { RfidCaptureField } from "../lib/inventory_rfid_capture";
 import { inventoryLocationUsageById } from "../lib/inventory_location_model";
 import {
@@ -241,113 +235,18 @@ export default function InventoryPage({
   const [rfidCaptureError, setRfidCaptureError] = useState<string | null>(null);
   const [rfidCaptureLoading, setRfidCaptureLoading] = useState(false);
 
-  const locationMutationContext = useMemo<InventoryLocationMutationContext>(
-    () => ({
-      clientHostBaseUrl,
-      clientHostWritePaired,
-      clientLibraryId,
-      clientReadOnly,
-      mutationsSupported: locationMutationsSupported,
-    }),
-    [
-      clientHostBaseUrl,
-      clientHostWritePaired,
-      clientLibraryId,
-      clientReadOnly,
-      locationMutationsSupported,
-    ],
-  );
-
-  const runLocationMutation = useCallback(
-    async (
-      operation: () => Promise<unknown>,
-      successMessage: string,
-      reloadOnFailure = false,
-    ): Promise<boolean> => {
-      if (!tauri || manageBusy) {
-        return false;
-      }
-      setManageBusy(true);
-      setError(null);
-      setInfoMessage(null);
-      try {
-        await operation();
-        await reloadSpools();
-        setInfoMessage(successMessage);
-        return true;
-      } catch (locationError) {
-        setError(
-          commandErrorText(
-            locationError,
-            t("errors.requestFailed", "The request could not be completed."),
-            t,
-          ),
-        );
-        if (reloadOnFailure) {
-          await reloadSpools();
-        }
-        return false;
-      } finally {
-        setManageBusy(false);
-      }
-    },
-    [manageBusy, reloadSpools, t, tauri],
-  );
-
-  const createLocation = useCallback(
-    (name: string) =>
-      runLocationMutation(
-        () => createLocationForInventory(locationMutationContext, name),
-        t("inventory.locationCreated", "Location created."),
-      ),
-    [locationMutationContext, runLocationMutation, t],
-  );
-
-  const renameLocation = useCallback(
-    (locationId: string, name: string) =>
-      runLocationMutation(
-        () => renameLocationForInventory(locationMutationContext, locationId, name),
-        t("inventory.locationRenamed", "Location renamed."),
-      ),
-    [locationMutationContext, runLocationMutation, t],
-  );
-
-  const archiveLocation = useCallback(
-    (locationId: string) =>
-      runLocationMutation(
-        () => archiveLocationForInventory(locationMutationContext, locationId),
-        t("inventory.locationArchived", "Location archived."),
-      ),
-    [locationMutationContext, runLocationMutation, t],
-  );
-
-  const restoreLocation = useCallback(
-    (locationId: string) =>
-      runLocationMutation(
-        () => restoreLocationForInventory(locationMutationContext, locationId),
-        t("inventory.locationRestored", "Location restored."),
-      ),
-    [locationMutationContext, runLocationMutation, t],
-  );
-
-  const deleteLocation = useCallback(
-    (locationId: string) =>
-      runLocationMutation(
-        () => deleteLocationForInventory(locationMutationContext, locationId),
-        t("inventory.locationDeleted", "Location deleted."),
-        true,
-      ),
-    [locationMutationContext, runLocationMutation, t],
-  );
-
-  const mergeLocations = useCallback(
-    (sourceId: string, targetId: string) =>
-      runLocationMutation(
-        () => mergeLocationsForInventory(locationMutationContext, sourceId, targetId),
-        t("inventory.locationsMerged", "Locations merged."),
-      ),
-    [locationMutationContext, runLocationMutation, t],
-  );
+  const locationMutationContext = useMemo<InventoryLocationMutationContext>(() => ({
+    clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly, clientTargetGeneration,
+    mutationsSupported: locationMutationsSupported,
+  }), [clientHostBaseUrl, clientHostWritePaired, clientLibraryId, clientReadOnly,
+    clientTargetGeneration, locationMutationsSupported]);
+  const { authorityKey: locationAuthorityKey, locationError, locationInfo,
+    createLocation, renameLocation, archiveLocation, restoreLocation, deleteLocation, mergeLocations,
+  } = useInventoryLocationActions({
+    active: activeWorkspaceView === "LOCATIONS", ready: librarySyncReady,
+    loading: locationsLoading, source: locationSource, context: locationMutationContext,
+    tauri, manageBusy, setManageBusy, setError, setInfoMessage, reloadSpools, t,
+  });
 
   const openPurchaseQueue = useCallback(() => {
     setActiveWorkspaceView("PURCHASES");
@@ -1520,11 +1419,12 @@ export default function InventoryPage({
           vendorOptions,
           visibleInventoryCount,
         }}
-        error={error}
+        error={activeWorkspaceView === "LOCATIONS" ? locationError ?? error : error}
         loadError={loadError}
         loadErrorRetryDisabled={!tauri || librarySyncResolving || manageBusy}
         loadErrorRetrying={librarySyncResolving || refreshing}
         locationPanelProps={{
+          authorityKey: locationAuthorityKey,
           busy: manageBusy,
           canMutate:
             tauri &&
@@ -1561,7 +1461,7 @@ export default function InventoryPage({
           showStockFilters: activeWorkspaceView === "STOCK",
           statusFilter,
         }}
-        infoMessage={infoMessage}
+        infoMessage={activeWorkspaceView === "LOCATIONS" ? locationInfo ?? infoMessage : infoMessage}
         showRollModal={showRollModal}
         totalInventoryCount={spools.length}
         totalLocationCount={selectableInventoryLocations(locations).length}

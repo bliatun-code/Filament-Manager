@@ -169,7 +169,7 @@ function hostTarget(context: InventoryLocationMutationContext) {
       "The Host does not support location objects. Upgrade the Host before changing locations.",
     );
   }
-  return { baseUrl, expectedLibraryId };
+  return { baseUrl, expectedLibraryId, ...(context.clientTargetGeneration == null ? {} : { targetGeneration: context.clientTargetGeneration }) };
 }
 
 export function createLocationForInventory(

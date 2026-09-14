@@ -39,6 +39,7 @@ pub(crate) struct LibrarySyncLocationTargetInput {
 pub(crate) struct LibrarySyncCreateInventoryLocationInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) name: String,
     pub(crate) parent_id: Option<String>,
 }
@@ -47,6 +48,7 @@ pub(crate) struct LibrarySyncCreateInventoryLocationInput {
 pub(crate) struct LibrarySyncRenameInventoryLocationInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) location_id: String,
     pub(crate) name: String,
 }
@@ -55,6 +57,7 @@ pub(crate) struct LibrarySyncRenameInventoryLocationInput {
 pub(crate) struct LibrarySyncInventoryLocationIdInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) location_id: String,
 }
 
@@ -62,6 +65,7 @@ pub(crate) struct LibrarySyncInventoryLocationIdInput {
 pub(crate) struct LibrarySyncMergeInventoryLocationsInput {
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) source_id: String,
     pub(crate) target_id: String,
 }

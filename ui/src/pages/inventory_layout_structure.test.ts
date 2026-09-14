@@ -426,7 +426,7 @@ test("inventory loaders clear unavailable client-only state without clearing loc
   );
   assert.doesNotMatch(inventoryCatalogReloadSource, /setMasters\(\[\]\)/);
   assert.match(inventorySelectedDetailStateSource, /detailSpoolIdRef\.current === selectedSpool\.id/);
-  assert.match(inventoryPageSource, /error=\{error\}/);
+  assert.match(inventoryPageSource, /error=\{activeWorkspaceView === "LOCATIONS" \? locationError \?\? error : error\}/);
   assert.match(inventoryPageSource, /loadError=\{loadError\}/);
 });
 
