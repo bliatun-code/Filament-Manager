@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { commandErrorText } from "./error_text";
 import type { useI18n } from "./i18n";
 import type { InventorySpool } from "./inventory_list_model";
@@ -9,9 +9,15 @@ import {
   type FilamentLabelSize,
 } from "./filament_label_profiles";
 import { exportLabelPng, type BambuLiveIntegrationSettings } from "./tauri_client";
+import type { InventoryReloadReporter } from "./use_inventory_page_data";
 import type { InventoryPrinterSlotOption } from "./use_inventory_printer_slots";
 
 type InventorySpoolDetailUtilityActionsInput = {
+  active: boolean;
+  ready: boolean;
+  captureOpen: boolean;
+  selectedRfidCaptureSlotId: string | null;
+  clientTargetGeneration: number | null;
   canUseClientHostWrite: () => boolean;
   clientHostBaseUrl: string | null;
   clientLibraryId: string | null;
@@ -20,9 +26,9 @@ type InventorySpoolDetailUtilityActionsInput = {
   ensureLocalWriteAllowed: () => boolean;
   manageBusy: boolean;
   openRfidCaptureModal: () => void;
-  reloadPrinterOverview: () => Promise<void>;
+  reloadPrinterOverview: (report?: InventoryReloadReporter) => Promise<void>;
   reloadSpoolDetail: (spoolId: string) => Promise<void>;
-  reloadSpools: () => Promise<void>;
+  reloadSpools: (report?: InventoryReloadReporter) => Promise<void>;
   rfidCaptureLastSeenAt: string | null;
   rfidCaptureSummary: RfidCaptureSummary;
   selectedRfidCaptureLiveIntegration: BambuLiveIntegrationSettings | null;
@@ -40,6 +46,7 @@ type InventorySpoolDetailUtilityActionsInput = {
 };
 
 export function useInventorySpoolDetailUtilityActions({
+  active, ready, captureOpen, selectedRfidCaptureSlotId, clientTargetGeneration,
   canUseClientHostWrite,
   clientHostBaseUrl,
   clientLibraryId,
@@ -66,19 +73,48 @@ export function useInventorySpoolDetailUtilityActions({
   tauriAvailable,
   t,
 }: InventorySpoolDetailUtilityActionsInput) {
+  const scopeKey = JSON.stringify([active, ready, selectedSpool?.id, clientReadOnly,
+    clientHostBaseUrl, clientLibraryId, clientTargetGeneration]);
+  const scope = useMemo(() => ({ key: scopeKey }), [scopeKey]);
+  const captureKey = JSON.stringify([captureOpen, selectedRfidCaptureSlotId,
+    rfidCaptureSummary.rfidTag, rfidCaptureLastSeenAt,
+    selectedRfidCaptureLiveIntegration?.observed_state?.last_seen_at]);
+  const capture = useMemo(() => ({ key: captureKey }), [captureKey]);
+  const captureStart = useRef<object | null>(null);
+  useLayoutEffect(() => { if (!captureOpen) captureStart.current = null; }, [captureOpen]);
+  const consumedCaptures = useRef(new WeakSet<object>());
+  const current = useRef<{ scope: object; busy: boolean } | null>(null);
+  const latest = useRef({ capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite });
+  useLayoutEffect(() => { latest.current = { capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite }; }, [capture, manageBusy, tauriAvailable, ensureLocalWriteAllowed, canUseClientHostWrite]);
+  useLayoutEffect(() => {
+    const operation = { scope, busy: false };
+    current.current = operation;
+    captureStart.current = null;
+    return () => { current.current = null; if (operation.busy) setManageBusy(false); };
+  }, [scope, setManageBusy]);
+  const available = useCallback(() => active && ready && selectedSpool && tauriAvailable && !manageBusy &&
+    current.current?.scope === scope && !current.current.busy && !latest.current.manageBusy && latest.current.tauriAvailable,
+    [active, ready, selectedSpool, tauriAvailable, manageBusy, scope]);
+
   const handlePrintLabel = useCallback(async (
     labelSize: FilamentLabelSize,
     pngDataUrl: string,
   ) => {
-    if (!tauriAvailable || !selectedSpool) {
+    if (!available() || !selectedSpool) {
       return;
     }
+    const operation = current.current!;
+    operation.busy = true;
+    setManageBusy(true);
+    setError(null);
+    setInfoMessage(null);
     try {
       const reference = selectedSpool.id.replace(/^spool_/, "").slice(-6) || "spool";
       const exportedPath = await exportLabelPng(
         pngDataUrl,
         `filament-label-${reference}-${filamentLabelSizeFilenameSuffix(labelSize)}`,
       );
+      if (current.current !== operation) return;
       setInfoMessage(
         t("inventory.labelSaved", "Label PNG saved to Downloads.").replace(
           "{path}",
@@ -86,7 +122,7 @@ export function useInventorySpoolDetailUtilityActions({
         ),
       );
     } catch (printError) {
-      console.error(printError);
+      if (current.current !== operation) return;
       setError(
         commandErrorText(
           printError,
@@ -94,24 +130,35 @@ export function useInventorySpoolDetailUtilityActions({
           t,
         ),
       );
+    } finally {
+      if (current.current === operation) { operation.busy = false; setManageBusy(false); }
     }
   }, [
+    available, setManageBusy,
     selectedSpool,
     setError,
     setInfoMessage,
     t,
-    tauriAvailable,
   ]);
 
   const handleStartRfidCapture = useCallback(() => {
+    if (!available() || captureOpen || captureStart.current) return;
+    const request = {};
+    captureStart.current = request;
     setSelectedRfidCaptureSlotId(
       selectedSpoolAssignedSlot?.slotId ?? selectedSpoolRfidCaptureSlots[0]?.slotId ?? null,
     );
     setRfidCaptureError(null);
     setShowRfidCapturedFields(false);
-    void reloadPrinterOverview();
+    const operation = current.current;
+    void Promise.resolve().then(() => reloadPrinterOverview()).catch(() => {
+      if (current.current === operation && captureStart.current === request) {
+        setRfidCaptureError(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
+    }).finally(() => { if (captureStart.current === request) captureStart.current = null; });
     openRfidCaptureModal();
   }, [
+    available, captureOpen, t,
     openRfidCaptureModal,
     reloadPrinterOverview,
     selectedSpoolAssignedSlot,
@@ -122,7 +169,7 @@ export function useInventorySpoolDetailUtilityActions({
   ]);
 
   const handleSaveCapturedRfid = useCallback(async () => {
-    if (!selectedSpool || !tauriAvailable || manageBusy) {
+    if (!available() || !selectedSpool || !captureOpen || latest.current.capture !== capture || consumedCaptures.current.has(capture)) {
       return;
     }
     const nextRfidTag = rfidCaptureSummary.rfidTag?.trim() ?? "";
@@ -135,15 +182,21 @@ export function useInventorySpoolDetailUtilityActions({
       );
       return;
     }
-    if (!clientReadOnly && !ensureLocalWriteAllowed()) {
+    if (!clientReadOnly && !latest.current.ensureLocalWriteAllowed()) {
       return;
     }
-    if (clientReadOnly && !canUseClientHostWrite()) {
+    if (clientReadOnly && !latest.current.canUseClientHostWrite()) {
       return;
     }
 
+    if (clientReadOnly && (!Number.isSafeInteger(clientTargetGeneration) || clientTargetGeneration! < 0)) return;
+    const operation = current.current!;
+    const isCurrent = () => current.current === operation;
+    operation.busy = true;
     setManageBusy(true);
     setError(null);
+    setRfidCaptureError(null);
+    setInfoMessage(null);
     try {
       const observedAt =
         rfidCaptureLastSeenAt ??
@@ -155,29 +208,37 @@ export function useInventorySpoolDetailUtilityActions({
           rfid_tag: nextRfidTag,
           rfid_observed_at: observedAt,
         },
-        { clientReadOnly, clientHostBaseUrl, clientLibraryId },
+        { clientReadOnly, clientHostBaseUrl, clientLibraryId, clientTargetGeneration },
       );
-      await reloadSpools();
-      await reloadPrinterOverview();
-      await reloadSpoolDetail(selectedSpool.id);
+      if (!isCurrent()) return;
+      consumedCaptures.current.add(capture);
       setInfoMessage(t("inventory.rfidSaved", "RFID tag saved on the selected roll."));
-      closeRfidCaptureModal();
+      let refreshFailed = false;
+      const report: InventoryReloadReporter = (_domain, resolution) => {
+        if (resolution !== "LIVE" && resolution !== "SUPERSEDED") refreshFailed = true;
+      };
+      const results = await Promise.allSettled([
+        () => reloadSpools(report), () => reloadPrinterOverview(report), () => reloadSpoolDetail(selectedSpool.id),
+      ].map(reload => Promise.resolve().then(reload)));
+      if (!isCurrent()) return;
+      if (refreshFailed || results.some(result => result.status === "rejected")) {
+        setError(t("inventory.error.loadInventory", "Failed to load inventory."));
+      }
+      if (latest.current.capture === capture) closeRfidCaptureModal();
     } catch (saveError) {
-      console.error(saveError);
+      if (!isCurrent() || latest.current.capture !== capture) return;
       setRfidCaptureError(
         commandErrorText(saveError, t("inventory.error.saveRfid", "Failed to save RFID tag.")),
       );
     } finally {
-      setManageBusy(false);
+      if (isCurrent()) { operation.busy = false; setManageBusy(false); }
     }
   }, [
-    canUseClientHostWrite,
+    available, captureOpen, capture, clientTargetGeneration,
     clientHostBaseUrl,
     clientLibraryId,
     clientReadOnly,
     closeRfidCaptureModal,
-    ensureLocalWriteAllowed,
-    manageBusy,
     reloadSpoolDetail,
     reloadSpools,
     reloadPrinterOverview,
@@ -190,7 +251,6 @@ export function useInventorySpoolDetailUtilityActions({
     setManageBusy,
     setRfidCaptureError,
     t,
-    tauriAvailable,
   ]);
 
   return {

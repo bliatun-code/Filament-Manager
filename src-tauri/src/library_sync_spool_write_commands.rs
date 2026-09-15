@@ -389,7 +389,11 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
     input: LibrarySyncUpdateSpoolRfidTagInput,
 ) -> Result<(), String> {
     let host_input = library_sync_host_input(&input.base_url, input.expected_library_id.as_deref());
-    let (normalized_base_url, _, target) = prepare_library_sync_host_write(state, &host_input)?;
+    let (normalized_base_url, _, target) = prepare_library_sync_host_write_for_generation(
+        state,
+        &host_input,
+        input.expected_target_generation,
+    )?;
 
     let spool_id = input.spool_id.trim();
     if spool_id.is_empty() {
@@ -397,7 +401,7 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
     }
 
     let spool_id = encode_library_sync_path_segment(spool_id);
-    perform_library_sync_host_write(
+    let _: serde_json::Value = perform_library_sync_host_write_and_parse_for_target(
         state,
         &normalized_base_url,
         &format!("/api/v1/spools/{spool_id}/rfid"),
@@ -405,10 +409,12 @@ fn update_library_sync_host_spool_rfid_tag_blocking(
             "rfid_tag": trimmed_non_empty(input.rfid_tag.as_deref()),
             "rfid_observed_at": trimmed_non_empty(input.rfid_observed_at.as_deref()),
         }),
+        &target,
+        None,
     )?;
 
     refresh_library_sync_spool_cache(state, &normalized_base_url, &target);
-    save_library_sync_success(state, &target, "Host spool RFID updated.", None)?;
+    let _ = save_library_sync_success(state, &target, "Host spool RFID updated.", None);
     Ok(())
 }
 

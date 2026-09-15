@@ -226,7 +226,11 @@ export async function updateInventorySpoolRfidTag(
 
   if (target.clientReadOnly) {
     const hostTarget = requireClientHostWriteTarget(target, missingSpoolHostTargetMessage);
-    await updateHostSpoolRfidTag(hostTarget.baseUrl, hostTarget.libraryId, input);
+    if (target.clientTargetGeneration == null) {
+      await updateHostSpoolRfidTag(hostTarget.baseUrl, hostTarget.libraryId, input);
+    } else {
+      await updateHostSpoolRfidTag(hostTarget.baseUrl, hostTarget.libraryId, input, target.clientTargetGeneration);
+    }
     return;
   }
 

@@ -125,6 +125,7 @@ pub(crate) struct LibrarySyncUpdateSpoolOwnershipInput {
 
 #[derive(Deserialize)]
 pub(crate) struct LibrarySyncUpdateSpoolRfidTagInput {
+    pub(crate) expected_target_generation: Option<u64>,
     pub(crate) base_url: String,
     pub(crate) expected_library_id: Option<String>,
     pub(crate) spool_id: String,
