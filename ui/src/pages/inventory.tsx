@@ -716,6 +716,8 @@ export default function InventoryPage({
     modalProps: inventoryLabelSheetModalProps,
     openLabelSheet: openInventoryLabelSheet,
   } = useInventoryLabelSheetAction({
+    workspaceView: activeWorkspaceView, ready: librarySyncReady,
+    loadingInventory: loading, clientLibraryId, clientTargetGeneration,
     busy: manageBusy,
     clientHostBaseUrl,
     clientReadOnly,
@@ -1451,7 +1453,7 @@ export default function InventoryPage({
         onRetryLoadError={retryInventoryPageLoad}
         purchaseQueueProps={purchaseQueueProps}
         headerActionsProps={{
-          labelSheetDisabled: !tauri || manageBusy || loading,
+          labelSheetDisabled: !tauri || manageBusy || loading || !librarySyncReady,
           lowStockOnly,
           onAddSpool: () => openAddModal(),
           onCreateLabelSheet: () => void openInventoryLabelSheet(),
