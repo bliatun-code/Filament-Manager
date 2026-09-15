@@ -425,11 +425,13 @@ export async function updateLibrarySyncHostSpoolRfidTag(
   baseUrl: string,
   expectedLibraryId: string | null | undefined,
   input: UpdateSpoolRfidTagInput,
+  expectedTargetGeneration?: number | null,
 ) {
   return invoke<void>("update_library_sync_host_spool_rfid_tag", {
     input: {
       base_url: baseUrl,
       expected_library_id: expectedLibraryId ?? null,
+      expected_target_generation: expectedTargetGeneration ?? null,
       spool_id: input.spool_id,
       rfid_tag: input.rfid_tag ?? null,
       rfid_observed_at: input.rfid_observed_at ?? null,

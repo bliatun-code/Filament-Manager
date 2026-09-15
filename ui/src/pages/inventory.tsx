@@ -882,6 +882,8 @@ export default function InventoryPage({
     handleSaveCapturedRfid,
     handleStartRfidCapture,
   } = useInventorySpoolDetailUtilityActions({
+    active: showRollModal, ready: librarySyncReady, captureOpen: showRfidCaptureModal,
+    selectedRfidCaptureSlotId, clientTargetGeneration,
     canUseClientHostWrite,
     clientHostBaseUrl,
     clientLibraryId,

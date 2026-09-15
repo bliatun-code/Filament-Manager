@@ -156,3 +156,126 @@ fn queued_reviewed_local_details_cannot_follow_a_new_client_authority() {
         .is_none());
     std::fs::remove_file(path).unwrap();
 }
+
+fn save_rfid(state: &AppState, base: &str, generation: Option<u64>) -> Result<(), String> {
+    update_library_sync_host_spool_rfid_tag_blocking(state, serde_json::from_value(serde_json::json!({
+        "base_url":base,"expected_library_id":"library-test","expected_target_generation":generation,
+        "spool_id":"spool / one","rfid_tag":"TAG-123","rfid_observed_at":"2026-09-15T12:00:00Z"
+    })).unwrap())
+}
+
+#[test]
+fn reviewed_rfid_rejects_old_generation_before_network() {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let (state, path) = fake_host_state(&base);
+    let generation = FilamentDatabase::open(&path)
+        .unwrap()
+        .get_library_sync_settings()
+        .unwrap()
+        .target_generation;
+    change_target_and_back(&state);
+    assert!(save_rfid(&state, &base, Some(generation))
+        .unwrap_err()
+        .contains("common.invalid_request"));
+    assert_eq!(
+        listener.accept().unwrap_err().kind(),
+        std::io::ErrorKind::WouldBlock
+    );
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn reviewed_rfid_keeps_target_through_health_post_and_cache() {
+    for phase in ["fresh", "legacy", "health", "post", "cache"] {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let (state, path) = fake_host_state(&base);
+        let generation = FilamentDatabase::open(&path)
+            .unwrap()
+            .get_library_sync_settings()
+            .unwrap()
+            .target_generation;
+        let server_state = state.clone();
+        let done = Arc::new(AtomicBool::new(false));
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let server_done = Arc::clone(&done);
+        let server_requests = Arc::clone(&requests);
+        let server = std::thread::spawn(move || {
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while !server_done.load(Ordering::SeqCst) && Instant::now() < deadline {
+                let (mut stream, _) = match listener.accept() {
+                    Ok(connection) => connection,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(Duration::from_millis(5));
+                        continue;
+                    }
+                    Err(error) => panic!("accept: {error}"),
+                };
+                stream.set_nonblocking(false).unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .unwrap();
+                let request = read_http_request(&mut stream);
+                let health = request.starts_with("GET /api/v1/health ");
+                let post = request.starts_with("POST ");
+                let cache = request.starts_with("GET /api/v1/library/spools?");
+                server_requests.lock().unwrap().push(request);
+                if (phase == "health" && health)
+                    || (phase == "post" && post)
+                    || (phase == "cache" && cache)
+                {
+                    change_target_and_back(&server_state);
+                }
+                let body = if health {
+                    serde_json::json!({"ok":true,"api_version":"v1","capabilities":[],"auth_mode":"pairing-session",
+                        "access_mode":"trusted-lan","library_id":"library-test","device_name":"Host","sync_mode":"HOST"}).to_string()
+                } else {
+                    "{}".into()
+                };
+                write!(stream,"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).unwrap();
+            }
+        });
+        let result = save_rfid(
+            &state,
+            &base,
+            if phase == "legacy" {
+                None
+            } else {
+                Some(generation)
+            },
+        );
+        done.store(true, Ordering::SeqCst);
+        server.join().unwrap();
+        let requests = requests.lock().unwrap();
+        let posts: Vec<_> = requests.iter().filter(|r| r.starts_with("POST ")).collect();
+        if phase == "health" || phase == "post" {
+            assert!(
+                result.unwrap_err().contains("common.invalid_request"),
+                "{phase}"
+            );
+            assert_eq!(posts.len(), usize::from(phase == "post"));
+            assert!(!requests
+                .iter()
+                .any(|r| r.starts_with("GET /api/v1/library/spools?")));
+        } else {
+            result.unwrap();
+            assert_eq!(posts.len(), 1);
+            assert!(posts[0].starts_with("POST /api/v1/spools/spool%20%2F%20one/rfid "));
+            assert!(posts[0].contains("TAG-123"));
+            if phase == "cache" {
+                assert!(requests
+                    .iter()
+                    .any(|r| r.starts_with("GET /api/v1/library/spools?")));
+            }
+        }
+        assert!(FilamentDatabase::open(&path)
+            .unwrap()
+            .get_spool_by_id("spool / one")
+            .unwrap()
+            .is_none());
+        std::fs::remove_file(path).unwrap();
+    }
+}

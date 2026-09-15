@@ -169,7 +169,7 @@ Disse temaene vurderes på nytt etter fase 3, når kjerneflyter, kontrakter og d
 
 [Avhengighetsgjennomgangen 14. september](DEPENDENCY_REVIEW_2026-09-14.md) er merget gjennom PR #124 som `22106b33`, etter én push og elleve grønne kontroller uten omkjøring. Den samler Dependabot #121–123, React 19.3, Vite 8.3 og kompatible Rust-oppdateringer, inkludert Quinn-sikkerhetsrettelser. Tauri 3 er publisert som alfa og krever en separat migrering; TypeScript 7 venter fortsatt på lintstøtte. Den daterte rapporten beskriver gjenværende varsler og hva som må utløse neste oppgradering.
 
-[Lagring av rull- og katalogdetaljer](INVENTORY_DETAIL_SAVES_2026-09-14.md) er merget i PR #125 som `9a357248`, etter én push og åtte grønne kontroller uten omkjøring. Begge plattformene bestod 1 864 UI-tester og pakket backup-/Host/Client-verifisering. [De seks lokasjonshandlingene](INVENTORY_LOCATION_ACTIONS_2026-09-14.md) er deretter merget i PR #126 som `4b272815`, etter åtte grønne kontroller. [Masseflytting og statusendring](INVENTORY_BULK_ACTIONS_2026-09-14.md) er merget i PR #127 som `3d45019d`, etter én push og åtte grønne kontroller. Neste pakke sikrer [etikettark og PDF-lagring](INVENTORY_LABEL_SHEETS_2026-09-15.md) ved avbrudd, ny åpning og bytte av Host eller lagervisning.
+[Lagring av rull- og katalogdetaljer](INVENTORY_DETAIL_SAVES_2026-09-14.md) er merget i PR #125 som `9a357248`, etter én push og åtte grønne kontroller uten omkjøring. Begge plattformene bestod 1 864 UI-tester og pakket backup-/Host/Client-verifisering. [De seks lokasjonshandlingene](INVENTORY_LOCATION_ACTIONS_2026-09-14.md) er deretter merget i PR #126 som `4b272815`, etter åtte grønne kontroller. [Masseflytting og statusendring](INVENTORY_BULK_ACTIONS_2026-09-14.md) er merget i PR #127 som `3d45019d`, etter én push og åtte grønne kontroller. [Etikettark og PDF-lagring](INVENTORY_LABEL_SHEETS_2026-09-15.md) er merget i PR #128 som `5fee07f4`, etter én push og åtte grønne kontroller. Neste pakke sikrer [RFID-lagring og enkeltetiketter](INVENTORY_DETAIL_UTILITIES_2026-09-15.md) i rulldetaljen, inkludert Host-mål og oppfrisking etter bekreftet lagring.
 
 Vanlig registrering har fått en [egen kvittering og eksplisitte neste handlinger](REGISTRATION_FOLLOWUP_2026-09-06.md); samlet lokal verifisering og native kontroll med uavhengige databasekontroller er bestått. Lokasjon ved mottak og nøyaktig printerspor er allerede [rettet og verifisert lokalt](USABILITY_FOLLOWUP_2026-09-06.md). Hypotesen om menneskelig dobbeltregistrering fra [AI-evalueringen](USABILITY_AGENT_EVALUATION_2026-09-06.md) er fortsatt ikke målt.
 
@@ -215,6 +215,8 @@ Den tidligere lokale oppfriskingen gjenopprettet navnet bare midlertidig. Omstar
 ## Fremdriftslogg
 
 ### 2026-09-15
+
+- PR #128 er merget som `5fee07f4`. Neste samlede pakke dekker RFID-opptak og lagring samt PNG-eksport i rulldetaljen, med nettlesertester og native kontroll av målbytter gjennom hele Host-skrivingen.
 
 - PR #127 er merget som `3d45019d`. Neste pakke beskytter etikettgenerering og PDF-lagring mot dobbeltklikk og sene resultater, med tester gjennom den reelle dialogen.
 
