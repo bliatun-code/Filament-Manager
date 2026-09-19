@@ -68,6 +68,8 @@ class HookHarness<Props, Result> {
   private readonly dispatcher = {
     useCallback: <Value>(callback: Value, dependencies: DependencyList) =>
       this.useMemo(() => callback, dependencies),
+    useLayoutEffect: (create: () => EffectCleanup, dependencies: DependencyList) =>
+      this.useEffect(create, dependencies),
     useEffect: (create: () => EffectCleanup, dependencies: DependencyList) =>
       this.useEffect(create, dependencies),
     useMemo: <Value>(factory: () => Value, dependencies: DependencyList) =>
@@ -385,4 +387,125 @@ test("a late response from the previous Host target cannot replace the current t
   assert.equal(harness.current.defaultCurrency, "EUR");
   assert.equal(harness.current.loadFailed, false);
   harness.unmount();
+});
+
+function pricedSnapshot(currency = "NOK"): FilamentStandardsSnapshot {
+  return { ...snapshot(currency), groups: [{
+    group_key: "pla", vendor: "Bambu", material: "PLA", filament_name: "PLA Basic", nominal_weight_g: 1000,
+    spool_count: 1, owned_spool_count: 1, borrowed_in_spool_count: 0, missing_price_count: 1,
+    missing_currency_count: 1, manual_price_count: 0, standard_batch_price_count: 0, locked_count: 0,
+    spools: [{spool_id: "s1", master_id: "m1", color_name: "Blue", status: "IN_STOCK", ownership_type: "OWNED", purchase_price_batch_locked: false}],
+  }] };
+}
+const batchRequest = { groupKey: "pla", mode: "MISSING_ONLY" as const, price: 199, currency: "NOK", spoolIds: ["s1"], historicalMissingPriceSpoolIds: [] };
+const batchResult = {batch_id: "batch-1", group_key: "pla", mode: "MISSING_ONLY", committed: true, updated_count: 1, skipped_count: 0,
+  updated: [{spool_id: "s1", master_id: "m1", color_name: "Blue", purchase_price: 199, purchase_currency: "NOK", purchase_price_source: "STANDARD_BATCH", purchase_price_batch_locked: false}], skipped: []};
+
+for (const action of ["currency", "group", "batch"] as const) {
+  test(`${action} write rejects synchronous duplicates and old callbacks after authority changes`, async () => {
+    const pending = deferred<unknown>();
+    let writes = 0;
+    invokeHandler = async command => {
+      if (command === "get_filament_standards" || command === "fetch_library_sync_filament_standards") return pricedSnapshot();
+      writes++; return pending.promise;
+    };
+    const input = props({clientReadOnly: false});
+    const harness = new HookHarness(useSettingsFilamentDefaults, input);
+    await harness.flush();
+    const original = harness.current;
+    const run = () => action === "currency" ? original.onSaveDefaultCurrency("EUR") : action === "group"
+      ? original.onSaveGroupPrice({groupKey: "pla", price: 199, currency: "EUR"}) : original.onApplyBatch(batchRequest);
+    const first = run();
+    const duplicate = assert.rejects(run());
+    await harness.flush();
+    assert.equal(writes, 1);
+    await duplicate;
+    harness.render({...input, clientTargetGeneration: 2});
+    await harness.flush();
+    await assert.rejects(run());
+    pending.resolve(action === "batch" ? batchResult : pricedSnapshot("EUR"));
+    await first; await harness.flush();
+    assert.equal(harness.current.defaultCurrency, "NOK", "old completion must not overwrite the new authority");
+    assert.equal(writes, 1);
+    harness.unmount();
+  });
+}
+
+test("currency save fences earlier reads and stale snapshot callbacks while preserving a later group save", async () => {
+  const lateRead = deferred<FilamentStandardsSnapshot>();
+  let reads = 0;
+  const saved: unknown[] = [];
+  invokeHandler = async (command, payload) => {
+    if (command === "get_filament_standards") return ++reads === 1 ? pricedSnapshot() : lateRead.promise;
+    saved.push(payload?.settings);
+    return {...pricedSnapshot(), settings: payload?.settings};
+  };
+  const harness = new HookHarness(useSettingsFilamentDefaults, props({clientReadOnly: false}));
+  await harness.flush();
+  const old = harness.current;
+  const loading = old.reload();
+  await old.onSaveDefaultCurrency("EUR");
+  await assert.rejects(old.onSaveGroupPrice({groupKey: "pla", price: 20, currency: "EUR"}));
+  lateRead.resolve(pricedSnapshot("USD"));
+  await loading; await harness.flush();
+  assert.equal(harness.current.defaultCurrency, "EUR");
+  await harness.current.onSaveGroupPrice({groupKey: "pla", price: 20, currency: "EUR"});
+  await harness.flush();
+  assert.equal(harness.current.defaultCurrency, "EUR");
+  assert.deepEqual(harness.current.persistedGroupPrices, [{groupKey: "pla", price: 20, currency: "EUR"}]);
+  assert.equal(saved.length, 2);
+  harness.unmount();
+});
+
+test("batch receipt is delivered before refresh and cannot be retried after synchronous refresh failures", async () => {
+  let reads = 0, writes = 0, inventoryRefreshes = 0;
+  const warnings: unknown[] = [];
+  const refresh = deferred<FilamentStandardsSnapshot>();
+  invokeHandler = async command => {
+    if (command === "get_filament_standards") return ++reads === 1 ? pricedSnapshot() : refresh.promise;
+    writes++; return batchResult;
+  };
+  const harness = new HookHarness(useSettingsFilamentDefaults, props({clientReadOnly: false,
+    onLoadError: error => warnings.push(error),
+    onInventoryChanged: () => { inventoryRefreshes++; throw new Error("Inventory refresh failed"); },
+  }));
+  await harness.flush();
+  const receipts: unknown[] = [];
+  const pending = harness.current.onApplyBatch(batchRequest, receipt => receipts.push(receipt));
+  await harness.flush();
+  assert.equal(receipts.length, 1, "commit must be visible while refresh is pending");
+  assert.equal(harness.current.busy, true);
+  refresh.reject(new Error("Standards refresh failed"));
+  const result = await pending; await harness.flush();
+  assert.equal(result.committed, true);
+  assert.equal(result.updated[0].spoolId, "s1");
+  assert.equal(warnings.length, 2);
+  assert.equal(inventoryRefreshes, 1);
+  await assert.rejects(harness.current.onApplyBatch(batchRequest));
+  assert.equal(writes, 1);
+  assert.equal(harness.current.busy, false);
+  harness.unmount();
+});
+
+test("failed save releases the lock for explicit retry; unmount blocks callbacks and late refresh", async () => {
+  let writes = 0, refreshes = 0;
+  const pending = deferred<unknown>();
+  invokeHandler = async command => {
+    if (command === "get_filament_standards") return pricedSnapshot();
+    writes++;
+    if (writes === 1) throw new Error("Save failed");
+    return pending.promise;
+  };
+  const harness = new HookHarness(useSettingsFilamentDefaults, props({clientReadOnly: false, onInventoryChanged: () => { refreshes++; }}));
+  await harness.flush();
+  await assert.rejects(harness.current.onSaveDefaultCurrency("EUR"));
+  await harness.flush();
+  assert.equal(harness.current.busy, false);
+  const old = harness.current;
+  const batch = old.onApplyBatch(batchRequest);
+  harness.unmount();
+  await assert.rejects(old.onSaveDefaultCurrency("EUR"));
+  pending.resolve(batchResult); await batch;
+  assert.equal(writes, 2);
+  assert.equal(refreshes, 0);
 });

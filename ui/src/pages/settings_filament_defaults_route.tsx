@@ -10,5 +10,5 @@ export type SettingsFilamentDefaultsRouteProps = {
 export function SettingsFilamentDefaultsRoute({
   tab,
 }: SettingsFilamentDefaultsRouteProps) {
-  return <SettingsFilamentDefaultsTab {...tab} />;
+  return <SettingsFilamentDefaultsTab key={tab.mutationScopeKey} {...tab} />;
 }

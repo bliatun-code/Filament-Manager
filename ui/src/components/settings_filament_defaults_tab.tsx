@@ -1,11 +1,13 @@
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { useSettingsMutationScope } from "../lib/use_settings_mutation_scope";
 import type { MessageParams } from "../../../src-tauri/companion_browser/message_format.js";
 import { formatSpoolReference } from "../lib/display_format";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
@@ -54,6 +56,7 @@ export type SettingsFilamentDefaultsFocusTarget =
 
 export type SettingsFilamentDefaultsTabProps = {
   busy: boolean;
+  mutationScopeKey?: string;
   hostUnsupported: boolean;
   hostTargetMissing: boolean;
   loadFailed: boolean;
@@ -74,6 +77,7 @@ export type SettingsFilamentDefaultsTabProps = {
   ) => Promise<void> | void;
   onApplyBatch: (
     request: FilamentPriceBatchRequest,
+    onCommitted?: (receipt: FilamentPriceBatchReceipt) => void,
   ) => Promise<FilamentPriceBatchReceipt> | FilamentPriceBatchReceipt;
   onOpenSpoolDetail: (spoolId: string) => void;
   onReload: () => Promise<unknown> | unknown;
@@ -85,6 +89,7 @@ type GroupPriceDraft = {
 };
 
 type PendingOverwrite = {
+  reviewKey: string;
   group: FilamentPriceGroup;
   request: FilamentPriceBatchRequest;
 };
@@ -411,6 +416,7 @@ function BatchReceiptCard({
 
 export function SettingsFilamentDefaultsTab({
   busy,
+  mutationScopeKey = "local",
   hostUnsupported,
   hostTargetMissing,
   loadFailed,
@@ -431,6 +437,14 @@ export function SettingsFilamentDefaultsTab({
   onOpenSpoolDetail,
   onReload,
 }: SettingsFilamentDefaultsTabProps) {
+  const { begin: beginMutation } = useSettingsMutationScope(mutationScopeKey);
+  const completedRequests = useRef(new WeakSet<FilamentPriceBatchRequest>());
+  const [localInfo, setLocalInfo] = useState<string | null>(null);
+  useEffect(() => {
+    if (!localInfo) return;
+    const timer = window.setTimeout(() => setLocalInfo(null), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [localInfo]);
   const categories = useMemo(() => buildFilamentPriceGroups(spoolRows), [spoolRows]);
   const groups = useMemo(() => allFilamentPriceGroups(categories), [categories]);
   const defaultSelectionSignature = useMemo(
@@ -441,6 +455,9 @@ export function SettingsFilamentDefaultsTab({
     () => new Map(persistedGroupPrices.map((item) => [item.groupKey, item])),
     [persistedGroupPrices],
   );
+  const reviewKey = JSON.stringify(spoolRows);
+  const currentReviewKey = useRef(reviewKey);
+  useLayoutEffect(() => { currentReviewKey.current = reviewKey; }, [reviewKey]);
   const currencyInputRef = useRef<HTMLInputElement | null>(null);
   const pricingSectionRef = useRef<HTMLElement | null>(null);
   const visualQaPricingOpen = useMemo(
@@ -459,7 +476,8 @@ export function SettingsFilamentDefaultsTab({
     useState<FilamentPriceBatchReceipt | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [selectionAnnouncement, setSelectionAnnouncement] = useState<string | null>(null);
-  const receipt = batchReceipt === undefined ? localBatchReceipt : batchReceipt;
+  const candidateReceipt = batchReceipt === undefined ? localBatchReceipt : batchReceipt;
+  const receipt = candidateReceipt?.scopeKey && candidateReceipt.scopeKey !== mutationScopeKey ? null : candidateReceipt;
 
   function setReceipt(next: FilamentPriceBatchReceipt | null) {
     if (batchReceipt === undefined) {
@@ -572,14 +590,19 @@ export function SettingsFilamentDefaultsTab({
   }
 
   async function saveDefaultCurrency() {
-    if (!normalizedDefaultCurrency) {
+    if (disabled || !normalizedDefaultCurrency) {
       return;
     }
+    const operation = beginMutation();
+    if (!operation) return;
     setLocalError(null);
+    setLocalInfo(null);
     setActiveMutation("default-currency");
     try {
       await onSaveDefaultCurrency(normalizedDefaultCurrency);
+      if (operation.isCurrent()) setLocalInfo(`${t("settings.filamentDefaultsCurrency", "Default purchase currency")}: ${normalizedDefaultCurrency} · ${t("settings.librarySyncDeviceNameSavedStatus", "Saved")}`);
     } catch (error) {
+      if (!operation.isCurrent()) return;
       setLocalError(
         toErrorMessage(
           error,
@@ -591,7 +614,8 @@ export function SettingsFilamentDefaultsTab({
         ),
       );
     } finally {
-      setActiveMutation(null);
+      if (operation.isCurrent()) setActiveMutation(null);
+      operation.finish();
     }
   }
 
@@ -599,14 +623,19 @@ export function SettingsFilamentDefaultsTab({
     const draft = draftForGroup(group);
     const price = parseFilamentGroupPrice(draft.priceRaw);
     const currency = normalizeFilamentDefaultCurrency(draft.currencyRaw);
-    if (price == null || !currency) {
+    if (disabled || price == null || !currency) {
       return;
     }
+    const operation = beginMutation();
+    if (!operation) return;
     setLocalError(null);
+    setLocalInfo(null);
     setActiveMutation(`save:${group.key}`);
     try {
       await onSaveGroupPrice({ groupKey: group.key, price, currency });
+      if (operation.isCurrent()) setLocalInfo(`${group.filamentLabel}: ${price} ${currency} · ${t("settings.librarySyncDeviceNameSavedStatus", "Saved")}`);
     } catch (error) {
+      if (!operation.isCurrent()) return;
       setLocalError(
         toErrorMessage(
           error,
@@ -618,7 +647,8 @@ export function SettingsFilamentDefaultsTab({
         ),
       );
     } finally {
-      setActiveMutation(null);
+      if (operation.isCurrent()) setActiveMutation(null);
+      operation.finish();
     }
   }
 
@@ -655,12 +685,29 @@ export function SettingsFilamentDefaultsTab({
     };
   }
 
-  async function applyRequest(request: FilamentPriceBatchRequest) {
+  async function applyRequest(request: FilamentPriceBatchRequest, expectedReviewKey = reviewKey) {
+    if (disabled || completedRequests.current.has(request)) return;
+    if (currentReviewKey.current !== expectedReviewKey) {
+      setLocalError(t("errors.filamentStandardsStaleReview", "The selected rolls changed. Review the filament price group again."));
+      return;
+    }
+    const operation = beginMutation();
+    if (!operation) return;
     setLocalError(null);
+    setLocalInfo(null);
     setActiveMutation(`apply:${request.groupKey}`);
     try {
-      const result = await onApplyBatch(request);
-      setReceipt(result);
+      let recorded = false;
+      const recordResult = (result: FilamentPriceBatchReceipt) => {
+        if (!operation.isCurrent() || recorded) return;
+        recorded = true;
+        if (result.committed) completedRequests.current.add(request);
+        setReceipt(result);
+        setPendingOverwrite(null);
+      };
+      const result = await onApplyBatch(request, recordResult);
+      if (!operation.isCurrent()) return;
+      recordResult(result);
       const requestedHistoricalIds = new Set(
         request.historicalMissingPriceSpoolIds,
       );
@@ -680,6 +727,7 @@ export function SettingsFilamentDefaultsTab({
       }
       setPendingOverwrite(null);
     } catch (error) {
+      if (!operation.isCurrent()) return;
       setLocalError(
         toErrorMessage(
           error,
@@ -691,19 +739,40 @@ export function SettingsFilamentDefaultsTab({
         ),
       );
     } finally {
-      setActiveMutation(null);
+      if (operation.isCurrent()) setActiveMutation(null);
+      operation.finish();
     }
   }
 
   function requestBatch(group: FilamentPriceGroup) {
+    if (disabled) return;
     const request = buildRequest(group);
     if (!request) {
       return;
     }
     if (request.mode === "OVERWRITE") {
-      setPendingOverwrite({ group, request });
+      setLocalError(null);
+      setPendingOverwrite({ group, request, reviewKey });
     } else {
       void applyRequest(request);
+    }
+  }
+
+  function confirmOverwrite() {
+    if (pendingOverwrite) void applyRequest(pendingOverwrite.request, pendingOverwrite.reviewKey);
+  }
+
+  async function saveLowStock(policy: Parameters<typeof lowStock.onSave>[0]) {
+    if (disabled || lowStock.busy || lowStock.readOnly) return;
+    const operation = beginMutation();
+    if (!operation) return;
+    setActiveMutation("low-stock");
+    try { await lowStock.onSave(policy); }
+    catch (error) {
+      if (operation.isCurrent()) setLocalError(toErrorMessage(error, t("settings.lowStockSaveError", "Failed to save low-stock thresholds."), translateError));
+    } finally {
+      if (operation.isCurrent()) setActiveMutation(null);
+      operation.finish();
     }
   }
 
@@ -818,6 +887,7 @@ export function SettingsFilamentDefaultsTab({
             className={`${settingsActionButtonClass("primary")} mt-3`}
             disabled={disabled || !normalizedDefaultCurrency}
             type="button"
+            aria-busy={activeMutation === "default-currency"}
             onClick={() => void saveDefaultCurrency()}
           >
             {t("settings.filamentDefaultsSaveCurrency", "Save default currency")}
@@ -825,9 +895,11 @@ export function SettingsFilamentDefaultsTab({
         </div>
       </SettingsSurfaceCard>
 
-      <SettingsLowStockPanel {...lowStock} t={t} />
+      <SettingsLowStockPanel {...lowStock} busy={busy || activeMutation != null || lowStock.busy} onSave={saveLowStock} t={t} />
 
-      {localError ? (
+      {localInfo ? <SettingsNotice className="lg:col-span-2" tone="success"><span role="status">{localInfo}</span></SettingsNotice> : null}
+
+      {localError && !pendingOverwrite ? (
         <SettingsNotice className="lg:col-span-2" tone="danger">
           {localError}
         </SettingsNotice>
@@ -992,6 +1064,7 @@ export function SettingsFilamentDefaultsTab({
                               className={settingsActionButtonClass("neutral")}
                               disabled={disabled || price == null || currency == null}
                               type="button"
+                              aria-busy={activeMutation === `save:${group.key}`}
                               onClick={() => void saveGroupPrice(group)}
                             >
                               {t("settings.filamentDefaultsSaveGroupDefault", "Save group default")}
@@ -1205,6 +1278,7 @@ export function SettingsFilamentDefaultsTab({
             panelClassName="app-modal-panel max-h-[calc(100dvh-3rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-2xl border p-5"
           >
             <div className="space-y-4">
+              {localError ? <SettingsNotice tone="danger">{localError}</SettingsNotice> : null}
               <div>
                 <div className="section-eyebrow">
                   {t("settings.filamentDefaultsOverwriteReview", "Overwrite review")}
@@ -1269,7 +1343,7 @@ export function SettingsFilamentDefaultsTab({
                   className={settingsActionButtonClass("warning")}
                   disabled={disabled}
                   type="button"
-                  onClick={() => void applyRequest(pendingOverwrite.request)}
+                  onClick={confirmOverwrite}
                 >
                   {t(
                     "settings.filamentDefaultsConfirmOverwriteAction",
