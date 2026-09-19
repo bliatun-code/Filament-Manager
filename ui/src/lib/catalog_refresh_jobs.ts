@@ -63,6 +63,8 @@ function readRequest(storage: JobStorage, key: string): StartCatalogRefreshJobIn
 export class CatalogRefreshJobController {
   private state: CatalogRefreshJobState;
   private readonly storageKey: string;
+  private readonly successNotificationKey: string;
+  private notifiedSuccessJobId: string | null = null;
   private listeners = new Set<(state: CatalogRefreshJobState) => void>();
   private pendingJobId: string | null;
   private disposed = false;
@@ -76,12 +78,36 @@ export class CatalogRefreshJobController {
   constructor(targetKey: string, dependencies: JobDependencies) {
     this.dependencies = dependencies;
     this.storageKey = catalogRefreshJobStorageKey(targetKey);
+    this.successNotificationKey = `${this.storageKey}:success-notification`;
     const request = readRequest(dependencies.storage, this.storageKey);
     this.pendingJobId = request?.job_id ?? null;
     this.state = { busy: true, uncertain: false, job: null, request, error: null };
   }
 
   snapshot(): CatalogRefreshJobState { return this.state; }
+
+  /** Claim only when Settings displays success, not when a background poll finishes. */
+  claimSuccessNotification(jobId: string): boolean {
+    const { job, busy } = this.state;
+    if (
+      this.disposed || busy || job?.job_id !== jobId ||
+      job.status !== "SUCCEEDED" || !job.result || job.result.imported <= 0 ||
+      this.notifiedSuccessJobId === jobId
+    ) return false;
+    this.notifiedSuccessJobId = jobId;
+    try {
+      if (this.dependencies.storage.getItem(this.successNotificationKey) === jobId) return false;
+      // A late receipt in another window must not replace a newer job's marker
+      // or its recovery request. Keep one marker per target, separate from recovery.
+      const saved = readRequest(this.dependencies.storage, this.storageKey);
+      if (!saved || saved.job_id === jobId) {
+        this.dependencies.storage.setItem(this.successNotificationKey, jobId);
+      }
+    } catch {
+      // Notification storage is best effort; retain the in-memory acknowledgment.
+    }
+    return true;
+  }
 
   subscribe(listener: (state: CatalogRefreshJobState) => void): () => void {
     this.listeners.add(listener);

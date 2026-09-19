@@ -32,6 +32,12 @@ type JobInput = Pick<ActionsInput,
 export function useSettingsCatalogRefreshJobs(input: JobInput) {
   const callbacks = useRef(input);
   const controllerRef = useRef<CatalogRefreshJobController | null>(null);
+  const seenRef = useRef<{
+    identity: string | null;
+    requestId: string | null | undefined;
+    resultId: string | null;
+    error: string | null;
+  } | null>(null);
   const identity = catalogRefreshJobSessionIdentity(input.target);
   const targetResolved = input.target.clientTargetGeneration != null;
   useEffect(() => { callbacks.current = input; });
@@ -45,19 +51,22 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
       (busy) => input.setCatalogRefreshBusy(busy),
     );
     controllerRef.current = controller;
-    let seenRequestId: string | null | undefined;
-    let seenResultId: string | null = null;
-    let seenError: string | null = null;
+    // React may replay effects for the same mount. Preserve its feedback then,
+    // while a new mount still restores the receipt and a new target resets it.
+    if (seenRef.current?.identity !== identity) {
+      seenRef.current = { identity, requestId: undefined, resultId: null, error: null };
+    }
+    const seen = seenRef.current;
     const unlisten = controller?.subscribe((state) => {
       const current = callbacks.current;
       if (catalogRefreshJobSessionIdentity(current.target) !== identity) return;
       const request = state.job ?? state.request;
-      if (seenRequestId !== (request?.job_id ?? null)) {
-        seenRequestId = request?.job_id ?? null;
+      if (seen.requestId !== (request?.job_id ?? null)) {
+        seen.requestId = request?.job_id ?? null;
         current.beginCatalogRefreshResult();
         current.setError(null);
         current.setInfo(null);
-        seenError = null;
+        seen.error = null;
       }
       if (request) {
         current.setCatalogRefreshVendor(request.vendor);
@@ -72,8 +81,8 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
       );
       if (state.busy || !request) return;
       const job = state.job;
-      if (job && job.status !== "RUNNING" && seenResultId !== job.job_id) {
-        seenResultId = job.job_id;
+      if (job && job.status !== "RUNNING" && seen.resultId !== job.job_id) {
+        seen.resultId = job.job_id;
         if (job.status === "SUCCEEDED" && job.result) {
           current.completeCatalogRefreshResult(job.result);
           void current.reloadSettings().catch(() => {});
@@ -81,7 +90,7 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
             current.setError(buildSettingsCatalogRefreshZeroImportMessage(
               job.vendor, current.settingsCatalogRefreshMessageLabels(),
             ));
-          } else {
+          } else if (controller.claimSuccessNotification(job.job_id)) {
             current.setInfo(`${job.vendor} ${job.material}: ${buildSettingsCatalogRefreshSuccessMessage(
               job.result, current.settingsCatalogRefreshSummaryLabels(), current.locale,
             )}`);
@@ -92,8 +101,8 @@ export function useSettingsCatalogRefreshJobs(input: JobInput) {
       // A later idle poll can fail after this job already has a receipt.
       // That transport error cannot change the recorded outcome of the job.
       const error = job && job.status !== "RUNNING" ? job.error : state.error;
-      if (error && error !== seenError) {
-        seenError = error;
+      if (error && error !== seen.error) {
+        seen.error = error;
         current.failCatalogRefreshResult(error);
         current.setError(buildSettingsCatalogRefreshFallbackErrorMessage(
           request.vendor, current.settingsCatalogRefreshMessageLabels(),
