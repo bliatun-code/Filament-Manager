@@ -2,6 +2,12 @@
   "schemaVersion": 1,
   "messages": [
     {
+      "surface": "companion",
+      "key": "settings.cachedData",
+      "meaning": "Persistent warning after any overview request failed: previously loaded values may be stale. Refresh is the user action to retry; a reachable session does not guarantee fresh data.",
+      "screenshot": "docs/screenshots/companion-phone-settings.jpg"
+    },
+    {
       "surface": "desktop",
       "key": "errors.inventoryWeightHostUnsupported",
       "meaning": "The library-owning Host computer must be updated before saving a measured total roll weight and any resulting usage or reactivation. No change has been sent. Update that Host before retrying.",

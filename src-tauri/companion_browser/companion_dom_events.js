@@ -1,6 +1,7 @@
 import { routeCompanionClickAction } from "./companion_click_router.js";
 import { routeCompanionInputChange } from "./companion_input_router.js";
 import { routeCompanionSubmitAction } from "./companion_submit_router.js";
+import { updateCompanionWeightPreviews } from "./companion_spool_weight.js";
 
 const OVERLAY_OPENING_ACTIONS = new Set([
   "start-printer-slot-assignment",
@@ -172,6 +173,11 @@ export function handleCompanionInputEvent(event, options) {
     return false;
   }
 
+  if (["grams", "grams-out", "returned-grams", "current-grams", "incoming-grams", "outgoing-grams"].includes(target.name)) {
+    updateCompanionWeightPreviews(target.form, options.state.locale || "en");
+    return true;
+  }
+
   return routeCompanionInputChange(target.name, target.value, {
     setInventorySearch: (value) => {
       options.state.search = value;
@@ -185,6 +191,11 @@ export function handleCompanionInputEvent(event, options) {
         options.state.activeTaskSheet = null;
       }
       options.state.expandedLoanReturnId = "";
+      options.render();
+    },
+    setLoanPickerSearch: (value) => {
+      options.state.loanPickerSearch = value;
+      options.state.loanPickerRenderLimit = 150;
       options.render();
     },
     setPrinterSpoolSearch: options.setPrinterSpoolSearch,
@@ -214,6 +225,7 @@ export function handleCompanionSubmitEvent(event, options) {
   const data = (options.createFormData ?? ((target) => new FormData(target)))(form);
   return routeCompanionSubmitAction(action, data, {
     submitWeightUpdate: (...args) => void options.submitWeightUpdate(...args),
+    submitTareWeightUpdate: (...args) => void options.submitTareWeightUpdate(...args),
     submitPrinterSlotOperation: (...args) => void options.submitPrinterSlotOperation(...args),
     submitSpoolDetailsUpdate: (...args) => void options.submitSpoolDetailsUpdate(...args),
     submitSpoolRfidUpdate: (...args) => void options.submitSpoolRfidUpdate(...args),

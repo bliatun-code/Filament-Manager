@@ -1261,3 +1261,19 @@ test("status messages follow selected locale for validation errors", async () =>
   assert.equal(harness.state.statusTone, "error");
   assert.equal(harness.state.statusMessage, "Skriv inn en gyldig ikke-negativ vekt i gram.");
 });
+
+test("weight mutations reject exponent and fractional drafts before sending requests", async () => {
+  for (const value of ["1e3", "2.5", "9007199254740992", "123abc"]) {
+    const calls = [];
+    const harness = createMutationHarness({
+      state: { spools: [{ spool: { id: "spool-1", spool_tare_weight_g: 200 }, master: { vendor: "Generic" } }] },
+      fetchJson: async (...args) => { calls.push(args); return {}; },
+    });
+    await harness.mutations.submitSpoolLoan("spool-1", "Borrower", value, "");
+    await harness.mutations.submitSpoolLoanReturn("loan-1", "spool-1", value, "");
+    await harness.mutations.submitTareWeightUpdate("spool-1", value);
+    assert.equal(calls.length, 0, value);
+    assert.equal(harness.statusCalls.length, 3);
+    assert.ok(harness.statusCalls.every(call => call.tone === "error"));
+  }
+});

@@ -104,7 +104,7 @@ function renderWorkflowShell(options) {
     return renderSettingsShell({
       state,
       connectionSummary: [
-        state.apiReady
+        state.apiReady && !state.connectionUnavailable
           ? t(locale, "settings.connected", "Connected")
           : t(locale, "settings.disconnected", "Disconnected"),
         t(locale, "nav.spoolCount", "{count, plural, one {# spool} other {# spools}}", {

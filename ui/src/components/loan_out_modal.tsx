@@ -41,6 +41,7 @@ import {
 } from "./loan_out_modal_styles";
 import {
   formatLoanOutGrams,
+  resolveLoanableSpoolTareWeight,
   toLoanedFilamentWeight,
   toMeasuredTotalWeight,
 } from "../lib/loan_out_weight_model";
@@ -201,6 +202,7 @@ function LoanOutSession({
     () => (selectedSpoolId ? spools.find((spool) => spool.id === selectedSpoolId) ?? null : null),
     [selectedSpoolId, spools],
   );
+  const previewTotalGrams = parseNonNegativeWeight(gramsOut);
   const selectedPlacementLabel = selectedSpool
     ? formatPlacementLabel(t, selectedSpool.location)
     : null;
@@ -464,29 +466,27 @@ function LoanOutSession({
                             />
                           </ModalFormField>
 
-                          <ModalFormField
-                            label={
-                              <>
-                                {t("inventory.maxAvailable", "Max available")}:{" "}
-                                {formatLoanOutGrams(
-                                  toMeasuredTotalWeight(
-                                    selectedSpool,
-                                    selectedSpool.remainingGrams,
-                                  ),
-                                  locale,
-                                )}
-                              </>
-                            }
-                          >
+                          <ModalFormField label={t("inventory.measuredTotalWeight", "Measured total weight (g)")}>
                             <input
                               type="number"
                               min={0}
+                              step={1}
                               value={gramsOut}
                               onChange={(event) => setGramsOut(event.target.value)}
                               className={modalFormInputClassName}
-                              placeholder={t("inventory.outG", "Out g")}
+                              aria-describedby="loan-out-weight-preview"
                               disabled={!tauri || busy}
                             />
+                            <p className={panelSubtitleClassName}>
+                              {t("inventory.emptySpoolWeightHelp", "Used to subtract spool tare from measured total so remaining filament stays accurate.")}
+                            </p>
+                            <div id="loan-out-weight-preview" role="status" aria-live="polite" aria-atomic="true" className={panelSubtitleClassName}>
+                              {t("loans.loanedGrams", "Loaned")}: {previewTotalGrams === null ? "—" :
+                                `${formatLoanOutGrams(previewTotalGrams, locale)} − ${formatLoanOutGrams(resolveLoanableSpoolTareWeight(selectedSpool), locale)} = ${formatLoanOutGrams(toLoanedFilamentWeight(selectedSpool, previewTotalGrams), locale)}`}
+                            </div>
+                            <p className={panelSubtitleClassName}>
+                              {t("inventory.maxAvailable", "Max available")}: {formatLoanOutGrams(toMeasuredTotalWeight(selectedSpool, selectedSpool.remainingGrams), locale)}
+                            </p>
                           </ModalFormField>
 
                           <ModalFormField

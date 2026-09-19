@@ -146,3 +146,28 @@ test("visible inventory rows expose selection only while multi-select mode is ac
   assert.match(html, /<span class="sr-only">Select #pool-a<\/span>/);
   assert.match(html, /<button[^>]*type="button"/);
 });
+
+test("card and list placements use printer metadata for opaque slot IDs", () => {
+  const spool: InventorySpool = {
+    id: "spool-a", masterId: "master-a", vendor: "Bambu Lab", material: "PLA",
+    filamentName: "Basic", colorName: "Black", initialWeightGrams: 1000,
+    remainingGrams: 640, ownershipType: "OWNED", status: "ASSIGNED",
+    location: "Printer:Workshop:opaque-slot-id",
+  };
+  for (const inventoryView of ["CARDS", "LIST"] as const) {
+    for (const count of [1, 2]) {
+      const spools = Array.from({ length: count }, (_, index) => ({ ...spool, id: `spool-${index}` }));
+      const html = renderToStaticMarkup(<I18nContext.Provider value={i18nValue}>
+        <InventorySpoolCollection addSpoolDisabled={false} bulkSelectionActive={false}
+          bulkSelectionDisabled={false} filteredSpools={spools} groupedSpools={groupInventorySpools(spools)}
+          inventoryView={inventoryView} loading={false} onAddSpool={() => {}}
+          onBulkSelectionChange={() => {}} onResetFilters={() => {}} onSelectRoll={() => {}}
+          recentlyAddedSpoolId={null} resolvedTheme="dark" selectedSpoolId={null}
+          selectedBulkSpoolIds={new Set()} totalSpoolCount={count}
+          slotLabelById={new Map([["opaque-slot-id", "Workshop · AMS 1 · Slot 4"]])} />
+      </I18nContext.Provider>);
+      assert.match(html, /Workshop · AMS 1 · Slot 4/);
+      assert.doesNotMatch(html, /opaque-slot-id/);
+    }
+  }
+});

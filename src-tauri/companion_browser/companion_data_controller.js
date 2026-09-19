@@ -255,6 +255,7 @@ export function createCompanionDataController(options) {
       }
 
       if (optionalFailures.length > 0) {
+        state.overviewStale = true;
         const firstFailure = optionalFailures[0];
         setStatus(
           firstFailure?.message ||
@@ -262,9 +263,11 @@ export function createCompanionDataController(options) {
           "error",
         );
       } else {
+        state.overviewStale = false;
         setStatus(t(state.locale || "en", "status.refreshed", "Companion data refreshed."), "success");
       }
     } catch (error) {
+      state.overviewStale = true;
       setStatus(
         error.message ||
           t(state.locale || "en", "status.refreshFailed", "Failed to load companion data."),

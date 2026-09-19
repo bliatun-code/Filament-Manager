@@ -227,3 +227,39 @@ test("pairSession stores trusted-LAN session mode and csrf state", async () => {
   assert.equal(session.accessMode, "trusted-lan");
   assert.equal(session.authMode, "pairing-session");
 });
+
+test("network failure is localized, retains authentication and never replays a write", async () => {
+  const { loadCompanionLocale } = await import("./companion_i18n.js");
+  await loadCompanionLocale("nb");
+  const session = { ...createInitialCompanionState(), locale: "nb", apiReady: true, csrfToken: "existing" };
+  let calls = 0;
+  let failure = true;
+  const client = createCompanionApiClient({ session, fetchImpl: async () => {
+    calls++;
+    if (failure) throw new TypeError("Failed to fetch");
+    return jsonResponse(200, []);
+  } });
+  await assert.rejects(client.fetchJson("/api/v1/test", { method: "POST" }), error => {
+    assert.equal(error.code, "companion.network_unavailable");
+    assert.doesNotMatch(error.message, /Failed to fetch/);
+    assert.match(error.message, /utilgjengelig/);
+    return true;
+  });
+  assert.equal(calls, 1);
+  assert.equal(session.apiReady, true);
+  assert.equal(session.csrfToken, "existing");
+  assert.equal(session.pairingRequired, false);
+  assert.equal(session.connectionUnavailable, true);
+  assert.equal(session.overviewStale, true);
+  failure = false;
+  await client.fetchJson("/api/v1/test");
+  assert.equal(session.connectionUnavailable, false);
+  assert.equal(session.overviewStale, true, "one successful request does not refresh the complete snapshot");
+});
+
+test("an HTTP error is distinguished from an unreachable host", async () => {
+  const session = { ...createInitialCompanionState(), apiReady: true };
+  const client = createCompanionApiClient({ session, fetchImpl: async () => jsonResponse(500, {}) });
+  await assert.rejects(client.fetchJson("/api/v1/test"), error => error.code === "common.internal");
+  assert.equal(session.connectionUnavailable, false);
+});

@@ -1,4 +1,4 @@
-import { resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
+import { parseCompanionMeasuredWeight, resolveSpoolRowTareWeight } from "./companion_spool_weight.js";
 
 export function createCompanionPrinterMutations({
   state,
@@ -143,11 +143,11 @@ export function createCompanionPrinterMutations({
       Boolean(currentSpoolId) && (mode === "clear" || (mode === "assign" && currentSpoolId !== targetSpoolId));
     const requiresIncoming = mode === "assign" && Boolean(targetSpoolId);
     const currentMeasured =
-      mode === "update" ? Number.parseInt(String(currentGramsValue || "").trim(), 10) : null;
+      mode === "update" ? parseCompanionMeasuredWeight(currentGramsValue) : null;
     const incomingMeasured =
-      requiresIncoming ? Number.parseInt(String(incomingGramsValue || "").trim(), 10) : null;
+      requiresIncoming ? parseCompanionMeasuredWeight(incomingGramsValue) : null;
     const outgoingMeasured =
-      requiresOutgoing ? Number.parseInt(String(outgoingGramsValue || "").trim(), 10) : null;
+      requiresOutgoing ? parseCompanionMeasuredWeight(outgoingGramsValue) : null;
 
     if (mode === "update" && (!Number.isFinite(currentMeasured) || currentMeasured < 0)) {
       setStatus(tr("status.weightInvalid", "Enter a valid non-negative weight in grams."), "error");

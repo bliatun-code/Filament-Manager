@@ -1,3 +1,4 @@
+import { parseCompanionMeasuredWeight } from "./companion_spool_weight.js";
 export function createCompanionLoanMutations({
   state,
   fetchJson,
@@ -15,7 +16,7 @@ export function createCompanionLoanMutations({
     const trimmedSpoolId = spoolId.trim();
     const borrowerName = borrowerNameValue.trim();
     const normalizedNote = noteValue.trim();
-    const measuredWeight = Number.parseInt(gramsValue, 10);
+    const measuredWeight = parseCompanionMeasuredWeight(gramsValue);
     const spoolRow = findSpoolRow(trimmedSpoolId);
 
     if (!trimmedSpoolId) {
@@ -71,7 +72,7 @@ export function createCompanionLoanMutations({
     const trimmedLoanId = loanId.trim();
     const trimmedSpoolId = spoolId.trim();
     const normalizedNote = noteValue.trim();
-    const measuredWeight = Number.parseInt(gramsValue, 10);
+    const measuredWeight = parseCompanionMeasuredWeight(gramsValue);
     const spoolRow = findSpoolRow(trimmedSpoolId);
 
     if (!trimmedLoanId) {
@@ -121,7 +122,7 @@ export function createCompanionLoanMutations({
     const trimmedLoanId = loanId.trim();
     const trimmedSpoolId = spoolId.trim();
     const normalizedNote = noteValue.trim();
-    const measuredWeight = Number.parseInt(gramsValue, 10);
+    const measuredWeight = parseCompanionMeasuredWeight(gramsValue);
     const currentSelectedSpoolId = state.selectedSpoolId;
     const effectiveSpoolId = trimmedSpoolId || currentSelectedSpoolId;
     const spoolRow = findSpoolRow(effectiveSpoolId);

@@ -24,6 +24,8 @@ export function createBorrowedInDraft() {
 export function createInitialCompanionState() {
   return {
     apiReady: false,
+    connectionUnavailable: false,
+    overviewStale: false,
     accessMode: "trusted-lan",
     authMode: "pairing-session",
     csrfToken: "",
@@ -40,6 +42,7 @@ export function createInitialCompanionState() {
     loanSearch: "",
     loanRenderLimit: 150,
     loanPickerRenderLimit: 150,
+    loanPickerSearch: "",
     spools: [],
     catalogMasters: [],
     wishlistItems: [],

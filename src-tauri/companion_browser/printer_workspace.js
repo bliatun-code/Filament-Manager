@@ -349,11 +349,11 @@ export function renderPrinterWeightTaskSheetBody(options) {
   const currentSpoolMeta = [task.currentVendor, task.currentReference, formatGrams(task.currentRemainingWeight)]
     .filter(Boolean)
     .join(" · ");
-  const currentPlacementLabel = formatPlacementLabel(task.currentLocationId, locale);
+  const currentPlacementLabel = formatPlacementLabel(task.currentLocationLabel || task.currentLocationId, locale);
   const targetSpoolMeta = [task.targetVendor, task.targetReference, formatGrams(task.targetRemainingWeight)]
     .filter(Boolean)
     .join(" · ");
-  const targetPlacementLabel = formatPlacementLabel(task.targetLocationId, locale);
+  const targetPlacementLabel = formatPlacementLabel(task.targetLocationLabel || task.targetLocationId, locale);
   const mode = String(task.mode || "update").trim();
   const requiresOutgoing =
     Boolean(task.currentSpoolId) && (mode === "clear" || (mode === "assign" && task.currentSpoolId !== task.targetSpoolId));
@@ -370,6 +370,11 @@ export function renderPrinterWeightTaskSheetBody(options) {
       : task.targetRemainingWeight != null && task.targetRemainingWeight !== ""
         ? task.targetRemainingWeight
         : "";
+  const weightPreview = (inputName, tare, total) => `
+    <div id="printer-${inputName}-preview" class="metric-card" data-weight-preview="measurement" data-weight-input="${inputName}" data-tare-weight="${escapeHtml(tare || 0)}" aria-live="polite">
+      <div class="metric-label">${escapeHtml(t(locale, "storage.filament", "Filament"))}</div>
+      <div class="metric-value">${escapeHtml(formatGrams(Number(total) || 0))} − ${escapeHtml(formatGrams(Number(tare) || 0))} = ${escapeHtml(formatGrams(Math.max(0, (Number(total) || 0) - (Number(tare) || 0))))}</div>
+    </div>`;
   const submitLabel =
     mode === "clear"
       ? t(locale, "printers.clearSlot", "Clear slot")
@@ -413,12 +418,13 @@ export function renderPrinterWeightTaskSheetBody(options) {
                 body: `<input
                   class="weight-input"
                   name="current-grams"
+                  aria-describedby="printer-current-grams-preview"
                   type="number"
                   min="0"
                   step="1"
                   value="${escapeHtml(defaultCurrentMeasuredWeight)}"
                   ${state.busy ? "disabled" : ""}
-                />`,
+                />${weightPreview("current-grams", task.currentTareWeight, defaultCurrentMeasuredWeight)}`,
               })
             : ""
         }
@@ -426,16 +432,17 @@ export function renderPrinterWeightTaskSheetBody(options) {
           requiresOutgoing
             ? renderDetailField({
                 escapeHtml,
-                label: t(locale, "printers.outgoingWeight", "Outgoing weight (g)"),
+                label: t(locale, "detail.outgoingMeasuredWeight", "Outgoing total weight incl. spool (g)"),
                 body: `<input
                   class="weight-input"
                   name="outgoing-grams"
+                  aria-describedby="printer-outgoing-grams-preview"
                   type="number"
                   min="0"
                   step="1"
                   value="${escapeHtml(defaultCurrentMeasuredWeight)}"
                   ${state.busy ? "disabled" : ""}
-                />`,
+                />${weightPreview("outgoing-grams", task.currentTareWeight, defaultCurrentMeasuredWeight)}`,
               })
             : ""
         }
@@ -447,12 +454,13 @@ export function renderPrinterWeightTaskSheetBody(options) {
                 body: `<input
                   class="weight-input"
                   name="incoming-grams"
+                  aria-describedby="printer-incoming-grams-preview"
                   type="number"
                   min="0"
                   step="1"
                   value="${escapeHtml(defaultIncomingMeasuredWeight)}"
                   ${state.busy ? "disabled" : ""}
-                />`,
+                />${weightPreview("incoming-grams", task.targetTareWeight, defaultIncomingMeasuredWeight)}`,
               })
             : ""
         }
@@ -698,15 +706,14 @@ function renderSlotCards(options) {
           <div class="slot-card-head">
             <div>
               <div class="list-title">${escapeHtml(slotLabel)}</div>
-              <div class="muted">${escapeHtml(slot.spool_id ? t(locale, "printers.loaded", "Loaded") : slotHasLiveLoaded ? t(locale, "printers.liveSummary", "Live from host") : t(locale, "printers.openSlot", "Open slot"))}</div>
             </div>
             <span class="inline-signal slot-card-state" data-tone="${escapeHtml(slotStateTone)}">${escapeHtml(slotStateLabel)}</span>
           </div>
-          <div class="slot-content-line${slotUsesSwatchSurface ? " swatch-line" : ""}">
+          ${slotUsesSwatchSurface ? `<div class="slot-content-line swatch-line">
             ${slotUsesSwatchSurface ? `<span class="swatch-dot" style="background:${escapeHtml(slotContentColor)}"></span>` : ""}
             <span>${escapeHtml(slotContentTitle)}</span>
-          </div>
-          <div class="muted slot-card-subtitle">${escapeHtml(slotSummary)}</div>
+          </div>` : ""}
+          ${slotUsesSwatchSurface || slotIsPendingTarget ? `<div class="muted slot-card-subtitle">${escapeHtml(slotSummary)}</div>` : ""}
           <div class="meta-line slot-card-meta">${escapeHtml(slotMeta)}</div>
           ${candidateRows}
           <div class="slot-actions">

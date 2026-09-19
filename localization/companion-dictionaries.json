@@ -371,7 +371,8 @@
         "licenseHelp": "Open source terms for this browser companion.",
         "sourceCode": "Source code",
         "viewLicense": "View license",
-        "viewNotices": "Notices"
+        "viewNotices": "Notices",
+        "cachedData": "Some data could not be refreshed. Previously loaded values may be out of date. Refresh to try again."
       },
       "trustedLan": {
         "title": "Trusted-LAN browser companion",
@@ -1016,7 +1017,8 @@
         "licenseHelp": "Vilkår for åpen kildekode for denne nettleserkompanjongen.",
         "sourceCode": "Kildekode",
         "viewLicense": "Vis lisens",
-        "viewNotices": "Notiser"
+        "viewNotices": "Notiser",
+        "cachedData": "Noen data kunne ikke oppdateres. Tidligere innlastede verdier kan være utdaterte. Trykk Oppdater for å prøve igjen."
       },
       "trustedLan": {
         "title": "Trusted-LAN-nettleserkompanjong",
@@ -1661,7 +1663,8 @@
         "licenseHelp": "Open-Source-Bedingungen für diesen Browser-Companion.",
         "sourceCode": "Quellcode",
         "viewLicense": "Lizenz anzeigen",
-        "viewNotices": "Hinweise"
+        "viewNotices": "Hinweise",
+        "cachedData": "Einige Daten konnten nicht aktualisiert werden. Zuvor geladene Werte sind möglicherweise veraltet. Zum erneuten Versuch aktualisieren."
       },
       "trustedLan": {
         "title": "Trusted-LAN-Browser-Companion",
@@ -2403,7 +2406,8 @@
         "licenseHelp": "Conditions open source de ce Companion navigateur.",
         "sourceCode": "Code source",
         "viewLicense": "Afficher la licence",
-        "viewNotices": "Mentions"
+        "viewNotices": "Mentions",
+        "cachedData": "Certaines données n’ont pas pu être actualisées. Les valeurs précédemment chargées peuvent être obsolètes. Actualisez pour réessayer."
       },
       "trustedLan": {
         "title": "Companion navigateur Trusted-LAN",
@@ -3025,7 +3029,8 @@
         "printerCountOne": "{count} impresora",
         "spoolCountMany": "{count} bobinas",
         "spoolCountOne": "{count} bobina",
-        "trustedLanDesktopInCharge": "La aplicación de escritorio y SQLite permanecen a cargo. El acceso a Trusted-LAN sigue estando controlado por el escritorio y no está cifrado en la red."
+        "trustedLanDesktopInCharge": "La aplicación de escritorio y SQLite permanecen a cargo. El acceso a Trusted-LAN sigue estando controlado por el escritorio y no está cifrado en la red.",
+        "cachedData": "No se pudieron actualizar algunos datos. Los valores cargados anteriormente pueden estar desactualizados. Actualiza para volver a intentarlo."
       },
       "format": {
         "unknown": "Desconocido",
@@ -3634,7 +3639,8 @@
         "trustedLanConnected": "Trusted-LAN conectado",
         "trustedLanDesktopInCharge": "O aplicativo Desktop e SQLite permanecem no comando. O acesso Trusted-LAN ainda é controlado por desktop e não é criptografado na rede.",
         "viewLicense": "Ver licença",
-        "viewNotices": "Avisos"
+        "viewNotices": "Avisos",
+        "cachedData": "Alguns dados não puderam ser atualizados. Os valores carregados anteriormente podem estar desatualizados. Atualize para tentar novamente."
       },
       "shell": {
         "close": "Fechar",
@@ -4279,7 +4285,8 @@
         "trustedLanConnected": "Trusted-LAN collegato",
         "trustedLanDesktopInCharge": "L'app Desktop e SQLite rimangono al comando. L'accesso Trusted-LAN è ancora controllato da desktop e non crittografato sulla rete.",
         "viewLicense": "Visualizza licenza",
-        "viewNotices": "Avvisi"
+        "viewNotices": "Avvisi",
+        "cachedData": "Non è stato possibile aggiornare alcuni dati. I valori caricati in precedenza potrebbero non essere aggiornati. Aggiorna per riprovare."
       },
       "shell": {
         "close": "Vicino",
@@ -4924,7 +4931,8 @@
         "trustedLanConnected": "Trusted-LAN podłączony",
         "trustedLanDesktopInCharge": "Aplikacja Desktop i SQLite pozostają pod kontrolą. Dostęp Trusted-LAN jest nadal kontrolowany przez desktop i nie jest szyfrowany w sieci.",
         "viewLicense": "Zobacz licencję",
-        "viewNotices": "Uwagi"
+        "viewNotices": "Uwagi",
+        "cachedData": "Nie udało się odświeżyć części danych. Wcześniej wczytane wartości mogą być nieaktualne. Odśwież, aby spróbować ponownie."
       },
       "shell": {
         "close": "Zamknij",
@@ -5569,7 +5577,8 @@
         "trustedLanConnected": "Trusted-LAN aangesloten",
         "trustedLanDesktopInCharge": "De Desktop-app en SQLite blijven de baas. De toegang tot Trusted-LAN wordt nog steeds door desktop beheerd en is niet gecodeerd op het netwerk.",
         "viewLicense": "Licentie bekijken",
-        "viewNotices": "Mededelingen"
+        "viewNotices": "Mededelingen",
+        "cachedData": "Sommige gegevens konden niet worden vernieuwd. Eerder geladen waarden kunnen verouderd zijn. Vernieuw om het opnieuw te proberen."
       },
       "shell": {
         "close": "Sluiten",
@@ -6214,7 +6223,8 @@
         "trustedLanConnected": "Trusted-LAN připojeno",
         "trustedLanDesktopInCharge": "Aplikace Desktop a SQLite zůstávají pod kontrolou. Přístup Trusted-LAN je stále řízen desktop a není v síti šifrován.",
         "viewLicense": "Zobrazit licenci",
-        "viewNotices": "Oznámení"
+        "viewNotices": "Oznámení",
+        "cachedData": "Některá data se nepodařilo aktualizovat. Dříve načtené hodnoty mohou být zastaralé. Zkuste je znovu aktualizovat."
       },
       "shell": {
         "close": "Zavřít",
@@ -6859,7 +6869,8 @@
         "trustedLanConnected": "Trusted-LAN 已连接",
         "trustedLanDesktopInCharge": "Desktop 应用程序和 SQLite 继续负责。 Trusted-LAN 访问仍然受 desktop 控制，并且在网络上未加密。",
         "viewLicense": "查看许可证",
-        "viewNotices": "通知"
+        "viewNotices": "通知",
+        "cachedData": "部分数据无法刷新。之前加载的值可能已过时。请刷新重试。"
       },
       "shell": {
         "close": "关闭",
@@ -7504,7 +7515,8 @@
         "trustedLanConnected": "Trusted-LAN 接続されました",
         "trustedLanDesktopInCharge": "Desktop アプリと SQLite が引き続き担当します。 Trusted-LAN アクセスは依然として desktop によって制御されており、ネットワーク上で暗号化されていません。",
         "viewLicense": "ライセンスを表示する",
-        "viewNotices": "お知らせ"
+        "viewNotices": "お知らせ",
+        "cachedData": "一部のデータを更新できませんでした。以前読み込んだ値は古い可能性があります。更新して再試行してください。"
       },
       "shell": {
         "close": "閉じる",
@@ -8149,7 +8161,8 @@
         "trustedLanConnected": "Trusted-LAN 연결됨",
         "trustedLanDesktopInCharge": "Desktop 앱과 SQLite가 계속 담당합니다. Trusted-LAN 액세스는 여전히 desktop에 의해 제어되며 네트워크에서 암호화되지 않습니다.",
         "viewLicense": "라이선스 보기",
-        "viewNotices": "공지사항"
+        "viewNotices": "공지사항",
+        "cachedData": "일부 데이터를 새로 고치지 못했습니다. 이전에 불러온 값이 오래되었을 수 있습니다. 새로 고침하여 다시 시도하세요."
       },
       "shell": {
         "close": "닫기",
@@ -8794,7 +8807,8 @@
         "trustedLanConnected": "Trusted-LAN 已連線",
         "trustedLanDesktopInCharge": "Desktop 應用程式和 SQLite 繼續負責。 Trusted-LAN 存取仍受 desktop 控制，且在網路上未加密。",
         "viewLicense": "檢視許可證",
-        "viewNotices": "通知"
+        "viewNotices": "通知",
+        "cachedData": "部分資料無法重新整理。先前載入的值可能已過時。請重新整理以重試。"
       },
       "shell": {
         "close": "關閉",
@@ -9439,7 +9453,8 @@
         "trustedLanConnected": "Trusted-LAN bağlandı",
         "trustedLanDesktopInCharge": "Desktop uygulaması ve SQLite sorumlu kalır. Trusted-LAN erişimi hâlâ desktop kontrollüdür ve ağ üzerinde şifrelenmez.",
         "viewLicense": "Lisansı görüntüle",
-        "viewNotices": "Bildirimler"
+        "viewNotices": "Bildirimler",
+        "cachedData": "Bazı veriler yenilenemedi. Önceden yüklenen değerler güncel olmayabilir. Tekrar denemek için yenileyin."
       },
       "shell": {
         "close": "Kapat",
@@ -10084,7 +10099,8 @@
         "trustedLanConnected": "Trusted-LAN підключено",
         "trustedLanDesktopInCharge": "Додаток Desktop і SQLite залишаються відповідальними. Доступ Trusted-LAN все ще контролюється desktop і не шифрується в мережі.",
         "viewLicense": "Переглянути ліцензію",
-        "viewNotices": "Повідомлення"
+        "viewNotices": "Повідомлення",
+        "cachedData": "Не вдалося оновити частину даних. Раніше завантажені значення можуть бути застарілими. Оновіть, щоб спробувати знову."
       },
       "shell": {
         "close": "Закрити",
@@ -10532,7 +10548,8 @@
         "activeLoanCount": "{count, plural, one {# активный заём} few {# активных займа} many {# активных займов} other {# активного займа}}",
         "licenseHelp": "Условия открытого исходного кода для этого сопутствующего браузера.",
         "desktopInCharge": "Настольное приложение и SQLite остаются за вами.",
-        "trustedLanDesktopInCharge": "Настольное приложение и SQLite остаются за вами. Доступ к Trusted-LAN по-прежнему контролируется настольным компьютером и не шифруется в сети."
+        "trustedLanDesktopInCharge": "Настольное приложение и SQLite остаются за вами. Доступ к Trusted-LAN по-прежнему контролируется настольным компьютером и не шифруется в сети.",
+        "cachedData": "Не удалось обновить часть данных. Ранее загруженные значения могут устареть. Обновите, чтобы повторить попытку."
       },
       "trustedLan": {
         "pairingHint": "Настройки рабочего стола создают кратковременные одноразовые ссылки для доступа человека к браузеру.",
@@ -11209,7 +11226,8 @@
         "licenseHelp": "Nyílt forráskódú feltételek ehhez a böngészőtárshoz.",
         "trustedLanDesktopInCharge": "Az asztali alkalmazás és a SQLite továbbra is a felelős. A Trusted-LAN hozzáférést továbbra is asztali számítógép vezérli, és nincs titkosítva a hálózaton.",
         "desktopInCharge": "Az asztali alkalmazás és a SQLite továbbra is a felelős.",
-        "trustedLanConnected": "Trusted-LAN csatlakoztatva"
+        "trustedLanConnected": "Trusted-LAN csatlakoztatva",
+        "cachedData": "Néhány adatot nem sikerült frissíteni. A korábban betöltött értékek elavultak lehetnek. Próbálja újra a frissítést."
       },
       "inventory": {
         "rfidButton": "RFID",
@@ -11822,7 +11840,8 @@
         "desktopInCharge": "Desktop-appen och SQLite har ansvaret.",
         "connectionHelp": "Uppdaterings- och sessionskontroller.",
         "licenseHelp": "Termer med öppen källkod för denna webbläsare.",
-        "trustedLanDesktopInCharge": "Desktop-appen och SQLite har ansvaret. Trusted-LAN-åtkomst är fortfarande skrivbordskontrollerad och inte krypterad i nätverket."
+        "trustedLanDesktopInCharge": "Desktop-appen och SQLite har ansvaret. Trusted-LAN-åtkomst är fortfarande skrivbordskontrollerad och inte krypterad i nätverket.",
+        "cachedData": "Vissa data kunde inte uppdateras. Tidigare inlästa värden kan vara inaktuella. Tryck på Uppdatera för att försöka igen."
       },
       "trustedLan": {
         "title": "Trusted-LAN webbläsare",
@@ -12467,7 +12486,8 @@
         "desktopInCharge": "Desktop-appen og SQLite er ansvarlige.",
         "connectionHelp": "Opdateringer og sessionskontrol.",
         "licenseHelp": "Open Source-vilkår for denne browser.",
-        "trustedLanDesktopInCharge": "Desktop-appen og SQLite er ansvarlige. Trusted-LAN-adgang er stadig skrivebordsstyret og ikke krypteret på netværket."
+        "trustedLanDesktopInCharge": "Desktop-appen og SQLite er ansvarlige. Trusted-LAN-adgang er stadig skrivebordsstyret og ikke krypteret på netværket.",
+        "cachedData": "Nogle data kunne ikke opdateres. Tidligere indlæste værdier kan være forældede. Tryk på Opdater for at prøve igen."
       },
       "trustedLan": {
         "title": "Trusted-LAN browser",
@@ -13112,7 +13132,8 @@
         "desktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa.",
         "connectionHelp": "Päivitys ja istunnon hallinta.",
         "licenseHelp": "Avoimen lähdekoodin ehdot tälle selaimelle.",
-        "trustedLanDesktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa. Trusted-LAN-käyttö on edelleen työpöytäohjattu, eikä sitä ole salattu verkossa."
+        "trustedLanDesktopInCharge": "Työpöytäsovellus ja SQLite ovat vastuussa. Trusted-LAN-käyttö on edelleen työpöytäohjattu, eikä sitä ole salattu verkossa.",
+        "cachedData": "Joitakin tietoja ei voitu päivittää. Aiemmin ladatut arvot voivat olla vanhentuneita. Yritä uudelleen päivittämällä."
       },
       "trustedLan": {
         "title": "Trusted-LAN selain",

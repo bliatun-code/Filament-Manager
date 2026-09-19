@@ -221,7 +221,7 @@ test("loan return task sheet renders the compact return form", () => {
   assert.match(html, /data-form-key="loan-return:loan-1"/);
   assert.match(html, /aria-describedby="loan-return-calculation"/);
   assert.match(html, /Suggested return calculation/);
-  assert.doesNotMatch(html, /role="status"|aria-live=/);
+  assert.match(html, /data-weight-preview=[\s\S]*?aria-live="polite"/);
   assert.match(html, /750 g total − 250 g spool tare = 500 g returned filament/);
   assert.match(html, /Estimated used: 140 g/);
   assert.match(html, /value="750"/);
@@ -328,7 +328,7 @@ test("loan create task sheet renders outgoing measured weight and slot warning",
   assert.match(html, /id="loan-outgoing-calculation"/);
   assert.match(html, /Suggested outgoing calculation/);
   assert.match(html, /750 g total − 250 g spool tare = 500 g filament lent out/);
-  assert.doesNotMatch(html, /id="loan-outgoing-calculation"[\s\S]*?role="status"|aria-live=/);
+  assert.match(html, /id="loan-outgoing-calculation"[\s\S]*?aria-live="polite"/);
   assert.match(html, /value="750"/);
   assert.match(html, /Loaded in slot 2 on Brutus/);
 });
@@ -372,7 +372,7 @@ test("loan create task sheet explains the real eSUN fallback tare without format
   );
   assert.match(html, /value="1224"/);
   assert.doesNotMatch(html, /value="1[^\d]224"/);
-  assert.doesNotMatch(html, /role="status"|aria-live=/);
+  assert.match(html, /data-weight-preview=[\s\S]*?aria-live="polite"/);
 });
 
 test("loans shell shows cross-flow recovery actions when filters hide the selected spool history", () => {
@@ -430,4 +430,21 @@ test("loan return task sheet switches inbound records to hand-back flow", () => 
   assert.match(html, /hand-back-loan-form/);
   assert.match(html, /Tilbakelevert totalvekt inkl\. spole \(g\)/);
   assert.match(html, /Lever tilbake spole/);
+});
+
+test("loan picker searches the full eligible library before applying the render limit", () => {
+  const state = { ...createInitialCompanionState(), loanPickerSearch: "target shelf" };
+  const rows = Array.from({ length: 170 }, (_, index) => createSelectedSpool({
+    spool: { id: `spool-${index}`, remaining_g: 800, location_id: index === 169 ? "Target Shelf" : "Other" },
+  }));
+  const render = () => renderLoanPickerTaskSheetBody({ state, loanSpoolOptions: rows,
+    escapeHtml: (value) => String(value ?? ""), formatGrams: (value) => `${value ?? 0} g` });
+  assert.match(render(), /data-spool-id="spool-169"/);
+  assert.doesNotMatch(render(), /data-spool-id="spool-0"/);
+  assert.match(render(), /1\/170/);
+  state.loanPickerSearch = "no matching spool";
+  assert.match(render(), /No local spools matched/);
+  assert.match(render(), /name="loan-picker-search"/);
+  state.loanPickerSearch = "";
+  assert.match(render(), /show-more-loan-picker/);
 });

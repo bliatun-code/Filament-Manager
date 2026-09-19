@@ -419,3 +419,20 @@ test("installCompanionDomEvents registers the expected document and root listene
   assert.equal(typeof installed.changeHandler, "function");
   assert.equal(typeof installed.submitHandler, "function");
 });
+
+test("installed submit listener sends the tare-weight form to its mutation handler", () => {
+  const listeners = new Map();
+  const calls = [];
+  let prevented = false;
+  installCompanionDomEvents(createBaseOptions({
+    root: { addEventListener: (name, listener) => listeners.set(name, listener) },
+    createFormData: () => new Map([["spool-id", "review-roll"], ["tare-grams", "200"]]),
+    submitTareWeightUpdate: (...args) => calls.push(args),
+  }));
+  listeners.get("submit")({
+    target: { tagName: "FORM", getAttribute: () => "update-tare-weight-form" },
+    preventDefault: () => { prevented = true; },
+  });
+  assert.equal(prevented, true);
+  assert.deepEqual(calls, [["review-roll", "200"]]);
+});

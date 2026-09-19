@@ -102,8 +102,8 @@ export function useSettingsBackupExportActions({
           "Full backup exported (inventory, history and printers).",
         ),
         librarySyncBackupAutoValidated: t(
-          "settings.librarySyncBackupAutoValidated",
-          "The exported backup was validated automatically and is ready to use in the guided role-change flow.",
+          "settings.backupValidationDone",
+          "Backup validation completed.",
         ),
       }));
     } catch (backupError) {

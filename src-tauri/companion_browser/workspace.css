@@ -102,6 +102,25 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.add-spool-source-head .segmented-control {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.add-spool-source-head .segment-button {
+  flex: 1 0 auto;
+  text-align: center;
+}
+
+.add-spool-source-head .segment-button > span:first-child {
+  overflow-wrap: normal;
+}
+
+.detail-quick-form .weight-preview {
+  grid-column: 1 / -1;
+}
+
 .segmented-control[data-columns="5"] {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -366,6 +385,13 @@
 
 .task-sheet.add-filament-sheet .add-spool-catalog-row {
   min-height: 4.8rem;
+  grid-template-rows: auto auto;
+  align-content: start;
+  flex-shrink: 0;
+}
+
+.task-sheet.add-filament-sheet .add-spool-catalog-list {
+  grid-auto-rows: max-content;
 }
 
 .add-filament-sheet .add-spool-sheet,

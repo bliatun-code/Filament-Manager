@@ -79,6 +79,20 @@ export function createCompanionApiClient(options) {
   const setStatus = options?.setStatus ?? (() => {});
   const render = options?.render ?? (() => {});
 
+  async function fetchReachable(url, init) {
+    try {
+      const response = await fetchImpl(url, init);
+      session.connectionUnavailable = false;
+      return response;
+    } catch (cause) {
+      session.connectionUnavailable = true;
+      session.overviewStale = true;
+      const error = new Error(t(session.locale || "en", "errors.unavailable", "The service is temporarily unavailable."), { cause });
+      error.code = "companion.network_unavailable";
+      throw error;
+    }
+  }
+
   function updateSessionMode(parsed) {
     const authMode = String(parsed?.auth_mode || "").trim();
     const accessMode = String(parsed?.access_mode || "").trim();
@@ -100,7 +114,7 @@ export function createCompanionApiClient(options) {
   }
 
   async function readSessionStatus() {
-    const response = await fetchImpl("/api/v1/auth/session", {
+    const response = await fetchReachable("/api/v1/auth/session", {
       credentials: "same-origin",
     });
     const result = await readJsonResponse(response);
@@ -125,7 +139,7 @@ export function createCompanionApiClient(options) {
       throw new Error("pairing token is required");
     }
 
-    const response = await fetchImpl("/api/v1/auth/pair", {
+    const response = await fetchReachable("/api/v1/auth/pair", {
       method: "POST",
       credentials: "same-origin",
       headers: {
@@ -146,7 +160,7 @@ export function createCompanionApiClient(options) {
   }
 
   async function renewSession() {
-    const response = await fetchImpl("/api/v1/auth/renew", {
+    const response = await fetchReachable("/api/v1/auth/renew", {
       method: "POST",
       credentials: "same-origin",
     });
@@ -200,7 +214,7 @@ export function createCompanionApiClient(options) {
   }
 
   async function fetchJson(url, init = {}) {
-    const response = await fetchImpl(url, {
+    const response = await fetchReachable(url, {
       credentials: "same-origin",
       ...init,
     });
@@ -216,7 +230,7 @@ export function createCompanionApiClient(options) {
       (response.status === 401 || response.status === 403) &&
       (await restoreSessionIfPossible());
     if (shouldRetry) {
-      const retryResponse = await fetchImpl(url, {
+      const retryResponse = await fetchReachable(url, {
         credentials: "same-origin",
         ...cloneInitWithFreshSession(init, session.csrfToken),
       });

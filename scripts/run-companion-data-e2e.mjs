@@ -126,6 +126,7 @@ export function readCompanionDataE2eState(dbPath, record = COMPANION_E2E_RECORD)
            spool.initial_weight_g,
            spool.current_weight_g,
            spool.remaining_g,
+           spool.spool_tare_weight_g,
            spool.status,
            spool.ownership_type,
            master.material,
@@ -474,6 +475,47 @@ async function verifySpoolInCurrentUi(
     }
   }
   return row;
+}
+
+async function verifyTareWeightSave(page, baseUrl, timeoutMs, dbPath, spoolId, record) {
+  // Exercise the installed DOM submit listener; calling the mutation helper alone
+  // missed a missing handler that made the real Save tare button do nothing.
+  const row = await verifySpoolInCurrentUi(page, timeoutMs, spoolId, record, record.initialWeight);
+  await row.click();
+  const detail = page.locator('.detail-modal[aria-busy="false"]');
+  await detail.waitFor({ state: "visible", timeout: timeoutMs });
+  for (const tare of [200, 0]) {
+    const form = page.locator('[data-action="update-tare-weight-form"]');
+    await form.locator('input[name="tare-grams"]').fill(String(tare));
+    const saved = page.waitForResponse(response => response.request().method() === "POST" &&
+      new URL(response.url()).pathname === `/api/v1/spools/${encodeURIComponent(spoolId)}/tare-weight`,
+      { timeout: timeoutMs });
+    await form.locator('button[type="submit"]').click();
+    if (!(await saved).ok()) throw new Error("Companion tare save failed.");
+    await waitForDatabaseState(dbPath, candidate => candidate.spool?.spool_tare_weight_g === tare,
+      { record, timeoutMs });
+    await page.waitForFunction(() => document.getElementById("companion-live-region-polite")?.textContent?.trim() === "Empty spool weight updated.", undefined, { timeout: timeoutMs });
+    if (tare === 200) {
+      // This extra full reload fetches the module graph again. Leave the real
+      // 240 requests/minute protection intact and pace this synthetic burst.
+      await wait(60_100);
+      await reloadCompanion(page, baseUrl, timeoutMs);
+      const reloaded = page.locator(`[data-action="select-spool"][data-spool-id="${spoolId}"]`);
+      await reloaded.click();
+      await detail.waitFor({ state: "visible", timeout: timeoutMs });
+      if (await form.locator('input[name="tare-grams"]').inputValue() !== String(tare)) {
+        throw new Error("Companion tare was not retained after reload.");
+      }
+    }
+    if (tare === 200) {
+      await page.locator('[data-action="update-weight-form"] input[name="grams"]').fill("900");
+      if (!(await page.locator("#detail-weight-calculation").innerText()).includes("900 g − 200 g = 700 g")) {
+        throw new Error("Companion weight preview does not subtract the saved tare.");
+      }
+    }
+  }
+  await page.locator('[data-action="close-detail"]').click();
+  await page.locator(".detail-modal").waitFor({ state: "hidden", timeout: timeoutMs });
 }
 
 async function updateWeight(page, timeoutMs, dbPath, spoolId, record, row) {
@@ -902,6 +944,9 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
     .locator('input[name="grams-out"]')
     .fill(String(record.loanWeight));
   await createForm.locator('textarea[name="loan-note"]').fill(record.loanNote);
+  if (!(await page.locator("#loan-outgoing-calculation").innerText()).includes(`${record.loanWeight} g total`)) {
+    throw new Error("Companion loan calculation did not follow the edited outgoing weight.");
+  }
   const loanPath = `/api/v1/spools/${encodeURIComponent(spoolId)}/lend`;
   const loanRequestPromise = page.waitForRequest(
     (request) =>
@@ -951,6 +996,9 @@ async function lendAndReturnSpool(page, baseUrl, timeoutMs, dbPath, spoolId, rec
     .locator('input[name="returned-grams"]')
     .fill(String(record.returnMeasuredWeight));
   await returnForm.locator('textarea[name="return-note"]').fill(record.returnNote);
+  if (!(await page.locator("#loan-return-calculation").innerText()).includes(`${record.returnMeasuredWeight} g total`)) {
+    throw new Error("Companion return calculation did not follow the edited return weight.");
+  }
   await returnForm.locator('button[type="submit"]').click();
 
   state = await waitForDatabaseState(
@@ -1044,6 +1092,7 @@ async function runCompanionDataPageWorkflows(page, options, pageErrors) {
       "Companion find/detail workflow mutated inventory or spool history.",
     );
   }
+  await verifyTareWeightSave(page, options.baseUrl, timeoutMs, options.dbPath, spoolId, record);
   const printerWorkflow = await loadSpoolIntoPrinterAndClear(
     page,
     timeoutMs,

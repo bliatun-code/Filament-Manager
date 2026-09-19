@@ -1400,6 +1400,7 @@ export default function InventoryPage({
           ...inventoryBulkCollectionProps,
           filteredSpools,
           groupedSpools,
+          slotLabelById,
           inventoryView,
           loading,
           onSelectRoll: selectRollForManage,
