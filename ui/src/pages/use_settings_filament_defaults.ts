@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { appErrorCode } from "../lib/error_text";
+import { useSettingsMutationScope } from "../lib/use_settings_mutation_scope";
+import { appErrorCode, createAppError } from "../lib/error_text";
 import type { NormalizedSpoolWithMasterRow } from "../lib/spool_row_normalization";
 import {
   buildFilamentPriceBatchInput,
@@ -15,6 +16,7 @@ import {
   settingsWithGroupPriceDefault,
 } from "../lib/settings_filament_defaults_data_source";
 import type {
+  FilamentPriceBatchReceipt as UiBatchReceipt,
   FilamentPriceBatchRequest,
   SaveFilamentGroupPriceDefaultRequest,
 } from "../lib/settings_filament_defaults_model";
@@ -35,6 +37,7 @@ type UseSettingsFilamentDefaultsInput = {
   fallbackSpoolRows: readonly NormalizedSpoolWithMasterRow[];
   onInventoryChanged: () => Promise<void> | void;
   onLoadError: (error: unknown) => void;
+  setBusy?: (busy: boolean) => void;
   roleResolved: boolean;
   tauri: boolean;
 };
@@ -54,6 +57,7 @@ export function useSettingsFilamentDefaults({
   onInventoryChanged,
   onLoadError,
   roleResolved,
+  setBusy,
   tauri,
 }: UseSettingsFilamentDefaultsInput) {
   const dataSourceKey = !tauri
@@ -61,7 +65,7 @@ export function useSettingsFilamentDefaults({
     : !roleResolved
       ? "unresolved"
     : clientReadOnly
-      ? [
+      ? JSON.stringify([
           "client",
           clientHostBaseUrl?.trim() ?? "",
           clientLibraryId?.trim() ?? "",
@@ -69,8 +73,9 @@ export function useSettingsFilamentDefaults({
             ? String(clientTargetGeneration)
             : "unresolved-generation",
           clientHostWritePaired ? "paired" : "unpaired",
-        ].join(":")
-      : "local";
+        ])
+      : JSON.stringify(["local", clientLibraryId, clientTargetGeneration]);
+  const { begin: beginMutation, isActive: isScopeActive, isBusy: isMutationBusy, busy: mutationBusy } = useSettingsMutationScope(dataSourceKey, setBusy);
   const [snapshotState, setSnapshotState] = useState<{
     dataSourceKey: string;
     snapshot: FilamentStandardsSnapshot | null;
@@ -111,6 +116,7 @@ export function useSettingsFilamentDefaults({
 
   const loadSnapshot = useCallback(
     async (options: LoadFilamentStandardsOptions = {}) => {
+      if (!isScopeActive() || isMutationBusy()) return null;
       const requestGeneration = requestGenerationRef.current + 1;
       requestGenerationRef.current = requestGeneration;
       if (!tauri) {
@@ -197,6 +203,8 @@ export function useSettingsFilamentDefaults({
       clientReadOnly,
       dataSourceKey,
       hostTargetMissing,
+      isMutationBusy,
+      isScopeActive,
       onLoadError,
       roleResolved,
       setSnapshot,
@@ -249,49 +257,62 @@ export function useSettingsFilamentDefaults({
     [clientReadOnly, roleResolved, snapshot],
   );
 
-  const onSaveDefaultCurrency = useCallback(
-    async (currency: string) => {
-      const current = requireWritableSnapshot();
-      const saved = await saveFilamentStandards(
-        settingsWithDefaultPurchaseCurrency(current, currency),
-      );
-      setSnapshot(saved);
-    },
-    [requireWritableSnapshot, setSnapshot],
-  );
+  const currentSnapshot = useRef(snapshot);
+  const committedBatchSnapshot = useRef<FilamentStandardsSnapshot | null>(null);
+  useLayoutEffect(() => { currentSnapshot.current = snapshot; }, [snapshot]);
 
-  const onSaveGroupPrice = useCallback(
-    async (request: SaveFilamentGroupPriceDefaultRequest) => {
-      const current = requireWritableSnapshot();
-      const saved = await saveFilamentStandards(
-        settingsWithGroupPriceDefault(current, request),
-      );
-      setSnapshot(saved);
-    },
-    [requireWritableSnapshot, setSnapshot],
-  );
+  function beginWrite() {
+    const current = requireWritableSnapshot();
+    if (!tauri || currentSnapshot.current !== current) throw createAppError("filament_price_batch.stale_review");
+    const operation = beginMutation();
+    if (!operation) throw createAppError("filament_price_batch.stale_review");
+    // In-flight reads cannot overwrite a newer accepted write.
+    requestGenerationRef.current += 1;
+    setLoading(false);
+    return { current, operation };
+  }
 
-  const onApplyBatch = useCallback(
-    async (request: FilamentPriceBatchRequest) => {
-      const current = requireWritableSnapshot();
-      const receipt = await applyFilamentPriceBatch(
-        buildFilamentPriceBatchInput(current, request),
-      );
-      const mapped = mapFilamentPriceBatchReceipt(receipt, request, current);
+  async function onSaveDefaultCurrency(currency: string) {
+    const { current, operation } = beginWrite();
+    try {
+      const saved = await saveFilamentStandards(settingsWithDefaultPurchaseCurrency(current, currency));
+      if (operation.isCurrent()) { currentSnapshot.current = saved; setSnapshot(saved); }
+    } finally { operation.finish(); }
+  }
+
+  async function onSaveGroupPrice(request: SaveFilamentGroupPriceDefaultRequest) {
+    const { current, operation } = beginWrite();
+    try {
+      const saved = await saveFilamentStandards(settingsWithGroupPriceDefault(current, request));
+      if (operation.isCurrent()) { currentSnapshot.current = saved; setSnapshot(saved); }
+    } finally { operation.finish(); }
+  }
+
+  async function onApplyBatch(
+    request: FilamentPriceBatchRequest,
+    onCommitted?: (receipt: UiBatchReceipt) => void,
+  ) {
+    if (committedBatchSnapshot.current === snapshot) throw createAppError("filament_price_batch.stale_review");
+    const { current, operation } = beginWrite();
+    try {
+      const receipt = await applyFilamentPriceBatch(buildFilamentPriceBatchInput(current, request));
+      const mapped = { ...mapFilamentPriceBatchReceipt(receipt, request, current), scopeKey: dataSourceKey };
+      if (!operation.isCurrent()) return mapped;
+      if (mapped.committed) committedBatchSnapshot.current = current;
+      onCommitted?.(mapped);
       const refreshed = await refreshAfterFilamentPriceBatch({
         refreshInventory: onInventoryChanged,
         refreshStandards: getFilamentStandards,
+        reportWarning: (error) => { if (operation.isCurrent()) onLoadError(error); },
       });
-      if (refreshed) {
-        setSnapshot(refreshed);
-      }
+      if (refreshed && operation.isCurrent()) setSnapshot(refreshed);
       return mapped;
-    },
-    [onInventoryChanged, requireWritableSnapshot, setSnapshot],
-  );
+    } finally { operation.finish(); }
+  }
 
   return {
-    busy: loading,
+    busy: loading || mutationBusy,
+    mutationScopeKey: dataSourceKey,
     hostUnsupported,
     hostTargetMissing,
     loadFailed,

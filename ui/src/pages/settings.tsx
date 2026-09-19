@@ -6,12 +6,11 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { useSettingsLowStockSave } from "./use_settings_low_stock_save";
 import type { SettingsTabKey } from "./settings_page_model";
 import { resolveDesktopVisualQaScenario } from "../lib/desktop_visual_qa_scenario";
 import {
   isTauri,
-  saveLibrarySyncSettings,
-  type LowStockPolicy,
 } from "../lib/tauri_client";
 import { useI18n } from "../lib/i18n";
 import { buildSettingsGeneralRouteProps } from "./settings_general_route_props";
@@ -605,41 +604,20 @@ export default function SettingsPage({
     );
   }, [catalogMasters, spoolRows]);
 
-  const handleSaveLowStockPolicy = useCallback(
-    async (policy: LowStockPolicy) => {
-      if (!tauri || !librarySyncSettings || librarySyncSettings.mode === "CLIENT") {
-        return;
-      }
-      setBusy(true);
-      setError(null);
-      try {
-        const saved = await saveLibrarySyncSettings({
-          ...librarySyncSettings,
-          low_stock_policy: policy,
-        });
-        setLibrarySyncSettings(saved);
-        setInfo(t("settings.lowStockSaved", "Low-stock thresholds saved."));
-      } catch (saveError) {
-        console.error(saveError);
-        setError(
-          t(
-            "settings.lowStockSaveError",
-            "Failed to save low-stock thresholds.",
-          ),
-        );
-      } finally {
-        setBusy(false);
-      }
-    }, [
-      librarySyncSettings,
-      setBusy,
-      setError,
-      setInfo,
-      setLibrarySyncSettings,
-      t,
-      tauri,
-    ],
-  );
+  const handleSaveLowStockPolicy = useSettingsLowStockSave({
+    scopeKey: JSON.stringify([settingsCatalogTargetIdentity, librarySyncSettings?.mode]),
+    settings: librarySyncSettings,
+    tauri,
+    busy,
+    setBusy,
+    onSaved: setLibrarySyncSettings,
+    clearFeedback: () => { setError(null); setInfo(null); },
+    onSuccess: () => setInfo(t("settings.lowStockSaved", "Low-stock thresholds saved.")),
+    onError: (saveError) => {
+      console.error(saveError);
+      setError(t("settings.lowStockSaveError", "Failed to save low-stock thresholds."));
+    },
+  });
 
   const { settingsPrintersRouteProps } = useSettingsPrintersSection({
     bambuLiveIntegrations,
@@ -686,6 +664,7 @@ export default function SettingsPage({
     onInventoryChanged: reloadSettings,
     onLoadError: handleFilamentDefaultsLoadError,
     roleResolved: librarySyncSettings != null,
+    setBusy,
     tauri,
   });
   useEffect(() => {
@@ -866,6 +845,7 @@ export default function SettingsPage({
     catalog: settingsCatalogRouteProps,
     filamentDefaults: {
       tab: {
+        mutationScopeKey: filamentDefaults.mutationScopeKey,
         busy:
           busy ||
           filamentDefaults.busy ||

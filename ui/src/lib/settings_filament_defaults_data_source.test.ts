@@ -288,3 +288,17 @@ test("post-batch refresh failures never turn a committed batch into a failed rec
   assert.equal(withoutStandards, null);
   assert.equal(warnings.length, 2);
 });
+
+test("synchronous refresh failures still attempt both reads and preserve the committed outcome", async () => {
+  for (const failure of ["inventory", "standards"]) {
+    const calls: string[] = [];
+    const warnings: unknown[] = [];
+    await refreshAfterFilamentPriceBatch({
+      refreshInventory: () => { calls.push("inventory"); if (failure === "inventory") throw new Error("Inventory failed"); },
+      refreshStandards: () => { calls.push("standards"); if (failure === "standards") throw new Error("Standards failed"); return Promise.reject(new Error("Offline")); },
+      reportWarning: reason => warnings.push(reason),
+    });
+    assert.deepEqual(calls.sort(), ["inventory", "standards"]);
+    assert.equal(warnings.length, failure === "inventory" ? 2 : 1);
+  }
+});

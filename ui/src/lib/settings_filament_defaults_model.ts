@@ -560,6 +560,7 @@ export type FilamentPriceBatchReceiptEntry = Readonly<{
 }>;
 
 export type FilamentPriceBatchReceipt = Readonly<{
+  scopeKey?: string;
   batchId?: string | null;
   groupKey: string;
   mode: FilamentPriceBatchMode;

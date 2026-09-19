@@ -229,8 +229,8 @@ export async function refreshAfterFilamentPriceBatch({
   reportWarning?: (reason: unknown) => void;
 }): Promise<FilamentStandardsSnapshot | null> {
   const [standardsRefresh, inventoryRefresh] = await Promise.allSettled([
-    refreshStandards(),
-    Promise.resolve(refreshInventory()),
+    Promise.resolve().then(refreshStandards),
+    Promise.resolve().then(refreshInventory),
   ]);
   if (inventoryRefresh.status === "rejected") {
     reportWarning(inventoryRefresh.reason);
